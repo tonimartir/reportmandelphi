@@ -1168,6 +1168,11 @@ begin
     if subrep.PrintOnlyIfDataAvailable then
     begin
      index:=DataInfo.IndexOf(subrep.Alias);
+     if (index<0) then
+     begin
+       raise Exception.Create('Dataset alias not found '+subrep.Alias+
+         ' in subreport ' + subrep.Name);
+     end;
 {$IFDEF USERPDATASET}
      if Datainfo.Items[index].Cached then
      begin
