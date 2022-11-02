@@ -373,6 +373,9 @@ type
    procedure SetAlias(Value:string);
    procedure SetDataSource(Value:string);
    procedure SetSQL(Value:widestring);
+{$IFDEF USEADO}
+   procedure ADOQueryBeforeOpen(dataset: TDataSet);
+{$ENDIF}
 {$IFDEF USEBDE}
    procedure SetRangeForTable(lastrange:boolean);
 {$ENDIF}
@@ -609,6 +612,28 @@ begin
  end;
 end;
 {$ENDIF}
+
+{$IFDEF USEADO}
+procedure  AssignParamValuesADO(ZQuery:TADOQuery;Dataset:TDataset);
+var
+ i:integer;
+ afield:TField;
+begin
+ for i:=0 to ZQuery.Parameters.Count-1 do
+ begin
+  afield:=Dataset.FindField(ZQuery.Parameters.Items[i].Name);
+  if Assigned(afield) then
+  begin
+   ZQuery.Parameters.Items[i].DataType:=afield.DataType;
+   if Not afield.IsNull then
+    ZQuery.Parameters.Items[i].Value:=afield.Value
+   else
+    ZQuery.Parameters.Items[i].Value := Null;
+  end;
+ end;
+end;
+{$ENDIF}
+
 {$IFDEF FIREDAC}
 procedure  AssignParamValuesFiredac(ZQuery:TFDQuery;Dataset:TDataset);
 var
@@ -1988,7 +2013,42 @@ begin
  alist.Add(UpperCase(fullname));
 end;
 
-
+{$IFDEF USEADO}
+procedure TRpDataInfoItem.ADOQueryBeforeOpen(dataset: TDataSet);
+var
+ adoq: TAdoQuery;
+ i, j: integer;
+ paramName: widestring;
+ params: TStringList;
+ paramName2: widestring;
+begin
+ // Duplicated parameters must be assigned
+ adoq:=TADOQuery(dataset);
+ params:=TStringLIst.Create;
+ params.Sorted:=true;
+ try
+  for i := 0 to adoq.Parameters.Count-1 do
+  begin
+   paramName := UpperCase(adoq.Parameters[i].Name);
+   if (params.IndexOf(paramName)<0) then
+   begin
+    params.Add(paramName);
+    for j := i +1 to adoq.Parameters.Count -1 do
+    begin
+     paramName2 := UpperCase(adoq.Parameters[j].Name);
+     if (paramName2 = paramName) then
+     begin
+      adoq.Parameters[j].DataType := adoq.Parameters[i].DataType;
+      adoq.Parameters[j].Value := adoq.Parameters[i].Value;
+     end;
+    end;
+   end;
+  end;
+ finally
+  params.Free;
+ end;
+end;
+{$ENDIF}
 
 procedure TRpDataInfoItem.Connect(databaseinfo:TRpDatabaseInfoList;params:TRpParamList);
 var
@@ -2789,6 +2849,7 @@ begin
       begin
 {$IFDEF USEADO}
        TADOQuery(FSQLInternalQuery).DataSource:=FMasterSource;
+       TADOQuery(FSQLInternalQuery).BeforeOpen := ADOQueryBeforeOpen;
 {$IFDEF USERPDATASET}
        if datainfosource.cached then
         FMasterSource.DataSet:=datainfosource.CachedDataset
