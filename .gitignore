@@ -120,3 +120,7 @@ server/web/bin64/repwebexe.map
 repman/bin64/fbclient.dll
 repman/bin32/fbclient.dll
 fmx/firedacTest/Linux64/
+repman/bin64/firebird.log
+repman/bin64/ibclient64.dll
+repman/bin64/32bit/repwebserver.dll
+repman/bin64/64bit/repwebserver.dll
