@@ -1169,6 +1169,7 @@ end;
 
 function TIdenLEFT.GeTRpValue:TRpValue;
 begin
+
  if Not VarIsString(Params[0]) then
    Raise TRpNamedException.Create(SRpEvalType,
          IdenName);
@@ -2397,6 +2398,10 @@ end;
 
 function TIdenReplaceStr.GeTRpValue:TRpValue;
 begin
+ if VarIsNull(Params[0]) then
+ begin
+  exit;
+ end;
  if (Not VarIsString(Params[0]))
   or (Not VarIsString(Params[1]))
   or (Not VarIsString(Params[2])) then
