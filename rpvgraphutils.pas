@@ -1395,9 +1395,16 @@ begin
   if (apapersize.PageIndex=0) then
   begin
     // If is not Windows NT select custom paper
-    PDevMode.dmPaperSize := 256;
+    PDevMode.dmPaperSize := 0;
     PDevMode.dmPaperlength := apapersize.Height;
     PDevMode.dmPaperwidth  := apapersize.Width;
+    if (apapersize.ForcePaperName<>'') then
+    begin
+     StrPCopy(PDevMode.dmFormName, apapersize.ForcePaperName);
+        PDevMode.dmFields:=PDevMode.dmFields or DM_FORMNAME;
+    end;
+    PDevMode.dmFields:=PDevMode.dmFields or DM_PAPERSIZE or DM_PAPERLENGTH
+      or DM_PAPERWIDTH;
   end
   else
   begin
@@ -2231,9 +2238,8 @@ end;
 function GetPrinterDefaultConfig(index:integer;var XDevice,XDriver,XPort:string):THandle;
 var
  FPrinterHandle:THandle;
- ADevice, ADriver, APort: array[0..1023] of char;
+ ADevice, ADriver, APort: array[0..4096] of char;
  pdevmode:^DEVMODE;
- adevmode:DEVMODE;
  asize:Integer;
  aresult:THandle;
  amode:THandle;
@@ -2247,24 +2253,25 @@ begin
  begin
   try
    pdevmode:=nil;
-   asize:=DocumentProperties(0,fprinterhandle,ADevice,pdevmode^,pdevmode^,0);
-   pdevmode:=@adevmode;
+   asize:=DocumentProperties(0,fprinterhandle,ADevice,nil,nil,0);
    if asize>0 then
    begin
     aresult:=GlobalAlloc(GHND,asize);
     try
      pdevmode:=GlobalLock(aresult);
-     try
-      if IDOK=DocumentProperties(0,fprinterhandle,ADevice,pdevmode^,pdevmode^,DM_OUT_BUFFER) then
-      begin
-       Result:=aresult;
-      end;
-     finally
+     if DocumentProperties(0,fprinterhandle,ADevice,pdevmode^,pdevmode^,DM_OUT_BUFFER)<0 then
+     begin
+       GlobalUnlock(aresult);
+       GlobalFree(aresult);
+     end
+     else
+     begin
+      Result:=aresult;
       GlobalUnlock(aresult);
      end;
     finally
-     if Result=0 then
-      GlobalFree(aresult);
+//     if Result=0 then
+//      GlobalFree(aresult);
     end;
    end;
   finally

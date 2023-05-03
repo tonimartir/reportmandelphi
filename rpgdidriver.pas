@@ -1824,6 +1824,7 @@ begin
         // Sets pagesize
         rpagesizeQt.papersource := metafile.papersource;
         rpagesizeQt.duplex := metafile.duplex;
+        StrPCopy(rpagesizeQt.ForcePaperName,  metafile.ForcePaperName);
         if metafile.pagesize < 0 then
         begin
           rpagesizeQt.Custom := true;
