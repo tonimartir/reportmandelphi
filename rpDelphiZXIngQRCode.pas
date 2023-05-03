@@ -34,15 +34,19 @@ type
     FEncoding: TQRCodeEncoding;
     FQuietZone: Integer;
     FElements: T2DBooleanArray;
+    FErrorCorrectionLevel: integer;
+
     procedure SetEncoding(NewEncoding: TQRCodeEncoding);
     procedure SetData(const NewData: WideString);
     procedure SetQuietZone(NewQuietZone: Integer);
+    procedure SetErrorCorrectionLevel(value: integer);
     function GetIsBlack(Row, Column: Integer): Boolean;
     procedure Update;
   public
     constructor Create;
     property Data: WideString read FData write SetData;
     property Encoding: TQRCodeEncoding read FEncoding write SetEncoding;
+    property ErrorCorrectionLevel: integer read fErrorCorrectionLevel write SetErrorCorrectionLevel;
     property QuietZone: Integer read FQuietZone write SetQuietZone;
     property Rows: Integer read FRows;
     property Columns: Integer read FColumns;
@@ -194,10 +198,14 @@ type
   TErrorCorrectionLevel = class
   private
     FBits: Integer;
+    FOrdinal : Integer;
+    function GetBits:Integer;
   public
+     constructor Create(ordinalValue : Integer);
+
     procedure Assign(Source: TErrorCorrectionLevel);
-    function Ordinal: Integer;
-    property Bits: Integer read FBits;
+    property Bits: Integer read GetBits;
+    property Ordinal : Integer read FOrdinal;
   end;
 
   TECB = class
@@ -804,7 +812,7 @@ begin
   begin
     FECLevel.Free;
   end;
-  FECLevel := TErrorCorrectionLevel.Create;
+  FECLevel := TErrorCorrectionLevel.Create(0);
   FECLevel.Assign(NewECLevel);
 end;
 
@@ -2319,15 +2327,36 @@ end;
 
 { TErrorCorrectionLevel }
 
-procedure TErrorCorrectionLevel.Assign(Source: TErrorCorrectionLevel);
-begin
-  Self.FBits := Source.FBits;
-end;
+   procedure TErrorCorrectionLevel.Assign(Source: TErrorCorrectionLevel);
+    begin
+      Self.fOrdinal := Source.FOrdinal;
+    end;
 
-function TErrorCorrectionLevel.Ordinal: Integer;
-begin
-  Result := 0;
-end;
+    constructor TErrorCorrectionLevel.Create(ordinalValue: integer);
+    begin
+
+      fOrdinal:=0;
+      if (ordinalValue >= 0) and (ordinalValue <=3) then
+        fOrdinal:=ordinalValue;
+    end;
+
+    function TErrorCorrectionLevel.GetBits: integer;
+    begin
+      if fOrdinal = 0 then  // level L
+        result:=1
+      else
+      if fOrdinal = 1 then  // level M
+        result:=0
+      else
+      if fOrdinal = 2 then  // level Q
+        result:=3
+      else
+      if fOrdinal = 3 then  // level H
+        result:=2
+      else
+        result:=1;
+    end;
+
 
 { TVersion }
 
@@ -3485,7 +3514,7 @@ begin
   end;
 end;
 
-function GenerateQRCode(const Input: WideString; EncodeOptions: Integer): T2DBooleanArray;
+function GenerateQRCode(const Input: WideString; EncodeOptions: Integer; errorCorrectionLevelValue : Integer): T2DBooleanArray;
 var
   Encoder: TEncoder;
   Level: TErrorCorrectionLevel;
@@ -3493,9 +3522,9 @@ var
   X: Integer;
   Y: Integer;
 begin
-  Level := TErrorCorrectionLevel.Create;
-  // Level.FBits := 0;
-  Level.FBits := 1;
+  Level := TErrorCorrectionLevel.Create(errorCorrectionLevelValue);
+  //Level.FBits := 0;
+  //Level.FBits := 1;
   Encoder := TEncoder.Create;
   QRCode := TQRCode.Create;
   try
@@ -3561,6 +3590,18 @@ begin
   end;
 end;
 
+    procedure TRpDelphiZXingQRCode.SetErrorCorrectionLevel(value: integer);
+    begin
+      if (value < 0) or (value > 3) then
+        raise Exception.Create('invalid error correction value. must be in range 0..3.');
+
+      if value <> fErrorCorrectionLevel then
+      begin
+        FErrorCorrectionLevel:=value;
+        Update;
+      end;
+    end;
+
 procedure TRpDelphiZXingQRCode.SetQuietZone(NewQuietZone: Integer);
 begin
   if ((FQuietZone <> NewQuietZone) and (NewQuietZone >= 0) and (NewQuietZone <= 100)) then
@@ -3572,7 +3613,7 @@ end;
 
 procedure TRpDelphiZXingQRCode.Update;
 begin
-  FElements := GenerateQRCode(FData, Ord(FEncoding));
+  FElements := GenerateQRCode(FData, Ord(FEncoding), FErrorCorrectionLevel);
   FRows := Length(FElements) + FQuietZone * 2;
   FColumns := FRows;
 end;

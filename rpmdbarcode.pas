@@ -3110,8 +3110,18 @@ begin
   QRCode := TRpDelphiZXingQRCode.Create;
   try
     QRCode.Encoding := qrAuto;
+
     // QRCode.ECCBits:= Self.ECCLevel;
-    QRCode.QuietZone := 4;
+//    QRCode.QuietZone := 4;
+    case  Self.ECCLevel of
+      1..3:
+       begin
+        QRCode.ErrorCorrectionLevel:=Self.ECCLevel;
+       end;
+      else
+        QRCode.ErrorCorrectionLevel := 0; // 0=L (7%); 1=M (15%); 2=Q (25%); 3=H (35%)
+
+    end;
     QRCode.Data := CurrentText;
     squareWidth:=Width div QRCode.Columns;
     squareHeight:=Height div QRCode.Rows;
