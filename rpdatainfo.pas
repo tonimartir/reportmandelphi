@@ -635,7 +635,7 @@ end;
 {$ENDIF}
 
 {$IFDEF FIREDAC}
-procedure  AssignParamValuesFiredac(ZQuery:TFDQuery;Dataset:TDataset);
+procedure  AssignParamValuesFiredac(ZQuery:TFDCustomQuery;Dataset:TDataset);
 var
  i:integer;
  afield:TField;
@@ -2258,16 +2258,23 @@ begin
      rpfiredac:
       begin
 {$IFDEF FIREDAC}
-       FSQLInternalQuery:=TFDQuery.Create(nil);
-       TFDQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.PreprocessCmdText:=false;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.ParamCreate:=true;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.ParamExpand:=true;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.MacroCreate:=false;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.MacroExpand:=false;
-       TFDQuery(FSQLInternalQuery).ResourceOptions.EscapeExpand:=false;
+       if FBDEType=rpdtable then
+       begin
+        FSQLInternalQuery:=TFDTable.Create(nil);
+       end
+       else
+       begin
+        FSQLInternalQuery:=TFDQuery.Create(nil);
+       end;
+       TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.PreprocessCmdText:=false;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.ParamCreate:=true;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.ParamExpand:=true;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.MacroCreate:=false;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.MacroExpand:=false;
+       TFDCustomQuery(FSQLInternalQuery).ResourceOptions.EscapeExpand:=false;
 
-       TFDQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
+       TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
 {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
 {$ENDIF}
@@ -2365,12 +2372,24 @@ begin
      rpfiredac:
       begin
 {$IFDEF FIREDAC}
-       if Not (FSQLInternalQuery is TFDQuery) then
+       if FBDEType=rpdquery then
        begin
-        FSQLInternalQuery.Free;
-        FSQLInternalQuery:=nil;
-        FSQLInternalQuery:=TFDQuery.Create(nil);
-       end;
+        if Not (FSQLInternalQuery is TFDQuery) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TFDQuery.Create(nil);
+        end;
+       end
+       else
+       begin
+       if Not (FSQLInternalQuery is TFDTable) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TFDTable.Create(nil);
+        end;
+       end
 {$ENDIF}
       end;
     end;
@@ -2625,15 +2644,31 @@ begin
      rpfiredac:
       begin
 {$IFDEF FIREDAC}
-      TFDQuery(FSQLInternalQuery).Connection:=
-       baseinfo.FFDConnection;
-      TFDQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
-      if Assigned(TFDQuery(FSQLInternalQuery).Connection) then
+       TFDCustomQuery(FSQLInternalQuery).Connection:=baseinfo.FFDConnection;
+      TFDCustomQuery(FSQLInternalQuery).Filter:=FBDEFilter;
+      if length(Trim(FBDEFilter))>0 then
+       TFDCustomQuery(FSQLInternalQuery).Filtered:=True;
+      if FBDEType=rpdtable then
       begin
-       TFDQuery(FSQLInternalQuery).Transaction:=baseinfo.FFDTransaction;
+       TFDTable(FSQLInternalQuery).MasterSource:=nil;
+       TFDTable(FSQLInternalQuery).Tablename:=FBDETable;
+       TFDTable(FSQLInternalQUery).IndexFieldNames:='';
+       TFDTable(FSQLInternalQUery).IndexName:='';
+       if Length(FBDEIndexFields)>0 then
+        TFDTable(FSQLInternalQUery).IndexFieldNames:=FBDEIndexFields;
+       if Length(FBDEIndexName)>0 then
+        TFDTable(FSQLInternalQUery).IndexName:=FBDEIndexName;
+      end
+      else
+      begin
+       TFDQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
+      end;
+      if Assigned(TFDCustomQuery(FSQLInternalQuery).Connection) then
+      begin
+       TFDCustomQuery(FSQLInternalQuery).Transaction:=baseinfo.FFDTransaction;
       end;
       //TFDQuery(FSQLInternalQuery).UniDirectional:=true;
-      TFDQuery(FSQLInternalQuery).DataSource:=nil;
+      TFDCustomQuery(FSQLInternalQuery).DataSource:=nil;
 {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
 {$ENDIF}
@@ -2726,8 +2761,8 @@ begin
     rpfiredac:
      begin
 {$IFDEF FIREDAC}
-        TFDQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
-        TFDQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+       TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+        TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
 {$ENDIF}
      end;
      end;
@@ -2877,14 +2912,14 @@ begin
        FDataLink.datainfoitem:=self;
        FDataLink.DataSource:=FMasterSource;
        FDataLink.dbinfoitem:=databaseinfo.ItemByName(FDatabaseAlias);
-       TFDQuery(FSQLInternalQuery).DataSource:=FMasterSource;
+       TFDCustomQuery(FSQLInternalQuery).DataSource:=FMasterSource;
 {$IFDEF USERPDATASET}
        if datainfosource.cached then
         FMasterSource.DataSet:=datainfosource.CachedDataset
        else
 {$ENDIF}
         FMasterSource.DataSet:=datainfosource.Dataset;
-       AssignParamValuesFiredac(TFDQuery(FSQLInternalQuery),datainfosource.Dataset);
+       AssignParamValuesFiredac(TFDCustomQuery(FSQLInternalQuery),datainfosource.Dataset);
 {$ENDIF}
       end;
     end;
@@ -5106,7 +5141,7 @@ begin
 {$ENDIF}
 {$IFDEF FIREDAC}
   if dtype=rpfiredac then
-   AssignParamValuesFiredac(TFDQuery(datainfoitem.dataset),DataSource.Dataset);
+   AssignParamValuesFiredac(TFDCustomQuery(datainfoitem.dataset),DataSource.Dataset);
 {$ENDIF}
 {$IFDEF USESQLEXPRESS}
  if dtype=rpdatadbexpress then
