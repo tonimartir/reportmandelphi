@@ -6,7 +6,7 @@
         <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
         <DCC_DependencyCheckOutputName>printreptopdf.exe</DCC_DependencyCheckOutputName>
         <ProjectVersion>19.4</ProjectVersion>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <Base>True</Base>
         <AppType>Console</AppType>
         <FrameworkType>VCL</FrameworkType>

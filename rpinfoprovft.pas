@@ -216,6 +216,8 @@ var
  direc:string;
  bytes: TBytes;
  afilename2: AnsiString;
+ externalLeading: Integer;
+ internalLeading: Integer;
 begin
  if Assigned(fontlist) then
   exit;
@@ -500,15 +502,15 @@ begin
       aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
       if aobj.Type1 then
       begin
-       aobj.convfactor:=1;
-//       aobj.convfactor:=1000/aface.units_per_EM;
-       aobj.widthmult:=aobj.convfactor;
+       aobj.widthmult:=1;
+       //aobj.convfactor:=1;
+       aobj.convfactor:=1000/aface.units_per_EM;
       end
       else
       begin
-       aobj.convfactor:=1;
-//       aobj.convfactor:=1000/aface.units_per_EM;
-       aobj.widthmult:=aobj.convfactor;
+       //aobj.convfactor:=1;
+       aobj.convfactor:=1000/aface.units_per_EM;
+       aobj.widthmult:=1;
       end;
       aobj.filename:=fontfiles.strings[i];
       aobj.postcriptname:='';
@@ -526,7 +528,14 @@ begin
       aobj.BBox.Bottom:=Round(aobj.convfactor*aface.bbox.yMin);
       aobj.ascent:=Round(aobj.convfactor*aface.ascender);
       aobj.descent:=Round(aobj.convfactor*aface.descender);
-      aobj.leading:=Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
+      // External leading, same as GDI OUTLINETEXTMETRICS, it's the line gap
+      externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
+      // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font
+      // reserved for accent marks
+      internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
+      aobj.leading := internalLeading+externalLeading;
+
+
       aobj.MaxWidth:=Round(aobj.convfactor*aface.max_advance_width);
       aobj.Capheight:=Round(aobj.convfactor*aface.ascender);
       aobj.stylename:='';
