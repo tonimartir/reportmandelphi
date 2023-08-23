@@ -34,9 +34,7 @@ uses
   Windows,Graphics, Controls, Forms,ExtCtrls,StdCtrls,
   rpmdobinsintvcl,rpmdconsts,rpprintitem,comctrls,
   rpgraphutilsvcl,rpsection,rpmunits, rpexpredlgvcl,rpmdfextsecvcl,
-{$IFDEF EXTENDEDGRAPHICS}
- rpgraphicex,jpeg,
-{$ENDIF}
+ jpeg,
 {$IFDEF XE3UP}
   System.UITypes,
 {$ENDIF}
@@ -684,10 +682,8 @@ end;
 procedure TRpPanelObj.ImageClick(Sender:TObject);
 var
  Stream:TMemoryStream;
-{$IFDEF EXTENDEDGRAPHICS}
  apic:TPicture;
  jpeg:TJpegImage;
-{$ENDIF}
 begin
  if TFRpObjInspVCL(Owner).OpenDialog1.Execute then
  begin
@@ -702,10 +698,6 @@ begin
     Stream.Free;
    end;
   end
-{$IFNDEF EXTENDEDGRAPHICS}
-;
-{$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
   else
   begin
    apic:=TPicture.Create;
@@ -730,7 +722,6 @@ begin
     apic.free;
    end;
   end;
-{$ENDIF}
   AssignPropertyValues;
  end;
 end;
@@ -1753,10 +1744,6 @@ begin
 end;
 
 constructor TrpPanelObj.Create(AOwner:TComponent);
-{$IFDEF EXTENDEDGRAPHICS}
-var
- gfilter:string;
-{$ENDIF}
 begin
  inherited Create(AOwner);
 
@@ -1769,9 +1756,8 @@ begin
 //  SRpSXPMImages+'|*.xpm';
  // Add Registered file formats
  // Add registered filters
-{$IFDEF EXTENDEDGRAPHICS}
- gfilter:=string(rpgraphicex.FileFormatList.GetGraphicFilter([],fstExtension,[foIncludeExtension],nil));
- TFRpObjInspVCL(Owner).OpenDialog1.Filter:=TFRpObjInspVCL(Owner).OpenDialog1.Filter+gfilter;
+// gfilter:=string(rpgraphicex.FileFormatList.GetGraphicFilter([],fstExtension,[foIncludeExtension],nil));
+// TFRpObjInspVCL(Owner).OpenDialog1.Filter:=TFRpObjInspVCL(Owner).OpenDialog1.Filter+gfilter;
 (* TFRpObjInspVCL(Owner).OpenDialog1.Filter:=TFRpObjInspVCL(Owner).OpenDialog1.Filter+
   'PCX '+'|*.pcx|'+
   'GIF '+'|*.gif|'+
@@ -1780,7 +1766,7 @@ begin
   'TIF '+'|*.tif|'+
   'FAX '+'|*.fax|'+
   'EPS '+'|*.eps|';*)
-{$ENDIF}
+//{$ENDIF}
 
  Align:=alClient;
 

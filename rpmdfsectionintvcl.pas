@@ -976,7 +976,6 @@ begin
       else
       begin
         // All other formats
-{$IFDEF EXTENDEDGRAPHICS}
        ExFilterImage(aStream);
        jpegimage:=TJPegImage.Create;
        try
@@ -985,7 +984,6 @@ begin
        finally
         jpegimage.free;
        end;
-{$ENDIF}
       end;
      end;
      rec.Top:=0;rec.Left:=0;

@@ -31,9 +31,6 @@ uses SysUtils, Classes,Windows,
 {$IFNDEF DOTNETD}
   jpeg,
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
- rpgraphicex,
-{$ENDIF}
   rppdffile,clipbrd,rpgdidriver,
   rpprintitem,rpdrawitem,rpmdobinsintvcl,rpmdconsts,
   rpgraphutilsvcl,rpmunits,rptypes;
@@ -647,7 +644,6 @@ begin
       else
       begin
         // All other formats
-{$IFDEF EXTENDEDGRAPHICS}
        ExFilterImage(aimage.Stream);
        jpegimage:=TJPegImage.Create;
        try
@@ -656,7 +652,6 @@ begin
        finally
         jpegimage.free;
        end;
-{$ENDIF}
       end;
      end;
     except
@@ -903,7 +898,6 @@ begin
     else
     begin
       // All other formats
-{$IFDEF EXTENDEDGRAPHICS}
        ExFilterImage(aimage.Stream);
        jpegimage:=TJPegImage.Create;
        try
@@ -912,7 +906,6 @@ begin
        finally
         jpegimage.free;
        end;
-{$ENDIF}
     end;
    end;
  finally
@@ -948,10 +941,8 @@ var
  OpenDialog1:TOpenPictureDialog;
  aimage:TRpImage;
  jpeg:TJPegImage;
-{$IFDEF EXTENDEDGRAPHICS}
  gfilter:string;
  apic:TPicture;
-{$ENDIF}
 begin
  aimage:=TRpImage(printitem);
  OpenDialog1:=TOpenPictureDialog.Create(Application);
@@ -963,9 +954,8 @@ begin
 //  SRpSXPMImages+'|*.xpm';
  // Add Registered file formats
  // Add registered filters
-{$IFDEF EXTENDEDGRAPHICS}
-  gfilter:=rpgraphicex.FileFormatList.GetGraphicFilter([],fstExtension,[foIncludeExtension],nil);
-  OpenDialog1.Filter:=OpenDialog1.Filter+gfilter;
+//  gfilter:=rpgraphicex.FileFormatList.GetGraphicFilter([],fstExtension,[foIncludeExtension],nil);
+//  OpenDialog1.Filter:=OpenDialog1.Filter+gfilter;
 (* TFRpObjInspVCL(Owner).OpenDialog1.Filter:=TFRpObjInspVCL(Owner).OpenDialog1.Filter+
   'PCX '+'|*.pcx|'+
   'GIF '+'|*.gif|'+
@@ -974,7 +964,6 @@ begin
   'TIF '+'|*.tif|'+
   'FAX '+'|*.fax|'+
   'EPS '+'|*.eps|';*)
-{$ENDIF}
 
  if OpenDialog1.Execute then
  begin
@@ -982,7 +971,6 @@ begin
   begin
    aimage.Stream.LoadFromFile(OpenDialog1.FileName);
   end
-{$IFDEF EXTENDEDGRAPHICS}
   else
   begin
    apic:=TPicture.Create;
@@ -1000,7 +988,6 @@ begin
     apic.free;
    end;
   end;
-{$ENDIF}
  end;
  finally
   OpenDialog1.free;

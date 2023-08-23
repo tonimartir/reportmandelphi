@@ -68,9 +68,6 @@ uses
 {$ENDIF}
 {$ENDIF}
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
-  rpgraphicex,
-{$ENDIF}
 {$ENDIF}
   rppdfdriver, rptextdriver, Mask, rpmaskedit;
 
@@ -198,9 +195,7 @@ type
     procedure DrawChart(Series: TRpSeries; ametafile: TRpMetafileReport;
       posx, posy: integer; achart: TObject); override;
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
     procedure FilterImage(memstream: TMemoryStream); override;
-{$ENDIF}
 {$ENDIF}
 {$IFNDEF FORWEBAX}
 {$IFDEF USETEECHART}
@@ -266,9 +261,7 @@ procedure PageSizeSelection(rpPageSize: TPageSizeQt);
 procedure OrientationSelection(neworientation: TRpOrientation);
 
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
 procedure ExFilterImage(memstream: TMemoryStream);
-{$ENDIF}
 {$ENDIF}
 
 implementation
@@ -595,9 +588,7 @@ begin
 {$IFDEF USETEECHART}
   report.OnDrawChart := Self.DoDrawChart;
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
   report.OnFilterImage := Self.FilterImage;
-{$ENDIF}
 {$ENDIF}
   DrawerBefore := report.OpenDrawerBefore;
   DrawerAfter := report.OpenDrawerAfter;
@@ -2334,9 +2325,7 @@ begin
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
       report.metafile.OnFilterImage := gdidriver.FilterImage;
-{$ENDIF}
       report.PrintRange(pdfdriver, allpages, frompage, topage, copies, collate);
     finally
       gdidriver.free;
@@ -2372,9 +2361,7 @@ begin
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
       report.metafile.OnFilterImage := gdidriver.FilterImage;
-{$ENDIF}
       if metafile then
       begin
         report.PrintRange(pdfdriver, allpages, frompage, topage,
@@ -2686,9 +2673,7 @@ begin
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}
-{$IFDEF EXTENDEDGRAPHICS}
       report.metafile.OnFilterImage := gdidriver.FilterImage;
-{$ENDIF}
       oldprogres := report.OnPRogress;
       try
         report.OnPRogress := RepProgress;
@@ -2929,7 +2914,6 @@ begin
       else
       begin
         // All other formats
-{$IFDEF EXTENDEDGRAPHICS}
         FilterImage(Stream);
         jpegimage := TJPegImage.Create;
         try
@@ -2938,7 +2922,6 @@ begin
         finally
           jpegimage.free;
         end;
-{$ENDIF}
       end;
     end;
     extent.X := Round(graphic.Width / dpi * TWIPS_PER_INCHESS);
@@ -3041,14 +3024,12 @@ begin
 end;
 
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
 
 procedure TRpGDIDriver.FilterImage(memstream: TMemoryStream);
 begin
   inherited FilterImage(memstream);
   ExFilterImage(memstream);
 end;
-{$ENDIF}
 {$IFDEF USETEECHART}
 
 procedure TRpGDIDriver.AddFunctionToChart(achart: TChart; functionName: string;
@@ -3505,46 +3486,41 @@ begin
 end;
 
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
 
 procedure ExFilterImage(memstream: TMemoryStream);
 var
-  gclass: TGraphicExGraphicClass;
   bitmap: TBitmap;
-  gpicture: TGraphicExGraphic;
-  jpegimage: TJPegImage;
+  gpicture: TPicture;
+  jpeg: TJPegImage;
+  stream:TMemoryStream;
 begin
-  // Use graphicex library to obtain type and convert it to jpeg
-  gclass := rpgraphicex.FileFormatList.GraphicFromContent(memstream);
-  if (gclass = nil) then
-    exit;
   memstream.Seek(0, soFromBeginning);
-  gpicture := gclass.Create;
+  gpicture := TPicture.Create;
   try
     try
-      gpicture.LoadFromStream(memstream);
-      bitmap := TBitmap.Create;
-      bitmap.PixelFormat := pf24bit;
-      bitmap.Height := gpicture.Height;
-      bitmap.Width := gpicture.Width;
-      bitmap.Canvas.Draw(0, 0, gpicture);
-      jpegimage := TJPegImage.Create;
-      try
-        jpegimage.CompressionQuality := 100;
-        jpegimage.Assign(bitmap);
-        memstream.Clear;
-        jpegimage.SaveToStream(memstream);
-      finally
-        jpegimage.free;
-      end;
-    finally
-      memstream.Seek(0, soFromBeginning);
-    end;
+     gpicture.LoadFromStream(memstream);
+     bitmap := TBitmap.Create;
+     bitmap.PixelFormat := pf24bit;
+     bitmap.Height := gpicture.Height;
+     bitmap.Width := gpicture.Width;
+     jpeg:=TJPegImage.Create;
+     try
+      jpeg.CompressionQuality:=100;
+      jpeg.Assign(gpicture.Graphic);
+      memstream.Clear();
+      jpeg.SaveToStream(memstream);
+     finally
+      jpeg.free;
+     end
+   finally
+     memstream.Seek(0, soFromBeginning);
+   end;
   finally
     gpicture.free;
   end;
 end;
-{$ENDIF}
+
+
 {$ENDIF}
 
 end.
