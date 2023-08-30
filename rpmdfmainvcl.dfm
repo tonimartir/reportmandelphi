@@ -14,7 +14,6 @@ object FRpMainFVCL: TFRpMainFVCL
   OnDestroy = FormDestroy
   OnResize = FormResize
   OnShow = FormShow
-  PixelsPerInch = 96
   TextHeight = 20
   object BStatus: TStatusBar
     Left = 0

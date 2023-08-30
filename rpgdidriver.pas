@@ -2604,7 +2604,7 @@ procedure TFRpVCLProgress.AppIdlePrintRangeText(Sender: TObject;
   var done: boolean);
 var
   oldprogres: TRpProgressEvent;
-  S: String;
+  S: AnsiString;
   TextDriver: TRpTextDriver;
   pconfig: TPrinterConfig;
 begin

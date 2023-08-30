@@ -1376,7 +1376,8 @@ begin
     if ADriverPDF.Checked then
     begin
      rpgdidriver.CalcReportWidthProgressPDF(report);
-     rpgdidriver.PrintMetafile(report.Metafile,Caption,true,allpages,frompage,topage,copies,collate,false);
+     rpgdidriver.PrintMetafile(report.Metafile,Caption,true,allpages,frompage,topage,copies,collate,false,
+      report.Metafile.PrinterSelect);
     end
     else
     begin

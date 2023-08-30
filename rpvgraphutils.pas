@@ -1153,12 +1153,12 @@ end;
 procedure SendControlCodeToPrinter(S:AnsiString);
 var
  Handle, hDeviceMode: THandle;
- N: DWORD;
+ N: Cardinal;
  DocInfo1: TDocInfo1;
  Device, Driver, Port: array[0..255] of char;
  PrinterName: string;
- buf:pchar;
- lbuf:integer;
+ buf:pAnsichar;
+ lbuf:Cardinal;
 begin
  Printer.GetPrinter(Device, Driver, Port, hDeviceMode);
  PrinterName := Format('%s', [Device]);
@@ -1175,13 +1175,13 @@ begin
   try
 //   StartPagePrinter(Handle);
    lbuf:=length(s);
-   buf:=Allocmem(lbuf+2);
+   // buf:=Allocmem(lbuf+2);
    try
-    copymemory(buf,Pchar(s),lbuf);
-    if not WritePrinter(Handle, buf, lbuf, N) then
+    // copymemory(buf,PAnsichar(s),lbuf);
+    if not WritePrinter(Handle, PAnsiChar(S), lbuf, N) then
      RaiseLastOSError;
    finally
-    freemem(buf);
+   // freemem(buf);
    end;
 //   EndPagePrinter(Handle);
   finally
