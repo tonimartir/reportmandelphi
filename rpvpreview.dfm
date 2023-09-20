@@ -95,7 +95,7 @@ object FRpVPreview: TFRpVPreview
       ImageIndex = 13
       ImageName = 'Item14'
       Style = tbsDropDown
-      OnClick = AMailToExecute
+      OnClick = ToolButton8Click
     end
     object ToolButton16: TToolButton
       Left = 246

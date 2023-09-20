@@ -142,6 +142,7 @@ type
     procedure AFindExecute(Sender: TObject);
     procedure ESearchChange(Sender: TObject);
     procedure AMailToOutlookExecute(Sender: TObject);
+    procedure ToolButton8Click(Sender: TObject);
   private
     { Private declarations }
     printed:boolean;
@@ -192,6 +193,16 @@ begin
  end;
 end;
 
+
+
+procedure TFRpVPreview.ToolButton8Click(Sender: TObject);
+begin
+  // Obtener la posición absoluta del botón
+  var Point: TPoint := Btoolbar.ClientToScreen(Point(ToolButton8.Left, ToolButton8.Height));
+
+  // Mostrar el menú contextual en la posición del botón
+  PopupMail.Popup(Point.X, Point.Y);
+end;
 
 procedure TFRpVPreview.SetPreviewControl(avalue:TRpPreviewMeta);
 begin
@@ -1038,6 +1049,7 @@ begin
   except
     Outlook := CreateOleObject('Outlook.Application');
   end;
+  //Outlook.Session.Logon;
   vmailitem := Outlook.CreateItem(olMailItem);
   if (Length(destination)>0) then
     vmailitem.Recipients.Add(destination);
