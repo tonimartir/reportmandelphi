@@ -989,8 +989,8 @@ begin
      rec.Top:=0;rec.Left:=0;
      rec.Bottom:=Height-1;rec.Right:=Width-1;
      // Draws it with the style
-     dpix:=Screen.PixelsPerInch;
-     dpiy:=Screen.PixelsPerInch;
+     dpix:=Round(Screen.PixelsPerInch*secint.Scale);
+     dpiy:=Round(Screen.PixelsPerInch*secint.Scale);
      case asection.DrawStyle of
       rpDrawFull:
        begin
