@@ -98,8 +98,10 @@ uses Classes,SysUtils,
   FireDAC.Phys.MSSQL,
   FireDAC.Phys.ASA,FireDAC.Phys.DB2,  FireDAC.Phys.Infx,
   FireDAC.Phys.TData,
+{$IFNDEF LINUX}
   FireDAC.Phys.TDBX,
   FireDAC.Phys.TDBXBase,
+{$ENDIF}
   FireDAC.Phys.Oracle,
   FireDAC.Phys.ODBCDef,
   FireDAC.Phys.ODBC,
