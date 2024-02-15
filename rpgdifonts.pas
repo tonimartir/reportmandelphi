@@ -228,7 +228,6 @@ end;
 
 function UpdatePrinterFontList:boolean;
 var
- base:TStringList;
  i:integer;
 {$IFNDEF DOTNETD}
  Anticmapmode:HDC;
