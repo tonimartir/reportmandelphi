@@ -163,6 +163,8 @@ type
       apagesizeqt: TPageSizeQt): boolean;
     procedure UpdateBitmapSize(report: TRpMetafileReport;
       apage: TRpMetafilePage);
+    procedure setorientationset(newvalue: boolean);
+    function getorientationset: boolean;
   public
     offset: TPoint;
     showpagemargins: boolean;
@@ -175,7 +177,6 @@ type
     drawclippingregion: boolean;
     oldpagesize, pagesize: TGDIPageSize;
     oldorientation: TPrinterOrientation;
-    orientationset: boolean;
     devicefonts: boolean;
     neverdevicefonts: boolean;
     bitmapwidth, bitmapheight: integer;
@@ -187,6 +188,7 @@ type
       hardwarecollate: boolean); override;
     procedure EndDocument; override;
     procedure AbortDocument; override;
+    procedure RestoreOrientation; override;
     procedure NewPage(metafilepage: TRpMetafilePage); override;
     procedure EndPage; override;
     procedure DrawObject(page: TRpMetafilePage; obj: TRpMetaObject); override;
@@ -223,6 +225,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function GetFontDriver: TRpPrintDriver; override;
+    property orientationset: boolean read getorientationset write setorientationset;
   end;
 
 function PrintMetafile(metafile: TRpMetafileReport; tittle: string;
@@ -663,6 +666,7 @@ begin
     if not noenddoc then
     begin
       Printer.EndDoc;
+      RestoreOrientation;
       if DrawerAfter then
         SendControlCodeToPrinter(GetPrinterRawOp(selectedprinter,
           rawopopendrawer));
@@ -674,18 +678,23 @@ begin
   begin
     // Does nothing because the last bitmap can be usefull
   end;
-  if oldpagesize.PageIndex <> -1 then
-  begin
-    SetCurrentPaper(oldpagesize);
-    oldpagesize.PageIndex := -1;
-  end;
-  if orientationset then
+
+end;
+
+procedure TRpGDIDriver.RestoreOrientation;
+begin
+  if FREport.OrientationSet then
   begin
     if Printer.printing then
       SetPrinterOrientation(oldorientation = poLandscape)
     else
       Printer.Orientation := oldorientation;
-    orientationset := false;
+    FReport.orientationset := false;
+  end;
+  if oldpagesize.PageIndex <> -1 then
+  begin
+    SetCurrentPaper(oldpagesize);
+    oldpagesize.PageIndex := -1;
   end;
 end;
 
@@ -1639,8 +1648,23 @@ var
 begin
   gdisize := GetCurrentPaper;
   qtsize := GDIPageSizeToQtPageSize(gdisize);
+  gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
+  gdisize.Height:=Round(gdisize.Height/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
+
   PageSizeQt := qtsize.Indexqt;
-  asize := GetPhysicPageSizeTwips;
+    if Printer.Orientation=poLandscape then
+    begin
+    asize.x:=gdisize.Height;
+    asize.y:=gdisize.Width;
+    end
+    else
+    begin
+    asize.x:=gdisize.Width;
+    asize.y:=gdisize.Height;
+    end;
+  Result := asize;
+
+  // asize := GetPhysicPageSizeTwips;
   { if ((asize.x<1) or (asize.y<1)) then
     begin
     gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
@@ -1657,7 +1681,8 @@ begin
     asize.y:=gdisize.Height;
     end;
     end;
-  } Result := asize;
+  }
+  //Result := asize;
 end;
 
 function TRpGDIDriver.SetPagesize(PageSizeQt: TPageSizeQt): TPoint;
@@ -1736,6 +1761,8 @@ var
   currentorientation: TPrinterOrientation;
   pconfig: TPrinterConfig;
 begin
+  offset.X:=0;
+  offset.Y:=0;
   pconfig.Changed := false;
   gdidriver := nil;
   try
@@ -1783,6 +1810,7 @@ begin
       mmfirst := TimeGetTime;
       gdidriver := TRpGDIDriver.Create;
       try
+        gdidriver.FReport:=metafile;
         currentorientation := GetPrinterOrientation;
         // Sets page size and orientation
         if metafile.Orientation <> rpOrientationDefault then
@@ -1938,7 +1966,14 @@ begin
             end;
           end;
         end;
-        Printer.EndDoc;
+        Printer.EndDoc;        
+        try
+         if (assigned(gdiDriver)) then
+         begin
+          gdidriver.RestoreOrientation;
+         end
+        except
+        end;
       except
         Printer.Abort;
         raise;
@@ -1946,14 +1981,7 @@ begin
     end;
     if metafile.OpenDrawerAfter then
       SendControlCodeToPrinter(GetPrinterRawOp(printerindex, rawopopendrawer));
-    if assigned(gdidriver) then
-    begin
-      gdidriver.SendAfterPrintOperations;
-      if gdidriver.orientationset then
-      begin
-        Printer.Orientation := gdidriver.oldorientation;
-      end;
-    end;
+
   finally
     if assigned(gdidriver) then
       gdidriver.free;
@@ -2481,6 +2509,7 @@ begin
       begin
         gdidriver := TRpGDIDriver.Create;
         try
+        gdidriver.FReport:=Self.report.Metafile;
           gdidriver.noenddoc := noenddoc;
           if noenddoc then
             gdidriver.toprinter := true;
@@ -2573,6 +2602,7 @@ begin
   try
     gdidriver := TRpGDIDriver.Create;
     try
+      gdidriver.FReport:=report.Metafile;
       gdidriver.toprinter := true;
       if report.PrinterFonts = rppfontsalways then
         gdidriver.devicefonts := true
@@ -3518,6 +3548,16 @@ begin
   finally
     gpicture.free;
   end;
+end;
+
+procedure TRpGDIDriver.setorientationset(newvalue: boolean);
+begin 
+ FReport.orientationset:=newvalue;
+end;
+
+function TRpGDIDriver.getorientationset: boolean;
+begin
+ Result:= FReport.orientationset;
 end;
 
 

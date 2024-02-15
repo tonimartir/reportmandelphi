@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -66,6 +66,7 @@ function FindFontStep (Font:TFont):integer;
 
 var
  PrinterFonts:TList;
+ Base:TStringList;
  PrinterSorted:TStringList;
  caracfonts:TStringlist;
  ScreenSorted:TStringList;
@@ -137,7 +138,7 @@ end;
 function enumfontfamprocbase(var ENUMLOGFONT:TEnumlogfont;var TextMetric:TNewTextMetric;
           FontType:integer;Data:Integer):integer;stdcall;
 begin
- TStringList(Data).Add(enumlogfont.elfLogFont.lfFaceName);
+ Base.Add(enumlogfont.elfLogFont.lfFaceName);
  Result:=1;
 end;
 {$ENDIF}
@@ -187,7 +188,7 @@ begin
   FontImp.Font.Size:=LogFont.lfHeight*POINTS_PER_INCHESS div TWIPS_PER_INCHESS;
 //  FontImp.Font.Height:=LogFont.lfHeight;
 //  FontImp.Font.:=LogFont.lfHeight;
-  TList(Data).Add(FontImp);
+  PrinterFonts.Add(FontImp);
  end;
  // Caracfonts
  index:=caracfonts.IndexOf(logfont.lfFaceName);
@@ -255,19 +256,15 @@ begin
  currentprinter:=printer.printerindex;
  lliberacaracfonts;
  PrinterFonts.Clear;
+ Base.Clear;
 {$IFNDEF DOTNETD}
  anticmapmode:=SetMapMode(Printer.Handle,MM_TWIPS);
  try
-  base:=TStringList.create;
-  try
-   EnumFontfamilies(Printer.Handle,nil,@enumfontfamprocbase,Integer(Pointer(base)));
+   EnumFontfamilies(Printer.Handle,nil,@enumfontfamprocbase,0);
    for i:=0 to base.count-1 do
    begin
-    EnumFontfamilies(Printer.Handle,Pchar(base.strings[i]),@enumfontfamproc,Integer(Pointer(PrinterFonts)));
+    EnumFontfamilies(Printer.Handle,Pchar(base.strings[i]),@enumfontfamproc,0);
    end;
-  finally
-   base.free;
-  end;
  finally
   SetMapMode(Printer.Handle,anticmapmode);
  end;
@@ -525,6 +522,7 @@ end;
 
 initialization
 PrinterSorted:=TStringList.Create;
+Base:=TStringList.Create;
 PrinterSorted.Sorted:=True;
 PrinterFonts:=TList.Create;
 ScreenSorted:=TStringList.Create;
@@ -563,6 +561,7 @@ finalization
   Inc(idx);
  end;
 PrinterFonts.free;
+Base.Free;
 PrinterSorted.free;
 ScreenSorted.free;
 lliberacaracfonts;

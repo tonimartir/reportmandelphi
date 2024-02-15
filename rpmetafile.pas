@@ -267,6 +267,7 @@ type
   procedure NewDocument(report:TrpMetafileReport;hardwarecopies:integer;
    hardwarecollate:boolean);virtual;abstract;
   procedure EndDocument;virtual;abstract;
+  procedure RestoreOrientation;virtual;abstract;
   procedure AbortDocument;virtual;abstract;
   procedure NewPage(metafilepage:TRpMetafilePage);virtual;abstract;
   procedure EndPage;virtual;abstract;
@@ -402,6 +403,7 @@ type
    ForcePaperName:string;
    DidSearch:boolean;
    TouchEnabled:boolean;
+   OrientationSet: boolean;
    procedure Clear;
    procedure DoSearch(avalue:string);
    procedure LoadFromStream(Stream:TStream;clearfirst:boolean=true);

@@ -1136,8 +1136,8 @@ begin
    else
    begin
     REsult.PageIndex:=PDevMode.dmPaperSize;
-    Result.Height:=0;
-    Result.Width:=0;
+    Result.Height:=PDevMode.dmPaperLength;
+    Result.Width:=PDevMode.dmPaperwidth;
     Result.papername:=PDevmode.dmFormName;
    end;
    Result.papersource:=PDevMode.dmDefaultSource;
@@ -1428,9 +1428,9 @@ begin
  end;
  if not printer.Printing then
  begin
-//  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
-//        PDevMode^, DM_MODIFY);
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  //DocumentProperties(0,Printer.Handle,Device, PDevMode^,
+  //      PDevMode^, DM_MODIFY);
+  //Printer.SetPrinter(Device, Driver, Port, DeviceMode)
  end
  else
  begin
@@ -1771,6 +1771,8 @@ begin
   if (not isprinting) then
     if not OpenPrinter(Device,nhan, nil) then
         RaiseLastOSError;
+  try
+  devsize:=0;
 {$IFDEF DELPHI2009UP}
   devsize := DocumentProperties(0,nhan,Device, nil,
         nil, 0);
@@ -1778,6 +1780,10 @@ begin
   devsize := DocumentProperties(0,nhan,Device,_devicemodeA(nil^),
         _devicemodeA(nil^), 0);
 {$ENDIF}
+ except
+ end;
+ if (devsize<=0) then
+   devsize:= 200000;
   if (devsize>SizeOf(DeviceMode)) then
   begin
    NDeviceMode := GlobalAlloc(0,devsize);
