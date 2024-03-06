@@ -367,6 +367,7 @@ function Roundfloat(num:double;redondeo:double):double;
 {$IFDEF MSWINDOWS}
 function RpCharToOem(source:AnsiString):AnsiString;
 function IsWindows10orUpper: boolean;
+function IsWindowsNT:Boolean;
 {$ENDIF}
 
 {$IFDEF DOTNETD}
