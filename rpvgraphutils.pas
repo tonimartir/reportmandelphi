@@ -1341,6 +1341,177 @@ begin
  end;
 end;
 
+
+procedure SetCurrentPaper(apapersize:TGDIPageSize);
+var
+  Device, Driver, Port: array[0..1023] of char;
+  DeviceMode: THandle;
+  PDevmode:^TDevicemode;
+  pforminfo:^Form_info_1;
+  printername,apapername:string;
+  FPrinterHandle:THandle;
+  foundpaper:boolean;
+  forcepapername:boolean;
+  needed:DWord;
+  printererror:boolean;
+  laste:integer;
+begin
+ if printer.Printers.count<1 then
+  exit;
+ apapername:='';
+ // Printer selected not valid error
+ printererror:=false;
+ try
+  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+ except
+  printererror:=true;
+ end;
+ if DeviceMode=0 then
+  printererror:=true;
+ if printererror then
+  exit;
+ PDevMode := GlobalLock(DeviceMode);
+ try
+  // Custom page size, warning not all drivers supports it
+  // especially Windows NT drivers
+  // In Windows NT only Administrator has rights to add a
+  // custom paper once added it's stored until the print driver
+  // is removed
+  if (apapersize.PageIndex=0) then
+  begin
+   if Not IsWIndowsNT then
+   begin
+    // If is not Windows NT select custom paper
+    PDevMode.dmPaperSize := 256;
+    PDevMode.dmPaperlength := apapersize.Height;
+    PDevMode.dmPaperwidth  := apapersize.Width;
+   end
+   else
+   begin
+    foundpaper:=false;
+    forcepapername:=false;
+    // In Windows NT we must search or create a form
+    if Length(apapersize.ForcePaperName)>0 then
+    begin
+     apapername:=apapersize.ForcePaperName;
+     foundpaper:=true;
+     forcepapername:=true;
+    end
+    else
+     apapername:=FindFormNameFromSize(apapersize.Width,apapersize.Height);
+    if Length(apapername)>0 then
+     foundpaper:=true;
+    if not foundpaper then
+    begin
+     // Busquem un form que s'adapti
+     apapername:='User ('+
+     IntToStr(apapersize.Width)+'x'+
+     IntToStr(apapersize.Height)+')';
+    end;
+    PrinterName := Format('%s', [Device]);
+    if not OpenPrinter(PChar(PrinterName), FPrinterHandle, nil) then
+     RaiseLastOSError;
+    try
+     if Not forcepapername then
+     begin
+      pforminfo:=allocmem(sizeof(form_info_1));
+      try
+       if Not GetForm(FPrinterhandle,Pchar(apapername),1,pforminfo,sizeof(Form_info_1),needed) then
+       begin
+        laste:=GetLasterror;
+        if ((laste<>122) AND (Laste<>123) AND (laste<>1902)) then
+         RaiseLastOSError
+        else
+        begin
+         if laste<>1902 then
+         begin
+          if needed>0 then
+          begin
+           freemem(pforminfo);
+           pforminfo:=AllocMem(needed);
+           if Not GetForm(FPrinterhandle,Pchar(apapername),1,pforminfo,needed,needed) then
+            RaiseLastOSError;
+           if pforminfo^.pname<>nil then
+            foundpaper:=true;
+           // Si l'ha trobat trobem el seu index
+          end;
+         end;
+        end;
+       end;
+       if Not foundpaper then
+       begin
+        pforminfo^.pname:=Pchar(apapername);
+        pforminfo^.Flags:=FORM_USER;
+        pforminfo^.Size.cx:=apapersize.Width*100;
+        pforminfo^.size.cy:=apapersize.Height*100;
+        pforminfo^.ImageableArea.Top:=0;
+        pforminfo^.ImageableArea.left:=0;
+        pforminfo^.ImageableArea.Right:=pforminfo^.Size.cx;
+        pforminfo^.ImageableArea.Bottom:=pforminfo^.size.cy;
+        try
+         if not AddForm(fprinterhandle,1,pforminfo) then
+          RaiseLastOSError;
+        except
+         on E:Exception do
+         begin
+          E.Message:=SRpErrorCreatingPaper+apapername+#10+E.Message;
+          Raise;
+         end;
+        end;
+       end;
+      finally
+       freemem(pforminfo);
+      end;
+     end;
+     // Select by name
+     StrPCopy(PDevMode.dmFormName,Copy(apapername,1,32));
+     PDevMode.dmFields:=PDevMode.dmFields or dm_formname;
+     PDevmode^.dmPaperSize:=0;
+     PDevMode.dmPaperlength := apapersize.Height;
+     PDevMode.dmPaperwidth  := apapersize.Width;
+     // PDevMode.dmFields:=PDevMode.dmFields AND (NOT dm_papersize);
+     PDevMode.dmFields:=PDevMode.dmFields or DM_PAPERLENGTH or DM_PAPERWIDTH;
+    finally
+     ClosePrinter(FPrinterhandle);
+    end;
+   end;
+  end
+  else
+  begin
+   PDevMode.dmFields:=PDevMode.dmFields or dm_papersize;
+   PDevMode.dmPaperSize :=apapersize.PageIndex;
+   PDevMode.dmPaperlength := apapersize.Height;
+   PDevMode.dmPaperwidth  := apapersize.Width;
+  end;
+  if apapersize.papersource>0 then
+  begin
+   PDevMode.dmFields:=PDevMode.dmFields or dm_defaultsource;
+   PDevMode.dmDefaultSource:=apapersize.papersource;
+  end;
+  if apapersize.duplex>0 then
+  begin
+   PDevMode.dmFields:=PDevMode.dmFields or dm_duplex;
+   PDevMode.dmDuplex:=apapersize.duplex;
+  end;
+ finally
+  GlobalUnLock(DeviceMode);
+ end;
+ if not printer.Printing then
+ begin
+//  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
+//        PDevMode^, DM_MODIFY);
+  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+ end
+ else
+ begin
+  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
+        PDevMode^, DM_MODIFY);
+  ResetDC(Printer.Handle,PDevMode^);
+ end;
+end;
+
+
+(*
 procedure SetCurrentPaper(apapersize:TGDIPageSize);
 var
   Device, Driver, Port: array[0..1023] of char;
@@ -1440,7 +1611,7 @@ begin
  end;
 end;
 
-
+             *)
 
 
 
