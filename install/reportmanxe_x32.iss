@@ -59,6 +59,10 @@ Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportmanapi.bas; DestDir:
 Source: C:\Users\toni\Documents\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
 
 
+; Drivers
+Source: "C:\Users\toni\Documents\prog\toni\reportman\drivers\x32\*"; DestDir: "{app}"
+
+
 [Icons]
 Name: "{group}\Report Manager Designer"; Filename: "{app}\repmandxp.exe"
 Name: "{group}\Report Manager Server"; Filename: "{app}\reportserverappxp.exe"

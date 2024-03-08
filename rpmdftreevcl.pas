@@ -823,7 +823,8 @@ begin
  dbinfo.Connect(nil);
  ATree.Items.Clear;
  sqltext:='SELECT '+dbinfo.ReportSearchField;
- sqltext:=sqltext+','+dbinfo.ReportField;
+ // Do not read blobs (Firedac allways fetch blobs with data in default FetchMode)
+ // sqltext:=sqltext+','+dbinfo.ReportField;
  if length(dbinfo.ReportGroupsTable)>0 then
  begin
   if dbinfo.ReportGroupsTable='GINFORME' then

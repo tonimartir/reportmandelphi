@@ -20,19 +20,16 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Left = 0
       Top = 0
       Action = ANewFolder
-      ImageName = 'Item9'
     end
     object ToolButton1: TToolButton
       Left = 26
       Top = 0
       Action = ANew
-      ImageName = 'Item1'
     end
     object ToolButton2: TToolButton
       Left = 52
       Top = 0
       Action = ADelete
-      ImageName = 'Item2'
     end
     object EFind: TEdit
       Left = 78
@@ -45,37 +42,31 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Left = 171
       Top = 0
       Action = AFind
-      ImageName = 'Item12'
     end
     object ToolButton4: TToolButton
       Left = 197
       Top = 0
       Action = APreview
-      ImageName = 'Item5'
     end
     object ToolButton5: TToolButton
       Left = 223
       Top = 0
       Action = AUserParams
-      ImageName = 'Item7'
     end
     object ToolButton6: TToolButton
       Left = 249
       Top = 0
       Action = APrint
-      ImageName = 'Item6'
     end
     object ToolButton8: TToolButton
       Left = 275
       Top = 0
       Action = APrintSetup
-      ImageName = 'Item8'
     end
     object ToolButton9: TToolButton
       Left = 301
       Top = 0
       Action = AExportFolder
-      ImageName = 'Item13'
     end
     object BCancel: TButton
       Left = 327
@@ -876,12 +867,14 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Caption = 'New'
       Hint = 'Creates a new report'
       ImageIndex = 0
+      ImageName = 'Item1'
       OnExecute = ANewExecute
     end
     object ADelete: TAction
       Caption = 'Delete'
       Hint = 'Delete the selected report'
       ImageIndex = 1
+      ImageName = 'Item2'
       OnExecute = ADeleteExecute
     end
     object APreview: TAction
@@ -889,6 +882,7 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Enabled = False
       Hint = 'Previews the report in the screen'
       ImageIndex = 4
+      ImageName = 'Item5'
       OnExecute = APreviewExecute
     end
     object APrint: TAction
@@ -896,6 +890,7 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Enabled = False
       Hint = 'Prints the report'
       ImageIndex = 5
+      ImageName = 'Item6'
       OnExecute = APrintExecute
     end
     object AUserParams: TAction
@@ -903,35 +898,41 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Enabled = False
       Hint = 'Show the report parametrs'
       ImageIndex = 6
+      ImageName = 'Item7'
       OnExecute = AUserParamsExecute
     end
     object APrintSetup: TAction
       Caption = 'Print Setup'
       Hint = 'Shows the printer setup dialog'
       ImageIndex = 7
+      ImageName = 'Item8'
       OnExecute = APrintSetupExecute
     end
     object ANewFolder: TAction
       Caption = 'New group'
       Hint = 'Creates a new group'
       ImageIndex = 8
+      ImageName = 'Item9'
       OnExecute = ANewFolderExecute
     end
     object AFind: TAction
       Caption = 'Search...'
       Hint = 'Search for a report'
       ImageIndex = 11
+      ImageName = 'Item12'
       OnExecute = AFindExecute
     end
     object AExportFolder: TAction
       Caption = 'Export reports'
       Hint = 'Exports all reports to a directory tree'
       ImageIndex = 12
+      ImageName = 'Item13'
       OnExecute = ToolButton9Click
     end
     object ARename: TAction
       Caption = 'Rename'
       ImageIndex = 6
+      ImageName = 'Item7'
       OnExecute = ARenameExecute
     end
   end
@@ -1276,85 +1277,70 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
     Top = 104
   end
   object VirtualImageList1: TVirtualImageList
-    DisabledGrayscale = False
-    DisabledSuffix = '_Disabled'
     Images = <
       item
         CollectionIndex = 0
         CollectionName = 'Item1'
-        Disabled = False
         Name = 'Item1'
       end
       item
         CollectionIndex = 1
         CollectionName = 'Item2'
-        Disabled = False
         Name = 'Item2'
       end
       item
         CollectionIndex = 2
         CollectionName = 'Item3'
-        Disabled = False
         Name = 'Item3'
       end
       item
         CollectionIndex = 3
         CollectionName = 'Item4'
-        Disabled = False
         Name = 'Item4'
       end
       item
         CollectionIndex = 4
         CollectionName = 'Item5'
-        Disabled = False
         Name = 'Item5'
       end
       item
         CollectionIndex = 5
         CollectionName = 'Item6'
-        Disabled = False
         Name = 'Item6'
       end
       item
         CollectionIndex = 6
         CollectionName = 'Item7'
-        Disabled = False
         Name = 'Item7'
       end
       item
         CollectionIndex = 7
         CollectionName = 'Item8'
-        Disabled = False
         Name = 'Item8'
       end
       item
         CollectionIndex = 8
         CollectionName = 'Item9'
-        Disabled = False
         Name = 'Item9'
       end
       item
         CollectionIndex = 9
         CollectionName = 'Item10'
-        Disabled = False
         Name = 'Item10'
       end
       item
         CollectionIndex = 10
         CollectionName = 'Item11'
-        Disabled = False
         Name = 'Item11'
       end
       item
         CollectionIndex = 11
         CollectionName = 'Item12'
-        Disabled = False
         Name = 'Item12'
       end
       item
         CollectionIndex = 12
         CollectionName = 'Item13'
-        Disabled = False
         Name = 'Item13'
       end>
     ImageCollection = ImageCollection1

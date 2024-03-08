@@ -52,11 +52,15 @@ Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaview\bin64
 Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebexe.exe"; DestDir: "{app}\Web"
 Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebserver.dll"; DestDir: "{app}\Web"
 Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
+Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebserver.dll"; DestDir: "{app}\Web"
 
 ; Api libraries
 Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
 Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
 Source: C:\Users\toni\Documents\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
+
+; Drivers
+Source: "C:\Users\toni\Documents\prog\toni\reportman\drivers\x64\*"; DestDir: "{app}"
 
 
 [Icons]

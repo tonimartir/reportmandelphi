@@ -263,7 +263,7 @@ begin
    evaluator:=areport.evaluator;
    Result:=evaluator.GetStreamFromExpression(Expression);
    // Filter the image
-   if assigned(areport.MetaFile.OnFilterImage) then
+   if (assigned(Result) and assigned(areport.MetaFile.OnFilterImage)) then
     areport.MetaFile.OnFilterImage(result);
    if CachedImage=rpCachedVariable then
    begin

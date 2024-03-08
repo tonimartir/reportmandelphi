@@ -22,7 +22,7 @@ interface
 
 uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
   Buttons, ExtCtrls,rpmdconsts,rpmdftreevcl,DB,rpdatainfo,
-  rpvgraphutils,
+  rpvgraphutils, Dialogs,
   ComCtrls;
 
 type
@@ -77,7 +77,14 @@ begin
    dia.ComboLibrary.ItemIndex:=i;
   end;
   dia.ComboLibrary.OnClick:=dia.ComboLibraryClick;
-  dia.ComboLibraryClick(dia.ComboLibrary);
+  try
+   dia.ComboLibraryClick(dia.ComboLibrary);
+  except
+   on E:Exception do
+   begin
+    ShowMessage(E.Message);
+   end
+  end;
   dia.ShowModal;
   if dia.dook then
   begin
