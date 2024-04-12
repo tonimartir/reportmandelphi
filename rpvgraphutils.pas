@@ -1480,8 +1480,6 @@ begin
   begin
    PDevMode.dmFields:=PDevMode.dmFields or dm_papersize;
    PDevMode.dmPaperSize :=apapersize.PageIndex;
-   PDevMode.dmPaperlength := apapersize.Height;
-   PDevMode.dmPaperwidth  := apapersize.Width;
   end;
   if apapersize.papersource>0 then
   begin
