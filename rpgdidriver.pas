@@ -3533,12 +3533,14 @@ begin
      bitmap.PixelFormat := pf24bit;
      bitmap.Height := gpicture.Height;
      bitmap.Width := gpicture.Width;
+     bitmap.Canvas.Draw(0,0,gpicture.Graphic);
      jpeg:=TJPegImage.Create;
      try
       jpeg.CompressionQuality:=100;
-      jpeg.Assign(gpicture.Graphic);
+      jpeg.Assign(bitmap);
       memstream.Clear();
       jpeg.SaveToStream(memstream);
+      bitmap.Free;
      finally
       jpeg.free;
      end
