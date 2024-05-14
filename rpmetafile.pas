@@ -274,6 +274,7 @@ type
   function GetPageSize(var PageSizeQt:Integer):TPoint;virtual;abstract;
   function SetPagesize(PagesizeQt:TPageSizeQt):TPoint;virtual;abstract;
   procedure SetOrientation(Orientation:TRpOrientation);virtual;abstract;
+  function GetOrientation():TRpOrientation;virtual;abstract;
   procedure DrawObject(page:TRpMetaFilePage;obj:TRpMetaObject);virtual;abstract;
   procedure DrawChart(Series:TRpSeries;ametafile:TRpMetaFileReport;posx,posy:integer;achart:TObject);virtual;abstract;
   procedure FilterImage(memstream:TMemoryStream);virtual;

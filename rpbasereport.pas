@@ -206,6 +206,7 @@ type
     FExecuting:Boolean;
     FUpdatePageSize:Boolean;
     currentorientation:TRpOrientation;
+    oldorientation: TRpOrientation;
     lasterrorprocessing:WideString;
     FTotalPagesList:TList;
     FEvaluator:TRpEvaluator;
@@ -1426,6 +1427,7 @@ begin
  end
  else
  begin
+  oldorientation:=currentorientation;
   currentorientation:=TRpOrientation(orientation);
   Result:=true;
  end;

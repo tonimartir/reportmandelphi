@@ -153,6 +153,10 @@ type
     DrawerBefore, DrawerAfter: boolean;
     npdfdriver: TRpPDFDriver;
     realdpix, realdpiy: integer;
+    FPageWidth,FPageHeight:integer;
+    PageQt:Integer;
+    FOrientation:TRpOrientation;
+
 
     procedure PrintObject(Canvas: TCanvas; page: TRpMetafilePage;
       obj: TRpMetaObject; dpix, dpiy: integer; toprinter: boolean;
@@ -190,6 +194,7 @@ type
     procedure AbortDocument; override;
     procedure RestoreOrientation; override;
     procedure NewPage(metafilepage: TRpMetafilePage); override;
+    function GetOrientation():TRpOrientation;override;
     procedure EndPage; override;
     procedure DrawObject(page: TRpMetafilePage; obj: TRpMetaObject); override;
     procedure IntDrawObject(page: TRpMetafilePage; obj: TRpMetaObject;
@@ -599,9 +604,9 @@ begin
   begin
     UpdatePrinterFontList;
   end;
+  SetOrientation(report.Orientation);
   if toprinter then
   begin
-    SetOrientation(report.Orientation);
     // Gets pagesize
     asize := GetPageSize(qtsize);
     pagemargins := GetPageMarginsTWIPS;
@@ -616,7 +621,7 @@ begin
         SendControlCodeToPrinter(GetPrinterRawOp(selectedprinter,
           rawopopendrawer));
     // Sets pagesize
-    rpagesizeQt.papersource := report.papersource;
+    (* rpagesizeQt.papersource := report.papersource;
     SetForcePaperName(rpagesizeQt, report.ForcePaperName);
     rpagesizeQt.duplex := report.duplex;
     if report.pagesize < 0 then
@@ -637,7 +642,7 @@ begin
       begin
         rpgraphutilsvcl.RpMessageBox(E.Message);
       end;
-    end;
+    end;*)
     Printer.Title := report.Title;
     if Length(Printer.Title) < 1 then
     begin
@@ -647,7 +652,10 @@ begin
         Printer.Title := 'Untitled';
       end;
     end;
-    Printer.BeginDoc;
+    if (toprinter) then
+    begin
+     Printer.BeginDoc;
+    end;
     intdpix := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSX);
     // printer.XDPI;
     intdpiy := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSY);
@@ -1646,7 +1654,10 @@ var
   qtsize: TPageSizeQt;
   asize: TPoint;
 begin
-  gdisize := GetCurrentPaper;
+  PageSizeQt:=PageQt;
+  Result.X:=FPageWidth;
+  Result.Y:=FPageHeight;
+(*  gdisize := GetCurrentPaper;
   qtsize := GDIPageSizeToQtPageSize(gdisize);
   gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
   gdisize.Height:=Round(gdisize.Height/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
@@ -1682,24 +1693,79 @@ begin
     end;
     end;
   }
-  //Result := asize;
+  //Result := asize;    *)
 end;
 
 function TRpGDIDriver.SetPagesize(PageSizeQt: TPageSizeQt): TPoint;
 var
   qtsize: integer;
+  newwidth,newheight:integer;
 begin
-  pagesize := QtPageSizeToGDIPageSize(PageSizeQt);
-  oldpagesize := GetCurrentPaper;
-  SetCurrentPaper(pagesize);
-
-  Result := GetPageSize(qtsize);
+   // Sets the page size for the pdf file, first if it's a qt page
+   PageQt:=PageSizeQt.indexqt;
+   if PagesizeQt.Custom then
+   begin
+    PageQt:=-1;
+    newwidth:=PagesizeQt.CustomWidth;
+    newheight:=PagesizeQt.CustomHeight;
+   end
+   else
+   begin
+    newWidth:=Round(PageSizeArray[PagesizeQt.Indexqt].Width/1000*TWIPS_PER_INCHESS);
+    newheight:=Round(PageSizeArray[PagesizeQt.Indexqt].Height/1000*TWIPS_PER_INCHESS);
+   end;
+   if FOrientation=rpOrientationLandscape then
+   begin
+    FPageWidth:=NewHeight;
+    FPageHeight:=NewWidth;
+   end
+   else
+   begin
+    FPageWidth:=NewWidth;
+    FPageHeight:=NewHeight;
+   end;
+   Result.X:=FPageWidth;
+   Result.Y:=FPageHeight;
+  if (toPrinter) then
+  begin
+   pagesize := QtPageSizeToGDIPageSize(PageSizeQt);
+   oldpagesize := GetCurrentPaper;
+   SetCurrentPaper(pagesize);
+  end;
 end;
+
+function TRpGDIDriver.GetOrientation():TRpOrientation;
+begin
+ if (GetPrinterOrientation = poPortrait) then
+  Result:=rpOrientationPortrait
+ else
+  Result:=rpOrientationLandscape;
+end;
+
 
 procedure TRpGDIDriver.SetOrientation(Orientation: TRpOrientation);
 var
   currentorientation: TPrinterOrientation;
+  atemp:integer;
 begin
+  if Orientation<>FOrientation then
+  begin
+   if Orientation<>rpOrientationDefault then
+   begin
+     if Orientation=rpOrientationPortrait then
+     begin
+      FOrientation:=Orientation;
+     end
+     else
+     begin
+      atemp:=FPageWidth;
+      FPageWidth:=FPageHeight;
+      FPageHeight:=atemp;
+      FOrientation:=Orientation;
+     end;
+   end;
+  end;
+(*
   currentorientation := GetPrinterOrientation;
   // if Orientation=rpOrientationPortrait then
   if Orientation <> rpOrientationLandscape then
@@ -1732,7 +1798,7 @@ begin
       else
         Printer.Orientation := poLandscape;
     end;
-  end;
+  end;*)
 end;
 
 procedure DoPrintMetafile(metafile: TRpMetafileReport; tittle: string;

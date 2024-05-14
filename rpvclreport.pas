@@ -178,7 +178,7 @@ end;
 
 procedure TVCLReport.SaveToExcel(filename:string;onesheet:Boolean=false);
 begin
- rpgdidriver.CalcReportWidthProgress(report);
+ rpgdidriver.CalcReportWidthProgress(report, true);
  rpexceldriver.ExportMetafileToExcel(report.metafile,filename,showprogress,false,
  true,1,999,onesheet);
 end;

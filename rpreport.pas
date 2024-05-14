@@ -58,7 +58,7 @@ type
   private
    FExternalsLoaded:Boolean;
   protected
-    procedure DoUpdatepageSize(Driver:TRpPrintDriver;metafilepage:TRpMetafilePage);
+    procedure DoUpdatepageSize(Driver:TRpPrintDriver;metafilepage:TRpMetafilePage;updatePrinter: boolean);
     procedure Notification(AComponent:TComponent;Operation:TOperation);override;
     procedure Loaded;override;
     function NextSection(child:boolean):boolean;
@@ -909,7 +909,7 @@ end;
 
 
 
-procedure TRpReport.DoUpdatepageSize(Driver:TRpPrintDriver;metafilepage:TRpMetafilePage);
+procedure TRpReport.DoUpdatepageSize(Driver:TRpPrintDriver;metafilepage:TRpMetafilePage;updatePrinter: boolean);
 var
  apagesize:TPoint;
 begin
@@ -921,7 +921,7 @@ begin
  if Not FUpdatePageSize then
   exit;
  metafilepage.UpdatedPageSize:=true;
- // Sets and gets page size from the driver
+  // Sets and gets page size from the driver
  Driver.SetOrientation(currentorientation);
  if PageSize<>rpPageSizeDefault then
  begin
@@ -983,7 +983,12 @@ begin
   if PageOrientation<>rpOrientationDefault then
   begin
    FDriver.SetOrientation(PageOrientation);
+  end
+  else
+  begin
+   currentorientation:=FDriver.GetOrientation();
   end;
+  oldorientation:=currentorientation;
   rPageSizeQt.papersource:=papersource;
   rPageSizeQt.duplex:=duplex;
   SetForcePaperName(rpagesizeqt,forcepapername);
@@ -1638,7 +1643,7 @@ begin
   else
    metafile.Pages[0].Clear;
  end;
- DoUpdatePageSize(FDriver,Metafile.Pages[Metafile.CurrentPageCount-1]);
+ DoUpdatePageSize(FDriver,Metafile.Pages[Metafile.CurrentPageCount-1], false);
 
 
  FGroupHeaders.Clear;
@@ -1674,7 +1679,7 @@ begin
    freespace:=freespace-TopMargin-BottomMargin;
    pageposy:=TopMargin;
    pageposx:=LeftMargin;
-   DoUpdatePageSize(FDriver,Metafile.Pages[Metafile.CurrentPageCount-1]);
+   DoUpdatePageSize(FDriver,Metafile.Pages[Metafile.CurrentPageCount-1], false);
   end
   else
   begin

@@ -1303,7 +1303,7 @@ begin
  if ADriverPDF.Checked then
  begin
 {$IFDEF USEINDY}
-  if rpgdidriver.CalcReportWidthProgressPDF(report) then
+  if rpgdidriver.CalcReportWidthProgressPDF(report, true) then
    rpfmainmetaviewvcl.PreviewMetafile(report.metafile,nil,true,true);
 {$ENDIF}
  end
@@ -1375,7 +1375,7 @@ begin
    try
     if ADriverPDF.Checked then
     begin
-     rpgdidriver.CalcReportWidthProgressPDF(report);
+     rpgdidriver.CalcReportWidthProgressPDF(report, true);
      rpgdidriver.PrintMetafile(report.Metafile,Caption,true,allpages,frompage,topage,copies,collate,false,
       report.Metafile.PrinterSelect);
     end

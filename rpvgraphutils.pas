@@ -497,7 +497,7 @@ begin
  end
  else
  begin
-  // Bugfix for axiom printers
+ // Bugfix for axiom printers
   if apageheight<10 then
    apageheight:=apagewidth;
 
@@ -507,6 +507,7 @@ begin
 
 
  physical:=GetPhysicPageSizeTwips;
+
 // physical.x:=GetDeviceCaps(DC,PHYSICALWIDTH);
 // physical.y:=GetDeviceCaps(DC,PHYSICALHEIGHT);
  // Bugfix for axiom printers
@@ -1288,7 +1289,11 @@ begin
     RaiseLastOSError;
    for i:=0 to received-1 do
    begin
-    p:=Pointer(integer(pforms)+sizeof(Form_info_1)*i);
+{$IFDEF CPU32BITS }
+      p:=Pointer(Integer(pforms)+sizeof(Form_info_1)*i);
+{$ELSE }
+      p:=Pointer(IntPtr(pforms)+sizeof(Form_info_1)*i);
+{$ENDIF }
     forminfo:=p^;
     if forminfo.Size.cx=width*100 then
      if forminfo.Size.cy=height*100 then
@@ -1355,6 +1360,7 @@ var
   needed:DWord;
   printererror:boolean;
   laste:integer;
+  asize:LONG;
 begin
  if printer.Printers.count<1 then
   exit;
@@ -1370,6 +1376,26 @@ begin
   printererror:=true;
  if printererror then
   exit;
+
+
+  if (Printer.Printing) then
+  begin
+   PrinterName := Format('%s', [Device]);
+   if not OpenPrinter(PChar(PrinterName), FPrinterHandle, nil) then
+     RaiseLastOSError;
+   asize:=DocumentProperties(0,FPrinterHandle,Device,nil,nil,0);
+   //pdevmode:=@adevmode;
+   if asize>0 then
+   begin
+    DeviceMode:=GlobalAlloc(0,asize);
+    pdevmode:=GlobalLock(DeviceMode);
+   end;
+ end
+ else
+ begin
+  PDevMode := GlobalLock(DeviceMode);
+ end;
+
  PDevMode := GlobalLock(DeviceMode);
  try
   // Custom page size, warning not all drivers supports it
@@ -1460,7 +1486,7 @@ begin
         end;
        end;
       finally
-       freemem(pforminfo);
+       //freemem(pforminfo);
       end;
      end;
      // Select by name
@@ -1498,13 +1524,14 @@ begin
  begin
 //  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
 //        PDevMode^, DM_MODIFY);
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  Printer.SetPrinter(Device, Driver, Port, DeviceMode);
  end
  else
  begin
-  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
+  DocumentProperties(0,FPrinterHandle,Device, PDevMode^,
         PDevMode^, DM_MODIFY);
   ResetDC(Printer.Handle,PDevMode^);
+
  end;
 end;
 
@@ -1917,7 +1944,7 @@ begin
 end;
   *)
 {$IFDEF DELPHI2009UP}
-procedure SetPrinterOrientation(landscape:boolean);
+(*procedure SetPrinterOrientation(landscape:boolean);
 var
   Device, Driver, Port: array[0..1023] of char;
   DeviceMode: THandle;
@@ -1930,15 +1957,27 @@ var
   dvmodea:_devicemodeA;
 {$ENDIF}
 begin
+ if (not Printer.Printing) then
+ begin
+  if landscape then
+  begin
+   Printer.Orientation := poLandscape;
+  end
+  else
+  begin
+   Printer.Orientation:=poPortrait;
+  end;
+  exit;
+ end;
  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
  if DeviceMode=0 then
   exit;
  PDevMode := GlobalLock(DeviceMode);
  try
-  nhan := Printer.Handle;
+  //nhan := Printer.Handle;
   isprinting:=printer.Printing;
-  if (not isprinting) then
-    if not OpenPrinter(Device,nhan, nil) then
+  //if (not isprinting) then
+  if not OpenPrinter(Device,nhan, nil) then
         RaiseLastOSError;
   try
   devsize:=0;
@@ -1971,7 +2010,55 @@ begin
  finally
   GlobalUnLock(DeviceMode);
  end;
+end;*)
+procedure SetPrinterOrientation(landscape:boolean);
+var
+ Device : array[0..1023] of char;
+ Driver : array[0..1023] of char;
+ Port : array[0..1023] of char;
+ DeviceMode: THandle;
+ PDevmode:^TDevicemode;
+ nhan: THandle;
+begin
+ if (not Printer.Printing) then
+ begin
+  if landscape then
+  begin
+   Printer.Orientation := poLandscape;
+  end
+  else
+  begin
+   Printer.Orientation:=poPortrait;
+  end;
+  exit;
+ end;
+ Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+ if DeviceMode=0 then
+  exit;
+ //if not OpenPrinter(Device,nhan, nil) then
+ //   RaiseLastOSError;
+ nhan:=Printer.Handle;
+
+ PDevMode := GlobalLock(DeviceMode);
+ try
+  pDevMode^.dmFields:= DM_ORIENTATION;
+  if (landscape) then
+  begin
+   pDevMode^.dmOrientation:=DMORIENT_LANDSCAPE;
+  end
+  else
+  begin
+   pDevMode^.dmOrientation:=DMORIENT_PORTRAIT;
+  end;
+  if (ResetDC(nhan,PDevMode^) = 0) then
+  begin
+   RaiseLastOSError;
+  end
+ finally
+  GlobalUnLock(DeviceMode);
+ end
 end;
+
 {$ELSE}
 procedure SetPrinterOrientation(landscape:boolean);
 var

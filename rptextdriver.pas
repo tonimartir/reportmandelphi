@@ -125,6 +125,7 @@ type
    procedure TextExtent(atext:TRpTextObject;var extent:TPoint);override;
    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
    procedure SetOrientation(Orientation:TRpOrientation);override;
+   function GetOrientation:TRpOrientation;override;
    procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
    function SupportsCopies(maxcopies:integer):boolean;override;
    function SupportsCollation:boolean;override;
@@ -553,6 +554,13 @@ begin
   FLines[i].Attributes.Sorted:=true;
  end;
 end;
+
+function TRpTextDriver.GetOrientation:TRpOrientation;
+begin
+ Result:= FOrientation;
+end;
+
+
 
 procedure TRpTextDriver.SetOrientation(Orientation:TRpOrientation);
 var

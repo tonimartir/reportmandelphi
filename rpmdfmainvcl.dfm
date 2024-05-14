@@ -2,8 +2,8 @@ object FRpMainFVCL: TFRpMainFVCL
   Left = 810
   Top = 196
   Caption = 'Report Manager Designer'
-  ClientHeight = 586
-  ClientWidth = 967
+  ClientHeight = 469
+  ClientWidth = 774
   Color = clBtnFace
   ParentFont = True
   Menu = MainMenu1
@@ -14,25 +14,34 @@ object FRpMainFVCL: TFRpMainFVCL
   OnDestroy = FormDestroy
   OnResize = FormResize
   OnShow = FormShow
+  PixelsPerInch = 96
   TextHeight = 20
   object BStatus: TStatusBar
     Left = 0
-    Top = 565
-    Width = 967
-    Height = 21
+    Top = 452
+    Width = 774
+    Height = 17
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Panels = <
       item
-        Width = 50
+        Width = 40
       end>
   end
   object ToolBar1: TToolBar
     Left = 0
     Top = 0
-    Width = 967
-    Height = 25
+    Width = 774
+    Height = 21
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     AutoSize = True
-    ButtonHeight = 25
-    ButtonWidth = 26
+    ButtonHeight = 21
+    ButtonWidth = 22
     Caption = 'ToolBar1'
     Color = clBtnFace
     Images = VirtualImageList1
@@ -41,64 +50,104 @@ object FRpMainFVCL: TFRpMainFVCL
     object ToolButton1: TToolButton
       Left = 0
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ANew
     end
     object ToolButton2: TToolButton
-      Left = 26
+      Left = 22
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AOpen
     end
     object ToolButton3: TToolButton
-      Left = 52
+      Left = 44
       Top = 0
-      Width = 6
+      Width = 5
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton3'
       ImageIndex = 2
       ImageName = 'Item3'
       Style = tbsSeparator
     end
     object BSave: TToolButton
-      Left = 58
+      Left = 49
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ASave
     end
     object ToolButton4: TToolButton
-      Left = 84
+      Left = 71
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ADataConfig
     end
     object ToolButton5: TToolButton
-      Left = 110
+      Left = 93
       Top = 0
-      Width = 6
+      Width = 5
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton5'
       ImageIndex = 5
       ImageName = 'Item6'
       Style = tbsSeparator
     end
     object ToolButton7: TToolButton
-      Left = 116
+      Left = 98
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = APrint
     end
     object ToolButton8: TToolButton
-      Left = 142
+      Left = 120
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = APreview
     end
     object ToolButton9: TToolButton
-      Left = 168
+      Left = 142
       Top = 0
-      Width = 16
+      Width = 12
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton9'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object BArrow: TToolButton
-      Left = 184
+      Left = 154
       Top = 0
       Hint = 'Select objects'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BArrow'
       Enabled = False
       Grouped = True
@@ -107,9 +156,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BLabel: TToolButton
-      Left = 210
+      Left = 176
       Top = 0
       Hint = 'Inserts a static text'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BLabel'
       Enabled = False
       Grouped = True
@@ -118,9 +171,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BExpression: TToolButton
-      Left = 236
+      Left = 198
       Top = 0
       Hint = 'Inserts a expression'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BExpression'
       Enabled = False
       Grouped = True
@@ -129,9 +186,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BShape: TToolButton
-      Left = 262
+      Left = 220
       Top = 0
       Hint = 'Inserts a simple drawing'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BShape'
       Enabled = False
       Grouped = True
@@ -140,9 +201,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BImage: TToolButton
-      Left = 288
+      Left = 242
       Top = 0
       Hint = 'Inserts a image'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BImage'
       Enabled = False
       Grouped = True
@@ -151,9 +216,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BChart: TToolButton
-      Left = 314
+      Left = 264
       Top = 0
       Hint = 'Inserts a chart'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BChart'
       Enabled = False
       Grouped = True
@@ -162,9 +231,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BBarcode: TToolButton
-      Left = 340
+      Left = 286
       Top = 0
       Hint = 'Inserts a barcode'
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'BBarcode'
       Enabled = False
       Grouped = True
@@ -173,19 +246,27 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object ToolButton10: TToolButton
-      Left = 366
+      Left = 308
       Top = 0
-      Width = 13
+      Width = 11
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton10'
       ImageIndex = 14
       ImageName = 'Item15'
       Style = tbsSeparator
     end
     object ComboScale: TComboBox
-      Left = 379
+      Left = 319
       Top = 0
-      Width = 62
+      Width = 50
       Height = 28
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Style = csDropDownList
       DropDownCount = 12
       TabOrder = 0
@@ -204,127 +285,207 @@ object FRpMainFVCL: TFRpMainFVCL
         '400%')
     end
     object BDelete: TToolButton
-      Left = 441
+      Left = 369
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ADelete
     end
     object ToolButton11: TToolButton
-      Left = 467
+      Left = 391
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ACut
     end
     object ToolButton12: TToolButton
-      Left = 493
+      Left = 413
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ACopy
     end
     object ToolButton13: TToolButton
-      Left = 519
+      Left = 435
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = APaste
     end
     object ToolButton14: TToolButton
-      Left = 545
+      Left = 457
       Top = 0
-      Width = 11
+      Width = 9
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton14'
       ImageIndex = 17
       ImageName = 'Item18'
       Style = tbsSeparator
     end
     object ToolButton15: TToolButton
-      Left = 556
+      Left = 466
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ALeft
     end
     object ToolButton16: TToolButton
-      Left = 582
+      Left = 488
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ARight
     end
     object ToolButton17: TToolButton
-      Left = 608
+      Left = 510
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AUp
     end
     object ToolButton18: TToolButton
-      Left = 634
+      Left = 532
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = ADown
     end
     object ToolButton19: TToolButton
-      Left = 660
+      Left = 554
       Top = 0
-      Width = 14
+      Width = 11
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'ToolButton19'
       ImageIndex = 25
       ImageName = 'Item26'
       Style = tbsSeparator
     end
     object ToolButton20: TToolButton
-      Left = 674
+      Left = 565
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignLeft
     end
     object ToolButton21: TToolButton
-      Left = 700
+      Left = 587
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignRight
     end
     object ToolButton22: TToolButton
-      Left = 726
+      Left = 609
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignUp
     end
     object ToolButton23: TToolButton
-      Left = 752
+      Left = 631
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignDown
     end
     object ToolButton24: TToolButton
-      Left = 778
+      Left = 653
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignHorz
     end
     object ToolButton25: TToolButton
-      Left = 804
+      Left = 675
       Top = 0
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Action = AAlignVert
     end
   end
   object mainscrollbox: TPanel
     Left = 0
-    Top = 25
-    Width = 967
-    Height = 540
+    Top = 21
+    Width = 774
+    Height = 431
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 2
     Visible = False
     object Splitter1: TSplitter
-      Left = 197
+      Left = 158
       Top = 0
-      Width = 8
-      Height = 540
+      Width = 6
+      Height = 431
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Beveled = True
       ResizeStyle = rsUpdate
       OnMoved = Splitter1Moved
-      ExplicitHeight = 499
+      ExplicitHeight = 432
     end
     object leftpanel: TPanel
       Left = 0
       Top = 0
-      Width = 197
-      Height = 540
+      Width = 158
+      Height = 431
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
       object Splitter2: TSplitter
         Left = 0
         Top = 0
-        Width = 197
-        Height = 8
+        Width = 158
+        Height = 6
         Cursor = crVSplit
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
         Beveled = True
         ResizeStyle = rsUpdate
@@ -2892,8 +3053,8 @@ object FRpMainFVCL: TFRpMainFVCL
         Name = 'Item33'
       end>
     ImageCollection = ImageCollection1
-    Width = 19
-    Height = 19
+    Width = 15
+    Height = 15
     Left = 304
     Top = 335
   end

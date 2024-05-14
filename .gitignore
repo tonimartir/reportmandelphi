@@ -124,3 +124,6 @@ repman/bin64/firebird.log
 repman/bin64/ibclient64.dll
 repman/bin64/32bit/repwebserver.dll
 repman/bin64/64bit/repwebserver.dll
+repman/bin64/net2/zxing.pdb
+repman/bin32/fbclient_fb21.dll
+repman/bin32/fbclient_fb4.dll
