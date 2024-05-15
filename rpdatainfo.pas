@@ -1882,8 +1882,16 @@ begin
        end;
        MergeList(paramlist,FFDConnection.Params);
        ConvertParamsFromDBXToFDac(FFDConnection);
-
-       FFDConnection.Connected:=true;
+       try
+        FFDConnection.Connected:=true;
+       except
+        WriteLn('Params:');
+        for i := 0 to FFDConnection.Params.Count-1 do
+        begin
+         Writeln(FFDConnection.Params[i]);
+        end;
+        raise;
+       end       ;
        if FFDTransaction=FFDInternalTransaction then
        begin
         if not FFDInternalTransaction.Active then
@@ -2270,8 +2278,9 @@ begin
         FSQLInternalQuery:=TFDQuery.Create(nil);
        end;
        TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
-       TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
-       TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
+     //  TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
+
+      TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
        //TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmAll;
        // fetchItems:=TFDCustomQuery(FSQLInternalQuery).FetchOptions.Items;
        // include(fetchItems,fiBlobs);
@@ -3829,8 +3838,8 @@ begin
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.MacroCreate:=false;
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.MacroExpand:=false;
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.EscapeExpand:=false;
-
-    TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
+    // ForwardOnly throw errors with Datadirect ODBC Driver
+    // TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
     TFDQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
 
 {$ELSE}
