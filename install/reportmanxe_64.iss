@@ -8,13 +8,13 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=3.4.15
-DefaultDirName={commonpf}\Report Manager
+AppVersion=3.5.0
+DefaultDirName={commonpf64}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=userdocs:prog\toni\reportman\install\Output
+OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 ; "ArchitecturesAllowed=x64" specifies that Setup cannot run on
 ; anything but x64.
 ArchitecturesAllowed=x64
@@ -25,42 +25,42 @@ ArchitecturesInstallIn64BitMode=x64
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=3.4.15
-OutputBaseFilename=reportman_designer_3_4_15_x64
+VersionInfoProductVersion=3.5.0
+OutputBaseFilename=reportman_designer_3_5_0_x64
 
 [Files]
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\bin64\repmandxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\repsamples\sample4.rep"; DestDir: "{app}\Examples"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\biolife.cds"; DestDir: "{app}\Examples"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\bin64\net2\*.*"; DestDir: "{app}\net2"
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\bin64\net2\x86\*.*"; DestDir: "{app}\net2\x86"
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\bin64\net2\x64\*.*"; DestDir: "{app}\net2\x64"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{localappdata}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{localappdata}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printreptopdf\bin64\printreptopdf.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\activex\bin64\Reportman.ocx"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printrep\bin64\printrepxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaprint\bin64\metaprintxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\bin64\rptranslate.exe"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\app\bin64\reportserverappxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\config\bin64\repserverconfigxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\service\bin64\repserverservice.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\service\bin64\repserviceinstall.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaview\bin64\metaviewxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebexe.exe"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebserver.dll"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebserver.dll"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\repmandxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\repsamples\sample4.rep"; DestDir: "{app}\Examples"
+Source: "c:\desarrollo\prog\toni\reportman\repman\biolife.cds"; DestDir: "{app}\Examples"
+Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\*.*"; DestDir: "{app}\net2"
+Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\x86\*.*"; DestDir: "{app}\net2\x86"
+Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\x64\*.*"; DestDir: "{app}\net2\x64"
+Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr64\printreptopdf.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\activex\binr64\Reportman.ocx"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr64\printrepxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaprint\binr64\metaprintxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\binr64\rptranslate.exe"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\server\app\binr64\reportserverappxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\config\binr64\repserverconfigxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\service\binr64\repserverservice.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\service\binr64\repserviceinstall.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaview\binr64\metaviewxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\binr64\repwebexe.exe"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\binr64\repwebserver.dll"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\binr64\repwebserver.dll"; DestDir: "{app}\Web"
 
 ; Api libraries
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
 
 ; Drivers
-Source: "C:\Users\toni\Documents\prog\toni\reportman\drivers\x64\*"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\drivers\x64\*"; DestDir: "{app}"
 
 
 [Icons]

@@ -24,8 +24,8 @@ uses SysUtils,Classes,HTTPApp,rpmdconsts,Inifiles,rpalias,System.NetEncoding,
   rpqtdriver,
  {$ENDIF}
 {$ENDIF}
- rpmetafile,
- jclDebug;
+// jclDebug;
+rpmetafile;
 
 const
  REPMAN_LOGIN_LABEL='ReportManagerLoginLabel';

@@ -22,7 +22,7 @@ interface
 
 {$I rpconf.inc}
 
-uses SysUtils,
+uses SysUtils,rptypes,
   Windows;
 
 procedure ReportFileToExe(filename,destinationexe:String;
@@ -48,6 +48,7 @@ var
  isok:Boolean;
  haninfo:BY_HANDLE_FILE_INFORMATION;
  filesize:INteger;
+ upxExists: boolean;
  path:String;
 begin
  // Find the path to the executable module

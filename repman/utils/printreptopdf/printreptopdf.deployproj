@@ -63,7 +63,7 @@
             <Overwrite>True</Overwrite>
             <Required>True</Required>
         </DeployFile>
-        <DeployFile Include="printreptopdf" Condition="'$(Config)'=='Release'">
+        <DeployFile Include="binrl64\printreptopdf" Condition="'$(Config)'=='Release'">
             <RemoteDir>printreptopdf\</RemoteDir>
             <RemoteName>printreptopdf</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>

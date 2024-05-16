@@ -8,41 +8,41 @@
 
 [Setup]
 AppName=Report Manager Server and Tools(x86)
-AppVersion=3.1.1
-DefaultDirName={pf}\Report Manager
+AppVersion=3.5.0
+DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=userdocs:prog\toni\reportman\install\Output
+OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager Tools
-VersionInfoProductVersion=3.1.1
-OutputBaseFilename=reportman_server_3_1_1tools_x86
+VersionInfoProductVersion=3.5.0
+OutputBaseFilename=reportman_server_3_5_0tools_x86
 
 [Files]
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\app\bin32\reportserverappxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\config\bin32\repserverconfigxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaview\bin32\metaviewxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin32\repwebexe.exe"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin32\repwebserver.dll"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\webactivex\reportman.htm"; DestDir: "{app}\Web\SamplePlugin"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\webactivex\bin32\WebReportManX.ocx"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printreptopdf\bin32\printreptopdf.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printrep\bin32\printrepxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaprint\bin32\metaprintxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\bin32\rptranslate.exe"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\activex\bin32\Reportman.ocx"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\compilerep\bin32\compilerep.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\upx.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\server\app\binr32\reportserverappxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\config\binr32\repserverconfigxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaview\binr32\metaviewxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\-\binr32\repwebexe.exe"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\binr32\repwebserver.dll"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
+Source: "c:\desarrollo\prog\toni\reportman\webactivex\reportman.htm"; DestDir: "{app}\Web\SamplePlugin"
+Source: "c:\desarrollo\prog\toni\reportman\webactivex\binr32\WebReportManX.ocx"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr32\printreptopdf.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr32\printrepxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaprint\binr32\metaprintxp.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\binr32\rptranslate.exe"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
+Source: "c:\desarrollo\prog\toni\reportman\activex\binr32\Reportman.ocx"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\compilerep\binr32\compilerep.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\Win32\upx.exe"; DestDir: "{app}"
 ; Api libraries
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
+Source: c:\desarrollo\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
 
 
 [Icons]

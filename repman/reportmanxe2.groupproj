@@ -9,12 +9,6 @@
         <Projects Include="utils\printreptopdf\printreptopdf.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="utils\reptotxt\reptotxt.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="utils\txttorep\txttorep.dproj">
-            <Dependencies/>
-        </Projects>
         <Projects Include="..\activex\reportman.dproj">
             <Dependencies/>
         </Projects>
@@ -79,24 +73,6 @@
     </Target>
     <Target Name="printreptopdf:Make">
         <MSBuild Projects="utils\printreptopdf\printreptopdf.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="reptotxt">
-        <MSBuild Projects="utils\reptotxt\reptotxt.dproj"/>
-    </Target>
-    <Target Name="reptotxt:Clean">
-        <MSBuild Projects="utils\reptotxt\reptotxt.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="reptotxt:Make">
-        <MSBuild Projects="utils\reptotxt\reptotxt.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="txttorep">
-        <MSBuild Projects="utils\txttorep\txttorep.dproj"/>
-    </Target>
-    <Target Name="txttorep:Clean">
-        <MSBuild Projects="utils\txttorep\txttorep.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="txttorep:Make">
-        <MSBuild Projects="utils\txttorep\txttorep.dproj" Targets="Make"/>
     </Target>
     <Target Name="reportman">
         <MSBuild Projects="..\activex\reportman.dproj"/>
@@ -216,13 +192,13 @@
         <MSBuild Projects="..\server\service\repserviceinstall.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="repmandxp;printreptopdf;reptotxt;txttorep;reportman;compilerep;metaviewxp;printrepxp;metaprintxp;rptranslate;WebReportManX;reportserverappxp;repwebexe;repserverconfigxp;repwebserver;repserverservice;repserviceinstall"/>
+        <CallTarget Targets="repmandxp;printreptopdf;reportman;compilerep;metaviewxp;printrepxp;metaprintxp;rptranslate;WebReportManX;reportserverappxp;repwebexe;repserverconfigxp;repwebserver;repserverservice;repserviceinstall"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="repmandxp:Clean;printreptopdf:Clean;reptotxt:Clean;txttorep:Clean;reportman:Clean;compilerep:Clean;metaviewxp:Clean;printrepxp:Clean;metaprintxp:Clean;rptranslate:Clean;WebReportManX:Clean;reportserverappxp:Clean;repwebexe:Clean;repserverconfigxp:Clean;repwebserver:Clean;repserverservice:Clean;repserviceinstall:Clean"/>
+        <CallTarget Targets="repmandxp:Clean;printreptopdf:Clean;reportman:Clean;compilerep:Clean;metaviewxp:Clean;printrepxp:Clean;metaprintxp:Clean;rptranslate:Clean;WebReportManX:Clean;reportserverappxp:Clean;repwebexe:Clean;repserverconfigxp:Clean;repwebserver:Clean;repserverservice:Clean;repserviceinstall:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="repmandxp:Make;printreptopdf:Make;reptotxt:Make;txttorep:Make;reportman:Make;compilerep:Make;metaviewxp:Make;printrepxp:Make;metaprintxp:Make;rptranslate:Make;WebReportManX:Make;reportserverappxp:Make;repwebexe:Make;repserverconfigxp:Make;repwebserver:Make;repserverservice:Make;repserviceinstall:Make"/>
+        <CallTarget Targets="repmandxp:Make;printreptopdf:Make;reportman:Make;compilerep:Make;metaviewxp:Make;printrepxp:Make;metaprintxp:Make;rptranslate:Make;WebReportManX:Make;reportserverappxp:Make;repwebexe:Make;repserverconfigxp:Make;repwebserver:Make;repserverservice:Make;repserviceinstall:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

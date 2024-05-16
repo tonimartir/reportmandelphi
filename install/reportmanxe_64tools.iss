@@ -8,13 +8,13 @@
 
 [Setup]
 AppName=Report Manager Server and Tools(x64)
-AppVersion=3.4.6
-DefaultDirName={pf}\Report Manager
+AppVersion=3.5.0
+DefaultDirName={commonpf64}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=userdocs:prog\toni\reportman\install\Output
+OutputDir=c:\desarrollo\prog\toni\reportman\install\Output
 ; "ArchitecturesAllowed=x64" specifies that Setup cannot run on
 ; anything but x64.
 ArchitecturesAllowed=x64
@@ -25,33 +25,33 @@ ArchitecturesInstallIn64BitMode=x64
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager Tools
-VersionInfoProductVersion=3.4.6
-OutputBaseFilename=reportman_server_3_4_6tools_x64
+VersionInfoProductVersion=3.5.0
+OutputBaseFilename=reportman_server_3_5_0tools_x64
 
 [Files]
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\app\bin64\reportserverappxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\config\bin64\repserverconfigxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaview\bin64\metaviewxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebexe.exe"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\bin64\repwebserver.dll"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\webactivex\reportman.htm"; DestDir: "{app}\Web\SamplePlugin"
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\webactivex\bin64\WebReportManX.ocx"; DestDir: "{app}\Web"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printreptopdf\bin64\printreptopdf.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\printrep\bin64\printrepxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\metaprint\bin64\metaprintxp.exe"; DestDir: "{app}"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\bin64\rptranslate.exe"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
-Source: "C:\Users\toni\Documents\prog\toni\reportman\activex\bin64\Reportman.ocx"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\server\app\binr64\reportserverappxp.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\server\config\binr64\repserverconfigxp.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\metaview\binr64\metaviewxp.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\server\web\binr64\repwebexe.exe"; DestDir: "{app}\Web"
+Source: "C:\desarrollo\prog\toni\reportman\server\web\binr64\repwebserver.dll"; DestDir: "{app}\Web"
+Source: "C:\desarrollo\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
+Source: "C:\desarrollo\prog\toni\reportman\webactivex\reportman.htm"; DestDir: "{app}\Web\SamplePlugin"
+Source: "C:\desarrollo\prog\toni\reportman\webactivex\binr64\WebReportManX.ocx"; DestDir: "{app}\Web"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr64\printreptopdf.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr64\printrepxp.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\metaprint\binr64\metaprintxp.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\reportmanres.*"; DestDir: "{app}\Translation"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\binr64\rptranslate.exe"; DestDir: "{app}\Translation"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\rptranslator\rptranslateres.*"; DestDir: "{app}\Translation"
+Source: "C:\desarrollo\prog\toni\reportman\activex\binr64\Reportman.ocx"; DestDir: "{app}"
 
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\utils\compilerep\bin64\compilerep.exe"; DestDir: "{app}"
-;Source: "C:\Users\toni\Documents\prog\toni\reportman\repman\upx.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\utils\compilerep\binr64\compilerep.exe"; DestDir: "{app}"
+Source: "C:\desarrollo\prog\toni\reportman\repman\Win64\upx.exe"; DestDir: "{app}"
 
 ; Api libraries
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
-Source: C:\Users\toni\Documents\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
+Source: C:\desarrollo\prog\toni\reportman\rpreportman.h; DestDir: {app}\api; Flags: ignoreversion
+Source: C:\desarrollo\prog\toni\reportman\rpreportmanapi.bas; DestDir: {app}\api;  Flags: ignoreversion
+Source: C:\desarrollo\prog\toni\reportman\tests\gcctest\Reportman.def; DestDir: {app}\api;  Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Report Manager Server"; Filename: "{app}\reportserverappxp.exe"
