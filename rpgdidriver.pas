@@ -1655,8 +1655,32 @@ var
   asize: TPoint;
 begin
   PageSizeQt:=PageQt;
-  Result.X:=FPageWidth;
-  Result.Y:=FPageHeight;
+  if (FPageWidth = 0)  then
+  begin
+   gdisize := GetCurrentPaper;
+   qtsize := GDIPageSizeToQtPageSize(gdisize);
+   gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
+   gdisize.Height:=Round(gdisize.Height/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
+
+   PageSizeQt := qtsize.Indexqt;
+     if Printer.Orientation=poLandscape then
+     begin
+     asize.x:=gdisize.Height;
+     asize.y:=gdisize.Width;
+     end
+     else
+     begin
+     asize.x:=gdisize.Width;
+     asize.y:=gdisize.Height;
+     end;
+   Result := asize;
+  end
+  else
+  begin
+   Result.X:=FPageWidth;
+   Result.Y:=FPageHeight;
+  end;
+
 (*  gdisize := GetCurrentPaper;
   qtsize := GDIPageSizeToQtPageSize(gdisize);
   gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
@@ -3618,8 +3642,13 @@ begin
   end;
 end;
 
+
+
+
+{$ENDIF}
+
 procedure TRpGDIDriver.setorientationset(newvalue: boolean);
-begin 
+begin
  FReport.orientationset:=newvalue;
 end;
 
@@ -3627,8 +3656,4 @@ function TRpGDIDriver.getorientationset: boolean;
 begin
  Result:= FReport.orientationset;
 end;
-
-
-{$ENDIF}
-
 end.
