@@ -2277,10 +2277,14 @@ begin
        begin
         FSQLInternalQuery:=TFDQuery.Create(nil);
        end;
-       TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
+
+       // Try default behaviour
+       // TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
+       // TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
+
+
      //  TFDCustomQuery(FSQLInternalQuery).FetchOptions.CursorKind:=ckForwardOnly;
 
-      TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
        //TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmAll;
        // fetchItems:=TFDCustomQuery(FSQLInternalQuery).FetchOptions.Items;
        // include(fetchItems,fiBlobs);
@@ -3829,9 +3833,13 @@ begin
 {$IFDEF FIREDAC}
     FSQLInternalQuery:=TFDQuery.Create(nil);
     TFDQuery(FSQLInternalQuery).Connection:=FDConnection;
-    TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
-    TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
-//    TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmAll;
+
+    // Test disabling all
+    //TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmOnDemand;
+    // TFDCustomQuery(FSQLInternalQuery).FetchOptions.RowsetSize:=1000;
+
+
+    //    TFDCustomQuery(FSQLInternalQuery).FetchOptions.Mode:=fmAll;
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.PreprocessCmdText:=false;
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.ParamCreate:=true;
     TFDCustomQuery(FSQLInternalQuery).ResourceOptions.ParamExpand:=true;

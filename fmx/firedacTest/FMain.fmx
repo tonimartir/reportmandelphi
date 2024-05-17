@@ -101,19 +101,32 @@ object Form1: TForm1
           Position.Y = 8.000000000000000000
           Text = 'Driver'
           TabOrder = 1
+          object Label3: TLabel
+            Position.Y = 31.000000000000000000
+            Text = 'Login Prompt'
+            TabOrder = 1
+          end
         end
         object MemoParams: TMemo
           Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
           DataDetectorTypes = []
           Align = Bottom
           Anchors = [akLeft, akTop, akRight, akBottom]
-          Position.Y = 42.000000000000000000
+          Position.Y = 64.000000000000000000
           Size.Width = 580.000000000000000000
-          Size.Height = 384.000000000000000000
+          Size.Height = 362.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 2
           Viewport.Width = 576.000000000000000000
-          Viewport.Height = 380.000000000000000000
+          Viewport.Height = 358.000000000000000000
+        end
+        object CheckLoginPrompt: TCheckBox
+          Position.X = 160.000000000000000000
+          Position.Y = 38.000000000000000000
+          Size.Width = 64.000000000000000000
+          Size.Height = 19.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 3
         end
       end
     end
@@ -228,7 +241,10 @@ object Form1: TForm1
   end
   object FDConnection1: TFDConnection
     Params.Strings = (
-      'DataSource=ANIMALS')
+      'DataSource=TONI'
+      'User_Name=SYSDBA'
+      'Password=tw2000'
+      '')
     Left = 448
     Top = 120
   end

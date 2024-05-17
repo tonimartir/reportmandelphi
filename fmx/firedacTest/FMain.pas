@@ -61,6 +61,8 @@ type
     CheckExpandEscapes: TCheckBox;
     CheckUnifyParams: TCheckBox;
     FDMemTable1: TFDMemTable;
+    Label3: TLabel;
+    CheckLoginPrompt: TCheckBox;
     procedure ButtonConnectClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -106,6 +108,7 @@ procedure TForm1.ButtonConnectClick(Sender: TObject);
 begin
  FDConnection1.DriverName:=ComboDriver.Items[ComboDriver.ItemIndex];
  FDConnection1.Params.Text := MemoParams.Text;
+ FDConnection1.LoginPrompt := CheckLoginPrompt.IsChecked;
  FDConnection1.Params.AddPair('DriverId',ComboDriver.Items[ComboDriver.ItemIndex]);
  FDConnection1.Close;
  FDConnection1.Open;

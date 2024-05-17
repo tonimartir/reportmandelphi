@@ -113,6 +113,7 @@
         <DCC_ExeOutput>.\binr32</DCC_ExeOutput>
         <DCC_DcuOutput>.\dcur32</DCC_DcuOutput>
         <DCC_DcpOutput>.\dcur32</DCC_DcpOutput>
+        <BT_BuildType>Debug</BT_BuildType>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>

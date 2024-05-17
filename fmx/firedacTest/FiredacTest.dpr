@@ -4,7 +4,8 @@ uses
   System.StartUpCopy,
   FMX.Forms,
   FMain in 'FMain.pas' {Form1},
-  ModData in 'ModData.pas' {DataModule1: TDataModule};
+  ModData in 'ModData.pas' {DataModule1: TDataModule},
+  FireDAC.Phys.ODBCMeta in '..\..\Firedac11Fix\FireDAC.Phys.ODBCMeta.pas';
 
 {$R *.res}
 
