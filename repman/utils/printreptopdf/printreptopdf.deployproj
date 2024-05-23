@@ -63,16 +63,6 @@
             <Overwrite>True</Overwrite>
             <Required>True</Required>
         </DeployFile>
-        <DeployFile Include="binrl64\printreptopdf" Condition="'$(Config)'=='Release'">
-            <RemoteDir>printreptopdf\</RemoteDir>
-            <RemoteName>printreptopdf</RemoteName>
-            <DeployClass>ProjectOutput</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-            <Required>True</Required>
-        </DeployFile>
         <DeployFile Include="..\..\..\rpconf.inc" Condition="'$(Config)'=='Debug'">
             <RemoteDir>printreptopdf\</RemoteDir>
             <RemoteName>rpconf.inc</RemoteName>
@@ -90,6 +80,16 @@
             <LocalCommand/>
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
+        </DeployFile>
+        <DeployFile Include="binrl64\printreptopdf" Condition="'$(Config)'=='Release'">
+            <RemoteDir>printreptopdf\</RemoteDir>
+            <RemoteName>printreptopdf</RemoteName>
+            <DeployClass>ProjectOutput</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+            <Required>True</Required>
         </DeployFile>
     </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='iOSDevice64'"/>

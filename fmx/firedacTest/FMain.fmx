@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 0
   ActiveControl = TabItem2
   Caption = 'Firedac Test'
-  ClientHeight = 488
+  ClientHeight = 440
   ClientWidth = 580
   FormFactor.Width = 320
   FormFactor.Height = 480
@@ -23,18 +23,18 @@ object Form1: TForm1
   object TabControl1: TTabControl
     Align = Client
     Size.Width = 580.000000000000000000
-    Size.Height = 488.000000000000000000
+    Size.Height = 440.000000000000000000
     Size.PlatformDefault = False
     TabIndex = 0
     TabOrder = 1
     TabPosition = PlatformDefault
     Sizes = (
       580s
-      462s
+      414s
       580s
-      462s
+      414s
       580s
-      462s)
+      414s)
     object TabItem1: TTabItem
       CustomIcon = <
         item
@@ -52,24 +52,13 @@ object Form1: TForm1
         Height = 4.000000000000000000
         Width = 5.000000000000000000
       end
-      object ButtonConnect: TButton
-        Align = Bottom
-        Position.Y = 426.000000000000000000
-        Size.Width = 580.000000000000000000
-        Size.Height = 36.000000000000000000
-        Size.PlatformDefault = False
-        TabOrder = 1
-        Text = 'Connect'
-        OnClick = ButtonConnectClick
-      end
       object Panel1: TPanel
         Align = Client
         Size.Width = 580.000000000000000000
-        Size.Height = 426.000000000000000000
+        Size.Height = 370.000000000000000000
         Size.PlatformDefault = False
-        TabOrder = 2
+        TabOrder = 1
         object ComboDriver: TComboBox
-          Anchors = [akLeft, akTop, akRight]
           Items.Strings = (
             'ADS'
             'ASA'
@@ -88,13 +77,41 @@ object Form1: TForm1
             'PG'
             'SQLite'
             'TData'
-            'TDBX')
+            'TDBX'
+            'Zeos')
           Position.X = 160.000000000000000000
           Position.Y = 8.000000000000000000
-          Size.Width = 412.000000000000000000
+          Size.Width = 129.000000000000000000
           Size.Height = 22.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 0
+          OnChange = ComboDriverChange
+          object ComboZeosProtocol: TComboBox
+            Items.Strings = (
+              'ado'
+              'asa'
+              'asa_capi'
+              'firebird'
+              'interbase'
+              'mariadb'
+              'mssql'
+              'mysql'
+              'odbc_a'
+              'odbc_w'
+              'OleDB'
+              'oracle'
+              'pooled.*'
+              'postgresql'
+              'sqlite'
+              'sybase'
+              'WebServiceProxy')
+            Position.X = 217.000000000000000000
+            Position.Y = 1.000000000000000000
+            Size.Width = 160.000000000000000000
+            Size.Height = 22.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+          end
         end
         object Label2: TLabel
           Position.X = 8.000000000000000000
@@ -104,7 +121,20 @@ object Form1: TForm1
           object Label3: TLabel
             Position.Y = 31.000000000000000000
             Text = 'Login Prompt'
+            TabOrder = 2
+          end
+          object LabelZeosProtocol: TLabel
+            Position.X = 296.000000000000000000
+            Size.Width = 65.000000000000000000
+            Size.Height = 17.000000000000000000
+            Size.PlatformDefault = False
+            Text = 'Protocol'
             TabOrder = 1
+            object Label5: TLabel
+              Position.Y = 31.000000000000000000
+              Text = 'Login Prompt'
+              TabOrder = 1
+            end
           end
         end
         object MemoParams: TMemo
@@ -112,13 +142,13 @@ object Form1: TForm1
           DataDetectorTypes = []
           Align = Bottom
           Anchors = [akLeft, akTop, akRight, akBottom]
-          Position.Y = 64.000000000000000000
+          Position.Y = 65.000000000000000000
           Size.Width = 580.000000000000000000
-          Size.Height = 362.000000000000000000
+          Size.Height = 305.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 2
           Viewport.Width = 576.000000000000000000
-          Viewport.Height = 358.000000000000000000
+          Viewport.Height = 301.000000000000000000
         end
         object CheckLoginPrompt: TCheckBox
           Position.X = 160.000000000000000000
@@ -127,6 +157,33 @@ object Form1: TForm1
           Size.Height = 19.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 3
+        end
+      end
+      object Panel3: TPanel
+        Align = Bottom
+        Position.Y = 370.000000000000000000
+        Size.Width = 580.000000000000000000
+        Size.Height = 44.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 2
+        object ButtonConnect: TButton
+          Align = Left
+          Size.Width = 265.000000000000000000
+          Size.Height = 44.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 1
+          Text = 'Connect'
+          OnClick = ButtonConnectClick
+        end
+        object ButtonDisconnect: TButton
+          Align = Client
+          Enabled = False
+          Size.Width = 315.000000000000000000
+          Size.Height = 44.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 0
+          Text = 'Disconnect'
+          OnClick = ButtonDisconnectClick
         end
       end
     end
@@ -145,7 +202,7 @@ object Form1: TForm1
       ExplicitSize.cy = 26.000000000000000000
       object Button1: TButton
         Align = Bottom
-        Position.Y = 426.000000000000000000
+        Position.Y = 378.000000000000000000
         Size.Width = 580.000000000000000000
         Size.Height = 36.000000000000000000
         Size.PlatformDefault = False
@@ -156,7 +213,7 @@ object Form1: TForm1
       object Panel2: TPanel
         Align = Client
         Size.Width = 580.000000000000000000
-        Size.Height = 426.000000000000000000
+        Size.Height = 378.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 2
         object MemoSQL: TMemo
@@ -168,11 +225,11 @@ object Form1: TForm1
           Anchors = [akLeft, akTop, akRight, akBottom]
           Position.Y = 87.000000000000000000
           Size.Width = 580.000000000000000000
-          Size.Height = 339.000000000000000000
+          Size.Height = 291.000000000000000000
           Size.PlatformDefault = False
           TabOrder = 1
           Viewport.Width = 576.000000000000000000
-          Viewport.Height = 335.000000000000000000
+          Viewport.Height = 287.000000000000000000
         end
         object CheckCreateParams: TCheckBox
           IsChecked = True
@@ -231,11 +288,12 @@ object Form1: TForm1
         CanFocus = True
         ClipChildren = True
         Size.Width = 580.000000000000000000
-        Size.Height = 462.000000000000000000
+        Size.Height = 414.000000000000000000
         Size.PlatformDefault = False
+        StyleLookup = 'Grid1Style1'
         TabOrder = 0
         Viewport.Width = 576.000000000000000000
-        Viewport.Height = 437.000000000000000000
+        Viewport.Height = 389.000000000000000000
       end
     end
   end
@@ -292,5 +350,36 @@ object Form1: TForm1
     UpdateOptions.AutoCommitUpdates = True
     Left = 440
     Top = 345
+  end
+  object ZConnection1: TZConnection
+    ControlsCodePage = cCP_UTF16
+    Catalog = ''
+    DisableSavepoints = False
+    HostName = ''
+    Port = 0
+    Database = ''
+    User = ''
+    Password = ''
+    Protocol = ''
+    Left = 288
+    Top = 130
+  end
+  object ZTransaction1: TZTransaction
+    Connection = ZConnection1
+    AutoCommit = True
+    Left = 288
+    Top = 186
+  end
+  object ZReadOnlyQuery1: TZReadOnlyQuery
+    Connection = ZConnection1
+    Params = <>
+    Transaction = ZTransaction1
+    Left = 280
+    Top = 242
+  end
+  object ZMemTable1: TZMemTable
+    ControlsCodePage = cDynamic
+    Left = 280
+    Top = 306
   end
 end
