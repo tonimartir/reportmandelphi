@@ -6,13 +6,11 @@ object FRpParamsVCL: TFRpParamsVCL
   ClientWidth = 665
   Color = clBtnFace
   ParentFont = True
-  OldCreateOrder = True
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
   OnShow = FormShow
-  PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 20
   object Panel1: TPanel
     Left = 0
     Top = 173
@@ -38,58 +36,58 @@ object FRpParamsVCL: TFRpParamsVCL
       object LDescription: TLabel
         Left = 12
         Top = 90
-        Width = 53
-        Height = 13
+        Width = 76
+        Height = 20
         Caption = 'Description'
       end
       object LDataType: TLabel
         Left = 8
         Top = 12
-        Width = 48
-        Height = 13
+        Width = 65
+        Height = 20
         Caption = 'Data type'
       end
       object LValue: TLabel
         Left = 213
         Top = 12
-        Width = 26
-        Height = 13
+        Width = 36
+        Height = 20
         Caption = 'Value'
       end
       object LAssign: TLabel
         Left = 16
         Top = 324
-        Width = 89
-        Height = 13
+        Width = 120
+        Height = 20
         Caption = 'Assign to datasets'
       end
       object LSearch: TLabel
         Left = 12
         Top = 185
-        Width = 80
-        Height = 13
+        Width = 108
+        Height = 20
         Caption = 'Search for string'
         Visible = False
       end
       object LHint: TLabel
         Left = 12
         Top = 114
-        Width = 19
-        Height = 13
+        Width = 28
+        Height = 20
         Caption = 'Hint'
       end
       object LErrorMessage: TLabel
         Left = 12
         Top = 162
-        Width = 69
-        Height = 13
+        Width = 94
+        Height = 20
         Caption = 'Error message'
       end
       object LValidation: TLabel
         Left = 12
         Top = 138
-        Width = 46
-        Height = 13
+        Width = 67
+        Height = 20
         Caption = 'Validation'
       end
       object ECheckList: TCheckListBox
@@ -97,11 +95,11 @@ object FRpParamsVCL: TFRpParamsVCL
         Top = 8
         Width = 336
         Height = 72
-        OnClickCheck = EDescriptionChange
         Anchors = [akLeft, akTop, akRight]
-        ItemHeight = 13
+        ItemHeight = 20
         TabOrder = 17
         Visible = False
+        OnClickCheck = EDescriptionChange
       end
       object GValues: TGroupBox
         Left = 12
@@ -118,13 +116,13 @@ object FRpParamsVCL: TFRpParamsVCL
         object LLookup: TLabel
           Left = 4
           Top = 82
-          Width = 74
-          Height = 13
+          Width = 102
+          Height = 20
           Caption = 'Lookup dataset'
         end
         object Panel4: TPanel
           Left = 2
-          Top = 15
+          Top = 22
           Width = 604
           Height = 62
           Align = alTop
@@ -155,7 +153,7 @@ object FRpParamsVCL: TFRpParamsVCL
           Left = 126
           Top = 78
           Width = 352
-          Height = 21
+          Height = 28
           Hint = 'The parameters will be assigned not the selected datasets'
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
@@ -167,7 +165,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 114
         Top = 86
         Width = 498
-        Height = 21
+        Height = 28
         Hint = 'Description to be show on the end user dialog'
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 7
@@ -178,7 +176,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 86
         Top = 8
         Width = 112
-        Height = 21
+        Height = 28
         Hint = 'Data type for the parameter'
         Style = csDropDownList
         TabOrder = 0
@@ -199,7 +197,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 280
         Top = 8
         Width = 332
-        Height = 21
+        Height = 28
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
         OnExit = EValueExit
@@ -229,7 +227,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 16
         Top = 340
         Width = 158
-        Height = 21
+        Height = 28
         Hint = 'The parameters will be assigned not the selected datasets'
         Style = csDropDownList
         TabOrder = 13
@@ -258,14 +256,14 @@ object FRpParamsVCL: TFRpParamsVCL
         Width = 384
         Height = 56
         Anchors = [akLeft, akTop, akRight]
-        ItemHeight = 13
+        ItemHeight = 20
         TabOrder = 16
       end
       object ESearch: TEdit
         Left = 114
         Top = 181
         Width = 498
-        Height = 21
+        Height = 28
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 11
         Visible = False
@@ -285,7 +283,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 114
         Top = 110
         Width = 498
-        Height = 21
+        Height = 28
         Hint = 'Hint to be show on the end user dialog'
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 8
@@ -327,22 +325,22 @@ object FRpParamsVCL: TFRpParamsVCL
         object LSearchDataset: TLabel
           Left = 8
           Top = 24
-          Width = 73
-          Height = 13
+          Width = 97
+          Height = 20
           Caption = 'Search dataset'
         end
         object Label1: TLabel
           Left = 8
           Top = 47
-          Width = 86
-          Height = 13
+          Width = 117
+          Height = 20
           Caption = 'Search parameter'
         end
         object ComboSearchDataset: TComboBox
           Left = 130
           Top = 20
           Width = 356
-          Height = 21
+          Height = 28
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 0
@@ -352,7 +350,7 @@ object FRpParamsVCL: TFRpParamsVCL
           Left = 130
           Top = 43
           Width = 356
-          Height = 21
+          Height = 28
           Style = csDropDownList
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 1
@@ -364,7 +362,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 114
         Top = 134
         Width = 498
-        Height = 21
+        Height = 28
         Hint = 
           'Validation expression, if evaluated to false, error message will' +
           ' be shown'
@@ -377,7 +375,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Left = 114
         Top = 158
         Width = 498
-        Height = 21
+        Height = 28
         Hint = 'Error message to show when validation expression returns false'
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 10
@@ -396,26 +394,28 @@ object FRpParamsVCL: TFRpParamsVCL
     TabOrder = 1
     object LParams: TListBox
       Left = 0
-      Top = 25
+      Top = 27
       Width = 550
-      Height = 148
+      Height = 146
       Align = alClient
-      ItemHeight = 13
+      ItemHeight = 20
       TabOrder = 0
       OnClick = LParamsClick
+      ExplicitTop = 25
+      ExplicitHeight = 148
     end
     object ToolBar1: TToolBar
       Left = 0
       Top = 0
       Width = 665
-      Height = 25
+      Height = 27
       Margins.Left = 2
       Margins.Top = 2
       Margins.Right = 2
       Margins.Bottom = 2
       AutoSize = True
-      ButtonHeight = 25
-      ButtonWidth = 26
+      ButtonHeight = 27
+      ButtonWidth = 28
       Caption = 'ToolBar1'
       Images = VirtualImageList1
       TabOrder = 1
@@ -427,30 +427,27 @@ object FRpParamsVCL: TFRpParamsVCL
         Margins.Right = 2
         Margins.Bottom = 2
         Action = ANewParam
-        ImageName = 'Item3'
       end
       object ToolButton2: TToolButton
-        Left = 26
+        Left = 28
         Top = 0
         Margins.Left = 2
         Margins.Top = 2
         Margins.Right = 2
         Margins.Bottom = 2
         Action = ADown
-        ImageName = 'Item2'
       end
       object ToolButton3: TToolButton
-        Left = 52
+        Left = 56
         Top = 0
         Margins.Left = 2
         Margins.Top = 2
         Margins.Right = 2
         Margins.Bottom = 2
         Action = AUp
-        ImageName = 'Item1'
       end
       object ToolButton5: TToolButton
-        Left = 78
+        Left = 84
         Top = 0
         Width = 29
         Margins.Left = 2
@@ -463,17 +460,16 @@ object FRpParamsVCL: TFRpParamsVCL
         Style = tbsSeparator
       end
       object ToolButton4: TToolButton
-        Left = 107
+        Left = 113
         Top = 0
         Margins.Left = 2
         Margins.Top = 2
         Margins.Right = 2
         Margins.Bottom = 2
         Action = ADelete
-        ImageName = 'Item4'
       end
       object ToolButton6: TToolButton
-        Left = 133
+        Left = 141
         Top = 0
         Width = 32
         Margins.Left = 2
@@ -486,30 +482,31 @@ object FRpParamsVCL: TFRpParamsVCL
         Style = tbsSeparator
       end
       object ToolButton7: TToolButton
-        Left = 165
+        Left = 173
         Top = 0
         Margins.Left = 2
         Margins.Top = 2
         Margins.Right = 2
         Margins.Bottom = 2
         Action = ARename
-        ImageName = 'Item5'
       end
     end
     object Panel3: TPanel
       Left = 550
-      Top = 25
+      Top = 27
       Width = 115
-      Height = 148
+      Height = 146
       Align = alRight
       BevelOuter = bvNone
       TabOrder = 2
+      ExplicitTop = 25
+      ExplicitHeight = 148
       DesignSize = (
         115
-        148)
+        146)
       object BCancel: TButton
         Left = 6
-        Top = 112
+        Top = 110
         Width = 93
         Height = 34
         Anchors = [akLeft, akBottom]
@@ -517,6 +514,7 @@ object FRpParamsVCL: TFRpParamsVCL
         Caption = 'Cancel'
         ModalResult = 2
         TabOrder = 0
+        ExplicitTop = 112
       end
       object BOK: TButton
         Left = 6
@@ -927,30 +925,35 @@ object FRpParamsVCL: TFRpParamsVCL
       Caption = 'New parameter'
       Hint = 'Adds a new parameter'
       ImageIndex = 2
+      ImageName = 'Item3'
       OnExecute = BAddClick
     end
     object ADelete: TAction
       Caption = 'Delete parameter'
       Hint = 'Deletes the selected parameter'
       ImageIndex = 3
+      ImageName = 'Item4'
       OnExecute = BDeleteClick
     end
     object AUp: TAction
       Caption = 'Up'
       Hint = 'Moves the selected parameter up'
       ImageIndex = 0
+      ImageName = 'Item1'
       OnExecute = BUpClick
     end
     object ADown: TAction
       Caption = 'Down'
       Hint = 'Moves the selected parameter down'
       ImageIndex = 1
+      ImageName = 'Item2'
       OnExecute = BDownClick
     end
     object ARename: TAction
       Caption = 'Rename'
       Hint = 'Renames the selected parameter'
       ImageIndex = 4
+      ImageName = 'Item5'
       OnExecute = BRenameClick
     end
   end
@@ -1025,40 +1028,35 @@ object FRpParamsVCL: TFRpParamsVCL
     Top = 313
   end
   object VirtualImageList1: TVirtualImageList
-    DisabledGrayscale = False
-    DisabledSuffix = '_Disabled'
     Images = <
       item
         CollectionIndex = 0
         CollectionName = 'Item1'
-        Disabled = False
         Name = 'Item1'
       end
       item
         CollectionIndex = 1
         CollectionName = 'Item2'
-        Disabled = False
         Name = 'Item2'
       end
       item
         CollectionIndex = 2
         CollectionName = 'Item3'
-        Disabled = False
         Name = 'Item3'
       end
       item
         CollectionIndex = 3
         CollectionName = 'Item4'
-        Disabled = False
         Name = 'Item4'
       end
       item
         CollectionIndex = 4
         CollectionName = 'Item5'
-        Disabled = False
         Name = 'Item5'
       end>
     ImageCollection = ImageCollection1
+    Width = 21
+    Height = 21
     Left = 314
     Top = 313
   end

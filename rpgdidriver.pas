@@ -1537,7 +1537,9 @@ begin
       try
         metadpix := GetDeviceCaps(metacanvas.handle, LOGPIXELSX);
         metadpiy := GetDeviceCaps(metacanvas.handle, LOGPIXELSY);
-        if (realdpix = 0) then
+        realdpix := metadpix;
+        realdpiy := metadpiy;
+(*        if (realdpix = 0) then
         begin
           regx := TRegistry.Create;
           regx.RootKey := HKEY_CURRENT_USER;
@@ -1560,7 +1562,7 @@ begin
             realdpix := metadpix;
             realdpiy := metadpiy;
           end
-        end;
+        end;          *)
         for j := 0 to apage.ObjectCount - 1 do
         begin
           selected := FReport.IsFound(apage, j);

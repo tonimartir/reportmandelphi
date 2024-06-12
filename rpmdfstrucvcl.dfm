@@ -22,10 +22,10 @@ object FRpStructureVCL: TFRpStructureVCL
         Left = 0
         Top = 0
         Width = 310
-        Height = 27
+        Height = 35
         AutoSize = True
-        ButtonHeight = 27
-        ButtonWidth = 27
+        ButtonHeight = 35
+        ButtonWidth = 34
         Images = VirtualImageList1
         TabOrder = 0
         object BNew: TToolButton
@@ -40,17 +40,17 @@ object FRpStructureVCL: TFRpStructureVCL
           OnClick = BNewClick
         end
         object ToolButton2: TToolButton
-          Left = 42
+          Left = 53
           Top = 0
           Action = ADelete
         end
         object ToolButton3: TToolButton
-          Left = 69
+          Left = 87
           Top = 0
           Action = AUp
         end
         object ToolButton4: TToolButton
-          Left = 96
+          Left = 121
           Top = 0
           Action = ADown
           AutoSize = True
@@ -573,34 +573,30 @@ object FRpStructureVCL: TFRpStructureVCL
     Top = 72
   end
   object VirtualImageList1: TVirtualImageList
-    DisabledGrayscale = False
-    DisabledSuffix = '_Disabled'
     Images = <
       item
         CollectionIndex = 0
         CollectionName = 'Item1'
-        Disabled = False
         Name = 'Item1'
       end
       item
         CollectionIndex = 1
         CollectionName = 'Item2'
-        Disabled = False
         Name = 'Item2'
       end
       item
         CollectionIndex = 2
         CollectionName = 'Item3'
-        Disabled = False
         Name = 'Item3'
       end
       item
         CollectionIndex = 3
         CollectionName = 'Item4'
-        Disabled = False
         Name = 'Item4'
       end>
     ImageCollection = ImageCollection1
+    Width = 21
+    Height = 21
     Left = 244
     Top = 80
   end

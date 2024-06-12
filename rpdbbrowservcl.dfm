@@ -274,28 +274,25 @@ object FRpBrowserVCL: TFRpBrowserVCL
     Top = 176
   end
   object VirtualImageList1: TVirtualImageList
-    DisabledGrayscale = False
-    DisabledSuffix = '_Disabled'
     Images = <
       item
         CollectionIndex = 0
         CollectionName = 'Item1'
-        Disabled = False
         Name = 'Item1'
       end
       item
         CollectionIndex = 1
         CollectionName = 'Item2'
-        Disabled = False
         Name = 'Item2'
       end
       item
         CollectionIndex = 2
         CollectionName = 'Item3'
-        Disabled = False
         Name = 'Item3'
       end>
     ImageCollection = ImageCollection1
+    Width = 21
+    Height = 21
     Left = 352
     Top = 176
   end

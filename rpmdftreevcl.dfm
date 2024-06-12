@@ -10,9 +10,10 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
     Left = 0
     Top = 0
     Width = 451
-    Height = 22
+    Height = 28
     AutoSize = True
-    ButtonWidth = 26
+    ButtonHeight = 28
+    ButtonWidth = 28
     Caption = 'BToolBar'
     Images = VirtualImageList1
     TabOrder = 0
@@ -22,57 +23,57 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
       Action = ANewFolder
     end
     object ToolButton1: TToolButton
-      Left = 26
+      Left = 28
       Top = 0
       Action = ANew
     end
     object ToolButton2: TToolButton
-      Left = 52
+      Left = 56
       Top = 0
       Action = ADelete
     end
     object EFind: TEdit
-      Left = 78
+      Left = 84
       Top = 0
       Width = 93
-      Height = 22
+      Height = 28
       TabOrder = 1
     end
     object ToolButton11: TToolButton
-      Left = 171
+      Left = 177
       Top = 0
       Action = AFind
     end
     object ToolButton4: TToolButton
-      Left = 197
+      Left = 205
       Top = 0
       Action = APreview
     end
     object ToolButton5: TToolButton
-      Left = 223
+      Left = 233
       Top = 0
       Action = AUserParams
     end
     object ToolButton6: TToolButton
-      Left = 249
+      Left = 261
       Top = 0
       Action = APrint
     end
     object ToolButton8: TToolButton
-      Left = 275
+      Left = 289
       Top = 0
       Action = APrintSetup
     end
     object ToolButton9: TToolButton
-      Left = 301
+      Left = 317
       Top = 0
       Action = AExportFolder
     end
     object BCancel: TButton
-      Left = 327
+      Left = 345
       Top = 0
       Width = 65
-      Height = 22
+      Height = 28
       TabOrder = 0
       Visible = False
       OnClick = BCancelClick
@@ -80,9 +81,9 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
   end
   object ATree: TTreeView
     Left = 0
-    Top = 22
+    Top = 28
     Width = 451
-    Height = 283
+    Height = 277
     Align = alClient
     DragMode = dmAutomatic
     HideSelection = False
@@ -1344,6 +1345,8 @@ object FRpDBTreeVCL: TFRpDBTreeVCL
         Name = 'Item13'
       end>
     ImageCollection = ImageCollection1
+    Width = 21
+    Height = 21
     Left = 352
     Top = 56
   end
