@@ -450,8 +450,6 @@ object FRpMainFVCL: TFRpMainFVCL
     BevelOuter = bvNone
     TabOrder = 2
     Visible = False
-    ExplicitTop = 73
-    ExplicitHeight = 379
     object Splitter1: TSplitter
       Left = 158
       Top = 0
@@ -478,7 +476,6 @@ object FRpMainFVCL: TFRpMainFVCL
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
-      ExplicitHeight = 379
       object Splitter2: TSplitter
         Left = 0
         Top = 0

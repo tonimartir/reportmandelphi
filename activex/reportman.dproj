@@ -187,7 +187,7 @@
                 <Parameters/>
                 <Language>
                     <Language Name="ProjectLang">$00000C0A</Language>
-                    <Language Name="RootDir">..\..\..\..\..\Users\toni\Documents\prog\toni\reportman\activex\</Language>
+                    <Language Name="RootDir">C:\Users\toni\Documents\prog\toni\reportman\activex\</Language>
                 </Language>
                 <VersionInfo>
                     <VersionInfo Name="IncludeVerInfo">True</VersionInfo>
