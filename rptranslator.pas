@@ -355,6 +355,7 @@ var
  resname:string;
  nstream:TMemoryStream;
  tempstring:widestring;
+ isFile: boolean;
 {$IFDEF MSWINDOWS}
  resstream:TResourceStream;
  fromresource:boolean;
@@ -370,6 +371,7 @@ begin
  FPoolPos:=1;
  SetLength(FStrings,DEFAULT_SARRAY_SIZE);
  FArraySize:=DEFAULT_SARRAY_SIZE;
+ isFile:=false;
  // Finds the file and read the strings
  // The format is translations separator is a #10, two #10 is a true single #10.
  if Length(FFilename)<1 then
@@ -379,11 +381,17 @@ begin
  begin
    afilename:=AddLocaleSufix(ExtractFilePath(ParamStr(0))+FFilename);
    if Length(afilename)=0 then
+   begin
     afilename:=FFilename;
+   end
+   else
+   begin
+    isFile := true;
+   end;
  end;
 {$IFDEF MSWINDOWS}
  // Look for a resource named same
- if (FLookForResource) then
+ if (FLookForResource AND (not IsFile)) then
    resname:=UpperCase(ExtractFileName(afilename))
  else
    resname:='';
