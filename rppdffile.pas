@@ -2070,7 +2070,7 @@ begin
    end
    else
    begin
-    if astring[i] in [WideChar('.'),WideChar(','),WideChar('-'),WideChar(' ')] then
+    if astring[i] in [WideChar('-'),WideChar(' ')] then
     begin
      linebreakpos:=i;
      if astring[i]=' ' then
