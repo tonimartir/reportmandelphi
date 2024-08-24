@@ -1,159 +1,256 @@
 object FRpMetaVCL: TFRpMetaVCL
   Left = 0
   Top = 0
-  Width = 755
-  Height = 585
+  Width = 843
+  Height = 498
+  Margins.Left = 8
+  Margins.Top = 8
+  Margins.Right = 8
+  Margins.Bottom = 8
   Align = alClient
   ParentShowHint = False
   ShowHint = True
   TabOrder = 0
   OnMouseWheelDown = FrameMouseWheelDown
   OnMouseWheelUp = FrameMouseWheelUp
+  PixelsPerInch = 120
   object Splitter1: TSplitter
     Left = 0
-    Top = 68
-    Width = 7
-    Height = 496
+    Top = 32
+    Width = 18
+    Height = 433
+    Margins.Left = 8
+    Margins.Top = 8
+    Margins.Right = 8
+    Margins.Bottom = 8
     Beveled = True
-    ExplicitTop = 29
-    ExplicitHeight = 220
+    ExplicitTop = 100
+    ExplicitHeight = 723
   end
   object BToolBar: TToolBar
     Left = 0
     Top = 0
-    Width = 755
-    Height = 68
-    AutoSize = True
-    ButtonHeight = 30
-    ButtonWidth = 38
+    Width = 843
+    Margins.Left = 8
+    Margins.Top = 8
+    Margins.Right = 8
+    Margins.Bottom = 8
+    ButtonHeight = 32
+    ButtonWidth = 33
     Caption = 'BToolBar'
     Images = VirtualImageList1
     TabOrder = 0
+    ExplicitWidth = 1503
     object ToolButton8: TToolButton
       Left = 0
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = AOpen
     end
     object ToolButton1: TToolButton
-      Left = 38
+      Left = 33
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = AFirst
     end
     object ToolButton2: TToolButton
-      Left = 76
+      Left = 66
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = APrevious
     end
     object EPageNum: TRpMaskEdit
-      Left = 114
+      Left = 99
       Top = 0
-      Width = 44
-      Height = 30
-      AutoSize = False
+      Width = 51
+      Height = 32
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
       TabOrder = 1
       OnKeyDown = EPageNumKeyDown
       Text = '0'
       EditType = teinteger
     end
     object ToolButton3: TToolButton
-      Left = 158
+      Left = 150
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = ANext
     end
     object ToolButton4: TToolButton
-      Left = 196
+      Left = 183
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = ALast
     end
     object ToolButton14: TToolButton
-      Left = 234
+      Left = 216
       Top = 0
-      Width = 8
+      Width = 19
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Caption = 'ToolButton14'
       ImageIndex = 8
       ImageName = 'Item9'
       Style = tbsSeparator
     end
     object ToolButton6: TToolButton
-      Left = 242
+      Left = 235
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = APrint
     end
     object ToolButton7: TToolButton
-      Left = 280
+      Left = 268
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = ASave
     end
     object ToolButton10: TToolButton
-      Left = 318
+      Left = 301
       Top = 0
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = AMailTo
     end
     object PPBar: TPanel
-      Left = 356
+      Left = 334
       Top = 0
-      Width = 104
-      Height = 30
+      Width = 255
+      Height = 32
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       BorderStyle = bsSingle
-      TabOrder = 2
+      TabOrder = 3
       Visible = False
       object PBar: TProgressBar
         Left = 1
         Top = 1
-        Width = 98
-        Height = 24
+        Width = 249
+        Height = 26
+        Margins.Left = 8
+        Margins.Top = 8
+        Margins.Right = 8
+        Margins.Bottom = 8
         Align = alClient
         TabOrder = 0
       end
     end
     object ToolButton15: TToolButton
-      Left = 460
-      Top = 0
-      Width = 8
-      Caption = 'ToolButton15'
-      ImageIndex = 8
-      ImageName = 'Item9'
-      Style = tbsSeparator
-    end
-    object ToolButton5: TToolButton
-      Left = 468
-      Top = 0
-      Action = AScale100
-    end
-    object ToolButton9: TToolButton
-      Left = 506
-      Top = 0
-      Action = AScaleWide
-    end
-    object ToolButton11: TToolButton
-      Left = 544
-      Top = 0
-      Action = AScaleFull
-      PopupMenu = MEntireMenu
-    end
-    object ToolButton12: TToolButton
-      Left = 582
-      Top = 0
-      Action = AScaleLess
-    end
-    object ToolButton13: TToolButton
-      Left = 620
-      Top = 0
-      Action = AScaleMore
-    end
-    object ToolButton16: TToolButton
       Left = 0
       Top = 0
-      Width = 8
-      Caption = 'ToolButton16'
+      Width = 20
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Caption = 'ToolButton15'
       ImageIndex = 8
       ImageName = 'Item9'
       Wrap = True
       Style = tbsSeparator
     end
-    object BConfig: TToolButton
+    object ToolButton5: TToolButton
       Left = 0
-      Top = 38
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Action = AScale100
+    end
+    object ToolButton9: TToolButton
+      Left = 33
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Action = AScaleWide
+    end
+    object ToolButton11: TToolButton
+      Left = 66
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Action = AScaleFull
+      PopupMenu = MEntireMenu
+    end
+    object ToolButton12: TToolButton
+      Left = 99
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Action = AScaleLess
+    end
+    object ToolButton13: TToolButton
+      Left = 132
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Action = AScaleMore
+    end
+    object ToolButton16: TToolButton
+      Left = 165
+      Top = 52
+      Width = 20
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
+      Caption = 'ToolButton16'
+      ImageIndex = 8
+      ImageName = 'Item9'
+      Style = tbsSeparator
+    end
+    object BConfig: TToolButton
+      Left = 185
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       DropdownMenu = MPrintMenu
       ImageIndex = 14
       ImageName = 'Item15'
@@ -161,50 +258,81 @@ object FRpMetaVCL: TFRpMetaVCL
       OnClick = BConfigClick
     end
     object ToolButton18: TToolButton
-      Left = 57
-      Top = 38
-      Width = 8
+      Left = 237
+      Top = 52
+      Width = 20
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Caption = 'ToolButton18'
       ImageIndex = 8
       ImageName = 'Item9'
       Style = tbsSeparator
     end
     object ESearch: TRpMaskEdit
-      Left = 65
-      Top = 38
-      Width = 93
-      Height = 30
-      AutoSize = False
-      TabOrder = 3
+      Left = 257
+      Top = 52
+      Width = 51
+      Height = 32
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
+      ParentShowHint = False
+      ShowHint = True
+      TabOrder = 2
       OnChange = ESearchChange
       OnKeyDown = ESearchKeyDown
       Text = ''
       DisplayMask = '###,######0'
     end
     object ToolButton19: TToolButton
-      Left = 158
-      Top = 38
+      Left = 308
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = AFind
     end
     object ToolButton17: TToolButton
-      Left = 196
-      Top = 38
-      Width = 8
+      Left = 341
+      Top = 52
+      Width = 20
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Caption = 'ToolButton17'
       ImageIndex = 8
       ImageName = 'Item9'
       Style = tbsSeparator
     end
     object BExit: TToolButton
-      Left = 204
-      Top = 38
+      Left = 361
+      Top = 52
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = AExit
     end
     object BCancel: TButton
-      Left = 242
-      Top = 38
-      Width = 106
-      Height = 30
+      Left = 394
+      Top = 52
+      Width = 260
+      Height = 32
+      Margins.Left = 8
+      Margins.Top = 8
+      Margins.Right = 8
+      Margins.Bottom = 8
       Action = ACancel
       TabOrder = 0
       Visible = False
@@ -212,13 +340,19 @@ object FRpMetaVCL: TFRpMetaVCL
   end
   object BStatus: TStatusBar
     Left = 0
-    Top = 564
-    Width = 755
-    Height = 21
+    Top = 465
+    Width = 843
+    Height = 33
+    Margins.Left = 8
+    Margins.Top = 8
+    Margins.Right = 8
+    Margins.Bottom = 8
     Panels = <
       item
-        Width = 50
+        Width = 124
       end>
+    ExplicitTop = 552
+    ExplicitWidth = 1503
   end
   object ActionList1: TActionList
     Images = VirtualImageList1
@@ -1520,8 +1654,8 @@ object FRpMetaVCL: TFRpMetaVCL
       00000000000000000000}
   end
   object MPrintMenu: TPopupMenu
-    Left = 324
-    Top = 184
+    Left = 525
+    Top = 158
     object PrinterSetup2: TMenuItem
       Action = APrintSetup
     end
@@ -2008,8 +2142,8 @@ object FRpMetaVCL: TFRpMetaVCL
         Name = 'Item17'
       end>
     ImageCollection = ImageCollection1
-    Width = 21
-    Height = 21
+    Width = 26
+    Height = 26
     Left = 552
     Top = 176
   end

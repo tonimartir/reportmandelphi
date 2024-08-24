@@ -25,7 +25,8 @@ uses SysUtils, Classes, Graphics, Forms,
 {$IFDEF DELPHI2009UP}
  System.ImageList,
 {$ENDIF}
-  ComCtrls, ImgList,rpmdconsts, ToolWin,rpgraphutilsvcl, System.ImageList;
+  ComCtrls, ImgList,rpmdconsts, ToolWin,rpgraphutilsvcl, System.ImageList,
+  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection;
 
 const
  DCONTROL_DISTANCEY=5;
@@ -45,6 +46,8 @@ type
     ImageList1: TImageList;
     BExit: TToolButton;
     ToolButton2: TToolButton;
+    VirtualImageList1: TVirtualImageList;
+    ImageCollection1: TImageCollection;
     procedure BExitClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private

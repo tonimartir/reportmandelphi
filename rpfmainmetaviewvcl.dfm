@@ -2,8 +2,8 @@ object FRpMainMetaVCL: TFRpMainMetaVCL
   Left = 334
   Top = 134
   Caption = 'Metafile report preview'
-  ClientHeight = 580
-  ClientWidth = 780
+  ClientHeight = 540
+  ClientWidth = 719
   Color = clBtnFace
   ParentFont = True
   KeyPreview = True
@@ -12,6 +12,6 @@ object FRpMainMetaVCL: TFRpMainMetaVCL
   OnCreate = FormCreate
   OnKeyDown = FormKeyDown
   OnShow = FormShow
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 20
 end

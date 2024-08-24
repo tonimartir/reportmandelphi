@@ -154,8 +154,6 @@ type
     ToolButton14: TToolButton;
     ToolButton15: TToolButton;
     ToolButton16: TToolButton;
-    PPBar: TPanel;
-    PBar: TProgressBar;
     MEntireMenu: TPopupMenu;
     MEntire1: TMenuItem;
     MEntire2: TMenuItem;
@@ -179,6 +177,8 @@ type
     ESearch: TRpMaskEdit;
     ImageCollection1: TImageCollection;
     VirtualImageList1: TVirtualImageList;
+    PPBar: TPanel;
+    PBar: TProgressBar;
     procedure AFirstExecute(Sender: TObject);
     procedure ANextExecute(Sender: TObject);
     procedure APreviousExecute(Sender: TObject);

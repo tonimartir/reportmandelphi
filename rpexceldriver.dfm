@@ -3,54 +3,73 @@ object FRpExcelProgress: TFRpExcelProgress
   Top = 200
   Width = 731
   Height = 292
-  HorzScrollBar.Range = 446
-  VertScrollBar.Range = 107
+  HorzScrollBar.Range = 558
+  VertScrollBar.Range = 134
   ActiveControl = BCancel
   BorderStyle = bsDialog
   Caption = 'Print progress'
   Color = clBtnFace
   ParentFont = True
-  OldCreateOrder = True
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
   OnShow = FormShow
   PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 20
   object LProcessing: TLabel
-    Left = 8
-    Top = 39
-    Width = 51
-    Height = 13
+    Left = 10
+    Top = 49
+    Width = 88
+    Height = 25
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Caption = 'Processing'
   end
   object LRecordCount: TLabel
-    Left = 75
-    Top = 39
-    Width = 300
-    Height = 21
+    Left = 94
+    Top = 49
+    Width = 375
+    Height = 26
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     AutoSize = False
   end
   object LTitle: TLabel
-    Left = 8
-    Top = 4
-    Width = 24
-    Height = 13
+    Left = 10
+    Top = 5
+    Width = 43
+    Height = 25
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Caption = 'Tittle'
     Visible = False
   end
   object LTittle: TLabel
-    Left = 75
-    Top = 4
-    Width = 367
-    Height = 41
+    Left = 94
+    Top = 5
+    Width = 459
+    Height = 51
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     AutoSize = False
   end
   object BCancel: TButton
-    Left = 142
-    Top = 122
-    Width = 96
-    Height = 24
+    Left = 178
+    Top = 153
+    Width = 120
+    Height = 30
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
@@ -58,10 +77,14 @@ object FRpExcelProgress: TFRpExcelProgress
     OnClick = BCancelClick
   end
   object BOK: TButton
-    Left = 7
-    Top = 122
-    Width = 76
-    Height = 21
+    Left = 9
+    Top = 153
+    Width = 95
+    Height = 26
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Caption = 'OK'
     Default = True
     TabOrder = 1
@@ -69,54 +92,82 @@ object FRpExcelProgress: TFRpExcelProgress
     OnClick = BOKClick
   end
   object GPrintRange: TGroupBox
-    Left = 4
-    Top = 4
-    Width = 253
-    Height = 111
+    Left = 5
+    Top = 5
+    Width = 316
+    Height = 139
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Caption = 'Print Range'
     TabOrder = 2
     Visible = False
     object LTo: TLabel
-      Left = 134
-      Top = 84
-      Width = 12
-      Height = 13
+      Left = 168
+      Top = 105
+      Width = 20
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'To'
     end
     object LFrom: TLabel
-      Left = 14
-      Top = 82
-      Width = 24
-      Height = 13
+      Left = 18
+      Top = 103
+      Width = 42
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'From'
     end
     object EFrom: TEdit
-      Left = 55
-      Top = 78
-      Width = 52
-      Height = 21
+      Left = 69
+      Top = 98
+      Width = 65
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       TabOrder = 0
     end
     object ETo: TEdit
-      Left = 178
-      Top = 80
-      Width = 71
-      Height = 21
+      Left = 223
+      Top = 100
+      Width = 88
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       TabOrder = 1
     end
     object RadioAll: TRadioButton
-      Left = 12
-      Top = 20
-      Width = 206
-      Height = 24
+      Left = 15
+      Top = 25
+      Width = 258
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'All pages'
       TabOrder = 2
     end
     object RadioRange: TRadioButton
-      Left = 12
-      Top = 47
-      Width = 210
-      Height = 25
+      Left = 15
+      Top = 59
+      Width = 263
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Range'
       TabOrder = 3
     end
