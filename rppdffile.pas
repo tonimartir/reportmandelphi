@@ -14,7 +14,7 @@
 {       Converted to CLX (not Visual CLX)               }
 {       and added lot functionality                     }
 {       and bug fixes                                   }
-{       Changed names to borland coding style           }
+{       Changed names to borland cFoding style           }
 {       Added Canvas object                             }
 {                                                       }
 {       Added:                                          }
@@ -135,6 +135,7 @@ type
    PenWidth:integer;
    BrushColor:integer;
    BrushStyle:integer;
+   PDFConformance: TPDFConformanceType;
    procedure GetStdLineSpacing(var linespacing,leading:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToTextX(Value:integer):string;
@@ -545,6 +546,7 @@ begin
  FreePageInfos;
 
  FCanvas.FImageIndexes.Clear;
+ FCanvas.PDFConformance:=PDFConformance;
  aobj:=TRpPageInfo.Create;
  aobj.APageWidth:=FPageWidth;
  aobj.APageHeight:=FPageHeight;
@@ -858,7 +860,11 @@ begin
  SWriteLine(FTempStream,'<< /Type /Pages');
  SWriteLine(FTempStream,'/Kids [');
 
- PageObjNum:=2;
+ if (FPDFConformance = PDF_1_4) then
+  PageObjNum:=2
+ else
+  PageObjNum:=3;
+
  for i:= 1 to FPage do
  begin
   SWriteLine(FTempStream,IntToStr(FObjectCount+i+1+FImageCount)+' 0 R');
@@ -3209,8 +3215,11 @@ var
  index:integer;
 begin
  Result:=nil;
- if Not (Font.Name in [poLinked,poEmbedded]) then
-  exit;
+ if (PDFConformance = PDF_1_4) then
+ begin
+   if Not (Font.Name in [poLinked,poEmbedded]) then
+    exit;
+ end;
  if Not Assigned(InfoProvider) then
   exit;
  searchname:=Font.fontname+IntToStr(Font.Style);
@@ -3224,9 +3233,24 @@ begin
   FFontTTData.AddObject(searchname,adata);
   InfoProvider.FillFontData(Font,adata);
   if adata.fontdata.size>0 then
-   adata.embedded:=Font.Name=poEmbedded;
-  if (Font.Name in [poEmbedded,poLinked]) then
-   adata.isunicode:=true;
+  begin
+    // In PDF_A_3 all fonts must be embedded
+    if (PDFConformance = PDF_A_3) then
+    begin
+      adata.embedded := true;
+      Font.Name:=poEmbedded;
+    end
+    else
+      adata.embedded:=Font.Name=poEmbedded;
+    adata.IsUnicode:=true;
+  end
+  else
+  begin
+    if (PDFConformance = PDF_A_3) then
+     raise Exception.Create('Font data empty, font can not be embeded');
+    if (Font.Name in [poEmbedded,poLinked]) then
+     adata.isunicode:=true;
+  end;
   Result:=adata;
  end
  else
@@ -3260,7 +3284,8 @@ begin
  for i:=0 to Canvas.FFontTTData.Count-1 do
  begin
   adata:=TRpTTFontData(Canvas.FFontTTData.Objects[i]);
-  if adata.embedded then
+
+  if (adata.embedded) then
   begin
    // Writes font resource data
    FObjectCount:=FObjectCount+1;
@@ -3580,10 +3605,17 @@ end;
 function TRpPDFCanvas.GetTTFontData:TRpTTFontData;
 begin
  Result:=nil;
- if Not (Font.Name in [poLinked,poEmbedded]) then
-  exit;
+ if (PDFConformance = PDF_1_4) then
+ begin
+   if Not (Font.Name in [poLinked,poEmbedded]) then
+    exit;
+ end;
  if Not Assigned(InfoProvider) then
+ begin
+  if (PDFConformance = PDF_A_3) then
+    raise Exception.Create('No info provider for fonts, fonts must be embedded in A_3 Conformance');  
   exit;
+ end;
  Result:=UpdateFonts;
 end;
 
