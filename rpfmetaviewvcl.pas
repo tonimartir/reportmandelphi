@@ -361,6 +361,8 @@ begin
  SaveDialog1.Filter:=SRpRepMetafile+'|*.rpmf|'+
    SRpPDFFile+'|*.pdf|'+
    SRpPDFFileUn+'|*.pdf|'+
+   SRpPDFFile+' A/3|*.pdf|'+
+   SRpPDFFileUn+'A/3|*.pdf|'+
    SRpExcelFile+'|*.xls|'+
    SRpExcelFileNoMulti+'|*.xls|'+
    SRpPlainFile+'|*.txt|'+
@@ -583,6 +585,8 @@ var
  abitmap:TBitmap;
  mono:Boolean;
  horzres,vertres:Integer;
+ compressed: boolean;
+ pdfA3: boolean;
 begin
  cancelled:=false;
  // Saves the metafile
@@ -596,19 +600,18 @@ begin
      begin
       Metafile.SaveToFile(SaveDialog1.Filename)
      end;
-    2,3:
+    2,3,4,5:
      begin
-      if SaveDialog1.FilterIndex=2 then
-       SaveMetafileToPDF(metafile,SaveDialog1.filename,true)
-      else
-       SaveMetafileToPDF(metafile,SaveDialog1.filename,false);
+      compressed := (SaveDialog1.FilterIndex=2) or (SaveDialog1.FilterIndex=4);
+      pdfA3 := (SaveDialog1.FilterIndex=4) or (SaveDialog1.FilterIndex=5);
+      SaveMetafileToPDF(metafile,SaveDialog1.filename,compressed, pdfA3)
      end;
-    4,5:
+    6,7:
      begin
       ExportMetafileToExcel(Metafile,SaveDialog1.FileName,
-       true,false,true,1,9999,SaveDialog1.FilterIndex=5);
+       true,false,true,1,9999,SaveDialog1.FilterIndex=7);
      end;
-    7:
+    9:
      begin
       horzres:=100;
       vertres:=100;
@@ -624,32 +627,32 @@ begin
        end;
       end;
      end;
-     8:
+    10:
       begin
        ExportMetafileToHtml(Metafile,Caption,SaveDialog1.FileName,
         true,true,1,9999);
       end;
-     9:
+     11:
       begin
        ExportMetafileToHtmlSingle(Metafile,Caption,SaveDialog1.FileName);
       end;
-     10:
+     12:
       begin
        ExportMetafileToSVG(Metafile,Caption,SaveDialog1.FileName,
         true,true,1,9999);
       end;
-     11:
+     13:
       begin
        ExportMetafileToCSV(metafile,SaveDialog1.Filename,true,true,
         1,9999,',');
       end;
-     12:
+     14:
       begin
        ExportMetafileToTextPro(metafile,SaveDialog1.Filename,true,true,
         1,9999);
       end;
 {$IFNDEF DOTNETD}
-     13:
+     15:
       begin
        MetafileToExe(metafile,SaveDialog1.Filename);
       end;
@@ -1007,7 +1010,7 @@ var
 begin
  afilename:=RpTempFileName;
 
- SaveMetafileToPDF(Metafile,afilename,true);
+ SaveMetafileToPDF(Metafile,afilename,true, true);
  try
   rptypes.SendMail('',AnsiString(ExtractFileName(afilename)),'',AnsiString(afilename),AnsiString(ExtractFilePath(ChangeFileExt(afilename,'.pdf'))));
  finally

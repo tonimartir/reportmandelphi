@@ -320,6 +320,8 @@ begin
   SaveDialog1.Filter:=SRpRepMetafile+'|*.rpmf|'+
    SRpPDFFile+'|*.pdf|'+
    SRpPDFFileUn+'|*.pdf|'+
+   SRpPDFFile+' A/3|*.pdf|'+
+   SRpPDFFileUn+' A/3|*.pdf|'+
    SRpExcelFile+'|*.xlsx|'+
    SRpExcelFileNoMulti+'|*.xlsx|'+
    SRpPlainFile+'|*.txt|'+
@@ -512,6 +514,8 @@ var
  oldpagesize:TRpPageSize;
  oldheight:integer;
  oldwidth:integer;
+ compressed: boolean;
+ pdfA3: boolean;
 begin
  areport:=nil;
  if not Assigned(PreviewControl) then
@@ -527,8 +531,10 @@ begin
       ALastExecute(Self);
       PreviewControl.Metafile.SaveToFile(SaveDialog1.Filename)
      end;
-     2,3:
+     2,3,4,5:
       begin
+        compressed:=(SaveDialog1.FilterIndex=2) or (SaveDialog1.FilterIndex=4);
+        pdfA3:=(SaveDialog1.FilterIndex=4) or (SaveDialog1.FilterIndex=5);
         recalcreport:=false;
         if (previewcontrol is TRpPreviewControl) then
         begin
@@ -543,17 +549,17 @@ begin
           areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
           TRpPreviewControl(previewcontrol).Report:=nil;
           previewcontrol.Parent:=nil;
-          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false);
+          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,compressed,false, pdfA3);
           TRpPreviewControl(previewcontrol).Report:=areport;
           AppIdle(Self,adone);
         end
         else
         begin
           ALastExecute(Self);
-          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,SaveDialog1.FilterIndex=2);
+          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,compressed, pdfA3);
         end;
       end;
-     4,5:
+     6,7:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -598,7 +604,7 @@ begin
           TRpPreviewControl(previewcontrol).Report:=areport;
          end;
          ExportMetafileToExcel(meta,SaveDialog1.FileName,
-          true,false,true,1,9999,SaveDialog1.FilterIndex=5);
+          true,false,true,1,9999,SaveDialog1.FilterIndex=7);
          TRpPreviewControl(previewcontrol).Report:=areport;
          AppIdle(Self,adone);
        end
@@ -606,11 +612,11 @@ begin
        begin
         ALastExecute(Self);
         ExportMetafileToExcel(PreviewControl.Metafile,SaveDialog1.FileName,
-         true,false,true,1,9999,SaveDialog1.FilterIndex=5);
+         true,false,true,1,9999,SaveDialog1.FilterIndex=7);
         AppIdle(Self,adone);
         end;
       end;
-     7:
+     9:
       begin
        horzres:=100;
        vertres:=100;
@@ -627,7 +633,7 @@ begin
         end;
        end;
       end;
-     8:
+     10:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -686,7 +692,7 @@ begin
 //        true,true,1,9999);
 //       AppIdle(Self,adone);
       end;
-     9:
+     11:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -742,34 +748,34 @@ begin
         TRpPreviewControl(previewcontrol).Report:=areport;
        AppIdle(Self,adone);
       end;
-     10:
+     12:
       begin
        ALastExecute(Self);
        ExportMetafileToSVG(PreviewControl.Metafile,Caption,SaveDialog1.FileName,
         true,true,1,9999);
        AppIdle(Self,adone);
       end;
-     11:
+     13:
       begin
        ALastExecute(Self);
        ExportMetafileToCSV(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999,',');
        AppIdle(Self,adone);
       end;
-     12:
+     14:
       begin
        ALastExecute(Self);
        ExportMetafileToTextPro(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999);
        AppIdle(Self,adone);
       end;
-     13:
+     15:
      begin
       ALastExecute(Self);
       PreviewControl.Metafile.SaveToFile(SaveDialog1.Filename,false);
      end;
 {$IFNDEF DOTNETD}
-     14:
+     16:
       begin
        ALastExecute(Self);
        MetafileToExe(PreviewControl.metafile,SaveDialog1.Filename);
@@ -994,7 +1000,7 @@ begin
  if Length(afilename)<1 then
   afilename:=RpTempFileName;
 
- SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true);
+ SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true, true);
  try
   if Length(subject)<1 then
    subject:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));
@@ -1039,7 +1045,7 @@ begin
  end;
  filenameTitle:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));
 
- SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true);
+ SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true, true);
  try
   if Length(subject)<1 then
    subject:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));

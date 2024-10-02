@@ -50,6 +50,8 @@ type
    FOrientation:TRpOrientation;
    FPageWidth,FPageHeight:integer;
    PageQt:Integer;
+   FPDFConformance: TPDFConformanceType;
+   procedure SetPDFConformance(newValue: TPDFConformanceType);
   public
    filename:string;
    Compressed:boolean;
@@ -80,25 +82,26 @@ type
    function SupportsCollation:boolean;override;
    property PDFFile:TRpPDFFile read FPDFFile;
    function GetFontDriver:TRpPrintDriver;override;
+   property PDFConformance:TPDFConformanceType read FPDFConformance write SetPDFConformance default PDF_1_4;
   end;
 
 
 procedure SaveMetafileToPDF(metafile:TRpMetafileReport;
- filename:string;compressed:boolean);
+ filename:string;compressed, pdfVersionA3:boolean);
 procedure SaveMetafileRangeToPDF(metafile:TRpMetafileReport;
  allpages:boolean;frompage,topage,copies:integer;filename:string;
-  compressed:boolean);
+  compressed,pdfVersionA3:boolean);
 
  procedure SaveMetafileToPDFStream(metafile:TRpMetafileReport;
- Stream:TStream;compressed:boolean);
+ Stream:TStream;compressed,pdfVersionA3:boolean);
 {$IFNDEF FORWEBAX}
 function PrintReportPDF(report:TRpReport;Caption:string;progress:boolean;
      allpages:boolean;frompage,topage,copies:integer;
      filename:string;compressed:boolean;
-      collate:boolean):Boolean;
+      collate,pdfVersionA3:boolean):Boolean;
 function PrintReportPDFStream(report:TRpReport;Caption:string;progress:boolean;
      allpages:boolean;frompage,topage,copies:integer;
-     Stream:TStream;compressed:boolean;collate:boolean):Boolean;
+     Stream:TStream;compressed:boolean;collate,pdfVersionA3:boolean):Boolean;
 function PrintReportMetafileStream(report:TRpReport;
  Caption:string;progress:boolean;allpages:boolean;frompage,topage,copies:integer;
  Stream:TStream;compressed:boolean;collate:boolean):Boolean;
@@ -130,7 +133,15 @@ begin
  FPageWidth:= 11904;
  FPageHeight:= 16836;
  FPDFFile:=TRpPDFFile.Create(nil);
+ FPDFConformance:=PDF_1_4;
 end;
+
+procedure TRpPDFDriver.SetPDFConformance(newValue: TPDFConformanceType);
+begin
+  FPDFConformance:=newValue;
+  PDFFile.PDFConformance:=newValue;
+end;
+
 
 destructor TRpPDFDriver.Destroy;
 begin
@@ -167,6 +178,7 @@ begin
   FPDFFile.DestStream:=DestStream;
  end;
  FPDFFile.Compressed:=Compressed;
+ FPDFFile.PDFConformance:=FPDFConformance;
  FPDFFile.PageWidth:=report.CustomX;
  FPDFFile.PageHeight:=report.CustomY;
  FPageWidth:=FPDFFile.PageWidth;
@@ -516,7 +528,7 @@ end;
 
 procedure SaveMetafileRangeToPDF(metafile:TRpMetafileReport;
  allpages:boolean;frompage,topage,copies:integer;filename:string;
- compressed:boolean);
+ compressed, pdfVersionA3:boolean);
 var
  adriver:TRpPDFDriver;
  i:integer;
@@ -542,6 +554,8 @@ begin
  try
   adriver.filename:=filename;
   adriver.compressed:=compressed;
+  if (PDFVersionA3) then
+    adriver.PDFConformance:=PDF_A_3;
   adriver.NewDocument(metafile,1,false);
   try
    for i:=frompage to topage do
@@ -570,13 +584,13 @@ end;
 
 
 procedure SaveMetafileToPDF(metafile:TRpMetafileReport;
- filename:string;compressed:boolean);
+ filename:string;compressed,pdfVersionA3: boolean);
 begin
- SaveMetafileRangeToPDF(metafile,false,1,MAX_PAGECOUNT,1,filename,compressed);
+ SaveMetafileRangeToPDF(metafile,false,1,MAX_PAGECOUNT,1,filename,compressed, pdfVersionA3);
 end;
 
 procedure SaveMetafileToPDFStream(metafile:TRpMetafileReport;
- Stream:TStream;compressed:boolean);
+ Stream:TStream;compressed, pdfVersionA3:boolean);
 var
  adriver:TRpPDFDriver;
  i:integer;
@@ -584,6 +598,10 @@ begin
  adriver:=TRpPDFDriver.Create;
  try
  adriver.compressed:=compressed;
+ if (pdfVersionA3) then
+ begin
+  adriver.PDFConformance := PDF_A_3;
+ end;
  adriver.NewDocument(metafile,1,false);
  try
   metafile.RequestPage(MAX_PAGECOUNT);
@@ -611,7 +629,7 @@ end;
 function PrintReportPDFStream(report:TRpReport;Caption:string;progress:boolean;
      allpages:boolean;frompage,topage,copies:integer;
      Stream:TStream;compressed:boolean;
-     collate:boolean):Boolean;
+     collate,pdfVersionA3:boolean):Boolean;
 var
  pdfdriver:TRpPDFDriver;
  oldprogres:TRpProgressEvent;
@@ -619,6 +637,10 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=compressed;
+ if (pdfVersionA3) then
+ begin
+  pdfdriver.PDFConformance := PDF_A_3;
+ end;
  pdfdriver.DestStream:=Stream;
  // If report progress must print progress
  oldprogres:=report.OnProgress;
@@ -742,7 +764,7 @@ end;
 function PrintReportPDF(report:TRpReport;Caption:string;progress:boolean;
      allpages:boolean;frompage,topage,copies:integer;
      filename:string;compressed:boolean;
-     collate:boolean):Boolean;
+     collate,pdfVersionA3:boolean):Boolean;
 var
  pdfdriver:TRpPDFDriver;
  oldprogres:TRpProgressEvent;
@@ -753,6 +775,10 @@ begin
  try
  pdfdriver.filename:=filename;
  pdfdriver.compressed:=compressed;
+  if (pdfVersionA3) then
+ begin
+  pdfdriver.PDFConformance := PDF_A_3;
+ end;
  // If report progress must print progress
  oldprogres:=report.OnProgress;
  try
