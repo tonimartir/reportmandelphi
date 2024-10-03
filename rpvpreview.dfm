@@ -3,7 +3,7 @@ object FRpVPreview: TFRpVPreview
   Top = 86
   Width = 967
   Height = 600
-  VertScrollBar.Range = 33
+  VertScrollBar.Range = 26
   ActiveControl = EPageNum
   Caption = 'Report Print Preview'
   Color = clBtnFace
@@ -16,19 +16,15 @@ object FRpVPreview: TFRpVPreview
   OnKeyDown = FormKeyDown
   OnMouseWheelDown = FormMouseWheelDown
   OnMouseWheelUp = FormMouseWheelUp
-  PixelsPerInch = 120
   TextHeight = 20
   object BToolBar: TToolBar
     Left = 0
     Top = 0
     Width = 949
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Height = 27
     AutoSize = True
-    ButtonHeight = 32
-    ButtonWidth = 33
+    ButtonHeight = 27
+    ButtonWidth = 28
     Caption = 'BToolBar'
     Color = clBtnFace
     Images = VirtualImageList1
@@ -37,33 +33,21 @@ object FRpVPreview: TFRpVPreview
     object ToolButton1: TToolButton
       Left = 0
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AFirst
     end
     object ToolButton2: TToolButton
-      Left = 33
+      Left = 28
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = APrevious
     end
     object EPageNum: TRpMaskEdit
-      Left = 66
+      Left = 56
       Top = 0
-      Width = 51
-      Height = 32
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 41
+      Height = 27
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
-      Font.Height = -15
+      Font.Height = -12
       Font.Name = 'Segoe UI'
       Font.Style = []
       ParentFont = False
@@ -74,62 +58,38 @@ object FRpVPreview: TFRpVPreview
       DisplayMask = '###,######0'
     end
     object ToolButton3: TToolButton
-      Left = 117
+      Left = 97
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = ANext
     end
     object ToolButton4: TToolButton
-      Left = 150
+      Left = 125
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = ALast
     end
     object ToolButton5: TToolButton
-      Left = 183
+      Left = 153
       Top = 0
-      Width = 8
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 7
       Caption = 'ToolButton5'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object ToolButton6: TToolButton
-      Left = 191
+      Left = 160
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = APrint
     end
     object ToolButton7: TToolButton
-      Left = 224
+      Left = 188
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = ASave
     end
     object ToolButton8: TToolButton
-      Left = 257
+      Left = 216
       Top = 0
       Hint = 'Sends the reports to a e-mail destination'
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Caption = 'Mail to'
       DropdownMenu = PopupMail
       ImageIndex = 13
@@ -138,120 +98,76 @@ object FRpVPreview: TFRpVPreview
       OnClick = ToolButton8Click
     end
     object ToolButton16: TToolButton
-      Left = 309
+      Left = 263
       Top = 0
-      Width = 8
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 7
       Caption = 'ToolButton16'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object ToolButton10: TToolButton
-      Left = 317
+      Left = 270
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = APageSetup
     end
     object ToolButton9: TToolButton
-      Left = 350
+      Left = 298
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AParams
     end
     object ToolButton18: TToolButton
-      Left = 383
+      Left = 326
       Top = 0
-      Width = 8
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 7
       Caption = 'ToolButton18'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object ToolButton11: TToolButton
-      Left = 391
+      Left = 333
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AScale100
     end
     object ToolButton12: TToolButton
-      Left = 424
+      Left = 361
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AScaleWide
     end
     object ToolButton13: TToolButton
-      Left = 457
+      Left = 389
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AScaleFull
       PopupMenu = MEntireMenu
     end
     object ToolButton14: TToolButton
-      Left = 490
+      Left = 417
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AScaleLess
     end
     object ToolButton15: TToolButton
-      Left = 523
+      Left = 445
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AScaleMore
     end
     object ToolButton19: TToolButton
-      Left = 556
+      Left = 473
       Top = 0
-      Width = 8
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 6
       Caption = 'ToolButton19'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object ESearch: TRpMaskEdit
-      Left = 564
+      Left = 479
       Top = 0
-      Width = 94
-      Height = 32
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 75
+      Height = 27
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
-      Font.Height = -15
+      Font.Height = -12
       Font.Name = 'Segoe UI'
       Font.Style = []
       ParentFont = False
@@ -262,45 +178,29 @@ object FRpVPreview: TFRpVPreview
       DisplayMask = '###,######0'
     end
     object ToolButton20: TToolButton
-      Left = 658
+      Left = 554
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AFind
     end
     object ToolButton17: TToolButton
-      Left = 691
+      Left = 582
       Top = 0
-      Width = 9
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 7
       Caption = 'ToolButton17'
       ImageIndex = 7
       ImageName = 'Item8'
       Style = tbsSeparator
     end
     object BExit: TToolButton
-      Left = 700
+      Left = 589
       Top = 0
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Action = AExit
     end
     object BCancel: TButton
-      Left = 733
+      Left = 617
       Top = 0
-      Width = 140
-      Height = 32
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 112
+      Height = 27
       Action = ACancel
       TabOrder = 0
       Visible = False
@@ -1855,8 +1755,8 @@ object FRpVPreview: TFRpVPreview
         Name = 'mailOutlook48'
       end>
     ImageCollection = ImageCollection1
-    Width = 26
-    Height = 26
+    Width = 21
+    Height = 21
     Left = 456
     Top = 264
   end

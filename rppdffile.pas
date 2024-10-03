@@ -14,7 +14,7 @@
 {       Converted to CLX (not Visual CLX)               }
 {       and added lot functionality                     }
 {       and bug fixes                                   }
-{       Changed names to borland coding style           }
+{       Changed names to borland cFoding style           }
 {       Added Canvas object                             }
 {                                                       }
 {       Added:                                          }
@@ -82,7 +82,8 @@ uses Classes,Sysutils,rpinfoprovid,
 
 
 const
- PDF_HEADER:string='%PDF-1.4';
+ PDF_HEADER_1_4:string='%PDF-1.4';
+ PDF_HEADER_A3:string='%PDF-1.7';
  CONS_PDFRES=POINTS_PER_INCHESS;
  CONS_UNDERLINEWIDTH=0.1;
  CONS_SRIKEOUTWIDTH=0.05;
@@ -99,6 +100,8 @@ type
   public
    APageWidth,APageHeight:integer
  end;
+
+ TPDFConformanceType= ( PDF_1_4, PDF_A_3 );
 
  TRpPDFCanvas=class(TObject)
   private
@@ -132,6 +135,7 @@ type
    PenWidth:integer;
    BrushColor:integer;
    BrushStyle:integer;
+   PDFConformance: TPDFConformanceType;
    procedure GetStdLineSpacing(var linespacing,leading:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToTextX(Value:integer):string;
@@ -193,6 +197,9 @@ type
    FImageCount:integer;
    FResourceNum,FCatalogNum:integer;
    FCurrentSetPageObject:integer;
+   FPDFConformance:TPDFConformanceType;
+   FXMPMetadataObject: integer;
+   FCreationDate: string;
 {$IFDEF USEZLIB}
    FCompressionStream:TCompressionStream;
 {$ENDIF}
@@ -219,6 +226,7 @@ type
    procedure ClearBitmaps;
    procedure WriteBitmap(index:Integer);
    procedure FreePageInfos;
+   procedure SetXMPMetadata;
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -247,6 +255,7 @@ type
    property PageWidth:integer read FPageWidth write FPageWidth;
    property PageHeight:integer read FPageHeight write FPageHeight;
    property Resolution:integer read FResolution write SetResolution default TWIPS_PER_INCHESS;
+   property PDFConformance: TPDFConformanceType read FPDFConformance write FPDFConformance default PDF_1_4;
   end;
 
 
@@ -494,6 +503,10 @@ begin
  FResolution:=TWIPS_PER_INCHESS;
  FCanvas.FResolution:=TWIPS_PER_INCHESS;
  FBitmapStreams:=TList.Create;
+ FPdfConformance:=PDF_1_4;
+ FDocProducer:='Reportman';
+ FDocAuthor:='Unassigned';
+ FDocTitle:='Unasssigned';
 end;
 
 destructor TRpPDFFile.Destroy;
@@ -533,6 +546,7 @@ begin
  FreePageInfos;
 
  FCanvas.FImageIndexes.Clear;
+ FCanvas.PDFConformance:=PDFConformance;
  aobj:=TRpPageInfo.Create;
  aobj.APageWidth:=FPageWidth;
  aobj.APageHeight:=FPageHeight;
@@ -552,8 +566,21 @@ begin
  FImageCount:=0;
  FPage:=1;
  // Writes the header
- SWriteLine(FMainPDF,PDF_HEADER);
- AddToOffset(Length(PDF_HEADER));
+ if (FPDFConformance = PDF_1_4) then
+ begin
+   SWriteLine(FMainPDF,PDF_HEADER_1_4);
+   AddToOffset(Length(PDF_HEADER_1_4));
+ end
+ else
+ begin
+   SWriteLine(FMainPDF,PDF_HEADER_A3);
+   // AddToOffset(Length(PDF_HEADER_A3));
+   //SWriteLine(FMainPDF,'%δόφί');
+   FMainPDF.Write([37,228,252,246,223,13,10],7);
+   AddToOffset(7+Length(PDF_HEADER_A3));
+   //AddToOffset(Length('%δόφί'));
+ end;
+ FCreationDate:=FormatDateTime('YYYYMMDDHHmmSS',now);
  // Writes Doc info
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
@@ -561,17 +588,98 @@ begin
  SWriteLine(FTempStream,'<<');
  SWriteLine(FTempStream,'/Producer ('+FDocProducer+')');
  SWriteLine(FTempStream,'/Author ('+FDocAuthor+')');
- SWriteLine(FTempStream,'/CreationDate (D:'+FormatDateTime('YYYYMMDDHHmmSS',now)+')');
- SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
- SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
+ SWriteLine(FTempStream,'/CreationDate (D:'+FCreationDate+')');
+ if (FPDFConformance = PDF_1_4) then
+   SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
+ if (Length(FDocKeywords)>0) then
+  SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
  SWriteLine(FTempStream,'/Subject ('+FDocSubject+')');
  SWriteLine(FTempStream,'/Title ('+FDocTitle+')');
  SWriteLine(FTempStream,'/ModDate ()');
+ if (FPDFConformance = PDF_A_3) then
+ begin
+  SWriteLine(FTempStream,'/GTS_PDFXVersion (PDF/A-3B)');
+ end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
+
+ if (FPDFConformance = PDF_A_3) then
+ begin
+  SetXMPMetadata;
+ end;
+
  StartStream;
+end;
+
+procedure TRpPDFFile.SetXMPMetadata;
+var
+ FXMPStream: TMemoryStream;
+begin
+ FXMPStream:=TMemoryStream.Create();
+ try
+  SWriteLine(FXMPStream, '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
+  SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">');
+  SWriteLine(FXMPStream, '  <rdf:Description rdf:about=""');
+  SWriteLine(FXMPStream, '    xmlns:xmp="http://ns.adobe.com/xap/1.0/"');
+  SWriteLine(FXMPStream, '    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"');
+  SWriteLine(FXMPStream, '    xmlns:dc="http://purl.org/dc/elements/1.1/"');
+  SWriteLine(FXMPStream, '    xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"');
+  SWriteLine(FXMPStream, '    xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">');
+  SWriteLine(FXMPStream, '    <dc:creator>');
+  SWriteLine(FXMPStream, '      <rdf:Seq>');
+  SWriteLine(FXMPStream, '        <rdf:li>' + FDocAuthor +'</rdf:li>');
+  SWriteLine(FXMPStream, '      </rdf:Seq>');
+  SWriteLine(FXMPStream, '    </dc:creator>');
+  SWriteLine(FXMPStream, '    <dc:title>');
+  SWriteLine(FXMPStream, '      <rdf:Alt>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocTitle+'</rdf:li>');
+  SWriteLine(FXMPStream, '      </rdf:Alt>');
+  SWriteLine(FXMPStream, '    </dc:title>');
+  if (Length(FDocKeywords)>0) then
+  begin
+   SWriteLine(FXMPStream, '    <dc:keywords>');
+   SWriteLine(FXMPStream, '      <rdf:Alt>');
+   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocKeywords+'</rdf:li>');
+   SWriteLine(FXMPStream, '      </rdf:Alt>');
+   SWriteLine(FXMPStream, '    </dc:keywords>');
+  end;
+  SWriteLine(FXMPStream, '    <dc:description>');
+  SWriteLine(FXMPStream, '      <rdf:Alt>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocSubject+'</rdf:li>');
+  SWriteLine(FXMPStream, '      </rdf:Alt>');
+  SWriteLine(FXMPStream, '    </dc:description>');
+  SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FCreationDate (* 2024-10-02T15:29:15+00:00 *)
+     +'</xmp:CreateDate>');
+  // SWriteLine(FXMPStream, '    <xmp:ModifyDate>2024-10-02T15:29:15+00:00</xmp:ModifyDate>');
+  //SWriteLine(FXMPStream, '    <xmpMM:DocumentID>uuid:12345678-1234-1234-1234-1234567890ab</xmpMM:DocumentID>');
+  //SWriteLine(FXMPStream, '    <xmpMM:InstanceID>uuid:12345678-1234-1234-1234-1234567890ac</xmpMM:InstanceID>');
+  SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
+  SWriteLine(FXMPStream, '    <pdfaid:conformance>B</pdfaid:conformance>');
+  // SWriteLine(FXMPStream, '    <xmp:CreatorTool>My PDF Creator Tool</xmp:CreatorTool>');
+  SWriteLine(FXMPStream, '  </rdf:Description>');
+  SWriteLine(FXMPStream, '</rdf:RDF>');
+  SWriteLine(FXMPStream, '<?xpacket end="w"?>');
+  FXMPStream.Seek(0,TSeekOrigin.soBeginning);
+
+  FObjectCount:=FObjectCount+1;
+  FXMPMetadataObject:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /Metadata');
+  SWriteLine(FTempStream,'   /Subtype /XML');
+  SWriteLine(FTempStream,'   /Length ' + IntToStr(FXMPStream.Size-1));
+  SWriteLine(FTempStream,'>>');
+  SWriteLine(FTempStream,'stream');
+  FXMPStream.SaveToStream(FTempStream);
+  SWriteLine(FTempStream,'endstream');
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.SaveToStream(FMainPDF);
+ finally
+  FXMPStream.Free;
+ end;
 end;
 
 procedure TRpPDFFile.StartStream;
@@ -618,7 +726,10 @@ begin
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
 
- TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
+ if (FPDFConformance = PDF_A_3) then
+  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-7
+ else
+  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
@@ -749,7 +860,11 @@ begin
  SWriteLine(FTempStream,'<< /Type /Pages');
  SWriteLine(FTempStream,'/Kids [');
 
- PageObjNum:=2;
+ if (FPDFConformance = PDF_1_4) then
+  PageObjNum:=2
+ else
+  PageObjNum:=3;
+
  for i:= 1 to FPage do
  begin
   SWriteLine(FTempStream,IntToStr(FObjectCount+i+1+FImageCount)+' 0 R');
@@ -774,11 +889,17 @@ begin
  FResourceNum:=FObjectCount;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
- SWriteLine(FTempStream,'<< /ProcSet [ /PDF /Text /ImageC]');
- SWriteLine(FTempStream,'/XObject << ');
- for i:=1 to FImageCount do
-  SWriteLine(FTempStream,'/Im'+IntToStr(i)+' '+IntToStr(FObjectCount+i)+' 0 R');
- SWriteLine(FTempStream,'>>');
+ if (FPDFConformance = PDF_A_3) then
+  SWriteLine(FTempStream,'<< /ProcSet [/PDF]')
+ else
+  SWriteLine(FTempStream,'<< /ProcSet [ /PDF /Text /ImageC]');
+ if (FImageCount>0) then
+ begin
+  SWriteLine(FTempStream,'/XObject << ');
+  for i:=1 to FImageCount do
+   SWriteLine(FTempStream,'/Im'+IntToStr(i)+' '+IntToStr(FObjectCount+i)+' 0 R');
+  SWriteLine(FTempStream,'>>');
+ end;
  SWriteLine(FTempStream,'/Font << ');
 
  for i:=1 to FFontCount do
@@ -944,6 +1065,11 @@ begin
  SWriteLine(FTempStream,'<< /Type /Catalog');
  SWriteLine(FTempStream,'/Pages '+IntToStr(FParentNum)+' 0 R');
  SWriteLine(FTempStream,'/Outlines '+IntToStr(FOutlinesNum)+' 0 R');
+ if (FPDFConformance = PDF_A_3) then
+ begin
+  SWriteLine(FTempStream,'/Metadata '+IntToStr(FXMPMetadataObject)+' 0 R');
+ end;
+
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
@@ -964,6 +1090,8 @@ end;
 
 procedure TrpPDFFile.SetXref;
 var i:Integer;
+var guid: TGuid;
+var guidstring: string;
 begin
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
@@ -978,6 +1106,15 @@ begin
  SWriteLine(FTempStream,'<< /Size '+IntToStr(FObjectCount));
  SWriteLine(FTempStream,'/Root '+IntToStr(FCatalogNum)+' 0 R');
  SWriteLine(FTempStream,'/Info 1 0 R');
+ if (PDFConformance = PDF_A_3) then
+ begin
+  System.SysUtils.CreateGUID(guid);
+  guidString:=System.SysUtils.GUIDToString(guid);
+  guidString:=guidstring.Replace('-','');
+  guidString:=guidstring.Replace('{','');
+  guidString:=guidstring.Replace('}','');
+  SWriteLine(FTempStream,'/ID [<'+guidstring+'> <1234567890abcdef1234567890abcdef>]');
+ end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'startxref');
  SWriteLine(FTempStream,IntToStr(FMainPDF.Size));
@@ -3078,8 +3215,11 @@ var
  index:integer;
 begin
  Result:=nil;
- if Not (Font.Name in [poLinked,poEmbedded]) then
-  exit;
+ if (PDFConformance = PDF_1_4) then
+ begin
+   if Not (Font.Name in [poLinked,poEmbedded]) then
+    exit;
+ end;
  if Not Assigned(InfoProvider) then
   exit;
  searchname:=Font.fontname+IntToStr(Font.Style);
@@ -3093,9 +3233,24 @@ begin
   FFontTTData.AddObject(searchname,adata);
   InfoProvider.FillFontData(Font,adata);
   if adata.fontdata.size>0 then
-   adata.embedded:=Font.Name=poEmbedded;
-  if (Font.Name in [poEmbedded,poLinked]) then
-   adata.isunicode:=true;
+  begin
+    // In PDF_A_3 all fonts must be embedded
+    if (PDFConformance = PDF_A_3) then
+    begin
+      adata.embedded := true;
+      Font.Name:=poEmbedded;
+    end
+    else
+      adata.embedded:=Font.Name=poEmbedded;
+    adata.IsUnicode:=true;
+  end
+  else
+  begin
+    if (PDFConformance = PDF_A_3) then
+     raise Exception.Create('Font data empty, font can not be embeded');
+    if (Font.Name in [poEmbedded,poLinked]) then
+     adata.isunicode:=true;
+  end;
   Result:=adata;
  end
  else
@@ -3129,7 +3284,8 @@ begin
  for i:=0 to Canvas.FFontTTData.Count-1 do
  begin
   adata:=TRpTTFontData(Canvas.FFontTTData.Objects[i]);
-  if adata.embedded then
+
+  if (adata.embedded) then
   begin
    // Writes font resource data
    FObjectCount:=FObjectCount+1;
@@ -3449,10 +3605,17 @@ end;
 function TRpPDFCanvas.GetTTFontData:TRpTTFontData;
 begin
  Result:=nil;
- if Not (Font.Name in [poLinked,poEmbedded]) then
-  exit;
+ if (PDFConformance = PDF_1_4) then
+ begin
+   if Not (Font.Name in [poLinked,poEmbedded]) then
+    exit;
+ end;
  if Not Assigned(InfoProvider) then
+ begin
+  if (PDFConformance = PDF_A_3) then
+    raise Exception.Create('No info provider for fonts, fonts must be embedded in A_3 Conformance');  
   exit;
+ end;
  Result:=UpdateFonts;
 end;
 

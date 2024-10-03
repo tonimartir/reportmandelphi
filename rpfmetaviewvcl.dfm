@@ -1,46 +1,43 @@
 object FRpMetaVCL: TFRpMetaVCL
   Left = 0
   Top = 0
-  Width = 843
-  Height = 498
-  Margins.Left = 8
-  Margins.Top = 8
-  Margins.Right = 8
-  Margins.Bottom = 8
+  Width = 674
+  Height = 398
+  Margins.Left = 6
+  Margins.Top = 6
+  Margins.Right = 6
+  Margins.Bottom = 6
   Align = alClient
   ParentShowHint = False
   ShowHint = True
   TabOrder = 0
   OnMouseWheelDown = FrameMouseWheelDown
   OnMouseWheelUp = FrameMouseWheelUp
-  PixelsPerInch = 120
   object Splitter1: TSplitter
     Left = 0
-    Top = 32
-    Width = 18
-    Height = 433
-    Margins.Left = 8
-    Margins.Top = 8
-    Margins.Right = 8
-    Margins.Bottom = 8
+    Top = 23
+    Width = 14
+    Height = 349
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
     Beveled = True
-    ExplicitTop = 100
-    ExplicitHeight = 723
   end
   object BToolBar: TToolBar
     Left = 0
     Top = 0
-    Width = 843
-    Margins.Left = 8
-    Margins.Top = 8
-    Margins.Right = 8
-    Margins.Bottom = 8
+    Width = 674
+    Height = 23
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
     ButtonHeight = 32
     ButtonWidth = 33
     Caption = 'BToolBar'
     Images = VirtualImageList1
     TabOrder = 0
-    ExplicitWidth = 1503
     object ToolButton8: TToolButton
       Left = 0
       Top = 0
@@ -340,19 +337,17 @@ object FRpMetaVCL: TFRpMetaVCL
   end
   object BStatus: TStatusBar
     Left = 0
-    Top = 465
-    Width = 843
-    Height = 33
-    Margins.Left = 8
-    Margins.Top = 8
-    Margins.Right = 8
-    Margins.Bottom = 8
+    Top = 372
+    Width = 674
+    Height = 26
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
     Panels = <
       item
-        Width = 124
+        Width = 99
       end>
-    ExplicitTop = 552
-    ExplicitWidth = 1503
   end
   object ActionList1: TActionList
     Images = VirtualImageList1
@@ -2142,8 +2137,8 @@ object FRpMetaVCL: TFRpMetaVCL
         Name = 'Item17'
       end>
     ImageCollection = ImageCollection1
-    Width = 26
-    Height = 26
+    Width = 21
+    Height = 21
     Left = 552
     Top = 176
   end

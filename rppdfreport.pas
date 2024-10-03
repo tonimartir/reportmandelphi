@@ -36,6 +36,7 @@ type
    FFromPage,FToPAge:integer;
    FCopies:integer;
    FAsMetafile:Boolean;
+   FPDFConformanceA3: boolean;
   protected
    procedure InternalExecuteRemote(metafile:TRpMetafileReport);override;
   public
@@ -60,6 +61,7 @@ type
    property FromPage:integer read FFromPage write FFromPage default 1;
    property ToPage:integer read FToPage write FToPage default MAX_PAGECOUNT;
    property Copies:integer read FCopies write FCopies default 1;
+   property PDFConformanceA3: boolean read FPDFConformanceA3 write FPDFConformanceA3 default false;
   end;
 
 implementation
@@ -121,7 +123,7 @@ begin
    else
    begin
     Result:=PrintReportPDF(report,Title,Showprogress,false,ffrompage,
-     ftopage,fcopies,FPDFFilename,FCompressed,false);
+     ftopage,fcopies,FPDFFilename,FCompressed,false, PDFConformanceA3);
    end;
   end;
  end;
@@ -132,7 +134,7 @@ function TPDFReport.PrintRange(frompage:integer;topage:integer;
     copies:integer;collate:boolean):boolean;
 begin
  Result:=rppdfdriver.PrintReportPDF(Report,Title,ShowProgress,false,
-  frompage,topage,copies,fpdffilename,compressed,collate);
+  frompage,topage,copies,fpdffilename,compressed,collate, PDFConformanceA3);
 end;
 
 procedure TPDFReport.InternalExecuteRemote(metafile:TRpMetafileReport);
@@ -145,7 +147,7 @@ begin
  else
  begin
   SaveMetafileRangeToPDF(metafile,false,ffrompage,
-    ftopage,fcopies,FPDFFilename,FCompressed);
+    ftopage,fcopies,FPDFFilename,FCompressed, PDFConformanceA3);
  end;
 end;
 
