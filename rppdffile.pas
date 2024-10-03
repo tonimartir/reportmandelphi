@@ -183,6 +183,7 @@ type
    FMainPDF:TMemoryStream;
    FStreamValid:boolean;
    FTempStream:TMemoryStream;
+   FTempStream2:TMemoryStream;
    FsTempStream:TMemoryStream;
    FPage:integer;
    FPages:TStringList;
@@ -494,6 +495,7 @@ begin
  FCanvas:=TRpPDFCanvas.Create(Self);
  FMainPDF:=TMemoryStream.Create;
  FTempStream:=TMemoryStream.Create;
+ FTempStream2:=TMemoryStream.Create;
  FsTempStream:=TMemoryStream.Create;
  FObjectOffsets:=TStringList.Create;
  FFontList:=TStringList.Create;
@@ -516,6 +518,7 @@ begin
  FCanvas.free;
  FMainPDF.Free;
  FTempStream.Free;
+ FTempStream2.Free;
  FsTempStream.Free;
  FObjectOffsets.free;
  FFOntList.Free;
@@ -609,6 +612,25 @@ begin
  begin
   SetXMPMetadata;
  end;
+
+  // Implementar de esta forma en delphi y C#:
+ (*
+   % Definición de espacio de color ICC en PDF/A-3
+/ColorSpace << /CS1 [/ICCBased 8 0 R] >>
+8 0 obj
+<< /N 3 /Length 12345 >>
+stream
+   % Datos binarios del perfil ICC incrustado (sRGB, AdobeRGB, etc.)
+endstream
+endobj
+% Definición de OutputIntent para PDF/A-3
+<< /Type /OutputIntent
+   /S /GTS_PDFA1
+   /OutputConditionIdentifier (sRGB IEC61966-2.1)
+   /Info (sRGB Color Profile)
+   /DestOutputProfile 8 0 R   % Hace referencia al perfil ICC incrustado
+>>
+ *)
 
  StartStream;
 end;
@@ -3260,26 +3282,30 @@ end;
 procedure TRpPDFFile.SetFontType;
 var
  i:integer;
+ index2: Word;
  adata:TRpTTFontData;
  aunicodecount,index,acount:integer;
  currentindex,nextindex:integer;
  awidths:string;
  cmaphead,fromTo:AnsiString;
 begin
- CreateFont('Type1','Helvetica','WinAnsiEncoding');
- CreateFont('Type1','Helvetica-Bold','WinAnsiEncoding');
- CreateFont('Type1','Helvetica-Oblique','WinAnsiEncoding');
- CreateFont('Type1','Helvetica-BoldOblique','WinAnsiEncoding');
- CreateFont('Type1','Courier','WinAnsiEncoding');
- CreateFont('Type1','Courier-Bold','WinAnsiEncoding');
- CreateFont('Type1','Courier-Oblique','WinAnsiEncoding');
- CreateFont('Type1','Courier-BoldOblique','WinAnsiEncoding');
- CreateFont('Type1','Times-Roman','WinAnsiEncoding');
- CreateFont('Type1','Times-Bold','WinAnsiEncoding');
- CreateFont('Type1','Times-Italic','WinAnsiEncoding');
- CreateFont('Type1','Times-BoldItalic','WinAnsiEncoding');
- CreateFont('Type1','Symbol','WinAnsiEncoding');
- CreateFont('Type1','ZapfDingbats','WinAnsiEncoding');
+ if (FPDFConformance=PDF_1_4) then
+ begin
+   CreateFont('Type1','Helvetica','WinAnsiEncoding');
+   CreateFont('Type1','Helvetica-Bold','WinAnsiEncoding');
+   CreateFont('Type1','Helvetica-Oblique','WinAnsiEncoding');
+   CreateFont('Type1','Helvetica-BoldOblique','WinAnsiEncoding');
+   CreateFont('Type1','Courier','WinAnsiEncoding');
+   CreateFont('Type1','Courier-Bold','WinAnsiEncoding');
+   CreateFont('Type1','Courier-Oblique','WinAnsiEncoding');
+   CreateFont('Type1','Courier-BoldOblique','WinAnsiEncoding');
+   CreateFont('Type1','Times-Roman','WinAnsiEncoding');
+   CreateFont('Type1','Times-Bold','WinAnsiEncoding');
+   CreateFont('Type1','Times-Italic','WinAnsiEncoding');
+   CreateFont('Type1','Times-BoldItalic','WinAnsiEncoding');
+   CreateFont('Type1','Symbol','WinAnsiEncoding');
+   CreateFont('Type1','ZapfDingbats','WinAnsiEncoding');
+   end;
  // Writes font files
  for i:=0 to Canvas.FFontTTData.Count-1 do
  begin
@@ -3318,6 +3344,7 @@ begin
    else
 {$ENDIF}
     adata.FontData.SaveToStream(FTempStream);
+    SWriteLine(FTempStream,'');
    SWriteLine(FTempStream,'endstream');
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
@@ -3429,9 +3456,10 @@ begin
 
    FObjectCount:= FObjectCount + 1;
    adata.ToUnicodeIndex := FObjectCount;
+
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
-   SWriteLine(FTempStream,'<< /Length '+IntToStr(Length(cmaphead)));
+   SWriteLine(FTempStream,'<< /Length '+IntToStr(Length(cmaphead)-1));
 {$IFDEF USEZLIB}
    if FCompressed then
    begin
@@ -3459,6 +3487,51 @@ begin
    FTempStream.SaveToStream(FMainPDF);
   end;
  end;
+ if (FPDFConformance = PDF_A_3) then
+ begin
+   // CIDToGIDMap Stream
+  (* FObjectCount:= FObjectCount + 1;
+   adata.CIDToGIDMapIndex := FObjectCount;
+   FTempStream2.Clear;
+   index2:=0;
+   repeat
+    FTempStream2.Write(Word(adata.loadedglyphs[index2]),2);
+    inc(index2);
+   until index2>adata.lastloaded;
+
+
+   FTempStream.Clear;
+   SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+   SWriteLine(FTempStream,'<< /Length '+IntToStr(FTempStream2.Size));
+{$IFDEF USEZLIB}
+   if FCompressed then
+   begin
+    SWriteLine(FTempStream,'/Filter [/FlateDecode]');
+   end;
+{$ENDIF}
+   SWriteLine(FTempStream,'>>');
+   SWriteLine(FTempStream,'stream');
+   FTempStream2.Seek(0, soBeginning);
+{$IFDEF USEZLIB}
+   if FCompressed then
+   begin
+    FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
+    try
+     FTempStream2.SaveToStream(FCompressionStream);
+    finally
+     FCompressionStream.Free;
+    end;
+   end
+   else
+{$ENDIF}
+    FTempStream2.SaveToStream(FTempStream);
+   SWriteLine(FTempStream,'endstream');
+   SWriteLine(FTempStream,'endobj');
+   AddToOffset(FTempStream.Size);
+   FTempStream.SaveToStream(FMainPDF);
+   FTempStream2.Clear;      *)
+ end;
+
  // Creates the fonts of the font list
  for i:=0 to Canvas.FFontTTData.Count-1 do
  begin
@@ -3470,8 +3543,15 @@ begin
    adata.ObjectIndexParent:=FObjectCount;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
    SWriteLine(FTempStream,'<< /Type /Font');
-   SWriteLine(FTempStream,'/Subtype /Type0');
-   //SWriteLine(FTempStream,'/Subtype /TrueType');
+   if (PDFConformance = PDF_A_3) then
+   begin
+//    SWriteLine(FTempStream,'/Subtype /TrueType');
+    SWriteLine(FTempStream,'/Subtype /Type0');
+   end
+   else
+   begin
+     SWriteLine(FTempStream,'/Subtype /Type0');
+   end;
    SWriteLine(FTempStream,'/Name /F'+adata.ObjectName);
    SWriteLine(FTempStream,'/BaseFont /'+CONS_UNICODEPREDIX+adata.postcriptname);
    SWriteLine(FTempStream,'/Encoding /Identity-H');
@@ -3541,8 +3621,16 @@ begin
    SWriteLine(FTempStream,awidths);
    SWriteLine(FTempStream,']');*)
 
+   if (PDFConformance = PDF_A_3) then
+   begin
+    SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+    // SWriteLine(FTempStream,'/CDIToGDIMap ' + IntToStr(adata.CIDToGIDMapIndex)+' 0 R');
+   end
+   else
+   begin
+    SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+   end;
 
-   SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
 
    SWriteLine(FTempStream,'>>');
    SWriteLine(FTempStream,'endobj');
@@ -3583,7 +3671,15 @@ begin
    end;
    SWriteLine(FTempStream,'/FontDescriptor '+
     IntToStr(adata.DescriptorIndex)+' 0 R');
-   SWriteLine(FTempStream,'/Encoding /'+adata.Encoding);
+   if (PDFConformance = PDF_A_3) then
+   begin
+    SWriteLine(FTempStream,'/Encoding /Identity-H');
+    // SWriteLine(FTempStream,'/Encoding /'+adata.Encoding);
+   end
+   else
+   begin
+    SWriteLine(FTempStream,'/Encoding /'+adata.Encoding);
+   end;
    SWriteLine(FTempStream,'>>');
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
