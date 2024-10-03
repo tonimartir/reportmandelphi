@@ -6,3 +6,4 @@ reportmanres_FR RCDATA .\repman\reportmanres.FR
 reportmanres_IT RCDATA .\repman\reportmanres.IT
 reportmanres_PT RCDATA .\repman\reportmanres.PT
 reportmanres_LT RCDATA .\repman\reportmanres.LT
+srgb RCDATA .\sRgb.icm
