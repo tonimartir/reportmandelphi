@@ -3623,7 +3623,7 @@ begin
 
    if (PDFConformance = PDF_A_3) then
    begin
-    SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+    // SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
     // SWriteLine(FTempStream,'/CDIToGDIMap ' + IntToStr(adata.CIDToGIDMapIndex)+' 0 R');
    end
    else
