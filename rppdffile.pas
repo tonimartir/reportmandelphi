@@ -78,7 +78,7 @@ uses Classes,Sysutils,rpinfoprovid,
 {$IFDEF LINUX}
  rpinfoprovft,
 {$ENDIF}
- rpmdconsts,rptypes,rpmunits;
+ rpmdconsts,rptypes,rpmunits,dateutils;
 
 
 const
@@ -167,6 +167,13 @@ type
    property Font:TRpPDFFont read FFOnt;
   end;
 
+ TEmbeddedFile=class
+   public FileName: string;
+   public Stream: TMemoryStream;
+   public MimeType: string;
+   public ResourceNumber: integer;
+ end;
+
  TRpPDFFile=class(TComponent)
   private
    FPageInfos:TStringList;
@@ -204,11 +211,10 @@ type
    FColorSpaceObject: integer;
    FCreationDate: string;
    PageObjNum: integer;
-{$IFDEF USEZLIB}
-   FCompressionStream:TCompressionStream;
-{$ENDIF}
    FResolution:integer;
    FBitmapStreams:TList;
+   EmbeddedFiles: array of TEmbeddedFile;
+
    // Minimum page size in 72 dpi 18x18
    // Maximum page size in 72 dpi 14.400x14.400
    FPageWidth,FPageHeight:integer;
@@ -232,6 +238,11 @@ type
    procedure FreePageInfos;
    procedure SetXMPMetadata;
    procedure SetColorSpace;
+{$IFDEF USEZLIB}
+   function CompressStream(stream: TStream): TMemoryStream;
+{$ENDIF}
+   procedure WriteStream(stream, dest: TMemoryStream);
+   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -532,6 +543,18 @@ begin
  inherited Destroy;
 end;
 
+procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+var embededFile: TEmbeddedFile;
+begin
+ embededFile:=TEmbeddedFile.Create;
+ embededFile.FileName:=fileName;
+ embededFile.Stream:=stream;
+ embededFile.MimeType:=mimeType;
+ SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+ EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
+end
+
+
 procedure TRpPDFFile.SetResolution(Newres:integer);
 begin
  FResolution:=NewRes;
@@ -587,7 +610,7 @@ begin
    SWriteLine(FMainPDF,PDF_HEADER_1_4);
    AddToOffset(Length(PDF_HEADER_1_4));
  end;
- FCreationDate:=FormatDateTime('YYYYMMDDHHmmSS',now);
+ FCreationDate:=DateToISO8601(now);
  // Writes Doc info
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
@@ -622,6 +645,59 @@ begin
  StartStream;
 end;
 
+{$IFDEF USEZLIB}
+function TrpPDFFIle.CompressStream(stream: TStream): TMemoryStream;
+var FCompressionStream: TCompressionStream;
+  FMem: TMemoryStream;
+begin
+ FMem:=TMemoryStream.Create;
+ FCompressionStream := TCompressionStream.Create(clDefault,FMem);
+ try
+  stream.Seek(0, soBeginning);
+  CopyStreamContent(stream, FCompressionStream);
+ finally
+  FCompressionStream.Free;
+ end;
+ FMem.Position:=0;
+ Result:= FMem;
+end;
+{$ENDIF}
+
+procedure TrpPDFFIle.WriteStream(stream,dest: TMemoryStream);
+var longitud: integer;
+{$IFDEF USEZLIB}
+ longitudOriginal: integer;
+ Fmem: TMemoryStream;
+{$ENDIF}
+begin
+{$IFDEF USEZLIB}
+ if (FCompressed) then
+ begin
+  fmem:=CompressStream(stream);
+  try
+   SWriteLine(dest,' /Length ' + IntToStr(fmem.Size) + ' /Length1 ' +
+     IntToStr(stream.Size));
+   SWriteLine(dest,'/Filter [/FlateDecode]');
+   SWriteLine(dest,'>>');
+   SWriteLine(dest,'stream');
+   fmem.Position:=0;
+   fmem.SaveToStream(dest);
+  finally
+   fmem.free;
+  end
+ end
+ else
+{$ENDIF}
+ begin
+  SWriteLine(dest,' /Length ' + IntToStr(stream.Size));
+  SWriteLine(dest,'>>');
+  SWriteLine(dest,'stream');
+  stream.SaveToStream(dest);
+ end;
+ SWriteLine(dest,'');
+ SWriteLine(dest,'endstream');
+end;
+
 procedure TRpPDFFile.SetColorSpace;
 var ColorProfileObject: integer;
 ICCProfile: TMemoryStream;
@@ -641,30 +717,8 @@ begin
     ColorProfileObject:=FObjectCount;
     FTempStream.Clear;
     SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
-    SWriteLine(FTempStream,'<< /N 3 /Alternate /DeviceRGB /Length ');
-    SWriteLine(FTempStream,IntToStr(ICCProfile.Size));
-  {$IFDEF USEZLIB}
-    if FCompressed then
-     SWriteLine(FTempStream,'/Filter [/FlateDecode]');
-  {$ENDIF}
-    SWriteLine(FTempStream,'>>');
-    SWriteLine(FTempStream,'stream');
-  {$IFDEF USEZLIB}
-    if FCompressed then
-    begin
-     FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
-     try
-      ICCProfile.Seek(0, soBeginning);
-      CopyStreamContent(ICCProfile, FCompressionStream);
-     finally
-      FCompressionStream.Free;
-     end;
-    end
-    else
-  {$ENDIF}
-     ICCProfile.SaveToStream(FTempStream);
-    SWriteLine(FTempStream,'');
-    SWriteLine(FTempStream,'endstream');
+    SWriteLine(FTempStream,'<< /N 3 /Alternate /DeviceRGB ');
+    WriteStream(ICCProfile, FTempStream);
     SWriteLine(FTempStream,'endobj');
     AddToOffset(FTempStream.Size);
     FTempStream.Position:=0;
@@ -800,6 +854,9 @@ end;
 
 procedure TRpPDFFile.EndStream;
 var TempSize: LongInt;
+{$IFDEF USEZLIB}
+ FCompressionStream: TCompressionStream;
+{$ENDIF}
 begin
 {$IFDEF USEZLIB}
  if FCompressed then
@@ -819,6 +876,7 @@ begin
 
  FsTempStream.Clear;
 
+ SWriteLine(FTempStream,'');
  SWriteLine(FTempStream,'endstream');
  SWriteLine(FTempStream,'endobj');
  FStreamSize2:=6;
@@ -850,6 +908,9 @@ procedure TRpPDFFile.NewPage(NPageWidth,NPageHeight:integer);
 var
  TempSize:LongInt;
  aobj:TRpPageInfo;
+{$IFDEF USEZLIB}
+ FCompressionStream: TCompressionStream;
+{$ENDIF}
 begin
  CheckPrinting;
 
@@ -1854,7 +1915,7 @@ var
  imagesize:integer;
  bitmapwidth,bitmapheight:integer;
 {$IFDEF USEZLIB}
- FCompressionStream:TCOmpressionStream;
+ FCompressionStream:TCompressionStream;
 {$ENDIF}
  fimagestream:TMemoryStream;
  // tmpBitmap:TBitmap;
@@ -3376,6 +3437,7 @@ var
  currentindex,nextindex:integer;
  awidths:string;
  cmaphead,fromTo:AnsiString;
+ FCMapStream:TMemoryStream;
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -3405,35 +3467,18 @@ begin
    FObjectCount:=FObjectCount+1;
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
-   SWriteLine(FTempStream,'<< /Length '+IntToStr(adata.fontdata.size));
-   SWriteLine(FTempStream,'/Length1 '+IntToStr(adata.fontdata.size));
-   adata.ObjectIndex:=FObjectCount;
-{$IFDEF USEZLIB}
-   if FCompressed then
+   if (FPDFConformance = PDF_A_3) then
    begin
-    SWriteLine(FTempStream,'/Filter [/FlateDecode]');
-   end;
-{$ENDIF}
-   SWriteLine(FTempStream,'>>');
-   SWriteLine(FTempStream,'stream');
-   adata.fontdata.Seek(0,soFromBeginning);
-{$IFDEF USEZLIB}
-   if FCompressed then
-   begin
-    FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
-    try
-     adata.fontdata.Seek(0,soBeginning);
-     CopyStreamContent(adata.fontdata, FCompressionStream);
-     // FCompressionStream.CopyFrom(adata.fontdata,adata.fontdata.Size);
-    finally
-     FCompressionStream.Free;
-    end;
+    SWriteLine(FTempStream,'<< /Type /FontFile2');
    end
    else
-{$ENDIF}
-    adata.FontData.SaveToStream(FTempStream);
-    SWriteLine(FTempStream,'');
-   SWriteLine(FTempStream,'endstream');
+   begin
+     SWriteLine(FTempStream,'<< ');
+   end;
+   adata.fontdata.Seek(0,soFromBeginning);
+   WriteStream(adata.fontdata,FTempStream);
+   adata.ObjectIndex:=FObjectCount;
+   adata.fontdata.Seek(0,soFromBeginning);
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
    FTempStream.SaveToStream(FMainPDF);
@@ -3547,77 +3592,19 @@ begin
 
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
-   SWriteLine(FTempStream,'<< /Length '+IntToStr(Length(cmaphead)-1));
-{$IFDEF USEZLIB}
-   if FCompressed then
-   begin
-    SWriteLine(FTempStream,'/Filter [/FlateDecode]');
+   FCMapStream:=TMemoryStream.Create;
+   try
+    WriteStringToStream(cmaphead,FCMapStream);
+    FCmapStream.Position:=0;
+    SWriteLine(FTempStream,'<< ');
+    WriteStream(FCMapStream, FTempStream);
+   finally
+    FCMapStream.free;
    end;
-{$ENDIF}
-   SWriteLine(FTempStream,'>>');
-   SWriteLine(FTempStream,'stream');
-{$IFDEF USEZLIB}
-   if FCompressed then
-   begin
-    FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
-    try
-     WriteStringToStream(cmaphead,FCompressionStream);
-    finally
-     FCompressionStream.Free;
-    end;
-   end
-   else
-{$ENDIF}
-     WriteStringToStream(cmaphead,FTempStream);
-   SWriteLine(FTempStream,'endstream');
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
    FTempStream.SaveToStream(FMainPDF);
   end;
- end;
- if (FPDFConformance = PDF_A_3) then
- begin
-   // CIDToGIDMap Stream
-  (* FObjectCount:= FObjectCount + 1;
-   adata.CIDToGIDMapIndex := FObjectCount;
-   FTempStream2.Clear;
-   index2:=0;
-   repeat
-    FTempStream2.Write(Word(adata.loadedglyphs[index2]),2);
-    inc(index2);
-   until index2>adata.lastloaded;
-
-
-   FTempStream.Clear;
-   SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
-   SWriteLine(FTempStream,'<< /Length '+IntToStr(FTempStream2.Size));
-{$IFDEF USEZLIB}
-   if FCompressed then
-   begin
-    SWriteLine(FTempStream,'/Filter [/FlateDecode]');
-   end;
-{$ENDIF}
-   SWriteLine(FTempStream,'>>');
-   SWriteLine(FTempStream,'stream');
-   FTempStream2.Seek(0, soBeginning);
-{$IFDEF USEZLIB}
-   if FCompressed then
-   begin
-    FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
-    try
-     FTempStream2.SaveToStream(FCompressionStream);
-    finally
-     FCompressionStream.Free;
-    end;
-   end
-   else
-{$ENDIF}
-    FTempStream2.SaveToStream(FTempStream);
-   SWriteLine(FTempStream,'endstream');
-   SWriteLine(FTempStream,'endobj');
-   AddToOffset(FTempStream.Size);
-   FTempStream.SaveToStream(FMainPDF);
-   FTempStream2.Clear;      *)
  end;
 
  // Creates the fonts of the font list
@@ -3631,15 +3618,7 @@ begin
    adata.ObjectIndexParent:=FObjectCount;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
    SWriteLine(FTempStream,'<< /Type /Font');
-   if (PDFConformance = PDF_A_3) then
-   begin
-//    SWriteLine(FTempStream,'/Subtype /TrueType');
-    SWriteLine(FTempStream,'/Subtype /Type0');
-   end
-   else
-   begin
-     SWriteLine(FTempStream,'/Subtype /Type0');
-   end;
+   SWriteLine(FTempStream,'/Subtype /Type0');
    SWriteLine(FTempStream,'/Name /F'+adata.ObjectName);
    SWriteLine(FTempStream,'/BaseFont /'+CONS_UNICODEPREDIX+adata.postcriptname);
    SWriteLine(FTempStream,'/Encoding /Identity-H');
@@ -3711,7 +3690,7 @@ begin
 
    if (PDFConformance = PDF_A_3) then
    begin
-    // SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+    SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
     // SWriteLine(FTempStream,'/CDIToGDIMap ' + IntToStr(adata.CIDToGIDMapIndex)+' 0 R');
    end
    else
