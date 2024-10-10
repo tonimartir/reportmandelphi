@@ -200,7 +200,10 @@ type
    FCurrentSetPageObject:integer;
    FPDFConformance:TPDFConformanceType;
    FXMPMetadataObject: integer;
+   FOutputIntentObject: integer;
+   FColorSpaceObject: integer;
    FCreationDate: string;
+   PageObjNum: integer;
 {$IFDEF USEZLIB}
    FCompressionStream:TCompressionStream;
 {$ENDIF}
@@ -228,6 +231,7 @@ type
    procedure WriteBitmap(index:Integer);
    procedure FreePageInfos;
    procedure SetXMPMetadata;
+   procedure SetColorSpace;
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -569,12 +573,7 @@ begin
  FImageCount:=0;
  FPage:=1;
  // Writes the header
- if (FPDFConformance = PDF_1_4) then
- begin
-   SWriteLine(FMainPDF,PDF_HEADER_1_4);
-   AddToOffset(Length(PDF_HEADER_1_4));
- end
- else
+ if (FPDFConformance = PDF_A_3) then
  begin
    SWriteLine(FMainPDF,PDF_HEADER_A3);
    // AddToOffset(Length(PDF_HEADER_A3));
@@ -582,6 +581,11 @@ begin
    FMainPDF.Write([37,228,252,246,223,13,10],7);
    AddToOffset(7+Length(PDF_HEADER_A3));
    //AddToOffset(Length('%äüöß'));
+ end
+ else
+ begin
+   SWriteLine(FMainPDF,PDF_HEADER_1_4);
+   AddToOffset(Length(PDF_HEADER_1_4));
  end;
  FCreationDate:=FormatDateTime('YYYYMMDDHHmmSS',now);
  // Writes Doc info
@@ -592,7 +596,7 @@ begin
  SWriteLine(FTempStream,'/Producer ('+FDocProducer+')');
  SWriteLine(FTempStream,'/Author ('+FDocAuthor+')');
  SWriteLine(FTempStream,'/CreationDate (D:'+FCreationDate+')');
- if (FPDFConformance = PDF_1_4) then
+ if (FPDFConformance <> PDF_A_3) then
    SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
  if (Length(FDocKeywords)>0) then
   SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
@@ -611,29 +615,95 @@ begin
  if (FPDFConformance = PDF_A_3) then
  begin
   SetXMPMetadata;
+  SetColorSpace;
  end;
 
-  // Implementar de esta forma en delphi y C#:
- (*
-   % Definición de espacio de color ICC en PDF/A-3
-/ColorSpace << /CS1 [/ICCBased 8 0 R] >>
-8 0 obj
-<< /N 3 /Length 12345 >>
-stream
-   % Datos binarios del perfil ICC incrustado (sRGB, AdobeRGB, etc.)
-endstream
-endobj
-% Definición de OutputIntent para PDF/A-3
-<< /Type /OutputIntent
-   /S /GTS_PDFA1
-   /OutputConditionIdentifier (sRGB IEC61966-2.1)
-   /Info (sRGB Color Profile)
-   /DestOutputProfile 8 0 R   % Hace referencia al perfil ICC incrustado
->>
- *)
 
  StartStream;
 end;
+
+procedure TRpPDFFile.SetColorSpace;
+var ColorProfileObject: integer;
+ICCProfile: TMemoryStream;
+ResStream:TResourceStream;
+begin
+  // Color Space Profile
+  ICCProfile:=TMemoryStream.Create;
+  try
+    ResStream:=TResourceStream.Create(HInstance,'srgb',RT_RCDATA);
+    try
+      ICCProfile.CopyFrom(ResStream,ResStream.Size);
+      ICCProfile.Position:=0;
+    finally
+      ResStream.Free;
+    end;
+    FObjectCount:=FObjectCount+1;
+    ColorProfileObject:=FObjectCount;
+    FTempStream.Clear;
+    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+    SWriteLine(FTempStream,'<< /N 3 /Alternate /DeviceRGB /Length ');
+    SWriteLine(FTempStream,IntToStr(ICCProfile.Size));
+  {$IFDEF USEZLIB}
+    if FCompressed then
+     SWriteLine(FTempStream,'/Filter [/FlateDecode]');
+  {$ENDIF}
+    SWriteLine(FTempStream,'>>');
+    SWriteLine(FTempStream,'stream');
+  {$IFDEF USEZLIB}
+    if FCompressed then
+    begin
+     FCompressionStream := TCompressionStream.Create(clDefault,FTempStream);
+     try
+      ICCProfile.Seek(0, soBeginning);
+      CopyStreamContent(ICCProfile, FCompressionStream);
+     finally
+      FCompressionStream.Free;
+     end;
+    end
+    else
+  {$ENDIF}
+     ICCProfile.SaveToStream(FTempStream);
+    SWriteLine(FTempStream,'');
+    SWriteLine(FTempStream,'endstream');
+    SWriteLine(FTempStream,'endobj');
+    AddToOffset(FTempStream.Size);
+    FTempStream.Position:=0;
+    FTempStream.SaveToStream(FMainPDF);
+  finally
+    ICCProfile.Free;
+  end;
+
+    // Output Intent
+  FObjectCount:=FObjectCount+1;
+  FOutputIntentObject:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /OutputIntent');
+  SWriteLine(FTempStream,'  /S /GTS_PDFA1');
+  SWriteLine(FTempStream,'  /OutputConditionIdentifier (sRGB IEC61966-2.1) ');
+  SWriteLine(FTempStream,'  /Info (sRGB IEC61966-2.1) ');
+  SWriteLine(FTempStream,'  /DestOutputProfile '+ IntToStr(ColorProfileObject) +' 0 R');
+  SWriteLine(FTempStream,'>>');
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+
+  // Color Space
+  FObjectCount:=FObjectCount+1;
+  FColorSpaceObject:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<<  /Type /ColorSpace');
+  SWriteLine(FTempStream,'    /ColorSpace [/ICCBased '+IntToStr(ColorProfileObject)+' 0 R] >>');
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+
+
+end;
+
 
 procedure TRpPDFFile.SetXMPMetadata;
 var
@@ -709,6 +779,13 @@ begin
  // Starting of the stream
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
+
+ if (FPDFConformance = PDF_A_3) then
+  PageObjNum:=FObjectCount
+ else
+  PageObjNum:=FObjectCount;
+
+
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
  SWriteLine(FTempStream,'<< /Length '+IntToStr(FObjectCount+1)+' 0 R');
 {$IFDEF USEZLIB}
@@ -873,7 +950,7 @@ end;
 
 procedure TrpPDFFile.SetPages;
 var
- i,PageObjNum:Integer;
+ i:Integer;
 begin
  FObjectCount:=FObjectCount+1;
  FParentNum:=FObjectCount;
@@ -882,10 +959,10 @@ begin
  SWriteLine(FTempStream,'<< /Type /Pages');
  SWriteLine(FTempStream,'/Kids [');
 
- if (FPDFConformance = PDF_1_4) then
-  PageObjNum:=2
- else
-  PageObjNum:=3;
+ // if (FPDFConformance = PDF_A_3) then
+ //  PageObjNum:=6
+ // else
+ //  PageObjNum:=2;
 
  for i:= 1 to FPage do
  begin
@@ -933,7 +1010,17 @@ begin
    ' '+IntToStr(adata.ObjectIndexParent)+' 0 R ');
  end;
  SWriteLine(FTempStream,'>>');
+
+ if (FPDFConformance = PDF_A_3) then
+ begin
+  SWriteLine(FTempStream,'/ColorSpace << ');
+  SWriteLine(FTempStream,'     /CS1 ' + IntToStr(FColorSpaceObject) + ' 0 R');
+  SWriteLine(FTempStream,'  >>');
+ end;
+
  SWriteLine(FTempStream,'>>');
+
+
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
@@ -1090,6 +1177,7 @@ begin
  if (FPDFConformance = PDF_A_3) then
  begin
   SWriteLine(FTempStream,'/Metadata '+IntToStr(FXMPMetadataObject)+' 0 R');
+  SWriteLine(FTempStream,'/OutputIntents ['+IntToStr(FOutputIntentObject)+' 0 R]');
  end;
 
  SWriteLine(FTempStream,'>>');
