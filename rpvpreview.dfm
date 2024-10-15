@@ -16,6 +16,7 @@ object FRpVPreview: TFRpVPreview
   OnKeyDown = FormKeyDown
   OnMouseWheelDown = FormMouseWheelDown
   OnMouseWheelUp = FormMouseWheelUp
+  PixelsPerInch = 120
   TextHeight = 20
   object BToolBar: TToolBar
     Left = 0

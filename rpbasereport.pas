@@ -294,6 +294,7 @@ type
    maximum_width:integer;
    maximum_height:integer;
    TouchEnabled:Boolean;
+   EmbeddedFiles: array of TEmbeddedFile;
    procedure LoadExternals;virtual;
    procedure AddReportItemsToEvaluator(eval:TRpEvaluator);
    procedure InitEvaluator;
@@ -345,6 +346,7 @@ type
    function GetSQLValue(connectionname,sql:String):Variant;
    function RequestPage(pageindex:integer):boolean;
    function CheckParameters(paramlist:TRpParamList;var paramname,amessage:string):Boolean;
+   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
@@ -2246,6 +2248,17 @@ begin
    Result:=true;
 end;
 
+
+procedure TRpBaseReport.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+var embededFile: TEmbeddedFile;
+begin
+ embededFile:=TEmbeddedFile.Create;
+ embededFile.FileName:=fileName;
+ embededFile.Stream:=stream;
+ embededFile.MimeType:=mimeType;
+ SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+ EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
+end;
 
 
 end.

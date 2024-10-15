@@ -826,6 +826,7 @@ var
  astring:Ansistring;
  asubrep:TRpSubReport;
  asec:TRpSection;
+ efile:TEmbeddedFile;
 begin
  report:=TRpReport(areport);
  // Write header
@@ -880,6 +881,19 @@ begin
   astring:='</SUBREPORT>'+CRLF;
   WriteStringToStream(astring,stream);
  end;
+  // Write Embedded files
+ for i:=0 to Length(report.EmbeddedFiles)-1 do
+ begin
+  efile:=report.EmbeddedFiles[i];
+  astring:='<EMBEDDEDFILE>'+CRLF;
+  WritePropertyS('FILENAME', efile.FileName);
+  WritePropertyS('MIMETYPE', efile.MimeType);
+  WritePropertyB('STREAM', efile.Stream);
+  astring:='</EMBEDDEDFILE>'+CRLF;
+  WriteStringToStream(astring,stream);
+ end;
+
+
 
  astring:='</REPORT>'+CRLF;
  WriteStringToStream(astring,stream);
@@ -1815,6 +1829,8 @@ var
  sec:TRpSection;
  compitem:TRpCommonListItem;
  i,j:integer;
+ efile:TEmbeddedFile;
+ memstream: TMemoryStream;
 
  procedure FindNextName;
  var
@@ -1946,6 +1962,31 @@ begin
 
     FindNextName;
    end;
+  end
+  else
+  if propname='EMBEDDEDFILE' then
+  begin
+   SetLength(report.EmbeddedFiles,Length(report.EmbeddedFiles)+1);
+   efile:=TEmbeddedFile.Create;;
+   FindNextName;
+   if propname<>'FILENAME' then
+    Raise Exception.Create(SRpStreamFormat);
+   efile.FileName:=RpStringToString(propvalue);
+   FindNextName;
+   if propname<>'FILENAME' then
+    Raise Exception.Create(SRpStreamFormat);
+   efile.MimeType:=RpStringToString(propvalue);
+   FindNextName;
+   if propname<>'STREAM' then
+    Raise Exception.Create(SRpStreamFormat);
+   memstream:=TMemoryStream.Create;
+   BinToStream(memstream,RpStringToString(propvalue),propsize);
+   memstream.Seek(0,soFromBeginning);
+   efile.Stream:=memstream;
+   FindNextName;
+   if propname<>'/EMBEDDEDFILE' then
+    Raise Exception.Create(SRpStreamFormat);
+   FindNextName;
   end
   else
   if propname='SUBREPORT' then

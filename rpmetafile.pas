@@ -74,13 +74,16 @@ const
  RP_SIGNATURELENGTH=13;
  BUFFER_FLEX_SIZE=8192;
  // The metafile signature and version
- RpSignature:string='RPMETAFILE09'+chr(0);
+ RpSignature2_4:string='RPMETAFILE09'+chr(0);
  RpSignature2_2:string='RPMETAFILE07'+chr(0);
+ RpSignature3_0:string='RPMETAFILE30'+chr(0);
 const
  FIRST_ALLOCATION_OBJECTS=50;
  FIRST_ALLOCATED_WIDESTRING=1000;
 type
  TMetaFileWorkProgress=procedure (Sender:TObject;records,pagecount:integer;var docancel:boolean) of object;
+
+ TMetaFileVersion=(MetaVersion2_2,MetaVersion2_4,MetaVersion3_0);
  TStopWork=procedure of object;
  TWorkAsyncError=procedure (amessage:string) of object;
  TRequestPageEvent=function (pageindex:integer):boolean of object;
@@ -294,9 +297,11 @@ type
  TDoFilterImage=procedure (memstream:TMemoryStream) of object;
 {$ENDIF}
 
+
+
  TRpMetafilePage=class(TObject)
   private
-   Fversion2_2:Boolean;
+   FVersion:TMetaFileVersion;
    FUpdatedPageSize:Boolean;
    FObjects:array of TRpMetaObject;
    FObjectCount:Integer;
@@ -346,6 +351,7 @@ type
     write FUpdatedPageSize default false;
   end;
 
+
  TRpMetafileReport=class(TComponent)
   private
    zStream:TStream;
@@ -357,7 +363,7 @@ type
    FReading:boolean;
    FPreviewAbout:Boolean;
    FPreviewMargins:Boolean;
-   Fversion2_2:Boolean;
+   FVersion: TMetaFileVersion;
    FOnWorkAsyncError:TWorkAsyncError;
    FOnRequestPage:TRequestPageEvent;
    FReadThread:TReadThread;
@@ -405,6 +411,7 @@ type
    DidSearch:boolean;
    TouchEnabled:boolean;
    OrientationSet: boolean;
+   EmbeddedFiles:array of TEmbeddedFile;
    procedure Clear;
    procedure DoSearch(avalue:string);
    procedure LoadFromStream(Stream:TStream;clearfirst:boolean=true);
@@ -453,6 +460,8 @@ type
 {$ENDIF}
 
 function IsMetafile(memstream:TMemoryStream):boolean;
+function ReadStringFromStream(stream:TStream): string;
+procedure WriteStringToStream(astring:String;deststream:TStream);
 
 implementation
 
@@ -906,6 +915,39 @@ begin
  IntSaveToStream(Stream,Stream);
 end;
 
+procedure WriteStringToStream(astring:String;deststream:TStream);
+var
+ strLength:integer;
+ buf:array of Byte;
+ bytes:TBytes;
+begin
+ strLength:=Length(astring);
+ deststream.Write(buf,sizeof(strLength));
+ deststream.Write(bytes,Length(bytes));
+end;
+
+function ReadStringFromStream(stream:TStream): string;
+var
+ i:integer;
+ strLength:integer;
+ buf:array of Byte;
+ bytes:TBytes;
+begin
+ stream.Read(i,4);
+ if (i=0) then
+ begin
+   Result:='';
+   exit;
+ end;
+ if (i<0) then
+  raise Exception.Create('Error reading string from stream');
+ SetLength(buf,i);
+ stream.read(buf,i);
+ Result:=TEncoding.UTF8.GetString(buf);
+ exit;
+end;
+
+
 procedure TRpMetafileReport.IntSaveToStream(Stream:TStream;SaveStream:TStream);
 var
  separator:integer;
@@ -914,11 +956,36 @@ var
  ainteger:integer;
  docancel:boolean;
  ssize:Int64;
+ rpSignature: string;
+ fileCount: integer;
+ efile: TEmbeddedFile;
 begin
+ rpSignature:=RpSignature2_4;
+ fileCount:=Length(EmbeddedFiles);
+ if (fileCount>0) then
+ begin
+   rpSignature:=RpSignature3_0;
+   FVersion:=MetaVersion3_0;
+ end;
  RequestPage(MAX_PAGECOUNT);
  WriteStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
  Stream.Write(separator,sizeof(separator));
+ // Embedded Files
+ if (FVersion = MetaVersion3_0) then
+ begin
+  Stream.Write(fileCount,sizeof(fileCount));
+  for i:=0 to fileCount-1  do
+  begin
+   efile:=EmbeddedFiles[i];
+   ssize:=efile.Stream.Size;
+   WriteStringToStream(efile.FileName, Stream);
+   WriteStringToStream(efile.MimeType, Stream);
+   Stream.Write(ssize,sizeof(ssize));
+   efile.Stream.Position:=0;
+   efile.Stream.SaveToStream(Stream);
+  end;
+ end;
  // Report header
  Stream.Write(PageSize,sizeof(pagesize));
  Stream.Write(CustomX,sizeof(CustomX));
@@ -1053,10 +1120,13 @@ begin
  begin
   bufstring:=bufstring+Char(buf[i]);
  end;
- if (bufstring<>rpSignature) then
+ if (bufstring<>rpSignature2_4) then
  begin
   if bufstring=RpSignature2_2 then
-   Result:=true;
+   Result:=true
+  else
+   if (bufstring=rpSignature3_0) then
+    Result:=true;   
  end
  else
   Result:=true;
@@ -1103,12 +1173,14 @@ var
  i,ainteger:integer;
  apagesizeqt:TPageSizeQt;
  docancel:boolean;
+ fileCount: integer;
+ efile:TEmbeddedFile;
 begin
  FFinished:=false;
  // Clears the report metafile
  if clearfirst then
   Clear;
- FVersion2_2:=false;
+ FVersion:=MetaVersion2_4;
  SetLength(buf,RP_SIGNATURELENGTH);
  bytesread:=Stream.Read(buf[0],RP_SIGNATURELENGTH);
  if (bytesread<RP_SIGNATURELENGTH) then
@@ -1118,17 +1190,43 @@ begin
  begin
   bufstring:=bufstring+Char(buf[i]);
  end;
- if (bufstring<>rpSignature) then
+ if (bufstring<>rpSignature2_4) then
  begin
   if bufstring=RpSignature2_2 then
-   FVersion2_2:=true
+   FVersion:=MetaVersion2_2
   else
-   Raise Exception.Create(SRpBadSignature);
+  if bufstring=RpSignature3_0 then
+   FVersion:=MetaVersion3_0
+  else
+    Raise Exception.Create(SRpBadSignature);
  end;
  if (sizeof(separator)<>Stream.Read(separator,sizeof(separator))) then
   Raise Exception.Create(SRpBadFileHeader);
  if (separator<>integer(rpFHeader)) then
   Raise Exception.Create(SRpBadFileHeader);
+ // Embedded Files
+ if (FVersion = MetaVersion3_0) then
+ begin
+  Stream.Read(fileCount,sizeof(fileCount));
+  if (fileCount<0) then
+    raise Exception.Create('Error reading file count');  
+  for i:=0 to fileCount-1  do
+  begin
+   efile:=TEmbeddedFile.Create;
+   efile.FileName:=ReadStringFromStream(Stream);
+   efile.MimeType:=ReadStringFromStream(Stream);
+   Stream.Read(ssize,sizeof(ssize));
+   if (ssize<0) then
+     raise Exception.Create('Error reading file stream');        
+   efile.Stream:=TMemoryStream.Create;
+   efile.Stream.SetSize(ssize);
+   efile.Stream.Position:=0;
+   Stream.Read(efile.Stream.Memory^,ssize);
+   SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+   EmbeddedFiles[Length(EmbeddedFiles)-1] := efile;
+  end;
+ end;
+  
  // Report header
  if (sizeof(pagesize)<>Stream.Read(PageSize,sizeof(pagesize))) then
   Raise Exception.Create(SRpBadFileHeader);
@@ -1206,7 +1304,7 @@ begin
   fpage:=TRpMetafilePage.Create;
   FPage.FMetafile:=self;
   FPages.Add(fpage);
-  FPage.Fversion2_2:=Fversion2_2;
+  FPage.FVersion:=FVersion;
   FPage.FUpdatedPageSize:=false;
   FPage.FOrientation:=Orientation;
   aPageSizeqt.Indexqt:=PageSize;
@@ -1358,7 +1456,7 @@ begin
  bytesread:=Stream.Read(FMark,sizeof(FMark));
  if (bytesread<>sizeof(FMark)) then
   Raise ERpBadFileFormat.CreatePos(SrpStreamErrorPage+' Mark',Stream.Position,0);
- if Not FVersion2_2 then
+ if ((FVersion = MetaVersion2_4) or (FVersion = MetaVersion3_0)) then
  begin
   bytesread:=Stream.Read(separator,sizeof(separator));
   if (bytesread<>sizeof(separator)) then
@@ -2020,7 +2118,7 @@ begin
   // New page and load from stream
   fpage:=TRpMetafilePage.Create;
   FPage.FMetafile:=metafile;
-  FPage.Fversion2_2:=metafile.Fversion2_2;
+  FPage.FVersion:=metafile.FVersion;
   FPage.FUpdatedPageSize:=false;
   FPage.FOrientation:=metafile.Orientation;
   aPageSizeqt.Indexqt:=metafile.PageSize;

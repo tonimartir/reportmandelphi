@@ -167,12 +167,7 @@ type
    property Font:TRpPDFFont read FFOnt;
   end;
 
- TEmbeddedFile=class
-   public FileName: string;
-   public Stream: TMemoryStream;
-   public MimeType: string;
-   public ResourceNumber: integer;
- end;
+
 
  TRpPDFFile=class(TComponent)
   private
@@ -552,7 +547,7 @@ begin
  embededFile.MimeType:=mimeType;
  SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
  EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
-end
+end;
 
 
 procedure TRpPDFFile.SetResolution(Newres:integer);

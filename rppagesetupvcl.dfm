@@ -3,127 +3,185 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
   Top = 108
   BorderStyle = bsDialog
   Caption = 'Dialog'
-  ClientHeight = 471
-  ClientWidth = 537
+  ClientHeight = 589
+  ClientWidth = 671
   Color = clBtnFace
   ParentFont = True
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
   OnShow = FormShow
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 20
   object PControl: TPageControl
     Left = 0
     Top = 0
-    Width = 537
-    Height = 430
-    ActivePage = TabPage
+    Width = 671
+    Height = 538
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
+    ActivePage = TabOptions
     Align = alClient
     TabOrder = 0
     object TabPage: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Page setup'
       DesignSize = (
-        529
-        395)
+        663
+        503)
       object SColor: TShape
-        Left = 160
-        Top = 276
-        Width = 33
-        Height = 33
+        Left = 200
+        Top = 345
+        Width = 41
+        Height = 41
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         OnMouseDown = SColorMouseDown
       end
       object LLinesperInch: TLabel
-        Left = 4
-        Top = 252
-        Width = 90
-        Height = 20
+        Left = 5
+        Top = 315
+        Width = 113
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Lines per inch'
       end
       object GUserDefined: TGroupBox
-        Left = 184
-        Top = 8
-        Width = 340
-        Height = 93
+        Left = 230
+        Top = 10
+        Width = 427
+        Height = 116
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Custom page size (Windows only)'
         TabOrder = 1
         Visible = False
         DesignSize = (
-          340
-          93)
+          427
+          116)
         object LMetrics7: TLabel
-          Left = 297
-          Top = 24
-          Width = 30
-          Height = 20
+          Left = 373
+          Top = 30
+          Width = 38
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
+          ExplicitLeft = 371
         end
         object LMetrics8: TLabel
-          Left = 297
-          Top = 48
-          Width = 30
-          Height = 20
+          Left = 373
+          Top = 60
+          Width = 38
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
+          ExplicitLeft = 371
         end
         object LWidth: TLabel
-          Left = 12
-          Top = 24
-          Width = 40
-          Height = 20
+          Left = 15
+          Top = 30
+          Width = 50
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Width'
         end
         object LHeight: TLabel
-          Left = 12
-          Top = 48
-          Width = 45
-          Height = 20
+          Left = 15
+          Top = 60
+          Width = 56
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Height'
         end
         object LForceFormName: TLabel
-          Left = 12
-          Top = 72
-          Width = 113
-          Height = 20
+          Left = 15
+          Top = 90
+          Width = 141
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Force form name'
         end
         object EPageheight: TRpMaskEdit
-          Left = 128
-          Top = 44
-          Width = 156
+          Left = 160
+          Top = 55
+          Width = 197
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 1
           Text = ''
           EditType = tecurrency
         end
         object EPageWidth: TRpMaskEdit
-          Left = 128
-          Top = 20
-          Width = 156
+          Left = 160
+          Top = 25
+          Width = 197
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 0
           Text = ''
           EditType = tecurrency
         end
         object EForceFormName: TRpMaskEdit
-          Left = 128
-          Top = 68
-          Width = 156
+          Left = 160
+          Top = 85
+          Width = 197
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 2
           Text = ''
         end
       end
       object RPageSize: TRadioGroup
-        Left = 4
-        Top = 8
-        Width = 177
-        Height = 93
+        Left = 5
+        Top = 10
+        Width = 221
+        Height = 116
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Page size'
         Items.Strings = (
           'Default'
@@ -133,28 +191,40 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         OnClick = RPageSizeClick
       end
       object GPageSize: TGroupBox
-        Left = 184
-        Top = 12
-        Width = 339
-        Height = 65
+        Left = 230
+        Top = 15
+        Width = 426
+        Height = 81
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Custom size'
         TabOrder = 2
         Visible = False
         object ComboPageSize: TComboBox
-          Left = 4
-          Top = 32
-          Width = 269
+          Left = 5
+          Top = 40
+          Width = 336
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Style = csDropDownList
           TabOrder = 0
         end
       end
       object RPageOrientation: TRadioGroup
-        Left = 4
-        Top = 104
-        Width = 177
-        Height = 67
+        Left = 5
+        Top = 130
+        Width = 221
+        Height = 84
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Page orientation'
         Items.Strings = (
           'Default'
@@ -163,10 +233,14 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         OnClick = RPageOrientationClick
       end
       object RCustomOrientation: TRadioGroup
-        Left = 188
-        Top = 104
-        Width = 336
-        Height = 67
+        Left = 235
+        Top = 130
+        Width = 422
+        Height = 84
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Custom page orientation'
         Items.Strings = (
@@ -176,116 +250,174 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Visible = False
       end
       object BBackground: TButton
-        Left = 4
-        Top = 276
-        Width = 149
-        Height = 33
+        Left = 5
+        Top = 345
+        Width = 186
+        Height = 41
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Background color'
         TabOrder = 7
         OnClick = BBackgroundClick
       end
       object GPageMargins: TGroupBox
-        Left = 4
-        Top = 172
-        Width = 520
-        Height = 69
+        Left = 5
+        Top = 215
+        Width = 652
+        Height = 86
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Page Margins'
         TabOrder = 5
         DesignSize = (
-          520
-          69)
+          652
+          86)
         object LLeft: TLabel
-          Left = 16
-          Top = 16
-          Width = 25
-          Height = 20
+          Left = 20
+          Top = 20
+          Width = 31
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Left'
         end
         object LTop: TLabel
-          Left = 16
-          Top = 44
-          Width = 25
-          Height = 20
+          Left = 20
+          Top = 55
+          Width = 31
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Top'
         end
         object LMetrics3: TLabel
-          Left = 168
-          Top = 16
-          Width = 30
-          Height = 20
+          Left = 210
+          Top = 20
+          Width = 38
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'inch.'
         end
         object LMetrics4: TLabel
-          Left = 168
-          Top = 40
-          Width = 30
-          Height = 20
+          Left = 210
+          Top = 50
+          Width = 38
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'inch.'
         end
         object LMetrics5: TLabel
-          Left = 471
-          Top = 16
-          Width = 30
-          Height = 20
+          Left = 591
+          Top = 20
+          Width = 37
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
+          ExplicitLeft = 589
         end
         object LRight: TLabel
-          Left = 244
-          Top = 16
-          Width = 35
-          Height = 20
+          Left = 305
+          Top = 20
+          Width = 44
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Right'
         end
         object LBottom: TLabel
-          Left = 244
-          Top = 44
-          Width = 50
-          Height = 20
+          Left = 305
+          Top = 55
+          Width = 63
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'Bottom'
         end
         object LMetrics6: TLabel
-          Left = 471
-          Top = 44
-          Width = 30
-          Height = 20
+          Left = 591
+          Top = 55
+          Width = 37
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
+          ExplicitLeft = 589
         end
         object ELeftMargin: TRpMaskEdit
-          Left = 80
-          Top = 12
-          Width = 77
+          Left = 100
+          Top = 15
+          Width = 96
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           TabOrder = 0
           Text = ''
           EditType = tecurrency
         end
         object ETopMargin: TRpMaskEdit
-          Left = 80
-          Top = 40
-          Width = 77
+          Left = 100
+          Top = 50
+          Width = 96
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           TabOrder = 2
           Text = ''
           EditType = tecurrency
         end
         object ERightMargin: TRpMaskEdit
-          Left = 304
-          Top = 12
-          Width = 156
+          Left = 380
+          Top = 15
+          Width = 197
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 1
           Text = ''
           EditType = tecurrency
         end
         object EBottomMargin: TRpMaskEdit
-          Left = 304
-          Top = 40
-          Width = 156
+          Left = 380
+          Top = 50
+          Width = 197
           Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 3
           Text = ''
@@ -293,10 +425,14 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         end
       end
       object ELinesPerInch: TRpMaskEdit
-        Left = 232
-        Top = 248
-        Width = 124
+        Left = 290
+        Top = 310
+        Width = 157
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 6
         Text = ''
@@ -304,116 +440,176 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       end
     end
     object TabPrint: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Print setup'
       ImageIndex = 1
       DesignSize = (
-        529
-        395)
+        663
+        503)
       object LSelectPrinter: TLabel
-        Left = 8
-        Top = 92
-        Width = 87
-        Height = 20
+        Left = 10
+        Top = 115
+        Width = 109
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Select Printer'
       end
       object LCopies: TLabel
-        Left = 8
-        Top = 212
-        Width = 45
-        Height = 20
+        Left = 10
+        Top = 265
+        Width = 56
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Copies'
       end
       object LPrinterFonts: TLabel
-        Left = 8
-        Top = 8
-        Width = 220
-        Height = 20
+        Left = 10
+        Top = 10
+        Width = 275
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Printer Fonts (Windows GDI Only)'
       end
       object LRLang: TLabel
-        Left = 8
-        Top = 36
-        Width = 111
-        Height = 20
+        Left = 10
+        Top = 45
+        Width = 139
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Report language'
       end
       object LPreview: TLabel
-        Left = 8
-        Top = 60
-        Width = 173
-        Height = 20
+        Left = 10
+        Top = 75
+        Width = 216
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Preview window and scale'
       end
       object LPaperSource: TLabel
-        Left = 8
-        Top = 120
-        Width = 130
-        Height = 20
+        Left = 10
+        Top = 150
+        Width = 163
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Select paper source'
       end
       object LDuplex: TLabel
-        Left = 8
-        Top = 148
-        Width = 95
-        Height = 20
+        Left = 10
+        Top = 185
+        Width = 119
+        Height = 25
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Duplex option'
       end
       object ComboSelPrinter: TComboBox
-        Left = 252
-        Top = 88
-        Width = 272
+        Left = 315
+        Top = 110
+        Width = 342
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 3
       end
       object BConfigure: TButton
-        Left = 8
-        Top = 176
-        Width = 213
-        Height = 25
+        Left = 10
+        Top = 220
+        Width = 266
+        Height = 31
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Configure printers'
         TabOrder = 5
         OnClick = BConfigureClick
       end
       object CheckPrintOnlyIfData: TCheckBox
-        Left = 8
-        Top = 284
-        Width = 209
-        Height = 21
+        Left = 10
+        Top = 355
+        Width = 261
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Print only if data available'
         TabOrder = 9
       end
       object CheckTwoPass: TCheckBox
-        Left = 8
-        Top = 260
-        Width = 209
-        Height = 21
+        Left = 10
+        Top = 325
+        Width = 261
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Two pass report'
         TabOrder = 8
       end
       object ECopies: TRpMaskEdit
-        Left = 152
-        Top = 208
-        Width = 69
+        Left = 190
+        Top = 260
+        Width = 86
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         TabOrder = 6
         Text = ''
         EditType = teinteger
       end
       object CheckCollate: TCheckBox
-        Left = 8
-        Top = 236
-        Width = 213
-        Height = 21
+        Left = 10
+        Top = 295
+        Width = 266
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Collate copies'
         TabOrder = 7
       end
       object ComboPrinterFonts: TComboBox
-        Left = 252
-        Top = 4
-        Width = 272
+        Left = 315
+        Top = 5
+        Width = 342
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -424,19 +620,27 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           'Recalculte report')
       end
       object ComboLanguage: TComboBox
-        Left = 252
-        Top = 32
-        Width = 272
+        Left = 315
+        Top = 40
+        Width = 342
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
       end
       object ComboPreview: TComboBox
-        Left = 252
-        Top = 60
-        Width = 118
+        Left = 315
+        Top = 75
+        Width = 148
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         TabOrder = 2
         Items.Strings = (
@@ -444,10 +648,14 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           'Maxmized')
       end
       object ComboStyle: TComboBox
-        Left = 376
-        Top = 60
-        Width = 148
+        Left = 470
+        Top = 75
+        Width = 187
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
@@ -457,123 +665,239 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           'Page')
       end
       object CheckDrawerAfter: TCheckBox
-        Left = 8
-        Top = 332
-        Width = 373
-        Height = 21
+        Left = 10
+        Top = 415
+        Width = 466
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Open drawer after printing'
         TabOrder = 11
       end
       object CheckDrawerBefore: TCheckBox
-        Left = 8
-        Top = 308
-        Width = 405
-        Height = 21
+        Left = 10
+        Top = 385
+        Width = 506
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Open drawer before printing'
         TabOrder = 10
       end
       object CheckPreviewAbout: TCheckBox
-        Left = 228
-        Top = 232
-        Width = 296
-        Height = 21
+        Left = 285
+        Top = 290
+        Width = 372
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'About box in preview'
         TabOrder = 12
       end
       object CheckMargins: TCheckBox
-        Left = 228
-        Top = 256
-        Width = 297
-        Height = 21
+        Left = 285
+        Top = 320
+        Width = 373
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Printable margins in preview'
         TabOrder = 13
       end
       object ComboPaperSource: TComboBox
-        Left = 300
-        Top = 116
-        Width = 224
+        Left = 375
+        Top = 145
+        Width = 282
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 14
         OnClick = ComboPaperSourceClick
       end
       object ComboDuplex: TComboBox
-        Left = 252
-        Top = 144
-        Width = 272
+        Left = 315
+        Top = 180
+        Width = 342
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 15
       end
       object EPaperSource: TRpMaskEdit
-        Left = 252
-        Top = 116
-        Width = 45
+        Left = 315
+        Top = 145
+        Width = 56
         Height = 28
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         TabOrder = 16
         OnChange = EPaperSourceChange
         Text = ''
         EditType = teinteger
       end
       object CheckDefaultCopies: TCheckBox
-        Left = 228
-        Top = 208
-        Width = 237
-        Height = 21
+        Left = 285
+        Top = 260
+        Width = 296
+        Height = 26
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         Caption = 'Default printer copies'
         TabOrder = 17
         OnClick = CheckDefaultCopiesClick
       end
     end
     object TabOptions: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Options'
       ImageIndex = 2
-      DesignSize = (
-        529
-        395)
-      object LPreferedFormat: TLabel
-        Left = 8
-        Top = 12
-        Width = 138
-        Height = 20
-        Caption = 'Prefered save format'
-      end
-      object ComboFormat: TComboBox
-        Left = 184
-        Top = 8
-        Width = 336
-        Height = 28
-        Style = csDropDownList
-        Anchors = [akLeft, akTop, akRight]
+      object Panel2: TPanel
+        Left = 0
+        Top = 0
+        Width = 663
+        Height = 57
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
+        Align = alTop
         TabOrder = 0
+        DesignSize = (
+          663
+          57)
+        object LPreferedFormat: TLabel
+          Left = 6
+          Top = 15
+          Width = 173
+          Height = 25
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Caption = 'Prefered save format'
+        end
+        object ComboFormat: TComboBox
+          Left = 226
+          Top = 10
+          Width = 422
+          Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Style = csDropDownList
+          Anchors = [akLeft, akTop, akRight]
+          TabOrder = 0
+        end
+      end
+      object Panel3: TPanel
+        Left = 0
+        Top = 57
+        Width = 663
+        Height = 446
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
+        Align = alClient
+        TabOrder = 1
+        ExplicitLeft = 80
+        ExplicitTop = 150
+        ExplicitWidth = 231
+        ExplicitHeight = 51
+        object ToolBar1: TToolBar
+          Left = 1
+          Top = 1
+          Width = 661
+          Height = 37
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          ButtonHeight = 28
+          ButtonWidth = 29
+          Caption = 'ToolBar1'
+          TabOrder = 0
+          ExplicitWidth = 827
+        end
+        object ListView1: TListView
+          Left = 1
+          Top = 38
+          Width = 661
+          Height = 407
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Align = alClient
+          Columns = <>
+          TabOrder = 1
+          ExplicitLeft = 200
+          ExplicitTop = 130
+          ExplicitWidth = 221
+          ExplicitHeight = 131
+        end
       end
     end
   end
   object Panel1: TPanel
     Left = 0
-    Top = 430
-    Width = 537
-    Height = 41
+    Top = 538
+    Width = 671
+    Height = 51
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alBottom
     TabOrder = 1
     object BOK: TButton
-      Left = 8
-      Top = 8
-      Width = 101
-      Height = 25
+      Left = 10
+      Top = 10
+      Width = 126
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'OK'
       TabOrder = 0
       OnClick = BOKClick
     end
     object BCancel: TButton
-      Left = 116
-      Top = 8
-      Width = 97
-      Height = 25
+      Left = 145
+      Top = 10
+      Width = 121
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Cancel'
       TabOrder = 1
       OnClick = BCancelClick

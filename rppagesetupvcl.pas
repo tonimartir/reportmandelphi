@@ -32,7 +32,8 @@ uses
   Graphics, Controls, Forms, Dialogs,
   StdCtrls,rpreport, ExtCtrls,Buttons,Printers,
   rptypes,rpbasereport,
-  rpmetafile,rpmdconsts,rpmdprintconfigvcl, ComCtrls, Mask, rpmaskedit;
+  rpmetafile,rpmdconsts,rpmdprintconfigvcl, ComCtrls, Mask, rpmaskedit,
+  Vcl.ToolWin;
 
 type
   TFRpPageSetupVCL = class(TForm)
@@ -102,6 +103,10 @@ type
     LLinesperInch: TLabel;
     ELinesPerInch: TRpMaskEdit;
     CheckDefaultCopies: TCheckBox;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    ToolBar1: TToolBar;
+    ListView1: TListView;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);

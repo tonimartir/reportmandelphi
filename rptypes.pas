@@ -257,6 +257,12 @@ type
     property Text:widestring read GetText write SetText;
   end;
 
+ TEmbeddedFile=class
+   public FileName: string;
+   public Stream: TMemoryStream;
+   public MimeType: string;
+   public ResourceNumber: integer;
+ end;
 
 
 function StringCachedImageToCachedImage(Value:widestring):TRpCachedImage;
