@@ -123,6 +123,8 @@ type
     SpeedButton1: TSpeedButton;
     SpeedButton2: TSpeedButton;
     FileOpenDialog1: TFileOpenDialog;
+    PParentListView: TPanel;
+    Panel4: TPanel;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);

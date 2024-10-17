@@ -972,6 +972,8 @@ begin
  else
  begin
   metafile.Clear;
+  metafile.PDFConformance:=PDFConformance;
+  metafile.PDFCompressed:=PDFCompressed;
   metafile.Copies := Copies;
   metafile.PreviewAbout:=PreviewAbout;
   metafile.PreviewMargins:=PreviewMargins;

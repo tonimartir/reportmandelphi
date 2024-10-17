@@ -867,7 +867,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
               'PDF A/3')
           end
           object CheckBoxPDFCompressed: TCheckBox
-            Left = 240
+            Left = 220
             Top = 72
             Width = 121
             Height = 21
@@ -890,71 +890,107 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Margins.Bottom = 4
         Align = alClient
         TabOrder = 1
-        object ToolBar1: TToolBar
+        ExplicitTop = 224
+        ExplicitHeight = 289
+        object PParentListView: TPanel
           Left = 1
-          Top = 1
+          Top = 25
           Width = 654
-          Height = 37
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          ButtonHeight = 35
-          ButtonWidth = 33
-          Caption = 'ToolBar1'
-          Images = VirtualImageList1
-          TabOrder = 0
-          object SpeedButton2: TSpeedButton
-            Left = 0
-            Top = 0
-            Width = 103
-            Height = 35
-            Margins.Left = 4
-            Margins.Top = 4
-            Margins.Right = 4
-            Margins.Bottom = 4
-            Action = AFileNew
-            Images = VirtualImageList1
-          end
-          object SpeedButton1: TSpeedButton
-            Left = 103
-            Top = 0
-            Width = 103
-            Height = 35
-            Margins.Left = 4
-            Margins.Top = 4
-            Margins.Right = 4
-            Margins.Bottom = 4
-            Action = AFileDelete
-            Images = VirtualImageList1
-          end
-        end
-        object ListViewEmbedded: TListView
-          Left = 1
-          Top = 38
-          Width = 654
-          Height = 297
+          Height = 310
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Align = alClient
-          Columns = <
-            item
-              Caption = 'File Name'
-              Width = 250
+          Caption = 'PParentListView'
+          TabOrder = 0
+          ExplicitLeft = 80
+          ExplicitTop = 130
+          ExplicitWidth = 231
+          ExplicitHeight = 51
+          object ListViewEmbedded: TListView
+            Left = 1
+            Top = 38
+            Width = 652
+            Height = 271
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Align = alClient
+            Columns = <
+              item
+                Caption = 'File Name'
+                Width = 250
+              end
+              item
+                Caption = 'Mime Type'
+                Width = 175
+              end
+              item
+                Alignment = taRightJustify
+                Caption = 'Size'
+                Width = 125
+              end>
+            TabOrder = 0
+            ViewStyle = vsReport
+            ExplicitTop = 24
+            ExplicitWidth = 654
+            ExplicitHeight = 311
+          end
+          object ToolBar1: TToolBar
+            Left = 1
+            Top = 1
+            Width = 652
+            Height = 37
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            ButtonHeight = 35
+            ButtonWidth = 33
+            Caption = 'ToolBar1'
+            Images = VirtualImageList1
+            TabOrder = 1
+            ExplicitWidth = 654
+            object SpeedButton2: TSpeedButton
+              Left = 0
+              Top = 0
+              Width = 103
+              Height = 35
+              Margins.Left = 4
+              Margins.Top = 4
+              Margins.Right = 4
+              Margins.Bottom = 4
+              Action = AFileNew
+              Images = VirtualImageList1
             end
-            item
-              Caption = 'Mime Type'
-              Width = 175
+            object SpeedButton1: TSpeedButton
+              Left = 103
+              Top = 0
+              Width = 103
+              Height = 35
+              Margins.Left = 4
+              Margins.Top = 4
+              Margins.Right = 4
+              Margins.Bottom = 4
+              Action = AFileDelete
+              Images = VirtualImageList1
             end
-            item
-              Alignment = taRightJustify
-              Caption = 'Size'
-              Width = 125
-            end>
+          end
+        end
+        object Panel4: TPanel
+          Left = 1
+          Top = 1
+          Width = 654
+          Height = 24
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Align = alTop
+          Caption = 'PDF Embedded Files'
           TabOrder = 1
-          ViewStyle = vsReport
         end
       end
     end

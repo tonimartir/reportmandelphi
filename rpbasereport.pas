@@ -1759,6 +1759,9 @@ begin
    efile.Stream:=TMemoryStream.Create;
    efile.Stream.SetSize(ssize);
    memStream.Read(efile.Stream.Memory^,ssize);
+
+   SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+   EmbeddedFiles[Length(EmbeddedFiles)-1]:=efile;
   end;
  finally
   memStream.Free;
