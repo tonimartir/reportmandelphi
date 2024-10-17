@@ -34,7 +34,7 @@ begin
  memstream:=TMemoryStream.Create;
  try
   rppdfdriver.PrintReportPDFStream(areport,'',false,true,
-   1,99999,1,memstream,Compressed,false);
+   1,99999,1,memstream,Compressed,false, true);
   memstream.Seek(0,soFromBeginning);
 
   Response.Clear;

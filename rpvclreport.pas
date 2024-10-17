@@ -59,6 +59,7 @@ type
    property ShowPrintDialog;
    property AliasList;
    property Language;
+   property PDFConformance;
   end;
 
 implementation
@@ -158,7 +159,7 @@ procedure TVCLReport.SaveToPDF(filename:string;compressed:boolean=false);
 begin
  CheckLoaded;
  rpgdidriver.ExportReportToPDF(report,filename,ShowProgress,True,1,MAX_PAGECOUNT,1,
-  false,filename,compressed,false)
+  false,filename,compressed,false, PDFConformance)
 end;
 
 procedure TVCLReport.SaveToMetafile(filename:string);

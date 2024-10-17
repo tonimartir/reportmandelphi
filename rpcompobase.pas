@@ -29,7 +29,7 @@ uses Classes,Sysutils,rpreport,rpmdconsts,
 {$IFDEF USEINDY}
  rpmdrepclient,rpparams,SyncObjs,
 {$ENDIF}
- rpmetafile;
+ rpmetafile,System.NetEncoding;
 
 type
  TCBaseReport=class(TComponent)
@@ -46,6 +46,7 @@ type
    FOnBeforePrint:TNotifyEvent;
    FReportName:String;
    FAsyncExecution:Boolean;
+   FPDFConformance: TPDFConformance;
 {$IFDEF USEINDY}
    FRemoteError:Boolean;
    FRemoteMessage:WideString;
@@ -82,6 +83,7 @@ type
    procedure LoadFromStream(stream:TStream);
    procedure ExecuteRemote(hostname:String;port:integer;user,password,aliasname,reportname:String);
    procedure GetRemoteParams(hostname:String;port:integer;user,password,aliasname,reportname:String);
+   procedure AddPDFFile(const fileName, mimeType, base64Stream: string);
    property Report:TRpReport read GetReport;
    property Preview:Boolean read FPreview write FPreview default true;
    property ShowProgress:boolean read FShowProgress write FShowProgress
@@ -95,6 +97,7 @@ type
    property Filename:TFilename read FFilename write SetFilename;
    property ConnectionName:String read FConnectionName write SetConnectionName;
    property AsyncExecution:Boolean read FAsyncExecution write SetAsyncExecution;
+   property PDFConformance: TPDFConformance read FPDFConformance write FPDFConformance;
    property ReportName:String read FReportName write SetReportName;
    property OnBeforePrint:TNotifyEvent read FOnBeforePrint
     write SetOnBeforePrint;
@@ -113,6 +116,22 @@ begin
  FTitle:=SRpUntitled;
  FShowPrintDialog:=True;
  FLanguage:=-1;
+end;
+
+procedure TCBaseReport.AddPDFFile(const fileName, mimeType, base64Stream: string);
+var embedded: TEmbeddedFile;
+ bytes: TBytes;
+begin
+ CheckLoaded;
+ embedded:=TEmbeddedFile.Create;
+ embedded.FileName:=fileName;
+ embedded.MimeType:=mimeType;
+ embedded.Stream:=TMemoryStream.Create;
+ bytes:=System.NetEncoding.TNetEncoding.Base64.DecodeStringToBytes(base64Stream);
+ embedded.Stream.Write(bytes,Length(bytes));
+ embedded.Stream.Position:=0;
+ SetLength(Report.EmbeddedFiles,Length(Report.EmbeddedFiles)+1);
+ Report.EmbeddedFiles[Length(Report.EmbeddedFiles)-1]:=embedded;
 end;
 
 procedure TCBaseReport.Notification(AComponent: TComponent; Operation: TOperation);

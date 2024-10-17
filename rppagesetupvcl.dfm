@@ -3,8 +3,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
   Top = 108
   BorderStyle = bsDialog
   Caption = 'Dialog'
-  ClientHeight = 589
-  ClientWidth = 671
+  ClientHeight = 599
+  ClientWidth = 664
   Color = clBtnFace
   ParentFont = True
   Position = poScreenCenter
@@ -16,13 +16,13 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
   object PControl: TPageControl
     Left = 0
     Top = 0
-    Width = 671
-    Height = 538
+    Width = 664
+    Height = 548
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
-    ActivePage = TabOptions
+    ActivePage = TabPage
     Align = alClient
     TabOrder = 0
     object TabPage: TTabSheet
@@ -32,8 +32,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       Margins.Bottom = 4
       Caption = 'Page setup'
       DesignSize = (
-        663
-        503)
+        656
+        513)
       object SColor: TShape
         Left = 200
         Top = 345
@@ -48,8 +48,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LLinesperInch: TLabel
         Left = 5
         Top = 315
-        Width = 113
-        Height = 25
+        Width = 90
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -59,7 +59,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object GUserDefined: TGroupBox
         Left = 230
         Top = 10
-        Width = 427
+        Width = 420
         Height = 116
         Margins.Left = 4
         Margins.Top = 4
@@ -70,39 +70,39 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         TabOrder = 1
         Visible = False
         DesignSize = (
-          427
+          420
           116)
         object LMetrics7: TLabel
-          Left = 373
+          Left = 366
           Top = 30
-          Width = 38
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
-          ExplicitLeft = 371
+          ExplicitLeft = 373
         end
         object LMetrics8: TLabel
-          Left = 373
+          Left = 366
           Top = 60
-          Width = 38
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
-          ExplicitLeft = 371
+          ExplicitLeft = 373
         end
         object LWidth: TLabel
           Left = 15
           Top = 30
-          Width = 50
-          Height = 25
+          Width = 40
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -112,8 +112,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LHeight: TLabel
           Left = 15
           Top = 60
-          Width = 56
-          Height = 25
+          Width = 45
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -123,8 +123,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LForceFormName: TLabel
           Left = 15
           Top = 90
-          Width = 141
-          Height = 25
+          Width = 113
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -134,7 +134,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object EPageheight: TRpMaskEdit
           Left = 160
           Top = 55
-          Width = 197
+          Width = 190
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -148,7 +148,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object EPageWidth: TRpMaskEdit
           Left = 160
           Top = 25
-          Width = 197
+          Width = 190
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -162,7 +162,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object EForceFormName: TRpMaskEdit
           Left = 160
           Top = 85
-          Width = 197
+          Width = 190
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -193,7 +193,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object GPageSize: TGroupBox
         Left = 230
         Top = 15
-        Width = 426
+        Width = 419
         Height = 81
         Margins.Left = 4
         Margins.Top = 4
@@ -235,7 +235,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object RCustomOrientation: TRadioGroup
         Left = 235
         Top = 130
-        Width = 422
+        Width = 415
         Height = 84
         Margins.Left = 4
         Margins.Top = 4
@@ -265,7 +265,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object GPageMargins: TGroupBox
         Left = 5
         Top = 215
-        Width = 652
+        Width = 645
         Height = 86
         Margins.Left = 4
         Margins.Top = 4
@@ -275,13 +275,13 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Caption = 'Page Margins'
         TabOrder = 5
         DesignSize = (
-          652
+          645
           86)
         object LLeft: TLabel
           Left = 20
           Top = 20
-          Width = 31
-          Height = 25
+          Width = 25
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -291,8 +291,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LTop: TLabel
           Left = 20
           Top = 55
-          Width = 31
-          Height = 25
+          Width = 25
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -302,8 +302,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LMetrics3: TLabel
           Left = 210
           Top = 20
-          Width = 38
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -313,8 +313,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LMetrics4: TLabel
           Left = 210
           Top = 50
-          Width = 38
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -322,23 +322,23 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'inch.'
         end
         object LMetrics5: TLabel
-          Left = 591
+          Left = 584
           Top = 20
-          Width = 37
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
-          ExplicitLeft = 589
+          ExplicitLeft = 591
         end
         object LRight: TLabel
           Left = 305
           Top = 20
-          Width = 44
-          Height = 25
+          Width = 35
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -348,8 +348,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object LBottom: TLabel
           Left = 305
           Top = 55
-          Width = 63
-          Height = 25
+          Width = 50
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -357,17 +357,17 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Bottom'
         end
         object LMetrics6: TLabel
-          Left = 591
+          Left = 584
           Top = 55
-          Width = 37
-          Height = 25
+          Width = 30
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Anchors = [akTop, akRight]
           Caption = 'inch.'
-          ExplicitLeft = 589
+          ExplicitLeft = 591
         end
         object ELeftMargin: TRpMaskEdit
           Left = 100
@@ -398,7 +398,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object ERightMargin: TRpMaskEdit
           Left = 380
           Top = 15
-          Width = 197
+          Width = 190
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -412,7 +412,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object EBottomMargin: TRpMaskEdit
           Left = 380
           Top = 50
-          Width = 197
+          Width = 190
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -427,7 +427,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ELinesPerInch: TRpMaskEdit
         Left = 290
         Top = 310
-        Width = 157
+        Width = 150
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -447,13 +447,13 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       Caption = 'Print setup'
       ImageIndex = 1
       DesignSize = (
-        663
-        503)
+        656
+        513)
       object LSelectPrinter: TLabel
         Left = 10
         Top = 115
-        Width = 109
-        Height = 25
+        Width = 87
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -463,8 +463,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LCopies: TLabel
         Left = 10
         Top = 265
-        Width = 56
-        Height = 25
+        Width = 45
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -474,8 +474,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LPrinterFonts: TLabel
         Left = 10
         Top = 10
-        Width = 275
-        Height = 25
+        Width = 220
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -485,8 +485,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LRLang: TLabel
         Left = 10
         Top = 45
-        Width = 139
-        Height = 25
+        Width = 111
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -496,8 +496,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LPreview: TLabel
         Left = 10
         Top = 75
-        Width = 216
-        Height = 25
+        Width = 173
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -507,8 +507,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LPaperSource: TLabel
         Left = 10
         Top = 150
-        Width = 163
-        Height = 25
+        Width = 130
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -518,8 +518,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object LDuplex: TLabel
         Left = 10
         Top = 185
-        Width = 119
-        Height = 25
+        Width = 95
+        Height = 20
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -529,7 +529,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboSelPrinter: TComboBox
         Left = 315
         Top = 110
-        Width = 342
+        Width = 335
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -604,7 +604,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboPrinterFonts: TComboBox
         Left = 315
         Top = 5
-        Width = 342
+        Width = 335
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -622,7 +622,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboLanguage: TComboBox
         Left = 315
         Top = 40
-        Width = 342
+        Width = 335
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -650,7 +650,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboStyle: TComboBox
         Left = 470
         Top = 75
-        Width = 187
+        Width = 180
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -691,7 +691,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object CheckPreviewAbout: TCheckBox
         Left = 285
         Top = 290
-        Width = 372
+        Width = 365
         Height = 26
         Margins.Left = 4
         Margins.Top = 4
@@ -704,7 +704,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object CheckMargins: TCheckBox
         Left = 285
         Top = 320
-        Width = 373
+        Width = 366
         Height = 26
         Margins.Left = 4
         Margins.Top = 4
@@ -717,7 +717,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboPaperSource: TComboBox
         Left = 375
         Top = 145
-        Width = 282
+        Width = 275
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -731,7 +731,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object ComboDuplex: TComboBox
         Left = 315
         Top = 180
-        Width = 342
+        Width = 335
         Height = 28
         Margins.Left = 4
         Margins.Top = 4
@@ -779,8 +779,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       object Panel2: TPanel
         Left = 0
         Top = 0
-        Width = 663
-        Height = 57
+        Width = 656
+        Height = 177
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -788,13 +788,13 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Align = alTop
         TabOrder = 0
         DesignSize = (
-          663
-          57)
+          656
+          177)
         object LPreferedFormat: TLabel
           Left = 6
           Top = 15
-          Width = 173
-          Height = 25
+          Width = 138
+          Height = 20
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
@@ -804,7 +804,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         object ComboFormat: TComboBox
           Left = 226
           Top = 10
-          Width = 422
+          Width = 415
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -814,61 +814,155 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 0
         end
+        object GPDF: TGroupBox
+          Left = 6
+          Top = 46
+          Width = 875
+          Height = 115
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Caption = 'PDF Options'
+          TabOrder = 1
+          DesignSize = (
+            875
+            115)
+          object LabelPDFConformance: TLabel
+            Left = 16
+            Top = 34
+            Width = 119
+            Height = 20
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Caption = 'PDF Conformance'
+          end
+          object LabelCompressed: TLabel
+            Left = 16
+            Top = 74
+            Width = 82
+            Height = 20
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Caption = 'Compressed'
+          end
+          object ComboBoxPDFConformance: TComboBox
+            Left = 220
+            Top = 26
+            Width = 415
+            Height = 28
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Style = csDropDownList
+            Anchors = [akLeft, akTop, akRight]
+            TabOrder = 0
+            Items.Strings = (
+              'PDF 1.4'
+              'PDF A/3')
+          end
+          object CheckBoxPDFCompressed: TCheckBox
+            Left = 240
+            Top = 72
+            Width = 121
+            Height = 21
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            TabOrder = 1
+          end
+        end
       end
       object Panel3: TPanel
         Left = 0
-        Top = 57
-        Width = 663
-        Height = 446
+        Top = 177
+        Width = 656
+        Height = 336
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
         Margins.Bottom = 4
         Align = alClient
         TabOrder = 1
-        ExplicitLeft = 80
-        ExplicitTop = 150
-        ExplicitWidth = 231
-        ExplicitHeight = 51
         object ToolBar1: TToolBar
           Left = 1
           Top = 1
-          Width = 661
+          Width = 654
           Height = 37
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
-          ButtonHeight = 28
-          ButtonWidth = 29
+          ButtonHeight = 35
+          ButtonWidth = 33
           Caption = 'ToolBar1'
+          Images = VirtualImageList1
           TabOrder = 0
-          ExplicitWidth = 827
+          object SpeedButton2: TSpeedButton
+            Left = 0
+            Top = 0
+            Width = 103
+            Height = 35
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Action = AFileNew
+            Images = VirtualImageList1
+          end
+          object SpeedButton1: TSpeedButton
+            Left = 103
+            Top = 0
+            Width = 103
+            Height = 35
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Action = AFileDelete
+            Images = VirtualImageList1
+          end
         end
-        object ListView1: TListView
+        object ListViewEmbedded: TListView
           Left = 1
           Top = 38
-          Width = 661
-          Height = 407
+          Width = 654
+          Height = 297
           Margins.Left = 4
           Margins.Top = 4
           Margins.Right = 4
           Margins.Bottom = 4
           Align = alClient
-          Columns = <>
+          Columns = <
+            item
+              Caption = 'File Name'
+              Width = 250
+            end
+            item
+              Caption = 'Mime Type'
+              Width = 175
+            end
+            item
+              Alignment = taRightJustify
+              Caption = 'Size'
+              Width = 125
+            end>
           TabOrder = 1
-          ExplicitLeft = 200
-          ExplicitTop = 130
-          ExplicitWidth = 221
-          ExplicitHeight = 131
+          ViewStyle = vsReport
         end
       end
     end
   end
   object Panel1: TPanel
     Left = 0
-    Top = 538
-    Width = 671
+    Top = 548
+    Width = 664
     Height = 51
     Margins.Left = 4
     Margins.Top = 4
@@ -906,5 +1000,296 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
   object ColorDialog1: TColorDialog
     Left = 336
     Top = 288
+  end
+  object FileActions: TActionList
+    Images = VirtualImageList1
+    Left = 180
+    Top = 352
+    object AFileNew: TAction
+      Caption = 'New'
+      ImageIndex = 0
+      ImageName = 'Item1'
+      OnExecute = AFileNewExecute
+    end
+    object AFileDelete: TAction
+      Caption = 'Delete'
+      ImageIndex = 1
+      ImageName = 'Item2'
+      OnExecute = AFileDeleteExecute
+    end
+  end
+  object VirtualImageList1: TVirtualImageList
+    Images = <
+      item
+        CollectionIndex = 0
+        CollectionName = 'Item1'
+        Name = 'Item1'
+      end
+      item
+        CollectionIndex = 1
+        CollectionName = 'Item2'
+        Name = 'Item2'
+      end>
+    ImageCollection = ImageCollection1
+    Width = 26
+    Height = 26
+    Left = 158
+    Top = 386
+  end
+  object ImageList1: TImageList
+    BkColor = clFuchsia
+    Height = 19
+    Width = 19
+    Left = 232
+    Top = 307
+    Bitmap = {
+      494C010102000900040013001300FF00FF00FF10FFFFFFFFFFFFFFFF424D3600
+      00000000000036000000280000004C0000001300000001002000000000009016
+      000000000000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF000000FF000000FF000000FF000000FF000000FF00
+      0000FF000000FF000000FF000000FF000000FF000000FF000000FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000FFFFFF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF0000008484
+      8400848484008484840084848400848484008484840084848400848484008484
+      840084848400FF000000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF0000000000FFFFFF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF000000FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF000000
+      00000000000000000000FFFFFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF0000000000FFFFFF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF000000FF00
+      FF000000000000000000FF00FF000000000000000000FF00FF00000000000000
+      0000FF00FF00FF000000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00000000000000000000000000FFFFFF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF0000000000FFFFFF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF000000FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00000000000000000000000000FFFFFF00FF00FF00FF00FF00FF00FF000000
+      000000000000FFFFFF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000084848400FF00FF00FF000000FF00
+      FF000000000000000000FF00FF000000000000000000FF00FF00000000000000
+      0000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF0000000000000000000000
+      0000FFFFFF00FF00FF000000000000000000FFFFFF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF000000000000FF000000000000FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF000000000000000000000000000000000000000000FFFF
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF000000FF00
+      0000FF000000FF000000FF000000FF000000FF000000FF000000FF000000FF00
+      00000000000000FF000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF000000
+      00000000000000000000FFFFFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF000000FF00FF00FF000000FF000000FF00FF00FF00
+      0000FF0000000000000000000000000000000000000000FF0000000000000000
+      00000000000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF000000000000000000000000000000000000000000FFFF
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF000000FF00
+      0000FF000000FF000000FF000000FF000000FF0000000000000000FF000000FF
+      000000FF000000FF000000FF000000FF000000FF000000000000FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF0000000000000000000000
+      0000FFFFFF00FF00FF0000000000FFFFFF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF000000000000000000000000000000000000FF0000000000000000
+      00000000000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF000000
+      0000000000000000000000000000FFFFFF00FF00FF00FF00FF00FF00FF000000
+      000000000000FFFFFF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF000000000000FF000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000FFFFFF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF000000000000000000FFFFFF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF000000000000FF000000000000FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000FFFFFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF000000000000000000FFFFFF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00000000000000000000000000FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+      FF00FF00FF00FF00FF0000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000424D3E000000000000003E000000280000004C0000001300000001000100
+      00000000E40000000000000000000000000000000000000000000000FFFFFF00
+      FFFFFFFFFC00000000000000FFFFFFFFFC00000000000000FFFFFFFFFC000000
+      00000000C003FFFFCC00000000000000C003FF3FFC00000000000000DFFBFE1F
+      9C00000000000000D24BFE1F3C00000000000000DFFBFF0E3C00000000000000
+      5241FF847C00000000000000DFF1FFC0FC00000000000000C001FFE1FC000000
+      00000000D2003FC0FC00000000000000C0003F84FC00000000000000FF803E0E
+      3C00000000000000FFF1FC1F1C00000000000000FFF1FC7F8C00000000000000
+      FFF1FFFFFC00000000000000FFFFFFFFFC00000000000000FFFFFFFFFC000000
+      0000000000000000000000000000000000000000000000000000}
+  end
+  object ImageCollection1: TImageCollection
+    Images = <
+      item
+        Name = 'Item1'
+        SourceImages = <
+          item
+            Image.Data = {
+              89504E470D0A1A0A0000000D4948445200000013000000130806000000725036
+              CC000000804944415478DACD91410EC0200804D977EB91BE9B5AAB561B424D30
+              A99C362A93412024B4AAF02B0C574BA9D40B3F4C72D800D68F56E6CBB0F148D0
+              60208B6ADF56CB0196126A5B9F150D8F996269FD5935732D809925C480674C48
+              D356F27B349799F55659806D76E749D83233E6636A9F3106FA844D91DAE71BB0
+              15B52FEC04077973EEF44332900000000049454E44AE426082}
+          end>
+      end
+      item
+        Name = 'Item2'
+        SourceImages = <
+          item
+            Image.Data = {
+              89504E470D0A1A0A0000000D4948445200000013000000130806000000725036
+              CC000000734944415478DAD594E10AC0200884F3FD1FFA5641309A775A1B83FC
+              67E897DE518682F255D819306B690D003D918D4EAD0B1BC1A0ECD2C79A11504D
+              4F35BB4347633B53124803E629233D4337BD0969ED2F9331CD14D085A9D596DC
+              CC68C45CDD8231205D33F3A4D206A49AA74B0FF982DEC605CC3079EE93AD1430
+              0000000049454E44AE426082}
+          end>
+      end>
+    Left = 166
+    Top = 305
+  end
+  object FileOpenDialog1: TFileOpenDialog
+    FavoriteLinks = <>
+    FileName = '*.xml'
+    FileTypes = <
+      item
+        DisplayName = 'XML File'
+        FileMask = '*.XML'
+      end
+      item
+        DisplayName = 'PDF File'
+        FileMask = '*.PDF'
+      end
+      item
+        DisplayName = 'Image file'
+        FileMask = '*.png;*.jpeg;*.bmp'
+      end
+      item
+        DisplayName = 'Other file'
+        FileMask = '*.*'
+      end>
+    Options = []
+    Left = 404
+    Top = 296
   end
 end

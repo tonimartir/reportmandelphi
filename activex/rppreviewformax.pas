@@ -498,7 +498,7 @@ begin
      end;
      2,3:
       begin
-       SaveMetafileToPDF(PreviewControl.Metafile,FileName,format=2);
+       SaveMetafileToPDF(PreviewControl.Metafile,FileName,format=2, true);
       end;
      4,5:
       begin

@@ -46,6 +46,8 @@ type
       const databasename: WideString): WideString; safecall;
     function GetDatasetSQL(const datasetname: WideString): WideString;
       safecall;
+    function Get_PDFConformance: TxPDFConformancetype; safecall;
+    procedure Set_PDFConformance(Value: TxPDFConformancetype); safecall;
     function GetParamValue(const paramname: WideString): OleVariant; safecall;
     function IsRightToLeft: WordBool; safecall;
     function PrintRange(frompage, topage, copies: Integer;
@@ -86,6 +88,7 @@ type
       Execute: WordBool); safecall;
     function Get_Report: ReportReport; safecall;
     procedure SaveToExcel(const filename: WideString); safecall;
+    procedure SetPdfConformance(const conformance: TPDFConformanceType); safecall;
     procedure SaveToHTML(const filename: WideString); safecall;
     procedure SetRecordSet(const DatasetName: WideString;
       const Value: IDispatch); safecall;
@@ -105,6 +108,8 @@ type
     procedure Set_AsyncExecution(Value: WordBool); safecall;
     procedure SaveToHTMLSingle(const filename: WideString); safecall;
     procedure SaveToFile(const filename: WideString); safecall;
+    procedure AddPDFFile(const fileName, mimeType, base64Stream: WideString); safecall;
+
   end;
 
 implementation
@@ -437,6 +442,12 @@ begin
 end;
 
 
+procedure TReportManX.SetPdfConformance(const conformance: TPDFConformanceType);
+begin
+ FDelphiControl.GetReport.PDFConformance:=conformance;
+end;
+
+
 procedure TReportManX.SaveToHTML(const filename: WideString);
 begin
  rphtmldriver.ExportReportToHtml(FDelphiControl.GetReport,filename,Get_ShowProgress);
@@ -554,6 +565,22 @@ end;
 procedure TReportManX.SaveToFile(const filename: WideString);
 begin
  FDelphiControl.GetReport.SaveToFile(filename);
+end;
+
+function TReportManX.Get_PDFConformance: TxPDFConformancetype;
+begin
+ Result:=TxPDFConformancetype(FDelphiControl.GetReport.PDFConformance);
+end;
+
+procedure TReportManX.Set_PDFConformance(Value: TxPDFConformancetype);
+begin
+ FDelphiControl.PDFConformance:=TPDFConformance(Value);
+end;
+
+
+procedure TReportManX.AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+begin
+ FDelphiControl.AddPDFFile(filename, mimeType, base64Stream);
 end;
 
 initialization

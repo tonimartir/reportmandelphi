@@ -26,7 +26,7 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
-  rpvclreport,Graphics,rpreport,rpmdconsts;
+  rpvclreport,Graphics,rpreport,rpmdconsts, rptypes;
 
 
 const
@@ -45,6 +45,7 @@ type
     FSHowProgress:boolean;
     FShowPrintDIalog:boolean;
     FAsyncExecution:boolean;
+    FPDFConformance:TPDFConformance;
     procedure SetFilename(Value:string);
     procedure SetPreview(Value:boolean);
     procedure SetAsyncExecution(Value:boolean);
@@ -81,6 +82,8 @@ type
    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer);override;
    constructor Create(AOwner:TComponent);override;
    function GetReport:TRpReport;
+   procedure AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+
 {$IFNDEF DOTNETD}
    procedure SetRecordset(datasetname:string; recordset: Pointer);
 {$ENDIF}
@@ -91,6 +94,7 @@ type
     property Filename:string read FFilename write SetFilename;
     property Preview:boolean read FPreview write SetPreview default true;
     property AsyncExecution:boolean read FAsyncExecution write SetAsyncExecution default false;
+    property PDFConformance:TPDFConformance read FPDFConformance write FPDFConformance default SetPDFDefault;
     property ShowProgress:boolean read FShowProgress write SetShowProgress;
     property ShowPrintDialog:boolean read FShowPrintDialog write SetShowPrintDialog;
     property Title:string read FTitle write SetTitle;
@@ -99,6 +103,12 @@ type
 
 
 implementation
+
+
+procedure TRpActiveXReport.AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+begin
+ FVCLReport.AddPDFFile(fileName, mimeType, base64Stream);
+end;
 
 procedure TRpActiveXReport.Paint;
 begin
@@ -203,6 +213,7 @@ end;
 
 procedure TRpActiveXReport.SaveToPDF(filename:string;compressed:boolean=false);
 begin
+ FVCLReport.PDFConformance:=PDFConformance;
  FVCLReport.SaveToPDF(filename,compressed);
 end;
 

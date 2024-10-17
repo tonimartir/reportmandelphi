@@ -185,6 +185,9 @@ begin
  WritePropertyI('DUPLEX',report.duplex,Stream);
  WritePropertyS('FORCEPAPERNAME',report.ForcePaperName,Stream);
  WritePropertyI('LINESPERINCH',report.LinesPerInch,Stream);
+ WritePropertyI('PDFCONFORMANCE',Integer(report.PDFConformance),Stream);
+ WritePropertyBool('PDFCOMPRESSED',report.PDFCompressed,Stream);
+
 end;
 
 procedure WriteParamXML(aparam:TRpParam;Stream:TStream);
@@ -886,9 +889,11 @@ begin
  begin
   efile:=report.EmbeddedFiles[i];
   astring:='<EMBEDDEDFILE>'+CRLF;
-  WritePropertyS('FILENAME', efile.FileName);
-  WritePropertyS('MIMETYPE', efile.MimeType);
-  WritePropertyB('STREAM', efile.Stream);
+  WriteStringToStream(astring,stream);
+  WritePropertyS('FILENAME', efile.FileName,Stream);
+  WritePropertyS('MIMETYPE', efile.MimeType, Stream);
+  efile.Stream.Position:=0;
+  WritePropertyB('STREAM', efile.Stream, Stream);
   astring:='</EMBEDDEDFILE>'+CRLF;
   WriteStringToStream(astring,stream);
  end;
@@ -1413,7 +1418,12 @@ begin
   report.ForcePaperName:=RpStringToString(propvalue)
  else
  if propname='LINESPERINCH' then
-  report.LinesPerInch:=StrToInt(propvalue);
+  report.LinesPerInch:=StrToInt(propvalue)
+ else
+ if propname='PDFCONFORMANCE' then
+  report.PDFConformance:=TPDFConformanceType(StrToInt(propvalue));
+ if propname='PDFCOMPRESSED' then
+  report.PDFCompressed:=RpStrToBool(propValue);
  report.ReportAction:=actions;
 end;
 
@@ -1966,16 +1976,21 @@ begin
   else
   if propname='EMBEDDEDFILE' then
   begin
-   SetLength(report.EmbeddedFiles,Length(report.EmbeddedFiles)+1);
    efile:=TEmbeddedFile.Create;;
    FindNextName;
    if propname<>'FILENAME' then
     Raise Exception.Create(SRpStreamFormat);
    efile.FileName:=RpStringToString(propvalue);
    FindNextName;
-   if propname<>'FILENAME' then
+   if propname<>'/FILENAME' then
+    Raise Exception.Create(SRpStreamFormat);
+   FindNextName;
+   if propname<>'MIMETYPE' then
     Raise Exception.Create(SRpStreamFormat);
    efile.MimeType:=RpStringToString(propvalue);
+   FindNextName;
+   if propname<>'/MIMETYPE' then
+    Raise Exception.Create(SRpStreamFormat);
    FindNextName;
    if propname<>'STREAM' then
     Raise Exception.Create(SRpStreamFormat);
@@ -1984,9 +1999,13 @@ begin
    memstream.Seek(0,soFromBeginning);
    efile.Stream:=memstream;
    FindNextName;
-   if propname<>'/EMBEDDEDFILE' then
+   if propname<>'/STREAM' then
     Raise Exception.Create(SRpStreamFormat);
    FindNextName;
+   if propname<>'/EMBEDDEDFILE' then
+    Raise Exception.Create(SRpStreamFormat);
+   SetLength(Report.EmbeddedFiles, Length(Report.EmbeddedFiles)+1);
+   Report.EmbeddedFiles[Length(Report.EmbeddedFiles)-1]:=efile;
   end
   else
   if propname='SUBREPORT' then

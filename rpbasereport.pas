@@ -239,6 +239,8 @@ type
     printedsomething:Boolean;
     gheaders,gfooters:TList;
     FGroupHeaders:TStringList;
+    FPDFConformance:TPDFConformanceType;
+    FPDFCompressed: boolean;
 {$IFDEF MSWINDOWS}
    mmfirst,mmlast:DWORD;
 {$ENDIF}
@@ -350,6 +352,9 @@ type
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
+   property PDFConformance:TPDFConformanceType read FPDFConformance write FPDFConformance;
+   property PDFCompressed:boolean read FPDFCompressed write FPDFCompressed;
+
   published
    property GridVisible:Boolean read FGridVisible write FGridVisible default true;
    property GridLines:Boolean read FGridLines write FGridLines default false;
@@ -1208,10 +1213,12 @@ begin
  for i:=0 to FDataInfo.Count-1 do
  begin
   FDataInfo.Items[i].DisConnect;
-  {$IFDEF USERPDATASET}
-  if Assigned(FDataInfo.Items[i].CachedDataset) then
-   FDataInfo.Items[i].CachedDataset.DoClose;
+
+   {$IFDEF USERPDATASET}
+  //if Assigned(FDataInfo.Items[i].CachedDataset) then
+  // FDataInfo.Items[i].CachedDataset.DoClose;
    {$ENDIF}
+
  end;
  for i:=0 to FDatabaseInfo.Count-1 do
  begin

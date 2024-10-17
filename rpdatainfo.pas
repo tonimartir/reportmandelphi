@@ -3025,12 +3025,12 @@ begin
  end;
  if Assigned(FDataset) then
  begin
+{$IFDEF USERPDATASET}
+  if Assigned(FCachedDataset) then
+   FCachedDataset.DoClose;
+{$ENDIF}
   if FDataset=FSQLInternalQuery then
    FDataset.Active:=false;
-{$IFDEF USERPDATASET}
-//  if Assigned(FCachedDataset) then
-//   FCachedDataset.DoClose;
-{$ENDIF}
  end;
 end;
 

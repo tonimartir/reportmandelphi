@@ -233,7 +233,7 @@ begin
    0:
     begin
      rppdfdriver.PrintReportPDF(report,'',false,true,1,99999,1,
-      StrPas(outputfilename),acompressed,false);
+      StrPas(outputfilename),acompressed,false, true);
     end;
    1:
     begin

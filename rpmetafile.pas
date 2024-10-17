@@ -109,6 +109,7 @@ type
    procedure Progress;
  end;
 
+
  TOnRequestData=procedure (Sender:TObject;count:integer) of object;
 
  TFlexStream=class(TStream)
@@ -374,6 +375,8 @@ type
    FMemStream:TMemoryStream;
    FTextsFound:TStringList;
    FTextsFoundByPage:TStringList;
+   FPDFConformance:TPDFConformanceType;
+   FPDFCompressed:boolean;
    procedure SetCurrentPage(index:integer);
    function GetPageCount:integer;
    function GetPage(Index:integer):TRpMetafilePage;
@@ -447,6 +450,10 @@ type
    property PreviewMargins:Boolean read FPreviewMargins write FPreviewMargins;
    property OnWorkAsyncError:TWorkAsyncError read FOnWorkAsyncError write FOnWorkAsyncError;
    property Finished:Boolean read FFinished;
+   property PDFConformance:TPDFConformanceType read FPDFConformance
+    write FPDFConformance default TPDFConformanceType.PDF_1_4;
+   property PDFCompressed:boolean read FPDFCompressed
+    write FPDFCompressed default false;
    property OnRequestPage:TRequestPageEvent read FOnRequestPage write FOnRequestPage;
   published
   end;
@@ -959,6 +966,7 @@ var
  rpSignature: string;
  fileCount: integer;
  efile: TEmbeddedFile;
+ bytevalue: byte;
 begin
  rpSignature:=RpSignature2_4;
  fileCount:=Length(EmbeddedFiles);
@@ -974,6 +982,14 @@ begin
  // Embedded Files
  if (FVersion = MetaVersion3_0) then
  begin
+  Stream.Write(Byte(PDFConformance),1);
+  if (PDFCompressed) then
+   bytevalue:=1
+  else
+   bytevalue:=0;
+  Stream.Write(bytevalue,1);
+
+
   Stream.Write(fileCount,sizeof(fileCount));
   for i:=0 to fileCount-1  do
   begin
@@ -1175,6 +1191,7 @@ var
  docancel:boolean;
  fileCount: integer;
  efile:TEmbeddedFile;
+ conformanceByte: Byte;
 begin
  FFinished:=false;
  // Clears the report metafile
@@ -1207,6 +1224,11 @@ begin
  // Embedded Files
  if (FVersion = MetaVersion3_0) then
  begin
+  // PDF Compressed
+  Stream.Read(conformanceByte,1);
+  PDFCompressed:=conformanceByte =1;
+  Stream.Read(conformanceByte,1);
+  FPDFConformance:=TPDFConformanceType(conformanceByte);
   Stream.Read(fileCount,sizeof(fileCount));
   if (fileCount<0) then
     raise Exception.Create('Error reading file count');  

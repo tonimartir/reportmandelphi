@@ -254,7 +254,7 @@ function PrintReport(report: TRpReport; Caption: string; progress: boolean;
 function ExportReportToPDF(report: TRpReport; Caption: string;
   progress: boolean; allpages: boolean; frompage, topage, copies: integer;
   showprintdialog: boolean; filename: string; compressed: boolean;
-  collate: boolean): boolean;
+  collate: boolean;PDFConformance: TPDFConformance): boolean;
 function ExportReportToPDFMetaStream(report: TRpReport; Caption: string;
   progress: boolean; allpages: boolean; frompage, topage, copies: integer;
   showprintdialog: boolean; Stream: TStream; compressed: boolean;
@@ -2393,7 +2393,7 @@ end;
 function ExportReportToPDF(report: TRpReport; Caption: string;
   progress: boolean; allpages: boolean; frompage, topage, copies: integer;
   showprintdialog: boolean; filename: string; compressed: boolean;
-  collate: boolean): boolean;
+  collate: boolean; PDFConformance: TPDFConformance): boolean;
 var
   dia: TFRpVCLProgress;
   oldonidle: TIdleEvent;
@@ -2419,6 +2419,11 @@ begin
       dia.topage := topage;
       dia.copies := copies;
       dia.report := report;
+      if (PDFConformance <> SetPDFDefault) then
+      begin
+       report.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
+      end;
+
       dia.filename := filename;
       dia.pdfcompressed := compressed;
       dia.collate := collate;

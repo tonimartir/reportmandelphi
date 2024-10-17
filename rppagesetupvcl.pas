@@ -33,7 +33,9 @@ uses
   StdCtrls,rpreport, ExtCtrls,Buttons,Printers,
   rptypes,rpbasereport,
   rpmetafile,rpmdconsts,rpmdprintconfigvcl, ComCtrls, Mask, rpmaskedit,
-  Vcl.ToolWin;
+  Vcl.ToolWin, System.Actions, Vcl.ActnList, Vcl.BaseImageCollection,
+  Vcl.ImageCollection, System.ImageList, Vcl.ImgList, Vcl.VirtualImageList,
+   System.Generics.Collections;
 
 type
   TFRpPageSetupVCL = class(TForm)
@@ -106,7 +108,21 @@ type
     Panel2: TPanel;
     Panel3: TPanel;
     ToolBar1: TToolBar;
-    ListView1: TListView;
+    ListViewEmbedded: TListView;
+    GPDF: TGroupBox;
+    ComboBoxPDFConformance: TComboBox;
+    LabelPDFConformance: TLabel;
+    LabelCompressed: TLabel;
+    CheckBoxPDFCompressed: TCheckBox;
+    FileActions: TActionList;
+    VirtualImageList1: TVirtualImageList;
+    ImageList1: TImageList;
+    ImageCollection1: TImageCollection;
+    AFileNew: TAction;
+    AFileDelete: TAction;
+    SpeedButton1: TSpeedButton;
+    SpeedButton2: TSpeedButton;
+    FileOpenDialog1: TFileOpenDialog;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);
@@ -120,14 +136,18 @@ type
     procedure EPaperSourceChange(Sender: TObject);
     procedure ComboPaperSourceClick(Sender: TObject);
     procedure CheckDefaultCopiesClick(Sender: TObject);
+    procedure AFileNewExecute(Sender: TObject);
+    procedure AFileDeleteExecute(Sender: TObject);
   private
     { Private declarations }
     report:TRpBaseReport;
     oldleftmargin,oldtopmargin,oldrightmargin,oldbottommargin:string;
     oldcustompagewidth,oldcustompageheight:string;
+    EmbeddedFiles: TList<TEmbeddedFile>;
     dook:boolean;
     procedure SaveOptions;
     procedure ReadOptions;
+    procedure UpdateEmbeddedList;
   public
     { Public declarations }
   end;
@@ -147,8 +167,7 @@ begin
  try
   dia.report:=report;
   dia.ShowModal;
-  Result:=dia.dook;
- finally
+  Result:=dia.dook; finally
   dia.free;
  end;
 end;
@@ -165,6 +184,7 @@ var
  aheight:integer;
  i:integer;
 begin
+ EmbeddedFiles:=TList<TEmbeddedFile>.Create;
  PControl.ActivePage:=TabPage;
  CheckDefaultCopies.Caption:=SRpDefaultCopies;
  LMetrics3.Caption:=rpunitlabels[defaultunit];
@@ -278,6 +298,7 @@ var
  acopies:integer;
  FReportAction:TRpReportActions;
  linch:integer;
+ i:integer;
 begin
  if CheckDefaultCopies.Checked then
   acopies:=0
@@ -341,11 +362,18 @@ begin
  report.PaperSOurce:=StrToInt(EPaperSource.Text);
  report.Duplex:=ComboDuplex.ItemIndex;
  report.ForcePaperName:=EForceFormName.Text;
-
+ report.PDFConformance:= TPDFConformanceType(ComboBoxPDFConformance.ItemIndex);
+ report.PDFCompressed:=CheckBoxPDFCompressed.Checked;
+ SetLength(report.EmbeddedFiles,EmbeddedFiles.Count);
+ for i:=0 to EmbeddedFiles.Count-1 do
+ begin
+  report.EmbeddedFiles[i]:=EmbeddedFiles[i];
+ end;
  dook:=true;
 end;
 
 procedure TFRpPageSetupVCL.ReadOptions;
+var i:integer;
 begin
  // ReadOptions
  ELinesPerInch.Text:=FloatToStr(report.LinesPerInch/100);
@@ -413,6 +441,17 @@ begin
  EPaperSourceChange(Self);
  ComboDuplex.ItemIndex:=report.Duplex;
  EForceFormName.Text:=report.ForcePaperName;
+  if (report.PDFConformance = TPDFConformanceType.PDF_1_4) then
+  ComboBoxPDFConformance.ItemIndex:=0
+ else
+  ComboBoxPDFConformance.ItemIndex:=1;
+ CheckBoxPDFCompressed.Checked:=report.PDFCompressed;
+ for i:=0 to Length(report.EmbeddedFiles)-1 do
+ begin
+  EmbeddedFiles.Add(report.EmbeddedFiles[i]);
+ end;
+ UpdateEmbeddedList;
+
 end;
 
 procedure TFRpPageSetupVCL.SColorMouseDown(Sender: TObject;
@@ -420,6 +459,8 @@ procedure TFRpPageSetupVCL.SColorMouseDown(Sender: TObject;
 begin
  BBackgroundClick(Self);
 end;
+
+
 
 procedure TFRpPageSetupVCL.BBackgroundClick(Sender: TObject);
 begin
@@ -473,6 +514,63 @@ end;
 procedure TFRpPageSetupVCL.CheckDefaultCopiesClick(Sender: TObject);
 begin
  ECopies.Enabled:=not CheckDefaultCopies.Checked;
+end;
+
+
+procedure TFRpPageSetupVCL.AFileDeleteExecute(Sender: TObject);
+begin
+ if ListViewEmbedded.ItemIndex<0 then
+  exit;
+ EmbeddedFiles.Delete(ListViewEmbedded.ItemIndex);
+ UpdateEmbeddedList;
+end;
+
+procedure TFRpPageSetupVCL.UpdateEmbeddedList;
+var embedded: TEmbeddedFile;
+ listItem: TListItem;
+begin
+  ListViewEmbedded.Items.Clear;
+  for embedded in EmbeddedFiles do
+  begin
+   listItem:=ListViewEmbedded.Items.Add;
+   listItem.Caption:=embedded.FileName;
+   listItem.SubItems.Add(embedded.MimeType);
+   listItem.SubItems.Add(FormatFloat('##,##.00',Double(embedded.Stream.Size)/1024)+' '+SRpKbytes);
+  end;
+end;
+
+procedure TFRpPageSetupVCL.AFileNewExecute(Sender: TObject);
+var
+ embedded:TEmbeddedFile;
+begin
+ // Open file dialog
+ if (not FileOpenDialog1.Execute) then
+  exit;
+ embedded:=TEmbeddedFile.Create;
+ embedded.FileName:=ExtractfileName(FileOpenDialog1.FileName);
+ embedded.Stream:=TMemoryStream.Create;
+ embedded.Stream.LoadFromFile(FileOpenDialog1.FileName);
+ embedded.Stream.Position:=0;
+ case FileOpenDialog1.FileTypeIndex of
+   1:
+    begin
+     embedded.MimeType:='application/xml';
+    end;
+   2:
+    begin
+     embedded.MimeType:='application/pdf';
+    end;
+   3:
+    begin
+     embedded.MimeType:='image/'+LowerCase(ExtractFileExt(embedded.FileName).Substring(1,100));
+    end;
+   else
+   begin
+     embedded.MimeType:='application/octet-stream';
+   end;
+ end;
+ EmbeddedFiles.Add(embedded);
+ UpdateEmbeddedList;
 end;
 
 end.

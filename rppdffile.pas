@@ -101,8 +101,6 @@ type
    APageWidth,APageHeight:integer
  end;
 
- TPDFConformanceType= ( PDF_1_4, PDF_A_3 );
-
  TRpPDFCanvas=class(TObject)
   private
    FInfoProvider:TRpInfoProvider;
