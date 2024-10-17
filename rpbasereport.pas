@@ -194,6 +194,8 @@ type
    procedure WriteWFontName(Writer:TWriter);
    procedure ReadLFontName(Reader:TReader);
    procedure WriteLFontName(Writer:TWriter);
+   procedure ReadEmbeddedFiles(Reader:TReader);
+   procedure WriteEmbeddedFiles(Writer:TWriter);
    procedure SetBidiModes(Value:TStrings);
    function Newlanguage(alanguage:integer):integer;
    procedure StopWork;
@@ -352,8 +354,6 @@ type
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
-   property PDFConformance:TPDFConformanceType read FPDFConformance write FPDFConformance;
-   property PDFCompressed:boolean read FPDFCompressed write FPDFCompressed;
 
   published
    property GridVisible:Boolean read FGridVisible write FGridVisible default true;
@@ -437,6 +437,8 @@ type
    property ForcePaperName:String read FForcePaperName write FForcePaperName;
    // Interline
    property LinesPerInch:Word read FLinesPerInch write FLinesPerInch default 600;
+   property PDFConformance:TPDFConformanceType read FPDFConformance write FPDFConformance default PDF_1_4;
+   property PDFCompressed:boolean read FPDFCompressed write FPDFCompressed  default false;
  end;
 
  TThreadExecReport=class(TThread)
@@ -1711,6 +1713,108 @@ begin
  WriteWideString(Writer, FLFontName);
 end;
 
+procedure TRpBaseReport.ReadEmbeddedFiles(Reader:TReader);
+var i:integer;
+ efile: TEmbeddedFile;
+ fileCount: integer;
+ abufdest:PAnsiChar;
+ readed:integer;
+ hes:AnsiString;
+ fileSize:integer;
+ memStream:TMemoryStream;
+ ssize:INteger;
+ bytes:TBytes;
+begin
+ memStream:=TMemoryStream.Create;
+ try
+  hes:=AnsiString(ReadWideString(Reader));
+  fileSize:=Length(hes) div 2;
+  abufdest:=AllocMem(fileSize+1);
+  try
+   readed:=HexToBin(PAnsiChar(hes),abufdest,fileSize);
+   if readed<>fileSize then
+    Raise Exception.Create('Expected: '+IntToStr(fileSize)+' Found: '
+    +INtToStr(readed));
+   memStream.Write(abufdest^,fileSize);
+   memStream.Seek(0,soFromBeginning);
+  finally
+   FreeMem(abufdest);
+  end;
+  memStream.Position:=0;
+  memStream.Read(fileCOunt,sizeOf(fileCount));
+  for i:=0 to fileCount-1 do
+  begin
+   efile:=TEmbeddedFile.Create;
+   memStream.Read(ssize,sizeof(ssize));
+   SetLength(bytes,ssize);
+   memStream.Read(bytes,ssize);
+   efile.FileName:=TEncoding.UTF8.GetString(bytes);
+
+   memStream.Read(ssize,sizeof(ssize));
+   SetLength(bytes,ssize);
+   memStream.Read(bytes,ssize);
+   efile.MimeType:=TEncoding.UTF8.GetString(bytes);
+
+   memStream.Read(ssize,sizeof(ssize));
+   efile.Stream:=TMemoryStream.Create;
+   efile.Stream.SetSize(ssize);
+   memStream.Read(efile.Stream.Memory^,ssize);
+  end;
+ finally
+  memStream.Free;
+ end;
+end;
+
+procedure TRpBaseReport.WriteEmbeddedFiles(Writer:TWriter);
+var i:integer;
+ efile: TEmbeddedFile;
+ abufDest:PAnsiChar;
+ abufSource:PAnsiChar;
+ bhes: WideString;
+ memStream: TMemoryStream;
+ fileCount: integer;
+ bytes:TBytes;
+ asize:integer;
+begin
+ memStream:=TMemoryStream.Create;
+ try
+  fileCount:=Length(EmbeddedFiles);
+  memStream.Write(fileCount,sizeOf(fileCount));
+  for i:=0 to Length(EmbeddedFiles)-1 do
+  begin
+   efile:=EmbeddedFiles[i];
+   bytes:=TEncoding.UTF8.GetBytes(efile.FileName);
+   asize:=Length(bytes);
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(bytes,asize);
+   bytes:=TEncoding.UTF8.GetBytes(efile.MimeType);
+   asize:=Length(bytes);
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(bytes,asize);
+   efile.Stream.Position:=0;
+   asize:=efile.Stream.Size;
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(efile.Stream.Memory^,asize);
+  end;
+  memStream.Position:=0;
+  abufsource:=AllocMem(memStream.Size);
+  try
+   memStream.Read(abufsource^,memStream.size);
+   abufdest:=AllocMem(memStream.Size*2+1);
+   try
+    BinToHex(abufsource,abufdest,memStream.Size);
+    bhes:=StrPas(abufdest);
+    WriteWideString(Writer,bhes);
+   finally
+   FreeMem(abufdest);
+   end;
+  finally
+   FreeMem(abufsource);
+  end;
+ finally
+   memStream.Free;
+ end;
+end;
 
 
 procedure TRpBaseReport.ReadLFontName(Reader:TReader);
@@ -1729,6 +1833,7 @@ begin
 
  Filer.DefineProperty('WFontName',ReadWFontName,WriteWFontName,True);
  Filer.DefineProperty('LFontName',ReadLFontName,WriteLFontName,True);
+ Filer.DefineProperty('EmbeddedFiles',ReadEmbeddedFiles,WriteEmbeddedFiles,Length(EmbeddedFiles)>0);
 end;
 
 procedure TRpBaseReport.AssignDefaultFontTo(aitem:TRpGenTextComponent);
