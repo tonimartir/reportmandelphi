@@ -165,6 +165,8 @@ end;
 
 procedure TRpPDFDriver.NewDocument(report:TrpMetafileReport;hardwarecopies:integer;
    hardwarecollate:boolean);
+var i:integer;
+ efile:TEmbeddedFile;
 begin
  if Assigned(FPDFFile) then
  begin
@@ -183,6 +185,11 @@ begin
  FPDFFile.PageHeight:=report.CustomY;
  FPageWidth:=FPDFFile.PageWidth;
  FPageHeight:=FPDFFile.PageHeight;
+ for i:=0 to Length(report.EmbeddedFiles)-1 do
+ begin
+  efile:=report.EmbeddedFiles[i];
+  FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.Stream);
+ end;
  FPDFFile.BeginDoc;
 end;
 

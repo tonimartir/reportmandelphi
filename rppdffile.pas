@@ -222,6 +222,7 @@ type
    procedure SetPages;
    procedure SetPageObject(index:integer);
    procedure SetArray;
+   procedure WriteEmbeddedFiles;
    procedure SetCatalog;
    procedure SetXref;
    function GetOffsetNumber(offset:string):string;
@@ -235,7 +236,6 @@ type
    function CompressStream(stream: TStream): TMemoryStream;
 {$ENDIF}
    procedure WriteStream(stream, dest: TMemoryStream);
-   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -249,6 +249,7 @@ type
    property Stream:TMemoryStream read GetStream;
    property StreamValid:Boolean read FStreamValid;
    property MainPDF:TMemoryStream read FMainPDF;
+   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
   published
    // General properties
    property Compressed:boolean read FCompressed write FCompressed default true;
@@ -540,7 +541,9 @@ procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryS
 var embededFile: TEmbeddedFile;
 begin
  embededFile:=TEmbeddedFile.Create;
- embededFile.FileName:=fileName;
+ embededFile.FileName:=StringReplace(fileName,'(',' ',[rfReplaceAll]);
+ embededFile.FileName:=StringReplace(embededFile.Filename,')',' ',[rfReplaceAll]);
+ embededFile.FileName:=StringReplace(embededFile.Filename,' ','',[rfReplaceAll]);
  embededFile.Stream:=stream;
  embededFile.MimeType:=mimeType;
  SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
@@ -618,7 +621,7 @@ begin
   SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
  SWriteLine(FTempStream,'/Subject ('+FDocSubject+')');
  SWriteLine(FTempStream,'/Title ('+FDocTitle+')');
- SWriteLine(FTempStream,'/ModDate ()');
+ SWriteLine(FTempStream,'/ModDate (D:'+DateToISO8601(now)+ ')');
  if (FPDFConformance = PDF_A_3) then
  begin
   SWriteLine(FTempStream,'/GTS_PDFXVersion (PDF/A-3B)');
@@ -691,6 +694,49 @@ begin
  SWriteLine(dest,'endstream');
 end;
 
+procedure TRpPDFFile.WriteEmbeddedFiles;
+var i:integer;
+  efile:TEmbeddedFile;
+  ResourceStream: integer;
+begin
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  efile:=EmbeddedFiles[i];
+  FObjectCount:=FObjectCount+1;
+  ResourceStream:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /EmbeddedFile ');
+  if Length(efile.MimeType)>0 then
+  begin
+   SWriteLine(FTempStream,'   /Subtype /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+   SWriteLine(FTempStream,'   /MimeType /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+  end;
+  SWriteLine(FTempStream,'   /ModDate /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+  efile.Stream.Position:=0;
+  WriteStream(efile.Stream, FTempStream);
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+
+  FObjectCount:=FObjectCount+1;
+  efile.ResourceNumber:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /Filespec ');
+  SWriteLine(FTempStream,'   /F (' + efile.FileName + ')');
+  SWriteLine(FTempStream,'   /UF (' + efile.FileName + ')');
+  SWriteLine(FTempStream,'   /EF << /F ' + IntToStr(ResourceStream) + ' 0 R >>');
+  SWriteLine(FTempStream,'   /AFRelationship /Source ');
+  SWriteLine(FTempStream,'>>');
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+ end;
+end;
+
 procedure TRpPDFFile.SetColorSpace;
 var ColorProfileObject: integer;
 ICCProfile: TMemoryStream;
@@ -755,6 +801,8 @@ end;
 procedure TRpPDFFile.SetXMPMetadata;
 var
  FXMPStream: TMemoryStream;
+ i:integer;
+ efile: TEmbeddedFile;
 begin
  FXMPStream:=TMemoryStream.Create();
  try
@@ -797,6 +845,16 @@ begin
   SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
   SWriteLine(FXMPStream, '    <pdfaid:conformance>B</pdfaid:conformance>');
   // SWriteLine(FXMPStream, '    <xmp:CreatorTool>My PDF Creator Tool</xmp:CreatorTool>');
+ (* for i:=0 to Length(EmbeddedFiles)-1 do
+  begin
+   efile:=EmbeddedFiles[i];
+   SWriteLine(FXMPStream, '    <pdfaProperty:embeddedFile>');
+   SWriteLine(FXMPStream, '      <rdf:Description>');
+   SWriteLine(FXMPStream, '        <pdfaProperty:filename>'+efile.FileName+'</pdfaProperty:filename>');
+   SWriteLine(FXMPStream, '        <pdfaProperty:mimeType>'+efile.MimeType+'</pdfaProperty:mimeType>');
+   SWriteLine(FXMPStream, '      </rdf:Description>');
+   SWriteLine(FXMPStream, '    </pdfaProperty:embeddedFile>');
+  end;*)
   SWriteLine(FXMPStream, '  </rdf:Description>');
   SWriteLine(FXMPStream, '</rdf:RDF>');
   SWriteLine(FXMPStream, '<?xpacket end="w"?>');
@@ -1220,6 +1278,11 @@ end;
 
 
 procedure TrpPDFFile.SetCatalog;
+var
+ files:string;
+ efile:TEmbeddedFile;
+ i:integer;
+ resources:string;
 begin
  FObjectCount:=FObjectCount+1;
  FCatalogNum:=FObjectCount;
@@ -1232,6 +1295,26 @@ begin
  begin
   SWriteLine(FTempStream,'/Metadata '+IntToStr(FXMPMetadataObject)+' 0 R');
   SWriteLine(FTempStream,'/OutputIntents ['+IntToStr(FOutputIntentObject)+' 0 R]');
+  if Length(EmbeddedFiles)>0 then
+  begin
+   files:='[';
+   resources:='[';
+   for i:=0 to Length(EmbeddedFiles)-1 do
+   begin
+    efile:=EmbeddedFiles[i];
+    files:=files + ' (' + efile.FileName+') ' + IntToStr(efile.ResourceNumber)
+      + ' 0 R' ;
+    resources:=resources + ' ' + IntToStr(efile.ResourceNumber) + ' 0 R' ;
+   end;
+   files:=files + ']';
+   resources:=resources + ']';
+   SWriteLine(FTempStream,'/Names <<');
+   SWriteLine(FTempStream,'  /EmbeddedFiles << /Names '+ files + ' >>');
+   SWriteLine(FTempStream,'>>');
+   // /AF << /Names [ (pdfa_validation1.xml) 18 0 R (cajass.png) 20 0 R] >>
+   //    SWriteLine(FTempStream,'/AF << /Names '+ files + ' >> ');
+   SWriteLine(FTempStream,'/AF '+resources);
+  end;
  end;
 
  SWriteLine(FTempStream,'>>');
@@ -1325,6 +1408,7 @@ begin
  begin
   SetPageObject(i);
  end;
+ WriteEmbeddedFiles;
  SetCatalog;
  SetXref;
  SWriteLine(FMainPDF,'%%EOF');

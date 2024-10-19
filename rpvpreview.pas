@@ -242,6 +242,18 @@ begin
     dia.WindowState:=wsMaximized;
   previewcontrol.OnWorkProgress:=dia.RepProgress;
   Application.OnIdle:=dia.AppIdle;
+  if (previewcontrol.Metafile.PDFConformance = PDF_A_3) then
+  begin
+   if (previewControl.Metafile.PDFCompressed) then
+   begin
+    dia.SaveDialog1.FilterIndex:=4;
+   end
+   else
+   begin
+    dia.SaveDialog1.FilterIndex:=5;
+   end;
+  end;
+
   dia.TouchEnabled := previewcontrol.metafile.TouchEnabled;
   dia.Height := ScaleDpi(dia.Height);
   dia.Width := ScaleDpi(dia.Width);

@@ -435,6 +435,7 @@ type
    procedure WorkAsyncError(amessage:string);
    procedure Finish;
    procedure StopWork;
+   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
    function IsFound(page:TRpMetafilePage;objectindex:integer):boolean;
    function NextPageFound(pageindex:integer):integer;
    property BackColor:integer read FBackColor write SetBackColor;
@@ -492,6 +493,8 @@ begin
 end;
 
 procedure TRpMetafilePage.Clear;
+var
+ i:integer;
 begin
  SetLength(FObjects,FIRST_ALLOCATION_OBJECTS);
  FPool:='';
@@ -867,6 +870,11 @@ begin
   TRpMetafilePage(Fpages.Items[i]).Free;
  end;
  FPages.clear;
+ for i:=0 to Length(EmbeddedFiles) -1 do
+ begin
+  EmbeddedFiles[i].Stream.Free;
+ end;
+ SetLength(EmbeddedFiles,0);
 
 
  FCurrentPage:=-1;
@@ -952,6 +960,21 @@ begin
  stream.read(buf,i);
  Result:=TEncoding.UTF8.GetString(buf);
  exit;
+end;
+
+procedure TRpMetafileReport.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+var embededFile: TEmbeddedFile;
+begin
+ embededFile:=TEmbeddedFile.Create;
+ embededFile.FileName:=fileName;
+ embededFile.Stream:=TMemoryStream.Create;
+ stream.Position:=0;
+ stream.SaveToStream(embededFile.Stream);
+ stream.Position:=0;
+ embededFile.Stream.Position:=0;
+ embededFile.MimeType:=mimeType;
+ SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+ EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
 end;
 
 
