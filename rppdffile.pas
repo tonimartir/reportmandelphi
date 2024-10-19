@@ -807,13 +807,13 @@ begin
  FXMPStream:=TMemoryStream.Create();
  try
   SWriteLine(FXMPStream, '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
-  SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">');
-  SWriteLine(FXMPStream, '  <rdf:Description rdf:about=""');
+  SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"');
   SWriteLine(FXMPStream, '    xmlns:xmp="http://ns.adobe.com/xap/1.0/"');
   SWriteLine(FXMPStream, '    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"');
   SWriteLine(FXMPStream, '    xmlns:dc="http://purl.org/dc/elements/1.1/"');
   SWriteLine(FXMPStream, '    xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"');
   SWriteLine(FXMPStream, '    xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">');
+  SWriteLine(FXMPStream, '  <rdf:Description rdf:about="">');
   SWriteLine(FXMPStream, '    <dc:creator>');
   SWriteLine(FXMPStream, '      <rdf:Seq>');
   SWriteLine(FXMPStream, '        <rdf:li>' + FDocAuthor +'</rdf:li>');
@@ -845,16 +845,26 @@ begin
   SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
   SWriteLine(FXMPStream, '    <pdfaid:conformance>B</pdfaid:conformance>');
   // SWriteLine(FXMPStream, '    <xmp:CreatorTool>My PDF Creator Tool</xmp:CreatorTool>');
- (* for i:=0 to Length(EmbeddedFiles)-1 do
+
+
+(*  if Length(EmbeddedFiles)>0 then
   begin
-   efile:=EmbeddedFiles[i];
-   SWriteLine(FXMPStream, '    <pdfaProperty:embeddedFile>');
-   SWriteLine(FXMPStream, '      <rdf:Description>');
-   SWriteLine(FXMPStream, '        <pdfaProperty:filename>'+efile.FileName+'</pdfaProperty:filename>');
-   SWriteLine(FXMPStream, '        <pdfaProperty:mimeType>'+efile.MimeType+'</pdfaProperty:mimeType>');
-   SWriteLine(FXMPStream, '      </rdf:Description>');
-   SWriteLine(FXMPStream, '    </pdfaProperty:embeddedFile>');
+   SWriteLine(FXMPStream, '    <xmpMM:EmbeddedFiles>');
+   SWriteLine(FXMPStream, '     <rdf:Bag>');
+   for i:=0 to Length(EmbeddedFiles)-1 do
+   begin
+    efile:=EmbeddedFiles[i];
+    SWriteLine(FXMPStream, '       <rdf:li>');
+    SWriteLine(FXMPStream, '        <rdf:Description>');
+    SWriteLine(FXMPStream, '         <xmpMM:FileName>'+efile.FileName+'</xmpMM:FileName>');
+    SWriteLine(FXMPStream, '         <xmpMM:Format>'+efile.MimeType+'</xmpMM:Format>');
+    SWriteLine(FXMPStream, '        </rdf:Description>');
+    SWriteLine(FXMPStream, '       </rdf:li>');
+   end;
+   SWriteLine(FXMPStream, '     </rdf:Bag>');
+   SWriteLine(FXMPStream, '    </xmpMM:EmbeddedFiles>');
   end;*)
+
   SWriteLine(FXMPStream, '  </rdf:Description>');
   SWriteLine(FXMPStream, '</rdf:RDF>');
   SWriteLine(FXMPStream, '<?xpacket end="w"?>');
