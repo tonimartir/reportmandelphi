@@ -22,10 +22,9 @@ object FRpVPreview: TFRpVPreview
     Left = 0
     Top = 0
     Width = 949
-    Height = 27
     AutoSize = True
-    ButtonHeight = 27
-    ButtonWidth = 28
+    ButtonHeight = 32
+    ButtonWidth = 33
     Caption = 'BToolBar'
     Color = clBtnFace
     Images = VirtualImageList1
@@ -37,15 +36,15 @@ object FRpVPreview: TFRpVPreview
       Action = AFirst
     end
     object ToolButton2: TToolButton
-      Left = 28
+      Left = 33
       Top = 0
       Action = APrevious
     end
     object EPageNum: TRpMaskEdit
-      Left = 56
+      Left = 66
       Top = 0
       Width = 41
-      Height = 27
+      Height = 32
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -12
@@ -59,17 +58,17 @@ object FRpVPreview: TFRpVPreview
       DisplayMask = '###,######0'
     end
     object ToolButton3: TToolButton
-      Left = 97
+      Left = 107
       Top = 0
       Action = ANext
     end
     object ToolButton4: TToolButton
-      Left = 125
+      Left = 140
       Top = 0
       Action = ALast
     end
     object ToolButton5: TToolButton
-      Left = 153
+      Left = 173
       Top = 0
       Width = 7
       Caption = 'ToolButton5'
@@ -78,17 +77,17 @@ object FRpVPreview: TFRpVPreview
       Style = tbsSeparator
     end
     object ToolButton6: TToolButton
-      Left = 160
+      Left = 180
       Top = 0
       Action = APrint
     end
     object ToolButton7: TToolButton
-      Left = 188
+      Left = 213
       Top = 0
       Action = ASave
     end
     object ToolButton8: TToolButton
-      Left = 216
+      Left = 246
       Top = 0
       Hint = 'Sends the reports to a e-mail destination'
       Caption = 'Mail to'
@@ -99,7 +98,7 @@ object FRpVPreview: TFRpVPreview
       OnClick = ToolButton8Click
     end
     object ToolButton16: TToolButton
-      Left = 263
+      Left = 298
       Top = 0
       Width = 7
       Caption = 'ToolButton16'
@@ -108,17 +107,17 @@ object FRpVPreview: TFRpVPreview
       Style = tbsSeparator
     end
     object ToolButton10: TToolButton
-      Left = 270
+      Left = 305
       Top = 0
       Action = APageSetup
     end
     object ToolButton9: TToolButton
-      Left = 298
+      Left = 338
       Top = 0
       Action = AParams
     end
     object ToolButton18: TToolButton
-      Left = 326
+      Left = 371
       Top = 0
       Width = 7
       Caption = 'ToolButton18'
@@ -127,33 +126,33 @@ object FRpVPreview: TFRpVPreview
       Style = tbsSeparator
     end
     object ToolButton11: TToolButton
-      Left = 333
+      Left = 378
       Top = 0
       Action = AScale100
     end
     object ToolButton12: TToolButton
-      Left = 361
+      Left = 411
       Top = 0
       Action = AScaleWide
     end
     object ToolButton13: TToolButton
-      Left = 389
+      Left = 444
       Top = 0
       Action = AScaleFull
       PopupMenu = MEntireMenu
     end
     object ToolButton14: TToolButton
-      Left = 417
+      Left = 477
       Top = 0
       Action = AScaleLess
     end
     object ToolButton15: TToolButton
-      Left = 445
+      Left = 510
       Top = 0
       Action = AScaleMore
     end
     object ToolButton19: TToolButton
-      Left = 473
+      Left = 543
       Top = 0
       Width = 6
       Caption = 'ToolButton19'
@@ -162,10 +161,10 @@ object FRpVPreview: TFRpVPreview
       Style = tbsSeparator
     end
     object ESearch: TRpMaskEdit
-      Left = 479
+      Left = 549
       Top = 0
       Width = 75
-      Height = 27
+      Height = 32
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -12
@@ -179,12 +178,12 @@ object FRpVPreview: TFRpVPreview
       DisplayMask = '###,######0'
     end
     object ToolButton20: TToolButton
-      Left = 554
+      Left = 624
       Top = 0
       Action = AFind
     end
     object ToolButton17: TToolButton
-      Left = 582
+      Left = 657
       Top = 0
       Width = 7
       Caption = 'ToolButton17'
@@ -193,15 +192,15 @@ object FRpVPreview: TFRpVPreview
       Style = tbsSeparator
     end
     object BExit: TToolButton
-      Left = 589
+      Left = 664
       Top = 0
       Action = AExit
     end
     object BCancel: TButton
-      Left = 617
+      Left = 697
       Top = 0
       Width = 112
-      Height = 27
+      Height = 32
       Action = ACancel
       TabOrder = 0
       Visible = False
@@ -1756,8 +1755,8 @@ object FRpVPreview: TFRpVPreview
         Name = 'mailOutlook48'
       end>
     ImageCollection = ImageCollection1
-    Width = 21
-    Height = 21
+    Width = 26
+    Height = 26
     Left = 456
     Top = 264
   end

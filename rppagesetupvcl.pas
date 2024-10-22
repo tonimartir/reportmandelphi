@@ -287,6 +287,13 @@ begin
  CheckDrawerBefore.Caption:=SRpOpenDrawerBefore;
  GetPaperSourceDescriptions(ComboPaperSource.Items);
  GetDuplexDescriptions(ComboDuplex.Items);
+
+ GPDF.Caption:=SRpPDFOptions;
+ LabelCompressed.Caption:=SRpCompressed;
+ AFileNew.Caption:=SRpAdd;
+ AfileDelete.Caption:=SRpDelete;
+ Panel4.Caption:=SRpEmbeddedFiles;
+ LabelPDFConformance.Caption
 end;
 
 procedure TFRpPageSetupVCL.BOKClick(Sender: TObject);

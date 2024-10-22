@@ -83,7 +83,7 @@ type
    procedure LoadFromStream(stream:TStream);
    procedure ExecuteRemote(hostname:String;port:integer;user,password,aliasname,reportname:String);
    procedure GetRemoteParams(hostname:String;port:integer;user,password,aliasname,reportname:String);
-   procedure AddPDFFile(const fileName, mimeType, base64Stream: string);
+   procedure AddEmbeddedFile(const fileName, mimeType, base64Stream: string);
    property Report:TRpReport read GetReport;
    property Preview:Boolean read FPreview write FPreview default true;
    property ShowProgress:boolean read FShowProgress write FShowProgress
@@ -118,7 +118,7 @@ begin
  FLanguage:=-1;
 end;
 
-procedure TCBaseReport.AddPDFFile(const fileName, mimeType, base64Stream: string);
+procedure TCBaseReport.AddEmbeddedFile(const fileName, mimeType, base64Stream: string);
 var embedded: TEmbeddedFile;
  bytes: TBytes;
 begin

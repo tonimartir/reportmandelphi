@@ -101,8 +101,8 @@ type
 
  TRpFontStep=(rpcpi20,rpcpi17,rpcpi15,rpcpi12,rpcpi10,rpcpi6,rpcpi5);
 
- TPDFConformanceType = ( PDF_1_4, PDF_A_3 );
- TPDFConformance = ( SetPDFDefault, tPDF_1_4, SetPDF_A_3);
+ TPDFConformanceType = ( PDF_1_4 = 0, PDF_A_3 = 1);
+ TPDFConformance = ( SetPDFDefault = 0, SettPDF_1_4 = 1, SetPDF_A_3 = 2);
 
  TRpLineInfo=record
   Position:integer;

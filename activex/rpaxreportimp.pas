@@ -108,7 +108,8 @@ type
     procedure Set_AsyncExecution(Value: WordBool); safecall;
     procedure SaveToHTMLSingle(const filename: WideString); safecall;
     procedure SaveToFile(const filename: WideString); safecall;
-    procedure AddPDFFile(const fileName, mimeType, base64Stream: WideString); safecall;
+    procedure AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString); safecall;
+
 
   end;
 
@@ -578,10 +579,11 @@ begin
 end;
 
 
-procedure TReportManX.AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+procedure TReportManX.AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString);
 begin
- FDelphiControl.AddPDFFile(filename, mimeType, base64Stream);
+ FDelphiControl.AddEmbeddedFile(filename, mimeType, base64Stream);
 end;
+
 
 initialization
   TActiveXControlFactory.Create(

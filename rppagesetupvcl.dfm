@@ -22,7 +22,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
-    ActivePage = TabPage
+    ActivePage = TabOptions
     Align = alClient
     TabOrder = 0
     object TabPage: TTabSheet
@@ -890,8 +890,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Margins.Bottom = 4
         Align = alClient
         TabOrder = 1
-        ExplicitTop = 224
-        ExplicitHeight = 289
         object PParentListView: TPanel
           Left = 1
           Top = 25
@@ -904,10 +902,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Align = alClient
           Caption = 'PParentListView'
           TabOrder = 0
-          ExplicitLeft = 80
-          ExplicitTop = 130
-          ExplicitWidth = 231
-          ExplicitHeight = 51
           object ListViewEmbedded: TListView
             Left = 1
             Top = 38
@@ -934,9 +928,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
               end>
             TabOrder = 0
             ViewStyle = vsReport
-            ExplicitTop = 24
-            ExplicitWidth = 654
-            ExplicitHeight = 311
           end
           object ToolBar1: TToolBar
             Left = 1
@@ -952,7 +943,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
             Caption = 'ToolBar1'
             Images = VirtualImageList1
             TabOrder = 1
-            ExplicitWidth = 654
             object SpeedButton2: TSpeedButton
               Left = 0
               Top = 0

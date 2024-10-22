@@ -2409,6 +2409,7 @@ begin
     then
       exit;
   end;
+
   if progress then
   begin
     // Assign appidle frompage to page...
@@ -2419,11 +2420,6 @@ begin
       dia.topage := topage;
       dia.copies := copies;
       dia.report := report;
-      if (PDFConformance <> SetPDFDefault) then
-      begin
-       report.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
-      end;
-
       dia.filename := filename;
       dia.pdfcompressed := compressed;
       dia.collate := collate;
@@ -2447,6 +2443,15 @@ begin
     try
       pdfdriver.filename := filename;
       pdfdriver.compressed := compressed;
+      if (PDFConformance <> SetPDFDefault) then
+      begin
+       pdfdriver.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
+      end
+      else
+      begin
+       pdfdriver.PDFConformance:=report.PDFConformance;
+      end;
+
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}

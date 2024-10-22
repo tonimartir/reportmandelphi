@@ -116,6 +116,21 @@ procedure SetRecordSet(const datasetname: String,recordset: OleVariant);
 <p>procedure SaveToHtmlSingle(const filename: String);</p>
 <p>Saves the report as html file, in a single html file if possible. <br>
 </p>
+
+<p><b>Since version 3.6.1 </b></p>
+<p>procedure AddEmbeddedFile(const filename: String, mimeType: string, base64Stream: string);</p>
+<p>Add an embedded file to the report, the pdf output will include it as an embedded file. <br>
+   File name is not the path to the file, but the title and extension of the file.<br>
+   Mime type should contain the mime type string like application/xml...<br>
+   Base64Stream is the content of the file encoded as a base64 string
+</p>
+<p>property PDFConformance:PDFConformance</p>
+<p>Force PDF Conformance, by default the PDFConformance specified in the .rep file will be used<br>
+   Values: 0 - Default , 1- PDF 1.4, 2-PDF A/3
+</p>
+
+
+
 <h3>Using the control with VB like languages</h3>
 <p>The ActiveX control may be used directly in VB, VBScript, ASP and WSH. In the 
   VB environment you are generally recommended to &quot;Reference&quot; the control 

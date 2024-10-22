@@ -41,7 +41,7 @@ const
 {$ENDIF}
 
 const
- RM_VERSION='3.6.0';
+ RM_VERSION='3.6.1';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
@@ -1373,7 +1373,13 @@ var
   SRpAutoRangeMin:WideString = 'Auto Min';
   SRpAutoRangeNone:WideString = 'Auto None';
 
-
+  SRpPDFOptions: WideString = 'PDF options';
+  SRpConformance: WideString = 'Conformance';
+  SRpCompressed: WideString = 'Compressed';
+  SRpMimetype: WideString = 'Mime type';
+  SRpSize: WideString = 'Size';
+  SRpFilename: WideString = 'File name';
+  SRpEmbeddedFiles: WideString = 'Embedded files';
 
 implementation
 
