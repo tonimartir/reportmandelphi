@@ -597,7 +597,8 @@ end;
 procedure TReportManX.AddMetadata(const title, author, subject, creator, producer,
           keywords, creationDate, modificationDate: WideString);
 begin
-
+  FDelphiControl.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate);
 end;
 
 initialization

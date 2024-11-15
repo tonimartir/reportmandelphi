@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 14/11/2024 18:32:07 from Type Library described below.
+// File generated on 15/11/2024 11:38:39 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)

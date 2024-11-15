@@ -84,7 +84,8 @@ type
    function GetReport:TRpReport;
    procedure AddEmbeddedFile(const fileName, mimeType, base64Stream,
     description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
-
+   procedure AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: string);
 {$IFNDEF DOTNETD}
    procedure SetRecordset(datasetname:string; recordset: Pointer);
 {$ENDIF}
@@ -112,6 +113,14 @@ begin
  FVCLReport.AddEmbeddedFile(fileName, mimeType, base64Stream,
    description, AFRelationShip, ISOCreationDate, ISOModificationDate);
 end;
+
+procedure TRpActiveXReport.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: string);
+begin
+ FVCLReport.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate);
+end;
+
 
 procedure TRpActiveXReport.Paint;
 begin
