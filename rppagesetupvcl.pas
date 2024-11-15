@@ -35,7 +35,7 @@ uses
   rpmetafile,rpmdconsts,rpmdprintconfigvcl, ComCtrls, Mask, rpmaskedit,
   Vcl.ToolWin, System.Actions, Vcl.ActnList, Vcl.BaseImageCollection,
   Vcl.ImageCollection, System.ImageList, Vcl.ImgList, Vcl.VirtualImageList,
-   System.Generics.Collections,rpmdfembeddedfile;
+   System.Generics.Collections,rpmdfembeddedfile, Windows;
 
 type
   TFRpPageSetupVCL = class(TForm)
@@ -115,13 +115,10 @@ type
     LabelCompressed: TLabel;
     CheckBoxPDFCompressed: TCheckBox;
     FileActions: TActionList;
-    VirtualImageList1: TVirtualImageList;
-    ImageList1: TImageList;
-    ImageCollection1: TImageCollection;
     AFileNew: TAction;
     AFileDelete: TAction;
-    SpeedButton1: TSpeedButton;
-    SpeedButton2: TSpeedButton;
+    bmodify: TSpeedButton;
+    bnew: TSpeedButton;
     FileOpenDialog1: TFileOpenDialog;
     PParentListView: TPanel;
     Panel4: TPanel;
@@ -142,8 +139,11 @@ type
     textDocCreationDate: TEdit;
     textDocModDate: TEdit;
     labelModifyDate: TLabel;
-    SpeedButton3: TSpeedButton;
+    bdelete: TSpeedButton;
     AFileModify: TAction;
+    VirtualImageList1: TVirtualImageList;
+    ImageCollection1: TImageCollection;
+    ImageList1: TImageList;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);
@@ -205,7 +205,28 @@ var
  awidth:integer;
  aheight:integer;
  i:integer;
+ dpiAwareContext:DPI_AWARENESS_CONTEXT;
+ dpiAware: DPI_AWARENESS;
+ doScale:boolean;
+ buttonheight:integer;
 begin
+  doScale := true;
+  // Fix for ActiveX black background
+  if (IsWindows10orUpper) then
+  begin
+    dpiAwareContext:=GetThreadDpiAwarenessContext;
+    dpiAware:=GetAwarenessFromDpiAwarenessContext(dpiAwareContext);
+    doScale:=((dpiAware = DPI_AWARENESS_UNAWARE) or (dpiAware = DPI_AWARENESS_INVALID));
+  end;
+  if (doScale) then
+  begin
+   // Fix black background for ActiveX control when non dpi aware
+   ToolBar1.Images:=ImageList1;
+   FileActions.Images:=ImageList1;
+   bnew.Images:=ImageList1;
+   bmodify.Images:=ImageList1;
+   bdelete.Images:=ImageList1;
+  end;
  EmbeddedFiles:=TList<TEmbeddedFile>.Create;
  PControl.ActivePage:=TabPage;
  CheckDefaultCopies.Caption:=SRpDefaultCopies;

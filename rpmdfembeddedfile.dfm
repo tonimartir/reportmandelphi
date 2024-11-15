@@ -10,6 +10,7 @@ object FRpEmbeddedFile: TFRpEmbeddedFile
   Font.Height = -15
   Font.Name = 'Segoe UI'
   Font.Style = []
+  Position = poScreenCenter
   OnCreate = FormCreate
   PixelsPerInch = 120
   DesignSize = (
@@ -120,7 +121,6 @@ object FRpEmbeddedFile: TFRpEmbeddedFile
     Default = True
     ModalResult = 1
     TabOrder = 6
-    ExplicitTop = 315
   end
   object BCancel: TButton
     Left = 580

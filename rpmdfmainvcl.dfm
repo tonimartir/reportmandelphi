@@ -500,8 +500,8 @@ object FRpMainFVCL: TFRpMainFVCL
   object iconlist: TImageList
     Height = 19
     Width = 19
-    Left = 248
-    Top = 196
+    Left = 302
+    Top = 309
   end
   object ActionList1: TActionList
     Images = VirtualImageList1
@@ -1177,8 +1177,8 @@ object FRpMainFVCL: TFRpMainFVCL
   object SaveDialog1: TSaveDialog
     DefaultExt = 'rep'
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
-    Left = 292
-    Top = 140
+    Left = 597
+    Top = 151
   end
   object RpAlias1: TRpAlias
     List = <>
@@ -1192,8 +1192,8 @@ object FRpMainFVCL: TFRpMainFVCL
     Font.Height = -11
     Font.Name = 'MS Sans Serif'
     Font.Style = []
-    Left = 384
-    Top = 122
+    Left = 480
+    Top = 121
   end
   object VirtualImageList1: TVirtualImageList
     Images = <
