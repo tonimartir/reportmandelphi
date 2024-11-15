@@ -188,7 +188,8 @@ begin
  for i:=0 to Length(report.EmbeddedFiles)-1 do
  begin
   efile:=report.EmbeddedFiles[i];
-  FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.Stream);
+  FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.AFRelationShip,
+    efile.Description,efile.CreationDate, efile.ModificationDate, efile.Stream);
  end;
  FPDFFile.BeginDoc;
 end;

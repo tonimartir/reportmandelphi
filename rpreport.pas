@@ -975,10 +975,19 @@ begin
   metafile.Clear;
   metafile.PDFConformance:=PDFConformance;
   metafile.PDFCompressed:=PDFCompressed;
+  metafile.DocAuthor:=DocAuthor;
+  metafile.DocProducer:=DocProducer;
+  metafile.DocCreator:=DocCreator;
+  metafile.DocCreationDate:=DocCreationDate;
+  metafile.DocModificationDate:=DocModificationDate;
+  metafile.DocSubject:=DocSubject;
+  metafile.DocKeywords:=DocKeywords;
+  metafile.DocTitle:=DocTitle;
+
   for i:=0 to Length(EmbeddedFiles)-1 do
   begin
    efile:=EmbeddedFiles[i];
-   metafile.NewEmbeddedFile(efile.FileName, efile.MimeType, efile.Stream);
+   metafile.NewEmbeddedFile(efile.FileName, efile.MimeType, efile.AFRelationShip, efile.Description, efile.CreationDate, efile.ModificationDate,  efile.Stream);
   end;
   metafile.Copies := Copies;
   metafile.PreviewAbout:=PreviewAbout;

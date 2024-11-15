@@ -82,7 +82,8 @@ type
    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer);override;
    constructor Create(AOwner:TComponent);override;
    function GetReport:TRpReport;
-   procedure AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString);
+   procedure AddEmbeddedFile(const fileName, mimeType, base64Stream,
+    description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
 
 {$IFNDEF DOTNETD}
    procedure SetRecordset(datasetname:string; recordset: Pointer);
@@ -105,9 +106,11 @@ type
 implementation
 
 
-procedure TRpActiveXReport.AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString);
+procedure TRpActiveXReport.AddEmbeddedFile(const fileName, mimeType, base64Stream,
+   description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
 begin
- FVCLReport.AddEmbeddedFile(fileName, mimeType, base64Stream);
+ FVCLReport.AddEmbeddedFile(fileName, mimeType, base64Stream,
+   description, AFRelationShip, ISOCreationDate, ISOModificationDate);
 end;
 
 procedure TRpActiveXReport.Paint;

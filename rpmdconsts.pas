@@ -1378,8 +1378,23 @@ var
   SRpCompressed: WideString = 'Compressed';
   SRpMimetype: WideString = 'Mime type';
   SRpSize: WideString = 'Size';
+  SRpDescription: WideString = 'Description';
+  SRpRelationShip: WideString = 'Relationship';
   SRpFilename: WideString = 'File name';
   SRpEmbeddedFiles: WideString = 'Embedded files';
+  SRpDocAuthor: WideString = 'Author';
+  SRpDocTitle: WideString = 'Title';
+  SRpDocSubject: WideString = 'Subject';
+  SRpDocCreationDate: WideString = 'Creation date';
+  SRpDocModifyDate: WideString = 'Modify date';
+  SRpDocKeywords: WideString = 'Keywords';
+  SRpDocProducer: WideString = 'Producer';
+  SRpDocCreator: WideString = 'Creator';
+  SRpMetadata: WideString = 'Metadata';
+  SRpEmbeddedFile: WideString = 'Embedded file';
+  SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModify: WideString = 'Modify';
 
 implementation
 

@@ -180,6 +180,8 @@ type
    FDocKeywords:string;
    FDocSubject:string;
    FDocProducer:string;
+   FDocCreationDate: string;
+   FDocModificationDate: string;
    FMainPDF:TMemoryStream;
    FStreamValid:boolean;
    FTempStream:TMemoryStream;
@@ -202,7 +204,8 @@ type
    FXMPMetadataObject: integer;
    FOutputIntentObject: integer;
    FColorSpaceObject: integer;
-   FCreationDate: string;
+   FInternalFDocCreationDate: TDateTime;
+   FModDate: string;
    PageObjNum: integer;
    FResolution:integer;
    FBitmapStreams:TList;
@@ -249,7 +252,8 @@ type
    property Stream:TMemoryStream read GetStream;
    property StreamValid:Boolean read FStreamValid;
    property MainPDF:TMemoryStream read FMainPDF;
-   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+   procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+     description,creationDate,ModificationDate: string;  stream: TMemoryStream);
   published
    // General properties
    property Compressed:boolean read FCompressed write FCompressed default true;
@@ -261,6 +265,8 @@ type
    property DocKeywords:string read FDocKeywords write FDocKeywords;
    property DocSubject:string read FDocSubject write FDocSubject;
    property DocProducer:string read FDocProducer write FDocProducer;
+   property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
+   property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
    // Document physic
    property PageWidth:integer read FPageWidth write FPageWidth;
    property PageHeight:integer read FPageHeight write FPageHeight;
@@ -272,6 +278,7 @@ type
 
 function PDFCompatibleText (astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 function NumberToText (Value:double):string;
+function EncodePDFText(const text: string): string;
 
 procedure GetBitmapInfo (stream:TStream; var width, height, imagesize:integer;FMemBits:TMemoryStream;
  var indexed:boolean;var bitsperpixel,usedcolors:integer;var palette:string);
@@ -279,9 +286,14 @@ procedure GetJPegInfo(astream:TStream;var width,height:integer;var format:string
 
 implementation
 
-function IntToHex(nvalue:integer):string;
+function IntToHex4(nvalue:integer):string;
 begin
  Result:=Format('%4.4x',[nvalue]);
+end;
+
+function IntToHex(nvalue:integer):string;
+begin
+ Result:=Format('%2.2x',[nvalue]);
 end;
 
 const
@@ -441,7 +453,9 @@ const
 // Writes a line into a Stream that is add #13+#10
 procedure SWriteLine(Stream:TStream;astring:string);
 begin
- astring:=astring+#13+#10;
+ //  astring:=astring+#13+#10;
+ // Only EOL for better compatibility
+ astring:=astring+#10;
  WriteStringToStream(astring,Stream);
 end;
 
@@ -500,6 +514,7 @@ constructor TRpPDFFile.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
 
+ FInternalFDocCreationDate:=now;
  FPageInfos:=TStringList.create;
  FCanvas:=TRpPDFCanvas.Create(Self);
  FMainPDF:=TMemoryStream.Create;
@@ -537,15 +552,18 @@ begin
  inherited Destroy;
 end;
 
-procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+     description,creationDate,ModificationDate: string;  stream: TMemoryStream);
 var embededFile: TEmbeddedFile;
 begin
  embededFile:=TEmbeddedFile.Create;
- embededFile.FileName:=StringReplace(fileName,'(',' ',[rfReplaceAll]);
- embededFile.FileName:=StringReplace(embededFile.Filename,')',' ',[rfReplaceAll]);
- embededFile.FileName:=StringReplace(embededFile.Filename,' ','',[rfReplaceAll]);
+ embededFile.FileName:=fileName;
+ embededFile.Description:=description;
  embededFile.Stream:=stream;
  embededFile.MimeType:=mimeType;
+ embededFile.AFRelationShip:=AFRelationShip;
+ embededFile.CreationDate:=creationDate;
+ embededFile.ModificationDate:=ModificationDate;
  SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
  EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
 end;
@@ -606,7 +624,6 @@ begin
    SWriteLine(FMainPDF,PDF_HEADER_1_4);
    AddToOffset(Length(PDF_HEADER_1_4));
  end;
- FCreationDate:=DateToISO8601(now);
  // Writes Doc info
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
@@ -614,14 +631,28 @@ begin
  SWriteLine(FTempStream,'<<');
  SWriteLine(FTempStream,'/Producer ('+FDocProducer+')');
  SWriteLine(FTempStream,'/Author ('+FDocAuthor+')');
- SWriteLine(FTempStream,'/CreationDate (D:'+FCreationDate+')');
+ if Length(FDocCreationDate) = 0 then
+ begin
+  SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+ end
+ else
+ begin
+  SWriteLine(FTempStream,'/CreationDate (D:'+  FDocCreationDate+')');
+ end;
  if (FPDFConformance <> PDF_A_3) then
    SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
  if (Length(FDocKeywords)>0) then
   SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
  SWriteLine(FTempStream,'/Subject ('+FDocSubject+')');
  SWriteLine(FTempStream,'/Title ('+FDocTitle+')');
- SWriteLine(FTempStream,'/ModDate (D:'+DateToISO8601(now)+ ')');
+ if Length(FDocModificationDate) = 0 then
+ begin
+  SWriteLine(FTempStream,'/ModDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+ end
+ else
+ begin
+  SWriteLine(FTempStream,'/ModDate (D:'+  FDocModificationDate+')');
+ end;
  if (FPDFConformance = PDF_A_3) then
  begin
   SWriteLine(FTempStream,'/GTS_PDFXVersion (PDF/A-3B)');
@@ -725,10 +756,30 @@ begin
   FTempStream.Clear;
   SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
   SWriteLine(FTempStream,'<< /Type /Filespec ');
-  SWriteLine(FTempStream,'   /F (' + efile.FileName + ')');
-  SWriteLine(FTempStream,'   /UF (' + efile.FileName + ')');
+  SWriteLine(FTempStream,'   /F ' + EncodePDFText(efile.FileName));
+
+  SWriteLine(FTempStream,'   /Desc '+EncodePDFText(efile.Description));
+  SWriteLine(FTempStream,'   /UF ' + EncodePDFText(efile.FileName));
   SWriteLine(FTempStream,'   /EF << /F ' + IntToStr(ResourceStream) + ' 0 R >>');
-  SWriteLine(FTempStream,'   /AFRelationship /Source ');
+
+  SWriteLine(FTempStream,'   /AFRelationship /'+efile.AFRelationShipToString());
+  SWriteLine(FTempStream,'/Params <<');
+  SWriteLine(FTempStream,'  /Size '+IntToStr(efile.Stream.Size));
+  if Length(efile.MimeType)>0 then
+  begin
+   SWriteLine(FTempStream,'  /MIMEType '+EncodePDFText(efile.MimeType));
+  end;
+
+  if Length(efile.CreationDate)>0 then
+  begin
+   SWriteLine(FTempStream,'  /CreationDate (D:'+efile.CreationDate+')');
+  end;
+  if Length(efile.ModificationDate)>0 then
+  begin
+   SWriteLine(FTempStream,'  /ModificationDate (D:'+efile.ModificationDate+')');
+  end;
+
+  SWriteLine(FTempStream,'  >>');
   SWriteLine(FTempStream,'>>');
   SWriteLine(FTempStream,'endobj');
   AddToOffset(FTempStream.Size);
@@ -837,8 +888,20 @@ begin
   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocSubject+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:description>');
-  SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FCreationDate (* 2024-10-02T15:29:15+00:00 *)
+  if Length(FDocCreationDate)= 0 then
+   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+DateToISO8601(FInternalFDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
+     +'</xmp:CreateDate>')
+  else
+   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FDocCreationDate (* 2024-10-02T15:29:15+00:00 *)
      +'</xmp:CreateDate>');
+  if Length(FDocModificationDate) > 0 then
+  begin
+   SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+FDocCreationDate+'</xmp:ModifyDate>');
+  end;
+  if Length(FDocProducer) > 0 then
+  begin
+   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+FDocCreationDate+'</xmp:CreatorTool>');
+  end;
   // SWriteLine(FXMPStream, '    <xmp:ModifyDate>2024-10-02T15:29:15+00:00</xmp:ModifyDate>');
   //SWriteLine(FXMPStream, '    <xmpMM:DocumentID>uuid:12345678-1234-1234-1234-1234567890ab</xmpMM:DocumentID>');
   //SWriteLine(FXMPStream, '    <xmpMM:InstanceID>uuid:12345678-1234-1234-1234-1234567890ac</xmpMM:InstanceID>');
@@ -945,7 +1008,7 @@ begin
  FTempStream.SaveToStream(FMainPDF);
 
  if (FPDFConformance = PDF_A_3) then
-  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-7
+  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-4
  else
   TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
@@ -4009,6 +4072,61 @@ begin
   end;
   Result:=Result+')';
  end;
+end;
+
+function EncodePDFText(const text: string): string;
+var
+  UTF16BEBytes: TBytes;
+  i: Integer;
+  HexString: string;
+  IsASCII: Boolean;
+begin
+  // Verificar si todos los caracteres son ASCII
+  IsASCII := True;
+  for i := 1 to Length(text) do
+  begin
+    if Ord(text[i]) > 127 then
+    begin
+      IsASCII := False;
+      Break;
+    end;
+  end;
+
+  // Si todos los caracteres son ASCII, usar formato de cadena normal con paréntesis
+  if IsASCII then
+  begin
+    Result := '(';
+    for i := 1 to Length(text) do
+    begin
+      // Escape special chars
+      case text[i] of
+        '(', ')', '\':
+          Result := Result + '\' + text[i];
+      else
+        Result := Result + text[i];
+      end;
+    end;
+    Result := Result + ')';
+  end
+  else
+  begin
+    // Convert to UTF-16BE
+    UTF16BEBytes := TEncoding.BigEndianUnicode.GetBytes(text);
+
+    // Crear el resultado en formato hexadecimal PDF: Comienza con el BOM UTF-16BE 0xFEFF
+    Result := '<FEFF';
+
+    // Convertir cada byte a su representación hexadecimal
+    for i := 0 to Length(UTF16BEBytes) - 1 do
+    begin
+      // Formatear cada byte como hexadecimal de dos dígitos
+      HexString := IntToHex(UTF16BEBytes[i]);
+      Result := Result + HexString;
+    end;
+
+    // Cerrar la cadena en formato hexadecimal PDF
+    Result := Result + '>';
+  end;
 end;
 
 procedure TRpPDFFile.FreePageInfos;

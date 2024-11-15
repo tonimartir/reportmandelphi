@@ -108,7 +108,12 @@ type
     procedure Set_AsyncExecution(Value: WordBool); safecall;
     procedure SaveToHTMLSingle(const filename: WideString); safecall;
     procedure SaveToFile(const filename: WideString); safecall;
-    procedure AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString); safecall;
+
+    procedure AddEmbeddedFile(const fileName, mimeType, base64Stream, description: WideString;
+          AFRelationShip: TxAFRelationShip; const ISOCreationDate,
+          ISOModificationDate: WideString); safecall;
+    procedure AddMetadata(const title, author, subject, creator, producer, keywords, creationDate,
+          modificationDate: WideString); safecall;
 
 
   end;
@@ -579,11 +584,21 @@ begin
 end;
 
 
-procedure TReportManX.AddEmbeddedFile(const fileName, mimeType, base64Stream: WideString);
+
+
+
+procedure TReportManX.AddEmbeddedFile(const fileName, mimeType, base64Stream, description: WideString;
+          AFRelationShip: TxAFRelationShip; const ISOCreationDate,
+          ISOModificationDate: WideString);
 begin
- FDelphiControl.AddEmbeddedFile(filename, mimeType, base64Stream);
+  FDelphiControl.AddEmbeddedFile(fileName, mimeType, base64Stream, description, TPDFAFRelationShip(AFRelationShip), ISOCreationDate, ISOModificationDate);
 end;
 
+procedure TReportManX.AddMetadata(const title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: WideString);
+begin
+
+end;
 
 initialization
   TActiveXControlFactory.Create(

@@ -131,7 +131,8 @@ uses
   rppreviewmeta in '..\rppreviewmeta.pas',
   Vcl.Styles,
   rpDelphiZXIngQRCode in '..\rpDelphiZXIngQRCode.pas',
-  FireDAC.Phys.ODBCMeta in 'FireDAC.Phys.ODBCMeta.pas';
+  FireDAC.Phys.ODBCMeta in 'FireDAC.Phys.ODBCMeta.pas',
+  rpmdfembeddedfile in '..\rpmdfembeddedfile.pas' {FRpEmbeddedFile};
 
 {$R *.res}
 

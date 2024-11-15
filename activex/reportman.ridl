@@ -6,7 +6,7 @@
 // However, when applying changes via the Editor this file will be regenerated
 // and comments or formatting changes will be lost.
 // ************************************************************************ //
-// File generated on 22/10/2024 20:06:01 (- $Rev: 12980 $, 1100135015).
+// File generated on 14/11/2024 18:27:59 (- $Rev: 12980 $, 57414578).
 
 [
   uuid(D4D26F6B-6564-44F4-A913-03C91CE37740),
@@ -168,6 +168,18 @@ library reportman
   };
 
   [
+    uuid(37AF12A5-1E5D-4FE7-826F-AA48339A0FD1)
+  ]
+  enum TxAFRelationShip
+  {
+    AFUnspecified = 0,
+    AFAlternative = 1,
+    AFData = 2,
+    AFSource = 3,
+    AFSupplement = 4
+  };
+
+  [
     custom(8B342977-45CB-4A01-A8F2-E47B61F3539E, 0)
   ]
   typedef IFontDisp** PPUserType1;
@@ -318,7 +330,7 @@ library reportman
     [propput, id(0x000000CF)]
     HRESULT _stdcall PDFConformance([in] enum TxPDFConformanceType Value);
     [id(0x000000D0)]
-    HRESULT _stdcall AddEmbeddedFile([in] BSTR fileName, [in] BSTR mimeType, [in] BSTR base64Stream);
+    HRESULT _stdcall AddEmbeddedFile([in] BSTR fileName, [in] BSTR mimeType, [in] BSTR base64Stream, [in] BSTR description, [in] enum TxAFRelationShip AFRelationShip, [in] BSTR ISOCreationDate, [in] BSTR ISOModificationDate);
   };
 
   [

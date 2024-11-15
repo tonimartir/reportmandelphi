@@ -103,6 +103,8 @@ type
 
  TPDFConformanceType = ( PDF_1_4 = 0, PDF_A_3 = 1);
  TPDFConformance = ( SetPDFDefault = 0, SettPDF_1_4 = 1, SetPDF_A_3 = 2);
+ TPDFAFRelationShip = ( PDF_AF_Unspecified = 0, PDF_AF_Alternative = 1, PDF_AF_Data = 2,
+    PDF_AF_Source = 3, PDF_AF_Supplement = 4);
 
  TRpLineInfo=record
   Position:integer;
@@ -265,6 +267,11 @@ type
    public Stream: TMemoryStream;
    public MimeType: string;
    public ResourceNumber: integer;
+   public Description: string;
+   public AFRelationShip: TPDFAFRelationShip;
+   public CreationDate: string;
+   public ModificationDate: string;
+   public function AFRelationShipToString(): string;
  end;
 
 
@@ -453,6 +460,7 @@ function StringToOem(const S: String): AnsiString;
 function AnsiStringToOem(const S: AnsiString): AnsiString;
 {$ENDIF}
 
+procedure GetCommonMimeTypes(MimeList: TStrings);
 
 
 implementation
@@ -5564,7 +5572,39 @@ begin
 end;
 {$ENDIF}
 
+procedure GetCommonMimeTypes(MimeList: TStrings);
+begin
+  MimeList.Clear;
+  MimeList.Add('text/plain');
+  MimeList.Add('text/html');
+  MimeList.Add('text/css');
+  MimeList.Add('application/json');
+  MimeList.Add('application/xml');
+  MimeList.Add('image/jpeg');
+  MimeList.Add('image/png');
+  MimeList.Add('video/mp4');
+  MimeList.Add('application/pdf');
+  MimeList.Add('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); // .xlsx
+  MimeList.Add('application/vnd.openxmlformats-officedocument.wordprocessingml.document'); // .docx
+  MimeList.Add('application/vnd.openxmlformats-officedocument.presentationml.presentation'); // .pptx
+end;
 
+function TEmbeddedFile.AFRelationShipToString(): string;
+begin
+ Result:= 'Unspecified';
+ case AFRelationShip of
+  PDF_AF_Unspecified:
+   Result := 'Unspecified';
+  PDF_AF_Alternative:
+   Result := 'Alternative';
+  PDF_AF_Data:
+   Result := 'Data';
+  PDF_AF_Source:
+   Result := 'Source';
+  PDF_AF_Supplement:
+   Result := 'Supplement';
+ end;
+end;
 
 initialization
 

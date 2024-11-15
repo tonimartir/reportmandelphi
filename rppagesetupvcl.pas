@@ -35,7 +35,7 @@ uses
   rpmetafile,rpmdconsts,rpmdprintconfigvcl, ComCtrls, Mask, rpmaskedit,
   Vcl.ToolWin, System.Actions, Vcl.ActnList, Vcl.BaseImageCollection,
   Vcl.ImageCollection, System.ImageList, Vcl.ImgList, Vcl.VirtualImageList,
-   System.Generics.Collections;
+   System.Generics.Collections,rpmdfembeddedfile;
 
 type
   TFRpPageSetupVCL = class(TForm)
@@ -125,6 +125,25 @@ type
     FileOpenDialog1: TFileOpenDialog;
     PParentListView: TPanel;
     Panel4: TPanel;
+    TabMetadata: TTabSheet;
+    LabelDocAuthor: TLabel;
+    textDocAuthor: TEdit;
+    labelDocTitle: TLabel;
+    textDocTitle: TEdit;
+    textDocSubject: TEdit;
+    labeldocSubject: TLabel;
+    LabelDocKeywords: TLabel;
+    textDocKeywords: TEdit;
+    textDocCreator: TEdit;
+    labelDocCreator: TLabel;
+    textDocProducer: TEdit;
+    LabelDocProducer: TLabel;
+    labelCreationDate: TLabel;
+    textDocCreationDate: TEdit;
+    textDocModDate: TEdit;
+    labelModifyDate: TLabel;
+    SpeedButton3: TSpeedButton;
+    AFileModify: TAction;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);
@@ -140,6 +159,7 @@ type
     procedure CheckDefaultCopiesClick(Sender: TObject);
     procedure AFileNewExecute(Sender: TObject);
     procedure AFileDeleteExecute(Sender: TObject);
+    procedure AFileModifyExecute(Sender: TObject);
   private
     { Private declarations }
     report:TRpBaseReport;
@@ -292,8 +312,25 @@ begin
  LabelCompressed.Caption:=SRpCompressed;
  AFileNew.Caption:=SRpAdd;
  AfileDelete.Caption:=SRpDelete;
+ AFileModify.Caption:=SRpModify;
  Panel4.Caption:=SRpEmbeddedFiles;
- LabelPDFConformance.Caption
+ LabelPDFConformance.Caption:=SRpConformance;
+ TabMetadata.Caption:=SRpMetadata;
+ LabelDocAuthor.Caption:=SRpDocAuthor;
+ LabelDocTitle.Caption:=SRpDocTitle;
+ LabelDocSubject.Caption:=SRpDocSubject;
+ LabelDocCreator.Caption:=SRpDocCreator;
+ LabelDocProducer.Caption:=SRpDocProducer;
+ labelCreationDate.Caption:=SRpDocCreationDate;
+ labelModifyDate.Caption:=SRpDocModifyDate;
+ LabelDocKeywords.Caption:=SRpDocKeywords;
+ ListViewEmbedded.Columns[0].Caption:=SRpFilename;
+ ListViewEmbedded.Columns[1].Caption:=SRpMimetype;
+ ListViewEmbedded.Columns[2].Caption:=SRpSize;
+ ListViewEmbedded.Columns[3].Caption:=SRpRelationShip;
+ ListViewEmbedded.Columns[4].Caption:=SRpDescription;
+ ListViewEmbedded.Columns[5].Caption:=SRpCreationDateISO;
+ ListViewEmbedded.Columns[6].Caption:=SRpModificationDateISO;
 end;
 
 procedure TFRpPageSetupVCL.BOKClick(Sender: TObject);
@@ -373,6 +410,14 @@ begin
  report.ForcePaperName:=EForceFormName.Text;
  report.PDFConformance:= TPDFConformanceType(ComboBoxPDFConformance.ItemIndex);
  report.PDFCompressed:=CheckBoxPDFCompressed.Checked;
+ report.DocAuthor:=textDocAuthor.Text;
+ report.DocCreator:=textDocCreator.Text;
+ report.DocProducer:=textDocProducer.Text;
+ report.DocTitle:=textDocTitle.Text;
+ report.DocSubject:=textDocSubject.Text;
+ report.DocCreationDate:=textDocCreationDate.Text;
+ report.DocModificationDate:=textDocModDate.Text;
+ report.DocKeywords:=textDocKeywords.Text;
  SetLength(report.EmbeddedFiles,EmbeddedFiles.Count);
  for i:=0 to EmbeddedFiles.Count-1 do
  begin
@@ -455,6 +500,17 @@ begin
  else
   ComboBoxPDFConformance.ItemIndex:=1;
  CheckBoxPDFCompressed.Checked:=report.PDFCompressed;
+
+ textDocAuthor.Text:=report.DocAuthor;
+ textDocCreator.Text:=report.DocCreator;
+ textDocProducer.Text:=report.DocProducer;
+ textDocTitle.Text:=report.DocTitle;
+ textDocSubject.Text:=report.DocSubject;
+ textDocCreationDate.Text:=report.DocCreationDate;
+ textDocModDate.Text:=report.DocModificationDate;
+ textDocKeywords.Text:=report.DocKeywords;
+
+
  for i:=0 to Length(report.EmbeddedFiles)-1 do
  begin
   EmbeddedFiles.Add(report.EmbeddedFiles[i]);
@@ -545,7 +601,29 @@ begin
    listItem.Caption:=embedded.FileName;
    listItem.SubItems.Add(embedded.MimeType);
    listItem.SubItems.Add(FormatFloat('##,##.00',Double(embedded.Stream.Size)/1024)+' '+SRpKbytes);
+   listItem.SubItems.Add(embedded.AFRelationShipToString());
+   listItem.SubItems.Add(embedded.Description);
+   listItem.SubItems.Add(embedded.CreationDate);
+   listItem.SubItems.Add(embedded.ModificationDate);
   end;
+  if (ListViewEmbedded.Items.Count>0) then
+  begin
+    ListViewEmbedded.ItemIndex:=0;
+  end;
+end;
+
+procedure TFRpPageSetupVCL.AFileModifyExecute(Sender: TObject);
+var
+ embedded:TEmbeddedFile;
+begin
+ if (ListViewEmbedded.ItemIndex>=0) then
+ begin
+  embedded:=EmbeddedFiles[ListViewEmbedded.ItemIndex];
+  if (AskEmbeddedFileData(embedded)) then
+  begin
+   UpdateEmbeddedList;
+  end;
+ end;
 end;
 
 procedure TFRpPageSetupVCL.AFileNewExecute(Sender: TObject);
@@ -578,8 +656,11 @@ begin
      embedded.MimeType:='application/octet-stream';
    end;
  end;
- EmbeddedFiles.Add(embedded);
- UpdateEmbeddedList;
+ if (AskEmbeddedFileData(embedded)) then
+ begin
+   EmbeddedFiles.Add(embedded);
+   UpdateEmbeddedList;
+ end;
 end;
 
 end.

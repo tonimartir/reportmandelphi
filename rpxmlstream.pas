@@ -187,6 +187,14 @@ begin
  WritePropertyI('LINESPERINCH',report.LinesPerInch,Stream);
  WritePropertyI('PDFCONFORMANCE',Integer(report.PDFConformance),Stream);
  WritePropertyBool('PDFCOMPRESSED',report.PDFCompressed,Stream);
+ WritePropertyS('DOCAUTHOR',report.DocAuthor,Stream);
+ WritePropertyS('DOCCREATOR',report.DocCreator,Stream);
+ WritePropertyS('DOCPRODUCER',report.DocProducer,Stream);
+ WritePropertyS('DOCSUBJECT',report.DocSubject,Stream);
+ WritePropertyS('DOCTITLE',report.DocTitle,Stream);
+ WritePropertyS('DOCCREATIONDATE',report.DocCreationDate,Stream);
+ WritePropertyS('DOCMODIFICATIONDATE',report.DocModificationDate,Stream);
+ WritePropertyS('DOCKEYWORDS',report.DocKeywords,Stream);
 
 end;
 
@@ -892,6 +900,10 @@ begin
   WriteStringToStream(astring,stream);
   WritePropertyS('FILENAME', efile.FileName,Stream);
   WritePropertyS('MIMETYPE', efile.MimeType, Stream);
+  WritePropertyS('DESCRIPTION', efile.Description, Stream);
+  WritePropertyS('CREATIONDATE', efile.CreationDate, Stream);
+  WritePropertyS('MODIFICATIONDATE', efile.ModificationDate, Stream);
+  WritePropertyI('RELATIONSHIP', Integer(efile.AFRelationShip), Stream);
   efile.Stream.Position:=0;
   WritePropertyB('STREAM', efile.Stream, Stream);
   astring:='</EMBEDDEDFILE>'+CRLF;
@@ -1421,9 +1433,35 @@ begin
   report.LinesPerInch:=StrToInt(propvalue)
  else
  if propname='PDFCONFORMANCE' then
-  report.PDFConformance:=TPDFConformanceType(StrToInt(propvalue));
+  report.PDFConformance:=TPDFConformanceType(StrToInt(propvalue))
+ else
  if propname='PDFCOMPRESSED' then
-  report.PDFCompressed:=RpStrToBool(propValue);
+  report.PDFCompressed:=RpStrToBool(propValue)
+ else
+ if propname='DOCAUTHOR' then
+  report.DocAuthor:=RpStringToString(propValue)
+ else
+ if propname='DOCCREATOR' then
+  report.DocCreator:=RpStringToString(propValue)
+ else
+ if propname='DOCPRODUCER' then
+  report.DocProducer:=RpStringToString(propValue)
+ else
+ if propname='DOCSUBJECT' then
+  report.DocSubject:=RpStringToString(propValue)
+ else
+ if propname='DOCTITLE' then
+  report.DocTitle:=RpStringToString(propValue)
+ else
+ if propname='DOCCREATIONDATE' then
+  report.DocCreationDate:=RpStringToString(propValue)
+ else
+ if propname='DOCMODIFICATIONDATE' then
+  report.DocModificationDate:=RpStringToString(propValue)
+ else
+ if propname='DOCKEYWORDS' then
+  report.DocKeywords:=RpStringToString(propValue);
+
  report.ReportAction:=actions;
 end;
 
@@ -1840,6 +1878,7 @@ var
  compitem:TRpCommonListItem;
  i,j:integer;
  efile:TEmbeddedFile;
+ oldprop:string;
  memstream: TMemoryStream;
 
  procedure FindNextName;
@@ -1976,32 +2015,43 @@ begin
   else
   if propname='EMBEDDEDFILE' then
   begin
-   efile:=TEmbeddedFile.Create;;
+   efile:=TEmbeddedFile.Create;
    FindNextName;
-   if propname<>'FILENAME' then
-    Raise Exception.Create(SRpStreamFormat);
-   efile.FileName:=RpStringToString(propvalue);
-   FindNextName;
-   if propname<>'/FILENAME' then
-    Raise Exception.Create(SRpStreamFormat);
-   FindNextName;
-   if propname<>'MIMETYPE' then
-    Raise Exception.Create(SRpStreamFormat);
-   efile.MimeType:=RpStringToString(propvalue);
-   FindNextName;
-   if propname<>'/MIMETYPE' then
-    Raise Exception.Create(SRpStreamFormat);
-   FindNextName;
-   if propname<>'STREAM' then
-    Raise Exception.Create(SRpStreamFormat);
-   memstream:=TMemoryStream.Create;
-   BinToStream(memstream,RpStringToString(propvalue),propsize);
-   memstream.Seek(0,soFromBeginning);
-   efile.Stream:=memstream;
-   FindNextName;
-   if propname<>'/STREAM' then
-    Raise Exception.Create(SRpStreamFormat);
-   FindNextName;
+   while (propname<>'/EMBEDDEDFILE') do
+   begin
+    if propname='FILENAME' then
+      efile.FileName:=RpStringToString(propvalue)
+    else
+     if propname='MIMETYPE' then
+      efile.MimeType:=RpStringToString(propvalue)
+     else
+      if propname='DESCRIPTION' then
+       efile.Description:=RpStringToString(propvalue)
+      else
+       if propname='CREATIONDATE' then
+        efile.CreationDate:=RpStringToString(propvalue)
+       else
+        if propname='MODIFICATIONDATE' then
+         efile.ModificationDate:=RpStringToString(propvalue)
+        else
+         if propname='RELATIONSHIP' then
+           efile.AFRelationShip:=TPDFAFRelationShip(StrToInt(propvalue))
+         else
+          if propname='STREAM' then
+          begin
+           memstream:=TMemoryStream.Create;
+           BinToStream(memstream,RpStringToString(propvalue),propsize);
+           memstream.Seek(0,soFromBeginning);
+           efile.Stream:=memstream;
+          end
+          else
+            Raise Exception.Create(SRpStreamFormat);
+    oldprop := propname;
+    FindNextName;
+    if (propname<>('/'+oldprop)) then
+      Raise Exception.Create(SRpStreamFormat);
+    FindNextName;
+   end;
    if propname<>'/EMBEDDEDFILE' then
     Raise Exception.Create(SRpStreamFormat);
    SetLength(Report.EmbeddedFiles, Length(Report.EmbeddedFiles)+1);

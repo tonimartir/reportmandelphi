@@ -415,6 +415,14 @@ type
    TouchEnabled:boolean;
    OrientationSet: boolean;
    EmbeddedFiles:array of TEmbeddedFile;
+   FDocAuthor:string;
+   FDocTitle:string;
+   FDocCreator:string;
+   FDocKeywords:string;
+   FDocSubject:string;
+   FDocProducer:string;
+   FDocCreationDate: string;
+   FDocModificationDate: string;
    procedure Clear;
    procedure DoSearch(avalue:string);
    procedure LoadFromStream(Stream:TStream;clearfirst:boolean=true);
@@ -435,7 +443,8 @@ type
    procedure WorkAsyncError(amessage:string);
    procedure Finish;
    procedure StopWork;
-   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+   procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+   description,creationDate,modificationDate:string; stream: TMemoryStream);
    function IsFound(page:TRpMetafilePage;objectindex:integer):boolean;
    function NextPageFound(pageindex:integer):integer;
    property BackColor:integer read FBackColor write SetBackColor;
@@ -455,6 +464,16 @@ type
     write FPDFConformance default TPDFConformanceType.PDF_1_4;
    property PDFCompressed:boolean read FPDFCompressed
     write FPDFCompressed default false;
+   // Metadata
+   property DocAuthor:string read FDocAuthor write FDocAuthor;
+   property DocTitle:string read FDocTitle write FDocTitle;
+   property DocSubject:string read FDocSubject write FDocSubject;
+   property DocProducer:string read FDocProducer write FDocProducer;
+   property DocCreator:string read FDocCreator write FDocCreator;
+   property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
+   property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
+   property DocKeywords:string read FDocKeywords write FDocKeywords;
+
    property OnRequestPage:TRequestPageEvent read FOnRequestPage write FOnRequestPage;
   published
   end;
@@ -962,11 +981,16 @@ begin
  exit;
 end;
 
-procedure TRpMetafileReport.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+procedure TRpMetafileReport.NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+   description,creationDate,modificationDate:string; stream: TMemoryStream);
 var embededFile: TEmbeddedFile;
 begin
  embededFile:=TEmbeddedFile.Create;
  embededFile.FileName:=fileName;
+ embededFile.AFRelationShip:=AFRelationShip;
+ embededFile.CreationDate:=creationDate;
+ embededFile.ModificationDate:=ModificationDate;
+ embededFile.Description:=Description;
  embededFile.Stream:=TMemoryStream.Create;
  stream.Position:=0;
  stream.SaveToStream(embededFile.Stream);
@@ -1011,7 +1035,15 @@ begin
   else
    bytevalue:=0;
   Stream.Write(bytevalue,1);
-
+  // Metadata
+  WriteStringToStream(FDocAuthor, Stream);
+  WriteStringToStream(FDocCreator, Stream);
+  WriteStringToStream(FDocProducer, Stream);
+  WriteStringToStream(FDocCreationDate, Stream);
+  WriteStringToStream(FDocModificationDate, Stream);
+  WriteStringToStream(FDocSubject, Stream);
+  WriteStringToStream(FDocTitle, Stream);
+  WriteStringToStream(FDocKeywords, Stream);
 
   Stream.Write(fileCount,sizeof(fileCount));
   for i:=0 to fileCount-1  do
@@ -1249,9 +1281,18 @@ begin
  begin
   // PDF Compressed
   Stream.Read(conformanceByte,1);
-  PDFCompressed:=conformanceByte =1;
-  Stream.Read(conformanceByte,1);
   FPDFConformance:=TPDFConformanceType(conformanceByte);
+  Stream.Read(conformanceByte,1);
+  PDFCompressed:=conformanceByte =1;
+
+  FDocAuthor:=ReadStringFromStream(Stream);
+  FDocCreator:=ReadStringFromStream(Stream);
+  FDocProducer := ReadStringFromStream(Stream);
+  FDocCreationDate := ReadStringFromStream(Stream);
+  FDocModificationDate:=ReadStringFromStream( Stream);
+  FDocSubject:=ReadStringFromStream( Stream);
+  FDocTitle:=ReadStringFromStream(Stream);
+  FDocKeywords:=ReadStringFromStream(Stream);
   Stream.Read(fileCount,sizeof(fileCount));
   if (fileCount<0) then
     raise Exception.Create('Error reading file count');  

@@ -243,6 +243,14 @@ type
     FGroupHeaders:TStringList;
     FPDFConformance:TPDFConformanceType;
     FPDFCompressed: boolean;
+    FDocAuthor:string;
+    FDocTitle:string;
+    FDocCreator:string;
+    FDocKeywords:string;
+    FDocSubject:string;
+    FDocProducer:string;
+    FDocCreationDate: string;
+    FDocModificationDate: string;
 {$IFDEF MSWINDOWS}
    mmfirst,mmlast:DWORD;
 {$ENDIF}
@@ -439,6 +447,15 @@ type
    property LinesPerInch:Word read FLinesPerInch write FLinesPerInch default 600;
    property PDFConformance:TPDFConformanceType read FPDFConformance write FPDFConformance default PDF_1_4;
    property PDFCompressed:boolean read FPDFCompressed write FPDFCompressed  default false;
+   // Metadata
+   property DocAuthor:string read FDocAuthor write FDocAuthor;
+   property DocTitle:string read FDocTitle write FDocTitle;
+   property DocSubject:string read FDocSubject write FDocSubject;
+   property DocProducer:string read FDocProducer write FDocProducer;
+   property DocCreator:string read FDocCreator write FDocCreator;
+   property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
+   property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
+   property DocKeywords:string read FDocKeywords write FDocKeywords;
  end;
 
  TThreadExecReport=class(TThread)
@@ -1756,6 +1773,22 @@ begin
    efile.MimeType:=TEncoding.UTF8.GetString(bytes);
 
    memStream.Read(ssize,sizeof(ssize));
+   SetLength(bytes,ssize);
+   memStream.Read(bytes,ssize);
+   efile.Description:=TEncoding.UTF8.GetString(bytes);
+   memStream.Read(ssize,sizeof(ssize));
+   SetLength(bytes,ssize);
+   memStream.Read(bytes,ssize);
+   efile.CreationDate:=TEncoding.UTF8.GetString(bytes);
+   memStream.Read(ssize,sizeof(ssize));
+   SetLength(bytes,ssize);
+   memStream.Read(bytes,ssize);
+   efile.ModificationDate:=TEncoding.UTF8.GetString(bytes);
+
+   memStream.Read(ssize,sizeof(ssize));
+   efile.AFRelationShip:=TPDFAFRelationShip(ssize);
+
+   memStream.Read(ssize,sizeof(ssize));
    efile.Stream:=TMemoryStream.Create;
    efile.Stream.SetSize(ssize);
    memStream.Read(efile.Stream.Memory^,ssize);
@@ -1794,6 +1827,23 @@ begin
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
    memStream.Write(bytes,asize);
+
+   bytes:=TEncoding.UTF8.GetBytes(efile.Description);
+   asize:=Length(bytes);
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(bytes,asize);
+   bytes:=TEncoding.UTF8.GetBytes(efile.CreationDate);
+   asize:=Length(bytes);
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(bytes,asize);
+   bytes:=TEncoding.UTF8.GetBytes(efile.ModificationDate);
+   asize:=Length(bytes);
+   memStream.Write(asize,sizeOf(asize));
+   memStream.Write(bytes,asize);
+   asize:=Integer(efile.AFRelationShip);
+   memStream.Write(asize,sizeOf(asize));
+
+
    efile.Stream.Position:=0;
    asize:=efile.Stream.Size;
    memStream.Write(asize,sizeOf(asize));
