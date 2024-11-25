@@ -6,7 +6,7 @@
         <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
         <DCC_DependencyCheckOutputName>repwebexe.exe</DCC_DependencyCheckOutputName>
         <ProjectVersion>19.3</ProjectVersion>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <Base>True</Base>
         <AppType>Application</AppType>
         <FrameworkType>None</FrameworkType>
@@ -166,12 +166,13 @@
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-        <DCC_ExeOutput>.\binr32</DCC_ExeOutput>
+        <DCC_ExeOutput>.\bin32</DCC_ExeOutput>
         <DCC_DcuOutput>.\dcur32</DCC_DcuOutput>
-        <DCC_DcpOutput>.\dcur32</DCC_DcpOutput>
+        <DCC_DcpOutput>.\dcu32</DCC_DcpOutput>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+        <DCC_MapFile>3</DCC_MapFile>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
@@ -181,7 +182,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_Define>UNICODE;$(DCC_Define)</DCC_Define>
         <DCC_MapFile>3</DCC_MapFile>
-        <DCC_DcpOutput>.\dcur64</DCC_DcpOutput>
+        <DCC_DcpOutput>.\dcu64</DCC_DcpOutput>
         <DCC_DcuOutput>.\dcur64</DCC_DcuOutput>
     </PropertyGroup>
     <ProjectExtensions>

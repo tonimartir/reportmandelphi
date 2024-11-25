@@ -41,7 +41,7 @@ const
 {$ENDIF}
 
 const
- RM_VERSION='3.6.3';
+ RM_VERSION='3.6.4';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
@@ -2409,6 +2409,28 @@ begin
   TranslateVar(1455,SRpAutoRangeMin);
   TranslateVar(1456,SRpAutoRangeNone);
 
+  TranslateVar(1457,SRpPDFOptions);
+  TranslateVar(1458,SRpConformance);
+  TranslateVar(1459,SRpCompressed);
+  TranslateVar(1460,SRpMimetype);
+  TranslateVar(1461,SRpSize);
+  TranslateVar(1462,SRpDescription);
+  TranslateVar(1463,SRpFilename);
+  TranslateVar(1464,SRpRelationShip);
+  TranslateVar(1465,SRpEmbeddedFiles);
+  TranslateVar(1466,SRpDocAuthor);
+  TranslateVar(1467,SRpDocTitle);
+  TranslateVar(1468,SRpDocSubject);
+  TranslateVar(1469,SRpDocCreationDate);
+  TranslateVar(1470,SRpDocModifyDate);
+  TranslateVar(1471,SRpDocKeywords);
+  TranslateVar(1472,SRpDocProducer);
+  TranslateVar(1473,SRpDocCreator);
+  TranslateVar(1474,SRpMetadata);
+  TranslateVar(1475,SRpEmbeddedFile);
+  TranslateVar(1476,SRpCreationDateISO);
+  TranslateVar(1477,SRpModificationDateISO);
+  TranslateVar(1478,SRpModify);
  end;
 
 

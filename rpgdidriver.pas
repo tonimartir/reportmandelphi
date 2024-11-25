@@ -777,9 +777,9 @@ var
 begin
   if atext.FontRotation <> 0 then
     exit;
-  // Justified text use pdf driver
-  if (atext.Alignment AND AlignmentFlags_AlignHJustify) > 0 then
-  // if true then
+  // Justified text use pdf driver, also PDF Conformance or TrueType
+  if (  ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+     OR (atext.Type1Font >  Integer(poEmbedded))) then
   begin
     if not assigned(npdfdriver) then
       npdfdriver := TRpPDFDriver.Create;
@@ -949,9 +949,9 @@ begin
               FindDeviceFont(Canvas.handle, Canvas.Font,
                 FontSizeToStep(Canvas.Font.Size, obj.PrintStep));
           end;
-          // Justified text use pdf driver
-          if (obj.Alignment AND AlignmentFlags_AlignHJustify) > 0 then
-          // if true then
+          // Justified text use pdf driver, also pdf conformance or truetype
+          if (  ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+             OR (obj.Type1Font >  Integer(poEmbedded))) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
@@ -1326,7 +1326,10 @@ begin
     // Calculates text extent and apply alignment
     recsize := ARect;
     if not assigned(npdfdriver) then
+    begin
       npdfdriver := TRpPDFDriver.Create;
+      npdfdriver.PDFConformance:= FReport.PDFConformance;
+    end;
     npdfdriver.PDFFile.Canvas.Font.Size := Canvas.Font.Size;
     npdfdriver.PDFFile.Canvas.Font.WFontName := Canvas.Font.Name;
     npdfdriver.PDFFile.Canvas.Font.Name := poLinked;

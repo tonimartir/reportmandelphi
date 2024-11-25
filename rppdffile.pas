@@ -4091,7 +4091,6 @@ begin
       Break;
     end;
   end;
-
   // Si todos los caracteres son ASCII, usar formato de cadena normal con paréntesis
   if IsASCII then
   begin
@@ -4112,10 +4111,8 @@ begin
   begin
     // Convert to UTF-16BE
     UTF16BEBytes := TEncoding.BigEndianUnicode.GetBytes(text);
-
     // Crear el resultado en formato hexadecimal PDF: Comienza con el BOM UTF-16BE 0xFEFF
     Result := '<FEFF';
-
     // Convertir cada byte a su representación hexadecimal
     for i := 0 to Length(UTF16BEBytes) - 1 do
     begin
@@ -4123,7 +4120,6 @@ begin
       HexString := IntToHex(UTF16BEBytes[i]);
       Result := Result + HexString;
     end;
-
     // Cerrar la cadena en formato hexadecimal PDF
     Result := Result + '>';
   end;

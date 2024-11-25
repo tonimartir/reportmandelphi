@@ -1,11 +1,16 @@
 object FRpObjInspVCL: TFRpObjInspVCL
   Left = 0
   Top = 0
-  Width = 399
-  Height = 250
+  Width = 499
+  Height = 313
+  Margins.Left = 4
+  Margins.Top = 4
+  Margins.Right = 4
+  Margins.Bottom = 4
   ParentShowHint = False
   ShowHint = True
   TabOrder = 0
+  PixelsPerInch = 120
   object RpAlias1: TRpAlias
     List = <>
     Connections = <>
