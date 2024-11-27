@@ -87,6 +87,8 @@ type
     description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
    procedure AddMetadata(const title, author, subject, creator, producer,
           keywords, creationDate, modificationDate: WideString);
+    procedure AddXMPMetadata(const XMPSchemas,XMPContent: WideString);
+
    property Report:TRpReport read GetReport;
    property Preview:Boolean read FPreview write FPreview default true;
    property ShowProgress:boolean read FShowProgress write FShowProgress
@@ -489,6 +491,13 @@ begin
  Report.DocCreationDate:=modificationDate;
  Report.DocModificationDate:=modificationDate;
  Report.DocKeywords:=keywords;
+end;
+
+procedure TCBaseReport.AddXMPMetadata(const XMPSchemas,XMPContent: WideString);
+begin
+ CheckLoaded;
+ Report.DocXMPSchemas:= XMPSchemas;
+ Report.DocXMPContent:= XMPContent;
 end;
 
 end.

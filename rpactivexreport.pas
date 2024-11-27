@@ -86,6 +86,7 @@ type
     description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
    procedure AddMetadata(title, author, subject, creator, producer,
           keywords, creationDate, modificationDate: string);
+   procedure AddXMPMetadata(XmpSchema,XmpContent: string);
 {$IFNDEF DOTNETD}
    procedure SetRecordset(datasetname:string; recordset: Pointer);
 {$ENDIF}
@@ -119,6 +120,11 @@ procedure TRpActiveXReport.AddMetadata(title, author, subject, creator, producer
 begin
  FVCLReport.AddMetadata(title, author, subject, creator, producer,
           keywords, creationDate, modificationDate);
+end;
+
+procedure TRpActiveXReport.AddXMPMetadata(XmpSchema,XmpContent: string);
+begin
+ FVCLReport.AddXMPMetadata(XmpSchema,XmpContent);
 end;
 
 

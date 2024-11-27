@@ -182,6 +182,8 @@ type
    FDocProducer:string;
    FDocCreationDate: string;
    FDocModificationDate: string;
+   FDocXMPSchemas: string;
+   FDocXMPContent: string;
    FMainPDF:TMemoryStream;
    FStreamValid:boolean;
    FTempStream:TMemoryStream;
@@ -267,6 +269,9 @@ type
    property DocProducer:string read FDocProducer write FDocProducer;
    property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
    property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
+   property DocXMPSchemas:string read FDocXMPSchemas write FDocXMPSchemas;
+   property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
+
    // Document physic
    property PageWidth:integer read FPageWidth write FPageWidth;
    property PageHeight:integer read FPageHeight write FPageHeight;
@@ -629,8 +634,8 @@ begin
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
  SWriteLine(FTempStream,'<<');
- SWriteLine(FTempStream,'/Producer ('+FDocProducer+')');
- SWriteLine(FTempStream,'/Author ('+FDocAuthor+')');
+ SWriteLine(FTempStream,'/Producer '+EncodePDFText(FDocProducer));
+ SWriteLine(FTempStream,'/Author '+EncodePDFText(FDocAuthor));
  if Length(FDocCreationDate) = 0 then
  begin
   SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
@@ -640,18 +645,18 @@ begin
   SWriteLine(FTempStream,'/CreationDate (D:'+  FDocCreationDate+')');
  end;
  if (FPDFConformance <> PDF_A_3) then
-   SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
+   SWriteLine(FTempStream,'/Creator '+EncodePDFText(FDocCreator));
  if (Length(FDocKeywords)>0) then
-  SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
- SWriteLine(FTempStream,'/Subject ('+FDocSubject+')');
- SWriteLine(FTempStream,'/Title ('+FDocTitle+')');
+  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords));
+ SWriteLine(FTempStream,'/Subject '+EncodePdfText(FDocSubject));
+ SWriteLine(FTempStream,'/Title '+EncodePdfText(FDocTitle));
  if Length(FDocModificationDate) = 0 then
  begin
-  SWriteLine(FTempStream,'/ModDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+ // SWriteLine(FTempStream,'/ModDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
  end
  else
  begin
-  SWriteLine(FTempStream,'/ModDate (D:'+  FDocModificationDate+')');
+ // SWriteLine(FTempStream,'/ModDate (D:'+  FDocModificationDate+')');
  end;
  if (FPDFConformance = PDF_A_3) then
  begin
@@ -854,59 +859,77 @@ var
  FXMPStream: TMemoryStream;
  i:integer;
  efile: TEmbeddedFile;
+ keywords:TArray<string>;
+ keyword: string;
 begin
  FXMPStream:=TMemoryStream.Create();
  try
   SWriteLine(FXMPStream, '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
+  SWriteLine(FXMPStream, '<x:xmpmeta xmlns:x="adobe:ns:meta/">');
   SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"');
   SWriteLine(FXMPStream, '    xmlns:xmp="http://ns.adobe.com/xap/1.0/"');
   SWriteLine(FXMPStream, '    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"');
   SWriteLine(FXMPStream, '    xmlns:dc="http://purl.org/dc/elements/1.1/"');
   SWriteLine(FXMPStream, '    xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"');
+  //if Length(FDocXMPSchemas)>0 then
+  //begin
+  // SWriteLine(FXMPStream, FDocXMPSchemas);
+  //end;
   SWriteLine(FXMPStream, '    xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">');
   SWriteLine(FXMPStream, '  <rdf:Description rdf:about="">');
   SWriteLine(FXMPStream, '    <dc:creator>');
   SWriteLine(FXMPStream, '      <rdf:Seq>');
-  SWriteLine(FXMPStream, '        <rdf:li>' + FDocAuthor +'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li>' + EscapeXML(FDocAuthor) +'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Seq>');
   SWriteLine(FXMPStream, '    </dc:creator>');
   SWriteLine(FXMPStream, '    <dc:title>');
   SWriteLine(FXMPStream, '      <rdf:Alt>');
-  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocTitle+'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocTitle)+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:title>');
   if (Length(FDocKeywords)>0) then
   begin
-   SWriteLine(FXMPStream, '    <dc:keywords>');
-   SWriteLine(FXMPStream, '      <rdf:Alt>');
-   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocKeywords+'</rdf:li>');
-   SWriteLine(FXMPStream, '      </rdf:Alt>');
-   SWriteLine(FXMPStream, '    </dc:keywords>');
+   SWriteLine(FXMPStream, '    <dc:subject>');
+   SWriteLine(FXMPStream, '     <rdf:Bag>');
+   keywords:=FDocKeywords.Split([',']);
+   for keyword in keywords do
+   begin
+    SWriteLine(FXMPStream, '      <rdf:li>'+EscapeXML(keyword)+'</rdf:li>');
+   end;
+   SWriteLine(FXMPStream, '     </rdf:Bag>');
+   SWriteLine(FXMPStream, '    </dc:subject>');
+//   SWriteLine(FXMPStream, '      <rdf:Alt>');
+//   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocKeywords)+'</rdf:li>');
+//   SWriteLine(FXMPStream, '      </rdf:Alt>');
   end;
   SWriteLine(FXMPStream, '    <dc:description>');
   SWriteLine(FXMPStream, '      <rdf:Alt>');
-  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocSubject+'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocSubject)+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:description>');
   if Length(FDocCreationDate)= 0 then
    SWriteLine(FXMPStream, '    <xmp:CreateDate>'+DateToISO8601(FInternalFDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
      +'</xmp:CreateDate>')
   else
-   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FDocCreationDate (* 2024-10-02T15:29:15+00:00 *)
+   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+EscapeXML(FDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
      +'</xmp:CreateDate>');
-  if Length(FDocModificationDate) > 0 then
-  begin
-   SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+FDocCreationDate+'</xmp:ModifyDate>');
-  end;
+//  if Length(FDocModificationDate) > 0 then
+//  begin
+ //  SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+EscapeXML(FDocModificationDate)+'</xmp:ModifyDate>');
+ // end;
   if Length(FDocProducer) > 0 then
   begin
-   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+FDocCreationDate+'</xmp:CreatorTool>');
+   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+EscapeXML(FDocProducer)+'</xmp:CreatorTool>');
   end;
   // SWriteLine(FXMPStream, '    <xmp:ModifyDate>2024-10-02T15:29:15+00:00</xmp:ModifyDate>');
   //SWriteLine(FXMPStream, '    <xmpMM:DocumentID>uuid:12345678-1234-1234-1234-1234567890ab</xmpMM:DocumentID>');
   //SWriteLine(FXMPStream, '    <xmpMM:InstanceID>uuid:12345678-1234-1234-1234-1234567890ac</xmpMM:InstanceID>');
   SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
   SWriteLine(FXMPStream, '    <pdfaid:conformance>B</pdfaid:conformance>');
+//  if Length(FDocXMPContent)>0 then
+//  begin
+//   SWriteLine(FXMPStream, /FDocXMPContent);
+//  end;
   // SWriteLine(FXMPStream, '    <xmp:CreatorTool>My PDF Creator Tool</xmp:CreatorTool>');
 
 
@@ -929,7 +952,12 @@ begin
   end;*)
 
   SWriteLine(FXMPStream, '  </rdf:Description>');
+  if Length(FDocXMPContent)>0 then
+  begin
+   SWriteLine(FXMPStream, FDocXMPContent);
+  end;
   SWriteLine(FXMPStream, '</rdf:RDF>');
+  SWriteLine(FXMPStream, '</x:xmpmeta>');
   SWriteLine(FXMPStream, '<?xpacket end="w"?>');
   FXMPStream.Seek(0,TSeekOrigin.soBeginning);
 

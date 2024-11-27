@@ -181,6 +181,18 @@ begin
  end;
  FPDFFile.Compressed:=Compressed;
  FPDFFile.PDFConformance:=FPDFConformance;
+ FPDFFile.DocTitle:=report.DocAuthor;
+ FPDFFile.DocAuthor:=report.DocAuthor;
+ FPDFFile.DocCreator:=report.DocCreator;
+ FPDFFile.DocKeywords:=report.DocKeywords;
+ FPDFFile.DocSubject:=report.DocSubject;
+ FPDFFile.DocCreationDate:=report.DocCreationDate;
+ FPDFFile.DocModificationDate:=report.DocModificationDate;
+ FPDFFile.DocProducer:=report.DocProducer;
+ FPDFFIle.DocXMPSchemas:=report.DocXMPSchemas;
+ FPDFFIle.DocXMPContent:=report.DocXMPContent;
+
+
  FPDFFile.PageWidth:=report.CustomX;
  FPDFFile.PageHeight:=report.CustomY;
  FPageWidth:=FPDFFile.PageWidth;
@@ -291,7 +303,10 @@ begin
 {$ENDIF}
     FPDFFile.Canvas.Font.Style:=obj.FontStyle;
     // Transparent ?
-    FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
+    if (PDFConformance = TPDFConformanceType.PDF_A_3) then
+      FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded
+    else
+      FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
     FPDFFile.Canvas.Font.Size:=obj.FontSize;
     FPDFFile.Canvas.Font.Color:=obj.FontColor;
     FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;

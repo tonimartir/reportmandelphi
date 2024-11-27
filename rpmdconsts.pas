@@ -1395,6 +1395,9 @@ var
   SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
   SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
   SRpModify: WideString = 'Modify';
+  SRpXMPSchemas: WideString = 'XMP Scchemas';
+  SRpXMPContent: WideString = 'XMP Content';
+  SRpXMPMetadata: WideString = 'XMP Metadata';
 
 implementation
 

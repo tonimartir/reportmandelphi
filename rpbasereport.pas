@@ -251,6 +251,8 @@ type
     FDocProducer:string;
     FDocCreationDate: string;
     FDocModificationDate: string;
+    FDocXMPSchemas: string;
+    FDocXMPContent: string;
 {$IFDEF MSWINDOWS}
    mmfirst,mmlast:DWORD;
 {$ENDIF}
@@ -456,6 +458,8 @@ type
    property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
    property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
    property DocKeywords:string read FDocKeywords write FDocKeywords;
+   property DocXMPSchemas:string read FDocXMPSchemas write FDocXMPSchemas;
+   property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
  end;
 
  TThreadExecReport=class(TThread)

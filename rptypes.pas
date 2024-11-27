@@ -461,9 +461,20 @@ function AnsiStringToOem(const S: AnsiString): AnsiString;
 {$ENDIF}
 
 procedure GetCommonMimeTypes(MimeList: TStrings);
-
+function EscapeXML(const Value: string): string;
 
 implementation
+
+function EscapeXML(const Value: string): string;
+begin
+  // Reemplaza los caracteres especiales con sus entidades XML correspondientes
+  Result := StringReplace(Value, '&', '&amp;', [rfReplaceAll]);
+  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+  Result := StringReplace(Result, '''', '&apos;', [rfReplaceAll]);
+end;
+
 
 function Is64BitPlatform:boolean;
 begin

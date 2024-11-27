@@ -195,6 +195,8 @@ begin
  WritePropertyS('DOCCREATIONDATE',report.DocCreationDate,Stream);
  WritePropertyS('DOCMODIFICATIONDATE',report.DocModificationDate,Stream);
  WritePropertyS('DOCKEYWORDS',report.DocKeywords,Stream);
+ WritePropertyS('DOCXMPSCHEMAS',report.DocXMPSchemas,Stream);
+ WritePropertyS('DOCXMPCONTENT',report.DocXMPContent,Stream);
 
 end;
 
@@ -1460,7 +1462,13 @@ begin
   report.DocModificationDate:=RpStringToString(propValue)
  else
  if propname='DOCKEYWORDS' then
-  report.DocKeywords:=RpStringToString(propValue);
+  report.DocKeywords:=RpStringToString(propValue)
+ else
+ if propname='DOCXMPSCHEMAS' then
+  report.DocXMPSchemas:=RpStringToString(propValue)
+ else
+ if propname='DOCXMPCONTENT' then
+  report.DocXMPContent:=RpStringToString(propValue);
 
  report.ReportAction:=actions;
 end;

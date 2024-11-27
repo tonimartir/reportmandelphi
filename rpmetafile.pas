@@ -423,6 +423,8 @@ type
    FDocProducer:string;
    FDocCreationDate: string;
    FDocModificationDate: string;
+   FDocXMPSchemas: string;
+   FDocXMPContent: string;
    procedure Clear;
    procedure DoSearch(avalue:string);
    procedure LoadFromStream(Stream:TStream;clearfirst:boolean=true);
@@ -473,6 +475,8 @@ type
    property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
    property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
    property DocKeywords:string read FDocKeywords write FDocKeywords;
+   property DocXMPSchemas:string read FDocXMPSchemas write FDocXMPSchemas;
+   property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
 
    property OnRequestPage:TRequestPageEvent read FOnRequestPage write FOnRequestPage;
   published
@@ -1044,6 +1048,8 @@ begin
   WriteStringToStream(FDocSubject, Stream);
   WriteStringToStream(FDocTitle, Stream);
   WriteStringToStream(FDocKeywords, Stream);
+  WriteStringToStream(FDocXMPContent, Stream);
+  WriteStringToStream(FDocXMPSchemas, Stream);
 
   Stream.Write(fileCount,sizeof(fileCount));
   for i:=0 to fileCount-1  do
@@ -1293,6 +1299,9 @@ begin
   FDocSubject:=ReadStringFromStream( Stream);
   FDocTitle:=ReadStringFromStream(Stream);
   FDocKeywords:=ReadStringFromStream(Stream);
+  FDocXMPContent:=ReadStringFromStream(Stream);
+  FDocXMPSchemas:=ReadStringFromStream(Stream);
+
   Stream.Read(fileCount,sizeof(fileCount));
   if (fileCount<0) then
     raise Exception.Create('Error reading file count');  

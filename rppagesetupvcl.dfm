@@ -26,7 +26,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
-    ActivePage = TabOptions
+    ActivePage = TabXMP
     Align = alClient
     TabOrder = 0
     object TabPage: TTabSheet
@@ -973,7 +973,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
               Margins.Right = 4
               Margins.Bottom = 4
               Action = AFileNew
-              ImageName = 'Item1'
               Images = VirtualImageList1
             end
             object bdelete: TSpeedButton
@@ -986,7 +985,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
               Margins.Right = 4
               Margins.Bottom = 4
               Action = AFileDelete
-              ImageName = 'Item2'
               Images = VirtualImageList1
             end
             object bmodify: TSpeedButton
@@ -999,7 +997,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
               Margins.Right = 4
               Margins.Bottom = 4
               Action = AFileModify
-              ImageName = 'Item3'
               Images = VirtualImageList1
             end
           end
@@ -1212,6 +1209,64 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Margins.Bottom = 5
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 7
+      end
+    end
+    object TabXMP: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Caption = 'XMP Metadata'
+      ImageIndex = 4
+      DesignSize = (
+        774
+        467)
+      object LabelXMPSchema: TLabel
+        Left = 20
+        Top = 24
+        Width = 92
+        Height = 20
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = 'XMP Schemas'
+      end
+      object LabelXmpContent: TLabel
+        Left = 20
+        Top = 80
+        Width = 86
+        Height = 20
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = 'XMP Content'
+      end
+      object TextXMPSchemas: TEdit
+        Left = 216
+        Top = 21
+        Width = 543
+        Height = 28
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Anchors = [akLeft, akTop, akRight]
+        TabOrder = 0
+      end
+      object TextXMPContent: TMemo
+        Left = 216
+        Top = 77
+        Width = 543
+        Height = 372
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
+        Lines.Strings = (
+          'TextXMPContent')
+        TabOrder = 1
       end
     end
   end

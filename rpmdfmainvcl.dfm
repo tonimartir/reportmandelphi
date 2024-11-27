@@ -1,7 +1,7 @@
 object FRpMainFVCL: TFRpMainFVCL
   Left = 810
   Top = 196
-  Caption = 'Report Manager Designer'
+  Caption = 'rp'
   ClientHeight = 744
   ClientWidth = 1004
   Color = clBtnFace

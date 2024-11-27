@@ -114,6 +114,7 @@ type
           ISOModificationDate: WideString); safecall;
     procedure AddMetadata(const title, author, subject, creator, producer, keywords, creationDate,
           modificationDate: WideString); safecall;
+    procedure AddXMPMetadata(const XMPSchemas, XMPContent: WideString); safecall;
 
 
   end;
@@ -599,6 +600,11 @@ procedure TReportManX.AddMetadata(const title, author, subject, creator, produce
 begin
   FDelphiControl.AddMetadata(title, author, subject, creator, producer,
           keywords, creationDate, modificationDate);
+end;
+
+procedure TReportManX.AddXMPMetadata(const XMPSchemas, XMPContent: WideString);
+begin
+  FDelphiControl.AddXMPMetadata(XMPSchemas,XMPContent);
 end;
 
 initialization
