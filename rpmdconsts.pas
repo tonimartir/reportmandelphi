@@ -41,7 +41,7 @@ const
 {$ENDIF}
 
 const
- RM_VERSION='3.6.4';
+ RM_VERSION='3.6.6';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
@@ -1395,8 +1395,6 @@ var
   SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
   SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
   SRpModify: WideString = 'Modify';
-  SRpXMPSchemas: WideString = 'XMP Scchemas';
-  SRpXMPContent: WideString = 'XMP Content';
   SRpXMPMetadata: WideString = 'XMP Metadata';
 
 implementation

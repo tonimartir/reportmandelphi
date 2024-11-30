@@ -22,7 +22,7 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
-    rpmdconsts,rptypes, VCL.Graphics;
+    rpmdconsts,rptypes;
 
 const
  MAXKERNINGS=10000;

@@ -181,7 +181,7 @@ begin
  end;
  FPDFFile.Compressed:=Compressed;
  FPDFFile.PDFConformance:=FPDFConformance;
- FPDFFile.DocTitle:=report.DocAuthor;
+ FPDFFile.DocTitle:=report.DocTitle;
  FPDFFile.DocAuthor:=report.DocAuthor;
  FPDFFile.DocCreator:=report.DocCreator;
  FPDFFile.DocKeywords:=report.DocKeywords;
@@ -189,7 +189,6 @@ begin
  FPDFFile.DocCreationDate:=report.DocCreationDate;
  FPDFFile.DocModificationDate:=report.DocModificationDate;
  FPDFFile.DocProducer:=report.DocProducer;
- FPDFFIle.DocXMPSchemas:=report.DocXMPSchemas;
  FPDFFIle.DocXMPContent:=report.DocXMPContent;
 
 

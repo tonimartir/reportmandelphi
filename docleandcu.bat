@@ -3,6 +3,8 @@ del /s *.rsp
 del /s *.obj
 del /s *.dcu
 del /s *.~*
+del *.o
+
 
 
 

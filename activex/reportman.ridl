@@ -6,7 +6,7 @@
 // However, when applying changes via the Editor this file will be regenerated
 // and comments or formatting changes will be lost.
 // ************************************************************************ //
-// File generated on 15/11/2024 11:38:44 (- $Rev: 12980 $, 119258109).
+// File generated on 28/11/2024 9:37:56 (- $Rev: 12980 $, 544051718).
 
 [
   uuid(D4D26F6B-6564-44F4-A913-03C91CE37740),
@@ -333,6 +333,8 @@ library reportman
     HRESULT _stdcall AddEmbeddedFile([in] BSTR fileName, [in] BSTR mimeType, [in] BSTR base64Stream, [in] BSTR description, [in] enum TxAFRelationShip AFRelationShip, [in] BSTR ISOCreationDate, [in] BSTR ISOModificationDate);
     [id(0x000000D1)]
     HRESULT _stdcall AddMetadata([in] BSTR title, [in] BSTR author, [in] BSTR subject, [in] BSTR creator, [in] BSTR producer, [in] BSTR keywords, [in] BSTR creationDate, [in] BSTR modificationDate);
+    [id(0x000000D2)]
+    HRESULT _stdcall AddXMPMetadata([in] BSTR XMPContent);
   };
 
   [

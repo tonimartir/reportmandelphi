@@ -144,11 +144,8 @@ type
     VirtualImageList1: TVirtualImageList;
     ImageCollection1: TImageCollection;
     ImageList1: TImageList;
-    TabXMP: TTabSheet;
-    LabelXMPSchema: TLabel;
-    TextXMPSchemas: TEdit;
-    LabelXmpContent: TLabel;
     TextXMPContent: TMemo;
+    LabelXmpContent: TLabel;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure BOKClick(Sender: TObject);
@@ -350,9 +347,7 @@ begin
  labelCreationDate.Caption:=SRpDocCreationDate;
  labelModifyDate.Caption:=SRpDocModifyDate;
  LabelDocKeywords.Caption:=SRpDocKeywords;
- LabelXMPSchema.Caption:=SRpXMPSchemas;
- LabelXMPContent.Caption:=SRpXMPContent;
- TabXMP.Caption:=SRpXMPMetadata;
+ LabelXMPContent.Caption:=SRpXMPmetadata;
 
  ListViewEmbedded.Columns[0].Caption:=SRpFilename;
  ListViewEmbedded.Columns[1].Caption:=SRpMimetype;
@@ -448,7 +443,6 @@ begin
  report.DocCreationDate:=textDocCreationDate.Text;
  report.DocModificationDate:=textDocModDate.Text;
  report.DocKeywords:=textDocKeywords.Text;
- report.DocXMPSchemas:=TextXMPSchemas.Text;
  report.DocXMPContent:=TextXMPContent.Text;
  SetLength(report.EmbeddedFiles,EmbeddedFiles.Count);
  for i:=0 to EmbeddedFiles.Count-1 do
@@ -541,7 +535,6 @@ begin
  textDocCreationDate.Text:=report.DocCreationDate;
  textDocModDate.Text:=report.DocModificationDate;
  textDocKeywords.Text:=report.DocKeywords;
- TextXMPSchemas.Text:=report.DocXMPSchemas;
  TextXMPContent.Text:=report.DocXMPContent;
 
 

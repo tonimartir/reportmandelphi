@@ -2,7 +2,7 @@ object FRpMainFVCL: TFRpMainFVCL
   Left = 810
   Top = 196
   Caption = 'rp'
-  ClientHeight = 744
+  ClientHeight = 741
   ClientWidth = 1004
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -22,7 +22,7 @@ object FRpMainFVCL: TFRpMainFVCL
   TextHeight = 32
   object BStatus: TStatusBar
     Left = 0
-    Top = 724
+    Top = 721
     Width = 1004
     Height = 20
     Margins.Left = 4
@@ -103,7 +103,7 @@ object FRpMainFVCL: TFRpMainFVCL
     object ToolButton5: TToolButton
       Left = 138
       Top = 0
-      Width = 6
+      Width = 5
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -114,7 +114,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsSeparator
     end
     object ToolButton7: TToolButton
-      Left = 144
+      Left = 143
       Top = 0
       Margins.Left = 4
       Margins.Top = 4
@@ -123,7 +123,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Action = APrint
     end
     object ToolButton8: TToolButton
-      Left = 177
+      Left = 176
       Top = 0
       Margins.Left = 4
       Margins.Top = 4
@@ -132,7 +132,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Action = APreview
     end
     object ToolButton9: TToolButton
-      Left = 210
+      Left = 209
       Top = 0
       Width = 14
       Margins.Left = 4
@@ -145,7 +145,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsSeparator
     end
     object BArrow: TToolButton
-      Left = 224
+      Left = 223
       Top = 0
       Hint = 'Select objects'
       Margins.Left = 4
@@ -160,7 +160,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BLabel: TToolButton
-      Left = 257
+      Left = 256
       Top = 0
       Hint = 'Inserts a static text'
       Margins.Left = 4
@@ -175,7 +175,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BExpression: TToolButton
-      Left = 290
+      Left = 289
       Top = 0
       Hint = 'Inserts a expression'
       Margins.Left = 4
@@ -190,7 +190,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BShape: TToolButton
-      Left = 323
+      Left = 322
       Top = 0
       Hint = 'Inserts a simple drawing'
       Margins.Left = 4
@@ -205,7 +205,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BImage: TToolButton
-      Left = 356
+      Left = 355
       Top = 0
       Hint = 'Inserts a image'
       Margins.Left = 4
@@ -220,7 +220,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BChart: TToolButton
-      Left = 389
+      Left = 388
       Top = 0
       Hint = 'Inserts a chart'
       Margins.Left = 4
@@ -235,7 +235,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BBarcode: TToolButton
-      Left = 422
+      Left = 421
       Top = 0
       Hint = 'Inserts a barcode'
       Margins.Left = 4
@@ -267,7 +267,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Left = 0
       Top = 46
       Width = 63
-      Height = 40
+      Height = 32
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -446,7 +446,7 @@ object FRpMainFVCL: TFRpMainFVCL
     Left = 0
     Top = 78
     Width = 1004
-    Height = 646
+    Height = 643
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
@@ -455,11 +455,13 @@ object FRpMainFVCL: TFRpMainFVCL
     BevelOuter = bvNone
     TabOrder = 2
     Visible = False
+    ExplicitTop = 81
+    ExplicitHeight = 640
     object Splitter1: TSplitter
       Left = 198
       Top = 0
       Width = 7
-      Height = 646
+      Height = 643
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -467,13 +469,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Beveled = True
       ResizeStyle = rsUpdate
       OnMoved = Splitter1Moved
-      ExplicitHeight = 643
+      ExplicitHeight = 640
     end
     object leftpanel: TPanel
       Left = 0
       Top = 0
       Width = 198
-      Height = 646
+      Height = 643
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -481,6 +483,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
+      ExplicitHeight = 640
       object Splitter2: TSplitter
         Left = 0
         Top = 0

@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 27/11/2024 9:25:26 from Type Library described below.
+// File generated on 28/11/2024 9:36:32 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)
@@ -286,7 +286,7 @@ type
                           const subject: WideString; const creator: WideString;
                           const producer: WideString; const keywords: WideString;
                           const creationDate: WideString; const modificationDate: WideString); safecall;
-    procedure AddXMPMetadata(const XMPSchemas: WideString; const XMPContent: WideString); safecall;
+    procedure AddXMPMetadata(const XMPContent: WideString); safecall;
     property filename: WideString read Get_filename write Set_filename;
     property Preview: WordBool read Get_Preview write Set_Preview;
     property ShowProgress: WordBool read Get_ShowProgress write Set_ShowProgress;
@@ -381,7 +381,7 @@ type
                           const subject: WideString; const creator: WideString;
                           const producer: WideString; const keywords: WideString;
                           const creationDate: WideString; const modificationDate: WideString); dispid 209;
-    procedure AddXMPMetadata(const XMPSchemas: WideString; const XMPContent: WideString); dispid 210;
+    procedure AddXMPMetadata(const XMPContent: WideString); dispid 210;
   end;
 
 // *********************************************************************//

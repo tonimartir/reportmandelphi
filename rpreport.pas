@@ -984,7 +984,6 @@ begin
   metafile.DocKeywords:=DocKeywords;
   metafile.DocTitle:=DocTitle;
   metafile.DocXMPContent:=DocXmpContent;
-  metafile.DocXMPSchemas:=DocXMPSchemas;
 
   for i:=0 to Length(EmbeddedFiles)-1 do
   begin
