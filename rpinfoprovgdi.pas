@@ -42,7 +42,7 @@ type
   //gdilib:THandle;
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
-  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):Integer;override;
+  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   constructor Create;
   destructor Destroy;override;
@@ -348,7 +348,7 @@ end;
 
 
 
-function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):integer;
+function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
  logx:integer;
  aabc:array [1..1] of ABC;
@@ -427,9 +427,8 @@ begin
 //    if not GetCharABCWidthsI(adc,glyphindexes[0],1,nil,aabc[1]) then
 //     RaiseLastOSError;
 
- Result:=Round(
-   (Integer(aabc[1].abcA)+Integer(aabc[1].abcB)+Integer(aabc[1].abcC))/logx*72000/TTF_PRECISION
-   );
+ Result:=
+   (aabc[1].abcA+aabc[1].abcB+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
  data.loaded[aint]:=true;
  if data.firstloaded>aint then

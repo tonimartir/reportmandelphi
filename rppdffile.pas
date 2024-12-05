@@ -212,6 +212,7 @@ type
    FResolution:integer;
    FBitmapStreams:TList;
    EmbeddedFiles: array of TEmbeddedFile;
+   NumberFormatSettings: TFormatSettings;
 
    // Minimum page size in 72 dpi 18x18
    // Maximum page size in 72 dpi 14.400x14.400
@@ -519,6 +520,8 @@ constructor TRpPDFFile.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
 
+ NumberFormatSettings:=TFormatSettings.Create;
+ NumberFormatSettings.DecimalSeparator:='.';
  FInternalFDocCreationDate:=now;
  FPageInfos:=TStringList.create;
  FCanvas:=TRpPDFCanvas.Create(Self);
@@ -3835,7 +3838,7 @@ begin
    repeat
     if adata.loaded[index] then
     begin
-     awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+IntToStr(adata.loadedwidths[index])+'] ';
+     awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.0',adata.loadedwidths[index], NumberFormatSettings)+'] ';
 //     awidths:=awidths+IntToStr(index)+'['+IntToStr(adata.loadedwidths[index])+'] ';
      acount:=acount+1;
      if (acount mod 8)=7 then
@@ -3906,7 +3909,7 @@ begin
    begin
     index:=adata.firstloaded;
     repeat
-     awidths:=awidths+IntToStr(adata.loadedwidths[index])+' ';
+     awidths:=awidths+FormatFloat('0.0', adata.loadedwidths[index], NumberFormatSettings)+' ';
      inc(index);
      if (index mod 8)=7 then
       awidths:=awidths+LINE_FEED;

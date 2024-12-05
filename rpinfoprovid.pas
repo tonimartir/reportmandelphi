@@ -80,7 +80,7 @@ type
   loadedglyphs:array [0..65535] of WideChar;
   loadedg:array [0..65535] of boolean;
   loadedk:array [0..65535] of boolean;
-  loadedwidths:array [0..65535] of integer;
+  loadedwidths:array [0..65535] of double;
   loaded:array [0..65535] of boolean;
   fdata:TObject;
   firstloaded,lastloaded:integer;
@@ -92,7 +92,7 @@ type
 
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
-  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):Integer;virtual;abstract;
+  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;virtual;abstract;
  end;
 

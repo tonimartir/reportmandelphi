@@ -69,7 +69,7 @@ type
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
-  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):Integer;override;
+  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   constructor Create;
   destructor destroy;override;
@@ -814,9 +814,9 @@ begin
 end;
 
 
-function TRpFTInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):integer;
+function TRpFTInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
- awidth:integer;
+ awidth:double;
  aint:integer;
  width1,width2:word;
  cfont:TRpLogFont;
@@ -838,7 +838,7 @@ begin
    width1:=word(cfont.ftface.glyph.linearHoriAdvance shr 16);
    width2:=word((cfont.ftface.glyph.linearHoriAdvance shl 16) shr 16);
    dwidth:=width1+width2/65535;
-   awidth:=Round(cfont.widthmult*dwidth);
+   awidth:=cfont.widthmult*dwidth;
   end
   else
    awidth:=0;
