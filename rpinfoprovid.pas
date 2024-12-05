@@ -25,7 +25,7 @@ uses Classes,SysUtils,
 {$IFNDEF USEVARIANTS}
  Windows,
 {$ENDIF}
- rptypes;
+ rptypes, System.Generics.Collections;
 
 type
  TWinAnsiWidthsArray=array [32..255] of integer;
@@ -50,10 +50,15 @@ type
   end;
 
 
+ TAdvFontData=class(TObject)
+  public Fontdata:TMemoryStream;
+	public DirectoryOffset: integer;
+  constructor Create;
+  destructor Destroy;
+ end;
 
  TRpTTFontData=class(TObject)
   embedded:Boolean;
-  fontdata:TMemoryStream;
   postcriptname:String;
   Encoding:String;
   Ascent,Descent,Leading,CapHeight,Flags,FontWeight:integer;
@@ -82,10 +87,13 @@ type
   loadedk:array [0..65535] of boolean;
   loadedwidths:array [0..65535] of double;
   loaded:array [0..65535] of boolean;
+	glyphs:TDictionary<char, integer>;
+	widths:TDictionary<char, double>;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
   IsUnicode:boolean;
+  FontData: TAdvFontData;
   constructor Create;
   destructor Destroy;override;
  end;
@@ -94,6 +102,7 @@ type
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;virtual;abstract;
+  function GetFontStream(data: TRpTTFontData): TMemoryStream;virtual;abstract;
  end;
 
 
@@ -107,6 +116,8 @@ begin
  kerningsadded.sorted:=true;
  firstloaded:=65536;
  lastloaded:=-1;
+ glyphs:=TDictionary<char, integer>.Create;
+ widths:=TDictionary<char, double>.Create; 
 end;
 
 destructor TRpTTFontData.Destroy;
@@ -119,6 +130,11 @@ begin
  end;
  kerningsadded.free;
 
+ if Assigned(fontData) then
+ begin
+  // fontData.Free;
+ end;
+ 
  inherited;
 end;
 
@@ -129,5 +145,17 @@ begin
  Name:=poCourier;
  Size:=10;
 end;
+
+constructor TAdvFontData.Create;
+begin
+ Fontdata:=TMemoryStream.Create;
+end;
+
+destructor TAdvFontData.Destroy;
+begin
+ Fontdata.free;
+end;
+
+
 
 end.

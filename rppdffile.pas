@@ -3579,12 +3579,12 @@ begin
  if index<0 then
  begin
   adata:=TRpTTFontData.Create;
-  adata.fontdata:=TMemoryStream.Create;
+  adata.fontdata:=TAdvFontData.Create;
   adata.embedded:=false;
   adata.Objectname:=searchname;
   FFontTTData.AddObject(searchname,adata);
   InfoProvider.FillFontData(Font,adata);
-  if adata.fontdata.size>0 then
+  if adata.fontdata.FontData.size>0 then
   begin
     // In PDF_A_3 all fonts must be embedded
     if (PDFConformance = PDF_A_3) then
@@ -3619,6 +3619,7 @@ var
  awidths:string;
  cmaphead,fromTo:AnsiString;
  FCMapStream:TMemoryStream;
+ FontStream:TMemoryStream;
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -3656,10 +3657,14 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-   adata.fontdata.Seek(0,soFromBeginning);
-   WriteStream(adata.fontdata,FTempStream);
+   FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+   try
+    WriteStream(FontStream,FTempStream);
+   finally
+    FontStream.Free;
+   end;
    adata.ObjectIndex:=FObjectCount;
-   adata.fontdata.Seek(0,soFromBeginning);
+   adata.fontdata.FontData.Seek(0,soFromBeginning);
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
    FTempStream.SaveToStream(FMainPDF);

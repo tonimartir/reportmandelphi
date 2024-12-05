@@ -769,9 +769,9 @@ begin
   InitLibrary;
   // See if data can be embedded
   SelectFont(pdffont);
-  data.fontdata.Clear;
+  data.fontdata.FontData.Clear;
   if not currentfont.type1 then
-   data.fontdata.LoadFromFile(currentfont.filename);
+   data.fontdata.FontData.LoadFromFile(currentfont.filename);
   data.postcriptname:=currentfont.postcriptname;
   data.FamilyName:=currentfont.familyname;
   data.FaceName:=currentfont.familyname;
@@ -821,6 +821,7 @@ var
  width1,width2:word;
  cfont:TRpLogFont;
  dwidth:double;
+ index:integer;
 begin
  aint:=Ord(charcode);
  if aint>255 then
@@ -848,9 +849,12 @@ begin
    data.firstloaded:=aint;
   if data.lastloaded<aint then
    data.lastloaded:=aint;
+  data.widths.Add(charcode,awidth);
   Result:=awidth;
   // Get glyph index
-  data.loadedglyphs[aint]:=WideChar(FT_Get_Char_Index(cfont.ftface,Cardinal(charcode)));
+  index := FT_Get_Char_Index(cfont.ftface,Cardinal(charcode));
+  data.glyphs.Add(charcode,index);
+  data.loadedglyphs[aint]:=WideChar(index);
   data.loadedg[aint]:=true;
  end;
 end;
