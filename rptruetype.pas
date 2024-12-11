@@ -583,7 +583,7 @@ begin
   Move(FRFArray[StartIndex], Buffer[Offset], Length);
 end;
 
-
+{$OVERFLOWCHECKS OFF}
 function TTrueTypeFontSubSet.CalculateChecksum(const Data: TBytes): Integer;
 var
   Len, K, Ptr: Integer;
@@ -610,6 +610,7 @@ begin
 
   Result := V0 + (V1 shl 8) + (V2 shl 16) + (V3 shl 24);
 end;
+{$OVERFLOWCHECKS ON}
 
 
 
