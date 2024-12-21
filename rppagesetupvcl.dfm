@@ -26,7 +26,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
-    ActivePage = TabMetadata
+    ActivePage = TabPage
     Align = alClient
     TabOrder = 0
     object TabPage: TTabSheet
@@ -40,7 +40,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         465)
       object SColor: TShape
         Left = 200
-        Top = 345
+        Top = 353
         Width = 41
         Height = 41
         Margins.Left = 4
@@ -50,8 +50,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         OnMouseDown = SColorMouseDown
       end
       object LLinesperInch: TLabel
-        Left = 5
-        Top = 315
+        Left = 6
+        Top = 325
         Width = 90
         Height = 20
         Margins.Left = 4
@@ -134,9 +134,9 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Force form name'
         end
         object EPageheight: TRpMaskEdit
-          Left = 160
+          Left = 216
           Top = 55
-          Width = 307
+          Width = 251
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -148,9 +148,9 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           EditType = tecurrency
         end
         object EPageWidth: TRpMaskEdit
-          Left = 160
+          Left = 216
           Top = 25
-          Width = 307
+          Width = 251
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -162,9 +162,9 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           EditType = tecurrency
         end
         object EForceFormName: TRpMaskEdit
-          Left = 160
+          Left = 216
           Top = 85
-          Width = 307
+          Width = 251
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -173,6 +173,36 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Anchors = [akLeft, akTop, akRight]
           TabOrder = 2
           Text = ''
+        end
+      end
+      object GPageSize: TGroupBox
+        Left = 230
+        Top = 15
+        Width = 536
+        Height = 81
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Custom size'
+        TabOrder = 2
+        Visible = False
+        DesignSize = (
+          536
+          81)
+        object ComboPageSize: TComboBox
+          Left = 5
+          Top = 40
+          Width = 508
+          Height = 28
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Style = csDropDownList
+          Anchors = [akLeft, akTop, akRight]
+          TabOrder = 0
         end
       end
       object RPageSize: TRadioGroup
@@ -191,32 +221,6 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           'User defined')
         TabOrder = 0
         OnClick = RPageSizeClick
-      end
-      object GPageSize: TGroupBox
-        Left = 230
-        Top = 15
-        Width = 536
-        Height = 81
-        Margins.Left = 4
-        Margins.Top = 4
-        Margins.Right = 4
-        Margins.Bottom = 4
-        Anchors = [akLeft, akTop, akRight]
-        Caption = 'Custom size'
-        TabOrder = 2
-        Visible = False
-        object ComboPageSize: TComboBox
-          Left = 5
-          Top = 40
-          Width = 336
-          Height = 28
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Style = csDropDownList
-          TabOrder = 0
-        end
       end
       object RPageOrientation: TRadioGroup
         Left = 5
@@ -253,7 +257,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
       end
       object BBackground: TButton
         Left = 5
-        Top = 345
+        Top = 353
         Width = 186
         Height = 41
         Margins.Left = 4
@@ -265,10 +269,10 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         OnClick = BBackgroundClick
       end
       object GPageMargins: TGroupBox
-        Left = 5
+        Left = 6
         Top = 215
-        Width = 762
-        Height = 86
+        Width = 761
+        Height = 99
         Margins.Left = 4
         Margins.Top = 4
         Margins.Right = 4
@@ -277,11 +281,11 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         Caption = 'Page Margins'
         TabOrder = 5
         DesignSize = (
-          762
-          86)
+          761
+          99)
         object LLeft: TLabel
-          Left = 20
-          Top = 20
+          Left = 12
+          Top = 28
           Width = 25
           Height = 20
           Margins.Left = 4
@@ -291,8 +295,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Left'
         end
         object LTop: TLabel
-          Left = 20
-          Top = 55
+          Left = 12
+          Top = 63
           Width = 25
           Height = 20
           Margins.Left = 4
@@ -302,8 +306,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Top'
         end
         object LMetrics3: TLabel
-          Left = 210
-          Top = 20
+          Left = 202
+          Top = 28
           Width = 30
           Height = 20
           Margins.Left = 4
@@ -313,8 +317,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'inch.'
         end
         object LMetrics4: TLabel
-          Left = 210
-          Top = 50
+          Left = 202
+          Top = 58
           Width = 30
           Height = 20
           Margins.Left = 4
@@ -324,8 +328,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'inch.'
         end
         object LMetrics5: TLabel
-          Left = 701
-          Top = 20
+          Left = 692
+          Top = 28
           Width = 30
           Height = 20
           Margins.Left = 4
@@ -336,8 +340,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'inch.'
         end
         object LRight: TLabel
-          Left = 305
-          Top = 20
+          Left = 297
+          Top = 28
           Width = 35
           Height = 20
           Margins.Left = 4
@@ -347,8 +351,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Right'
         end
         object LBottom: TLabel
-          Left = 305
-          Top = 55
+          Left = 297
+          Top = 63
           Width = 50
           Height = 20
           Margins.Left = 4
@@ -358,8 +362,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'Bottom'
         end
         object LMetrics6: TLabel
-          Left = 701
-          Top = 55
+          Left = 692
+          Top = 63
           Width = 30
           Height = 20
           Margins.Left = 4
@@ -370,8 +374,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           Caption = 'inch.'
         end
         object ELeftMargin: TRpMaskEdit
-          Left = 100
-          Top = 15
+          Left = 92
+          Top = 23
           Width = 96
           Height = 28
           Margins.Left = 4
@@ -383,8 +387,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           EditType = tecurrency
         end
         object ETopMargin: TRpMaskEdit
-          Left = 100
-          Top = 50
+          Left = 92
+          Top = 58
           Width = 96
           Height = 28
           Margins.Left = 4
@@ -396,9 +400,9 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           EditType = tecurrency
         end
         object ERightMargin: TRpMaskEdit
-          Left = 380
-          Top = 15
-          Width = 307
+          Left = 372
+          Top = 23
+          Width = 306
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -410,9 +414,9 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           EditType = tecurrency
         end
         object EBottomMargin: TRpMaskEdit
-          Left = 380
-          Top = 50
-          Width = 307
+          Left = 372
+          Top = 58
+          Width = 306
           Height = 28
           Margins.Left = 4
           Margins.Top = 4
@@ -425,8 +429,8 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         end
       end
       object ELinesPerInch: TRpMaskEdit
-        Left = 290
-        Top = 310
+        Left = 249
+        Top = 322
         Width = 267
         Height = 28
         Margins.Left = 4
