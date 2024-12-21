@@ -182,7 +182,6 @@ type
    FDocProducer:string;
    FDocCreationDate: string;
    FDocModificationDate: string;
-   FDocXMPSchemas: string;
    FDocXMPContent: string;
    FMainPDF:TMemoryStream;
    FStreamValid:boolean;
@@ -194,7 +193,6 @@ type
    FObjectOffsets:TStringList;
    FObjectCount:integer;
    FObjectOffset:integer;
-   FStreamSize1,FStreamSize2:LongInt;
    FOutlinesNum:integer;
    FFontCount:integer;
    FFontList:TStringList;
@@ -270,7 +268,6 @@ type
    property DocProducer:string read FDocProducer write FDocProducer;
    property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
    property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
-   property DocXMPSchemas:string read FDocXMPSchemas write FDocXMPSchemas;
    property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
 
    // Document physic
@@ -749,9 +746,14 @@ begin
   if Length(efile.MimeType)>0 then
   begin
    SWriteLine(FTempStream,'   /Subtype /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
-   SWriteLine(FTempStream,'   /MimeType /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+   SWriteLine(FTempStream,'   /MimeType ' + EncodePDFText(efile.MimeType));
   end;
-  SWriteLine(FTempStream,'   /ModDate /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+  if (efile.ModificationDate.Length>0) then
+  begin
+    SWriteLine(FTempStream,'   /Params <<');
+    SWriteLine(FTempStream,'   /ModDate (D:'+efile.ModificationDate+')');
+    SWriteLine(FTempStream,'   >>');
+  end;
   efile.Stream.Position:=0;
   WriteStream(efile.Stream, FTempStream);
   SWriteLine(FTempStream,'endobj');
@@ -1002,17 +1004,20 @@ begin
   SWriteLine(FTempStream,'/Filter [/FlateDecode]');
 {$ENDIF}
  SWriteLine(FTempStream,' >>');
- FStreamSize1:=FTempStream.Size;
  SWriteLine(FTempStream,'stream');
  FsTempStream.Clear;
 end;
 
 procedure TRpPDFFile.EndStream;
 var TempSize: LongInt;
+var StreamSize: Longint;
+var CurrentSize: Longint;
 {$IFDEF USEZLIB}
  FCompressionStream: TCompressionStream;
 {$ENDIF}
 begin
+ StreamSize:=FsTempStream.Size;
+ CurrentSize:=FTempStream.Size;
 {$IFDEF USEZLIB}
  if FCompressed then
  begin
@@ -1020,10 +1025,10 @@ begin
   try
    FsTempStream.Seek(0,soBeginning);
    CopyStreamContent(FsTempStream, FCompressionStream);
-   // FCompressionStream.CopyFrom(FsTempStream);
   finally
    FCompressionStream.Free;
   end;
+  StreamSize:=FTempStream.Size-CurrentSize;
  end
  else
 {$ENDIF}
@@ -1034,18 +1039,13 @@ begin
  SWriteLine(FTempStream,'');
  SWriteLine(FTempStream,'endstream');
  SWriteLine(FTempStream,'endobj');
- FStreamSize2:=6;
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
 
- if (FPDFConformance = PDF_A_3) then
-  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-4
- else
-  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
- SWriteLine(FTempStream,IntToStr(TempSize));
+ SWriteLine(FTempStream,IntToStr(StreamSize));
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
@@ -1061,7 +1061,9 @@ end;
 
 procedure TRpPDFFile.NewPage(NPageWidth,NPageHeight:integer);
 var
- TempSize:LongInt;
+// TempSize:LongInt;
+ StreamSize: LongInt;
+ CurrentSize: LongInt;
  aobj:TRpPageInfo;
 {$IFDEF USEZLIB}
  FCompressionStream: TCompressionStream;
@@ -1078,6 +1080,8 @@ begin
 
  FPage:=FPage+1;
 
+ StreamSize:=FsTempStream.Size;
+ CurrentSize:=FTempStream.Size;
 {$IFDEF USEZLIB}
  if FCompressed then
  begin
@@ -1089,22 +1093,22 @@ begin
   finally
    FCompressionStream.Free;
   end;
+  StreamSize:=FTempStream.Size-CurrentSize;
  end
  else
 {$ENDIF}
   FsTempStream.SaveToStream(FTempStream);
 
  FsTempStream.Clear;
+ SWriteLine(FTempStream,'');
  SWriteLine(FTempStream,'endstream');
  SWriteLine(FTempStream,'endobj');
- FStreamSize2:=6;
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
- TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
- SWriteLine(FTempStream,IntToStr(TempSize));
+ SWriteLine(FTempStream,IntToStr(StreamSize));
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
@@ -1119,7 +1123,6 @@ begin
 {$ENDIF}
  SWriteLine(FTempStream,' >>');
 
- FStreamSize1:=FTempStream.Size;
  SWriteLine(FTempStream,'stream');
 end;
 
@@ -1406,7 +1409,7 @@ begin
    for i:=0 to Length(EmbeddedFiles)-1 do
    begin
     efile:=EmbeddedFiles[i];
-    files:=files + ' (' + efile.FileName+') ' + IntToStr(efile.ResourceNumber)
+    files:=files + EncodePDFText(efile.FileName) + ' ' + IntToStr(efile.ResourceNumber)
       + ' 0 R' ;
     resources:=resources + ' ' + IntToStr(efile.ResourceNumber) + ' 0 R' ;
    end;

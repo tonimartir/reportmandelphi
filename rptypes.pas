@@ -272,6 +272,8 @@ type
    public CreationDate: string;
    public ModificationDate: string;
    public function AFRelationShipToString(): string;
+   public function Clone(): TEmbeddedFile;
+   destructor Destroy;
  end;
 
 
@@ -5614,6 +5616,37 @@ begin
    Result := 'Source';
   PDF_AF_Supplement:
    Result := 'Supplement';
+ end;
+end;
+
+function TEmbeddedFile.Clone():TEmbeddedFile;
+var
+ efile: TEmbeddedFile;
+begin
+ efile:=TEmbeddedFile.Create;
+ efile.FileName:=FileName;
+ efile.MimeType:=MimeType;
+ efile.Description:=Description;
+ efile.AFRelationShip:=AFRelationShip;
+ efile.CreationDate:=CreationDate;
+ efile.ModificationDate:=ModificationDate;
+ if Assigned(Stream) then
+ begin
+  efile.Stream:=TMemoryStream.Create;
+  Stream.Seek(0, TSeekOrigin.soBeginning);
+  efile.Stream.LoadFromStream(Stream);
+  Stream.Seek(0, TSeekOrigin.soBeginning);
+  efile.Stream.Seek(0, TSeekOrigin.soBeginning);
+ end;
+ Result:=efile;
+end;
+
+destructor TEmbeddedFile.Destroy;
+begin
+ if Assigned(Stream) then
+ begin
+   Stream.free;
+   Stream:=nil;
  end;
 end;
 

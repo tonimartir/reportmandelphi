@@ -939,7 +939,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
                 Width = 100
               end
               item
-                Caption = 'Modificaation Date'
+                Caption = 'Modification Date'
                 Width = 100
               end>
             TabOrder = 0

@@ -444,16 +444,23 @@ begin
  report.DocModificationDate:=textDocModDate.Text;
  report.DocKeywords:=textDocKeywords.Text;
  report.DocXMPContent:=TextXMPContent.Text;
+ for i:=0 to Length(report.EmbeddedFiles)-1 do
+ begin
+  report.EmbeddedFiles[i].Free;
+ end;
+ SetLength(report.EmbeddedFiles,0);
  SetLength(report.EmbeddedFiles,EmbeddedFiles.Count);
  for i:=0 to EmbeddedFiles.Count-1 do
  begin
   report.EmbeddedFiles[i]:=EmbeddedFiles[i];
  end;
+ EmbeddedFiles.Clear;
  dook:=true;
 end;
 
 procedure TFRpPageSetupVCL.ReadOptions;
 var i:integer;
+ efile:TEmbeddedFile;
 begin
  // ReadOptions
  ELinesPerInch.Text:=FloatToStr(report.LinesPerInch/100);
@@ -540,7 +547,8 @@ begin
 
  for i:=0 to Length(report.EmbeddedFiles)-1 do
  begin
-  EmbeddedFiles.Add(report.EmbeddedFiles[i]);
+  efile:=report.EmbeddedFiles[i].Clone();
+  EmbeddedFiles.Add(efile);
  end;
  UpdateEmbeddedList;
 
@@ -627,7 +635,14 @@ begin
    listItem:=ListViewEmbedded.Items.Add;
    listItem.Caption:=embedded.FileName;
    listItem.SubItems.Add(embedded.MimeType);
-   listItem.SubItems.Add(FormatFloat('##,##.00',Double(embedded.Stream.Size)/1024)+' '+SRpKbytes);
+   if Assigned(embedded.Stream) then
+   begin
+    listItem.SubItems.Add(FormatFloat('##,##.00',Double(embedded.Stream.Size)/1024)+' '+SRpKbytes);
+   end
+   else
+   begin
+    listItem.SubItems.Add(FormatFloat('##,##.00',0)+' '+SRpKbytes);
+   end;
    listItem.SubItems.Add(embedded.AFRelationShipToString());
    listItem.SubItems.Add(embedded.Description);
    listItem.SubItems.Add(embedded.CreationDate);
@@ -687,6 +702,10 @@ begin
  begin
    EmbeddedFiles.Add(embedded);
    UpdateEmbeddedList;
+ end
+ else
+ begin
+  embedded.Free;
  end;
 end;
 

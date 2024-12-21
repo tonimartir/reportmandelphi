@@ -985,11 +985,7 @@ begin
   metafile.DocTitle:=DocTitle;
   metafile.DocXMPContent:=DocXmpContent;
 
-  for i:=0 to Length(EmbeddedFiles)-1 do
-  begin
-   efile:=EmbeddedFiles[i];
-   metafile.NewEmbeddedFile(efile.FileName, efile.MimeType, efile.AFRelationShip, efile.Description, efile.CreationDate, efile.ModificationDate,  efile.Stream);
-  end;
+
   metafile.Copies := Copies;
   metafile.PreviewAbout:=PreviewAbout;
   metafile.PreviewMargins:=PreviewMargins;
@@ -1045,6 +1041,11 @@ begin
   metafile.CustomX:=FInternalPageWidth;
   metafile.CustomY:=FInternalPageHeight;
   PageNum:=-1;
+ end;
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  efile:=EmbeddedFiles[i];
+  metafile.NewEmbeddedFile(efile.FileName, efile.MimeType, efile.AFRelationShip, efile.Description, efile.CreationDate, efile.ModificationDate,  efile.Stream);
  end;
  metafile.PrinterSelect:=PrinterSelect;
  metafile.PreviewStyle:=PreviewStyle;

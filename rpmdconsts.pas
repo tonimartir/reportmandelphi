@@ -2432,6 +2432,8 @@ begin
   TranslateVar(1476,SRpCreationDateISO);
   TranslateVar(1477,SRpModificationDateISO);
   TranslateVar(1478,SRpModify);
+  TranslateVar(1479,SRpXMPmetadata);
+
  end;
 
 

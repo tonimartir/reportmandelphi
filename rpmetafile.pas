@@ -377,6 +377,15 @@ type
    FTextsFoundByPage:TStringList;
    FPDFConformance:TPDFConformanceType;
    FPDFCompressed:boolean;
+   FDocAuthor:string;
+   FDocTitle:string;
+   FDocCreator:string;
+   FDocKeywords:string;
+   FDocSubject:string;
+   FDocProducer:string;
+   FDocCreationDate: string;
+   FDocModificationDate: string;
+   FDocXMPContent: string;
    procedure SetCurrentPage(index:integer);
    function GetPageCount:integer;
    function GetPage(Index:integer):TRpMetafilePage;
@@ -415,15 +424,6 @@ type
    TouchEnabled:boolean;
    OrientationSet: boolean;
    EmbeddedFiles:array of TEmbeddedFile;
-   FDocAuthor:string;
-   FDocTitle:string;
-   FDocCreator:string;
-   FDocKeywords:string;
-   FDocSubject:string;
-   FDocProducer:string;
-   FDocCreationDate: string;
-   FDocModificationDate: string;
-   FDocXMPContent: string;
    procedure Clear;
    procedure DoSearch(avalue:string);
    procedure LoadFromStream(Stream:TStream;clearfirst:boolean=true);
@@ -954,11 +954,11 @@ end;
 procedure WriteStringToStream(astring:String;deststream:TStream);
 var
  strLength:integer;
- buf:array of Byte;
  bytes:TBytes;
 begin
- strLength:=Length(astring);
- deststream.Write(buf,sizeof(strLength));
+ bytes := TEncoding.UTF8.GetBytes(astring);
+ strLength:=Length(bytes);
+ deststream.Write(strLength,sizeof(strLength));
  deststream.Write(bytes,Length(bytes));
 end;
 
@@ -1017,20 +1017,14 @@ var
  efile: TEmbeddedFile;
  bytevalue: byte;
 begin
- rpSignature:=RpSignature2_4;
  fileCount:=Length(EmbeddedFiles);
- if (fileCount>0) then
- begin
-   rpSignature:=RpSignature3_0;
-   FVersion:=MetaVersion3_0;
- end;
+ rpSignature:=RpSignature3_0;
+ FVersion:=MetaVersion3_0;
  RequestPage(MAX_PAGECOUNT);
  WriteStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
  Stream.Write(separator,sizeof(separator));
- // Embedded Files
- if (FVersion = MetaVersion3_0) then
- begin
+  // PDFConformance and Compressed
   Stream.Write(Byte(PDFConformance),1);
   if (PDFCompressed) then
    bytevalue:=1
@@ -1047,7 +1041,7 @@ begin
   WriteStringToStream(FDocTitle, Stream);
   WriteStringToStream(FDocKeywords, Stream);
   WriteStringToStream(FDocXMPContent, Stream);
-  
+  // Embedded files
   Stream.Write(fileCount,sizeof(fileCount));
   for i:=0 to fileCount-1  do
   begin
@@ -1055,11 +1049,14 @@ begin
    ssize:=efile.Stream.Size;
    WriteStringToStream(efile.FileName, Stream);
    WriteStringToStream(efile.MimeType, Stream);
+   WriteStringToStream(efile.Description, Stream);
+   WriteStringToStream(efile.ModificationDate, Stream);
+   byteValue:=Byte(efile.AFRelationShip);
+   Stream.Write(byteValue, 1);
    Stream.Write(ssize,sizeof(ssize));
    efile.Stream.Position:=0;
    efile.Stream.SaveToStream(Stream);
   end;
- end;
  // Report header
  Stream.Write(PageSize,sizeof(pagesize));
  Stream.Write(CustomX,sizeof(CustomX));
@@ -1279,7 +1276,6 @@ begin
   Raise Exception.Create(SRpBadFileHeader);
  if (separator<>integer(rpFHeader)) then
   Raise Exception.Create(SRpBadFileHeader);
- // Embedded Files
  if (FVersion = MetaVersion3_0) then
  begin
   // PDF Compressed
@@ -1298,17 +1294,22 @@ begin
   FDocKeywords:=ReadStringFromStream(Stream);
   FDocXMPContent:=ReadStringFromStream(Stream);
 
+  // Embedded Files
   Stream.Read(fileCount,sizeof(fileCount));
   if (fileCount<0) then
-    raise Exception.Create('Error reading file count');  
+    raise Exception.Create('Error reading file count');
   for i:=0 to fileCount-1  do
   begin
    efile:=TEmbeddedFile.Create;
    efile.FileName:=ReadStringFromStream(Stream);
    efile.MimeType:=ReadStringFromStream(Stream);
+   efile.Description:=ReadStringFromStream(Stream);
+   efile.ModificationDate:=ReadStringFromStream(Stream);
+   Stream.Read(conformanceByte,1);
+   efile.AFRelationShip:=TPDFAFRelationShip(conformanceByte);
    Stream.Read(ssize,sizeof(ssize));
    if (ssize<0) then
-     raise Exception.Create('Error reading file stream');        
+     raise Exception.Create('Error reading file stream');
    efile.Stream:=TMemoryStream.Create;
    efile.Stream.SetSize(ssize);
    efile.Stream.Position:=0;
