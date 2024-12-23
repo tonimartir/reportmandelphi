@@ -3764,8 +3764,8 @@ begin
      begin
       if adata.loaded[index] then
       begin
-       fromTo:='<'+ IntToHex(Integer(adata.loadedglyphs[index]))+'> ';
-       cmaphead:=cmaphead+fromTo+' <'+IntToHex(index)+'>'+LINE_FEED;
+       fromTo:='<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ';
+       cmaphead:=cmaphead+fromTo+' <'+IntToHex4(index)+'>'+LINE_FEED;
       end;
      end;
      cmaphead:=cmaphead+'endbfchar' +LINE_FEED;
@@ -3813,7 +3813,7 @@ begin
    SWriteLine(FTempStream,'/Encoding /Identity-H');
    //SWriteLine(FTempStream,'/Encoding /PDFDocEncoding');
    SWriteLine(FTempStream,'/DescendantFonts [ '+IntToStr(FObjectCount+1)+' 0 R ]');
-   SWriteLine(FTempStream,'/ToUnicode '+IntToStr(adata.ToUnicodeIndex) + ' 0 R ');
+   SWriteLine(FTempStream,'/ToUnicode '+IntToStr(adata.ToUnicodeIndex) + ' 0 R');
 
    SWriteLine(FTempStream,'>>');
    SWriteLine(FTempStream,'endobj');
