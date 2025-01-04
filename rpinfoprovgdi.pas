@@ -397,7 +397,7 @@ end;
 
 function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
- logx:integer;
+ logx:double;
  aabc:array [1..1] of ABC;
  aint:Word;
  glyphindexes:array[0..5] of UInt;
