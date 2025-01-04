@@ -1791,7 +1791,7 @@ begin
 
    memStream.Read(ssize,sizeof(ssize));
    efile.Stream:=TMemoryStream.Create;
-   efile.Stream.SetSize(ssize);
+   efile.Stream.SetSize(Int64(ssize));
    memStream.Read(efile.Stream.Memory^,ssize);
 
    SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);

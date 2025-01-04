@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=3.5.0
+AppVersion=3.7.0
 DefaultDirName={commonpf64}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe

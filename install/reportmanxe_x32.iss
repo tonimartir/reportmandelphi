@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=3.5.0
+AppVersion=3.7.3
 DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
@@ -37,7 +37,7 @@ Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\x86\*.*"; DestDir:
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\x64\*.*"; DestDir: "{app}\net2\x64"
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"
-Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\bin32\printreptopdf.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr32\printreptopdf.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\activex\binr32\Reportman.ocx"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr32\printrepxp.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaprint\binr32\metaprintxp.exe"; DestDir: "{app}"

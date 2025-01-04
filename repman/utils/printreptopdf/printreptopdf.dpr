@@ -446,7 +446,7 @@ begin
 {$IFDEF LINUX}
         PrintReportPDFStream(report,filename,showprogress,
           allpages,frompage,topage,copies,
-           memstream,compress,collate);
+           memstream,compress,collate,false);
 {$ENDIF}
        end;
        memstream.Seek(0,soFromBeginning);
