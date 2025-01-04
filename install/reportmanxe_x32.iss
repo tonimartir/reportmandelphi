@@ -25,8 +25,8 @@ OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=3.5.0
-OutputBaseFilename=reportman_designer_3_5_0_x32
+VersionInfoProductVersion=3.7.3
+OutputBaseFilename=reportman_designer_3_7_3_x32
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\repmandxp.exe"; DestDir: "{app}"

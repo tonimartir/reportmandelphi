@@ -25,8 +25,8 @@ ArchitecturesInstallIn64BitMode=x64
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=3.5.0
-OutputBaseFilename=reportman_designer_3_5_0_x64
+VersionInfoProductVersion=3.7.3
+OutputBaseFilename=reportman_designer_3_7_3_x64
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\repmandxp.exe"; DestDir: "{app}"
