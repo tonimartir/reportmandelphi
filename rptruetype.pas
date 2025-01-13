@@ -485,8 +485,8 @@ begin
   begin
     Glyph := ActiveGlyphs[K];
     GlyphLength := FLocaTable[Glyph + 1] - FLocaTable[Glyph];
-    if FLocaShortTable then
-      GlyphLength := GlyphLength * 2;
+    //if FLocaShortTable then
+    //  GlyphLength := GlyphLength * 2;
     Inc(GlyfSize, GlyphLength);
   end;
 
@@ -500,8 +500,8 @@ begin
   for K := 0 to High(FNewLocaTable) do
   begin
     NewGlyphPtr := GlyfPtr;
-    if FLocaShortTable then
-      NewGlyphPtr := GlyfPtr div 2;
+    //if FLocaShortTable then
+    //  NewGlyphPtr := GlyfPtr div 2;
 
     FNewLocaTable[K] := NewGlyphPtr;
 
@@ -511,8 +511,8 @@ begin
       Start := FLocaTable[K];
       Len := FLocaTable[K + 1] - Start;
 
-      if FLocaShortTable then
-        Len := Len * 2;
+      //if FLocaShortTable then
+      //  Len := Len * 2;
 
       if Len > 0 then
       begin
