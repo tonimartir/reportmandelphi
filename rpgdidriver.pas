@@ -1072,17 +1072,21 @@ begin
         Canvas.Brush.Color := CLXColorToVCLColor(obj.BrushColor);
         Canvas.Brush.Style := TBrushStyle(abrushstyle);
         penWidth:=Round(dpix * obj.PenWidth / TWIPS_PER_INCHESS);
-        if (penWidth>=0) then
-          Canvas.Pen.Width := penWidth;
-
-        X := Canvas.Pen.Width div 2;
-        Y := X;
-        W := Width - Canvas.Pen.Width + 1;
-        H := Height - Canvas.Pen.Width + 1;
-        if Canvas.Pen.Width = 0 then
+        if (penWidth>0) then
         begin
-          Dec(W);
-          Dec(H);
+         Canvas.Pen.Width := penWidth;
+         X := Canvas.Pen.Width div 2;
+         Y := X;
+         W := Width - Canvas.Pen.Width + 1;
+         H := Height - Canvas.Pen.Width + 1;
+        end
+        else
+        begin
+          Canvas.Pen.Width:=0;
+          X := 0;
+          Y := 0;
+          W := Width;
+          H := Height;
         end;
         if W < H then
           S := W
@@ -1098,7 +1102,8 @@ begin
         end;
         case TRpShapeType(obj.DrawStyle) of
           rpsRectangle, rpsSquare:
-            if (penWidth < 0) then
+            // Perfect rectangle when pen and brush color are equal and pen width 0
+            if ((penWidth < 0) or ((penWidth = 0) and (Canvas.Brush.Color = Canvas.Pen.Color))) then
             begin
               newrec.Left := X + posx;
               newrec.Top := Y + posy;
