@@ -47,9 +47,9 @@
         barcode, but the total number of digits must be even. The bcCode128 generates a B and C mixed barcode, full optimized, 
         so a code like 234534AB generates a 128C segment and a 128B segment, so 
         the barcode is 50% smaller than using 128B.</p>
-      <p>Example of an SSCC:</p>
-      <p>Calc.Checsum set to true, Bar Modul set to 0.05</p>
-      <p>Expression: '0000000000'+RIGHT('00000000'+STR(123456)+'0',10)        
+      <p>Example of a GS1 SSCC:</p>
+      <p>Calc.Checsum set to true, Bar Modul set to 0.05, FNC1 required is ¿ character</p>
+      <p>Expression: '¿'+ '001234567890123456789'        
       </p>
     </td>
   </tr>
