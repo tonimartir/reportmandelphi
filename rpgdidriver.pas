@@ -1062,8 +1062,9 @@ begin
       end;
     rpMetaDraw:
       begin
-        Width := Round(obj.Width * dpix / TWIPS_PER_INCHESS);
-        Height := Round(obj.Height * dpiy / TWIPS_PER_INCHESS);
+        // Better precision for side by side drawings, ceil rounding
+        Width := Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
+        Height := Ceil(obj.Height * dpiy / TWIPS_PER_INCHESS);
         abrushstyle := obj.BrushStyle;
         if obj.BrushStyle > integer(bsDiagCross) then
           abrushstyle := integer(bsDiagCross);
@@ -1105,11 +1106,11 @@ begin
             // Perfect rectangle when pen and brush color are equal and pen width 0
             if ((penWidth < 0) or ((penWidth = 0) and (Canvas.Brush.Color = Canvas.Pen.Color))) then
             begin
-              newrec.Left := X + posx;
-              newrec.Top := Y + posy;
-              newrec.Right := X + posx + W;
-              newrec.Bottom := Y + posy + H;
-              Canvas.FillRect(newrec);
+             newrec.Left := X + posx;
+             newrec.Top := Y + posy;
+             newrec.Right := X + posx + W;
+             newrec.Bottom := Y + posy + H;
+             Canvas.FillRect(newrec);
             end
             else
             begin
