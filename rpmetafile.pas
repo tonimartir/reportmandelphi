@@ -494,6 +494,7 @@ type
 function IsMetafile(memstream:TMemoryStream):boolean;
 function ReadStringFromStream(stream:TStream): string;
 procedure WriteStringToStream(astring:String;deststream:TStream);
+procedure WriteRawStringToStream(astring:String;deststream:TStream);
 
 implementation
 
@@ -993,6 +994,14 @@ begin
  deststream.Write(bytes,Length(bytes));
 end;
 
+procedure WriteRawStringToStream(astring:String;deststream:TStream);
+var
+ bytes:TBytes;
+begin
+ bytes := TEncoding.UTF8.GetBytes(astring);
+ deststream.Write(bytes,Length(bytes));
+end;
+
 function ReadStringFromStream(stream:TStream): string;
 var
  i:integer;
@@ -1008,8 +1017,8 @@ begin
  end;
  if (i<0) then
   raise Exception.Create('Error reading string from stream');
- SetLength(buf,i);
- stream.read(buf,i);
+ SetLength(buf, i);
+ stream.Read(buf[0],i);
  Result:=TEncoding.UTF8.GetString(buf);
  exit;
 end;
@@ -1052,7 +1061,7 @@ begin
  rpSignature:=RpSignature3_0;
  FVersion:=MetaVersion3_0;
  RequestPage(MAX_PAGECOUNT);
- WriteStringToStream(rpSignature,Stream);
+ WriteRawStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
  Stream.Write(separator,sizeof(separator));
   // PDFConformance and Compressed
