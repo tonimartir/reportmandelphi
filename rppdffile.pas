@@ -96,9 +96,22 @@ type
  TRpPDFFile=class;
 
 
+
+ TPDFAnnotation = class
+  public
+   StreamNumber: Integer;
+   PosX:integer;
+   PosY:integer;
+   Width: integer;
+   Height: integer;
+   Page: integer;
+   Annotation: string;
+ end;
+
  TRpPageInfo=class(TObject)
   public
-   APageWidth,APageHeight:integer
+   APageWidth,APageHeight:integer;
+   PageAnnotations: array of TPDFAnnotation;
  end;
 
  TRpPDFCanvas=class(TObject)
@@ -224,6 +237,7 @@ type
    procedure SetFontType;
    procedure CreateFont(Subtype,BaseFont,Encoding:string);
    procedure SetPages;
+   procedure AddAnnotations;
    procedure SetPageObject(index:integer);
    procedure SetArray;
    procedure WriteEmbeddedFiles;
@@ -255,6 +269,7 @@ type
    property MainPDF:TMemoryStream read FMainPDF;
    procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
      description,creationDate,ModificationDate: string;  stream: TMemoryStream);
+   procedure NewAnnotation(posx,posy,width,height: integer; annotation: string);
   published
    // General properties
    property Compressed:boolean read FCompressed write FCompressed default true;
@@ -555,6 +570,24 @@ begin
  FBitmapStreams.Free;
 
  inherited Destroy;
+end;
+
+
+procedure TRpPDFFile.NewAnnotation(posx,posy,width,height: integer; annotation: string);
+var
+ ann: TPDFAnnotation;
+ aobj:TRpPageInfo;
+begin
+ aobj:=TRpPageInfo(FPageInfos.Objects[FPage-1]);
+ ann:=TPDFAnnotation.Create;
+ ann.PosX:=posx;
+ ann.PosY:=posy;
+ ann.Width:=width;
+ ann.Page:=FPage;
+ ann.Height:=height;
+ ann.Annotation:=annotation;
+ SetLength(aobj.PageAnnotations,Length(aobj.PageAnnotations)+1);
+ aobj.PageAnnotations[Length(aobj.PageAnnotations)-1]:=ann;
 end;
 
 procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
@@ -1245,12 +1278,76 @@ begin
  FTempStream.SaveToStream(FMainPDF);
 end;
 
+procedure TRpPDFFile.AddAnnotations;
+var
+ i:integer;
+ aobj:TRpPageInfo;
+ anot,coords: string;
+ annotation:TPDFAnnotation;
+begin
+ for i:=0 to FPageInfos.Count-1 do
+ begin
+  aobj:=TRpPageInfo(FPageInfos.Objects[i]);
+  for annotation in aobj.PageAnnotations do
+  begin
+   FTempStream.Clear;
+   FObjectCount := FObjectCount + 1;
+   annotation.StreamNumber:=FObjectCount;
+   SWriteLine(FTempStream, FObjectCount.ToString() + ' 0 obj');
+   SWriteLine(FTempStream, '<< /Type /Annot');
+  	anot := annotation.Annotation;
+   if ( (Length(anot)>4) and (Uppercase(anot.Substring(0,4))='URL:') ) then
+   begin
+    SWriteLine(FTempStream, '  /Subtype /Link');
+ 	 anot := anot.Substring(4, anot.Length);
+    coords := Canvas.UnitsToTextX(annotation.PosX) + ' ' + Canvas.UnitsToTextY(annotation.PosY+annotation.Height) +
+                       ' ' + Canvas.UnitsToTextX(annotation.PosX+annotation.Width)
+ 					  + ' ' + Canvas.UnitsToTextY(annotation.PosY);
+    SWriteLine(FTempStream, '   /Rect ['+coords+']');
+    SWriteLine(FTempStream, '   /A << /Type /Action');
+    SWriteLine(FTempStream, '        /S /URI');
+    SWriteLine(FTempStream, '        /URI ' + EncodePDFText(anot));
+    SWriteLine(FTempStream, '   >>');
+   end
+   else
+   begin
+    SWriteLine(FTempStream, '   /Subtype /Text');
+    coords := Canvas.UnitsToTextX(annotation.PosX) + ' ' + Canvas.UnitsToTextY(annotation.PosY+annotation.Height) +
+                       ' ' + Canvas.UnitsToTextX(annotation.PosX+annotation.Width)
+ 					  + ' ' + Canvas.UnitsToTextY(annotation.PosY);
+    SWriteLine(FTempStream, '   /Border [0 0 2]');
+    SWriteLine(FTempStream, '   /Rect [' + coords + ']');
+    SWriteLine(FTempStream, '   /Contents ' + EncodePDFText(anot));
+    SWriteLine(FTempStream, '   /Open false');
+    SWriteLine(FTempStream, '   /C [1 1 0]');
+   end;
+   SWriteLine(FTempStream, '>>');
+   AddToOffset(FTempStream.Size);
+   FTempStream.SaveToStream(FMainPDF);
+  end;
+ end;
+end;
+
+
 procedure TrpPDFFile.SetPageObject(index:integer);
 var
  aobj:TRpPageInfo;
+ annotationsString, anot: string;
+ annotation:TPDFAnnotation;
 begin
  aobj:=TRpPageInfo(FPageInfos.Objects[index-1]);
-
+ for annotation in aobj.PageAnnotations do
+ begin
+  if length(annotationsString)=0 then
+  begin
+   annotationsString:=annotationsString+'[';
+  end
+  else
+  begin
+   annotationsString:=annotationsString+' ';
+  end;
+  annotationsString:=annotationsString + IntToStr(annotation.StreamNumber) + ' 0 R';
+ end;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
@@ -1261,6 +1358,11 @@ begin
   Canvas.UnitsToTextX(aobj.APageWidth)+' '+Canvas.UnitsToTextX(aobj.APageHEight)+']');
  SWriteLine(FTempStream,'/Contents '+FPages.Strings[FCurrentSetPageObject]+' 0 R');
  SWriteLine(FTempStream,'/Resources '+IntToStr(FResourceNum)+' 0 R');
+ if Length(annotationsString) > 0 then
+ begin
+  annotationsString:= annotationsString +']';
+  SWriteLine(FTempStream, '/Annots ' + annotationsString);
+ end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
@@ -1497,6 +1599,7 @@ begin
  FTempStream.SaveToStream(FMainPDF);
 end;
 
+
 procedure TRpPDFFile.EndDoc;
 var
  i:integer;
@@ -1507,6 +1610,7 @@ begin
  EndStream;
  SetOutLine;
  SetFontType;
+ AddAnnotations;
  SetPages;
  SetArray;
  for i:= 1 to FImageCount do

@@ -352,6 +352,7 @@ begin
  WritePropertyW('PRINTCONDITION',comp.PrintCondition,Stream);
  WritePropertyW('DOBEFOREPRINT',comp.DoBeforePrint,Stream);
  WritePropertyW('DOAFTERPRINT',comp.DoAfterPrint,Stream);
+ WritePropertyS('ANNOTATION',comp.AnnotationExpression,Stream);
  // CommonPos
  WritePropertyI('POSX',comp.PosX,Stream);
  WritePropertyI('POSY',comp.PosY,Stream);
@@ -1489,6 +1490,9 @@ begin
  else
  if propname='DOBEFOREPRINT' then
   comp.DoBeforePrint:=RpStringToWString(propvalue)
+ else
+ if propname='ANNOTATION' then
+  comp.AnnotationExpression:=RpStringToWString(propvalue)
  else
  if propname='WIDTH' then
   comp.Width:=StrToInt(propvalue)

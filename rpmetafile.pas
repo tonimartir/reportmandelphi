@@ -159,6 +159,7 @@ type
   WordWrap:boolean;
   RightToLeft:Boolean;
   PrintStep:TRpSelectFontStep;
+  Annotation: string;
  end;
 
 
@@ -169,7 +170,8 @@ type
 // size *4
 {$IFNDEF DOTNETDBUGS}
  TRpMetaObject=packed record
-  Top,Left,Width,Height:integer;
+  Top,Left,Width,Height, AnnotationP,AnnotationS:integer;
+
   case Metatype:TRpMetaObjectType of
    rpMetaText:
     (TextP,TextS:integer;
@@ -218,7 +220,7 @@ type
 {$ENDIF}
 {$IFDEF DOTNETDBUGS}
  TRpMetaObject=packed record
-  Top,Left,Width,Height:integer;
+  Top,Left,Width,Height, AnnotationP,AnnotationS:integer;
 //  case Metatype:TRpMetaObjectType of
    Metatype:TRpMetaObjectType;
 //   rpMetaText:
@@ -333,14 +335,15 @@ type
     aText:WideString;Line,Position,Size:Integer;DoNewLine:boolean);
    procedure NewDrawObject(Top,Left,Width,Height:integer;
     DrawStyle:integer;BrushStyle:integer;BrushColor:integer;
-    PenStyle:integer;PenWidth:integer; PenColor:integer);
+    PenStyle:integer;PenWidth:integer; PenColor:integer; Annotation: string);
    function NewImageObject(Top,Left,Width,Height:integer;
-    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean):integer;
+    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean; Annotation: string):integer;
    procedure NewImageObjectShared(Top,Left,Width,Height:integer;
-    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean);
+    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean; Annotation: string);
    function GetText(arecord:TRpMetaObject):widestring;
    function GetWFontName(arecord:TRpMetaObject):widestring;
    function GetLFontName(arecord:TRpMetaObject):widestring;
+   function GetAnnotation(arecord:TRpMetaObject):widestring;
    function GetStream(arecord:TRpMetaObject):TMemoryStream;
    property Mark:Integer read FMark write FMark;
    property ObjectCount:integer read FObjectCount;
@@ -540,7 +543,8 @@ begin
 end;
 
 procedure TrpMetafilePage.NewImageObjectShared(Top,Left,Width,Height:integer;
- CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean);
+ CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean;
+ Annotation: string);
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -558,6 +562,10 @@ begin
  FObjects[FObjectCount].StreamSize:=stream.Size;
  FObjects[FObjectCount].PreviewOnly:=PreviewOnly;
  FObjects[FObjectCount].SharedImage:=true;
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
  if (imagepos<0) then
  begin
   CritEx.Enter;
@@ -581,7 +589,8 @@ end;
 
 
 function TrpMetafilePage.NewImageObject(Top,Left,Width,Height:integer;
- CopyMode:integer; DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean):integer;
+ CopyMode:integer; DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean;
+ Annotation: string):integer;
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -600,6 +609,10 @@ begin
  FObjects[FObjectCount].PreviewOnly:=PreviewOnly;
  FObjects[FObjectCount].SharedImage:=false;
  FObjects[FObjectCount].StreamPos:=FStreamPos;
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
  // Set the size of the stream
  if FMemStream.size=0 then
  begin
@@ -657,7 +670,7 @@ end;
 
 procedure TrpMetafilePage.NewDrawObject(Top,Left,Width,Height:integer;
     DrawStyle:integer;BrushStyle:integer;BrushColor:integer;
-    PenStyle:integer;PenWidth:integer; PenColor:integer);
+    PenStyle:integer;PenWidth:integer; PenColor:integer; Annotation: string);
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -676,6 +689,12 @@ begin
  FObjects[FObjectCount].PenColor:=PenColor;
  FObjects[FObjectCount].PenWidth:=PenWidth;
  FObjects[FObjectCount].PenStyle:=PenStyle;
+
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
+
 
  inc(FObjectCount);
 end;
@@ -756,6 +775,8 @@ begin
  FObjects[FObjectCount].WordWrap:=aText.WordWrap;
  FObjects[FObjectCount].RightToLeft:=aText.RightToLeft;
  FObjects[FObjectCount].PrintStep:=aText.PrintStep;
+ if Length(atext.Annotation)>0 then
+   NewWideString(FObjects[FObjectCount].AnnotationP,FObjects[FObjectCount].AnnotationS, aText.Annotation);
 
 
  inc(FObjectCount);
@@ -770,6 +791,16 @@ end;
 function TrpMetafilePage.GetWFontName(arecord:TRpMetaObject):widestring;
 begin
  Result:=Copy(FPool,arecord.WFontNameP,arecord.WFontNameS);
+end;
+
+function TrpMetafilePage.GetAnnotation(arecord:TRpMetaObject):widestring;
+begin
+ if (arecord.AnnotationP=0) then
+ begin
+  Result:='';
+  exit;
+ end;
+ Result:=Copy(FPool,arecord.AnnotationP,arecord.AnnotationS);
 end;
 
 function TrpMetafilePage.GetLFontName(arecord:TRpMetaObject):widestring;

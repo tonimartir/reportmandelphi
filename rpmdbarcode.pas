@@ -1700,7 +1700,7 @@ begin
 
       // draw the rectangle
       meta.Pages[meta.CurrentPage].NewDrawObject(A.y, A.x, c.x - A.x, c.y - A.y,
-        integer(rpsRectangle), 0, BrushColor, 0, PenWidth, PenColor);
+        integer(rpsRectangle), 0, BrushColor, 0, PenWidth, PenColor,'');
     end;
     // Polygon([a,b,c,d]);
 
@@ -2960,7 +2960,7 @@ begin
      d := Translate2D(Rotate2D(d, alpha), orgin);
 
      FPDFmeta.Pages[FPDFmeta.CurrentPage].NewDrawObject(a.y,a.x,c.x-a.x,c.y-a.y,
-       integer(rpsRectangle),0,BColor,0,0,BColor);
+       integer(rpsRectangle),0,BColor,0,0,BColor,'');
 
 
 //     FPDFmeta.Pages[FPDFMeta.CurrentPage].NewDrawObject(
@@ -3035,7 +3035,7 @@ begin
      d := Translate2D(Rotate2D(d, alpha), orgin);
 
      FPDFmeta.Pages[FPDFmeta.CurrentPage].NewDrawObject(a.y,a.x,c.x-a.x,c.y-a.y,
-       integer(rpsRectangle),0,BColor,0,0,BColor);
+       integer(rpsRectangle),0,BColor,0,0,BColor,'');
 
 //      FBitmap.Canvas.Rectangle (
 //          BarCodeRect.Left + (16 - i) * BarWidth +
@@ -3157,7 +3157,7 @@ begin
         begin
           meta.Pages[meta.CurrentPage].NewDrawObject(
               FTop+Row*squareHeight,FLeft+Column*squareWidth,squareWidth,squareHeight,
-              integer(rpsRectangle),0,BrushColor,0,PenWidth,PenColor);
+              integer(rpsRectangle),0,BrushColor,0,PenWidth,PenColor,'');
         end;
        end;
     end;

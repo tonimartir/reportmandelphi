@@ -3545,7 +3545,7 @@ begin
           abitmap.SaveToStream(FMStream);
           page.NewImageObject(aposy, aposx, nchart.PrintWidth,
             nchart.PrintHeight, DEF_COPYMODE, integer(rpDrawStretch),
-            nchart.Resolution, FMStream, false);
+            nchart.Resolution, FMStream, false,'');
         finally
           FMStream.free;
         end;

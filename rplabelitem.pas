@@ -340,8 +340,10 @@ procedure TRpLabel.DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight
 var
  aalign:integer;
  aTextObj:TRpTextObject;
+ apage: TRpMetaFilePage;
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
+ apage:=metafile.Pages[metafile.CurrentPage];
  aTextObj.Text:=Text;
  aTextObj.LFontName:=LFontName;
  aTextObj.WFontName:=WFontName;
@@ -358,9 +360,10 @@ begin
  if SingleLine then
   aalign:=aalign or AlignmentFlags_SingleLine;
  aTextObj.Alignment:=aalign;
+ atextObj.Annotation := GetAnnotation;
 
 
- metafile.Pages[metafile.CurrentPage].NewTextObject(aposy,
+ apage.NewTextObject(aposy,
   aposx,Printwidth,Printheight,aTextObj,BackColor,Transparent);
 end;
 
@@ -772,6 +775,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.Annotation:=GetAnnotation;
 end;
 
 function TRpExpression.GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;

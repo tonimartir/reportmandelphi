@@ -1396,6 +1396,7 @@ var
   SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
+  SRpSAnnotation: WideString = 'Annotation Expression';
 
 implementation
 

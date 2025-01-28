@@ -1469,7 +1469,7 @@ function TRpBaseReport.OnGraphicOp(Top,Left,Width,Height:integer;
 begin
  Result:=true;
  metafile.Pages[metafile.CurrentPage].NewDrawObject(Top,Left,Width,Height,
-  DrawStyle,BrushStyle,BrushColor,PenStyle,PenWidth,PenColor);
+  DrawStyle,BrushStyle,BrushColor,PenStyle,PenWidth,PenColor, '');
 end;
 
 function TRpBaseReport.OnImageOp(Top,Left,Width,Height:integer;
@@ -1485,7 +1485,7 @@ begin
   try
    Result:=True;
    metafile.Pages[metafile.CurrentPage].NewImageObject(Top,Left,Width,Height,0,
-    DrawStyle,DPIRes,astream,previewonly);
+    DrawStyle,DPIRes,astream,previewonly, '');
   finally
    astream.free;
   end;

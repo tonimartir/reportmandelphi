@@ -141,7 +141,7 @@ procedure TRpShape.DoPrint(adriver:TRpPrintDriver;
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  metafile.Pages[metafile.CurrentPage].NewDrawObject(aposy,aposx,PrintWidth,PrintHeight,
-  integer(Shape),BrushStyle,BrushColor,PenStyle,PenWidth,PenColor);
+  integer(Shape),BrushStyle,BrushColor,PenStyle,PenWidth,PenColor, GetAnnotation);
 end;
 
 constructor TRpImage.Create(AOwner:TComponent);
@@ -326,12 +326,12 @@ begin
   if CachedImage<>rpCachedNone then
   begin
    metafile.Pages[metafile.CurrentPage].NewImageObjectShared(aposy,aposx,
-    PrintWidth,PrintHeight,Integer(CopyMode),Integer(DrawStyle),Integer(dpires),cachedpos,FMStream,false);
+    PrintWidth,PrintHeight,Integer(CopyMode),Integer(DrawStyle),Integer(dpires),cachedpos,FMStream,false, GetAnnotation);
   end
   else
   begin
    metafile.Pages[metafile.CurrentPage].NewImageObject(aposy,aposx,
-    PrintWidth,PrintHeight,Integer(CopyMode),Integer(DrawStyle),Integer(dpires),FMStream,false);
+    PrintWidth,PrintHeight,Integer(CopyMode),Integer(DrawStyle),Integer(dpires),FMStream,false, GetAnnotation);
   end;
  finally
   if ((FMStream<>FStream) AND (FMStream<>FDeCompStream)) then
