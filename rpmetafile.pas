@@ -1505,6 +1505,7 @@ var
  byteswrite:integer;
  abytes:array of Byte;
  intor:integer;
+ objsize: integer;
 begin
  // Objects
  // Save all objects
@@ -1538,7 +1539,8 @@ begin
 
  Stream.Write(FUpdatedPageSize,sizeof(FUpdatedPageSize));
  Stream.Write(FObjectCount,sizeof(FObjectCount));
- byteswrite:=sizeof(TRpMetaObject)*FObjectCount;
+ objsize:=sizeof(TRpMetaObject);
+ byteswrite:=objsize*FObjectCount;
  SetLength(abytes,byteswrite);
  if byteswrite>0 then
  begin
