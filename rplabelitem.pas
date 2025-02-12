@@ -465,7 +465,7 @@ begin
   if FIsPartial then
   begin
    // Skip one space if necessary
-   if Result[FPartialPos]=Widechar(' ') then
+   if ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
     FPartialPos:=FPartialPos+1;
    Result:=Copy(Result,FPartialPos,Length(Result));
   end;
@@ -498,10 +498,13 @@ begin
   if newposition<Length(TextObj.Text) then
   begin
    if Not FIsPartial then
-    FPartialPos:=0;
+    FPartialPos:=1;
    FIsPartial:=true;
    PartialPrint:=true;
    FPartialPos:=FPartialPos+newposition;
+   // Next line partial skip one space o one line
+   if ((TextObj.Text[FPartialPos]=chr(10)) or (TextObj.Text[FPartialPos]=' ')) then
+    Inc(FPartialpos);
    TextObj.Text:=Copy(TextObj.Text,1,newposition);
   end
   else
@@ -807,6 +810,7 @@ begin
    ispartial:=true;
   aText.Text:=Copy(aText.Text,1,aposition);
   adriver.TextExtent(aText,Result);
+
   if ispartial then
   begin
    // Max extent could be negative

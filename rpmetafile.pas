@@ -1992,18 +1992,26 @@ begin
  adriver.TextExtent(obj,newextent);
  while newextent.Y>maxextent.Y do
  begin
-  while currentpos>0 do
+  if (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
   begin
-   Dec(currentpos);
-   if currentpos<1 then
-    break;
-   if isadelimiter(obj.Text[currentpos]) then
-    break;
+    Dec(currentpos);
+  end
+  else
+  begin
+   while currentpos>0 do
+   begin
+    Dec(currentpos);
+
+    if isadelimiter(obj.Text[currentpos]) then
+     break;
+    if currentpos<1 then
+     break;
+   end;
   end;
+  obj.Text:=Copy(originalstring,1,currentpos);
 
   if currentpos<1 then
    break;
-  obj.Text:=Copy(originalstring,1,currentpos);
   newextent:=maxextent;
   adriver.TextExtent(obj,newextent);
  end;
