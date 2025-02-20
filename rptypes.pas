@@ -101,8 +101,10 @@ type
 
  TRpFontStep=(rpcpi20,rpcpi17,rpcpi15,rpcpi12,rpcpi10,rpcpi6,rpcpi5);
 
- TPDFConformanceType = ( PDF_1_4, PDF_A_3 );
- TPDFConformance = ( SetPDFDefault, tPDF_1_4, SetPDF_A_3);
+ TPDFConformanceType = ( PDF_1_4 = 0, PDF_A_3 = 1);
+ TPDFConformance = ( SetPDFDefault = 0, SettPDF_1_4 = 1, SetPDF_A_3 = 2);
+ TPDFAFRelationShip = ( PDF_AF_Unspecified = 0, PDF_AF_Alternative = 1, PDF_AF_Data = 2,
+    PDF_AF_Source = 3, PDF_AF_Supplement = 4);
 
  TRpLineInfo=record
   Position:integer;
@@ -265,6 +267,13 @@ type
    public Stream: TMemoryStream;
    public MimeType: string;
    public ResourceNumber: integer;
+   public Description: string;
+   public AFRelationShip: TPDFAFRelationShip;
+   public CreationDate: string;
+   public ModificationDate: string;
+   public function AFRelationShipToString(): string;
+   public function Clone(): TEmbeddedFile;
+   destructor Destroy;
  end;
 
 
@@ -453,9 +462,21 @@ function StringToOem(const S: String): AnsiString;
 function AnsiStringToOem(const S: AnsiString): AnsiString;
 {$ENDIF}
 
-
+procedure GetCommonMimeTypes(MimeList: TStrings);
+function EscapeXML(const Value: string): string;
 
 implementation
+
+function EscapeXML(const Value: string): string;
+begin
+  // Reemplaza los caracteres especiales con sus entidades XML correspondientes
+  Result := StringReplace(Value, '&', '&amp;', [rfReplaceAll]);
+  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+  Result := StringReplace(Result, '''', '&apos;', [rfReplaceAll]);
+end;
+
 
 function Is64BitPlatform:boolean;
 begin
@@ -5564,7 +5585,70 @@ begin
 end;
 {$ENDIF}
 
+procedure GetCommonMimeTypes(MimeList: TStrings);
+begin
+  MimeList.Clear;
+  MimeList.Add('text/plain');
+  MimeList.Add('text/html');
+  MimeList.Add('text/css');
+  MimeList.Add('application/json');
+  MimeList.Add('application/xml');
+  MimeList.Add('image/jpeg');
+  MimeList.Add('image/png');
+  MimeList.Add('video/mp4');
+  MimeList.Add('application/pdf');
+  MimeList.Add('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); // .xlsx
+  MimeList.Add('application/vnd.openxmlformats-officedocument.wordprocessingml.document'); // .docx
+  MimeList.Add('application/vnd.openxmlformats-officedocument.presentationml.presentation'); // .pptx
+end;
 
+function TEmbeddedFile.AFRelationShipToString(): string;
+begin
+ Result:= 'Unspecified';
+ case AFRelationShip of
+  PDF_AF_Unspecified:
+   Result := 'Unspecified';
+  PDF_AF_Alternative:
+   Result := 'Alternative';
+  PDF_AF_Data:
+   Result := 'Data';
+  PDF_AF_Source:
+   Result := 'Source';
+  PDF_AF_Supplement:
+   Result := 'Supplement';
+ end;
+end;
+
+function TEmbeddedFile.Clone():TEmbeddedFile;
+var
+ efile: TEmbeddedFile;
+begin
+ efile:=TEmbeddedFile.Create;
+ efile.FileName:=FileName;
+ efile.MimeType:=MimeType;
+ efile.Description:=Description;
+ efile.AFRelationShip:=AFRelationShip;
+ efile.CreationDate:=CreationDate;
+ efile.ModificationDate:=ModificationDate;
+ if Assigned(Stream) then
+ begin
+  efile.Stream:=TMemoryStream.Create;
+  Stream.Seek(0, TSeekOrigin.soBeginning);
+  efile.Stream.LoadFromStream(Stream);
+  Stream.Seek(0, TSeekOrigin.soBeginning);
+  efile.Stream.Seek(0, TSeekOrigin.soBeginning);
+ end;
+ Result:=efile;
+end;
+
+destructor TEmbeddedFile.Destroy;
+begin
+ if Assigned(Stream) then
+ begin
+   Stream.free;
+   Stream:=nil;
+ end;
+end;
 
 initialization
 

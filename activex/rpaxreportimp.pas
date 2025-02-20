@@ -108,7 +108,13 @@ type
     procedure Set_AsyncExecution(Value: WordBool); safecall;
     procedure SaveToHTMLSingle(const filename: WideString); safecall;
     procedure SaveToFile(const filename: WideString); safecall;
-    procedure AddPDFFile(const fileName, mimeType, base64Stream: WideString); safecall;
+
+    procedure AddEmbeddedFile(const fileName, mimeType, base64Stream, description: WideString;
+          AFRelationShip: TxAFRelationShip; const ISOCreationDate,
+          ISOModificationDate: WideString); safecall;
+    procedure AddMetadata(const title, author, subject, creator, producer, keywords, creationDate,
+          modificationDate: WideString); safecall;
+    procedure AddXMPMetadata(const XMPContent: WideString); safecall;
 
   end;
 
@@ -578,9 +584,27 @@ begin
 end;
 
 
-procedure TReportManX.AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+
+
+
+procedure TReportManX.AddEmbeddedFile(const fileName, mimeType, base64Stream, description: WideString;
+          AFRelationShip: TxAFRelationShip; const ISOCreationDate,
+          ISOModificationDate: WideString);
 begin
- FDelphiControl.AddPDFFile(filename, mimeType, base64Stream);
+  FDelphiControl.AddEmbeddedFile(fileName, mimeType, base64Stream, description, TPDFAFRelationShip(AFRelationShip), ISOCreationDate, ISOModificationDate);
+end;
+
+procedure TReportManX.AddMetadata(const title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: WideString);
+begin
+  FDelphiControl.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate);
+end;
+
+
+procedure TReportManX.AddXMPMetadata(const XMPContent: WideString);
+begin
+  FDelphiControl.AddXMPMetadata(XMPContent);
 end;
 
 initialization

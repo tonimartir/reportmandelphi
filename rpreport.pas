@@ -942,6 +942,7 @@ end;
 procedure TRpReport.BeginPrint(Driver:TRpPrintDriver);
 var
  i,index:integer;
+ efile:TEmbeddedFile;
  item:TRpAliaslistItem;
  apagesize:TPoint;
  paramname:string;
@@ -974,6 +975,17 @@ begin
   metafile.Clear;
   metafile.PDFConformance:=PDFConformance;
   metafile.PDFCompressed:=PDFCompressed;
+  metafile.DocAuthor:=DocAuthor;
+  metafile.DocProducer:=DocProducer;
+  metafile.DocCreator:=DocCreator;
+  metafile.DocCreationDate:=DocCreationDate;
+  metafile.DocModificationDate:=DocModificationDate;
+  metafile.DocSubject:=DocSubject;
+  metafile.DocKeywords:=DocKeywords;
+  metafile.DocTitle:=DocTitle;
+  metafile.DocXMPContent:=DocXmpContent;
+
+
   metafile.Copies := Copies;
   metafile.PreviewAbout:=PreviewAbout;
   metafile.PreviewMargins:=PreviewMargins;
@@ -1029,6 +1041,11 @@ begin
   metafile.CustomX:=FInternalPageWidth;
   metafile.CustomY:=FInternalPageHeight;
   PageNum:=-1;
+ end;
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  efile:=EmbeddedFiles[i];
+  metafile.NewEmbeddedFile(efile.FileName, efile.MimeType, efile.AFRelationShip, efile.Description, efile.CreationDate, efile.ModificationDate,  efile.Stream);
  end;
  metafile.PrinterSelect:=PrinterSelect;
  metafile.PreviewStyle:=PreviewStyle;

@@ -340,8 +340,10 @@ procedure TRpLabel.DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight
 var
  aalign:integer;
  aTextObj:TRpTextObject;
+ apage: TRpMetaFilePage;
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
+ apage:=metafile.Pages[metafile.CurrentPage];
  aTextObj.Text:=Text;
  aTextObj.LFontName:=LFontName;
  aTextObj.WFontName:=WFontName;
@@ -358,9 +360,10 @@ begin
  if SingleLine then
   aalign:=aalign or AlignmentFlags_SingleLine;
  aTextObj.Alignment:=aalign;
+ atextObj.Annotation := GetAnnotation;
 
 
- metafile.Pages[metafile.CurrentPage].NewTextObject(aposy,
+ apage.NewTextObject(aposy,
   aposx,Printwidth,Printheight,aTextObj,BackColor,Transparent);
 end;
 
@@ -462,7 +465,7 @@ begin
   if FIsPartial then
   begin
    // Skip one space if necessary
-   if Result[FPartialPos]=Widechar(' ') then
+   if ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
     FPartialPos:=FPartialPos+1;
    Result:=Copy(Result,FPartialPos,Length(Result));
   end;
@@ -495,10 +498,13 @@ begin
   if newposition<Length(TextObj.Text) then
   begin
    if Not FIsPartial then
-    FPartialPos:=0;
+    FPartialPos:=1;
    FIsPartial:=true;
    PartialPrint:=true;
    FPartialPos:=FPartialPos+newposition;
+   // Next line partial skip one space o one line
+   if ((TextObj.Text[FPartialPos]=chr(10)) or (TextObj.Text[FPartialPos]=' ')) then
+    Inc(FPartialpos);
    TextObj.Text:=Copy(TextObj.Text,1,newposition);
   end
   else
@@ -772,6 +778,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.Annotation:=GetAnnotation;
 end;
 
 function TRpExpression.GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;
@@ -803,6 +810,7 @@ begin
    ispartial:=true;
   aText.Text:=Copy(aText.Text,1,aposition);
   adriver.TextExtent(aText,Result);
+
   if ispartial then
   begin
    // Max extent could be negative

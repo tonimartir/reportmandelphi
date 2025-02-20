@@ -61,7 +61,6 @@ type
     OpenDialog1: TOpenDialog;
     AOpen: TAction;
     ToolButton8: TToolButton;
-    BCancel: TButton;
     AExit: TAction;
     AScale100: TAction;
     AScaleWide: TAction;
@@ -151,9 +150,6 @@ type
     MSelPrinter215: TMenuItem;
     ToolButton10: TToolButton;
     AMailTo: TAction;
-    ToolButton14: TToolButton;
-    ToolButton15: TToolButton;
-    ToolButton16: TToolButton;
     MEntireMenu: TPopupMenu;
     MEntire1: TMenuItem;
     MEntire2: TMenuItem;
@@ -179,6 +175,7 @@ type
     VirtualImageList1: TVirtualImageList;
     PPBar: TPanel;
     PBar: TProgressBar;
+    BCancel: TToolButton;
     procedure AFirstExecute(Sender: TObject);
     procedure ANextExecute(Sender: TObject);
     procedure APreviousExecute(Sender: TObject);

@@ -506,11 +506,11 @@ begin
    if CachedImage<>rpCachedNone then
    begin
     metafile.Pages[metafile.CurrentPage].NewImageObjectShared(aposy,aposx,
-     PrintWidth,PrintHeight,10,Integer(FDrawStyle),Integer(dpires),cachedpos,aStream,BackStyle=baPreview);
+     PrintWidth,PrintHeight,10,Integer(FDrawStyle),Integer(dpires),cachedpos,aStream,BackStyle=baPreview, '');
    end
    else
     metafile.Pages[metafile.CurrentPage].NewImageObject(aposy,aposx,
-     PrintWidth,PrintHeight,10,Integer(FDrawStyle),Integer(dpires),aStream,BackStyle=baPreview);
+     PrintWidth,PrintHeight,10,Integer(FDrawStyle),Integer(dpires),aStream,BackStyle=baPreview, '');
   end;
  end;
  DoPartialPrint:=False;

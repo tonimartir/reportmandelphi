@@ -82,8 +82,11 @@ type
    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer);override;
    constructor Create(AOwner:TComponent);override;
    function GetReport:TRpReport;
-   procedure AddPDFFile(const fileName, mimeType, base64Stream: WideString);
-
+   procedure AddEmbeddedFile(const fileName, mimeType, base64Stream,
+    description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
+   procedure AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: string);
+   procedure AddXMPMetadata(XmpContent: string);
 {$IFNDEF DOTNETD}
    procedure SetRecordset(datasetname:string; recordset: Pointer);
 {$ENDIF}
@@ -105,10 +108,25 @@ type
 implementation
 
 
-procedure TRpActiveXReport.AddPDFFile(const fileName, mimeType, base64Stream: WideString);
+procedure TRpActiveXReport.AddEmbeddedFile(const fileName, mimeType, base64Stream,
+   description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
 begin
- FVCLReport.AddPDFFile(fileName, mimeType, base64Stream);
+ FVCLReport.AddEmbeddedFile(fileName, mimeType, base64Stream,
+   description, AFRelationShip, ISOCreationDate, ISOModificationDate);
 end;
+
+procedure TRpActiveXReport.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: string);
+begin
+ FVCLReport.AddMetadata(title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate);
+end;
+
+procedure TRpActiveXReport.AddXMPMetadata(XmpContent: string);
+begin
+ FVCLReport.AddXMPMetadata(XmpContent);
+end;
+
 
 procedure TRpActiveXReport.Paint;
 begin

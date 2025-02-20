@@ -777,9 +777,9 @@ var
 begin
   if atext.FontRotation <> 0 then
     exit;
-  // Justified text use pdf driver
-  if (atext.Alignment AND AlignmentFlags_AlignHJustify) > 0 then
-  // if true then
+  // Justified text use pdf driver, also PDF Conformance or TrueType
+  if (  ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+     OR (atext.Type1Font >  Integer(poEmbedded))) then
   begin
     if not assigned(npdfdriver) then
       npdfdriver := TRpPDFDriver.Create;
@@ -949,9 +949,9 @@ begin
               FindDeviceFont(Canvas.handle, Canvas.Font,
                 FontSizeToStep(Canvas.Font.Size, obj.PrintStep));
           end;
-          // Justified text use pdf driver
-          if (obj.Alignment AND AlignmentFlags_AlignHJustify) > 0 then
-          // if true then
+          // Justified text use pdf driver, also pdf conformance or truetype
+          if (  ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+             OR (obj.Type1Font >  Integer(poEmbedded))) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
@@ -1062,8 +1062,9 @@ begin
       end;
     rpMetaDraw:
       begin
-        Width := Round(obj.Width * dpix / TWIPS_PER_INCHESS);
-        Height := Round(obj.Height * dpiy / TWIPS_PER_INCHESS);
+        // Better precision for side by side drawings, ceil rounding
+        Width := Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
+        Height := Ceil(obj.Height * dpiy / TWIPS_PER_INCHESS);
         abrushstyle := obj.BrushStyle;
         if obj.BrushStyle > integer(bsDiagCross) then
           abrushstyle := integer(bsDiagCross);
@@ -1072,17 +1073,21 @@ begin
         Canvas.Brush.Color := CLXColorToVCLColor(obj.BrushColor);
         Canvas.Brush.Style := TBrushStyle(abrushstyle);
         penWidth:=Round(dpix * obj.PenWidth / TWIPS_PER_INCHESS);
-        if (penWidth>=0) then
-          Canvas.Pen.Width := penWidth;
-
-        X := Canvas.Pen.Width div 2;
-        Y := X;
-        W := Width - Canvas.Pen.Width + 1;
-        H := Height - Canvas.Pen.Width + 1;
-        if Canvas.Pen.Width = 0 then
+        if (penWidth>0) then
         begin
-          Dec(W);
-          Dec(H);
+         Canvas.Pen.Width := penWidth;
+         X := Canvas.Pen.Width div 2;
+         Y := X;
+         W := Width - Canvas.Pen.Width + 1;
+         H := Height - Canvas.Pen.Width + 1;
+        end
+        else
+        begin
+          Canvas.Pen.Width:=0;
+          X := 0;
+          Y := 0;
+          W := Width;
+          H := Height;
         end;
         if W < H then
           S := W
@@ -1098,13 +1103,14 @@ begin
         end;
         case TRpShapeType(obj.DrawStyle) of
           rpsRectangle, rpsSquare:
-            if (penWidth < 0) then
+            // Perfect rectangle when pen and brush color are equal and pen width 0
+            if ((penWidth < 0) or ((penWidth = 0) and (Canvas.Brush.Color = Canvas.Pen.Color))) then
             begin
-              newrec.Left := X + posx;
-              newrec.Top := Y + posy;
-              newrec.Right := X + posx + W;
-              newrec.Bottom := Y + posy + H;
-              Canvas.FillRect(newrec);
+             newrec.Left := X + posx;
+             newrec.Top := Y + posy;
+             newrec.Right := X + posx + W;
+             newrec.Bottom := Y + posy + H;
+             Canvas.FillRect(newrec);
             end
             else
             begin
@@ -1326,7 +1332,10 @@ begin
     // Calculates text extent and apply alignment
     recsize := ARect;
     if not assigned(npdfdriver) then
+    begin
       npdfdriver := TRpPDFDriver.Create;
+      npdfdriver.PDFConformance:= FReport.PDFConformance;
+    end;
     npdfdriver.PDFFile.Canvas.Font.Size := Canvas.Font.Size;
     npdfdriver.PDFFile.Canvas.Font.WFontName := Canvas.Font.Name;
     npdfdriver.PDFFile.Canvas.Font.Name := poLinked;
@@ -2409,6 +2418,7 @@ begin
     then
       exit;
   end;
+
   if progress then
   begin
     // Assign appidle frompage to page...
@@ -2419,11 +2429,6 @@ begin
       dia.topage := topage;
       dia.copies := copies;
       dia.report := report;
-      if (PDFConformance <> SetPDFDefault) then
-      begin
-       report.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
-      end;
-
       dia.filename := filename;
       dia.pdfcompressed := compressed;
       dia.collate := collate;
@@ -2447,6 +2452,15 @@ begin
     try
       pdfdriver.filename := filename;
       pdfdriver.compressed := compressed;
+      if (PDFConformance <> SetPDFDefault) then
+      begin
+       pdfdriver.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
+      end
+      else
+      begin
+       pdfdriver.PDFConformance:=report.PDFConformance;
+      end;
+
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}
@@ -3531,7 +3545,7 @@ begin
           abitmap.SaveToStream(FMStream);
           page.NewImageObject(aposy, aposx, nchart.PrintWidth,
             nchart.PrintHeight, DEF_COPYMODE, integer(rpDrawStretch),
-            nchart.Resolution, FMStream, false);
+            nchart.Resolution, FMStream, false,'');
         finally
           FMStream.free;
         end;

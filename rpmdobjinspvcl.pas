@@ -614,6 +614,7 @@ begin
  FRpMainF:=TFRpMainFVCL(Owner.Owner);
  report:=FRpMainf.report;
  try
+  fpdfdriver.PDFConformance:=report.PDFConformance;
   report.BeginPrint(fpdfdriver);
  except
   on E:Exception do

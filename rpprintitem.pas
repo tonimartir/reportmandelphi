@@ -89,14 +89,17 @@ type
    FPosY:TRpTwips;
    FPosX:TRpTwips;
    FAlign:TRpPosAlign;
+   FAnnotationExpression: string;
   public
    PartialFlag:boolean;
    function GetParent:TRpCommonComponent;
+   function GetAnnotation(): string;
   published
    property PosX:TRpTwips read FPosX write FPosX;
    property PosY:TRpTwips read FPosY write FPosY;
    property Align:TRpPosAlign read FAlign write FAlign
     default rpalnone;
+   property AnnotationExpression: string read FAnnotationExpression write FAnnotationExpression;
   end;
 
  TRpCommonPosClass=class of TRpCommonPosComponent;
@@ -314,6 +317,34 @@ begin
  else
   PrintHeight:=Height;
  PartialPrint:=False;
+end;
+
+function TRpCommonPosComponent.GetAnnotation(): string;
+var
+ fevaluator: TRpEvaluator;
+ newValue: Variant;
+ svalue: string;
+begin
+  if Length(AnnotationExpression) = 0 then
+   exit;
+  Result:='';
+  try
+  fevaluator:=TRpBaseReport(GetReport).Evaluator;
+  newValue:=fevaluator.EvaluateText(FAnnotationExpression);
+  if  VarIsString(newValue) then
+  begin
+   svalue:=newValue;
+   if Length(svalue) > 0 then
+   begin
+    Result:= svalue;
+   end;
+  end;
+ except
+  on E:Exception do
+  begin
+   Raise TRpReportException.Create(E.Message+':'+SRpSExpression+' '+Name,self,SRpSExpression);
+  end;
+ end;
 end;
 
 

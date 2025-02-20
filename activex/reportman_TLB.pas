@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 17/10/2024 13:43:29 from Type Library described below.
+// File generated on 28/11/2024 9:36:32 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)
@@ -150,6 +150,16 @@ const
   PDF_A_3 = $00000002;
   PDF_Default = $00000000;
 
+// Constants for enum TxAFRelationShip
+type
+  TxAFRelationShip = TOleEnum;
+const
+  AFUnspecified = $00000000;
+  AFAlternative = $00000001;
+  AFData = $00000002;
+  AFSource = $00000003;
+  AFSupplement = $00000004;
+
 type
 
 // *********************************************************************//
@@ -268,8 +278,15 @@ type
     procedure SaveToFile(const filename: WideString); safecall;
     function Get_PDFConformance: TxPDFConformanceType; safecall;
     procedure Set_PDFConformance(Value: TxPDFConformanceType); safecall;
-    procedure AddPDFFile(const fileName: WideString; const mimeType: WideString;
-                         const base64Stream: WideString); safecall;
+    procedure AddEmbeddedFile(const fileName: WideString; const mimeType: WideString;
+                              const base64Stream: WideString; const description: WideString;
+                              AFRelationShip: TxAFRelationShip; const ISOCreationDate: WideString;
+                              const ISOModificationDate: WideString); safecall;
+    procedure AddMetadata(const title: WideString; const author: WideString;
+                          const subject: WideString; const creator: WideString;
+                          const producer: WideString; const keywords: WideString;
+                          const creationDate: WideString; const modificationDate: WideString); safecall;
+    procedure AddXMPMetadata(const XMPContent: WideString); safecall;
     property filename: WideString read Get_filename write Set_filename;
     property Preview: WordBool read Get_Preview write Set_Preview;
     property ShowProgress: WordBool read Get_ShowProgress write Set_ShowProgress;
@@ -356,8 +373,15 @@ type
     procedure SaveToHTMLSingle(const filename: WideString); dispid 205;
     procedure SaveToFile(const filename: WideString); dispid 206;
     property PDFConformance: TxPDFConformanceType dispid 207;
-    procedure AddPDFFile(const fileName: WideString; const mimeType: WideString;
-                         const base64Stream: WideString); dispid 208;
+    procedure AddEmbeddedFile(const fileName: WideString; const mimeType: WideString;
+                              const base64Stream: WideString; const description: WideString;
+                              AFRelationShip: TxAFRelationShip; const ISOCreationDate: WideString;
+                              const ISOModificationDate: WideString); dispid 208;
+    procedure AddMetadata(const title: WideString; const author: WideString;
+                          const subject: WideString; const creator: WideString;
+                          const producer: WideString; const keywords: WideString;
+                          const creationDate: WideString; const modificationDate: WideString); dispid 209;
+    procedure AddXMPMetadata(const XMPContent: WideString); dispid 210;
   end;
 
 // *********************************************************************//

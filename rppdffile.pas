@@ -96,9 +96,22 @@ type
  TRpPDFFile=class;
 
 
+
+ TPDFAnnotation = class
+  public
+   StreamNumber: Integer;
+   PosX:integer;
+   PosY:integer;
+   Width: integer;
+   Height: integer;
+   Page: integer;
+   Annotation: string;
+ end;
+
  TRpPageInfo=class(TObject)
   public
-   APageWidth,APageHeight:integer
+   APageWidth,APageHeight:integer;
+   PageAnnotations: array of TPDFAnnotation;
  end;
 
  TRpPDFCanvas=class(TObject)
@@ -180,6 +193,9 @@ type
    FDocKeywords:string;
    FDocSubject:string;
    FDocProducer:string;
+   FDocCreationDate: string;
+   FDocModificationDate: string;
+   FDocXMPContent: string;
    FMainPDF:TMemoryStream;
    FStreamValid:boolean;
    FTempStream:TMemoryStream;
@@ -190,7 +206,6 @@ type
    FObjectOffsets:TStringList;
    FObjectCount:integer;
    FObjectOffset:integer;
-   FStreamSize1,FStreamSize2:LongInt;
    FOutlinesNum:integer;
    FFontCount:integer;
    FFontList:TStringList;
@@ -202,11 +217,13 @@ type
    FXMPMetadataObject: integer;
    FOutputIntentObject: integer;
    FColorSpaceObject: integer;
-   FCreationDate: string;
+   FInternalFDocCreationDate: TDateTime;
+   FModDate: string;
    PageObjNum: integer;
    FResolution:integer;
    FBitmapStreams:TList;
    EmbeddedFiles: array of TEmbeddedFile;
+   NumberFormatSettings: TFormatSettings;
 
    // Minimum page size in 72 dpi 18x18
    // Maximum page size in 72 dpi 14.400x14.400
@@ -220,8 +237,10 @@ type
    procedure SetFontType;
    procedure CreateFont(Subtype,BaseFont,Encoding:string);
    procedure SetPages;
+   procedure AddAnnotations;
    procedure SetPageObject(index:integer);
    procedure SetArray;
+   procedure WriteEmbeddedFiles;
    procedure SetCatalog;
    procedure SetXref;
    function GetOffsetNumber(offset:string):string;
@@ -235,7 +254,6 @@ type
    function CompressStream(stream: TStream): TMemoryStream;
 {$ENDIF}
    procedure WriteStream(stream, dest: TMemoryStream);
-   procedure NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -249,6 +267,9 @@ type
    property Stream:TMemoryStream read GetStream;
    property StreamValid:Boolean read FStreamValid;
    property MainPDF:TMemoryStream read FMainPDF;
+   procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+     description,creationDate,ModificationDate: string;  stream: TMemoryStream);
+   procedure NewAnnotation(posx,posy,width,height: integer; annotation: string);
   published
    // General properties
    property Compressed:boolean read FCompressed write FCompressed default true;
@@ -260,6 +281,10 @@ type
    property DocKeywords:string read FDocKeywords write FDocKeywords;
    property DocSubject:string read FDocSubject write FDocSubject;
    property DocProducer:string read FDocProducer write FDocProducer;
+   property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
+   property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
+   property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
+
    // Document physic
    property PageWidth:integer read FPageWidth write FPageWidth;
    property PageHeight:integer read FPageHeight write FPageHeight;
@@ -271,6 +296,7 @@ type
 
 function PDFCompatibleText (astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 function NumberToText (Value:double):string;
+function EncodePDFText(const text: string): string;
 
 procedure GetBitmapInfo (stream:TStream; var width, height, imagesize:integer;FMemBits:TMemoryStream;
  var indexed:boolean;var bitsperpixel,usedcolors:integer;var palette:string);
@@ -278,9 +304,14 @@ procedure GetJPegInfo(astream:TStream;var width,height:integer;var format:string
 
 implementation
 
-function IntToHex(nvalue:integer):string;
+function IntToHex4(nvalue:integer):string;
 begin
  Result:=Format('%4.4x',[nvalue]);
+end;
+
+function IntToHex(nvalue:integer):string;
+begin
+ Result:=Format('%2.2x',[nvalue]);
 end;
 
 const
@@ -440,7 +471,9 @@ const
 // Writes a line into a Stream that is add #13+#10
 procedure SWriteLine(Stream:TStream;astring:string);
 begin
- astring:=astring+#13+#10;
+ //  astring:=astring+#13+#10;
+ // Only EOL for better compatibility
+ astring:=astring+#10;
  WriteStringToStream(astring,Stream);
 end;
 
@@ -499,6 +532,9 @@ constructor TRpPDFFile.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
 
+ NumberFormatSettings:=TFormatSettings.Create;
+ NumberFormatSettings.DecimalSeparator:='.';
+ FInternalFDocCreationDate:=now;
  FPageInfos:=TStringList.create;
  FCanvas:=TRpPDFCanvas.Create(Self);
  FMainPDF:=TMemoryStream.Create;
@@ -536,13 +572,36 @@ begin
  inherited Destroy;
 end;
 
-procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string; stream: TMemoryStream);
+
+procedure TRpPDFFile.NewAnnotation(posx,posy,width,height: integer; annotation: string);
+var
+ ann: TPDFAnnotation;
+ aobj:TRpPageInfo;
+begin
+ aobj:=TRpPageInfo(FPageInfos.Objects[FPage-1]);
+ ann:=TPDFAnnotation.Create;
+ ann.PosX:=posx;
+ ann.PosY:=posy;
+ ann.Width:=width;
+ ann.Page:=FPage;
+ ann.Height:=height;
+ ann.Annotation:=annotation;
+ SetLength(aobj.PageAnnotations,Length(aobj.PageAnnotations)+1);
+ aobj.PageAnnotations[Length(aobj.PageAnnotations)-1]:=ann;
+end;
+
+procedure TRpPDFFile.NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+     description,creationDate,ModificationDate: string;  stream: TMemoryStream);
 var embededFile: TEmbeddedFile;
 begin
  embededFile:=TEmbeddedFile.Create;
  embededFile.FileName:=fileName;
+ embededFile.Description:=description;
  embededFile.Stream:=stream;
  embededFile.MimeType:=mimeType;
+ embededFile.AFRelationShip:=AFRelationShip;
+ embededFile.CreationDate:=creationDate;
+ embededFile.ModificationDate:=ModificationDate;
  SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
  EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
 end;
@@ -603,22 +662,35 @@ begin
    SWriteLine(FMainPDF,PDF_HEADER_1_4);
    AddToOffset(Length(PDF_HEADER_1_4));
  end;
- FCreationDate:=DateToISO8601(now);
  // Writes Doc info
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
  SWriteLine(FTempStream,'<<');
- SWriteLine(FTempStream,'/Producer ('+FDocProducer+')');
- SWriteLine(FTempStream,'/Author ('+FDocAuthor+')');
- SWriteLine(FTempStream,'/CreationDate (D:'+FCreationDate+')');
+ SWriteLine(FTempStream,'/Producer '+EncodePDFText(FDocProducer));
+ SWriteLine(FTempStream,'/Author '+EncodePDFText(FDocAuthor));
+ if Length(FDocCreationDate) = 0 then
+ begin
+  SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+ end
+ else
+ begin
+  SWriteLine(FTempStream,'/CreationDate (D:'+  FDocCreationDate+')');
+ end;
  if (FPDFConformance <> PDF_A_3) then
-   SWriteLine(FTempStream,'/Creator ('+FDocCreator+')');
+   SWriteLine(FTempStream,'/Creator '+EncodePDFText(FDocCreator));
  if (Length(FDocKeywords)>0) then
-  SWriteLine(FTempStream,'/Keywords ('+FDocKeywords+')');
- SWriteLine(FTempStream,'/Subject ('+FDocSubject+')');
- SWriteLine(FTempStream,'/Title ('+FDocTitle+')');
- SWriteLine(FTempStream,'/ModDate ()');
+  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords));
+ SWriteLine(FTempStream,'/Subject '+EncodePdfText(FDocSubject));
+ SWriteLine(FTempStream,'/Title '+EncodePdfText(FDocTitle));
+ if Length(FDocModificationDate) = 0 then
+ begin
+ // SWriteLine(FTempStream,'/ModDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+ end
+ else
+ begin
+ // SWriteLine(FTempStream,'/ModDate (D:'+  FDocModificationDate+')');
+ end;
  if (FPDFConformance = PDF_A_3) then
  begin
   SWriteLine(FTempStream,'/GTS_PDFXVersion (PDF/A-3B)');
@@ -691,6 +763,74 @@ begin
  SWriteLine(dest,'endstream');
 end;
 
+procedure TRpPDFFile.WriteEmbeddedFiles;
+var i:integer;
+  efile:TEmbeddedFile;
+  ResourceStream: integer;
+begin
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  efile:=EmbeddedFiles[i];
+  FObjectCount:=FObjectCount+1;
+  ResourceStream:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /EmbeddedFile ');
+  if Length(efile.MimeType)>0 then
+  begin
+   SWriteLine(FTempStream,'   /Subtype /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
+   SWriteLine(FTempStream,'   /MimeType ' + EncodePDFText(efile.MimeType));
+  end;
+  if (efile.ModificationDate.Length>0) then
+  begin
+    SWriteLine(FTempStream,'   /Params <<');
+    SWriteLine(FTempStream,'   /ModDate (D:'+efile.ModificationDate+')');
+    SWriteLine(FTempStream,'   >>');
+  end;
+  efile.Stream.Position:=0;
+  WriteStream(efile.Stream, FTempStream);
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+
+  FObjectCount:=FObjectCount+1;
+  efile.ResourceNumber:=FObjectCount;
+  FTempStream.Clear;
+  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  SWriteLine(FTempStream,'<< /Type /Filespec ');
+  SWriteLine(FTempStream,'   /F ' + EncodePDFText(efile.FileName));
+
+  SWriteLine(FTempStream,'   /Desc '+EncodePDFText(efile.Description));
+  SWriteLine(FTempStream,'   /UF ' + EncodePDFText(efile.FileName));
+  SWriteLine(FTempStream,'   /EF << /F ' + IntToStr(ResourceStream) + ' 0 R >>');
+
+  SWriteLine(FTempStream,'   /AFRelationship /'+efile.AFRelationShipToString());
+  SWriteLine(FTempStream,'/Params <<');
+  SWriteLine(FTempStream,'  /Size '+IntToStr(efile.Stream.Size));
+  if Length(efile.MimeType)>0 then
+  begin
+   SWriteLine(FTempStream,'  /MIMEType '+EncodePDFText(efile.MimeType));
+  end;
+
+  if Length(efile.CreationDate)>0 then
+  begin
+   SWriteLine(FTempStream,'  /CreationDate (D:'+efile.CreationDate+')');
+  end;
+  if Length(efile.ModificationDate)>0 then
+  begin
+   SWriteLine(FTempStream,'  /ModificationDate (D:'+efile.ModificationDate+')');
+  end;
+
+  SWriteLine(FTempStream,'  >>');
+  SWriteLine(FTempStream,'>>');
+  SWriteLine(FTempStream,'endobj');
+  AddToOffset(FTempStream.Size);
+  FTempStream.Position:=0;
+  FTempStream.SaveToStream(FMainPDF);
+ end;
+end;
+
 procedure TRpPDFFile.SetColorSpace;
 var ColorProfileObject: integer;
 ICCProfile: TMemoryStream;
@@ -755,50 +895,107 @@ end;
 procedure TRpPDFFile.SetXMPMetadata;
 var
  FXMPStream: TMemoryStream;
+ i:integer;
+ efile: TEmbeddedFile;
+ keywords:TArray<string>;
+ keyword: string;
 begin
  FXMPStream:=TMemoryStream.Create();
  try
   SWriteLine(FXMPStream, '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
-  SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">');
-  SWriteLine(FXMPStream, '  <rdf:Description rdf:about=""');
+  SWriteLine(FXMPStream, '<x:xmpmeta xmlns:x="adobe:ns:meta/">');
+  SWriteLine(FXMPStream, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"');
   SWriteLine(FXMPStream, '    xmlns:xmp="http://ns.adobe.com/xap/1.0/"');
   SWriteLine(FXMPStream, '    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"');
   SWriteLine(FXMPStream, '    xmlns:dc="http://purl.org/dc/elements/1.1/"');
   SWriteLine(FXMPStream, '    xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"');
+  //if Length(FDocXMPSchemas)>0 then
+  //begin
+  // SWriteLine(FXMPStream, FDocXMPSchemas);
+  //end;
   SWriteLine(FXMPStream, '    xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">');
+  SWriteLine(FXMPStream, '  <rdf:Description rdf:about="">');
   SWriteLine(FXMPStream, '    <dc:creator>');
   SWriteLine(FXMPStream, '      <rdf:Seq>');
-  SWriteLine(FXMPStream, '        <rdf:li>' + FDocAuthor +'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li>' + EscapeXML(FDocAuthor) +'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Seq>');
   SWriteLine(FXMPStream, '    </dc:creator>');
   SWriteLine(FXMPStream, '    <dc:title>');
   SWriteLine(FXMPStream, '      <rdf:Alt>');
-  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocTitle+'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocTitle)+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:title>');
   if (Length(FDocKeywords)>0) then
   begin
-   SWriteLine(FXMPStream, '    <dc:keywords>');
-   SWriteLine(FXMPStream, '      <rdf:Alt>');
-   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocKeywords+'</rdf:li>');
-   SWriteLine(FXMPStream, '      </rdf:Alt>');
-   SWriteLine(FXMPStream, '    </dc:keywords>');
+   SWriteLine(FXMPStream, '    <dc:subject>');
+   SWriteLine(FXMPStream, '     <rdf:Bag>');
+   keywords:=FDocKeywords.Split([',']);
+   for keyword in keywords do
+   begin
+    SWriteLine(FXMPStream, '      <rdf:li>'+EscapeXML(keyword)+'</rdf:li>');
+   end;
+   SWriteLine(FXMPStream, '     </rdf:Bag>');
+   SWriteLine(FXMPStream, '    </dc:subject>');
+//   SWriteLine(FXMPStream, '      <rdf:Alt>');
+//   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocKeywords)+'</rdf:li>');
+//   SWriteLine(FXMPStream, '      </rdf:Alt>');
   end;
   SWriteLine(FXMPStream, '    <dc:description>');
   SWriteLine(FXMPStream, '      <rdf:Alt>');
-  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+FDocSubject+'</rdf:li>');
+  SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocSubject)+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:description>');
-  SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FCreationDate (* 2024-10-02T15:29:15+00:00 *)
+  if Length(FDocCreationDate)= 0 then
+   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+DateToISO8601(FInternalFDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
+     +'</xmp:CreateDate>')
+  else
+   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+EscapeXML(FDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
      +'</xmp:CreateDate>');
+//  if Length(FDocModificationDate) > 0 then
+//  begin
+ //  SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+EscapeXML(FDocModificationDate)+'</xmp:ModifyDate>');
+ // end;
+  if Length(FDocProducer) > 0 then
+  begin
+   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+EscapeXML(FDocProducer)+'</xmp:CreatorTool>');
+  end;
   // SWriteLine(FXMPStream, '    <xmp:ModifyDate>2024-10-02T15:29:15+00:00</xmp:ModifyDate>');
   //SWriteLine(FXMPStream, '    <xmpMM:DocumentID>uuid:12345678-1234-1234-1234-1234567890ab</xmpMM:DocumentID>');
   //SWriteLine(FXMPStream, '    <xmpMM:InstanceID>uuid:12345678-1234-1234-1234-1234567890ac</xmpMM:InstanceID>');
   SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
   SWriteLine(FXMPStream, '    <pdfaid:conformance>B</pdfaid:conformance>');
+//  if Length(FDocXMPContent)>0 then
+//  begin
+//   SWriteLine(FXMPStream, /FDocXMPContent);
+//  end;
   // SWriteLine(FXMPStream, '    <xmp:CreatorTool>My PDF Creator Tool</xmp:CreatorTool>');
+
+
+(*  if Length(EmbeddedFiles)>0 then
+  begin
+   SWriteLine(FXMPStream, '    <xmpMM:EmbeddedFiles>');
+   SWriteLine(FXMPStream, '     <rdf:Bag>');
+   for i:=0 to Length(EmbeddedFiles)-1 do
+   begin
+    efile:=EmbeddedFiles[i];
+    SWriteLine(FXMPStream, '       <rdf:li>');
+    SWriteLine(FXMPStream, '        <rdf:Description>');
+    SWriteLine(FXMPStream, '         <xmpMM:FileName>'+efile.FileName+'</xmpMM:FileName>');
+    SWriteLine(FXMPStream, '         <xmpMM:Format>'+efile.MimeType+'</xmpMM:Format>');
+    SWriteLine(FXMPStream, '        </rdf:Description>');
+    SWriteLine(FXMPStream, '       </rdf:li>');
+   end;
+   SWriteLine(FXMPStream, '     </rdf:Bag>');
+   SWriteLine(FXMPStream, '    </xmpMM:EmbeddedFiles>');
+  end;*)
+
   SWriteLine(FXMPStream, '  </rdf:Description>');
+  if Length(FDocXMPContent)>0 then
+  begin
+   SWriteLine(FXMPStream, FDocXMPContent);
+  end;
   SWriteLine(FXMPStream, '</rdf:RDF>');
+  SWriteLine(FXMPStream, '</x:xmpmeta>');
   SWriteLine(FXMPStream, '<?xpacket end="w"?>');
   FXMPStream.Seek(0,TSeekOrigin.soBeginning);
 
@@ -840,17 +1037,20 @@ begin
   SWriteLine(FTempStream,'/Filter [/FlateDecode]');
 {$ENDIF}
  SWriteLine(FTempStream,' >>');
- FStreamSize1:=FTempStream.Size;
  SWriteLine(FTempStream,'stream');
  FsTempStream.Clear;
 end;
 
 procedure TRpPDFFile.EndStream;
 var TempSize: LongInt;
+var StreamSize: Longint;
+var CurrentSize: Longint;
 {$IFDEF USEZLIB}
  FCompressionStream: TCompressionStream;
 {$ENDIF}
 begin
+ StreamSize:=FsTempStream.Size;
+ CurrentSize:=FTempStream.Size;
 {$IFDEF USEZLIB}
  if FCompressed then
  begin
@@ -858,10 +1058,10 @@ begin
   try
    FsTempStream.Seek(0,soBeginning);
    CopyStreamContent(FsTempStream, FCompressionStream);
-   // FCompressionStream.CopyFrom(FsTempStream);
   finally
    FCompressionStream.Free;
   end;
+  StreamSize:=FTempStream.Size-CurrentSize;
  end
  else
 {$ENDIF}
@@ -872,18 +1072,13 @@ begin
  SWriteLine(FTempStream,'');
  SWriteLine(FTempStream,'endstream');
  SWriteLine(FTempStream,'endobj');
- FStreamSize2:=6;
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
 
- if (FPDFConformance = PDF_A_3) then
-  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-7
- else
-  TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
- SWriteLine(FTempStream,IntToStr(TempSize));
+ SWriteLine(FTempStream,IntToStr(StreamSize));
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
@@ -899,7 +1094,9 @@ end;
 
 procedure TRpPDFFile.NewPage(NPageWidth,NPageHeight:integer);
 var
- TempSize:LongInt;
+// TempSize:LongInt;
+ StreamSize: LongInt;
+ CurrentSize: LongInt;
  aobj:TRpPageInfo;
 {$IFDEF USEZLIB}
  FCompressionStream: TCompressionStream;
@@ -916,6 +1113,8 @@ begin
 
  FPage:=FPage+1;
 
+ StreamSize:=FsTempStream.Size;
+ CurrentSize:=FTempStream.Size;
 {$IFDEF USEZLIB}
  if FCompressed then
  begin
@@ -927,22 +1126,22 @@ begin
   finally
    FCompressionStream.Free;
   end;
+  StreamSize:=FTempStream.Size-CurrentSize;
  end
  else
 {$ENDIF}
   FsTempStream.SaveToStream(FTempStream);
 
  FsTempStream.Clear;
+ SWriteLine(FTempStream,'');
  SWriteLine(FTempStream,'endstream');
  SWriteLine(FTempStream,'endobj');
- FStreamSize2:=6;
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
- TempSize:=FTempStream.Size-FStreamSize1-FStreamSize2-Length('Stream')-Length('endstream')-6;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
- SWriteLine(FTempStream,IntToStr(TempSize));
+ SWriteLine(FTempStream,IntToStr(StreamSize));
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
  FTempStream.SaveToStream(FMainPDF);
@@ -957,7 +1156,6 @@ begin
 {$ENDIF}
  SWriteLine(FTempStream,' >>');
 
- FStreamSize1:=FTempStream.Size;
  SWriteLine(FTempStream,'stream');
 end;
 
@@ -1080,12 +1278,76 @@ begin
  FTempStream.SaveToStream(FMainPDF);
 end;
 
+procedure TRpPDFFile.AddAnnotations;
+var
+ i:integer;
+ aobj:TRpPageInfo;
+ anot,coords: string;
+ annotation:TPDFAnnotation;
+begin
+ for i:=0 to FPageInfos.Count-1 do
+ begin
+  aobj:=TRpPageInfo(FPageInfos.Objects[i]);
+  for annotation in aobj.PageAnnotations do
+  begin
+   FTempStream.Clear;
+   FObjectCount := FObjectCount + 1;
+   annotation.StreamNumber:=FObjectCount;
+   SWriteLine(FTempStream, FObjectCount.ToString() + ' 0 obj');
+   SWriteLine(FTempStream, '<< /Type /Annot');
+  	anot := annotation.Annotation;
+   if ( (Length(anot)>4) and (Uppercase(anot.Substring(0,4))='URL:') ) then
+   begin
+    SWriteLine(FTempStream, '  /Subtype /Link');
+ 	 anot := anot.Substring(4, anot.Length);
+    coords := Canvas.UnitsToTextX(annotation.PosX) + ' ' + Canvas.UnitsToTextY(annotation.PosY+annotation.Height) +
+                       ' ' + Canvas.UnitsToTextX(annotation.PosX+annotation.Width)
+ 					  + ' ' + Canvas.UnitsToTextY(annotation.PosY);
+    SWriteLine(FTempStream, '   /Rect ['+coords+']');
+    SWriteLine(FTempStream, '   /A << /Type /Action');
+    SWriteLine(FTempStream, '        /S /URI');
+    SWriteLine(FTempStream, '        /URI ' + EncodePDFText(anot));
+    SWriteLine(FTempStream, '   >>');
+   end
+   else
+   begin
+    SWriteLine(FTempStream, '   /Subtype /Text');
+    coords := Canvas.UnitsToTextX(annotation.PosX) + ' ' + Canvas.UnitsToTextY(annotation.PosY+annotation.Height) +
+                       ' ' + Canvas.UnitsToTextX(annotation.PosX+annotation.Width)
+ 					  + ' ' + Canvas.UnitsToTextY(annotation.PosY);
+    SWriteLine(FTempStream, '   /Border [0 0 2]');
+    SWriteLine(FTempStream, '   /Rect [' + coords + ']');
+    SWriteLine(FTempStream, '   /Contents ' + EncodePDFText(anot));
+    SWriteLine(FTempStream, '   /Open false');
+    SWriteLine(FTempStream, '   /C [1 1 0]');
+   end;
+   SWriteLine(FTempStream, '>>');
+   AddToOffset(FTempStream.Size);
+   FTempStream.SaveToStream(FMainPDF);
+  end;
+ end;
+end;
+
+
 procedure TrpPDFFile.SetPageObject(index:integer);
 var
  aobj:TRpPageInfo;
+ annotationsString, anot: string;
+ annotation:TPDFAnnotation;
 begin
  aobj:=TRpPageInfo(FPageInfos.Objects[index-1]);
-
+ for annotation in aobj.PageAnnotations do
+ begin
+  if length(annotationsString)=0 then
+  begin
+   annotationsString:=annotationsString+'[';
+  end
+  else
+  begin
+   annotationsString:=annotationsString+' ';
+  end;
+  annotationsString:=annotationsString + IntToStr(annotation.StreamNumber) + ' 0 R';
+ end;
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
@@ -1096,6 +1358,11 @@ begin
   Canvas.UnitsToTextX(aobj.APageWidth)+' '+Canvas.UnitsToTextX(aobj.APageHEight)+']');
  SWriteLine(FTempStream,'/Contents '+FPages.Strings[FCurrentSetPageObject]+' 0 R');
  SWriteLine(FTempStream,'/Resources '+IntToStr(FResourceNum)+' 0 R');
+ if Length(annotationsString) > 0 then
+ begin
+  annotationsString:= annotationsString +']';
+  SWriteLine(FTempStream, '/Annots ' + annotationsString);
+ end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
@@ -1220,6 +1487,11 @@ end;
 
 
 procedure TrpPDFFile.SetCatalog;
+var
+ files:string;
+ efile:TEmbeddedFile;
+ i:integer;
+ resources:string;
 begin
  FObjectCount:=FObjectCount+1;
  FCatalogNum:=FObjectCount;
@@ -1232,6 +1504,26 @@ begin
  begin
   SWriteLine(FTempStream,'/Metadata '+IntToStr(FXMPMetadataObject)+' 0 R');
   SWriteLine(FTempStream,'/OutputIntents ['+IntToStr(FOutputIntentObject)+' 0 R]');
+  if Length(EmbeddedFiles)>0 then
+  begin
+   files:='[';
+   resources:='[';
+   for i:=0 to Length(EmbeddedFiles)-1 do
+   begin
+    efile:=EmbeddedFiles[i];
+    files:=files + EncodePDFText(efile.FileName) + ' ' + IntToStr(efile.ResourceNumber)
+      + ' 0 R' ;
+    resources:=resources + ' ' + IntToStr(efile.ResourceNumber) + ' 0 R' ;
+   end;
+   files:=files + ']';
+   resources:=resources + ']';
+   SWriteLine(FTempStream,'/Names <<');
+   SWriteLine(FTempStream,'  /EmbeddedFiles << /Names '+ files + ' >>');
+   SWriteLine(FTempStream,'>>');
+   // /AF << /Names [ (pdfa_validation1.xml) 18 0 R (cajass.png) 20 0 R] >>
+   //    SWriteLine(FTempStream,'/AF << /Names '+ files + ' >> ');
+   SWriteLine(FTempStream,'/AF '+resources);
+  end;
  end;
 
  SWriteLine(FTempStream,'>>');
@@ -1307,6 +1599,7 @@ begin
  FTempStream.SaveToStream(FMainPDF);
 end;
 
+
 procedure TRpPDFFile.EndDoc;
 var
  i:integer;
@@ -1317,6 +1610,7 @@ begin
  EndStream;
  SetOutLine;
  SetFontType;
+ AddAnnotations;
  SetPages;
  SetArray;
  for i:= 1 to FImageCount do
@@ -1325,6 +1619,7 @@ begin
  begin
   SetPageObject(i);
  end;
+ WriteEmbeddedFiles;
  SetCatalog;
  SetXref;
  SWriteLine(FMainPDF,'%%EOF');
@@ -3391,12 +3686,12 @@ begin
  if index<0 then
  begin
   adata:=TRpTTFontData.Create;
-  adata.fontdata:=TMemoryStream.Create;
+  adata.fontdata:=TAdvFontData.Create;
   adata.embedded:=false;
   adata.Objectname:=searchname;
   FFontTTData.AddObject(searchname,adata);
   InfoProvider.FillFontData(Font,adata);
-  if adata.fontdata.size>0 then
+  if adata.fontdata.FontData.size>0 then
   begin
     // In PDF_A_3 all fonts must be embedded
     if (PDFConformance = PDF_A_3) then
@@ -3431,6 +3726,7 @@ var
  awidths:string;
  cmaphead,fromTo:AnsiString;
  FCMapStream:TMemoryStream;
+ FontStream:TMemoryStream;
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -3468,10 +3764,14 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-   adata.fontdata.Seek(0,soFromBeginning);
-   WriteStream(adata.fontdata,FTempStream);
+   FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+   try
+    WriteStream(FontStream,FTempStream);
+   finally
+    FontStream.Free;
+   end;
    adata.ObjectIndex:=FObjectCount;
-   adata.fontdata.Seek(0,soFromBeginning);
+   adata.fontdata.FontData.Seek(0,soFromBeginning);
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
    FTempStream.SaveToStream(FMainPDF);
@@ -3568,8 +3868,8 @@ begin
      begin
       if adata.loaded[index] then
       begin
-       fromTo:='<'+ IntToHex(Integer(adata.loadedglyphs[index]))+'> ';
-       cmaphead:=cmaphead+fromTo+' <'+IntToHex(index)+'>'+LINE_FEED;
+       fromTo:='<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ';
+       cmaphead:=cmaphead+fromTo+' <'+IntToHex4(index)+'>'+LINE_FEED;
       end;
      end;
      cmaphead:=cmaphead+'endbfchar' +LINE_FEED;
@@ -3617,7 +3917,7 @@ begin
    SWriteLine(FTempStream,'/Encoding /Identity-H');
    //SWriteLine(FTempStream,'/Encoding /PDFDocEncoding');
    SWriteLine(FTempStream,'/DescendantFonts [ '+IntToStr(FObjectCount+1)+' 0 R ]');
-   SWriteLine(FTempStream,'/ToUnicode '+IntToStr(adata.ToUnicodeIndex) + ' 0 R ');
+   SWriteLine(FTempStream,'/ToUnicode '+IntToStr(adata.ToUnicodeIndex) + ' 0 R');
 
    SWriteLine(FTempStream,'>>');
    SWriteLine(FTempStream,'endobj');
@@ -3650,7 +3950,7 @@ begin
    repeat
     if adata.loaded[index] then
     begin
-     awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+IntToStr(adata.loadedwidths[index])+'] ';
+     awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.0',adata.loadedwidths[index], NumberFormatSettings)+'] ';
 //     awidths:=awidths+IntToStr(index)+'['+IntToStr(adata.loadedwidths[index])+'] ';
      acount:=acount+1;
      if (acount mod 8)=7 then
@@ -3721,7 +4021,7 @@ begin
    begin
     index:=adata.firstloaded;
     repeat
-     awidths:=awidths+IntToStr(adata.loadedwidths[index])+' ';
+     awidths:=awidths+FormatFloat('0.0', adata.loadedwidths[index], NumberFormatSettings)+' ';
      inc(index);
      if (index mod 8)=7 then
       awidths:=awidths+LINE_FEED;
@@ -3915,6 +4215,57 @@ begin
   end;
   Result:=Result+')';
  end;
+end;
+
+function EncodePDFText(const text: string): string;
+var
+  UTF16BEBytes: TBytes;
+  i: Integer;
+  HexString: string;
+  IsASCII: Boolean;
+begin
+  // Verificar si todos los caracteres son ASCII
+  IsASCII := True;
+  for i := 1 to Length(text) do
+  begin
+    if Ord(text[i]) > 127 then
+    begin
+      IsASCII := False;
+      Break;
+    end;
+  end;
+  // Si todos los caracteres son ASCII, usar formato de cadena normal con paréntesis
+  if IsASCII then
+  begin
+    Result := '(';
+    for i := 1 to Length(text) do
+    begin
+      // Escape special chars
+      case text[i] of
+        '(', ')', '\':
+          Result := Result + '\' + text[i];
+      else
+        Result := Result + text[i];
+      end;
+    end;
+    Result := Result + ')';
+  end
+  else
+  begin
+    // Convert to UTF-16BE
+    UTF16BEBytes := TEncoding.BigEndianUnicode.GetBytes(text);
+    // Crear el resultado en formato hexadecimal PDF: Comienza con el BOM UTF-16BE 0xFEFF
+    Result := '<FEFF';
+    // Convertir cada byte a su representación hexadecimal
+    for i := 0 to Length(UTF16BEBytes) - 1 do
+    begin
+      // Formatear cada byte como hexadecimal de dos dígitos
+      HexString := IntToHex(UTF16BEBytes[i]);
+      Result := Result + HexString;
+    end;
+    // Cerrar la cadena en formato hexadecimal PDF
+    Result := Result + '>';
+  end;
 end;
 
 procedure TRpPDFFile.FreePageInfos;

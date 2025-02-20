@@ -41,7 +41,7 @@ const
 {$ENDIF}
 
 const
- RM_VERSION='3.6.0';
+ RM_VERSION='3.7.6';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
@@ -1373,7 +1373,30 @@ var
   SRpAutoRangeMin:WideString = 'Auto Min';
   SRpAutoRangeNone:WideString = 'Auto None';
 
-
+  SRpPDFOptions: WideString = 'PDF options';
+  SRpConformance: WideString = 'Conformance';
+  SRpCompressed: WideString = 'Compressed';
+  SRpMimetype: WideString = 'Mime type';
+  SRpSize: WideString = 'Size';
+  SRpDescription: WideString = 'Description';
+  SRpRelationShip: WideString = 'Relationship';
+  SRpFilename: WideString = 'File name';
+  SRpEmbeddedFiles: WideString = 'Embedded files';
+  SRpDocAuthor: WideString = 'Author';
+  SRpDocTitle: WideString = 'Title';
+  SRpDocSubject: WideString = 'Subject';
+  SRpDocCreationDate: WideString = 'Creation date';
+  SRpDocModifyDate: WideString = 'Modify date';
+  SRpDocKeywords: WideString = 'Keywords';
+  SRpDocProducer: WideString = 'Producer';
+  SRpDocCreator: WideString = 'Creator';
+  SRpMetadata: WideString = 'Metadata';
+  SRpEmbeddedFile: WideString = 'Embedded file';
+  SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModify: WideString = 'Modify';
+  SRpXMPMetadata: WideString = 'XMP Metadata';
+  SRpSAnnotation: WideString = 'Annotation Expression';
 
 implementation
 
@@ -2387,6 +2410,30 @@ begin
   TranslateVar(1454,SRpAutoRangeMaximum);
   TranslateVar(1455,SRpAutoRangeMin);
   TranslateVar(1456,SRpAutoRangeNone);
+
+  TranslateVar(1457,SRpPDFOptions);
+  TranslateVar(1458,SRpConformance);
+  TranslateVar(1459,SRpCompressed);
+  TranslateVar(1460,SRpMimetype);
+  TranslateVar(1461,SRpSize);
+  TranslateVar(1462,SRpDescription);
+  TranslateVar(1463,SRpFilename);
+  TranslateVar(1464,SRpRelationShip);
+  TranslateVar(1465,SRpEmbeddedFiles);
+  TranslateVar(1466,SRpDocAuthor);
+  TranslateVar(1467,SRpDocTitle);
+  TranslateVar(1468,SRpDocSubject);
+  TranslateVar(1469,SRpDocCreationDate);
+  TranslateVar(1470,SRpDocModifyDate);
+  TranslateVar(1471,SRpDocKeywords);
+  TranslateVar(1472,SRpDocProducer);
+  TranslateVar(1473,SRpDocCreator);
+  TranslateVar(1474,SRpMetadata);
+  TranslateVar(1475,SRpEmbeddedFile);
+  TranslateVar(1476,SRpCreationDateISO);
+  TranslateVar(1477,SRpModificationDateISO);
+  TranslateVar(1478,SRpModify);
+  TranslateVar(1479,SRpXMPmetadata);
 
  end;
 

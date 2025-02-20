@@ -165,6 +165,8 @@ end;
 
 procedure TRpPDFDriver.NewDocument(report:TrpMetafileReport;hardwarecopies:integer;
    hardwarecollate:boolean);
+var i:integer;
+ efile:TEmbeddedFile;
 begin
  if Assigned(FPDFFile) then
  begin
@@ -179,10 +181,27 @@ begin
  end;
  FPDFFile.Compressed:=Compressed;
  FPDFFile.PDFConformance:=FPDFConformance;
+ FPDFFile.DocTitle:=report.DocTitle;
+ FPDFFile.DocAuthor:=report.DocAuthor;
+ FPDFFile.DocCreator:=report.DocCreator;
+ FPDFFile.DocKeywords:=report.DocKeywords;
+ FPDFFile.DocSubject:=report.DocSubject;
+ FPDFFile.DocCreationDate:=report.DocCreationDate;
+ FPDFFile.DocModificationDate:=report.DocModificationDate;
+ FPDFFile.DocProducer:=report.DocProducer;
+ FPDFFIle.DocXMPContent:=report.DocXMPContent;
+
+
  FPDFFile.PageWidth:=report.CustomX;
  FPDFFile.PageHeight:=report.CustomY;
  FPageWidth:=FPDFFile.PageWidth;
  FPageHeight:=FPDFFile.PageHeight;
+ for i:=0 to Length(report.EmbeddedFiles)-1 do
+ begin
+  efile:=report.EmbeddedFiles[i];
+  FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.AFRelationShip,
+    efile.Description,efile.CreationDate, efile.ModificationDate, efile.Stream);
+ end;
  FPDFFile.BeginDoc;
 end;
 
@@ -266,6 +285,7 @@ var
  stream:TStream;
  astring:WideString;
  intimageindex:integer;
+ annotation: string;
 // bitmap:TBitmap;
 begin
  posx:=obj.Left;
@@ -283,7 +303,10 @@ begin
 {$ENDIF}
     FPDFFile.Canvas.Font.Style:=obj.FontStyle;
     // Transparent ?
-    FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
+    if (PDFConformance = TPDFConformanceType.PDF_A_3) then
+      FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded
+    else
+      FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
     FPDFFile.Canvas.Font.Size:=obj.FontSize;
     FPDFFile.Canvas.Font.Color:=obj.FontColor;
     FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
@@ -302,6 +325,9 @@ begin
     astring:=page.GetText(Obj);
     FPDFFile.Canvas.TextRect(rec,astring,aalign,obj.cuttext,
     obj.WordWrap,obj.FontRotation,obj.RightToLeft);
+    annotation:=page.GetAnnotation(obj);
+    if Length(annotation)>0 then
+      FPDFFile.NewAnnotation(rec.Left,rec.Top,rec.Width,rec.Height, annotation);
    end;
   rpMetaDraw:
    begin
@@ -368,6 +394,9 @@ begin
        FPDFFile.Canvas.Line(X+PosX, Y+PosY+H,X+PosX+W, Y+PosY);
       end;
     end;
+    annotation:=page.GetAnnotation(obj);
+    if Length(annotation)>0 then
+      FPDFFile.NewAnnotation(X + PosX,Y + posY,W,H, annotation);
    end;
   rpMetaImage:
    begin
@@ -403,6 +432,9 @@ begin
         FPDFFile.Canvas.DrawImage(rec,stream,CONS_PDFRES,true,true,intimageindex);
        end;
      end;
+     annotation:=page.GetAnnotation(obj);
+     if Length(annotation)>0 then
+      FPDFFile.NewAnnotation(rec.Left,rec.Top,rec.Width,rec.Height, annotation);
     end;
    end;
  end;
@@ -839,10 +871,10 @@ begin
  horzgap:=CONS_HORZGAP;
  // Draws coordinate system
  page.NewDrawObject(aposy,aposx+horzgap,1,nchart.PrintHeight-vertgap,
-  integer(rpsVertLine),0,0,0,0,0);
+  integer(rpsVertLine),0,0,0,0,0,'');
  // Draws coordinate system
  page.NewDrawObject(aposy+nchart.PrintHeight-vertgap,aposx+horzgap,nchart.PrintWidth-horzgap,1,
-  integer(rpsHorzLine),0,0,0,0,0);
+  integer(rpsHorzLine),0,0,0,0,0,'');
  // Draw Texts for scales
  numvlabels:=(nchart.PrintHeight-vertgap) div gridvsep;
  // Value relation
@@ -853,7 +885,7 @@ begin
   posy:=nchart.PrintHeight-vertgap-i*gridvsep;
   // Draw the line
   page.NewDrawObject(aposy+posy,aposx+horzgap,nchart.PrintWidth-horzgap,1,
-   integer(rpsHorzLine),0,0,1,0,0);
+   integer(rpsHorzLine),0,0,1,0,0,'');
   // Draw the caption
   aText:=FormatFloat('########0.00',avalue);
   aTextObj.Text:=aText;
@@ -899,7 +931,7 @@ begin
      shape:=rpsOblique1;
      // Draw the line
       page.NewDrawObject(aposy+origin.Y,aposx+origin.X,xdesp,Destination.Y-Origin.Y,
-       integer(shape),0,0,0,0,pencolor);
+       integer(shape),0,0,0,0,pencolor,'');
     end
     else
     begin
@@ -907,13 +939,13 @@ begin
      begin
       shape:=rpsOblique2;
       page.NewDrawObject(aposy+origin.Y-(origin.Y-destination.Y),aposx+origin.X,xdesp,Origin.Y-Destination.Y,
-       integer(shape),0,0,0,0,pencolor);
+       integer(shape),0,0,0,0,pencolor,'');
      end
      else
      begin
       shape:=rpsHorzLine;
       page.NewDrawObject(aposy+origin.Y,aposx+origin.X,xdesp,1,
-       integer(shape),0,0,0,0,pencolor);
+       integer(shape),0,0,0,0,pencolor,'');
      end;
     end;
     Origin:=Destination;

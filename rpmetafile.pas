@@ -159,6 +159,7 @@ type
   WordWrap:boolean;
   RightToLeft:Boolean;
   PrintStep:TRpSelectFontStep;
+  Annotation: string;
  end;
 
 
@@ -169,7 +170,8 @@ type
 // size *4
 {$IFNDEF DOTNETDBUGS}
  TRpMetaObject=packed record
-  Top,Left,Width,Height:integer;
+  Top,Left,Width,Height, AnnotationP,AnnotationS:integer;
+
   case Metatype:TRpMetaObjectType of
    rpMetaText:
     (TextP,TextS:integer;
@@ -218,7 +220,7 @@ type
 {$ENDIF}
 {$IFDEF DOTNETDBUGS}
  TRpMetaObject=packed record
-  Top,Left,Width,Height:integer;
+  Top,Left,Width,Height, AnnotationP,AnnotationS:integer;
 //  case Metatype:TRpMetaObjectType of
    Metatype:TRpMetaObjectType;
 //   rpMetaText:
@@ -333,14 +335,15 @@ type
     aText:WideString;Line,Position,Size:Integer;DoNewLine:boolean);
    procedure NewDrawObject(Top,Left,Width,Height:integer;
     DrawStyle:integer;BrushStyle:integer;BrushColor:integer;
-    PenStyle:integer;PenWidth:integer; PenColor:integer);
+    PenStyle:integer;PenWidth:integer; PenColor:integer; Annotation: string);
    function NewImageObject(Top,Left,Width,Height:integer;
-    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean):integer;
+    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean; Annotation: string):integer;
    procedure NewImageObjectShared(Top,Left,Width,Height:integer;
-    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean);
+    CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean; Annotation: string);
    function GetText(arecord:TRpMetaObject):widestring;
    function GetWFontName(arecord:TRpMetaObject):widestring;
    function GetLFontName(arecord:TRpMetaObject):widestring;
+   function GetAnnotation(arecord:TRpMetaObject):widestring;
    function GetStream(arecord:TRpMetaObject):TMemoryStream;
    property Mark:Integer read FMark write FMark;
    property ObjectCount:integer read FObjectCount;
@@ -377,6 +380,15 @@ type
    FTextsFoundByPage:TStringList;
    FPDFConformance:TPDFConformanceType;
    FPDFCompressed:boolean;
+   FDocAuthor:string;
+   FDocTitle:string;
+   FDocCreator:string;
+   FDocKeywords:string;
+   FDocSubject:string;
+   FDocProducer:string;
+   FDocCreationDate: string;
+   FDocModificationDate: string;
+   FDocXMPContent: string;
    procedure SetCurrentPage(index:integer);
    function GetPageCount:integer;
    function GetPage(Index:integer):TRpMetafilePage;
@@ -435,6 +447,8 @@ type
    procedure WorkAsyncError(amessage:string);
    procedure Finish;
    procedure StopWork;
+   procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+   description,creationDate,modificationDate:string; stream: TMemoryStream);
    function IsFound(page:TRpMetafilePage;objectindex:integer):boolean;
    function NextPageFound(pageindex:integer):integer;
    property BackColor:integer read FBackColor write SetBackColor;
@@ -454,6 +468,17 @@ type
     write FPDFConformance default TPDFConformanceType.PDF_1_4;
    property PDFCompressed:boolean read FPDFCompressed
     write FPDFCompressed default false;
+   // Metadata
+   property DocAuthor:string read FDocAuthor write FDocAuthor;
+   property DocTitle:string read FDocTitle write FDocTitle;
+   property DocSubject:string read FDocSubject write FDocSubject;
+   property DocProducer:string read FDocProducer write FDocProducer;
+   property DocCreator:string read FDocCreator write FDocCreator;
+   property DocCreationDate:string read FDocCreationDate write FDocCreationDate;
+   property DocModificationDate:string read FDocModificationDate write FDocModificationDate;
+   property DocKeywords:string read FDocKeywords write FDocKeywords;
+   property DocXMPContent:string read FDocXMPContent write FDocXMPContent;
+
    property OnRequestPage:TRequestPageEvent read FOnRequestPage write FOnRequestPage;
   published
   end;
@@ -469,6 +494,7 @@ type
 function IsMetafile(memstream:TMemoryStream):boolean;
 function ReadStringFromStream(stream:TStream): string;
 procedure WriteStringToStream(astring:String;deststream:TStream);
+procedure WriteRawStringToStream(astring:String;deststream:TStream);
 
 implementation
 
@@ -492,6 +518,8 @@ begin
 end;
 
 procedure TRpMetafilePage.Clear;
+var
+ i:integer;
 begin
  SetLength(FObjects,FIRST_ALLOCATION_OBJECTS);
  FPool:='';
@@ -516,7 +544,8 @@ begin
 end;
 
 procedure TrpMetafilePage.NewImageObjectShared(Top,Left,Width,Height:integer;
- CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean);
+ CopyMode:integer;DrawImageStyle:integer;DPIres:integer;var imagepos:int64;stream:TStream;PreviewOnly:Boolean;
+ Annotation: string);
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -534,6 +563,10 @@ begin
  FObjects[FObjectCount].StreamSize:=stream.Size;
  FObjects[FObjectCount].PreviewOnly:=PreviewOnly;
  FObjects[FObjectCount].SharedImage:=true;
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
  if (imagepos<0) then
  begin
   CritEx.Enter;
@@ -557,7 +590,8 @@ end;
 
 
 function TrpMetafilePage.NewImageObject(Top,Left,Width,Height:integer;
- CopyMode:integer; DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean):integer;
+ CopyMode:integer; DrawImageStyle:integer;DPIres:integer;stream:TStream;PreviewOnly:Boolean;
+ Annotation: string):integer;
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -576,6 +610,10 @@ begin
  FObjects[FObjectCount].PreviewOnly:=PreviewOnly;
  FObjects[FObjectCount].SharedImage:=false;
  FObjects[FObjectCount].StreamPos:=FStreamPos;
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
  // Set the size of the stream
  if FMemStream.size=0 then
  begin
@@ -633,7 +671,7 @@ end;
 
 procedure TrpMetafilePage.NewDrawObject(Top,Left,Width,Height:integer;
     DrawStyle:integer;BrushStyle:integer;BrushColor:integer;
-    PenStyle:integer;PenWidth:integer; PenColor:integer);
+    PenStyle:integer;PenWidth:integer; PenColor:integer; Annotation: string);
 begin
  if FObjectCount>=High(FObjects)-1 then
  begin
@@ -652,6 +690,12 @@ begin
  FObjects[FObjectCount].PenColor:=PenColor;
  FObjects[FObjectCount].PenWidth:=PenWidth;
  FObjects[FObjectCount].PenStyle:=PenStyle;
+
+ if Length(Annotation)>0 then
+ begin
+  NewWideString(FObjects[FObjectCount].AnnotationP, FObjects[FObjectCount].AnnotationS, Annotation);
+ end;
+
 
  inc(FObjectCount);
 end;
@@ -732,6 +776,8 @@ begin
  FObjects[FObjectCount].WordWrap:=aText.WordWrap;
  FObjects[FObjectCount].RightToLeft:=aText.RightToLeft;
  FObjects[FObjectCount].PrintStep:=aText.PrintStep;
+ if Length(atext.Annotation)>0 then
+   NewWideString(FObjects[FObjectCount].AnnotationP,FObjects[FObjectCount].AnnotationS, aText.Annotation);
 
 
  inc(FObjectCount);
@@ -746,6 +792,16 @@ end;
 function TrpMetafilePage.GetWFontName(arecord:TRpMetaObject):widestring;
 begin
  Result:=Copy(FPool,arecord.WFontNameP,arecord.WFontNameS);
+end;
+
+function TrpMetafilePage.GetAnnotation(arecord:TRpMetaObject):widestring;
+begin
+ if (arecord.AnnotationP=0) then
+ begin
+  Result:='';
+  exit;
+ end;
+ Result:=Copy(FPool,arecord.AnnotationP,arecord.AnnotationS);
 end;
 
 function TrpMetafilePage.GetLFontName(arecord:TRpMetaObject):widestring;
@@ -867,6 +923,11 @@ begin
   TRpMetafilePage(Fpages.Items[i]).Free;
  end;
  FPages.clear;
+ for i:=0 to Length(EmbeddedFiles) -1 do
+ begin
+  EmbeddedFiles[i].Stream.Free;
+ end;
+ SetLength(EmbeddedFiles,0);
 
 
  FCurrentPage:=-1;
@@ -925,11 +986,19 @@ end;
 procedure WriteStringToStream(astring:String;deststream:TStream);
 var
  strLength:integer;
- buf:array of Byte;
  bytes:TBytes;
 begin
- strLength:=Length(astring);
- deststream.Write(buf,sizeof(strLength));
+ bytes := TEncoding.UTF8.GetBytes(astring);
+ strLength:=Length(bytes);
+ deststream.Write(strLength,sizeof(strLength));
+ deststream.Write(bytes,Length(bytes));
+end;
+
+procedure WriteRawStringToStream(astring:String;deststream:TStream);
+var
+ bytes:TBytes;
+begin
+ bytes := TEncoding.UTF8.GetBytes(astring);
  deststream.Write(bytes,Length(bytes));
 end;
 
@@ -948,10 +1017,30 @@ begin
  end;
  if (i<0) then
   raise Exception.Create('Error reading string from stream');
- SetLength(buf,i);
- stream.read(buf,i);
+ SetLength(buf, i);
+ stream.Read(buf[0],i);
  Result:=TEncoding.UTF8.GetString(buf);
  exit;
+end;
+
+procedure TRpMetafileReport.NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
+   description,creationDate,modificationDate:string; stream: TMemoryStream);
+var embededFile: TEmbeddedFile;
+begin
+ embededFile:=TEmbeddedFile.Create;
+ embededFile.FileName:=fileName;
+ embededFile.AFRelationShip:=AFRelationShip;
+ embededFile.CreationDate:=creationDate;
+ embededFile.ModificationDate:=ModificationDate;
+ embededFile.Description:=Description;
+ embededFile.Stream:=TMemoryStream.Create;
+ stream.Position:=0;
+ stream.SaveToStream(embededFile.Stream);
+ stream.Position:=0;
+ embededFile.Stream.Position:=0;
+ embededFile.MimeType:=mimeType;
+ SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
+ EmbeddedFiles[Length(EmbeddedFiles)-1]:=embededFile;
 end;
 
 
@@ -968,28 +1057,31 @@ var
  efile: TEmbeddedFile;
  bytevalue: byte;
 begin
- rpSignature:=RpSignature2_4;
  fileCount:=Length(EmbeddedFiles);
- if (fileCount>0) then
- begin
-   rpSignature:=RpSignature3_0;
-   FVersion:=MetaVersion3_0;
- end;
+ rpSignature:=RpSignature3_0;
+ FVersion:=MetaVersion3_0;
  RequestPage(MAX_PAGECOUNT);
- WriteStringToStream(rpSignature,Stream);
+ WriteRawStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
  Stream.Write(separator,sizeof(separator));
- // Embedded Files
- if (FVersion = MetaVersion3_0) then
- begin
+  // PDFConformance and Compressed
   Stream.Write(Byte(PDFConformance),1);
   if (PDFCompressed) then
    bytevalue:=1
   else
    bytevalue:=0;
   Stream.Write(bytevalue,1);
-
-
+  // Metadata
+  WriteStringToStream(FDocAuthor, Stream);
+  WriteStringToStream(FDocCreator, Stream);
+  WriteStringToStream(FDocProducer, Stream);
+  WriteStringToStream(FDocCreationDate, Stream);
+  WriteStringToStream(FDocModificationDate, Stream);
+  WriteStringToStream(FDocSubject, Stream);
+  WriteStringToStream(FDocTitle, Stream);
+  WriteStringToStream(FDocKeywords, Stream);
+  WriteStringToStream(FDocXMPContent, Stream);
+  // Embedded files
   Stream.Write(fileCount,sizeof(fileCount));
   for i:=0 to fileCount-1  do
   begin
@@ -997,11 +1089,14 @@ begin
    ssize:=efile.Stream.Size;
    WriteStringToStream(efile.FileName, Stream);
    WriteStringToStream(efile.MimeType, Stream);
+   WriteStringToStream(efile.Description, Stream);
+   WriteStringToStream(efile.ModificationDate, Stream);
+   byteValue:=Byte(efile.AFRelationShip);
+   Stream.Write(byteValue, 1);
    Stream.Write(ssize,sizeof(ssize));
    efile.Stream.Position:=0;
    efile.Stream.SaveToStream(Stream);
   end;
- end;
  // Report header
  Stream.Write(PageSize,sizeof(pagesize));
  Stream.Write(CustomX,sizeof(CustomX));
@@ -1221,25 +1316,40 @@ begin
   Raise Exception.Create(SRpBadFileHeader);
  if (separator<>integer(rpFHeader)) then
   Raise Exception.Create(SRpBadFileHeader);
- // Embedded Files
  if (FVersion = MetaVersion3_0) then
  begin
   // PDF Compressed
   Stream.Read(conformanceByte,1);
-  PDFCompressed:=conformanceByte =1;
-  Stream.Read(conformanceByte,1);
   FPDFConformance:=TPDFConformanceType(conformanceByte);
+  Stream.Read(conformanceByte,1);
+  PDFCompressed:=conformanceByte =1;
+
+  FDocAuthor:=ReadStringFromStream(Stream);
+  FDocCreator:=ReadStringFromStream(Stream);
+  FDocProducer := ReadStringFromStream(Stream);
+  FDocCreationDate := ReadStringFromStream(Stream);
+  FDocModificationDate:=ReadStringFromStream( Stream);
+  FDocSubject:=ReadStringFromStream( Stream);
+  FDocTitle:=ReadStringFromStream(Stream);
+  FDocKeywords:=ReadStringFromStream(Stream);
+  FDocXMPContent:=ReadStringFromStream(Stream);
+
+  // Embedded Files
   Stream.Read(fileCount,sizeof(fileCount));
   if (fileCount<0) then
-    raise Exception.Create('Error reading file count');  
+    raise Exception.Create('Error reading file count');
   for i:=0 to fileCount-1  do
   begin
    efile:=TEmbeddedFile.Create;
    efile.FileName:=ReadStringFromStream(Stream);
    efile.MimeType:=ReadStringFromStream(Stream);
+   efile.Description:=ReadStringFromStream(Stream);
+   efile.ModificationDate:=ReadStringFromStream(Stream);
+   Stream.Read(conformanceByte,1);
+   efile.AFRelationShip:=TPDFAFRelationShip(conformanceByte);
    Stream.Read(ssize,sizeof(ssize));
    if (ssize<0) then
-     raise Exception.Create('Error reading file stream');        
+     raise Exception.Create('Error reading file stream');
    efile.Stream:=TMemoryStream.Create;
    efile.Stream.SetSize(ssize);
    efile.Stream.Position:=0;
@@ -1395,6 +1505,7 @@ var
  byteswrite:integer;
  abytes:array of Byte;
  intor:integer;
+ objsize: integer;
 begin
  // Objects
  // Save all objects
@@ -1428,7 +1539,8 @@ begin
 
  Stream.Write(FUpdatedPageSize,sizeof(FUpdatedPageSize));
  Stream.Write(FObjectCount,sizeof(FObjectCount));
- byteswrite:=sizeof(TRpMetaObject)*FObjectCount;
+ objsize:=sizeof(TRpMetaObject);
+ byteswrite:=objsize*FObjectCount;
  SetLength(abytes,byteswrite);
  if byteswrite>0 then
  begin
@@ -1880,18 +1992,26 @@ begin
  adriver.TextExtent(obj,newextent);
  while newextent.Y>maxextent.Y do
  begin
-  while currentpos>0 do
+  if (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
   begin
-   Dec(currentpos);
-   if currentpos<1 then
-    break;
-   if isadelimiter(obj.Text[currentpos]) then
-    break;
+    Dec(currentpos);
+  end
+  else
+  begin
+   while currentpos>0 do
+   begin
+    Dec(currentpos);
+
+    if isadelimiter(obj.Text[currentpos]) then
+     break;
+    if currentpos<1 then
+     break;
+   end;
   end;
+  obj.Text:=Copy(originalstring,1,currentpos);
 
   if currentpos<1 then
    break;
-  obj.Text:=Copy(originalstring,1,currentpos);
   newextent:=maxextent;
   adriver.TextExtent(obj,newextent);
  end;

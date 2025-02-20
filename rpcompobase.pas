@@ -83,7 +83,12 @@ type
    procedure LoadFromStream(stream:TStream);
    procedure ExecuteRemote(hostname:String;port:integer;user,password,aliasname,reportname:String);
    procedure GetRemoteParams(hostname:String;port:integer;user,password,aliasname,reportname:String);
-   procedure AddPDFFile(const fileName, mimeType, base64Stream: string);
+   procedure AddEmbeddedFile(const fileName, mimeType, base64Stream,
+    description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
+   procedure AddMetadata(const title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: WideString);
+    procedure AddXMPMetadata(const XMPContent: WideString);
+
    property Report:TRpReport read GetReport;
    property Preview:Boolean read FPreview write FPreview default true;
    property ShowProgress:boolean read FShowProgress write FShowProgress
@@ -118,7 +123,8 @@ begin
  FLanguage:=-1;
 end;
 
-procedure TCBaseReport.AddPDFFile(const fileName, mimeType, base64Stream: string);
+procedure TCBaseReport.AddEmbeddedFile(const fileName, mimeType, base64Stream,
+   description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
 var embedded: TEmbeddedFile;
  bytes: TBytes;
 begin
@@ -126,6 +132,10 @@ begin
  embedded:=TEmbeddedFile.Create;
  embedded.FileName:=fileName;
  embedded.MimeType:=mimeType;
+ embedded.CreationDate:=ISOCreationDate;
+ embedded.ModificationDate:=ISOModificationDate;
+ embedded.AFRelationShip:=AFRelationShip;
+ embedded.Description:=Description;
  embedded.Stream:=TMemoryStream.Create;
  bytes:=System.NetEncoding.TNetEncoding.Base64.DecodeStringToBytes(base64Stream);
  embedded.Stream.Write(bytes,Length(bytes));
@@ -467,6 +477,26 @@ end;
 procedure TCBaseReport.SaveToCSV(filename:string;separator:string=',');
 begin
  ExportReportToCSV(report,filename,showprogress,separator);
+end;
+
+procedure TCBaseReport.AddMetadata(const title, author, subject, creator, producer,
+          keywords, creationDate, modificationDate: WideString);
+begin
+ CheckLoaded;
+ Report.DocTitle:= title;
+ Report.DocAuthor:= author;
+ Report.DocSubject:=subject;
+ Report.DocProducer:=producer;
+ Report.DocCreator:=creator;
+ Report.DocCreationDate:=modificationDate;
+ Report.DocModificationDate:=modificationDate;
+ Report.DocKeywords:=keywords;
+end;
+
+procedure TCBaseReport.AddXMPMetadata(const XMPContent: WideString);
+begin
+ CheckLoaded;
+ Report.DocXMPContent:= XMPContent;
 end;
 
 end.

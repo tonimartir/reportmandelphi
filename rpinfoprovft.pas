@@ -69,7 +69,7 @@ type
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
-  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):Integer;override;
+  function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   constructor Create;
   destructor destroy;override;
@@ -769,9 +769,9 @@ begin
   InitLibrary;
   // See if data can be embedded
   SelectFont(pdffont);
-  data.fontdata.Clear;
+  data.fontdata.FontData.Clear;
   if not currentfont.type1 then
-   data.fontdata.LoadFromFile(currentfont.filename);
+   data.fontdata.FontData.LoadFromFile(currentfont.filename);
   data.postcriptname:=currentfont.postcriptname;
   data.FamilyName:=currentfont.familyname;
   data.FaceName:=currentfont.familyname;
@@ -814,13 +814,14 @@ begin
 end;
 
 
-function TRpFTInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):integer;
+function TRpFTInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
- awidth:integer;
+ awidth:double;
  aint:integer;
  width1,width2:word;
  cfont:TRpLogFont;
  dwidth:double;
+ index:integer;
 begin
  aint:=Ord(charcode);
  if aint>255 then
@@ -838,7 +839,7 @@ begin
    width1:=word(cfont.ftface.glyph.linearHoriAdvance shr 16);
    width2:=word((cfont.ftface.glyph.linearHoriAdvance shl 16) shr 16);
    dwidth:=width1+width2/65535;
-   awidth:=Round(cfont.widthmult*dwidth);
+   awidth:=cfont.widthmult*dwidth;
   end
   else
    awidth:=0;
@@ -848,9 +849,12 @@ begin
    data.firstloaded:=aint;
   if data.lastloaded<aint then
    data.lastloaded:=aint;
+  data.widths.Add(charcode,awidth);
   Result:=awidth;
   // Get glyph index
-  data.loadedglyphs[aint]:=WideChar(FT_Get_Char_Index(cfont.ftface,Cardinal(charcode)));
+  index := FT_Get_Char_Index(cfont.ftface,Cardinal(charcode));
+  data.glyphs.Add(charcode,index);
+  data.loadedglyphs[aint]:=WideChar(index);
   data.loadedg[aint]:=true;
  end;
 end;

@@ -132,3 +132,9 @@ server/web/binr32/
 server/web/binr64/repwebserver.dll
 repman/binr64/net2/ClosedXML.dll
 repman/binr64/
+activex/test/TestReportmanX/.vs/
+activex/test/TestReportmanX/TestReportmanX/bin/Debug/net8.0-windows/TestReportmanX.dll
+activex/test/TestReportmanX/TestReportmanX/bin/
+activex/test/TestReportmanX/TestReportmanX/obj/
+activex/test/TestReportmanX/TestReportmanX/TestReportmanX.csproj.user
+activex/bin32/reportman.oca

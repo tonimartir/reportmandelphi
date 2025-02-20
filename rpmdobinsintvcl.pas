@@ -441,6 +441,14 @@ begin
  lcat.Add(SRpPosition);
  if Assigned(lvalues) then
   lvalues.Add(AlignToStr(TRpCommonPosComponent(printitem).Align));
+
+  // Annotation
+ lnames.Add(SrpSAnnotation);
+ ltypes.Add(SRpSExpression);
+ lhints.Add('refcommontext.html');
+ lcat.Add(SRpPosition);
+ if Assigned(lvalues) then
+  lvalues.Add(TRpGenTextComponent(printitem).WFontName);
 end;
 
 
@@ -464,6 +472,12 @@ begin
   TRpCommonPosComponent(fprintitem).Align:=StrToAlign(Value);
   exit;
  end;
+ if pname=SRpSAnnotation then
+ begin
+  TRpCommonPosComponent(fprintitem).AnnotationExpression:=Value;
+  exit;
+ end;
+
  inherited SetProperty(pname,value);
 end;
 
@@ -502,6 +516,11 @@ begin
  if pname=SRPAlign then
  begin
   Result:=AlignToStr(TRpCommonPosComponent(fprintitem).Align);
+  exit;
+ end;
+ if pname=SRpSAnnotation then
+ begin
+  Result:=TRpCommonPosComponent(fprintitem).AnnotationExpression;
   exit;
  end;
  Result:=inherited GetProperty(pname);

@@ -41,14 +41,12 @@
           <td>Code128A, Code128B, Code128C, Code128</td>
           <td> <p>Code 128 family, A and B allow alphanumeric coding, the B allow 
               also lowercase chars. The C allow only numeric values but gerenerates 
-              the narrowest barcode. The Code128 generates a B and C mixed barcode, 
+              the narrowest barcode, grouping in pair of digits. The Code128 generates a B and C mixed barcode, 
               full optimized, so a code like 234534AB generates a 128C segment 
               and a 128B segment, so the barcode is 50% smaller than using 128B.</p>
-            <p>To generate EAN128 valid codes you must use the application fields 
-              and separator digits, you can use the 102 code or any char with 
-              a ascii code greater than 102 to represent a separator digit, a 
-              EAN128 code always begins with a separator, a sample:</p>
-            <p>#102+'10896021'+#102+'21456738XABT'</p></td>
+            <p>To generate GS1 barcodes, the FNC1 char must precede the barcode, it's represented by the ¿ char. 
+              Also ensure to set calculate checksum to true</p>
+            <p>'¿'+ '001234567890123456789'   </p></td>
         </tr>
         <tr> 
           <td>Code93, Code93Extended</td>
