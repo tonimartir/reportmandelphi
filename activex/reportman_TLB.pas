@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 22/02/2025 21:46:28 from Type Library described below.
+// File generated on 22/02/2025 21:54:20 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)
@@ -286,6 +286,8 @@ type
                           const creationDate: WideString; const modificationDate: WideString); safecall;
     procedure AddXMPMetadata(const XMPContent: WideString); safecall;
     procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); safecall;
+    function Get_DebugMode: WordBool; safecall;
+    procedure Set_DebugMode(Value: WordBool); safecall;
     property filename: WideString read Get_filename write Set_filename;
     property Preview: WordBool read Get_Preview write Set_Preview;
     property ShowProgress: WordBool read Get_ShowProgress write Set_ShowProgress;
@@ -304,6 +306,7 @@ type
     property DefaultPrinter: WideString read Get_DefaultPrinter write Set_DefaultPrinter;
     property PrintersAvailable: WideString read Get_PrintersAvailable;
     property AsyncExecution: WordBool read Get_AsyncExecution write Set_AsyncExecution;
+    property DebugMode: WordBool read Get_DebugMode write Set_DebugMode;
   end;
 
 // *********************************************************************//
@@ -380,6 +383,7 @@ type
                           const creationDate: WideString; const modificationDate: WideString); dispid 209;
     procedure AddXMPMetadata(const XMPContent: WideString); dispid 210;
     procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); dispid 207;
+    property DebugMode: WordBool dispid 211;
   end;
 
 // *********************************************************************//

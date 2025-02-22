@@ -1708,6 +1708,7 @@ var
  printitem:TRpCommonComponent;
  i,j,k:integer;
  secintitem:TRpSizePosInterface;
+ amessage:string;
 begin
  // Looks the exception type
  if ((E is TRpReportException) And Assigned(fdesignframe) )then
@@ -1781,7 +1782,16 @@ begin
   oldonexception(Sender,E);
  end
  else
-  RpMessageBox(E.Message,SRpError,[smbok]);
+ begin
+  amessage:=E.Message;
+  if Length(E.StackTrace)>0 then
+  begin
+   amessage := amessage+#10+E.StackTrace;
+   RpMessageBox(amessage,SRpError,[smbok],TMessageStyle.smsCritical,TMessageButton.smbOK,TMessageButton.smbOk,true);
+  end
+  else
+    RpMessageBox(amessage,SRpError,[smbok]);
+ end;
 end;
 
 

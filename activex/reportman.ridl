@@ -6,7 +6,7 @@
 // However, when applying changes via the Editor this file will be regenerated
 // and comments or formatting changes will be lost.
 // ************************************************************************ //
-// File generated on 22/02/2025 21:47:17 (- $Rev: 12980 $, 793156921).
+// File generated on 22/02/2025 22:29:23 (- $Rev: 12980 $, 795682750).
 
 [
   uuid(D4D26F6B-6564-44F4-A913-03C91CE37740),
@@ -333,6 +333,10 @@ library reportman
     HRESULT _stdcall AddXMPMetadata([in] BSTR XMPContent);
     [id(0x000000CF)]
     HRESULT _stdcall SetPDFConformance([in] enum TxPDFConformanceType PDFConformance);
+    [propget, id(0x000000D3)]
+    HRESULT _stdcall DebugMode([out, retval] VARIANT_BOOL* Value);
+    [propput, id(0x000000D3)]
+    HRESULT _stdcall DebugMode([in] VARIANT_BOOL Value);
   };
 
   [

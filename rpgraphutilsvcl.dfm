@@ -3,8 +3,8 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
   Top = 218
   BorderStyle = bsDialog
   Caption = 'Dialog'
-  ClientHeight = 128
-  ClientWidth = 596
+  ClientHeight = 160
+  ClientWidth = 745
   Color = clBtnFace
   ParentFont = True
   KeyPreview = True
@@ -13,31 +13,58 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
   OnCreate = FormCreate
   OnKeyDown = FormKeyDown
   OnShow = FormShow
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 20
   object LMessage: TLabel
-    Left = 4
-    Top = 4
-    Width = 556
-    Height = 76
+    Left = 5
+    Top = 5
+    Width = 695
+    Height = 95
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Alignment = taCenter
     AutoSize = False
     Caption = 'LMessage'
     WordWrap = True
   end
+  object EMessage: TMemo
+    Left = 9
+    Top = 6
+    Width = 714
+    Height = 111
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
+    Color = clBtnFace
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 2
+    Visible = False
+  end
   object PBottom: TPanel
     Left = 0
-    Top = 93
-    Width = 596
-    Height = 35
+    Top = 116
+    Width = 745
+    Height = 44
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alBottom
     BevelOuter = bvNone
     TabOrder = 0
     object BOk: TButton
-      Left = 168
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 210
+      Top = 9
+      Width = 99
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'OK'
       TabOrder = 0
@@ -45,10 +72,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BYes: TButton
-      Left = 3
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 4
+      Top = 9
+      Width = 99
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'Yes'
       TabOrder = 1
@@ -56,10 +87,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BNo: TButton
-      Left = 86
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 108
+      Top = 9
+      Width = 98
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'No'
       TabOrder = 2
@@ -67,10 +102,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BAbort: TButton
-      Left = 334
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 418
+      Top = 9
+      Width = 98
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'Abort'
       TabOrder = 3
@@ -78,10 +117,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BRetry: TButton
-      Left = 417
-      Top = 7
-      Width = 78
-      Height = 24
+      Left = 521
+      Top = 9
+      Width = 98
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'Retry'
       TabOrder = 4
@@ -89,10 +132,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BIgnore: TButton
-      Left = 499
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 624
+      Top = 9
+      Width = 99
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'Ignore'
       TabOrder = 5
@@ -100,10 +147,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
       OnClick = BYesClick
     end
     object BCancel: TButton
-      Left = 251
-      Top = 7
-      Width = 79
-      Height = 24
+      Left = 314
+      Top = 9
+      Width = 99
+      Height = 30
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Cancel = True
       Caption = 'Cancel'
       TabOrder = 6
@@ -112,10 +163,14 @@ object FRpMessageDlgVCL: TFRpMessageDlgVCL
     end
   end
   object EInput: TEdit
-    Left = 4
-    Top = 27
-    Width = 560
-    Height = 21
+    Left = 5
+    Top = 34
+    Width = 700
+    Height = 28
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     TabOrder = 1
     Visible = False
   end

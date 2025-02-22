@@ -52,6 +52,7 @@ type
     BRetry: TButton;
     BIgnore: TButton;
     EInput: TEdit;
+    EMessage: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure BYesClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word;
@@ -75,7 +76,7 @@ function AlignToGrid(Value:integer;scale:integer):integer;
 function AlignToGridPixels(Value:integer;scaletwips:integer;scale:double):integer;
 function RpMessageBox(const Text: WideString; const Caption: WideString = '';
   Buttons: TMessageButtons = [smbOK]; Style: TMessageStyle = smsInformation;
-  Default: TMessageButton = smbOK; Escape: TMessageButton = smbCancel): TMessageButton;
+  Default: TMessageButton = smbOK; Escape: TMessageButton = smbCancel;longText: boolean = false): TMessageButton;
 function RpInputBox(const ACaption, APrompt, ADefault:WideString ):WideString;
 procedure FillTreeView(ATree:TTreeView;alist:TStringList);
 function GetFullFileName (ANode:TTreeNode;dirseparator:char):String;
@@ -371,13 +372,12 @@ end;
 
 function RpMessageBox(const Text: WideString; const Caption: WideString = '';
   Buttons: TMessageButtons = [smbOK]; Style: TMessageStyle = smsInformation;
-  Default: TMessageButton = smbOK; Escape: TMessageButton = smbCancel): TMessageButton;
+  Default: TMessageButton = smbOK; Escape: TMessageButton = smbCancel; longText: boolean = false): TMessageButton;
 var
  dia:TFRpMessageDlgVCL;
 begin
  dia:=TFRpMessageDlgVCL.Create(Application);
  try
-  dia.LMessage.Caption:=Text;
   if smbOK in Buttons then
    dia.BOK.Visible:=true;
   if smbCancel in Buttons then
@@ -393,6 +393,19 @@ begin
   if smbIgnore in Buttons then
    dia.BIgnore.Visible:=true;
   dia.EscapeButton:=Escape;
+  if (longtext) then
+  begin
+    dia.LMessage.Visible:= false;
+    dia.EMessage.Visible:=true;
+    dia.EMessage.Text:=Text;
+  end
+  else
+  begin
+   dia.LMessage.Visible:= true;
+   dia.EMessage.Visible:=false;
+   dia.LMessage.Caption:=Text;
+  end;
+
   case Default of
    smbOK:
     begin

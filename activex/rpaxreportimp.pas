@@ -12,7 +12,7 @@ uses
   Windows, ActiveX, SysUtils,Classes, Controls, Graphics, Menus, Forms, StdCtrls,
   ComServ, StdVCL, AXCtrls, reportman_TLB, rpactivexreport,rpreport,rpvgraphutils,
   rpparams,rptypes,rpgdidriver,rpmetafile,comobj,rpaxreportparameters,
-  rpaxreportreport,rpexceldriver,rphtmldriver,printers,rpmdconsts;
+  rpaxreportreport,rpexceldriver,rphtmldriver,printers,rpmdconsts,jclDebug;
 
 type
   TReportManX = class(TActiveXControl, IReportManX)
@@ -21,6 +21,8 @@ type
     FDelphiControl: TRpActiveXReport;
     FEvents: IReportManXEvents;
     FReportReport:TReportReport;
+    FDebugMode:WordBool;
+    procedure MyExceptionHandler(Sender:TObject;E:Exception);
   protected
     { Protected declarations }
     procedure DefinePropertyPages(DefinePropertyPage: TDefinePropertyPage); override;
@@ -113,12 +115,14 @@ type
     procedure AddMetadata(const title, author, subject, creator, producer, keywords, creationDate,
           modificationDate: WideString); safecall;
     procedure AddXMPMetadata(const XMPContent: WideString); safecall;
+    function Get_DebugMode: WordBool; safecall;
+    procedure Set_DebugMode(Value: WordBool); safecall;
 
   end;
 
 implementation
 
-uses aboutrpax;
+uses aboutrpax,rpgraphutilsvcl;
 
 { TReportManX }
 
@@ -145,8 +149,29 @@ begin
 end;
 
 function TReportManX.Execute: WordBool;
+var
+ amessage:string;
 begin
-  Result := FDelphiControl.Execute;
+ try
+   Result := FDelphiControl.Execute;
+ except
+  on E: Exception do
+  begin
+   if (FDebugMode) then
+   begin
+    amessage:=E.Message;
+    if Length(E.StackTrace)>0 then
+    begin
+     amessage := amessage+#10+E.StackTrace;
+     RpMessageBox(amessage,SRpError,[smbok],TMessageStyle.smsCritical,TMessageButton.smbOK,TMessageButton.smbOk,true);
+    end
+    else
+     RpMessageBox(amessage,SRpError,[smbok]);
+   end
+   else
+    Raise;
+  end
+ end;
 end;
 
 function TReportManX.Get_AlignDisabled: WordBool;
@@ -287,7 +312,7 @@ end;
 procedure TReportManX.SaveToPDF(const filename: WideString;
   compressed: WordBool);
 begin
-  FDelphiControl.SaveToPDF(filename, compressed);
+ FDelphiControl.SaveToPDF(filename, compressed);
 end;
 
 procedure TReportManX.Set_Cursor(Value: Smallint);
@@ -589,6 +614,48 @@ end;
 procedure TReportManX.AddXMPMetadata(const XMPContent: WideString);
 begin
   FDelphiControl.AddXMPMetadata(XMPContent);
+end;
+
+function TReportManX.Get_DebugMode: WordBool;
+begin
+ Result:=FDebugMode;
+end;
+
+
+
+procedure TReportmanX.MyExceptionHandler(Sender:TObject;E:Exception);
+var
+ amessage:string;
+begin
+ amessage:=E.Message;
+ if Length(E.StackTrace)>0 then
+ begin
+  amessage := amessage+#10+E.StackTrace;
+  RpMessageBox(amessage,SRpError,[smbok],TMessageStyle.smsCritical,TMessageButton.smbOK,TMessageButton.smbOk,true);
+ end
+ else
+   RpMessageBox(amessage,SRpError,[smbok]);
+end;
+
+procedure TReportManX.Set_DebugMode(Value: WordBool);
+begin
+ if (Value) then
+ begin
+  Include(JclStackTrackingOptions, stRawMode);
+  // Disable stack tracking in dynamically loaded modules (it makes stack tracking code a bit faster)
+  Include(JclStackTrackingOptions, stStaticModuleList);
+
+  // Initialize Exception tracking
+  JclStartExceptionTracking;
+  Application.OnException:= MyExceptionHandler;
+ end
+ else
+ begin
+  // Uninitialize Exception tracking
+  JclStopExceptionTracking;
+  Application.OnException:=nil;
+ end;
+ FDebugMode:=Value;
 end;
 
 initialization
