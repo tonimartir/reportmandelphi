@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 28/11/2024 9:36:32 from Type Library described below.
+// File generated on 22/02/2025 21:46:28 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)
@@ -276,8 +276,6 @@ type
     procedure Set_AsyncExecution(Value: WordBool); safecall;
     procedure SaveToHTMLSingle(const filename: WideString); safecall;
     procedure SaveToFile(const filename: WideString); safecall;
-    function Get_PDFConformance: TxPDFConformanceType; safecall;
-    procedure Set_PDFConformance(Value: TxPDFConformanceType); safecall;
     procedure AddEmbeddedFile(const fileName: WideString; const mimeType: WideString;
                               const base64Stream: WideString; const description: WideString;
                               AFRelationShip: TxAFRelationShip; const ISOCreationDate: WideString;
@@ -287,6 +285,7 @@ type
                           const producer: WideString; const keywords: WideString;
                           const creationDate: WideString; const modificationDate: WideString); safecall;
     procedure AddXMPMetadata(const XMPContent: WideString); safecall;
+    procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); safecall;
     property filename: WideString read Get_filename write Set_filename;
     property Preview: WordBool read Get_Preview write Set_Preview;
     property ShowProgress: WordBool read Get_ShowProgress write Set_ShowProgress;
@@ -305,7 +304,6 @@ type
     property DefaultPrinter: WideString read Get_DefaultPrinter write Set_DefaultPrinter;
     property PrintersAvailable: WideString read Get_PrintersAvailable;
     property AsyncExecution: WordBool read Get_AsyncExecution write Set_AsyncExecution;
-    property PDFConformance: TxPDFConformanceType read Get_PDFConformance write Set_PDFConformance;
   end;
 
 // *********************************************************************//
@@ -372,7 +370,6 @@ type
     property AsyncExecution: WordBool dispid 43;
     procedure SaveToHTMLSingle(const filename: WideString); dispid 205;
     procedure SaveToFile(const filename: WideString); dispid 206;
-    property PDFConformance: TxPDFConformanceType dispid 207;
     procedure AddEmbeddedFile(const fileName: WideString; const mimeType: WideString;
                               const base64Stream: WideString; const description: WideString;
                               AFRelationShip: TxAFRelationShip; const ISOCreationDate: WideString;
@@ -382,6 +379,7 @@ type
                           const producer: WideString; const keywords: WideString;
                           const creationDate: WideString; const modificationDate: WideString); dispid 209;
     procedure AddXMPMetadata(const XMPContent: WideString); dispid 210;
+    procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); dispid 207;
   end;
 
 // *********************************************************************//

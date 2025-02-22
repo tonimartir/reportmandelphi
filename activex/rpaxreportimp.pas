@@ -46,8 +46,6 @@ type
       const databasename: WideString): WideString; safecall;
     function GetDatasetSQL(const datasetname: WideString): WideString;
       safecall;
-    function Get_PDFConformance: TxPDFConformancetype; safecall;
-    procedure Set_PDFConformance(Value: TxPDFConformancetype); safecall;
     function GetParamValue(const paramname: WideString): OleVariant; safecall;
     function IsRightToLeft: WordBool; safecall;
     function PrintRange(frompage, topage, copies: Integer;
@@ -88,7 +86,7 @@ type
       Execute: WordBool); safecall;
     function Get_Report: ReportReport; safecall;
     procedure SaveToExcel(const filename: WideString); safecall;
-    procedure SetPdfConformance(const conformance: TPDFConformanceType); safecall;
+    procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); safecall;
     procedure SaveToHTML(const filename: WideString); safecall;
     procedure SetRecordSet(const DatasetName: WideString;
       const Value: IDispatch); safecall;
@@ -448,9 +446,9 @@ begin
 end;
 
 
-procedure TReportManX.SetPdfConformance(const conformance: TPDFConformanceType);
+procedure TReportManX.SetPDFConformance(PDFConformance: TxPDFConformanceType);
 begin
- FDelphiControl.GetReport.PDFConformance:=conformance;
+ FDelphiControl.GetReport.PDFConformance:=TPDFConformanceType(PDFConformance);
 end;
 
 
@@ -572,20 +570,6 @@ procedure TReportManX.SaveToFile(const filename: WideString);
 begin
  FDelphiControl.GetReport.SaveToFile(filename);
 end;
-
-function TReportManX.Get_PDFConformance: TxPDFConformancetype;
-begin
- Result:=TxPDFConformancetype(FDelphiControl.GetReport.PDFConformance);
-end;
-
-procedure TReportManX.Set_PDFConformance(Value: TxPDFConformancetype);
-begin
- FDelphiControl.PDFConformance:=TPDFConformance(Value);
-end;
-
-
-
-
 
 procedure TReportManX.AddEmbeddedFile(const fileName, mimeType, base64Stream, description: WideString;
           AFRelationShip: TxAFRelationShip; const ISOCreationDate,
