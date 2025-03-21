@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -981,9 +981,12 @@ var
 begin
  CheckLoadedPrinterConfig;
  def:='';
- if printerindex=prpTicketPrinter then
-  def:='EPSONTMU210'
- else
+ (* mod josep/toni 15/07/2016 *)
+ //al instalar el programa asignava por defecto a la impresora de tickets un controlador de texto
+ //if printerindex=prpTicketPrinter then
+ // def:='EPSONTMU210'
+ //else
+(* end mod josep/toni 15/07/2016 *) 
  if printerindex=prpCharacterPrinter then
   def:='EPSON'
  else

@@ -1768,6 +1768,9 @@ begin
 end;
 }
 
+(* mod josep 06/03/2025 *)
+//al imprimir con el report manager un informe horizontal y luego uno del gestor vertical mantenía la orientacion horizontal
+{*
 procedure SetPrinterOrientation(landscape:boolean);
 var
   Device, Driver, Port: array[0..1023] of char;
@@ -1812,9 +1815,33 @@ begin
  finally
   GlobalUnLock(DeviceMode);
  end;
+end;*}
+
+procedure SetPrinterOrientation(landscape:boolean);
+var
+  Device, Driver, Port: array[0..1023] of char;
+  DeviceMode: THandle;
+  PDevmode:^TDevicemode;
+begin
+ Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+ if DeviceMode=0 then
+  exit;
+ PDevMode := GlobalLock(DeviceMode);
+ try
+  PDevMode.dmFields:=dm_Orientation;
+  if landscape then
+   PDevMode.dmOrientation := 2
+  else
+   PDevMode.dmOrientation := 1;
+  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
+       PDevMode^, DM_MODIFY);
+  ResetDC(Printer.Handle,PDevMode^);
+ finally
+  GlobalUnLock(DeviceMode);
+ end;
 end;
 
-
+(* end mod josep 06/03/2025 *)
 
 
 procedure SetPrinterCopies(copies:integer);

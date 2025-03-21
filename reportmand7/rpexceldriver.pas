@@ -450,6 +450,11 @@ begin
    // Creates the excel file
    Excel:=CreateOleObject('excel.application');
    Excel.Visible:=Visible;
+   (* mod josep 13/07/2014 *)
+   //desactiva el control de compatibilidad y el aviso de que ya existe el archivo.
+   //se quiere que al cerrar caja envie los archivos de excel y no tiene que mostrar avisos.   
+   Excel.displayalerts:=false;
+   (* end mod josep 13/07/2014 *)
    wb:=Excel.Workbooks.Add;
    shcount:=1;
    sh:=wb.Worksheets.item[shcount];

@@ -33,7 +33,7 @@ uses SysUtils, Classes,Windows,
 {$IFNDEF FORWEBAX}
   rpmdfsearchvcl,
 {$ENDIF}
-  rpparams,rpgraphutilsvcl;
+  rpparams,rpgraphutilsvcl, Menus;
 
 const
   CONS_LEFTGAP=3;
@@ -53,6 +53,7 @@ type
     Splitter1: TSplitter;
     PLeft: TPanel;
     PRight: TPanel;
+    PopupMenu1: TPopupMenu;
     procedure BOKClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -67,6 +68,9 @@ type
 {$ENDIF}
     procedure SetParams(avalue:TRpParamList);
     procedure SaveParams;
+    procedure OnClearClick(Sender:TObject);
+    procedure OnAllClick(Sender:TObject);
+
   public
     { Public declarations }
     procedure CheckNullClick(Sender:TObject);
@@ -428,7 +432,21 @@ begin
       if aparam.IsReadOnly then
       begin
        TCheckListBox(acontrol).Color:=Self.Color;
+      end
+      (* mod toni/josep 16/06/2015 *)
+      else
+      begin
+       TCheckListBox(acontrol).PopupMenu := TPopupMenu.Create(acontrol);
+       TCheckListBox(acontrol).PopupMenu.Items.Add(TMenuItem.Create(acontrol));
+       TCheckListBox(acontrol).PopupMenu.Items.Add(TMenuItem.Create(acontrol));
+       TCheckListBox(acontrol).PopupMenu.Items[0].Caption:=SRpSBClear;
+       TCheckListBox(acontrol).PopupMenu.Items[0].OnClick:=OnClearClick;
+       TCheckListBox(acontrol).PopupMenu.Items[1].Caption:=SRpAllProps;
+       TCheckListBox(acontrol).PopupMenu.Items[1].OnClick:=OnAllClick;
       end;
+      (* end mod toni/josep 16/06/2015 *)
+
+
       acontrol.tag:=i;
       lcontrols.AddObject(aparam.Name,acontrol);
       lcontrols2.AddObject(aparam.Name,acontrol);
@@ -456,8 +474,12 @@ begin
        end;
       end;
       index:=TCheckListBox(acontrol).Items.Count;
-      if index>5 then
-       index:=5;
+      (* mod josep 13/04/2015 *)
+      if index>15 then
+         index:=15;
+      //if index>5 then
+      // index:=5;
+      (* end mod josep 13/04/2015 *)
       acontrol.Height:=index*Self.Canvas.TextHeight('Mg');
      end;
    rpParamList,rpParamSubstList:
@@ -664,5 +686,32 @@ begin
   TEdit(LControls.Objects[TComponent(Sender).Tag]).Text:=params.Items[TComponent(Sender).Tag].AsString;
 {$ENDIF}
 end;
+
+(* mod toni/josep 16/06/2015 *)
+procedure TFRpRTParams.OnAllClick(Sender:TObject);
+var
+ checkl:TCheckListBox;
+ i:integer;
+begin
+ checkl:=TMenuItem(Sender).Owner as TCheckListBox;
+ for i := 0 to checkl.Items.Count-1 do
+ begin
+  checkl.Checked[i]:=true;
+ end;
+
+end;
+
+procedure TFRpRTParams.OnClearClick(Sender:TObject);
+var
+ checkl:TCheckListBox;
+ i:integer;
+begin
+ checkl:=TMenuItem(Sender).Owner as TCheckListBox;
+ for i := 0 to checkl.Items.Count-1 do
+ begin
+  checkl.Checked[i]:=false;
+ end;
+end;
+(* end mod toni/josep 16/06/2015 *)
 
 end.

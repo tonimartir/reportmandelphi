@@ -5,8 +5,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
   Height = 479
   Align = alClient
   TabOrder = 0
-  ExplicitWidth = 451
-  ExplicitHeight = 304
   object ToolBar1: TToolBar
     Left = 0
     Top = 0
@@ -18,7 +16,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
     Caption = 'ToolBar1'
     Images = ImageList1
     TabOrder = 0
-    ExplicitWidth = 451
     object BNew: TToolButton
       Left = 0
       Top = 0
@@ -56,8 +53,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 451
-    ExplicitHeight = 279
     object PTop: TPanel
       Left = 0
       Top = 0
@@ -66,7 +61,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 1
-      ExplicitWidth = 451
       object GDriver: TListBox
         Left = 0
         Top = 0
@@ -85,7 +79,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 1
-        ExplicitWidth = 282
         object MHelp: TMemo
           Left = 0
           Top = 33
@@ -95,7 +88,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
           Color = clInfoBk
           ReadOnly = True
           TabOrder = 0
-          ExplicitWidth = 282
         end
         object Panel1: TPanel
           Left = 0
@@ -105,7 +97,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
           Align = alTop
           BevelOuter = bvNone
           TabOrder = 1
-          ExplicitWidth = 282
           object BConfig: TButton
             Left = 5
             Top = 4
@@ -126,8 +117,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 0
-      ExplicitWidth = 451
-      ExplicitHeight = 174
       object GAvailable: TGroupBox
         Left = 0
         Top = 0
@@ -136,8 +125,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
         Align = alClient
         Caption = 'Available connections'
         TabOrder = 0
-        ExplicitWidth = 451
-        ExplicitHeight = 174
         object LConnections: TListBox
           Left = 2
           Top = 18
@@ -147,7 +134,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
           ItemHeight = 16
           TabOrder = 0
           OnClick = LConnectionsClick
-          ExplicitHeight = 154
         end
         object PConProps: TPanel
           Left = 171
@@ -157,8 +143,6 @@ object FRpConnectionVCL: TFRpConnectionVCL
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 1
-          ExplicitWidth = 278
-          ExplicitHeight = 154
           object LConnectionString: TLabel
             Left = 4
             Top = 92

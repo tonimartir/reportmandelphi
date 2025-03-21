@@ -196,8 +196,11 @@ begin
  defdriver:=' ';
  if LSelPrinter.ItemIndex=Integer(pRpCharacterprinter) then
   defdriver:='EPSON';
- if LSelPrinter.ItemIndex=Integer(pRpTicketprinter) then
-  defdriver:='EPSONTMU210';
+ (* mod josep/toni 15/07/2016 *) 
+ //al usar impresora de tickets no asigne por defecto controlador de tipo texto
+ //if LSelPrinter.ItemIndex=Integer(pRpTicketprinter) then
+ // defdriver:='EPSONTMU210';
+ (* end mod josep/toni 15/07/2016 *)  
  defdriver:=configinifile.ReadString('PrinterDriver','Printer'+IntToStr(LSelPrinter.ItemIndex),defdriver);
  if Length(defdriver)<1 then
  defdriver:=' ';
