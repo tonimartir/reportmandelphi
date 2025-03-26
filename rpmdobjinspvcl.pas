@@ -685,6 +685,7 @@ var
  Stream:TMemoryStream;
  apic:TPicture;
  jpeg:TJpegImage;
+ bitmap:TBitmap;
 begin
  if TFRpObjInspVCL(Owner).OpenDialog1.Execute then
  begin
@@ -707,7 +708,20 @@ begin
      jpeg:=TJPegImage.Create;
      try
       jpeg.CompressionQuality:=100;
-      jpeg.Assign(apic.Graphic);
+      if (apic.Graphic is TJPegImage) then
+      begin
+       jpeg.Assign(apic.Graphic);
+      end
+      else
+      begin
+       bitmap:=TBitmap.Create;
+       try
+        bitmap.Assign(apic.Graphic);
+        jpeg.Assign(bitmap);
+       finally
+        bitmap.Free;
+       end;
+      end;
       Stream:=TMemoryStream.Create;
       try
        jpeg.SaveToStream(stream);
@@ -1750,9 +1764,9 @@ begin
 
  fpdfdriver:=TRpPdfDriver.Create;
 
- TFRpObjInspVCL(Owner).OpenDialog1.Filter:=
-  SrpBitmapImages+'|*.bmp|'+
-  SrpSJpegImages+'|*.jpg|';
+ //TFRpObjInspVCL(Owner).OpenDialog1.Filter:=
+ // SrpBitmapImages+'|*.bmp|'+
+ // SrpSJpegImages+'|*.jpg|';
 //  SrpSPNGImages+'|*.png|'+
 //  SRpSXPMImages+'|*.xpm';
  // Add Registered file formats
@@ -1768,6 +1782,7 @@ begin
   'FAX '+'|*.fax|'+
   'EPS '+'|*.eps|';*)
 //{$ENDIF}
+ TFRpObjInspVCL(Owner).OpenDialog1.Filter:=GetImageFilters();
 
  Align:=alClient;
 

@@ -93,7 +93,6 @@ function StringShapeTypeToShape(Value:wideString):TRpShapeType;
 implementation
 
 
-
 constructor TRpDrawInterface.Create(AOwner:TComponent;pritem:TRpCommonComponent);
 begin
  if Not (pritem is TRpShape) then
@@ -943,13 +942,16 @@ var
  jpeg:TJPegImage;
  gfilter:string;
  apic:TPicture;
+ list: TStrings;
+ i:integer;
+ bitmap:TBitmap;
 begin
  aimage:=TRpImage(printitem);
  OpenDialog1:=TOpenPictureDialog.Create(Application);
  try
-  OpenDialog1.Filter:=
-   SrpBitmapImages+'|*.bmp|'+
-   SrpSJpegImages+'|*.jpg|';
+//  OpenDialog1.Filter:=
+//   SrpBitmapImages+'|*.bmp|'+
+//   SrpSJpegImages+'|*.jpg|';
 //  SrpSPNGImages+'|*.png|'+
 //  SRpSXPMImages+'|*.xpm';
  // Add Registered file formats
@@ -964,31 +966,47 @@ begin
   'TIF '+'|*.tif|'+
   'FAX '+'|*.fax|'+
   'EPS '+'|*.eps|';*)
+  OpenDialog1.Filter := GetImageFilters();
 
- if OpenDialog1.Execute then
- begin
-  if (OpenDialog1.FilterIndex<=1) then
+
+  if OpenDialog1.Execute then
   begin
-   aimage.Stream.LoadFromFile(OpenDialog1.FileName);
-  end
-  else
-  begin
-   apic:=TPicture.Create;
-   try
-     apic.LoadFromFile(OpenDialog1.FileName);
-     jpeg:=TJPegImage.Create;
-     try
-      jpeg.CompressionQuality:=100;
-      jpeg.Assign(apic.Graphic);
-      jpeg.SaveToStream(aimage.stream);
-     finally
-      jpeg.free;
-     end;
-   finally
-    apic.free;
+   if (OpenDialog1.FilterIndex<=1) then
+   begin
+    aimage.Stream.LoadFromFile(OpenDialog1.FileName);
+   end
+   else
+   begin
+    apic:=TPicture.Create;
+    try
+      apic.LoadFromFile(OpenDialog1.FileName);
+      jpeg:=TJPegImage.Create;
+      try
+       jpeg.CompressionQuality:=100;
+       if (apic.Graphic is TJPegImage) then
+       begin
+        jpeg.Assign(apic.Graphic);
+       end
+       else
+       begin
+        bitmap:=TBitmap.Create;
+        try
+         bitmap.Assign(apic.Graphic);
+         jpeg.Assign(bitmap);
+        finally
+         bitmap.Free;
+        end;
+       end;
+       jpeg.Assign(apic.Graphic);
+       jpeg.SaveToStream(aimage.stream);
+      finally
+       jpeg.free;
+      end;
+    finally
+     apic.free;
+    end;
    end;
   end;
- end;
  finally
   OpenDialog1.free;
  end;

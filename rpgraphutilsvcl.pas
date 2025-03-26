@@ -85,6 +85,8 @@ procedure RpShowMessage(const Text: WideString);
 // procedure ScaleToolBar(ntoolbar:TToolBar);
 function  ScaleDpi(value:integer):integer;
 function  UnScaleDpi(value:integer):integer;
+procedure GetRegisteredGraphicFormats(AFormats: TStrings);
+function GetImageFilters(): string;
 
 implementation
 
@@ -133,6 +135,95 @@ begin
  end;
 end;
 *)
+
+function RPos(const ASub, AIn: String; AStart: Integer = -1): Integer;
+var
+  i: Integer;
+  LStartPos: Integer;
+  LTokenLen: Integer;
+begin
+  Result := 0;
+  LTokenLen := Length(ASub);
+  // Get starting position
+  if AStart < 0 then begin
+    AStart := Length(AIn);
+  end;
+  if AStart < (Length(AIn) - LTokenLen + 1) then begin
+    LStartPos := AStart;
+  end else begin
+    LStartPos := (Length(AIn) - LTokenLen + 1);
+  end;
+  // Search for the string
+  for i := LStartPos downto 1 do begin
+    if Copy(AIn, i, LTokenLen) = ASub then begin
+      Result := i;
+      Break;
+    end;
+  end;
+end;
+
+function GetImageFilters(): string;
+var
+ filter: string;
+ i:integer;
+ possep:integer;
+ list:TStrings;
+ parts: TArray<string>;
+ part:string;
+ extension: string;
+ description: string;
+begin
+ filter:=
+   SrpBitmapImages+'|*.bmp|'+
+   SrpSJpegImages+'|*.jpg|';
+ list:=TStringList.Create;
+ try
+  GetRegisteredGraphicFormats(list);
+  for i:=0 to list.Count -1 do
+  begin
+   part:=list[i];
+   possep := Pos('=', part);
+   description:=Copy(part, possep + 1, Length(Part));
+   extension:=Copy(part, 1, possep - 1);
+   if ((extension <> '*.bmp') AND (extension <>'jpg')) then
+    filter := filter + description + '|' +extension+'|';
+  end;
+ finally
+  list.Free;
+ end;
+
+ Result:=filter;
+end;
+
+procedure GetRegisteredGraphicFormats(AFormats: TStrings);
+var
+  List: TStringList;
+  i, j: Integer;
+  desc, ext: string;
+begin
+  List := TStringList.Create;
+  try
+    List.Delimiter := '|';
+    List.StrictDelimiter := True;
+    List.DelimitedText := GraphicFilter(TGraphic);
+    i := 0;
+    if List.Count > 2 then
+      Inc(i, 2); // skip the "All" filter ...
+    while i <= List.Count-1 do
+    begin
+      desc := List[i];
+      ext := List[i+1];
+      j := RPos('(', desc);
+      if j > 0 then
+        desc := TrimRight(Copy(desc, 1, j-1)); // remove extension mask from description
+      AFormats.Add(ext + '=' + desc);
+      Inc(i, 2);
+    end;
+  finally
+    List.Free;
+  end;
+end;
+
 function  ScaleDpi(value:integer):integer;
 var
  newdpi:integer;
