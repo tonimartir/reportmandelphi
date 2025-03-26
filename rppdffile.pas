@@ -140,6 +140,7 @@ type
    procedure SetInfoProvider(aprov:TRpInfoProvider);
    function GetTTFontData:TRpTTFontData;
    function EncodeUnicode(astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):string;
+   procedure SWriteLine(Stream:TStream;astring:string);
   public
    PenColor:integer;
    PenStyle:integer;
@@ -254,6 +255,8 @@ type
    function CompressStream(stream: TStream): TMemoryStream;
 {$ENDIF}
    procedure WriteStream(stream, dest: TMemoryStream);
+   function DateToISO(date:TDateTime): string;
+   procedure SWriteLine(Stream:TStream;astring:string);
  public
    DestStream:TStream;
    procedure BeginDoc;
@@ -466,16 +469,12 @@ const
     500,444);
 
 
-
-
-// Writes a line into a Stream that is add #13+#10
-procedure SWriteLine(Stream:TStream;astring:string);
+procedure TrpPDFCanvas.SWriteLine(Stream:TStream;astring:string);
 begin
- //  astring:=astring+#13+#10;
- // Only EOL for better compatibility
- astring:=astring+#10;
- WriteStringToStream(astring,Stream);
+ FFile.SWriteLine(Stream,astring);
 end;
+
+
 
 
 
@@ -573,6 +572,18 @@ begin
 end;
 
 
+
+// Writes a line into a Stream that is add #13+#10
+procedure TRpPDFFile.SWriteLine(Stream:TStream;astring:string);
+begin
+ if (FPDFConformance = TPDFConformanceType.PDF_1_4) then
+   astring:=astring+#13+#10
+ // Only EOL for better compatibility in PDF A3
+ else
+   astring:=astring+#10;
+ WriteStringToStream(astring,Stream);
+end;
+
 procedure TRpPDFFile.NewAnnotation(posx,posy,width,height: integer; annotation: string);
 var
  ann: TPDFAnnotation;
@@ -620,6 +631,25 @@ begin
   Raise Exception.Create(SRpStreamNotValid);
  Result:=FMainPDF;
 end;
+
+
+function DateTimeToPDFString(date: TDateTime): string;
+begin
+ Result:=FormatDateTime('yyyyMMddHHmmss',date);
+end;
+
+function TRpPDFFile.DateToISO(date:TDateTime): string;
+begin
+ if (FPDFConformance = TPDFConformanceType.PDF_A_3)  then
+ begin
+  Result:=DateToISO8601(date);
+ end
+ else
+ begin
+  Result:=DateTimeToPDFString(date);
+ end
+end;
+
 
 procedure TRpPDFFile.BeginDoc;
 var
@@ -671,7 +701,7 @@ begin
  SWriteLine(FTempStream,'/Author '+EncodePDFText(FDocAuthor));
  if Length(FDocCreationDate) = 0 then
  begin
-  SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+  SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO(FInternalFDocCreationDate)+')');
  end
  else
  begin
@@ -680,12 +710,19 @@ begin
  if (FPDFConformance <> PDF_A_3) then
    SWriteLine(FTempStream,'/Creator '+EncodePDFText(FDocCreator));
  if (Length(FDocKeywords)>0) then
-  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords));
+  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords))
+ else
+ begin
+  if (PDFConformance = TPDFConformanceType.PDF_1_4) then
+    SWriteLine(FTempStream,'/Keywords ()');
+ end;
+
  SWriteLine(FTempStream,'/Subject '+EncodePdfText(FDocSubject));
  SWriteLine(FTempStream,'/Title '+EncodePdfText(FDocTitle));
  if Length(FDocModificationDate) = 0 then
  begin
- // SWriteLine(FTempStream,'/ModDate (D:'+  DateToISO8601(FInternalFDocCreationDate)+')');
+  if (PDFConformance = TPDFConformanceType.PDF_1_4) then
+   SWriteLine(FTempStream,'/ModDate ()');
  end
  else
  begin
