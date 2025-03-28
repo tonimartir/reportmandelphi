@@ -396,8 +396,8 @@ begin
     if dia.execute then
     begin
       allpages := false;
-      collate := GetPrinterCollation;
-      copies := GetPrinterCopies;
+      collate := dia.Collate;
+      copies := dia.Copies;
       frompage := dia.frompage;
       topage := dia.topage;
       Result := true;

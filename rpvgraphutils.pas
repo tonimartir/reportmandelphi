@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -1028,7 +1028,67 @@ begin
  Result.y:=Round(gdipage.FormHeight/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
 end;
 
+procedure GetPaperSizeByValue(PaperSize: Integer; var WidthMM, HeightMM: Integer);
+begin
+  case PaperSize of
+    // Tamaños de papel en pulgadas convertidos a décimas de milímetro
+    DMPAPER_LETTER:              begin WidthMM := 2160; HeightMM := 2794; end;  // Letter 8.5 x 11 in → 2160 x 2794 décimas de mm
+    DMPAPER_LEGAL:               begin WidthMM := 2160; HeightMM := 3556; end;  // Legal 8.5 x 14 in → 2160 x 3556 décimas de mm
+    DMPAPER_9X11:                begin WidthMM := 2290; HeightMM := 2794; end;  // 9 x 11 in → 2290 x 2794 décimas de mm
+    DMPAPER_10X11:               begin WidthMM := 2540; HeightMM := 2794; end;  // 10 x 11 in → 2540 x 2794 décimas de mm
+    DMPAPER_10X14:               begin WidthMM := 2540; HeightMM := 3556; end;  // 10 x 14 in → 2540 x 3556 décimas de mm
+    DMPAPER_15X11:               begin WidthMM := 3810; HeightMM := 2794; end;  // 15 x 11 in → 3810 x 2794 décimas de mm
+    DMPAPER_11X17:               begin WidthMM := 2794; HeightMM := 4318; end;  // 11 x 17 in → 2794 x 4318 décimas de mm
+    DMPAPER_12X11:               begin WidthMM := 3048; HeightMM := 2794; end;  // 12 x 11 in → 3048 x 2794 décimas de mm
 
+    // Tamaños ISO (serie A) en milímetros
+    DMPAPER_A2:                  begin WidthMM := 4200; HeightMM := 5940; end;   // A2 420 x 594 mm → 4200 x 5940 décimas de mm
+    DMPAPER_A3:                  begin WidthMM := 2970; HeightMM := 4200; end;   // A3 297 x 420 mm → 2970 x 4200 décimas de mm
+    DMPAPER_A3_EXTRA:            begin WidthMM := 3220; HeightMM := 4450; end;   // A3 Extra 322 x 445 mm → 3220 x 4450 décimas de mm
+//    DMPAPER_A3_EXTRA_TRAVERSE:   begin WidthMM := 3220; HeightMM := 4450; end;   // A3 Extra Transverse → 3220 x 4450 décimas de mm
+    DMPAPER_A3_ROTATED:          begin WidthMM := 4200; HeightMM := 2970; end;   // A3 rotated 420 x 297 mm → 4200 x 2970 décimas de mm
+ //   DMPAPER_A3_TRAVERSE:         begin WidthMM := 2970; HeightMM := 4200; end;   // A3 Transverse 297 x 420 mm → 2970 x 4200 décimas de mm
+    DMPAPER_A4:                  begin WidthMM := 2100; HeightMM := 2970; end;   // A4 210 x 297 mm → 2100 x 2970 décimas de mm
+    DMPAPER_A4_EXTRA:            begin WidthMM := 2350; HeightMM := 3220; end;   // A4 Extra 9.27 x 12.69 in → 2350 x 3220 décimas de mm
+    DMPAPER_A4_PLUS:             begin WidthMM := 2100; HeightMM := 3300; end;   // A4 Plus 210 x 330 mm → 2100 x 3300 décimas de mm
+    DMPAPER_A4_ROTATED:          begin WidthMM := 2970; HeightMM := 2100; end;   // A4 rotated 297 x 210 mm → 2970 x 2100 décimas de mm
+    DMPAPER_A4SMALL:             begin WidthMM := 2100; HeightMM := 2970; end;   // A4 small 210 x 297 mm → 2100 x 2970 décimas de mm
+    DMPAPER_A4_TRANSVERSE:       begin WidthMM := 2100; HeightMM := 2970; end;   // A4 Transverse 210 x 297 mm → 2100 x 2970 décimas de mm
+    DMPAPER_A5:                  begin WidthMM := 1480; HeightMM := 2100; end;   // A5 148 x 210 mm → 1480 x 2100 décimas de mm
+    DMPAPER_A5_EXTRA:            begin WidthMM := 1740; HeightMM := 2350; end;   // A5 Extra 174 x 235 mm → 1740 x 2350 décimas de mm
+    DMPAPER_A5_ROTATED:          begin WidthMM := 2100; HeightMM := 1480; end;   // A5 rotated 210 x 148 mm → 2100 x 1480 décimas de mm
+    DMPAPER_A5_TRANSVERSE:       begin WidthMM := 1480; HeightMM := 2100; end;   // A5 Transverse 148 x 210 mm → 1480 x 2100 décimas de mm
+    DMPAPER_A6:                  begin WidthMM := 1050; HeightMM := 1480; end;   // A6 105 x 148 mm → 1050 x 1480 décimas de mm
+    DMPAPER_A6_ROTATED:          begin WidthMM := 1480; HeightMM := 1050; end;   // A6 rotated 148 x 105 mm → 1480 x 1050 décimas de mm
+    DMPAPER_A_PLUS:              begin WidthMM := 2270; HeightMM := 3560; end;   // SuperA/A4 227 x 356 mm → 2270 x 3560 décimas de mm
+    DMPAPER_B4:                  begin WidthMM := 2500; HeightMM := 3540; end;   // B4 250 x 354 mm → 2500 x 3540 décimas de mm
+    DMPAPER_B4_JIS_ROTATED:      begin WidthMM := 3640; HeightMM := 2570; end;   // B4 JIS rotated 364 x 257 mm → 3640 x 2570 décimas de mm
+    DMPAPER_B5:                  begin WidthMM := 1820; HeightMM := 2570; end;   // B5 182 x 257 mm → 1820 x 2570 décimas de mm
+    DMPAPER_B5_EXTRA:            begin WidthMM := 2010; HeightMM := 2760; end;   // B5 Extra 201 x 276 mm → 2010 x 2760 décimas de mm
+    DMPAPER_B5_JIS_ROTATED:      begin WidthMM := 2570; HeightMM := 1820; end;   // B5 JIS rotated 257 x 182 mm → 2570 x 1820 décimas de mm
+    DMPAPER_B6_JIS:              begin WidthMM := 1280; HeightMM := 1820; end;   // B6 JIS 128 x 182 mm → 1280 x 1820 décimas de mm
+    DMPAPER_B6_JIS_ROTATED:      begin WidthMM := 1820; HeightMM := 1280; end;   // B6 JIS rotated 182 x 128 mm → 1820 x 1280 décimas de mm
+    DMPAPER_B_PLUS:              begin WidthMM := 3050; HeightMM := 4870; end;   // SuperB/A3 305 x 487 mm → 3050 x 4870 décimas de mm
+
+    // Tamaños de sobres
+    DMPAPER_ENV_9:               begin WidthMM := 990; HeightMM := 2250; end;   // #9 Envelope 3.875 x 8.875 in → 990 x 2250 décimas de mm
+    DMPAPER_ENV_10:              begin WidthMM := 1041; HeightMM := 2413; end;   // #10 Envelope 4.125 x 9.5 in → 1041 x 2413 décimas de mm
+    DMPAPER_ENV_11:              begin WidthMM := 1143; HeightMM := 2636; end;   // #11 Envelope 4.5 x 10.375 in → 1143 x 2636 décimas de mm
+    DMPAPER_ENV_12:              begin WidthMM := 1207; HeightMM := 2794; end;   // #12 Envelope 4.75 x 11 in → 1207 x 2794 décimas de mm
+    DMPAPER_ENV_14:              begin WidthMM := 1270; HeightMM := 2921; end;   // #14 Envelope 5 x 11.5 in → 1270 x 2921 décimas de mm
+    DMPAPER_ENV_C5:              begin WidthMM := 1620; HeightMM := 2290; end;   // C5 Envelope 162 x 229 mm → 1620 x 2290 décimas de mm
+    DMPAPER_ENV_C6:              begin WidthMM := 1140; HeightMM := 1620; end;   // C6 Envelope 114 x 162 mm → 1140 x 1620 décimas de mm
+
+    // Otros tamaños de sobres
+    DMPAPER_ENV_B4:              begin WidthMM := 2500; HeightMM := 3530; end;   // B4 Envelope 250 x 353 mm → 2500 x 3530 décimas de mm
+    DMPAPER_ENV_B5:              begin WidthMM := 1760; HeightMM := 2500; end;   // B5 Envelope 176 x 250 mm → 1760 x 2500 décimas de mm
+    DMPAPER_ENV_B6:              begin WidthMM := 1300; HeightMM := 1760; end;   // B6 Envelope 130 x 176 mm → 1300 x 1760 décimas de mm
+
+  else
+    WidthMM := 2100;  // Default: A4 size (210 x 297 mm)
+    HeightMM := 2970;
+  end;
+end;
 // Gets current paper page size old version
 // That checks for existent forms
 function GetCurrentPaper:TGDIPageSize;
@@ -1140,6 +1200,10 @@ begin
     Result.Height:=PDevMode.dmPaperLength;
     Result.Width:=PDevMode.dmPaperwidth;
     Result.papername:=PDevmode.dmFormName;
+    if (Result.Width = 0) or (Result.Height = 0) then
+    begin
+     GetPaperSizeByValue(Result.PageIndex, Result.Width, Result.Height);
+    end;
    end;
    Result.papersource:=PDevMode.dmDefaultSource;
    Result.duplex:=PDevMode.dmDuplex;
