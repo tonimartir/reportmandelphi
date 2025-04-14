@@ -473,7 +473,10 @@ end;
 
 procedure TReportManX.SetPDFConformance(PDFConformance: TxPDFConformanceType);
 begin
- FDelphiControl.GetReport.PDFConformance:=TPDFConformanceType(PDFConformance);
+ if (PDFConformance <> PDF_Default) then
+ begin
+  FDelphiControl.GetReport.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
+ end;
 end;
 
 
