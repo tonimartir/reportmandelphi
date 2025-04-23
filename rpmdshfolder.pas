@@ -303,7 +303,7 @@ begin
      dwflags:=dwflags or CSIDL_FLAG_CREATE;
    nresult:=SHGetFolderPathW(0,  dwflags, 0, 0, szAppDataW);
    Result:=WideCharToString(szAppdataW);
-   Result:='';
+   //Result:='';
    if ((nresult<>S_OK)) then
     Result:=Trim(WideCharToString(szAppdataW));
    if ((nresult<>S_OK) or (Length(Result)=0)) then
