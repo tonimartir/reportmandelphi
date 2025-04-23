@@ -12,7 +12,7 @@ unit reportman_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 22/02/2025 21:54:20 from Type Library described below.
+// File generated on 23/04/2025 15:26:27 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\desarrollo\prog\toni\reportman\activex\reportman (1)
@@ -288,6 +288,7 @@ type
     procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); safecall;
     function Get_DebugMode: WordBool; safecall;
     procedure Set_DebugMode(Value: WordBool); safecall;
+    procedure ShowVersion; safecall;
     property filename: WideString read Get_filename write Set_filename;
     property Preview: WordBool read Get_Preview write Set_Preview;
     property ShowProgress: WordBool read Get_ShowProgress write Set_ShowProgress;
@@ -384,6 +385,7 @@ type
     procedure AddXMPMetadata(const XMPContent: WideString); dispid 210;
     procedure SetPDFConformance(PDFConformance: TxPDFConformanceType); dispid 207;
     property DebugMode: WordBool dispid 211;
+    procedure ShowVersion; dispid 212;
   end;
 
 // *********************************************************************//

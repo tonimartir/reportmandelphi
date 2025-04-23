@@ -12,7 +12,7 @@ uses
   Windows, ActiveX, SysUtils,Classes, Controls, Graphics, Menus, Forms, StdCtrls,
   ComServ, StdVCL, AXCtrls, reportman_TLB, rpactivexreport,rpreport,rpvgraphutils,
   rpparams,rptypes,rpgdidriver,rpmetafile,comobj,rpaxreportparameters,
-  rpaxreportreport,rpexceldriver,rphtmldriver,printers,rpmdconsts,jclDebug;
+  rpaxreportreport,rpexceldriver,rphtmldriver,printers,rpmdconsts,jclDebug, Dialogs;
 
 type
   TReportManX = class(TActiveXControl, IReportManX)
@@ -117,6 +117,7 @@ type
     procedure AddXMPMetadata(const XMPContent: WideString); safecall;
     function Get_DebugMode: WordBool; safecall;
     procedure Set_DebugMode(Value: WordBool); safecall;
+    procedure ShowVersion; safecall;
 
   end;
 
@@ -659,6 +660,11 @@ begin
   Application.OnException:=nil;
  end;
  FDebugMode:=Value;
+end;
+
+procedure TReportManX.ShowVersion;
+begin
+ ShowMessage(RM_VERSION+chr(10)+'DPI: '+IntTostr(Screen.PixelsPerInch));
 end;
 
 initialization

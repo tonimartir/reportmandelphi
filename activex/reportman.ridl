@@ -6,7 +6,7 @@
 // However, when applying changes via the Editor this file will be regenerated
 // and comments or formatting changes will be lost.
 // ************************************************************************ //
-// File generated on 22/02/2025 22:29:23 (- $Rev: 12980 $, 795682750).
+// File generated on 23/04/2025 15:26:29 (- $Rev: 12980 $, 46467296).
 
 [
   uuid(D4D26F6B-6564-44F4-A913-03C91CE37740),
@@ -337,6 +337,8 @@ library reportman
     HRESULT _stdcall DebugMode([out, retval] VARIANT_BOOL* Value);
     [propput, id(0x000000D3)]
     HRESULT _stdcall DebugMode([in] VARIANT_BOOL Value);
+    [id(0x000000D4)]
+    HRESULT _stdcall ShowVersion(void);
   };
 
   [
