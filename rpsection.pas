@@ -718,6 +718,8 @@ begin
     begin
      newextent:=MaxExtent;
      newextent.Y:=newextent.Y-acompo.PosY;
+     if (newextent.Y<0) then
+      newextent.Y := 0;
      compsize:=acompo.GetExtension(adriver,newExtent,forcepartial);
      if compsize.Y>0 then
      begin
@@ -737,6 +739,8 @@ begin
   begin
    newextent:=MaxExtent;
    newextent.Y:=newextent.Y-acompo.PosY;
+   if (newextent.Y<0) then
+    newextent.Y := 0;
    compsize:=acompo.GetExtension(adriver,newExtent,forcepartial);
    if compsize.Y>0 then
    begin
