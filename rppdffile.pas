@@ -2629,6 +2629,7 @@ var
  leading:integer;
  offset:integer;
  incomplete:boolean;
+ charsProcessed: integer;
 begin
  // Text extent for the simple strings, wide strings not supported
  havekerning:=false;
@@ -2666,6 +2667,7 @@ begin
  i:=1;
  alastsize:=0;
  lockspace:=false;
+ charsprocessed := 0;
  while i<=Length(astring) do
  begin
   incomplete:=false;
@@ -2799,7 +2801,8 @@ begin
   info.lastline:=true;
   NewLineInfo(info);
  end;
- arec.Bottom:=arec.Bottom+leading;
+ if (charsprocessed>0) then
+   arec.Bottom:=arec.Bottom+leading;
  rect:=arec;
 end;
 
