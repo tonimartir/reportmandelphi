@@ -683,7 +683,7 @@ begin
 {$IFDEF DELPHI2009UP}
   FormatSettings.DecimalSeparator:='.';
 {$ELSE}
-  DecimalSeparator:=olddec;
+  DecimalSeparator:='.';
 {$ENDIF}
   Result:=FloatToStr(avalue);
  finally
