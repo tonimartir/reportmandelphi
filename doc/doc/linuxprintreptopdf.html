@@ -1,0 +1,42 @@
+<h1>
+Setup printreptopdf command line tool in Linux
+</h1>
+
+This document have been documented with Ubuntu Linux Server 22.04 LTS.
+
+For better compatibility use Firedac Drivers.
+The proper client library must be installed and configured.
+For exmple for mysql driver:
+<a href="https://docwiki.embarcadero.com/RADStudio/Athens/en/Connect_to_MySQL_Server_(FireDAC)">See instructions of Firedac Driver</a>
+
+<ul>
+    <li>Setup the client library
+        Install the libraries
+        sudo apt-get install libmysqlclient21
+        Do a symbolic linq allow the driver find the library
+        sudo ln -s /usr/lib/x86_64-linux-gnu/libmysqlclient.so.21 /usr/lib/x86_64-linux-gnu/libmysqlclient.so
+    </li>
+    <li>
+      Setup a .dbxconnections file at the HOME directory.
+      [TEST]
+        DriverName=FireDac
+        DriverId=MYSQL
+        Database=test
+        User_name=root
+        Password=xxx
+        DataSource=
+        CharacterSet=
+        Port=3306
+        Protocol=
+        SqlDialect=3
+        RoleName=
+        Server=192.168.1.XX
+        IBAdvanced=
+        DatabaseFile=
+        OSAuthent=
+    </li>
+    <li>
+      Execute the command:
+      ./printreptopdf yourreport.rep yourdestination.pdf
+    </li>
+</ul>

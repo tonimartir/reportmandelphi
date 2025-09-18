@@ -19,10 +19,7 @@ uses SysUtils,Classes,HTTPApp,rpmdconsts,Inifiles,rpalias,System.NetEncoding,
 {$IFNDEF FORCECONSOLE}
 {$IFDEF MSWINDOWS}
   rpgdidriver,Windows,
- {$ENDIF}
- {$IFDEF LINUX}
-  rpqtdriver,
- {$ENDIF}
+{$ENDIF}
 {$ENDIF}
 // jclDebug;
 rpmetafile;
@@ -1168,8 +1165,8 @@ begin
       false,true,1,9999,1,false,astream,true,false,true);
  {$ENDIF}
  {$IFDEF LINUX}
-     rpqtdriver.ExportReportToPDFMetaStream(pdfreport,'',
-      false,true,1,9999,1,false,astream,true,false,true);
+     rppdfdriver.PrintReportPDFStream(pdfreport,'',
+      false,true,1,9999,1,astream,true,false,true);
  {$ENDIF}
 {$ENDIF}
      WriteLog('Writing response (application/rpmf)');
@@ -1247,8 +1244,8 @@ begin
       false,true,1,9999,1,false,astream,true,false,false);
  {$ENDIF}
  {$IFDEF LINUX}
-     rpqtdriver.ExportReportToPDFMetaStream(pdfreport,'',
-      false,true,1,9999,1,false,astream,true,false,false);
+     rppdfdriver.PrintReportPDFStream(pdfreport,'',
+      false,true,1,9999,1,astream,true,false,true);
  {$ENDIF}
 {$ENDIF}
      astream.Seek(0,soFromBeginning);

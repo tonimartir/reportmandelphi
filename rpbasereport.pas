@@ -26,7 +26,7 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,sysutils,rptypes,rpsubreport,rpsection,rpmdconsts,
+uses Classes,sysutils,rptypes,rpsubreport,rpsection,rpsecutil,rpmdconsts,
  rpdatainfo,rpparams,rpeval,rptypeval,rpprintitem,rpmdbarcode,
  rpmetafile,
 {$IFDEF USEVARIANTS}
@@ -359,6 +359,7 @@ type
    function GetSQLValue(connectionname,sql:String):Variant;
    function RequestPage(pageindex:integer):boolean;
    function CheckParameters(paramlist:TRpParamList;var paramname,amessage:string):Boolean;
+   function FindReporItemByName(itemName: string):TObject;
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
@@ -470,6 +471,9 @@ type
 implementation
 
 uses rpxmlstream,rplabelitem,rpmdchart;
+
+
+
 
 function TIdenReportVar.GeTRpValue:TRpValue;
 var
@@ -2414,7 +2418,64 @@ begin
    Result:=true;
 end;
 
-
+function TRpBaseReport.FindReporItemByName(itemName: string):TObject;
+var
+ i:integer;
+ colItem: TCollectionItem;
+ colItem2: TCollectionItem;
+ secItem: TRpSectionListItem;
+ dbInfoItem: TRpDatabaseInfoItem;
+ dInfoItem: TRpDataInfoItem;
+ subItem: TRpSubReportListItem;
+ subreport:TRpSubreport;
+begin
+ for colItem in DatabaseInfo do
+ begin
+  dbInfoItem:=colItem as TRpDatabaseInfoItem;
+  if (dbInfoItem.Name = itemName) then
+  begin
+   Result:=dbinfoItem;
+   exit;
+  end
+ end;
+ for colItem in DataInfo do
+ begin
+  dInfoItem:=colItem as TRpDataInfoItem;
+  if (dInfoItem.Name = itemName) then
+  begin
+   Result:=dInfoItem;
+   exit;
+  end
+ end;
+ for colItem in DataInfo do
+ begin
+  dInfoItem:=colItem as TRpDataInfoItem;
+  if (dInfoItem.Name = itemName) then
+  begin
+   Result:=dInfoItem;
+   exit;
+  end
+ end;
+ for colItem in SubReports do
+ begin
+  subItem:=colItem as TrpSubreportListItem;
+  subreport:=subItem.SubReport;
+  if (subreport.Name = itemName) then
+  begin
+   Result:=subreport;
+   exit;
+  end;
+  for colItem2 in subreport.Sections do
+  begin
+    secItem:=colItem2 as TrpSectionListItem;
+    if (secItem.Section.Name = itemName) then
+    begin
+     Result:=secItem.Section;
+     exit;
+    end;
+  end;
+ end;
+end;
 
 
 end.

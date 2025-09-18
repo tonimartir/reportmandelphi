@@ -1,2 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject/>
+<BorlandProject>
+  <ProjectSortOrder AutoSort="0" SortType="0">
+    <File Path="rpwebmodule.pas"/>
+    <File Path="rpwebmodule.dfm"/>
+    <File Path="rpwebpages.pas"/>
+  </ProjectSortOrder>
+</BorlandProject>

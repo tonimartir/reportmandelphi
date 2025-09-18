@@ -361,12 +361,14 @@ begin
       diarange.ActiveControl := diarange.BOK;
       diarange.frompage := frompage;
       diarange.topage := topage;
+      diarange.collate := collate;
       diarange.showmodal;
       if diarange.dook then
       begin
         frompage := diarange.frompage;
         topage := diarange.topage;
         allpages := diarange.RadioAll.Checked;
+        collate:=diarange.collate;
         Result := true;
       end
     finally

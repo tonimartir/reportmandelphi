@@ -39,8 +39,6 @@ const
  MAX_ELEMENT_HEIGHT=86400;
 
 type
-
-
  TRpCommonComponent=class(TComponent)
   private
    FHeight:TRpTwips;

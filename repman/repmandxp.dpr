@@ -35,7 +35,7 @@ uses
   {$ENDIF }
   {$IFDEF DEBUG}
   JclDebug,
-  {$ENDIF}
+  {$ENDIF }
   Forms,
   Controls,
   Dialogs,
@@ -136,7 +136,8 @@ uses
   rpDelphiZXIngQRCode in '..\rpDelphiZXIngQRCode.pas',
   FireDAC.Phys.ODBCMeta in 'FireDAC.Phys.ODBCMeta.pas',
   rpmdfembeddedfile in '..\rpmdfembeddedfile.pas' {FRpEmbeddedFile},
-  rptruetype in '..\rptruetype.pas';
+  rptruetype in '..\rptruetype.pas',
+  rpmdundocue in '..\rpmdundocue.pas';
 
 {$R *.res}
 

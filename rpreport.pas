@@ -949,6 +949,7 @@ var
  subrep:TRpSubReport;
  dataavail:Boolean;
  newpagesize:integer;
+ param1: TRpParam;
 begin
  params.UpdateInitialValues;
  maximum_width:=0;
@@ -1080,14 +1081,15 @@ begin
  // Evaluates parameter expressions before open
  for i:=0 to Params.Count-1 do
  begin
-  if params.items[i].ParamType=rpParamExpreB then
+  param1:=params.Items[i];
+  if param1.ParamType=rpParamExpreB then
   begin
-   paramname:=params.items[i].Name;
+   paramname:=param1.Name;
    try
-    if Not VarIsNull(params.items[i].Value) then
+    if Not VarIsNull(param1.Value) then
     begin
-     FEvaluator.EvaluateText(paramname+':=('+String(params.items[i].Value)+')');
-     params.items[i].LastValue:=FEvaluator.EvaluateText(paramname);
+     FEvaluator.EvaluateText(paramname+':=('+String(param1.Value)+')');
+     param1.LastValue:=FEvaluator.EvaluateText(paramname);
     end;
    except
     on E:Exception do
@@ -1104,7 +1106,7 @@ begin
   end
   else
   begin
-   params.Items[i].LastValue:=params.Items[i].ListValue;
+   param1.LastValue:=param1.ListValue;
   end;
  end;
 
