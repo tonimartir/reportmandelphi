@@ -138,3 +138,9 @@ activex/test/TestReportmanX/TestReportmanX/bin/
 activex/test/TestReportmanX/TestReportmanX/obj/
 activex/test/TestReportmanX/TestReportmanX/TestReportmanX.csproj.user
 activex/bin32/reportman.oca
+repman/bin32/libmysql.dll
+repman/bin32/repmandxp_3_8_6.zip
+repman/bin64/libmysql.dll
+repman/bin64/libssl-1_1-x64.dll
+server/web/repwebexe
+repman/bin64/libcrypto-1_1-x64.dll

@@ -192,6 +192,7 @@ type
 
  TRpDatabaseInfoItem=class(TCollectionItem)
   private
+   FName: string;
    FAlias:string;
    FMyBasePath:String;
 {$IFDEF USESQLEXPRESS}
@@ -245,6 +246,8 @@ type
 {$ENDIF}
    procedure ReadAdoConnectionString(Reader:TReader);
    procedure WriteAdoConnectionString(Writer:TWriter);
+   procedure ReadNewName(Reader: TReader);
+   procedure WriteNewName(Writer: TWriter);
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
@@ -288,6 +291,7 @@ type
 {$ENDIF}
    property MyBasePath:String read FMyBasePath;
    property ADOConnectionString:widestring read FADOConnectionString write FADOConnectionString;
+   property Name: string read FName write FName;
    procedure DoCommit;
   published
    property Alias:string read FAlias write SetAlias;
@@ -368,6 +372,7 @@ type
    FOnConnect:TDatasetNotifyEvent;
    FOnDisConnect:TDatasetNotifyEvent;
    FParallelUnion:Boolean;
+   FName: string;
    procedure SetDataUnions(Value:TStrings);
    procedure SetDatabaseAlias(Value:string);
    procedure SetAlias(Value:string);
@@ -379,6 +384,10 @@ type
 {$IFDEF USEBDE}
    procedure SetRangeForTable(lastrange:boolean);
 {$ENDIF}
+   procedure ReadNewName(Reader: TReader);
+   procedure WriteNewName(Writer: TWriter);
+  protected
+    procedure DefineProperties(Filer:TFiler);override;
   public
    SQLOverride:widestring;
    procedure GetFieldNames(fieldlist,fieldtypes,fieldsizes:TStrings);
@@ -397,6 +406,7 @@ type
 {$IFDEF USEADO}
    property externalDataset: Pointer read FexternalDataSet write FexternalDataSet;
 {$ENDIF}
+   property Name: string read FName write FName;
   published
    property Alias:string read FAlias write SetAlias;
    property DatabaseAlias:string read FDatabaseAlias write SetDatabaseAlias;
@@ -4513,12 +4523,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TRpDatabaseInfoItem.DefineProperties(Filer:TFiler);
-begin
- inherited;
 
- Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,True);
-end;
 
 procedure TRpDatabaseInfoItem.ReadAdoConnectionString(Reader:TReader);
 begin
@@ -5329,6 +5334,47 @@ begin
     end;
 end;
 
+procedure TRpDatabaseInfoItem.ReadNewName(Reader: TReader);
+begin
+  FName := Reader.ReadString;
+end;
+
+procedure TRpDataInfoItem.WriteNewName(Writer: TWriter);
+begin
+    Writer.WriteString(FName);
+end;
+
+procedure TRpDataInfoItem.ReadNewName(Reader: TReader);
+begin
+  FName := Reader.ReadString;
+end;
+
+procedure TRpDatabaseInfoItem.WriteNewName(Writer: TWriter);
+begin
+    Writer.WriteString(FName);
+end;
+
+
+procedure TRpDatabaseInfoItem.DefineProperties(Filer:TFiler);
+begin
+ inherited;
+
+ Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,True);
+ Filer.DefineProperty('Name',
+   ReadNewName, WriteNewName,
+  FName <> ''
+  );
+end;
+
+procedure TRpDataInfoItem.DefineProperties(Filer:TFiler);
+begin
+ inherited;
+
+ Filer.DefineProperty('Name',
+   ReadNewName, WriteNewName,
+  FName <> ''
+  );
+end;
 
 
 initialization

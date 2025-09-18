@@ -99,6 +99,7 @@ type
    FPageGroupCountList:TList;
    cachedpos:Int64;
    FCachedImage:TRpCachedImage;
+   FName: string;
    procedure SetReportComponents(Value:TRpCommonList);
    procedure SetGroupName(Value:string);
    procedure SetChangeExpression(Value:widestring);
@@ -124,6 +125,8 @@ type
    procedure WriteStream(AStream:TStream);
    procedure AddPageGroupCountItem(apageindex,aobjectindex:integer;
     adisplayformat:widestring);
+   procedure ReadNewName(Reader: TReader);
+   procedure WriteNewName(Writer: TWriter);
   protected
    procedure DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);override;
@@ -174,6 +177,7 @@ type
    property IsExternal:Boolean read GetIsExternal;
    property BackExpression:WideString read FBackExpression write FBackExpression;
    property Stream:TMemoryStream read FStream write SetStream;
+   property Name: string read FName write FName;
   published
    property SubReport:TComponent read FSubReport write FSubReport;
    property GroupName:String read FGroupName write SetGroupName;
@@ -1401,6 +1405,16 @@ begin
  Filer.DefineProperty('SkipToPageExpre',ReadSkipToPageExpre,WriteSkipToPageExpre,True);
  Filer.DefineProperty('BackExpression',ReadBackExpression,WriteBackExpression,True);
  Filer.DefineBinaryProperty('Stream', ReadStream, WriteStream, true);
+ Filer.DefineProperty('Name',ReadNewName, WriteNewName,FName <> '');
+end;
+procedure TRpSection.ReadNewName(Reader: TReader);
+begin
+  FName := Reader.ReadString;
+end;
+
+procedure TRpSection.WriteNewName(Writer: TWriter);
+begin
+    Writer.WriteString(FName);
 end;
 
 function TRpSection.GetExternalDataDescription:String;

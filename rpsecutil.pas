@@ -44,6 +44,7 @@ type
    private
     FSection:TRpSection;
     procedure SetSection(Value:TRpSection);
+
    public
     procedure Assign(Source:TPersistent);override;
    published
@@ -108,6 +109,7 @@ procedure TRpSectionList.SetItem(index:integer;Value:TRpSectionListItem);
 begin
  inherited SetItem(Index,Value);
 end;
+
 
 
 end.
