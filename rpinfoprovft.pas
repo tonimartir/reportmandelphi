@@ -19,7 +19,7 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,SysUtils,
+uses Classes,SysUtils,rptruetype,
 {$IFDEF USEVARIANTS}
     Types,
 {$ENDIF}
@@ -27,7 +27,7 @@ uses Classes,SysUtils,
     Windows,
 {$ENDIF}
     rpinfoprovid,SyncObjs,
-    rpmdconsts,rpfreetype2;
+    rpmdconsts,rpfreetype2,System.Generics.Collections;
 
 
 type
@@ -761,21 +761,43 @@ begin
  end;
 end;
 
-function TRpFTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+function  TRpFTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+var
+ subset:TTrueTypeFontSubSet;
+ bytes:TBytes;
+ GlyphsUsed: TDictionary<Integer, TArray<Integer>>;
+ xchar: WideChar;
+ ints: TArray<Integer>;
+ intChar: Integer;
+ glyph: Integer;
 begin
- crit.Enter;
- try
-  if not Assigned(data.FontData.Fontdata) then
-  begin
-   data.FontData.Fontdata:=TMemoryStream.Create;
-   data.Fontdata.FontData.LoadFromFile(data.filename);
-  end;
-  data.FontData.Fontdata.Seek(0,soBeginning);
-  Result:=data.FontData.Fontdata;
- finally
-  crit.Leave;
- end;
+     SetLength(bytes, data.FontData.FontData.Size);
+     data.fontdata.FontData.ReadBuffer(bytes[0],data.fontdata.FontData.Size);
+     GlyphsUsed:=TDictionary<Integer, TArray<Integer>>.Create;
+     for xchar in data.glyphs.Keys do
+     begin
+      intChar:=Integer(xchar);
+      glyph:=data.glyphs[xchar];
+      if (not GlyphsUsed.ContainsKey(glyph)) then
+      begin
+       SetLength(ints, 3);
+       ints[0]:=glyph;
+       ints[1]:=Round(data.widths[xchar]);
+       ints[2]:=intChar;
+       GlyphsUsed.Add(glyph,ints)
+      end;
+     end;
+     // Creamos el subset de la fuente
+     subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
+                GlyphsUsed, data.FontData.DirectoryOffset);
+     bytes := subset.Execute();
+     Result:=TMemoryStream.Create;
+     Result.SetSize(Int64(Length(bytes)));
+     Result.Seek(0,soFromBeginning);
+     Result.WriteBuffer(bytes[0],Length(bytes));
+     Result.Seek(0,soFromBeginning);
 end;
+
 
 
 procedure TRpFTInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
