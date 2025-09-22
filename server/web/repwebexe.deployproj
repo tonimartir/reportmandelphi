@@ -6,14 +6,12 @@
     <PropertyGroup>
         <DeviceId Condition="'$(Platform)'=='Android'"/>
         <DeviceId Condition="'$(Platform)'=='Android64'"/>
-        <DeviceId Condition="'$(Platform)'=='iOSDevice64'"/>
     </PropertyGroup>
-    <ItemGroup Condition="'$(Platform)'=='OSX64'"/>
     <ItemGroup Condition="'$(Platform)'=='Win32'"/>
-    <ItemGroup Condition="'$(Platform)'=='OSXARM64'"/>
     <ItemGroup Condition="'$(Platform)'=='Android64'"/>
     <ItemGroup Condition="'$(Platform)'=='Android'"/>
     <ItemGroup Condition="'$(Platform)'=='Win64'"/>
+    <ItemGroup Condition="'$(Platform)'=='Win64x'"/>
     <ItemGroup Condition="'$(Platform)'=='Linux64'">
         <DeployFile Include="repwebexe" Condition="'$(Config)'=='Debug'">
             <RemoteDir>repwebexe\</RemoteDir>
@@ -25,6 +23,15 @@
             <Overwrite>True</Overwrite>
             <Required>True</Required>
         </DeployFile>
+        <DeployFile Include="repwebexe" Condition="'$(Config)'=='Release'">
+            <RemoteDir>repwebexe\</RemoteDir>
+            <RemoteName>repwebexe</RemoteName>
+            <DeployClass>ProjectOutput</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+            <Required>True</Required>
+        </DeployFile>
     </ItemGroup>
-    <ItemGroup Condition="'$(Platform)'=='iOSDevice64'"/>
 </Project>

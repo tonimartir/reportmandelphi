@@ -1166,7 +1166,7 @@ begin
  {$ENDIF}
  {$IFDEF LINUX}
      rppdfdriver.PrintReportPDFStream(pdfreport,'',
-      false,true,1,9999,1,astream,true,false,true);
+      false,true,1,9999,1,astream,true,false,pdfReport.PDFConformance = TPDFConformanceType.PDF_A_3);
  {$ENDIF}
 {$ENDIF}
      WriteLog('Writing response (application/rpmf)');
@@ -1245,7 +1245,7 @@ begin
  {$ENDIF}
  {$IFDEF LINUX}
      rppdfdriver.PrintReportPDFStream(pdfreport,'',
-      false,true,1,9999,1,astream,true,false,true);
+      false,true,1,9999,1,astream,true,false,pdfReport.PDFConformance = TPDFConformanceType.PDF_A_3);
  {$ENDIF}
 {$ENDIF}
      astream.Seek(0,soFromBeginning);

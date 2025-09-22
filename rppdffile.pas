@@ -3811,7 +3811,6 @@ begin
     FontStream.Free;
    end;
    adata.ObjectIndex:=FObjectCount;
-   adata.fontdata.FontData.Seek(0,soFromBeginning);
    SWriteLine(FTempStream,'endobj');
    AddToOffset(FTempStream.Size);
    FTempStream.SaveToStream(FMainPDF);

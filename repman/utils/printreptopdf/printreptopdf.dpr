@@ -446,7 +446,7 @@ begin
 {$IFDEF LINUX}
         PrintReportPDFStream(report,filename,showprogress,
           allpages,frompage,topage,copies,
-           memstream,compress,collate,false);
+           memstream,compress,collate,report.PDFConformance = TPDFConformanceType.PDF_A_3);
 {$ENDIF}
        end;
        memstream.Seek(0,soFromBeginning);

@@ -7,51 +7,11 @@
         <DeviceId Condition="'$(Platform)'=='Android'"/>
         <DeviceId Condition="'$(Platform)'=='Android64'"/>
     </PropertyGroup>
-    <ItemGroup Condition="'$(Platform)'=='OSX64'"/>
-    <ItemGroup Condition="'$(Platform)'=='Win32'">
-        <DeployFile Include="$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>printreptopdf\Assets\</RemoteDir>
-            <RemoteName>Logo150x150.png</RemoteName>
-            <DeployClass>UWP_DelphiLogo150</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
-        <DeployFile Include="$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>printreptopdf\Assets\</RemoteDir>
-            <RemoteName>Logo44x44.png</RemoteName>
-            <DeployClass>UWP_DelphiLogo44</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
-    </ItemGroup>
-    <ItemGroup Condition="'$(Platform)'=='OSXARM64'"/>
+    <ItemGroup Condition="'$(Platform)'=='Win32'"/>
     <ItemGroup Condition="'$(Platform)'=='Android64'"/>
     <ItemGroup Condition="'$(Platform)'=='Android'"/>
-    <ItemGroup Condition="'$(Platform)'=='Win64'">
-        <DeployFile Include="..\..\..\rpconf.inc" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>printreptopdf\</RemoteDir>
-            <RemoteName>rpconf.inc</RemoteName>
-            <DeployClass>ProjectFile</DeployClass>
-            <Operation>0</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
-        <DeployFile Include="printreptopdf.exe" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>printreptopdf\</RemoteDir>
-            <RemoteName>printreptopdf.exe</RemoteName>
-            <DeployClass>ProjectOutput</DeployClass>
-            <Operation>0</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-            <Required>True</Required>
-        </DeployFile>
-    </ItemGroup>
+    <ItemGroup Condition="'$(Platform)'=='Win64'"/>
+    <ItemGroup Condition="'$(Platform)'=='Win64x'"/>
     <ItemGroup Condition="'$(Platform)'=='Linux64'">
         <DeployFile Include="printreptopdf" Condition="'$(Config)'=='Debug'">
             <RemoteDir>printreptopdf\</RemoteDir>
@@ -92,5 +52,4 @@
             <Required>True</Required>
         </DeployFile>
     </ItemGroup>
-    <ItemGroup Condition="'$(Platform)'=='iOSDevice64'"/>
 </Project>

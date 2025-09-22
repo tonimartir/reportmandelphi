@@ -772,7 +772,13 @@ var
  glyph: Integer;
 begin
      SetLength(bytes, data.FontData.FontData.Size);
-     data.fontdata.FontData.ReadBuffer(bytes[0],data.fontdata.FontData.Size);
+     crit.Enter;
+     try
+      data.FontData.Fontdata.Seek(0, soFromBeginning);
+      data.fontdata.FontData.ReadBuffer(bytes[0],data.fontdata.FontData.Size);
+     finally
+      crit.Leave;
+     end;
      GlyphsUsed:=TDictionary<Integer, TArray<Integer>>.Create;
      for xchar in data.glyphs.Keys do
      begin
@@ -787,10 +793,13 @@ begin
        GlyphsUsed.Add(glyph,ints)
       end;
      end;
-     // Creamos el subset de la fuente
-     subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
+     if (data.type1) then
+     begin
+     // Create font subset in true type fonts
+          subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
                 GlyphsUsed, data.FontData.DirectoryOffset);
      bytes := subset.Execute();
+     end;
      Result:=TMemoryStream.Create;
      Result.SetSize(Int64(Length(bytes)));
      Result.Seek(0,soFromBeginning);

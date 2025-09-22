@@ -40,8 +40,12 @@ const
  C_DIRSEPARATOR='/';
 {$ENDIF}
 
+
+{$R reportmanres.RES}
+
+
 const
- RM_VERSION='3.8.6';
+ RM_VERSION='3.8.7';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
