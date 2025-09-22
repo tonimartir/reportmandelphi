@@ -94,6 +94,7 @@ type
   kerningsadded:TStringList;
   IsUnicode:boolean;
   FontData: TAdvFontData;
+  filename: string;
   constructor Create;
   destructor Destroy;override;
  end;

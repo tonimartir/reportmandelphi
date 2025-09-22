@@ -71,6 +71,7 @@ type
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
+  function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
   constructor Create;
   destructor destroy;override;
  end;
@@ -760,6 +761,21 @@ begin
  end;
 end;
 
+function TRpFTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+begin
+ crit.Enter;
+ try
+  if not Assigned(data.FontData.Fontdata) then
+  begin
+   data.FontData.Fontdata:=TMemoryStream.Create;
+   data.Fontdata.FontData.LoadFromFile(data.filename);
+  end;
+  data.FontData.Fontdata.Seek(0,soBeginning);
+  Result:=data.FontData.Fontdata;
+ finally
+  crit.Leave;
+ end;
+end;
 
 
 procedure TRpFTInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
@@ -770,6 +786,7 @@ begin
   // See if data can be embedded
   SelectFont(pdffont);
   data.fontdata.FontData.Clear;
+  data.filename:=currentfont.filename;
   if not currentfont.type1 then
    data.fontdata.FontData.LoadFromFile(currentfont.filename);
   data.postcriptname:=currentfont.postcriptname;
