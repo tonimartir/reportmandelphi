@@ -495,7 +495,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -515,7 +515,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -560,7 +560,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -580,7 +580,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -640,7 +640,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -660,7 +660,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -705,7 +705,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -725,7 +725,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -831,7 +831,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -851,7 +851,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -896,7 +896,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -916,7 +916,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -976,7 +976,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -996,7 +996,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -1041,7 +1041,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -1061,7 +1061,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -1172,7 +1172,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1228,7 +1228,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end
             end;
@@ -1305,7 +1305,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1361,7 +1361,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1469,7 +1469,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1525,7 +1525,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end
             end;
@@ -1601,7 +1601,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1657,7 +1657,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1731,7 +1731,7 @@ begin
                   Inc(K8, Increment);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1758,7 +1758,7 @@ begin
                   Inc(K8, Increment);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1809,7 +1809,7 @@ begin
                   Inc(K16, Increment);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1836,7 +1836,7 @@ begin
                   Inc(K16, Increment);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1910,7 +1910,7 @@ begin
                   Inc(K8, Increment);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1937,7 +1937,7 @@ begin
                   Inc(K8, Increment);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -1988,7 +1988,7 @@ begin
                   Inc(K16, Increment);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -2015,7 +2015,7 @@ begin
                   Inc(K16, Increment);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -2060,7 +2060,7 @@ begin
                 Target8^ := Source8^;
                 Inc(Source8, 1 + AlphaSkip);
               end;
-              asm ROR BYTE PTR [BitRun], 1 end;
+              BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
               Dec(Count);
               Inc(Target8);
             end;
@@ -2076,7 +2076,7 @@ begin
                 Target16^ := MulDiv16(Source8^, 65535, 255);
                 Inc(Source8, 1 + AlphaSkip);
               end;
-              asm ROR BYTE PTR [BitRun], 1 end;
+              BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
               Dec(Count);
               Inc(Target16);
             end;
@@ -2098,7 +2098,7 @@ begin
                 Target8^ := Convert16(Source16^);
                 Inc(Source16, 1 + AlphaSkip);
               end;
-              asm ROR BYTE PTR [BitRun], 1 end;
+              BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
               Dec(Count);
               Inc(Target8);
             end;
@@ -2117,7 +2117,7 @@ begin
                   Target16^ := Swap(Source16^);
                   Inc(Source16, 1 + AlphaSkip);
                 end;
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
                 Inc(Target16);
               end;
@@ -2131,7 +2131,7 @@ begin
                   Target16^ := Source16^;
                   Inc(Source16, 1 + AlphaSkip);
                 end;
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
                 Inc(Target16);
               end;
@@ -2142,6 +2142,13 @@ begin
 end;
 
 //----------------------------------------------------------------------------------------------------------------------
+
+
+function ROR8(Value: Byte; Count: Integer): Byte;
+begin
+  Count := Count mod 8;
+  Result := (Value shr Count) or (Value shl (8 - Count));
+end;
 
 procedure TColorManager.RowConvertIndexed8(Source: array of Pointer; Target: Pointer; Count: Cardinal; Mask: Byte);
 
@@ -2197,17 +2204,14 @@ begin
           SourceShift := 8;
           Inc(SourceRun);
         end;
-        asm
-          MOV CL, [SourceBPS]
-          ROR BYTE PTR [SourceMask], CL // roll source bit mask with source bit count
-        end;
+        SourceMask := ROR8(SourceMask, SourceBPS);
       end;
 
-      asm
-        ROR BYTE PTR [BitRun], 1      // adjust test bit mask
-        MOV CL, [TargetBPS]
-        ROR BYTE PTR [TargetMask], CL // roll target mask with target bit count
-      end;
+// rota BitRun un bit a la derecha
+BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
+
+// rota TargetMask tantos bits como TargetBPS
+TargetMask := ROR8(TargetMask, TargetBPS);
       if TargetShift = 0 then TargetShift := 8 - TargetBPS
                          else Dec(TargetShift, TargetBPS);
       Inc(Done);
@@ -2243,7 +2247,7 @@ begin
         TargetRun^ := Swap(SourceRun^);
         Inc(SourceRun);
       end;
-      asm ROR BYTE PTR [BitRun], 1 end;
+      BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
       Dec(Count);
       Inc(TargetRun);
     end;
@@ -2259,7 +2263,7 @@ begin
           TargetRun^ := SourceRun^;
           Inc(SourceRun);
         end;
-        asm ROR BYTE PTR [BitRun], 1 end;
+        BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
         Dec(Count);
         Inc(TargetRun);
       end;
@@ -2302,11 +2306,11 @@ begin
       Inc(SourceRun16);
     end;
 
-    asm
-      ROR BYTE PTR [BitRun], 1      // adjust test bit mask
-      MOV CL, [TargetBPS]
-      ROR BYTE PTR [TargetMask], CL // roll target mask with target bit count
-    end;
+// rota BitRun un bit a la derecha
+BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
+
+// rota TargetMask tantos bits como TargetBPS
+TargetMask := ROR8(TargetMask, TargetBPS);
     if TargetShift = 0 then TargetShift := 8 - TargetBPS
                        else Dec(TargetShift, TargetBPS);
     Dec(Count);
@@ -2354,16 +2358,10 @@ begin
         SourceShift := 8;
         Inc(SourceRun8);
       end;
-      asm
-        MOV CL, [SourceBPS]
-        ROR BYTE PTR [SourceMask], CL // roll source bit mask with source bit count
-      end;
+SourceMask := ROR8(SourceMask, SourceBPS);
     end;
 
-    asm
-      ROR BYTE PTR [BitRun], 1      // adjust test bit mask
-    end;
-
+BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
     Dec(Count);
     // advance target pointer every (8 div target bit count)
     Inc(TargetRun16);
@@ -2467,7 +2465,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -2487,7 +2485,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -2532,7 +2530,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -2552,7 +2550,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -2612,7 +2610,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -2632,7 +2630,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -2677,7 +2675,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -2697,7 +2695,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -2802,7 +2800,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -2822,7 +2820,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -2867,7 +2865,7 @@ begin
                     Inc(SourceR8, SourceIncrement);
                     Inc(SourceA8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -2887,7 +2885,7 @@ begin
                     Inc(SourceG8, SourceIncrement);
                     Inc(SourceR8, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -2947,7 +2945,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA8);
                 end;
@@ -2967,7 +2965,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PByte(TargetRun8), TargetIncrement);
                 end;
@@ -3012,7 +3010,7 @@ begin
                     Inc(SourceR16, SourceIncrement);
                     Inc(SourceA16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(TargetRunA16);
                 end;
@@ -3032,7 +3030,7 @@ begin
                     Inc(SourceG16, SourceIncrement);
                     Inc(SourceR16, SourceIncrement);
                   end;
-                  asm ROR BYTE PTR [BitRun], 1 end;
+                  BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                   Dec(Count);
                   Inc(PWord(TargetRun16), TargetIncrement);
                 end;
@@ -3110,7 +3108,7 @@ begin
                 end
                 else Inc(Target8, 3 + AlphaSkip);
 
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3140,7 +3138,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3190,7 +3188,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3223,7 +3221,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3299,7 +3297,7 @@ begin
                 end
                 else Inc(Target8, 3 + AlphaSkip);
 
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3329,7 +3327,7 @@ begin
                   Inc(Target16);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3379,7 +3377,7 @@ begin
                   Inc(Target8);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3412,7 +3410,7 @@ begin
                   Inc(Target16);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3488,7 +3486,7 @@ begin
                 end
                 else Inc(Target8, 3 + AlphaSkip);
 
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3518,7 +3516,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3568,7 +3566,7 @@ begin
                   Inc(Target8, 1 + AlphaSkip);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3601,7 +3599,7 @@ begin
                   Inc(Target16, 1 + AlphaSkip);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3677,7 +3675,7 @@ begin
                 end
                 else Inc(Target8, 3 + AlphaSkip);
 
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3707,7 +3705,7 @@ begin
                   Inc(Target16);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3757,7 +3755,7 @@ begin
                   Inc(Target8);
                 end
                 else Inc(Target8, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;
@@ -3790,7 +3788,7 @@ begin
                   Inc(Target16);
                 end
                 else Inc(Target16, 3 + AlphaSkip);
-                asm ROR BYTE PTR [BitRun], 1 end;
+                BitRun := (BitRun shr 1) or ((BitRun and 1) shl 7);
                 Dec(Count);
               end;
             end;

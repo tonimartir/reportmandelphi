@@ -146,9 +146,12 @@ begin
  exit;
 {$ENDIF}
 {$IFDEF LINUX}
- alist.Add('/usr/share/fonts/truetype');
- alist.Add('/usr/share/fonts/opentype');
- alist.Add('/usr/share/fonts/type1');
+ // Red hat linux fonts
+ alist.Add('/usr/share/fonts');
+ // Ubuntu fonts
+ // alist.Add('/usr/share/fonts/truetype');
+ // alist.Add('/usr/share/fonts/opentype');
+ // alist.Add('/usr/share/fonts/type1');
  alist.Add('/usr/local/share/fonts');
 (* diderror:=false;
  alist.clear;
@@ -644,6 +647,37 @@ begin
  inherited destroy;
 end;
 
+function isSameFont(fontName,pattern: string): boolean;
+begin
+ if (pattern=fontName) then
+ begin
+  Result:=true;
+ end
+ else
+ if ((pattern='HELVETICA') or (pattern='ARIAL')) then
+ begin
+  if (fontName='NIMBUS SANS') then
+  begin
+   Result:=true;
+  end
+  else
+  if (fontName='LIBERATION') then
+  begin
+   Result:=true;
+  end
+  else
+  if (fontName='DEJAVU SANS') then
+  begin
+   Result:=true;
+  end
+  else
+   Result:=false;
+ end
+ else
+ Result:=false;
+
+end;
+
 procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt);
 var
  afontname:string;
@@ -652,6 +686,7 @@ var
  i:integer;
  match:boolean;
  afont:TRpLogFont;
+ currentFontName:string;
 begin
  crit.Enter;
  try
@@ -676,7 +711,7 @@ begin
  i:=0;
  while i<fontlist.Count do
  begin
-  if fontlist.strings[i]=afontname then
+  if isSameFont(fontlist.strings[i],afontname) then
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    if isitalic=afont.italic then
@@ -695,9 +730,10 @@ begin
  i:=0;
  while i<fontlist.Count do
  begin
-  if Pos(afontname,fontlist.strings[i])>0 then
+  currentFontName:=fontlist.strings[i];
+  if Pos(afontname,currentFontName)>0 then
   begin
-   afont:=TRpLogFont(fontlist.Objects[i]);
+   afont:=TRpLogFont(currentFontName);
    if isitalic=afont.italic then
     if isbold=afont.bold then
     begin

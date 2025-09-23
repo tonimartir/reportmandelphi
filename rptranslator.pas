@@ -18,10 +18,6 @@ unit rptranslator;
 {$I rpconf.inc}
 {$R rptranslator.dcr}
 
-{$IFDEF MSWINDOWS}
-{$R reportmanres.RES}
-{$ENDIF}
-
 interface
 
 uses
