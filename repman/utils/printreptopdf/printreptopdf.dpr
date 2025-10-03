@@ -4,11 +4,11 @@
 {                                                       }
 {       printreptopdf                                   }
 {                                                       }
-{       Preoces and exports to pdf a report             }
+{       Proces and exports to pdf a report              }
 {       you can select the pages to print               }
 {                                                       }
 {       Copyright (c) 1994-2019 Toni Martir             }
-{       toni@reportman.es                                 }
+{       toni@reportman.es                               }
 {                                                       }
 {       This file is under the MPL license              }
 {       If you enhace this file you must provide        }
