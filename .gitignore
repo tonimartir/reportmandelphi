@@ -144,3 +144,4 @@ repman/bin64/libmysql.dll
 repman/bin64/libssl-1_1-x64.dll
 server/web/repwebexe
 repman/bin64/libcrypto-1_1-x64.dll
+repman/bin32/GDS32.DLL
