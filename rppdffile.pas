@@ -78,9 +78,12 @@ uses Classes,Sysutils,rpinfoprovid,
 {$IFDEF LINUX}
  rpinfoprovft,
 {$ENDIF}
-
+// Text shaping implementation
+// https://github.com/projekter/TextShaping4Delphi
+// ICU 69 version
+// HarfBuzz 2.9
 {$IFDEF USETEXTSHAPING}
- uFreeType,uHarfBuzz,
+ uFreeType,uHarfBuzz,uICU,
 {$ENDIF}
  rpmdconsts,rptypes,rpmunits,dateutils;
 
@@ -4183,23 +4186,22 @@ begin
 end;
 
 {$IFDEF USETEXTSHAPING}
-function TRpPDFCanvas.CalcGlyphhPositions(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont): TGlyphPosArray;
+function TRpPDFCanvas.CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
 var
   Font: THBFont;
   Buf: THBBuffer;
   GlyphInfo: TArray<THBGlyphInfo>;
   GlyphPos: TArray<THBGlyphPosition>;
-  i, nextCluster, charCount: integer;
-  substr: WideString;
+  i: Integer;
 begin
   SetLength(Result, 0);
   if astring = '' then Exit;
 
-  if (not adata.LoadedFace) then
+  if not adata.LoadedFace then
   begin
     adata.FontData.Fontdata.Position := 0;
     adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
-    adata.LoadedFace := true;
+    adata.LoadedFace := True;
   end;
 
   adata.FreeTypeFace.SetCharSize(pdffont.Size * 64, pdffont.Size * 64, 0, 0);
@@ -4209,13 +4211,10 @@ begin
     Font.FTFontSetFuncs;
     Buf := THBBuffer.Create;
     try
-      // propiedades ANTES de añadir
       Buf.Direction := hbdRTL;
       Buf.Script := hbsArabic;
       Buf.Language := hb_language_from_string('ar', -1);
 
-      // Añadir UTF-16 de forma explícita (ajusta según tu binding)
-      // ejemplo robusto:
       Buf.AddUTF16(astring);
 
       Buf.Shape(Font);
@@ -4223,36 +4222,17 @@ begin
       GlyphInfo := Buf.GetGlyphInfos;
       GlyphPos := Buf.GetGlyphPositions;
 
-      charCount := Length(astring);
       SetLength(Result, Length(GlyphInfo));
+
       for i := 0 to High(GlyphInfo) do
       begin
         Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
+        Result[i].XAdvance := GlyphPos[i].XAdvance; // en font units
         Result[i].XOffset := GlyphPos[i].XOffset;
         Result[i].YOffset := GlyphPos[i].YOffset;
-        Result[i].XAdvance := GlyphPos[i].XAdvance;
-        Result[i].YAdvance := GlyphPos[i].YAdvance;
-
-        // CORRECCIÓN: usar astring, no "unicode"
-        if Integer(GlyphInfo[i].Cluster) < charCount then
-          Result[i].CharCode := astring[GlyphInfo[i].Cluster + 1]
-        else
-          Result[i].CharCode := #0;
-
-        // --- extraer substring lógica para depuración (ligaduras) ---
-        if i < High(GlyphInfo) then
-          nextCluster := Integer(GlyphInfo[i+1].Cluster)
-        else
-          nextCluster := charCount;
-
-        if (Integer(GlyphInfo[i].Cluster) <= nextCluster - 1) then
-          substr := Copy(astring, Integer(GlyphInfo[i].Cluster) + 1, nextCluster - Integer(GlyphInfo[i].Cluster))
-        else
-          substr := '';
-
-        // Aquí puedes registrar substr para depuración:
-        // e.g. Log( Format('GID=%d cluster=%d substr="%s"', [GlyphInfo[i].Codepoint, GlyphInfo[i].Cluster, substr]) );
+        // CharCode no hace falta para PDF
       end;
+
 
     finally
       Buf.Destroy;
@@ -4263,88 +4243,78 @@ begin
 end;
 
 
-
 function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont): String;
 var
   positions: TGlyphPosArray;
   i: Integer;
-  scale: double;
+  scale: Double;
   advanceInt: Integer;
   gidHex: string;
   glyphIndex: Integer;
+  Bidi: TICUBidi;
+  Input, Reordered: UnicodeString;
+
 
   // Convierte un glyph index a la representación hex que va dentro de <...>
   function GlyphIndexToHex(gid: Integer): string;
   begin
-    Result := IntToHex4(gid); // e.g. 0001, 00FF, 0123
+    Result := IntToHex4(gid); // 0000 ? FFFF
   end;
 
 begin
-  if Length(astring) < 1 then
-  begin
-    Result := '[]';
-    Exit;
-  end;
+  Result := '[]';
+  if astring = '' then Exit;
 
-  // Si no es texto árabe delegamos a la función anterior
   if not ContainsArabicText(astring) then
   begin
     Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
     Exit;
   end;
-
-  // Obtenemos el resultado del shaping (glyphs + avances)
-  positions := CalcGlyphhPositions(astring, adata, pdffont);
-
-  // Si no hay glyphs
-  if Length(positions) = 0 then
-  begin
-    Result := '[]';
-    Exit;
+  Input := astring;
+  Bidi := TICUBidi.Create;
+  try
+    if Bidi.SetPara(Input, 2) then
+    begin
+      Reordered := Bidi.WriteReordered(True);
+      Writeln('Texto original:  ', Input);
+      Writeln('Texto visual:    ', Reordered);
+    end
+    else
+    begin
+      Writeln('Error reordering:    ', Input);
+      Reordered:=Input;
+    end
+  finally
+    Bidi.Free;
   end;
-  // Calculate normal widths
-  for i := 1 to Length(astring) do
-  begin
-   InfoProvider.GetCharWidth(pdfFont,adata,astring[i]);
-  end;
 
+  positions := CalcGlyphhPositions(Reordered, adata, pdffont);
+  if Length(positions) = 0 then Exit;
 
-  // Construimos el array TJ en el mismo estilo que la función original
-  Result := '[<';
+  // Escala correcta: font units ? unidades PDF
+  scale := pdffont.Size / adata.UnitsPerEm;
+  //scale := 1;
+
+  Result := '[';
   for i := 0 to High(positions) do
   begin
-    // Glyph id en hex dentro de <>
-    glyphIndex:=positions[i].GlyphIndex;
+    glyphIndex := positions[i].GlyphIndex;
     gidHex := GlyphIndexToHex(glyphIndex);
-    InfoProvider.GetGlyphWidth(pdfFont,adata,glyphIndex,positions[i].CharCode);
-    Result := Result + gidHex;
+    Result := Result + '<'+gidHex+'>';
 
-    // Si hay siguiente glifo calculamos el ajuste a insertar entre ellos
     if i < High(positions) then
     begin
-      // Convertir XAdvance (font units) a unidades de texto PDF mediante pdffont.Scale
-      // y hacer negativo porque en TJ el número mueve el glifo en sentido contrario.
-      // Redondeamos a entero como hacía tu código clásico que usaba IntToStr.
-      // scale := pdffont.Size / 172;//adata.UnitsPerEm;
-      scale := pdffont.Size/72;
-      advanceInt := Round(- positions[i].XAdvance * scale);
+      // Ajuste horizontal: XAdvance + XOffset
+     advanceInt := Round(- (positions[i].XAdvance + positions[i].XOffset) * scale);
 
-      if advanceInt <> 0 then
-      begin
-        // cerramos el bloque de hex, ponemos el número, y reabrimos para el siguiente glifo
-        Result := Result + '>' + ' ' + IntToStr(advanceInt);
-        Result := Result + ' <';
-      end
-      else
-      begin
-        // Si el avance es 0 no insertamos número; mantenemos el flujo <XXXX><YYYY>...
-        // para mantener consistencia con la antigua función (no insertar 0s).
-      end;
+     if advanceInt <> 0 then
+     begin
+        Result := Result + ' ' + IntToStr(advanceInt) ;
+     end;
     end;
   end;
 
-  // cerramos el último glifo y el array
-  Result := Result + '>]';
+  Result := Result + ']';
 end;
 {$ENDIF}
 

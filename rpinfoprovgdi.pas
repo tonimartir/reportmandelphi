@@ -263,6 +263,7 @@ begin
       data.StemV:=0;
       data.MaxWidth:=Round(potm^.otmTextMetrics.tmMaxCharWidth*multipli);
       data.AvgWidth:=Round(potm^.otmTextMetrics.tmAveCharWidth*multipli);
+      data.UnitsPerEM:=potm^.otmTextMetrics.tmHeight;
 
       data.Leading:=Round((potm^.otmTextMetrics.tmExternalLeading+potm^.otmTextMetrics.tmInternalLeading)*multipli);
       // Windows does not allow Type1 fonts

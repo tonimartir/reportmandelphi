@@ -982,6 +982,41 @@ Function ICUbrk_getBinaryRules(BI: TICUBreakIterator; BinaryRules: PByte; Const 
    External ICUDLLcommon Name 'ubrk_getBinaryRules' + ICUDLLsuffix;
 {$ENDREGION}
 
+{$REGION 'ubidi.h'}
+
+type
+  UBiDi = Pointer;
+  UBiDiLevel = Byte;
+  UBiDiDirection = (
+    UBIDI_LTR = 0,
+    UBIDI_RTL = 1,
+    UBIDI_MIXED = 2
+  );
+
+  TICUBidi = class
+  private
+    FBidi: UBiDi;
+  public
+    constructor Create(ParaCapacity: Integer = 0);
+    destructor Destroy; override;
+
+    function SetPara(const Text: UnicodeString; ParaLevel: UBiDiLevel = 0): Boolean;
+    function WriteReordered(DoMirroring: Boolean = True): UnicodeString;
+  end;
+
+function ubidi_open: UBiDi; cdecl; external ICUDLLcommon name 'ubidi_open' + ICUDLLsuffix;
+procedure ubidi_close(pBiDi: UBiDi); cdecl; external ICUDLLcommon name 'ubidi_close' + ICUDLLsuffix;
+procedure ubidi_setPara(pBiDi: UBiDi; text: PWideChar; length: Integer;
+                        paraLevel: UBiDiLevel; embeddingLevels: Pointer;
+                        var status: Integer); cdecl; external ICUDLLcommon name 'ubidi_setPara' + ICUDLLsuffix;
+function ubidi_writeReordered(pBiDi: UBiDi; dest: PWideChar; destSize: Integer;
+                              options: Cardinal; var status: Integer): Integer; cdecl; external ICUDLLcommon name 'ubidi_writeReordered' + ICUDLLsuffix;
+
+const
+  UBIDI_DO_MIRRORING = $0001;
+
+{$ENDREGION}
+
 Implementation
 
 { TICUManager }
@@ -2197,6 +2232,56 @@ Begin
    ICUbrk_setUText(Self, Text, Err);
    TICUManager.Error(Err);
 End;
+
+
+{$REGION 'ubidi.h'}
+
+
+constructor TICUBidi.Create(ParaCapacity: Integer);
+begin
+  inherited Create;
+  FBidi := ubidi_open;
+  if FBidi = nil then
+    raise EICU.Create('Failed to initialize ICU BiDi');
+end;
+
+destructor TICUBidi.Destroy;
+begin
+  if FBidi <> nil then
+    ubidi_close(FBidi);
+  inherited;
+end;
+
+function TICUBidi.SetPara(const Text: UnicodeString; ParaLevel: UBiDiLevel): Boolean;
+var
+  status: Integer;
+begin
+  status := 0;
+  ubidi_setPara(FBidi, PWideChar(Text), Length(Text), ParaLevel, nil, status);
+  Result := (status = 0);
+end;
+
+function TICUBidi.WriteReordered(DoMirroring: Boolean): UnicodeString;
+var
+  status, size: Integer;
+  options: Cardinal;
+begin
+  if DoMirroring then
+    options := UBIDI_DO_MIRRORING
+  else
+    options := 0;
+
+  SetLength(Result, 1024);
+  status := 0;
+  size := ubidi_writeReordered(FBidi, PWideChar(Result), Length(Result),
+                               options, status);
+  if size > 0 then
+    SetLength(Result, size)
+  else
+    Result := '';
+end;
+
+{$ENDREGION}
 
 Initialization
 

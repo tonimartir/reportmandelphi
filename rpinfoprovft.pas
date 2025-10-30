@@ -874,6 +874,7 @@ begin
   data.FontStretch:='/Normal';
   data.fdata:=currentfont;
   data.FontBBox:=currentfont.BBox;
+
   if currentfont.italic then
    data.ItalicAngle:=-15
   else
@@ -921,6 +922,7 @@ begin
  begin
   cfont:=TRpLogFont(data.fdata);
   cfont.OpenFont;
+  data.UnitsPerEM:=currentFont.ftface.units_per_EM;
   if 0=FT_Load_Char(cfont.ftface,Cardinal(charcode),FT_LOAD_NO_SCALE) then
   begin
    width1:=word(cfont.ftface.glyph.linearHoriAdvance shr 16);

@@ -104,6 +104,7 @@ type
   IsUnicode:boolean;
   FontData: TAdvFontData;
   filename: string;
+  UnitsPerEM: double;
   FontIndex: Integer;
 {$IFDEF USETEXTSHAPING}
   LoadedFace:boolean;
