@@ -25,6 +25,9 @@ uses Classes,SysUtils,
 {$IFNDEF USEVARIANTS}
  Windows,
 {$ENDIF}
+{$IFDEF USETEXTSHAPING}
+ uFreeType,uHarfBuzz,
+{$ENDIF}
  rptypes, System.Generics.Collections;
 
 type
@@ -55,6 +58,11 @@ type
 	public DirectoryOffset: integer;
   constructor Create;
   destructor Destroy;
+ end;
+  TGlyphInfo=record
+   Glyph: Integer;
+   Char:char;
+   Width: double;
  end;
 
  TRpTTFontData=class(TObject)
@@ -88,6 +96,7 @@ type
   loadedwidths:array [0..65535] of double;
   loaded:array [0..65535] of boolean;
 	glyphs:TDictionary<char, integer>;
+	glyphsInfo:TDictionary<integer, TGlyphInfo>;
 	widths:TDictionary<char, double>;
   fdata:TObject;
   firstloaded,lastloaded:integer;
@@ -95,15 +104,24 @@ type
   IsUnicode:boolean;
   FontData: TAdvFontData;
   filename: string;
+  FontIndex: Integer;
+{$IFDEF USETEXTSHAPING}
+  LoadedFace:boolean;
+  FreeTypeFace: TFTFace;
+  HBFont: THBFont;
+{$ENDIF}
   constructor Create;
   destructor Destroy;override;
  end;
 
+
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
+  function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;virtual;abstract;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;virtual;abstract;
+  function GetFullFontStream(data: TRpTTFontData): TMemoryStream;virtual;abstract;
  end;
 
 
@@ -118,7 +136,8 @@ begin
  firstloaded:=65536;
  lastloaded:=-1;
  glyphs:=TDictionary<char, integer>.Create;
- widths:=TDictionary<char, double>.Create; 
+ widths:=TDictionary<char, double>.Create;
+ glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
 end;
 
 destructor TRpTTFontData.Destroy;

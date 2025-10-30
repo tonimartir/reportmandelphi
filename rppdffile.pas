@@ -78,6 +78,10 @@ uses Classes,Sysutils,rpinfoprovid,
 {$IFDEF LINUX}
  rpinfoprovft,
 {$ENDIF}
+
+{$IFDEF USETEXTSHAPING}
+ uFreeType,uHarfBuzz,
+{$ENDIF}
  rpmdconsts,rptypes,rpmunits,dateutils;
 
 
@@ -107,6 +111,17 @@ type
    Page: integer;
    Annotation: string;
  end;
+
+
+ TGlyphPos = record
+   GlyphIndex: integer;
+   XOffset: integer;
+   YOffset: integer;
+   XAdvance: integer;
+   YAdvance: integer;
+   CharCode: WideChar;
+  end;
+ TGlyphPosArray = array of TGlyphPos;
 
  TRpPageInfo=class(TObject)
   public
@@ -169,6 +184,10 @@ type
    function UpdateFonts:TRpTTFontData;
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
+   {$IFDEF USETEXTSHAPING}
+   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
+   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
+   {$ENDIF}
   public
    LineInfo:array of TRpLineInfo;
    procedure TextExtent(const Text:WideString;var Rect:TRect;wordbreak:boolean;
@@ -1330,7 +1349,7 @@ begin
    FTempStream.Clear;
    FObjectCount := FObjectCount + 1;
    annotation.StreamNumber:=FObjectCount;
-   SWriteLine(FTempStream, FObjectCount.ToString() + ' 0 obj');
+   SWriteLine(FTempStream, IntToStr(FObjectCount) + ' 0 obj');
    SWriteLine(FTempStream, '<< /Type /Annot');
   	anot := annotation.Annotation;
    if ( (Length(anot)>4) and (Uppercase(anot.Substring(0,4))='URL:') ) then
@@ -2161,13 +2180,16 @@ begin
    if adata.havekerning then
     havekerning:=true;
   end;
-
+{$IFDEF USETEXTSHAPING}
+  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font)+' TJ');
+{$ELSE}
   if havekerning then
   begin
    SWriteLine(FFile.FsTempStream,PDFCompatibleTextWidthKerning(astring,adata,Font)+' TJ');
   end
   else
    SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
+{$ENDIF}
   SWriteLine(FFile.FsTempStream,'ET');
  finally
   if (Rotation<>0) then
@@ -3804,7 +3826,8 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-   FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+   // FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+   FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    try
     WriteStream(FontStream,FTempStream);
    finally
@@ -4159,6 +4182,172 @@ begin
   Result:=aresult;
 end;
 
+{$IFDEF USETEXTSHAPING}
+function TRpPDFCanvas.CalcGlyphhPositions(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont): TGlyphPosArray;
+var
+  Font: THBFont;
+  Buf: THBBuffer;
+  GlyphInfo: TArray<THBGlyphInfo>;
+  GlyphPos: TArray<THBGlyphPosition>;
+  i, nextCluster, charCount: integer;
+  substr: WideString;
+begin
+  SetLength(Result, 0);
+  if astring = '' then Exit;
+
+  if (not adata.LoadedFace) then
+  begin
+    adata.FontData.Fontdata.Position := 0;
+    adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
+    adata.LoadedFace := true;
+  end;
+
+  adata.FreeTypeFace.SetCharSize(pdffont.Size * 64, pdffont.Size * 64, 0, 0);
+
+  Font := THBFont.CreateReferenced(adata.FreeTypeFace);
+  try
+    Font.FTFontSetFuncs;
+    Buf := THBBuffer.Create;
+    try
+      // propiedades ANTES de añadir
+      Buf.Direction := hbdRTL;
+      Buf.Script := hbsArabic;
+      Buf.Language := hb_language_from_string('ar', -1);
+
+      // Añadir UTF-16 de forma explícita (ajusta según tu binding)
+      // ejemplo robusto:
+      Buf.AddUTF16(astring);
+
+      Buf.Shape(Font);
+
+      GlyphInfo := Buf.GetGlyphInfos;
+      GlyphPos := Buf.GetGlyphPositions;
+
+      charCount := Length(astring);
+      SetLength(Result, Length(GlyphInfo));
+      for i := 0 to High(GlyphInfo) do
+      begin
+        Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
+        Result[i].XOffset := GlyphPos[i].XOffset;
+        Result[i].YOffset := GlyphPos[i].YOffset;
+        Result[i].XAdvance := GlyphPos[i].XAdvance;
+        Result[i].YAdvance := GlyphPos[i].YAdvance;
+
+        // CORRECCIÓN: usar astring, no "unicode"
+        if Integer(GlyphInfo[i].Cluster) < charCount then
+          Result[i].CharCode := astring[GlyphInfo[i].Cluster + 1]
+        else
+          Result[i].CharCode := #0;
+
+        // --- extraer substring lógica para depuración (ligaduras) ---
+        if i < High(GlyphInfo) then
+          nextCluster := Integer(GlyphInfo[i+1].Cluster)
+        else
+          nextCluster := charCount;
+
+        if (Integer(GlyphInfo[i].Cluster) <= nextCluster - 1) then
+          substr := Copy(astring, Integer(GlyphInfo[i].Cluster) + 1, nextCluster - Integer(GlyphInfo[i].Cluster))
+        else
+          substr := '';
+
+        // Aquí puedes registrar substr para depuración:
+        // e.g. Log( Format('GID=%d cluster=%d substr="%s"', [GlyphInfo[i].Codepoint, GlyphInfo[i].Cluster, substr]) );
+      end;
+
+    finally
+      Buf.Destroy;
+    end;
+  finally
+    Font.Destroy;
+  end;
+end;
+
+
+
+function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont): String;
+var
+  positions: TGlyphPosArray;
+  i: Integer;
+  scale: double;
+  advanceInt: Integer;
+  gidHex: string;
+  glyphIndex: Integer;
+
+  // Convierte un glyph index a la representación hex que va dentro de <...>
+  function GlyphIndexToHex(gid: Integer): string;
+  begin
+    Result := IntToHex4(gid); // e.g. 0001, 00FF, 0123
+  end;
+
+begin
+  if Length(astring) < 1 then
+  begin
+    Result := '[]';
+    Exit;
+  end;
+
+  // Si no es texto árabe delegamos a la función anterior
+  if not ContainsArabicText(astring) then
+  begin
+    Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
+    Exit;
+  end;
+
+  // Obtenemos el resultado del shaping (glyphs + avances)
+  positions := CalcGlyphhPositions(astring, adata, pdffont);
+
+  // Si no hay glyphs
+  if Length(positions) = 0 then
+  begin
+    Result := '[]';
+    Exit;
+  end;
+  // Calculate normal widths
+  for i := 1 to Length(astring) do
+  begin
+   InfoProvider.GetCharWidth(pdfFont,adata,astring[i]);
+  end;
+
+
+  // Construimos el array TJ en el mismo estilo que la función original
+  Result := '[<';
+  for i := 0 to High(positions) do
+  begin
+    // Glyph id en hex dentro de <>
+    glyphIndex:=positions[i].GlyphIndex;
+    gidHex := GlyphIndexToHex(glyphIndex);
+    InfoProvider.GetGlyphWidth(pdfFont,adata,glyphIndex,positions[i].CharCode);
+    Result := Result + gidHex;
+
+    // Si hay siguiente glifo calculamos el ajuste a insertar entre ellos
+    if i < High(positions) then
+    begin
+      // Convertir XAdvance (font units) a unidades de texto PDF mediante pdffont.Scale
+      // y hacer negativo porque en TJ el número mueve el glifo en sentido contrario.
+      // Redondeamos a entero como hacía tu código clásico que usaba IntToStr.
+      // scale := pdffont.Size / 172;//adata.UnitsPerEm;
+      scale := pdffont.Size/72;
+      advanceInt := Round(- positions[i].XAdvance * scale);
+
+      if advanceInt <> 0 then
+      begin
+        // cerramos el bloque de hex, ponemos el número, y reabrimos para el siguiente glifo
+        Result := Result + '>' + ' ' + IntToStr(advanceInt);
+        Result := Result + ' <';
+      end
+      else
+      begin
+        // Si el avance es 0 no insertamos número; mantenemos el flujo <XXXX><YYYY>...
+        // para mantener consistencia con la antigua función (no insertar 0s).
+      end;
+    end;
+  end;
+
+  // cerramos el último glifo y el array
+  Result := Result + '>]';
+end;
+{$ENDIF}
+
 function TRpPDFCanvas.PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 var
  i:integer;
@@ -4317,6 +4506,7 @@ begin
  end;
  FPageInfos.Clear;
 end;
+
 
 end.
 

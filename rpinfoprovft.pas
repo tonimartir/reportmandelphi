@@ -72,6 +72,7 @@ type
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
+  function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   constructor Create;
   destructor destroy;override;
  end;
@@ -806,6 +807,7 @@ var
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
+ glyphInfo: TGlyphInfo;
 begin
      SetLength(bytes, data.FontData.FontData.Size);
      crit.Enter;
@@ -816,15 +818,15 @@ begin
       crit.Leave;
      end;
      GlyphsUsed:=TDictionary<Integer, TArray<Integer>>.Create;
-     for xchar in data.glyphs.Keys do
+     for glyphInfo in data.glyphsInfo.Values do
      begin
-      intChar:=Integer(xchar);
-      glyph:=data.glyphs[xchar];
+      intChar:=Integer(glyphInfo.Char);
+      glyph:=glyphInfo.Glyph;
       if (not GlyphsUsed.ContainsKey(glyph)) then
       begin
        SetLength(ints, 3);
        ints[0]:=glyph;
-       ints[1]:=Round(data.widths[xchar]);
+       ints[1]:=Round(glyphInfo.Width);
        ints[2]:=intChar;
        GlyphsUsed.Add(glyph,ints)
       end;
@@ -906,6 +908,7 @@ var
  cfont:TRpLogFont;
  dwidth:double;
  index:integer;
+ ginfo: TGlyphInfo;
 begin
  aint:=Ord(charcode);
  if aint>255 then
@@ -938,10 +941,56 @@ begin
   // Get glyph index
   index := FT_Get_Char_Index(cfont.ftface,Cardinal(charcode));
   data.glyphs.Add(charcode,index);
+  if (not data.glyphsInfo.ContainsKey(index)) then
+  begin
+   ginfo.Glyph := index;
+   ginfo.Width := awidth;
+   ginfo.Char := charcode;
+   data.glyphsInfo.Add(index,ginfo);
+  end;
   data.loadedglyphs[aint]:=WideChar(index);
   data.loadedg[aint]:=true;
  end;
 end;
+
+function TRpFTInfoProvider.GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;
+var
+ awidth:double;
+ width1,width2:word;
+ cfont:TRpLogFont;
+ dwidth:double;
+ index:integer;
+ ginfo: TGlyphInfo;
+begin
+ if data.glyphsInfo.ContainsKey(glyph) then
+ begin
+  Result:=data.glyphsInfo[glyph];
+ end
+ else
+ begin
+  cfont:=TRpLogFont(data.fdata);
+  cfont.OpenFont;
+  if (0 = FT_Load_Glyph(cfont.ftface,glyph,FT_LOAD_NO_SCALE)) then
+  begin
+   width1:=word(cfont.ftface.glyph.linearHoriAdvance shr 16);
+   width2:=word((cfont.ftface.glyph.linearHoriAdvance shl 16) shr 16);
+   dwidth:=width1+width2/65535;
+   awidth:=cfont.widthmult*dwidth;
+  end
+  else
+   awidth:=0;
+  Result:=awidth;
+  // Get glyph index
+  if (not data.glyphsInfo.ContainsKey(index)) then
+  begin
+   ginfo.Glyph := index;
+   ginfo.Width := awidth;
+   ginfo.Char := charC;
+   data.glyphsInfo.Add(index,ginfo);
+  end;
+ end;
+end;
+
 
 function TRpFTInfoProvider.GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;
 {$IFDEF USEKERNING}

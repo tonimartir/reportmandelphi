@@ -43,8 +43,10 @@ type
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
+  function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function  GetFontStream(data: TRpTTFontData): TMemoryStream;override;
+  function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   constructor Create;
   destructor Destroy;override;
  end;
@@ -158,6 +160,14 @@ begin
 end;
 
 
+
+function  TRpGDIInfoProvider.GetFullFontStream(data: TRpTTFontData): TMemoryStream;
+begin
+ Result:=data.FontData.Fontdata;
+ Result.Position:=0;
+end;
+
+
 function  TRpGDIInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
 var
  subset:TTrueTypeFontSubSet;
@@ -167,19 +177,20 @@ var
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
+ ginfo: TGlyphInfo;
 begin
      SetLength(bytes, data.FontData.FontData.Size);
      data.fontdata.FontData.ReadBuffer(bytes[0],data.fontdata.FontData.Size);
      GlyphsUsed:=TDictionary<Integer, TArray<Integer>>.Create;
-     for xchar in data.glyphs.Keys do
+     for ginfo in data.glyphsInfo.Values do
      begin
-      intChar:=Integer(xchar);
-      glyph:=data.glyphs[xchar];
+      intChar:=Integer(ginfo.Char);
+      glyph:=ginfo.Glyph;
       if (not GlyphsUsed.ContainsKey(glyph)) then
       begin
        SetLength(ints, 3);
        ints[0]:=glyph;
-       ints[1]:=Round(data.widths[xchar]);
+       ints[1]:=Round(ginfo.Width);
        ints[2]:=intChar;
        GlyphsUsed.Add(glyph,ints)
       end;
@@ -393,6 +404,43 @@ begin
 end;
 {$ENDIF}
 
+function TRpGDIInfoProvider.GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;
+var
+ logx:double;
+ ginfo: TGlyphInfo;
+   gm: _GLYPHMETRICS;
+     mat: MAT2;
+       res: DWORD;
+   width:integer;
+begin
+ if data.glyphsInfo.ContainsKey(glyph) then
+ begin
+  Result:=data.glyphsInfo[glyph].Width;
+ end
+ else
+ begin
+     // MAT2 identidad (no escalado): eM11 = 1, eM12 = 0, eM21 = 0, eM22 = 1
+    // FIXED fields: .value = integer part, .fract = fractional; ponemos 1 y 0 para identidad
+    mat.eM11.value := 1; mat.eM11.fract := 0;
+    mat.eM12.value := 0; mat.eM12.fract := 0;
+    mat.eM21.value := 0; mat.eM21.fract := 0;
+    mat.eM22.value := 1; mat.eM22.fract := 0;
+   res:=GetGlyphOutlineW(adc,glyph,GGO_METRICS or GGO_GLYPH_INDEX,gm,0,nil,mat);
+   if res = GDI_ERROR then
+      width:=0
+    else
+      width := gm.gmCellIncX; // este es el advance horizontal
+    // Get glyph index
+    if (not data.glyphsInfo.ContainsKey(glyph)) then
+    begin
+     ginfo.Glyph := glyph;
+     ginfo.Width := width;
+     ginfo.Char := charC;
+     data.glyphsInfo.Add(glyph,ginfo);
+    end;
+ end;
+end;
+
 
 
 function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
@@ -414,6 +462,7 @@ var
  gcp:windows.tagGCP_RESULTSW;
 {$ENDIF}
  astring:WideString;
+ ginfo: TGlyphInfo;
 begin
  // glyphindex:=0;
  aint:=Ord(charcode);
@@ -469,8 +518,10 @@ begin
    end;
   end;
   data.loadedglyphs[aint]:=WideChar(glyphindexes[0]);
-  data.glyphs.Add(charcode, glyphindexes[0]);
   data.loadedg[aint]:=true;
+  data.glyphs.Add(charcode, glyphindexes[0]);
+
+  data.loaded[aint]:=true;
 
 //    if not GetCharABCWidthsI(adc,glyphindexes[0],1,nil,aabc[1]) then
 //     RaiseLastOSError;
@@ -485,6 +536,13 @@ begin
   data.firstloaded:=aint;
  if data.lastloaded<aint then
   data.lastloaded:=aint;
+ if (not data.glyphsInfo.ContainsKey(glyphindexes[0])) then
+ begin
+  ginfo.Glyph := glyphindexes[0];
+  ginfo.Width := Result;
+  ginfo.Char := charcode;
+  data.glyphsInfo.Add(glyphindexes[0],ginfo);
+ end;
 end;
 
 

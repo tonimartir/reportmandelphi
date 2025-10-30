@@ -465,7 +465,38 @@ function AnsiStringToOem(const S: AnsiString): AnsiString;
 procedure GetCommonMimeTypes(MimeList: TStrings);
 function EscapeXML(const Value: string): string;
 
+function ContainsArabicText(const Value: WideString): boolean;
+
 implementation
+
+function ContainsArabicText(const Value: WideString): Boolean;
+var
+  i: Integer;
+  C: Char;
+  U: Cardinal;
+begin
+  Result := False;
+
+  for i := 1 to Length(Value) do
+  begin
+    C := Value[i];
+    U := Ord(C);
+
+    // Rangos árabes Unicode:
+    // Básico árabe
+    if (U >= $0600) and (U <= $06FF) then Exit(True);
+    // Árabe Suplementario
+    if (U >= $0750) and (U <= $077F) then Exit(True);
+    // Árabe extendido-A
+    if (U >= $08A0) and (U <= $08FF) then Exit(True);
+    // Presentación de formas-A
+    if (U >= $FB50) and (U <= $FDFF) then Exit(True);
+    // Presentación de formas-B
+    if (U >= $FE70) and (U <= $FEFF) then Exit(True);
+    // Notación matemática árabe
+    if (U >= $1EE00) and (U <= $1EEFF) then Exit(True);
+  end;
+end;
 
 function EscapeXML(const Value: string): string;
 begin
