@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -83,7 +83,7 @@ uses Classes,Sysutils,rpinfoprovid,
 // ICU 69 version
 // HarfBuzz 2.9
 {$IFDEF USETEXTSHAPING}
- uFreeType,uHarfBuzz,uICU,
+ uFreeType,uHarfBuzz,uICU,Generics.Collections,
 {$ENDIF}
  rpmdconsts,rptypes,rpmunits,dateutils;
 
@@ -123,6 +123,7 @@ type
    XAdvance: integer;
    YAdvance: integer;
    CharCode: WideChar;
+   Cluster: Cardinal;
   end;
  TGlyphPosArray = array of TGlyphPos;
 
@@ -168,9 +169,11 @@ type
    PDFConformance: TPDFConformanceType;
    procedure GetStdLineSpacing(var linespacing,leading:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
+   function UnitsToXPos(Value:integer):double;
    function UnitsToTextX(Value:integer):string;
    function UnitsToTextY(Value:integer):string;
    function UnitsToTextText(Value:integer;FontSize:integer):string;
+   function UnitsToYPosFont(Value: integer;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
     Rotation:integer;RightToLeft:Boolean);
@@ -188,7 +191,7 @@ type
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
    {$IFDEF USETEXTSHAPING}
-   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
+   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean):String;
    function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
    {$ENDIF}
   public
@@ -704,10 +707,10 @@ begin
  begin
    SWriteLine(FMainPDF,PDF_HEADER_A3);
    // AddToOffset(Length(PDF_HEADER_A3));
-   //SWriteLine(FMainPDF,'%����');
+   //SWriteLine(FMainPDF,'%äüöß');
    FMainPDF.Write([37,228,252,246,223,13,10],7);
    AddToOffset(7+Length(PDF_HEADER_A3));
-   //AddToOffset(Length('%����'));
+   //AddToOffset(Length('%äüöß'));
  end
  else
  begin
@@ -1429,6 +1432,14 @@ begin
  FCurrentSetPageObject:=FCurrentSetPageObject+1;
 end;
 
+
+function TRpPDFCanvas.UnitsToYPosFont(Value: integer;FontSize: integer):double;
+begin
+ Result:=((Double(FFile.FPageHeight-Value)/FResolution)*CONS_PDFRES)-FontSize;
+end;
+
+
+
 function TRpPDFCanvas.UnitsToTextText(Value:integer;FontSize:integer):string;
 var
 {$IFDEF DOTNETD}
@@ -1486,6 +1497,12 @@ begin
   decimalseparator:=olddecimalseparator;
  end;
 {$ENDIF}
+end;
+
+
+function TRpPDFCanvas.UnitsToXPos(Value:integer):double;
+begin
+ Result:=(Double(Value)/FResolution)*CONS_PDFRES;
 end;
 
 function TRpPDFCanvas.UnitsToTextX(Value:integer):string;
@@ -2173,10 +2190,14 @@ begin
   else
    SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
   astring:=Text;
+{$IFDEF USETEXTSHAPING}
+{$ELSE}  
   if RightToLeft then
   begin
    astring:=DoReverseStringW(astring);
   end;
+{$ENDIF}
+
   havekerning:=false;
   if assigned(adata) then
   begin
@@ -2184,7 +2205,7 @@ begin
     havekerning:=true;
   end;
 {$IFDEF USETEXTSHAPING}
-  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font)+' TJ');
+  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font,RightToLeft));
 {$ELSE}
   if havekerning then
   begin
@@ -3829,8 +3850,8 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-    FontStream:=Canvas.InfoProvider.GetFontStream(adata);
-   // FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
+    //FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+    FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    try
     WriteStream(FontStream,FTempStream);
    finally
@@ -4228,10 +4249,10 @@ begin
       begin
         Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
         Result[i].XAdvance := Round(GlyphPos[i].XAdvance/64); // en font units
-        Result[i].XOffset := GlyphPos[i].XOffset;
-        Result[i].YOffset := GlyphPos[i].YOffset;
-        Result[i].CharCode := WideChar(GlyphInfo[i].Cluster);
-        // CharCode no hace falta para PDF
+        Result[i].XOffset := Round(GlyphPos[i].XOffset/64);
+        Result[i].YOffset := Round(GlyphPos[i].YOffset/64);
+        Result[i].CharCode := astring[GlyphInfo[i].Cluster+1];
+        Result[i].Cluster := GlyphInfo[i].Cluster;
       end;
 
 
@@ -4244,7 +4265,163 @@ begin
 end;
 
 
-function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont): String;
+type
+  PInt32 = PInteger; // poner una sola vez al principio de la unidad
+
+procedure ApplyICUVisualReorder_Simple(var Glyphs: TGlyphPosArray; const TextLogical: UnicodeString);
+var
+  nGlyphs, nChars, i, visPos, logicalIndex, foundPos: Integer;
+  clusters: TDictionary<Integer, TList<Integer>>;
+  outList: TList<TGlyphPos>;
+  bidi: TICUBidi;
+  reordered: UnicodeString;
+  usedLogical: TArray<Boolean>;
+  usedVisual: TArray<Boolean>;
+  keyArray: TArray<Integer>;
+  listForKey: TList<Integer>;
+  k: Integer;
+  chLogical, chVisual: WideChar;
+begin
+  // trivial
+  nGlyphs := Length(Glyphs);
+  if nGlyphs = 0 then Exit;
+
+  nChars := Length(TextLogical); // número de unidades UTF-16
+  if nChars = 0 then Exit;
+
+  // 1) Agrupamos glyphs por cluster (cluster = índice UTF-16 lógico del char inicial del cluster)
+  clusters := TDictionary<Integer, TList<Integer>>.Create;
+  try
+    for i := 0 to nGlyphs - 1 do
+    begin
+      logicalIndex := Integer(Glyphs[i].Cluster);
+      if not clusters.ContainsKey(logicalIndex) then
+        clusters.Add(logicalIndex, TList<Integer>.Create);
+      clusters[logicalIndex].Add(i);
+    end;
+
+    // 2) Obtenemos la cadena visual usando TICUBidi.WriteReordered
+    bidi := TICUBidi.Create;
+    try
+      if not bidi.SetPara(TextLogical, 2) then
+        raise Exception.Create('UBIDI: SetPara falló en ApplyICUVisualReorder_Simple');
+      reordered := bidi.WriteReordered(True); // visual string (mirroring + reorder)
+    finally
+      bidi.Free;
+    end;
+
+    // 3) Preparamos arrays de marca
+    SetLength(usedLogical, nChars);
+    for i := 0 to nChars - 1 do usedLogical[i] := False;
+
+    // Si la longitud visual difiere, trabajamos con la longitud visual y usamos fallback heurístico
+    // nVis es la longitud de la cadena visual (nVis puede ser distinta de nChars)
+    var nVis: Integer := Length(reordered);
+    if nVis <= 0 then
+    begin
+      // nothing useful, fallback: devolver glyphs sin modificar
+      Exit;
+    end;
+    SetLength(usedVisual, nVis);
+    for i := 0 to nVis - 1 do usedVisual[i] := False;
+
+    // 4) Construimos visual->logical:
+    // Para cada posición visual j tomamos el primer logical i no usado con el mismo WideChar.
+    // Heurística: si no hay coincidencia exacta, intentamos asignar por índice similar (fallback).
+    var visualToLogical: TArray<Integer>;
+    SetLength(visualToLogical, nVis);
+    for visPos := 0 to nVis - 1 do
+      visualToLogical[visPos] := -1;
+
+    for visPos := 0 to nVis - 1 do
+    begin
+      chVisual := reordered[visPos + 1]; // Delphi strings are 1-based
+      foundPos := -1;
+      // buscar primera ocurrencia en logical no usada que coincida en caracter
+      for logicalIndex := 0 to nChars - 1 do
+      begin
+        if not usedLogical[logicalIndex] then
+        begin
+          chLogical := TextLogical[logicalIndex + 1];
+          if chLogical = chVisual then
+          begin
+            foundPos := logicalIndex;
+            usedLogical[logicalIndex] := True;
+            Break;
+          end;
+        end;
+      end;
+      if foundPos = -1 then
+      begin
+        // fallback heurístico: tomar primer logical no usado
+        for logicalIndex := 0 to nChars - 1 do
+          if not usedLogical[logicalIndex] then
+          begin
+            foundPos := logicalIndex;
+            usedLogical[logicalIndex] := True;
+            Break;
+          end;
+      end;
+      visualToLogical[visPos] := foundPos;
+      usedVisual[visPos] := True;
+    end;
+
+    // 5) Emitir clusters en orden visual: por cada visPos, si existe cluster que empieza en ese logical index, añadir su glyphs
+    outList := TList<TGlyphPos>.Create;
+    try
+      keyArray := clusters.Keys.ToArray;
+      // marcado para no repetir clusters
+      var emitted := TDictionary<Integer, Boolean>.Create;
+      try
+        for k := 0 to High(keyArray) do
+          emitted.Add(keyArray[k], False);
+
+        for visPos := 0 to nVis - 1 do
+        begin
+          logicalIndex := visualToLogical[visPos];
+          if (logicalIndex >= 0) and clusters.ContainsKey(logicalIndex) and (not emitted[logicalIndex]) then
+          begin
+            listForKey := clusters[logicalIndex];
+            for i := 0 to listForKey.Count - 1 do
+              outList.Add(Glyphs[listForKey[i]]);
+            emitted[logicalIndex] := True;
+          end;
+        end;
+
+        // añadir clusters no emitidos al final (por seguridad)
+        for k := 0 to High(keyArray) do
+        begin
+          if not emitted[keyArray[k]] then
+          begin
+            listForKey := clusters[keyArray[k]];
+            for i := 0 to listForKey.Count - 1 do
+              outList.Add(Glyphs[listForKey[i]]);
+          end;
+        end;
+      finally
+        emitted.Free;
+      end;
+
+      // 6) reemplazar glyph array original por el reordenado
+      SetLength(Glyphs, outList.Count);
+      for i := 0 to outList.Count - 1 do
+        Glyphs[i] := outList[i];
+
+    finally
+      outList.Free;
+    end;
+
+  finally
+    // liberar las listas de clusters
+    var kk: Integer;
+    keyArray := clusters.Keys.ToArray;
+    for kk := 0 to High(keyArray) do
+      clusters[keyArray[kk]].Free;
+    clusters.Free;
+  end;
+end;
+
+function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont;RightToLeft: Boolean): String;
 var
   positions: TGlyphPosArray;
   i: Integer;
@@ -4253,71 +4430,109 @@ var
   advanceInt: double;
   gidHex: string;
   glyphIndex: Integer;
+  offsetX:integer;
+  offsetY:integer;
   Bidi: TICUBidi;
-  Input, Reordered: UnicodeString;
+  Runs: TList<TBidiRun>;
+  r: TBidiRun;
+  runIndex:integer;
+  subText:string;
 
-
-  // Convierte un glyph index a la representaci�n hex que va dentro de <...>
+  // Convierte un glyph index a la representación hex que va dentro de <...>
   function GlyphIndexToHex(gid: Integer): string;
   begin
     Result := IntToHex4(gid); // 0000 ? FFFF
   end;
 
 begin
+  Runs:=nil;
   Result := '[]';
   if astring = '' then Exit;
 
-  if not ContainsArabicText(astring) then
+  if (not RightToLeft) then
   begin
     Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
     Exit;
   end;
-  Input := astring;
   Bidi := TICUBidi.Create;
   try
-    if Bidi.SetPara(Input, 2) then
+    if Bidi.SetPara(astring, 2) then
     begin
-      Reordered := Bidi.WriteReordered(True);
-      Writeln('Texto original:  ', Input);
-      Writeln('Texto visual:    ', Reordered);
+      Runs:=Bidi.GetVisualRuns();
     end
     else
     begin
-      Writeln('Error reordering:    ', Input);
-      Reordered:=Input;
+     raise Exception.Create('VisualRuns error');
     end
   finally
     Bidi.Free;
   end;
 
-  positions := CalcGlyphhPositions(Reordered, adata, pdffont);
-  if Length(positions) = 0 then Exit;
-
-
-  Result := '[';
-  for i := 0 to High(positions) do
-  begin
-    glyphIndex := positions[i].GlyphIndex;
-    gidHex := GlyphIndexToHex(glyphIndex);
-    Result := Result + '<'+gidHex+'>';
-
-    gWidth:=InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
-
-    if i < High(positions) then
+  try
+    Result := '[';
+    for runIndex := 0 to Runs.Count - 1 do
     begin
-     scale:=1.5;
-      // Ajuste horizontal: XAdvance + XOffset
-     advanceInt := (positions[i].XAdvance);
-     advanceInt := gWidth-(advanceInt);
-
-     if (advanceInt <> 0) then
+      r := Runs[runIndex];
+     subText := Copy(astring, r.LogicalStart+1, r.Length);
+     positions := CalcGlyphhPositions(subText, adata, pdffont);
+     if Length(positions) > 0 then
      begin
-        Result := Result + ' ' + IntToStr(Round(advanceInt)) ;
-     end;
-    end;
-  end;
+      for i := 0 to High(positions) do
+      begin
+        glyphIndex := positions[i].GlyphIndex;
+        gidHex := GlyphIndexToHex(glyphIndex);
 
-  Result := Result + ']';
+        gWidth:=InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
+
+        if i <= High(positions) then
+        begin
+         // Ajuste horizontal: XAdvance + XOffset
+         // Si el avance es 0 sera un positivo
+         advanceInt := positions[i].XAdvance;
+         advanceInt := gWidth-(advanceInt);
+
+         offsetX := positions[i].XOffset;
+         offsetY := positions[i].YOffset;
+         // Mientras no haya offset podemos seguir ajustando el avance
+         if ((offsetX = 0) AND (offsetY = 0)) then
+         begin
+           Result := Result + '<'+gidHex+'>';
+           if (advanceInt <> 0) then
+           begin
+              Result := Result + ' ' + IntToStr(Round(advanceInt)) + ' ' ;
+           end;
+         end
+         else
+         begin
+           // Si hay offset Cerramos y dibujamos con offset
+          // offset != 0 → cerrar TJ actual si hace falta
+          if (Result[Length(Result)] <> '[') then
+            Result := Result + '] TJ ';
+
+          // Dibujar glifo con offset relativo (X y Y)
+          Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ', [offsetX, offsetY, gidHex]);
+
+          // Si advanceX <> 0, simulamos el avance con un glifo vacío
+          if positions[i].XAdvance <> 0 then
+          begin
+            // Convertimos advanceX a unidades PDF
+            gWidth := positions[i].XAdvance;
+            Result := Result + Format('[<0000> %d', [Round(gWidth)]);
+          end
+          else
+          begin
+           // Luego continuar con TJ normal para los siguientes glifos
+           Result := Result + '[';
+          end
+         end
+        end;
+      end;
+    end;
+   end;
+   Result := Result + ']';
+  finally
+   Runs.Free;
+  end;
 end;
 {$ENDIF}
 
@@ -4435,7 +4650,7 @@ begin
       Break;
     end;
   end;
-  // Si todos los caracteres son ASCII, usar formato de cadena normal con par�ntesis
+  // Si todos los caracteres son ASCII, usar formato de cadena normal con paréntesis
   if IsASCII then
   begin
     Result := '(';
@@ -4457,10 +4672,10 @@ begin
     UTF16BEBytes := TEncoding.BigEndianUnicode.GetBytes(text);
     // Crear el resultado en formato hexadecimal PDF: Comienza con el BOM UTF-16BE 0xFEFF
     Result := '<FEFF';
-    // Convertir cada byte a su representaci�n hexadecimal
+    // Convertir cada byte a su representación hexadecimal
     for i := 0 to Length(UTF16BEBytes) - 1 do
     begin
-      // Formatear cada byte como hexadecimal de dos d�gitos
+      // Formatear cada byte como hexadecimal de dos dígitos
       HexString := IntToHex(UTF16BEBytes[i]);
       Result := Result + HexString;
     end;

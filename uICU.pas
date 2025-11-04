@@ -7,16 +7,12 @@
 // License & terms of use: http://www.unicode.org/copyright.html
 {$Z4}
 Unit uICU;
-
 Interface
-
 {$IFDEF FPC}
 {$MODE Delphi}
 {$MESSAGE FATAL 'Replace every instance of "[Ref] Const" in this file by "Constref", then disable this error.'}
 {$ENDIF}
-
-Uses SysUtils;
-
+Uses SysUtils, Classes, Generics.Collections;
 {$IFDEF MSWINDOWS}
 Const
    ICUDLLcommon = 'icuuc69.dll';
@@ -26,16 +22,12 @@ Const
    ICUDLLcommon = 'libicuuc.so.66';
    ICUDLLsuffix = '_66';
 {$ENDIF}
-
 Type
    EICU = Class(Exception)
    End;
-
 {$REGION 'utypes.h'}
-
 Type
    UDate = Type Double;
-
    UDateHelper = Record Helper For UDate
    Const
       MillisPerSecond = 1000;
@@ -43,7 +35,6 @@ Type
       MillisPerHour   = 3600000;
       MillisPerDay    = 86400000;
    End;
-
    TICUErrorCode = (icuecUsingFallbackWarning = -128, icuecErrorWarningStart = -128, icuecUsingDefaultWarning = -127, icuecSafecloneAllocatedWarning = -126, icuecStateOldWarning = -125,
       icuecStringNotTerminatedWarning = -124, icuecSortKeyTooShortWarning = -123, icuecAmbiguousAliasWarning = -122, icuecDifferentUcaVersion = -121, icuecPluginChangedLevelWarning = -120,
       icuecZeroError = 0, icuecIllegalArgumentError = 1, icuecMissingResourceError = 2, icuecInvalidFormatError = 3, icuecFileAccessError = 4, icuecInternalProgramError = 5,
@@ -69,7 +60,6 @@ Type
       icuecIdnaCheckBidiError, icuecIdnaStd3AsciiRulesError, icuecIdnaAcePrefixError, icuecIdnaVerificationError, icuecIdnaLabelTooLongError, icuecIdnaZeroLengthLabelError,
       icuecIdnaDomainNameTooLongError, icuecStringprepProhibitedError = icuecIdnaProhibitedError, icuecStringprepUnassignedError = icuecIdnaUnassignedError,
       icuecStringprepCheckBidiError = icuecIdnaCheckBidiError, icuecPluginErrorStart = $10500, icuecPluginTooHigh = $10500, icuecPluginDidntSetLevel);
-
    TICUErrorCodeHelper = Record Helper For TICUErrorCode
       Function ToString: UnicodeString; Inline;
       Function Success: Boolean; Inline;
@@ -77,22 +67,18 @@ Type
    End;
 {$ENDREGION}
 {$REGION 'uvernum.h / uversion.h'}
-
 Type
    TICUVersionInfo = Type Cardinal;
-
    TICUVersionInfoHelper = Record Helper For TICUVersionInfo
    Public Const
       cCopyrightStringLength  = 128;
       cMaxVersionLength       = 4;
       cVersionDelimiter       = AnsiChar('.');
       cMaxVersionStringLength = 20;
-
       //Class Function FromString(Const AValue: UnicodeString): TICUVersionInfo; Static; Inline;
       Function ToString: UnicodeString; Inline;
       Class Function GetVersion: TICUVersionInfo; Static; Inline;
    End;
-
    TICUManager = Class Abstract
    Strict Private
       Class Var FMajor, FMinor, FMicro: Cardinal;
@@ -110,30 +96,25 @@ Type
       ColRuntimeVersion    = 9;
       ColBuilderVersion    = 9;
       UnicodeVersion       = AnsiString('13.0'); // uchar.h
-
       sError = 'The error %d occured in an ICU call: %s.';
    Public
       Class Function VersionString: UnicodeString; Static; Inline;
       Class Procedure Error(Const AErrorCode: TICUErrorCode); Static; // Inline;
-
       Class Property MajorVersion: Cardinal Read FMajor;
       Class Property MinorVersion: Cardinal Read FMinor;
       Class Property MicroVersion: Cardinal Read FMicro;
    End;
 {$ENDREGION}
 {$REGION 'umachine.h'}
-
 Type
    UBool      = ByteBool;
    UChar      = WideChar;
    OldUChar   = WideChar;
    TICUChar32 = Type Integer;
-
 Const
    USentinel = Integer( -1);
 {$ENDREGION}
 {$REGION 'uenum.h'}
-
 Type
    TICUEnumeration = Record
    Strict Private
@@ -146,26 +127,19 @@ Type
       Function UNext: UnicodeString; Inline;
       Function Next: AnsiString; Inline;
       Procedure Reset; Inline;
-
       Class Function UCreate(Const AStrings: TArray<String>): TICUEnumeration; Static;
       Class Function Create(Const AStrings: TArray<AnsiString>): TICUEnumeration; Overload; Static;
       Class Function Create(Const AStrings: TArray<PAnsiChar>): TICUEnumeration; Overload; Static;
    End;
 {$ENDREGION}
 {$REGION 'uloc.h'}
-
    TICULocaleDataType = (iculdtActualLocale, iculdtValidLocale, iculdtRequestedLocale, iculdtDataLocaleTypeLimit);
-
    TICULocaleAvailableType = (iculatDefault, iculatAvailableOnlyLegacyAliases, iculatAvailableWithLegacyAliases, iculatAvailableCount);
-
    TICULayoutType = (icultLTR, icultRTL, icultTTB, icultBTT, icultUnknown);
-
    TICUAcceptResult = (icuarAcceptFailed, icuarAcceptValid, icuarAcceptFallback);
-
    TICULocale = Record
    Private
       FValue: AnsiString;
-
    Strict Private
    Type
       TGetFunc        = Function(Const ALocaleID: PAnsiChar; Buf: PAnsiChar; Const ABufCapacity: Integer; Out OError: TICUErrorCode): Integer; Cdecl;
@@ -180,14 +154,12 @@ Type
       capScript           = 6;
       capKeywords         = 96;
       capKeywordAndValues = 100;
-
       kwSeparator            = '@';
       kwSeparatorUnicode     = $40;
       kwAssign               = '=';
       kwAssignUnicode        = $3D;
       kwItemSeparator        = ';';
       kwItemSeparatorUnicode = $3B;
-
       Class Function GetDefault: TICULocale; Static; Inline;
       Procedure SetDefault; Inline;
       Function GetLanguage: AnsiString; Inline;
@@ -230,10 +202,8 @@ Type
       Class Function ToUnicodeLocaleType(Const AKeyword, AValue: AnsiString): AnsiString; Static; Inline;
       Class Function ToLegacyKey(Const AKeyword: AnsiString): AnsiString; Static; Inline;
       Class Function ToLegacyType(Const AKeyword, AValue: AnsiString): AnsiString; Static; Inline;
-
       Property Value: AnsiString Read FValue Write FValue;
    End;
-
    TICULocaleHelper = Record Helper For TICULocale
    Public Const
       locChinese: TICULocale            = (FValue: 'zh');
@@ -260,9 +230,7 @@ Type
    End;
 {$ENDREGION}
 {$REGION 'stringoptions.h'}
-
    TICUStringOptions = Record
-
    Const
       cFoldCaseDefault            = 0;
       cFoldCaseExcludeSpecialI    = 1;
@@ -276,15 +244,11 @@ Type
       cCompareCodePointOrder      = $8000;
       cCompareIgnoreCase          = $10000;
       cUnormInputIsFCD            = $20000;
-
    End;
 {$ENDREGION}
 {$REGION 'ucpmap.h'}
-
    TICUCPMapRangeOption = (cpmroRangeNormal, cmproRangeFixedLeadSurrogates, cmproRangeFixedAllSurrogates);
-
    TICUCPMapValueFilter = Function(Const Context; Const AValue: Cardinal): Cardinal; Cdecl;
-
    TICUCPMap = Record
    Strict Private
 {$HINTS OFF}
@@ -298,11 +262,9 @@ Type
    End;
 {$ENDREGION}
 {$REGION 'uchar.h'}
-
 Const
    cICUCharMinValue = 0;
    cICUCharMaxValue = $10FFFF;
-
 Type
    TICUProperty = (icupCharAlphabetic = 0, icupCharBinaryStart = icupCharAlphabetic, icupCharAsciiHexDigit = 1, icupCharBidiControl = 2, icupCharBidiMirrored = 3, icupCharDash = 4,
       icupCharDefaultIgnorableCodePoint = 5, icupCharDeprecated = 6, icupCharDiacritic = 7, icupCharExtender = 8, icupCharFullCompositionExclusion = 9, icupCharGraphemeBase = 10,
@@ -335,7 +297,6 @@ Type
       icupCharScriptExtensions = $7000, icupCharOtherPropertyStart = icupCharScriptExtensions, //
       icupCharOtherPropertyLimit = $7001, // deprecated
       icupCharInvalidCode = -1);
-
    TICUSet = Record
    Strict Private
 {$HINTS OFF}
@@ -344,15 +305,12 @@ Type
    Public
       Class Function GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet; Static; Inline;
    End;
-
    TICUCharCategory = (icuccUnassigned = 0, icuccGeneralOtherTypes = 0, icuccUppercaseLetter = 1, icuccLowercaseLetter = 2, icuccTitlecaseLetter = 3, icuccModifierLetter = 4, icuccOtherLetter = 5,
       icuccNonSpacingMark = 6, icuccEnclosingMark = 7, icuccCombiningSpacingMark = 8, icuccDecimalDigitNumber = 9, icuccLetterNumber = 10, icuccOtherNumber = 11, icuccSpaceSeparator = 12,
       icuccLineSeparator = 13, icuccParagraphSeparator = 14, icuccControlChar = 15, icuccFormatChar = 16, icuccPrivateUseChar = 17, icuccSurrogate = 18, icuccDashPunctuation = 19,
       icuccStartPunctuation = 20, icuccEndPunctuation = 21, icuccConnectorPunctuation = 22, icuccOtherPunctuation = 23, icuccMathSymbol = 24, icuccCurrencySymbol = 25, icuccModifierSymbol = 26,
       icuccOtherSymbol = 27, icuccInitialPunctuation = 28, icuccFinalPunctuation = 29, icuccCharCategoryCount);
-
    TICUCharCategories = Set Of TICUCharCategory;
-
    TICUCharCategoriesHelper = Record Helper For TICUCharCategories
    Const
       gcLetters      = [icuccUppercaseLetter, icuccLowercaseLetter, icuccTitlecaseLetter, icuccModifierLetter, icuccOtherLetter];
@@ -364,18 +322,15 @@ Type
       gcPunctuation  = [icuccDashPunctuation, icuccStartPunctuation, icuccEndPunctuation, icuccConnectorPunctuation, icuccOtherLetter, icuccInitialPunctuation, icuccFinalPunctuation];
       gcSymbols      = [icuccMathSymbol, icuccCurrencySymbol, icuccModifierSymbol, icuccOtherSymbol];
    End;
-
    TICUCharDirection = (icucdLeftToRight = 0, icucdRightToLeft = 1, icucdEuropeanNumber = 2, icucdEuropeanNumberSeparator = 3, icucdEuropeanNumberTerminator = 4, icucdArabicNumber = 5,
       icucdCommonNumberSeparator = 6, icucdBlockSeparator = 7, icucdSegmentSeparator = 8, icucdWhiteSpaceNeutral = 9, icucdOtherNeutral = 10, icucdLeftToRightEmbedding = 11,
       icucdLeftToRightOverride = 12, icucdRightToLeftArabic = 13, icucdRightToLeftEmbedding = 14, icucdRightToLeftOverride = 15, icucdPopDirectionalFormat = 16, icucdDirNonSpacingMark = 17,
       icucdBoundaryNeutral = 18, icucdFirstStrongIsolate = 19, icucdLeftToRightIsolate = 20, icucdRightToLeftIsolate = 21, icucdPopDirectionalIsolate = 22, //
       icucdCharDirectionCount // deprecated
       );
-
    TICUBidiPairedBracketType = (icubpbtBptNone, icubpbtBptOpen, icubpbtBptClose, //
       icubpbtBptCount // deprecated
       );
-
    TICUBlockCode = (icubcBlockNoBlock = 0, icubcBlockBasicLatin = 1, icubcBlockLatin1Supplement = 2, icubcBlockLatinExtendedA = 3, icubcBlockLatinExtendedB = 4, icubcBlockIpaExtensions = 5,
       icubcBlockSpacingModifierLetters = 6, icubcBlockCombiningDiacriticalMarks = 7, icubcBlockGreek = 8, icubcBlockCyrillic = 9, icubcBlockArmenian = 10, icubcBlockHebrew = 11, icubcBlockArabic = 12,
       icubcBlockSyriac = 13, icubcBlockThaana = 14, icubcBlockDevanagari = 15, icubcBlockBengali = 16, icubcBlockGurmukhi = 17, icubcBlockGujarati = 18, icubcBlockOriya = 19, icubcBlockTamil = 20,
@@ -434,21 +389,17 @@ Type
       icubcBlockKhitanSmallScript = 304, icubcBlockLisuSupplement = 305, icubcBlockSymbolsForLegacyComputing = 306, icubcBlockTangutSupplement = 307, icubcBlockYezidi = 308, //
       icubcBlockCount = 309, // deprecated
       icubcBlockInvalidCode = -1);
-
    TICUEastAsianWidth = (icueawEaNeutral, icueawEaAmbiguous, icueawEaHalfwidth, icueawEaFullwidth, icueawEaNarrow, icueawEaWide, //
       icueawEaCount // deprecated
       );
-
    TICUCharNameChoice = (icucncUnicodeCharName, //
       icucncUnicode10CharName,                  // deprecated
       icucncExtendedCharName = icucncUnicodeCharName + 2, icucncCharNameAlias, //
       icucncCharNameChoiceCount // deprecated
       );
-
    TICUPropertyNameChoice = (icupncShortPropertyName, icupncLongPropertyName, //
       icupncPropertyNameChoiceCount // deprecated
       );
-
    TICUPropertyHelper = Record Helper For TICUProperty
    Public
       Function HasBinaryProperty(Const AC: TICUChar32): Boolean; Inline;
@@ -461,16 +412,13 @@ Type
       Function GetPropertyValueName(Const AValue: Integer; Const ANameChoice: TICUPropertyNameChoice): AnsiString; Inline;
       Function GetPropertyValueEnum(Const AAlias: AnsiString): Integer; Inline;
    End;
-
    TICUDecompositionType = (icudtDtNone, icudtDtCanonical, icudtDtCompat, icudtDtCircle, icudtDtFinal, icudtDtFont, icudtDtFraction, icudtDtInitial, icudtDtIsolated, icudtDtMedial, icudtDtNarrow,
       icudtDtNobreak, icudtDtSmall, icudtDtSquare, icudtDtSub, icudtDtSuper, icudtDtVertical, icudtDtWide, //
       icudtDtCount // deprecated
       );
-
    TICUJoiningType = (icujtJtNonJoining, icujtJtJoinCausing, icujtJtDualJoining, icujtJtLeftJoining, icujtJtRightJoining, icujtJtTransparent, //
       icujtJtCount // deprecated
       );
-
    TICUJoiningGroup = (icujgJgNoJoiningGroup, icujgJgAin, icujgJgAlaph, icujgJgAlef, icujgJgBeh, icujgJgBeth, icujgJgDal, icujgJgDalathRish, icujgJgE, icujgJgFeh, icujgJgFinalSemkath, icujgJgGaf,
       icujgJgGamal, icujgJgHah, icujgJgTehMarbutaGoal, icujgJgHamzaOnHehGoal = icujgJgTehMarbutaGoal, icujgJgHe, icujgJgHeh, icujgJgHehGoal, icujgJgHeth, icujgJgKaf, icujgJgKaph, icujgJgKnottedHeh,
       icujgJgLam, icujgJgLamadh, icujgJgMeem, icujgJgMim, icujgJgNoon, icujgJgNun, icujgJgPe, icujgJgQaf, icujgJgQaph, icujgJgReh, icujgJgReversedPe, icujgJgSad, icujgJgSadhe, icujgJgSeen,
@@ -484,24 +432,20 @@ Type
       icujgJgHanifiRohingyaPa, //
       icujgJgCount             // deprecated
       );
-
    TICUGraphemeClusterBreak = (icugcbGcbOther = 0, icugcbGcbControl = 1, icugcbGcbCr = 2, icugcbGcbExtend = 3, icugcbGcbL = 4, icugcbGcbLf = 5, icugcbGcbLv = 6, icugcbGcbLvt = 7, icugcbGcbT = 8,
       icugcbGcbV = 9, icugcbGcbSpacingMark = 10, icugcbGcbPrepend = 11, icugcbGcbRegionalIndicator = 12, icugcbGcbEBase = 13, icugcbGcbEBaseGaz = 14, icugcbGcbEModifier = 15,
       icugcbGcbGlueAfterZwj = 16, icugcbGcbZwj = 17, //
       icugcbGcbCount = 18                            // deprecated
       );
-
    TICUWordBreakValues = (icuwbvWbOther = 0, icuwbvWbAletter = 1, icuwbvWbFormat = 2, icuwbvWbKatakana = 3, icuwbvWbMidletter = 4, icuwbvWbMidnum = 5, icuwbvWbNumeric = 6, icuwbvWbExtendnumlet = 7,
       icuwbvWbCr = 8, icuwbvWbExtend = 9, icuwbvWbLf = 10, icuwbvWbMidnumlet = 11, icuwbvWbNewline = 12, icuwbvWbRegionalIndicator = 13, icuwbvWbHebrewLetter = 14, icuwbvWbSingleQuote = 15,
       icuwbvWbDoubleQuote = 16, icuwbvWbEBase = 17, icuwbvWbEBaseGaz = 18, icuwbvWbEModifier = 19, icuwbvWbGlueAfterZwj = 20, icuwbvWbZwj = 21, icuwbvWbWsegspace = 22, //
       icuwbvWbCount = 23 // deprecated
       );
-
    TICUSentenceBreak = (icusbSbOther = 0, icusbSbAterm = 1, icusbSbClose = 2, icusbSbFormat = 3, icusbSbLower = 4, icusbSbNumeric = 5, icusbSbOletter = 6, icusbSbSep = 7, icusbSbSp = 8,
       icusbSbSterm = 9, icusbSbUpper = 10, icusbSbCr = 11, icusbSbExtend = 12, icusbSbLf = 13, icusbSbScontinue = 14, //
       icusbSbCount = 15 // deprecated
       );
-
    TICULineBreak = (iculbLbUnknown = 0, iculbLbAmbiguous = 1, iculbLbAlphabetic = 2, iculbLbBreakBoth = 3, iculbLbBreakAfter = 4, iculbLbBreakBefore = 5, iculbLbMandatoryBreak = 6,
       iculbLbContingentBreak = 7, iculbLbClosePunctuation = 8, iculbLbCombiningMark = 9, iculbLbCarriageReturn = 10, iculbLbExclamation = 11, iculbLbGlue = 12, iculbLbHyphen = 13,
       iculbLbIdeographic = 14, iculbLbInseparable = 15, iculbLbInseperable = iculbLbInseparable, iculbLbInfixNumeric = 16, iculbLbLineFeed = 17, iculbLbNonstarter = 18, iculbLbNumeric = 19,
@@ -510,36 +454,27 @@ Type
       iculbLbCloseParenthesis = 36, iculbLbConditionalJapaneseStarter = 37, iculbLbHebrewLetter = 38, iculbLbRegionalIndicator = 39, iculbLbEBase = 40, iculbLbEModifier = 41, iculbLbZwj = 42, //
       iculbLbCount = 43 // deprecated
       );
-
    TICUNumericType = (icuntNtNone, icuntNtDecimal, icuntNtDigit, icuntNtNumeric, //
       icuntNtCount // deprecated
       );
-
    TICUHangulSyllableType = (icuhstHstNotApplicable, icuhstHstLeadingJamo, icuhstHstVowelJamo, icuhstHstTrailingJamo, icuhstHstLvSyllable, icuhstHstLvtSyllable, //
       icuhstHstCount // deprecated
       );
-
    TICUIndicPositionalCategory = (icuipcInpcNa, icuipcInpcBottom, icuipcInpcBottomAndLeft, icuipcInpcBottomAndRight, icuipcInpcLeft, icuipcInpcLeftAndRight, icuipcInpcOverstruck, icuipcInpcRight,
       icuipcInpcTop, icuipcInpcTopAndBottom, icuipcInpcTopAndBottomAndRight, icuipcInpcTopAndLeft, icuipcInpcTopAndLeftAndRight, icuipcInpcTopAndRight, icuipcInpcVisualOrderLeft,
       icuipcInpcTopAndBottomAndLeft);
-
    TICUIndicSyllabicCategory = (icuiscInscOther, icuiscInscAvagraha, icuiscInscBindu, icuiscInscBrahmiJoiningNumber, icuiscInscCantillationMark, icuiscInscConsonant, icuiscInscConsonantDead,
       icuiscInscConsonantFinal, icuiscInscConsonantHeadLetter, icuiscInscConsonantInitialPostfixed, icuiscInscConsonantKiller, icuiscInscConsonantMedial, icuiscInscConsonantPlaceholder,
       icuiscInscConsonantPrecedingRepha, icuiscInscConsonantPrefixed, icuiscInscConsonantSubjoined, icuiscInscConsonantSucceedingRepha, icuiscInscConsonantWithStacker, icuiscInscGeminationMark,
       icuiscInscInvisibleStacker, icuiscInscJoiner, icuiscInscModifyingLetter, icuiscInscNonJoiner, icuiscInscNukta, icuiscInscNumber, icuiscInscNumberJoiner, icuiscInscPureKiller,
       icuiscInscRegisterShifter, icuiscInscSyllableModifier, icuiscInscToneLetter, icuiscInscToneMark, icuiscInscVirama, icuiscInscVisarga, icuiscInscVowel, icuiscInscVowelDependent,
       icuiscInscVowelIndependent);
-
    TICUVerticalOrientation = (icuvoVoRotated, icuvoVoTransformedRotated, icuvoVoTransformedUpright, icuvoVoUpright);
-
 Const
    cICUNoNumericValue = Double( -123456789);
-
 Type
    TICUCharEnumTypeRange = Function(Const AContext; Const AStart, ALimit: TICUChar32; Const AType: TICUCharCategory): ByteBool; Cdecl;
-
    TICUEnumCharNamesFn = Function(Var Context; Const ACode: TICUChar32; Const ANameChoice: TICUCharNameChoice; Const AName: PAnsiChar; Const ALength: Integer): ByteBool; Cdecl;
-
    TICUCharHelper = Record Helper For TICUChar32
    Public
       Function HasBinaryProperty(Const AWhich: TICUProperty): Boolean; Inline;
@@ -596,11 +531,8 @@ Type
    End;
 {$ENDREGION}
 {$REGION 'utext.h'}
-
    PICUText = ^TICUText;
-
    PICUTextFuncs = ^TICUTextFuncs;
-
    TICUText = Record
    Strict Private
 {$HINTS OFF}
@@ -653,14 +585,12 @@ Type
       Procedure Freeze; Inline;
       Procedure Setup(Const AExtraSpace: Integer); Inline;
       Class Function Create(Const AExtraSpace: Integer): PICUText; Static; Inline;
-
       Function InlineCurrent32: TICUChar32; Inline;
       Function InlineNext32: TICUChar32; Inline;
       Function InlinePrevious32: TICUChar32; Inline;
       Function InlineGetNativeIndex: Int64; Inline;
       Procedure InlineSetNativeIndex(Const ANativeIndex: Int64); Inline;
    End;
-
    TICUTextHelper = Record Helper For TICUText
    Private Const
       cMagic = $345AD82C;
@@ -669,7 +599,6 @@ Type
          FChunkNativeStart: 0; FChunkOffset: 0; FChunkLength: 0; FChunkContents: NIL; FPFuncs: NIL; FPExtra: NIL; FContext: NIL; FP: NIL; FQ: NIL; FR: NIL; FPrivP: NIL; FA: 0; FB: 0; FC: 0; FPrivA: 0;
          FPrivB: 0; FPrivC: 0);
    End;
-
    TICUTextFuncs = Record
    Public Type
       TICUTextClone        = Function(Dest: PICUText; Const ASrc: PICUText; Const ADeep: ByteBool; Out OErrorCode: TICUErrorCode): PICUText; Cdecl;
@@ -682,7 +611,6 @@ Type
       TICUTextMapOffsetToNative     = Function([Ref] Const AUT: TICUText): Int64; Cdecl;
       TICUTextMapNativeIndexToUTF16 = Function([Ref] Const AUT: TICUText; Const ANativeIndex: Int64): Integer; Cdecl;
       TICUTextClose                 = Procedure(UT: PICUText); Cdecl;
-
    Var
       TableSize: Integer;
    Strict Private
@@ -706,28 +634,23 @@ Type
    End;
 {$ENDREGION}
 {$REGION 'parseerr.h'}
-
    TICUParseError = Record
    Public Const
       cParseContextLen = 16;
-
    Var
       Line, Offset:            Integer;
       PreContext, PostContext: Array [0 .. cParseContextLen - 1] Of WideChar;
    End;
 {$ENDREGION}
 {$REGION 'ubrk.h'}
-
    TICUBreakIteratorType = (icubitCharacter, icubitWord, icubitLine, icubitSentence, //
       icubitTitle, // deprecated
       icubitCount // deprecated
       );
-
    TICUWordBreak = (icuwbBrkWordNone = 0, icuwbBrkWordNoneLimit = 100, icuwbBrkWordNumber = 100, icuwbBrkWordNumberLimit = 200, icuwbBrkWordLetter = 200, icuwbBrkWordLetterLimit = 300,
       icuwbBrkWordKana = 300, icuwbBrkWordKanaLimit = 400, icuwbBrkWordIdeo = 400, icuwbBrkWordIdeoLimit = 500);
    TICULineBreakTag     = (iculbtBrkLineSoft = 0, iculbtBrkLineSoftLimit = 100, iculbtBrkLineHard = 100, iculbtBrkLineHardLimit = 200);
    TICUSentenceBreakTag = (icusbtBrkSentenceTerm = 0, icusbtBrkSentenceTermLimit = 100, icusbtBrkSentenceSep = 100, icusbtBrkSentenceSepLimit = 200);
-
    TICUBreakIterator = Record
    Strict Private
 {$HINTS OFF}
@@ -735,7 +658,6 @@ Type
 {$HINTS ON}
    Public Const
       cBrkDone = Integer( -1);
-
       Class Function Create(Const AType: TICUBreakIteratorType; Const ALocale: TICULocale; Const AText: UnicodeString): TICUBreakIterator; Static; Inline;
       Class Function CreateRules(Const ARules, AText: UnicodeString; Out OParseErr: TICUParseError): TICUBreakIterator; Static; Inline;
       Class Function CreateBinaryRules(Const ABinaryRules: TBytes; Const AText: UnicodeString): TICUBreakIterator; Static; Inline;
@@ -761,11 +683,8 @@ Type
       Function GetBinaryRules: TBytes; Inline;
    End;
 {$ENDREGION}
-
 //
-
 {$REGION 'uversion.h'}
-
 Procedure ICUversionFromString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PAnsiChar); Cdecl; External ICUDLLcommon Name 'u_versionFromString' + ICUDLLsuffix;
 //Procedure ICUversionFromUString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PWideChar); Cdecl; External ICUDLLcommon Name 'u_versionFromStringU' + ICUDLLsuffix;
 Procedure ICUversionToString([Ref] Const AVersionArray: TICUVersionInfo; VersionString: PAnsiChar); Cdecl; External ICUDLLcommon Name 'u_versionToString' + ICUDLLsuffix;
@@ -987,9 +906,7 @@ Procedure ICUbrk_refreshUText(BI: TICUBreakIterator; Var Text: TICUText; Out OSt
 Function ICUbrk_getBinaryRules(BI: TICUBreakIterator; BinaryRules: PByte; Const ARulesCapacity: Integer; Out OStatus: TICUErrorCode): Integer; Cdecl;
    External ICUDLLcommon Name 'ubrk_getBinaryRules' + ICUDLLsuffix;
 {$ENDREGION}
-
 {$REGION 'ubidi.h'}
-
 type
   UBiDi = Pointer;
   UBiDiLevel = Byte;
@@ -998,16 +915,36 @@ type
     UBIDI_RTL = 1,
     UBIDI_MIXED = 2
   );
-
+  // Helper records for extended BiDi handling and glyph arrangement
+  TBidiRun = record
+    LogicalStart: Integer;
+    Length: Integer;
+    Level: UBiDiLevel;
+    VisualIndex: Integer;
+  end;
+  THBGlyph = record
+    GlyphID: Cardinal;
+    XOffset: Integer;
+    YOffset: Integer;
+    XAdvance: Integer;
+    YAdvance: Integer;
+  end;
   TICUBidi = class
   private
     FBidi: UBiDi;
   public
     constructor Create(ParaCapacity: Integer = 0);
     destructor Destroy; override;
-
     function SetPara(const Text: UnicodeString; ParaLevel: UBiDiLevel = 0): Boolean;
     function WriteReordered(DoMirroring: Boolean = True): UnicodeString;
+    // Extended BiDi helpers
+    procedure GetLogicalRun(ALogicalIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel);
+    function GetVisualRun(AVisualIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel): Boolean;
+    function GetVisualMap(var Map: TArray<Integer>): Boolean;
+    function GetVisualRuns: TList<TBidiRun>;
+    // Arrange glyph buffers (one glyph buffer per logical run) into a single visual-ordered glyph list
+    function ArrangeGlyphsForPDF(ARuns: TList<TBidiRun>; AGlyphBuffers: TArray<TList<THBGlyph>>): TList<THBGlyph>;
+    property Handle: UBidi read FBidi;
   end;
 
 function ubidi_open: UBiDi; cdecl; external ICUDLLcommon name 'ubidi_open' + ICUDLLsuffix;
@@ -1015,24 +952,29 @@ procedure ubidi_close(pBiDi: UBiDi); cdecl; external ICUDLLcommon name 'ubidi_cl
 procedure ubidi_setPara(pBiDi: UBiDi; text: PWideChar; length: Integer;
                         paraLevel: UBiDiLevel; embeddingLevels: Pointer;
                         var status: Integer); cdecl; external ICUDLLcommon name 'ubidi_setPara' + ICUDLLsuffix;
+procedure ubidi_getLogicalRun(pBiDi: UBiDi; start: Integer; var limit: Integer; var level: UBiDiLevel); cdecl; external ICUDLLcommon name 'ubidi_getLogicalRun' + ICUDLLsuffix;
+procedure ubidi_getVisualMap(pBiDi: UBiDi; indexMap: PInteger; var status: Integer); cdecl; external ICUDLLcommon name 'ubidi_getVisualMap' + ICUDLLsuffix;
+function ubidi_getVisualIndex(pBiDi: UBiDi; logicalIndex: Integer): Integer; cdecl; external ICUDLLcommon name 'ubidi_getVisualIndex' + ICUDLLsuffix;
+function ubidi_getLength(pBiDi: UBiDi): Integer; cdecl; external ICUDLLcommon name 'ubidi_getLength' + ICUDLLsuffix;
 function ubidi_writeReordered(pBiDi: UBiDi; dest: PWideChar; destSize: Integer;
                               options: Cardinal; var status: Integer): Integer; cdecl; external ICUDLLcommon name 'ubidi_writeReordered' + ICUDLLsuffix;
 
+function ubidi_countRuns(pBiDi: UBidi; var pErrorCode: Int32): Int32; cdecl;
+  external ICUDLLcommon name 'ubidi_countRuns'+ ICUDLLsuffix;
+
+function ubidi_getVisualRun(pBiDi: UBidi; runIndex: Int32;
+  out logicalStart: Int32; out length: Int32): UBiDiDirection; cdecl;
+  external ICUDLLcommon name 'ubidi_getVisualRun' + ICUDLLsuffix;
 const
   UBIDI_DO_MIRRORING = $0001;
-
 {$ENDREGION}
-
 Implementation
-
 { TICUManager }
-
 Class Procedure TICUManager.Error(Const AErrorCode: TICUErrorCode);
 Begin
    If AErrorCode.Failure Then
       Raise EICU.CreateFmt(sError, [Integer(AErrorCode), AErrorCode.ToString]);
 End;
-
 Class Procedure TICUManager.Initialize;
 Var
    DLL, Header: TICUVersionInfo;
@@ -1046,54 +988,42 @@ Begin
    //   Raise EICU.CreateFmt('Version %s expected, got %s.', [ICUVersion, UnicodeString(DLLVersion)]);
    //End;
 End;
-
 Class Function TICUManager.VersionString: UnicodeString;
 Begin
    Result := UnicodeString(ICUVersion);
 End;
-
 { TICUErrorCodeHelper }
-
 Function TICUErrorCodeHelper.Failure: Boolean;
 Begin
    Result := Integer(Self) > Integer(icuecZeroError);
 End;
-
 Function TICUErrorCodeHelper.Success: Boolean;
 Begin
    Result := Integer(Self) <= Integer(icuecZeroError);
 End;
-
 Function TICUErrorCodeHelper.ToString: UnicodeString;
 Begin
    Result := UnicodeString(ICUerrorName(Self));
 End;
-
 { TICUCPMap }
-
 Function TICUCPMap.Get(Const AC: TICUChar32): Cardinal;
 Begin
    Result := ICUcpmap_get(Self, AC);
 End;
-
 Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context; Out OPValue: Cardinal)
    : TICUChar32;
 Begin
    Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, OPValue);
 End;
-
 Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context): TICUChar32;
 Begin
    Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, PCardinal(NIL)^);
 End;
-
 { TICUEnumeration }
-
 Procedure TICUEnumeration.Destroy;
 Begin
    ICUenum_close(Self);
 End;
-
 Function TICUEnumeration.Count: Integer;
 Var
    Status: TICUErrorCode;
@@ -1102,7 +1032,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration count failed: %s', [Status.ToString]);
 End;
-
 Class Function TICUEnumeration.Create(Const AStrings: TArray<PAnsiChar>): TICUEnumeration;
 Var
    Status: TICUErrorCode;
@@ -1114,7 +1043,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration create failed: %s', [Status.ToString]);
 End;
-
 Class Function TICUEnumeration.Create(Const AStrings: TArray<AnsiString>): TICUEnumeration;
 Var
    Status: TICUErrorCode;
@@ -1127,7 +1055,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration create failed: %s', [Status.ToString]);
 End;
-
 Function TICUEnumeration.Next: AnsiString;
 Var
    Status: TICUErrorCode;
@@ -1136,7 +1063,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration next failed: %s', [Status.ToString]);
 End;
-
 Procedure TICUEnumeration.Reset;
 Var
    Status: TICUErrorCode;
@@ -1145,7 +1071,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration reset failed: %s', [Status.ToString]);
 End;
-
 Class Function TICUEnumeration.UCreate(Const AStrings: TArray<String>): TICUEnumeration;
 Var
    Status: TICUErrorCode;
@@ -1158,7 +1083,6 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration ucreate failed: %s', [Status.ToString]);
 End;
-
 Function TICUEnumeration.UNext: UnicodeString;
 Var
    Status: TICUErrorCode;
@@ -1167,14 +1091,11 @@ Begin
    If Status.Failure Then
       Raise EICU.CreateFmt('Enumeration unext failed: %s', [Status.ToString]);
 End;
-
 { TICUTextHelper }
-
 Function TICUText.Char32At(Const ANativeIndex: Int64): TICUChar32;
 Begin
    Result := ICUtext_char32At(Self, ANativeIndex);
 End;
-
 Function TICUText.Clone(Const ADeep, AReadOnly: Boolean): PICUText;
 Var
    Err: TICUErrorCode;
@@ -1182,7 +1103,6 @@ Begin
    Result := ICUtext_clone(PICUText(NIL)^, Self, ADeep, AReadOnly, Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICUText.CloneInto(Var ATo: TICUText; Const ADeep, AReadOnly: Boolean);
 Var
    Err: TICUErrorCode;
@@ -1190,12 +1110,10 @@ Begin
    ICUtext_clone(ATo, Self, ADeep, AReadOnly, Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICUText.Destroy;
 Begin
    ICUtext_close(Self);
 End;
-
 Procedure TICUText.Copy(Const ANativeStart, ANativeLimit, ADestIndex: Int64; Const AMove: Boolean);
 Var
    Err: TICUErrorCode;
@@ -1203,17 +1121,14 @@ Begin
    ICUtext_copy(Self, ANativeStart, ANativeLimit, ADestIndex, AMove, Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUText.Current32: TICUChar32;
 Begin
    Result := ICUtext_current32(Self);
 End;
-
 Class Operator TICUText.Equal([Ref] Const AA, AB: TICUText): Boolean;
 Begin
    Result := ICUtext_equals(AA, AB);
 End;
-
 Function TICUText.Extract(Const ANativeStart, ANativeLimit: Int64): UnicodeString;
 Var
    Err: TICUErrorCode;
@@ -1222,27 +1137,22 @@ Begin
    SetLength(Result, ICUtext_extract(Self, ANativeStart, ANativeLimit, PWideChar(Result), Length(Result), Err));
    TICUManager.Error(Err);
 End;
-
 Procedure TICUText.Freeze;
 Begin
    ICUtext_freeze(Self);
 End;
-
 Function TICUText.GetNativeIndex: Int64;
 Begin
    Result := ICUtext_getNativeIndex(Self);
 End;
-
 Function TICUText.GetPreviousNativeIndex: Int64;
 Begin
    Result := ICUtext_getPreviousNativeIndex(Self);
 End;
-
 Function TICUText.HasMetaData: Boolean;
 Begin
    Result := ICUtext_hasMetaData(Self);
 End;
-
 Function TICUText.InlineCurrent32: TICUChar32;
 Begin
    If (FChunkOffset < FChunkLength) And (PWord(NativeInt(FChunkContents) + FChunkOffset)^ < $D800) Then
@@ -1250,7 +1160,6 @@ Begin
    Else
       Result := ICUtext_current32(Self);
 End;
-
 Function TICUText.InlineGetNativeIndex: Int64;
 Begin
    If FChunkOffset < FNativeIndexingLimit Then
@@ -1258,7 +1167,6 @@ Begin
    Else
       Result := FPFuncs.MapOffsetToNative(Self);
 End;
-
 Function TICUText.InlineNext32: TICUChar32;
 Begin
    If (FChunkOffset < FChunkLength) And (PWord(NativeInt(FChunkContents) + FChunkOffset)^ < $D800) Then Begin
@@ -1268,7 +1176,6 @@ Begin
    Else
       Result := ICUtext_next32(Self);
 End;
-
 Function TICUText.InlinePrevious32: TICUChar32;
 Begin
    If (FChunkOffset > 0) And (PWord(NativeInt(FChunkContents) + FChunkOffset - 1)^ < $D800) Then Begin
@@ -1278,7 +1185,6 @@ Begin
    Else
       Result := ICUtext_previous32(Self);
 End;
-
 Procedure TICUText.InlineSetNativeIndex(Const ANativeIndex: Int64);
 Var
    Offset: Int64;
@@ -1289,37 +1195,30 @@ Begin
    Else
       ICUtext_setNativeIndex(Self, ANativeIndex);
 End;
-
 Function TICUText.IsLengthExpensive: Boolean;
 Begin
    Result := ICUtext_isLengthExpensive(Self);
 End;
-
 Function TICUText.IsWritable: Boolean;
 Begin
    Result := ICUtext_isWritable(Self);
 End;
-
 Function TICUText.MoveIndex32(Const ADelta: Integer): Boolean;
 Begin
    Result := ICUtext_moveIndex32(Self, ADelta);
 End;
-
 Function TICUText.NativeLength: Int64;
 Begin
    Result := ICUtext_nativeLength(Self);
 End;
-
 Function TICUText.Next32: TICUChar32;
 Begin
    Result := ICUtext_next32(Self);
 End;
-
 Function TICUText.Next32From(Const ANativeIndex: Int64): TICUChar32;
 Begin
    Result := ICUtext_next32From(Self, ANativeIndex);
 End;
-
 Procedure TICUText.OpenUChars(Const &AS: UnicodeString);
 Var
    Err: TICUErrorCode;
@@ -1327,7 +1226,6 @@ Begin
    ICUtext_openUChars(Self, @&AS[1], Length(&AS), Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICUText.CreateUChars(Const &AS: UnicodeString): PICUText;
 Var
    Err: TICUErrorCode;
@@ -1335,7 +1233,6 @@ Begin
    Result := ICUtext_openUChars(PICUText(NIL)^, @&AS[1], Length(&AS), Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICUText.OpenUTF8(Const &AS: AnsiString);
 Var
    Err: TICUErrorCode;
@@ -1343,7 +1240,6 @@ Begin
    ICUtext_openUTF8(Self, @&AS[1], Length(&AS), Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICUText.CreateUTF8(Const &AS: AnsiString): PICUText;
 Var
    Err: TICUErrorCode;
@@ -1351,17 +1247,14 @@ Begin
    Result := ICUtext_openUTF8(PICUText(NIL)^, @&AS[1], Length(&AS), Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUText.Previous32: TICUChar32;
 Begin
    Result := ICUtext_previous32(Self);
 End;
-
 Function TICUText.Previous32From(Const ANativeIndex: Int64): TICUChar32;
 Begin
    Result := ICUtext_previous32From(Self, ANativeIndex);
 End;
-
 Procedure TICUText.Replace(Const ANativeStart, ANativeLimit: Int64; Const AReplacementText: UnicodeString);
 Var
    Err: TICUErrorCode;
@@ -1369,12 +1262,10 @@ Begin
    ICUtext_replace(Self, ANativeStart, ANativeLimit, @AReplacementText[1], Length(AReplacementText), Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICUText.SetNativeIndex(Const ANativeIndex: Int64);
 Begin
    ICUtext_setNativeIndex(Self, ANativeIndex);
 End;
-
 Procedure TICUText.Setup(Const AExtraSpace: Integer);
 Var
    Err: TICUErrorCode;
@@ -1382,7 +1273,6 @@ Begin
    ICUtext_setup(Self, AExtraSpace, Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICUText.Create(Const AExtraSpace: Integer): PICUText;
 Var
    Err: TICUErrorCode;
@@ -1390,19 +1280,15 @@ Begin
    Result := ICUtext_setup(PICUText(NIL)^, AExtraSpace, Err);
    TICUManager.Error(Err);
 End;
-
 { TICUVersionInfoHelper }
-
 //Class Function TICUVersionInfoHelper.FromString(Const AValue: UnicodeString): TICUVersionInfo;
 //Begin
 //   ICUversionFromUString(Result, PWideChar(AValue));
 //End;
-
 Class Function TICUVersionInfoHelper.GetVersion: TICUVersionInfo;
 Begin
    ICUgetVersion(Result);
 End;
-
 Function TICUVersionInfoHelper.ToString: UnicodeString;
 Var
    Buf: String[cMaxVersionStringLength];
@@ -1410,9 +1296,7 @@ Begin
    ICUversionToString(Self, @Buf[1]);
    Result := UnicodeString(PAnsiChar(@Buf[1]));
 End;
-
 { TICULocale }
-
 Class Function TICULocale.AcceptLanguage(Const AAcceptList: TArray<AnsiString>; Const AAvailableLocales: TArray<TICULocale>; Out OResult: TICUAcceptResult): TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1422,7 +1306,6 @@ Begin
       TICUEnumeration.Create(TArray<PAnsiChar>(AAvailableLocales)), Err));
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.AcceptLanguageFromHTTP(Const AHTTPAcceptLanguage: AnsiString; Const AAvailableLocales: TArray<TICULocale>; Out OResult: TICUAcceptResult): TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1431,7 +1314,6 @@ Begin
    SetLength(Result.FValue, ICUloc_acceptLanguageFromHTTP(@Result.FValue[1], capFullName, OResult, PAnsiChar(AHTTPAcceptLanguage), TICUEnumeration.Create(TArray<PAnsiChar>(AAvailableLocales)), Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.AddLikelySubtags: TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1440,7 +1322,6 @@ Begin
    SetLength(Result.FValue, ICUloc_addLikelySubtags(@FValue[1], @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.Canonicalize: TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1449,12 +1330,10 @@ Begin
    SetLength(Result.FValue, ICUloc_canonicalize(@FValue[1], @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.CountAvailable: Integer;
 Begin
    Result := ICUloc_countAvailable;
 End;
-
 Class Function TICULocale.ForLanguageTag(Const ALanguageTag: AnsiString): TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1463,7 +1342,6 @@ Begin
    SetLength(Result.FValue, ICUloc_forLanguageTag(PAnsiChar(ALanguageTag), @Result.FValue[1], capFullName, PInteger(NIL)^, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.Get(Const AFunc: TGetFunc; Const AMaxSize: Integer): AnsiString;
 Var
    Err: TICUErrorCode;
@@ -1472,7 +1350,6 @@ Begin
    SetLength(Result, AFunc(@FValue[1], @Result[1], AMaxSize, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.Get(Const AFunc: TGetDisplayFunc; Const ADisplayLocale: TICULocale): UnicodeString;
 Var
    Err: TICUErrorCode;
@@ -1481,17 +1358,14 @@ Begin
    SetLength(Result, AFunc(@FValue[1], @ADisplayLocale.FValue[1], @Result[1], 255, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.GetAvailable(Const AN: Integer): TICULocale;
 Begin
    Result.FValue := AnsiString(ICUloc_getAvailable(AN));
 End;
-
 Function TICULocale.GetBaseName: AnsiString;
 Begin
    Result := Get(ICUloc_getBaseName, capFullName);
 End;
-
 Function TICULocale.GetCharacterOrientation: TICULayoutType;
 Var
    Err: TICUErrorCode;
@@ -1499,22 +1373,18 @@ Begin
    Result := ICUloc_getCharacterOrientation(@FValue[1], Err);
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetCountry: AnsiString;
 Begin
    Result := Get(ICUloc_getCountry, capCountry);
 End;
-
 Class Function TICULocale.GetDefault: TICULocale;
 Begin
    Result.FValue := AnsiString(ICUloc_getDefault);
 End;
-
 Function TICULocale.GetDisplayCountry(Const ADisplayLocale: TICULocale): UnicodeString;
 Begin
    Result := Get(ICUloc_getDisplayCountry, ADisplayLocale);
 End;
-
 Class Function TICULocale.GetDisplayKeyword(Const AKeyword: AnsiString; Const ADisplayLocale: TICULocale): UnicodeString;
 Var
    Err: TICUErrorCode;
@@ -1523,7 +1393,6 @@ Begin
    SetLength(Result, ICUloc_getDisplayKeyword(PAnsiChar(AKeyword), @ADisplayLocale.FValue[1], @Result[1], 255, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetDisplayKeywordValue(Const AKeyword: AnsiString; Const ADisplayLocale: TICULocale): UnicodeString;
 Var
    Err: TICUErrorCode;
@@ -1532,37 +1401,30 @@ Begin
    SetLength(Result, ICUloc_getDisplayKeywordValue(@FValue[1], PAnsiChar(AKeyword), @ADisplayLocale.FValue[1], @Result[1], 255, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetDisplayLanguage(Const ADisplayLocale: TICULocale): UnicodeString;
 Begin
    Result := Get(ICUloc_getDisplayLanguage, ADisplayLocale);
 End;
-
 Function TICULocale.GetDisplayName(Const AInLocale: TICULocale): UnicodeString;
 Begin
    Result := Get(ICUloc_getDisplayName, AInLocale);
 End;
-
 Function TICULocale.GetDisplayScript(Const ADisplayLocale: TICULocale): UnicodeString;
 Begin
    Result := Get(ICUloc_getDisplayScript, ADisplayLocale);
 End;
-
 Function TICULocale.GetDisplayVariant(Const ADisplayLocale: TICULocale): UnicodeString;
 Begin
    Result := Get(ICUloc_getDisplayVariant, ADisplayLocale);
 End;
-
 Function TICULocale.GetISO3Country: AnsiString;
 Begin
    Result := AnsiString(ICUloc_getISO3Country(@FValue[1]));
 End;
-
 Function TICULocale.GetISO3Language: AnsiString;
 Begin
    Result := AnsiString(ICUloc_getISO3Language(@FValue[1]));
 End;
-
 Class Function TICULocale.GetISOCountries: TArray<AnsiString>;
 Var
    Countries, Cur: PPAnsiChar;
@@ -1581,7 +1443,6 @@ Begin
       Inc(Cur);
    End;
 End;
-
 Class Function TICULocale.GetISOLanguages: TArray<AnsiString>;
 Var
    Countries, Cur: PPAnsiChar;
@@ -1600,7 +1461,6 @@ Begin
       Inc(Cur);
    End;
 End;
-
 Function TICULocale.GetKeywordValue(Const AKeyword: AnsiString): AnsiString;
 Var
    Err: TICUErrorCode;
@@ -1609,17 +1469,14 @@ Begin
    SetLength(Result, ICUloc_getKeywordValue(@FValue[1], PAnsiChar(AKeyword), @Result[1], capKeywordAndValues, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetLanguage: AnsiString;
 Begin
    Result := Get(ICUloc_getLanguage, capLang);
 End;
-
 Function TICULocale.GetLCID: Integer;
 Begin
    Result := ICUloc_getLCID(@FValue[1]);
 End;
-
 Function TICULocale.GetLineOrientation: TICULayoutType;
 Var
    Err: TICUErrorCode;
@@ -1627,7 +1484,6 @@ Begin
    Result := ICUloc_getLineOrientation(@FValue[1], Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.GetLocaleForLCID(Const AHostID: Cardinal): TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1636,12 +1492,10 @@ Begin
    SetLength(Result.FValue, ICUloc_getLocaleForLCID(AHostID, @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetName: AnsiString;
 Begin
    Result := Get(ICUloc_getName, capFullName);
 End;
-
 Function TICULocale.GetParent: TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1650,22 +1504,18 @@ Begin
    SetLength(Result.FValue, ICUloc_getParent(@FValue[1], @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.GetScript: AnsiString;
 Begin
    Result := Get(ICUloc_getScript, capScript);
 End;
-
 Function TICULocale.GetVariant: AnsiString;
 Begin
    Result := Get(ICUloc_getVariant, capKeywordAndValues);
 End;
-
 Function TICULocale.IsRightToLeft: Boolean;
 Begin
    Result := ICUloc_isRightToLeft(@FValue[1]);
 End;
-
 Function TICULocale.MinimizeSubtags: TICULocale;
 Var
    Err: TICUErrorCode;
@@ -1674,7 +1524,6 @@ Begin
    SetLength(Result.FValue, ICUloc_minimizeSubtags(@FValue[1], @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.OpenAvailableByType(Const AType: TICULocaleAvailableType): TArray<TICULocale>;
 Var
    Err:  TICUErrorCode;
@@ -1689,7 +1538,6 @@ Begin
       TICUManager.Error(Err);
    End;
 End;
-
 Function TICULocale.OpenKeywords: TICUEnumeration;
 Var
    Err: TICUErrorCode;
@@ -1697,7 +1545,6 @@ Begin
    Result := ICUloc_openKeywords(@FValue[1], Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICULocale.SetDefault;
 Var
    Err: TICUErrorCode;
@@ -1705,7 +1552,6 @@ Begin
    ICUloc_setDefault(@FValue[1], Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICULocale.SetKeywordValue(Const AKeyword, AValue: AnsiString);
 Var
    Err: TICUErrorCode;
@@ -1714,7 +1560,6 @@ Begin
    SetLength(FValue, ICUloc_setKeywordValue(PAnsiChar(AKeyword), PAnsiChar(AValue), @FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICULocale.ToLanguageTag(Const AStrict: Boolean): AnsiString;
 Var
    Err: TICUErrorCode;
@@ -1723,29 +1568,23 @@ Begin
    SetLength(Result, ICUloc_toLanguageTag(@FValue[1], @Result[1], capLang, AStrict, Err) - 1);
    TICUManager.Error(Err);
 End;
-
 Class Function TICULocale.ToLegacyKey(Const AKeyword: AnsiString): AnsiString;
 Begin
    Result := AnsiString(ICUloc_toLegacyKey(PAnsiChar(AKeyword)));
 End;
-
 Class Function TICULocale.ToLegacyType(Const AKeyword, AValue: AnsiString): AnsiString;
 Begin
    Result := AnsiString(ICUloc_toLegacyType(PAnsiChar(AKeyword), PAnsiChar(AValue)));
 End;
-
 Class Function TICULocale.ToUnicodeLocaleKey(Const AKeyword: AnsiString): AnsiString;
 Begin
    Result := AnsiString(ICUloc_toUnicodeLocaleKey(PAnsiChar(AKeyword)));
 End;
-
 Class Function TICULocale.ToUnicodeLocaleType(Const AKeyword, AValue: AnsiString): AnsiString;
 Begin
    Result := AnsiString(ICUloc_toUnicodeLocaleType(PAnsiChar(AKeyword), PAnsiChar(AValue)));
 End;
-
 { TICUSet }
-
 Class Function TICUSet.GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet;
 Var
    Err: TICUErrorCode;
@@ -1753,9 +1592,7 @@ Begin
    Result := ICUgetBinaryPropertySet(AProperty, Err);
    TICUManager.Error(Err);
 End;
-
 { TICUPropertyHelper }
-
 Function TICUPropertyHelper.GetIntPropertyMap: TICUCPMap;
 Var
    Err: TICUErrorCode;
@@ -1763,69 +1600,55 @@ Begin
    Result := ICUgetIntPropertyMap(Self, Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUPropertyHelper.GetIntPropertyMaxValue: Integer;
 Begin
    Result := ICUgetIntPropertyMaxValue(Self);
 End;
-
 Function TICUPropertyHelper.GetIntPropertyMinValue: Integer;
 Begin
    Result := ICUgetIntPropertyMinValue(Self);
 End;
-
 Function TICUPropertyHelper.GetIntPropertyValue(Const AC: TICUChar32): Integer;
 Begin
    Result := ICUgetIntPropertyValue(AC, Self);
 End;
-
 Class Function TICUPropertyHelper.GetPropertyEnum(Const AAlias: AnsiString): TICUProperty;
 Begin
    Result := ICUgetPropertyEnum(PAnsiChar(AAlias));
 End;
-
 Function TICUPropertyHelper.GetPropertyName(Const ANameChoice: TICUPropertyNameChoice): AnsiString;
 Begin
    Result := AnsiString(ICUgetPropertyName(Self, ANameChoice));
 End;
-
 Function TICUPropertyHelper.GetPropertyValueEnum(Const AAlias: AnsiString): Integer;
 Begin
    Result := ICUgetPropertyValueEnum(Self, PAnsiChar(AAlias));
 End;
-
 Function TICUPropertyHelper.GetPropertyValueName(Const AValue: Integer; Const ANameChoice: TICUPropertyNameChoice): AnsiString;
 Begin
    Result := AnsiString(ICUgetPropertyValueName(Self, AValue, ANameChoice));
 End;
-
 Function TICUPropertyHelper.HasBinaryProperty(Const AC: TICUChar32): Boolean;
 Begin
    Result := ICUhasBinaryProperty(AC, Self);
 End;
-
 { TICUCharHelper }
-
 Function TICUCharHelper.BlockGetCode: TICUBlockCode;
 Begin
    Result := ICUblock_getCode(Self);
 End;
-
 Function TICUCharHelper.CharAge: TICUVersionInfo;
 Begin
    ICUcharAge(Self, Result);
 End;
-
 Function TICUCharHelper.CharDigitValue: Integer;
 Begin
    Result := ICUcharDigitValue(Self);
 End;
-
 Function TICUCharHelper.CharDirection: TICUCharDirection;
 Begin
    Result := ICUcharDirection(Self);
 End;
-
 Class Function TICUCharHelper.CharFromName(Const ANameChoice: TICUCharNameChoice; Const AName: AnsiString): TICUChar32;
 Var
    Err: TICUErrorCode;
@@ -1833,12 +1656,10 @@ Begin
    Result := ICUcharFromName(ANameChoice, PAnsiChar(AName), Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUCharHelper.CharMirror: TICUChar32;
 Begin
    Result := ICUcharMirror(Self);
 End;
-
 Function TICUCharHelper.CharName(Const ANameChoice: TICUCharNameChoice): AnsiString;
 Var
    Err: TICUErrorCode;
@@ -1847,17 +1668,14 @@ Begin
    SetLength(Result, ICUcharName(Self, ANameChoice, @Result[1], 255, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICUCharHelper.CharType: TICUCharCategory;
 Begin
    Result := ICUcharType(Self);
 End;
-
 Function TICUCharHelper.Digit(Const ARadix: ShortInt): Integer;
 Begin
    Result := ICUdigit(Self, ARadix);
 End;
-
 Class Procedure TICUCharHelper.EnumCharNames(Const AStart, ALimit: TICUChar32; Const AFn: TICUEnumCharNamesFn; Var Context; Const ANameChoice: TICUCharNameChoice);
 Var
    Err: TICUErrorCode;
@@ -1865,32 +1683,26 @@ Begin
    ICUenumCharNames(AStart, ALimit, AFn, Context, ANameChoice, Err);
    TICUManager.Error(Err);
 End;
-
 Class Procedure TICUCharHelper.EnumCharTypes(Const AEnumRange: TICUCharEnumTypeRange; Const AContext);
 Begin
    ICUenumCharTypes(AEnumRange, AContext);
 End;
-
 Function TICUCharHelper.FoldCase(Const AOptions: Cardinal): TICUChar32;
 Begin
    Result := ICUfoldCase(Self, AOptions);
 End;
-
 Class Function TICUCharHelper.ForDigit(Const ADigit: Integer; Const ARadix: ShortInt): TICUChar32;
 Begin
    Result := ICUforDigit(ADigit, ARadix);
 End;
-
 Function TICUCharHelper.GetBidiPairedBracket: TICUChar32;
 Begin
    Result := ICUgetBidiPairedBracket(Self);
 End;
-
 Function TICUCharHelper.GetCombiningClass: ShortInt;
 Begin
    Result := ICUgetCombiningClass(Self);
 End;
-
 Function TICUCharHelper.GetFC_NFKC_Closure: UnicodeString;
 Var
    Err: TICUErrorCode;
@@ -1899,12 +1711,10 @@ Begin
    SetLength(Result, ICUgetFC_NFKC_Closure(Self, @Result[1], 255, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICUCharHelper.GetIntPropertyValue(Const AWhich: TICUProperty): Integer;
 Begin
    Result := ICUgetIntPropertyValue(Self, AWhich);
 End;
-
 Function TICUCharHelper.GetISOComment: AnsiString;
 Var
    Err: TICUErrorCode;
@@ -1915,174 +1725,139 @@ Begin
 {$WARN SYMBOL_DEPRECATED DEFAULT}
    TICUManager.Error(Err);
 End;
-
 Function TICUCharHelper.GetNumericValue: Double;
 Begin
    Result := ICUgetNumericValue(Self);
 End;
-
 Function TICUCharHelper.HasBinaryProperty(Const AWhich: TICUProperty): Boolean;
 Begin
    Result := ICUhasBinaryProperty(Self, AWhich);
 End;
-
 Function TICUCharHelper.IsAlNum: Boolean;
 Begin
    Result := ICUisalnum(Self);
 End;
-
 Function TICUCharHelper.IsAlpha: Boolean;
 Begin
    Result := ICUisalpha(Self);
 End;
-
 Function TICUCharHelper.IsBase: Boolean;
 Begin
    Result := ICUisbase(Self);
 End;
-
 Function TICUCharHelper.IsBlank: Boolean;
 Begin
    Result := ICUisblank(Self);
 End;
-
 Function TICUCharHelper.IsCntrl: Boolean;
 Begin
    Result := ICUiscntrl(Self);
 End;
-
 Function TICUCharHelper.IsDefined: Boolean;
 Begin
    Result := ICUisdefined(Self);
 End;
-
 Function TICUCharHelper.IsDigit: Boolean;
 Begin
    Result := ICUisdigit(Self);
 End;
-
 Function TICUCharHelper.IsGraph: Boolean;
 Begin
    Result := ICUisgraph(Self);
 End;
-
 Function TICUCharHelper.IsIDIgnorable: Boolean;
 Begin
    Result := ICUisIDIgnorable(Self);
 End;
-
 Function TICUCharHelper.IsIDPart: Boolean;
 Begin
    Result := ICUisIDPart(Self);
 End;
-
 Function TICUCharHelper.IsIDStart: Boolean;
 Begin
    Result := ICUisIDStart(Self);
 End;
-
 Function TICUCharHelper.IsISOControl: Boolean;
 Begin
    Result := ICUisISOControl(Self);
 End;
-
 Function TICUCharHelper.IsJavaIDPart: Boolean;
 Begin
    Result := ICUisJavaIDPart(Self);
 End;
-
 Function TICUCharHelper.IsJavaIDStart: Boolean;
 Begin
    Result := ICUisJavaIDStart(Self);
 End;
-
 Function TICUCharHelper.IsJavaSpaceChar: Boolean;
 Begin
    Result := ICUisJavaSpaceChar(Self);
 End;
-
 Function TICUCharHelper.IsLower: Boolean;
 Begin
    Result := ICUislower(Self);
 End;
-
 Function TICUCharHelper.IsMirrored: Boolean;
 Begin
    Result := ICUisMirrored(Self);
 End;
-
 Function TICUCharHelper.IsPrint: Boolean;
 Begin
    Result := ICUisprint(Self);
 End;
-
 Function TICUCharHelper.IsPunct: Boolean;
 Begin
    Result := ICUispunct(Self);
 End;
-
 Function TICUCharHelper.IsSpace: Boolean;
 Begin
    Result := ICUisspace(Self);
 End;
-
 Function TICUCharHelper.IsTitle: Boolean;
 Begin
    Result := ICUistitle(Self);
 End;
-
 Function TICUCharHelper.IsUAlphabetic: Boolean;
 Begin
    Result := ICUisUAlphabetic(Self);
 End;
-
 Function TICUCharHelper.IsULowercase: Boolean;
 Begin
    Result := ICUisULowercase(Self);
 End;
-
 Function TICUCharHelper.IsUpper: Boolean;
 Begin
    Result := ICUisupper(Self);
 End;
-
 Function TICUCharHelper.IsUUppercase: Boolean;
 Begin
    Result := ICUisUUppercase(Self);
 End;
-
 //Function TICUCharHelper.IsUWhitespace: Boolean;
 //Begin
 //   Result := ICUisUWhitespace(Self);
 //End;
-
 Function TICUCharHelper.IsWhitespace: Boolean;
 Begin
    Result := ICUisWhitespace(Self);
 End;
-
 Function TICUCharHelper.IsXDigit: Boolean;
 Begin
    Result := ICUisxdigit(Self);
 End;
-
 Function TICUCharHelper.ToLower: TICUChar32;
 Begin
    Result := ICUtolower(Self);
 End;
-
 Function TICUCharHelper.ToTitle: TICUChar32;
 Begin
    Result := ICUtotitle(Self);
 End;
-
 Function TICUCharHelper.ToUpper: TICUChar32;
 Begin
    Result := ICUtoupper(Self);
 End;
-
 { TICUBreakIterator }
-
 //Function TICUBreakIterator.Clone: TICUBreakIterator;
 //Var
 //   Err: TICUErrorCode;
@@ -2092,37 +1867,30 @@ End;
 //{$WARN SYMBOL_EXPERIMENTAL DEFAULT}
 //   TICUManager.Error(Err);
 //End;
-
 Procedure TICUBreakIterator.Destroy;
 Begin
    ICUbrk_close(Self);
 End;
-
 Class Function TICUBreakIterator.CountAvailable: Integer;
 Begin
    Result := ICUbrk_countAvailable;
 End;
-
 Function TICUBreakIterator.Current: Integer;
 Begin
    Result := ICUbrk_current(Self);
 End;
-
 Function TICUBreakIterator.First: Integer;
 Begin
    Result := ICUbrk_first(Self);
 End;
-
 Function TICUBreakIterator.Following(Const AOffset: Integer): Integer;
 Begin
    Result := ICUbrk_following(Self, AOffset);
 End;
-
 Class Function TICUBreakIterator.GetAvailable(Const AIndex: Integer): AnsiString;
 Begin
    Result := AnsiString(ICUbrk_getAvailable(AIndex));
 End;
-
 Function TICUBreakIterator.GetBinaryRules: TBytes;
 Var
    Err: TICUErrorCode;
@@ -2132,7 +1900,6 @@ Begin
    ICUbrk_getBinaryRules(Self, @Result[0], Length(Result), Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUBreakIterator.GetLocaleByType(Const AType: TICULocaleDataType): TICULocale;
 Var
    Err: TICUErrorCode;
@@ -2140,12 +1907,10 @@ Begin
    Result.FValue := AnsiString(ICUbrk_getLocaleByType(Self, AType, Err));
    TICUManager.Error(Err);
 End;
-
 Function TICUBreakIterator.GetRuleStatus: Integer;
 Begin
    Result := ICUbrk_getRuleStatus(Self);
 End;
-
 Function TICUBreakIterator.GetRuleStatusVec: TArray<Integer>;
 Var
    Err: TICUErrorCode;
@@ -2155,22 +1920,18 @@ Begin
    ICUbrk_getRuleStatusVec(Self, @Result[0], Length(Result), Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUBreakIterator.IsBoundary(Const AOffset: Integer): Boolean;
 Begin
    Result := ICUbrk_isBoundary(Self, AOffset);
 End;
-
 Function TICUBreakIterator.Last: Integer;
 Begin
    Result := ICUbrk_last(Self);
 End;
-
 Function TICUBreakIterator.Next: Integer;
 Begin
    Result := ICUbrk_next(Self);
 End;
-
 Class Function TICUBreakIterator.Create(Const AType: TICUBreakIteratorType; Const ALocale: TICULocale; Const AText: UnicodeString): TICUBreakIterator;
 Var
    Err: TICUErrorCode;
@@ -2178,7 +1939,6 @@ Begin
    Result := ICUbrk_open(AType, @ALocale.FValue[1], @AText[1], Length(AText), Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICUBreakIterator.CreateBinaryRules(Const ABinaryRules: TBytes; Const AText: UnicodeString): TICUBreakIterator;
 Var
    Err: TICUErrorCode;
@@ -2186,7 +1946,6 @@ Begin
    Result := ICUbrk_openBinaryRules(@ABinaryRules[0], Length(ABinaryRules), @AText[1], Length(AText), Err);
    TICUManager.Error(Err);
 End;
-
 Class Function TICUBreakIterator.CreateRules(Const ARules, AText: UnicodeString; Out OParseErr: TICUParseError): TICUBreakIterator;
 Var
    Err: TICUErrorCode;
@@ -2194,17 +1953,14 @@ Begin
    Result := ICUbrk_openRules(@ARules[1], Length(ARules), @AText[1], Length(AText), OParseErr, Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUBreakIterator.Preceding(Const AOffset: Integer): Integer;
 Begin
    Result := ICUbrk_preceding(Self, AOffset);
 End;
-
 Function TICUBreakIterator.Previous: Integer;
 Begin
    Result := ICUbrk_previous(Self);
 End;
-
 Procedure TICUBreakIterator.RefreshUText(Var Text: TICUText);
 Var
    Err: TICUErrorCode;
@@ -2212,7 +1968,6 @@ Begin
    ICUbrk_refreshUText(Self, Text, Err);
    TICUManager.Error(Err);
 End;
-
 Function TICUBreakIterator.SafeClone: TICUBreakIterator;
 Var
    Err: TICUErrorCode;
@@ -2222,7 +1977,6 @@ Begin
 {$WARN SYMBOL_DEPRECATED DEFAULT}
    TICUManager.Error(Err);
 End;
-
 Procedure TICUBreakIterator.SetText(Const AText: UnicodeString);
 Var
    Err: TICUErrorCode;
@@ -2230,7 +1984,6 @@ Begin
    ICUbrk_setText(Self, @AText[1], Length(AText), Err);
    TICUManager.Error(Err);
 End;
-
 Procedure TICUBreakIterator.SetUText(Var Text: TICUText);
 Var
    Err: TICUErrorCode;
@@ -2239,9 +1992,7 @@ Begin
    TICUManager.Error(Err);
 End;
 
-
 {$REGION 'ubidi.h'}
-
 
 constructor TICUBidi.Create(ParaCapacity: Integer);
 begin
@@ -2250,14 +2001,12 @@ begin
   if FBidi = nil then
     raise EICU.Create('Failed to initialize ICU BiDi');
 end;
-
 destructor TICUBidi.Destroy;
 begin
   if FBidi <> nil then
     ubidi_close(FBidi);
   inherited;
 end;
-
 function TICUBidi.SetPara(const Text: UnicodeString; ParaLevel: UBiDiLevel): Boolean;
 var
   status: Integer;
@@ -2266,7 +2015,6 @@ begin
   ubidi_setPara(FBidi, PWideChar(Text), Length(Text), ParaLevel, nil, status);
   Result := (status = 0);
 end;
-
 function TICUBidi.WriteReordered(DoMirroring: Boolean): UnicodeString;
 var
   status, size: Integer;
@@ -2276,7 +2024,6 @@ begin
     options := UBIDI_DO_MIRRORING
   else
     options := 0;
-
   SetLength(Result, 1024);
   status := 0;
   size := ubidi_writeReordered(FBidi, PWideChar(Result), Length(Result),
@@ -2286,11 +2033,173 @@ begin
   else
     Result := '';
 end;
-
 {$ENDREGION}
+// ----------------- Extended TICUBidi implementations -----------------
+procedure TICUBidi.GetLogicalRun(ALogicalIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel);
+begin
+  // wrapper around ubidi_getLogicalRun
+  ubidi_getLogicalRun(FBidi, ALogicalIndex, ALogicalStart, ALevel);
+  // ubidi_getLogicalRun returns limit in ALogicalStart (as limit), we need length:
+  // In ICU signature, ubidi_getLogicalRun(ubidi, start, &limit, &level) where start is logical index
+  // Here we assume caller used logical index = start; we compute length = limit - start
+  ALength := ALogicalStart - ALogicalIndex;
+  ALogicalStart := ALogicalIndex;
+end;
+function TICUBidi.GetVisualMap(var Map: TArray<Integer>): Boolean;
+var
+  L, i, status: Integer;
+begin
+  Result := False;
+  status := 0;
+  L := ubidi_getLength(FBidi);
+  if L <= 0 then Exit;
+  SetLength(Map, L);
+  ubidi_getVisualMap(FBidi, PInteger(Map), status);
+  Result := (status = 0);
+end;
+function TICUBidi.GetVisualRun(AVisualIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel): Boolean;
+var
+  map: TArray<Integer>;
+  i, foundLogical: Integer;
+begin
+  Result := False;
+  if not GetVisualMap(map) then Exit;
+  foundLogical := -1;
+  for i := 0 to High(map) do
+  begin
+    if map[i] = AVisualIndex then
+    begin
+      foundLogical := i;
+      Break;
+    end;
+  end;
+  if foundLogical < 0 then Exit;
+  // get logical run that starts at foundLogical
+  ubidi_getLogicalRun(FBidi, foundLogical, ALogicalStart, ALevel);
+  // ubidi_getLogicalRun returns limit in ALogicalStart param; adjust to return start/length
+  ALength := ALogicalStart - foundLogical;
+  ALogicalStart := foundLogical;
+  Result := True;
+end;
+(*function TICUBidi.GetVisualRuns: TList<TBidiRun>;
+var
+  pos, textLen, limit, runLen, visualIndex: Integer;
+  level: UBiDiLevel;
+  run: TBidiRun;
+begin
+  Result := TList<TBidiRun>.Create;
+  textLen := ubidi_getLength(FBidi);
+  pos := 0;
+  while pos < textLen do
+  begin
+    // ubidi_getLogicalRun expects start index and returns limit and level
+    ubidi_getLogicalRun(FBidi, pos, limit, level);
+    runLen := limit - pos;
+    visualIndex := ubidi_getVisualIndex(FBidi, pos);
+    if visualIndex < 0 then
+    begin
+      // error en ubidi; evita crash y sale
+      Break;
+    end;
+    run.LogicalStart := pos;
+    run.Length := runLen;
+    run.Level := level;
+    run.VisualIndex := visualIndex;
+    Result.Add(run);
+    pos := limit;
+  end;
+end;                *)
+
+function TICUBidi.GetVisualRuns: TList<TBidiRun>;
+var
+  runCount, i: Integer;
+  vStart, vLength, vLimit: Integer;
+  dir: UBiDiDirection;
+  run: TBidiRun;
+  err: Integer;
+begin
+  Result := TList<TBidiRun>.Create;
+
+  if FBidi = nil then
+    Exit;
+
+  err := 0;
+  runCount := ubidi_countRuns(FBidi, err);
+  if (err <> 0) or (runCount <= 0) then
+    Exit;
+
+  for i := 0 to runCount - 1 do
+  begin
+    // devuelve start lógico y length (no limit), y la dirección del run (UBIDI_LTR/UBIDI_RTL/...)
+    dir := ubidi_getVisualRun(FBidi, i, vStart, vLength);
+
+    // Seguridad básica
+    if (vStart < 0) or (vLength <= 0) then
+      Continue;
+
+    vLimit := vStart + vLength; // ahora sí tienes el límite (exclusivo)
+
+    // rellenar el record
+    run.LogicalStart := vStart;      // índice lógico del inicio
+    run.Length := vLength;           // longitud en unidades lógicas (UTF-16 code units)
+    run.VisualIndex := i;            // índice visual (posición del run)
+    // run.Level: si quieres el level real, obténlo con ubidi_getLevelAt(pBiDi, vStart)
+    // run.Level := ubidi_getLevelAt(FBidi, vStart);
+
+    Result.Add(run);
+  end;
+end;
+// Arrange glyph buffers (one buffer per logical run) into a single visual-ordered glyph list.
+// AGlyphBuffers must be indexed by logical run order (same order returned by GetVisualRuns).
+function TICUBidi.ArrangeGlyphsForPDF(ARuns: TList<TBidiRun>; AGlyphBuffers: TArray<TList<THBGlyph>>): TList<THBGlyph>;
+var
+  outList: TList<THBGlyph>;
+  idxVisual, i, j: Integer;
+  logicalIndex: Integer;
+  run: TBidiRun;
+  buf: TList<THBGlyph>;
+  curX: Int64;
+  g: THBGlyph;
+begin
+  outList := TList<THBGlyph>.Create;
+  try
+    curX := 0;
+    for idxVisual := 0 to ARuns.Count - 1 do
+    begin
+      // find run with VisualIndex == idxVisual
+      logicalIndex := -1;
+      for i := 0 to ARuns.Count - 1 do
+        if ARuns[i].VisualIndex = idxVisual then
+        begin
+          logicalIndex := i;
+          Break;
+        end;
+      if logicalIndex < 0 then
+        Continue;
+      run := ARuns[logicalIndex];
+      if (Length(AGlyphBuffers) > logicalIndex) and (AGlyphBuffers[logicalIndex] <> nil) then
+        buf := AGlyphBuffers[logicalIndex]
+      else
+        buf := nil;
+      if buf = nil then
+        Continue;
+      for j := 0 to buf.Count - 1 do
+      begin
+        g := buf[j];
+        Inc(g.XOffset, curX);
+        outList.Add(g);
+        curX := curX + g.XAdvance;
+      end;
+    end;
+    Result := outList;
+  except
+    outList.Free;
+    raise;
+  end;
+end;
+// ----------------- end Extended TICUBidi implementations -----------------
 
 Initialization
-
 TICUManager.Initialize;
-
 End.
+

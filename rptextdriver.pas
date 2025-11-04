@@ -1640,10 +1640,6 @@ var
  attr:TRpAttribObject;
 begin
  astring:=Text;
- if RightToLeft then
- begin
-  astring:=DoReverseString(astring);
- end;
  lineindex:=getlineindex(Y);
  if FLines[lineindex].Attributes.Count<1 then
  begin

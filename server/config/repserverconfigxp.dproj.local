@@ -7,10 +7,10 @@
     <File Path="..\..\rpmdrepclient.dfm"/>
     <File Path="mainfvcl.pas"/>
     <File Path="mainfvcl.dfm"/>
-    <File Path="unewuservcl.pas"/>
-    <File Path="unewuservcl.dfm"/>
     <File Path="unewaliasvcl.pas"/>
     <File Path="unewaliasvcl.dfm"/>
+    <File Path="unewuservcl.pas"/>
+    <File Path="unewuservcl.dfm"/>
     <File Path="ureptreevcl.pas"/>
     <File Path="ureptreevcl.dfm"/>
   </ProjectSortOrder>

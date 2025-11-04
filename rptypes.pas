@@ -325,8 +325,6 @@ procedure GetBidiDescriptions(alist:TRpWideStrings);
 procedure GetBidiDescriptionsA(alist:TStrings);
 function RpBidiModeToString(BidiMode:TRpBidiMode):String;
 function StringToRpBidiMode(Value:String):TRpBidiMode;
-function DoReverseString(Value:String):String;
-function DoReverseStringW(Value:WideString):WideString;
 function GetWheelInc(Shift:TShiftState):integer;
 procedure GetStepDescriptions(alist:TRpWideStrings);
 procedure GetStepDescriptionsA(alist:TStrings);
@@ -3511,16 +3509,7 @@ begin
  end;
 end;
 
-function DoReverseStringW(Value:WideString):WideString;
-var
- i:integer;
-begin
- Result:='';
- for i:=1 to Length(Value) do
- begin
-  Result:=Value[i]+Result;
- end;
-end;
+
 
 function GetWheelInc(Shift:TShiftState):integer;
 var
