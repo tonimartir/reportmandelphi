@@ -439,6 +439,7 @@ begin
      ginfo.Char := charC;
      data.glyphsInfo.Add(glyph,ginfo);
     end;
+    Result:=width;
  end;
 end;
 

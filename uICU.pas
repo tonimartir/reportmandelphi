@@ -17,9 +17,15 @@ Interface
 
 Uses SysUtils;
 
+{$IFDEF MSWINDOWS}
 Const
    ICUDLLcommon = 'icuuc69.dll';
    ICUDLLsuffix = '_69';
+{$ELSE}
+Const
+   ICUDLLcommon = 'libicuuc.so.66';
+   ICUDLLsuffix = '_66';
+{$ENDIF}
 
 Type
    EICU = Class(Exception)
@@ -82,7 +88,7 @@ Type
       cVersionDelimiter       = AnsiChar('.');
       cMaxVersionStringLength = 20;
 
-      Class Function FromString(Const AValue: UnicodeString): TICUVersionInfo; Static; Inline;
+      //Class Function FromString(Const AValue: UnicodeString): TICUVersionInfo; Static; Inline;
       Function ToString: UnicodeString; Inline;
       Class Function GetVersion: TICUVersionInfo; Static; Inline;
    End;
@@ -540,7 +546,7 @@ Type
       Function IsUAlphabetic: Boolean; Inline;
       Function IsULowercase: Boolean; Inline;
       Function IsUUppercase: Boolean; Inline;
-      Function IsUWhitespace: Boolean; Inline;
+//      Function IsUWhitespace: Boolean; Inline;
       Function GetIntPropertyValue(Const AWhich: TICUProperty): Integer; Inline;
       Function GetNumericValue: Double; Inline;
       Function IsLower: Boolean; Inline;
@@ -734,7 +740,7 @@ Type
       Class Function CreateRules(Const ARules, AText: UnicodeString; Out OParseErr: TICUParseError): TICUBreakIterator; Static; Inline;
       Class Function CreateBinaryRules(Const ABinaryRules: TBytes; Const AText: UnicodeString): TICUBreakIterator; Static; Inline;
       Function SafeClone: TICUBreakIterator; Deprecated; Inline;
-      Function Clone: TICUBreakIterator; Experimental; Inline;
+//      Function Clone: TICUBreakIterator; Experimental; Inline;
       Procedure Destroy; Inline;
       Procedure SetText(Const AText: UnicodeString); Inline;
       Procedure SetUText(Var Text: TICUText); Inline;
@@ -761,7 +767,7 @@ Type
 {$REGION 'uversion.h'}
 
 Procedure ICUversionFromString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PAnsiChar); Cdecl; External ICUDLLcommon Name 'u_versionFromString' + ICUDLLsuffix;
-Procedure ICUversionFromUString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PWideChar); Cdecl; External ICUDLLcommon Name 'u_versionFromStringU' + ICUDLLsuffix;
+//Procedure ICUversionFromUString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PWideChar); Cdecl; External ICUDLLcommon Name 'u_versionFromStringU' + ICUDLLsuffix;
 Procedure ICUversionToString([Ref] Const AVersionArray: TICUVersionInfo; VersionString: PAnsiChar); Cdecl; External ICUDLLcommon Name 'u_versionToString' + ICUDLLsuffix;
 Procedure ICUgetVersion(Out OVersionArray: TICUVersionInfo); Cdecl; External ICUDLLcommon Name 'u_getVersion' + ICUDLLsuffix;
 {$ENDREGION}
@@ -857,7 +863,7 @@ Function ICUgetBinaryPropertySet(Const AProperty: TICUProperty; Var Error: TICUE
 Function ICUisUAlphabetic(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUAlphabetic' + ICUDLLsuffix;
 Function ICUisULowercase(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isULowercase' + ICUDLLsuffix;
 Function ICUisUUppercase(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUUppercase' + ICUDLLsuffix;
-Function ICUisUWhitespace(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUWhitespace' + ICUDLLsuffix;
+//Function ICUisUWhitespace(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUWhitespace' + ICUDLLsuffix;
 Function ICUgetIntPropertyValue(Const AC: TICUChar32; Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyValue' + ICUDLLsuffix;
 Function ICUgetIntPropertyMinValue(Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMinValue' + ICUDLLsuffix;
 Function ICUgetIntPropertyMaxValue(Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMaxValue' + ICUDLLsuffix;
@@ -957,7 +963,7 @@ Function ICUbrk_openBinaryRules(Const ABinaryRules: PByte; Const ARulesLength: I
    External ICUDLLcommon Name 'ubrk_openBinaryRules' + ICUDLLsuffix;
 Function ICUbrk_safeClone(Const ABI: TICUBreakIterator; Const AStackBuffer; PBufferSize: PInteger; Out OStatus: TICUErrorCode): TICUBreakIterator; Cdecl;
    External ICUDLLcommon Name 'ubrk_safeClone' + ICUDLLsuffix; Deprecated;
-Function ICUbrk_clone(Const ABI: TICUBreakIterator; Out OStatus: TICUErrorCode): TICUBreakIterator; Cdecl; External ICUDLLcommon Name 'ubrk_clone' + ICUDLLsuffix;
+//Function ICUbrk_clone(Const ABI: TICUBreakIterator; Out OStatus: TICUErrorCode): TICUBreakIterator; Cdecl; External ICUDLLcommon Name 'ubrk_clone' + ICUDLLsuffix;
 Experimental;
 Procedure ICUbrk_close(BI: TICUBreakIterator); Cdecl; External ICUDLLcommon Name 'ubrk_close' + ICUDLLsuffix;
 Procedure ICUbrk_setText(BI: TICUBreakIterator; Const AText: PWideChar; Const ATextLength: Integer; Out OStatus: TICUErrorCode); Cdecl; External ICUDLLcommon Name 'ubrk_setText' + ICUDLLsuffix;
@@ -1034,11 +1040,11 @@ Var
 Begin
    ICUgetVersion(DLL);
    ICUversionFromString(Header, ICUVersion);
-   If DLL <> Header Then Begin
-      DLLVersion := AllocMem(20);
-      ICUversionToString(DLL, DLLVersion);
-      Raise EICU.CreateFmt('Version %s expected, got %s.', [ICUVersion, UnicodeString(DLLVersion)]);
-   End;
+   //If DLL <> Header Then Begin
+   //   DLLVersion := AllocMem(20);
+   //   ICUversionToString(DLL, DLLVersion);
+   //   Raise EICU.CreateFmt('Version %s expected, got %s.', [ICUVersion, UnicodeString(DLLVersion)]);
+   //End;
 End;
 
 Class Function TICUManager.VersionString: UnicodeString;
@@ -1387,10 +1393,10 @@ End;
 
 { TICUVersionInfoHelper }
 
-Class Function TICUVersionInfoHelper.FromString(Const AValue: UnicodeString): TICUVersionInfo;
-Begin
-   ICUversionFromUString(Result, PWideChar(AValue));
-End;
+//Class Function TICUVersionInfoHelper.FromString(Const AValue: UnicodeString): TICUVersionInfo;
+//Begin
+//   ICUversionFromUString(Result, PWideChar(AValue));
+//End;
 
 Class Function TICUVersionInfoHelper.GetVersion: TICUVersionInfo;
 Begin
@@ -2045,10 +2051,10 @@ Begin
    Result := ICUisUUppercase(Self);
 End;
 
-Function TICUCharHelper.IsUWhitespace: Boolean;
-Begin
-   Result := ICUisUWhitespace(Self);
-End;
+//Function TICUCharHelper.IsUWhitespace: Boolean;
+//Begin
+//   Result := ICUisUWhitespace(Self);
+//End;
 
 Function TICUCharHelper.IsWhitespace: Boolean;
 Begin
@@ -2077,15 +2083,15 @@ End;
 
 { TICUBreakIterator }
 
-Function TICUBreakIterator.Clone: TICUBreakIterator;
-Var
-   Err: TICUErrorCode;
-Begin
-{$WARN SYMBOL_EXPERIMENTAL OFF}
-   Result := ICUbrk_clone(Self, Err);
-{$WARN SYMBOL_EXPERIMENTAL DEFAULT}
-   TICUManager.Error(Err);
-End;
+//Function TICUBreakIterator.Clone: TICUBreakIterator;
+//Var
+//   Err: TICUErrorCode;
+//Begin
+//{$WARN SYMBOL_EXPERIMENTAL OFF}
+//   Result := ICUbrk_clone(Self, Err);
+//{$WARN SYMBOL_EXPERIMENTAL DEFAULT}
+//   TICUManager.Error(Err);
+//End;
 
 Procedure TICUBreakIterator.Destroy;
 Begin

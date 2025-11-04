@@ -19,8 +19,14 @@ Interface
 
 Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF};
 
+{$IFDEF LINUX}
+Const
+   FreeTypeDLL ='libfreetype.so.6';
+{$ELSE}
 Const
    FreeTypeDLL = 'libfreetype-6.dll';
+{$ENDIF}
+
 
 Type
    EFreeType = Class(Exception)
@@ -84,19 +90,18 @@ Type
    // System interface. How FreeType manages memory and i/o
 
    // Memory management
-   PFTMemory = ^TFTMemory;
+  PFTMemory = ^TFTMemory;
 
-   TFTMemory = Record
-      User: Pointer;
-      AllocFunc: Function([Ref] Const AMemory: TFTMemory; Const ASize: LongInt): Pointer; Cdecl;
-      FreeFunc: Procedure([Ref] Const AMemory: TFTMemory; Const ABlock: Pointer); Cdecl;
-      ReallocFunc: Function([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: LongInt; Const ABlock: Pointer): Pointer; Cdecl;
+  TFTMemory = record
+    User: Pointer;
+    AllocFunc: function([ref] const AMemory: TFTMemory; const ASize: NativeUInt): Pointer; cdecl;
+    FreeFunc: procedure([ref] const AMemory: TFTMemory; const ABlock: Pointer); cdecl;
+    ReallocFunc: function([ref] const AMemory: TFTMemory; const ACurSize, ANewSize: NativeUInt; const ABlock: Pointer): Pointer; cdecl;
 
-      Function Alloc(Const ASize: LongInt): Pointer; Inline;
-      Procedure Free(Const ABlock: Pointer); Inline;
-      Function Realloc(Const ACurSize, ANewSize: LongInt; Const ABlock: Pointer): Pointer; Inline;
-   End;
-
+    function Alloc(const ASize: NativeUInt): Pointer; inline;
+    procedure Free(const ABlock: Pointer); inline;
+    function Realloc(const ACurSize, ANewSize: NativeUInt; const ABlock: Pointer): Pointer; inline;
+  end;
    // I/O management
    PFTStream = ^TFTStream;
 
@@ -661,9 +666,9 @@ Type
       Procedure SetTransform(Const AMatrix: TFTMatrix); Overload; Inline;
       Procedure SetTransform(Const ADelta: TFTVector); Overload; Inline;
       Procedure SetTransform(Const AMatrix: TFTMatrix; Const ADelta: TFTVector); Overload; Inline;
-      Procedure GetTransform(Out OMatrix: TFTMatrix); Overload; Inline;
-      Procedure GetTransform(Out ODelta: TFTVector); Overload; Inline;
-      Procedure GetTransform(Out OMatrix: TFTMatrix; Out ODelta: TFTVector); Overload; Inline;
+//      Procedure GetTransform(Out OMatrix: TFTMatrix); Overload; Inline;
+//      Procedure GetTransform(Out ODelta: TFTVector); Overload; Inline;
+//      Procedure GetTransform(Out OMatrix: TFTMatrix; Out ODelta: TFTVector); Overload; Inline;
 
       Function GetKerning(Const ALeftGlyph, ARightGlyph: Cardinal; Const AKernMode: TFTKerningMode): TFTVector; Inline;
       Function GetTrackKerning(Const APointSize: TFTFixed; Const ADegree: Integer): TFTFixed; Inline;
@@ -700,10 +705,10 @@ Type
       Function SelectPalette(Const APaletteIndex: Word): PPaletteArray; Inline;
       Procedure SetForegroundColor(Const AForegroundColor: TFTColor); Inline;
 
-      Function GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint; Inline;
-      Function GetPaintLayers: TArray<TFTOpaquePaint>;
-      Function GetColorLineStops: TArray<TFTColorStop>;
-      Function GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint; Inline;
+//      Function GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint; Inline;
+//      Function GetPaintLayers: TArray<TFTOpaquePaint>;
+//      Function GetColorLineStops: TArray<TFTColorStop>;
+//      Function GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint; Inline;
 
       Property NumFaces: LongInt Read GetNumFaces_;
       Property FaceIndex: LongInt Read GetFaceIndex;
@@ -836,9 +841,9 @@ Type
       Class Var FLibrary:               TFTLibrary;
       Class Var FMajor, FMinor, FPatch: Integer;
 
-      Class Function MemAlloc([Ref] Const AMemory: TFTMemory; Const ASize: Integer): Pointer; Static; Cdecl;
+      Class Function MemAlloc([Ref] Const AMemory: TFTMemory; Const ASize: NativeUint): Pointer; Static; Cdecl;
       Class Procedure MemFree([Ref] Const AMemory: TFTMemory; Const ABlock: Pointer); Static; Cdecl;
-      Class Function MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: Integer; Const ABlock: Pointer): Pointer; Static; Cdecl;
+      Class Function MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: NativeUint; Const ABlock: Pointer): Pointer; Static; Cdecl;
 
    Const
       sError          = 'The error %d occured in a FreeType call: %s.';
@@ -884,7 +889,7 @@ Function FT_Set_Pixel_Sizes(Face: TFTFace; Const APixelWidth, APixelHeight: Card
 Function FT_Load_Glyph(Face: TFTFace; Const AGlyphIndex: Cardinal; Const ALoadFlags: TFTLoadFlags): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Load_Char(Face: TFTFace; Const ACharCode: LongWord; Const ALoadFlags: TFTLoadFlags): TFTError; Cdecl; External FreeTypeDLL;
 Procedure FT_Set_Transform(Face: TFTFace; Const AMatrix: PFTMatrix; Const ADelta: PFTVector); Cdecl; External FreeTypeDLL;
-Procedure FT_Get_Transform(Const AFace: TFTFace; OMatrix: PFTMatrix; ODelta: PFTVector); Cdecl; External FreeTypeDLL;
+//Procedure FT_Get_Transform(Const AFace: TFTFace; OMatrix: PFTMatrix; ODelta: PFTVector); Cdecl; External FreeTypeDLL;
 Function FT_Render_Glyph(Var Slot: TFTGlyphSlot; Const RenderMode: TFTRenderMode): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Kerning(Const AFace: TFTFace; Const ALeftGlyph, ARightGlyph: Cardinal; Const AKernMode: TFTKerningMode; Out OKerning: TFTVector): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Track_Kerning(Const AFace: TFTFace; Const APointSize: TFTFixed; Const ADegree: Integer; Out OKerning: TFTFixed): TFTError; Cdecl; External FreeTypeDLL;
@@ -924,10 +929,10 @@ Function FT_Palette_Set_Foreground_Color(Const AFace: TFTFace; Const AForeground
 // Layer management
 Function FT_Get_Color_Glyph_Layer(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Out OGlyphIndex, OColorIndex: Cardinal; Var Iterator: TFTLayerIterator): ByteBool; Cdecl; External FreeTypeDLL;
 // experimental interface
-Function FT_Get_Color_Glyph_Paint(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
-Function FT_Get_Paint_Layers(Const AFace: TFTFace; Var Iterator: TFTLayerIterator; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
-Function FT_Get_Colorline_Stops(Const AFace: TFTFace; Out OColorStop: TFTColorStop; Var Iterator: TFTColorStopIterator): ByteBool; Cdecl; External FreeTypeDLL;
-Function FT_Get_Paint(Const AFace: TFTFace; Const AOpaquePaint: TFTOpaquePaint; Out OPaint: TFTColrPaint): ByteBool; Cdecl; External FreeTypeDLL;
+//Function FT_Get_Color_Glyph_Paint(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
+//Function FT_Get_Paint_Layers(Const AFace: TFTFace; Var Iterator: TFTLayerIterator; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
+//Function FT_Get_Colorline_Stops(Const AFace: TFTFace; Out OColorStop: TFTColorStop; Var Iterator: TFTColorStopIterator): ByteBool; Cdecl; External FreeTypeDLL;
+//Function FT_Get_Paint(Const AFace: TFTFace; Const AOpaquePaint: TFTOpaquePaint; Out OPaint: TFTColrPaint): ByteBool; Cdecl; External FreeTypeDLL;
 {$ENDREGION}
 {$REGION 'ftbitmap.h'}
 Procedure FT_Bitmap_Init(Var Bitmap: TFTBitmap); Cdecl; External FreeTypeDLL;
@@ -959,7 +964,7 @@ Implementation
 
 { TFTMemory }
 
-Function TFTMemory.Alloc(Const ASize: LongInt): Pointer;
+Function TFTMemory.Alloc(Const ASize: NativeUint): Pointer;
 Begin
    Result := AllocFunc(Self, ASize);
 End;
@@ -969,7 +974,7 @@ Begin
    FreeFunc(Self, ABlock);
 End;
 
-Function TFTMemory.Realloc(Const ACurSize, ANewSize: LongInt; Const ABlock: Pointer): Pointer;
+Function TFTMemory.Realloc(Const ACurSize, ANewSize: NativeUint; Const ABlock: Pointer): Pointer;
 Begin
    Result := ReallocFunc(Self, ACurSize, ANewSize, ABlock);
 End;
@@ -1257,7 +1262,7 @@ Begin
    End;
 End;
 
-Function TFTFace.GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint;
+(*Function TFTFace.GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint;
 Begin
    If Not FT_Get_Color_Glyph_Paint(Self, ABaseGlyph, ARootTransform, Result) Then
       Raise EFreeType.Create('No color glyph found, or the root paint could not be retrieved');
@@ -1278,7 +1283,7 @@ Begin
             Raise EFreeType.Create('Error while getting colorline stops');
    End;
 End;
-
+             *)
 Function TFTFace.GetDescender: SmallInt;
 Begin
    Result := FValue^.Descender;
@@ -1392,7 +1397,7 @@ Begin
    Result := FValue^.NumGlyphs;
 End;
 
-Function TFTFace.GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint;
+(*Function TFTFace.GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint;
 Begin
    If Not FT_Get_Paint(Self, AOpaquePaint, Result) Then
       Raise EFreeType.Create('Error while getting details for a paint');
@@ -1413,7 +1418,7 @@ Begin
             Raise EFreeType.Create('Error while getting paint layers');
    End;
 End;
-
+*)
 Function TFTFace.GetPalette: TFTPaletteData;
 Begin
    TFTManager.Error(FT_Palette_Data_Get(Self, Result));
@@ -1462,7 +1467,7 @@ Begin
    TFTManager.Error(FT_Get_Track_Kerning(Self, APointSize, ADegree, Result));
 End;
 
-Procedure TFTFace.GetTransform(Out OMatrix: TFTMatrix);
+(*Procedure TFTFace.GetTransform(Out OMatrix: TFTMatrix);
 Begin
    FT_Get_Transform(Self, @OMatrix, NIL);
 End;
@@ -1475,7 +1480,7 @@ End;
 Procedure TFTFace.GetTransform(Out OMatrix: TFTMatrix; Out ODelta: TFTVector);
 Begin
    FT_Get_Transform(Self, @OMatrix, @ODelta);
-End;
+End;      *)
 
 Function TFTFace.GetUnderlinePosition: SmallInt;
 Begin
@@ -1701,10 +1706,11 @@ Begin
    FT_Set_Default_Properties(FLibrary);
    // FT_Init_FreeType(FLibrary);
    FT_Library_Version(FLibrary, FMajor, FMinor, FPatch);
-   Assert((MajorVersion = FREETYPE_MAJOR) And (MinorVersion = FREETYPE_MINOR) And (PatchVersion = FREETYPE_PATCH), 'Unknown FreeType version');
+   // Assert((MajorVersion = FREETYPE_MAJOR) And (MinorVersion = FREETYPE_MINOR) And (PatchVersion = FREETYPE_PATCH), 'Unknown FreeType version');
+   Assert((MajorVersion = FREETYPE_MAJOR), 'Unknown FreeType version');
 End;
 
-Class Function TFTManager.MemAlloc([Ref] Const AMemory: TFTMemory; Const ASize: Integer): Pointer;
+Class Function TFTManager.MemAlloc([Ref] Const AMemory: TFTMemory; Const ASize: NativeUint): Pointer;
 Begin
    Result := GetMemory(ASize);
 End;
@@ -1714,7 +1720,7 @@ Begin
    FreeMemory(ABlock);
 End;
 
-Class Function TFTManager.MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: Integer; Const ABlock: Pointer): Pointer;
+Class Function TFTManager.MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: NativeUint; Const ABlock: Pointer): Pointer;
 Begin
    Result := ReallocMemory(ABlock, ANewSize);
 End;

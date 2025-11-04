@@ -961,12 +961,11 @@ var
  width1,width2:word;
  cfont:TRpLogFont;
  dwidth:double;
- index:integer;
  ginfo: TGlyphInfo;
 begin
  if data.glyphsInfo.ContainsKey(glyph) then
  begin
-  Result:=data.glyphsInfo[glyph];
+  Result:=data.glyphsInfo[glyph].Width;
  end
  else
  begin
@@ -983,12 +982,12 @@ begin
    awidth:=0;
   Result:=awidth;
   // Get glyph index
-  if (not data.glyphsInfo.ContainsKey(index)) then
+  if (not data.glyphsInfo.ContainsKey(glyph)) then
   begin
-   ginfo.Glyph := index;
-   ginfo.Width := awidth;
+   ginfo.Glyph := glyph;
+   ginfo.Width := Result;
    ginfo.Char := charC;
-   data.glyphsInfo.Add(index,ginfo);
+   data.glyphsInfo.Add(glyph,ginfo);
   end;
  end;
 end;
@@ -1058,7 +1057,7 @@ begin
   end;
  end;
  // Don't need scale, but this is a scale that returns
- // exact widht for pdf if you divide the result
+ // exact width for pdf if you divide the result
  // of Get_Char_Width by 64
  CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
 end;

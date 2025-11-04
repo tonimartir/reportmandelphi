@@ -3829,8 +3829,8 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-   // FontStream:=Canvas.InfoProvider.GetFontStream(adata);
-   FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
+    FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+   // FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    try
     WriteStream(FontStream,FTempStream);
    finally
@@ -4204,7 +4204,7 @@ begin
     adata.LoadedFace := True;
   end;
 
-  adata.FreeTypeFace.SetCharSize(pdffont.Size * 64, pdffont.Size * 64, 0, 0);
+  adata.FreeTypeFace.SetCharSize(0, 100 * 64, 720, 720);
 
   Font := THBFont.CreateReferenced(adata.FreeTypeFace);
   try
@@ -4227,9 +4227,10 @@ begin
       for i := 0 to High(GlyphInfo) do
       begin
         Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
-        Result[i].XAdvance := GlyphPos[i].XAdvance; // en font units
+        Result[i].XAdvance := Round(GlyphPos[i].XAdvance/64); // en font units
         Result[i].XOffset := GlyphPos[i].XOffset;
         Result[i].YOffset := GlyphPos[i].YOffset;
+        Result[i].CharCode := WideChar(GlyphInfo[i].Cluster);
         // CharCode no hace falta para PDF
       end;
 
@@ -4247,8 +4248,9 @@ function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTT
 var
   positions: TGlyphPosArray;
   i: Integer;
+  gwidth:double;
   scale: Double;
-  advanceInt: Integer;
+  advanceInt: double;
   gidHex: string;
   glyphIndex: Integer;
   Bidi: TICUBidi;
@@ -4291,9 +4293,6 @@ begin
   positions := CalcGlyphhPositions(Reordered, adata, pdffont);
   if Length(positions) = 0 then Exit;
 
-  // Escala correcta: font units ? unidades PDF
-  scale := pdffont.Size / adata.UnitsPerEm;
-  //scale := 1;
 
   Result := '[';
   for i := 0 to High(positions) do
@@ -4302,14 +4301,18 @@ begin
     gidHex := GlyphIndexToHex(glyphIndex);
     Result := Result + '<'+gidHex+'>';
 
+    gWidth:=InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
+
     if i < High(positions) then
     begin
+     scale:=1.5;
       // Ajuste horizontal: XAdvance + XOffset
-     advanceInt := Round(- (positions[i].XAdvance + positions[i].XOffset) * scale);
+     advanceInt := (positions[i].XAdvance);
+     advanceInt := gWidth-(advanceInt);
 
-     if advanceInt <> 0 then
+     if (advanceInt <> 0) then
      begin
-        Result := Result + ' ' + IntToStr(advanceInt) ;
+        Result := Result + ' ' + IntToStr(Round(advanceInt)) ;
      end;
     end;
   end;

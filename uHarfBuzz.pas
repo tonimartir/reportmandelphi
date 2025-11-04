@@ -48,8 +48,13 @@ Interface
 
 Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF}, uFreeType;
 
+
 Const
+{$IFDEF MSWINDOWS}
    HarfbuzzDLL = 'libharfbuzz-0.dll';
+{$ELSE}
+   HarfbuzzDLL = 'libharfbuzz.so.0';
+{$ENDIF}
 
 Type
    EHarfBuzz = Class(Exception)
@@ -507,7 +512,7 @@ Type
       Procedure SetComposeFunc(Const AFunc: THBUnicodeComposeFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Inline;
       Procedure SetDecomposeFunc(Const AFunc: THBUnicodeDecomposeFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Inline;
       Function CombiningClass(Const AUnicode: THBCodepoint): THBUnicodeCombiningClass; Inline;
-      Function GeneralCategory(Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory; Inline;
+//      Function GeneralCategory(Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory; Inline;
       Function Mirroring(Const AUnicode: THBCodepoint): THBCodepoint; Inline;
       Function Script(Const AUnicode: THBCodepoint): THBCodepoint; Inline;
       Function Compose(Const A, B: THBCodepoint; Out AB: THBCodepoint): Boolean; Inline;
@@ -540,7 +545,7 @@ Type
       Procedure SetUserData(Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: Boolean); Inline;
       Function GetUserData(Const AKey): Pointer; Inline;
       Function AllocationSuccessful: Boolean; Inline;
-      Function Copy: THBSet; Inline;
+//       Function Copy: THBSet; Inline;
       Procedure Clear; Inline;
       Function IsEmpty: Boolean; Inline;
       Function Has(Const ACodepoint: THBCodepoint): Boolean; Inline;
@@ -730,8 +735,8 @@ Type
       Procedure SetVarNamedInstance(Const AInstanceIndex: Cardinal); Inline;
 
       Function FTGetFace: TFTFace; Inline;
-      Function FTLockFace: TFTFace; Inline;
-      Procedure FTUnlockFace; Inline;
+//      Function FTLockFace: TFTFace; Inline;
+//      Procedure FTUnlockFace; Inline;
       Procedure FTFontChanged; Inline;
       Procedure FTFontSetFuncs; Inline;
 
@@ -966,13 +971,13 @@ Type
       Procedure Append(Const ASource: THBBuffer; Const AStart, AEnd: Cardinal); Inline;
       Function GetGlyphInfos: TArray<THBGlyphInfo>; Inline;
       Function GetGlyphPositions: TArray<THBGlyphPosition>; Inline;
-      Function HasPositions: Boolean; Inline;
+//      Function HasPositions: Boolean; Inline;
       Procedure NormalizeGlyphs; Inline;
       Function SerializeGlyphs(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
-      Function SerializeUnicode(Const AStart, AEnd: Cardinal; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
-      Function Serialize(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
+//      Function SerializeUnicode(Const AStart, AEnd: Cardinal; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
+//      Function Serialize(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
       Procedure DeserializeGlyphs(Const ABuf: AnsiString; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat); Inline;
-      Procedure DeserializeUnicode(Const ABuf: AnsiString; Const AFormat: THBBufferSerializeFormat); Inline;
+      //Procedure DeserializeUnicode(Const ABuf: AnsiString; Const AFormat: THBBufferSerializeFormat); Inline;
       Function Diff(Const AReference: THBBuffer; Const ADottedcircleGlyph: THBCodepoint; Const APositionFuzz: Cardinal): THBBufferDiffFlags; Inline;
       Procedure SetMessageFunc(Const AFunc: THBBufferMessageFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Inline;
       Procedure Shape(Font: THBFont; Const AFeatures: TArray<THBFeature> = NIL); Inline;
@@ -1053,9 +1058,9 @@ Type
    Strict Private
    Const
       HB_VERSION_MAJOR  = 2;
-      HB_VERSION_MINOR  = 9;
-      HB_VERSION_MICRO  = 0;
-      HB_VERSION_STRING = '2.9.0';
+      HB_VERSION_MINOR  = 6;
+      HB_VERSION_MICRO  = 4;
+      HB_VERSION_STRING = '2.6.4';
    Public
       Class Function VersionString: AnsiString; Static; Inline;
 
@@ -1083,10 +1088,10 @@ Procedure hb_variation_to_string([Ref] Const AVariation: THBVariation; Buf: PAns
 {$ENDREGION}
 {$REGION 'hb-blob.h'}
 Function hb_blob_create(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl; External HarfbuzzDLL;
-Function hb_blob_create_or_fail(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl;
-   External HarfbuzzDLL;
+//Function hb_blob_create_or_fail(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl;
+//   External HarfbuzzDLL;
 Function hb_blob_create_from_file(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
-Function hb_blob_create_from_file_or_fail(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
+//Function hb_blob_create_from_file_or_fail(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_create_sub_blob(Parent: THBBlob; Const AOffset, ALength: Integer): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_copy_writable_or_fail(Const ABlob: THBBlob): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_get_empty: THBBlob; Cdecl; External HarfbuzzDLL;
@@ -1124,7 +1129,7 @@ Procedure hb_unicode_funcs_set_compose_func(uFuncs: THBUnicodeFuncs; Const AFunc
 Procedure hb_unicode_funcs_set_decompose_func(uFuncs: THBUnicodeFuncs; Const AFunc: THBUnicodeFuncs.THBUnicodeDecomposeFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
 Function hb_unicode_combining_class(Const uFuncs: THBUnicodeFuncs; Const AUnicode: THBCodepoint): THBUnicodeCombiningClass; Cdecl; External HarfbuzzDLL;
-Function hb_unicode_general_catgegory(Const uFuncs: THBUnicodeFuncs; Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory; Cdecl; External HarfbuzzDLL;
+//Function hb_unicode_general_catgegory(Const uFuncs: THBUnicodeFuncs; Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory; Cdecl; External HarfbuzzDLL;
 Function hb_unicode_mirroring(Const uFuncs: THBUnicodeFuncs; Const AUnicode: THBCodepoint): THBCodepoint; Cdecl; External HarfbuzzDLL;
 Function hb_unicode_script(Const uFuncs: THBUnicodeFuncs; Const AUnicode: THBCodepoint): THBScript; Cdecl; External HarfbuzzDLL;
 Function hb_unicode_compose(Const uFuncs: THBUnicodeFuncs; A, B: THBCodepoint; Out AB: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
@@ -1138,7 +1143,7 @@ Procedure hb_set_destroy(&Set: THBSet); Cdecl; External HarfbuzzDLL;
 Function hb_set_set_user_data(&Set: THBSet; Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: THBBool): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_set_get_user_data(Const ASet: THBSet; Const AKey): Pointer; Cdecl; External HarfbuzzDLL;
 Function hb_set_allocation_successful(Const ASet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_set_copy(Const ASet: THBSet): THBSet; Cdecl; External HarfbuzzDLL;
+//Function hb_set_copy(Const ASet: THBSet): THBSet; Cdecl; External HarfbuzzDLL;
 Procedure hb_set_clear(&Set: THBSet); Cdecl; External HarfbuzzDLL;
 Function hb_set_is_empty(Const ASet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_set_has(Const ASet: THBSet; Const ACodepoint: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
@@ -1337,21 +1342,21 @@ Function hb_buffer_set_length(Buffer: THBBuffer; Const ALength: Cardinal): THBBo
 Function hb_buffer_get_length(Const ABuffer: THBBuffer): Cardinal; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_get_glyph_infos(Const ABuffer: THBBuffer; Out OLength: Cardinal): PHBGlyphInfo; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_get_glyph_positions(Const ABuffer: THBBuffer; Out OLength: Cardinal): PHBGlyphPosition; Cdecl; External HarfbuzzDLL;
-Function hb_buffer_has_positions(Const ABuffer: THBBuffer): THBBool; Cdecl; External HarfbuzzDLL;
+//Function hb_buffer_has_positions(Const ABuffer: THBBuffer): THBBool; Cdecl; External HarfbuzzDLL;
 Procedure hb_buffer_normalize_glyphs(Buffer: THBBuffer); Cdecl; External HarfbuzzDLL;
 Function hb_buffer_serialize_format_from_string(Const AStr: PAnsiChar; Const ALen: Integer): THBBufferSerializeFormat; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_serialize_format_to_string(Const AFormat: THBBufferSerializeFormat): PAnsiChar; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_serialize_list_formats: PPAnsiChar; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_serialize_glyphs(Const ABuffer: THBBuffer; Const AStart, AEnd: Cardinal; Buf: PAnsiChar; Const ABufSize: Cardinal; Out OBufConsumed: Cardinal; Const AFont: THBFont;
    Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): Cardinal; Cdecl; External HarfbuzzDLL;
-Function hb_buffer_serialize_unicode(Const ABuffer: THBBuffer; Const AStart, AEnd: Cardinal; Buf: PAnsiChar; Const ABufSize: Cardinal; Out OBufConsumed: Cardinal;
-   Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): Cardinal; Cdecl; External HarfbuzzDLL;
-Function hb_buffer_serialize(Const ABuffer: THBBuffer; Const AStart, AEnd: Cardinal; Buf: PAnsiChar; Const ABufSize: Cardinal; Out OBufConsumed: Cardinal; Const AFont: THBFont;
-   Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): Cardinal; Cdecl; External HarfbuzzDLL;
+//Function hb_buffer_serialize_unicode(Const ABuffer: THBBuffer; Const AStart, AEnd: Cardinal; Buf: PAnsiChar; Const ABufSize: Cardinal; Out OBufConsumed: Cardinal;
+//   Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): Cardinal; Cdecl; External HarfbuzzDLL;
+//Function hb_buffer_serialize(Const ABuffer: THBBuffer; Const AStart, AEnd: Cardinal; Buf: PAnsiChar; Const ABufSize: Cardinal; Out OBufConsumed: Cardinal; Const AFont: THBFont;
+//   Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): Cardinal; Cdecl; External HarfbuzzDLL;
 Function hb_buffer_deserialize_glyphs(Buffer: THBBuffer; Const ABuf: PAnsiChar; Const ABufLen: Integer; Out OEndPtr: PAnsiChar; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat): THBBool;
    Cdecl; External HarfbuzzDLL;
-Function hb_buffer_deserialize_unicode(Buffer: THBBuffer; Const ABuf: PAnsiChar; Const ABufLen: Integer; Out OEndPtr: PAnsiChar; Const AFormat: THBBufferSerializeFormat): THBBool; Cdecl;
-   External HarfbuzzDLL;
+//Function hb_buffer_deserialize_unicode(Buffer: THBBuffer; Const ABuf: PAnsiChar; Const ABufLen: Integer; Out OEndPtr: PAnsiChar; Const AFormat: THBBufferSerializeFormat): THBBool; Cdecl;
+//   External HarfbuzzDLL;
 Function hb_buffer_diff(Const ABuffer, AReference: THBBuffer; Const ADottedcircleGlyph: THBCodepoint; Const APositionFuzz: Cardinal): THBBufferDiffFlags; Cdecl; External HarfbuzzDLL;
 Procedure hb_buffer_set_message_func(Buffer: THBBuffer; Const AFunc: THBBuffer.THBBufferMessageFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
@@ -1405,8 +1410,8 @@ Function hb_ft_face_create_referenced(FTFace: TFTFace): THBFace; Cdecl; External
 Function hb_ft_font_create(Const AFTFace: TFTFace; Const ADestroy: THBDestroyFunc): THBFont; Cdecl; External HarfbuzzDLL;
 Function hb_ft_font_create_referenced(FTFace: TFTFace): THBFont; Cdecl; External HarfbuzzDLL;
 Function hb_ft_font_get_face(Const AFont: THBFont): TFTFace; Cdecl; External HarfbuzzDLL;
-Function hb_ft_font_lock_face(Font: THBFont): TFTFace; Cdecl; External HarfbuzzDLL;
-Procedure hb_ft_font_unlock_face(Font: THBFont); Cdecl; External HarfbuzzDLL;
+//Function hb_ft_font_lock_face(Font: THBFont): TFTFace; Cdecl; External HarfbuzzDLL;
+//Procedure hb_ft_font_unlock_face(Font: THBFont); Cdecl; External HarfbuzzDLL;
 Procedure hb_ft_font_set_load_flags(Font: THBFont; Const ALoadFlags: TFTLoadFlags); Cdecl; External HarfbuzzDLL;
 Function hb_ft_font_get_load_flags(Const AFont: THBFont): TFTLoadFlags; Cdecl; External HarfbuzzDLL;
 Procedure hb_ft_font_changed(Const AFont: THBFont); Cdecl; External HarfbuzzDLL;
@@ -1573,9 +1578,10 @@ End;
 Class Function THBBlob.Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc; Const AFailOnError: Boolean = False): THBBlob;
 Begin
    If AFailOnError Then Begin
-      Result := hb_blob_create_or_fail(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
-      If Not Assigned(Result.FValue) Then
-         Raise EHarfBuzz.Create(sCreationFailed);
+     raise Exception.Create('Not implmenented create or fail');
+      //Result := hb_blob_create_or_fail(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
+      //If Not Assigned(Result.FValue) Then
+      //   Raise EHarfBuzz.Create(sCreationFailed);
    End
    Else
       Result := hb_blob_create(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
@@ -1584,9 +1590,10 @@ End;
 Class Function THBBlob.Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob;
 Begin
    If AFailOnError Then Begin
-      Result := hb_blob_create_from_file_or_fail(PAnsiChar(AFileName));
-      If Not Assigned(Result.FValue) Then
-         Raise EHarfBuzz.Create(sCreationFailed);
+     raise Exception.Create('FailOnError not implemented');
+      //Result := hb_blob_create_from_file_or_fail(PAnsiChar(AFileName));
+      //If Not Assigned(Result.FValue) Then
+      //   Raise EHarfBuzz.Create(sCreationFailed);
    End
    Else
       Result := hb_blob_create_from_file(PAnsiChar(AFileName));
@@ -1685,10 +1692,10 @@ Begin
    hb_unicode_funcs_destroy(Self);
 End;
 
-Function THBUnicodeFuncs.GeneralCategory(Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory;
-Begin
-   Result := hb_unicode_general_catgegory(Self, AUnicode);
-End;
+//Function THBUnicodeFuncs.GeneralCategory(Const AUnicode: THBCodepoint): THBUnicodeGeneralCategory;
+//Begin
+//   Result := hb_unicode_general_catgegory(Self, AUnicode);
+//End;
 
 Class Function THBUnicodeFuncs.GetDefault: THBUnicodeFuncs;
 Begin
@@ -1797,10 +1804,10 @@ Begin
    hb_set_clear(Self);
 End;
 
-Function THBSet.Copy: THBSet;
-Begin
-   Result := hb_set_copy(Self);
-End;
+//Function THBSet.Copy: THBSet;
+//Begin
+//   Result := hb_set_copy(Self);
+//End;
 
 Function THBSet.Count: Cardinal;
 Begin
@@ -2130,20 +2137,20 @@ Begin
    Result := hb_ft_font_get_load_flags(Self);
 End;
 
-Function THBFont.FTLockFace: TFTFace;
-Begin
-   Result := hb_ft_font_lock_face(Self);
-End;
+//Function THBFont.FTLockFace: TFTFace;
+//Begin
+//   Result := hb_ft_font_lock_face(Self);
+//End;
 
 Procedure THBFont.FTSetLoadFlags(Const ALoadFlags: TFTLoadFlags);
 Begin
    hb_ft_font_set_load_flags(Self, ALoadFlags);
 End;
 
-Procedure THBFont.FTUnlockFace;
-Begin
-   hb_ft_font_unlock_face(Self);
-End;
+//Procedure THBFont.FTUnlockFace;
+//Begin
+//   hb_ft_font_unlock_face(Self);
+//End;
 
 Class Function THBFont.GetEmpty: THBFont;
 Begin
@@ -2711,13 +2718,13 @@ Begin
       Raise EHarfBuzz.Create(sErrorDeserializeGlyphs);
 End;
 
-Procedure THBBuffer.DeserializeUnicode(Const ABuf: AnsiString; Const AFormat: THBBufferSerializeFormat);
-Var
-   Dummy: PAnsiChar;
-Begin
-   If Not hb_buffer_deserialize_unicode(Self, PAnsiChar(ABuf), System.Length(ABuf), Dummy, AFormat) Then
-      Raise EHarfBuzz.Create(sErrorDeserializeUnicode);
-End;
+//Procedure THBBuffer.DeserializeUnicode(Const ABuf: AnsiString; Const AFormat: THBBufferSerializeFormat);
+//Var
+ //  Dummy: PAnsiChar;
+//Begin
+//   If Not hb_buffer_deserialize_unicode(Self, PAnsiChar(ABuf), System.Length(ABuf), Dummy, AFormat) Then
+//      Raise EHarfBuzz.Create(sErrorDeserializeUnicode);
+//End;
 
 Procedure THBBuffer.Destroy;
 Begin
@@ -2819,10 +2826,10 @@ Begin
    hb_buffer_guess_segment_properties(Self);
 End;
 
-Function THBBuffer.HasPositions: Boolean;
-Begin
-   Result := hb_buffer_has_positions(Self);
-End;
+//Function THBBuffer.HasPositions: Boolean;
+//Begin
+//   Result := hb_buffer_has_positions(Self);
+//End;
 
 Class Function THBBuffer.ListShapers: TArray<AnsiString>;
 Var
@@ -2873,18 +2880,18 @@ Begin
    hb_buffer_reverse_range(Self, AStart, AEnd);
 End;
 
-Function THBBuffer.Serialize(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
-Var
-   Buf:             Packed Array [0 .. 127] Of AnsiChar;
-   Consumed, Start: Cardinal;
-Begin
-   Result := '';
-   Start := AStart;
-   While Start < AEnd Do Begin
-      Inc(Start, hb_buffer_serialize(Self, Start, AEnd, @Buf[0], 128, Consumed, AFont, AFormat, AFlags));
-      Result := Result + Buf; // Buf will always be null-terminated
-   End;
-End;
+//Function THBBuffer.Serialize(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
+//Var
+//   Buf:             Packed Array [0 .. 127] Of AnsiChar;
+//   Consumed, Start: Cardinal;
+//Begin
+//   Result := '';
+//   Start := AStart;
+ //  While Start < AEnd Do Begin
+ //     Inc(Start, hb_buffer_serialize(Self, Start, AEnd, @Buf[0], 128, Consumed, AFont, AFormat, AFlags));
+  //    Result := Result + Buf; // Buf will always be null-terminated
+ //  End;
+//End;
 
 Function THBBuffer.SerializeGlyphs(Const AStart, AEnd: Cardinal; Const AFont: THBFont; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
 Var
@@ -2899,18 +2906,18 @@ Begin
    End;
 End;
 
-Function THBBuffer.SerializeUnicode(Const AStart, AEnd: Cardinal; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
-Var
-   Buf:             Packed Array [0 .. 127] Of AnsiChar;
-   Consumed, Start: Cardinal;
-Begin
-   Result := '';
-   Start := AStart;
-   While Start < AEnd Do Begin
-      Inc(Start, hb_buffer_serialize_unicode(Self, Start, AEnd, @Buf[0], 128, Consumed, AFormat, AFlags));
-      Result := Result + Buf; // Buf will always be null-terminated
-   End;
-End;
+//Function THBBuffer.SerializeUnicode(Const AStart, AEnd: Cardinal; Const AFormat: THBBufferSerializeFormat; Const AFlags: THBBufferSerializeFlags): AnsiString;
+//Var
+//   Buf:             Packed Array [0 .. 127] Of AnsiChar;
+//   Consumed, Start: Cardinal;
+//Begin
+//   Result := '';
+//   Start := AStart;
+//   While Start < AEnd Do Begin
+//      Inc(Start, hb_buffer_serialize_unicode(Self, Start, AEnd, @Buf[0], 128, Consumed, AFormat, AFlags));
+//      Result := Result + Buf; // Buf will always be null-terminated
+ //  End;
+//End;
 
 Procedure THBBuffer.SetClusterLevel(Const AClusterLevel: THBBufferClusterLevel);
 Begin
