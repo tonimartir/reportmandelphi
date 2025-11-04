@@ -423,6 +423,12 @@ procedure TTrueTypeFontSubSet.CheckGlyphComposite(Glyph: Integer);
 var
   Start, NIndex, NumContours, Flags, CGlyph, Skip: Integer;
 begin
+  if (Glyph>Length(FLocaTable)) then
+  begin
+    raise Exception.Create('Glyph number ' + IntToStr(Glyph) + ' not in LocaTable, loca length: ' +
+     IntToStr(Length(FLocaTable)));
+
+  end;
   Start := FLocaTable[Glyph];
   if (Glyph < Length(FLocaTable) - 1) and (Start = FLocaTable[Glyph + 1]) then
     Exit;

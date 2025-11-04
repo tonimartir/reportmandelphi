@@ -451,7 +451,7 @@ var
  aabc:array [1..1] of ABC;
  aint:Word;
  glyphindexes:array[0..5] of UInt;
- glyphindexes2:array[0..1] of DWORD;
+ glyphindexes2:array[0..1] of Word;
 {$IFNDEF DELPHI2009UP}
 {$IFDEF VER180}
 // gcp:windows.tagGCP_RESULTSW;
@@ -465,6 +465,7 @@ var
 {$ENDIF}
  astring:WideString;
  ginfo: TGlyphInfo;
+ glyphIndex: UInt;
 begin
  // glyphindex:=0;
  aint:=Ord(charcode);
@@ -498,7 +499,7 @@ begin
   astring:=astring+charcode+Widechar(0);
 //  if GetCharPlac(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC)=0 then
 //   RaiseLastOSError;
-  if GetCharacterPlacementW(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC)=0 then
+  if GetCharacterPlacementW(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC or GCP_GLYPHSHAPE)=0 then
   begin
    glyphindexes2[0] := 0;
    glyphindexes2[1] := 0;
@@ -506,20 +507,27 @@ begin
    begin
     // ussupported glyph
     glyphindexes2[0]:=0;
+    Result:=0;
+    exit;
    end
    else
    begin
-     if (glyphindexes2[0] = $ffff) then
+     if ((glyphindexes2[0] and $8000)) = 0 then
      begin
-       RaiseLastOSError;
+      glyphIndex := glyphindexes2[0];
      end
      else
      begin
-      glyphindexes[0] := glyphindexes2[0];
+      // Unsupported char to glyph-use unscribe instead for complex text shaping
+      glyphIndex:=0;
      end;
    end;
+  end
+  else
+  begin
+    glyphIndex:=glyphindexes[0];
   end;
-  data.loadedglyphs[aint]:=WideChar(glyphindexes[0]);
+  data.loadedglyphs[aint]:=WideChar(glyphIndex);
   data.loadedg[aint]:=true;
   data.glyphs.Add(charcode, glyphindexes[0]);
 
@@ -538,12 +546,14 @@ begin
   data.firstloaded:=aint;
  if data.lastloaded<aint then
   data.lastloaded:=aint;
- if (not data.glyphsInfo.ContainsKey(glyphindexes[0])) then
+ if (True) then
+
+ if (glyphIndex<>0) and  (not data.glyphsInfo.ContainsKey(glyphIndex)) then
  begin
-  ginfo.Glyph := glyphindexes[0];
+  ginfo.Glyph := glyphIndex;
   ginfo.Width := Result;
   ginfo.Char := charcode;
-  data.glyphsInfo.Add(glyphindexes[0],ginfo);
+  data.glyphsInfo.Add(glyphIndex,ginfo);
  end;
 end;
 

@@ -2205,15 +2205,18 @@ begin
     havekerning:=true;
   end;
 {$IFDEF USETEXTSHAPING}
-  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, UnitsToXPos(X),UnitsToYPosFont(Y,Font.Size),Font.Size));
-{$ELSE}
-  if havekerning then
-  begin
-   SWriteLine(FFile.FsTempStream,PDFCompatibleTextWidthKerning(astring,adata,Font)+' TJ');
-  end
-  else
-   SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
+  if (RightToLeft) then  
+   SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, UnitsToXPos(X),UnitsToYPosFont(Y,Font.Size),Font.Size))
+  else   
 {$ENDIF}
+  begin
+   if havekerning then
+   begin
+    SWriteLine(FFile.FsTempStream,PDFCompatibleTextWidthKerning(astring,adata,Font)+' TJ');
+   end
+   else
+    SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
+  end;
   SWriteLine(FFile.FsTempStream,'ET');
  finally
   if (Rotation<>0) then
@@ -2677,7 +2680,6 @@ var
  incomplete:boolean;
  charsProcessed: integer;
 begin
- // Text extent for the simple strings, wide strings not supported
  havekerning:=false;
  adata:=GetTTFontData;
  if assigned(adata) then
@@ -3850,8 +3852,8 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-    //FontStream:=Canvas.InfoProvider.GetFontStream(adata);
-    FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
+    FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+    //FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    try
     WriteStream(FontStream,FTempStream);
    finally
@@ -4421,117 +4423,75 @@ begin
   end;
 end;
 
-function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont;RightToLeft: Boolean; posX, posY: Double;FontSize: integer): String;
+function TRpPDFCanvas.PDFCompatibleTextShaping(
+  astring: WideString;
+  adata: TRpTTFontData;
+  pdffont: TRpPDFFont;
+  RightToLeft: Boolean;
+  posX, posY: Double;
+  FontSize: Integer
+): String;
 var
   positions: TGlyphPosArray;
-  i: Integer;
-  gwidth:double;
+  i, runIndex: Integer;
   scale: Double;
-  advanceInt: double;
   gidHex: string;
   glyphIndex: Integer;
-  offsetX:integer;
-  offsetY:integer;
+  absX, absY: Double;
   Bidi: TICUBidi;
   Runs: TList<TBidiRun>;
   r: TBidiRun;
-  runIndex:integer;
-  subText:string;
-
-  // Convierte un glyph index a la representación hex que va dentro de <...>
-  function GlyphIndexToHex(gid: Integer): string;
-  begin
-    Result := IntToHex4(gid); // 0000 ? FFFF
-  end;
-
+  subText: string;
+  cursorAdvance: Double;
 begin
-  Runs:=nil;
-  Result := '[]';
+  Runs := nil;
+  Result := '';
   if astring = '' then Exit;
 
-  if (not RightToLeft) then
+  if not RightToLeft then
   begin
     Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
     Exit;
   end;
+
+  // Factor de escala: de unitsPerEm → puntos PDF
+  //scale := FontSize / adata.FUnitsPerEm;
+  scale:=FontSize/14/72;
+
   Bidi := TICUBidi.Create;
   try
     if Bidi.SetPara(astring, 2) then
-    begin
-      Runs:=Bidi.GetVisualRuns();
-    end
+      Runs := Bidi.GetVisualRuns()
     else
-    begin
-     raise Exception.Create('VisualRuns error');
-    end
+      raise Exception.Create('VisualRuns error');
   finally
     Bidi.Free;
   end;
 
-  try
-    Result := '[';
-    for runIndex := 0 to Runs.Count - 1 do
+  cursorAdvance := 0;
+
+  for runIndex := 0 to Runs.Count - 1 do
+  begin
+    r := Runs[runIndex];
+    subText := Copy(astring, r.LogicalStart + 1, r.Length);
+    positions := CalcGlyphhPositions(subText, adata, pdffont);
+
+    for i := 0 to High(positions) do
     begin
-      r := Runs[runIndex];
-     subText := Copy(astring, r.LogicalStart+1, r.Length);
-     positions := CalcGlyphhPositions(subText, adata, pdffont);
-     if Length(positions) > 0 then
-     begin
-      for i := 0 to High(positions) do
-      begin
-        glyphIndex := positions[i].GlyphIndex;
-        gidHex := GlyphIndexToHex(glyphIndex);
+      glyphIndex := positions[i].GlyphIndex;
+      gidHex := IntToHex4(glyphIndex);
+      InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
 
-        gWidth:=InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
+      // Posición absoluta en PDF (posX/posY + cursor + offset)
+      absX := posX + cursorAdvance + positions[i].XOffset * scale;
+      absY := posY + positions[i].YOffset * scale;
 
-        if i <= High(positions) then
-        begin
-         // Ajuste horizontal: XAdvance + XOffset
-         // Si el avance es 0 sera un positivo
-         advanceInt := positions[i].XAdvance;
-         advanceInt := gWidth-(advanceInt);
+      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ',
+        [Round(absX), Round(absY), gidHex]);
 
-         offsetX := positions[i].XOffset;
-         offsetY := positions[i].YOffset;
-         // Mientras no haya offset podemos seguir ajustando el avance
-         if ((offsetX = 0) AND (offsetY = 0)) then
-         begin
-           Result := Result + '<'+gidHex+'>';
-           if (advanceInt <> 0) then
-           begin
-              Result := Result + ' ' + IntToStr(Round(advanceInt)) + ' ' ;
-           end;
-         end
-         else
-         begin
-           // Si hay offset Cerramos y dibujamos con offset
-          // offset != 0 → cerrar TJ actual si hace falta
-          if (Result[Length(Result)] <> '[') then
-            Result := Result + '] TJ ';
-
-          // Dibujar glifo con offset relativo (X y Y)
-          Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ', [offsetX, offsetY, gidHex]);
-
-          // Si advanceX <> 0, simulamos el avance con un glifo vacío
-          if positions[i].XAdvance <> 0 then
-          begin
-            // Convertimos advanceX a unidades PDF
-            gWidth := positions[i].XAdvance;
-            Result := Result + Format('[<0000> %d', [Round(gWidth)]);
-          end
-          else
-          begin
-           // Luego continuar con TJ normal para los siguientes glifos
-           Result := Result + '[';
-          end
-         end
-        end;
-      end;
+      // Avanzar cursor por advanceX escalado
+      cursorAdvance := cursorAdvance + positions[i].XAdvance * scale;
     end;
-   end;
-   Result := Result + '] TJ';
-  finally
-   Runs.Free;
   end;
 end;
 {$ENDIF}

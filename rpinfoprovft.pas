@@ -72,6 +72,7 @@ type
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
+  function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   constructor Create;
   destructor destroy;override;
@@ -831,7 +832,7 @@ begin
        GlyphsUsed.Add(glyph,ints)
       end;
      end;
-     if (data.type1) then
+     if (not data.type1) then
      begin
      // Create font subset in true type fonts
           subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
@@ -845,6 +846,11 @@ begin
      Result.Seek(0,soFromBeginning);
 end;
 
+function  TRpFTInfoProvider.GetFullFontStream(data: TRpTTFontData): TMemoryStream;
+begin
+ Result:=data.FontData.Fontdata;
+ Result.Position:=0;
+end;
 
 
 procedure TRpFTInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
