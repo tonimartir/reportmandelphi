@@ -191,7 +191,7 @@ type
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
    {$IFDEF USETEXTSHAPING}
-   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean):String;
+   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
    function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
    {$ENDIF}
   public
@@ -2205,7 +2205,7 @@ begin
     havekerning:=true;
   end;
 {$IFDEF USETEXTSHAPING}
-  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font,RightToLeft));
+  SWriteLine(FFile.FsTempStream,PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, UnitsToXPos(X),UnitsToYPosFont(Y,Font.Size),Font.Size));
 {$ELSE}
   if havekerning then
   begin
@@ -4421,7 +4421,7 @@ begin
   end;
 end;
 
-function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont;RightToLeft: Boolean): String;
+function TRpPDFCanvas.PDFCompatibleTextShaping(astring: WideString; adata: TRpTTFontData; pdffont: TRpPDFFont;RightToLeft: Boolean; posX, posY: Double;FontSize: integer): String;
 var
   positions: TGlyphPosArray;
   i: Integer;
@@ -4529,7 +4529,7 @@ begin
       end;
     end;
    end;
-   Result := Result + ']';
+   Result := Result + '] TJ';
   finally
    Runs.Free;
   end;
