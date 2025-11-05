@@ -55,6 +55,7 @@ type
   faceinit:boolean;
   havekerning:Boolean;
   type1:boolean;
+  truetype:boolean;
   convfactor,widthmult:Double;
   constructor Create;
   destructor Destroy;override;
@@ -90,6 +91,10 @@ var
   defaultfontb:TRpLogFont;
   defaultfontit:TRpLogFont;
   defaultfontbit:TRpLogFont;
+  defaultfont_arabic:TRpLogFont;
+  defaultfontb_arabic:TRpLogFont;
+  defaultfontit_arabic:TRpLogFont;
+  defaultfontbit_arabic:TRpLogFont;
 
 const
  TTF_PRECISION=1000;
@@ -470,6 +475,10 @@ begin
  defaultfontb:=nil;
  defaultfontit:=nil;
  defaultfontbit:=nil;
+ defaultfont_arabic:=nil;
+ defaultfontb_arabic:=nil;
+ defaultfontit_arabic:=nil;
+ defaultfontbit_arabic:=nil;
  CheckFreeType(FT_Init_FreeType(ftlibrary));
  initialized:=true;
 
@@ -506,6 +515,8 @@ begin
       aobj.FullInfo:=false;
       // Fill font properties
       aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
+      aobj.TrueType:=((aface.face_flags and FT_FACE_FLAG_SFNT) <> 0)
+            and (FT_Get_Sfnt_Table(aface, FT_SFNT_GLYF) <> nil);
       if aobj.Type1 then
       begin
        aobj.widthmult:=1;
@@ -550,6 +561,8 @@ begin
       aobj.bold:=(aface.style_flags AND FT_STYLE_FLAG_BOLD)<>0;
       aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
 
+      if (Pos('DROID',UpperCase(aobj.familyname))=0) then
+      begin
       // Default font configuration, LUXI SANS is default
       if ((not aobj.italic) and (not aobj.bold)) then
       begin
@@ -561,6 +574,10 @@ begin
         begin
          defaultfont:=aobj;
         end;
+       end;
+       if (not assigned(defaultfont_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       begin
+        defaultfont_arabic:=aobj;
        end;
       end
       else
@@ -575,6 +592,10 @@ begin
          defaultfontb:=aobj;
         end;
        end;
+       if (not assigned(defaultfontb_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       begin
+        defaultfontb_arabic:=aobj;
+       end;
       end
       else
       if ((aobj.italic) and (not aobj.bold)) then
@@ -587,6 +608,10 @@ begin
         begin
          defaultfontit:=aobj;
         end;
+       end;
+       if (not assigned(defaultfontit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       begin
+        defaultfontit_arabic:=aobj;
        end;
       end
       else
@@ -601,6 +626,11 @@ begin
          defaultfontbit:=aobj;
         end;
        end;
+       if (not assigned(defaultfontbit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       begin
+        defaultfontbit_arabic:=aobj;
+       end;
+      end;
       end;
 
       fontlist.AddObject(UpperCase(aobj.familyname),aobj);
@@ -780,6 +810,21 @@ begin
  end;
  if match then
   exit;
+ if (Pos('ARABIC',UpperCase(afontname))>0) then
+ begin
+  if ((not isbold) and (not isitalic)) then
+   currentfont:=defaultfont_arabic
+  else
+  if ((isbold) and (not isitalic)) then
+   currentfont:=defaultfontb_arabic
+  else
+  if ((not isbold) and (isitalic)) then
+   currentfont:=defaultfontit_arabic
+  else
+   currentfont:=defaultfontbit_arabic;
+ end;
+ if (currentfont <> nil) then
+  exit;
  // Finally gets default font, but applying styles
  if ((not isbold) and (not isitalic)) then
   currentfont:=defaultfont
@@ -810,6 +855,12 @@ var
  glyph: Integer;
  glyphInfo: TGlyphInfo;
 begin
+ // For type1 font returns all font stream
+ if (data.type1 or (not data.TrueType)) then
+ begin
+   Result:=GetFullFontStream(data);
+   exit;
+ end;
      SetLength(bytes, data.FontData.FontData.Size);
      crit.Enter;
      try
@@ -901,6 +952,7 @@ begin
      data.postcriptname:=data.postcriptname+',Italic';
   end;
   data.Type1:=currentfont.Type1;
+  data.truetype:=currentfont.truetype;
  finally
    crit.Leave;
  end;

@@ -64,6 +64,8 @@ const
 
  FT_KERNING_UNSCALED=2;
 
+  FT_SFNT_GLYF = $676C7966; // 'glyf'
+  FT_SFNT_CMAP = $636D6170; // 'cmap'
 type
 
   FT_F26Dot6=integer;
@@ -313,7 +315,7 @@ type
     data:FT_Pointer;
   end;
   PFT_Parameter=^FT_Parameter;
-
+  FT_Sfnt_Tag=Cardinal;
 
   FT_Open_Args=record
     flags:FT_UInt;
@@ -348,6 +350,7 @@ type
   TFT_Get_First_Char=function (aface:FT_Face;var agindex:FT_UInt):FT_ULong;cdecl;
   TFT_Get_Next_Char=function (aface:FT_Face;char_code:FT_ULong;
                          var agindex:FT_UInt):FT_ULong;cdecl;
+  TFT_Get_Sfnt_Table=function (aface: FT_Face; tag: FT_Sfnt_Tag): Pointer; cdecl;
 
 procedure CheckFreeTypeLoaded;
 procedure LoadFreeType;
@@ -370,6 +373,8 @@ var
   FT_Get_Kerning:TFT_Get_Kerning;
   FT_Get_First_Char:TFT_Get_First_Char;
   FT_Get_Next_Char:TFT_Get_Next_Char;
+  FT_Get_Sfnt_Table:TFT_Get_Sfnt_Table;
+
 
 var
 {$IFDEF MSWINDOWS}
@@ -458,6 +463,7 @@ if FreeTypeLib=0 then
  FT_Get_Kerning:=GetProcAddr('FT_Get_Kerning');
  FT_Get_First_Char:=GetProcAddr('FT_Get_First_Char');
  FT_Get_Next_Char:=GetProcAddr('FT_Get_Next_Char');
+ FT_Get_Sfnt_Table:=GetProcAddr('FT_Get_Sfnt_Table');
 
 end;
 

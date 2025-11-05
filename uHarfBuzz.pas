@@ -4,19 +4,19 @@
 // You may use it under the same conditions as HarfBuzz itself, i.e., the "Old MIT"
 // license.
 // The original HarfBuzz copyright header is
-// Copyright © 2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020  Google, Inc.
-// Copyright © 2018,2019,2020  Ebrahim Byagowi
-// Copyright © 2019,2020  Facebook, Inc.
-// Copyright © 2012  Mozilla Foundation
-// Copyright © 2011  Codethink Limited
-// Copyright © 2008,2010  Nokia Corporation and/or its subsidiary(-ies)
-// Copyright © 2009  Keith Stribley
-// Copyright © 2009  Martin Hosken and SIL International
-// Copyright © 2007  Chris Wilson
-// Copyright © 2006  Behdad Esfahbod
-// Copyright © 2005  David Turner
-// Copyright © 2004,2007,2008,2009,2010  Red Hat, Inc.
-// Copyright © 1998-2004  David Turner and Werner Lemberg
+// Copyright  2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020  Google, Inc.
+// Copyright  2018,2019,2020  Ebrahim Byagowi
+// Copyright  2019,2020  Facebook, Inc.
+// Copyright  2012  Mozilla Foundation
+// Copyright  2011  Codethink Limited
+// Copyright  2008,2010  Nokia Corporation and/or its subsidiary(-ies)
+// Copyright  2009  Keith Stribley
+// Copyright  2009  Martin Hosken and SIL International
+// Copyright  2007  Chris Wilson
+// Copyright  2006  Behdad Esfahbod
+// Copyright  2005  David Turner
+// Copyright  2004,2007,2008,2009,2010  Red Hat, Inc.
+// Copyright  1998-2004  David Turner and Werner Lemberg
 //
 // Permission is hereby granted, without written agreement and without
 // license or royalty fees, to use, copy, modify, and distribute this
@@ -395,7 +395,7 @@ Type
    Public
       Class Function Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc; Const AFailOnError: Boolean = False): THBBlob; Overload;
          Static; Inline;
-      Class Function Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob; Overload; Static; Inline;
+      //Class Function Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob; Overload; Static; Inline;
       Function CreateSubBlob(Const AOffset, ALength: Integer): THBBlob; Inline;
       Function CopyWritable: THBBlob; Inline;
       Class Function GetEmpty: THBBlob; Static; Inline;
@@ -1090,10 +1090,10 @@ Procedure hb_variation_to_string([Ref] Const AVariation: THBVariation; Buf: PAns
 Function hb_blob_create(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl; External HarfbuzzDLL;
 //Function hb_blob_create_or_fail(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl;
 //   External HarfbuzzDLL;
-Function hb_blob_create_from_file(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
+//Function hb_blob_create_from_file(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
 //Function hb_blob_create_from_file_or_fail(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_create_sub_blob(Parent: THBBlob; Const AOffset, ALength: Integer): THBBlob; Cdecl; External HarfbuzzDLL;
-Function hb_blob_copy_writable_or_fail(Const ABlob: THBBlob): THBBlob; Cdecl; External HarfbuzzDLL;
+// Function hb_blob_copy_writable_or_fail(Const ABlob: THBBlob): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_get_empty: THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_reference(Blob: THBBlob): THBBlob; Cdecl; External HarfbuzzDLL;
 Procedure hb_blob_destroy(Blob: THBBlob); Cdecl; External HarfbuzzDLL;
@@ -1152,7 +1152,7 @@ Procedure hb_set_add_range(&Set: THBSet; Const AFirst, ALast: THBCodepoint); Cde
 Procedure hb_set_del(&Set: THBSet; Const ACodepoint: THBCodepoint); Cdecl; External HarfbuzzDLL;
 Procedure hb_set_del_range(&Set: THBSet; Const AFirst, ALast: THBCodepoint); Cdecl; External HarfbuzzDLL;
 Function hb_set_is_equal(Const ASet, AOther: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_set_is_subset(Const ASet, ALargerSet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
+// Function hb_set_is_subset(Const ASet, ALargerSet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
 Procedure hb_set_set(&Set: THBSet; Const AOther: THBSet); Cdecl; External HarfbuzzDLL;
 Procedure hb_set_union(&Set: THBSet; Const AOther: THBSet); Cdecl; External HarfbuzzDLL;
 Procedure hb_set_intersect(&Set: THBSet; Const AOther: THBSet); Cdecl; External HarfbuzzDLL;
@@ -1162,12 +1162,12 @@ Function hb_set_get_population(Const ASet: THBSet): Cardinal; Cdecl; External Ha
 Function hb_set_get_min(Const ASet: THBSet): THBCodepoint; Cdecl; External HarfbuzzDLL;
 Function hb_set_get_max(Const ASet: THBSet): THBCodepoint; Cdecl; External HarfbuzzDLL;
 Function hb_set_next(Const ASet: THBSet; Var Codepoint: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_set_previous(Const ASet: THBSet; Var Codepoint: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
+// Function hb_set_previous(Const ASet: THBSet; Var Codepoint: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_set_next_range(Const ASet: THBSet; Var First, Last: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_set_previous_range(Const ASet: THBSet; Var First, Last: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
+// Function hb_set_previous_range(Const ASet: THBSet; Var First, Last: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
 {$REGION 'hb-face.h'}
-Function hb_face_count(Blob: THBBlob): Cardinal; Cdecl; External HarfbuzzDLL;
+// Function hb_face_count(Blob: THBBlob): Cardinal; Cdecl; External HarfbuzzDLL;
 Function hb_face_create(Blob: THBBlob; Const AIndex: Cardinal): THBFace; Cdecl; External HarfbuzzDLL;
 Function hb_face_create_for_tables(Const AReferenceTableFunc: THBFace.THBReferenceTableFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBFace; Cdecl; External HarfbuzzDLL;
 Function hb_face_get_empty: THBFace; Cdecl; External HarfbuzzDLL;
@@ -1186,11 +1186,11 @@ Function hb_face_get_upem(Const Face: THBFace): Cardinal; Cdecl; External Harfbu
 Procedure hb_face_set_glyph_count(Face: THBFace; Const AGlyphCount: Cardinal); Cdecl; External HarfbuzzDLL;
 Function hb_face_get_glyph_count(Const AFace: THBFace): Cardinal; Cdecl; External HarfbuzzDLL;
 Function hb_face_get_table_tags(Const AFace: THBFace; Const AStartOffset: Cardinal; Var TableCount: Cardinal; TableTags: PHBTag): Cardinal; Cdecl; External HarfbuzzDLL;
-Procedure hb_face_collect_unicodes(Const AFace: THBFace; Into: THBSet); Cdecl; External HarfbuzzDLL;
-Procedure hb_face_collect_variation_selectors(Const AFace: THBFace; Into: THBSet); Cdecl; External HarfbuzzDLL;
-Procedure hb_face_collect_variation_unicodes(Const AFace: THBFace; Const AVariationSelector: THBCodepoint; Into: THBSet); Cdecl; External HarfbuzzDLL;
-Function hb_face_builder_create: THBFace; Cdecl; External HarfbuzzDLL;
-Function hb_face_builder_add_table(Face: THBFace; Const ATag: THBTag; Blob: THBBlob): THBBool; Cdecl; External HarfbuzzDLL;
+// Procedure hb_face_collect_unicodes(Const AFace: THBFace; Into: THBSet); Cdecl; External HarfbuzzDLL;
+// Procedure hb_face_collect_variation_selectors(Const AFace: THBFace; Into: THBSet); Cdecl; External HarfbuzzDLL;
+// Procedure hb_face_collect_variation_unicodes(Const AFace: THBFace; Const AVariationSelector: THBCodepoint; Into: THBSet); Cdecl; External HarfbuzzDLL;
+// Function hb_face_builder_create: THBFace; Cdecl; External HarfbuzzDLL;
+// Function hb_face_builder_add_table(Face: THBFace; Const ATag: THBTag; Blob: THBBlob): THBBool; Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
 {$REGION 'hb-font.h'}
 Function hb_font_funcs_create: THBFontFuncs; Cdecl; External HarfbuzzDLL;
@@ -1207,18 +1207,18 @@ Procedure hb_font_funcs_set_font_v_extents_func(FFuncs: THBFontFuncs; Const AFun
    External HarfbuzzDLL;
 Procedure hb_font_funcs_set_nominal_glyph_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetNominalGlyphFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
-Procedure hb_font_funcs_set_nominal_glyphs_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetNominalGlyphsFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
-   External HarfbuzzDLL;
+// Procedure hb_font_funcs_set_nominal_glyphs_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetNominalGlyphsFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
+//   External HarfbuzzDLL;
 Procedure hb_font_funcs_set_variation_glyph_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetVariationGlyphFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
 Procedure hb_font_funcs_set_glyph_h_advance_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphHAdvanceFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
 Procedure hb_font_funcs_set_glyph_v_advance_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphVAdvanceFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
-Procedure hb_font_funcs_set_glyph_h_advances_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphHAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
-   External HarfbuzzDLL;
-Procedure hb_font_funcs_set_glyph_v_advances_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphVAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
-   External HarfbuzzDLL;
+// Procedure hb_font_funcs_set_glyph_h_advances_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphHAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
+//   External HarfbuzzDLL;
+// Procedure hb_font_funcs_set_glyph_v_advances_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphVAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
+//   External HarfbuzzDLL;
 Procedure hb_font_funcs_set_glyph_h_origin_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphHOriginFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
    External HarfbuzzDLL;
 Procedure hb_font_funcs_set_glyph_v_origin_func(FFuncs: THBFontFuncs; Const AFunc: THBFontFuncs.THBFontGetGlyphVOriginFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl;
@@ -1237,14 +1237,14 @@ Function hb_font_get_h_extents(Const AFont: THBFont; Out OExtents: THBFontExtent
 Function hb_font_get_v_extents(Const AFont: THBFont; Out OExtents: THBFontExtents): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_nominal_glyph(Const AFont: THBFont; Const AUnicode: THBCodepoint; Out OGlyph: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_variation_glyph(Const AFont: THBFont; Const AUnicode, AVariationSelector: THBCodepoint; Out OGlyph: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_font_get_nominal_glyphs(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstUnicode: PHBCodepoint; Const AUnicodeStride: Cardinal; OFirstGlyph: PHBCodepoint;
-   Const AGlyphStride: Cardinal): Cardinal; Cdecl; External HarfbuzzDLL;
+// Function hb_font_get_nominal_glyphs(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstUnicode: PHBCodepoint; Const AUnicodeStride: Cardinal; OFirstGlyph: PHBCodepoint;
+//   Const AGlyphStride: Cardinal): Cardinal; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_glyph_h_advance(Const AFont: THBFont; Const AGlyph: THBCodepoint): THBPosition; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_glyph_v_advance(Const AFont: THBFont; Const AGlyph: THBCodepoint): THBPosition; Cdecl; External HarfbuzzDLL;
-Procedure hb_font_get_glyph_h_advances(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition;
-   Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
-Procedure hb_font_get_glyph_v_advances(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition;
-   Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
+// Procedure hb_font_get_glyph_h_advances(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition;
+//   Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
+// Procedure hb_font_get_glyph_v_advances(Const AFont: THBFont; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition;
+//   Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
 Function hb_font_get_glyph_h_origin(Const AFont: THBFont; Const AGlyph: THBCodepoint; Out X, Y: THBPosition): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_glyph_v_origin(Const AFont: THBFont; Const AGlyph: THBCodepoint; Out X, Y: THBPosition): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_font_get_glyph_h_kerning(Const AFont: THBFont; Const ALeftGlyph, ARightGlyph: THBCodepoint): THBPosition; Cdecl; External HarfbuzzDLL;
@@ -1255,8 +1255,8 @@ Function hb_font_get_glyph_from_name(Const AFont: THBFont; Const AName: PAnsiCha
 Function hb_font_get_glyph(Const AFont: THBFont; Const AUnicode, AVariationSelector: THBCodepoint; Out OGlyph: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
 Procedure hb_font_get_extents_for_direction(Const AFont: THBFont; Const ADirection: THBDirection; Out OExtents: THBFontExtents); Cdecl; External HarfbuzzDLL;
 Procedure hb_font_get_glyph_advance_for_direction(Const AFont: THBFont; Const AGlyph: THBCodepoint; Const ADirection: THBDirection; Out X, Y: THBPosition); Cdecl; External HarfbuzzDLL;
-Procedure hb_font_get_glyph_advances_for_direction(Const AFont: THBFont; Const ADirection: THBDirection; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal;
-   OFirstAdvance: PHBPosition; Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
+// Procedure hb_font_get_glyph_advances_for_direction(Const AFont: THBFont; Const ADirection: THBDirection; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal;
+//   OFirstAdvance: PHBPosition; Const AAdvanceStride: Cardinal); Cdecl; External HarfbuzzDLL;
 Procedure hb_font_get_glyph_origin_for_direction(Const AFont: THBFont; Const AGlyph: THBCodepoint; Const ADirection: THBDirection; Out X, Y: THBPosition); Cdecl; External HarfbuzzDLL;
 Procedure hb_font_add_glyph_origin_for_direction(Const AFont: THBFont; Const AGlyph: THBCodepoint; Const ADirection: THBDirection; Out X, Y: THBPosition); Cdecl; External HarfbuzzDLL;
 Procedure hb_font_subtract_glyph_origin_for_direction(Const AFont: THBFont; Const AGlyph: THBCodepoint; Const ADirection: THBDirection; Out X, Y: THBPosition); Cdecl; External HarfbuzzDLL;
@@ -1292,7 +1292,7 @@ Procedure hb_font_set_variations(Font: THBFont; Const AVariations: PHBVariation;
 Procedure hb_font_set_var_coords_design(Font: THBFont; Const ACoords: PSingle; Const ACoordsLength: Cardinal); Cdecl; External HarfbuzzDLL;
 Procedure hb_font_set_var_coords_normalized(Font: THBFont; Const ACoords2F14: PInteger; Const ACoordsLength: Cardinal); Cdecl; External HarfbuzzDLL;
 Function hb_font_get_var_coords_normalized(Const AFont: THBFont; Out OLength: Cardinal): PInteger; Cdecl; External HarfbuzzDLL;
-Procedure hb_font_set_var_named_instance(Font: THBFont; Const AInstanceIndex: Cardinal); Cdecl; External HarfbuzzDLL;
+// Procedure hb_font_set_var_named_instance(Font: THBFont; Const AInstanceIndex: Cardinal); Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
 {$REGION 'hb-buffer.h'}
 Function hb_segment_properties_equal([Ref] Const A, B: THBSegmentProperties): THBBool; Cdecl; External HarfbuzzDLL;
@@ -1361,20 +1361,20 @@ Function hb_buffer_diff(Const ABuffer, AReference: THBBuffer; Const ADottedcircl
 Procedure hb_buffer_set_message_func(Buffer: THBBuffer; Const AFunc: THBBuffer.THBBufferMessageFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc); Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
 {$REGION 'hb-map.h'}
-Function hb_map_create: THBMap; Cdecl; External HarfbuzzDLL;
-Function hb_map_get_empty: THBMap; Cdecl; External HarfbuzzDLL;
-Function hb_map_reference(Map: THBMap): THBMap; Cdecl; External HarfbuzzDLL;
-Procedure hb_map_destroy(Map: THBMap); Cdecl; External HarfbuzzDLL;
-Function hb_map_set_user_data(Map: THBMap; Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: THBBool): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_map_get_user_data(Const AMap: THBMap; Const AKey): Pointer; Cdecl; External HarfbuzzDLL;
-Function hb_map_allocation_successful(Const AMap: THBMap): THBBool; Cdecl; External HarfbuzzDLL;
-Procedure hb_map_clear(Map: THBMap); Cdecl; External HarfbuzzDLL;
-Function hb_map_is_empty(Const AMap: THBMap): THBBool; Cdecl; External HarfbuzzDLL;
-Function hb_map_get_population(Const AMap: THBMap): Cardinal; Cdecl; External HarfbuzzDLL;
+// Function hb_map_create: THBMap; Cdecl; External HarfbuzzDLL;
+// Function hb_map_get_empty: THBMap; Cdecl; External HarfbuzzDLL;
+// Function hb_map_reference(Map: THBMap): THBMap; Cdecl; External HarfbuzzDLL;
+// Procedure hb_map_destroy(Map: THBMap); Cdecl; External HarfbuzzDLL;
+// Function hb_map_set_user_data(Map: THBMap; Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: THBBool): THBBool; Cdecl; External HarfbuzzDLL;
+// Function hb_map_get_user_data(Const AMap: THBMap; Const AKey): Pointer; Cdecl; External HarfbuzzDLL;
+// Function hb_map_allocation_successful(Const AMap: THBMap): THBBool; Cdecl; External HarfbuzzDLL;
+// Procedure hb_map_clear(Map: THBMap); Cdecl; External HarfbuzzDLL;
+// Function hb_map_is_empty(Const AMap: THBMap): THBBool; Cdecl; External HarfbuzzDLL;
+// Function hb_map_get_population(Const AMap: THBMap): Cardinal; Cdecl; External HarfbuzzDLL;
 Procedure hb_map_set(Map: THBMap; Const AKey, AValue: THBCodepoint); Cdecl; External HarfbuzzDLL;
 Function hb_map_get(Const AMap: THBMap; Const AKey: THBCodepoint): THBCodepoint; Cdecl; External HarfbuzzDLL;
-Procedure hb_map_del(Map: THBMap; Const AKey: THBCodepoint); Cdecl; External HarfbuzzDLL;
-Function hb_map_has(Const AMap: THBMap; Const AKey: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
+// Procedure hb_map_del(Map: THBMap; Const AKey: THBCodepoint); Cdecl; External HarfbuzzDLL;
+// Function hb_map_has(Const AMap: THBMap; Const AKey: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
 {$ENDREGION}
 {$REGION 'hb-shape.h'}
 Procedure hb_shape(Font: THBFont; Buffer: THBBuffer; Const AFeatures: PHBFeature; Const ANumFeatures: Cardinal); Cdecl; External HarfbuzzDLL;
@@ -1572,7 +1572,7 @@ End;
 
 Function THBBlob.CopyWritable: THBBlob;
 Begin
-   Result := hb_blob_copy_writable_or_fail(Self);
+//    Result := hb_blob_copy_writable_or_fail(Self);
 End;
 
 Class Function THBBlob.Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc; Const AFailOnError: Boolean = False): THBBlob;
@@ -1587,17 +1587,17 @@ Begin
       Result := hb_blob_create(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
 End;
 
-Class Function THBBlob.Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob;
-Begin
-   If AFailOnError Then Begin
-     raise Exception.Create('FailOnError not implemented');
+//Class Function THBBlob.Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob;
+//Begin
+//   If AFailOnError Then Begin
+//     raise Exception.Create('FailOnError not implemented');
       //Result := hb_blob_create_from_file_or_fail(PAnsiChar(AFileName));
       //If Not Assigned(Result.FValue) Then
       //   Raise EHarfBuzz.Create(sCreationFailed);
-   End
-   Else
-      Result := hb_blob_create_from_file(PAnsiChar(AFileName));
-End;
+//   End
+//   Else
+     // Result := hb_blob_create_from_file(PAnsiChar(AFileName));
+//End;
 
 Function THBBlob.CreateSubBlob(Const AOffset, ALength: Integer): THBBlob;
 Begin
@@ -1626,7 +1626,7 @@ End;
 
 Function THBBlob.GetFaceCount: Cardinal;
 Begin
-   Result := hb_face_count(Self);
+//    Result := hb_face_count(Self);
 End;
 
 Function THBBlob.GetLength: Cardinal;
@@ -1853,7 +1853,7 @@ End;
 Function THBSet.GetPrevious(Const ACodepoint: THBCodepoint): THBCodepoint;
 Begin
    Result := ACodepoint;
-   hb_set_previous(Self, Result);
+//    hb_set_previous(Self, Result);
 End;
 
 Function THBSet.GetUserData(Const AKey): Pointer;
@@ -1863,7 +1863,7 @@ End;
 
 Class Operator THBSet.GreaterThanOrEqual(Const ASuperset, ASubset: THBSet): Boolean;
 Begin
-   Result := hb_set_is_subset(ASubset, ASuperset);
+//    Result := hb_set_is_subset(ASubset, ASuperset);
 End;
 
 Function THBSet.Has(Const ACodepoint: THBCodepoint): Boolean;
@@ -1888,12 +1888,12 @@ End;
 
 Function THBSet.IsSubset(Const ALargerSet: THBSet): Boolean;
 Begin
-   Result := hb_set_is_subset(Self, ALargerSet);
+//    Result := hb_set_is_subset(Self, ALargerSet);
 End;
 
 Class Operator THBSet.LessThanOrEqual(Const ASubset, ASuperset: THBSet): Boolean;
 Begin
-   Result := hb_set_is_subset(ASubset, ASuperset);
+//    Result := hb_set_is_subset(ASubset, ASuperset);
 End;
 
 Function THBSet.Max: THBCodepoint;
@@ -1918,12 +1918,12 @@ End;
 
 Function THBSet.Previous(Var Codepoint: THBCodepoint): Boolean;
 Begin
-   Result := hb_set_previous(Self, Codepoint);
+//    Result := hb_set_previous(Self, Codepoint);
 End;
 
 Function THBSet.PreviousRange(Var First, Last: THBCodepoint): Boolean;
 Begin
-   Result := hb_set_previous_range(Self, First, Last);
+//    Result := hb_set_previous_range(Self, First, Last);
 End;
 
 Function THBSet.Reference: THBSet;
@@ -1956,28 +1956,28 @@ End;
 
 Procedure THBFace.BuilderAddTable(Const ATag: THBTag; Blob: THBBlob);
 Begin
-   If Not hb_face_builder_add_table(Self, ATag, Blob) Then
+//    If Not hb_face_builder_add_table(Self, ATag, Blob) Then
       Raise EHarfBuzz.Create(sErrorAddBuilder);
 End;
 
 Class Function THBFace.BuilderCreate: THBFace;
 Begin
-   Result := hb_face_builder_create;
+//    Result := hb_face_builder_create;
 End;
 
 Procedure THBFace.CollectUnicodes(Into: THBSet);
 Begin
-   hb_face_collect_unicodes(Self, Into);
+//    hb_face_collect_unicodes(Self, Into);
 End;
 
 Procedure THBFace.CollectVariationSelectors(Into: THBSet);
 Begin
-   hb_face_collect_variation_selectors(Self, Into);
+//    hb_face_collect_variation_selectors(Self, Into);
 End;
 
 Procedure THBFace.CollectVariationUnicodes(Const AVariationSelector: THBCodepoint; Into: THBSet);
 Begin
-   hb_face_collect_variation_unicodes(Self, AVariationSelector, Into);
+//    hb_face_collect_variation_unicodes(Self, AVariationSelector, Into);
 End;
 
 Class Function THBFace.CreateCached(Const AFTFace: TFTFace): THBFace;
@@ -2180,7 +2180,7 @@ End;
 Procedure THBFont.GetGlyphAdvancesForDirection(Const ADirection: THBDirection; Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition;
    Const AAdvanceStride: Cardinal);
 Begin
-   hb_font_get_glyph_advances_for_direction(Self, ADirection, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
+//    hb_font_get_glyph_advances_for_direction(Self, ADirection, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
 End;
 
 Function THBFont.GetGlyphContourPoint(Const AGlyph: THBCodepoint; Const APointIndex: Cardinal; Out X, Y: THBPosition): Boolean;
@@ -2215,7 +2215,7 @@ End;
 
 Procedure THBFont.GetGlyphHAdvances(Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition; Const AAdvanceStride: Cardinal);
 Begin
-   hb_font_get_glyph_h_advances(Self, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
+//    hb_font_get_glyph_h_advances(Self, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
 End;
 
 Function THBFont.GetGlyphHKerning(Const ALeftGlyph, ARightGlyph: THBCodepoint): THBPosition;
@@ -2255,7 +2255,7 @@ End;
 
 Procedure THBFont.GetGlyphVAdvances(Const ACount: Cardinal; Const AFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal; OFirstAdvance: PHBPosition; Const AAdvanceStride: Cardinal);
 Begin
-   hb_font_get_glyph_v_advances(Self, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
+//    hb_font_get_glyph_v_advances(Self, ACount, AFirstGlyph, AGlyphStride, OFirstAdvance, AAdvanceStride);
 End;
 
 Function THBFont.GetGlyphVOrigin(Const AGlyph: THBCodepoint; Out X, Y: THBPosition): Boolean;
@@ -2275,7 +2275,7 @@ End;
 
 Function THBFont.GetNominalGlyphs(Const ACount: Cardinal; Const AFirstUnicode: PHBCodepoint; Const AUnicodeStride: Cardinal; OFirstGlyph: PHBCodepoint; Const AGlyphStride: Cardinal): Integer;
 Begin
-   Result := hb_font_get_nominal_glyphs(Self, ACount, AFirstUnicode, AUnicodeStride, OFirstGlyph, AGlyphStride);
+//    Result := hb_font_get_nominal_glyphs(Self, ACount, AFirstUnicode, AUnicodeStride, OFirstGlyph, AGlyphStride);
 End;
 
 Function THBFont.GetParent: THBFont;
@@ -2411,7 +2411,7 @@ End;
 
 Procedure THBFont.SetVarNamedInstance(Const AInstanceIndex: Cardinal);
 Begin
-   hb_font_set_var_named_instance(Self, AInstanceIndex);
+//    hb_font_set_var_named_instance(Self, AInstanceIndex);
 End;
 
 Procedure THBFont.SubtractGlyphOriginForDirection(Const AGlyph: THBCodepoint; Const ADirection: THBDirection; Out X, Y: THBPosition);
@@ -2494,7 +2494,7 @@ End;
 
 Procedure THBFontFuncs.SetGlyphHAdvancesFunc(Const AFunc: THBFontGetGlyphHAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc);
 Begin
-   hb_font_funcs_set_glyph_h_advances_func(Self, AFunc, AUserData, ADestroy);
+//    hb_font_funcs_set_glyph_h_advances_func(Self, AFunc, AUserData, ADestroy);
 End;
 
 Procedure THBFontFuncs.SetGlyphHKerningFunc(Const AFunc: THBFontGetGlyphHKerningFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc);
@@ -2519,7 +2519,7 @@ End;
 
 Procedure THBFontFuncs.SetGlyphVAdvancesFunc(Const AFunc: THBFontGetGlyphVAdvancesFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc);
 Begin
-   hb_font_funcs_set_glyph_v_advances_func(Self, AFunc, AUserData, ADestroy);
+//    hb_font_funcs_set_glyph_v_advances_func(Self, AFunc, AUserData, ADestroy);
 End;
 
 Procedure THBFontFuncs.SetGlyphVOriginFunc(Const AFunc: THBFontGetGlyphVOriginFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc);
@@ -2534,7 +2534,7 @@ End;
 
 Procedure THBFontFuncs.SetNorminalGlyphsFunc(Const AFunc: THBFontGetNominalGlyphsFunc; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc);
 Begin
-   hb_font_funcs_set_nominal_glyphs_func(Self, AFunc, AUserData, ADestroy);
+//    hb_font_funcs_set_nominal_glyphs_func(Self, AFunc, AUserData, ADestroy);
 End;
 
 Procedure THBFontFuncs.SetUserData(Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: Boolean);
@@ -3012,32 +3012,32 @@ End;
 
 Function THBMap.AllocationSuccessful: Boolean;
 Begin
-   Result := hb_map_allocation_successful(Self);
+//    Result := hb_map_allocation_successful(Self);
 End;
 
 Procedure THBMap.Clear;
 Begin
-   hb_map_clear(Self);
+//    hb_map_clear(Self);
 End;
 
 Function THBMap.Count: Cardinal;
 Begin
-   Result := hb_map_get_population(Self);
+//    Result := hb_map_get_population(Self);
 End;
 
 Class Function THBMap.Create: THBMap;
 Begin
-   Result := hb_map_create;
+//    Result := hb_map_create;
 End;
 
 Procedure THBMap.Delete(Const AKey: THBCodepoint);
 Begin
-   hb_map_del(Self, AKey);
+//    hb_map_del(Self, AKey);
 End;
 
 Procedure THBMap.Destroy;
 Begin
-   hb_map_destroy(Self);
+//    hb_map_destroy(Self);
 End;
 
 Function THBMap.Get(Const AKey: THBCodepoint): THBCodepoint;
@@ -3047,27 +3047,27 @@ End;
 
 Function THBMap.GetUserData(Const AKey): Pointer;
 Begin
-   Result := hb_map_get_user_data(Self, AKey);
+//    Result := hb_map_get_user_data(Self, AKey);
 End;
 
 Class Function THBMap.GetEmpty: THBMap;
 Begin
-   Result := hb_map_get_empty;
+//    Result := hb_map_get_empty;
 End;
 
 Function THBMap.Has(Const AKey: THBCodepoint): Boolean;
 Begin
-   Result := hb_map_has(Self, AKey);
+//    Result := hb_map_has(Self, AKey);
 End;
 
 Function THBMap.IsEmpty: Boolean;
 Begin
-   Result := hb_map_is_empty(Self);
+//    Result := hb_map_is_empty(Self);
 End;
 
 Function THBMap.Reference: THBMap;
 Begin
-   Result := hb_map_reference(Self);
+//    Result := hb_map_reference(Self);
 End;
 
 Procedure THBMap.&Set(Const AKey, AValue: THBCodepoint);
@@ -3077,7 +3077,7 @@ End;
 
 Procedure THBMap.SetUserData(Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: Boolean);
 Begin
-   If Not hb_map_set_user_data(Self, AKey, AData, ADestroy, AReplace) Then
+//    If Not hb_map_set_user_data(Self, AKey, AData, ADestroy, AReplace) Then
       Raise EHarfBuzz.Create(sErrorUserData);
 End;
 
@@ -3148,8 +3148,8 @@ End;
 
 Class Procedure THarfBuzzManager.Initialize;
 Begin
-   If Not hb_version_atleast(HB_VERSION_MAJOR, HB_VERSION_MINOR, HB_VERSION_MICRO) Then
-      Raise EHarfBuzz.CreateFmt('HarfBuzz version expected to be at least %s, got %s', [HB_VERSION_STRING, VersionString]);
+   //If Not hb_version_atleast(HB_VERSION_MAJOR, HB_VERSION_MINOR, HB_VERSION_MICRO) Then
+   //   Raise EHarfBuzz.CreateFmt('HarfBuzz version expected to be at least %s, got %s', [HB_VERSION_STRING, VersionString]);
    hb_version(FMajor, FMinor, FMicro);
 End;
 

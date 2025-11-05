@@ -82,6 +82,7 @@ type
   FaceName:String;
   StyleName:String;
   type1:boolean;
+  truetype:boolean;
   havekerning:Boolean;
   ObjectName:String;
   ObjectIndex:integer;
