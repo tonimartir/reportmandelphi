@@ -19,8 +19,8 @@ Const
    ICUDLLsuffix = '_69';
 {$ELSE}
 Const
-   ICUDLLcommon = 'libicuuc.so.66';
-   ICUDLLsuffix = '_66';
+   ICUDLLcommon = 'libicuuc.so.60';
+   ICUDLLsuffix = '_60';
 {$ENDIF}
 Type
    EICU = Class(Exception)
