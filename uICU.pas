@@ -180,7 +180,7 @@ Type
       Function GetDisplayName(Const AInLocale: TICULocale): UnicodeString; Inline;
       Class Function GetAvailable(Const AN: Integer): TICULocale; Static; Inline;
       Class Function CountAvailable: Integer; Static; Inline;
-      Class Function OpenAvailableByType(Const AType: TICULocaleAvailableType): TArray<TICULocale>; Static; Inline;
+//      Class Function OpenAvailableByType(Const AType: TICULocaleAvailableType): TArray<TICULocale>; Static; Inline;
       Class Function GetISOLanguages: TArray<AnsiString>; Static;
       Class Function GetISOCountries: TArray<AnsiString>; Static;
       Function GetParent: TICULocale; Inline;
@@ -255,10 +255,10 @@ Type
       FValue: Pointer;
 {$HINTS ON}
    Public
-      Function Get(Const AC: TICUChar32): Cardinal;
-      Function GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context; Out OPValue: Cardinal)
-         : TICUChar32; Overload;
-      Function GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context): TICUChar32; Overload;
+//      Function Get(Const AC: TICUChar32): Cardinal;
+//      Function GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context; Out OPValue: Cardinal)
+//         : TICUChar32; Overload;
+//      Function GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context): TICUChar32; Overload;
    End;
 {$ENDREGION}
 {$REGION 'uchar.h'}
@@ -303,7 +303,7 @@ Type
       FValue: Pointer;
 {$HINTS ON}
    Public
-      Class Function GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet; Static; Inline;
+//      Class Function GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet; Static; Inline;
    End;
    TICUCharCategory = (icuccUnassigned = 0, icuccGeneralOtherTypes = 0, icuccUppercaseLetter = 1, icuccLowercaseLetter = 2, icuccTitlecaseLetter = 3, icuccModifierLetter = 4, icuccOtherLetter = 5,
       icuccNonSpacingMark = 6, icuccEnclosingMark = 7, icuccCombiningSpacingMark = 8, icuccDecimalDigitNumber = 9, icuccLetterNumber = 10, icuccOtherNumber = 11, icuccSpaceSeparator = 12,
@@ -406,7 +406,7 @@ Type
       Function GetIntPropertyValue(Const AC: TICUChar32): Integer; Inline;
       Function GetIntPropertyMinValue: Integer; Inline;
       Function GetIntPropertyMaxValue: Integer; Inline;
-      Function GetIntPropertyMap: TICUCPMap; Inline;
+//      Function GetIntPropertyMap: TICUCPMap; Inline;
       Function GetPropertyName(Const ANameChoice: TICUPropertyNameChoice): AnsiString; Inline;
       Class Function GetPropertyEnum(Const AAlias: AnsiString): TICUProperty; Static; Inline;
       Function GetPropertyValueName(Const AValue: Integer; Const ANameChoice: TICUPropertyNameChoice): AnsiString; Inline;
@@ -737,7 +737,7 @@ Function ICUloc_getDisplayName(Const ALocaleID, AInLocaleID: PAnsiChar; Result: 
    External ICUDLLcommon Name 'uloc_getDisplayName' + ICUDLLsuffix;
 Function ICUloc_getAvailable(Const AN: Integer): PAnsiChar; Cdecl; External ICUDLLcommon Name 'uloc_getAvailable' + ICUDLLsuffix;
 Function ICUloc_countAvailable: Integer; Cdecl; External ICUDLLcommon Name 'uloc_countAvailable' + ICUDLLsuffix;
-Function ICUloc_openAvailableByType(Const AType: TICULocaleAvailableType; Out OStatus: TICUErrorCode): TICUEnumeration; Cdecl; External ICUDLLcommon Name 'uloc_openAvailableByType' + ICUDLLsuffix;
+//Function ICUloc_openAvailableByType(Const AType: TICULocaleAvailableType; Out OStatus: TICUErrorCode): TICUEnumeration; Cdecl; External ICUDLLcommon Name 'uloc_openAvailableByType' + ICUDLLsuffix;
 Function ICUloc_getISOLanguages: PPAnsiChar; Cdecl; External ICUDLLcommon Name 'uloc_getISOLanguages' + ICUDLLsuffix;
 Function ICUloc_getISOCountries: PPAnsiChar; Cdecl; External ICUDLLcommon Name 'uloc_getISOCountries' + ICUDLLsuffix;
 Function ICUloc_getParent(Const ALocaleID: PAnsiChar; Parent: PAnsiChar; Const AParentCapacity: Integer; Out OErr: TICUErrorCode): Integer; Cdecl;
@@ -772,13 +772,13 @@ Function ICUloc_toLegacyKey(Const AKeyword: PAnsiChar): PAnsiChar; Cdecl; Extern
 Function ICUloc_toLegacyType(Const AKeyword, AValue: PAnsiChar): PAnsiChar; Cdecl; External ICUDLLcommon Name 'uloc_toLegacyType' + ICUDLLsuffix;
 {$ENDREGION}
 {$REGION 'ucpmap.h'}
-Function ICUcpmap_get(Const AMap: TICUCPMap; Const AC: TICUChar32): Cardinal; Cdecl; External ICUDLLcommon Name 'ucpmap_get' + ICUDLLsuffix;
-Function ICUcpmap_getRange(Const AMap: TICUCPMap; Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context;
-   Out OPValue: Cardinal): TICUChar32; Cdecl; External ICUDLLcommon Name 'ucpmap_getRange' + ICUDLLsuffix;
+//Function ICUcpmap_get(Const AMap: TICUCPMap; Const AC: TICUChar32): Cardinal; Cdecl; External ICUDLLcommon Name 'ucpmap_get' + ICUDLLsuffix;
+//Function ICUcpmap_getRange(Const AMap: TICUCPMap; Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context;
+//   Out OPValue: Cardinal): TICUChar32; Cdecl; External ICUDLLcommon Name 'ucpmap_getRange' + ICUDLLsuffix;
 {$ENDREGION}
 {$REGION 'uchar.h'}
 Function ICUhasBinaryProperty(Const AC: TICUChar32; Const AWhich: TICUProperty): ByteBool; Cdecl; External ICUDLLcommon Name 'u_hasBinaryProperty' + ICUDLLsuffix;
-Function ICUgetBinaryPropertySet(Const AProperty: TICUProperty; Var Error: TICUErrorCode): TICUSet; Cdecl; External ICUDLLcommon Name 'u_getBinaryPropertySet' + ICUDLLsuffix;
+//Function ICUgetBinaryPropertySet(Const AProperty: TICUProperty; Var Error: TICUErrorCode): TICUSet; Cdecl; External ICUDLLcommon Name 'u_getBinaryPropertySet' + ICUDLLsuffix;
 Function ICUisUAlphabetic(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUAlphabetic' + ICUDLLsuffix;
 Function ICUisULowercase(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isULowercase' + ICUDLLsuffix;
 Function ICUisUUppercase(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isUUppercase' + ICUDLLsuffix;
@@ -786,7 +786,7 @@ Function ICUisUUppercase(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLL
 Function ICUgetIntPropertyValue(Const AC: TICUChar32; Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyValue' + ICUDLLsuffix;
 Function ICUgetIntPropertyMinValue(Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMinValue' + ICUDLLsuffix;
 Function ICUgetIntPropertyMaxValue(Const AWhich: TICUProperty): Integer; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMaxValue' + ICUDLLsuffix;
-Function ICUgetIntPropertyMap(Const AWhich: TICUProperty; Var ErrorCode: TICUErrorCode): TICUCPMap; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMap' + ICUDLLsuffix;
+//Function ICUgetIntPropertyMap(Const AWhich: TICUProperty; Var ErrorCode: TICUErrorCode): TICUCPMap; Cdecl; External ICUDLLcommon Name 'u_getIntPropertyMap' + ICUDLLsuffix;
 Function ICUgetNumericValue(Const AC: TICUChar32): Double; Cdecl; External ICUDLLcommon Name 'u_getNumericValue' + ICUDLLsuffix;
 Function ICUislower(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_islower' + ICUDLLsuffix;
 Function ICUisupper(Const AC: TICUChar32): ByteBool; Cdecl; External ICUDLLcommon Name 'u_isupper' + ICUDLLsuffix;
@@ -1006,19 +1006,19 @@ Begin
    Result := UnicodeString(ICUerrorName(Self));
 End;
 { TICUCPMap }
-Function TICUCPMap.Get(Const AC: TICUChar32): Cardinal;
-Begin
-   Result := ICUcpmap_get(Self, AC);
-End;
-Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context; Out OPValue: Cardinal)
-   : TICUChar32;
-Begin
-   Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, OPValue);
-End;
-Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context): TICUChar32;
-Begin
-   Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, PCardinal(NIL)^);
-End;
+//Function TICUCPMap.Get(Const AC: TICUChar32): Cardinal;
+//Begin
+//   Result := ICUcpmap_get(Self, AC);
+//End;
+//Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context; Out OPValue: Cardinal)
+//   : TICUChar32;
+//Begin
+//   Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, OPValue);
+//End;
+//Function TICUCPMap.GetRange(Const AStart: TICUChar32; Const AOption: TICUCPMapRangeOption; Const ASurrogateValue: Cardinal; Const AFilter: TICUCPMapValueFilter; Const Context): TICUChar32;
+//Begin
+//   Result := ICUcpmap_getRange(Self, AStart, AOption, ASurrogateValue, AFilter, Context, PCardinal(NIL)^);
+//End;
 { TICUEnumeration }
 Procedure TICUEnumeration.Destroy;
 Begin
@@ -1524,20 +1524,20 @@ Begin
    SetLength(Result.FValue, ICUloc_minimizeSubtags(@FValue[1], @Result.FValue[1], capFullName, Err));
    TICUManager.Error(Err);
 End;
-Class Function TICULocale.OpenAvailableByType(Const AType: TICULocaleAvailableType): TArray<TICULocale>;
-Var
-   Err:  TICUErrorCode;
-   Enum: TICUEnumeration;
-   I:    Integer;
-Begin
-   Enum := ICUloc_openAvailableByType(AType, Err);
-   TICUManager.Error(Err);
-   SetLength(Result, Enum.Count);
-   For I := 0 To High(Result) Do Begin
-      Result[I].FValue := ICUenum_next(Enum, PInteger(NIL)^, Err);
-      TICUManager.Error(Err);
-   End;
-End;
+//Class Function TICULocale.OpenAvailableByType(Const AType: TICULocaleAvailableType): TArray<TICULocale>;
+//Var
+//   Err:  TICUErrorCode;
+//   Enum: TICUEnumeration;
+//   I:    Integer;
+//Begin
+//   Enum := ICUloc_openAvailableByType(AType, Err);
+//   TICUManager.Error(Err);
+//   SetLength(Result, Enum.Count);
+//   For I := 0 To High(Result) Do Begin
+//      Result[I].FValue := ICUenum_next(Enum, PInteger(NIL)^, Err);
+//      TICUManager.Error(Err);
+//   End;
+//End;
 Function TICULocale.OpenKeywords: TICUEnumeration;
 Var
    Err: TICUErrorCode;
@@ -1585,21 +1585,21 @@ Begin
    Result := AnsiString(ICUloc_toUnicodeLocaleType(PAnsiChar(AKeyword), PAnsiChar(AValue)));
 End;
 { TICUSet }
-Class Function TICUSet.GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet;
-Var
-   Err: TICUErrorCode;
-Begin
-   Result := ICUgetBinaryPropertySet(AProperty, Err);
-   TICUManager.Error(Err);
-End;
+//Class Function TICUSet.GetBinaryPropertySet(Const AProperty: TICUProperty): TICUSet;
+//Var
+//   Err: TICUErrorCode;
+//Begin
+//   Result := ICUgetBinaryPropertySet(AProperty, Err);
+//   TICUManager.Error(Err);
+//End;
 { TICUPropertyHelper }
-Function TICUPropertyHelper.GetIntPropertyMap: TICUCPMap;
-Var
-   Err: TICUErrorCode;
-Begin
-   Result := ICUgetIntPropertyMap(Self, Err);
-   TICUManager.Error(Err);
-End;
+//Function TICUPropertyHelper.GetIntPropertyMap: TICUCPMap;
+//Var
+//   Err: TICUErrorCode;
+//Begin
+//   Result := ICUgetIntPropertyMap(Self, Err);
+//   TICUManager.Error(Err);
+//End;
 Function TICUPropertyHelper.GetIntPropertyMaxValue: Integer;
 Begin
    Result := ICUgetIntPropertyMaxValue(Self);
