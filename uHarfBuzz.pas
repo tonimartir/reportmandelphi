@@ -46,7 +46,7 @@ Interface
 {$MESSAGE FATAL 'Replace every instance of "[Ref] Const" in this file by "Constref", then disable this error.'}
 {$ENDIF}
 
-Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF}, uFreeType;
+Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF}, rpfreetype2;
 
 
 Const
@@ -415,8 +415,13 @@ Type
 
 Const
    cHBUnicodeMax = Cardinal($10FFFF);
-
 Type
+  TFTFace=FT_Face;
+  TFTLoadFlag = (ftlfNoScale, ftlfNoHinting, ftlfRender, ftlfNoBitmap, ftlfVerticalLayout, ftlfForceAutohint, ftlfCropBitmap, ftlfPedantic, ftlfAdvanceOnly, ftlfIgnoreGlobalAdvanceWidth,
+      ftlfNoRecurse, ftlfIgnoreTransform, ftlfMonochrome, ftlfLinearDesign, ftlfSbitsOnly, ftlfNoAutohint, ftlfTargetLight, ftlfTargetMono, ftlfTargetLCD, ftlfTargetLCDV, ftlfColor,
+      ftlfComputeMetrics, ftlfBitmapMetricsOnly);
+  TFTLoadFlags = Set Of ftlfNoScale .. TFTLoadFlag($1F);
+
    THBUnicodeGeneralCategory = ( //
       hbugcControl,              // Cc
       hbugcFormat,               // Cf

@@ -27,7 +27,7 @@ uses Classes,SysUtils,rptruetype,
     Windows,
 {$ENDIF}
     rpinfoprovid,SyncObjs,
-    rpmdconsts,rpfreetype2,System.Generics.Collections;
+    rpmdconsts,rpfreetype2,System.Generics.Collections,uHarfbuzz,rpICU;
 
 
 type
@@ -69,6 +69,7 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
+  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;override;
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
@@ -78,6 +79,13 @@ type
   constructor Create;
   destructor destroy;override;
  end;
+
+type
+  TShapingData=class
+   public FreeTypeFace: TFTFace;
+  end;
+
+  function NormalizeNFC(const S: string): string;
 
 implementation
 
@@ -913,8 +921,8 @@ begin
   SelectFont(pdffont);
   data.fontdata.FontData.Clear;
   data.filename:=currentfont.filename;
-  if not currentfont.type1 then
-   data.fontdata.FontData.LoadFromFile(currentfont.filename);
+  //if not currentfont.type1 then
+  data.fontdata.FontData.LoadFromFile(currentfont.filename);
   data.postcriptname:=currentfont.postcriptname;
   data.FamilyName:=currentfont.familyname;
   data.FaceName:=currentfont.familyname;
@@ -1120,6 +1128,113 @@ begin
  CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
 end;
 
+function TRpFTInfoProvider.CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
+var
+  Font: THBFont;
+  Buf: THBBuffer;
+  GlyphInfo: TArray<THBGlyphInfo>;
+  GlyphPos: TArray<THBGlyphPosition>;
+  i: Integer;
+  mem:Pointer;
+  shapeData:TShapingData;
+begin
+  SetLength(Result, 0);
+  if astring = '' then Exit;
+
+  if not adata.LoadedFace then
+  begin
+    shapeData:=TShapingData.Create;
+    adata.FontData.Fontdata.Position := 0;
+    mem:=adata.FontData.Fontdata.Memory;
+    FT_New_Memory_Face(ftlibrary,mem,adata.FontData.Fontdata.Size,0,shapedata.FreeTypeFace);
+    CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace,0,64*100,720,720));
+//    adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
+    adata.CustomImplementation:=shapedata;
+    adata.LoadedFace := True;
+  end
+  else
+  begin
+    shapeData:=adata.CustomImplementation as TShapingData;
+  end;
+
+
+
+  Font := THBFont.CreateReferenced(shapeData.FreeTypeFace);
+  try
+    Font.FTFontSetFuncs;
+    Buf := THBBuffer.Create;
+    try
+      Buf.Direction := hbdRTL;
+      Buf.Script := hbsArabic;
+      Buf.Language := hb_language_from_string('ar', -1);
+
+      Buf.AddUTF16(astring);
+
+      Buf.Shape(Font);
+
+      GlyphInfo := Buf.GetGlyphInfos;
+      GlyphPos := Buf.GetGlyphPositions;
+
+      SetLength(Result, Length(GlyphInfo));
+
+      for i := 0 to High(GlyphInfo) do
+      begin
+        Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
+        Result[i].XAdvance := Round(GlyphPos[i].XAdvance/64); // en font units
+        Result[i].XOffset := Round(GlyphPos[i].XOffset/64);
+        Result[i].YOffset := Round(GlyphPos[i].YOffset/64);
+        Result[i].CharCode := astring[GlyphInfo[i].Cluster+1];
+        Result[i].Cluster := GlyphInfo[i].Cluster;
+      end;
+    finally
+      Buf.Destroy;
+    end;
+  finally
+    Font.Destroy;
+  end;
+end;
+
+function NormalizeNFC(const S: string): string;
+var
+  status: UErrorCode;
+  normalizer: PUNormalizer2;
+  srcUTF16, destUTF16: TArray<UChar>;
+  srcLen, destLen, i: Integer;
+begin
+  InitICU;
+
+  if not Assigned(unorm2_getNFCInstance) or not Assigned(unorm2_normalize) then
+    raise Exception.Create('ICU functions not initialized');
+
+  Result := '';
+
+  // Copiar el string Delphi (UTF-16) a array de UChar
+  srcLen := Length(S);
+  SetLength(srcUTF16, srcLen);
+  for i := 1 to srcLen do
+    srcUTF16[i - 1] := UChar(S[i]);
+
+  // Obtener normalizador NFC
+  status := U_ZERO_ERROR;
+  normalizer := unorm2_getNFCInstance(status);
+  if status <> U_ZERO_ERROR then
+    raise Exception.CreateFmt('ICU error getting NFC instance: %d', [status]);
+
+  // Preparar buffer de salida (reservar suficiente por si se expande)
+  SetLength(destUTF16, srcLen * 2);
+
+  // Normalizar
+  destLen := unorm2_normalize(normalizer, PWord(@srcUTF16[0]), srcLen,
+                              PWord(@destUTF16[0]), Length(destUTF16), status);
+  if status <> U_ZERO_ERROR then
+    raise Exception.CreateFmt('ICU error normalizing string: %d', [status]);
+
+  // Ajustar tamaño del resultado y convertir a string Delphi
+  SetLength(destUTF16, destLen);
+  SetLength(Result, destLen);
+  for i := 0 to destLen - 1 do
+    Result[i + 1] := WideChar(destUTF16[i]);
+end;
 
 initialization
  fontlist:=nil;

@@ -683,6 +683,71 @@ Type
       Function GetBinaryRules: TBytes; Inline;
    End;
 {$ENDREGION}
+
+(*const
+  U_ZERO_ERROR                  = 0;
+  U_ILLEGAL_ARGUMENT_ERROR      = 1;
+  U_MISSING_RESOURCE_ERROR      = 2;
+  U_INVALID_FORMAT_ERROR        = 3;
+  U_FILE_ACCESS_ERROR           = 4;
+  U_INTERNAL_PROGRAM_ERROR      = 5;
+  U_MESSAGE_PARSE_ERROR         = 6;
+  U_MEMORY_ALLOCATION_ERROR     = 7;
+  U_INDEX_OUTOFBOUNDS_ERROR     = 8;
+  U_PARSE_ERROR                 = 9;
+  U_INVALID_CHAR_FOUND          = 10;
+  U_TRUNCATED_CHAR_FOUND        = 11;
+  U_ILLEGAL_CHAR_FOUND          = 12;
+  U_INVALID_TABLE_FORMAT        = 13;
+  U_INVALID_TABLE_FILE          = 14;
+  U_BUFFER_OVERFLOW_ERROR       = 15;
+  U_UNSUPPORTED_ERROR           = 16;
+  U_RESOURCE_TYPE_MISMATCH      = 17;
+  U_ILLEGAL_ESCAPE_SEQUENCE     = 18;
+  U_UNSUPPORTED_ESCAPE_SEQUENCE = 19;
+  U_NO_SPACE_AVAILABLE          = 20;
+  U_CE_NOT_FOUND_ERROR          = 21;
+  U_PRIMARY_TOO_LONG_ERROR      = 22;
+  U_STATE_TOO_OLD_ERROR         = 23;
+  U_TOO_MANY_ALIASES_ERROR      = 24;
+  U_ENUM_OUT_OF_SYNC_ERROR      = 25;
+  U_INVARIANT_CONVERSION_ERROR  = 26;
+  U_INVALID_STATE_ERROR         = 27;
+  U_COLLATOR_VERSION_MISMATCH   = 28;
+  U_USELESS_COLLATOR_ERROR      = 29;
+  U_NO_WRITE_PERMISSION         = 30;
+  U_STANDARD_ERROR_LIMIT        = 31;
+  U_BAD_VARIABLE_DEFINITION     = 32;
+  U_PARSE_ERROR_LIMIT           = 33;
+  U_UNEXPECTED_TOKEN_ERROR      = 34;
+  U_AMBIGUOUS_ALIAS_WARNING     = 35;
+  U_FMT_PARSE_ERROR             = 36;
+  U_MULTIPLE_ORDINALS_ERROR     = 37;
+  U_INVALID_PATH               = 38;
+  U_IO_ERROR                   = 39;
+  U_STACK_OVERFLOW_ERROR       = 40;
+  U_INTERNAL_PROGRAM_ERROR2    = 41;
+  U_NOT_FOUND_ERROR            = 42;
+  U_ILLEGAL_REGEX_PATTERN      = 43;
+  U_RECURSION_LIMIT_EXCEEDED   = 44;
+  U_INVALID_TABLE_FORMAT2      = 45;
+  U_INVALID_STATE_ERROR2       = 46;
+  U_UNSUPPORTED_CONVERSION     = 47;
+  U_ILLEGAL_ARGUMENT_ERROR2    = 48;
+  U_MISSING_RESOURCE_ERROR2    = 49;
+  U_INVALID_FORMAT_ERROR2      = 50;
+type
+  PUNormalizer2 = Pointer;
+  UErrorCode = Integer;
+
+function unorm2_getNFCInstance(out status: UErrorCode): PUNormalizer2; cdecl;
+  external ICUDLLcommon name 'unorm2_getNFCInstance' + ICUDLLsuffix;
+
+function unorm2_normalize(norm2: PUNormalizer2;
+                          const src: PWord; length: Integer;
+                          dest: PWord; capacity: Integer;
+                          out status: UErrorCode): Integer; cdecl;
+  external ICUDLLcommon name 'unorm2_normalize' + ICUDLLsuffix;          *)
 //
 {$REGION 'uversion.h'}
 Procedure ICUversionFromString(Out OVersionArray: TICUVersionInfo; Const AVersionString: PAnsiChar); Cdecl; External ICUDLLcommon Name 'u_versionFromString' + ICUDLLsuffix;

@@ -83,7 +83,7 @@ uses Classes,Sysutils,rpinfoprovid,
 // ICU 69 version
 // HarfBuzz 2.9
 {$IFDEF USETEXTSHAPING}
- uFreeType,uHarfBuzz,uICU,Generics.Collections,
+ uHarfBuzz,uICU,Generics.Collections,rpIcu,
 {$ENDIF}
  rpmdconsts,rptypes,rpmunits,dateutils;
 
@@ -116,16 +116,6 @@ type
  end;
 
 
- TGlyphPos = record
-   GlyphIndex: integer;
-   XOffset: integer;
-   YOffset: integer;
-   XAdvance: integer;
-   YAdvance: integer;
-   CharCode: WideChar;
-   Cluster: Cardinal;
-  end;
- TGlyphPosArray = array of TGlyphPos;
 
  TRpPageInfo=class(TObject)
   public
@@ -192,7 +182,6 @@ type
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
    {$IFDEF USETEXTSHAPING}
    function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
-   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
    {$ENDIF}
   public
    LineInfo:array of TRpLineInfo;
@@ -4209,219 +4198,8 @@ begin
 end;
 
 {$IFDEF USETEXTSHAPING}
-function TRpPDFCanvas.CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
-var
-  Font: THBFont;
-  Buf: THBBuffer;
-  GlyphInfo: TArray<THBGlyphInfo>;
-  GlyphPos: TArray<THBGlyphPosition>;
-  i: Integer;
-begin
-  SetLength(Result, 0);
-  if astring = '' then Exit;
-
-  if not adata.LoadedFace then
-  begin
-    adata.FontData.Fontdata.Position := 0;
-    adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
-    adata.LoadedFace := True;
-  end;
-
-  adata.FreeTypeFace.SetCharSize(0, 100 * 64, 720, 720);
-
-  Font := THBFont.CreateReferenced(adata.FreeTypeFace);
-  try
-    Font.FTFontSetFuncs;
-    Buf := THBBuffer.Create;
-    try
-      Buf.Direction := hbdRTL;
-      Buf.Script := hbsArabic;
-      Buf.Language := hb_language_from_string('ar', -1);
-
-      Buf.AddUTF16(astring);
-
-      Buf.Shape(Font);
-
-      GlyphInfo := Buf.GetGlyphInfos;
-      GlyphPos := Buf.GetGlyphPositions;
-
-      SetLength(Result, Length(GlyphInfo));
-
-      for i := 0 to High(GlyphInfo) do
-      begin
-        Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
-        Result[i].XAdvance := Round(GlyphPos[i].XAdvance/64); // en font units
-        Result[i].XOffset := Round(GlyphPos[i].XOffset/64);
-        Result[i].YOffset := Round(GlyphPos[i].YOffset/64);
-        Result[i].CharCode := astring[GlyphInfo[i].Cluster+1];
-        Result[i].Cluster := GlyphInfo[i].Cluster;
-      end;
 
 
-    finally
-      Buf.Destroy;
-    end;
-  finally
-    Font.Destroy;
-  end;
-end;
-
-
-type
-  PInt32 = PInteger; // poner una sola vez al principio de la unidad
-
-procedure ApplyICUVisualReorder_Simple(var Glyphs: TGlyphPosArray; const TextLogical: UnicodeString);
-var
-  nGlyphs, nChars, i, visPos, logicalIndex, foundPos: Integer;
-  clusters: TDictionary<Integer, TList<Integer>>;
-  outList: TList<TGlyphPos>;
-  bidi: TICUBidi;
-  reordered: UnicodeString;
-  usedLogical: TArray<Boolean>;
-  usedVisual: TArray<Boolean>;
-  keyArray: TArray<Integer>;
-  listForKey: TList<Integer>;
-  k: Integer;
-  chLogical, chVisual: WideChar;
-begin
-  // trivial
-  nGlyphs := Length(Glyphs);
-  if nGlyphs = 0 then Exit;
-
-  nChars := Length(TextLogical); // número de unidades UTF-16
-  if nChars = 0 then Exit;
-
-  // 1) Agrupamos glyphs por cluster (cluster = índice UTF-16 lógico del char inicial del cluster)
-  clusters := TDictionary<Integer, TList<Integer>>.Create;
-  try
-    for i := 0 to nGlyphs - 1 do
-    begin
-      logicalIndex := Integer(Glyphs[i].Cluster);
-      if not clusters.ContainsKey(logicalIndex) then
-        clusters.Add(logicalIndex, TList<Integer>.Create);
-      clusters[logicalIndex].Add(i);
-    end;
-
-    // 2) Obtenemos la cadena visual usando TICUBidi.WriteReordered
-    bidi := TICUBidi.Create;
-    try
-      if not bidi.SetPara(TextLogical, 2) then
-        raise Exception.Create('UBIDI: SetPara falló en ApplyICUVisualReorder_Simple');
-      reordered := bidi.WriteReordered(True); // visual string (mirroring + reorder)
-    finally
-      bidi.Free;
-    end;
-
-    // 3) Preparamos arrays de marca
-    SetLength(usedLogical, nChars);
-    for i := 0 to nChars - 1 do usedLogical[i] := False;
-
-    // Si la longitud visual difiere, trabajamos con la longitud visual y usamos fallback heurístico
-    // nVis es la longitud de la cadena visual (nVis puede ser distinta de nChars)
-    var nVis: Integer := Length(reordered);
-    if nVis <= 0 then
-    begin
-      // nothing useful, fallback: devolver glyphs sin modificar
-      Exit;
-    end;
-    SetLength(usedVisual, nVis);
-    for i := 0 to nVis - 1 do usedVisual[i] := False;
-
-    // 4) Construimos visual->logical:
-    // Para cada posición visual j tomamos el primer logical i no usado con el mismo WideChar.
-    // Heurística: si no hay coincidencia exacta, intentamos asignar por índice similar (fallback).
-    var visualToLogical: TArray<Integer>;
-    SetLength(visualToLogical, nVis);
-    for visPos := 0 to nVis - 1 do
-      visualToLogical[visPos] := -1;
-
-    for visPos := 0 to nVis - 1 do
-    begin
-      chVisual := reordered[visPos + 1]; // Delphi strings are 1-based
-      foundPos := -1;
-      // buscar primera ocurrencia en logical no usada que coincida en caracter
-      for logicalIndex := 0 to nChars - 1 do
-      begin
-        if not usedLogical[logicalIndex] then
-        begin
-          chLogical := TextLogical[logicalIndex + 1];
-          if chLogical = chVisual then
-          begin
-            foundPos := logicalIndex;
-            usedLogical[logicalIndex] := True;
-            Break;
-          end;
-        end;
-      end;
-      if foundPos = -1 then
-      begin
-        // fallback heurístico: tomar primer logical no usado
-        for logicalIndex := 0 to nChars - 1 do
-          if not usedLogical[logicalIndex] then
-          begin
-            foundPos := logicalIndex;
-            usedLogical[logicalIndex] := True;
-            Break;
-          end;
-      end;
-      visualToLogical[visPos] := foundPos;
-      usedVisual[visPos] := True;
-    end;
-
-    // 5) Emitir clusters en orden visual: por cada visPos, si existe cluster que empieza en ese logical index, añadir su glyphs
-    outList := TList<TGlyphPos>.Create;
-    try
-      keyArray := clusters.Keys.ToArray;
-      // marcado para no repetir clusters
-      var emitted := TDictionary<Integer, Boolean>.Create;
-      try
-        for k := 0 to High(keyArray) do
-          emitted.Add(keyArray[k], False);
-
-        for visPos := 0 to nVis - 1 do
-        begin
-          logicalIndex := visualToLogical[visPos];
-          if (logicalIndex >= 0) and clusters.ContainsKey(logicalIndex) and (not emitted[logicalIndex]) then
-          begin
-            listForKey := clusters[logicalIndex];
-            for i := 0 to listForKey.Count - 1 do
-              outList.Add(Glyphs[listForKey[i]]);
-            emitted[logicalIndex] := True;
-          end;
-        end;
-
-        // añadir clusters no emitidos al final (por seguridad)
-        for k := 0 to High(keyArray) do
-        begin
-          if not emitted[keyArray[k]] then
-          begin
-            listForKey := clusters[keyArray[k]];
-            for i := 0 to listForKey.Count - 1 do
-              outList.Add(Glyphs[listForKey[i]]);
-          end;
-        end;
-      finally
-        emitted.Free;
-      end;
-
-      // 6) reemplazar glyph array original por el reordenado
-      SetLength(Glyphs, outList.Count);
-      for i := 0 to outList.Count - 1 do
-        Glyphs[i] := outList[i];
-
-    finally
-      outList.Free;
-    end;
-
-  finally
-    // liberar las listas de clusters
-    var kk: Integer;
-    keyArray := clusters.Keys.ToArray;
-    for kk := 0 to High(keyArray) do
-      clusters[keyArray[kk]].Free;
-    clusters.Free;
-  end;
-end;
 
 function TRpPDFCanvas.PDFCompatibleTextShaping(
   astring: WideString;
@@ -4448,11 +4226,14 @@ begin
   Result := '';
   if astring = '' then Exit;
 
+  astring:=NormalizeNFC(astring);
+
   if not RightToLeft then
   begin
     Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
     Exit;
   end;
+
 
   // Factor de escala: de unitsPerEm → puntos PDF
   //scale := FontSize / adata.FUnitsPerEm;
@@ -4474,7 +4255,7 @@ begin
   begin
     r := Runs[runIndex];
     subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := CalcGlyphhPositions(subText, adata, pdffont);
+    positions := InfoProvider.CalcGlyphhPositions(subText, adata, pdffont);
 
     for i := 0 to High(positions) do
     begin
