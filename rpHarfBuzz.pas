@@ -290,6 +290,8 @@ Type
       hbsYezidi = $59657A69 { Yezi } ,            // 13.0
       // No script set.
       hbsInvalid = THBTag.None);
+
+
    THBScriptHelper = Record Helper For THBScript
    Public
       Class Function FromISO15924(Const ATag: THBTag): THBScript; Static; Inline;

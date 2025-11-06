@@ -69,7 +69,7 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;override;
+  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;override;
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
@@ -1127,7 +1127,8 @@ begin
  CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
 end;
 
-function TRpFTInfoProvider.CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):TGlyphPosArray;
+function TRpFTInfoProvider.CalcGlyphhPositions(astring:WideString;
+adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;
 var
   Font: THBFont;
   Buf: THBBuffer;
@@ -1158,15 +1159,18 @@ begin
   end;
 
 
-
   Font := THBFont.CreateReferenced(shapeData.FreeTypeFace);
   try
     Font.FTFontSetFuncs;
     Buf := THBBuffer.Create;
     try
-      Buf.Direction := hbdRTL;
-      Buf.Script := hbsArabic;
-      Buf.Language := hb_language_from_string('ar', -1);
+      if (direction = TRpBiDiDirection.RP_UBIDI_RTL) then
+        Buf.Direction := hbdRTL
+      else
+       Buf.Direction:= hbdLTR;
+
+      Buf.Script := THBScript.FromString(script);;
+//      Buf.Language := hb_language_from_string('ar', -1);
 
       Buf.AddUTF16(astring);
 

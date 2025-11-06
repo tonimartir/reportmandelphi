@@ -4243,7 +4243,7 @@ begin
   Bidi := TICUBidi.Create;
   try
     if Bidi.SetPara(astring, 2) then
-      Runs := Bidi.GetVisualRuns()
+      Runs := Bidi.GetVisualRuns(astring)
     else
       raise Exception.Create('VisualRuns error');
   finally
@@ -4256,7 +4256,7 @@ begin
   begin
     r := Runs[runIndex];
     subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := InfoProvider.CalcGlyphhPositions(subText, adata, pdffont);
+    positions := InfoProvider.CalcGlyphhPositions(subText, adata, pdffont,TRpBidiDirection(r.Direction),r.ScriptString);
 
     for i := 0 to High(positions) do
     begin

@@ -66,7 +66,43 @@ const
 
 const
   UBIDI_DO_MIRRORING = $0001;
-type
+  UBIDI_MAX_EXPLICIT_LEVEL = 61;
+  UBIDI_DEFAULT_LTR        = $FE;  // level para pedir LTR automático
+  UBIDI_DEFAULT_RTL        = $FF;  // level para pedir RTL automático
+  UBIDI_L       = 0;   // Letter L
+  UBIDI_R       = 1;   // Letter R
+  UBIDI_AL      = 2;   // Arabic Letter
+
+  UBIDI_EN      = 3;   // European Number
+  UBIDI_ES      = 4;   // European Separator
+  UBIDI_ET      = 5;   // European Terminator
+  UBIDI_AN      = 6;   // Arabic Number
+  UBIDI_CS      = 7;   // Common Separator
+
+  UBIDI_B       = 8;   // Paragraph Separator
+  UBIDI_S       = 9;   // Segment Separator
+  UBIDI_WS      = 10;  // Whitespace
+  UBIDI_ON      = 11;  // Other Neutrals
+
+  UBIDI_LRE     = 12;
+  UBIDI_LRO     = 13;
+  UBIDI_RLE     = 14;
+  UBIDI_RLO     = 15;
+  UBIDI_PDF     = 16;
+  UBIDI_NSM     = 17;  // Non-spacing mark
+  UBIDI_BN      = 18;  // Boundary Neutral
+
+  UBIDI_NEUTRAL = UBIDI_ON; //
+
+
+ const
+   USCRIPT_INVALID_CODE = -1;
+  USCRIPT_COMMON       = 0;
+  USCRIPT_INHERITED    = 1;
+  USCRIPT_ARABIC       = 13;
+  USCRIPT_LATIN        = 25;
+ type
+  UScriptCode=Integer;
   UChar = Word; // 16 bi
   PUNormalizer2 = Pointer;
   UErrorCode = Integer;
@@ -84,6 +120,9 @@ type
     Length: Integer;
     Level: UBiDiLevel;
     VisualIndex: Integer;
+    Direction: UBiDiDirection;
+    Script: UScriptCode;
+    ScriptString: AnsiString;
   end;
   EICU = Class(Exception)
   End;
@@ -110,6 +149,9 @@ type
 
   T_ubidi_getLogicalRun = procedure(pBiDi: UBiDi; start: Integer;
                                     var limit: Integer; var level: UBiDiLevel); cdecl;
+  T_ubidi_getLevelAt = function(pBiDi: UBiDi; charIndex: Int32): UBiDiLevel; cdecl;
+  T_uscript_getScript = function(ch: UChar; var status: UErrorCode): UScriptCode; cdecl;
+    T_uscript_getShortName = function(scriptCode: UScriptCode): PAnsiChar; cdecl;
 
 TICUBidi = class
   private
@@ -121,7 +163,7 @@ TICUBidi = class
     // Extended BiDi helpers
     function GetVisualRun(AVisualIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel): Boolean;
     function GetVisualMap(var Map: TArray<Integer>): Boolean;
-    function GetVisualRuns: TList<TBidiRun>;
+    function GetVisualRuns(const AText: UnicodeString): TList<TBidiRun>;
     property Handle: UBidi read FBidi;
   end;
 
@@ -140,7 +182,9 @@ var
   ICUSuffix: string;
     ubidi_countRuns: T_ubidi_countRuns = nil;
   ubidi_getLogicalRun: T_ubidi_getLogicalRun = nil;
-
+  ubidi_getLevelAt: T_ubidi_getLevelAt = nil;
+  uscript_getScript: T_uscript_getScript = nil;
+    uscript_getShortName: T_uscript_getShortName = nil;
 procedure InitICU;
 function NormalizeNFC(const S: string): string;
 
@@ -208,7 +252,7 @@ begin
   Result := True;
 end;
 
-function TICUBidi.GetVisualRuns: TList<TBidiRun>;
+(*function TICUBidi.GetVisualRuns: TList<TBidiRun>;
 var
   runCount, i: Integer;
   vStart, vLength, vLimit: Integer;
@@ -235,18 +279,114 @@ begin
     if (vStart < 0) or (vLength <= 0) then
       Continue;
 
-    vLimit := vStart + vLength; // ahora sí tienes el límite (exclusivo)
+    vLimit := vStart + vLength; // límite exclusivo
 
-    // rellenar el record
+    // rellenar el record básico
     run.LogicalStart := vStart;      // índice lógico del inicio
     run.Length := vLength;           // longitud en unidades lógicas (UTF-16 code units)
     run.VisualIndex := i;            // índice visual (posición del run)
-    // run.Level: si quieres el level real, obténlo con ubidi_getLevelAt(pBiDi, vStart)
-    // run.Level := ubidi_getLevelAt(FBidi, vStart);
+
+
 
     Result.Add(run);
   end;
 end;
+*)
+
+function TICUBidi.GetVisualRuns(const AText: UnicodeString): TList<TBidiRun>;
+var
+  runCount, i: Integer;
+  vStart, vLength, vLimit: Integer;
+  dir: UBiDiDirection;
+  run: TBidiRun;
+  err: Integer;
+  j: Integer;
+  pText: PWideChar;
+  firstScript: Integer;
+  script: Integer;
+  uerr: UErrorCode;
+  level: UBiDiLevel;
+begin
+  Result := TList<TBidiRun>.Create;
+
+  if FBidi = nil then
+    Exit;
+
+  // necesitamos el puntero al texto UTF-16
+  pText := nil;
+  if AText <> '' then
+    pText := PWideChar(AText);
+
+  err := 0;
+  runCount := ubidi_countRuns(FBidi, err);
+  if (err <> 0) or (runCount <= 0) then
+    Exit;
+
+  for i := 0 to runCount - 1 do
+  begin
+    // devuelve start lógico y length (no limit), y la dirección del run (UBIDI_LTR/UBIDI_RTL/UBIDI_MIXED)
+    dir := ubidi_getVisualRun(FBidi, i, vStart, vLength);
+
+    // Seguridad básica
+    if (vStart < 0) or (vLength <= 0) then
+      Continue;
+
+    vLimit := vStart + vLength; // límite exclusivo
+
+    // rellenar el record básico
+    run.LogicalStart := vStart;      // índice lógico del inicio
+    run.Length := vLength;           // longitud en unidades lógicas (UTF-16 code units)
+    run.VisualIndex := i;            // índice visual (posición del run)
+
+    // nivel del primer carácter (útil para afinar direction si es MIXED)
+    level := ubidi_getLevelAt(FBidi, vStart);
+    run.Level := level;
+
+    // determinar dirección: usar lo devuelto por ubidi_getVisualRun,
+    // pero si es UBIDI_MIXED afinamos por el nivel del primer carácter
+    if dir = UBIDI_MIXED then
+    begin
+      if (level and 1) <> 0 then
+        run.Direction := UBIDI_RTL
+      else
+        run.Direction := UBIDI_LTR;
+    end
+    else
+      run.Direction := dir;
+
+    // detectar script del run: buscar el primer script significativo en el rango
+    firstScript := -1;
+    if Assigned(pText) then
+    begin
+      uerr := U_ZERO_ERROR;
+      for j := vStart to vLimit - 1 do
+      begin
+        // uscript_getScript espera UChar (UTF-16 unit)
+        script := uscript_getScript(UChar(pText[j]), uerr);
+        if uerr <> U_ZERO_ERROR then
+        begin
+          // si hay error, reiniciarlo y seguir
+          uerr := U_ZERO_ERROR;
+          Continue;
+        end;
+
+        if firstScript = -1 then
+          firstScript := script
+        else if ((script <> firstScript) and (script<>USCRIPT_COMMON) and (script<>USCRIPT_INHERITED)) then
+        begin
+          // mezcla de scripts dentro del run -> marcar como "common/mixed"
+          firstScript := USCRIPT_COMMON; // si no tienes la constante, definela; si no, deja -1
+          Break;
+        end;
+      end;
+    end;
+    run.Script := firstScript;
+    run.ScriptString := uscript_getShortName(firstScript); // PAnsiChar or nil
+
+    Result.Add(run);
+  end;
+end;
+
 
 procedure InitICU;
 const
@@ -347,7 +487,18 @@ begin
   ubidi_getLogicalRun := GetProcAddr(ProcName);
   if not Assigned(ubidi_getLogicalRun) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
+  ProcName := 'ubidi_getLevelAt' + AnsiString(ICUSuffix);
+  ubidi_getLevelAt := GetProcAddr(ProcName);
+  if not Assigned(ubidi_getLevelAt) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'uscript_getScript' + AnsiString(ICUSuffix);
+  uscript_getScript := GetProcAddr(ProcName);
+  if not Assigned(uscript_getScript) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'uscript_getShortName' + AnsiString(ICUSuffix);
+  uscript_getShortName := GetProcAddr(ProcName);
+  if not Assigned(uscript_getShortName) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 end;
 
 function NormalizeNFC(const S: string): string;
