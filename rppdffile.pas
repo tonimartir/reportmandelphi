@@ -83,7 +83,7 @@ uses Classes,Sysutils,rpinfoprovid,
 // ICU 69 version
 // HarfBuzz 2.9
 {$IFDEF USETEXTSHAPING}
- uHarfBuzz,uICU,Generics.Collections,rpIcu,
+ Generics.Collections,rpIcu,
 {$ENDIF}
  rpmdconsts,rptypes,rpmunits,dateutils;
 
@@ -4226,7 +4226,6 @@ begin
   Result := '';
   if astring = '' then Exit;
 
-  astring:=NormalizeNFC(astring);
 
   if not RightToLeft then
   begin
@@ -4235,6 +4234,8 @@ begin
   end;
 
 
+
+  astring:=NormalizeNFC(astring);
   // Factor de escala: de unitsPerEm → puntos PDF
   //scale := FontSize / adata.FUnitsPerEm;
   scale:=FontSize/14/72;

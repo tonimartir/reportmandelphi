@@ -27,7 +27,7 @@ uses Classes,SysUtils,rptruetype,
     Windows,
 {$ENDIF}
     rpinfoprovid,SyncObjs,
-    rpmdconsts,rpfreetype2,System.Generics.Collections,uHarfbuzz,rpICU;
+    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU;
 
 
 type
@@ -85,7 +85,6 @@ type
    public FreeTypeFace: TFTFace;
   end;
 
-  function NormalizeNFC(const S: string): string;
 
 implementation
 
@@ -1138,6 +1137,7 @@ var
   mem:Pointer;
   shapeData:TShapingData;
 begin
+  InitHarfBuzz;
   SetLength(Result, 0);
   if astring = '' then Exit;
 
@@ -1192,48 +1192,6 @@ begin
   finally
     Font.Destroy;
   end;
-end;
-
-function NormalizeNFC(const S: string): string;
-var
-  status: UErrorCode;
-  normalizer: PUNormalizer2;
-  srcUTF16, destUTF16: TArray<UChar>;
-  srcLen, destLen, i: Integer;
-begin
-  InitICU;
-
-  if not Assigned(unorm2_getNFCInstance) or not Assigned(unorm2_normalize) then
-    raise Exception.Create('ICU functions not initialized');
-
-  Result := '';
-
-  // Copiar el string Delphi (UTF-16) a array de UChar
-  srcLen := Length(S);
-  SetLength(srcUTF16, srcLen);
-  for i := 1 to srcLen do
-    srcUTF16[i - 1] := UChar(S[i]);
-
-  // Obtener normalizador NFC
-  status := U_ZERO_ERROR;
-  normalizer := unorm2_getNFCInstance(status);
-  if status <> U_ZERO_ERROR then
-    raise Exception.CreateFmt('ICU error getting NFC instance: %d', [status]);
-
-  // Preparar buffer de salida (reservar suficiente por si se expande)
-  SetLength(destUTF16, srcLen * 2);
-
-  // Normalizar
-  destLen := unorm2_normalize(normalizer, PWord(@srcUTF16[0]), srcLen,
-                              PWord(@destUTF16[0]), Length(destUTF16), status);
-  if status <> U_ZERO_ERROR then
-    raise Exception.CreateFmt('ICU error normalizing string: %d', [status]);
-
-  // Ajustar tamaño del resultado y convertir a string Delphi
-  SetLength(destUTF16, destLen);
-  SetLength(Result, destLen);
-  for i := 0 to destLen - 1 do
-    Result[i + 1] := WideChar(destUTF16[i]);
 end;
 
 initialization
