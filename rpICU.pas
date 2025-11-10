@@ -101,7 +101,17 @@ const
   USCRIPT_INHERITED    = 1;
   USCRIPT_ARABIC       = 13;
   USCRIPT_LATIN        = 25;
+
+const
+  UBRK_CHARACTER = 0;
+  UBRK_WORD      = 1;
+  UBRK_LINE      = 2;
+  UBRK_SENTENCE  = 3;
+  // UBreakIterator devuelve este valor cuando no hay más límites
+  UBRK_DONE = -1;
  type
+   // Representa un iterador de límites de texto
+  UBreakIterator = Pointer;
   UScriptCode=Integer;
   UChar = Word; // 16 bi
   PUNormalizer2 = Pointer;
@@ -123,6 +133,8 @@ const
     Direction: UBiDiDirection;
     Script: UScriptCode;
     ScriptString: AnsiString;
+    Text: UnicodeString; // copia del texto de este run
+    LineBreaks: TDictionary<Integer,Integer>; // índice inicio -> índice siguiente break
   end;
   EICU = Class(Exception)
   End;
@@ -152,6 +164,20 @@ const
   T_ubidi_getLevelAt = function(pBiDi: UBiDi; charIndex: Int32): UBiDiLevel; cdecl;
   T_uscript_getScript = function(ch: UChar; var status: UErrorCode): UScriptCode; cdecl;
     T_uscript_getShortName = function(scriptCode: UScriptCode): PAnsiChar; cdecl;
+
+    T_ubrk_open = function(type_: Integer; locale: PAnsiChar; text: PWideChar; textLen: Integer; var status: UErrorCode): UBreakIterator; cdecl;
+
+  // Cerrar un BreakIterator
+  T_ubrk_close = procedure(bi: UBreakIterator); cdecl;
+
+  // Reiniciar iterador al inicio
+  T_ubrk_first = function(bi: UBreakIterator): Integer; cdecl;
+
+  // Avanzar al siguiente límite
+  T_ubrk_next = function(bi: UBreakIterator): Integer; cdecl;
+
+  // Cambiar el texto del iterador
+  T_ubrk_setText = procedure(bi: UBreakIterator; text: PWideChar; textLen: Integer; var status: UErrorCode); cdecl;
 
 TICUBidi = class
   private
@@ -185,6 +211,11 @@ var
   ubidi_getLevelAt: T_ubidi_getLevelAt = nil;
   uscript_getScript: T_uscript_getScript = nil;
     uscript_getShortName: T_uscript_getShortName = nil;
+      ubrk_open: T_ubrk_open = nil;
+  ubrk_close: T_ubrk_close = nil;
+  ubrk_first: T_ubrk_first = nil;
+  ubrk_next: T_ubrk_next = nil;
+  ubrk_setText: T_ubrk_setText = nil;
 procedure InitICU;
 function NormalizeNFC(const S: string): string;
 
@@ -292,6 +323,41 @@ begin
   end;
 end;
 *)
+function U_FAILURE(code: UErrorCode): Boolean;
+begin
+  // En ICU, cualquier código >= 0 es éxito
+  Result := code < 0;
+end;
+
+procedure FillLineBreaks(const RunText: UnicodeString; var Run: TBidiRun);
+var
+  bi: UBreakIterator;
+  status: UErrorCode;
+  pos, prevPos: Integer;
+begin
+  Run.LineBreaks := TDictionary<Integer,Integer>.Create;
+  if RunText = '' then
+    Exit;
+
+  status := U_ZERO_ERROR;
+  // Creamos un BreakIterator de tipo línea
+  bi := ubrk_open(UBRK_LINE, 'en', PChar(RunText), Length(RunText), status);
+  if U_FAILURE(status) then
+    Exit;
+
+  try
+    prevPos := ubrk_first(bi);
+    pos := ubrk_next(bi);
+    while pos <> UBRK_DONE do
+    begin
+      Run.LineBreaks.Add(prevPos, pos); // de prevPos hasta pos es un segmento
+      prevPos := pos;
+      pos := ubrk_next(bi);
+    end;
+  finally
+    ubrk_close(bi);
+  end;
+end;
 
 function TICUBidi.GetVisualRuns(const AText: UnicodeString): TList<TBidiRun>;
 var
@@ -375,14 +441,18 @@ begin
         else if ((script <> firstScript) and (script<>USCRIPT_COMMON) and (script<>USCRIPT_INHERITED)) then
         begin
           // mezcla de scripts dentro del run -> marcar como "common/mixed"
-          firstScript := USCRIPT_COMMON; // si no tienes la constante, definela; si no, deja -1
+          firstScript := USCRIPT_COMMON;
           Break;
         end;
       end;
     end;
     run.Script := firstScript;
     run.ScriptString := uscript_getShortName(firstScript); // PAnsiChar or nil
-
+    if Assigned(pText) then
+      run.Text := Copy(AText, vStart + 1, vLength) // Delphi indices empiezan en 1
+    else
+      run.Text := '';
+    FillLineBreaks(run.Text, run);
     Result.Add(run);
   end;
 end;
@@ -498,6 +568,27 @@ begin
   ProcName := 'uscript_getShortName' + AnsiString(ICUSuffix);
   uscript_getShortName := GetProcAddr(ProcName);
   if not Assigned(uscript_getShortName) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName := 'ubrk_open' + AnsiString(ICUSuffix);
+  ubrk_open := GetProcAddr(ProcName);
+  if not Assigned(ubrk_open) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'ubrk_close' + AnsiString(ICUSuffix);
+  ubrk_close := GetProcAddr(ProcName);
+  if not Assigned(ubrk_close) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'ubrk_first' + AnsiString(ICUSuffix);
+  ubrk_first := GetProcAddr(ProcName);
+  if not Assigned(ubrk_first) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'ubrk_next' + AnsiString(ICUSuffix);
+  ubrk_next := GetProcAddr(ProcName);
+  if not Assigned(ubrk_next) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'ubrk_setText' + AnsiString(ICUSuffix);
+  ubrk_setText := GetProcAddr(ProcName);
+  if not Assigned(ubrk_setText) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 end;
 
