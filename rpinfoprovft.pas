@@ -86,10 +86,8 @@ type
   destructor destroy;override;
  end;
 
-type
-  TShapingData=class
-   public FreeTypeFace: TFTFace;
-  end;
+
+
 
 
 implementation
@@ -119,9 +117,9 @@ begin
 end;
 
 
-function TRpFTInfoProvider.TextExtent(const Text:WideString;
-     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;
+function TRpFTInfoProvider.TextExtent(const Text: WideString;
+  var Rect: TRect; adata: TRpTTFontData; pdfFont: TRpPDFFont;
+  wordbreak: boolean; singleline: boolean; FontSize: double): TRpLineInfoArray;
 var
   Bidi: TICUBidi;
   Runs: TList<TBidiRun>;
@@ -130,19 +128,92 @@ var
   i, runIndex: Integer;
   scale: Double;
   positions: TGlyphPosArray;
-  posX,posY:double;
+  posX, posY: Double;
   gidHex: string;
   glyphIndex: Integer;
   absX, absY: Double;
   subText: string;
   cursorAdvance: Double;
+
+  // line building
+  lines: TRpLineInfoArray;
+  curLine: TRpLineInfo;
+  curLineGlyphs: TGlyphPosArray;
+  curLineStartLogicalIndex: Integer;
+  curLineChars: Integer;
+  curLineWidth: Double;
+  curLineHeight: Double;
+  totalHeight: Double;
+  maxLineWidth: Double;
+  origWidth: Integer;
+  emptyStep: TRpFontStep;
+  possibleBreakNext: Integer;
+  canBreakHere: Boolean;
+  // helper to push current line to lines array
+  procedure FlushCurrentLine(isLast: Boolean);
+  var
+    idx: Integer;
+  begin
+    if curLineChars = 0 then
+      Exit; // nothing to push
+    idx := Length(lines);
+    SetLength(lines, idx + 1);
+    curLine.Glyphs := Copy(curLineGlyphs, 0, Length(curLineGlyphs));
+    curLine.Position := curLineStartLogicalIndex;
+    curLine.Size := curLineChars;
+    curLine.Width := Round(curLineWidth); // store integer width
+    curLine.height := Round(curLineHeight);
+    curLine.TopPos := Round(posY);
+    curLine.lastline := isLast;
+    curLine.LineHeight := curLineHeight;
+    curLine.step := emptyStep;
+    lines[idx] := curLine;
+
+    // update totals
+    totalHeight:=totalHeight + Round(curLineHeight);
+    if curLineWidth > maxLineWidth then
+      maxLineWidth := curLineWidth;
+
+    // prepare for next line
+    posY := posY + curLineHeight;
+    cursorAdvance := 0;
+    curLineChars := 0;
+    curLineWidth := 0;
+    SetLength(curLineGlyphs, 0);
+  end;
+
 begin
-  posX:=0;
-  posY:=0;
-  scale:=FontSize/14/72;
-  Runs := nil;
-  astring:=Text;
+  CheckFreeTypeLoaded;
+  InitICU;
+  InitHarfBuzz;
+
+  SetLength(Result, 0);
+  SetLength(lines, 0);
+  posX := 0;
+  posY := 0;
+  cursorAdvance := 0;
+  maxLineWidth := 0;
+  totalHeight := 0;
+  curLineChars := 0;
+  curLineStartLogicalIndex := 0;
+  curLineWidth := 0;
+
+  // salvar original width
+  origWidth := Rect.Right - Rect.Left;
+
+  // initialize empty step
+  FillChar(emptyStep, SizeOf(emptyStep), 0);
+
+  // básico: line height estimado (puedes cambiar la fórmula si tienes métricas)
+  // He tomado un multiplicador típico de 1.2 * FontSize. Ajusta si tienes métricas reales.
+  curLineHeight := FontSize * 1.2;
+
+  scale := FontSize / 14 / 72; // mantengo tu factor original
+
+  // get visual runs (tal como ya hacías)
+  astring := Text;
   Bidi := TICUBidi.Create;
+  Runs := nil;
   try
     if Bidi.SetPara(astring, 2) then
       Runs := Bidi.GetVisualRuns(astring)
@@ -151,32 +222,120 @@ begin
   finally
     Bidi.Free;
   end;
+
+  // recorrer runs -> glyphs
   for runIndex := 0 to Runs.Count - 1 do
   begin
     r := Runs[runIndex];
     subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := CalcGlyphhPositions(subText, adata, pdffont,TRpBidiDirection(r.Direction),r.ScriptString);
+    positions := CalcGlyphhPositions(subText, adata, pdfFont, TRpBidiDirection(r.Direction), r.ScriptString);
+
+    // iniciar línea si está vacía
+    if curLineChars = 0 then
+      curLineStartLogicalIndex := r.LogicalStart; // aproximado al inicio del run
 
     for i := 0 to High(positions) do
     begin
-      glyphIndex := positions[i].GlyphIndex;
-      gidHex := IntToHex4(glyphIndex);
+      // posibilidad de break explícito provisto por getvisualruns
+      possibleBreakNext := -1;
+      canBreakHere := False;
+      try
+        if Assigned(r.LineBreaks) and r.LineBreaks.TryGetValue(i, possibleBreakNext) then
+          canBreakHere := True
+        else if wordbreak and (i < Length(subText)) and (subText[i + 1] = ' ') then
+          // si wordbreak y el carácter actual es espacio, permitimos romper después
+          canBreakHere := True;
+      except
+        canBreakHere := False;
+      end;
 
+      // calcular advance y offsets escalados
+      // guardamos la posición del glyph relativa al inicio de la línea.
+      var gl: TGlyphPos;
+      gl := positions[i];
 
-      // Posición absoluta en PDF (posX/posY + cursor + offset)
-      absX := posX + cursorAdvance + positions[i].XOffset * scale;
-      absY := posY + positions[i].YOffset * scale;
+      // scaled advance / offsets
+      var advX := positions[i].XAdvance * scale;
+      var offX := positions[i].XOffset * scale;
+      var offY := positions[i].YOffset * scale;
 
-      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ',
-        [Round(absX), Round(absY), gidHex]);
+      // si no singleline, comprobar si cabe en el ancho actual del rect
+      if (not singleline) and (Round(cursorAdvance + advX) > origWidth) then
+      begin
+        // intentar romper en un punto anterior permitido si existe (simple heuristic)
+        if canBreakHere then
+        begin
+          // flush current line and start new
+          FlushCurrentLine(False);
+          // después de break, cur line empty; cursorAdvance already reset in Flush
+        end
+        else
+        begin
+          // no break permitido en este punto: forzamos salto de línea antes del glyph actual
+          FlushCurrentLine(False);
+        end;
+      end;
 
-      // Avanzar cursor por advanceX escalado
-      cursorAdvance := cursorAdvance + positions[i].XAdvance * scale;
-    end;
-  end
+      // añadir glyph a la línea actual (con coordenadas relativas)
+      // guardamos offsets y advances escalados transformando a enteros como estaban en tu estructura
+      // mantengo los campos en unidades escaladas * 1 (double->integer) redondeando
+      SetLength(curLineGlyphs, Length(curLineGlyphs) + 1);
+      var idxG := High(curLineGlyphs);
+      curLineGlyphs[idxG].GlyphIndex := positions[i].GlyphIndex;
+      curLineGlyphs[idxG].XOffset := Round(offX);
+      curLineGlyphs[idxG].YOffset := Round(offY);
+      curLineGlyphs[idxG].XAdvance := Round(positions[i].XAdvance * scale);
+      curLineGlyphs[idxG].YAdvance := Round(positions[i].YAdvance * scale);
+      // Cluster/CharCode: intentamos mapear cluster a carácter relativo en el subText
+      curLineGlyphs[idxG].Cluster := positions[i].Cluster;
+      if (i < Length(subText)) then
+        curLineGlyphs[idxG].CharCode := subText[i + 1]
+      else
+        curLineGlyphs[idxG].CharCode := WideChar(0);
 
+      // actualizar contadores de línea
+      curLineChars := curLineChars + 1;
+      curLineWidth := cursorAdvance + curLineGlyphs[idxG].XAdvance;
+      cursorAdvance := cursorAdvance + curLineGlyphs[idxG].XAdvance;
+
+      // Si la posición actual es un posible break *y* cabe en la línea, podemos opcionalmente romper
+      if (not singleline) and canBreakHere and (Round(cursorAdvance) <= origWidth) then
+      begin
+        // romper opcionalmente si la siguiente palabra no cabrá? lo hacemos conservador: si el siguiente glyph no cabe
+        if (i < High(positions)) then
+        begin
+          var nextAdv := positions[i + 1].XAdvance * scale;
+          if Round(cursorAdvance + nextAdv) > origWidth then
+          begin
+            // romper aquí
+            FlushCurrentLine(False);
+          end;
+        end;
+      end;
+    end; // for glyphs
+
+    // Fin del run: continuar con siguiente run (no forzamos break entre runs)
+  end; // for runs
+
+  // flush última línea (si quedó algo)
+  FlushCurrentLine(True);
+
+  // construir el resultado
+  Result := lines;
+
+  // actualizar Rect: ancho = máximo ancho usado, alto = suma alturas
+  // ten en cuenta que Rect.Left/Top se mantienen
+  if maxLineWidth < 0 then
+    maxLineWidth := 0;
+  if totalHeight < Round(curLineHeight) then
+    totalHeight := Round(curLineHeight); // al menos una línea
+
+  Rect.Right := Rect.Left + Round(maxLineWidth);
+  Rect.Bottom := Rect.Top + Round(totalHeight);
+
+  // Si singleline = true y no hubo saltos, nos aseguramos de devolver ancho original si querías
+  // conservar origWidth aparte, lo guardas tú donde estimes conveniente.
 end;
-
 // add self directory and subdirectories to the lis
 procedure Parsedir(alist:TStringList;adir:string);
 var

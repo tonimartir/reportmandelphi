@@ -34,7 +34,8 @@ const
  //C_FREETYPE='freetype';
 {$ENDIF}
 {$IFDEF MSWINDOWS}
- C_FREETYPE='freetype6.dll';
+// C_FREETYPE='freetype6.dll';
+ C_FREETYPE='freetype.dll';
 {$ENDIF}
  FT_LOAD_DEFAULT=$0;
  FT_LOAD_NO_SCALE=$1;
@@ -351,6 +352,9 @@ type
   TFT_Get_Next_Char=function (aface:FT_Face;char_code:FT_ULong;
                          var agindex:FT_UInt):FT_ULong;cdecl;
   TFT_Get_Sfnt_Table=function (aface: FT_Face; tag: FT_Sfnt_Tag): Pointer; cdecl;
+
+
+
 
 procedure CheckFreeTypeLoaded;
 procedure LoadFreeType;

@@ -295,7 +295,7 @@ Type
    THBScriptHelper = Record Helper For THBScript
    Public
       Class Function FromISO15924(Const ATag: THBTag): THBScript; Static; Inline;
-      Class Function FromString(Const AStr: AnsiString): THBScript; Static; Inline;
+      Class Function FromString(Const AStr: AnsiString): THBScript; Static;
       Function ToISO15924: THBTag; Inline;
       Function GetHorizontalDirection: THBDirection; Inline;
    End;
@@ -343,7 +343,7 @@ Type
   Strict Private
     Procedure SetDirection(Const ADirection: THBDirection); Inline;
     Function GetDirection: THBDirection; Inline;
-    Procedure SetScript(Const AScript: THBScript); Inline;
+    Procedure SetScript(Const AScript: THBScript);
     Function GetScript: THBScript; Inline;
     Procedure SetLanguage(Const ALanguage: THBLanguage); Inline;
     Function GetLanguage: THBLanguage; Inline;
@@ -406,6 +406,12 @@ Type
      T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
   T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
     T_hb_font_destroy = procedure(font: THBFont); cdecl;
+
+  TShapingData=class
+   public FreeTypeFace: TFTFace;
+   public Font: THBFont;
+  end;
+
 
 var
   HarfBuzzlib: THandle;
@@ -617,7 +623,7 @@ var
   function GetProcAddr(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
-    Result := GetProcAddress(HarfBuzzlib, PAnsiChar(ProcName));
+    Result := GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}

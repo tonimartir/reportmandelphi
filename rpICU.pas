@@ -113,7 +113,7 @@ const
    // Representa un iterador de límites de texto
   UBreakIterator = Pointer;
   UScriptCode=Integer;
-  UChar = Word; // 16 bi
+  UChar = Int32; // 32 bi
   PUNormalizer2 = Pointer;
   UErrorCode = Integer;
   UBiDi = Pointer;
@@ -372,6 +372,7 @@ var
   script: Integer;
   uerr: UErrorCode;
   level: UBiDiLevel;
+  charCode:UChar;
 begin
   Result := TList<TBidiRun>.Create;
 
@@ -428,7 +429,8 @@ begin
       for j := vStart to vLimit - 1 do
       begin
         // uscript_getScript espera UChar (UTF-16 unit)
-        script := uscript_getScript(UChar(pText[j]), uerr);
+        charCode:=UChar(Ord(pText[j]));
+        script := uscript_getScript(charCode, uerr);
         if uerr <> U_ZERO_ERROR then
         begin
           // si hay error, reiniciarlo y seguir

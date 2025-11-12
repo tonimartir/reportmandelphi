@@ -159,8 +159,6 @@ type
    function UnitsToTextText(Value:integer;FontSize:integer):string;
    function UnitsToYPosFont(Value: integer;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
-   procedure TextOutSimple(X, Y: Integer; const Text: Widestring;LineWidth,
-    Rotation:integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
     Rotation:integer;RightToLeft:Boolean);
    procedure TextRect(ARect: TRect; Text: Widestring;
@@ -177,17 +175,7 @@ type
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
    {$IFDEF USETEXTSHAPING}
-  function PDFCompatibleTextShaping(
-  astring: WideString;
-  adata: TRpTTFontData;
-  pdffont: TRpPDFFont;
-  RightToLeft: Boolean;
-  posX, posY: Double;
-  FontSize: Integer;
-  Rect: TRect;
-  wordbreak: boolean;
-  singleline:boolean
-    ): String;
+   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
    {$ENDIF}
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
@@ -1954,7 +1942,8 @@ begin
    wordbreak:=false;
   // Calculates text extent and apply alignment
   recsize:=ARect;
-  TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
+  LineInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
+  FLineInfoCount:=Length(LineInfo);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -2127,24 +2116,10 @@ begin
 end;
 
 
+
+
 procedure TRpPDFCanvas.TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
  Rotation:integer;RightToLeft:Boolean);
-begin
- if (not RightToLeft) then
- begin
-  TextOutSimple(X,Y,Text,LineWidth,Rotation);
-  exit;
- end;
-
- // For each glyph ask width to include in embedded font
-
- // InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
-
-end;
-
-
-procedure TRpPDFCanvas.TextOutSimple(X, Y: Integer; const Text: Widestring;LineWidth,
- Rotation:integer);
 var
  rotrad,fsize:double;
  rotstring:string;
@@ -2154,6 +2129,7 @@ var
  havekerning:boolean;
  leading:integer;
  linespacing:integer;
+ stringResult:string;
 begin
  /// Add Font leading
  adata:=GetTTFontData;
@@ -2200,13 +2176,6 @@ begin
   else
    SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
   astring:=Text;
-{$IFDEF USETEXTSHAPING}
-{$ELSE}  
-  if RightToLeft then
-  begin
-   astring:=DoReverseStringW(astring);
-  end;
-{$ENDIF}
 
   havekerning:=false;
   if assigned(adata) then
@@ -2214,12 +2183,20 @@ begin
    if adata.havekerning then
     havekerning:=true;
   end;
- if havekerning then
- begin
-  SWriteLine(FFile.FsTempStream,PDFCompatibleTextWidthKerning(astring,adata,Font)+' TJ');
- end
- else
-  SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
+  if (RightToLeft) then
+  begin
+   stringResult:=PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, UnitsToXPos(X),UnitsToYPosFont(Y,Font.Size),Font.Size);
+   SWriteLine(FFile.FsTempStream,stringResult);
+  end
+  else
+  begin
+   if havekerning then
+   begin
+    SWriteLine(FFile.FsTempStream,PDFCompatibleTextWidthKerning(astring,adata,Font)+' TJ');
+   end
+   else
+    SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
+  end;
   SWriteLine(FFile.FsTempStream,'ET');
  finally
   if (Rotation<>0) then
@@ -2662,12 +2639,14 @@ function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
 begin
  if (rightToLeft) then
  begin
-  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline);
+  LineInfo:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
+  FLineInfoCount:=Length(LineInfo);
  end
  else
  begin
-  Result:=TextExtentSimple(Text,Rect,wordbreak,singleline);
- end
+  LineInfo:=TextExtentSimple(Text,Rect,wordbreak,singleline);
+ end;
+ Result:=LineInfo;
 end;
 
 
@@ -4049,23 +4028,27 @@ begin
    SWriteLine(FTempStream,'/FontFamily('+adata.familyname+')');
    SWriteLine(FTempStream,'/CIDSystemInfo<</Ordering(Identity)/Registry(Adobe)/Supplement 0>>');
    SWriteLine(FTempStream,'/DW 1000');
-   SWriteLine(FTempStream,'/W [');
-   awidths:='';
-   index:=adata.firstloaded;
-   acount:=0;
+   if (adata.firstloaded <>65536) then
+   begin
+    SWriteLine(FTempStream,'/W [');
+    awidths:='';
+    index:=adata.firstloaded;
+    acount:=0;
+
    repeat
     if adata.loaded[index] then
-    begin
-     awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.0',adata.loadedwidths[index], NumberFormatSettings)+'] ';
-//     awidths:=awidths+IntToStr(index)+'['+IntToStr(adata.loadedwidths[index])+'] ';
-     acount:=acount+1;
-     if (acount mod 8)=7 then
-      awidths:=awidths+LINE_FEED;
-    end;
-    inc(index);
-   until index>adata.lastloaded;
-   SWriteLine(FTempStream,awidths);
-   SWriteLine(FTempStream,']');
+     begin
+      awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.0',adata.loadedwidths[index], NumberFormatSettings)+'] ';
+ //     awidths:=awidths+IntToStr(index)+'['+IntToStr(adata.loadedwidths[index])+'] ';
+      acount:=acount+1;
+      if (acount mod 8)=7 then
+       awidths:=awidths+LINE_FEED;
+     end;
+     inc(index);
+    until ((index>adata.lastloaded) or (index>60000));
+    SWriteLine(FTempStream,awidths);
+    SWriteLine(FTempStream,']');
+   end;
 (*
    // To unicode cmap
    SWriteLine(FTempStream,'/ToUnicode [');
@@ -4230,68 +4213,59 @@ end;
 
 
 
-function TRpPDFCanvas.PDFCompatibleTextShaping(
-  astring: WideString;
-  adata: TRpTTFontData;
-  pdffont: TRpPDFFont;
-  RightToLeft: Boolean;
-  posX, posY: Double;
-  FontSize: Integer;
-  Rect: TRect;
-  wordbreak: boolean;
-  singleline:boolean
-): String;
+function TRpPDFCanvas.PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;
+ pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
 var
- scale: double;
- cursorAdvance:double;
+  LineInfo: TRpLineInfoArray;
+  lineIndex, glyphIndexInt, i: Integer;
+  line: TRpLineInfo;
+  g: TGlyphPos;
+  gidHex: string;
+  cursor: Double;
+  absX, absY: Double;
+  rect:TRect;
+  lineI: TRpLineInfoArray;
 begin
+  astring := InfoProvider.NFCNormalize(astring);
+  rect:=Rect.Create(0,0,999999,999999);
 
-  Result := '';
-  if astring = '' then Exit;
+  // obtener líneas (TextExtent ya actualiza Rect con ancho/alto reales)
+  lineI := InfoProvider.TextExtent(astring, Rect, GetTTFontData, Font, false, true, Font.Size);
 
-
-  if not RightToLeft then
+  // Dibujar línea a línea
+  for lineIndex := 0 to High(lineI) do
   begin
-    Result := PDFCompatibleTextWidthKerning(astring, adata, pdffont);
-    Exit;
-  end;
+    line := lineI[lineIndex];
+    // cursor relativo al inicio de la línea
+    cursor := 0.0;
 
-
-
-  astring:=InfoProvider.NFCNormalize(astring);
-  // Factor de escala: de unitsPerEm → puntos PDF
-  //scale := FontSize / adata.FUnitsPerEm;
-
-
-
-  cursorAdvance := 0;
-  LineInfo := InfoProvider.TextExtent(astring,rect,GetTTFontData,Font, wordbreak,singleline,FontSize);
-
-  // Draw lines
-(*
-  for runIndex := 0 to Runs.Count - 1 do
-  begin
-    r := Runs[runIndex];
-    subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := InfoProvider.CalcGlyphhPositions(subText, adata, pdffont,TRpBidiDirection(r.Direction),r.ScriptString);
-
-    for i := 0 to High(positions) do
+    // posY es la coordenada Y de partida pasada por el caller.
+    // line.TopPos es la posición vertical acumulada para esta línea (según TextExtent).
+    for i := 0 to High(line.Glyphs) do
     begin
-      glyphIndex := positions[i].GlyphIndex;
-      gidHex := IntToHex4(glyphIndex);
-      InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
+      g := line.Glyphs[i];
+      glyphIndexInt := g.GlyphIndex;
+      gidHex := IntToHex4(glyphIndexInt);
 
-      // Posición absoluta en PDF (posX/posY + cursor + offset)
-      absX := posX + cursorAdvance + positions[i].XOffset * scale;
-      absY := posY + positions[i].YOffset * scale;
+      // Llamada auxiliar por compatibilidad (mismo que el código anterior)
+      InfoProvider.GetGlyphWidth(pdffont, adata, glyphIndexInt, g.CharCode);
+      InfoProvider.GetCharWidth(pdfFont,adata,g.CharCode);
+
+      // absX/absY en coordenadas PDF:
+      // posX: coordenada X de inicio pasada por el caller
+      // posY + line.TopPos: coordenada Y de la línea (TextExtent calculó TopPos)
+      // g.XOffset/g.YOffset ya están escalados en TextExtent (enteros)
+      absX := posX + cursor + g.XOffset;
+      absY := posY + line.TopPos + g.YOffset;
 
       Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ',
         [Round(absX), Round(absY), gidHex]);
 
-      // Avanzar cursor por advanceX escalado
-      cursorAdvance := cursorAdvance + positions[i].XAdvance * scale;
+      // avanzar cursor por el advance (g.XAdvance ya escalado en TextExtent)
+      cursor := cursor + g.XAdvance;
     end;
-  end;*)
+    // siguiente línea: cursor reiniciado dentro del bucle
+  end;
 end;
 {$ENDIF}
 

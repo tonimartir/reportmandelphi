@@ -272,6 +272,9 @@ procedure OrientationSelection(neworientation: TRpOrientation);
 procedure ExFilterImage(memstream: TMemoryStream);
 {$ENDIF}
 
+
+
+
 implementation
 
 {$R *.dfm}
