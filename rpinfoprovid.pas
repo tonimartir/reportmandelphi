@@ -62,16 +62,6 @@ type
    Width: double;
  end;
 
-  TGlyphPos = record
-   GlyphIndex: integer;
-   XOffset: integer;
-   YOffset: integer;
-   XAdvance: integer;
-   YAdvance: integer;
-   CharCode: WideChar;
-   Cluster: Cardinal;
-  end;
- TGlyphPosArray = array of TGlyphPos;
 
 
  TRpTTFontData=class(TObject)
@@ -127,9 +117,17 @@ type
     RP_UBIDI_RTL = 1,
     RP_UBIDI_MIXED = 2
   );
+  TRpTextMeasurement=record
+    public LineInfo:array of TRpLineInfo;
+    public TotalHeight: double;
+    public TotalWidth: double;
+  end;
+
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;virtual;abstract;
+  function TextExtent(const Text:WideString;var Rect:TRect;
+     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;virtual;abstract;
+  function NFCNormalize(astring:WideString):string;virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;virtual;abstract;

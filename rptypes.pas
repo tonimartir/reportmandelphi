@@ -106,6 +106,17 @@ type
  TPDFAFRelationShip = ( PDF_AF_Unspecified = 0, PDF_AF_Alternative = 1, PDF_AF_Data = 2,
     PDF_AF_Source = 3, PDF_AF_Supplement = 4);
 
+
+ TGlyphPos = record
+   GlyphIndex: integer;
+   XOffset: integer;
+   YOffset: integer;
+   XAdvance: integer;
+   YAdvance: integer;
+   CharCode: WideChar;
+   Cluster: Cardinal;
+ end;
+ TGlyphPosArray = array of TGlyphPos;
  TRpLineInfo=record
   Position:integer;
   Size:integer;
@@ -114,7 +125,11 @@ type
   TopPos:integer;
   step:TRpFontStep;
   lastline:Boolean;
+  LineHeight: double;
+  Glyphs:TGlyphPosArray;
  end;
+ TRpLineInfoArray = array of TRpLineInfo;
+
 
  TRpNewLanguage=function (alanguage:integer):integer of object;
  TRpOnGetSQLValue=function (connectionname,sql:String):Variant of object;

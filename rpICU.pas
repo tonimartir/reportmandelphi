@@ -470,7 +470,7 @@ var
   function GetProcAddr(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
-    Result := GetProcAddress(ICUlib, PAnsiChar(ProcName));
+    Result := GetProcAddress(ICUlib, PWideChar(ProcName));
     if not Assigned(Result) then RaiseLastOSError;
 {$ENDIF}
 {$IFDEF LINUX}
@@ -499,7 +499,12 @@ begin
 {$ELSE}
     libName := Format('libicuuc.so.%d', [version]);
 {$ENDIF}
-    ICUlib := {$IFDEF MSWINDOWS}LoadLibrary(PChar(libName)){$ELSE}SysUtils.SafeLoadLibrary(libName){$ENDIF};
+
+    {$IFDEF MSWINDOWS}
+    ICUlib :=LoadLibrary(PWideChar(libName));
+    {$ELSE}
+    ICUlib :=SysUtils.SafeLoadLibrary(libName)
+    {$ENDIF};
     if ICUlib <> 0 then
     begin
       ICUSuffix := '_' + IntToStr(version);
@@ -510,12 +515,6 @@ begin
   if ICUlib = 0 then
     raise Exception.Create('No ICU library found from version 60 to 80');
 
-  // Cargar funciones dinámicamente con sufijo detectado
-  ProcName := 'unorm2_getNFCInstance' + ICUSuffix;
-  unorm2_getNFCInstance := TUnorm2_getNFCInstance(GetProcAddr(ProcName));
-
-  ProcName := 'unorm2_normalize' + PAnsiChar(AnsiString(ICUSuffix));
-  unorm2_normalize := TUnorm2_normalize(GetProcAddr(ProcName));
 
     // ==== Cargar ICU Bidi ====
   ProcName := 'ubidi_open' + AnsiString(ICUSuffix);
@@ -527,6 +526,14 @@ begin
   ubidi_close := GetProcAddr(ProcName);
   if not Assigned(ubidi_close) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+
+  // Cargar funciones dinámicamente con sufijo detectado
+  ProcName := 'unorm2_getNFCInstance' + ICUSuffix;
+  unorm2_getNFCInstance := TUnorm2_getNFCInstance(GetProcAddr(ProcName));
+
+  ProcName := 'unorm2_normalize' + PAnsiChar(AnsiString(ICUSuffix));
+  unorm2_normalize := TUnorm2_normalize(GetProcAddr(ProcName));
 
   ProcName := 'ubidi_setPara' + AnsiString(ICUSuffix);
   ubidi_setPara := GetProcAddr(ProcName);

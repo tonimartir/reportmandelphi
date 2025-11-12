@@ -235,6 +235,7 @@ var
  singleline:boolean;
  rect:TRect;
  maxextent:TPoint;
+ rightToLeft:boolean;
 begin
  if atext.FontRotation<>0 then
   exit;
@@ -244,6 +245,7 @@ begin
  end;
  // single line
  singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
+ rightToLeft:=atext.RightToLeft;
  FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
  FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
  FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
@@ -261,7 +263,7 @@ begin
  Rect.Top:=0;
  Rect.Bottom:=0;
  Rect.Right:=extent.X;
- FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline);
+ FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft);
  extent.X:=Rect.Right;
  extent.Y:=Rect.Bottom;
  if (atext.CutText) then

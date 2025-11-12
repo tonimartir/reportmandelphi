@@ -42,6 +42,7 @@ type
   //gdilib:THandle;
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
+  function NFCNormalize(astring:WideString):string;override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
@@ -59,6 +60,49 @@ implementation
 const
  TTF_PRECISION=1000;
 
+
+
+
+// typedef enum _NORM_FORM {
+//  NormalizationOther = 0,
+//  NormalizationC     = 1,  // Canonical Composition (NFC)
+//  NormalizationD     = 2,  // Canonical Decomposition (NFD)
+//  NormalizationKC    = 5,  // Compatibility Composition (NFKC)
+//  NormalizationKD    = 6   // Compatibility Decomposition (NFKD)
+//} NORM_FORM;
+
+function NormalizeString(
+  NormForm: DWORD;
+  lpSrcString: LPCWSTR;
+  cwSrcLength: Integer;
+  lpDstString: LPWSTR;
+  cwDstLength: Integer
+): Integer; stdcall; external 'kernel32.dll';
+
+function NormalizeToNFC(const S: UnicodeString): UnicodeString;
+const
+  NormalizationC = 1; // Canonical Composition (NFC)
+var
+  Len: Integer;
+begin
+  if S = '' then
+    Exit('');
+
+  // Primera llamada para obtener longitud necesaria
+  Len := NormalizeString(1, PWideChar(S), Length(S), nil, 0);
+  if Len = 0 then
+    RaiseLastOSError;
+
+  SetLength(Result, Len);
+  // Segunda llamada para normalizar
+  Len := NormalizeString(1, PWideChar(S), Length(S), PWideChar(Result), Len);
+  if Len = 0 then
+    RaiseLastOSError;
+
+  // Quitar posible terminador nulo extra
+  if (Len > 0) and (Result[Len] = #0) then
+    SetLength(Result, Len - 1);
+end;
 
 constructor TRpGDIInfoProvider.Create;
 var
@@ -80,6 +124,11 @@ begin
 // bitmap.Height:=10;
  adc:=GetDc(0);
 // adc:=bitmap.Canvas.Handle;
+end;
+
+function TRpGDIInfoProvider.NFCNormalize(astring:WideString):string;
+begin
+ Result:=NormalizeToNFC(astring);
 end;
 
 destructor TRpGDIInfoProvider.destroy;

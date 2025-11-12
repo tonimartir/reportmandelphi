@@ -1345,7 +1345,8 @@ begin
     npdfdriver.PDFFile.Canvas.Font.Italic := fsItalic in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
 
-    npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline);
+    npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
+     RightToLeft);
     // Align bottom or center
     posy := ARect.Top;
     if (Alignment AND AlignmentFlags_AlignBottom) > 0 then
@@ -1408,7 +1409,7 @@ begin
             begin
               arec := ARect;
               npdfdriver.PDFFile.Canvas.TextExtent(lwords.Strings[index], arec,
-                false, true);
+                false, true, RightToLeft);
               if RightToLeft then
                 lwidths.Add(IntToStr(-(arec.Right - arec.Left)))
               else

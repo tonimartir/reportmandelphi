@@ -19,7 +19,7 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,SysUtils,rptruetype,
+uses Classes,SysUtils,rptruetype,rptypes,
 {$IFDEF USEVARIANTS}
     Types,
 {$ENDIF}
@@ -69,13 +69,19 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;override;
-  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
+  function NFCNormalize(astring:WideString):string;override;
+
+  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;
+  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
+  function TextExtent(const Text:WideString;var Rect:TRect;
+     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;override;
+
+
   constructor Create;
   destructor destroy;override;
  end;
@@ -106,6 +112,35 @@ var
 const
  TTF_PRECISION=1000;
 
+function TRpFTInfoProvider.NFCNormalize(astring:WideString):string;
+begin
+ InitIcu;
+ Result:=NormalizeNFC(astring);
+end;
+
+
+function TRpFTInfoProvider.TextExtent(const Text:WideString;var Rect:TRect;
+     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
+var
+  Bidi: TICUBidi;
+  Runs: TList<TBidiRun>;
+  r: TBidiRun;
+  astring: string;
+begin
+  Runs := nil;
+  astring:=Text;
+  Bidi := TICUBidi.Create;
+  try
+    if Bidi.SetPara(astring, 2) then
+      Runs := Bidi.GetVisualRuns(astring)
+    else
+      raise Exception.Create('VisualRuns error');
+  finally
+    Bidi.Free;
+  end;
+
+
+end;
 
 // add self directory and subdirectories to the lis
 procedure Parsedir(alist:TStringList;adir:string);
@@ -1138,6 +1173,7 @@ var
   mem:Pointer;
   shapeData:TShapingData;
 begin
+
   InitHarfBuzz;
   SetLength(Result, 0);
   if astring = '' then Exit;
