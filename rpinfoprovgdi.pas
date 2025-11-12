@@ -224,7 +224,7 @@ begin
 
   // salvar original width
   origWidth := Rect.Right - Rect.Left;
-  origWidth:=origWidth*72/1440;
+  origWidth:=origWidth/20;
 
   // initialize empty step
   FillChar(emptyStep, SizeOf(emptyStep), 0);
