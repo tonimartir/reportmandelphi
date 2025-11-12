@@ -78,9 +78,9 @@ type
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
-  function TextExtent(const Text:WideString;var Rect:TRect;
-     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;override;
-
+  function TextExtent(const Text:WideString;
+     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
+     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
 
   constructor Create;
   destructor destroy;override;
@@ -119,14 +119,27 @@ begin
 end;
 
 
-function TRpFTInfoProvider.TextExtent(const Text:WideString;var Rect:TRect;
-     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
+function TRpFTInfoProvider.TextExtent(const Text:WideString;
+     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
+     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;
 var
   Bidi: TICUBidi;
   Runs: TList<TBidiRun>;
   r: TBidiRun;
   astring: string;
+  i, runIndex: Integer;
+  scale: Double;
+  positions: TGlyphPosArray;
+  posX,posY:double;
+  gidHex: string;
+  glyphIndex: Integer;
+  absX, absY: Double;
+  subText: string;
+  cursorAdvance: Double;
 begin
+  posX:=0;
+  posY:=0;
+  scale:=FontSize/14/72;
   Runs := nil;
   astring:=Text;
   Bidi := TICUBidi.Create;
@@ -138,7 +151,29 @@ begin
   finally
     Bidi.Free;
   end;
+  for runIndex := 0 to Runs.Count - 1 do
+  begin
+    r := Runs[runIndex];
+    subText := Copy(astring, r.LogicalStart + 1, r.Length);
+    positions := CalcGlyphhPositions(subText, adata, pdffont,TRpBidiDirection(r.Direction),r.ScriptString);
 
+    for i := 0 to High(positions) do
+    begin
+      glyphIndex := positions[i].GlyphIndex;
+      gidHex := IntToHex4(glyphIndex);
+
+
+      // Posición absoluta en PDF (posX/posY + cursor + offset)
+      absX := posX + cursorAdvance + positions[i].XOffset * scale;
+      absY := posY + positions[i].YOffset * scale;
+
+      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ',
+        [Round(absX), Round(absY), gidHex]);
+
+      // Avanzar cursor por advanceX escalado
+      cursorAdvance := cursorAdvance + positions[i].XAdvance * scale;
+    end;
+  end
 
 end;
 

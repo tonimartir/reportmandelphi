@@ -125,8 +125,9 @@ type
 
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
-  function TextExtent(const Text:WideString;var Rect:TRect;
-     wordbreak:boolean;singleline:boolean): TRpLineInfoArray;virtual;abstract;
+  function TextExtent(const Text:WideString;
+     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
+     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;virtual;abstract;
   function NFCNormalize(astring:WideString):string;virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;

@@ -78,13 +78,7 @@ uses Classes,Sysutils,rpinfoprovid,
 {$IFDEF LINUX}
  rpinfoprovft,
 {$ENDIF}
-// Text shaping implementation
-// https://github.com/projekter/TextShaping4Delphi
-// ICU 69 version
-// HarfBuzz 2.9
-{$IFDEF USETEXTSHAPING}
- Generics.Collections,rpIcu,
-{$ENDIF}
+
  rpmdconsts,rptypes,rpmunits,dateutils;
 
 
@@ -335,10 +329,7 @@ procedure GetJPegInfo(astream:TStream;var width,height:integer;var format:string
 
 implementation
 
-function IntToHex4(nvalue:integer):string;
-begin
- Result:=Format('%4.4x',[nvalue]);
-end;
+
 
 function IntToHex(nvalue:integer):string;
 begin
@@ -2144,6 +2135,11 @@ begin
   TextOutSimple(X,Y,Text,LineWidth,Rotation);
   exit;
  end;
+
+ // For each glyph ask width to include in embedded font
+
+ // InfoProvider.GetGlyphWidth(pdffont,adata,glyphIndex,positions[i].CharCode);
+
 end;
 
 
@@ -2666,7 +2662,7 @@ function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
 begin
  if (rightToLeft) then
  begin
-  Result:=InfoProvider.TextExtent(Text,rect,wordbreak,singleline);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline);
  end
  else
  begin
@@ -4246,14 +4242,8 @@ function TRpPDFCanvas.PDFCompatibleTextShaping(
   singleline:boolean
 ): String;
 var
-  positions: TGlyphPosArray;
-  i, runIndex: Integer;
-  scale: Double;
-  gidHex: string;
-  glyphIndex: Integer;
-  absX, absY: Double;
-  subText: string;
-  cursorAdvance: Double;
+ scale: double;
+ cursorAdvance:double;
 begin
 
   Result := '';
@@ -4271,11 +4261,11 @@ begin
   astring:=InfoProvider.NFCNormalize(astring);
   // Factor de escala: de unitsPerEm → puntos PDF
   //scale := FontSize / adata.FUnitsPerEm;
-  scale:=FontSize/14/72;
+
 
 
   cursorAdvance := 0;
-  LineInfo := InfoProvider.TextExtent(astring,rect,wordbreak,singleline);
+  LineInfo := InfoProvider.TextExtent(astring,rect,GetTTFontData,Font, wordbreak,singleline,FontSize);
 
   // Draw lines
 (*
