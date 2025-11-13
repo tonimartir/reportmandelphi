@@ -443,7 +443,10 @@ begin
         else if ((script <> firstScript) and (script<>USCRIPT_COMMON) and (script<>USCRIPT_INHERITED)) then
         begin
           // mezcla de scripts dentro del run -> marcar como "common/mixed"
-          firstScript := USCRIPT_COMMON;
+          if (firstScript = USCRIPT_COMMON) then
+            firstScript:=script
+          else
+           firstScript := USCRIPT_COMMON;
           Break;
         end;
       end;

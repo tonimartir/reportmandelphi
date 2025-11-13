@@ -145,31 +145,32 @@ begin
   end;
 end;
 
-
-function TRpGDIInfoProvider.TextExtent(const Text: WideString;
-  var Rect: TRect; adata: TRpTTFontData; pdfFont: TRpPDFFont;
-  wordbreak: boolean; singleline: boolean; FontSize: double): TRpLineInfoArray;
+function TRpGDIInfoProvider.TextExtent(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordbreak: Boolean;
+  singleline: Boolean;
+  FontSize: Double
+): TRpLineInfoArray;
 var
+  gl: TGlyphPos;
   Bidi: TICUBidi;
   Runs: TList<TBidiRun>;
   r: TBidiRun;
-  astring: string;
+  astring: WideString;
   i, runIndex: Integer;
   scale: Double;
   positions: TGlyphPosArray;
   posX, posY: Double;
-  gidHex: string;
-  glyphIndex: Integer;
-  absX, absY: Double;
-  subText: string;
+  subText: WideString;
   cursorAdvance: Double;
 
   // line building
   lines: TRpLineInfoArray;
   curLine: TRpLineInfo;
-  curLineGlyphs: TGlyphPosArray;
-  curLineStartLogicalIndex: Integer;
-  curLineChars: Integer;
+  curLineGlyphs: TList<TGlyphPos>;
   curLineWidth: Double;
   curLineHeight: Double;
   totalHeight: Double;
@@ -178,41 +179,53 @@ var
   emptyStep: TRpFontStep;
   possibleBreakNext: Integer;
   canBreakHere: Boolean;
+  isRightToLeft: Boolean;
+  FirstGlyphPos, LastGlyphPos: Integer;
+  GlyphPosIncrement: Integer;
+  minCluster, maxCluster: Integer;
+  currentRunStart: Integer;
+
   // helper to push current line to lines array
   procedure FlushCurrentLine(isLast: Boolean);
   var
     idx: Integer;
   begin
-    if curLineChars = 0 then
+    if curLineGlyphs.Count = 0 then
       Exit; // nothing to push
+    setLength(curLine.Glyphs,curLineGlyphs.Count);
+    for idx := 0 to  curLineGlyphs.Count-1 do
+    begin
+      curLine.Glyphs[idx]:=curLineGlyphs[idx];
+    end;
+
     idx := Length(lines);
     SetLength(lines, idx + 1);
-    curLine.Glyphs := Copy(curLineGlyphs, 0, Length(curLineGlyphs));
-    curLine.Position := curLineStartLogicalIndex;
-    curLine.Size := curLineChars;
-    curLine.Width := Round(curLineWidth); // store integer width
+
+    // Clusters relativos al string original
+    curLine.Width := Round(curLineWidth);
     curLine.height := Round(curLineHeight);
-    curLine.TopPos := Round(posY+idx*curLineHeight);
+    curLine.TopPos := Round(posY + idx * curLineHeight);
     curLine.lastline := isLast;
     curLine.LineHeight := curLineHeight;
     curLine.step := emptyStep;
     lines[idx] := curLine;
 
-    // update totals
-    totalHeight:=totalHeight + Round(curLineHeight);
+    // actualizar totales
+    totalHeight := totalHeight + Round(curLineHeight);
     if curLineWidth > maxLineWidth then
       maxLineWidth := curLineWidth;
 
-    // prepare for next line
+    // preparar para la siguiente línea
     posY := posY + curLineHeight;
     cursorAdvance := 0;
-    curLineChars := 0;
     curLineWidth := 0;
-    SetLength(curLineGlyphs, 0);
+    curLineGlyphs.Clear;
+    minCluster := High(Integer);
+    maxCluster := 0;
   end;
 
 begin
-
+  curLineGlyphs:=TList<TGlyphPos>.Create;
   SetLength(Result, 0);
   SetLength(lines, 0);
   posX := 0;
@@ -220,161 +233,148 @@ begin
   cursorAdvance := 0;
   maxLineWidth := 0;
   totalHeight := 0;
-  curLineChars := 0;
-  curLineStartLogicalIndex := 0;
   curLineWidth := 0;
-
-  // salvar original width
-  origWidth := Rect.Right - Rect.Left;
-
-  // initialize empty step
+  curLineHeight := FontSize * 20; // línea aproximada en twips
+  scale := 1;
   FillChar(emptyStep, SizeOf(emptyStep), 0);
 
-  // básico: line height estimado (puedes cambiar la fórmula si tienes métricas)
-  // He tomado un multiplicador típico de 1.2 * FontSize. Ajusta si tienes métricas reales.
-  curLineHeight := FontSize * 1*20;
+  // ancho original del rect
+  origWidth := Rect.Right - Rect.Left;
 
-  //scale := FontSize / 14 / 72*20; // Scale to twips
-  //scale := FontSize / 14 / 72*20; // Scale to twips
-  scale:=1;
-
-  // get visual runs (tal como ya hacías)
+  // preparar BiDi runs
   astring := Text;
   Bidi := TICUBidi.Create;
   Runs := nil;
   try
-    if Bidi.SetPara(astring, 2) then
+    if Bidi.SetPara(astring, 1) then
       Runs := Bidi.GetVisualRuns(astring)
     else
       raise Exception.Create('VisualRuns error');
   finally
     Bidi.Free;
   end;
-
-  // recorrer runs -> glyphs
+  // recorrer cada run
   for runIndex := 0 to Runs.Count - 1 do
   begin
     r := Runs[runIndex];
-    subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := CalcGlyphhPositions(subText, adata, pdfFont, TRpBidiDirection(r.Direction), r.ScriptString, FontSize);
+    isRightToLeft := r.Direction = UBIDI_RTL;
+    currentRunStart := r.LogicalStart;
+    subText := Copy(astring, currentRunStart + 1, r.Length);
 
-    // iniciar línea si está vacía
-    if curLineChars = 0 then
-      curLineStartLogicalIndex := r.LogicalStart; // aproximado al inicio del run
-
-    for i := 0 to High(positions) do
+    positions := CalcGlyphhPositions(
+      subText, adata, pdfFont, TRpBidiDirection(r.Direction), r.ScriptString, FontSize
+    );
+    for i:=0 to High(positions) do
     begin
-      var gl: TGlyphPos;
-      gl := positions[i];
-      // Tratamiento saltos de linea
-      if (gl.CharCode = chr(13)) then
+      gl:=positions[i];
+      gl.Cluster:=gl.Cluster+currentRunStart;
+    end;
+
+
+    if isRightToLeft then
+    begin
+      FirstGlyphPos := High(positions);
+      LastGlyphPos := 0;
+      GlyphPosIncrement := -1;
+    end
+    else
+    begin
+      FirstGlyphPos := 0;
+      LastGlyphPos := High(positions);
+      GlyphPosIncrement := 1;
+    end;
+
+
+
+    i := FirstGlyphPos;
+    while True do
+    begin
+      gl:=positions[i];
+
+      // actualizar clusters relativos al subText
+      if gl.Cluster < minCluster then minCluster := gl.Cluster;
+      if gl.Cluster > maxCluster then maxCluster := gl.Cluster;
+
+      // saltos de línea
+      if gl.CharCode = #13 then
       begin
-        continue;
+        i := i + GlyphPosIncrement;
+        if i = LastGlyphPos + GlyphPosIncrement then Break;
+        Continue;
       end;
-      if (gl.CharCode = chr(10)) then
+      if gl.CharCode = #10 then
       begin
-        FlushCurrentLine(false);
-        continue;
+        FlushCurrentLine(False);
+        i := i + GlyphPosIncrement;
+        if i = LastGlyphPos + GlyphPosIncrement then Break;
+        Continue;
       end;
-      // posibilidad de break explícito provisto por getvisualruns
+
+      // wordbreak o linebreak
       possibleBreakNext := -1;
       canBreakHere := False;
       try
         if Assigned(r.LineBreaks) and r.LineBreaks.TryGetValue(i, possibleBreakNext) then
           canBreakHere := True
         else if wordbreak and (i < Length(subText)) and (subText[i + 1] = ' ') then
-          // si wordbreak y el carácter actual es espacio, permitimos romper después
           canBreakHere := True;
       except
         canBreakHere := False;
       end;
 
-      // calcular advance y offsets escalados
-      // guardamos la posición del glyph relativa al inicio de la línea.
+      // advance y offsets
+      var advX := gl.XAdvance * scale;
+      var offX := gl.XOffset * scale;
+      var offY := gl.YOffset * scale;
 
-
-      // scaled advance / offsets
-      var advX := positions[i].XAdvance * scale;
-      var offX := positions[i].XOffset * scale;
-      var offY := positions[i].YOffset * scale;
-
-      // si no singleline, comprobar si cabe en el ancho actual del rect
-      if (not singleline) and (Round(cursorAdvance + advX) > origWidth) then
+      // comprobar si cabe en el ancho
+      if not singleline and (Round(cursorAdvance + advX) > origWidth) then
       begin
-        // intentar romper en un punto anterior permitido si existe (simple heuristic)
-        if canBreakHere then
-        begin
-          // flush current line and start new
-          FlushCurrentLine(False);
-          // después de break, cur line empty; cursorAdvance already reset in Flush
-        end
-        else
-        begin
-          // no break permitido en este punto: forzamos salto de línea antes del glyph actual
-          FlushCurrentLine(False);
-        end;
+        FlushCurrentLine(False);
       end;
 
-      // añadir glyph a la línea actual (con coordenadas relativas)
-      // guardamos offsets y advances escalados transformando a enteros como estaban en tu estructura
-      // mantengo los campos en unidades escaladas * 1 (double->integer) redondeando
-      SetLength(curLineGlyphs, Length(curLineGlyphs) + 1);
-      var idxG := High(curLineGlyphs);
-      curLineGlyphs[idxG].GlyphIndex := positions[i].GlyphIndex;
-      curLineGlyphs[idxG].XOffset := Round(offX);
-      curLineGlyphs[idxG].YOffset := Round(offY);
-      curLineGlyphs[idxG].XAdvance := Round(positions[i].XAdvance * scale);
-      curLineGlyphs[idxG].YAdvance := Round(positions[i].YAdvance * scale);
-      // Cluster/CharCode: intentamos mapear cluster a carácter relativo en el subText
-      curLineGlyphs[idxG].Cluster := positions[i].Cluster+1;
-      if (i < Length(subText)) then
-        curLineGlyphs[idxG].CharCode := subText[i + 1]
+      // añadir glyph
+      if (isRightToLeft) then
+      begin
+       // Al principio si es RTL
+       curLineGlyphs.Insert(0,gl);
+      end
       else
-        curLineGlyphs[idxG].CharCode := WideChar(0);
-
-      // actualizar contadores de línea
-      curLineChars := curLineChars + 1;
-      curLineWidth := cursorAdvance + curLineGlyphs[idxG].XAdvance;
-      cursorAdvance := cursorAdvance + curLineGlyphs[idxG].XAdvance;
-
-      // Si la posición actual es un posible break *y* cabe en la línea, podemos opcionalmente romper
-      if (not singleline) and canBreakHere and (Round(cursorAdvance) <= origWidth) then
       begin
-        // romper opcionalmente si la siguiente palabra no cabrá? lo hacemos conservador: si el siguiente glyph no cabe
-        if (i < High(positions)) then
+       curLineGlyphs.Add(gl);
+      end;
+
+      // actualizar contadores
+      curLineWidth := cursorAdvance + gl.XAdvance;
+      cursorAdvance := cursorAdvance + gl.XAdvance;
+
+      // check break opcional
+      if not singleline and canBreakHere and (Round(cursorAdvance) <= origWidth) then
+      begin
+        if i <> LastGlyphPos then
         begin
-          var nextAdv := positions[i + 1].XAdvance * scale;
+          var nextAdv := positions[i + GlyphPosIncrement].XAdvance * scale;
           if Round(cursorAdvance + nextAdv) > origWidth then
-          begin
-            // romper aquí
             FlushCurrentLine(False);
-          end;
         end;
       end;
-    end; // for glyphs
 
-    // Fin del run: continuar con siguiente run (no forzamos break entre runs)
+      if i = LastGlyphPos then Break;
+      i := i + GlyphPosIncrement;
+    end; // while gl
   end; // for runs
 
-  // flush última línea (si quedó algo)
+  // flush última línea
   FlushCurrentLine(True);
 
-  // construir el resultado
   Result := lines;
 
-  // actualizar Rect: ancho = máximo ancho usado, alto = suma alturas
-  // ten en cuenta que Rect.Left/Top se mantienen
-  if maxLineWidth < 0 then
-    maxLineWidth := 0;
-  if totalHeight < Round(curLineHeight) then
-    totalHeight := Round(curLineHeight); // al menos una línea
-
+  if maxLineWidth < 0 then maxLineWidth := 0;
+  if totalHeight < Round(curLineHeight) then totalHeight := Round(curLineHeight);
   Rect.Right := Rect.Left + Round(maxLineWidth);
   Rect.Bottom := Rect.Top + Round(totalHeight);
-
-  // Si singleline = true y no hubo saltos, nos aseguramos de devolver ancho original si querías
-  // conservar origWidth aparte, lo guardas tú donde estimes conveniente.
 end;
+
 
 
 function TRpGDIInfoProvider.CalcGlyphhPositions(

@@ -127,6 +127,7 @@ type
   lastline:Boolean;
   LineHeight: double;
   Glyphs:TGlyphPosArray;
+  Text:string;
  end;
  TRpLineInfoArray = array of TRpLineInfo;
 

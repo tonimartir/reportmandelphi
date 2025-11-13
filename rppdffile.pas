@@ -160,7 +160,7 @@ type
    function UnitsToYPosFont(Value: double;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
-    Rotation:integer;RightToLeft:Boolean);
+    Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
    procedure TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;
                        Wordbreak:boolean;Rotation:integer;RightToLeft:Boolean);
@@ -175,7 +175,9 @@ type
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
    {$IFDEF USETEXTSHAPING}
-   function PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
+   function PDFCompatibleTextShaping(adata:TRpTTFontData;
+    pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;
+    FontSize: integer;lInfo:TRpLineInfo):String;
    {$ENDIF}
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
@@ -2047,7 +2049,7 @@ begin
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+LineInfo[i].TopPos,lwords.strings[index],LineInfo[i].Width,Rotation,RightToLeft);
+        TextOut(currpos,PosY+LineInfo[i].TopPos,lwords.strings[index],LineInfo[i].Width,Rotation,RightToLeft,LineInfo[i]);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
       end;
@@ -2070,7 +2072,7 @@ begin
      PenStyle:=oldPenStyle;
     end;
 
-    TextOut(PosX,PosY+LineInfo[i].TopPos,astring,LineInfo[i].Width,Rotation,RightToLeft);
+    TextOut(PosX,PosY+LineInfo[i].TopPos,astring,LineInfo[i].Width,Rotation,RightToLeft,LineInfo[i]);
    end
   end;
  finally
@@ -2134,7 +2136,7 @@ end;
 
 
 procedure TRpPDFCanvas.TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
- Rotation:integer;RightToLeft:Boolean);
+ Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
 var
  rotrad,fsize:double;
  rotstring:string;
@@ -2200,7 +2202,7 @@ begin
   end;
   if (RightToLeft) then
   begin
-   stringResult:=PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, X,Y,Font.Size);
+   stringResult:=PDFCompatibleTextShaping(adata,Font,RightToLeft, X,Y,Font.Size,lInfo);
    SWriteLine(FFile.FsTempStream,stringResult);
   end
   else
@@ -4228,12 +4230,11 @@ end;
 
 
 
-function TRpPDFCanvas.PDFCompatibleTextShaping(astring:WideString;adata:TRpTTFontData;
- pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer):String;
+function TRpPDFCanvas.PDFCompatibleTextShaping(adata:TRpTTFontData;
+ pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;FontSize: integer;lInfo:TRpLineInfo):String;
 var
   LineInfo: TRpLineInfoArray;
   lineIndex, glyphIndexInt, i: Integer;
-  line: TRpLineInfo;
   g: TGlyphPos;
   gidHex: string;
   cursor: Double;
@@ -4241,24 +4242,24 @@ var
   rect:TRect;
   lineI: TRpLineInfoArray;
 begin
-  astring := InfoProvider.NFCNormalize(astring);
-  rect:=Rect.Create(0,0,999999,999999);
+  //astring := InfoProvider.NFCNormalize(astring);
+  //rect:=Rect.Create(0,0,999999,999999);
 
   // obtener líneas (TextExtent ya actualiza Rect con ancho/alto reales)
-  lineI := InfoProvider.TextExtent(astring, Rect, GetTTFontData, Font, false, true, Font.Size);
+  //lineI := InfoProvider.TextExtent(astring, Rect, GetTTFontData, Font, false, true, Font.Size);
 
   // Dibujar línea a línea
-  for lineIndex := 0 to High(lineI) do
-  begin
-    line := lineI[lineIndex];
+  //for lineIndex := 0 to High(lineI) do
+  //begin
+  //  line := lineI[lineIndex];
     // cursor relativo al inicio de la línea
     cursor := 0.0;
 
     // posY es la coordenada Y de partida pasada por el caller.
     // line.TopPos es la posición vertical acumulada para esta línea (según TextExtent).
-    for i := 0 to High(line.Glyphs) do
+    for i := 0 to High(lInfo.Glyphs) do
     begin
-      g := line.Glyphs[i];
+      g := lInfo.Glyphs[i];
       glyphIndexInt := g.GlyphIndex;
       gidHex := IntToHex4(glyphIndexInt);
 
@@ -4281,7 +4282,7 @@ begin
       cursor := cursor + g.XAdvance;
     end;
     // siguiente línea: cursor reiniciado dentro del bucle
-  end;
+  //end;
 end;
 {$ENDIF}
 
