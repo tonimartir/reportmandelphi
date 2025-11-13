@@ -73,12 +73,16 @@ Type
 {$HINTS ON}
     // internal type
   Strict Private
+   Procedure SetPTEM(Const APtEM: Single); Inline;
+   Function GetPTEM: Single; Inline;
   Const
     sErrorUserData = 'Error setting font user data';
   public
-   Class Function CreateReferenced(FTFace: TFTFace): THBFont; Static; Inline;
+   Class Function CreateReferenced(FTFace: TFTFace): THBFont; Static;
+   Procedure SetScale(xScale: integer;yScale: integer);
    Procedure FTFontSetFuncs;
    Procedure Destroy; Inline;
+   Property PTEM: Single Read GetPTEM Write SetPTEM;
   End;
 
   THBFace = Record
@@ -406,6 +410,11 @@ Type
      T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
   T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
     T_hb_font_destroy = procedure(font: THBFont); cdecl;
+    T_hb_font_set_ptem = procedure (Font: THBFont; Const APtEM: Single); cdecl;
+    T_hb_font_get_ptem = function (Const AFont: THBFont): Single; Cdecl;
+    T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
+    T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
+
 
   TShapingData=class
    public FreeTypeFace: TFTFace;
@@ -443,6 +452,12 @@ var
         hb_buffer_get_glyph_infos: T_hb_buffer_get_glyph_infos = nil;
   hb_buffer_get_glyph_positions: T_hb_buffer_get_glyph_positions = nil;
     hb_font_destroy: T_hb_font_destroy = nil;
+    hb_font_set_ptem: T_hb_font_set_ptem = nil;
+    hb_font_get_ptem: T_hb_font_get_ptem = nil;
+    hb_font_set_scale: T_hb_font_set_scale = nil;
+    hb_font_get_scale: T_hb_font_get_scale = nil;
+
+
 procedure InitHarfBuzz;
 
 implementation
@@ -614,6 +629,23 @@ Begin
    hb_font_destroy(Self);
 End;
 
+Procedure THBFont.SetPTEM(Const APtEM: Single);
+Begin
+   hb_font_set_ptem(Self, APtEM);
+End;
+
+Procedure THBFont.SetScale(xScale: integer;yScale: integer);
+var
+ newXScale,newYScale: integer;
+Begin
+   hb_font_set_scale(Self,xScale,yScale);
+   hb_font_get_scale(Self,newXScale,newYScale);
+End;
+
+Function THBFont.GetPTEM: Single;
+Begin
+   Result := hb_font_get_ptem(Self);
+End;
 
 procedure InitHarfBuzz;
 var
@@ -762,9 +794,22 @@ begin
   hb_buffer_get_glyph_positions:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_glyph_positions) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName:='hb_font_destroy';
-  hb_font_destroy:= GetProcAddr(ProcName);
-  if not Assigned(hb_font_destroy) then
+
+  ProcName:='hb_font_set_ptem';
+  hb_font_set_ptem:= GetProcAddr(ProcName);
+  if not Assigned(hb_font_set_ptem) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_font_get_ptem';
+  hb_font_get_ptem:= GetProcAddr(ProcName);
+  if not Assigned(hb_font_get_ptem) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_font_set_scale';
+  hb_font_set_scale:= GetProcAddr(ProcName);
+  if not Assigned(hb_font_set_scale) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_font_get_scale';
+  hb_font_get_scale:= GetProcAddr(ProcName);
+  if not Assigned(hb_font_get_scale) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 end;
 

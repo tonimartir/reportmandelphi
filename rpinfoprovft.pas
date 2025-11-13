@@ -72,7 +72,7 @@ type
   procedure SelectFont(pdffont:TRpPDFFOnt);
   function NFCNormalize(astring:WideString):string;override;
 
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;
+  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
@@ -209,7 +209,7 @@ begin
   // He tomado un multiplicador típico de 1.2 * FontSize. Ajusta si tienes métricas reales.
   curLineHeight := FontSize * 1.2;
 
-  scale := FontSize / 14 / 72; // mantengo tu factor original
+  scale := FontSize / 14 / 72*20; // mantengo tu factor original
 
   // get visual runs (tal como ya hacías)
   astring := Text;
@@ -1359,7 +1359,7 @@ begin
 end;
 
 function TRpFTInfoProvider.CalcGlyphhPositions(astring:WideString;
-adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string):TGlyphPosArray;
+adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
 var
   Font: THBFont;
   Buf: THBBuffer;
@@ -1380,7 +1380,7 @@ begin
     adata.FontData.Fontdata.Position := 0;
     mem:=adata.FontData.Fontdata.Memory;
     FT_New_Memory_Face(ftlibrary,mem,adata.FontData.Fontdata.Size,0,shapedata.FreeTypeFace);
-    CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace,0,64*100,720,720));
+    CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace,0,64*10,1440,1440));
 //    adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
     adata.CustomImplementation:=shapedata;
     adata.LoadedFace := True;

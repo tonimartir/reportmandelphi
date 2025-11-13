@@ -153,11 +153,11 @@ type
    PDFConformance: TPDFConformanceType;
    procedure GetStdLineSpacing(var linespacing,leading:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
-   function UnitsToXPos(Value:integer):double;
-   function UnitsToTextX(Value:integer):string;
-   function UnitsToTextY(Value:integer):string;
-   function UnitsToTextText(Value:integer;FontSize:integer):string;
-   function UnitsToYPosFont(Value: integer;FontSize: integer):double;
+   function UnitsToXPos(Value:double):double;
+   function UnitsToTextX(Value:double):string;
+   function UnitsToTextY(Value:double):string;
+   function UnitsToTextText(Value:double;FontSize:integer):string;
+   function UnitsToYPosFont(Value: double;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
     Rotation:integer;RightToLeft:Boolean);
@@ -1423,14 +1423,14 @@ begin
 end;
 
 
-function TRpPDFCanvas.UnitsToYPosFont(Value: integer;FontSize: integer):double;
+function TRpPDFCanvas.UnitsToYPosFont(Value: double;FontSize: integer):double;
 begin
  Result:=((Double(FFile.FPageHeight-Value)/FResolution)*CONS_PDFRES)-FontSize;
 end;
 
 
 
-function TRpPDFCanvas.UnitsToTextText(Value:integer;FontSize:integer):string;
+function TRpPDFCanvas.UnitsToTextText(Value:double;FontSize:integer):string;
 var
 {$IFDEF DOTNETD}
  olddecimalseparator:String;
@@ -1490,12 +1490,12 @@ begin
 end;
 
 
-function TRpPDFCanvas.UnitsToXPos(Value:integer):double;
+function TRpPDFCanvas.UnitsToXPos(Value:double):double;
 begin
  Result:=(Double(Value)/FResolution)*CONS_PDFRES;
 end;
 
-function TRpPDFCanvas.UnitsToTextX(Value:integer):string;
+function TRpPDFCanvas.UnitsToTextX(Value:double):string;
 var
 {$IFDEF DOTNETD}
  olddecimalseparator:String;
@@ -1523,7 +1523,7 @@ begin
 {$ENDIF}
 end;
 
-function TRpPDFCanvas.UnitsToTextY(Value:integer):string;
+function TRpPDFCanvas.UnitsToTextY(Value:double):string;
 var
 {$IFDEF DOTNETD}
  olddecimalseparator:String;
@@ -1931,6 +1931,11 @@ var
 begin
  FFile.CheckPrinting;
 
+
+ if (RightToLeft) then
+ begin
+  Text:=InfoProvider.NFCNormalize(Text);
+ end;
  if (Clipping or (Rotation<>0)) then
  begin
   SaveGraph;
@@ -1977,6 +1982,8 @@ begin
    begin
     PosX:=ARect.Left+(((Arect.Right-Arect.Left)-LineInfo[i].Width) div 2);
    end;
+
+
    astring:=Copy(Text,LineInfo[i].Position,LineInfo[i].Size);
    if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT LineInfo[i].LastLine)) then
    begin
@@ -2139,7 +2146,7 @@ var
  linespacing:integer;
  stringResult:string;
 begin
- /// Add Font leading
+ /// Add Font leading                                         te
  adata:=GetTTFontData;
  if assigned(adata) then
  begin
@@ -2193,7 +2200,7 @@ begin
   end;
   if (RightToLeft) then
   begin
-   stringResult:=PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, UnitsToXPos(X),UnitsToYPosFont(Y,Font.Size),Font.Size);
+   stringResult:=PDFCompatibleTextShaping(astring,adata,Font,RightToLeft, X,Y,Font.Size);
    SWriteLine(FFile.FsTempStream,stringResult);
   end
   else
@@ -4264,10 +4271,11 @@ begin
       // posY + line.TopPos: coordenada Y de la línea (TextExtent calculó TopPos)
       // g.XOffset/g.YOffset ya están escalados en TextExtent (enteros)
       absX := posX + cursor + g.XOffset;
-      absY := posY + line.TopPos + g.YOffset;
+      //absY := posY + line.TopPos + g.YOffset;
+      absY := posY + g.YOffset;
 
-      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q'+FFile.EndOfLine,
-        [Round(absX), Round(absY), gidHex]);
+      Result := Result + Format('q 1 0 0 1 %s %s Tm <%s> Tj Q'+FFile.EndOfLine,
+        [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);
 
       // avanzar cursor por el advance (g.XAdvance ya escalado en TextExtent)
       cursor := cursor + g.XAdvance;
