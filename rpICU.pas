@@ -218,6 +218,7 @@ var
   ubrk_setText: T_ubrk_setText = nil;
 procedure InitICU;
 function NormalizeNFC(const S: string): string;
+function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
 
 
 implementation
@@ -351,6 +352,36 @@ begin
     while pos <> UBRK_DONE do
     begin
       Run.LineBreaks.Add(prevPos, pos); // de prevPos hasta pos es un segmento
+      prevPos := pos;
+      pos := ubrk_next(bi);
+    end;
+  finally
+    ubrk_close(bi);
+  end;
+end;
+
+function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
+var
+  bi: UBreakIterator;
+  status: UErrorCode;
+  pos, prevPos: Integer;
+begin
+  Result := TDictionary<Integer,Integer>.Create;
+  if RunText = '' then
+    Exit;
+
+  status := U_ZERO_ERROR;
+  // Creamos un BreakIterator de tipo línea
+  bi := ubrk_open(UBRK_LINE, 'en', PChar(RunText), Length(RunText), status);
+  if U_FAILURE(status) then
+    Exit;
+
+  try
+    prevPos := ubrk_first(bi);
+    pos := ubrk_next(bi);
+    while pos <> UBRK_DONE do
+    begin
+      Result.Add(prevPos, pos); // de prevPos hasta pos es un segmento
       prevPos := pos;
       pos := ubrk_next(bi);
     end;
