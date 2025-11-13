@@ -283,6 +283,7 @@ type
    procedure NewEmbeddedFile(fileName,mimeType: string;AFRelationShip: TPDFAFRelationShip;
      description,creationDate,ModificationDate: string;  stream: TMemoryStream);
    procedure NewAnnotation(posx,posy,width,height: integer; annotation: string);
+   function EndOfLine:string;
   published
    // General properties
    property Compressed:boolean read FCompressed write FCompressed default true;
@@ -579,15 +580,22 @@ begin
 end;
 
 
+function TRpPDFFile.EndOfLine:string;
+var
+ astring:string;
+begin
+ astring:='';
+ if (FPDFConformance = TPDFConformanceType.PDF_1_4) then
+   Result:=astring+#13+#10
+ // Only EOL for better compatibility in PDF A3
+ else
+   Result:=astring+#10;
+end;
 
 // Writes a line into a Stream that is add #13+#10
 procedure TRpPDFFile.SWriteLine(Stream:TStream;astring:string);
 begin
- if (FPDFConformance = TPDFConformanceType.PDF_1_4) then
-   astring:=astring+#13+#10
- // Only EOL for better compatibility in PDF A3
- else
-   astring:=astring+#10;
+ astring:=astring+EndOfLine;
  WriteStringToStream(astring,Stream);
 end;
 
@@ -2197,7 +2205,7 @@ begin
    else
     SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
   end;
-  SWriteLine(FFile.FsTempStream,'ET');
+  SWriteLine(FFile.FsTempStream,' ET');
  finally
   if (Rotation<>0) then
   begin
@@ -4258,7 +4266,7 @@ begin
       absX := posX + cursor + g.XOffset;
       absY := posY + line.TopPos + g.YOffset;
 
-      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q ',
+      Result := Result + Format('q 1 0 0 1 %d %d Tm <%s> Tj Q'+FFile.EndOfLine,
         [Round(absX), Round(absY), gidHex]);
 
       // avanzar cursor por el advance (g.XAdvance ya escalado en TextExtent)

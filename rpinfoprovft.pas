@@ -42,6 +42,7 @@ type
   filename:String;
   ascent:integer;
   descent:integer;
+  height:integer;
   weight:integer;
   MaxWidth:integer;
   avCharWidth:Integer;
@@ -781,6 +782,7 @@ begin
       aobj.BBox.Bottom:=Round(aobj.convfactor*aface.bbox.yMin);
       aobj.ascent:=Round(aobj.convfactor*aface.ascender);
       aobj.descent:=Round(aobj.convfactor*aface.descender);
+      aobj.height:=Round(aobj.convfactor*aface.height);
       // External leading, same as GDI OUTLINETEXTMETRICS, it's the line gap
       externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
       // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font

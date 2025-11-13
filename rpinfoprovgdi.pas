@@ -89,29 +89,30 @@ function NormalizeString(
 
 function NormalizeToNFC(const S: UnicodeString): UnicodeString;
 const
-  NormalizationC = 1; // Canonical Composition (NFC)
+  NormalizationC = 1; // NFC
 var
-  Len: Integer;
+  requiredChars: Integer;
+  writtenChars: Integer;
 begin
   if S = '' then
     Exit('');
 
-  // Primera llamada para obtener longitud necesaria
-  Len := NormalizeString(1, PWideChar(S), Length(S), nil, 0);
-  if Len = 0 then
+  // 1) pedir tamaño (incluye terminador)
+  requiredChars := NormalizeString(NormalizationC, PWideChar(S), -1, nil, 0);
+  if requiredChars = 0 then
     RaiseLastOSError;
 
-  SetLength(Result, Len);
-  // Segunda llamada para normalizar
-  Len := NormalizeString(1, PWideChar(S), Length(S), PWideChar(Result), Len);
-  if Len = 0 then
+  // reservar buffer (requiredChars incluye espacio para el terminador)
+  SetLength(Result, requiredChars);
+
+  // 2) normalizar — writtenChars no incluye el terminador
+  writtenChars := NormalizeString(NormalizationC, PWideChar(S), -1, PWideChar(Result), requiredChars);
+  if writtenChars = 0 then
     RaiseLastOSError;
 
-  // Quitar posible terminador nulo extra
-  if (Len > 0) and (Result[Len] = #0) then
-    SetLength(Result, Len - 1);
+  // ajustar la longitud real (writtenChars es el nº de caracteres útiles, sin el NUL)
+  SetLength(Result, writtenChars);
 end;
-
 constructor TRpGDIInfoProvider.Create;
 var
  ddc:THandle;
@@ -224,14 +225,13 @@ begin
 
   // salvar original width
   origWidth := Rect.Right - Rect.Left;
-  origWidth:=origWidth/20;
 
   // initialize empty step
   FillChar(emptyStep, SizeOf(emptyStep), 0);
 
   // básico: line height estimado (puedes cambiar la fórmula si tienes métricas)
   // He tomado un multiplicador típico de 1.2 * FontSize. Ajusta si tienes métricas reales.
-  curLineHeight := FontSize * 1.2;
+  //curLineHeight := FontSize * 1.2 * adata.;
 
   scale := FontSize / 14 / 72; // mantengo tu factor original
 
