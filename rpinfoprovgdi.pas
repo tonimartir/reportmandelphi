@@ -208,47 +208,34 @@ var
   lineBreaks: TList<TLineBreak>;
   lineBreak: TLineBreak;
   line: string;
-  positions: TGlyphPosArray;
-  script: string;
+  Bidi: TICUBidi;
+  Runs: TList<TBidiRun>;
+  r: TBidiRun;
   direction: TRpBidiDirection;
+  positions: TGlyphPosArray;
+  curGlyphs: TGlyphPosArray;
+  curWidth, posY, maxWidth: Double;
+  i, startGlyph, endGlyph, increment: Integer;
+  glyph: TGlyphPos;
   LineInfo: TRpLineInfo;
   possibleBreaks: TDictionary<Integer,Integer>;
-  curGlyphs: TGlyphPosArray;
-  curWidth, totalHeight, maxWidth: Double;
-  i, startGlyph, endGlyph, increment: Integer;
-  curClusterStart, curClusterEnd: Integer;
-  glyph: TGlyphPos;
-  posX, posY: Double;
 begin
   lineBreaks := FillLineBreaks(Text);
   SetLength(Result, 0);
   posY := 0;
-  totalHeight := 0;
   maxWidth := 0;
   try
     for lineBreak in lineBreaks do
     begin
-      // extraemos la línea del texto original
       line := Copy(Text, lineBreak.Position, lineBreak.Length);
 
-      // detectamos dirección y script
-      direction := RP_BIDI_LTR;
-      script := '';
-      var Bidi := TICUBidi.Create;
-      var Runs: TList<TBidiRun>;
+      // detectamos runs
+      Bidi := TICUBidi.Create;
+      Runs := nil;
       try
         if not Bidi.SetPara(line, 1) then
           raise Exception.Create('VisualRuns error');
         Runs := Bidi.GetVisualRuns(line);
-        for var r in Runs do
-        begin
-          script := r.ScriptString;
-          if r.Direction = UBIDI_RTL then
-          begin
-            direction := RP_UBIDI_RTL;
-            break;
-          end;
-        end;
       finally
         Bidi.Free;
       end;
@@ -256,57 +243,96 @@ begin
       // posibles puntos de corte (espacios, wordbreak)
       possibleBreaks := FillPossibleLineBreaksString(line);
 
-      // calculamos posiciones de glyphs con HarfBuzz
-      positions := CalcGlyphhPositions(line, adata, pdfFont, direction, script, FontSize);
-
-      // inicializamos variables de línea
-      SetLength(curGlyphs, 0);
-      curWidth := 0;
-      posX := 0;
-      startGlyph := 0;
-
-      if direction = RP_UBIDI_RTL then
+      // recorrer cada run visual
+      for r in Runs do
       begin
-        i := High(positions);
-        endGlyph := 0;
-        increment := -1;
-      end
-      else
-      begin
-        i := 0;
-        endGlyph := High(positions);
-        increment := 1;
-      end;
+        // run direction y script
+        if r.Direction = UBIDI_RTL then
+          direction := RP_UBIDI_RTL
+        else
+          direction := RP_BIDI_LTR;
 
-      while (i >= 0) and (i <= High(positions)) do
-      begin
-        glyph := positions[i];
+        positions := CalcGlyphhPositions(
+          Copy(line, r.LogicalStart + 1, r.Length),
+          adata,
+          pdfFont,
+          direction,
+          r.ScriptString,
+          FontSize
+        );
 
-        // actualizar cluster mínimo y máximo de esta línea parcial
-        if Length(curGlyphs) = 0 then
+        // inicializamos variables de run
+        SetLength(curGlyphs, 0);
+        curWidth := 0;
+
+        if direction = RP_UBIDI_RTL then
         begin
-          curClusterStart := glyph.Cluster + lineBreak.Position;
-          curClusterEnd := glyph.Cluster + lineBreak.Position;
+          i := High(positions);
+          endGlyph := 0;
+          increment := -1;
         end
         else
-          curClusterEnd := glyph.Cluster + lineBreak.Position;
-
-        curWidth := curWidth + glyph.XAdvance;
-
-        // añadimos glyph a array temporal
-        SetLength(curGlyphs, Length(curGlyphs) + 1);
-        curGlyphs[High(curGlyphs)] := glyph;
-
-        // comprobamos si debemos romper la línea
-        var doBreak := False;
-        if wordwrap and (Round(curWidth) > (Rect.Right - Rect.Left)) then
-          doBreak := True
-        else if possibleBreaks.ContainsKey(glyph.Cluster) then
-          doBreak := True;
-
-        if doBreak then
         begin
-          // si es RTL, invertimos el orden de los glyphs para dibujar visualmente
+          i := 0;
+          endGlyph := High(positions);
+          increment := 1;
+        end;
+
+        while (i >= 0) and (i <= High(positions)) do
+        begin
+          glyph := positions[i];
+          curWidth := curWidth + glyph.XAdvance;
+
+          // añadimos glyph a array temporal
+          SetLength(curGlyphs, Length(curGlyphs)+1);
+          curGlyphs[High(curGlyphs)] := glyph;
+
+          // comprobamos si debemos romper la línea
+          var doBreak := False;
+          if wordwrap and (Round(curWidth) > (Rect.Right - Rect.Left)) then
+            doBreak := True
+          else if wordwrap and possibleBreaks.ContainsKey(i) then
+            doBreak := True;
+
+          if doBreak then
+          begin
+            // invertir para visualización si es RTL
+            if direction = RP_UBIDI_RTL then
+            begin
+              var left := 0;
+              var right := High(curGlyphs);
+              while left < right do
+              begin
+                var tmp := curGlyphs[left];
+                curGlyphs[left] := curGlyphs[right];
+                curGlyphs[right] := tmp;
+                Inc(left);
+                Dec(right);
+              end;
+            end;
+
+            // guardamos la línea parcial
+            LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
+            LineInfo.Width := Round(curWidth);
+            LineInfo.Height := Round(FontSize*20);
+            LineInfo.TopPos := Round(posY);
+            LineInfo.lastline := False;
+            LineInfo.LineHeight := FontSize*20;
+            SetLength(Result, Length(Result)+1);
+            Result[High(Result)] := LineInfo;
+
+            // preparar nueva línea
+            SetLength(curGlyphs, 0);
+            curWidth := 0;
+            posY := posY + FontSize*20;
+          end;
+
+          i := i + increment;
+        end;
+
+        // añadimos última línea de run si quedó algo
+        if Length(curGlyphs) > 0 then
+        begin
           if direction = RP_UBIDI_RTL then
           begin
             var left := 0;
@@ -321,61 +347,20 @@ begin
             end;
           end;
 
-          // guardamos la línea
           LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
-          LineInfo.Position := curClusterStart;
-          LineInfo.Size := curClusterEnd - curClusterStart + 1;
           LineInfo.Width := Round(curWidth);
           LineInfo.Height := Round(FontSize*20);
           LineInfo.TopPos := Round(posY);
-          LineInfo.lastline := False;
+          LineInfo.lastline := True;
           LineInfo.LineHeight := FontSize*20;
           SetLength(Result, Length(Result)+1);
           Result[High(Result)] := LineInfo;
 
-          // preparar nueva línea
-          SetLength(curGlyphs, 0);
-          curWidth := 0;
-          posY := posY + FontSize*20;
-          curClusterStart := glyph.Cluster + lineBreak.Position;
-          curClusterEnd := glyph.Cluster + lineBreak.Position;
+          posY := posY + FontSize*20*1.2;
+          if curWidth > maxWidth then
+            maxWidth := curWidth;
         end;
-
-        i := i + increment;
-      end;
-
-      // añadimos la última línea si quedó algo
-      if Length(curGlyphs) > 0 then
-      begin
-        if direction = RP_UBIDI_RTL then
-        begin
-          var left := 0;
-          var right := High(curGlyphs);
-          while left < right do
-          begin
-            var tmp := curGlyphs[left];
-            curGlyphs[left] := curGlyphs[right];
-            curGlyphs[right] := tmp;
-            Inc(left);
-            Dec(right);
-          end;
-        end;
-
-        LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
-        LineInfo.Position := curClusterStart;
-        LineInfo.Size := curClusterEnd - curClusterStart + 1;
-        LineInfo.Width := Round(curWidth);
-        LineInfo.Height := Round(FontSize*20);
-        LineInfo.TopPos := Round(posY);
-        LineInfo.lastline := True;
-        LineInfo.LineHeight := FontSize*20;
-        SetLength(Result, Length(Result)+1);
-        Result[High(Result)] := LineInfo;
-
-        posY := posY + FontSize*20*1.2;
-        if curWidth > maxWidth then
-          maxWidth := curWidth;
-      end;
+      end; // for run
     end; // for lineBreak
   finally
     lineBreaks.Free;

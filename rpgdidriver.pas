@@ -955,8 +955,8 @@ begin
                 FontSizeToStep(Canvas.Font.Size, obj.PrintStep));
           end;
           // Justified text use pdf driver, also pdf conformance or truetype
-          if (  ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-             OR (obj.Type1Font >  Integer(poEmbedded))) then
+          if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+             OR (obj.Type1Font >  Integer(poEmbedded))) AND (not obj.RightToLeft)  ) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
