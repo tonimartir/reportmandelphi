@@ -324,7 +324,7 @@ begin
             // preparar nueva línea
             SetLength(curGlyphs, 0);
             curWidth := 0;
-            posY := posY + FontSize*20;
+            posY := posY + (adata.Ascent-adata.Descent+adata.Leading)/1000*FontSize*20/2;
           end;
 
           i := i + increment;
@@ -356,7 +356,8 @@ begin
           SetLength(Result, Length(Result)+1);
           Result[High(Result)] := LineInfo;
 
-          posY := posY + FontSize*20*1.2;
+            posY := posY + (adata.Ascent-adata.Descent+adata.Leading)/1000*FontSize*20/2;
+
           if curWidth > maxWidth then
             maxWidth := curWidth;
         end;

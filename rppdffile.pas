@@ -2191,7 +2191,10 @@ begin
    SWriteLine(FFile.FsTempStream,rotstring+' cm');
   end
   else
-   SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
+  begin
+   if (not RightToLeft) then
+    SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
+  end;
   astring:=Text;
 
   havekerning:=false;
