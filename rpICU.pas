@@ -188,6 +188,7 @@ TICUBidi = class
     function SetPara(const Text: UnicodeString; ParaLevel: UBiDiLevel = 0): Boolean;
     // Extended BiDi helpers
     function GetVisualRun(AVisualIndex: Integer; out ALogicalStart, ALength: Integer; out ALevel: UBiDiLevel): Boolean;
+    function GetLogicalRuns(const AText: UnicodeString): TList<TBidiRun>;
     function GetVisualMap(var Map: TArray<Integer>): Boolean;
     function GetVisualRuns(const AText: UnicodeString): TList<TBidiRun>;
     property Handle: UBidi read FBidi;
@@ -387,6 +388,110 @@ begin
     end;
   finally
     ubrk_close(bi);
+  end;
+end;
+
+
+function TICUBidi.GetLogicalRuns(const AText: UnicodeString): TList<TBidiRun>;
+var
+  textLen: Integer;
+  cur, lStart, lLimit, lLength: Integer;
+  run: TBidiRun;
+  pText: PWideChar;
+  firstScript: Integer;
+  script: Integer;
+  j: Integer;
+  charCode: UChar;
+  level: UBiDiLevel;
+    uerr: UErrorCode;
+
+begin
+  Result := TList<TBidiRun>.Create;
+
+  if FBidi = nil then
+    Exit;
+
+  // longitud en unidades UTF-16
+  textLen := 0;
+  if AText <> '' then
+    textLen := Length(AText);
+
+  // puntero al texto UTF-16 (si lo necesitas para detectar script)
+  pText := nil;
+  if AText <> '' then
+    pText := PWideChar(AText);
+
+  // recorremos runs lógicos avanzando por el texto
+  cur := 0;
+  while cur < textLen do
+  begin
+    // Llamada al binding que rellena lLimit (índice exclusivo) y level
+    lLimit := 0;
+    level := 0;
+    ubidi_getLogicalRun(FBidi, cur, lLimit, level);
+
+    // seguridad: lLimit debe ser mayor que cur y no superar textLen
+    if (lLimit <= cur) then
+      Break;
+    if (lLimit > textLen) then
+      lLimit := textLen;
+
+    lStart := cur;
+    lLength := lLimit - lStart;
+
+    // rellenar el record
+    run.LogicalStart := lStart;
+    run.Length := lLength;
+    run.Level := level;
+
+    // inferir direction por el bit de nivel (odd => RTL)
+    if (level and 1) <> 0 then
+      run.Direction := UBIDI_RTL
+    else
+      run.Direction := UBIDI_LTR;
+
+    // detectar script dentro del run (primer script significativo o USCRIPT_COMMON)
+    firstScript := -1;
+    if Assigned(pText) then
+    begin
+      for j := lStart to (lStart + lLength - 1) do
+      begin
+        uerr := U_ZERO_ERROR;
+        // toma la unidad UTF-16 en la posición j
+        charCode := UChar(Ord(pText[j]));
+        // uscript_getScript puede requerir UChar32; si tienes una versión que acepta UChar, úsala
+        script := uscript_getScript(charCode,uerr);
+        if uerr <> U_ZERO_ERROR then
+        begin
+          // si hay error, reiniciarlo y seguir
+          uerr := U_ZERO_ERROR;
+          Continue;
+        end;
+        if firstScript = -1 then
+          firstScript := script
+        else if ((script <> firstScript) and (script <> USCRIPT_COMMON) and (script <> USCRIPT_INHERITED)) then
+        begin
+          if (firstScript = USCRIPT_COMMON) then
+            firstScript := script
+          else
+            firstScript := USCRIPT_COMMON;
+          Break;
+        end;
+      end;
+    end;
+    run.Script := firstScript;
+    run.ScriptString := uscript_getShortName(firstScript);
+
+    if Assigned(pText) then
+      run.Text := Copy(AText, lStart + 1, lLength)
+    else
+      run.Text := '';
+
+    FillLineBreaks(run.Text, run);
+    Result.Add(run);
+
+    // avanzar al siguiente run lógico
+    cur := lStart + lLength;
   end;
 end;
 
