@@ -356,7 +356,7 @@ begin
 
   status := U_ZERO_ERROR;
   // Usamos BREAK ITERATOR de palabras en lugar de línea
-  bi := ubrk_open(UBRK_WORD, 'en', PChar(RunText), Length(RunText), status);
+  bi := ubrk_open(UBRK_WORD, 'ar', PChar(RunText), Length(RunText), status);
   if U_FAILURE(status) then Exit;
 
   try
@@ -375,19 +375,91 @@ begin
   end;
 end;
 
+function FillPossibleLineBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
+var
+  bi: UBreakIterator;
+  status: UErrorCode;
+  pos, prevPos: Integer;
+  locale: array of char;
+  buf: array of WideChar;
+  i, txtLen: Integer;
+begin
+  Result := TDictionary<Integer,Integer>.Create;
+  if RunText = '' then Exit;
+
+  // 1) Copiar a buffer WideChar estable (UTF-16 code units)
+  txtLen := Length(RunText);
+  SetLength(buf, txtLen);
+  for i := 1 to txtLen do
+    buf[i-1] := RunText[i];
+  SetLength(locale,2);
+  locale[0]:='a';
+  locale[1]:='r';
+
+
+  // (diagnóstico opcional)
+  // Writeln('txtLen=', txtLen);
+  // for i := 0 to Min(txtLen-1, 10) do Writeln('cp[', i, ']=', IntToHex(Word(buf[i]), 4));
+
+  status := U_ZERO_ERROR;
+  // pasar locale en UTF-8 (aunque 'ar' es ASCII, mejor hacerlo explícito)
+
+  // 2) Crear iterator SIN texto (recomendado)
+  bi := ubrk_open(UBRK_LINE, PAnsiChar(locale), nil, 0, status);
+  if U_FAILURE(status) then
+  begin
+    // diagnostics
+    // Writeln('ubrk_open fallo, status=', status);
+    Exit;
+  end;
+
+  try
+    // 3) Setear el texto estable que hemos creado
+    ubrk_setText(bi, PWideChar(@buf[0]), txtLen, status);
+    if U_FAILURE(status) then
+    begin
+      // Writeln('ubrk_setText fallo, status=', status);
+      Exit;
+    end;
+
+    // 4) Iterar límites
+    prevPos := ubrk_first(bi);
+    pos := ubrk_next(bi);
+    while pos <> UBRK_DONE do
+    begin
+      if pos > prevPos then
+        Result.Add(prevPos, pos);
+      prevPos := pos;
+      pos := ubrk_next(bi);
+    end;
+  finally
+    ubrk_close(bi);
+  end;
+end;
+
+(*
 function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
 var
   bi: UBreakIterator;
   status: UErrorCode;
   pos, prevPos: Integer;
+  ptext:PWideChar;
+  plength:integer;
+  buf: array of UChar;
+  i:integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
   if RunText = '' then
     Exit;
+  SetLength(buf, Length(RunText));
+  for i := 1 to Length(RunText) do
+    buf[i-1] := UChar(RunText[i]);  // copiar code units
 
   status := U_ZERO_ERROR;
   // Creamos un BreakIterator de tipo línea
-  bi := ubrk_open(UBRK_LINE, 'en', PChar(RunText), Length(RunText), status);
+  ptext:=PWideChar(RunText);
+  plength:=Length(ptext);
+  bi := ubrk_open(UBRK_LINE, PAnsiChar(AnsiString('ar')), @buf[0], Length(buf), status);
   if U_FAILURE(status) then
     Exit;
 
@@ -405,7 +477,7 @@ begin
   end;
 end;
 
-
+*)
 function TICUBidi.GetLogicalRuns(const AText: UnicodeString): TList<TBidiRun>;
 var
   textLen: Integer;
