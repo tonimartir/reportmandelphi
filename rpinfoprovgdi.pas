@@ -372,7 +372,6 @@ begin
   end;
 end;
 
-
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -382,15 +381,6 @@ function TRpGDIInfoProvider.TextExtent(
   singleline: Boolean;
   FontSize: Double
 ): TRpLineInfoArray;
-
-  function GlyphsToString(const glyphs: TGlyphPosArray): UnicodeString;
-  var
-    i: Integer;
-  begin
-    Result := '';
-    for i := 0 to High(glyphs) do
-      Result := Result + glyphs[i].CharCode;
-  end;
 
 var
   lineSubTexts: TList<TLineSubText>;
@@ -406,8 +396,9 @@ var
   chunk: TGlyphPosArray;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
-  j, k: Integer;
+  j, k, g: Integer;
   minCluster, maxCluster: Integer;
+  chunkText: UnicodeString;
   orderedGlyphs: TGlyphPosArray;
 begin
   lineSubTexts := DividesIntoLines(Text);
@@ -473,44 +464,57 @@ begin
         begin
           chunk := chunks[j];
 
+          // Calcular minCluster y maxCluster para extraer la subcadena correcta (1-based)
+          if Length(chunk) > 0 then
+          begin
+            minCluster := chunk[0].Cluster;
+            maxCluster := chunk[0].Cluster;
+            for k := 1 to High(chunk) do
+            begin
+              if chunk[k].Cluster < minCluster then minCluster := chunk[k].Cluster;
+              if chunk[k].Cluster > maxCluster then maxCluster := chunk[k].Cluster;
+            end;
+            chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
+          end
+          else
+            chunkText := '';
+
           // Obtener visual runs de este chunk
           Bidi := TICUBidi.Create;
           visualRuns := nil;
           try
-            if not Bidi.SetPara(GlyphsToString(chunk), $FF) then
+            if not Bidi.SetPara(chunkText, $FF) then
               raise Exception.Create('VisualRuns error');
-            visualRuns := Bidi.GetVisualRuns(GlyphsToString(chunk));
+            visualRuns := Bidi.GetVisualRuns(chunkText);
           finally
             Bidi.Free;
           end;
 
-          // Construir la línea visual concatenando glyphs de los runs visuales
+          // --- 4. Construir la línea visual concatenando glyphs usando clusters ---
           SetLength(orderedGlyphs, 0);
           curWidth := 0;
+
           for vRun in visualRuns do
           begin
-            // Extraer los glyphs correspondientes del chunk
-            for k := vRun.LogicalStart to vRun.LogicalStart + vRun.Length - 1 do
+            // Para cada run visual, tomar todos los glyphs cuyo Cluster está en el rango de ese run
+            for g := 0 to High(chunk) do
             begin
-              SetLength(orderedGlyphs, Length(orderedGlyphs) + 1);
-              orderedGlyphs[High(orderedGlyphs)] := chunk[k];
-              curWidth := curWidth + chunk[k].XAdvance;
+              if (chunk[g].Cluster >= vRun.LogicalStart + 1) and
+                 (chunk[g].Cluster <= vRun.LogicalStart + vRun.Length) then
+              begin
+                SetLength(orderedGlyphs, Length(orderedGlyphs) + 1);
+                orderedGlyphs[High(orderedGlyphs)] := chunk[g];
+                curWidth := curWidth + chunk[g].XAdvance;
+              end;
             end;
           end;
 
-          // --- 4. Rellenar LineInfo ---
+          // --- 5. Rellenar LineInfo ---
           LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
 
           if Length(LineInfo.Glyphs) > 0 then
           begin
-            minCluster := LineInfo.Glyphs[0].Cluster;
-            maxCluster := LineInfo.Glyphs[0].Cluster;
-            for k := 1 to High(LineInfo.Glyphs) do
-            begin
-              if LineInfo.Glyphs[k].Cluster < minCluster then minCluster := LineInfo.Glyphs[k].Cluster;
-              if LineInfo.Glyphs[k].Cluster > maxCluster then maxCluster := LineInfo.Glyphs[k].Cluster;
-            end;
-            LineInfo.Position := lineSubText.Position + minCluster;
+            LineInfo.Position := lineSubText.Position + minCluster - 1; // índice relativo a Text original
             LineInfo.Size := maxCluster - minCluster + 1;
           end
           else
