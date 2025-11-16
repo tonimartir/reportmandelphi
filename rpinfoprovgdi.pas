@@ -52,10 +52,7 @@ type
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
-  function TextExtentOld(const Text:WideString;
-     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
+  function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
     script: string;FontSize:double):TGlyphPosArray;
   constructor Create;
   destructor Destroy;override;
@@ -149,19 +146,19 @@ begin
 end;
 
 type
- TLineBreak=record
+ TLineSubText=record
   public
    Position:integer;
    Length: integer;
  end;
 
-function FillLineBreaks(const text: string): TList<TLineBreak>;
+function DividesIntoLines(const text: string): TList<TLineSubText>;
 var
   i, lineStart, lineEnd: Integer;
   c: Char;
-  lb: TLineBreak;
+  lb: TLineSubText;
 begin
-  Result := TList<TLineBreak>.Create;
+  Result := TList<TLineSubText>.Create;
   if text = '' then
     Exit;
 
@@ -376,10 +373,6 @@ begin
 end;
 
 
-
-// -----------------------------------------------------------------------------
-// TextExtent modified to use BreakChunksLTR / BreakChunksRTL
-// -----------------------------------------------------------------------------
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -389,26 +382,35 @@ function TRpGDIInfoProvider.TextExtent(
   singleline: Boolean;
   FontSize: Double
 ): TRpLineInfoArray;
+
+  function GlyphsToString(const glyphs: TGlyphPosArray): UnicodeString;
+  var
+    i: Integer;
+  begin
+    Result := '';
+    for i := 0 to High(glyphs) do
+      Result := Result + glyphs[i].CharCode;
+  end;
+
 var
-  lineBreaks: TList<TLineBreak>;
-  lineBreak: TLineBreak;
+  lineSubTexts: TList<TLineSubText>;
+  lineSubText: TLineSubText;
   line: string;
   Bidi: TICUBidi;
-  Runs: TList<TBidiRun>;
-  r: TBidiRun;
+  logicalRuns, visualRuns: TList<TBidiRun>;
+  logicalRun, vRun: TBidiRun;
   direction: TRpBidiDirection;
   positions: TGlyphPosArray;
-  curGlyphs: TGlyphPosArray;
   curWidth, posY, maxWidth, lineWidthLimit, lineHeight: Double;
-  j, k: Integer;
-  runWidth: Double;
   chunks: TGlyphChunks;
   chunk: TGlyphPosArray;
-  glyph: TGlyphPos;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
+  j, k: Integer;
+  minCluster, maxCluster: Integer;
+  orderedGlyphs: TGlyphPosArray;
 begin
-  lineBreaks := FillLineBreaks(Text);
+  lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
   posY := 0;
   maxWidth := 0;
@@ -417,390 +419,138 @@ begin
   if lineHeight <= 0 then
     lineHeight := FontSize * 20;
 
+  lineWidthLimit := Rect.Right - Rect.Left;
+
   try
-    lineWidthLimit := Rect.Right - Rect.Left;
-
-    for lineBreak in lineBreaks do
+    for lineSubText in lineSubTexts do
     begin
-      line := Copy(Text, lineBreak.Position, lineBreak.Length);
+      line := Copy(Text, lineSubText.Position, lineSubText.Length);
+      possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
 
-      possibleBreaksCharIdx := FillPossibleLineBreaksString(line); // keys = char indices (0-based)
-
-      // start a fresh visual line
-      SetLength(curGlyphs, 0);
-      curWidth := 0;
-
-      // get runs in visual order
+      // --- 1. Obtener logical runs y hacer shaping ---
       Bidi := TICUBidi.Create;
-      Runs := nil;
+      logicalRuns := nil;
       try
         if not Bidi.SetPara(line, $FF) then
-          raise Exception.Create('VisualRuns error');
-        Runs := Bidi.GetVisualRuns(line);
+          raise Exception.Create('Bidi error');
+        logicalRuns := Bidi.GetLogicalRuns(line);
       finally
         Bidi.Free;
       end;
 
-      for r in Runs do
+      // --- 2. Dividir cada run lógico en chunks según ancho de línea ---
+      for logicalRun in logicalRuns do
       begin
-        if r.Direction = UBIDI_RTL then
+        if logicalRun.Direction = UBIDI_RTL then
           direction := RP_UBIDI_RTL
         else
           direction := RP_BIDI_LTR;
 
-        // calc glyphs for this run only
-        positions := CalcGlyphhPositions(Copy(line, r.LogicalStart + 1, r.Length),
-          adata, pdfFont, direction, r.ScriptString, FontSize);
+        positions := CalcGlyphPositions(
+          Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
+          adata,
+          pdfFont,
+          direction,
+          logicalRun.ScriptString,
+          FontSize
+        );
 
-        // compute run width
-        runWidth := 0;
-        for j := 0 to High(positions) do
-          runWidth := runWidth + positions[j].XAdvance;
-
-        // if no wordwrap just append
-        if not wordwrap then
+        if wordwrap then
         begin
-          for j := 0 to High(positions) do
-          begin
-            SetLength(curGlyphs, Length(curGlyphs) + 1);
-            curGlyphs[High(curGlyphs)] := positions[j];
-            curWidth := curWidth + positions[j].XAdvance;
-          end;
-          Continue;
+          if direction = RP_UBIDI_RTL then
+            chunks := BreakChunksRTL(positions, lineWidthLimit, possibleBreaksCharIdx)
+          else
+            chunks := BreakChunksLTR(positions, lineWidthLimit, possibleBreaksCharIdx);
+        end
+        else
+        begin
+          SetLength(chunks, 1);
+          chunks[0] := positions;
         end;
 
-        // remaining space
-        var remaining := lineWidthLimit - curWidth;
-
-        // if run fits entirely in remaining -> append whole run
-        if runWidth <= remaining then
+        // --- 3. Cada chunk se convierte en una línea visual ---
+        for j := 0 to High(chunks) do
         begin
-          for j := 0 to High(positions) do
-          begin
-            SetLength(curGlyphs, Length(curGlyphs) + 1);
-            curGlyphs[High(curGlyphs)] := positions[j];
-            curWidth := curWidth + positions[j].XAdvance;
+          chunk := chunks[j];
+
+          // Obtener visual runs de este chunk
+          Bidi := TICUBidi.Create;
+          visualRuns := nil;
+          try
+            if not Bidi.SetPara(GlyphsToString(chunk), $FF) then
+              raise Exception.Create('VisualRuns error');
+            visualRuns := Bidi.GetVisualRuns(GlyphsToString(chunk));
+          finally
+            Bidi.Free;
           end;
-          Continue;
-        end;
 
-        // run does not fit in current line
-        // if current line has content -> flush current line and start new one
-        if curWidth > 0 then
-        begin
-          LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
+          // Construir la línea visual concatenando glyphs de los runs visuales
+          SetLength(orderedGlyphs, 0);
+          curWidth := 0;
+          for vRun in visualRuns do
+          begin
+            // Extraer los glyphs correspondientes del chunk
+            for k := vRun.LogicalStart to vRun.LogicalStart + vRun.Length - 1 do
+            begin
+              SetLength(orderedGlyphs, Length(orderedGlyphs) + 1);
+              orderedGlyphs[High(orderedGlyphs)] := chunk[k];
+              curWidth := curWidth + chunk[k].XAdvance;
+            end;
+          end;
+
+          // --- 4. Rellenar LineInfo ---
+          LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
+
+          if Length(LineInfo.Glyphs) > 0 then
+          begin
+            minCluster := LineInfo.Glyphs[0].Cluster;
+            maxCluster := LineInfo.Glyphs[0].Cluster;
+            for k := 1 to High(LineInfo.Glyphs) do
+            begin
+              if LineInfo.Glyphs[k].Cluster < minCluster then minCluster := LineInfo.Glyphs[k].Cluster;
+              if LineInfo.Glyphs[k].Cluster > maxCluster then maxCluster := LineInfo.Glyphs[k].Cluster;
+            end;
+            LineInfo.Position := lineSubText.Position + minCluster;
+            LineInfo.Size := maxCluster - minCluster + 1;
+          end
+          else
+          begin
+            LineInfo.Position := lineSubText.Position;
+            LineInfo.Size := 0;
+          end;
+
+          LineInfo.TopPos := Round(posY);
           LineInfo.Width := Round(curWidth);
           LineInfo.Height := Round(lineHeight);
-          LineInfo.TopPos := Round(posY);
-          LineInfo.lastline := False;
           LineInfo.LineHeight := lineHeight;
+          LineInfo.lastline := False; // se ajustará al final
+
+          // Guardar línea en el array
           SetLength(Result, Length(Result) + 1);
           Result[High(Result)] := LineInfo;
 
           if curWidth > maxWidth then maxWidth := curWidth;
-
-          SetLength(curGlyphs, 0);
-          curWidth := 0;
           posY := posY + lineHeight;
-          remaining := lineWidthLimit;
         end;
-
-        // now the line is empty; split the run into chunks that fit into lineWidthLimit
-        if direction = RP_UBIDI_RTL then
-          chunks := BreakChunksRTL(positions, lineWidthLimit, possibleBreaksCharIdx)
-        else
-          chunks := BreakChunksLTR(positions, lineWidthLimit, possibleBreaksCharIdx);
-
-        // append chunks sequentially: for RTL chunks[0] is rightmost chunk (to place first)
-        for j := 0 to High(chunks) do
-        begin
-          chunk := chunks[j];
-          for k := 0 to High(chunk) do
-          begin
-            SetLength(curGlyphs, Length(curGlyphs) + 1);
-            curGlyphs[High(curGlyphs)] := chunk[k];
-            curWidth := curWidth + chunk[k].XAdvance;
-          end;
-
-          // if there are more chunks after this one -> flush this as a line and continue
-          if j < High(chunks) then
-          begin
-            LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
-            LineInfo.Width := Round(curWidth);
-            LineInfo.Height := Round(lineHeight);
-            LineInfo.TopPos := Round(posY);
-            LineInfo.lastline := False;
-            LineInfo.LineHeight := lineHeight;
-            SetLength(Result, Length(Result) + 1);
-            Result[High(Result)] := LineInfo;
-
-            if curWidth > maxWidth then maxWidth := curWidth;
-
-            SetLength(curGlyphs, 0);
-            curWidth := 0;
-            posY := posY + lineHeight;
-          end;
-        end; // for chunks
-      end; // for runs
-
-      // flush remaining glyphs as final line for this original lineBreak
-      if Length(curGlyphs) > 0 then
-      begin
-        LineInfo.Glyphs := Copy(curGlyphs, 0, Length(curGlyphs));
-        LineInfo.Width := Round(curWidth);
-        LineInfo.Height := Round(lineHeight);
-        LineInfo.TopPos := Round(posY);
-        LineInfo.lastline := True;
-        LineInfo.LineHeight := lineHeight;
-        SetLength(Result, Length(Result) + 1);
-        Result[High(Result)] := LineInfo;
-
-        if curWidth > maxWidth then maxWidth := curWidth;
-
-        posY := posY + lineHeight;
       end;
-    end; // for lineBreaks
+
+      possibleBreaksCharIdx.Free;
+    end;
+
+    // Marcar la última línea como lastline
+    if Length(Result) > 0 then
+      Result[High(Result)].lastline := True;
+
   finally
-    lineBreaks.Free;
+    lineSubTexts.Free;
   end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
   Rect.Bottom := Rect.Top + Round(posY);
 end;
 
-function TRpGDIInfoProvider.TextExtentOld(
-  const Text: WideString;
-  var Rect: TRect;
-  adata: TRpTTFontData;
-  pdfFont: TRpPDFFont;
-  wordbreak: Boolean;
-  singleline: Boolean;
-  FontSize: Double
-): TRpLineInfoArray;
-var
-  gl: TGlyphPos;
-  Bidi: TICUBidi;
-  Runs: TList<TBidiRun>;
-  r: TBidiRun;
-  astring: WideString;
-  i, runIndex: Integer;
-  scale: Double;
-  positions: TGlyphPosArray;
-  posX, posY: Double;
-  subText: WideString;
-  cursorAdvance: Double;
 
-  // line building
-  lines: TRpLineInfoArray;
-  curLine: TRpLineInfo;
-  curLineGlyphs: TList<TGlyphPos>;
-  curLineWidth: Double;
-  curLineHeight: Double;
-  totalHeight: Double;
-  maxLineWidth: Double;
-  origWidth: Double;
-  emptyStep: TRpFontStep;
-  possibleBreakNext: Integer;
-  canBreakHere: Boolean;
-  isRightToLeft: Boolean;
-  FirstGlyphPos, LastGlyphPos: Integer;
-  GlyphPosIncrement: Integer;
-  minCluster, maxCluster: Integer;
-  currentRunStart: Integer;
-
-  // helper to push current line to lines array
-  procedure FlushCurrentLine(isLast: Boolean);
-  var
-    idx: Integer;
-  begin
-    if curLineGlyphs.Count = 0 then
-      Exit; // nothing to push
-    setLength(curLine.Glyphs,curLineGlyphs.Count);
-    for idx := 0 to  curLineGlyphs.Count-1 do
-    begin
-      curLine.Glyphs[idx]:=curLineGlyphs[idx];
-    end;
-
-    idx := Length(lines);
-    SetLength(lines, idx + 1);
-
-    // Clusters relativos al string original
-    curLine.Width := Round(curLineWidth);
-    curLine.height := Round(curLineHeight);
-    curLine.TopPos := Round(posY + idx * curLineHeight);
-    curLine.lastline := isLast;
-    curLine.LineHeight := curLineHeight;
-    curLine.step := emptyStep;
-    lines[idx] := curLine;
-
-    // actualizar totales
-    totalHeight := totalHeight + Round(curLineHeight);
-    if curLineWidth > maxLineWidth then
-      maxLineWidth := curLineWidth;
-
-    // preparar para la siguiente línea
-    posY := posY + curLineHeight;
-    cursorAdvance := 0;
-    curLineWidth := 0;
-    curLineGlyphs.Clear;
-    minCluster := High(Integer);
-    maxCluster := 0;
-  end;
-
-begin
-  curLineGlyphs:=TList<TGlyphPos>.Create;
-  SetLength(Result, 0);
-  SetLength(lines, 0);
-  posX := 0;
-  posY := 0;
-  cursorAdvance := 0;
-  maxLineWidth := 0;
-  totalHeight := 0;
-  curLineWidth := 0;
-  curLineHeight := FontSize * 20; // línea aproximada en twips
-  scale := 1;
-  FillChar(emptyStep, SizeOf(emptyStep), 0);
-
-  // ancho original del rect
-  origWidth := Rect.Right - Rect.Left;
-
-  // preparar BiDi runs
-  astring := Text;
-  Bidi := TICUBidi.Create;
-  Runs := nil;
-  try
-    if Bidi.SetPara(astring, 2) then
-      Runs := Bidi.GetVisualRuns(astring)
-    else
-      raise Exception.Create('VisualRuns error');
-  finally
-    Bidi.Free;
-  end;
-  // recorrer cada run
-  for runIndex := 0 to Runs.Count - 1 do
-  begin
-    r := Runs[runIndex];
-    isRightToLeft := r.Direction = UBIDI_RTL;
-    currentRunStart := r.LogicalStart;
-    subText := Copy(astring, currentRunStart + 1, r.Length);
-
-    positions := CalcGlyphhPositions(
-      subText, adata, pdfFont, TRpBidiDirection(r.Direction), r.ScriptString, FontSize
-    );
-    for i:=0 to High(positions) do
-    begin
-      gl:=positions[i];
-      gl.Cluster:=gl.Cluster+currentRunStart;
-    end;
-
-
-    if isRightToLeft then
-    begin
-      FirstGlyphPos := High(positions);
-      LastGlyphPos := 0;
-      GlyphPosIncrement := -1;
-    end
-    else
-    begin
-      FirstGlyphPos := 0;
-      LastGlyphPos := High(positions);
-      GlyphPosIncrement := 1;
-    end;
-
-
-
-    i := FirstGlyphPos;
-    while True do
-    begin
-      gl:=positions[i];
-
-      // actualizar clusters relativos al subText
-      if gl.Cluster < minCluster then minCluster := gl.Cluster;
-      if gl.Cluster > maxCluster then maxCluster := gl.Cluster;
-
-      // saltos de línea
-      if gl.CharCode = #13 then
-      begin
-        i := i + GlyphPosIncrement;
-        if i = LastGlyphPos + GlyphPosIncrement then Break;
-        Continue;
-      end;
-      if gl.CharCode = #10 then
-      begin
-        FlushCurrentLine(False);
-        i := i + GlyphPosIncrement;
-        if i = LastGlyphPos + GlyphPosIncrement then Break;
-        Continue;
-      end;
-
-      // wordbreak o linebreak
-      possibleBreakNext := -1;
-      canBreakHere := False;
-      try
-        if Assigned(r.LineBreaks) and r.LineBreaks.TryGetValue(i, possibleBreakNext) then
-          canBreakHere := True
-        else if wordbreak and (i < Length(subText)) and (subText[i + 1] = ' ') then
-          canBreakHere := True;
-      except
-        canBreakHere := False;
-      end;
-
-      // advance y offsets
-      var advX := gl.XAdvance * scale;
-      var offX := gl.XOffset * scale;
-      var offY := gl.YOffset * scale;
-
-      // comprobar si cabe en el ancho
-      if not singleline and (Round(cursorAdvance + advX) > origWidth) then
-      begin
-        FlushCurrentLine(False);
-      end;
-
-      // añadir glyph
-      if (isRightToLeft) then
-      begin
-       // Al principio si es RTL
-       curLineGlyphs.Insert(0,gl);
-      end
-      else
-      begin
-       curLineGlyphs.Add(gl);
-      end;
-
-      // actualizar contadores
-      curLineWidth := cursorAdvance + gl.XAdvance;
-      cursorAdvance := cursorAdvance + gl.XAdvance;
-
-      // check break opcional
-      if not singleline and canBreakHere and (Round(cursorAdvance) <= origWidth) then
-      begin
-        if i <> LastGlyphPos then
-        begin
-          var nextAdv := positions[i + GlyphPosIncrement].XAdvance * scale;
-          if Round(cursorAdvance + nextAdv) > origWidth then
-            FlushCurrentLine(False);
-        end;
-      end;
-
-      if i = LastGlyphPos then Break;
-      i := i + GlyphPosIncrement;
-    end; // while gl
-  end; // for runs
-
-  // flush última línea
-  FlushCurrentLine(True);
-
-  Result := lines;
-
-  if maxLineWidth < 0 then maxLineWidth := 0;
-  if totalHeight < Round(curLineHeight) then totalHeight := Round(curLineHeight);
-  Rect.Right := Rect.Left + Round(maxLineWidth);
-  Rect.Bottom := Rect.Top + Round(totalHeight);
-end;
-
-
-
-function TRpGDIInfoProvider.CalcGlyphhPositions(
+function TRpGDIInfoProvider.CalcGlyphPositions(
   astring: WideString;
   adata: TRpTTFontData;
   pdffont: TRpPDFFont;

@@ -134,7 +134,6 @@ const
     Script: UScriptCode;
     ScriptString: AnsiString;
     Text: UnicodeString; // copia del texto de este run
-    LineBreaks: TDictionary<Integer,Integer>; // índice inicio -> índice siguiente break
   end;
   EICU = Class(Exception)
   End;
@@ -331,35 +330,6 @@ begin
   Result := code < 0;
 end;
 
-procedure FillLineBreaks(const RunText: UnicodeString; var Run: TBidiRun);
-var
-  bi: UBreakIterator;
-  status: UErrorCode;
-  pos, prevPos: Integer;
-begin
-  Run.LineBreaks := TDictionary<Integer,Integer>.Create;
-  if RunText = '' then
-    Exit;
-
-  status := U_ZERO_ERROR;
-  // Creamos un BreakIterator de tipo línea
-  bi := ubrk_open(UBRK_LINE, 'en', PChar(RunText), Length(RunText), status);
-  if U_FAILURE(status) then
-    Exit;
-
-  try
-    prevPos := ubrk_first(bi);
-    pos := ubrk_next(bi);
-    while pos <> UBRK_DONE do
-    begin
-      Run.LineBreaks.Add(prevPos, pos); // de prevPos hasta pos es un segmento
-      prevPos := pos;
-      pos := ubrk_next(bi);
-    end;
-  finally
-    ubrk_close(bi);
-  end;
-end;
 
 function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
 var
@@ -487,7 +457,6 @@ begin
     else
       run.Text := '';
 
-    FillLineBreaks(run.Text, run);
     Result.Add(run);
 
     // avanzar al siguiente run lógico
@@ -593,7 +562,6 @@ begin
       run.Text := Copy(AText, vStart + 1, vLength) // Delphi indices empiezan en 1
     else
       run.Text := '';
-    FillLineBreaks(run.Text, run);
     Result.Add(run);
   end;
 end;
