@@ -369,10 +369,11 @@ type
  TLineGlyphs=class
   public
    Glyphs:TList<TGlyphPos>;
-   MinCluster: integer;
-   MaxCluster: integer;
+   MinClusterText: integer;
+   MaxClusterText: integer;
+   MinClusterLine: integer;
+   MaxClusterLine: integer;
    Offset:integer;
-   RunOffset:integer;
    constructor Create(TextOffset: integer);
    destructor Destroy;
    procedure AddGlyph(g: TGlyphPos;rOffset: integer);
@@ -382,23 +383,29 @@ constructor TLineGlyphs.Create(TextOffset:integer);
 begin
   Offset:=TextOffset;
   Glyphs:=TList<TGlyphPos>.Create;
-  MinCluster:=MaxInt;
-  MaxCluster:=-1;
+  MinClusterText:=MaxInt;
+  MaxClusterText:=-1;
+  MinClusterLine:=MaxInt;
+  MaxClusterLine:=-1;
 end;
 
 destructor TLineGlyphs.Destroy;
 begin
   Glyphs.free;
+  inherited;
 end;
 
 procedure TLineGlyphs.AddGlyph(g: TGlyphPos;rOffset: integer);
 begin
  Glyphs.Add(g);
- if (g.Cluster<MinCluster) then
-  MinCluster:=g.Cluster;
- if (g.Cluster>MaxCluster) then
-  MaxCluster:=g.Cluster;
- RunOffset:=rOffset;
+ if (g.Cluster+Offset+rOffset<MinClusterText) then
+  MinClusterText:=g.Cluster+Offset+rOffset;
+ if (g.Cluster+Offset+rOffset>MaxClusterText) then
+  MaxClusterText:=g.Cluster+Offset+rOffset;
+ if (g.Cluster+rOffset<MinClusterLine) then
+  MinClusterLine:=g.Cluster+rOffset;
+ if (g.Cluster+rOffset>MaxClusterLine) then
+  MaxClusterLine:=g.Cluster+rOffset;
 end;
 
 function TRpGDIInfoProvider.TextExtent(
@@ -433,7 +440,6 @@ var
   g:TGlyphPos;
   runWidth:integer;
   currentChunk: TLineGlyphs;
-  lineOffset:integer;
   visualGlyphs:TList<TGlyphPos>;
   runOffset:integer;
 begin
@@ -471,8 +477,8 @@ begin
 
       remaining:=lineWidthLimit;
 
-      lineOffset:=0;
-      currentChunk:=TLineGlyphs.Create(lineOffset);
+      var textOffset:=lineSubtext.Position-1;
+      currentChunk:=TLineGlyphs.Create(textOffset);
       for logicalRun in logicalRuns do
       begin
         if logicalRun.Direction = UBIDI_RTL then
@@ -519,7 +525,7 @@ begin
               currentChunk.AddGlyph(g,runOffset);
             end;
             calculatedLines.Add(currentChunk);
-            currentChunk:=currentChunk.Create(lineOffset);
+            currentChunk:=TLineGlyphs.Create(textOffset);
             remaining:=lineWidthLimit;
            end
            else
@@ -543,7 +549,7 @@ begin
             end;
             remaining:=lineWidthLimit;
             calculatedLines.Add(currentChunk);
-            currentChunk:=currentChunk.Create(lineOffset);
+            currentChunk:=TLineGlyphs.Create(textOffset);
            end;
           end;
         end
@@ -558,13 +564,16 @@ begin
       // -----------------------------
       for calculatedLine in calculatedLines do
       begin
-        // calcular minCluster y maxCluster del chunk
-        //minCluster:=calculatedline.MinCluster+calculatedLine.Offset+calculatedLine.RunOffset;
-        //maxCluster:=calculatedline.MaxCluster+calculatedLine.Offset+calculatedLine.RunOffset;
-        var minCluster:=calculatedline.MinCluster+calculatedLine.RunOffset;
-        var maxCluster:=calculatedline.MaxCluster+calculatedLine.RunOffset;
+        var minCluster:=calculatedline.MinClusterText;
+        var maxCluster:=calculatedline.MaxClusterText;
+        chunkText := Copy(Text, minCluster, maxCluster - minCluster + 1);
 
-        chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
+        // Opcional para depuración obtener el texto a partir de indices de
+        // línea actual
+        //var minCluster:=calculatedline.MinClusterLine;
+        //var maxCluster:=calculatedline.MaxClusterLine;
+        //chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
+
         // obtener visual runs del chunk
         Bidi := TICUBidi.Create;
         visualRuns := nil;
@@ -600,7 +609,7 @@ begin
 
         // rellenar LineInfo
         //LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
-        LineInfo.Position := lineSubText.Position + minCluster - 1;
+        LineInfo.Position := minCluster;
         LineInfo.Size := maxCluster - minCluster + 1;
         LineInfo.TopPos := Round(posY);
         LineInfo.Text :=chunkText;
