@@ -651,8 +651,8 @@ begin
         for k := 0 to High(LineInfo.Glyphs) do
           LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
 
-        LineInfo.Height := Round(lineHeight);
-        LineInfo.LineHeight := lineHeight;
+        LineInfo.Height := Round(linespacing);
+        LineInfo.LineHeight := linespacing;
         LineInfo.lastline := False;
 
         SetLength(Result, Length(Result) + 1);

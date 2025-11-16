@@ -107,6 +107,16 @@ const
   UBRK_WORD      = 1;
   UBRK_LINE      = 2;
   UBRK_SENTENCE  = 3;
+
+  UBRK_WORD_NONE = 0; // no es límite de palabra
+
+  UBRK_WORD_NUMBER = 100; // límite dentro de un número
+
+  UBRK_WORD_LETTER = 200; // límite entre letras
+
+  UBRK_WORD_KANA = 300; // límite para kana (japonés)
+
+  UBRK_WORD_IDEO = 400; // límite para ideogramas (chino, kanji)
   // UBreakIterator devuelve este valor cuando no hay más límites
   UBRK_DONE = -1;
  type
@@ -177,6 +187,8 @@ const
 
   // Cambiar el texto del iterador
   T_ubrk_setText = procedure(bi: UBreakIterator; text: PWideChar; textLen: Integer; var status: UErrorCode); cdecl;
+  T_ubrk_getRuleStatus = function (bi: UBreakIterator): Integer; Cdecl;
+
 
 TICUBidi = class
   private
@@ -216,10 +228,12 @@ var
   ubrk_first: T_ubrk_first = nil;
   ubrk_next: T_ubrk_next = nil;
   ubrk_setText: T_ubrk_setText = nil;
+  ubrk_getRuleStatus: T_ubrk_getRuleStatus = nil;
+
 procedure InitICU;
 function NormalizeNFC(const S: string): string;
+function FillPossibleWordBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
 function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
-
 
 implementation
 
@@ -330,6 +344,36 @@ begin
   Result := code < 0;
 end;
 
+
+function FillPossibleWordBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
+var
+  bi: UBreakIterator;
+  status: UErrorCode;
+  pos, prevPos: Integer;
+begin
+  Result := TDictionary<Integer,Integer>.Create;
+  if RunText = '' then Exit;
+
+  status := U_ZERO_ERROR;
+  // Usamos BREAK ITERATOR de palabras en lugar de línea
+  bi := ubrk_open(UBRK_WORD, 'en', PChar(RunText), Length(RunText), status);
+  if U_FAILURE(status) then Exit;
+
+  try
+    prevPos := ubrk_first(bi);
+    pos := ubrk_next(bi);
+    while pos <> UBRK_DONE do
+    begin
+      // Solo consideramos los límites “reales” de palabra
+      if ubrk_getRuleStatus(bi) <> UBRK_WORD_NONE then
+        Result.Add(prevPos, pos);
+      prevPos := pos;
+      pos := ubrk_next(bi);
+    end;
+  finally
+    ubrk_close(bi);
+  end;
+end;
 
 function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
 var
@@ -706,6 +750,11 @@ begin
   ubrk_setText := GetProcAddr(ProcName);
   if not Assigned(ubrk_setText) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName := 'ubrk_getRuleStatus' + AnsiString(ICUSuffix);
+  ubrk_getRuleStatus := GetProcAddr(ProcName);
+  if not Assigned(ubrk_getRuleStatus) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
 end;
 
 function NormalizeNFC(const S: string): string;
