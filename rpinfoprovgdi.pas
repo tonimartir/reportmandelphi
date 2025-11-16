@@ -18,7 +18,7 @@ unit rpinfoprovgdi;
 
 interface
 
-uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,
+uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
@@ -439,7 +439,7 @@ var
   logicalRun, vRun: TBidiRun;
   direction: TRpBidiDirection;
   positions: TGlyphPosArray;
-  lineHeight, lineWidthLimit, posY, maxWidth: Double;
+  lineWidthLimit, posY, maxWidth: Double;
   chunks:TList<TGlyphPosArray>;
   chunk: TGlyphPosArray;
   calculatedLines: TList<TLineGlyphs>;
@@ -455,15 +455,18 @@ var
   currentChunk: TLineGlyphs;
   visualGlyphs:TList<TGlyphPos>;
   runOffset:integer;
+  leading: integer;
+  linespacing:integer;
 begin
-  lineSubTexts := DividesIntoLines(Text);
+ linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+ leading:=adata.Leading;
+ leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.25);
+ linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.25);
+ lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
   posY := 0;
   maxWidth := 0;
 
-  lineHeight := (adata.Ascent - adata.Descent + adata.Leading) / 1000 * FontSize * 20;
-  if lineHeight <= 0 then
-    lineHeight := FontSize * 20;
 
   lineWidthLimit := Rect.Right - Rect.Left;
 
@@ -656,7 +659,7 @@ begin
         Result[High(Result)] := LineInfo;
 
         if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
-        posY := posY + lineHeight;
+        posY := posY + linespacing;
       end;
 
       calculatedLines.Free;
