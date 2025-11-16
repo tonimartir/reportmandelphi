@@ -193,8 +193,6 @@ begin
 end;
 
 
-type
-  TGlyphChunks = TArray<TGlyphPosArray>;
 
 // ---------------------------
 // BreakChunksLTR
@@ -207,7 +205,7 @@ function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>
-): TGlyphChunks;
+): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
   startIdx, j, chunkEnd, k: Integer;
@@ -222,16 +220,16 @@ var
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
     // positions[j].Cluster assumed 0-based char index in subText
-    charIdx := positions[j].Cluster;
+    charIdx := positions[j].Cluster - 1;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
   end;
 begin
   chunks := TList<TGlyphPosArray>.Create;
-  try
+
     if Length(positions) = 0 then
     begin
-      Result := [];
+      Result := chunks;
       Exit;
     end;
 
@@ -279,10 +277,8 @@ begin
       startIdx := chunkEnd + 1;
     end;
 
-    Result := chunks.ToArray;
-  finally
-    chunks.Free;
-  end;
+    Result := chunks;
+
 end;
 
 // ---------------------------
@@ -296,7 +292,7 @@ function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>
-): TGlyphChunks;
+): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
   endIdx, j, chunkStart, k: Integer;
@@ -310,16 +306,15 @@ var
   begin
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
-    charIdx := positions[j].Cluster;
+    charIdx := positions[j].Cluster-1;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
   end;
 begin
   chunks := TList<TGlyphPosArray>.Create;
-  try
     if Length(positions) = 0 then
     begin
-      Result := [];
+      Result := chunks;
       Exit;
     end;
 
@@ -366,10 +361,44 @@ begin
       endIdx := chunkStart - 1;
     end;
 
-    Result := chunks.ToArray;
-  finally
-    chunks.Free;
-  end;
+    Result := chunks;
+
+end;
+
+type
+ TLineGlyphs=class
+  public
+   Glyphs:TList<TGlyphPos>;
+   MinCluster: integer;
+   MaxCluster: integer;
+   Offset:integer;
+   RunOffset:integer;
+   constructor Create(TextOffset: integer);
+   destructor Destroy;
+   procedure AddGlyph(g: TGlyphPos;rOffset: integer);
+ end;
+
+constructor TLineGlyphs.Create(TextOffset:integer);
+begin
+  Offset:=TextOffset;
+  Glyphs:=TList<TGlyphPos>.Create;
+  MinCluster:=MaxInt;
+  MaxCluster:=-1;
+end;
+
+destructor TLineGlyphs.Destroy;
+begin
+  Glyphs.free;
+end;
+
+procedure TLineGlyphs.AddGlyph(g: TGlyphPos;rOffset: integer);
+begin
+ Glyphs.Add(g);
+ if (g.Cluster<MinCluster) then
+  MinCluster:=g.Cluster;
+ if (g.Cluster>MaxCluster) then
+  MaxCluster:=g.Cluster;
+ RunOffset:=rOffset;
 end;
 
 function TRpGDIInfoProvider.TextExtent(
@@ -391,16 +420,22 @@ var
   direction: TRpBidiDirection;
   positions: TGlyphPosArray;
   lineHeight, lineWidthLimit, posY, maxWidth: Double;
-  chunks: TGlyphChunks;
+  chunks:TList<TGlyphPosArray>;
   chunk: TGlyphPosArray;
-  chunkList: TList<TGlyphPosArray>;
+  calculatedLines: TList<TLineGlyphs>;
+  calculatedLine:TLineGlyphs;
   j, k: Integer;
-  minCluster, maxCluster: Integer;
   chunkText: UnicodeString;
   visualRuns: TList<TBidiRun>;
-  orderedGlyphs: TGlyphPosArray;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
+  remaining:double;
+  g:TGlyphPos;
+  runWidth:integer;
+  currentChunk: TLineGlyphs;
+  lineOffset:integer;
+  visualGlyphs:TList<TGlyphPos>;
+  runOffset:integer;
 begin
   lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
@@ -419,7 +454,7 @@ begin
       line := Copy(Text, lineSubText.Position, lineSubText.Length);
       possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
 
-      chunkList := TList<TGlyphPosArray>.Create;
+      calculatedLines := TList<TLineGlyphs>.Create;
 
       // -----------------------------
       // PRIMER BUCLE: logical runs → shaping → chunks
@@ -434,12 +469,17 @@ begin
         Bidi.Free;
       end;
 
+      remaining:=lineWidthLimit;
+
+      lineOffset:=0;
+      currentChunk:=TLineGlyphs.Create(lineOffset);
       for logicalRun in logicalRuns do
       begin
         if logicalRun.Direction = UBIDI_RTL then
           direction := RP_UBIDI_RTL
         else
           direction := RP_BIDI_LTR;
+        runOffset:=logicalRun.LogicalStart;
 
         positions := CalcGlyphPositions(
           Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
@@ -449,43 +489,82 @@ begin
           logicalRun.ScriptString,
           FontSize
         );
-
-        if wordwrap then
+        runWidth:=0;
+        for g in positions do
         begin
-          if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, lineWidthLimit, possibleBreaksCharIdx)
-          else
-            chunks := BreakChunksLTR(positions, lineWidthLimit, possibleBreaksCharIdx);
+         runWidth:=runWidth+g.XAdvance;
+        end;
+        if ((runWidth<=remaining) or (not WordWrap)) then
+        begin
+         for g in positions do
+         begin
+          currentChunk.AddGlyph(g, runOffset);
+         end;
+         remaining:=remaining-runwidth;
         end
         else
         begin
-          SetLength(chunks, 1);
-          chunks[0] := positions;
-        end;
-
-        for j := 0 to High(chunks) do
-          chunkList.Add(chunks[j]);
+          if direction = RP_UBIDI_RTL then
+            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx)
+          else
+            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx);
+          for j:=0 to chunks.Count-1 do
+          begin
+           chunk:=chunks[j];
+           // Primer chunk en el currentchunk actual y completamos la línea
+           if (j=0) then
+           begin
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+            end;
+            calculatedLines.Add(currentChunk);
+            currentChunk:=currentChunk.Create(lineOffset);
+            remaining:=lineWidthLimit;
+           end
+           else
+           // Ultimo chunk calculamos restante y todavia no se completa
+           // la línea
+           if (j=chunks.Count-1) then
+           begin
+            remaining:=lineWidthLimit;
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+              remaining:=remaining-g.XAdvance;
+            end;
+           end
+           else
+           begin
+            // Chunk intermedio, es una linea completa
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+            end;
+            remaining:=lineWidthLimit;
+            calculatedLines.Add(currentChunk);
+            currentChunk:=currentChunk.Create(lineOffset);
+           end;
+          end;
+        end
       end;
-
+      if (currentChunk.Glyphs.Count>0) then
+      begin
+        calculatedLines.Add(currentChunk);
+      end;
+      
       // -----------------------------
       // SEGUNDO BUCLE: recorrer chunks → visual runs → LineInfo
       // -----------------------------
-      for chunk in chunkList do
+      for calculatedLine in calculatedLines do
       begin
-        if Length(chunk) = 0 then
-          Continue;
-
         // calcular minCluster y maxCluster del chunk
-        minCluster := chunk[0].Cluster;
-        maxCluster := chunk[0].Cluster;
-        for k := 1 to High(chunk) do
-        begin
-          if chunk[k].Cluster < minCluster then minCluster := chunk[k].Cluster;
-          if chunk[k].Cluster > maxCluster then maxCluster := chunk[k].Cluster;
-        end;
+        //minCluster:=calculatedline.MinCluster+calculatedLine.Offset+calculatedLine.RunOffset;
+        //maxCluster:=calculatedline.MaxCluster+calculatedLine.Offset+calculatedLine.RunOffset;
+        var minCluster:=calculatedline.MinCluster+calculatedLine.RunOffset;
+        var maxCluster:=calculatedline.MaxCluster+calculatedLine.RunOffset;
 
         chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
-
         // obtener visual runs del chunk
         Bidi := TICUBidi.Create;
         visualRuns := nil;
@@ -496,27 +575,35 @@ begin
         finally
           Bidi.Free;
         end;
-
         // construir orderedGlyphs en orden visual
-        SetLength(orderedGlyphs, 0);
+        visualGlyphs:=TList<TGlyphPos>.Create;
         for vRun in visualRuns do
         begin
-          for k := 0 to High(chunk) do
-          begin
-            if (chunk[k].Cluster >= vRun.LogicalStart + 1) and
-               (chunk[k].Cluster <= vRun.LogicalStart + vRun.Length) then
-            begin
-              SetLength(orderedGlyphs, Length(orderedGlyphs) + 1);
-              orderedGlyphs[High(orderedGlyphs)] := chunk[k];
-            end;
-          end;
+         if vRun.Direction = UBIDI_RTL then
+           direction := RP_UBIDI_RTL
+         else
+          direction := RP_BIDI_LTR;
+         positions := CalcGlyphPositions(
+          vRun.Text,
+          adata,
+          pdfFont,
+          direction,
+          vRun.ScriptString,
+          FontSize
+          );
+         for g in positions do
+         begin
+          visualGlyphs.Add(g);
+         end;
         end;
+        LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
 
         // rellenar LineInfo
-        LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
+        //LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
         LineInfo.Position := lineSubText.Position + minCluster - 1;
         LineInfo.Size := maxCluster - minCluster + 1;
         LineInfo.TopPos := Round(posY);
+        LineInfo.Text :=chunkText;
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do
@@ -533,7 +620,7 @@ begin
         posY := posY + lineHeight;
       end;
 
-      chunkList.Free;
+      calculatedLines.Free;
       possibleBreaksCharIdx.Free;
     end;
 
