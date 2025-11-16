@@ -374,6 +374,7 @@ type
    MinClusterLine: integer;
    MaxClusterLine: integer;
    Offset:integer;
+   ClusterMap: TDictionary<Integer, TList<Integer>>;
    constructor Create(TextOffset: integer);
    destructor Destroy;
    procedure AddGlyph(g: TGlyphPos;rOffset: integer);
@@ -387,15 +388,19 @@ begin
   MaxClusterText:=-1;
   MinClusterLine:=MaxInt;
   MaxClusterLine:=-1;
+  ClusterMap:=TDictionary<Integer, TList<Integer>>.Create;
 end;
 
 destructor TLineGlyphs.Destroy;
 begin
   Glyphs.free;
+  ClusterMap.Free;
   inherited;
 end;
 
 procedure TLineGlyphs.AddGlyph(g: TGlyphPos;rOffset: integer);
+var
+  lst: TList<Integer>;
 begin
  Glyphs.Add(g);
  if (g.Cluster+Offset+rOffset<MinClusterText) then
@@ -406,6 +411,14 @@ begin
   MinClusterLine:=g.Cluster+rOffset;
  if (g.Cluster+rOffset>MaxClusterLine) then
   MaxClusterLine:=g.Cluster+rOffset;
+
+ // Asignar ChunkCluster usando el diccionario
+ if not ClusterMap.TryGetValue(g.LineCluster, lst) then
+ begin
+  lst := TList<Integer>.Create;
+  ClusterMap.Add(g.LineCluster, lst);
+ end;
+ lst.Add(Glyphs.Count-1);
 end;
 
 function TRpGDIInfoProvider.TextExtent(
@@ -486,7 +499,6 @@ begin
         else
           direction := RP_BIDI_LTR;
         runOffset:=logicalRun.LogicalStart;
-
         positions := CalcGlyphPositions(
           Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
           adata,
@@ -496,9 +508,10 @@ begin
           FontSize
         );
         runWidth:=0;
-        for g in positions do
+        for k:=0 to Length(positions)-1 do
         begin
-         runWidth:=runWidth+g.XAdvance;
+         runWidth:=runWidth+positions[k].XAdvance;
+         positions[k].LineCluster:=positions[k].Cluster+logicalRun.LogicalStart;
         end;
         if ((runWidth<=remaining) or (not WordWrap)) then
         begin
@@ -558,15 +571,25 @@ begin
       begin
         calculatedLines.Add(currentChunk);
       end;
-      
+
       // -----------------------------
       // SEGUNDO BUCLE: recorrer chunks → visual runs → LineInfo
       // -----------------------------
+      // obtener visual runs de toda la línea
+      Bidi := TICUBidi.Create;
+      visualRuns := nil;
+      try
+        if not Bidi.SetPara(line, $FF) then
+          raise Exception.Create('VisualRuns error');
+        visualRuns := Bidi.GetVisualRuns(line);
+      finally
+        Bidi.Free;
+      end;
+
       for calculatedLine in calculatedLines do
       begin
-        var minCluster:=calculatedline.MinClusterText;
-        var maxCluster:=calculatedline.MaxClusterText;
-        chunkText := Copy(Text, minCluster, maxCluster - minCluster + 1);
+        var minCluster:=calculatedline.MinClusterLine;
+        var maxCluster:=calculatedline.MaxClusterLine;
 
         // Opcional para depuración obtener el texto a partir de indices de
         // línea actual
@@ -574,35 +597,42 @@ begin
         //var maxCluster:=calculatedline.MaxClusterLine;
         //chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
 
-        // obtener visual runs del chunk
-        Bidi := TICUBidi.Create;
-        visualRuns := nil;
-        try
-          if not Bidi.SetPara(chunkText, $FF) then
-            raise Exception.Create('VisualRuns error');
-          visualRuns := Bidi.GetVisualRuns(chunkText);
-        finally
-          Bidi.Free;
-        end;
         // construir orderedGlyphs en orden visual
         visualGlyphs:=TList<TGlyphPos>.Create;
         for vRun in visualRuns do
         begin
+         chunkText:=Copy(line,k,vRun.Length);
          if vRun.Direction = UBIDI_RTL then
-           direction := RP_UBIDI_RTL
-         else
-          direction := RP_BIDI_LTR;
-         positions := CalcGlyphPositions(
-          vRun.Text,
-          adata,
-          pdfFont,
-          direction,
-          vRun.ScriptString,
-          FontSize
-          );
-         for g in positions do
          begin
-          visualGlyphs.Add(g);
+          direction := RP_UBIDI_RTL;
+          for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
+          begin
+           if (calculatedLine.ClusterMap.ContainsKey(k)) then
+           begin
+            var lst := calculatedLine.ClusterMap[k];
+            for j:=0 to lst.Count-1 do
+            begin
+             visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+            end;
+           end;
+          end;
+         end
+         else
+         begin
+          direction := RP_BIDI_LTR;
+          for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
+         begin
+          chunkText:=Copy(line,k,vRun.Length);
+          if (calculatedLine.ClusterMap.ContainsKey(k)) then
+          begin
+           var lst := calculatedLine.ClusterMap[k];
+           for j:=0 to lst.Count-1 do
+           begin
+            visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+           end;
+          end;
+         end;
+
          end;
         end;
         LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
@@ -612,7 +642,7 @@ begin
         LineInfo.Position := minCluster;
         LineInfo.Size := maxCluster - minCluster + 1;
         LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=chunkText;
+        LineInfo.Text :=Copy(line, minCluster, maxCluster - minCluster + 1);
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do

@@ -4276,7 +4276,7 @@ begin
       // g.XOffset/g.YOffset ya están escalados en TextExtent (enteros)
       absX := posX + cursor + g.XOffset;
       //absY := posY + line.TopPos + g.YOffset;
-      absY := posY + g.YOffset;
+      absY := posY - g.YOffset;
 
       Result := Result + Format('q 1 0 0 1 %s %s Tm <%s> Tj Q'+FFile.EndOfLine,
         [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);

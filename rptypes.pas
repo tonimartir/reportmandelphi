@@ -115,6 +115,7 @@ type
    YAdvance: integer;
    CharCode: WideChar;
    Cluster: Cardinal;
+   LineCluster: Cardinal;
  end;
  TGlyphPosArray = array of TGlyphPos;
  TRpLineInfo=record
