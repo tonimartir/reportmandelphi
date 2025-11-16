@@ -114,6 +114,7 @@ begin
   // ajustar la longitud real (writtenChars es el nº de caracteres útiles, sin el NUL)
   SetLength(Result, writtenChars);
 end;
+
 constructor TRpGDIInfoProvider.Create;
 var
  ddc:THandle;
@@ -185,8 +186,8 @@ var
 begin
  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
  leading:=adata.Leading;
- leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.25);
- linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.25);
+ leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+ linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
  lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
   posY := 0;
@@ -253,9 +254,9 @@ begin
         else
         begin
           if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx)
+            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx,line)
           else
-            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx);
+            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx,line);
           for j:=0 to chunks.Count-1 do
           begin
            chunk:=chunks[j];

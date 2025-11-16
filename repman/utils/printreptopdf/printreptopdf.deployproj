@@ -24,6 +24,15 @@
             <Overwrite>True</Overwrite>
             <Required>True</Required>
         </DeployFile>
+        <DeployFile Include="..\..\..\rpconf.inc" Condition="'$(Config)'=='Release'">
+            <RemoteDir>printreptopdf\</RemoteDir>
+            <RemoteName>rpconf.inc</RemoteName>
+            <DeployClass>ProjectFile</DeployClass>
+            <Operation>0</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+        </DeployFile>
         <DeployFile Include="..\..\..\rpconf.inc" Condition="'$(Config)'=='Debug'">
             <RemoteDir>printreptopdf\</RemoteDir>
             <RemoteName>rpconf.inc</RemoteName>
@@ -42,15 +51,6 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
             <Required>True</Required>
-        </DeployFile>
-        <DeployFile Include="..\..\..\rpconf.inc" Condition="'$(Config)'=='Release'">
-            <RemoteDir>printreptopdf\</RemoteDir>
-            <RemoteName>rpconf.inc</RemoteName>
-            <DeployClass>ProjectFile</DeployClass>
-            <Operation>0</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
         </DeployFile>
     </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='iOSDevice64'"/>

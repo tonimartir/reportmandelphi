@@ -161,13 +161,13 @@ type
 function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: string
 ): TList<TGlyphPosArray>;
 
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 
 function DividesIntoLines(const text: string): TList<TLineSubText>;
@@ -321,7 +321,7 @@ end;
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
@@ -340,6 +340,10 @@ var
     charIdx := positions[j].LineCluster - 1;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
+    if (not Result) then
+    begin
+     Result:=(Text[charIdx+1]=' ') or (Text[charIdx+1]=chr(10));
+    end;
   end;
 begin
   chunks := TList<TGlyphPosArray>.Create;
@@ -408,7 +412,7 @@ end;
 function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
@@ -426,6 +430,10 @@ var
     charIdx := positions[j].LineCluster-1;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
+    if (not Result) then
+    begin
+     Result:=(Text[charIdx+1]=' ') or (Text[charIdx+1]=chr(10));
+    end;
   end;
 begin
   chunks := TList<TGlyphPosArray>.Create;

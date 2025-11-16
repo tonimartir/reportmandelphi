@@ -1,4 +1,4 @@
-{*******************************************************}
+ï»¿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -19,7 +19,7 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,SysUtils,rptruetype,rptypes,
+uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 {$IFDEF USEVARIANTS}
     Types,
 {$ENDIF}
@@ -73,15 +73,23 @@ type
   function NFCNormalize(astring:WideString):string;override;
 
   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
-  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
+  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
-  function TextExtent(const Text:WideString;
-     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
+  function TextExtent(
+    const Text: WideString;
+    var Rect: TRect;
+    adata: TRpTTFontData;
+    pdfFont: TRpPDFFont;
+    wordwrap: Boolean;
+    singleline: Boolean;
+    FontSize: Double
+  ): TRpLineInfoArray;override;
+  function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
+    script: string;FontSize:double):TGlyphPosArray;
 
   constructor Create;
   destructor destroy;override;
@@ -117,226 +125,355 @@ begin
  Result:=NormalizeNFC(astring);
 end;
 
-
-function TRpFTInfoProvider.TextExtent(const Text: WideString;
-  var Rect: TRect; adata: TRpTTFontData; pdfFont: TRpPDFFont;
-  wordbreak: boolean; singleline: boolean; FontSize: double): TRpLineInfoArray;
+function TRpFTInfoProvider.TextExtent(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordwrap: Boolean;
+  singleline: Boolean;
+  FontSize: Double
+): TRpLineInfoArray;
 var
+  lineSubTexts: TList<TLineSubText>;
+  lineSubText: TLineSubText;
+  line: string;
   Bidi: TICUBidi;
-  Runs: TList<TBidiRun>;
-  r: TBidiRun;
-  astring: string;
-  i, runIndex: Integer;
-  scale: Double;
+  logicalRuns: TList<TBidiRun>;
+  logicalRun, vRun: TBidiRun;
+  direction: TRpBidiDirection;
   positions: TGlyphPosArray;
-  posX, posY: Double;
-  gidHex: string;
-  glyphIndex: Integer;
-  absX, absY: Double;
-  subText: string;
-  cursorAdvance: Double;
-
-  // line building
-  lines: TRpLineInfoArray;
-  curLine: TRpLineInfo;
-  curLineGlyphs: TGlyphPosArray;
-  curLineStartLogicalIndex: Integer;
-  curLineChars: Integer;
-  curLineWidth: Double;
-  curLineHeight: Double;
-  totalHeight: Double;
-  maxLineWidth: Double;
-  origWidth: Integer;
-  emptyStep: TRpFontStep;
-  possibleBreakNext: Integer;
-  canBreakHere: Boolean;
-  // helper to push current line to lines array
-  procedure FlushCurrentLine(isLast: Boolean);
-  var
-    idx: Integer;
-  begin
-    if curLineChars = 0 then
-      Exit; // nothing to push
-    idx := Length(lines);
-    SetLength(lines, idx + 1);
-    curLine.Glyphs := Copy(curLineGlyphs, 0, Length(curLineGlyphs));
-    curLine.Position := curLineStartLogicalIndex;
-    curLine.Size := curLineChars;
-    curLine.Width := Round(curLineWidth); // store integer width
-    curLine.height := Round(curLineHeight);
-    curLine.TopPos := Round(posY);
-    curLine.lastline := isLast;
-    curLine.LineHeight := curLineHeight;
-    curLine.step := emptyStep;
-    lines[idx] := curLine;
-
-    // update totals
-    totalHeight:=totalHeight + Round(curLineHeight);
-    if curLineWidth > maxLineWidth then
-      maxLineWidth := curLineWidth;
-
-    // prepare for next line
-    posY := posY + curLineHeight;
-    cursorAdvance := 0;
-    curLineChars := 0;
-    curLineWidth := 0;
-    SetLength(curLineGlyphs, 0);
-  end;
-
+  lineWidthLimit, posY, maxWidth: Double;
+  chunks:TList<TGlyphPosArray>;
+  chunk: TGlyphPosArray;
+  calculatedLines: TList<TLineGlyphs>;
+  calculatedLine:TLineGlyphs;
+  j, k: Integer;
+  visualRuns: TList<TBidiRun>;
+  LineInfo: TRpLineInfo;
+  possibleBreaksCharIdx: TDictionary<Integer,Integer>;
+  remaining:double;
+  g:TGlyphPos;
+  runWidth:integer;
+  currentChunk: TLineGlyphs;
+  visualGlyphs:TList<TGlyphPos>;
+  runOffset:integer;
+  leading: integer;
+  linespacing:integer;
 begin
-  CheckFreeTypeLoaded;
-  InitICU;
-  InitHarfBuzz;
-
+ linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+ leading:=adata.Leading;
+ leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+ linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+ lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
-  SetLength(lines, 0);
-  posX := 0;
   posY := 0;
-  cursorAdvance := 0;
-  maxLineWidth := 0;
-  totalHeight := 0;
-  curLineChars := 0;
-  curLineStartLogicalIndex := 0;
-  curLineWidth := 0;
+  maxWidth := 0;
 
-  // salvar original width
-  origWidth := Rect.Right - Rect.Left;
 
-  // initialize empty step
-  FillChar(emptyStep, SizeOf(emptyStep), 0);
+  lineWidthLimit := Rect.Right - Rect.Left;
 
-  // básico: line height estimado (puedes cambiar la fórmula si tienes métricas)
-  // He tomado un multiplicador típico de 1.2 * FontSize. Ajusta si tienes métricas reales.
-  curLineHeight := FontSize * 1.2;
-
-  scale := FontSize / 14 / 72*20; // mantengo tu factor original
-
-  // get visual runs (tal como ya hacías)
-  astring := Text;
-  Bidi := TICUBidi.Create;
-  Runs := nil;
   try
-    if Bidi.SetPara(astring, 2) then
-      Runs := Bidi.GetVisualRuns(astring)
-    else
-      raise Exception.Create('VisualRuns error');
-  finally
-    Bidi.Free;
-  end;
-
-  // recorrer runs -> glyphs
-  for runIndex := 0 to Runs.Count - 1 do
-  begin
-    r := Runs[runIndex];
-    subText := Copy(astring, r.LogicalStart + 1, r.Length);
-    positions := CalcGlyphhPositions(subText, adata, pdfFont, TRpBidiDirection(r.Direction), r.ScriptString);
-
-    // iniciar línea si está vacía
-    if curLineChars = 0 then
-      curLineStartLogicalIndex := r.LogicalStart; // aproximado al inicio del run
-
-    for i := 0 to High(positions) do
+    for lineSubText in lineSubTexts do
     begin
-      // posibilidad de break explícito provisto por getvisualruns
-      possibleBreakNext := -1;
-      canBreakHere := False;
+      line := Copy(Text, lineSubText.Position, lineSubText.Length);
+      possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
+//      possibleBreaksCharIdx := FillPossibleWordBreaksString(line);
+
+      calculatedLines := TList<TLineGlyphs>.Create;
+
+      // -----------------------------
+      // PRIMER BUCLE: logical runs â†’ shaping â†’ chunks
+      // -----------------------------
+      Bidi := TICUBidi.Create;
+      logicalRuns := nil;
       try
-        if Assigned(r.LineBreaks) and r.LineBreaks.TryGetValue(i, possibleBreakNext) then
-          canBreakHere := True
-        else if wordbreak and (i < Length(subText)) and (subText[i + 1] = ' ') then
-          // si wordbreak y el carácter actual es espacio, permitimos romper después
-          canBreakHere := True;
-      except
-        canBreakHere := False;
+        if not Bidi.SetPara(line, $FF) then
+          raise Exception.Create('Bidi error');
+        logicalRuns := Bidi.GetLogicalRuns(line);
+      finally
+        Bidi.Free;
       end;
 
-      // calcular advance y offsets escalados
-      // guardamos la posición del glyph relativa al inicio de la línea.
-      var gl: TGlyphPos;
-      gl := positions[i];
+      remaining:=lineWidthLimit;
 
-      // scaled advance / offsets
-      var advX := positions[i].XAdvance * scale;
-      var offX := positions[i].XOffset * scale;
-      var offY := positions[i].YOffset * scale;
-
-      // si no singleline, comprobar si cabe en el ancho actual del rect
-      if (not singleline) and (Round(cursorAdvance + advX) > origWidth) then
+      var textOffset:=lineSubtext.Position-1;
+      currentChunk:=TLineGlyphs.Create(textOffset);
+      for logicalRun in logicalRuns do
       begin
-        // intentar romper en un punto anterior permitido si existe (simple heuristic)
-        if canBreakHere then
+        if logicalRun.Direction = UBIDI_RTL then
+          direction := RP_UBIDI_RTL
+        else
+          direction := RP_BIDI_LTR;
+        runOffset:=logicalRun.LogicalStart;
+        positions := CalcGlyphPositions(
+          Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
+          adata,
+          pdfFont,
+          direction,
+          logicalRun.ScriptString,
+          FontSize
+        );
+        runWidth:=0;
+        for k:=0 to Length(positions)-1 do
         begin
-          // flush current line and start new
-          FlushCurrentLine(False);
-          // después de break, cur line empty; cursorAdvance already reset in Flush
+         runWidth:=runWidth+positions[k].XAdvance;
+         positions[k].LineCluster:=positions[k].Cluster+logicalRun.LogicalStart;
+        end;
+        if ((runWidth<=remaining) or (not WordWrap)) then
+        begin
+         for g in positions do
+         begin
+          currentChunk.AddGlyph(g, runOffset);
+         end;
+         remaining:=remaining-runwidth;
         end
         else
         begin
-          // no break permitido en este punto: forzamos salto de línea antes del glyph actual
-          FlushCurrentLine(False);
-        end;
-      end;
-
-      // añadir glyph a la línea actual (con coordenadas relativas)
-      // guardamos offsets y advances escalados transformando a enteros como estaban en tu estructura
-      // mantengo los campos en unidades escaladas * 1 (double->integer) redondeando
-      SetLength(curLineGlyphs, Length(curLineGlyphs) + 1);
-      var idxG := High(curLineGlyphs);
-      curLineGlyphs[idxG].GlyphIndex := positions[i].GlyphIndex;
-      curLineGlyphs[idxG].XOffset := Round(offX);
-      curLineGlyphs[idxG].YOffset := Round(offY);
-      curLineGlyphs[idxG].XAdvance := Round(positions[i].XAdvance * scale);
-      curLineGlyphs[idxG].YAdvance := Round(positions[i].YAdvance * scale);
-      // Cluster/CharCode: intentamos mapear cluster a carácter relativo en el subText
-      curLineGlyphs[idxG].Cluster := positions[i].Cluster;
-      if (i < Length(subText)) then
-        curLineGlyphs[idxG].CharCode := subText[i + 1]
-      else
-        curLineGlyphs[idxG].CharCode := WideChar(0);
-
-      // actualizar contadores de línea
-      curLineChars := curLineChars + 1;
-      curLineWidth := cursorAdvance + curLineGlyphs[idxG].XAdvance;
-      cursorAdvance := cursorAdvance + curLineGlyphs[idxG].XAdvance;
-
-      // Si la posición actual es un posible break *y* cabe en la línea, podemos opcionalmente romper
-      if (not singleline) and canBreakHere and (Round(cursorAdvance) <= origWidth) then
-      begin
-        // romper opcionalmente si la siguiente palabra no cabrá? lo hacemos conservador: si el siguiente glyph no cabe
-        if (i < High(positions)) then
-        begin
-          var nextAdv := positions[i + 1].XAdvance * scale;
-          if Round(cursorAdvance + nextAdv) > origWidth then
+          if direction = RP_UBIDI_RTL then
+            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx,line)
+          else
+            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx,line);
+          for j:=0 to chunks.Count-1 do
           begin
-            // romper aquí
-            FlushCurrentLine(False);
+           chunk:=chunks[j];
+           // Primer chunk en el currentchunk actual y completamos la lÃ­nea
+           if (j=0) then
+           begin
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+            end;
+            calculatedLines.Add(currentChunk);
+            currentChunk:=TLineGlyphs.Create(textOffset);
+            remaining:=lineWidthLimit;
+           end
+           else
+           // Ultimo chunk calculamos restante y todavia no se completa
+           // la lÃ­nea
+           if (j=chunks.Count-1) then
+           begin
+            remaining:=lineWidthLimit;
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+              remaining:=remaining-g.XAdvance;
+            end;
+           end
+           else
+           begin
+            // Chunk intermedio, es una linea completa
+            for g in chunk do
+            begin
+              currentChunk.AddGlyph(g,runOffset);
+            end;
+            remaining:=lineWidthLimit;
+            calculatedLines.Add(currentChunk);
+            currentChunk:=TLineGlyphs.Create(textOffset);
+           end;
           end;
-        end;
+        end
       end;
-    end; // for glyphs
+      if (currentChunk.Glyphs.Count>0) then
+      begin
+        calculatedLines.Add(currentChunk);
+      end;
 
-    // Fin del run: continuar con siguiente run (no forzamos break entre runs)
-  end; // for runs
+      // -----------------------------
+      // SEGUNDO BUCLE: recorrer chunks â†’ visual runs â†’ LineInfo
+      // -----------------------------
+      // obtener visual runs de toda la lÃ­nea
+      Bidi := TICUBidi.Create;
+      visualRuns := nil;
+      try
+        if not Bidi.SetPara(line, $FF) then
+          raise Exception.Create('VisualRuns error');
+        visualRuns := Bidi.GetVisualRuns(line);
+      finally
+        Bidi.Free;
+      end;
 
-  // flush última línea (si quedó algo)
-  FlushCurrentLine(True);
+      for calculatedLine in calculatedLines do
+      begin
+        var minCluster:=calculatedline.MinClusterLine;
+        var maxCluster:=calculatedline.MaxClusterLine;
 
-  // construir el resultado
-  Result := lines;
+        // Opcional para depuraciÃ³n obtener el texto a partir de indices de
+        // lÃ­nea actual
+        //var minCluster:=calculatedline.MinClusterLine;
+        //var maxCluster:=calculatedline.MaxClusterLine;
+        //chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
 
-  // actualizar Rect: ancho = máximo ancho usado, alto = suma alturas
-  // ten en cuenta que Rect.Left/Top se mantienen
-  if maxLineWidth < 0 then
-    maxLineWidth := 0;
-  if totalHeight < Round(curLineHeight) then
-    totalHeight := Round(curLineHeight); // al menos una línea
+        // construir orderedGlyphs en orden visual
+        visualGlyphs:=TList<TGlyphPos>.Create;
+        for vRun in visualRuns do
+        begin
+         if vRun.Direction = UBIDI_RTL then
+         begin
+          direction := RP_UBIDI_RTL;
+          for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
+          begin
+           if (calculatedLine.ClusterMap.ContainsKey(k)) then
+           begin
+            var lst := calculatedLine.ClusterMap[k];
+            for j:=0 to lst.Count-1 do
+            begin
+             visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+            end;
+           end;
+          end;
+         end
+         else
+         begin
+          direction := RP_BIDI_LTR;
+          for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
+         begin
+          if (calculatedLine.ClusterMap.ContainsKey(k)) then
+          begin
+           var lst := calculatedLine.ClusterMap[k];
+           for j:=0 to lst.Count-1 do
+           begin
+            visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+           end;
+          end;
+         end;
 
-  Rect.Right := Rect.Left + Round(maxLineWidth);
-  Rect.Bottom := Rect.Top + Round(totalHeight);
+         end;
+        end;
+        LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
 
-  // Si singleline = true y no hubo saltos, nos aseguramos de devolver ancho original si querías
-  // conservar origWidth aparte, lo guardas tú donde estimes conveniente.
+        // rellenar LineInfo
+        //LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
+        LineInfo.Position := minCluster;
+        LineInfo.Size := maxCluster - minCluster + 1;
+        LineInfo.TopPos := Round(posY);
+        LineInfo.Text :=Copy(line, minCluster, maxCluster - minCluster + 1);
+
+        LineInfo.Width := 0;
+        for k := 0 to High(LineInfo.Glyphs) do
+          LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
+
+        LineInfo.Height := Round(linespacing);
+        LineInfo.LineHeight := linespacing;
+        LineInfo.lastline := False;
+
+        SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := LineInfo;
+
+        if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
+        posY := posY + linespacing;
+      end;
+
+      calculatedLines.Free;
+      possibleBreaksCharIdx.Free;
+    end;
+
+    if Length(Result) > 0 then
+      Result[High(Result)].lastline := True;
+
+  finally
+    lineSubTexts.Free;
+  end;
+
+  Rect.Right := Rect.Left + Round(maxWidth);
+  Rect.Bottom := Rect.Top + Round(posY);
 end;
+
+function TRpFTInfoProvider.CalcGlyphPositions(
+  astring: WideString;
+  adata: TRpTTFontData;
+  pdffont: TRpPDFFont;
+  direction: TRpBiDiDirection;
+  script: string;
+  FontSize: double): TGlyphPosArray;
+
+var
+  Font: THBFont;
+  Buf: THBBuffer;
+  GlyphInfo: TArray<THBGlyphInfo>;
+  GlyphPos: TArray<THBGlyphPosition>;
+  i: Integer;
+  mem: Pointer;
+  shapeData: TShapingData;
+  scale:double;
+  fontScaleValue: Int32;
+begin
+  InitHarfBuzz;
+  SetLength(Result, 0);
+  if astring = '' then Exit;
+
+  if not adata.LoadedFace then
+  begin
+    shapeData := TShapingData.Create;
+    adata.FontData.Fontdata.Position := 0;
+    mem := adata.FontData.Fontdata.Memory;
+    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, adata.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
+
+    adata.CustomImplementation := shapedata;
+    adata.LoadedFace := True;
+    shapedata.Font := THBFont.CreateReferenced(shapeData.FreeTypeFace);
+    Font := shapedata.Font;
+
+    // Configuramos FreeType con el tamaÃ±o en points y DPI 1440
+    CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace, 0, 64 * 100, 720, 720));
+  end
+  else
+    shapeData := adata.CustomImplementation as TShapingData;
+
+
+  Font := shapedata.Font;
+
+  try
+
+    // --- Comentadas las lÃ­neas de escala personalizada
+    fontScaleValue := Round(FontSize * 20.0);
+    Font.PTEM := FontSize;
+    Font.SetScale(fontScaleValue, fontScaleValue);
+    Font.FTFontSetFuncs;
+
+    // scale:=FontSize*20/adata.UnitsPerEM;
+    // scale := 14/72;
+    scale:=1;
+    Buf := THBBuffer.Create;
+    try
+      if direction = TRpBiDiDirection.RP_UBIDI_RTL then
+        Buf.Direction := hbdRTL
+      else
+        Buf.Direction := hbdLTR;
+
+      Buf.Script := THBScript.FromString(script);
+      if script = 'Arab' then
+        Buf.Language := hb_language_from_string('ar', -1);
+
+      Buf.AddUTF16(astring);
+      Buf.Shape(Font);
+
+      GlyphInfo := Buf.GetGlyphInfos;
+      GlyphPos := Buf.GetGlyphPositions;
+      SetLength(Result, Length(GlyphInfo));
+
+      for i := 0 to High(GlyphInfo) do
+      begin
+        Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
+        // ahora devuelve la posiciÃ³n en la escala por defecto de HarfBuzz
+        Result[i].XAdvance := Round(GlyphPos[i].XAdvance*scale);
+        Result[i].XOffset  := Round(GlyphPos[i].XOffset*scale);
+        Result[i].YOffset  := Round(GlyphPos[i].YOffset*scale);
+        Result[i].CharCode := astring[GlyphInfo[i].Cluster + 1];
+        Result[i].Cluster  := GlyphInfo[i].Cluster+1;
+      end;
+    finally
+      Buf.Destroy;
+    end;
+  finally
+    // Font.Destroy; // si lo necesitas
+  end;
+end;
+
+
+
+
+
 // add self directory and subdirectories to the lis
 procedure Parsedir(alist:TStringList;adir:string);
 var
@@ -798,6 +935,28 @@ begin
             aobj.stylename:=StrPas(aface.style_name);
       aobj.bold:=(aface.style_flags AND FT_STYLE_FLAG_BOLD)<>0;
       aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
+      if (Pos('CANTARELL',UpperCase(aobj.familyname))>0) then
+      begin
+        if ((not aobj.italic) and (not aobj.bold)) then
+        begin
+         defaultfont:=nil;
+        end
+        else
+        if ((not aobj.italic) and (aobj.bold)) then
+        begin
+         defaultfontb:=nil;
+        end
+        else
+        if ((aobj.italic) and (not aobj.bold)) then
+        begin
+          defaultfontit:=nil;
+        end
+        else
+        if ((aobj.italic) and (aobj.bold)) then
+        begin
+          defaultfontbit:=nil;
+        end;
+      end;
 
       if (Pos('DROID',UpperCase(aobj.familyname))=0) then
       begin

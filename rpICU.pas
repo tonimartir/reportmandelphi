@@ -383,6 +383,7 @@ var
   locale: array of char;
   buf: array of WideChar;
   i, txtLen: Integer;
+  flag:Integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
   if RunText = '' then Exit;
@@ -403,9 +404,9 @@ begin
 
   status := U_ZERO_ERROR;
   // pasar locale en UTF-8 (aunque 'ar' es ASCII, mejor hacerlo explícito)
-
+  flag:=UBRK_LINE;
   // 2) Crear iterator SIN texto (recomendado)
-  bi := ubrk_open(UBRK_LINE, PAnsiChar(locale), nil, 0, status);
+  bi := ubrk_open(flag, PAnsiChar(locale), nil, 0, status);
   if U_FAILURE(status) then
   begin
     // diagnostics
