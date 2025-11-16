@@ -445,7 +445,6 @@ var
   calculatedLines: TList<TLineGlyphs>;
   calculatedLine:TLineGlyphs;
   j, k: Integer;
-  chunkText: UnicodeString;
   visualRuns: TList<TBidiRun>;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
@@ -604,7 +603,6 @@ begin
         visualGlyphs:=TList<TGlyphPos>.Create;
         for vRun in visualRuns do
         begin
-         chunkText:=Copy(line,k,vRun.Length);
          if vRun.Direction = UBIDI_RTL then
          begin
           direction := RP_UBIDI_RTL;
@@ -625,7 +623,6 @@ begin
           direction := RP_BIDI_LTR;
           for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
          begin
-          chunkText:=Copy(line,k,vRun.Length);
           if (calculatedLine.ClusterMap.ContainsKey(k)) then
           begin
            var lst := calculatedLine.ClusterMap[k];
