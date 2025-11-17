@@ -800,4 +800,4 @@
 {$ENDIF}
 
 // For debugging purposes use ICU & HARFBUZZ in windows
-{$DEFINE WINDOWS_USEHARFBUZZ}
+//{$DEFINE WINDOWS_USEHARFBUZZ}
