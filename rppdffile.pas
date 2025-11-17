@@ -1937,7 +1937,10 @@ begin
  if (RightToLeft) then
  begin
   Text:=InfoProvider.NFCNormalize(Text);
+  SWriteLine(FFile.FsTempStream,'/GroupSpan << /ActualText '+
+   EncodePdfText(Text) + ' >> BDC');
  end;
+
  if (Clipping or (Rotation<>0)) then
  begin
   SaveGraph;
@@ -2080,6 +2083,10 @@ begin
   begin
    RestoreGraph;
   end;
+ end;
+ if (RightToLeft) then
+ begin
+  SWriteLine(FFile.FsTempStream,'EMC');
  end;
 end;
 
