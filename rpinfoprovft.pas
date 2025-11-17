@@ -70,7 +70,7 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
-  function NFCNormalize(astring:WideString):string;override;
+  function NFCNormalize(astring:WideString):WideString;override;
 
   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
@@ -119,9 +119,10 @@ var
 const
  TTF_PRECISION=1000;
 
-function TRpFTInfoProvider.NFCNormalize(astring:WideString):string;
+function TRpFTInfoProvider.NFCNormalize(astring:WideString):WideString;
 begin
  InitIcu;
+// Result:=astring;
  Result:=NormalizeNFC(astring);
 end;
 

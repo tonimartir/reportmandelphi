@@ -151,8 +151,9 @@ const
 
   // Punteros a funciones de ICU
   TUnorm2_getNFCInstance = function(out status: UErrorCode): PUNormalizer2; cdecl;
+
   TUnorm2_normalize = function(norm2: PUNormalizer2; const src: PWord; length: Integer;
-                                dest: PWord; capacity: Integer; out status: UErrorCode): Integer; cdecl;
+                                dest: PWord; capacity: Integer; var status: UErrorCode): Integer; cdecl;
   T_ubidi_open = function: UBiDi; cdecl;
   T_ubidi_close = procedure(pBiDi: UBiDi); cdecl;
   T_ubidi_setPara = procedure(pBiDi: UBiDi;
@@ -231,7 +232,7 @@ var
   ubrk_getRuleStatus: T_ubrk_getRuleStatus = nil;
 
 procedure InitICU;
-function NormalizeNFC(const S: string): string;
+function NormalizeNFC(const S: WideString): WideString;
 function FillPossibleWordBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
 function FillPossibleLineBreaksString(const RunText: UnicodeString):TDictionary<Integer,Integer>;
 
@@ -352,7 +353,7 @@ var
   pos, prevPos: Integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
-  if RunText = '' then Exit;
+ (* if RunText = '' then Exit;
 
   status := U_ZERO_ERROR;
   // Usamos BREAK ITERATOR de palabras en lugar de línea
@@ -372,7 +373,7 @@ begin
     end;
   finally
     ubrk_close(bi);
-  end;
+  end;    *)
 end;
 
 function FillPossibleLineBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
@@ -386,6 +387,7 @@ var
   flag:Integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
+  (*
   if RunText = '' then Exit;
 
   // 1) Copiar a buffer WideChar estable (UTF-16 code units)
@@ -435,7 +437,7 @@ begin
     end;
   finally
     ubrk_close(bi);
-  end;
+  end;                *)
 end;
 
 (*
@@ -830,49 +832,63 @@ begin
 
 end;
 
-function NormalizeNFC(const S: string): string;
+function NormalizeNFC(const S: WideString): WideString;
 var
   status: UErrorCode;
   normalizer: PUNormalizer2;
-  srcUTF16, destUTF16: TArray<UChar>;
-  srcLen, destLen, i: Integer;
+  srcLen, outLen, capacity: Integer;
+  destArr: TArray<UChar>;
 begin
-  InitICU;
-
-  if not Assigned(unorm2_getNFCInstance) or not Assigned(unorm2_normalize) then
-    raise Exception.Create('ICU functions not initialized');
-
   Result := '';
 
-  // Copiar el string Delphi (UTF-16) a array de UChar
+  // Longitud de la cadena de entrada WideString (basada en WideChar, que es UTF-16, igual que UChar)
   srcLen := Length(S);
-  SetLength(srcUTF16, srcLen);
-  for i := 1 to srcLen do
-    srcUTF16[i - 1] := UChar(S[i]);
 
-  // Obtener normalizador NFC
+  // Obtener el normalizador
   status := U_ZERO_ERROR;
   normalizer := unorm2_getNFCInstance(status);
+  if (status <> U_ZERO_ERROR) or (normalizer = nil) then
+    raise Exception.CreateFmt('unorm2_getNFCInstance falló con el estado: %d', [status]);
+
+  // Si la cadena de entrada está vacía, no hay nada que normalizar
+  if srcLen = 0 then
+    Exit;
+
+  // Capacidad inicial del búfer de destino (heurística: doble de la fuente)
+  capacity := srcLen * 2;
+  SetLength(destArr, capacity);
+
+  // Primera llamada a la normalización
+  status := U_ZERO_ERROR;
+  outLen := unorm2_normalize(normalizer, PWord(@S[1]), srcLen, PWord(@destArr[0]), Length(destArr), status);
+
+  // Manejar el desbordamiento de búfer si ocurre
+  if status = U_BUFFER_OVERFLOW_ERROR then
+  begin
+    // unorm2_normalize devuelve la longitud requerida en caso de desbordamiento
+    if outLen <= 0 then
+      raise Exception.Create('unorm2_normalize devolvió U_BUFFER_OVERFLOW_ERROR pero outLen es inválido.');
+
+    capacity := outLen;
+    SetLength(destArr, capacity);
+
+    status := U_ZERO_ERROR;
+    outLen := unorm2_normalize(normalizer, PWord(@S[1]), srcLen, PWord(@destArr[0]), capacity, status);
+  end;
+
+  // Validar el resultado final de la normalización
   if status <> U_ZERO_ERROR then
-    raise Exception.CreateFmt('ICU error getting NFC instance: %d', [status]);
+    raise Exception.CreateFmt('unorm2_normalize falló con el estado: %d', [status]);
 
-  // Preparar buffer de salida (reservar suficiente por si se expande)
-  SetLength(destUTF16, srcLen * 2);
-
-  // Normalizar
-  destLen := unorm2_normalize(normalizer, PWord(@srcUTF16[0]), srcLen,
-                              PWord(@destUTF16[0]), Length(destUTF16), status);
-  if status <> U_ZERO_ERROR then
-    raise Exception.CreateFmt('ICU error normalizing string: %d', [status]);
-
-  // Ajustar tamaño del resultado y convertir a string Delphi
-  SetLength(destUTF16, destLen);
-  SetLength(Result, destLen);
-  for i := 0 to destLen - 1 do
-    Result[i + 1] := WideChar(destUTF16[i]);
+  // Si la normalización tuvo éxito, establecer el resultado
+  if outLen > 0 then
+  begin
+    SetLength(Result, outLen);
+    Move(PWord(@destArr[0])^, PWideChar(Result)^, outLen * SizeOf(WideChar));
+  end
+  else
+    Result := '';
 end;
-
-
 
 initialization
 

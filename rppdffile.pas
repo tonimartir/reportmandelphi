@@ -174,11 +174,9 @@ type
    function UpdateFonts:TRpTTFontData;
    procedure FreeFonts;
    function PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
-   {$IFDEF USETEXTSHAPING}
    function PDFCompatibleTextShaping(adata:TRpTTFontData;
     pdffont:TRpPDFFont;RightToLeft: boolean; posX, posY: Double;
     FontSize: integer;lInfo:TRpLineInfo):String;
-   {$ENDIF}
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
   public
@@ -4237,7 +4235,6 @@ begin
   Result:=aresult;
 end;
 
-{$IFDEF USETEXTSHAPING}
 function TRpPDFCanvas.PDFCompatibleTextShaping(
   adata: TRpTTFontData;
   pdffont: TRpPDFFont;
@@ -4280,8 +4277,6 @@ begin
     cursor := cursor + g.XAdvance;
   end;
 end;
-
-{$ENDIF}
 
 function TRpPDFCanvas.PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 var

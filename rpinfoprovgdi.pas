@@ -22,8 +22,12 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
- rpICU,rpHarfBuzz,
-    rpmdconsts,rpfreetype2, rptruetype, System.Generics.Collections;
+{$IFDEF WINDOWS_USEHARFBUZZ}
+ rpICU,rpHarfBuzz,rpfreetype2,
+{$ELSE}
+ ActiveX,Vcl.Direct2D,WinAPi.D2D1,
+{$ENDIF}
+    rpmdconsts, rptruetype, System.Generics.Collections;
 
 const
  MAXKERNINGS=10000;
@@ -43,7 +47,7 @@ type
   //gdilib:THandle;
   procedure SelectFont(pdffont:TRpPDFFOnt);
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
-  function NFCNormalize(astring:WideString):string;override;
+  function NFCNormalize(astring:WideString):WideString;override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
@@ -52,15 +56,19 @@ type
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
+{$IFDEF WINDOWS_USEHARFBUZZ}
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
     script: string;FontSize:double):TGlyphPosArray;
+{$ENDIF}
   constructor Create;
   destructor Destroy;override;
  end;
 
+{$IFDEF WINDOWS_USEHARFBUZZ}
  var
   ftlibrary:FT_Library;
   initialized:boolean = false;
+{$ENDIF}
 
 implementation
 
@@ -136,6 +144,7 @@ begin
  adc:=GetDc(0);
 // adc:=bitmap.Canvas.Handle;
 
+{$IFDEF WINDOWS_USEHARFBUZZ}
   if (not initialized) then
   begin
    CheckFreeTypeLoaded;
@@ -144,10 +153,36 @@ begin
    InitHarfBuzz;
    initialized:=true;
   end;
+{$ELSE}
+ // Inicializar COM
+ CoInitialize(nil);
+{$ENDIF}
+end;
+{$IFNDEF WINDOWS_USEHARFBUZZ}
+function TRpGDIInfoProvider.TextExtent(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordwrap: Boolean;
+  singleline: Boolean;
+  FontSize: Double
+): TRpLineInfoArray;
+var
+  Factory: IDWriteFactory;
+  TextFormat: IDWriteTextFormat;
+  TextLayout: IDWriteTextLayout;
+  LineCount: UINT32;
+  i: Integer;
+  TotalHeight: Single;
+begin
+  SetLength(Result, 0);
+
 end;
 
+{$ENDIF}
 
-
+{$IFDEF WINDOWS_USEHARFBUZZ}
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -493,8 +528,9 @@ begin
   end;
 end;
 
+{$ENDIF}
 
-function TRpGDIInfoProvider.NFCNormalize(astring:WideString):string;
+function TRpGDIInfoProvider.NFCNormalize(astring:WideString):WideString;
 begin
  Result:=NormalizeToNFC(astring);
 end;
