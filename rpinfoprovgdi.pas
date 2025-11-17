@@ -318,8 +318,8 @@ begin
 
       for calculatedLine in calculatedLines do
       begin
-        var minCluster:=calculatedline.MinClusterLine;
-        var maxCluster:=calculatedline.MaxClusterLine;
+        var minCluster:=calculatedline.MinClusterText;
+        var maxCluster:=calculatedline.MaxClusterText;
 
         // Opcional para depuración obtener el texto a partir de indices de
         // línea actual
@@ -370,7 +370,7 @@ begin
         LineInfo.Position := minCluster;
         LineInfo.Size := maxCluster - minCluster + 1;
         LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=Copy(line, minCluster, maxCluster - minCluster + 1);
+        LineInfo.Text :=Copy(Text, minCluster, maxCluster - minCluster + 1);
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do
