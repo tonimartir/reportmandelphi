@@ -1988,7 +1988,7 @@ begin
 
 
    astring:=Copy(Text,LineInfo[i].Position,LineInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT LineInfo[i].LastLine)) then
+   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT LineInfo[i].LastLine) AND (NOT RightToLeft)) then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -2083,9 +2083,6 @@ begin
   end;
  end;
 end;
-
-
-
 
 function Type1FontTopdfFontName(Type1Font:TRpType1Font;oblique,bold:boolean;WFontName:WideString;FontStyle:integer):String;
 var
