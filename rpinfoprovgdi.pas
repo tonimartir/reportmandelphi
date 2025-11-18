@@ -267,7 +267,7 @@ begin
     TextLayout.Draw(nil, Renderer, 0, 0);
 
     SetLength(Result, Renderer.Lines.Count);
-    RectTopTwips := Rect.Top;
+    RectTopTwips := 0;
     TotalWidth := 0;
 
     // --- Iterar líneas ---
