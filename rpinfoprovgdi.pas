@@ -25,7 +25,7 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
 {$IFDEF WINDOWS_USEHARFBUZZ}
  rpICU,rpHarfBuzz,rpfreetype2,
 {$ELSE}
- ActiveX,Vcl.Direct2D,WinAPi.D2D1,
+ ActiveX,Vcl.Direct2D,WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
     rpmdconsts, rptruetype, System.Generics.Collections;
 
@@ -63,6 +63,9 @@ type
   constructor Create;
   destructor Destroy;override;
  end;
+
+
+
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
  var
@@ -168,16 +171,183 @@ function TRpGDIInfoProvider.TextExtent(
   singleline: Boolean;
   FontSize: Double
 ): TRpLineInfoArray;
+const
+  DIP_TO_TWIPS_FACTOR = 15.0;
+  TWIPS_TO_DIP_FACTOR = 1.0 / 15.0;
 var
   Factory: IDWriteFactory;
   TextFormat: IDWriteTextFormat;
   TextLayout: IDWriteTextLayout;
-  LineCount: UINT32;
-  i: Integer;
-  TotalHeight: Single;
-begin
-  SetLength(Result, 0);
+  Renderer: TTextExtentRenderer;
+  MaxLineWidth: Single;
+  LineMetrics: array of DWRITE_LINE_METRICS;
+  MetricsCount: Cardinal;
+  i, CurrentGlyphIndex: Integer;
+  LineInfo: TRpLineInfo;
+  LineGlyphCount: Integer;
+  CurrentLineGlyphs: TList<TGlyphPos>;
+  TotalWidth: Single;
+  LayoutMetrics: DWRITE_TEXT_METRICS;
+  FontSizeInDips: Single;
+  RectTopTwips: Single;
+  LineWidthCalculated: Single;
 
+  // Variables para obtener FontFace
+  FontCollection: IDWriteFontCollection;
+  FontFamily: IDWriteFontFamily;
+  Font: IDWriteFont;
+  FontFace: IDWriteFontFace;
+  Index: Cardinal;
+  Exists: BOOL;
+  FamilyNameWide: WideString; // Usamos WideString para manejar la conversión
+
+begin
+  Result := nil;
+  Factory := VCL.Direct2D.DWriteFactory;
+  if not Assigned(Factory) then
+    Exit;
+
+  FamilyNameWide := WideString(adata.FamilyName); // Conversión explícita
+
+  // 1. Preparación de entradas (TWIPS a DIPs)
+  MaxLineWidth := Rect.Right - Rect.Left;
+  FontSizeInDips := FontSize * TWIPS_TO_DIP_FACTOR; // DWrite SIEMPRE necesita el tamaño de fuente en DIPs
+
+  // 2. Creación del IDWriteTextFormat
+  Factory.CreateTextFormat(
+    PWideChar(FamilyNameWide),
+    nil,
+    DWRITE_FONT_WEIGHT_NORMAL,
+    DWRITE_FONT_STYLE_NORMAL,
+    DWRITE_FONT_STRETCH_NORMAL,
+    FontSizeInDips, // Pasamos en DIPS
+    'en-us',
+    TextFormat
+  );
+
+  // 3. Creación del IDWriteTextLayout
+  Factory.CreateTextLayout(
+    PWideChar(Text),
+    Length(Text),
+    TextFormat,
+    MaxLineWidth * TWIPS_TO_DIP_FACTOR, // Ancho máximo en DIPS
+    0,
+    TextLayout
+  );
+
+  // Configuración de Word Wrap
+  if wordwrap then
+    TextLayout.SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP)
+  else
+    TextLayout.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+
+  // --- OBTENER IDWriteFontFace DE REFERENCIA ---
+  FontFace := nil;
+  Factory.GetSystemFontCollection(FontCollection, False);
+  FontCollection.FindFamilyName(PWideChar(FamilyNameWide), Index, Exists);
+
+  if Exists then
+  begin
+    FontCollection.GetFontFamily(Index, FontFamily);
+    FontFamily.GetFirstMatchingFont(
+      DWRITE_FONT_WEIGHT_NORMAL,
+      DWRITE_FONT_STRETCH_NORMAL,
+      DWRITE_FONT_STYLE_NORMAL,
+      Font
+    );
+    Font.CreateFontFace(FontFace);
+  end;
+  // --- FIN OBTENER IDWriteFontFace ---
+
+  // 4. Captura de posiciones de glifos y métricas
+  Renderer := TTextExtentRenderer.Create(TextLayout);
+  try
+    Renderer.FontFace := FontFace;
+
+    // Dispara el Layout y llena Renderer.GlyphPositions (en TWIPS)
+    TextLayout.Draw(nil, Renderer, 0, 0);
+
+    // Obtener las métricas de línea: Conteo
+    TextLayout.GetLineMetrics(nil, 0, MetricsCount);
+    SetLength(LineMetrics, MetricsCount);
+
+    // Obtener los datos reales (Casteo a PDwriteLineMetrics)
+    TextLayout.GetLineMetrics(PDwriteLineMetrics(LineMetrics), MetricsCount, MetricsCount);
+
+    // Obtener las métricas generales
+    TextLayout.GetMetrics(LayoutMetrics);
+
+    // 5. Mapeo a TRpLineInfoArray (TODAS LAS SALIDAS A TWIPS)
+    SetLength(Result, MetricsCount);
+
+    CurrentGlyphIndex := 0;
+    TotalWidth := 0;
+    RectTopTwips := Rect.Top;
+
+    for i := 0 to MetricsCount - 1 do
+    begin
+      LineGlyphCount := LineMetrics[i].trailingWhitespaceLength + LineMetrics[i].length;
+      CurrentLineGlyphs := TList<TGlyphPos>.Create;
+      LineWidthCalculated := 0;
+
+      try
+        for var j := 0 to LineGlyphCount - 1 do
+        begin
+          if CurrentGlyphIndex + j < Renderer.GlyphPositions.Count then
+          begin
+            var Glyph := Renderer.GlyphPositions[CurrentGlyphIndex + j];
+            CurrentLineGlyphs.Add(Glyph);
+
+            // 🔥 AJUSTE CLAVE 1: Glyph.XAdvance YA está en TWIPS, solo se suma.
+            LineWidthCalculated := LineWidthCalculated + Glyph.XAdvance;
+          end;
+        end;
+
+        LineInfo.Glyphs := TGlyphPosArray(CurrentLineGlyphs.ToArray());
+
+        // CÁLCULO DE POSICIÓN DE CLÚSTER
+        if LineGlyphCount > 0 then
+          LineInfo.Position := CurrentLineGlyphs[0].LineCluster
+        else
+          LineInfo.Position := 0;
+
+        // Rellenar TRpLineInfo
+        LineInfo.Size := LineMetrics[i].length;
+        LineInfo.Text := Copy(Text, LineInfo.Position + 1, LineInfo.Size);
+
+        // POSICIONES Y DIMENSIONES EN TWIPS
+        LineInfo.TopPos := Round(RectTopTwips);
+
+        // 🔥 AJUSTE CLAVE 2: LineInfo.Width ya es el valor calculado en TWIPS.
+        LineInfo.Width := Round(LineWidthCalculated);
+
+        // 🔥 AJUSTE CLAVE 3: LineMetrics.height SIGUE estando en DIPs, requiere conversión.
+        LineInfo.Height := Round(LineMetrics[i].height * DIP_TO_TWIPS_FACTOR);
+        LineInfo.LineHeight := LineInfo.Height;
+        LineInfo.lastline := (i = MetricsCount - 1);
+
+        Result[i] := LineInfo;
+
+        if LineInfo.Width > TotalWidth then
+          TotalWidth := LineInfo.Width;
+
+        RectTopTwips := RectTopTwips + LineInfo.LineHeight;
+        CurrentGlyphIndex := CurrentGlyphIndex + LineGlyphCount;
+
+      finally
+        CurrentLineGlyphs.Free;
+      end;
+    end;
+
+    // 6. Ajuste de Rect (Salida en TWIPS)
+    Rect.Right := Rect.Left + Round(TotalWidth);
+
+    // 🔥 AJUSTE CLAVE 4: LayoutMetrics.height SIGUE estando en DIPs, requiere conversión.
+    Rect.Bottom := Rect.Top + Round(LayoutMetrics.height * DIP_TO_TWIPS_FACTOR);
+
+  finally
+    Renderer.Free;
+  end;
 end;
 
 {$ENDIF}
