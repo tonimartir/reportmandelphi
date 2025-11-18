@@ -1928,6 +1928,7 @@ var
  arec:TRect;
  aword:WideString;
  oldPenStyle:integer;
+ lInfo:TRpLineInfoArray;
 begin
  FFile.CheckPrinting;
 
@@ -1956,8 +1957,7 @@ begin
    wordbreak:=false;
   // Calculates text extent and apply alignment
   recsize:=ARect;
-  LineInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
-  FLineInfoCount:=Length(LineInfo);
+  lInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -1976,17 +1976,17 @@ begin
    if  ((Alignment AND AlignmentFlags_AlignRight)>0) then
    begin
     // recsize.right contains the width of the full text
-    PosX:=ARect.Right-LineInfo[i].Width;
+    PosX:=ARect.Right-lInfo[i].Width;
    end;
    // Aligns horz.
    if (Alignment AND AlignmentFlags_AlignHCenter)>0 then
    begin
-    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-LineInfo[i].Width) div 2);
+    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-lInfo[i].Width) div 2);
    end;
 
 
-   astring:=Copy(Text,LineInfo[i].Position,LineInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT LineInfo[i].LastLine) AND (NOT RightToLeft)) then
+   astring:=Copy(Text,linfo[i].Position,lInfo[i].Size);
+   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft)) then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -2042,13 +2042,13 @@ begin
         BrushStyle:=0;
         oldPenStyle:=PenStyle;
         PenStyle:=5;
-        Rectangle(currpos, PosY+LineInfo[i].TopPos, currpos+LineInfo[i].Width,PosY+LineInfo[i].TopPos+LineInfo[i].height);
+        Rectangle(currpos, PosY+lInfo[i].TopPos, currpos+lInfo[i].Width,PosY+lInfo[i].TopPos+lInfo[i].height);
         PenStyle:=oldPenStyle;
        end;
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+LineInfo[i].TopPos,lwords.strings[index],LineInfo[i].Width,Rotation,RightToLeft,LineInfo[i]);
+        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
       end;
@@ -2067,11 +2067,11 @@ begin
      BrushStyle:=0;
      oldPenStyle:=PenStyle;
      PenStyle:=5;
-     Rectangle(PosX, PosY+LineInfo[i].TopPos, PosX+LineInfo[i].Width,PosY+LineInfo[i].TopPos+LineInfo[i].height);
+     Rectangle(PosX, PosY+lInfo[i].TopPos, PosX+lInfo[i].Width,PosY+lInfo[i].TopPos+lInfo[i].height);
      PenStyle:=oldPenStyle;
     end;
 
-    TextOut(PosX,PosY+LineInfo[i].TopPos,astring,LineInfo[i].Width,Rotation,RightToLeft,LineInfo[i]);
+    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
    end
   end;
  finally
@@ -2665,14 +2665,14 @@ function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
 begin
  if (rightToLeft) then
  begin
-  LineInfo:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
   FLineInfoCount:=Length(LineInfo);
  end
  else
  begin
-  LineInfo:=TextExtentSimple(Text,Rect,wordbreak,singleline);
+  TextExtentSimple(Text,Rect,wordbreak,singleline);
+  Result:=LineInfo;
  end;
- Result:=LineInfo;
 end;
 
 
