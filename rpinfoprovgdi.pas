@@ -180,7 +180,6 @@ var
   TextLayout: IDWriteTextLayout;
   Renderer: TTextExtentRenderer;
   MaxLineWidth: Single;
-  LayoutMetrics: DWRITE_TEXT_METRICS;
   FontSizeInDips: Single;
   RectTopTwips: Single;
   i: Integer;
@@ -197,7 +196,12 @@ var
   FontFace: IDWriteFontFace;
   Index: Cardinal;
   Exists: BOOL;
+  FontMetrics: DWRITE_FONT_METRICS;
+  scale: Single;
+  tr: TDWriteTextRange;
 begin
+  tr.startPosition := 0;
+  tr.length := Length(Text);
   Result := nil;
   Factory := VCL.Direct2D.DWriteFactory;
   if not Assigned(Factory) then Exit;
@@ -217,25 +221,7 @@ begin
   MaxLineWidth := Rect.Right - Rect.Left;
   FontSizeInDips := FontSize * POINTS_TO_DIPS_FACTOR;
 
-  Factory.CreateTextFormat(
-    PWideChar(FamilyNameWide),
-    nil,
-    FontWeight,
-    FontStyle,
-    DWRITE_FONT_STRETCH_NORMAL,
-    FontSizeInDips,
-    'ar-eg',
-    TextFormat
-  );
 
-  Factory.CreateTextLayout(
-    PWideChar(Text),
-    Length(Text),
-    TextFormat,
-    MaxLineWidth / DIP_TO_TWIPS_FACTOR,
-    0,
-    TextLayout
-  );
 
   // --- Obtener FontFace ---
   FontFace := nil;
@@ -248,6 +234,32 @@ begin
     Font.CreateFontFace(FontFace);
   end;
 
+  // --- Crear TextFormat ---
+  Factory.CreateTextFormat(
+    PWideChar(FamilyNameWide),
+    nil,
+    FontWeight,
+    FontStyle,
+    DWRITE_FONT_STRETCH_NORMAL,
+    FontSizeInDips,
+    '',
+    TextFormat
+  );
+
+  // --- Crear TextLayout ---
+  Factory.CreateTextLayout(
+    PWideChar(Text),
+    Length(Text),
+    TextFormat,
+    MaxLineWidth / DIP_TO_TWIPS_FACTOR,
+    0,
+    TextLayout
+  );
+
+  // --- Obtener métricas de la fuente ---
+  FontFace.GetMetrics(FontMetrics);
+  scale := FontSizeInDips / FontMetrics.DesignUnitsPerEm;
+
   // --- Crear Renderer y disparar layout ---
   Renderer := TTextExtentRenderer.Create(TextLayout);
   try
@@ -258,33 +270,28 @@ begin
     RectTopTwips := Rect.Top;
     TotalWidth := 0;
 
+    // --- Iterar líneas ---
     for i := 0 to Renderer.Lines.Count - 1 do
     begin
       Line := Renderer.Lines[i];
-
       LineInfo.Glyphs := TGlyphPosArray(Line.Glyphs.ToArray);
 
-      // Posición del primer clúster
       if Line.Glyphs.Count > 0 then
         LineInfo.Position := Line.Glyphs[0].LineCluster
       else
         LineInfo.Position := 0;
 
-      // Tamaño del texto en caracteres
       LineInfo.Size := Length(LineInfo.Glyphs);
-
-      // Texto de la línea
       LineInfo.Text := Copy(Text, LineInfo.Position + 1, LineInfo.Size);
-
-      // Posición y dimensiones en TWIPS
       LineInfo.TopPos := Round(RectTopTwips);
 
       LineInfo.Width := 0;
       for Glyph in Line.Glyphs do
         LineInfo.Width := LineInfo.Width + Glyph.XAdvance;
 
-      LineInfo.Height := Round(FontSizeInDips * DIP_TO_TWIPS_FACTOR); // Altura de línea aproximada
-      LineInfo.LineHeight := LineInfo.Height;
+      // --- Interlineado correcto en TWIPS ---
+      LineInfo.LineHeight := Round((FontMetrics.Ascent + FontMetrics.Descent + FontMetrics.LineGap) * scale * DIP_TO_TWIPS_FACTOR);
+      LineInfo.Height := Round(LineInfo.LineHeight);
       LineInfo.lastline := (i = Renderer.Lines.Count - 1);
 
       RectTopTwips := RectTopTwips + LineInfo.LineHeight;
@@ -295,15 +302,14 @@ begin
       Result[i] := LineInfo;
     end;
 
-    // Ajustar rect
+    // Ajustar rectángulo final
     Rect.Right := Rect.Left + Round(TotalWidth);
-    Rect.Bottom := Rect.Top + Round(LayoutMetrics.height * DIP_TO_TWIPS_FACTOR);
+    Rect.Bottom := Rect.Top + Round(RectTopTwips - Rect.Top);
 
   finally
     Renderer.Free;
   end;
 end;
-
 {$ENDIF}
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
