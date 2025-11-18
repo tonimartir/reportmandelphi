@@ -122,8 +122,9 @@ const
 function TRpFTInfoProvider.NFCNormalize(astring:WideString):WideString;
 begin
  InitIcu;
-// Result:=astring;
- Result:=NormalizeNFC(astring);
+ // Normalize disabled has problems in Linux
+ Result:=astring;
+ //Result:=NormalizeNFC(astring);
 end;
 
 function TRpFTInfoProvider.TextExtent(
