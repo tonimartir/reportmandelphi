@@ -169,11 +169,13 @@ function TRpGDIInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double // Asumido en PUNTOS tipográficos
 ): TRpLineInfoArray;
 const
-  DIP_TO_TWIPS_FACTOR = 15.0;
-  TWIPS_TO_DIP_FACTOR = 1.0 / 15.0;
+  // Constantes de Conversión
+  DIP_TO_TWIPS_FACTOR = 15.0;            // 15: De DIP a TWIP
+  TWIPS_TO_DIP_FACTOR = 1.0 / 15.0;      // 1/15: De TWIP a DIP
+  POINTS_TO_DIPS_FACTOR = 4.0 / 3.0;     // 1.3333: De Punto a DIP (Lo que DWrite espera)
 var
   Factory: IDWriteFactory;
   TextFormat: IDWriteTextFormat;
@@ -192,14 +194,23 @@ var
   RectTopTwips: Single;
   LineWidthCalculated: Single;
 
-  // Variables para obtener FontFace
+  // Variables de Estilo
+  FontWeight: DWRITE_FONT_WEIGHT;
+  FontStyle: DWRITE_FONT_STYLE;
+
+  // Variables para Tipografía (BiDi/Ligaduras)
+  Typography: IDWriteTypography;
+  Feature: DWRITE_FONT_FEATURE;
+  Range: TDwriteTextRange; // Rango de texto para aplicar la tipografía
+
+  // Variables para FontFace
   FontCollection: IDWriteFontCollection;
   FontFamily: IDWriteFontFamily;
   Font: IDWriteFont;
   FontFace: IDWriteFontFace;
   Index: Cardinal;
   Exists: BOOL;
-  FamilyNameWide: WideString; // Usamos WideString para manejar la conversión
+  FamilyNameWide: WideString;
 
 begin
   Result := nil;
@@ -207,21 +218,33 @@ begin
   if not Assigned(Factory) then
     Exit;
 
-  FamilyNameWide := WideString(adata.FamilyName); // Conversión explícita
+  FamilyNameWide := WideString(adata.FamilyName);
 
-  // 1. Preparación de entradas (TWIPS a DIPs)
+  // --- DETERMINAR PESO (BOLD) Y ESTILO (ITALIC) ---
+  if pdfFont.Bold then
+    FontWeight := DWRITE_FONT_WEIGHT_BOLD
+  else
+    FontWeight := DWRITE_FONT_WEIGHT_NORMAL;
+
+  if pdfFont.Italic then
+    FontStyle := DWRITE_FONT_STYLE_ITALIC
+  else
+    FontStyle := DWRITE_FONT_STYLE_NORMAL;
+  // -------------------------------------------------
+
+  // 1. Preparación de entradas (Puntos a DIPs)
   MaxLineWidth := Rect.Right - Rect.Left;
-  FontSizeInDips := FontSize * TWIPS_TO_DIP_FACTOR; // DWrite SIEMPRE necesita el tamaño de fuente en DIPs
+  FontSizeInDips := FontSize * POINTS_TO_DIPS_FACTOR;
 
   // 2. Creación del IDWriteTextFormat
   Factory.CreateTextFormat(
     PWideChar(FamilyNameWide),
     nil,
-    DWRITE_FONT_WEIGHT_NORMAL,
-    DWRITE_FONT_STYLE_NORMAL,
+    FontWeight,
+    FontStyle,
     DWRITE_FONT_STRETCH_NORMAL,
-    FontSizeInDips, // Pasamos en DIPS
-    'en-us',
+    FontSizeInDips,
+    'ar-eg',             // Contexto árabe para BiDi y Shaping
     TextFormat
   );
 
@@ -234,6 +257,29 @@ begin
     0,
     TextLayout
   );
+
+  // 🔥 Aplicar Ligaduras Estándar (dlig, calt, liga) para mejorar el Shaping árabe
+  Factory.CreateTypography(Typography);
+
+  // 1. Ligaduras Estándar (liga)
+  Feature.nameTag := DWRITE_FONT_FEATURE_TAG_STANDARD_LIGATURES;
+  Feature.parameter := 1;
+  Typography.AddFontFeature(Feature);
+
+  // 2. Formas contextuales alternativas (calt)
+  Feature.nameTag := DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_ALTERNATES;
+  Feature.parameter := 1;
+  Typography.AddFontFeature(Feature);
+
+  // 3. Formas Discrecionales (dlig)
+  Feature.nameTag := DWRITE_FONT_FEATURE_TAG_DISCRETIONARY_LIGATURES;
+  Feature.parameter := 1;
+  Typography.AddFontFeature(Feature);
+
+  // Aplicar las características de tipografía a todo el texto usando TDwriteTextRange
+  Range.startPosition := 0;
+  Range.length := Length(Text);
+  TextLayout.SetTypography(Typography, Range);
 
   // Configuración de Word Wrap
   if wordwrap then
@@ -250,9 +296,9 @@ begin
   begin
     FontCollection.GetFontFamily(Index, FontFamily);
     FontFamily.GetFirstMatchingFont(
-      DWRITE_FONT_WEIGHT_NORMAL,
+      FontWeight,
       DWRITE_FONT_STRETCH_NORMAL,
-      DWRITE_FONT_STYLE_NORMAL,
+      FontStyle,
       Font
     );
     Font.CreateFontFace(FontFace);
@@ -267,17 +313,15 @@ begin
     // Dispara el Layout y llena Renderer.GlyphPositions (en TWIPS)
     TextLayout.Draw(nil, Renderer, 0, 0);
 
-    // Obtener las métricas de línea: Conteo
+    // Obtener las métricas de línea
     TextLayout.GetLineMetrics(nil, 0, MetricsCount);
     SetLength(LineMetrics, MetricsCount);
-
-    // Obtener los datos reales (Casteo a PDwriteLineMetrics)
     TextLayout.GetLineMetrics(PDwriteLineMetrics(LineMetrics), MetricsCount, MetricsCount);
 
     // Obtener las métricas generales
     TextLayout.GetMetrics(LayoutMetrics);
 
-    // 5. Mapeo a TRpLineInfoArray (TODAS LAS SALIDAS A TWIPS)
+    // 5. Mapeo a TRpLineInfoArray (TODO EN TWIPS)
     SetLength(Result, MetricsCount);
 
     CurrentGlyphIndex := 0;
@@ -297,8 +341,7 @@ begin
           begin
             var Glyph := Renderer.GlyphPositions[CurrentGlyphIndex + j];
             CurrentLineGlyphs.Add(Glyph);
-
-            // 🔥 AJUSTE CLAVE 1: Glyph.XAdvance YA está en TWIPS, solo se suma.
+            // Glyph.XAdvance ya está en TWIPS
             LineWidthCalculated := LineWidthCalculated + Glyph.XAdvance;
           end;
         end;
@@ -317,11 +360,9 @@ begin
 
         // POSICIONES Y DIMENSIONES EN TWIPS
         LineInfo.TopPos := Round(RectTopTwips);
-
-        // 🔥 AJUSTE CLAVE 2: LineInfo.Width ya es el valor calculado en TWIPS.
         LineInfo.Width := Round(LineWidthCalculated);
 
-        // 🔥 AJUSTE CLAVE 3: LineMetrics.height SIGUE estando en DIPs, requiere conversión.
+        // LineMetrics.height está en DIPs, requiere conversión a TWIPS.
         LineInfo.Height := Round(LineMetrics[i].height * DIP_TO_TWIPS_FACTOR);
         LineInfo.LineHeight := LineInfo.Height;
         LineInfo.lastline := (i = MetricsCount - 1);
@@ -342,14 +383,13 @@ begin
     // 6. Ajuste de Rect (Salida en TWIPS)
     Rect.Right := Rect.Left + Round(TotalWidth);
 
-    // 🔥 AJUSTE CLAVE 4: LayoutMetrics.height SIGUE estando en DIPs, requiere conversión.
+    // LayoutMetrics.height está en DIPs, requiere conversión a TWIPS.
     Rect.Bottom := Rect.Top + Round(LayoutMetrics.height * DIP_TO_TWIPS_FACTOR);
 
   finally
     Renderer.Free;
   end;
 end;
-
 {$ENDIF}
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
