@@ -2666,7 +2666,7 @@ begin
  if (rightToLeft) then
  begin
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
-  FLineInfoCount:=Length(LineInfo);
+  FLineInfoCount:=Length(Result);
  end
  else
  begin
