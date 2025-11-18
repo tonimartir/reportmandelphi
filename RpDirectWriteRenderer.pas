@@ -8,7 +8,7 @@ uses
   Winapi.Windows,
   rptypes;
 
-// --- Tipos de Puntero (tal como los tenías) ---
+// --- Tipos de Puntero ---
 type
   TDwriteGlyphRun = DWRITE_GLYPH_RUN;
   TDwriteGlyphRunDescription = DWRITE_GLYPH_RUN_DESCRIPTION;
@@ -27,23 +27,23 @@ type
   PGlyphOffsetArray = ^TGlyphOffsetArray;
   PClusterMapArray = ^TClusterMapArray;
 
-  // --- Nueva estructura para línea de glifos ---
+  // --- Estructura para línea de glifos ---
   TGlyphLine = class
   public
     BaselineY: Single;
     Glyphs: TList<TGlyphPos>;
-    constructor Create(aBaselineY: Single);
+    IsRTL: Boolean;
+    constructor Create(aBaselineY: Single; aIsRTL: Boolean);
     destructor Destroy; override;
   end;
 
-// --- TTextExtentRenderer ---
-type
+  // --- TTextExtentRenderer ---
   TTextExtentRenderer = class(TInterfacedObject, IDWriteTextRenderer)
   private
     FGlyphPositions: TList<TGlyphPos>;
     FTextLayout: IDWriteTextLayout;
     FLines: TList<TGlyphLine>;
-    function GetLineByBaseline(baselineY: Single): TGlyphLine;
+    function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
     constructor Create(const TextLayout: IDWriteTextLayout);
@@ -83,12 +83,16 @@ type
 
 implementation
 
+const
+  DIP_TO_TWIPS_FACTOR = 15.0;
+
 { TGlyphLine }
 
-constructor TGlyphLine.Create(aBaselineY: Single);
+constructor TGlyphLine.Create(aBaselineY: Single; aIsRTL: Boolean);
 begin
   inherited Create;
   BaselineY := aBaselineY;
+  IsRTL := aIsRTL;
   Glyphs := TList<TGlyphPos>.Create;
 end;
 
@@ -119,26 +123,20 @@ begin
   inherited;
 end;
 
-function TTextExtentRenderer.GetLineByBaseline(baselineY: Single): TGlyphLine;
+function TTextExtentRenderer.GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
 var
   L: TGlyphLine;
 begin
-  // Busca línea existente cercana a baselineY
   for L in FLines do
     if Abs(L.BaselineY - baselineY) < 0.01 then
       Exit(L);
-  // Si no existe, crear nueva
-  Result := TGlyphLine.Create(baselineY);
+  Result := TGlyphLine.Create(baselineY, firstRunIsRTL);
   FLines.Add(Result);
 end;
 
-const
-  DIP_TO_TWIPS_FACTOR = 15.0;
-
 function TTextExtentRenderer.DrawGlyphRun(
   clientDrawingContext: Pointer;
-  baselineOriginX: Single;
-  baselineOriginY: Single;
+  baselineOriginX, baselineOriginY: Single;
   measuringMode: TDWriteMeasuringMode;
   var glyphRun: TDwriteGlyphRun;
   var glyphRunDescription: TDwriteGlyphRunDescription;
@@ -153,9 +151,11 @@ var
   ClusterMapArray: PClusterMapArray;
   Line: TGlyphLine;
   GlyphList: TList<TGlyphPos>;
+  runIsRTL: Boolean;
 begin
   Result := S_OK;
   TextPosition := glyphRunDescription.textPosition;
+  runIsRTL := (glyphRun.bidiLevel mod 2) = 1;
 
   IdxArray := PGlyphIndexArray(glyphRun.glyphIndices);
   AdvArray := PSingleAdvanceArray(glyphRun.glyphAdvances);
@@ -165,10 +165,8 @@ begin
     OffArray := nil;
   ClusterMapArray := PClusterMapArray(glyphRunDescription.clusterMap);
 
-  // Obtener la línea correspondiente
-  Line := GetLineByBaseline(baselineOriginY);
+  Line := GetLineByBaseline(baselineOriginY, runIsRTL);
   GlyphList := TList<TGlyphPos>.Create;
-
   try
     for i := 0 to Integer(glyphRun.glyphCount) - 1 do
     begin
@@ -179,7 +177,7 @@ begin
       if Assigned(OffArray) then
       begin
         var Offset := OffArray[i];
-        GlyphPos.XOffset := Round(Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
+        GlyphPos.XOffset := -Round(Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
       else
@@ -193,12 +191,15 @@ begin
       FGlyphPositions.Add(GlyphPos);
     end;
 
-    // Si es RTL, invertir el orden de glifos antes de agregarlos a la línea
-    if (glyphRun.bidiLevel mod 2) = 1 then
+    // Invertir run si es RTL
+    if runIsRTL then
       GlyphList.Reverse;
 
-    // Agregar glifos a la línea
-    Line.Glyphs.AddRange(GlyphList.ToArray);
+    // Insertar según dirección dominante de la línea
+    if Line.IsRTL then
+      Line.Glyphs.InsertRange(0, GlyphList.ToArray)
+    else
+      Line.Glyphs.AddRange(GlyphList.ToArray);
 
   finally
     GlyphList.Free;
