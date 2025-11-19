@@ -39,7 +39,6 @@
 {       Still Missing:                                  }
 {               -Brush Patterns                         }
 {               -RLE and monocrhome Bitmaps             }
-{               -RoundRect                              }
 {                                                       }
 {       This file is under the MPL license              }
 {       If you enhace the functionality of this file    }
@@ -2145,6 +2144,10 @@ var
  stringResult:string;
 begin
  /// Add Font leading
+ if (RightToLeft) then
+ begin
+  Font.Name := poEmbedded;
+ end;
  adata:=GetTTFontData;
  if assigned(adata) then
  begin
@@ -2665,6 +2668,7 @@ function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
 begin
  if (rightToLeft) then
  begin
+  Font.Name := poEmbedded;
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
   FLineInfoCount:=Length(Result);
  end
