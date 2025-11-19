@@ -28,7 +28,7 @@ uses
   SysUtils,
   Classes,
   {$IFDEF MSWINDOWS}
-  ActiveX,rpexceldriver,rpgdidriver,
+  ActiveX,
   {$IFDEF USEVARIANTS}
   {$IFNDEF MIDASOUT}
   midaslib,
@@ -77,6 +77,7 @@ uses
   rpinfoprovft in '..\..\..\rpinfoprovft.pas',
   rpfreetype2 in '..\..\..\rpfreetype2.pas',
   rptextdriver in '..\..\..\rptextdriver.pas',
+  rplinuxexceptionhandler in '..\..\..\rplinuxexceptionhandler.pas',
   rphtmldriver in '..\..\..\rphtmldriver.pas';
 
 var
@@ -157,6 +158,9 @@ begin
 end;
 
 begin
+{$IFDEF LINUX}
+ InitStackTraceExceptionHandling;
+{$ENDIF}
 {$IFDEF USEADO}
   CoInitialize(nil);
 {$ENDIF}
@@ -483,7 +487,8 @@ begin
    begin
     filestream:=TFileStream.Create(errorfile,fmCreate);
     try
-     WriteStringToStream(E.Message,filestream);
+     WriteStringToStream(E.Message+LINE_FEED,filestream);
+     WriteStringToStream(E.StackTrace+LINE_FEED,filestream);
     finally
      filestream.free;
     end;
@@ -496,4 +501,7 @@ begin
    ExitCode:=1;
   end;
  end;
+end.
+
+
 end.

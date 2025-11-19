@@ -1,99 +1,127 @@
 unit rplinuxexceptionhandler;
 
-// Unidad de control de excepciones para aplicaciones de consola en Linux 64-bit.
-// Implementa la misma lógica de enganche que JCL para máxima compatibilidad:
-// 1. Log SILENCIOSO de TODAS las excepciones (manejadas o no) mediante hooks internos de la RTL (SetupExceptionProcs).
-// 2. Customización del Stack Trace de la clase Exception con backtrace nativo de Linux (usando las firmas correctas).
-// 3. Manejo de fallos fatales (SIGSEGV, etc.) usando señales POSIX.
-
 {$IFDEF LINUX}
 interface
 
 uses
-  System.SysUtils, Classes, Types;
+  System.SysUtils,
+  System.Classes,
+  System.Types;
 
-const LineEnding = chr(10);
+const
+  LineEnding = #10;
 
-// Funciones expuestas para uso interno del logger y llamadas internas de la RTL
-procedure WriteToStdError(AString: string);
+procedure WriteToStdError(const AString: string);
+procedure InitStackTraceExceptionHandling;
+
 
 implementation
 
+uses
+  System.Character; // solo por compatibilidad de strings si hace falta
 
-// Tipo de puntero de función para el Hook de Excepciones Global (para SetupExceptionProcs)
-type
-  TExceptionProc = function(E: Exception; const ErrorAddr: Pointer): Boolean;
-
-// --- TIPOS CORRECTOS DE CUSTOMIZACIÓN DE STACK INFO (Variables estáticas de la clase Exception) ---
-// Estas son las firmas EXACTAS que usa la clase Exception en la RTL.
-type
-  // La función recibe el PExceptionRecord y debe devolver un puntero al bloque de información de la pila
-  TGetExceptionStackInfoProc = function (P: Pointer): Pointer;
-  // La función recibe el puntero devuelto arriba y debe formatearlo como string
-  TGetStackInfoStringProc = function (Info: Pointer): string;
-  // La función recibe el puntero y debe liberar la memoria
-  TCleanUpStackInfoProc = procedure (Info: Pointer);
-
-
-// --- 1. Constantes y Declaraciones de Bajo Nivel (POSIX/libc) ---
-
+// --- Constantes / configuración ---
 const
   libc = 'libc.so.6';
-  STDERR_FILENO = 2; // File Descriptor para Standard Error
-
-  // Señales POSIX fatales
-  SIGSEGV = 11;
-  SIGILL = 4;
-  SIGFPE = 8;
-  SIGBUS = 7;
-  SIGABRT = 6;
-  MAX_STACK_DEPTH = 50;
-
-  // Tamaño del puntero en bytes
+  STDERR_FILENO = 2;
+  MAX_STACK_DEPTH = 128;
   POINTER_SIZE = SizeOf(Pointer);
+  ADDR2LINE_BUF = 1024;
 
-// Tipos de funciones para el manejador de señales
 type
-  TSigHandler = procedure(signum: Integer); cdecl;
-  PSigAction = ^TSigAction;
-  TSigAction = packed record
-    sa_handler: TSigHandler;
-    sa_flags: Integer;
+  TDl_info = record
+    dli_fname: PAnsiChar;
+    dli_fbase: Pointer;
+    dli_sname: PAnsiChar;
+    dli_saddr: Pointer;
   end;
+  PDl_info = ^TDl_info;
 
-// Funciones de la librería C
-function write(FD: Integer; const Buffer: Pointer; Count: NativeInt): NativeInt; cdecl; external libc;
-function backtrace(Buffer: Pointer; Size: Integer): Integer; cdecl; external libc;
-function backtrace_symbols(const Buffer: Pointer; Size: Integer): Pointer; cdecl; external libc;
-procedure free(P: Pointer); cdecl; external libc;
-function sigaction(signum: Integer; act, oldact: PSigAction): Integer; cdecl; external libc;
+var initDone:boolean = false;
 
-// --- 2. Implementación de WriteToStdError (Escritura segura en consola) ---
+// --- Externals de libc que usamos ---
+function backtrace(buffer: Pointer; size: Integer): Integer; cdecl; external libc name 'backtrace';
+function backtrace_symbols(const buffer: Pointer; size: Integer): Pointer; cdecl; external libc name 'backtrace_symbols';
+procedure free(p: Pointer); cdecl; external libc name 'free';
+function dladdr(addr: Pointer; info: PDl_info): Integer; cdecl; external libc name 'dladdr';
+function write(fd: Integer; const buffer: Pointer; count: NativeInt): NativeInt; cdecl; external libc name 'write';
 
+function popen(command: PAnsiChar; mode: PAnsiChar): Pointer; cdecl; external libc name 'popen';
+function pclose(stream: Pointer): Integer; cdecl; external libc name 'pclose';
+function fgets(s: PAnsiChar; size: Integer; stream: Pointer): PAnsiChar; cdecl; external libc name 'fgets';
+
+// --- Helpers de escritura segura a stderr ---
 procedure WriteStreamToHandle(AStream: TMemoryStream; Handle: Integer);
 begin
-  if AStream.Size > 0 then
+  if (AStream <> nil) and (AStream.Size > 0) then
     write(Handle, AStream.Memory, AStream.Size);
 end;
 
-procedure WriteToStdError(AString: string);
+procedure WriteToStdError(const AString: string);
 var
-  AStream: TMemoryStream;
-  u8string: UTF8String;
+  ms: TMemoryStream;
+  u8: UTF8String;
 begin
-  u8string := AString + LineEnding;
-  AStream := TMemoryStream.Create;
+  u8 := UTF8String(AString + LineEnding);
+  ms := TMemoryStream.Create;
   try
-    AStream.Write(u8string[1], Length(u8string));
-    WriteStreamToHandle(AStream, STDERR_FILENO);
+    if Length(u8) > 0 then
+      ms.Write(u8[1], Length(u8));
+    WriteStreamToHandle(ms, STDERR_FILENO);
   finally
-    AStream.Free;
+    ms.Free;
   end;
 end;
 
-// --- 3. Customización de Stack Trace (Las *Proc's de la clase Exception) ---
+function RunAddr2Line(const AFileName: string; AAddress: NativeUInt; out Lines: TStringList): Boolean;
+var
+  cmd: AnsiString;
+  fileC: PAnsiChar;
+  stream: Pointer;
+  buf: array[0..ADDR2LINE_BUF - 1] of AnsiChar;
+  p: PAnsiChar;
+  tmp: AnsiString;
+begin
+  Result := False;
+  Lines := TStringList.Create;
+  try
+    cmd := AnsiString(Format('addr2line -f -C -e "%s" 0x%x', [AFileName, AAddress]));
+    fileC := PAnsiChar(cmd);
+    stream := popen(fileC, 'r');
 
-// Se llama cuando el objeto Exception es creado. Captura la pila nativa y la guarda.
+    if stream = nil then
+    begin
+      Lines.Add('addr2line binary not found! Install binutils.');
+      Exit(False);
+    end;
+
+    // Leer líneas hasta EOF
+    while Assigned(fgets(@buf[0], ADDR2LINE_BUF, stream)) do
+    begin
+      p := @buf[0];
+      tmp := string(p);
+      tmp := TrimRight(tmp);
+      Lines.Add(string(UTF8String(tmp)));
+    end;
+
+    pclose(stream);
+
+    if Lines.Count = 0 then
+      Lines.Add('addr2line could not resolve addresses.');
+
+    Result := Lines.Count > 0;
+  except
+    if Assigned(Lines) then
+    begin
+      Lines.Clear;
+      Lines.Add('Exception running addr2line.');
+    end;
+    Result := False;
+  end;
+end;
+
+// --- Funciones que se asignan a Exception class (misma idea que tu original) ---
+// GetExceptionStackInfo: captura stack nativo y devuelve puntero opaco con: [Count: NativeInt][Ptr1][Ptr2]...
 function GetExceptionStackInfo(P: Pointer): Pointer;
 var
   Buffer: array[0..MAX_STACK_DEPTH - 1] of Pointer;
@@ -101,91 +129,141 @@ var
   TotalSize: NativeInt;
   ResultPointer: Pointer;
 begin
-  // 1. Capturar el Stack Trace de bajo nivel
   Count := backtrace(@Buffer[0], MAX_STACK_DEPTH);
 
-  // 2. Calcular el tamaño: NativeInt para el contador + espacio para los punteros de los frames
   TotalSize := SizeOf(NativeInt) + Count * POINTER_SIZE;
   ResultPointer := AllocMem(TotalSize);
 
-  // 3. Almacenar el contador de frames en la primera NativeInt del bloque
+  if ResultPointer = nil then
+  begin
+    Result := nil;
+    Exit;
+  end;
+
   NativeInt(ResultPointer^) := Count;
 
-  // 4. Copiar los punteros de los frames de la pila inmediatamente después del contador
   if Count > 0 then
     Move(Buffer[0], Pointer(NativeInt(ResultPointer) + SizeOf(NativeInt))^, Count * POINTER_SIZE);
 
-  Result := ResultPointer; // Devolver el puntero opaco
+  Result := ResultPointer;
 end;
 
-// Se llama cuando se accede a E.StackTrace. Convierte la pila guardada en una cadena.
+// Helper para formatear puntero a hex
+function PtrToHex(p: Pointer): string;
+begin
+  Result := Format('0x%x', [NativeUInt(p)]);
+end;
+
+// GetStackInfoString: toma el bloque opaco y lo transforma a texto resolviendo símbolos con dladdr+addr2line
 function GetStackInfoString(Info: Pointer): string;
 var
   Count: NativeInt;
   FramePointers: Pointer;
-  Symbols: Pointer;
   i: Integer;
+  FrameAddr: Pointer;
+  dl: TDl_info;
+  fname: string;
+  Lines: TStringList;
+  ok: Boolean;
+  relative: NativeUInt;
+  s: string;
 begin
   Result := '';
   if Info = nil then Exit;
 
-  // 1. Recuperar el contador de frames de la primera NativeInt
   Count := NativeInt(Info^);
-  if Count = 0 then Exit;
+  if Count <= 0 then Exit;
 
-  // 2. Obtener el puntero a la lista de frames (después del NativeInt del contador)
   FramePointers := Pointer(NativeInt(Info) + SizeOf(NativeInt));
 
-  // 3. Obtener los nombres de símbolos de libc
-  Symbols := backtrace_symbols(FramePointers, Count);
-
-  // 4. Concatenar los símbolos en la cadena de resultado
-  if Symbols <> nil then
+  for i := 0 to Count - 1 do
   begin
-    for i := 0 to Count - 1 do
-    begin
-      Result := Result + PAnsiChar(NativeInt(Symbols) + i * POINTER_SIZE) + LineEnding;
-    end;
+    FrameAddr := PPointer(NativeInt(FramePointers) + i * POINTER_SIZE)^;
 
-    // 5. Liberar la memoria asignada por backtrace_symbols
-    free(Symbols);
+    // Si dladdr puede identificar la librería/exe:
+    if dladdr(FrameAddr, @dl) <> 0 then
+    begin
+      if dl.dli_fname <> nil then
+        fname := string(UTF8ToString(dl.dli_fname))
+      else
+        fname := '';
+
+      // Primero intenta addr2line con dirección absoluta
+      ok := RunAddr2Line(fname, NativeUInt(FrameAddr), Lines);
+      if ok and (Lines <> nil) then
+      begin
+        // addr2line con -f -C devuelve normalmente: function_name\nfile:line\n
+        if Lines.Count >= 2 then
+          s := Trim(Lines[0]) + ' at ' + Trim(Lines[1])
+        else
+          s := Trim(Lines.Text);
+        Result := Result + s + LineEnding;
+        FreeAndNil(Lines);
+        Continue;
+      end;
+      if Assigned(Lines) then FreeAndNil(Lines);
+
+      // Si falló, intenta con dirección relativa (addr - base)
+      if dl.dli_fbase <> nil then
+      begin
+        relative := NativeUInt(FrameAddr) - NativeUInt(dl.dli_fbase);
+        ok := RunAddr2Line(fname, relative, Lines);
+        if ok and (Lines <> nil) then
+        begin
+          if Lines.Count >= 2 then
+            s := Trim(Lines[0]) + ' at ' + Trim(Lines[1])
+          else
+            s := Trim(Lines.Text);
+          Result := Result + s + LineEnding;
+          FreeAndNil(Lines);
+          Continue;
+        end;
+        if Assigned(Lines) then FreeAndNil(Lines);
+      end;
+
+      // Si no resolvió con addr2line, intenta usar el nombre de símbolo devuelto por dladdr
+      if dl.dli_sname <> nil then
+        Result := Result + Format('%s (in %s)%s', [string(UTF8ToString(dl.dli_sname)), fname, LineEnding])
+      else
+        Result := Result + Format('%s (in %s)%s', [PtrToHex(FrameAddr), fname, LineEnding]);
+    end
+    else
+    begin
+      // Si dladdr no ayudó, mostramos la dirección hex
+      Result := Result + PtrToHex(FrameAddr) + LineEnding;
+    end;
   end;
 end;
 
-// Se llama cuando el objeto Exception es liberado. Libera la memoria de la pila.
+// CleanUpStackInfo: libera el bloque opaco
 procedure CleanUpStackInfo(Info: Pointer);
 begin
   if Info <> nil then
     FreeMem(Info);
 end;
 
-
-procedure InitExceptionHandling;
+// Inicialización: asignar las proc pointers en Exception (como hacías)
+procedure  InitStackTraceExceptionHandling;
 begin
-  // A. Enganche de la customización del Stack Trace (las *Proc's estáticas)
-  // Ahora usan las firmas correctas.
+  if (InitDone) then
+   exit;
   Pointer(Exception.GetExceptionStackInfoProc) := @GetExceptionStackInfo;
   Pointer(Exception.GetStackInfoStringProc) := @GetStackInfoString;
   Pointer(Exception.CleanUpStackInfoProc) := @CleanUpStackInfo;
-
+  InitDone:=true;
 end;
 
-
-
 initialization
-  InitExceptionHandling;
-end.
-finalization
-  // Es crucial liberar los hooks al finalizar
-  ResetExceptionProcs;
 
-  // Restaurar los hooks de Stack Trace de la clase Exception a nil
+finalization
   Pointer(Exception.GetExceptionStackInfoProc) := nil;
   Pointer(Exception.GetStackInfoStringProc) := nil;
   Pointer(Exception.CleanUpStackInfoProc) := nil;
+end.
+
 {$ELSE}
-// El compilador no es LINUX, la unidad está vacía.
 interface
 implementation
 end.
 {$ENDIF}
+
