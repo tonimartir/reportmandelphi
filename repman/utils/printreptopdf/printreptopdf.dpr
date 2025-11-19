@@ -495,7 +495,7 @@ begin
    end
    else
    begin
-    WriteToStdError(E.Message+LINE_FEED+E.StackTrace+LINE_FEED);
+    WriteToStdError(E.Message+LINE_FEED);
     WriteToStdError(E.StackTrace+LINE_FEED);
    end;
    ExitCode:=1;
