@@ -933,30 +933,45 @@ begin
       aobj.MaxWidth:=Round(aobj.convfactor*aface.max_advance_width);
       aobj.Capheight:=Round(aobj.convfactor*aface.ascender);
       aobj.stylename:='';
-      if (aface.style_name<>nil) then
-            aobj.stylename:=StrPas(aface.style_name);
       aobj.bold:=(aface.style_flags AND FT_STYLE_FLAG_BOLD)<>0;
       aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
+      if (aface.style_name<>nil) then
+      begin
+       aobj.stylename:=StrPas(aface.style_name);
+       if not aobj.bold then
+         aobj.bold :=
+              (Pos('BOLD', UpperCase(aobj.stylename)) > 0)
+           or (Pos('BOLD', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('BOLD', UpperCase(aobj.filename)) > 0);
+       if not aobj.italic then
+         aobj.italic :=
+             (Pos('ITALIC', UpperCase(aobj.stylename)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.stylename)) > 0)
+           or (Pos('ITALIC', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('ITALIC', UpperCase(aobj.filename)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.filename)) > 0);
+      end;
       if (Pos('CANTARELL',UpperCase(aobj.familyname))>0) then
       begin
         if ((not aobj.italic) and (not aobj.bold)) then
         begin
-         defaultfont:=nil;
+         defaultfont:=aobj;
         end
         else
         if ((not aobj.italic) and (aobj.bold)) then
         begin
-         defaultfontb:=nil;
+         defaultfontb:=aobj;
         end
         else
         if ((aobj.italic) and (not aobj.bold)) then
         begin
-          defaultfontit:=nil;
+          defaultfontit:=aobj;
         end
         else
         if ((aobj.italic) and (aobj.bold)) then
         begin
-          defaultfontbit:=nil;
+          defaultfontbit:=aobj;
         end;
       end;
 
@@ -1164,7 +1179,7 @@ begin
   currentFontName:=fontlist.strings[i];
   if Pos(afontname,currentFontName)>0 then
   begin
-   afont:=TRpLogFont(currentFontName);
+   afont:=TRpLogFont(fontlist.Objects[i]);
    if isitalic=afont.italic then
     if isbold=afont.bold then
     begin

@@ -1932,9 +1932,10 @@ var
 begin
  FFile.CheckPrinting;
 
-
  if (RightToLeft) then
  begin
+  Font.Name:=poEmbedded;
+  GetTTFontData;
   Text:=InfoProvider.NFCNormalize(Text);
  end;
 
@@ -2665,6 +2666,8 @@ function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
 begin
  if (rightToLeft) then
  begin
+  Font.Name:=poEmbedded;
+  GetTTFontData;
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
   FLineInfoCount:=Length(Result);
  end
