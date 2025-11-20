@@ -163,6 +163,9 @@ var
   leading: integer;
   linespacing:integer;
 begin
+  InitICU;
+  InitHarfBuzz;
+
  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
  leading:=adata.Leading;
  leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
@@ -379,6 +382,7 @@ begin
 
   Rect.Right := Rect.Left + Round(maxWidth);
   Rect.Bottom := Rect.Top + Round(posY);
+     WriteToStdError('End Provider TextExtent');
 end;
 
 function TRpFTInfoProvider.CalcGlyphPositions(
