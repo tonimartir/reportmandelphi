@@ -161,12 +161,14 @@ type
 function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
+  lineMaxLimit:Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: string
 ): TList<TGlyphPosArray>;
 
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
+  lineMaxLimit:Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 
@@ -321,6 +323,7 @@ end;
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
+  lineMaxLimit:Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 var
@@ -394,6 +397,7 @@ begin
         Inc(k);
       end;
       chunks.Add(chunk);
+      lineWidthLimit:=lineMaxLimit;
 
       startIdx := chunkEnd + 1;
     end;
@@ -412,6 +416,7 @@ end;
 function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
+  lineMaxLimit:Double;
   const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
 ): TList<TGlyphPosArray>;
 var
@@ -482,6 +487,7 @@ begin
         Inc(k);
       end;
       chunks.Add(chunk);
+      lineWidthLimit:=lineMaxLimit;
 
       endIdx := chunkStart - 1;
     end;

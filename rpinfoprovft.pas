@@ -122,9 +122,9 @@ const
 function TRpFTInfoProvider.NFCNormalize(astring:WideString):WideString;
 begin
  InitIcu;
- // Normalize disabled has problems in Linux
- Result:=astring;
- //Result:=NormalizeNFC(astring);
+ InitHarfBuzz;
+ // Normalize enabled again
+ Result:=NormalizeNFC(astring);
 end;
 
 function TRpFTInfoProvider.TextExtent(
@@ -236,9 +236,9 @@ begin
         else
         begin
           if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx,line)
+            chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
           else
-            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx,line);
+            chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
           for j:=0 to chunks.Count-1 do
           begin
            chunk:=chunks[j];
@@ -382,7 +382,6 @@ begin
 
   Rect.Right := Rect.Left + Round(maxWidth);
   Rect.Bottom := Rect.Top + Round(posY);
-     WriteToStdError('End Provider TextExtent');
 end;
 
 function TRpFTInfoProvider.CalcGlyphPositions(
@@ -1106,7 +1105,11 @@ begin
  else
  if ((pattern='HELVETICA') or (pattern='ARIAL')) then
  begin
-  if (fontName='NIMBUS SANS') then
+  if (fontName='CANTARELL') then
+  begin
+   Result:=true;
+  end
+(*  if (fontName='NIMBUS SANS') then
   begin
    Result:=true;
   end
@@ -1119,7 +1122,7 @@ begin
   if (fontName='DEJAVU SANS') then
   begin
    Result:=true;
-  end
+  end*)
   else
    Result:=false;
  end
@@ -1137,6 +1140,7 @@ var
  match:boolean;
  afont:TRpLogFont;
  currentFontName:string;
+ stylestring:string;
 begin
  crit.Enter;
  try
@@ -1149,6 +1153,23 @@ begin
  if (Length(afontname)=0) then
   afontname:='Helvetica';
 {$ENDIF}
+ if (pdffont.bold and not pdffont.italic) then
+ begin
+  stylestring:=' bold ';
+ end
+ else
+  if (pdffont.bold and pdffont.italic) then
+  begin
+   stylestring:=' bold italic ';
+  end
+  else
+  if (pdffont.italic and not pdffont.bold) then
+  begin
+   stylestring:=' italic ';
+  end
+  else
+   stylestring:=' regular ';
+ WriteToStdError('Ask for font family: '+ afontName+ ' style: ' + stylestring+ chr(10));
  if ((currentname=afontname) and (currentstyle=pdffont.Style)) then
   exit;
  currentname:=afontname;
@@ -1169,6 +1190,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
+     WriteToStdError('Step 1: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1189,6 +1211,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
+     WriteToStdError('Step 2: SimilarFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1206,6 +1229,7 @@ begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
    currentfont:=afont;
+   WriteToStdError('Step 3: SameFont ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    break;
   end;
   inc(i);
@@ -1221,6 +1245,7 @@ begin
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
+   WriteToStdError('Step 3: Partial ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    currentfont:=afont;
    break;
   end;
@@ -1231,29 +1256,53 @@ begin
  if (Pos('ARABIC',UpperCase(afontname))>0) then
  begin
   if ((not isbold) and (not isitalic)) then
-   currentfont:=defaultfont_arabic
+  begin
+   currentfont:=defaultfont_arabic;
+   WriteToStdError('Default arabic regular '+currentfont.familyname+chr(10));
+  end
   else
   if ((isbold) and (not isitalic)) then
-   currentfont:=defaultfontb_arabic
+  begin
+   currentfont:=defaultfontb_arabic;
+   WriteToStdError('Default arabic bold '+currentfont.familyname+chr(10));
+  end
   else
   if ((not isbold) and (isitalic)) then
-   currentfont:=defaultfontit_arabic
+  begin
+   currentfont:=defaultfontit_arabic;
+   WriteToStdError('Default arabic italic '+currentfont.familyname+chr(10));
+  end
   else
+  begin
    currentfont:=defaultfontbit_arabic;
+   WriteToStdError('Default arabic italic bold '+currentfont.familyname+chr(10));
+  end;
  end;
  if (currentfont <> nil) then
   exit;
  // Finally gets default font, but applying styles
  if ((not isbold) and (not isitalic)) then
-  currentfont:=defaultfont
+ begin
+  currentfont:=defaultfont;
+  WriteToStdError('Default regular '+currentfont.familyname+chr(10));
+ end
  else
  if ((isbold) and (not isitalic)) then
-  currentfont:=defaultfontb
+ begin
+  currentfont:=defaultfontb;
+  WriteToStdError('Default bold '+currentfont.familyname+chr(10));
+ end
  else
  if ((not isbold) and (isitalic)) then
-  currentfont:=defaultfontit
+ begin
+  currentfont:=defaultfontit;
+  WriteToStdError('Default italic '+currentfont.familyname+chr(10));
+ end
  else
+ begin
   currentfont:=defaultfontbit;
+  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
+ end;
 
  if not assigned(currentfont) then
   Raise Exception.Create('No active font');
