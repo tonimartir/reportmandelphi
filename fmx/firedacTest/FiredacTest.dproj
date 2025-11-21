@@ -249,7 +249,6 @@
             <Form>DataModule1</Form>
             <DesignClass>TDataModule</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\Firedac11Fix\FireDAC.Phys.ODBCMeta.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
