@@ -168,21 +168,24 @@ begin
   InitICU;
   InitHarfBuzz;
 
- linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
- //linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+ //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
+ linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
+ WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  // linespacing:=adata.Height;
+ linespacing:=Round(((linespacing)/100000)*1440*FontSize*1.25);
+ WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+
 
 
  //leading:=adata.Leading;
  //leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
- linespacing:=Round(linespacing*FontSize/1000*20);
+ //linespacing:=Round(linespacing*FontSize/1000*20);
  ascentSpacing:=Round(adata.Ascent*FontSize/1000*20);
+ PosY:=PosY+ascentSpacing;
 
  lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
   maxWidth := 0;
-
-
   lineWidthLimit := Rect.Right - Rect.Left;
 
   try
@@ -388,6 +391,7 @@ begin
   end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
+  //Rect.Bottom := Rect.Top + Round(posY);
   Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
 end;
 

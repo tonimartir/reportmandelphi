@@ -2704,6 +2704,7 @@ var
  offset:integer;
  incomplete:boolean;
  charsProcessed: integer;
+ ascentSpacing: integer;
 begin
  havekerning:=false;
  adata:=GetTTFontData;
@@ -2711,19 +2712,29 @@ begin
  begin
   if adata.havekerning then
    havekerning:=true;
-//  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
-  linespacing:=adata.Ascent-adata.Descent;
+  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+  //linespacing:=adata.Ascent-adata.Descent + adata.Leading div 2;
   // leading:=adata.Leading;
   leading:=0;
-  linespacing:=Round(linespacing/1000*20*FFont.Size);
+//  linespacing:=Round(linespacing/1000*20*FFont.Size);
+  WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading);
-  linespacing:=Round((linespacing/10000)*FResolution);
+  WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+//  linespacing:=Round((linespacing/10000)*FResolution);
  end;
-// leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
-// linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
+
+
+ ascentSpacing:=Round(adata.Ascent*FFont.Size/1000*20);
+ leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
+ linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
+ if Assigned(adata) then
+   WriteToStdError(adata.FamilyName +  ' NoBidi Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10))
+ else
+   WriteToStdError('No family' + ' Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+
  // leading:=Round((leading/10000)*FResolution);
  // linespacing:=Round((linespacing/10000)*FResolution);
 
@@ -4256,12 +4267,10 @@ var
   cursor: Double;
   absX, absY: Double;
   EOL: string;
-  initialYOffset: Double;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
-  initialYOffset:=Round(((adata.Ascent-adata.Descent)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4281,7 +4290,7 @@ begin
     // Emitir la instrucción Tm y Tj SIN q/Q
     // Matriz: 1 0 0 1 tx ty Tm   seguido de <gid> Tj
     Result := Result + Format('1 0 0 1 %s %s Tm <%s> Tj' + EOL,
-      [UnitsToTextX(absX), UnitsToTextText(absY,FontSize), gidHex], TFormatSettings.Invariant);
+      [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);
 
     // avanzar cursor
     cursor := cursor + g.XAdvance;
