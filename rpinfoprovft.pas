@@ -180,7 +180,7 @@ begin
  //leading:=adata.Leading;
  //leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
  //linespacing:=Round(linespacing*FontSize/1000*20);
- ascentSpacing:=Round(adata.Ascent*FontSize/1000*20);
+ ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 

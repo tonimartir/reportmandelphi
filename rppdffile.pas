@@ -2152,7 +2152,7 @@ begin
  begin
 //  leading:=adata.Leading;
   ascent:=adata.Ascent;
-  ascent:=Round(ascent*FFont.Size*20/1000);
+  ascent:=Round((ascent-adata.descent)*FFont.Size*20/1000);
  end
  else
  begin
