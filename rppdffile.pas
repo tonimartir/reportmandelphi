@@ -2711,17 +2711,21 @@ begin
  begin
   if adata.havekerning then
    havekerning:=true;
-  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
-  leading:=adata.Leading;
+//  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+  linespacing:=adata.Ascent-adata.Descent;
+  // leading:=adata.Leading;
+  leading:=0;
+  linespacing:=Round(linespacing/1000*20*FFont.Size);
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading);
+  linespacing:=Round((linespacing/10000)*FResolution);
  end;
- leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
- linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
-// leading:=Round((leading/10000)*FResolution);
-// linespacing:=Round((linespacing/10000)*FResolution);
+// leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
+// linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
+ // leading:=Round((leading/10000)*FResolution);
+ // linespacing:=Round((linespacing/10000)*FResolution);
 
  createsnewline:=false;
  astring:=Text;
@@ -4252,10 +4256,13 @@ var
   cursor: Double;
   absX, absY: Double;
   EOL: string;
+  initialYOffset: Double;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
+  initialYOffset:=Round(((adata.Ascent-adata.Descent)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+
 
   for i := 0 to High(lInfo.Glyphs) do
   begin
@@ -4274,7 +4281,7 @@ begin
     // Emitir la instrucción Tm y Tj SIN q/Q
     // Matriz: 1 0 0 1 tx ty Tm   seguido de <gid> Tj
     Result := Result + Format('1 0 0 1 %s %s Tm <%s> Tj' + EOL,
-      [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);
+      [UnitsToTextX(absX), UnitsToTextText(absY,FontSize), gidHex], TFormatSettings.Invariant);
 
     // avanzar cursor
     cursor := cursor + g.XAdvance;

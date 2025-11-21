@@ -162,17 +162,24 @@ var
   runOffset:integer;
   leading: integer;
   linespacing:integer;
+  textHeight:integer;
+  ascentSpacing:integer;
 begin
   InitICU;
   InitHarfBuzz;
 
- linespacing:=adata.Ascent-adata.Descent+adata.Leading;
- leading:=adata.Leading;
- leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
- linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+ linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
+ //linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+ // linespacing:=adata.Height;
+
+
+ //leading:=adata.Leading;
+ //leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+ linespacing:=Round(linespacing*FontSize/1000*20);
+ ascentSpacing:=Round(adata.Ascent*FontSize/1000*20);
+
  lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
-  posY := 0;
   maxWidth := 0;
 
 
@@ -381,7 +388,7 @@ begin
   end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
-  Rect.Bottom := Rect.Top + Round(posY);
+  Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
 end;
 
 function TRpFTInfoProvider.CalcGlyphPositions(
@@ -1109,7 +1116,20 @@ begin
   begin
    Result:=true;
   end
-(*  if (fontName='NIMBUS SANS') then
+ end;
+end;
+
+
+function isSameFont2(fontName,pattern: string): boolean;
+begin
+ if (pattern=fontName) then
+ begin
+  Result:=true;
+ end
+ else
+ if ((pattern='HELVETICA') or (pattern='ARIAL')) then
+ begin
+  if (fontName='NIMBUS SANS') then
   begin
    Result:=true;
   end
@@ -1122,14 +1142,15 @@ begin
   if (fontName='DEJAVU SANS') then
   begin
    Result:=true;
-  end*)
+  end
   else
    Result:=false;
  end
  else
  Result:=false;
-
 end;
+
+
 
 procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt);
 var
@@ -1182,7 +1203,8 @@ begin
  i:=0;
  while i<fontlist.Count do
  begin
-  if isSameFont(fontlist.strings[i],afontname) then
+  currentFontName:=fontlist.strings[i];
+  if isSameFont(currentFontName,afontname) then
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    if isitalic=afont.italic then
@@ -1191,6 +1213,26 @@ begin
      match:=true;
      currentfont:=afont;
      WriteToStdError('Step 1: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
+     break;
+    end;
+  end;
+  inc(i);
+ end;
+ if match then
+  exit;
+ i:=0;
+ while i<fontlist.Count do
+ begin
+  currentFontName:=fontlist.strings[i];
+  if isSameFont2(currentFontName,afontname) then
+  begin
+   afont:=TRpLogFont(fontlist.Objects[i]);
+   if isitalic=afont.italic then
+    if isbold=afont.bold then
+    begin
+     match:=true;
+     currentfont:=afont;
+     WriteToStdError('Step 2: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1211,7 +1253,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
-     WriteToStdError('Step 2: SimilarFont: FamilyName: '+fontlist.strings[i]+chr(10));
+     WriteToStdError('Step 3: SimilarFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1224,12 +1266,13 @@ begin
  i:=0;
  while i<fontlist.Count do
  begin
-  if fontlist.strings[i]=afontname then
+  currentFontName:=fontlist.strings[i];
+  if currentFontName=afontname then
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
    currentfont:=afont;
-   WriteToStdError('Step 3: SameFont ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
+   WriteToStdError('Step 4: SameFont ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    break;
   end;
   inc(i);
@@ -1245,7 +1288,7 @@ begin
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
-   WriteToStdError('Step 3: Partial ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
+   WriteToStdError('Step 5: Partial ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    currentfont:=afont;
    break;
   end;
@@ -1388,6 +1431,7 @@ begin
   data.Ascent:=currentfont.ascent;
   data.Descent:=currentfont.descent;
   data.Leading:=currentfont.leading;
+  data.Height:=currentfont.height;
   data.capHeight:=currentfont.Capheight;
   data.Encoding:='WinAnsiEncoding';
   data.FontWeight:=0;
