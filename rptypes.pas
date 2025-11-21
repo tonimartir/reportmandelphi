@@ -4184,22 +4184,24 @@ var
 {$ENDIF}
  astream:TMemoryStream;
  i:integer;
+   Bytes: TBytes;
 begin
 {$IFDEF MSWINDOWS}
  // In windows obtain sdtin
  handle:=Windows.GetStdHandle(STD_ERROR_HANDLE);
  if handle=INVALID_HANDLE_VALUE then
   RaiseLastOsError;
+ // No console created
+ if (handle=0) then
+   exit;
 {$ENDIF}
 {$IFDEF LINUX}
  handle:=2;
 {$ENDIF}
  astream:=TMemoryStream.Create;
  try
-  for i:=1 to Length(astring) do
-  begin
-   astream.Write(astring[i],1);
-  end;
+  Bytes:=BytesOf(UTF8String(astring));
+  astream.Write(bytes,Length(bytes));
   WriteStreamToHandle(astream,handle);
  finally
   astream.free;

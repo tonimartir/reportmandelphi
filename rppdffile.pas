@@ -2144,19 +2144,23 @@ var
  leading:integer;
  linespacing:integer;
  stringResult:string;
+ ascent:integer;
 begin
  /// Add Font leading
  adata:=GetTTFontData;
  if assigned(adata) then
  begin
-  leading:=adata.Leading;
+//  leading:=adata.Leading;
+  ascent:=adata.Ascent;
+  ascent:=Round(ascent*FFont.Size*20/1000);
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading);
+  ascent:=FFont.Size*20;
  end;
- leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
- Y:=Y+leading;
+ //leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
+ //Y:=Y+leading;
 
 
 
@@ -2195,7 +2199,8 @@ begin
   else
   begin
    if (not RightToLeft) then
-    SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
+    //SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
+    SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextY(Y+ascent)+' Td');
   end;
   astring:=Text;
 
@@ -2704,7 +2709,6 @@ var
  offset:integer;
  incomplete:boolean;
  charsProcessed: integer;
- ascentSpacing: integer;
 begin
  havekerning:=false;
  adata:=GetTTFontData;
@@ -2727,7 +2731,6 @@ begin
  end;
 
 
- ascentSpacing:=Round(adata.Ascent*FFont.Size/1000*20);
  leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
  linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
  if Assigned(adata) then

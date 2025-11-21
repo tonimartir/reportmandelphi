@@ -181,6 +181,7 @@ begin
  //leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
  //linespacing:=Round(linespacing*FontSize/1000*20);
  ascentSpacing:=Round(adata.Ascent*FontSize/1000*20);
+ PosY:=0;
  PosY:=PosY+ascentSpacing;
 
  lineSubTexts := DividesIntoLines(Text);

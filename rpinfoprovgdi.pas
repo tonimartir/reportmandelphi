@@ -199,6 +199,7 @@ var
   FontMetrics: DWRITE_FONT_METRICS;
   scale: Single;
   tr: TDWriteTextRange;
+  ascentSpacing:integer;
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -220,6 +221,7 @@ begin
 
   MaxLineWidth := Rect.Right - Rect.Left;
   FontSizeInDips := FontSize * POINTS_TO_DIPS_FACTOR;
+
 
 
 
@@ -268,6 +270,9 @@ begin
 
     SetLength(Result, Renderer.Lines.Count);
     RectTopTwips := 0;
+    ascentSpacing:=Round(FontMetrics.ascent*scale*15);
+    RectTopTwips:=RectTopTwips+ascentSpacing;
+
     TotalWidth := 0;
 
     // --- Iterar líneas ---
@@ -304,7 +309,7 @@ begin
 
     // Ajustar rectángulo final
     Rect.Right := Rect.Left + Round(TotalWidth);
-    Rect.Bottom := Rect.Top + Round(RectTopTwips - Rect.Top);
+    Rect.Bottom := Rect.Top + Round(RectTopTwips - Rect.Top)-ascentSpacing;
 
   finally
     Renderer.Free;
