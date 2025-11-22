@@ -2160,7 +2160,11 @@ begin
   else
 {$ENDIF}
   begin
+{$IFDEF LINUX}
+   ascent:=Round(ascent*FFont.Size*20/1000);
+{$ELSE}
    ascent:=Round((ascent-adata.descent)*FFont.Size*20/1000);
+{$ENDIF}
   end;
  end
  else
