@@ -42,11 +42,12 @@ type
   private
     FGlyphPositions: TList<TGlyphPos>;
     FTextLayout: IDWriteTextLayout;
+    FOriginalText:PWideChar;
     FLines: TList<TGlyphLine>;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
-    constructor Create(const TextLayout: IDWriteTextLayout);
+    constructor Create(const TextLayout: IDWriteTextLayout;OriginalText:PWideChar);
     destructor Destroy; override;
 
     property GlyphPositions: TList<TGlyphPos> read FGlyphPositions;
@@ -104,10 +105,11 @@ end;
 
 { TTextExtentRenderer }
 
-constructor TTextExtentRenderer.Create(const TextLayout: IDWriteTextLayout);
+constructor TTextExtentRenderer.Create(const TextLayout: IDWriteTextLayout;OriginalText:PWideChar);
 begin
   inherited Create;
   FTextLayout := TextLayout;
+  FOriginalText:=OriginalText;
   FGlyphPositions := TList<TGlyphPos>.Create;
   FLines := TList<TGlyphLine>.Create;
 end;
@@ -152,6 +154,11 @@ var
   Line: TGlyphLine;
   GlyphList: TList<TGlyphPos>;
   runIsRTL: Boolean;
+  // trimming
+  LastIndex: Integer;
+  ch: WideChar;
+  isWS: Boolean;
+  keepNBSP: Boolean;
 begin
   Result := S_OK;
   TextPosition := glyphRunDescription.textPosition;
@@ -187,8 +194,36 @@ begin
       end;
       GlyphPos.Cluster := ClusterMapArray[i];
       GlyphPos.LineCluster := TextPosition + GlyphPos.Cluster;
+      GlyphPos.CharCode:=FOriginalText[GlyphPos.LineCluster];
+
       GlyphList.Add(GlyphPos);
       FGlyphPositions.Add(GlyphPos);
+    end;
+
+        // 2) Recortar whitespace final en el orden lógico (preservamos NBSP por defecto)
+    keepNBSP := True; // cambia a False si prefieres eliminar NBSP también
+    LastIndex := GlyphList.Count - 1;
+    while LastIndex >= 0 do
+    begin
+      ch := GlyphList[LastIndex].CharCode;
+      // comprobar whitespace básico (espacio, tab, CR, LF). Añade más códigos si quieres.
+      isWS := (ch = WideChar(' ')) or (ch = WideChar(#9)) or (ch = WideChar(#10)) or (ch = WideChar(#13));
+
+      // tratar NBSP (U+00A0)
+      if ch = WideChar(#160) then
+      begin
+        if keepNBSP then
+          isWS := False  // conservar NBSP
+        else
+          isWS := True;  // tratar NBSP como whitespace si keepNBSP = False
+      end;
+
+      if not isWS then
+        Break;
+
+      // eliminar último glifo lógico (trailing whitespace)
+      GlyphList.Delete(LastIndex);
+      Dec(LastIndex);
     end;
 
     // Invertir run si es RTL

@@ -784,7 +784,7 @@ begin
     exit;
   // Justified text use pdf driver, also PDF Conformance or TrueType
   if (  ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-     OR (atext.Type1Font >  Integer(poEmbedded))) then
+     OR (atext.Type1Font >  Integer(poEmbedded)) or atext.RightToLeft) then
   begin
     if not assigned(npdfdriver) then
       npdfdriver := TRpPDFDriver.Create;
@@ -956,7 +956,7 @@ begin
           end;
           // Justified text use pdf driver, also pdf conformance or truetype
           if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-             OR (obj.Type1Font >  Integer(poEmbedded))) AND (not obj.RightToLeft)  ) then
+             OR (obj.Type1Font >  Integer(poEmbedded))) or (obj.RightToLeft)  ) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
@@ -1307,6 +1307,8 @@ var
   aalign: Cardinal;
   aintdpix, aintdpiy: integer;
   lastword: boolean;
+  larray: TRpLineInfoArray;
+  ascent:Integer;
 begin
   try
     if drawbackground then
@@ -1348,7 +1350,7 @@ begin
     npdfdriver.PDFFile.Canvas.Font.Italic := fsItalic in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
 
-    npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
+    larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
      RightToLeft);
     // Align bottom or center
     posy := ARect.Top;
@@ -1361,26 +1363,28 @@ begin
       posy := ARect.Top + (((ARect.Bottom - ARect.Top) - recsize.Bottom) div 2);
     end;
 
-    for i := 0 to npdfdriver.PDFFile.Canvas.LineInfoCount - 1 do
+    for i := 0 to Length(larray) - 1 do
     begin
+      if (i=0) then
+        ascent:=larray[0].TopPos;
       posx := ARect.Left;
       // Aligns horz.
       if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
       begin
         // recsize.right contains the width of the full text
-        posx := ARect.Right - npdfdriver.PDFFile.Canvas.LineInfo[i].Width;
+        posx := ARect.Right - larray[i].Width;
       end;
       // Aligns horz.
       if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
       begin
         posx := ARect.Left +
-          (((ARect.Right - ARect.Left) - npdfdriver.PDFFile.Canvas.LineInfo[i]
+          (((ARect.Right - ARect.Left) - larray[i]
           .Width) div 2);
       end;
-      astring := Copy(Text, npdfdriver.PDFFile.Canvas.LineInfo[i].Position,
-        npdfdriver.PDFFile.Canvas.LineInfo[i].Size);
+      astring := Copy(Text, larray[i].Position,
+        larray[i].Size);
       if (((Alignment AND AlignmentFlags_AlignHJustify) > 0) AND
-        (NOT npdfdriver.PDFFile.Canvas.LineInfo[i].LastLine)) then
+        (NOT larray[i].LastLine)) then
       begin
         // Calculate the sizes of the words, then
         // share space between words
@@ -1413,10 +1417,7 @@ begin
               arec := ARect;
               npdfdriver.PDFFile.Canvas.TextExtent(lwords.Strings[index], arec,
                 false, true, RightToLeft);
-              if RightToLeft then
-                lwidths.Add(IntToStr(-(arec.Right - arec.Left)))
-              else
-                lwidths.Add(IntToStr(arec.Right - arec.Left));
+              lwidths.Add(IntToStr(arec.Right - arec.Left));
               alinesize := alinesize + arec.Right - arec.Left;
             end;
             alinedif := ARect.Right - ARect.Left - alinesize;
@@ -1424,23 +1425,17 @@ begin
             begin
               if lwords.Count > 1 then
                 alinedif := alinedif div (lwords.Count - 1);
-              if RightToLeft then
-              begin
-                currpos := ARect.Right;
-                alinedif := -alinedif;
-              end
-              else
-                currpos := posx;
+              currpos := posx;
               for index := 0 to lwords.Count - 1 do
               begin
                 nposx := currpos;
-                nposy := posy + npdfdriver.PDFFile.Canvas.LineInfo[i].TopPos;
+                nposy := posy + larray[i].TopPos-ascent;
                 nposx := Round(nposx * aintdpix / 1440);
                 nposy := Round(nposy * aintdpiy / 1440);
                 arec2.Left := nposx;
                 arec2.Top := nposy;
                 arec2.Bottom := arec.Top +
-                  Round(npdfdriver.PDFFile.Canvas.LineInfo[i].Height *
+                  Round(larray[i].Height *
                   aintdpiy / 1440);
                 arec2.Right := Round(ARect.Right * aintdpix / 1440);
                 aalign := DT_NOPREFIX or DT_NOCLIP;
@@ -1466,7 +1461,7 @@ begin
                     arec2, aalign or DT_CALCRECT);
                   arec2.Top := nposy;
                   arec2.Bottom := nposy +
-                    Round(npdfdriver.PDFFile.Canvas.LineInfo[i].Height *
+                    Round(larray[i].Height *
                     aintdpiy / 1440);
                   if (lastword) then
                   begin
@@ -1495,7 +1490,7 @@ begin
       begin
         aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT;
         nposx := posx;
-        nposy := posy + npdfdriver.PDFFile.Canvas.LineInfo[i].TopPos;
+        nposy := posy + larray[i].TopPos-ascent;
         nposx := Round(nposx * aintdpix / 1440);
         nposy := Round(nposy * aintdpiy / 1440);
         arec2.Left := nposx;

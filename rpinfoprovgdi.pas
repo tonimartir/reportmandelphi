@@ -201,6 +201,10 @@ var
   tr: TDWriteTextRange;
   ascentSpacing:integer;
   PWideChartext: PWideChar;
+  minLineCluster:integer;
+  maxLineCluster:integer;
+  lineCluster:integer;
+  rectHeight:integer;
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -222,6 +226,11 @@ begin
 
   MaxLineWidth := Rect.Right - Rect.Left;
   FontSizeInDips := FontSize * POINTS_TO_DIPS_FACTOR;
+  Rect.Left:=0;
+  Rect.Width:=Round(MaxLineWidth);
+  rectheight:=Rect.Bottom-Rect.Top;
+  Rect.Top:=0;
+  Rect.Height:=rectheight;
 
 
 
@@ -265,7 +274,7 @@ begin
   scale := FontSizeInDips / FontMetrics.DesignUnitsPerEm;
 
   // --- Crear Renderer y disparar layout ---
-  Renderer := TTextExtentRenderer.Create(TextLayout);
+  Renderer := TTextExtentRenderer.Create(TextLayout,PWideChartext);
   try
     Renderer.FontFace := FontFace;
     TextLayout.Draw(nil, Renderer, 0, 0);
@@ -280,25 +289,38 @@ begin
     // --- Iterar líneas ---
     for i := 0 to Renderer.Lines.Count - 1 do
     begin
+      minLineCluster:=MaxInt;
+      maxLineCluster:=-1;
       Line := Renderer.Lines[i];
       LineInfo.Glyphs := TGlyphPosArray(Line.Glyphs.ToArray);
+      LineInfo.Width := 0;
       for j:=0 to Length(LineInfo.Glyphs)-1 do
       begin
+        LineCluster:=LineInfo.Glyphs[j].LineCluster;
         LineInfo.Width := LineInfo.Width + Line.Glyphs[j].XAdvance;
-        LineInfo.Glyphs[j].CharCode:=PWideCharText[LineInfo.Glyphs[j].LineCluster];
+        //LineInfo.Glyphs[j].CharCode:=PWideCharText[LineCluster];
+        if (maxLineCluster<LineCluster) then
+          maxLineCluster:=LineCluster;
+        if (minLineCluster>LineCluster) then
+          minLineCluster:=LineCluster;
       end;
 
 
-      if Line.Glyphs.Count > 0 then
-        LineInfo.Position := Line.Glyphs[0].LineCluster
+      if ((Line.Glyphs.Count > 0)  and (minLineCluster>=0)) then
+      begin
+        LineInfo.Position := minLineCluster+1;
+        LineINfo.Size:=maxLineCluster-minLineCluster+1;
+        LineInfo.Text := Copy(Text, LineInfo.Position + 1, LineInfo.Size);
+      end
       else
+      begin
         LineInfo.Position := 0;
+        LineInfo.Size := 0;
+        LineInfo.Text := '';
+      end;
 
-      LineInfo.Size := Length(LineInfo.Glyphs);
-      LineInfo.Text := Copy(Text, LineInfo.Position + 1, LineInfo.Size);
       LineInfo.TopPos := Round(RectTopTwips);
 
-      LineInfo.Width := 0;
 
       // --- Interlineado correcto en TWIPS ---
       LineInfo.LineHeight := Round((FontMetrics.Ascent + FontMetrics.Descent + FontMetrics.LineGap) * scale * DIP_TO_TWIPS_FACTOR);
