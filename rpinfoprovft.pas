@@ -171,16 +171,17 @@ begin
  //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
  linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
  linespacing:=Round(((linespacing)/100000)*1440*FontSize*1.25);
  WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
 
- //leading:=adata.Leading;
- //leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
- //linespacing:=Round(linespacing*FontSize/1000*20);
- ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
+ //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
+ ascentSpacing:=Round((adata.Ascent)*FontSize/1000*20);
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 
@@ -928,6 +929,11 @@ begin
        aobj.postcriptname:=StringReplace(StrPas(aface.family_name),' ','',[rfReplaceAll]);
        aobj.familyname:=StrPas(aface.family_name);
       end;
+      if Pos('ARABIC',UpperCase(aobj.familyname))>0 then
+      begin
+      aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
+      end;
+
       aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
       aobj.HaveKerning:=(aface.face_flags AND FT_FACE_FLAG_KERNING)<>0;
       aobj.BBox.Left:=Round(aobj.convfactor*aface.bbox.xMin);
@@ -941,8 +947,8 @@ begin
       externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
       // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font
       // reserved for accent marks
-      internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
-      aobj.leading := internalLeading+externalLeading;
+      // internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
+      aobj.leading := Round((aface.height-(aobj.ascent-aobj.descent))*aobj.convfactor);
 
 
       aobj.MaxWidth:=Round(aobj.convfactor*aface.max_advance_width);
