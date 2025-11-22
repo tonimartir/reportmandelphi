@@ -793,20 +793,20 @@ var
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
- ginfo: TGlyphInfo;
+ glyphInfo: TGlyphInfo;
 begin
      SetLength(bytes, data.FontData.FontData.Size);
      data.fontdata.FontData.ReadBuffer(bytes[0],data.fontdata.FontData.Size);
      GlyphsUsed:=TDictionary<Integer, TArray<Integer>>.Create;
-     for ginfo in data.glyphsInfo.Values do
+     for glyphInfo in data.glyphsInfo.Values do
      begin
-      intChar:=Integer(ginfo.Char);
-      glyph:=ginfo.Glyph;
+      intChar:=Integer(glyphInfo.Char);
+      glyph:=glyphInfo.Glyph;
       if (not GlyphsUsed.ContainsKey(glyph)) then
       begin
        SetLength(ints, 3);
        ints[0]:=glyph;
-       ints[1]:=Round(ginfo.Width);
+       ints[1]:=Round(glyphInfo.Width);
        ints[2]:=intChar;
        GlyphsUsed.Add(glyph,ints)
       end;
@@ -1062,7 +1062,7 @@ begin
  end;
 end;
 
-
+(*
 function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
  logx:double;
@@ -1164,8 +1164,8 @@ begin
   data.glyphsInfo.Add(glyphIndex,ginfo);
  end;
 end;
+*)
 
-(*
 function TRpGDIInfoProvider.GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;
 var
  logx:double;
@@ -1277,7 +1277,7 @@ begin
   data.glyphsInfo.Add(glyphIndex,ginfo);
  end;
 end;
-*)
+
 
 function TRpGDIInfoProvider.GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;
 {$IFDEF USEKERNING}

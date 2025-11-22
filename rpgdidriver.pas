@@ -784,7 +784,7 @@ begin
     exit;
   // Justified text use pdf driver, also PDF Conformance or TrueType
   if (  ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-     OR (atext.Type1Font >  Integer(poEmbedded)) or atext.RightToLeft) then
+     OR (atext.Type1Font >  Integer(poEmbedded)) and (not atext.RightToLeft)) then
   begin
     if not assigned(npdfdriver) then
       npdfdriver := TRpPDFDriver.Create;
@@ -956,7 +956,7 @@ begin
           end;
           // Justified text use pdf driver, also pdf conformance or truetype
           if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-             OR (obj.Type1Font >  Integer(poEmbedded))) or (obj.RightToLeft)  ) then
+             OR (obj.Type1Font >  Integer(poEmbedded))) and  (not obj.RightToLeft)  ) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
