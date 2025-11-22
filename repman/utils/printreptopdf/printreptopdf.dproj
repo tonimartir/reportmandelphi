@@ -163,7 +163,7 @@
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Linux64)'!=''">
-        <Debugger_RunParams>../arab2wordwrap.rep -pdf ../arab2wordwrap.pdf</Debugger_RunParams>
+        <Debugger_RunParams>../bold.rep -pdf ../bold.pdf</Debugger_RunParams>
         <Debugger_Launcher>/usr/bin/xterm -e &quot;%debuggee%&quot;</Debugger_Launcher>
         <Debugger_DebugSourcePath>C:\desarrollo\prog\toni\zeos8\src\dbc\;C:\desarrollo\prog\toni\zeos8\src\component\;$(Debugger_DebugSourcePath)</Debugger_DebugSourcePath>
         <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=;CFBundleVersion=1.0.0</VerInfo_Keys>
