@@ -69,6 +69,7 @@ type
   postcriptname:String;
   Encoding:String;
   Ascent,Descent,Leading,CapHeight,Flags,FontWeight, Height:integer;
+  ExternalLeading,InternalLeading:integer;
   MaxWidth:integer;
   AvgWidth:integer;
   StemV:double;

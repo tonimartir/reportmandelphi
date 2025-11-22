@@ -2152,12 +2152,22 @@ begin
  begin
 //  leading:=adata.Leading;
   ascent:=adata.Ascent;
-  ascent:=Round((ascent-adata.descent)*FFont.Size*20/1000);
+{$IFDEF MSWINDOWS}
+  if (InfoProvider is TRpGDIInfoProvider) then
+  begin
+   ascent:=Round((ascent-adata.descent-adata.InternalLeading)*FFont.Size*20/1000);
+  end
+  else
+{$ENDIF}
+  begin
+   ascent:=Round((ascent-adata.descent)*FFont.Size*20/1000);
+  end;
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading);
-  ascent:=FFont.Size*20;
+  ascent:=Round(FFont.Size*20);
+  ascent:=ascent+Round((leading/100000)*FResolution*FFont.Size*1.25);
  end;
  //leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
  //Y:=Y+leading;
