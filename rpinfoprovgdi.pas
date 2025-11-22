@@ -285,7 +285,7 @@ begin
       for j:=0 to Length(LineInfo.Glyphs)-1 do
       begin
         LineInfo.Width := LineInfo.Width + Line.Glyphs[j].XAdvance;
-        LineInfo.Glyphs[j].CharCode:=PWideCharText[LineInfo.Glyphs[j].Cluster];
+        LineInfo.Glyphs[j].CharCode:=PWideCharText[LineInfo.Glyphs[j].LineCluster];
       end;
 
 
