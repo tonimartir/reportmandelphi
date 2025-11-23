@@ -12,8 +12,10 @@ Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF},
 Const
 {$IFDEF MSWINDOWS}
   HarfbuzzDLL = 'libharfbuzz-0.dll';
+  HarfbuzzSubSetDLL = 'libharfbuzz-subset-0.dll';
 {$ELSE}
   HarfbuzzDLL = 'libharfbuzz.so.0';
+  HarfbuzzSubSetDLL = 'libharfbuzz.so.0';
 {$ENDIF}
 
 Type
@@ -64,7 +66,11 @@ Type
 
   TFTFace = FT_Face;
   THBDirection = (hbdInvalid = 0, hbdLTR = 4, hbdRTL, hbdTTB, hbdBTT);
-
+  Phb_subset_input_t = Pointer;
+  Phb_face_t = Pointer;
+  Phb_set_t = Pointer;
+  Phb_blob_t = Pointer;
+  Phb_tag_t = Pointer;
 
   THBFont = Record
   Strict Private
@@ -371,6 +377,21 @@ Type
     Property Language: THBLanguage Read GetLanguage Write SetLanguage;
   End;
 
+  TShapingData=class
+   public FreeTypeFace: TFTFace;
+   public Font: THBFont;
+  end;
+
+  THBMemoryMode = (hbmmDuplicate, hbmmReadonly, hbmmWritable, hbmmReadonlyMayMakeWritable);
+   THBDestroyFunc = Procedure(UserData: Pointer); Cdecl;
+
+type
+  THbSubsetFlags = UInt32;
+
+const
+  HB_SUBSET_FLAGS_DEFAULT = 0; // valor por defecto, HarfBuzz define otros flags como bits individuales
+
+  type
 
   T_hb_buffer_set_direction = procedure(Buffer: THBBuffer; ADirection: THBDirection); cdecl;
 
@@ -415,15 +436,31 @@ Type
     T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
     T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
 
-
-  TShapingData=class
-   public FreeTypeFace: TFTFace;
-   public Font: THBFont;
-  end;
-
+    T_hb_subset_input_create_or_fail = function : Phb_subset_input_t; cdecl;
+    t_hb_subset_input_destroy = procedure (input: Phb_subset_input_t); cdecl;
+    t_hb_subset_input_unicode_set = function (input: Phb_subset_input_t): Phb_set_t; cdecl;
+    t_hb_subset_input_glyph_set= function (input: Phb_subset_input_t): Phb_set_t; cdecl;
+    t_hb_subset = function (face: THBFace;
+                   input: Phb_subset_input_t;
+                   glyphs: Phb_set_t;
+                   out size: Cardinal): Pointer;cdecl;
+    t_hb_blob_create= Function (Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): Phb_blob_t; Cdecl;
+    t_hb_face_create = Function (Blob: Phb_blob_t; Const AIndex: Cardinal): THBFace; Cdecl;
+    t_hb_blob_destroy = Procedure (Blob: Phb_blob_t); Cdecl;
+    t_hb_set_add = function (set_: Phb_set_t; value: Cardinal): Boolean; cdecl;
+    t_hb_face_get_table_tags = function (  face: THBFace;
+        start_offset: Cardinal;var table_count: Cardinal;
+          table_tags: Phb_tag_t
+      ): Cardinal; cdecl;
+    t_hb_subset_input_set_flags = procedure (subset_input: Phb_subset_input_t; flags: THbSubsetFlags); cdecl;
+    t_hb_blob_get_data = function (blob: Phb_blob_t; out length: Cardinal): PByte; cdecl;
+    t_hb_subset_or_fail = function (source: THBFace; input: Phb_subset_input_t): THBFace; cdecl;
+    t_hb_face_reference_blob = function (face: THBFace): Phb_blob_t; cdecl;
+    t_hb_blob_get_length = function (blob: Phb_blob_t): Cardinal; cdecl;
 
 var
   HarfBuzzlib: THandle;
+  HarfBuzzlibSubSet: THandle;
   hb_buffer_set_direction: T_hb_buffer_set_direction = nil;
   hb_buffer_get_direction: T_hb_buffer_get_direction = nil;
   hb_buffer_set_script: T_hb_buffer_set_script = nil;
@@ -456,6 +493,22 @@ var
     hb_font_get_ptem: T_hb_font_get_ptem = nil;
     hb_font_set_scale: T_hb_font_set_scale = nil;
     hb_font_get_scale: T_hb_font_get_scale = nil;
+    hb_subset_input_create_or_fail: t_hb_subset_input_create_or_fail = nil;
+    hb_subset_input_destroy: t_hb_subset_input_destroy = nil;
+    hb_subset_input_unicode_set: t_hb_subset_input_unicode_set = nil;
+    hb_subset_input_glyph_set: t_hb_subset_input_glyph_set = nil;
+    hb_subset: t_hb_subset = nil;
+    hb_blob_create:t_hb_blob_create= nil;
+    hb_face_create:t_hb_face_create = nil;
+    hb_blob_destroy:t_hb_blob_destroy = nil;
+    hb_set_add: t_hb_set_add = nil;
+    hb_face_get_table_tags: t_hb_face_get_table_tags = nil;
+    hb_subset_input_set_flags: t_hb_subset_input_set_flags = nil;
+    hb_blob_get_data: t_hb_blob_get_data = nil;
+    hb_subset_or_fail:t_hb_subset_or_fail = nil;
+    hb_face_reference_blob: t_hb_face_reference_blob= nil;
+    hb_blob_get_length: t_hb_blob_get_length = nil;
+
 
 
 procedure InitHarfBuzz;
@@ -671,6 +724,25 @@ var
 {$ENDIF}
 {$ENDIF}
   end;
+  function GetProcAddrSubset(ProcName: string): Pointer;
+  begin
+{$IFDEF MSWINDOWS}
+    Result := GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
+    if not Assigned(Result) then
+      RaiseLastOSError;
+{$ENDIF}
+{$IFDEF LINUX}
+{$IFDEF FPC}
+    Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, ProcName);
+    if Result = nil then
+      raise Exception.CreateFmt('Error loading %s', [ProcName]);
+{$ELSE}
+    Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
+    if Result = nil then
+      RaiseLastOSError;
+{$ENDIF}
+{$ENDIF}
+  end;
 
 begin
   if (HarfBuzzlib <> 0) then
@@ -683,6 +755,9 @@ begin
 
   if HarfBuzzlib = 0 then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzLibSubset :=
+  {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzSubsetDLL)
+    ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL){$ENDIF};
 
   ProcName:='hb_buffer_set_direction';
   hb_buffer_set_direction:= GetProcAddr(ProcName);
@@ -811,6 +886,82 @@ begin
   hb_font_get_scale:= GetProcAddr(ProcName);
   if not Assigned(hb_font_get_scale) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_input_create_or_fail';
+  hb_subset_input_create_or_fail:= GetProcAddrSubSet(ProcName);
+  if not Assigned(hb_subset_input_create_or_fail) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_input_destroy';
+  hb_subset_input_destroy:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_destroy) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_input_unicode_set';
+  hb_subset_input_unicode_set:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_unicode_set) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_input_glyph_set';
+  hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_glyph_set) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset';
+  hb_subset:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_blob_create';
+  hb_blob_create:= GetProcAddr(ProcName);
+  if not Assigned(hb_blob_create) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_face_create';
+  hb_face_create:= GetProcAddr(ProcName);
+  if not Assigned(hb_face_create) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_blob_destroy';
+  hb_blob_destroy:= GetProcAddr(ProcName);
+  if not Assigned(hb_blob_destroy) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_set_add';
+  hb_set_add:= GetProcAddr(ProcName);
+  if not Assigned(hb_set_add) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_face_get_table_tags';
+  hb_face_get_table_tags:= GetProcAddr(ProcName);
+  if not Assigned(hb_face_get_table_tags) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_input_set_flags';
+  hb_subset_input_set_flags:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_set_flags) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_blob_get_data';
+  hb_blob_get_data:= GetProcAddr(ProcName);
+  if not Assigned(hb_blob_get_data) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_subset_or_fail';
+  hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
+  if not Assigned(hb_subset_or_fail) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_face_reference_blob';
+  hb_face_reference_blob:= GetProcAddr(ProcName);
+  if not Assigned(hb_face_reference_blob) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
+  ProcName:='hb_blob_get_length';
+  hb_blob_get_length:= GetProcAddr(ProcName);
+  if not Assigned(hb_blob_get_length) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+
 end;
 
 End.

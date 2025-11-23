@@ -1365,6 +1365,112 @@ begin
  end;
 end;
 
+
+{$IFDEF LINUX_USEHARFBUZZ_SUBSETFONT}
+function FontHasCFF2OrFVAR(face: THBFace): Boolean;
+var
+  count, i: Cardinal;
+  tableCount: Cardinal;
+  tableCountTotal: Cardinal;
+  tags: array of Cardinal;
+
+  function TAG(a, b, c, d: Char): Cardinal;
+  begin
+    Result := (Ord(a) shl 24) or (Ord(b) shl 16) or (Ord(c) shl 8) or Ord(d);
+  end;
+var
+  cff2tag, fvartag: Cardinal;
+begin
+  Result := False;
+  cff2tag := TAG('C','F','F','2');
+  fvartag := TAG('f','v','a','r');
+  setLength(tags,1000);
+  tableCount:=1000;
+  tableCountTotal:=hb_face_get_table_tags(face, 0, tableCount, @tags[0]);
+  if tableCount = 0 then Exit(False);
+
+
+
+  // Paso 4: buscar CFF2 o fvar
+  for i := 0 to tableCount - 1 do
+    if (tags[i] = cff2tag) or (tags[i] = fvartag) then
+      Exit(True);
+end;
+
+function TRpFtInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+var
+  face, newFace: THBFace;
+  blob: Phb_blob_t;
+  subsetInput: Phb_subset_input_t;
+  glyphsSet: Phb_set_t;
+  glyphInfo: TGlyphInfo;
+  outData: PByte;
+  outSize: Cardinal;
+  isVariable: boolean;
+  HasCCF2: boolean;
+begin
+
+  Result := nil;
+
+  // --- Crear blob desde la fuente ---
+  blob := hb_blob_create(@data.FontData.FontData.Memory^, data.FontData.FontData.Size,
+                         hbmmReadonly, nil, nil);
+  if blob = nil then
+    raise Exception.Create('No se pudo crear el blob de la fuente');
+
+  try
+    // --- Crear face ---
+    subsetInput := hb_subset_input_create_or_fail;
+    if subsetInput = nil then
+      raise Exception.Create('No se pudo crear el input de subsetting');
+    face := hb_face_create(blob, data.FontIndex);
+    // --- Crear input de subsetting ---
+     try
+     isVariable := FontHasCFF2OrFVAR(face);
+     if  (isVariable or HasCCF2) then
+     begin
+      Result := TMemoryStream.Create;
+      Result.SetSize(data.FontData.FontData.Size);
+      Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
+      Result.Position := 0;
+     end
+     else
+     begin
+       hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_DEFAULT);
+
+       // --- Obtener set de glifos y añadirlos ---
+       glyphsSet := hb_subset_input_glyph_set(subsetInput);
+       for glyphInfo in data.glyphsInfo.Values do
+         hb_set_add(glyphsSet, glyphInfo.Glyph);
+
+       // --- Crear fuente subset ---
+       newFace := hb_subset_or_fail(face, subsetInput);
+       try
+         // --- Obtener puntero a los datos de la fuente subset ---
+         outData := hb_face_reference_blob(newFace); // referencia interna a blob
+         outSize := hb_blob_get_length(hb_face_reference_blob(newFace));
+
+         // --- Copiar a MemoryStream ---
+         Result := TMemoryStream.Create;
+         Result.SetSize(LongInt(outSize));
+         Move(outData^, Result.Memory^, outSize);
+         Result.Position := 0;
+
+       finally
+         hb_face_destroy(newFace);
+       end;
+      end;
+    finally
+      hb_subset_input_destroy(subsetInput);
+      hb_face_destroy(face);
+    end;
+
+  finally
+    hb_blob_destroy(blob);
+  end;
+end;
+{$ENDIF}
+{$IFNDEF LINUX_USEHARFBUZZ_SUBSETFONT}
 function  TRpFTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
 var
  subset:TTrueTypeFontSubSet;
@@ -1417,6 +1523,7 @@ begin
      Result.WriteBuffer(bytes[0],Length(bytes));
      Result.Seek(0,soFromBeginning);
 end;
+{$ENDIF}
 
 function  TRpFTInfoProvider.GetFullFontStream(data: TRpTTFontData): TMemoryStream;
 begin

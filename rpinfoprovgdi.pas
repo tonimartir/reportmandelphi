@@ -99,31 +99,37 @@ function NormalizeString(
   cwDstLength: Integer
 ): Integer; stdcall; external 'kernel32.dll';
 
+
 function NormalizeToNFC(const S: UnicodeString): UnicodeString;
 const
   NormalizationC = 1; // NFC
 var
   requiredChars: Integer;
   writtenChars: Integer;
+  buffer: PWideChar;
 begin
   if S = '' then
     Exit('');
 
-  // 1) pedir tamaño (incluye terminador)
-  requiredChars := NormalizeString(NormalizationC, PWideChar(S), -1, nil, 0);
+  // 1) pedir tamaño (devuelve número de caracteres necesarios, incluye terminador)
+  //    Usamos Length(S) para no depender de terminadores NUL en la entrada.
+  requiredChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), nil, 0);
   if requiredChars = 0 then
     RaiseLastOSError;
 
-  // reservar buffer (requiredChars incluye espacio para el terminador)
-  SetLength(Result, requiredChars);
+  // Reservar buffer (requiredChars es cantidad de WCHARs, incluye espacio para terminador)
+  GetMem(buffer, requiredChars * SizeOf(WideChar));
+  try
+    // 2) normalizar: escribirá writtenChars (sin incluir el terminador)
+    writtenChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), buffer, requiredChars);
+    if writtenChars = 0 then
+      RaiseLastOSError;
 
-  // 2) normalizar — writtenChars no incluye el terminador
-  writtenChars := NormalizeString(NormalizationC, PWideChar(S), -1, PWideChar(Result), requiredChars);
-  if writtenChars = 0 then
-    RaiseLastOSError;
-
-  // ajustar la longitud real (writtenChars es el nº de caracteres útiles, sin el NUL)
-  SetLength(Result, writtenChars);
+    // 3) construir el UnicodeString a partir del buffer (writtenChars no incluye el NUL)
+    SetString(Result, buffer, writtenChars);
+  finally
+    FreeMem(buffer);
+  end;
 end;
 
 constructor TRpGDIInfoProvider.Create;
@@ -381,17 +387,32 @@ var
   runOffset:integer;
   leading: integer;
   linespacing:integer;
+  textHeight:integer;
+  ascentSpacing:integer;
 begin
- linespacing:=adata.Ascent-adata.Descent+adata.Leading;
- leading:=adata.Leading;
- leading:=Round((leading/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
- linespacing:=Round(((linespacing)/100000)*TWIPS_PER_INCHESS*FontSize*1.0);
+  InitICU;
+  InitHarfBuzz;
+
+ //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
+ linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
+ WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
+ WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
+ // linespacing:=adata.Height;
+ linespacing:=Round(((linespacing)/100000)*1440*FontSize*1.25);
+ WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+
+
+
+ //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
+ ascentSpacing:=Round((adata.Ascent)*FontSize/1000*20);
+ PosY:=0;
+ PosY:=PosY+ascentSpacing;
+
  lineSubTexts := DividesIntoLines(Text);
   SetLength(Result, 0);
-  posY := 0;
   maxWidth := 0;
-
-
   lineWidthLimit := Rect.Right - Rect.Left;
 
   try
@@ -452,9 +473,9 @@ begin
         else
         begin
           if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, remaining, possibleBreaksCharIdx,line)
+            chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
           else
-            chunks := BreakChunksLTR(positions, remaining, possibleBreaksCharIdx,line);
+            chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
           for j:=0 to chunks.Count-1 do
           begin
            chunk:=chunks[j];
@@ -597,7 +618,8 @@ begin
   end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
-  Rect.Bottom := Rect.Top + Round(posY);
+  //Rect.Bottom := Rect.Top + Round(posY);
+  Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
 end;
 
 function TRpGDIInfoProvider.CalcGlyphPositions(
@@ -666,7 +688,7 @@ begin
       if script = 'Arab' then
         Buf.Language := hb_language_from_string('ar', -1);
 
-      Buf.AddUTF16(astring);
+      Buf.AddUTF16(astring,0,Length(astring));
       Buf.Shape(Font);
 
       GlyphInfo := Buf.GetGlyphInfos;
@@ -768,8 +790,8 @@ begin
  if (FontHandle=0) then
  begin   
   lasterror:=System.GetLastError();
-  raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName + 
-   ' System Error Code: ' + IntToStr(lasterror));   
+  raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
+   ' System Error Code: ' + IntToStr(lasterror));
  end;
 
  SelectObject(adc,fonthandle);
@@ -784,6 +806,111 @@ begin
 end;
 
 
+{$IFDEF WINDOWS_USEHARFBUZZ_SUBSETFONT}
+function FontHasCFF2OrFVAR(face: THBFace): Boolean;
+var
+  count, i: Cardinal;
+  tableCount: Cardinal;
+  tableCountTotal: Cardinal;
+  tags: array of Cardinal;
+
+  function TAG(a, b, c, d: Char): Cardinal;
+  begin
+    Result := (Ord(a) shl 24) or (Ord(b) shl 16) or (Ord(c) shl 8) or Ord(d);
+  end;
+var
+  cff2tag, fvartag: Cardinal;
+begin
+  Result := False;
+  cff2tag := TAG('C','F','F','2');
+  fvartag := TAG('f','v','a','r');
+  setLength(tags,1000);
+  tableCount:=1000;
+  tableCountTotal:=hb_face_get_table_tags(face, 0, tableCount, @tags[0]);
+  if tableCount = 0 then Exit(False);
+
+
+
+  // Paso 4: buscar CFF2 o fvar
+  for i := 0 to tableCount - 1 do
+    if (tags[i] = cff2tag) or (tags[i] = fvartag) then
+      Exit(True);
+end;
+
+function TRpGDIInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+var
+  face, newFace: THBFace;
+  blob: Phb_blob_t;
+  subsetInput: Phb_subset_input_t;
+  glyphsSet: Phb_set_t;
+  glyphInfo: TGlyphInfo;
+  outData: PByte;
+  outSize: Cardinal;
+  isVariable: boolean;
+  HasCCF2: boolean;
+begin
+
+  Result := nil;
+
+  // --- Crear blob desde la fuente ---
+  blob := hb_blob_create(@data.FontData.FontData.Memory^, data.FontData.FontData.Size,
+                         hbmmReadonly, nil, nil);
+  if blob = nil then
+    raise Exception.Create('No se pudo crear el blob de la fuente');
+
+  try
+    // --- Crear face ---
+    subsetInput := hb_subset_input_create_or_fail;
+    if subsetInput = nil then
+      raise Exception.Create('No se pudo crear el input de subsetting');
+    face := hb_face_create(blob, data.FontIndex);
+    // --- Crear input de subsetting ---
+     try
+     isVariable := FontHasCFF2OrFVAR(face);
+     if  (isVariable or HasCCF2) then
+     begin
+      Result := TMemoryStream.Create;
+      Result.SetSize(data.FontData.FontData.Size);
+      Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
+      Result.Position := 0;
+     end
+     else
+     begin
+       hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_DEFAULT);
+
+       // --- Obtener set de glifos y añadirlos ---
+       glyphsSet := hb_subset_input_glyph_set(subsetInput);
+       for glyphInfo in data.glyphsInfo.Values do
+         hb_set_add(glyphsSet, glyphInfo.Glyph);
+
+       // --- Crear fuente subset ---
+       newFace := hb_subset_or_fail(face, subsetInput);
+       try
+         // --- Obtener puntero a los datos de la fuente subset ---
+         outData := hb_face_reference_blob(newFace); // referencia interna a blob
+         outSize := hb_blob_get_length(hb_face_reference_blob(newFace));
+
+         // --- Copiar a MemoryStream ---
+         Result := TMemoryStream.Create;
+         Result.SetSize(outSize);
+         Move(outData^, Result.Memory^, outSize);
+         Result.Position := 0;
+
+       finally
+         hb_face_destroy(newFace);
+       end;
+      end;
+    finally
+      hb_subset_input_destroy(subsetInput);
+      hb_face_destroy(face);
+    end;
+
+  finally
+    hb_blob_destroy(blob);
+  end;
+end;
+{$ENDIF}
+{$IFNDEF WINDOWS_USEHARFBUZZ_SUBSETFONT}
 function  TRpGDIInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
 var
  subset:TTrueTypeFontSubSet;
@@ -821,6 +948,7 @@ begin
      Result.WriteBuffer(bytes[0],Length(bytes));
      Result.Seek(0,soFromBeginning);
 end;
+{$ENDIF}
 
 
 {$IFNDEF DOTNETD}
