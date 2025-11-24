@@ -509,7 +509,7 @@ var
     hb_face_reference_blob: t_hb_face_reference_blob= nil;
     hb_blob_get_length: t_hb_blob_get_length = nil;
 
-
+   HarfBuzzSubSetImplementation:boolean = false;
 
 procedure InitHarfBuzz;
 
@@ -719,8 +719,6 @@ var
       raise Exception.CreateFmt('Error loading %s', [ProcName]);
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
-    if Result = nil then
-      RaiseLastOSError;
 {$ENDIF}
 {$ENDIF}
   end;
@@ -738,8 +736,6 @@ var
       raise Exception.CreateFmt('Error loading %s', [ProcName]);
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
-    if Result = nil then
-      RaiseLastOSError;
 {$ENDIF}
 {$ENDIF}
   end;
@@ -887,31 +883,6 @@ begin
   if not Assigned(hb_font_get_scale) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 
-  ProcName:='hb_subset_input_create_or_fail';
-  hb_subset_input_create_or_fail:= GetProcAddrSubSet(ProcName);
-  if not Assigned(hb_subset_input_create_or_fail) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
-  ProcName:='hb_subset_input_destroy';
-  hb_subset_input_destroy:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset_input_destroy) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
-  ProcName:='hb_subset_input_unicode_set';
-  hb_subset_input_unicode_set:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset_input_unicode_set) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
-  ProcName:='hb_subset_input_glyph_set';
-  hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset_input_glyph_set) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
-  ProcName:='hb_subset';
-  hb_subset:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
   ProcName:='hb_blob_create';
   hb_blob_create:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_create) then
@@ -937,20 +908,11 @@ begin
   if not Assigned(hb_face_get_table_tags) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 
-  ProcName:='hb_subset_input_set_flags';
-  hb_subset_input_set_flags:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset_input_set_flags) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-
   ProcName:='hb_blob_get_data';
   hb_blob_get_data:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_get_data) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 
-  ProcName:='hb_subset_or_fail';
-  hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
-  if not Assigned(hb_subset_or_fail) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 
   ProcName:='hb_face_reference_blob';
   hb_face_reference_blob:= GetProcAddr(ProcName);
@@ -962,6 +924,40 @@ begin
   if not Assigned(hb_blob_get_length) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
 
+
+
+  HarfBuzzSubSetImplementation:=true;
+  ProcName:='hb_subset_input_create_or_fail';
+  hb_subset_input_create_or_fail:= GetProcAddrSubSet(ProcName);
+  if not Assigned(hb_subset_input_create_or_fail) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end
+  else
+  begin
+  ProcName:='hb_subset';
+  hb_subset:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);  ProcName:='hb_subset_input_glyph_set';
+  hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_glyph_set) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);  ProcName:='hb_subset_input_destroy';
+  hb_subset_input_destroy:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_destroy) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_subset_input_unicode_set';
+  hb_subset_input_unicode_set:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_unicode_set) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_subset_input_set_flags';
+  hb_subset_input_set_flags:= GetProcAddrSubset(ProcName);
+  if not Assigned(hb_subset_input_set_flags) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  ProcName:='hb_subset_or_fail';
+  hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
+  if not Assigned(hb_subset_or_fail) then
+    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  end;
 end;
 
 End.

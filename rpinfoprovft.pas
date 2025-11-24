@@ -77,6 +77,8 @@ type
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
+  function GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
+  function GetFontStreamHarfBuzz(data: TRpTTFontData): TMemoryStream;
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
   function TextExtent(
@@ -1366,7 +1368,6 @@ begin
 end;
 
 
-{$IFDEF LINUX_USEHARFBUZZ_SUBSETFONT}
 function FontHasCFF2OrFVAR(face: THBFace): Boolean;
 var
   count, i: Cardinal;
@@ -1398,6 +1399,22 @@ begin
 end;
 
 function TRpFtInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+begin
+{$IFDEF LINUX_USEHARFBUZZ_SUBSETFONT}
+ if HarfBuzzSubSetImplementation then
+ begin
+  Result:=GetFontStreamHarfBuzz(data);
+ end
+ else
+ begin
+  result:=GetFontStreamNative(data);
+ end
+{$ELSE}
+  result:=GetFontStreamNative(data);
+{$ENDIF}
+end;
+
+function TRpFtInfoProvider.GetFontStreamHarfBuzz(data: TRpTTFontData): TMemoryStream;
 var
   face, newFace: THBFace;
   blob: Phb_blob_t;
@@ -1469,9 +1486,8 @@ begin
     hb_blob_destroy(blob);
   end;
 end;
-{$ENDIF}
-{$IFNDEF LINUX_USEHARFBUZZ_SUBSETFONT}
-function  TRpFTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+
+function  TRpFTInfoProvider.GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 var
  subset:TTrueTypeFontSubSet;
  bytes:TBytes;
@@ -1523,7 +1539,6 @@ begin
      Result.WriteBuffer(bytes[0],Length(bytes));
      Result.Seek(0,soFromBeginning);
 end;
-{$ENDIF}
 
 function  TRpFTInfoProvider.GetFullFontStream(data: TRpTTFontData): TMemoryStream;
 begin
