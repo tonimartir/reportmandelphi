@@ -1446,10 +1446,11 @@ begin
      isVariable := FontHasCFF2OrFVAR(face);
      if  (isVariable or HasCCF2) then
      begin
-      Result := TMemoryStream.Create;
-      Result.SetSize(data.FontData.FontData.Size);
-      Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
-      Result.Position := 0;
+      //Result := TMemoryStream.Create;
+      //Result.SetSize(data.FontData.FontData.Size);
+      //Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
+      //Result.Position := 0;
+      Result:=GetFontStreamNative(data);
      end
      else
      begin
