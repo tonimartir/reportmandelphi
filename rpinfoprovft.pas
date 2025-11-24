@@ -26,7 +26,7 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 {$IFDEF MSWINDOWS}
     Windows,
 {$ENDIF}
-    rpinfoprovid,SyncObjs,
+    rpinfoprovid,SyncObjs,rpfontconfig,
     rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU;
 
 
@@ -70,6 +70,7 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
+  procedure SelectFontFontFonfig(pdffont:TRpPDFFOnt);
   function NFCNormalize(astring:WideString):WideString;override;
 
   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
@@ -624,9 +625,19 @@ var
  externalLeading: Integer;
  internalLeading: Integer;
 begin
- if Assigned(fontlist) then
+ if Assigned(fontlist) or FontConfigAvailable then
   exit;
  CheckFreeTypeLoaded;
+
+ InitFontConfig;
+
+ if (FontConfigAvailable) then
+ begin
+  exit;
+ end;
+
+
+
  // reads font directory
  fontlist:=TStringList.Create;
  fontfiles:=TStringList.Create;
@@ -1164,6 +1175,74 @@ begin
 end;
 
 
+function TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont): String;
+var
+  Config: PFcConfig;
+  Pattern: PFcPattern;
+  Match: PFcPattern;
+  FileNamePtr: PChar;
+  StyleWeight: Integer;
+  StyleSlant: Integer;
+begin
+  Result := '';
+
+  // 1. Verificar si Fontconfig está disponible
+  if not FontConfigAvailable then
+    Exit;
+
+  // 2. Determinar los atributos de estilo de Fontconfig
+
+  // a) Peso (Bold/Negrita)
+  if pdffont.Bold then
+    StyleWeight := FC_WEIGHT_BOLD
+  else
+    StyleWeight := FC_WEIGHT_NORMAL;
+
+  // b) Inclinación (Italic/Cursiva)
+  if pdffont.Italic then
+    StyleSlant := FC_SLANT_ITALIC
+  else
+    StyleSlant := FC_SLANT_ROMAN;
+
+  // 3. Obtener la configuración y construir el patrón de búsqueda
+  Config := FcConfigGetCurrent();
+  Pattern := FcPatternBuild();
+
+  if Pattern = nil then
+    Exit; // No se pudo crear el patrón
+
+  try
+    // a) Nombre de la familia (LFontName)
+    // Usamos LFontName.ToPointer para convertir WideString a PAnsiChar
+    FcPatternAddString(Pattern, PChar(FC_FAMILY), PChar(pdffont.LFontName));
+
+    // b) Peso (Bold)
+    FcPatternAddInteger(Pattern, PChar(FC_WEIGHT), StyleWeight);
+
+    // c) Inclinación (Italic)
+    FcPatternAddInteger(Pattern, PChar(FC_SLANT), StyleSlant);
+
+    // 4. Buscar la mejor fuente coincidente
+    // La función devuelve el Match en el tercer parámetro (por referencia),
+    // pero también lo devuelve como valor de la función si es exitoso.
+    Match := FcFontMatch(Config, Pattern, Match);
+
+    if Assigned(Match) then
+    begin
+      // 5. Extraer el nombre del archivo de la fuente seleccionada
+      // El nombre del archivo es la propiedad FC_FILE (índice 0)
+      if FcPatternGetString(Match, PChar(FC_FILE), 0, FileNamePtr) then
+      begin
+        // Convertir el PAnsiChar (UTF-8) devuelto por Fontconfig a String de Delphi
+        Result := UTF8ToString(string(FileNamePtr));
+      end;
+    end;
+
+  finally
+    // 6. Limpiar: Liberar el patrón creado (el Match no se libera aquí)
+    FcPatternDestroy(Pattern);
+  end;
+end;
 
 procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt);
 var
@@ -1187,6 +1266,11 @@ begin
  if (Length(afontname)=0) then
   afontname:='Helvetica';
 {$ENDIF}
+ if (FontConfigAvailable) then
+ begin
+  SelectFontFontConfig(pdffont);
+  exit;
+ end;
  if (pdffont.bold and not pdffont.italic) then
  begin
   stylestring:=' bold ';
