@@ -56,6 +56,7 @@ type
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
+  function  GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 {$IFDEF WINDOWS_USEHARFBUZZ}
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
     script: string;FontSize:double):TGlyphPosArray;
@@ -869,10 +870,7 @@ begin
      isVariable := FontHasCFF2OrFVAR(face);
      if  (isVariable or HasCCF2) then
      begin
-      Result := TMemoryStream.Create;
-      Result.SetSize(data.FontData.FontData.Size);
-      Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
-      Result.Position := 0;
+      Result:=GetFontStreamNative(data);
      end
      else
      begin
@@ -912,6 +910,12 @@ end;
 {$ENDIF}
 {$IFNDEF WINDOWS_USEHARFBUZZ_SUBSETFONT}
 function  TRpGDIInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+begin
+ Result:=GetFontStreamNative(data);
+end;
+{$ENDIF}
+
+function  TRpGDIInfoProvider.GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 var
  subset:TTrueTypeFontSubSet;
  bytes:TBytes;
@@ -948,7 +952,6 @@ begin
      Result.WriteBuffer(bytes[0],Length(bytes));
      Result.Seek(0,soFromBeginning);
 end;
-{$ENDIF}
 
 
 {$IFNDEF DOTNETD}
