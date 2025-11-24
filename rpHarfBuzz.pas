@@ -15,7 +15,7 @@ Const
   HarfbuzzSubSetDLL = 'libharfbuzz-subset-0.dll';
 {$ELSE}
   HarfbuzzDLL = 'libharfbuzz.so.0';
-  HarfbuzzSubSetDLL = 'libharfbuzz.so.0';
+  HarfbuzzSubSetDLL = 'libharfbuzz-subset.so.0';
 {$ENDIF}
 
 Type
@@ -440,10 +440,6 @@ const
     t_hb_subset_input_destroy = procedure (input: Phb_subset_input_t); cdecl;
     t_hb_subset_input_unicode_set = function (input: Phb_subset_input_t): Phb_set_t; cdecl;
     t_hb_subset_input_glyph_set= function (input: Phb_subset_input_t): Phb_set_t; cdecl;
-    t_hb_subset = function (face: THBFace;
-                   input: Phb_subset_input_t;
-                   glyphs: Phb_set_t;
-                   out size: Cardinal): Pointer;cdecl;
     t_hb_blob_create= Function (Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): Phb_blob_t; Cdecl;
     t_hb_face_create = Function (Blob: Phb_blob_t; Const AIndex: Cardinal): THBFace; Cdecl;
     t_hb_blob_destroy = Procedure (Blob: Phb_blob_t); Cdecl;
@@ -497,7 +493,6 @@ var
     hb_subset_input_destroy: t_hb_subset_input_destroy = nil;
     hb_subset_input_unicode_set: t_hb_subset_input_unicode_set = nil;
     hb_subset_input_glyph_set: t_hb_subset_input_glyph_set = nil;
-    hb_subset: t_hb_subset = nil;
     hb_blob_create:t_hb_blob_create= nil;
     hb_face_create:t_hb_face_create = nil;
     hb_blob_destroy:t_hb_blob_destroy = nil;
@@ -751,9 +746,14 @@ begin
 
   if HarfBuzzlib = 0 then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzSubSetImplementation:=true;
   HarfBuzzLibSubset :=
   {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzSubsetDLL)
     ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL){$ENDIF};
+  if (HarfBuzzLibSubset = 0) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end;
 
   ProcName:='hb_buffer_set_direction';
   hb_buffer_set_direction:= GetProcAddr(ProcName);
@@ -926,7 +926,8 @@ begin
 
 
 
-  HarfBuzzSubSetImplementation:=true;
+  if HarfBuzzSubSetImplementation then
+  begin
   ProcName:='hb_subset_input_create_or_fail';
   hb_subset_input_create_or_fail:= GetProcAddrSubSet(ProcName);
   if not Assigned(hb_subset_input_create_or_fail) then
@@ -935,10 +936,6 @@ begin
   end
   else
   begin
-  ProcName:='hb_subset';
-  hb_subset:= GetProcAddrSubset(ProcName);
-  if not Assigned(hb_subset) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);  ProcName:='hb_subset_input_glyph_set';
   hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_glyph_set) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);  ProcName:='hb_subset_input_destroy';
@@ -957,6 +954,7 @@ begin
   hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
   if not Assigned(hb_subset_or_fail) then
     raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+  end;
   end;
 end;
 
