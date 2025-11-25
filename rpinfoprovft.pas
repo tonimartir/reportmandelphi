@@ -40,6 +40,7 @@ type
   italic:Boolean;
   bold:Boolean;
   filename:String;
+  fontIndex:integer;
   ascent:integer;
   descent:integer;
   height:integer;
@@ -63,6 +64,8 @@ type
   procedure OpenFont;
  end;
 
+ TRpLogFontCache = class(TDictionary<string, TRpLogFont>);
+
  TRpFTInfoProvider=class(TRpInfoProvider)
   currentname:String;
   currentstyle:integer;
@@ -70,7 +73,6 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt);
-  procedure SelectFontFontFonfig(pdffont:TRpPDFFOnt);
   function NFCNormalize(astring:WideString):WideString;override;
 
   function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
@@ -93,12 +95,16 @@ type
   ): TRpLineInfoArray;override;
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
     script: string;FontSize:double):TGlyphPosArray;
+  procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: WideString = '');
 
   constructor Create;
   destructor destroy;override;
  end;
 
-
+var
+  // El diccionario global (una sola instancia)
+  GlobalFontCache: TRpLogFontCache;
+  critSection:TCriticalSection;
 
 
 
@@ -121,6 +127,170 @@ var
 
 const
  TTF_PRECISION=1000;
+
+
+function GetFontCacheKey(const FileName: string; FontIndex: Integer): string;
+begin
+  // Usa un separador que no se espera en el nombre de archivo (ej. '|').
+  Result := FileName + '|' + IntToStr(FontIndex);
+end;
+
+ // --- Inicialización y Finalización ---
+
+procedure InitializeFontCache;
+begin
+  if not Assigned(GlobalFontCache) then
+  begin
+    GlobalFontCache := TRpLogFontCache.Create;
+    critSection:=TCriticalSection.Create;
+  end;
+end;
+
+procedure FinalizeFontCache;
+begin
+  if Assigned(GlobalFontCache) then
+  begin
+    // Importante: El diccionario es responsable de liberar los objetos TRpLogFont
+    GlobalFontCache.Free;
+    GlobalFontCache := nil;
+  end;
+end;
+
+function FillLogFont(filename:string;fontIndex:integer): TRpLogFont;
+var aobj: TRpLogFont;
+ errorface:FT_Error;
+ aface:FT_Face;
+ externalLeading:integer;
+begin
+   Result:=nil;
+   errorface:=FT_New_Face(ftlibrary,PAnsiChar(UTF8Encode(filename)),fontIndex,aface);
+   //errorface:=FT_New_Memory_Face(ftlibrary,bytes,Length(bytes),0,aface);
+   if (errorface<>0) then
+    raise Exception.Create('Error Code ' + IntToStr(errorface)+
+     ' Opening font:' + filename);
+
+   if (errorface = 0) then
+   begin
+
+   try
+    // Add it only if it's a TrueType or OpenType font
+    // Type1 fonts also supported
+    // Some truetype do not set scalable, so add all
+    if  (FT_FACE_FLAG_SCALABLE AND aface.face_flags)<>0 then
+    begin
+     aobj:=TRpLogFont.Create;
+     Result:=aobj;
+      aobj.FullInfo:=false;
+      // Fill font properties
+      aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
+      aobj.TrueType:=((aface.face_flags and FT_FACE_FLAG_SFNT) <> 0)
+            and (FT_Get_Sfnt_Table(aface, FT_SFNT_GLYF) <> nil);
+      if aobj.Type1 then
+      begin
+       aobj.widthmult:=1;
+       //aobj.convfactor:=1;
+       aobj.convfactor:=1000/aface.units_per_EM;
+      end
+      else
+      begin
+       //aobj.convfactor:=1;
+       aobj.convfactor:=1000/aface.units_per_EM;
+       aobj.widthmult:=1;
+      end;
+      aobj.filename:=filename;
+      aobj.postcriptname:='';
+      aobj.familyname:='';
+      if (aface.family_name<>nil) then
+      begin
+       aobj.postcriptname:=StringReplace(StrPas(aface.family_name),' ','',[rfReplaceAll]);
+       aobj.familyname:=StrPas(aface.family_name);
+      end;
+      if Pos('ARABIC',UpperCase(aobj.familyname))>0 then
+      begin
+      aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
+      end;
+
+      aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
+      aobj.HaveKerning:=(aface.face_flags AND FT_FACE_FLAG_KERNING)<>0;
+      aobj.BBox.Left:=Round(aobj.convfactor*aface.bbox.xMin);
+      aobj.BBox.Right:=Round(aobj.convfactor*aface.bbox.xMax);
+      aobj.BBox.Top:=Round(aobj.convfactor*aface.bbox.yMax);
+      aobj.BBox.Bottom:=Round(aobj.convfactor*aface.bbox.yMin);
+      aobj.ascent:=Round(aobj.convfactor*aface.ascender);
+      aobj.descent:=Round(aobj.convfactor*aface.descender);
+      aobj.height:=Round(aobj.convfactor*aface.height);
+      // External leading, same as GDI OUTLINETEXTMETRICS, it's the line gap
+      externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
+      // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font
+      // reserved for accent marks
+      // internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
+      aobj.leading := Round((aface.height-(aobj.ascent-aobj.descent))*aobj.convfactor);
+
+
+      aobj.MaxWidth:=Round(aobj.convfactor*aface.max_advance_width);
+      aobj.Capheight:=Round(aobj.convfactor*aface.ascender);
+      aobj.stylename:='';
+      aobj.bold:=(aface.style_flags AND FT_STYLE_FLAG_BOLD)<>0;
+      aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
+      if (aface.style_name<>nil) then
+      begin
+       aobj.stylename:=StrPas(aface.style_name);
+       if not aobj.bold then
+         aobj.bold :=
+              (Pos('BOLD', UpperCase(aobj.stylename)) > 0)
+           or (Pos('BOLD', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('BOLD', UpperCase(aobj.filename)) > 0);
+       if not aobj.italic then
+         aobj.italic :=
+             (Pos('ITALIC', UpperCase(aobj.stylename)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.stylename)) > 0)
+           or (Pos('ITALIC', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.postcriptname)) > 0)
+           or (Pos('ITALIC', UpperCase(aobj.filename)) > 0)
+           or (Pos('OBLIQUE', UpperCase(aobj.filename)) > 0);
+      end;
+     end
+     else
+      raise Exception.Create('Unsupported font:' + filename);
+   finally
+     FT_Done_Face(aface);
+   end;
+  end;
+end;
+
+function GetOrAddLogFont(const FileName: string; FontIndex: Integer): TRpLogFont;
+var
+  Key: string;
+  LogFont: TRpLogFont;
+begin
+  critSection.Enter;
+  try
+  if not Assigned(GlobalFontCache) then
+    InitializeFontCache; // Asegura que el cache esté listo
+
+  Key := GetFontCacheKey(FileName, FontIndex);
+
+  // 1. Intentar obtener de la caché
+  if GlobalFontCache.TryGetValue(Key, LogFont) then
+  begin
+    Result := LogFont;
+    Exit;
+  end;
+
+  // 2. Si no está en caché, crearlo e inicializarlo
+
+  // NOTA: Aquí es donde integrarías la lógica de Fontconfig/FreeType
+  // para rellenar los datos del TRpLogFont (postcriptname, ascent, descent, ftface, etc.)
+
+  LogFont := FillLogFont(filename,fontIndex);
+  // 3. Añadir a la caché
+  GlobalFontCache.Add(Key, LogFont);
+  Result := LogFont;
+  finally
+    critSection.Leave;
+  end;
+end;
+
 
 function TRpFTInfoProvider.NFCNormalize(astring:WideString):WideString;
 begin
@@ -625,9 +795,10 @@ var
  externalLeading: Integer;
  internalLeading: Integer;
 begin
+ CheckFreeTypeLoaded;
+ CheckFreeType(FT_Init_FreeType(ftlibrary));
  if Assigned(fontlist) or FontConfigAvailable then
   exit;
- CheckFreeTypeLoaded;
 
  InitFontConfig;
 
@@ -884,7 +1055,6 @@ begin
  defaultfontb_arabic:=nil;
  defaultfontit_arabic:=nil;
  defaultfontbit_arabic:=nil;
- CheckFreeType(FT_Init_FreeType(ftlibrary));
  initialized:=true;
 
  // Now fill the font list with all font files
@@ -913,79 +1083,9 @@ begin
     // Add it only if it's a TrueType or OpenType font
     // Type1 fonts also supported
     // Some truetype do not set scalable, so add all
-    if  (FT_FACE_FLAG_SCALABLE AND aface.face_flags)<>0 then
+    aobj:=FillLogFont(afilename2,0);
+    if  Assigned(aobj) then
     begin
-     aobj:=TRpLogFont.Create;
-     try
-      aobj.FullInfo:=false;
-      // Fill font properties
-      aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
-      aobj.TrueType:=((aface.face_flags and FT_FACE_FLAG_SFNT) <> 0)
-            and (FT_Get_Sfnt_Table(aface, FT_SFNT_GLYF) <> nil);
-      if aobj.Type1 then
-      begin
-       aobj.widthmult:=1;
-       //aobj.convfactor:=1;
-       aobj.convfactor:=1000/aface.units_per_EM;
-      end
-      else
-      begin
-       //aobj.convfactor:=1;
-       aobj.convfactor:=1000/aface.units_per_EM;
-       aobj.widthmult:=1;
-      end;
-      aobj.filename:=fontfiles.strings[i];
-      aobj.postcriptname:='';
-      aobj.familyname:='';
-      if (aface.family_name<>nil) then
-      begin
-       aobj.postcriptname:=StringReplace(StrPas(aface.family_name),' ','',[rfReplaceAll]);
-       aobj.familyname:=StrPas(aface.family_name);
-      end;
-      if Pos('ARABIC',UpperCase(aobj.familyname))>0 then
-      begin
-      aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
-      end;
-
-      aobj.fixedpitch:=(aface.face_flags AND FT_FACE_FLAG_FIXED_WIDTH)<>0;
-      aobj.HaveKerning:=(aface.face_flags AND FT_FACE_FLAG_KERNING)<>0;
-      aobj.BBox.Left:=Round(aobj.convfactor*aface.bbox.xMin);
-      aobj.BBox.Right:=Round(aobj.convfactor*aface.bbox.xMax);
-      aobj.BBox.Top:=Round(aobj.convfactor*aface.bbox.yMax);
-      aobj.BBox.Bottom:=Round(aobj.convfactor*aface.bbox.yMin);
-      aobj.ascent:=Round(aobj.convfactor*aface.ascender);
-      aobj.descent:=Round(aobj.convfactor*aface.descender);
-      aobj.height:=Round(aobj.convfactor*aface.height);
-      // External leading, same as GDI OUTLINETEXTMETRICS, it's the line gap
-      externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
-      // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font
-      // reserved for accent marks
-      // internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
-      aobj.leading := Round((aface.height-(aobj.ascent-aobj.descent))*aobj.convfactor);
-
-
-      aobj.MaxWidth:=Round(aobj.convfactor*aface.max_advance_width);
-      aobj.Capheight:=Round(aobj.convfactor*aface.ascender);
-      aobj.stylename:='';
-      aobj.bold:=(aface.style_flags AND FT_STYLE_FLAG_BOLD)<>0;
-      aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
-      if (aface.style_name<>nil) then
-      begin
-       aobj.stylename:=StrPas(aface.style_name);
-       if not aobj.bold then
-         aobj.bold :=
-              (Pos('BOLD', UpperCase(aobj.stylename)) > 0)
-           or (Pos('BOLD', UpperCase(aobj.postcriptname)) > 0)
-           or (Pos('BOLD', UpperCase(aobj.filename)) > 0);
-       if not aobj.italic then
-         aobj.italic :=
-             (Pos('ITALIC', UpperCase(aobj.stylename)) > 0)
-           or (Pos('OBLIQUE', UpperCase(aobj.stylename)) > 0)
-           or (Pos('ITALIC', UpperCase(aobj.postcriptname)) > 0)
-           or (Pos('OBLIQUE', UpperCase(aobj.postcriptname)) > 0)
-           or (Pos('ITALIC', UpperCase(aobj.filename)) > 0)
-           or (Pos('OBLIQUE', UpperCase(aobj.filename)) > 0);
-      end;
       if (Pos('CANTARELL',UpperCase(aobj.familyname))>0) then
       begin
         if ((not aobj.italic) and (not aobj.bold)) then
@@ -1082,9 +1182,6 @@ begin
       end;
 
       fontlist.AddObject(UpperCase(aobj.familyname),aobj);
-     except
-      aobj.free;
-     end;
     end;
    finally
     FT_Done_Face(aface);
@@ -1175,7 +1272,7 @@ begin
 end;
 
 
-function TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont): String;
+procedure TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont; unicodeContent: WideString = '');
 var
   Config: PFcConfig;
   Pattern: PFcPattern;
@@ -1183,45 +1280,49 @@ var
   FileNamePtr: PChar;
   StyleWeight: Integer;
   StyleSlant: Integer;
+  filename: string;
+  MatchKind: Integer;
+  familyname:string;
+  FontIndex:integer;
 begin
-  Result := '';
+  filename := '';
 
   // 1. Verificar si Fontconfig está disponible
   if not FontConfigAvailable then
-    Exit;
+    raise Exception.Create('No fontconfig installed');
 
-  // 2. Determinar los atributos de estilo de Fontconfig
-
-  // a) Peso (Bold/Negrita)
-  if pdffont.Bold then
-    StyleWeight := FC_WEIGHT_BOLD
-  else
-    StyleWeight := FC_WEIGHT_NORMAL;
-
-  // b) Inclinación (Italic/Cursiva)
-  if pdffont.Italic then
-    StyleSlant := FC_SLANT_ITALIC
-  else
-    StyleSlant := FC_SLANT_ROMAN;
-
-  // 3. Obtener la configuración y construir el patrón de búsqueda
+  // 2. Obtener la configuración
   Config := FcConfigGetCurrent();
-  Pattern := FcPatternBuild();
 
+  // 3. Obtener el patrón de búsqueda
+// 2. Crear el patrón de fuente usando el wrapper (FcCreatePattern)
+  //    Esto construye el patrón con Family, Weight e Slant.
+  familyName:=pdfFont.LFontName;
+  if (familyName='Helvetica') then
+  begin
+    familyName:='Cantarell';
+  end;
+  Pattern := rpfontconfig.FcCreatePattern(
+    familyName,
+    pdffont.Bold,
+    pdffont.Italic,
+    unicodeContent
+  );
   if Pattern = nil then
     Exit; // No se pudo crear el patrón
 
   try
-    // a) Nombre de la familia (LFontName)
-    // Usamos LFontName.ToPointer para convertir WideString a PAnsiChar
-    FcPatternAddString(Pattern, PChar(FC_FAMILY), PChar(pdffont.LFontName));
-
-    // b) Peso (Bold)
-    FcPatternAddInteger(Pattern, PChar(FC_WEIGHT), StyleWeight);
-
-    // c) Inclinación (Italic)
-    FcPatternAddInteger(Pattern, PChar(FC_SLANT), StyleSlant);
-
+    // Este paso analiza FC_TEXT y sustituye FC_FAMILY (Helvetica) si no soporta el script.
+    //if unicodeContent = '' then
+      // Si NO hay contenido, solo sustituir a nivel de FUENTE (evita reemplazar Helvetica)
+    //  MatchKind := FC_MATCH_FONT
+    //else
+      // Si hay contenido, sustituir a nivel de PATRÓN (para forzar el fallback de script/familia)
+    MatchKind := FC_MATCH_PATTERN;
+    // a) Sustitución predeterminada    FcDefaultSubstitute(Pattern);
+     FcDefaultSubstitute(Pattern);
+    // b) Sustitución de configuración (aplica reglas de idioma/script)
+     FcConfigSubstitute(Config, Pattern, MatchKind); // FC_MATCH_PATTERN = 0
     // 4. Buscar la mejor fuente coincidente
     // La función devuelve el Match en el tercer parámetro (por referencia),
     // pero también lo devuelve como valor de la función si es exitoso.
@@ -1231,13 +1332,17 @@ begin
     begin
       // 5. Extraer el nombre del archivo de la fuente seleccionada
       // El nombre del archivo es la propiedad FC_FILE (índice 0)
-      if FcPatternGetString(Match, PChar(FC_FILE), 0, FileNamePtr) then
+      FcPatternGetString(Match, PChar(FC_FILE), 0, FileNamePtr);
+      // Verifica si el puntero de salida (la dirección de la cadena) es válido
+      if Assigned(FileNamePtr) then
       begin
-        // Convertir el PAnsiChar (UTF-8) devuelto por Fontconfig a String de Delphi
-        Result := UTF8ToString(string(FileNamePtr));
+       // Asignación de la ruta de archivo solo si el puntero no es nil
+       filename := UTF8ToString(string(FileNamePtr));
+       FontIndex:=0;
+       FcPatternGetInteger(Match, PChar(FC_INDEX), 0, FontIndex);
+       currentFont:=GetOrAddLogFont(filename,FontIndex);
       end;
-    end;
-
+   end;
   finally
     // 6. Limpiar: Liberar el patrón creado (el Match no se libera aquí)
     FcPatternDestroy(Pattern);
@@ -1268,7 +1373,7 @@ begin
 {$ENDIF}
  if (FontConfigAvailable) then
  begin
-  SelectFontFontConfig(pdffont);
+  SelectFontFontConfig(pdffont,'');
   exit;
  end;
  if (pdffont.bold and not pdffont.italic) then
@@ -1924,7 +2029,9 @@ end;
 initialization
  fontlist:=nil;
  initialized:=false;
+ InitializeFontCache;
 finalization
+ FinalizeFontCache;
  FreeFontList;
  if initialized then
   FT_Done_FreeType(ftlibrary);
