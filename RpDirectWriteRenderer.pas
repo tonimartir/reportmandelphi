@@ -1,4 +1,4 @@
-unit RpDirectWriteRenderer;
+ï»¿unit RpDirectWriteRenderer;
 
 interface
 
@@ -27,7 +27,7 @@ type
   PGlyphOffsetArray = ^TGlyphOffsetArray;
   PClusterMapArray = ^TClusterMapArray;
 
-  // --- Estructura para línea de glifos ---
+  // --- Estructura para lÃ­nea de glifos ---
   TGlyphLine = class
   public
     BaselineY: Single;
@@ -37,6 +37,8 @@ type
     destructor Destroy; override;
   end;
 
+  TFontFaceCache = class(TDictionary<Pointer, WideString>);
+
   // --- TTextExtentRenderer ---
   TTextExtentRenderer = class(TInterfacedObject, IDWriteTextRenderer)
   private
@@ -44,6 +46,7 @@ type
     FTextLayout: IDWriteTextLayout;
     FOriginalText:PWideChar;
     FLines: TList<TGlyphLine>;
+    FFontFamilyCache: TFontFaceCache;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
@@ -57,6 +60,8 @@ type
     function IsPixelSnappingDisabled(clientDrawingContext: Pointer; var isDisabled: BOOL): HResult; stdcall;
     function GetCurrentTransform(clientDrawingContext: Pointer; var transform: TDwriteMatrix): HResult; stdcall;
     function GetPixelsPerDip(clientDrawingContext: Pointer; var pixelsPerDip: Single): HResult; stdcall;
+    function GetFontFamily(FontFace: IDWriteFontFace): WideString;
+
 
     // IDWriteTextRenderer
     function DrawGlyphRun(
@@ -95,6 +100,7 @@ begin
   BaselineY := aBaselineY;
   IsRTL := aIsRTL;
   Glyphs := TList<TGlyphPos>.Create;
+
 end;
 
 destructor TGlyphLine.Destroy;
@@ -112,6 +118,7 @@ begin
   FOriginalText:=OriginalText;
   FGlyphPositions := TList<TGlyphPos>.Create;
   FLines := TList<TGlyphLine>.Create;
+  FFontFamilyCache:=TFontFaceCache.Create;
 end;
 
 destructor TTextExtentRenderer.Destroy;
@@ -122,6 +129,7 @@ begin
   for L in FLines do
     L.Free;
   FLines.Free;
+  FFontFamilyCache.Free;
   inherited;
 end;
 
@@ -135,6 +143,179 @@ begin
   Result := TGlyphLine.Create(baselineY, firstRunIsRTL);
   FLines.Add(Result);
 end;
+
+
+
+function MakeOpenTypeTag(a, b, c, d: AnsiChar): Cardinal;
+begin
+  Result := (Cardinal(Byte(a)) shl 24) or
+            (Cardinal(Byte(b)) shl 16) or
+            (Cardinal(Byte(c)) shl 8)  or
+            Cardinal(Byte(d));
+end;
+
+function GetFontFamilyFromFontFace(FontFace: IDWriteFontFace): WideString;
+type
+  // Definiciones de tipos para punteros (si no estï¿½n globales)
+  PTNameTableHeader = ^TNameTableHeader;
+  PTNameRecord = ^TNameRecord;
+
+  TNameTableHeader = packed record
+    formatSelector: Word;
+    count: Word;
+    stringOffset: Word;
+  end;
+
+  TNameRecord = packed record
+    platformID: Word;
+    encodingID: Word;
+    languageID: Word;
+    nameID: Word;
+    length: Word;
+    offset: Word;
+  end;
+const
+  // Usamos el tag invertido que ha funcionado en la prueba (el valor decimal es 1699901549)
+  NAME_TABLE_TAG = Cardinal($656D616E); // 'eman' (tag invertido para TryGetFontTable)
+
+  // Tag correcto (6E616D65) si el binding lo pidiera en orden nativo
+  // NAME_TABLE_TAG_BIG_ENDIAN = Cardinal($6E616D65); // 'name'
+
+  // --- Funciones Auxiliares ---
+
+  function SwapWord(Value: Word): Word;
+  begin
+    Result := ((Value and $FF) shl 8) or (Value shr 8);
+  end;
+
+  // NECESARIA: Funciï¿½n para invertir los bytes de la cadena UTF-16
+  procedure SwapUTF16Bytes(P: Pointer; LengthInBytes: Integer);
+  var
+    WPtr: PWord;
+    i: Integer;
+  begin
+    WPtr := PWord(P);
+    for i := 0 to (LengthInBytes div 2) - 1 do
+    begin
+      WPtr^ := SwapWord(WPtr^);
+      Inc(WPtr);
+    end;
+  end;
+
+var
+  tableData: Pointer;
+  tableSize: Cardinal;
+  tableContext: Pointer;
+  exists: BOOL;
+  header: PTNameTableHeader;
+  recordsBasePtr: PByte;
+  currentRecordPtr: PTNameRecord;
+  i: Integer;
+  strPtr: PByte;
+  candidate: WideString;
+  recordCount: Word;
+  stringOffset: Word;
+  lengthInBytes: Integer;
+  lengthInChars: Integer;
+  tempPtr: PByte; // Para la copia temporal y la inversiï¿½n de endianness
+begin
+  Result := '';
+  if FontFace = nil then Exit;
+
+  // Utilizamos el tag invertido que has confirmado que funciona
+  if Succeeded(FontFace.TryGetFontTable(NAME_TABLE_TAG, tableData, tableSize, tableContext, exists)) and exists then
+  begin
+    try
+      if tableSize < SizeOf(TNameTableHeader) then Exit;
+
+      // 1. Asignar encabezado y corregir el orden de bytes (Big Endian)
+      header := PTNameTableHeader(tableData);
+      recordCount := SwapWord(header.count);
+      stringOffset := SwapWord(header.stringOffset);
+
+      // 2. Calcular la posiciï¿½n inicial de los registros
+      recordsBasePtr := PByte(NativeUInt(tableData) + SizeOf(TNameTableHeader));
+
+      // 3. Iterar sobre los registros
+      for i := 0 to recordCount - 1 do
+      begin
+        // a. Calcular el puntero del registro actual
+        currentRecordPtr := PTNameRecord(NativeUInt(recordsBasePtr) + i * SizeOf(TNameRecord));
+
+        // b. Validaciï¿½n de lï¿½mites (simplificada)
+        if NativeUInt(currentRecordPtr) + SizeOf(TNameRecord) > NativeUInt(tableData) + tableSize then
+          Break;
+
+        // c. Comprobar NameID = 1 (Familia) y los IDs de Plataforma/Codificaciï¿½n
+        if SwapWord(currentRecordPtr.nameID) = 1 then // NameID=1 -> Font Family
+        begin
+          // Preferir Unicode (Platform 0) o Windows Unicode (Platform 3, Encoding 1 o 10)
+          if not ((SwapWord(currentRecordPtr.platformID) = 0) or
+             ((SwapWord(currentRecordPtr.platformID) = 3) and
+              ((SwapWord(currentRecordPtr.encodingID) = 1) or
+               (SwapWord(currentRecordPtr.encodingID) = 10)))) then
+            Continue;
+
+          // d. Calcular la posiciï¿½n de la cadena
+          strPtr := PByte(NativeUInt(tableData) + stringOffset + SwapWord(currentRecordPtr.offset));
+
+          // e. Obtener longitud en bytes y validar lï¿½mites
+          lengthInBytes := SwapWord(currentRecordPtr.length);
+          lengthInChars := lengthInBytes div 2;
+
+          if NativeUInt(strPtr) + lengthInBytes > NativeUInt(tableData) + tableSize then
+            Continue;
+
+          // f. Copiar y corregir Endianness
+
+          // 1. Crear una copia temporal de los datos del nombre
+          tempPtr := AllocMem(lengthInBytes);
+          try
+            Move(strPtr^, tempPtr^, lengthInBytes);
+
+            // 2. INVERTIR los bytes (Big Endian -> Little Endian)
+            SwapUTF16Bytes(tempPtr, lengthInBytes);
+
+            // 3. Establecer la cadena a partir de la copia invertida
+            SetString(candidate, PWideChar(tempPtr), lengthInChars);
+
+            Result := candidate;
+            Exit;
+          finally
+            FreeMem(tempPtr);
+          end;
+        end;
+      end;
+
+    finally
+      FontFace.ReleaseFontTable(tableContext);
+    end;
+  end;
+end;
+
+function TTextExtentRenderer.GetFontFamily(FontFace: IDWriteFontFace): WideString;
+var
+  FacePtr: Pointer;
+begin
+  Result := '';
+  if FontFace = nil then Exit;
+
+  // 1. OBTENER LA CLAVE: El puntero de la interfaz (direcciï¿½n del objeto COM)
+  FacePtr := Pointer(FontFace);
+
+  // 2. Comprobar la cachï¿½ de esta instancia
+  if FFontFamilyCache.TryGetValue(FacePtr, Result) then
+    Exit; // ï¿½Encontrado en cachï¿½!
+
+  // 3. Si no estï¿½, decodificar la tabla 'name' (la operaciï¿½n costosa)
+  // [Importante] Asumimos que GetFontFamilyFromFontFaceNoCache es la funciï¿½n
+  // que hace el parsing binario de la tabla 'name' que ya corregimos.
+  Result := GetFontFamilyFromFontFace(FontFace);
+
+  // 4. Guardar en la cachï¿½
+  FFontFamilyCache.Add(FacePtr, Result);
+end;
+
 
 function TTextExtentRenderer.DrawGlyphRun(
   clientDrawingContext: Pointer;
@@ -195,18 +376,20 @@ begin
       GlyphPos.Cluster := ClusterMapArray[i];
       GlyphPos.LineCluster := TextPosition + GlyphPos.Cluster;
       GlyphPos.CharCode:=FOriginalText[GlyphPos.LineCluster];
+      if (glyphrun.FontFace <> FontFace) then
+        Glyphpos.FontFamily:=GetFontFamily(glyphrun.fontFace);
 
       GlyphList.Add(GlyphPos);
       FGlyphPositions.Add(GlyphPos);
     end;
 
-        // 2) Recortar whitespace final en el orden lógico (preservamos NBSP por defecto)
-    keepNBSP := True; // cambia a False si prefieres eliminar NBSP también
+        // 2) Recortar whitespace final en el orden lÃ³gico (preservamos NBSP por defecto)
+    keepNBSP := True; // cambia a False si prefieres eliminar NBSP tambiÃ©n
     LastIndex := GlyphList.Count - 1;
     while LastIndex >= 0 do
     begin
       ch := GlyphList[LastIndex].CharCode;
-      // comprobar whitespace básico (espacio, tab, CR, LF). Añade más códigos si quieres.
+      // comprobar whitespace bÃ¡sico (espacio, tab, CR, LF). AÃ±ade mÃ¡s cÃ³digos si quieres.
       isWS := (ch = WideChar(' ')) or (ch = WideChar(#9)) or (ch = WideChar(#10)) or (ch = WideChar(#13));
 
       // tratar NBSP (U+00A0)
@@ -221,7 +404,7 @@ begin
       if not isWS then
         Break;
 
-      // eliminar último glifo lógico (trailing whitespace)
+      // eliminar Ãºltimo glifo lÃ³gico (trailing whitespace)
       GlyphList.Delete(LastIndex);
       Dec(LastIndex);
     end;
@@ -230,7 +413,7 @@ begin
     if runIsRTL then
       GlyphList.Reverse;
 
-    // Insertar según dirección dominante de la línea
+    // Insertar segÃºn direcciÃ³n dominante de la lÃ­nea
     if Line.IsRTL then
       Line.Glyphs.InsertRange(0, GlyphList.ToArray)
     else

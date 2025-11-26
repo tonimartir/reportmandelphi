@@ -116,6 +116,7 @@ type
    CharCode: WideChar;
    Cluster: Cardinal;
    LineCluster: Cardinal;
+   FontFamily: string;
  end;
  TGlyphPosArray = array of TGlyphPos;
  TRpLineInfo=record
