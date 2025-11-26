@@ -2189,7 +2189,7 @@ begin
 
   SWriteLine(FFile.FsTempStream,'BT');
   SWriteLine(FFile.FsTempStream,'/F'+
-  Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.fontname,Font.Style)+' '+
+  Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.Style)+' '+
    IntToStr(Font.Size)+ ' Tf');
   if (RighttoLeft) then
   begin
@@ -3827,7 +3827,7 @@ begin
  end;
  if Not Assigned(InfoProvider) then
   exit;
- searchname:=Font.fontname+IntToStr(Font.Style);
+ searchname:=Font.GetFontFamilyKey+IntToStr(Font.Style);
  index:=FFontTTData.IndexOf(searchname);
  if index<0 then
  begin
@@ -4284,10 +4284,15 @@ var
   cursor: Double;
   absX, absY: Double;
   EOL: string;
+  newFontFamily:string;
+  actualFontFamily:string;
+  originalFontFamily:string;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
+  actualFontFamily:=Font.GetFontFamily;
+  originalFontFamily:=Font.GetFontFamily;
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4295,7 +4300,24 @@ begin
     g := lInfo.Glyphs[i];
     // glyph id hex (tu helper)
     gidHex := IntToHex4(g.GlyphIndex);
-
+    if (g.FontFamily<>'') then
+    begin
+     newfontFamily:=g.FontFamily;
+    end
+    else
+    begin
+     newfontfamily:=originalFontFamily;
+    end;
+    if (actualfontFamily<>newFontFamily) then
+    begin
+     Font.WFontName:=newFontFamily;
+     Font.LFontName:=newFontFamily;
+     adata:=GetTTFontData;
+     Result:=Result+'/F'+
+      Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.Style)+' '+
+       IntToStr(Font.Size)+ ' Tf'+EOL;
+     actualFontFamily:=originalFontFamily;
+    end;
     // llamadas auxiliares que tenías para compatibilidad
     InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
@@ -4311,6 +4333,12 @@ begin
 
     // avanzar cursor
     cursor := cursor + g.XAdvance;
+  end;
+  if  (actualFontFamily<>originalFontFamily) then
+  begin
+   Font.WFontName:=originalFontFamily;
+   Font.LFontName:=originalFontFamily;
+   adata:=GetTTFontData;
   end;
 end;
 

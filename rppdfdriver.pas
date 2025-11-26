@@ -249,12 +249,6 @@ begin
  FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
  FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
  FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
-{$IFDEF MSWINDOWS}
- FPDFFile.Canvas.Font.FontName:=StringReplace(atext.WFontName,' ','',[rfReplaceAll]);
-{$ENDIF}
-{$IFDEF LINUX}
- FPDFFile.Canvas.Font.FontName:=StringReplace(atext.LFontName,' ','',[rfReplaceAll]);
-{$ENDIF}
 
  FPDFFile.Canvas.Font.Size:=atext.FontSize;
  FPDFFile.Canvas.Font.Bold:=(atext.Fontstyle and 1)>0;
@@ -297,11 +291,9 @@ begin
    begin
 {$IFDEF MSWINDOWS}
     FPDFFile.Canvas.Font.WFontName:=page.GetWFontName(Obj);
-    FPDFFile.Canvas.Font.FontName:=StringReplace(FPDFFile.Canvas.Font.WFontName,' ','',[rfReplaceAll]);
 {$ENDIF}
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
-    FPDFFile.Canvas.Font.FontName:=StringReplace(FPDFFile.Canvas.Font.LFontName,' ','',[rfReplaceAll]);
 {$ENDIF}
     FPDFFile.Canvas.Font.Style:=obj.FontStyle;
     // Transparent ?

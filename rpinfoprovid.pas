@@ -36,7 +36,6 @@ type
    Name:TRpType1Font;
    WFontName:WideString;
    LFontName:WideString;
-   fontname:String;
    Size:integer;
    Color:integer;
    Style:Integer;
@@ -47,6 +46,8 @@ type
    Transparent:boolean;
    BackColor:Integer;
    constructor Create;
+   function GetFontFamilyKey: string;
+   function GetFontFamily:string;
   end;
 
 
@@ -301,6 +302,24 @@ begin
 
  Name:=poCourier;
  Size:=10;
+end;
+
+function TrpPDFFont.GetFontFamily: string;
+begin
+{$IFDEF LINUX}
+ REsult:=LFontName;
+{$ELSE}
+ REsult:=WFontName;
+{$ENDIF}
+end;
+
+function TrpPDFFont.GetFontFamilyKey: string;
+begin
+{$IFDEF LINUX}
+ REsult:=StringReplace(LFontName,' ','',[rfReplaceAll]);;
+{$ELSE}
+ REsult:=StringReplace(WFontName,' ','',[rfReplaceAll]);;
+{$ENDIF}
 end;
 
 constructor TAdvFontData.Create;
