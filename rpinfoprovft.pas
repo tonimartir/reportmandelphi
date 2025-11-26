@@ -76,7 +76,7 @@ type
   currentfont:TRpLogFont;
   crit:TCriticalSection;
   procedure InitLibrary;
-  procedure SelectFont(pdffont:TRpPDFFOnt;content: string);
+  procedure SelectFont(pdffont:TRpPDFFOnt;content: string;ignoreFamily: boolean);
   function NFCNormalize(astring:WideString):WideString;override;
 
   function CalcGlyphPositions(astring:WideString;
@@ -101,8 +101,8 @@ type
     singleline: Boolean;
     FontSize: Double
   ): TRpLineInfoArray;override;
-  procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: WideString = '');
-  procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: WideString;removeFamily: boolean);
+  procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
+  procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
   constructor Create;
   destructor destroy;override;
  end;
@@ -428,13 +428,35 @@ begin
         fallbackAscentSpacing:=ascentSpacing;
         if (dofallback) then
         begin
-         SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length));
+         SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),false);
          positions := CalcGlyphPositions(
            Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
            direction,
            logicalRun.ScriptString,
            FontSize
          );
+         var secondFallback := false;
+         for k:=0 to Length(positions)-1 do
+         begin
+          if (positions[k].GlyphIndex = 0) then
+          begin
+           secondFallback:=true;
+           break;
+          end;
+         end;
+         if (secondFallback) then
+         begin
+          SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),true);
+           positions := CalcGlyphPositions(
+             Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
+             direction,
+             logicalRun.ScriptString,
+             FontSize
+           );
+         end;
+
+
+
          fallbackAscentSpacing:=Round((currentfont.data.Ascent)*FontSize/1000*20);
         end;
         runWidth:=0;
@@ -1317,7 +1339,7 @@ begin
  Result:=false;
 end;
 
-procedure TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont; unicodeContent: WideString = '');
+procedure TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont; unicodeContent: string = '');
 begin
  SelectFontFontConfigInt(pdffont,unicodeContent,false);
  if (not currentFont.scalable) then
@@ -1325,7 +1347,7 @@ begin
 end;
 
 
-procedure TRpFtInfoProvider.SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: WideString;removeFamily: boolean);
+procedure TRpFtInfoProvider.SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
 var
   Config: PFcConfig;
   Pattern: PFcPattern;
@@ -1355,8 +1377,6 @@ begin
   begin
     familyName:='Cantarell';
   end;
-  if (unicodeContent<>'') then
-    familyName:='Noto Color Emoji';
   if (removeFamily) then
     familyName:='';
   Pattern := rpfontconfig.FcCreatePattern(
@@ -1416,7 +1436,7 @@ begin
   end;
 end;
 
-procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt;content: string);
+procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt;content: string;ignoreFamily: boolean);
 var
  afontname:string;
  isbold:boolean;
@@ -1447,7 +1467,12 @@ begin
 
  if (FontConfigAvailable) then
  begin
-  SelectFontFontConfig(pdffont,content);
+  if (ignoreFamily) then
+  begin
+    SelectFontFontConfigInt(pdffont,content,true);
+  end
+  else
+    SelectFontFontConfig(pdffont,content);
 
   exit;
  end;
@@ -1877,7 +1902,7 @@ begin
    crit.Leave;
  end;
   // See if data can be embedded
- SelectFont(pdffont, content);
+ SelectFont(pdffont, content,false);
  FillFontDataInt(data);
 end;
 
