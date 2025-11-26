@@ -79,7 +79,7 @@ uses Classes,Sysutils,rpinfoprovid,
  rpinfoprovft,
 {$ENDIF}
 
- rpmdconsts,rptypes,rpmunits,dateutils;
+ rpmdconsts,rptypes,rpmunits,dateutils, System.Generics.Collections;
 
 
 const
@@ -4287,12 +4287,15 @@ var
   newFontFamily:string;
   actualFontFamily:string;
   originalFontFamily:string;
+  clusterPositions: TDictionary<integer,double>;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
   actualFontFamily:=Font.GetFontFamily;
   originalFontFamily:=Font.GetFontFamily;
+  clusterPositions:=TDictionary<integer,double>.Create;
+  try
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4323,8 +4326,26 @@ begin
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
 
     // calcular posiciones PDF como hacías
-    absX := posX + cursor + g.XOffset;
     absY := posY - g.YOffset;
+    absX := posX + cursor + g.XOffset;
+
+    // Posición de diacríticos relativos al glifo del cluster principal
+   (* if (not clusterPositions.ContainsKey(g.LineCluster)) then
+    begin
+     absX := posX + cursor + g.XOffset;
+     clusterPositions.Add(g.LineCluster,cursor +g.XAdvance);
+    end
+    else
+    begin
+     //if (g.XAdvance = 0) then
+     //begin
+     // absX:=posX + clusterPositions[g.LineCluster]+g.XOffset;
+     //end
+     //else
+     //begin
+     absX := posX + cursor + g.XOffset;
+     //end;
+    end;*)
 
     // Emitir la instrucción Tm y Tj SIN q/Q
     // Matriz: 1 0 0 1 tx ty Tm   seguido de <gid> Tj
@@ -4339,6 +4360,9 @@ begin
    Font.WFontName:=originalFontFamily;
    Font.LFontName:=originalFontFamily;
    adata:=GetTTFontData;
+  end;
+  finally
+    clusterPositions.Free;
   end;
 end;
 

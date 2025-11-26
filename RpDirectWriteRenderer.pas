@@ -365,7 +365,7 @@ begin
       if Assigned(OffArray) then
       begin
         var Offset := OffArray[i];
-        GlyphPos.XOffset := -Round(Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
+        GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
       else

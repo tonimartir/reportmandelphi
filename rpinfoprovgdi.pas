@@ -304,6 +304,7 @@ begin
       for j:=0 to Length(LineInfo.Glyphs)-1 do
       begin
         LineCluster:=LineInfo.Glyphs[j].LineCluster;
+        Glyph:=Line.Glyphs[j];
         LineInfo.Width := LineInfo.Width + Line.Glyphs[j].XAdvance;
         //LineInfo.Glyphs[j].CharCode:=PWideCharText[LineCluster];
         if (maxLineCluster<LineCluster) then
