@@ -2733,8 +2733,10 @@ begin
   linespacing:=adata.Ascent-adata.Descent+adata.Leading;
   //linespacing:=adata.Ascent-adata.Descent + adata.Leading div 2;
   // leading:=adata.Leading;
-  leading:=0;
+//  leading:=0;
 //  linespacing:=Round(linespacing/1000*20*FFont.Size);
+  leading:=adata.Leading;
+
   WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end
  else
