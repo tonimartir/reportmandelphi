@@ -384,7 +384,7 @@ begin
     end;
 
         // 2) Recortar whitespace final en el orden lógico (preservamos NBSP por defecto)
-    keepNBSP := True; // cambia a False si prefieres eliminar NBSP también
+   (* keepNBSP := True; // cambia a False si prefieres eliminar NBSP también
     LastIndex := GlyphList.Count - 1;
     while LastIndex >= 0 do
     begin
@@ -407,7 +407,7 @@ begin
       // eliminar último glifo lógico (trailing whitespace)
       GlyphList.Delete(LastIndex);
       Dec(LastIndex);
-    end;
+    end;          *)
 
     // Invertir run si es RTL
     if runIsRTL then

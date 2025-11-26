@@ -311,8 +311,6 @@ begin
         if (minLineCluster>LineCluster) then
           minLineCluster:=LineCluster;
       end;
-
-
       if ((Line.Glyphs.Count > 0)  and (minLineCluster>=0)) then
       begin
         LineInfo.Position := minLineCluster+1;
