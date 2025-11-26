@@ -126,7 +126,7 @@ type
   end;
 
  TRpInfoProvider=class(TObject)
-  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);virtual;abstract;
+  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;conent:string);virtual;abstract;
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;virtual;abstract;

@@ -59,6 +59,9 @@ type
   type1:boolean;
   truetype:boolean;
   convfactor,widthmult:Double;
+  LoadedFace:boolean;
+  CustomImplementation:TObject;
+  data: TRpTTFontData;
   constructor Create;
   destructor Destroy;override;
   procedure OpenFont;
@@ -72,11 +75,14 @@ type
   currentfont:TRpLogFont;
   crit:TCriticalSection;
   procedure InitLibrary;
-  procedure SelectFont(pdffont:TRpPDFFOnt);
+  procedure SelectFont(pdffont:TRpPDFFOnt;content: string);
   function NFCNormalize(astring:WideString):WideString;override;
 
-  function CalcGlyphhPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
-  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
+  function CalcGlyphPositions(astring:WideString;
+    direction: TRpBiDiDirection;
+    script: string;FontSize:double):TGlyphPosArray;
+  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content: string);override;
+  procedure FillFontDataInt(data:TRpTTFontData);
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetKerning(pdffont:TRpPDFFont;data:TRpTTFontData;leftchar,rightchar:widechar):integer;override;
   function GetFontStream(data: TRpTTFontData): TMemoryStream;override;
@@ -84,6 +90,7 @@ type
   function GetFontStreamHarfBuzz(data: TRpTTFontData): TMemoryStream;
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
+  function GetOrAddLogFont(const FileName: string; FontIndex: Integer): TRpLogFont;
   function TextExtent(
     const Text: WideString;
     var Rect: TRect;
@@ -93,8 +100,6 @@ type
     singleline: Boolean;
     FontSize: Double
   ): TRpLineInfoArray;override;
-  function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
-    script: string;FontSize:double):TGlyphPosArray;
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: WideString = '');
 
   constructor Create;
@@ -258,7 +263,7 @@ begin
   end;
 end;
 
-function GetOrAddLogFont(const FileName: string; FontIndex: Integer): TRpLogFont;
+function TRpFTInfoProvider.GetOrAddLogFont(const FileName: string; FontIndex: Integer): TRpLogFont;
 var
   Key: string;
   LogFont: TRpLogFont;
@@ -267,7 +272,6 @@ begin
   try
   if not Assigned(GlobalFontCache) then
     InitializeFontCache; // Asegura que el cache esté listo
-
   Key := GetFontCacheKey(FileName, FontIndex);
 
   // 1. Intentar obtener de la caché
@@ -337,10 +341,13 @@ var
   linespacing:integer;
   textHeight:integer;
   ascentSpacing:integer;
+  dofallback:boolean;
+  originalFont: TRpLogFont;
+  fallbackAscentSpacing: integer;
 begin
   InitICU;
   InitHarfBuzz;
-
+ originalFont:=currentfont;
  //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
  linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
@@ -391,6 +398,7 @@ begin
       currentChunk:=TLineGlyphs.Create(textOffset);
       for logicalRun in logicalRuns do
       begin
+        currentfont:=originalfont;
         if logicalRun.Direction = UBIDI_RTL then
           direction := RP_UBIDI_RTL
         else
@@ -398,17 +406,45 @@ begin
         runOffset:=logicalRun.LogicalStart;
         positions := CalcGlyphPositions(
           Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
-          adata,
-          pdfFont,
           direction,
           logicalRun.ScriptString,
           FontSize
         );
+        dofallback:=false;
+        for k:=0 to Length(positions)-1 do
+        begin
+         if (positions[k].GlyphIndex = 0) then
+         begin
+          dofallback:=true;
+          break;
+         end;
+        end;
+        fallbackAscentSpacing:=ascentSpacing;
+        if (dofallback) then
+        begin
+         SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length));
+         positions := CalcGlyphPositions(
+           Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
+           direction,
+           logicalRun.ScriptString,
+           FontSize
+         );
+         fallbackAscentSpacing:=Round((currentfont.data.Ascent)*FontSize/1000*20);
+        end;
         runWidth:=0;
         for k:=0 to Length(positions)-1 do
         begin
          runWidth:=runWidth+positions[k].XAdvance;
          positions[k].LineCluster:=positions[k].Cluster+logicalRun.LogicalStart;
+         if (dofallback) then
+         begin
+          positions[k].FontFamily:=currentfont.familyname;
+          // Adjust baseline
+          if (fallbackAscentSpacing<>ascentSpacing) then
+          begin
+           positions[k].YOffset:=positions[k].YOffset+fallbackAscentSpacing-ascentSpacing;
+          end;
+         end;
         end;
         if ((runWidth<=remaining) or (not WordWrap)) then
         begin
@@ -563,6 +599,7 @@ begin
 
   finally
     lineSubTexts.Free;
+    currentfont:=originalfont;
   end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
@@ -572,8 +609,6 @@ end;
 
 function TRpFTInfoProvider.CalcGlyphPositions(
   astring: WideString;
-  adata: TRpTTFontData;
-  pdffont: TRpPDFFont;
   direction: TRpBiDiDirection;
   script: string;
   FontSize: double): TGlyphPosArray;
@@ -593,15 +628,16 @@ begin
   SetLength(Result, 0);
   if astring = '' then Exit;
 
-  if not adata.LoadedFace then
+  if not currentfont.LoadedFace then
   begin
     shapeData := TShapingData.Create;
-    adata.FontData.Fontdata.Position := 0;
-    mem := adata.FontData.Fontdata.Memory;
-    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, adata.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
 
-    adata.CustomImplementation := shapedata;
-    adata.LoadedFace := True;
+    currentfont.data.FontData.Fontdata.Position := 0;
+    mem := currentfont.data.FontData.Fontdata.Memory;
+    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
+
+    currentfont.CustomImplementation := shapedata;
+    currentfont.LoadedFace := True;
     shapedata.Font := THBFont.CreateReferenced(shapeData.FreeTypeFace);
     Font := shapedata.Font;
 
@@ -609,7 +645,7 @@ begin
     CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace, 0, 64 * 100, 720, 720));
   end
   else
-    shapeData := adata.CustomImplementation as TShapingData;
+    shapeData := currentfont.CustomImplementation as TShapingData;
 
 
   Font := shapedata.Font;
@@ -1340,7 +1376,17 @@ begin
        filename := UTF8ToString(string(FileNamePtr));
        FontIndex:=0;
        FcPatternGetInteger(Match, PChar(FC_INDEX), 0, FontIndex);
-       currentFont:=GetOrAddLogFont(filename,FontIndex);
+       currentfont:=GetOrAddLogFont(filename,FontIndex);
+       if not assigned(currentFont.data) then
+       begin
+        currentfont.OpenFont;
+        if not assigned(currentfont.data) then
+        begin
+          currentfont.data:=TRpTTFontData.Create;
+          currentfont.data.fontdata:=TAdvFontData.Create;
+          FillFontDataInt(currentfont.data);
+        end;
+       end;
       end;
    end;
   finally
@@ -1349,7 +1395,7 @@ begin
   end;
 end;
 
-procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt);
+procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt;content: string);
 var
  afontname:string;
  isbold:boolean;
@@ -1363,7 +1409,7 @@ begin
  crit.Enter;
  try
   InitLibrary;
-{$IFDEF MSWINDOWS}
+(*{$IFDEF MSWINDOWS}
  afontname:=UpperCase(pdffont.WFontName);
 {$ENDIF}
 {$IFDEF LINUX}
@@ -1371,9 +1417,17 @@ begin
  if (Length(afontname)=0) then
   afontname:='Helvetica';
 {$ENDIF}
+*)
+ afontname:=pdffont.GetFontFamily;
+{$IFDEF LINUX}
+ if (Length(afontname)=0) then
+  afontname:='Helvetica';
+{$ENDIF}
+
  if (FontConfigAvailable) then
  begin
-  SelectFontFontConfig(pdffont,'');
+  SelectFontFontConfig(pdffont,content);
+
   exit;
  end;
  if (pdffont.bold and not pdffont.italic) then
@@ -1737,13 +1791,12 @@ begin
 end;
 
 
-procedure TRpFTInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
+procedure TRpFTInfoProvider.FillFontDataInt(data:TRpTTFontData);
 begin
  crit.Enter;
  try
   InitLibrary;
   // See if data can be embedded
-  SelectFont(pdffont);
   data.fontdata.FontData.Clear;
   data.filename:=currentfont.filename;
   //if not currentfont.type1 then
@@ -1774,13 +1827,13 @@ begin
   data.Flags:=32;
   if (currentfont.fixedpitch) then
    data.Flags:=data.Flags+1;
-  if pdffont.Bold then
+  if currentfont.Bold then
    data.postcriptname:=data.postcriptname+',Bold';
   if currentfont.italic then
     data.Flags:=data.Flags+64;
-  if pdffont.Italic then
+  if currentfont.Italic then
   begin
-   if pdffont.Bold then
+   if currentfont.Bold then
     data.postcriptname:=data.postcriptname+'Italic'
    else
      data.postcriptname:=data.postcriptname+',Italic';
@@ -1790,6 +1843,21 @@ begin
  finally
    crit.Leave;
  end;
+end;
+
+
+
+procedure TRpFTInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content: string);
+begin
+ crit.Enter;
+ try
+  InitLibrary;
+ finally
+   crit.Leave;
+ end;
+  // See if data can be embedded
+ SelectFont(pdffont, content);
+ FillFontDataInt(data);
 end;
 
 
@@ -1954,77 +2022,6 @@ begin
  CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
 end;
 
-function TRpFTInfoProvider.CalcGlyphhPositions(astring:WideString;
-adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;script: string;FontSize:Integer):TGlyphPosArray;
-var
-  Font: THBFont;
-  Buf: THBBuffer;
-  GlyphInfo: TArray<THBGlyphInfo>;
-  GlyphPos: TArray<THBGlyphPosition>;
-  i: Integer;
-  mem:Pointer;
-  shapeData:TShapingData;
-begin
-
-  InitHarfBuzz;
-  SetLength(Result, 0);
-  if astring = '' then Exit;
-
-  if not adata.LoadedFace then
-  begin
-    shapeData:=TShapingData.Create;
-    adata.FontData.Fontdata.Position := 0;
-    mem:=adata.FontData.Fontdata.Memory;
-    FT_New_Memory_Face(ftlibrary,mem,adata.FontData.Fontdata.Size,0,shapedata.FreeTypeFace);
-    CheckFreeType(FT_Set_Char_Size(shapedata.FreeTypeFace,0,64*10,1440,1440));
-//    adata.FreeTypeFace := TFTFace.Create(adata.FontData.Fontdata.Memory, adata.FontData.Fontdata.Size, 0);
-    adata.CustomImplementation:=shapedata;
-    adata.LoadedFace := True;
-  end
-  else
-  begin
-    shapeData:=adata.CustomImplementation as TShapingData;
-  end;
-
-
-  Font := THBFont.CreateReferenced(shapeData.FreeTypeFace);
-  try
-    Font.FTFontSetFuncs;
-    Buf := THBBuffer.Create;
-    try
-      if (direction = TRpBiDiDirection.RP_UBIDI_RTL) then
-        Buf.Direction := hbdRTL
-      else
-       Buf.Direction:= hbdLTR;
-
-      Buf.Script := THBScript.FromString(script);;
-//      Buf.Language := hb_language_from_string('ar', -1);
-
-      Buf.AddUTF16(astring);
-
-      Buf.Shape(Font);
-
-      GlyphInfo := Buf.GetGlyphInfos;
-      GlyphPos := Buf.GetGlyphPositions;
-
-      SetLength(Result, Length(GlyphInfo));
-
-      for i := 0 to High(GlyphInfo) do
-      begin
-        Result[i].GlyphIndex := GlyphInfo[i].Codepoint;
-        Result[i].XAdvance := Round(GlyphPos[i].XAdvance/64); // en font units
-        Result[i].XOffset := Round(GlyphPos[i].XOffset/64);
-        Result[i].YOffset := Round(GlyphPos[i].YOffset/64);
-        Result[i].CharCode := astring[GlyphInfo[i].Cluster+1];
-        Result[i].Cluster := GlyphInfo[i].Cluster;
-      end;
-    finally
-      Buf.Destroy;
-    end;
-  finally
-    Font.Destroy;
-  end;
-end;
 
 initialization
  fontlist:=nil;

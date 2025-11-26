@@ -46,7 +46,7 @@ type
   //GetCharPlac:TGetCharPlac;
   //gdilib:THandle;
   procedure SelectFont(pdffont:TRpPDFFOnt);
-  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);override;
+  procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content:string);override;
   function NFCNormalize(astring:WideString):WideString;override;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;override;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;override;
@@ -954,7 +954,7 @@ end;
 
 
 {$IFNDEF DOTNETD}
-procedure TRpGDIInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData);
+procedure TRpGDIInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content:string);
 var
  potm:POUTLINETEXTMETRIC;
  asize:integer;
