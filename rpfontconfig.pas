@@ -15,10 +15,13 @@ type
   PFcObjectSet = Pointer;
   PChar = PAnsiChar;
   PFcCharSet = Pointer;
+  FcBool = Integer;
 
 // --- 2. Variables de Control y Constantes ---
 
 const
+  FcTrue: FcBool = 1;
+  FcFalse: FcBool = 0;
   FONTCONFIG_LIB_NAME = 'libfontconfig.so.1';
 
   FC_FAMILY = 'family';
@@ -33,6 +36,8 @@ const
 
   FC_SLANT_ROMAN = 0;
   FC_SLANT_ITALIC = 100;
+  FC_SCALABLE = 'scalable';
+  FC_EMBEDDEDBITMAP = 'embeddedbitmap';
 
 const
   FC_MATCH_PATTERN = 0; // Tipo de objeto: Patrón (Familia)
@@ -44,9 +49,7 @@ const
 var
   FontConfigLibHandle: THandle;
   FontConfigAvailable: Boolean;
-
 // --- 3. Firmas de Funciones (T_Prefix) ---
-
 type
   T_FcInit = function: Boolean; cdecl;
   T_FcConfigGetCurrent = function: PFcConfig; cdecl;
@@ -69,6 +72,7 @@ type
   T_FcCharSetDestroy = procedure(cs: PFcCharSet); cdecl;
   T_FcCharSetAddChar = function(cs: PFcCharSet; uc: Cardinal): Boolean; cdecl;
   T_FcPatternAddCharSet = function(p: PFcPattern; const pszObject: PChar; cs: PFcCharSet): Boolean; cdecl;
+  T_FcPatternAddBool = function (pattern: PFcPattern;const pcobject: PChar; value: FcBool): Integer;
 
 var
   FcInit: T_FcInit;
@@ -91,6 +95,7 @@ var
   FcCharSetDestroy: T_FcCharSetDestroy;
   FcCharSetAddChar: T_FcCharSetAddChar;
   FcPatternAddCharSet: T_FcPatternAddCharSet;
+  FcPatternAddBool: T_FcPatternAddBool;
 
 procedure InitFontConfig;
 
@@ -135,6 +140,7 @@ begin
   ProcPtr := GetProc('FcCharSetDestroy'); @FcCharSetDestroy := ProcPtr;
   ProcPtr := GetProc('FcCharSetAddChar'); @FcCharSetAddChar := ProcPtr;
   ProcPtr := GetProc('FcPatternAddCharSet'); @FcPatternAddCharSet := ProcPtr;
+  ProcPtr := GetProc('FcPatternAddBool'); @FcPatternAddBool := ProcPtr;
 
   // 3. Verificar y Inicializar (usando ahora FcPatternCreate)
   if Assigned(FcInit) and Assigned(FcFontMatch) and Assigned(FcFini) and Assigned(FcPatternCreate) then
@@ -166,45 +172,41 @@ var
   i:integer;
 begin
   Result := nil;
-
   if not FontConfigAvailable or not Assigned(FcPatternCreate) or not Assigned(FcPatternAddString) or not Assigned(FcPatternAddInteger) then
     Exit;
-
   // 1. Convertir los strings Unicode a UTF-8 (const char* esperado)
   // Utilizamos UTF8Encode para convertir WideString/String a UTF8String
   UTF8Family := UTF8Encode(FamilyName);
-
 
   // 2. Determinar los valores de estilo
   if IsBold then
     WeightValue := FC_WEIGHT_BOLD
   else
     WeightValue := FC_WEIGHT_NORMAL;
-
   if IsItalic then
     SlantValue := FC_SLANT_ITALIC
   else
     SlantValue := FC_SLANT_ROMAN;
-
   // 3. Crear el patrón
   Pattern := FcPatternCreate();
-
   if not Assigned(Pattern) then
     Exit;
-
   try
     // 4. Añadir la familia de fuente (usando PAnsiChar(UTF8String))
-
     // 5. Añadir Peso e Inclinación
     FcPatternAddInteger(Pattern, PChar(FC_WEIGHT), WeightValue);
     FcPatternAddInteger(Pattern, PChar(FC_SLANT), SlantValue);
+
+    if (FcPatternAddBool(Pattern,PChar(FC_SCALABLE),FcTrue)=0) then
+     raise Exception.Create('Error setting FC_SCALABLE');
+
+    FcPatternAddBool(Pattern,PChar(FC_EMBEDDEDBITMAP),FcFalse);
     if Length(UTF8Family)>0 then
       FcPatternAddString(Pattern, PChar(FC_FAMILY), PAnsiChar(UTF8Family));
     if Length(UnicodeContent)>0 then
     begin
     // 1. CREAR el conjunto de caracteres
     CharSet := FcCharSetCreate();
-
     // 2. RELLENAR el conjunto de caracteres con los códigos Unicode de la cadena
     // (Asumimos que la iteración por WideString funciona directamente para obtener FcChar32)
     for i := 1 to Length(unicodeContent) do
@@ -213,19 +215,15 @@ begin
       // para asegurar el tipo de parámetro correcto para el C API.
       FcCharSetAddChar(CharSet, Cardinal(unicodeContent[i]));
     end;
-
     // 3. PASAR el conjunto de caracteres al patrón con la propiedad FC_CHARSET
     // Esto informa a Fontconfig qué glifos faltan (el requisito de script).
     // Nota: El parámetro PChar(FC_CHARSET) debe ser la constante definida como 'charset'
     FcPatternAddCharSet(Pattern, PChar(FC_CHARSET), CharSet);
-
     // 4. LIBERAR el objeto CharSet (el patrón hace una copia interna)
     FcCharSetDestroy(CharSet);
     end;
 
-
     Result := Pattern;
-
   except
     FcPatternDestroy(Pattern);
     Result := nil;

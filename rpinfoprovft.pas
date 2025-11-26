@@ -52,6 +52,7 @@ type
   leading:integer;
   BBox:TRect;
   fullinfo:Boolean;
+  scalable:Boolean;
   StemV:double;
   ftface:FT_Face;
   faceinit:boolean;
@@ -101,7 +102,7 @@ type
     FontSize: Double
   ): TRpLineInfoArray;override;
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: WideString = '');
-
+  procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: WideString;removeFamily: boolean);
   constructor Create;
   destructor destroy;override;
  end;
@@ -181,9 +182,11 @@ begin
     // Add it only if it's a TrueType or OpenType font
     // Type1 fonts also supported
     // Some truetype do not set scalable, so add all
-    if  (FT_FACE_FLAG_SCALABLE AND aface.face_flags)<>0 then
-    begin
      aobj:=TRpLogFont.Create;
+     if  (FT_FACE_FLAG_SCALABLE AND aface.face_flags)=0 then
+      aobj.scalable:=false
+     else
+      aobj.scalable:=true;
      Result:=aobj;
       aobj.FullInfo:=false;
       // Fill font properties
@@ -194,12 +197,18 @@ begin
       begin
        aobj.widthmult:=1;
        //aobj.convfactor:=1;
-       aobj.convfactor:=1000/aface.units_per_EM;
+       if (aface.units_per_EM = 0) then
+        aobj.convfactor:=1
+       else
+        aobj.convfactor:=1000/aface.units_per_EM;
       end
       else
       begin
        //aobj.convfactor:=1;
-       aobj.convfactor:=1000/aface.units_per_EM;
+       if (aface.units_per_EM = 0) then
+        aobj.convfactor:=1
+       else
+        aobj.convfactor:=1000/aface.units_per_EM;
        aobj.widthmult:=1;
       end;
       aobj.filename:=filename;
@@ -254,9 +263,6 @@ begin
            or (Pos('ITALIC', UpperCase(aobj.filename)) > 0)
            or (Pos('OBLIQUE', UpperCase(aobj.filename)) > 0);
       end;
-     end
-     else
-      raise Exception.Create('Unsupported font:' + filename);
    finally
      FT_Done_Face(aface);
    end;
@@ -1120,6 +1126,10 @@ begin
     // Type1 fonts also supported
     // Some truetype do not set scalable, so add all
     aobj:=FillLogFont(afilename2,0);
+    // NOn scalable fonts not supported
+    if (not aobj.scalable) then
+     continue;
+
     if  Assigned(aobj) then
     begin
       if (Pos('CANTARELL',UpperCase(aobj.familyname))>0) then
@@ -1307,8 +1317,15 @@ begin
  Result:=false;
 end;
 
-
 procedure TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont; unicodeContent: WideString = '');
+begin
+ SelectFontFontConfigInt(pdffont,unicodeContent,false);
+ if (not currentFont.scalable) then
+  SelectFontFontConfigInt(pdffont,unicodeContent,true)
+end;
+
+
+procedure TRpFtInfoProvider.SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: WideString;removeFamily: boolean);
 var
   Config: PFcConfig;
   Pattern: PFcPattern;
@@ -1338,6 +1355,10 @@ begin
   begin
     familyName:='Cantarell';
   end;
+  if (unicodeContent<>'') then
+    familyName:='Noto Color Emoji';
+  if (removeFamily) then
+    familyName:='';
   Pattern := rpfontconfig.FcCreatePattern(
     familyName,
     pdffont.Bold,
@@ -1883,6 +1904,8 @@ begin
   cfont:=TRpLogFont(data.fdata);
   cfont.OpenFont;
   data.UnitsPerEM:=currentFont.ftface.units_per_EM;
+  if (data.UnitsPerEM = 0) then
+   data.UnitsPerEM := 1000;
   if 0=FT_Load_Char(cfont.ftface,Cardinal(charcode),FT_LOAD_NO_SCALE) then
   begin
    width1:=word(cfont.ftface.glyph.linearHoriAdvance shr 16);
@@ -2019,7 +2042,8 @@ begin
  // Don't need scale, but this is a scale that returns
  // exact width for pdf if you divide the result
  // of Get_Char_Width by 64
- CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
+ if (scalable) then
+   CheckFreeType(FT_Set_Char_Size(ftface,0,64*100,720,720));
 end;
 
 
