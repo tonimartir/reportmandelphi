@@ -468,9 +468,10 @@ begin
          begin
           positions[k].FontFamily:=currentfont.familyname;
           // Adjust baseline
+          // Not needed adjusted by pdf engine
           if (fallbackAscentSpacing<>ascentSpacing) then
           begin
-           positions[k].YOffset:=positions[k].YOffset+fallbackAscentSpacing-ascentSpacing;
+           // positions[k].YOffset:=positions[k].YOffset+fallbackAscentSpacing-ascentSpacing;
           end;
          end;
         end;
