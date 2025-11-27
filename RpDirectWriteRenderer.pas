@@ -33,6 +33,9 @@ type
     BaselineY: Single;
     Glyphs: TList<TGlyphPos>;
     IsRTL: Boolean;
+    LastRunIsLTR:Boolean;
+    LastRunLength:integeR;
+    RunCount:Integer;
     constructor Create(aBaselineY: Single; aIsRTL: Boolean);
     destructor Destroy; override;
   end;
@@ -47,6 +50,7 @@ type
     FOriginalText:PWideChar;
     FLines: TList<TGlyphLine>;
     FFontFamilyCache: TFontFaceCache;
+    LastIsLTR: boolean;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
@@ -139,8 +143,13 @@ var
 begin
   for L in FLines do
     if Abs(L.BaselineY - baselineY) < 0.01 then
+    begin
+      L.RunCount:=L.RunCount+1;
       Exit(L);
+    end;
   Result := TGlyphLine.Create(baselineY, firstRunIsRTL);
+  Result.LastRunIsLTR:=not firstRunIsRTL;
+  Result.RunCount:=1;
   FLines.Add(Result);
 end;
 
@@ -316,7 +325,6 @@ begin
   FFontFamilyCache.Add(FacePtr, Result);
 end;
 
-
 function TTextExtentRenderer.DrawGlyphRun(
   clientDrawingContext: Pointer;
   baselineOriginX, baselineOriginY: Single;
@@ -380,34 +388,10 @@ begin
         Glyphpos.FontFamily:=GetFontFamily(glyphrun.fontFace);
 
       GlyphList.Add(GlyphPos);
+
       FGlyphPositions.Add(GlyphPos);
     end;
 
-        // 2) Recortar whitespace final en el orden lógico (preservamos NBSP por defecto)
-   (* keepNBSP := True; // cambia a False si prefieres eliminar NBSP también
-    LastIndex := GlyphList.Count - 1;
-    while LastIndex >= 0 do
-    begin
-      ch := GlyphList[LastIndex].CharCode;
-      // comprobar whitespace básico (espacio, tab, CR, LF). Añade más códigos si quieres.
-      isWS := (ch = WideChar(' ')) or (ch = WideChar(#9)) or (ch = WideChar(#10)) or (ch = WideChar(#13));
-
-      // tratar NBSP (U+00A0)
-      if ch = WideChar(#160) then
-      begin
-        if keepNBSP then
-          isWS := False  // conservar NBSP
-        else
-          isWS := True;  // tratar NBSP como whitespace si keepNBSP = False
-      end;
-
-      if not isWS then
-        Break;
-
-      // eliminar último glifo lógico (trailing whitespace)
-      GlyphList.Delete(LastIndex);
-      Dec(LastIndex);
-    end;          *)
 
     // Invertir run si es RTL
     if runIsRTL then
@@ -415,10 +399,30 @@ begin
 
     // Insertar según dirección dominante de la línea
     if Line.IsRTL then
-      Line.Glyphs.InsertRange(0, GlyphList.ToArray)
+    begin
+      // Los runs seguidos de LTR se añaden en el mismo orden
+      if (Line.LastRunIsLTR AND not runIsRTL) then
+      begin
+       Line.Glyphs.InsertRange(Line.LastRunLength, GlyphList.ToArray);
+      end
+      else
+      begin
+       Line.Glyphs.InsertRange(0, GlyphList.ToArray);
+      end;
+    end
     else
+    begin
       Line.Glyphs.AddRange(GlyphList.ToArray);
-
+    end;
+    Line.LastRunIsLTR:=not runIsRTL;
+    if (not Line.LastRunIsLTR) then
+    begin
+     Line.LastRunLength:=0;
+    end
+    else
+    begin
+     Line.LastRunLength:=Line.LastrunLength+GlyphList.Count;
+    end;
   finally
     GlyphList.Free;
   end;

@@ -133,6 +133,72 @@ begin
   end;
 end;
 
+
+procedure AdjustLineSpaces(line: TGlyphLine);
+var keepNBSP:boolean;
+ LastIndex:integer;
+ FirstIndex:integer;
+ ch:WideChar;
+ isWS: boolean;
+begin
+ keepNBSP:=true;
+ if (not line.IsRTL) then
+ begin
+    // La dirección principal es normal
+    LastIndex := line.Glyphs.Count - 1;
+    while LastIndex >= 0 do
+    begin
+      ch := line.Glyphs[LastIndex].CharCode;
+      // comprobar whitespace básico (espacio, tab, CR, LF). Añade más códigos si quieres.
+      isWS := (ch = WideChar(' ')) or (ch = WideChar(#9)) or (ch = WideChar(#10)) or (ch = WideChar(#13));
+
+      // tratar NBSP (U+00A0)
+      if ch = WideChar(#160) then
+      begin
+        if keepNBSP then
+          isWS := False  // conservar NBSP
+        else
+          isWS := True;  // tratar NBSP como whitespace si keepNBSP = False
+      end;
+
+      if not isWS then
+        Break;
+
+      // eliminar último glifo lógico (trailing whitespace)
+      line.Glyphs.Delete(LastIndex);
+      Dec(LastIndex);
+    end;
+ end
+ else
+ begin
+    // La dirección principal es RTL
+    while line.Glyphs.Count>0 do
+    begin
+      ch := line.Glyphs[0].CharCode;
+      // comprobar whitespace básico (espacio, tab, CR, LF). Añade más códigos si quieres.
+      isWS := (ch = WideChar(' ')) or (ch = WideChar(#9)) or (ch = WideChar(#10)) or (ch = WideChar(#13));
+
+      // tratar NBSP (U+00A0)
+      if ch = WideChar(#160) then
+      begin
+        if keepNBSP then
+          isWS := False  // conservar NBSP
+        else
+          isWS := True;  // tratar NBSP como whitespace si keepNBSP = False
+      end;
+
+      if not isWS then
+        Break;
+
+      // eliminar último glifo lógico (trailing whitespace)
+      line.Glyphs.Delete(0);
+      Dec(LastIndex);
+    end;
+ end;
+end;
+
+
+
 constructor TRpGDIInfoProvider.Create;
 var
  ddc:THandle;
@@ -296,6 +362,7 @@ begin
     // --- Iterar líneas ---
     for i := 0 to Renderer.Lines.Count - 1 do
     begin
+      AdjustLineSpaces(Renderer.Lines[i]);
       minLineCluster:=MaxInt;
       maxLineCluster:=-1;
       Line := Renderer.Lines[i];
@@ -316,7 +383,7 @@ begin
       begin
         LineInfo.Position := minLineCluster+1;
         LineINfo.Size:=maxLineCluster-minLineCluster+1;
-        LineInfo.Text := Copy(Text, LineInfo.Position + 1, LineInfo.Size);
+        LineInfo.Text := Copy(Text, LineInfo.Position, LineInfo.Size);
       end
       else
       begin
@@ -400,7 +467,7 @@ begin
  WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
- linespacing:=Round(((linespacing)/100000)*1440*FontSize*1.25);
+ linespacing:=Round(((linespacing)/100000)*1440*FontSize);
  WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 

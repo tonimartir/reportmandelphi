@@ -354,14 +354,14 @@ begin
   InitICU;
   InitHarfBuzz;
  originalFont:=currentfont;
- //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
+ linespacing:=adata.Ascent-adata.Descent+adata.Leading;
  linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
- linespacing:=Round(((linespacing)/100000)*1440*FontSize*1.25);
+ linespacing:=Round(((linespacing)/100000)*1440*FontSize);
  WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
