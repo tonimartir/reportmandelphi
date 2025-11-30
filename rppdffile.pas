@@ -4101,7 +4101,7 @@ begin
    repeat
     if adata.loaded[index] then
      begin
-      awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.0',adata.loadedwidths[index], NumberFormatSettings)+'] ';
+      awidths:=awidths+IntToStr(Integer(adata.loadedglyphs[index]))+'['+FormatFloat('0.00',adata.loadedwidths[index], NumberFormatSettings)+'] ';
  //     awidths:=awidths+IntToStr(index)+'['+IntToStr(adata.loadedwidths[index])+'] ';
       acount:=acount+1;
       if (acount mod 8)=7 then
