@@ -87,9 +87,9 @@
     <td>Bidi</td>
     <td>BidiModes</td>
     <td>BidiMode</td>
-    <td> <p>Left to right reading language support (bidirectional). The Bidi property 
-        is stored for each language in the report page setup. Internally stored 
-        as a string list containing the value for each language. </p>
+    <td> <p>If enabled, the engine will use
+       DirectWrite in Windows and the stack Fontconfig-ICU-HarfBuzz in Linux. 
+       This allow to render complex shaping texts like arabic</p>
       <table border="1">
         <tr> 
           <td bgcolor="#FFFFCC">Name</td>
@@ -97,17 +97,15 @@
         </tr>
         <tr> 
           <td>Bidi No</td>
-          <td>No Bidi support enabled</td>
+          <td>No Bidi support enabled, no complex shaping will bi done</td>
         </tr>
         <tr> 
-          <td>Bidi Partial</td>
-          <td>Bidi enabled, will print right to left text but no change in the 
-            H.Alignment property is done</td>
+          <td>Bidi Partial, complex text support enabled.</td>
+          <td>Bidi enabled</td>
         </tr>
         <tr> 
           <td>Bidi Full</td>
-          <td>Bidi enabled, will print right to left text and will reverse the 
-            H.Alignment property</td>
+          <td>Bidi enabled</td>
         </tr>
       </table>
       <p><a href="bidi_behavior.html">Bidi support</a> is fully implemented in 
