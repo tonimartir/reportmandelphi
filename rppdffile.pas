@@ -4321,8 +4321,8 @@ begin
      actualFontFamily:=newfontFamily;
     end;
     // llamadas auxiliares que tenías para compatibilidad
-    InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
+    InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
 
     // calcular posiciones PDF como hacías
     absY := posY - g.YOffset;

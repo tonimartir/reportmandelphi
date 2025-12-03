@@ -321,6 +321,7 @@ begin
   // que hace el parsing binario de la tabla 'name' que ya corregimos.
   Result := GetFontFamilyFromFontFace(FontFace);
 
+
   // 4. Guardar en la cach�
   FFontFamilyCache.Add(FacePtr, Result);
 end;
@@ -348,6 +349,9 @@ var
   ch: WideChar;
   isWS: Boolean;
   keepNBSP: Boolean;
+  clusterIndexCount: integer;
+  clusterDic: TDictionary<integer,integer>;
+  currentCluster:integer;
 begin
   Result := S_OK;
   TextPosition := glyphRunDescription.textPosition;
@@ -355,6 +359,7 @@ begin
 
   IdxArray := PGlyphIndexArray(glyphRun.glyphIndices);
   AdvArray := PSingleAdvanceArray(glyphRun.glyphAdvances);
+  clusterIndexCount:=glyphRunDescription.stringLength;
   if Assigned(glyphRun.glyphOffsets) then
     OffArray := PGlyphOffsetArray(glyphRun.glyphOffsets)
   else
@@ -362,8 +367,16 @@ begin
   ClusterMapArray := PClusterMapArray(glyphRunDescription.clusterMap);
 
   Line := GetLineByBaseline(baselineOriginY, runIsRTL);
+  currentCluster:=0;
   GlyphList := TList<TGlyphPos>.Create;
+  clusterDic:= TDictionary<integer,integer>.Create;
   try
+    for i:= 0 to clusterIndexCount-1 do
+    begin
+     var firstGlyph:=clusterMapArray[i];
+     if (not clusterDic.ContainsKey(firstGlyph)) then
+       clusterDic.Add(firstGlyph,i);
+    end;
     for i := 0 to Integer(glyphRun.glyphCount) - 1 do
     begin
       FillChar(GlyphPos, SizeOf(TGlyphPos), 0);
@@ -381,8 +394,13 @@ begin
         GlyphPos.XOffset := 0;
         GlyphPos.YOffset := 0;
       end;
-      GlyphPos.Cluster := ClusterMapArray[i];
+      if (clusterDic.ContainsKey(i)) then
+      begin
+       CurrentCluster:=clusterDic[i];
+      end;
+      GlyphPos.Cluster := CurrentCluster;
       GlyphPos.LineCluster := TextPosition + GlyphPos.Cluster;
+
       GlyphPos.CharCode:=FOriginalText[GlyphPos.LineCluster];
       if (glyphrun.FontFace <> FontFace) then
         Glyphpos.FontFamily:=GetFontFamily(glyphrun.fontFace);
@@ -425,6 +443,7 @@ begin
     end;
   finally
     GlyphList.Free;
+    clusterDic.Free;
   end;
 end;
 
