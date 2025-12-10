@@ -460,6 +460,7 @@ var
   runOffset:integer;
   leading: integer;
   linespacing:integer;
+  linespacingEM: double;
   textHeight:integer;
   ascentSpacing:integer;
 begin
@@ -473,13 +474,14 @@ begin
  WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
- linespacing:=Round(((linespacing)/100000)*1440*FontSize);
+ linespacingEM:=(adata.Height)/1000;
+ linespacing:=Round(linespacingEM*FontSize*20);
  WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
 
  //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
- ascentSpacing:=Round((adata.Ascent)*FontSize/1000*20);
+ ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 
@@ -1087,6 +1089,7 @@ begin
       data.Leading:=Round((potm^.otmTextMetrics.tmExternalLeading+potm^.otmTextMetrics.tmInternalLeading)*multipli);
       data.InternalLeading:=Round((potm^.otmTextMetrics.tmInternalLeading)*multipli);
       data.ExternalLeading:=Round((potm^.otmTextMetrics.tmExternalLeading)*multipli);
+      data.Height:=data.Ascent-data.Descent+data.ExternalLeading;
       //data.Leading:=Round((potm^.otmTextMetrics.tmInternalLeading)*multipli);
       // Windows does not allow Type1 fonts
       data.Type1:=false;
@@ -1122,7 +1125,9 @@ begin
 
       data.ItalicAngle:=Round(potm^.otmItalicAngle/10);
       if ((potm^.otmTextMetrics.tmPitchAndFamily AND TMPF_TRUETYPE)=0) then
-       Raise Exception.Create(SRpNoTrueType+'-'+data.FaceName);
+       data.truetype:=false
+      else
+       data.truetype:=true;
       data.postcriptname:=StringReplace(data.familyname,' ','',[rfReplaceAll]);
       // Italic emulation
       if pdffont.Bold then

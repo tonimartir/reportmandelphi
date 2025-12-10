@@ -128,8 +128,7 @@ type
    FFont:TRpPDFFont;
    FFile:TRpPDFFile;
    FResolution:integer;
-   FLineInfoMaxItems:integer;
-   FLineInfoCount:integer;
+
    FFontTTData:TStringList;
    FImageIndexes:TStringList;
 {$IFDEF MSWINDOWS}
@@ -144,7 +143,6 @@ type
 {$IFDEF LINUX}
   FFtInfoProvider:TRpFtInfoProvider;
 {$ENDIF}
-   procedure NewLineInfo(info:TRpLineInfo);
    procedure SetDash;
    procedure SaveGraph;
    procedure RestoreGraph;
@@ -188,11 +186,8 @@ type
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
   public
-   LineInfo:TRpLineInfoArray;
    function TextExtent(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean;rightToLeft: boolean): TRpLineInfoArray;
-   property LineInfoMaxItems:integer read FLineInfoMaxItems;
-   property LineInfoCount:integer read FLineInfoCount;
 
    property Font:TRpPDFFont read FFOnt;
   end;
@@ -520,8 +515,6 @@ begin
  FFile:=AFile;
  FFontTTData:=TStringList.Create;
  FFontTTData.Sorted:=true;
- SetLength(LineInfo,CONS_MINLINEINFOITEMS);
- FLineInfoMaxItems:=CONS_MINLINEINFOITEMS;
 end;
 
 
@@ -1987,7 +1980,7 @@ begin
    PosY:=ARect.Top+(((ARect.Bottom-ARect.Top)-recsize.Bottom) div 2);
   end;
 
-  for i:=0 to FLineInfoCount-1 do
+  for i:=0 to Length(linfo)-1 do
   begin
    posX:=ARect.Left;
    // Aligns horz.
@@ -2708,12 +2701,10 @@ begin
   Font.Name:=poEmbedded;
   GetTTFontData;
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
-  FLineInfoCount:=Length(Result);
  end
  else
  begin
-  TextExtentSimple(Text,Rect,wordbreak,singleline);
-  Result:=LineInfo;
+  Result:=TextExtentSimple(Text,Rect,wordbreak,singleline);
  end;
 end;
 
@@ -2784,7 +2775,6 @@ begin
  arec.Top:=0;
  arec.Bottom:=0;
  asize:=0;
- FLineInfoCount:=0;
  position:=1;
  offset:=0;
  linebreakpos:=0;
@@ -2795,6 +2785,7 @@ begin
  alastsize:=0;
  lockspace:=false;
  charsprocessed := 0;
+ SetLength(Result,0);
  while i<=Length(astring) do
  begin
   incomplete:=false;
@@ -2903,7 +2894,8 @@ begin
    if (incomplete) then
     i:=i-1;
    position:=i+1;
-   NewLineInfo(info);
+           SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := info;
    createsnewline:=false;
    // Skip only one blank char
    if (incomplete) then
@@ -2926,24 +2918,15 @@ begin
   info.TopPos:=arec.Bottom-leading;
   arec.Bottom:=arec.Bottom+info.height;
   info.lastline:=true;
-  NewLineInfo(info);
+        SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := info;
  end;
  if (charsprocessed>0) then
    arec.Bottom:=arec.Bottom+leading;
  rect:=arec;
- Result:=LineInfo;
+
 end;
 
-procedure TRpPDFCanvas.NewLineInfo(info:TRpLineInfo);
-begin
- if FLineInfoMaxItems<FLineInfoCount+1 then
- begin
-  SetLength(LineInfo,FLineInfoMaxItems*2);
-  FLineInfoMaxItems:=FLineInfoMaxItems*2;
- end;
- LineInfo[FLineInfoCount]:=info;
- inc(FLineInfoCount);
-end;
 
 const
   BI_RGB = 0;

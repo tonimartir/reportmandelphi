@@ -360,6 +360,7 @@ var
   runOffset:integer;
   leading: integer;
   linespacing:integer;
+  linespacingEM: double;
   textHeight:integer;
   ascentSpacing:integer;
   dofallback:boolean;
@@ -370,20 +371,22 @@ begin
   InitHarfBuzz;
   SelectFont(pdfFont,'',false);
  originalFont:=currentfont;
- linespacing:=adata.Ascent-adata.Descent+adata.Leading;
- linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
  WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
- linespacing:=Round(((linespacing)/100000)*1440*FontSize);
+ //linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
+ //linespacing:=Round(((linespacing)/100000)*1440*FontSize);
+ //linespacingEM:=(adata.Ascent-adata.Descent+adata.Leading)/1000;
+ linespacingEM:=(adata.Height)/1000;
+ linespacing:=Round(linespacingEM*FontSize*20);
  WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
 
  //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
- ascentSpacing:=Round((adata.Ascent)*FontSize/1000*20);
+ ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 
@@ -1186,7 +1189,11 @@ begin
 
     if  Assigned(aobj) then
     begin
+{$IFDEF MSWINDOWS}
+      if ('ARIAL'=UpperCase(aobj.familyname)) then
+{$ELSE}
       if (Pos('CANTARELL',UpperCase(aobj.familyname))>0) then
+{$ENDIF}
       begin
         if ((not aobj.italic) and (not aobj.bold)) then
         begin
@@ -1208,79 +1215,62 @@ begin
           defaultfontbit:=aobj;
         end;
       end;
-
       if (Pos('DROID',UpperCase(aobj.familyname))=0) then
       begin
       // Default font configuration, LUXI SANS is default
       if ((not aobj.italic) and (not aobj.bold)) then
       begin
-       if not assigned(defaultfont) then
-        defaultfont:=aobj
-       else
-       begin
-        if (UpperCase(aobj.familyname)='LUXI SANS') then
-        begin
-         defaultfont:=aobj;
-        end;
-       end;
-       if (not assigned(defaultfont_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       if (not assigned(defaultfont_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0) and (defaultfont_arabic=nil)) then
        begin
         defaultfont_arabic:=aobj;
        end;
+{$IFDEF MSWINDOWS}
+{$ELSE}
+       if not assigned(defaultfont) then
+        defaultfont:=aobj
+{$ENDIF}
       end
       else
       if ((not aobj.italic) and (aobj.bold)) then
       begin
-       if not assigned(defaultfontb) then
-        defaultfontb:=aobj
-       else
-       begin
-        if (UpperCase(aobj.familyname)='LUXI SANS') then
-        begin
-         defaultfontb:=aobj;
-        end;
-       end;
-       if (not assigned(defaultfontb_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       if (not assigned(defaultfontb_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0) and (defaultfontb_arabic=nil)) then
        begin
         defaultfontb_arabic:=aobj;
        end;
+{$IFDEF MSWINDOWS}
+{$ELSE}
+       if not assigned(defaultfontb) then
+        defaultfontb:=aobj
+{$ENDIF}
       end
       else
       if ((aobj.italic) and (not aobj.bold)) then
       begin
-       if not assigned(defaultfontit) then
-        defaultfontit:=aobj
-       else
-       begin
-        if (UpperCase(aobj.familyname)='LUXI SANS') then
-        begin
-         defaultfontit:=aobj;
-        end;
-       end;
-       if (not assigned(defaultfontit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       if (not assigned(defaultfontit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0) and (defaultfontit_arabic=nil)) then
        begin
         defaultfontit_arabic:=aobj;
        end;
+{$IFDEF MSWINDOWS}
+{$ELSE}
+       if not assigned(defaultfontit) then
+        defaultfontit:=aobj
+{$ENDIF}
       end
       else
       if ((aobj.italic) and (aobj.bold)) then
       begin
-       if not assigned(defaultfontbit) then
-        defaultfontbit:=aobj
-       else
-       begin
-        if (UpperCase(aobj.familyname)='LUXI SANS') then
-        begin
-         defaultfontbit:=aobj;
-        end;
-       end;
-       if (not assigned(defaultfontbit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0)) then
+       if (not assigned(defaultfontbit_arabic) and (Pos('ARABIC',UpperCase(aobj.familyname))>0) and (defaultfontbit_arabic=nil)) then
        begin
         defaultfontbit_arabic:=aobj;
        end;
-      end;
+{$IFDEF MSWINDOWS}
+{$ELSE}
+       if not assigned(defaultfontbit) then
+        defaultfontbit:=aobj
+{$ENDIF}
       end;
 
+      end;
       fontlist.AddObject(UpperCase(aobj.familyname),aobj);
     end;
    finally
@@ -1289,6 +1279,12 @@ begin
    end;
   end;
  end;
+ if (defaultfontb=nil) then
+  defaultfontb:=defaultfont;
+ if (defaultfontit=nil) then
+  defaultfontit:=defaultfont;
+ if (defaultfontbit=nil) then
+  defaultfontbit:=defaultfont;
  if (defaultfontb_arabic = nil) then
  begin
   if (defaultfont_arabic = nil) then
@@ -1365,7 +1361,7 @@ end;
 function isSameFont(fontName,pattern: string): boolean;
 begin
  Result:=false;
- if (pattern=fontName) then
+ if (UpperCase(pattern)=UpperCase(fontName)) then
  begin
   Result:=true;
  end
@@ -1382,7 +1378,7 @@ end;
 
 function isSameFont2(fontName,pattern: string): boolean;
 begin
- if (pattern=fontName) then
+ if (UpperCase(pattern)=UpperCase(fontName)) then
  begin
   Result:=true;
  end
