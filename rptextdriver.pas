@@ -193,8 +193,6 @@ begin
  MemStream:=TMemoryStream.Create;
  FLinesPerInch:=DEFAULT_LINESPERINCH;
  selectedprinter:=pRpDefaultPrinter;
- SetLength(FLineInfo,CONS_MINLINEINFOITEMS);
- FLineInfoMaxItems:=CONS_MINLINEINFOITEMS;
  for i:=Low(TPrinterRawOp) to High(TPrinterRawOp) do
  begin
   escapecodes[i]:='';

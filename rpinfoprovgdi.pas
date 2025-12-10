@@ -281,6 +281,7 @@ var
   maxLineCluster:integer;
   lineCluster:integer;
   rectHeight:integer;
+  lastTopPos:Integer;
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -321,6 +322,7 @@ begin
     FontFamily.GetFirstMatchingFont(FontWeight, DWRITE_FONT_STRETCH_NORMAL, FontStyle, Font);
     Font.CreateFontFace(FontFace);
   end;
+  lastTopPos:=0;
 
   // --- Crear TextFormat ---
   Factory.CreateTextFormat(
@@ -395,7 +397,9 @@ begin
         LineInfo.Text := '';
       end;
 
-      LineInfo.TopPos := Round(RectTopTwips);
+      // LineInfo.TopPos := Round(RectTopTwips);
+      LineInfo.TopPos := Round(Line.BaselineY*DIP_TO_TWIPS_FACTOR);
+      lastTopPos:=LineInfo.TopPos;
 
 
       // --- Interlineado correcto en TWIPS ---
@@ -413,8 +417,7 @@ begin
 
     // Ajustar rectángulo final
     Rect.Right := Rect.Left + Round(TotalWidth);
-    Rect.Bottom := Rect.Top + Round(RectTopTwips - Rect.Top)-ascentSpacing;
-
+    Rect.Height := (LastTopPos-Rect.Top) + Round((FontMetrics.Descent + FontMetrics.LineGap) * scale * DIP_TO_TWIPS_FACTOR);
   finally
     Renderer.Free;
   end;

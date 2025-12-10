@@ -104,7 +104,6 @@ begin
   BaselineY := aBaselineY;
   IsRTL := aIsRTL;
   Glyphs := TList<TGlyphPos>.Create;
-
 end;
 
 destructor TGlyphLine.Destroy;
@@ -409,7 +408,6 @@ begin
 
       FGlyphPositions.Add(GlyphPos);
     end;
-
 
     // Invertir run si es RTL
     if runIsRTL then

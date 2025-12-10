@@ -1309,7 +1309,11 @@ var
   lastword: boolean;
   larray: TRpLineInfoArray;
   ascent:Integer;
+ clipRgn: HRGN;
+  clipRect: TRect;
+  savedDC: Integer;
 begin
+
   try
     if drawbackground then
     begin
@@ -1335,6 +1339,21 @@ begin
     begin
       aintdpix := dpi;
       aintdpiy := dpi;
+    end;
+    if Clipping then
+    begin
+      // Convertir ARect de twips a píxeles
+      clipRect.Left   := Round(ARect.Left   * aintdpix / 1440);
+      clipRect.Right  := Round(ARect.Right  * aintdpix / 1440);
+      clipRect.Top    := Round(ARect.Top    * aintdpiy / 1440);
+      clipRect.Bottom := Round(ARect.Bottom * aintdpiy / 1440);
+
+      // Guardar estado del DC (incluye clipping)
+      savedDC := SaveDC(Canvas.Handle);
+
+      // Crear región de clipping y aplicarla
+      clipRgn := CreateRectRgn(clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
+      SelectClipRgn(Canvas.Handle, clipRgn);
     end;
     // Calculates text extent and apply alignment
     recsize := ARect;
@@ -1505,6 +1524,13 @@ begin
       // TextOut(PosX,PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos,astring,npdfdriver.pdffile.Canvas.LineInfo[i].Width,Rotation,RightToLeft);
     end;
   finally
+   if Clipping then
+    begin
+      // Restaurar el estado del DC (restablece el clipping anterior)
+      RestoreDC(Canvas.Handle, savedDC);
+      // Liberar la región que creamos
+      DeleteObject(clipRgn);
+    end;
   end;
 end;
 
