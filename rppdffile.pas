@@ -2163,13 +2163,21 @@ begin
   ascent:=adata.Ascent;
   linespacing:=adata.Height;
   leading:=adata.Leading;
+  if (PDFConformance > PDF_1_4) then
+  begin
+   ascent:=Round(ascent*FFont.Size*20/1000);
+  end
+  else
+  begin
+   ascent:=FFont.Size*20;
+  end;
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading,ascent);
+  ascent:=FFont.Size*20;
  end;
- ascent:=Round(ascent*FFont.Size*20/1000);
- linespacing:=Round(adata.Height*FFont.Size*20/1000);
+ linespacing:=Round(linespacing*FFont.Size*20/1000);
  leading:=Round(leading*FFont.Size*20/1000);
 
 
@@ -2664,7 +2672,7 @@ begin
       begin
         linespacing := 1450;
         leading := 255;
-        ascent := 708;
+        ascent := 1010;
       end;
     poZapfDingbats:
       begin
@@ -2679,6 +2687,7 @@ begin
         ascent := 700;
       end;
   end;
+  ascent:=Round(ascent*1.25);
 end;
 
 
@@ -2731,7 +2740,15 @@ begin
  begin
   if adata.havekerning then
    havekerning:=true;
-  linespacing:=adata.Height;
+  if (PDFConformance > PDF_1_4) then
+  begin
+   linespacing:=adata.Height;
+  end
+  else
+  begin
+   linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+  end;
+  ascent:=adata.Ascent;
   leading:=adata.Leading;
   WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end
@@ -2740,9 +2757,16 @@ begin
   GetStdLineSpacing(linespacing,leading,ascent);
   WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end;
-
- linespacing:=Round(linespacing*FFont.Size*20/1000);
+ if (PDFConformance > PDF_1_4) then
+ begin
+  linespacing:=Round(linespacing*FFont.Size*20/1000);
+ end
+ else
+ begin
+  linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
+ end;
  leading:=Round(leading*FFont.Size*20/1000);
+ ascent:=Round(ascent*FFont.Size*20/1000);
  if Assigned(adata) then
    WriteToStdError(adata.FamilyName +  ' NoBidi Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10))
  else
