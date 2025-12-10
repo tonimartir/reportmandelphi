@@ -157,7 +157,7 @@ type
    BrushColor:integer;
    BrushStyle:integer;
    PDFConformance: TPDFConformanceType;
-   procedure GetStdLineSpacing(var linespacing,leading:integer);
+   procedure GetStdLineSpacing(var linespacing,leading,ascent:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToXPos(Value:double):double;
    function UnitsToTextX(Value:double):string;
@@ -2160,34 +2160,17 @@ begin
  adata:=GetTTFontData;
  if assigned(adata) then
  begin
-//  leading:=adata.Leading;
   ascent:=adata.Ascent;
-{$IFDEF MSWINDOWS}
-{$IFDEF WINDOWS_USEFREETYPE}
-{$ELSE}
-  if (InfoProvider is TRpGDIInfoProvider) then
-  begin
-   ascent:=Round((ascent-adata.descent-adata.InternalLeading)*FFont.Size*20/1000);
-  end
-  else
-{$ENDIF}
-{$ENDIF}
-  begin
-{$IFDEF LINUX}
-   ascent:=Round(ascent*FFont.Size*20/1000);
-{$ELSE}
-   ascent:=Round((ascent-adata.descent)*FFont.Size*20/1000);
-{$ENDIF}
-  end;
+  linespacing:=adata.Height;
+  leading:=adata.Leading;
  end
  else
  begin
-  GetStdLineSpacing(linespacing,leading);
-  ascent:=Round(FFont.Size*20);
-  ascent:=ascent+Round((leading/100000)*FResolution*FFont.Size*1.25);
+  GetStdLineSpacing(linespacing,leading,ascent);
  end;
- //leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
- //Y:=Y+leading;
+ ascent:=Round(ascent*FFont.Size*20/1000);
+ linespacing:=Round(adata.Height*FFont.Size*20/1000);
+ leading:=Round(leading*FFont.Size*20/1000);
 
 
 
@@ -2656,40 +2639,46 @@ begin
 end;
 {$ENDIF}
 
-procedure TRpPDFCanvas.GetStdLineSpacing(var linespacing,leading:integer);
+procedure TRpPDFCanvas.GetStdLineSpacing(var linespacing, leading, ascent: integer);
 begin
- case FFont.Name of
-  poHelvetica:
-   begin
-    linespacing:=1270;
-    leading:=150;
-   end;
-  poCourier:
-   begin
-    linespacing:=1265;
-    leading:=133;
-   end;
-  poTimesRoman:
-   begin
-    linespacing:=1257;
-    leading:=150;
-   end;
-  poSymbol:
-   begin
-    linespacing:=1450;
-    leading:=255;
-   end;
-  poZapfDingbats:
-   begin
-    linespacing:=1200;
-   end;
-   else
-   begin
-    linespacing:=1270;
-    leading:=200;
-   end;
- end;
-
+  case FFont.Name of
+    poHelvetica:
+      begin
+        linespacing := 1270;
+        leading := 150;
+        ascent := 718;
+      end;
+    poCourier:
+      begin
+        linespacing := 1265;
+        leading := 133;
+        ascent := 629;
+      end;
+    poTimesRoman:
+      begin
+        linespacing := 1257;
+        leading := 150;
+        ascent := 683;
+      end;
+    poSymbol:
+      begin
+        linespacing := 1450;
+        leading := 255;
+        ascent := 708;
+      end;
+    poZapfDingbats:
+      begin
+        linespacing := 1200;
+        leading := 0;
+        ascent := 820;
+      end;
+    else
+      begin
+        linespacing := 1270;
+        leading := 200;
+        ascent := 700;
+      end;
+  end;
 end;
 
 
@@ -2730,10 +2719,11 @@ var
  adata:TRpTTFontData;
  kerningamount:integer;
  linespacing:integer;
- leading:integer;
  offset:integer;
  incomplete:boolean;
  charsProcessed: integer;
+ leading:integer;
+ ascent:integer;
 begin
  havekerning:=false;
  adata:=GetTTFontData;
@@ -2741,32 +2731,24 @@ begin
  begin
   if adata.havekerning then
    havekerning:=true;
-  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
-  //linespacing:=adata.Ascent-adata.Descent + adata.Leading div 2;
-  // leading:=adata.Leading;
-//  leading:=0;
-//  linespacing:=Round(linespacing/1000*20*FFont.Size);
+  linespacing:=adata.Height;
   leading:=adata.Leading;
-
   WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end
  else
  begin
-  GetStdLineSpacing(linespacing,leading);
+  GetStdLineSpacing(linespacing,leading,ascent);
   WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
-//  linespacing:=Round((linespacing/10000)*FResolution);
  end;
 
-
- leading:=Round((leading/100000)*FResolution*FFont.Size*1.25);
- linespacing:=Round(((linespacing)/100000)*FResolution*FFont.Size*1.25);
+ linespacing:=Round(linespacing*FFont.Size*20/1000);
+ leading:=Round(leading*FFont.Size*20/1000);
  if Assigned(adata) then
    WriteToStdError(adata.FamilyName +  ' NoBidi Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10))
  else
    WriteToStdError('No family' + ' Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
- // leading:=Round((leading/10000)*FResolution);
- // linespacing:=Round((linespacing/10000)*FResolution);
+
 
  createsnewline:=false;
  astring:=Text;
@@ -2922,7 +2904,8 @@ begin
         Result[High(Result)] := info;
  end;
  if (charsprocessed>0) then
-   arec.Bottom:=arec.Bottom+leading;
+//    arec.Bottom:=arec.Bottom+leading;
+    arec.Bottom:=arec.Bottom;
  rect:=arec;
 
 end;
