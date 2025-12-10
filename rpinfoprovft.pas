@@ -24,9 +24,12 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
     Types,
 {$ENDIF}
 {$IFDEF MSWINDOWS}
-    Windows,
+    Windows,rpmdshfolder,
 {$ENDIF}
-    rpinfoprovid,SyncObjs,rpfontconfig,
+    rpinfoprovid,SyncObjs,
+{$IFDEF USEFONTCONFIG}
+    rpfontconfig,
+{$ENDIF}
     rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU;
 
 
@@ -59,6 +62,7 @@ type
   havekerning:Boolean;
   type1:boolean;
   truetype:boolean;
+  CFF:boolean;
   convfactor,widthmult:Double;
   LoadedFace:boolean;
   CustomImplementation:TObject;
@@ -101,8 +105,10 @@ type
     singleline: Boolean;
     FontSize: Double
   ): TRpLineInfoArray;override;
+{$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
   procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
+{$ENDIF}
   constructor Create;
   destructor destroy;override;
  end;
@@ -189,10 +195,19 @@ begin
       aobj.scalable:=true;
      Result:=aobj;
       aobj.FullInfo:=false;
+     aobj.CFF := ((aface.face_flags AND FT_FACE_FLAG_SFNT) <> 0)
+            AND ((FT_Get_Sfnt_Table(aface, FT_SFNT_CFF) <> nil));
+
       // Fill font properties
-      aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
-      aobj.TrueType:=((aface.face_flags and FT_FACE_FLAG_SFNT) <> 0)
-            and (FT_Get_Sfnt_Table(aface, FT_SFNT_GLYF) <> nil);
+      aobj.TrueType := ((aface.face_flags AND FT_FACE_FLAG_SFNT) <> 0)
+                 AND ((aface.face_flags AND FT_FACE_FLAG_SCALABLE) <> 0)
+                 AND (not aobj.CFF);
+
+      aobj.Type1 := ((aface.face_flags AND FT_FACE_FLAG_SCALABLE) <> 0)
+              AND (NOT aobj.TrueType) AND (NOT aobj.CFF);
+      //aobj.Type1:=(FT_FACE_FLAG_SFNT AND aface.face_flags)=0;
+      //aobj.TrueType:=((aface.face_flags and FT_FACE_FLAG_SFNT) <> 0)
+      //      and (FT_Get_Sfnt_Table(aface, FT_SFNT_GLYF) <> nil);
       if aobj.Type1 then
       begin
        aobj.widthmult:=1;
@@ -353,6 +368,7 @@ var
 begin
   InitICU;
   InitHarfBuzz;
+  SelectFont(pdfFont,'',false);
  originalFont:=currentfont;
  linespacing:=adata.Ascent-adata.Descent+adata.Leading;
  linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
@@ -660,7 +676,12 @@ begin
   if not currentfont.LoadedFace then
   begin
     shapeData := TShapingData.Create;
-
+    if not Assigned(currentfont.data) then
+    begin
+     currentFont.data:=TRpTTFontData.Create;
+     currentFont.data.FontData:=TAdvFontData.Create;
+     FillFontDataInt(currentFont.data);
+    end;
     currentfont.data.FontData.Fontdata.Position := 0;
     mem := currentfont.data.FontData.Fontdata.Memory;
     CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
@@ -770,6 +791,7 @@ var
 {$ENDIF}
 {$IFDEF MSWINDOWS}
   abuf:pchar;
+  szAppDataW:array [0..MAX_PATH] of WideChar;
 {$ENDIF}
 begin
 {$IFDEF MSWINDOWS}
@@ -777,7 +799,13 @@ begin
  try
   GetWindowsDirectory(abuf,255);
   alist.Add(StrPas(abuf)+'\fonts');
- finally
+  SHGetFolderPathW(0, CSIDL_LOCAL_APPDATA or CSIDL_FLAG_CREATE, 0, 0, szAppDataW);
+  PathAppendW(szAppdataW,PWidechar('Microsoft'));
+  PathAppendW(szAppdataW,PWidechar('Windows'));
+  PathAppendW(szAppdataW,PWidechar('Fonts'));
+  alist.Add(StrPas(szAppDataW));
+
+  finally
   FreeMem(abuf);
  end;
  exit;
@@ -862,15 +890,18 @@ var
 begin
  CheckFreeTypeLoaded;
  CheckFreeType(FT_Init_FreeType(ftlibrary));
- if Assigned(fontlist) or FontConfigAvailable then
+  if Assigned(fontlist) then
   exit;
-
+{$IFDEF USEFONTCONFIG}
+ if (FontConfigAvailable) then
+  exit;
  InitFontConfig;
 
  if (FontConfigAvailable) then
  begin
   exit;
  end;
+{$ENDIF}
 
 
 
@@ -1258,6 +1289,44 @@ begin
    end;
   end;
  end;
+ if (defaultfontb_arabic = nil) then
+ begin
+  if (defaultfont_arabic = nil) then
+  begin
+   defaultfontb_arabic:=defaultfontb;
+  end
+  else
+  begin
+   defaultfontb_arabic:=defaultfont_arabic;
+  end;
+ end;
+ if (defaultfontit_arabic = nil) then
+ begin
+  if (defaultfont_arabic = nil) then
+  begin
+   defaultfontit_arabic:=defaultfontit;
+  end
+  else
+  begin
+   defaultfontit_arabic:=defaultfont_arabic;
+  end;
+ end;
+ if (defaultfontbit_arabic = nil) then
+ begin
+  if (defaultfont_arabic = nil) then
+  begin
+   defaultfontbit_arabic:=defaultfontbit;
+  end
+  else
+  begin
+   defaultfontbit_arabic:=defaultfont_arabic;
+  end;
+ end;
+ if (defaultfontb_arabic = nil) then
+ begin
+   defaultfont_arabic:=defaultfont;
+ end;
+
 end;
 
 constructor TRpFTInfoProvider.Create;
@@ -1295,6 +1364,7 @@ end;
 
 function isSameFont(fontName,pattern: string): boolean;
 begin
+ Result:=false;
  if (pattern=fontName) then
  begin
   Result:=true;
@@ -1340,6 +1410,7 @@ begin
  Result:=false;
 end;
 
+{$IFDEF USEFONTCONFIG}
 procedure TRpFtInfoProvider.SelectFontFontConfig(pdffont: TRpPDFFont; unicodeContent: string = '');
 begin
  SelectFontFontConfigInt(pdffont,unicodeContent,false);
@@ -1436,6 +1507,7 @@ begin
     FcPatternDestroy(Pattern);
   end;
 end;
+{$ENDIF}
 
 procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt;content: string;ignoreFamily: boolean);
 var
@@ -1466,6 +1538,7 @@ begin
   afontname:='Helvetica';
 {$ENDIF}
 
+{$IFDEF USEFONTCONFIG}
  if (FontConfigAvailable) then
  begin
   if (ignoreFamily) then
@@ -1477,6 +1550,7 @@ begin
 
   exit;
  end;
+{$ENDIF}
  if (pdffont.bold and not pdffont.italic) then
  begin
   stylestring:=' bold ';
@@ -1817,7 +1891,7 @@ begin
        GlyphsUsed.Add(glyph,ints)
       end;
      end;
-     if (not data.type1) then
+     if (not data.type1 and not data.CFF) then
      begin
      // Create font subset in true type fonts
           subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
@@ -1886,6 +1960,7 @@ begin
      data.postcriptname:=data.postcriptname+',Italic';
   end;
   data.Type1:=currentfont.Type1;
+  data.CFF:=currentfont.CFF;
   data.truetype:=currentfont.truetype;
  finally
    crit.Leave;

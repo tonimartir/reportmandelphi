@@ -134,6 +134,46 @@ begin
 end;
 
 
+
+
+
+constructor TRpGDIInfoProvider.Create;
+var
+ ddc:THandle;
+begin
+ inherited Create;
+ currentname:='';
+ currentstyle:=0;
+ fonthandle:=0;
+//  gdilib:=LoadLibrary('gdi32.dll');
+//  if gdilib=0 then
+//   RaiseLastOsError;
+//  GetCharPlac:=GetProcAddress(gdilib,'GetCharacterPlacementW');
+//  if not Assigned(GetCharPlac) then
+//   RaiseLastOsError;
+// bitmap:=VCL.Graphics.TBitmap.Create;
+// bitmap.PixelFormat:=pf32bit;
+// bitmap.Width:=10;
+// bitmap.Height:=10;
+ adc:=GetDc(0);
+// adc:=bitmap.Canvas.Handle;
+
+{$IFDEF WINDOWS_USEHARFBUZZ}
+  if (not initialized) then
+  begin
+   CheckFreeTypeLoaded;
+   CheckFreeType(FT_Init_FreeType(ftlibrary));
+   InitICU;
+   InitHarfBuzz;
+   initialized:=true;
+  end;
+{$ELSE}
+ // Inicializar COM
+ CoInitialize(nil);
+{$ENDIF}
+end;
+{$IFNDEF WINDOWS_USEHARFBUZZ}
+
 procedure AdjustLineSpaces(line: TGlyphLine);
 var keepNBSP:boolean;
  LastIndex:integer;
@@ -198,43 +238,6 @@ begin
 end;
 
 
-
-constructor TRpGDIInfoProvider.Create;
-var
- ddc:THandle;
-begin
- inherited Create;
- currentname:='';
- currentstyle:=0;
- fonthandle:=0;
-//  gdilib:=LoadLibrary('gdi32.dll');
-//  if gdilib=0 then
-//   RaiseLastOsError;
-//  GetCharPlac:=GetProcAddress(gdilib,'GetCharacterPlacementW');
-//  if not Assigned(GetCharPlac) then
-//   RaiseLastOsError;
-// bitmap:=VCL.Graphics.TBitmap.Create;
-// bitmap.PixelFormat:=pf32bit;
-// bitmap.Width:=10;
-// bitmap.Height:=10;
- adc:=GetDc(0);
-// adc:=bitmap.Canvas.Handle;
-
-{$IFDEF WINDOWS_USEHARFBUZZ}
-  if (not initialized) then
-  begin
-   CheckFreeTypeLoaded;
-   CheckFreeType(FT_Init_FreeType(ftlibrary));
-   InitICU;
-   InitHarfBuzz;
-   initialized:=true;
-  end;
-{$ELSE}
- // Inicializar COM
- CoInitialize(nil);
-{$ENDIF}
-end;
-{$IFNDEF WINDOWS_USEHARFBUZZ}
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;

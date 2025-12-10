@@ -68,7 +68,11 @@ uses Classes,Sysutils,rpinfoprovid,
 {$ENDIF}
 {$IFDEF MSWINDOWS}
 {$IFNDEF FPC}
+{$IFDEF WINDOWS_USEFREETYPE}
+ rpinfoprovft,
+{$ELSE}
  rpinfoprovgdi,
+{$ENDIF}
 {$ENDIF}
  Windows,
 {$ENDIF}
@@ -130,7 +134,11 @@ type
    FImageIndexes:TStringList;
 {$IFDEF MSWINDOWS}
 {$IFNDEF FPC}
+  {$IFDEF WINDOWS_USEFREETYPE}
+  FFtInfoProvider:TRpFtInfoProvider;
+  {$ELSE}
    FGDIInfoProvider:TRpGDIInfoProvider;
+  {$ENDIF}
 {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
@@ -494,8 +502,13 @@ begin
  FImageIndexes.Sorted:=true;
 {$IFDEF MSWINDOWS}
 {$IFNDEF FPC}
+{$IFDEF WINDOWS_USEFREETYPE}
+ FFtInfoProvider:=TRpFtInfoProvider.Create;
+ FInfoProvider:=FFtInfoProvider;
+{$ELSE}
  FGDIInfoProvider:=TRpGDIInfoProvider.Create;
  FInfoProvider:=FGDIInfoProvider;
+{$ENDIF}
 {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
@@ -520,7 +533,11 @@ begin
  FFontTTData.free;
 {$IFDEF MSWINDOWS}
 {$IFNDEF FPC}
+  {$IFDEF WINDOWS_USEFREETYPE}
+ FFtInfoProvider.free;
+  {$ELSE}
  FGDIInfoProvider.free;
+  {$ENDIF}
 {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
@@ -2153,11 +2170,14 @@ begin
 //  leading:=adata.Leading;
   ascent:=adata.Ascent;
 {$IFDEF MSWINDOWS}
+{$IFDEF WINDOWS_USEFREETYPE}
+{$ELSE}
   if (InfoProvider is TRpGDIInfoProvider) then
   begin
    ascent:=Round((ascent-adata.descent-adata.InternalLeading)*FFont.Size*20/1000);
   end
   else
+{$ENDIF}
 {$ENDIF}
   begin
 {$IFDEF LINUX}

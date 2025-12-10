@@ -83,6 +83,7 @@ type
   FaceName:String;
   StyleName:String;
   type1:boolean;
+  CFF: boolean;
   truetype:boolean;
   havekerning:Boolean;
   ObjectName:String;

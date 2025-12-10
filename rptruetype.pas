@@ -53,7 +53,7 @@ TTrueTypeFontSubSet = class
     FDirectoryOffset: Cardinal;
 
     procedure AssembleFont;
-    procedure CreateTableDirectory;
+    function CreateTableDirectory: boolean;
     procedure ReadLoca;
     procedure FlatGlyphs;
     procedure CreateNewGlyphTables;
@@ -151,7 +151,11 @@ end;
 
 function TTrueTypeFontSubSet.Execute: TBytes;
 begin
-  CreateTableDirectory;
+  if (not CreateTableDirectory) then
+  begin
+   Result:=FRFArray;
+   exit;
+  end;
   ReadLoca;
   FlatGlyphs;
   CreateNewGlyphTables;
@@ -259,7 +263,7 @@ begin
   end;
 end;
 
-procedure TTrueTypeFontSubSet.CreateTableDirectory;
+function TTrueTypeFontSubSet.CreateTableDirectory: boolean;
 var
   ID, NumTables, NIndex, Checksum, Location, Length: Integer;
   Tag: string;
@@ -278,6 +282,11 @@ begin
   if ID <> $00010000 then
   begin
     TTcfHeader := TEncoding.ANSI.GetString(FRFArray, 0, 4);
+    if (TTcfHeader='OTTO') then
+    begin
+      Result:=false;
+    end
+    else
     if TTcfHeader = 'ttcf' then
     begin
       Inc(FDirectoryOffset, 4);
@@ -317,7 +326,9 @@ begin
       end;
     end
     else
-      raise Exception.Create('The font is not a TrueType font or TrueType font collection');
+    begin
+     Result:=false;
+    end;
   end;
 
   NumTables := ByteArrayToUShort(FRFArray, NIndex, 2);  // Usamos ByteArrayToUShort con tres parámetros
