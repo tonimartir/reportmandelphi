@@ -2163,19 +2163,27 @@ begin
   ascent:=adata.Ascent;
   linespacing:=adata.Height;
   leading:=adata.Leading;
+  //if (PDFConformance > PDF_1_4) then
+  //begin
+   ascent:=Round(ascent*FFont.Size*20/1000);
+  //end
+  //else
+  //begin
+  // ascent:=FFont.Size*20;
+  //end;
+ end
+ else
+ begin
+  GetStdLineSpacing(linespacing,leading,ascent);
+  //ascent:=FFont.Size*20;
   if (PDFConformance > PDF_1_4) then
   begin
-   ascent:=Round(ascent*FFont.Size*20/1000);
+   ascent:=Round(ascent*FFont.Size*20*1.1/1000);
   end
   else
   begin
    ascent:=FFont.Size*20;
   end;
- end
- else
- begin
-  GetStdLineSpacing(linespacing,leading,ascent);
-  ascent:=FFont.Size*20;
  end;
  linespacing:=Round(linespacing*FFont.Size*20/1000);
  leading:=Round(leading*FFont.Size*20/1000);
@@ -2687,7 +2695,7 @@ begin
         ascent := 700;
       end;
   end;
-  ascent:=Round(ascent*1.25);
+  ascent:=Round(ascent*1);
 end;
 
 
@@ -2746,7 +2754,7 @@ begin
   end
   else
   begin
-   linespacing:=adata.Ascent-adata.Descent+adata.Leading;
+    linespacing:=adata.Ascent-adata.Descent+adata.Leading;
   end;
   ascent:=adata.Ascent;
   leading:=adata.Leading;
@@ -2892,7 +2900,8 @@ begin
    info.Width:=Round((asize)/CONS_PDFRES*FResolution);
 //   info.height:=Round((Font.Size)/CONS_PDFRES*FResolution);
    info.height:=linespacing;
-   info.TopPos:=arec.Bottom-leading;
+//   info.TopPos:=arec.Bottom-leading;
+   info.TopPos:=Length(Result)*linespacing;
    info.lastline:=createsnewline;
    arec.Bottom:=arec.Bottom+info.height;
    asize:=0;
@@ -2921,7 +2930,8 @@ begin
   info.Size:=Length(astring)-position+1-offset;
   info.Width:=Round((asize+1)/CONS_PDFRES*FResolution);
   info.height:=linespacing;
-  info.TopPos:=arec.Bottom-leading;
+  // info.TopPos:=arec.Bottom-leading;
+  info.TopPos:=Length(Result)*linespacing;
   arec.Bottom:=arec.Bottom+info.height;
   info.lastline:=true;
         SetLength(Result, Length(Result) + 1);

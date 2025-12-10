@@ -1086,6 +1086,7 @@ begin
       data.AvgWidth:=Round(potm^.otmTextMetrics.tmAveCharWidth*multipli);
       data.UnitsPerEM:=potm^.otmTextMetrics.tmHeight;
 
+      //data.Leading:=Round((potm^.otmTextMetrics.tmExternalLeading+potm^.otmTextMetrics.tmInternalLeading)*multipli);
       data.Leading:=Round((potm^.otmTextMetrics.tmExternalLeading+potm^.otmTextMetrics.tmInternalLeading)*multipli);
       data.InternalLeading:=Round((potm^.otmTextMetrics.tmInternalLeading)*multipli);
       data.ExternalLeading:=Round((potm^.otmTextMetrics.tmExternalLeading)*multipli);

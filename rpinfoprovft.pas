@@ -53,6 +53,7 @@ type
   Capheight:integer;
   ItalicAngle:double;
   leading:integer;
+  externalleading:integer;
   BBox:TRect;
   fullinfo:Boolean;
   scalable:Boolean;
@@ -172,7 +173,6 @@ function FillLogFont(filename:string;fontIndex:integer): TRpLogFont;
 var aobj: TRpLogFont;
  errorface:FT_Error;
  aface:FT_Face;
- externalLeading:integer;
 begin
    Result:=nil;
    errorface:=FT_New_Face(ftlibrary,PAnsiChar(UTF8Encode(filename)),fontIndex,aface);
@@ -249,7 +249,7 @@ begin
       aobj.descent:=Round(aobj.convfactor*aface.descender);
       aobj.height:=Round(aobj.convfactor*aface.height);
       // External leading, same as GDI OUTLINETEXTMETRICS, it's the line gap
-      externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
+      aobj.externalLeading := Round(aobj.convfactor*aface.height)-(aobj.ascent-aobj.descent);
       // Internal leading, same as GDI OUTLINETEXTMETRICS, it's the space inside the font
       // reserved for accent marks
       // internalLeading := Round((aobj.ascent - aobj.descent) - aobj.convfactor*aface.units_per_EM);
