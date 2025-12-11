@@ -11,11 +11,19 @@ uses
 type
   PFcConfig = Pointer;
   PFcPattern = Pointer;
-  PFcFontSet = Pointer;
   PFcObjectSet = Pointer;
   PChar = PAnsiChar;
   PFcCharSet = Pointer;
   FcBool = Integer;
+  TPFcPatternArray = array[0..9999] of PFcPattern;
+  PFcPatternArray = ^TPFcPatternArray;
+
+  TFcFontSet = record
+    nfont: Integer;        // número de fuentes devueltas
+    sfont: Integer;        // tamaño del array asignado
+    fonts:  PFcPatternArray;    // puntero a array de PFcPattern
+  end;
+  PFcFontSet = ^TFcFontSet;
 
 // --- 2. Variables de Control y Constantes ---
 
@@ -25,6 +33,7 @@ const
   FONTCONFIG_LIB_NAME = 'libfontconfig.so.1';
 
   FC_FAMILY = 'family';
+  FC_VARIABLE = 'variable';
   FC_FILE = 'file';
   FC_TEXT = 'text';
   FC_WEIGHT = 'weight';
@@ -54,13 +63,24 @@ type
   T_FcInit = function: Boolean; cdecl;
   T_FcConfigGetCurrent = function: PFcConfig; cdecl;
   T_FcFini = procedure; cdecl;
-
+  FcResult = (
+    FcResultMatch = 0,
+    FcResultNoMatch = 1,
+    FcResultTypeMismatch = 2,
+    FcResultNoId = 3
+  );
   // NUEVA FUNCIÓN: Crea un nuevo patrón (sin argumentos variables)
   T_FcPatternCreate = function: PFcPattern; cdecl;
   T_FcPatternDestroy = procedure(p: PFcPattern); cdecl;
   T_FcFontMatch = function(config: PFcConfig; p: PFcPattern; out result: PFcPattern): PFcPattern; cdecl;
   T_FcPatternGetString = function(p: PFcPattern; const pcObject: PChar; n: Integer; out s: PChar): Boolean; cdecl;
-
+  T_FcFontSort = function(
+    config: PFcConfig;
+    p: PFcPattern;
+    trim: FcBool;
+    out result: FcResult;
+    csp: Pointer // normalmente nil
+  ): PFcFontSet; cdecl;
   // Funciones de Adición (parámetros fijos)
   T_FcPatternAddString = function(p: PFcPattern; const pcObject: PChar; s: PChar): Boolean; cdecl;
   T_FcPatternAddInteger = function(p: PFcPattern; const pcObject: PChar; i: Integer): Boolean; cdecl;
@@ -96,6 +116,7 @@ var
   FcCharSetAddChar: T_FcCharSetAddChar;
   FcPatternAddCharSet: T_FcPatternAddCharSet;
   FcPatternAddBool: T_FcPatternAddBool;
+  FcFontSort: T_FcFontSort;
 
 procedure InitFontConfig;
 
@@ -141,6 +162,7 @@ begin
   ProcPtr := GetProc('FcCharSetAddChar'); @FcCharSetAddChar := ProcPtr;
   ProcPtr := GetProc('FcPatternAddCharSet'); @FcPatternAddCharSet := ProcPtr;
   ProcPtr := GetProc('FcPatternAddBool'); @FcPatternAddBool := ProcPtr;
+  ProcPtr := GetProc('FcFontSort'); @FcFontSort := ProcPtr;
 
   // 3. Verificar y Inicializar (usando ahora FcPatternCreate)
   if Assigned(FcInit) and Assigned(FcFontMatch) and Assigned(FcFini) and Assigned(FcPatternCreate) then
@@ -201,6 +223,9 @@ begin
      raise Exception.Create('Error setting FC_SCALABLE');
 
     FcPatternAddBool(Pattern,PChar(FC_EMBEDDEDBITMAP),FcFalse);
+    // EXCLUSIÓN DE VARIABLE FONTS
+    FcPatternAddString(Pattern, Pchar('fontvariations'), '');    // No admitir ejes
+    FcPatternAddBool(Pattern, PChar(FC_VARIABLE), FcFalse);
     if Length(UTF8Family)>0 then
       FcPatternAddString(Pattern, PChar(FC_FAMILY), PAnsiChar(UTF8Family));
     if Length(UnicodeContent)>0 then
