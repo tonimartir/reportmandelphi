@@ -29,6 +29,8 @@ uses
   Classes,
   {$IFDEF MSWINDOWS}
   ActiveX,
+  rpexceldriver,
+  rpgdidriver,
   {$IFDEF USEVARIANTS}
   {$IFNDEF MIDASOUT}
   midaslib,
@@ -74,7 +76,6 @@ uses
   rpdrawitem in '..\..\..\rpdrawitem.pas',
   rpmdchart in '..\..\..\rpmdchart.pas',
   rpinfoprovid in '..\..\..\rpinfoprovid.pas',
-  rpinfoprovft in '..\..\..\rpinfoprovft.pas',
   rpfreetype2 in '..\..\..\rpfreetype2.pas',
   rptextdriver in '..\..\..\rptextdriver.pas',
   rplinuxexceptionhandler in '..\..\..\rplinuxexceptionhandler.pas',
@@ -159,7 +160,9 @@ end;
 
 begin
 {$IFDEF LINUX}
+  {$IFDEF DEBUG}
  InitStackTraceExceptionHandling;
+ {$ENDIF}
 {$ENDIF}
 {$IFDEF USEADO}
   CoInitialize(nil);

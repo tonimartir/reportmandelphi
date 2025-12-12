@@ -362,17 +362,11 @@ function GetFirstName(astring:string):string;
 function TextToType1Font(value:string):TRpType1Font;
 function Type1FontToText(value:TRpType1Font):string;
 procedure CopyStreamContent(source: TStream; destination: TStream);
-{$IFNDEF DOTNETD}
 procedure WriteToStdError(astring:String);
 procedure WriteStreamToStdOutput(astream:TStream);
 procedure WriteStreamToHandle(astream:TStream;handle:Integer);
 function ReadFromStdInputStream:TMemoryStream;
 function ReadStreamFromHandle(handle:THandle):TMemoryStream;
-{$ENDIF}
-{$IFDEF DOTNETD}
-function CompareMem(const Mem1: array of Byte; const Mem2: array of Byte;
-    Count: Integer): Boolean;
-{$ENDIF}
 function PrinterRawOpEnabled(printerindex:TRpPrinterSelect;rawop:TPrinterRawOp):Boolean;
 
 {$IFDEF LINUX}
@@ -4107,7 +4101,6 @@ begin
 end;
 {$ENDIF}
 
-{$IFNDEF DOTNETD}
 function ReadFromStdInputStream:TMemoryStream;
 {$IFDEF MSWINDOWS}
 var
@@ -4208,7 +4201,6 @@ begin
  end;
 end;
 
-{$ENDIF}
 
 
 

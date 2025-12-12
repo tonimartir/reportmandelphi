@@ -371,17 +371,17 @@ begin
   InitHarfBuzz;
   SelectFont(pdfFont,'',false);
  originalFont:=currentfont;
- WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
+ //WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+ //WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
+ //WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
+ //WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
  // linespacing:=adata.Height;
  //linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
  //linespacing:=Round(((linespacing)/100000)*1440*FontSize);
  //linespacingEM:=(adata.Ascent-adata.Descent+adata.Leading)/1000;
  linespacingEM:=(adata.Height)/1000;
  linespacing:=Round(linespacingEM*FontSize*20);
- WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+// WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
 
@@ -1563,7 +1563,7 @@ begin
   end
   else
    stylestring:=' regular ';
- WriteToStdError('Ask for font family: '+ afontName+ ' style: ' + stylestring+ chr(10));
+// WriteToStdError('Ask for font family: '+ afontName+ ' style: ' + stylestring+ chr(10));
  if ((currentname=afontname) and (currentstyle=pdffont.Style)) then
   exit;
  currentname:=afontname;
@@ -1585,7 +1585,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
-     WriteToStdError('Step 1: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
+     //WriteToStdError('Step 1: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1605,7 +1605,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
-     WriteToStdError('Step 2: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
+//     WriteToStdError('Step 2: SameFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1626,7 +1626,7 @@ begin
     begin
      match:=true;
      currentfont:=afont;
-     WriteToStdError('Step 3: SimilarFont: FamilyName: '+fontlist.strings[i]+chr(10));
+//     WriteToStdError('Step 3: SimilarFont: FamilyName: '+fontlist.strings[i]+chr(10));
      break;
     end;
   end;
@@ -1645,7 +1645,7 @@ begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
    currentfont:=afont;
-   WriteToStdError('Step 4: SameFont ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
+//   WriteToStdError('Step 4: SameFont ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    break;
   end;
   inc(i);
@@ -1661,7 +1661,7 @@ begin
   begin
    afont:=TRpLogFont(fontlist.Objects[i]);
    match:=true;
-   WriteToStdError('Step 5: Partial ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
+//   WriteToStdError('Step 5: Partial ignoring styles: FamilyName: '+fontlist.strings[i]+chr(10));
    currentfont:=afont;
    break;
   end;
@@ -1674,24 +1674,24 @@ begin
   if ((not isbold) and (not isitalic)) then
   begin
    currentfont:=defaultfont_arabic;
-   WriteToStdError('Default arabic regular '+currentfont.familyname+chr(10));
+//   WriteToStdError('Default arabic regular '+currentfont.familyname+chr(10));
   end
   else
   if ((isbold) and (not isitalic)) then
   begin
    currentfont:=defaultfontb_arabic;
-   WriteToStdError('Default arabic bold '+currentfont.familyname+chr(10));
+//   WriteToStdError('Default arabic bold '+currentfont.familyname+chr(10));
   end
   else
   if ((not isbold) and (isitalic)) then
   begin
    currentfont:=defaultfontit_arabic;
-   WriteToStdError('Default arabic italic '+currentfont.familyname+chr(10));
+   //WriteToStdError('Default arabic italic '+currentfont.familyname+chr(10));
   end
   else
   begin
    currentfont:=defaultfontbit_arabic;
-   WriteToStdError('Default arabic italic bold '+currentfont.familyname+chr(10));
+//   WriteToStdError('Default arabic italic bold '+currentfont.familyname+chr(10));
   end;
  end;
  if (currentfont <> nil) then
@@ -1700,24 +1700,24 @@ begin
  if ((not isbold) and (not isitalic)) then
  begin
   currentfont:=defaultfont;
-  WriteToStdError('Default regular '+currentfont.familyname+chr(10));
+//  WriteToStdError('Default regular '+currentfont.familyname+chr(10));
  end
  else
  if ((isbold) and (not isitalic)) then
  begin
   currentfont:=defaultfontb;
-  WriteToStdError('Default bold '+currentfont.familyname+chr(10));
+//  WriteToStdError('Default bold '+currentfont.familyname+chr(10));
  end
  else
  if ((not isbold) and (isitalic)) then
  begin
   currentfont:=defaultfontit;
-  WriteToStdError('Default italic '+currentfont.familyname+chr(10));
+//  WriteToStdError('Default italic '+currentfont.familyname+chr(10));
  end
  else
  begin
   currentfont:=defaultfontbit;
-  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
+//  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
  end;
 
  if not assigned(currentfont) then

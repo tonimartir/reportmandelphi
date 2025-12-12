@@ -2758,12 +2758,12 @@ begin
   end;
   ascent:=adata.Ascent;
   leading:=adata.Leading;
-  WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+  //WriteToStdError(adata.FamilyName +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end
  else
  begin
   GetStdLineSpacing(linespacing,leading,ascent);
-  WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
+  //WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end;
  if (PDFConformance > PDF_1_4) then
  begin
@@ -2775,10 +2775,10 @@ begin
  end;
  leading:=Round(leading*FFont.Size*20/1000);
  ascent:=Round(ascent*FFont.Size*20/1000);
- if Assigned(adata) then
-   WriteToStdError(adata.FamilyName +  ' NoBidi Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10))
- else
-   WriteToStdError('No family' + ' Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+// if Assigned(adata) then
+//   WriteToStdError(adata.FamilyName +  ' NoBidi Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10))
+// else
+//   WriteToStdError('No family' + ' Font Size: '+IntToStr(Round(FFont.Size))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
 
 

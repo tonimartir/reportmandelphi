@@ -86,8 +86,11 @@ type
       var strikethrough: TDwriteStrikethrough;
       const clientDrawingEffect: IUnknown): HResult; stdcall;
 
-    function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
-      originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
+    //function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+    //  originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
+    //  isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult;stdcall;
+        function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
       isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
   end;
 
@@ -459,12 +462,20 @@ begin
   Result := S_OK;
 end;
 
-function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
-  originX, originY: Single; var inlineObject: IDWriteInlineObject; isSideways, isRightToLeft: BOOL;
-  const clientDrawingEffect: IUnknown): HResult;
+//function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
+//  originX, originY: Single; var inlineObject: IDWriteInlineObject; isSideways, isRightToLeft: BOOL;
+//  const clientDrawingEffect: IUnknown): HResult;
+//begin
+//  Result := S_OK;
+//end;
+
+function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
+      isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
 begin
   Result := S_OK;
 end;
+
 
 function TTextExtentRenderer.IsPixelSnappingDisabled(clientDrawingContext: Pointer; var isDisabled: BOOL): HResult;
 begin
@@ -485,6 +496,8 @@ begin
   pixelsPerDip := 1.0;
   Result := S_OK;
 end;
+
+
 
 end.
 
