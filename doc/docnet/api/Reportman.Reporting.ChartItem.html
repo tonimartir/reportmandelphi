@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class ChartItem | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class ChartItem | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.ChartItem">
+
+
+
+  <h1 id="Reportman_Reporting_ChartItem" data-uid="Reportman.Reporting.ChartItem" class="text-break">Class ChartItem</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="Reportman.Reporting.ReportItem.html">ReportItem</a></div>
+    <div class="level2"><a class="xref" href="Reportman.Reporting.PrintItem.html">PrintItem</a></div>
+    <div class="level3"><a class="xref" href="Reportman.Reporting.PrintPosItem.html">PrintPosItem</a></div>
+    <div class="level4"><a class="xref" href="Reportman.Reporting.PrintItemText.html">PrintItemText</a></div>
+    <div class="level5"><span class="xref">ChartItem</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_WFontName">PrintItemText.WFontName</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_LFontName">PrintItemText.LFontName</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_FontSize">PrintItemText.FontSize</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_FontRotation">PrintItemText.FontRotation</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_FontStyle">PrintItemText.FontStyle</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_FontColor">PrintItemText.FontColor</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_BackColor">PrintItemText.BackColor</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_Transparent">PrintItemText.Transparent</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_CutText">PrintItemText.CutText</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_WordWrap">PrintItemText.WordWrap</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_WordBreak">PrintItemText.WordBreak</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_InterLine">PrintItemText.InterLine</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_Alignment">PrintItemText.Alignment</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_VAlignment">PrintItemText.VAlignment</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_SingleLine">PrintItemText.SingleLine</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_Type1Font">PrintItemText.Type1Font</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_MultiPage">PrintItemText.MultiPage</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_PrintStep">PrintItemText.PrintStep</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_RightToLeft">PrintItemText.RightToLeft</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_PrintAlignment">PrintItemText.PrintAlignment</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItemText.html#Reportman_Reporting_PrintItemText_VPrintAlignment">PrintItemText.VPrintAlignment</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_Section">PrintPosItem.Section</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_AnnotationExpression">PrintPosItem.AnnotationExpression</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_GetExtension_Reportman_Drawing_PrintOut_System_Drawing_Point_System_Boolean_">PrintPosItem.GetExtension(PrintOut, Point, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_FillAnnotation_Reportman_Drawing_MetaObject_Reportman_Drawing_MetaPage_">PrintPosItem.FillAnnotation(MetaObject, MetaPage)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_Hidden">PrintPosItem.Hidden</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_PosX">PrintPosItem.PosX</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_PosY">PrintPosItem.PosY</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_Align">PrintPosItem.Align</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintPosItem.html#Reportman_Reporting_PrintPosItem_PartialFlag">PrintPosItem.PartialFlag</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintWidth">PrintItem.PrintWidth</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintHeight">PrintItem.PrintHeight</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Visible">PrintItem.Visible</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_LastExtent">PrintItem.LastExtent</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SelectionIndex">PrintItem.SelectionIndex</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SelectionRectangle">PrintItem.SelectionRectangle</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_EvaluatePrintCondition">PrintItem.EvaluatePrintCondition()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Print_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__">PrintItem.Print(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_ExecuteBeforePrint">PrintItem.ExecuteBeforePrint()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_ExecuteAfterPrint">PrintItem.ExecuteAfterPrint()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Width">PrintItem.Width</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Height">PrintItem.Height</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoBeforePrint">PrintItem.DoBeforePrint</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoAfterPrint">PrintItem.DoAfterPrint</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintCondition">PrintItem.PrintCondition</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Dispose">ReportItem.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Name">ReportItem.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Report">ReportItem.Report</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_ClassName">ReportItem.ClassName</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_ChartItem_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ChartItem : PrintItemText, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_ChartItem__ctor_" data-uid="Reportman.Reporting.ChartItem.#ctor*"></a>
+  <h4 id="Reportman_Reporting_ChartItem__ctor" data-uid="Reportman.Reporting.ChartItem.#ctor">ChartItem()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ChartItem()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Reporting_ChartItem_DrawHelper" data-uid="Reportman.Reporting.ChartItem.DrawHelper">DrawHelper</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object DrawHelper</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_ChartItem_SeriesColors" data-uid="Reportman.Reporting.ChartItem.SeriesColors">SeriesColors</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int[] SeriesColors</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>[]</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_ChartItem_AutoRange_" data-uid="Reportman.Reporting.ChartItem.AutoRange*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_AutoRange" data-uid="Reportman.Reporting.ChartItem.AutoRange">AutoRange</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Series.AutoRangeAxis AutoRange { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.Series.html">Series</a>.<a class="xref" href="Reportman.Drawing.Series.AutoRangeAxis.html">AutoRangeAxis</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_AxisYFinal_" data-uid="Reportman.Reporting.ChartItem.AxisYFinal*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_AxisYFinal" data-uid="Reportman.Reporting.ChartItem.AxisYFinal">AxisYFinal</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double AxisYFinal { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_AxisYInitial_" data-uid="Reportman.Reporting.ChartItem.AxisYInitial*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_AxisYInitial" data-uid="Reportman.Reporting.ChartItem.AxisYInitial">AxisYInitial</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double AxisYInitial { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_CaptionExpression_" data-uid="Reportman.Reporting.ChartItem.CaptionExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_CaptionExpression" data-uid="Reportman.Reporting.ChartItem.CaptionExpression">CaptionExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string CaptionExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ChangeSerieBool_" data-uid="Reportman.Reporting.ChartItem.ChangeSerieBool*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ChangeSerieBool" data-uid="Reportman.Reporting.ChartItem.ChangeSerieBool">ChangeSerieBool</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ChangeSerieBool { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ChangeSerieExpression_" data-uid="Reportman.Reporting.ChartItem.ChangeSerieExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ChangeSerieExpression" data-uid="Reportman.Reporting.ChartItem.ChangeSerieExpression">ChangeSerieExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ChangeSerieExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ChartStyle_" data-uid="Reportman.Reporting.ChartItem.ChartStyle*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ChartStyle" data-uid="Reportman.Reporting.ChartItem.ChartStyle">ChartStyle</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ChartType ChartStyle { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.ChartType.html">ChartType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ClearExpression_" data-uid="Reportman.Reporting.ChartItem.ClearExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ClearExpression" data-uid="Reportman.Reporting.ChartItem.ClearExpression">ClearExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ClearExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ClearExpressionBool_" data-uid="Reportman.Reporting.ChartItem.ClearExpressionBool*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ClearExpressionBool" data-uid="Reportman.Reporting.ChartItem.ClearExpressionBool">ClearExpressionBool</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ClearExpressionBool { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ColorExpression_" data-uid="Reportman.Reporting.ChartItem.ColorExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ColorExpression" data-uid="Reportman.Reporting.ChartItem.ColorExpression">ColorExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ColorExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Driver_" data-uid="Reportman.Reporting.ChartItem.Driver*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Driver" data-uid="Reportman.Reporting.ChartItem.Driver">Driver</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ChartDriver Driver { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.ChartDriver.html">ChartDriver</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Elevation_" data-uid="Reportman.Reporting.ChartItem.Elevation*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Elevation" data-uid="Reportman.Reporting.ChartItem.Elevation">Elevation</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Elevation { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_GetValueCondition_" data-uid="Reportman.Reporting.ChartItem.GetValueCondition*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_GetValueCondition" data-uid="Reportman.Reporting.ChartItem.GetValueCondition">GetValueCondition</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GetValueCondition { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_HorzFontRotation_" data-uid="Reportman.Reporting.ChartItem.HorzFontRotation*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_HorzFontRotation" data-uid="Reportman.Reporting.ChartItem.HorzFontRotation">HorzFontRotation</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int HorzFontRotation { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_HorzFontSize_" data-uid="Reportman.Reporting.ChartItem.HorzFontSize*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_HorzFontSize" data-uid="Reportman.Reporting.ChartItem.HorzFontSize">HorzFontSize</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int HorzFontSize { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_HorzOffset_" data-uid="Reportman.Reporting.ChartItem.HorzOffset*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_HorzOffset" data-uid="Reportman.Reporting.ChartItem.HorzOffset">HorzOffset</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int HorzOffset { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Identifier_" data-uid="Reportman.Reporting.ChartItem.Identifier*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Identifier" data-uid="Reportman.Reporting.ChartItem.Identifier">Identifier</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Identifier { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_MarkStyle_" data-uid="Reportman.Reporting.ChartItem.MarkStyle*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_MarkStyle" data-uid="Reportman.Reporting.ChartItem.MarkStyle">MarkStyle</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MarkStyle { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_MultiBar_" data-uid="Reportman.Reporting.ChartItem.MultiBar*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_MultiBar" data-uid="Reportman.Reporting.ChartItem.MultiBar">MultiBar</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BarType MultiBar { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.BarType.html">BarType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Orthogonal_" data-uid="Reportman.Reporting.ChartItem.Orthogonal*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Orthogonal" data-uid="Reportman.Reporting.ChartItem.Orthogonal">Orthogonal</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Orthogonal { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Perspective_" data-uid="Reportman.Reporting.ChartItem.Perspective*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Perspective" data-uid="Reportman.Reporting.ChartItem.Perspective">Perspective</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Perspective { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Resolution_" data-uid="Reportman.Reporting.ChartItem.Resolution*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Resolution" data-uid="Reportman.Reporting.ChartItem.Resolution">Resolution</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Resolution { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Rotation_" data-uid="Reportman.Reporting.ChartItem.Rotation*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Rotation" data-uid="Reportman.Reporting.ChartItem.Rotation">Rotation</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Rotation { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_SerieCaption_" data-uid="Reportman.Reporting.ChartItem.SerieCaption*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_SerieCaption" data-uid="Reportman.Reporting.ChartItem.SerieCaption">SerieCaption</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerieCaption { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_SerieColorExpression_" data-uid="Reportman.Reporting.ChartItem.SerieColorExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_SerieColorExpression" data-uid="Reportman.Reporting.ChartItem.SerieColorExpression">SerieColorExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerieColorExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ShowHint_" data-uid="Reportman.Reporting.ChartItem.ShowHint*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ShowHint" data-uid="Reportman.Reporting.ChartItem.ShowHint">ShowHint</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ShowHint { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ShowLegend_" data-uid="Reportman.Reporting.ChartItem.ShowLegend*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ShowLegend" data-uid="Reportman.Reporting.ChartItem.ShowLegend">ShowLegend</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ShowLegend { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Tilt_" data-uid="Reportman.Reporting.ChartItem.Tilt*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Tilt" data-uid="Reportman.Reporting.ChartItem.Tilt">Tilt</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Tilt { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ValueExpression_" data-uid="Reportman.Reporting.ChartItem.ValueExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ValueExpression" data-uid="Reportman.Reporting.ChartItem.ValueExpression">ValueExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ValueExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_ValueXExpression_" data-uid="Reportman.Reporting.ChartItem.ValueXExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_ValueXExpression" data-uid="Reportman.Reporting.ChartItem.ValueXExpression">ValueXExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ValueXExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_VertFontRotation_" data-uid="Reportman.Reporting.ChartItem.VertFontRotation*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_VertFontRotation" data-uid="Reportman.Reporting.ChartItem.VertFontRotation">VertFontRotation</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int VertFontRotation { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_VertFontSize_" data-uid="Reportman.Reporting.ChartItem.VertFontSize*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_VertFontSize" data-uid="Reportman.Reporting.ChartItem.VertFontSize">VertFontSize</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int VertFontSize { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_VertOffset_" data-uid="Reportman.Reporting.ChartItem.VertOffset*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_VertOffset" data-uid="Reportman.Reporting.ChartItem.VertOffset">VertOffset</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int VertOffset { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_View3d_" data-uid="Reportman.Reporting.ChartItem.View3d*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_View3d" data-uid="Reportman.Reporting.ChartItem.View3d">View3d</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool View3d { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_View3dWalls_" data-uid="Reportman.Reporting.ChartItem.View3dWalls*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_View3dWalls" data-uid="Reportman.Reporting.ChartItem.View3dWalls">View3dWalls</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool View3dWalls { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Zoom_" data-uid="Reportman.Reporting.ChartItem.Zoom*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Zoom" data-uid="Reportman.Reporting.ChartItem.Zoom">Zoom</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Zoom { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_ChartItem_CheckValueCondition_" data-uid="Reportman.Reporting.ChartItem.CheckValueCondition*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_CheckValueCondition" data-uid="Reportman.Reporting.ChartItem.CheckValueCondition">CheckValueCondition()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool CheckValueCondition()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_Clear_" data-uid="Reportman.Reporting.ChartItem.Clear*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_Clear" data-uid="Reportman.Reporting.ChartItem.Clear">Clear()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_ChartItem_DoPrint_" data-uid="Reportman.Reporting.ChartItem.DoPrint*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_DoPrint_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__" data-uid="Reportman.Reporting.ChartItem.DoPrint(Reportman.Drawing.PrintOut,System.Int32,System.Int32,System.Int32,System.Int32,Reportman.Drawing.MetaFile,System.Drawing.Point,System.Boolean@)">DoPrint(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</h4>
+  <div class="markdown level1 summary"><p>This procedure will print the item into the MetaFile, internal implementation</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void DoPrint(PrintOut adriver, int aposx, int aposy, int newwidth, int newheight, MetaFile metafile, Point MaxExtent, ref bool PartialPrint)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td><p>Report processing driver</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposx</span></td>
+        <td><p>Horizontal position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposy</span></td>
+        <td><p>Vertical position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newwidth</span></td>
+        <td><p>Width of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newheight</span></td>
+        <td><p>Height of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></td>
+        <td><span class="parametername">metafile</span></td>
+        <td><p>Destination MetaFile</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td><p>Maximum extension</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">PartialPrint</span></td>
+        <td><p>Returns true if some text will expand multiple pages</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoPrint_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__">PrintItem.DoPrint(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</a></div>
+
+
+  <a id="Reportman_Reporting_ChartItem_EvaluateChangeSerieExpression_" data-uid="Reportman.Reporting.ChartItem.EvaluateChangeSerieExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_EvaluateChangeSerieExpression" data-uid="Reportman.Reporting.ChartItem.EvaluateChangeSerieExpression">EvaluateChangeSerieExpression()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool EvaluateChangeSerieExpression()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_EvaluateClearExpression_" data-uid="Reportman.Reporting.ChartItem.EvaluateClearExpression*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_EvaluateClearExpression" data-uid="Reportman.Reporting.ChartItem.EvaluateClearExpression">EvaluateClearExpression()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void EvaluateClearExpression()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_ChartItem_EvaluateSerieCaption_" data-uid="Reportman.Reporting.ChartItem.EvaluateSerieCaption*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_EvaluateSerieCaption" data-uid="Reportman.Reporting.ChartItem.EvaluateSerieCaption">EvaluateSerieCaption()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Variant EvaluateSerieCaption()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_GetClassName_" data-uid="Reportman.Reporting.ChartItem.GetClassName*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_GetClassName" data-uid="Reportman.Reporting.ChartItem.GetClassName">GetClassName()</h4>
+  <div class="markdown level1 summary"><p>Internal function to determine the object type name</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override string GetClassName()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><p>Object type name</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_GetClassName">ReportItem.GetClassName()</a></div>
+
+
+  <a id="Reportman_Reporting_ChartItem_GraphicBounds_" data-uid="Reportman.Reporting.ChartItem.GraphicBounds*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_GraphicBounds_System_Boolean_System_Boolean_System_Double_System_Double_System_Boolean_System_Double_System_Boolean_" data-uid="Reportman.Reporting.ChartItem.GraphicBounds(System.Boolean,System.Boolean,System.Double,System.Double,System.Boolean,System.Double,System.Boolean)">GraphicBounds(bool, bool, double, double, bool, double, bool)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GraphicBounds(bool autol, bool autoh, double lvalue, double hvalue, bool logaritmic, double logBase, bool inverted)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">autol</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">autoh</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">lvalue</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">hvalue</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">logaritmic</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">logBase</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">inverted</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_GraphicColor_" data-uid="Reportman.Reporting.ChartItem.GraphicColor*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_GraphicColor_System_Int32_" data-uid="Reportman.Reporting.ChartItem.GraphicColor(System.Int32)">GraphicColor(int)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GraphicColor(int newcolor)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newcolor</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_GraphicSerieColor_" data-uid="Reportman.Reporting.ChartItem.GraphicSerieColor*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_GraphicSerieColor_System_Int32_" data-uid="Reportman.Reporting.ChartItem.GraphicSerieColor(System.Int32)">GraphicSerieColor(int)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GraphicSerieColor(int newcolor)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newcolor</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_NewFunction_" data-uid="Reportman.Reporting.ChartItem.NewFunction*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_NewFunction_System_String_System_String_System_String_" data-uid="Reportman.Reporting.ChartItem.NewFunction(System.String,System.String,System.String)">NewFunction(string, string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void NewFunction(string functionName, string functionParams, string serieCaption)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">functionName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">functionParams</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">serieCaption</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_NewValue_" data-uid="Reportman.Reporting.ChartItem.NewValue*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_NewValue_System_Double_System_Boolean_System_String_System_String_" data-uid="Reportman.Reporting.ChartItem.NewValue(System.Double,System.Boolean,System.String,System.String)">NewValue(double, bool, string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void NewValue(double newvalue, bool seriechange, string valuecaption, string seriecaption)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">newvalue</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">seriechange</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">valuecaption</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">seriecaption</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_NewValueXY_" data-uid="Reportman.Reporting.ChartItem.NewValueXY*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_NewValueXY_System_Object_System_Double_System_Boolean_System_String_System_String_" data-uid="Reportman.Reporting.ChartItem.NewValueXY(System.Object,System.Double,System.Boolean,System.String,System.String)">NewValueXY(object, double, bool, string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void NewValueXY(object newvalueX, double newvalue, bool seriechange, string valuecaption, string seriecaption)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">newvalueX</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">newvalue</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">seriechange</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">valuecaption</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">seriecaption</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ChartItem_SetReport_" data-uid="Reportman.Reporting.ChartItem.SetReport*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_SetReport_Reportman_Reporting_BaseReport_" data-uid="Reportman.Reporting.ChartItem.SetReport(Reportman.Reporting.BaseReport)">SetReport(BaseReport)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SetReport(BaseReport rp)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.BaseReport.html">BaseReport</a></td>
+        <td><span class="parametername">rp</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_SetReport_Reportman_Reporting_BaseReport_">ReportItem.SetReport(BaseReport)</a></div>
+
+
+  <a id="Reportman_Reporting_ChartItem_SubReportChanged_" data-uid="Reportman.Reporting.ChartItem.SubReportChanged*"></a>
+  <h4 id="Reportman_Reporting_ChartItem_SubReportChanged_Reportman_Reporting_SubReportEvent_System_String_" data-uid="Reportman.Reporting.ChartItem.SubReportChanged(Reportman.Reporting.SubReportEvent,System.String)">SubReportChanged(SubReportEvent, string)</h4>
+  <div class="markdown level1 summary"><p>This event is generated while report is processing to allow the report items to update contents</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SubReportChanged(SubReportEvent newstate, string newgroup)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SubReportEvent.html">SubReportEvent</a></td>
+        <td><span class="parametername">newstate</span></td>
+        <td><p>New state for the subreport</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">newgroup</span></td>
+        <td><p>New group if apply</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SubReportChanged_Reportman_Reporting_SubReportEvent_System_String_">PrintItem.SubReportChanged(SubReportEvent, string)</a></div>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

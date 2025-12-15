@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class PrintItem | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class PrintItem | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Basic class providing more basic functionality this item provides printing capability and some events">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.PrintItem">
+
+
+
+  <h1 id="Reportman_Reporting_PrintItem" data-uid="Reportman.Reporting.PrintItem" class="text-break">Class PrintItem</h1>
+  <div class="markdown level0 summary"><p>Basic class providing more basic functionality this item provides printing capability and some events</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="Reportman.Reporting.ReportItem.html">ReportItem</a></div>
+    <div class="level2"><span class="xref">PrintItem</span></div>
+      <div class="level3"><a class="xref" href="Reportman.Reporting.PrintPosItem.html">PrintPosItem</a></div>
+      <div class="level3"><a class="xref" href="Reportman.Reporting.Section.html">Section</a></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_SetReport_Reportman_Reporting_BaseReport_">ReportItem.SetReport(BaseReport)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_GetClassName">ReportItem.GetClassName()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Dispose">ReportItem.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Name">ReportItem.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Report">ReportItem.Report</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_ClassName">ReportItem.ClassName</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_PrintItem_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class PrintItem : ReportItem, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_PrintItem__ctor_" data-uid="Reportman.Reporting.PrintItem.#ctor*"></a>
+  <h4 id="Reportman_Reporting_PrintItem__ctor" data-uid="Reportman.Reporting.PrintItem.#ctor">PrintItem()</h4>
+  <div class="markdown level1 summary"><p>Constructor</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrintItem()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_LastExtent" data-uid="Reportman.Reporting.PrintItem.LastExtent">LastExtent</h4>
+  <div class="markdown level1 summary"><p>Last calculated extent at runtime, while processing the report</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Point LastExtent</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_PrintHeight" data-uid="Reportman.Reporting.PrintItem.PrintHeight">PrintHeight</h4>
+  <div class="markdown level1 summary"><p>Height in twips of the printable item, variable at runtime</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int PrintHeight</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_PrintWidth" data-uid="Reportman.Reporting.PrintItem.PrintWidth">PrintWidth</h4>
+  <div class="markdown level1 summary"><p>Width in twips of the printable item, variable at runtime</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int PrintWidth</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_SelectionIndex" data-uid="Reportman.Reporting.PrintItem.SelectionIndex">SelectionIndex</h4>
+  <div class="markdown level1 summary"><p>Selecction index</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int SelectionIndex</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_SelectionRectangle" data-uid="Reportman.Reporting.PrintItem.SelectionRectangle">SelectionRectangle</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Rectangle SelectionRectangle</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.rectangle">Rectangle</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_PrintItem_Visible" data-uid="Reportman.Reporting.PrintItem.Visible">Visible</h4>
+  <div class="markdown level1 summary"><p>Visible will determine if the item must be shown at design time</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Visible</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_PrintItem_DoAfterPrint_" data-uid="Reportman.Reporting.PrintItem.DoAfterPrint*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_DoAfterPrint" data-uid="Reportman.Reporting.PrintItem.DoAfterPrint">DoAfterPrint</h4>
+  <div class="markdown level1 summary"><p>Expression evaluated after printing the item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DoAfterPrint { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_DoBeforePrint_" data-uid="Reportman.Reporting.PrintItem.DoBeforePrint*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_DoBeforePrint" data-uid="Reportman.Reporting.PrintItem.DoBeforePrint">DoBeforePrint</h4>
+  <div class="markdown level1 summary"><p>Expression evaluated before printing the item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DoBeforePrint { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_Height_" data-uid="Reportman.Reporting.PrintItem.Height*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_Height" data-uid="Reportman.Reporting.PrintItem.Height">Height</h4>
+  <div class="markdown level1 summary"><p>Height in twips of the printable item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Height { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_PrintCondition_" data-uid="Reportman.Reporting.PrintItem.PrintCondition*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_PrintCondition" data-uid="Reportman.Reporting.PrintItem.PrintCondition">PrintCondition</h4>
+  <div class="markdown level1 summary"><p>When this property is not empty, it will be evaluated by the reporting engine,
+if the result is false, the item will not print</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string PrintCondition { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_Width_" data-uid="Reportman.Reporting.PrintItem.Width*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_Width" data-uid="Reportman.Reporting.PrintItem.Width">Width</h4>
+  <div class="markdown level1 summary"><p>Width in twips of the printable item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Width { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_PrintItem_DoPrint_" data-uid="Reportman.Reporting.PrintItem.DoPrint*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_DoPrint_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__" data-uid="Reportman.Reporting.PrintItem.DoPrint(Reportman.Drawing.PrintOut,System.Int32,System.Int32,System.Int32,System.Int32,Reportman.Drawing.MetaFile,System.Drawing.Point,System.Boolean@)">DoPrint(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</h4>
+  <div class="markdown level1 summary"><p>This procedure will print the item into the MetaFile, internal implementation</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual void DoPrint(PrintOut adriver, int aposx, int aposy, int newwidth, int newheight, MetaFile metafile, Point MaxExtent, ref bool PartialPrint)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td><p>Report processing driver</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposx</span></td>
+        <td><p>Horizontal position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposy</span></td>
+        <td><p>Vertical position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newwidth</span></td>
+        <td><p>Width of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newheight</span></td>
+        <td><p>Height of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></td>
+        <td><span class="parametername">metafile</span></td>
+        <td><p>Destination MetaFile</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td><p>Maximum extension</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">PartialPrint</span></td>
+        <td><p>Returns true if some text will expand multiple pages</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_EvaluatePrintCondition_" data-uid="Reportman.Reporting.PrintItem.EvaluatePrintCondition*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_EvaluatePrintCondition" data-uid="Reportman.Reporting.PrintItem.EvaluatePrintCondition">EvaluatePrintCondition()</h4>
+  <div class="markdown level1 summary"><p>Print</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool EvaluatePrintCondition()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the print condition is empty or evaluated to true</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_ExecuteAfterPrint_" data-uid="Reportman.Reporting.PrintItem.ExecuteAfterPrint*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_ExecuteAfterPrint" data-uid="Reportman.Reporting.PrintItem.ExecuteAfterPrint">ExecuteAfterPrint()</h4>
+  <div class="markdown level1 summary"><p>Internal implementation for actions to do after printing the item, in this base class
+the DoAfterPrint expression will be evaluated</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void ExecuteAfterPrint()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_PrintItem_ExecuteBeforePrint_" data-uid="Reportman.Reporting.PrintItem.ExecuteBeforePrint*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_ExecuteBeforePrint" data-uid="Reportman.Reporting.PrintItem.ExecuteBeforePrint">ExecuteBeforePrint()</h4>
+  <div class="markdown level1 summary"><p>Internal implementation for actions to do before printing the item, in this base class
+the DoBeforePrint expression will be evaluated</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void ExecuteBeforePrint()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_PrintItem_GetExtension_" data-uid="Reportman.Reporting.PrintItem.GetExtension*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_GetExtension_Reportman_Drawing_PrintOut_System_Drawing_Point_System_Boolean_" data-uid="Reportman.Reporting.PrintItem.GetExtension(Reportman.Drawing.PrintOut,System.Drawing.Point,System.Boolean)">GetExtension(PrintOut, Point, bool)</h4>
+  <div class="markdown level1 summary"><p>This procedure will return the current size of the printed item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Point GetExtension(PrintOut adriver, Point MaxExtent, bool ForcePartial)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td><p>Report processing driver</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td><p>Maximum extension</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">ForcePartial</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_Print_" data-uid="Reportman.Reporting.PrintItem.Print*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_Print_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__" data-uid="Reportman.Reporting.PrintItem.Print(Reportman.Drawing.PrintOut,System.Int32,System.Int32,System.Int32,System.Int32,Reportman.Drawing.MetaFile,System.Drawing.Point,System.Boolean@)">Print(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</h4>
+  <div class="markdown level1 summary"><p>This procedure will print the item into the MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Print(PrintOut adriver, int aposx, int aposy, int newwidth, int newheight, MetaFile metafile, Point MaxExtent, ref bool PartialPrint)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td><p>Report processing driver</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposx</span></td>
+        <td><p>Horizontal position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposy</span></td>
+        <td><p>Vertical position in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newwidth</span></td>
+        <td><p>Width of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newheight</span></td>
+        <td><p>Height of the bounding box in twips</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></td>
+        <td><span class="parametername">metafile</span></td>
+        <td><p>Destination MetaFile</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td><p>Maximum extension</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">PartialPrint</span></td>
+        <td><p>Returns true if some text will expand multiple pages</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_PrintItem_SubReportChanged_" data-uid="Reportman.Reporting.PrintItem.SubReportChanged*"></a>
+  <h4 id="Reportman_Reporting_PrintItem_SubReportChanged_Reportman_Reporting_SubReportEvent_System_String_" data-uid="Reportman.Reporting.PrintItem.SubReportChanged(Reportman.Reporting.SubReportEvent,System.String)">SubReportChanged(SubReportEvent, string)</h4>
+  <div class="markdown level1 summary"><p>This event is generated while report is processing to allow the report items to update contents</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual void SubReportChanged(SubReportEvent newstate, string newgroup)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SubReportEvent.html">SubReportEvent</a></td>
+        <td><span class="parametername">newstate</span></td>
+        <td><p>New state for the subreport</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">newgroup</span></td>
+        <td><p>New group if apply</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

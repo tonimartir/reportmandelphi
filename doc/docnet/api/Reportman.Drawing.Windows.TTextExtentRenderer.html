@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class TTextExtentRenderer | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class TTextExtentRenderer | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer">
+
+
+
+  <h1 id="Reportman_Drawing_Windows_TTextExtentRenderer" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer" class="text-break">Class TTextExtentRenderer</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">DisposeBase</span></div>
+    <div class="level2"><span class="xref">CallbackBase</span></div>
+    <div class="level3"><span class="xref">TextRendererBase</span></div>
+    <div class="level4"><span class="xref">TTextExtentRenderer</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><span class="xref">TextRenderer</span></div>
+    <div><span class="xref">PixelSnapping</span></div>
+    <div><span class="xref">IUnknown</span></div>
+    <div><span class="xref">ICallbackable</span></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">CallbackBase.Dispose(bool)</a>
+    </div>
+    <div>
+      <span class="xref">CallbackBase.AddReference()</span>
+    </div>
+    <div>
+      <span class="xref">CallbackBase.Release()</span>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">CallbackBase.QueryInterface(ref Guid, out nint)</a>
+    </div>
+    <div>
+      <span class="xref">DisposeBase.Dispose()</span>
+    </div>
+    <div>
+      <span class="xref">DisposeBase.IsDisposed</span>
+    </div>
+    <div>
+      <span class="xref">DisposeBase.Disposing</span>
+    </div>
+    <div>
+      <span class="xref">DisposeBase.Disposed</span>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Drawing.html">Drawing</a>.<a class="xref" href="Reportman.Drawing.Windows.html">Windows</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Drawing.Windows.dll</h6>
+  <h5 id="Reportman_Drawing_Windows_TTextExtentRenderer_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class TTextExtentRenderer : TextRendererBase, TextRenderer, PixelSnapping, IUnknown, ICallbackable, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer__ctor_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.#ctor*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer__ctor_System_String_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.#ctor(System.String)">TTextExtentRenderer(string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TTextExtentRenderer(string originalText)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">originalText</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer__fontFace" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer._fontFace">_fontFace</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FontFace _fontFace</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">FontFace</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GlyphPositions_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GlyphPositions*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GlyphPositions" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GlyphPositions">GlyphPositions</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;TGlyphPos&gt; GlyphPositions { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.TGlyphPos.html">TGlyphPos</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_Lines_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.Lines*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_Lines" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.Lines">Lines</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;TGlyphLine&gt; Lines { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.Windows.TGlyphLine.html">TGlyphLine</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawGlyphRun_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawGlyphRun*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawGlyphRun_System_Object_System_Single_System_Single_SharpDX_Direct2D1_MeasuringMode_SharpDX_DirectWrite_GlyphRun_SharpDX_DirectWrite_GlyphRunDescription_SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawGlyphRun(System.Object,System.Single,System.Single,SharpDX.Direct2D1.MeasuringMode,SharpDX.DirectWrite.GlyphRun,SharpDX.DirectWrite.GlyphRunDescription,SharpDX.ComObject)">DrawGlyphRun(object, float, float, MeasuringMode, GlyphRun, GlyphRunDescription, ComObject)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Result DrawGlyphRun(object clientDrawingContext, float baselineOriginX, float baselineOriginY, MeasuringMode measuringMode, GlyphRun glyphRun, GlyphRunDescription glyphRunDescription, ComObject clientDrawingEffect)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginX</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginY</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">MeasuringMode</span></td>
+        <td><span class="parametername">measuringMode</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">GlyphRun</span></td>
+        <td><span class="parametername">glyphRun</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">GlyphRunDescription</span></td>
+        <td><span class="parametername">glyphRunDescription</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">ComObject</span></td>
+        <td><span class="parametername">clientDrawingEffect</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">Result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawGlyphRun(object, float, float, MeasuringMode, GlyphRun, GlyphRunDescription, ComObject)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawInlineObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawInlineObject*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawInlineObject_System_Object_System_Single_System_Single_SharpDX_DirectWrite_InlineObject_System_Boolean_System_Boolean_SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawInlineObject(System.Object,System.Single,System.Single,SharpDX.DirectWrite.InlineObject,System.Boolean,System.Boolean,SharpDX.ComObject)">DrawInlineObject(object, float, float, InlineObject, bool, bool, ComObject)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Result DrawInlineObject(object clientDrawingContext, float originX, float originY, InlineObject inlineObject, bool isSideways, bool isRightToLeft, ComObject clientDrawingEffect)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">originX</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">originY</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">InlineObject</span></td>
+        <td><span class="parametername">inlineObject</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">isSideways</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">isRightToLeft</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">ComObject</span></td>
+        <td><span class="parametername">clientDrawingEffect</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">Result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawInlineObject(object, float, float, InlineObject, bool, bool, ComObject)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawStrikethrough_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawStrikethrough*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawStrikethrough_System_Object_System_Single_System_Single_SharpDX_DirectWrite_Strikethrough__SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawStrikethrough(System.Object,System.Single,System.Single,SharpDX.DirectWrite.Strikethrough@,SharpDX.ComObject)">DrawStrikethrough(object, float, float, ref Strikethrough, ComObject)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Result DrawStrikethrough(object clientDrawingContext, float baselineOriginX, float baselineOriginY, ref Strikethrough strikethrough, ComObject clientDrawingEffect)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginX</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginY</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">Strikethrough</span></td>
+        <td><span class="parametername">strikethrough</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">ComObject</span></td>
+        <td><span class="parametername">clientDrawingEffect</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">Result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawStrikethrough(object, float, float, ref Strikethrough, ComObject)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawUnderline_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawUnderline*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawUnderline_System_Object_System_Single_System_Single_SharpDX_DirectWrite_Underline__SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawUnderline(System.Object,System.Single,System.Single,SharpDX.DirectWrite.Underline@,SharpDX.ComObject)">DrawUnderline(object, float, float, ref Underline, ComObject)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Result DrawUnderline(object clientDrawingContext, float baselineOriginX, float baselineOriginY, ref Underline underline, ComObject clientDrawingEffect)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginX</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td><span class="parametername">baselineOriginY</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">Underline</span></td>
+        <td><span class="parametername">underline</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">ComObject</span></td>
+        <td><span class="parametername">clientDrawingEffect</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">Result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawUnderline(object, float, float, ref Underline, ComObject)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GetCurrentTransform_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetCurrentTransform*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GetCurrentTransform_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetCurrentTransform(System.Object)">GetCurrentTransform(object)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override RawMatrix3x2 GetCurrentTransform(object clientDrawingContext)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">RawMatrix3x2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.GetCurrentTransform(object)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GetPixelsPerDip_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetPixelsPerDip*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GetPixelsPerDip_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetPixelsPerDip(System.Object)">GetPixelsPerDip(object)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override float GetPixelsPerDip(object clientDrawingContext)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.GetPixelsPerDip(object)</a></div>
+
+
+  <a id="Reportman_Drawing_Windows_TTextExtentRenderer_IsPixelSnappingDisabled_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.IsPixelSnappingDisabled*"></a>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_IsPixelSnappingDisabled_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.IsPixelSnappingDisabled(System.Object)">IsPixelSnappingDisabled(object)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool IsPixelSnappingDisabled(object clientDrawingContext)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">clientDrawingContext</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.IsPixelSnappingDisabled(object)</a></div>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <span class="xref">SharpDX.DirectWrite.TextRenderer</span>
+  </div>
+  <div>
+      <span class="xref">SharpDX.DirectWrite.PixelSnapping</span>
+  </div>
+  <div>
+      <span class="xref">SharpDX.IUnknown</span>
+  </div>
+  <div>
+      <span class="xref">SharpDX.ICallbackable</span>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,2380 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class MetaFile | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class MetaFile | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Class used engine to read/write metafiles.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Drawing.MetaFile">
+
+
+
+  <h1 id="Reportman_Drawing_MetaFile" data-uid="Reportman.Drawing.MetaFile" class="text-break">Class MetaFile</h1>
+  <div class="markdown level0 summary"><p>Class used engine to read/write metafiles.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">MetaFile</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Drawing.html">Drawing</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Drawing.dll</h6>
+  <h5 id="Reportman_Drawing_MetaFile_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class MetaFile : IDisposable, ICloneable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Drawing_MetaFile__ctor_" data-uid="Reportman.Drawing.MetaFile.#ctor*"></a>
+  <h4 id="Reportman_Drawing_MetaFile__ctor" data-uid="Reportman.Drawing.MetaFile.#ctor">MetaFile()</h4>
+  <div class="markdown level1 summary"><p>Constructor</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MetaFile()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignBottom" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignBottom">AlignmentFlags_AlignBottom</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignBottom = 16</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignHCenter" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignHCenter">AlignmentFlags_AlignHCenter</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignHCenter = 4</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignHJustify" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignHJustify">AlignmentFlags_AlignHJustify</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignHJustify = 1024</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignLeft" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignLeft">AlignmentFlags_AlignLeft</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignLeft = 1</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignRight" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignRight">AlignmentFlags_AlignRight</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignRight = 2</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_AlignVCenter" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_AlignVCenter">AlignmentFlags_AlignVCenter</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_AlignVCenter = 32</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AlignmentFlags_SingleLine" data-uid="Reportman.Drawing.MetaFile.AlignmentFlags_SingleLine">AlignmentFlags_SingleLine</h4>
+  <div class="markdown level1 summary"><p>Constant used for storing all alignment information into a single integer value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int AlignmentFlags_SingleLine = 64</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AsyncReading" data-uid="Reportman.Drawing.MetaFile.AsyncReading">AsyncReading</h4>
+  <div class="markdown level1 summary"><p>If set to true, the MetaFile will be read asynchronously</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AsyncReading</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_AutoScale" data-uid="Reportman.Drawing.MetaFile.AutoScale">AutoScale</h4>
+  <div class="markdown level1 summary"><p>Default scale type when previewing the MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AutoScaleType AutoScale</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.AutoScaleType.html">AutoScaleType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_BackColor" data-uid="Reportman.Drawing.MetaFile.BackColor">BackColor</h4>
+  <div class="markdown level1 summary"><p>Default page back color</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BackColor</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_CollateCopies" data-uid="Reportman.Drawing.MetaFile.CollateCopies">CollateCopies</h4>
+  <div class="markdown level1 summary"><p>Default collate copies setting</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool CollateCopies</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_Copies" data-uid="Reportman.Drawing.MetaFile.Copies">Copies</h4>
+  <div class="markdown level1 summary"><p>Default number of copies to print</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Copies</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_CurrentPage" data-uid="Reportman.Drawing.MetaFile.CurrentPage">CurrentPage</h4>
+  <div class="markdown level1 summary"><p>Current page index, page being processed actually, the report can be processed asynchronously</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CurrentPage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_CustomX" data-uid="Reportman.Drawing.MetaFile.CustomX">CustomX</h4>
+  <div class="markdown level1 summary"><p>Width in twips of the page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CustomX</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_CustomY" data-uid="Reportman.Drawing.MetaFile.CustomY">CustomY</h4>
+  <div class="markdown level1 summary"><p>Height in twips of the page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CustomY</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocAuthor" data-uid="Reportman.Drawing.MetaFile.DocAuthor">DocAuthor</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocAuthor</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocCreationDate" data-uid="Reportman.Drawing.MetaFile.DocCreationDate">DocCreationDate</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocCreationDate</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocCreator" data-uid="Reportman.Drawing.MetaFile.DocCreator">DocCreator</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocCreator</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocKeywords" data-uid="Reportman.Drawing.MetaFile.DocKeywords">DocKeywords</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocKeywords</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocModificationDate" data-uid="Reportman.Drawing.MetaFile.DocModificationDate">DocModificationDate</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocModificationDate</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocProducer" data-uid="Reportman.Drawing.MetaFile.DocProducer">DocProducer</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocProducer</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocSubject" data-uid="Reportman.Drawing.MetaFile.DocSubject">DocSubject</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocSubject</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocTitle" data-uid="Reportman.Drawing.MetaFile.DocTitle">DocTitle</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocTitle</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_DocXMPContent" data-uid="Reportman.Drawing.MetaFile.DocXMPContent">DocXMPContent</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DocXMPContent</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_Duplex" data-uid="Reportman.Drawing.MetaFile.Duplex">Duplex</h4>
+  <div class="markdown level1 summary"><p>Default duplex setting</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte Duplex</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_EmbeddedFiles" data-uid="Reportman.Drawing.MetaFile.EmbeddedFiles">EmbeddedFiles</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;EmbeddedFile&gt; EmbeddedFiles</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.EmbeddedFile.html">EmbeddedFile</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_Empty" data-uid="Reportman.Drawing.MetaFile.Empty">Empty</h4>
+  <div class="markdown level1 summary"><p>Flag available for information of metafile status, default false, empty.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Empty</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_ForwardOnly" data-uid="Reportman.Drawing.MetaFile.ForwardOnly">ForwardOnly</h4>
+  <div class="markdown level1 summary"><p>ForwardOnly is set to true when there is no need to store processed pages in memory
+that is usable for long reports with lot of pages that are printet directly to printer so
+the memory consumption is minimized</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ForwardOnly</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_LinesPerInch" data-uid="Reportman.Drawing.MetaFile.LinesPerInch">LinesPerInch</h4>
+  <div class="markdown level1 summary"><p>Default lines per inch in the page, have sense only when printing to Pos devices</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public short LinesPerInch</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_MAX_NUMBER_PAGES" data-uid="Reportman.Drawing.MetaFile.MAX_NUMBER_PAGES">MAX_NUMBER_PAGES</h4>
+  <div class="markdown level1 summary"><p>Maximum number of pages that can contain a MetaFile (32000)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int MAX_NUMBER_PAGES = 32000</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OpenDrawerAfter" data-uid="Reportman.Drawing.MetaFile.OpenDrawerAfter">OpenDrawerAfter</h4>
+  <div class="markdown level1 summary"><p>True if the program should open the Pos drawer after printing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool OpenDrawerAfter</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OpenDrawerBefore" data-uid="Reportman.Drawing.MetaFile.OpenDrawerBefore">OpenDrawerBefore</h4>
+  <div class="markdown level1 summary"><p>True if the program should open the Pos drawer before printing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool OpenDrawerBefore</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_Orientation" data-uid="Reportman.Drawing.MetaFile.Orientation">Orientation</h4>
+  <div class="markdown level1 summary"><p>Page orientation</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public OrientationType Orientation</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.OrientationType.html">OrientationType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PDFCompressed" data-uid="Reportman.Drawing.MetaFile.PDFCompressed">PDFCompressed</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool PDFCompressed</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PageSizeArray" data-uid="Reportman.Drawing.MetaFile.PageSizeArray">PageSizeArray</h4>
+  <div class="markdown level1 summary"><p>Array of page sizes</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static int[,] PageSizeArray</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>[,]</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PageSizeIndex" data-uid="Reportman.Drawing.MetaFile.PageSizeIndex">PageSizeIndex</h4>
+  <div class="markdown level1 summary"><p>Default page size index in PageSizeArray</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int PageSizeIndex</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_Pages" data-uid="Reportman.Drawing.MetaFile.Pages">Pages</h4>
+  <div class="markdown level1 summary"><p>Collection of pages</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MetaPages Pages</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaPages.html">MetaPages</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PaperSource" data-uid="Reportman.Drawing.MetaFile.PaperSource">PaperSource</h4>
+  <div class="markdown level1 summary"><p>Default paper source, this integer value is understandable by the print driver</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int PaperSource</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PreviewAbout" data-uid="Reportman.Drawing.MetaFile.PreviewAbout">PreviewAbout</h4>
+  <div class="markdown level1 summary"><p>True if the about box in preview window should be visible</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool PreviewAbout</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PreviewMargins" data-uid="Reportman.Drawing.MetaFile.PreviewMargins">PreviewMargins</h4>
+  <div class="markdown level1 summary"><p>True if the hard margins should be visible in preview</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool PreviewMargins</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PreviewWindow" data-uid="Reportman.Drawing.MetaFile.PreviewWindow">PreviewWindow</h4>
+  <div class="markdown level1 summary"><p>Default window size when previewing the MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PreviewWindowStyleType PreviewWindow</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PreviewWindowStyleType.html">PreviewWindowStyleType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PrinterFonts" data-uid="Reportman.Drawing.MetaFile.PrinterFonts">PrinterFonts</h4>
+  <div class="markdown level1 summary"><p>Default printer fonts selection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrinterFontsType PrinterFonts</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrinterFontsType.html">PrinterFontsType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_PrinterSelect" data-uid="Reportman.Drawing.MetaFile.PrinterSelect">PrinterSelect</h4>
+  <div class="markdown level1 summary"><p>Printer to select when printing the MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrinterSelectType PrinterSelect</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrinterSelectType.html">PrinterSelectType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Drawing_MetaFile_Finished_" data-uid="Reportman.Drawing.MetaFile.Finished*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Finished" data-uid="Reportman.Drawing.MetaFile.Finished">Finished</h4>
+  <div class="markdown level1 summary"><p>Indicates if the MetaFile processing have been finished, the report processing can
+be done asynchronously</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Finished { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_PDFConformance_" data-uid="Reportman.Drawing.MetaFile.PDFConformance*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_PDFConformance" data-uid="Reportman.Drawing.MetaFile.PDFConformance">PDFConformance</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PDFConformanceType PDFConformance { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PDFConformanceType.html">PDFConformanceType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Reading_" data-uid="Reportman.Drawing.MetaFile.Reading*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Reading" data-uid="Reportman.Drawing.MetaFile.Reading">Reading</h4>
+  <div class="markdown level1 summary"><p>Indicates if the MetaFile is still reading from original stream, the report reading can
+be done asynchronously, so you can show the first page while receiving the other pages using a
+low bandwidth connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Reading { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_SharedStream_" data-uid="Reportman.Drawing.MetaFile.SharedStream*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_SharedStream" data-uid="Reportman.Drawing.MetaFile.SharedStream">SharedStream</h4>
+  <div class="markdown level1 summary"><p>Stream used to save image streams shared between multiple pages</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MemoryStream SharedStream { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Version_" data-uid="Reportman.Drawing.MetaFile.Version*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Version" data-uid="Reportman.Drawing.MetaFile.Version">Version</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MetaFile.MetaFileVersion Version { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a>.<a class="xref" href="Reportman.Drawing.MetaFile.MetaFileVersion.html">MetaFileVersion</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Drawing_MetaFile_AddMetaFiles_" data-uid="Reportman.Drawing.MetaFile.AddMetaFiles*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_AddMetaFiles_System_Collections_Generic_List_Reportman_Drawing_MetaFile__" data-uid="Reportman.Drawing.MetaFile.AddMetaFiles(System.Collections.Generic.List{Reportman.Drawing.MetaFile})">AddMetaFiles(List&lt;MetaFile&gt;)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddMetaFiles(List&lt;MetaFile&gt; nlist)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a>&gt;</td>
+        <td><span class="parametername">nlist</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_BeginPrint_" data-uid="Reportman.Drawing.MetaFile.BeginPrint*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_BeginPrint_Reportman_Drawing_PrintOut_" data-uid="Reportman.Drawing.MetaFile.BeginPrint(Reportman.Drawing.PrintOut)">BeginPrint(PrintOut)</h4>
+  <div class="markdown level1 summary"><p>Starts printing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void BeginPrint(PrintOut driver)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">driver</span></td>
+        <td><p>Report preocessing driver</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_CalcTextExtent_" data-uid="Reportman.Drawing.MetaFile.CalcTextExtent*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_CalcTextExtent_Reportman_Drawing_PrintOut_System_Drawing_Point_Reportman_Drawing_TextObjectStruct_" data-uid="Reportman.Drawing.MetaFile.CalcTextExtent(Reportman.Drawing.PrintOut,System.Drawing.Point,Reportman.Drawing.TextObjectStruct)">CalcTextExtent(PrintOut, Point, TextObjectStruct)</h4>
+  <div class="markdown level1 summary"><p>Calculates the extent of a text, given a output driver</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static int CalcTextExtent(PrintOut adriver, Point maxextent, TextObjectStruct objt)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td><p>Report processing driver</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">maxextent</span></td>
+        <td><p>Maximum extent</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.TextObjectStruct.html">TextObjectStruct</a></td>
+        <td><span class="parametername">objt</span></td>
+        <td><p>Text content and options like font, alignment</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><p>Returns the current text position if the text does not fit in the bounding box</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Clear_" data-uid="Reportman.Drawing.MetaFile.Clear*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Clear" data-uid="Reportman.Drawing.MetaFile.Clear">Clear()</h4>
+  <div class="markdown level1 summary"><p>Clear MetaFile, that is clear all pages and objects</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_Clone_" data-uid="Reportman.Drawing.MetaFile.Clone*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Clone" data-uid="Reportman.Drawing.MetaFile.Clone">Clone()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object Clone()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Dispose_" data-uid="Reportman.Drawing.MetaFile.Dispose*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Dispose" data-uid="Reportman.Drawing.MetaFile.Dispose">Dispose()</h4>
+  <div class="markdown level1 summary"><p>Free resources</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual void Dispose()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_DoSearch_" data-uid="Reportman.Drawing.MetaFile.DoSearch*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_DoSearch_System_String_" data-uid="Reportman.Drawing.MetaFile.DoSearch(System.String)">DoSearch(string)</h4>
+  <div class="markdown level1 summary"><p>Executes a word search in the metafile, a list of coincidences will be updated</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DoSearch(string svalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">svalue</span></td>
+        <td><p>String value to search in the entire MetaFile</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Finish_" data-uid="Reportman.Drawing.MetaFile.Finish*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Finish" data-uid="Reportman.Drawing.MetaFile.Finish">Finish()</h4>
+  <div class="markdown level1 summary"><p>Finish the report processing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Finish()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_LoadFromFile_" data-uid="Reportman.Drawing.MetaFile.LoadFromFile*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_LoadFromFile_System_String_" data-uid="Reportman.Drawing.MetaFile.LoadFromFile(System.String)">LoadFromFile(string)</h4>
+  <div class="markdown level1 summary"><p>Load the stream from a file</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void LoadFromFile(string filename)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">filename</span></td>
+        <td><p>File name to load</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_LoadFromStream_" data-uid="Reportman.Drawing.MetaFile.LoadFromStream*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_LoadFromStream_System_IO_Stream_System_Boolean_" data-uid="Reportman.Drawing.MetaFile.LoadFromStream(System.IO.Stream,System.Boolean)">LoadFromStream(Stream, bool)</h4>
+  <div class="markdown level1 summary"><p>Load a MetaFile from a stream</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void LoadFromStream(Stream astream, bool ClearFirst)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.stream">Stream</a></td>
+        <td><span class="parametername">astream</span></td>
+        <td><p>Source stream</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">ClearFirst</span></td>
+        <td><p>Set it to true to clear the MetaFile before reading</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_NewEmbeddedFile_" data-uid="Reportman.Drawing.MetaFile.NewEmbeddedFile*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_NewEmbeddedFile_System_String_System_String_Reportman_Drawing_PDFAFRelationShip_System_String_System_String_System_String_System_IO_MemoryStream_" data-uid="Reportman.Drawing.MetaFile.NewEmbeddedFile(System.String,System.String,Reportman.Drawing.PDFAFRelationShip,System.String,System.String,System.String,System.IO.MemoryStream)">NewEmbeddedFile(string, string, PDFAFRelationShip, string, string, string, MemoryStream)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void NewEmbeddedFile(string fileName, string mimeType, PDFAFRelationShip AFRelationShip, string description, string creationDate, string modificationDate, MemoryStream stream)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">fileName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">mimeType</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PDFAFRelationShip.html">PDFAFRelationShip</a></td>
+        <td><span class="parametername">AFRelationShip</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">description</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">creationDate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">modificationDate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td><span class="parametername">stream</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_NextPageFound_" data-uid="Reportman.Drawing.MetaFile.NextPageFound*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_NextPageFound_System_Int32_" data-uid="Reportman.Drawing.MetaFile.NextPageFound(System.Int32)">NextPageFound(int)</h4>
+  <div class="markdown level1 summary"><p>Returns the next page index where the last search occur</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int NextPageFound(int currpage)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">currpage</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_ObjectFound_" data-uid="Reportman.Drawing.MetaFile.ObjectFound*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_ObjectFound_Reportman_Drawing_MetaObject_" data-uid="Reportman.Drawing.MetaFile.ObjectFound(Reportman.Drawing.MetaObject)">ObjectFound(MetaObject)</h4>
+  <div class="markdown level1 summary"><p>Returns true if the object was found in the previous search</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ObjectFound(MetaObject aobject)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaObject.html">MetaObject</a></td>
+        <td><span class="parametername">aobject</span></td>
+        <td><p>MetaObject to search</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_ReadStringFromStream_" data-uid="Reportman.Drawing.MetaFile.ReadStringFromStream*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_ReadStringFromStream_System_IO_Stream_" data-uid="Reportman.Drawing.MetaFile.ReadStringFromStream(System.IO.Stream)">ReadStringFromStream(Stream)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ReadStringFromStream(Stream stream)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.stream">Stream</a></td>
+        <td><span class="parametername">stream</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_Release_" data-uid="Reportman.Drawing.MetaFile.Release*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_Release" data-uid="Reportman.Drawing.MetaFile.Release">Release()</h4>
+  <div class="markdown level1 summary"><p>Release resources</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Release()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_RequestPage_" data-uid="Reportman.Drawing.MetaFile.RequestPage*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_RequestPage_System_Int32_" data-uid="Reportman.Drawing.MetaFile.RequestPage(System.Int32)">RequestPage(int)</h4>
+  <div class="markdown level1 summary"><p>Wait until the page requested is already calculated</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool RequestPage(int pageindex)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">pageindex</span></td>
+        <td><p>Page index to wait for</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the page exists</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_SaveToFile_" data-uid="Reportman.Drawing.MetaFile.SaveToFile*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_SaveToFile_System_String_System_Boolean_" data-uid="Reportman.Drawing.MetaFile.SaveToFile(System.String,System.Boolean)">SaveToFile(string, bool)</h4>
+  <div class="markdown level1 summary"><p>Save the MetaFile to a file</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void SaveToFile(string filename, bool compressed)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">filename</span></td>
+        <td><p>File name</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">compressed</span></td>
+        <td><p>Set to true to compress the MetaFile</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_SaveToStream_" data-uid="Reportman.Drawing.MetaFile.SaveToStream*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_SaveToStream_System_IO_Stream_System_Boolean_" data-uid="Reportman.Drawing.MetaFile.SaveToStream(System.IO.Stream,System.Boolean)">SaveToStream(Stream, bool)</h4>
+  <div class="markdown level1 summary"><p>Save the MetaFile to a stream</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void SaveToStream(Stream astream, bool compressed)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.stream">Stream</a></td>
+        <td><span class="parametername">astream</span></td>
+        <td><p>Destination stream</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">compressed</span></td>
+        <td><p>Set it to true to compress the stream</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_StopWork_" data-uid="Reportman.Drawing.MetaFile.StopWork*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_StopWork" data-uid="Reportman.Drawing.MetaFile.StopWork">StopWork()</h4>
+  <div class="markdown level1 summary"><p>Forces stop of the asynchronous reading of MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void StopWork()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_UnFinish_" data-uid="Reportman.Drawing.MetaFile.UnFinish*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_UnFinish" data-uid="Reportman.Drawing.MetaFile.UnFinish">UnFinish()</h4>
+  <div class="markdown level1 summary"><p>Finish the report processing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void UnFinish()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_MetaFile_UpdateTotalPages_" data-uid="Reportman.Drawing.MetaFile.UpdateTotalPages*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_UpdateTotalPages_Reportman_Drawing_TotalPages_" data-uid="Reportman.Drawing.MetaFile.UpdateTotalPages(Reportman.Drawing.TotalPages)">UpdateTotalPages(TotalPages)</h4>
+  <div class="markdown level1 summary"><p>Updates all references to total pages to the total page count. This is useful to
+update the page count when concatenating MetaFiles</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void UpdateTotalPages(TotalPages alist)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.TotalPages.html">TotalPages</a></td>
+        <td><span class="parametername">alist</span></td>
+        <td><p>Total pages list</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_UpdateTotalPagesPCount_" data-uid="Reportman.Drawing.MetaFile.UpdateTotalPagesPCount*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_UpdateTotalPagesPCount_Reportman_Drawing_TotalPages_System_Int32_" data-uid="Reportman.Drawing.MetaFile.UpdateTotalPagesPCount(Reportman.Drawing.TotalPages,System.Int32)">UpdateTotalPagesPCount(TotalPages, int)</h4>
+  <div class="markdown level1 summary"><p>Updates all references to total pages to the total page count. This is useful to
+update the page count when concatenating MetaFiles</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void UpdateTotalPagesPCount(TotalPages alist, int pcount)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.TotalPages.html">TotalPages</a></td>
+        <td><span class="parametername">alist</span></td>
+        <td><p>Total pages list</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">pcount</span></td>
+        <td><p>Page count</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_WorkAsyncError_" data-uid="Reportman.Drawing.MetaFile.WorkAsyncError*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_WorkAsyncError_System_String_" data-uid="Reportman.Drawing.MetaFile.WorkAsyncError(System.String)">WorkAsyncError(string)</h4>
+  <div class="markdown level1 summary"><p>Fires a OnWorkAsyncError</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void WorkAsyncError(string message)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td><p>Error message</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_WorkProgress_" data-uid="Reportman.Drawing.MetaFile.WorkProgress*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_WorkProgress_System_Int32_System_Int32_System_Boolean__" data-uid="Reportman.Drawing.MetaFile.WorkProgress(System.Int32,System.Int32,System.Boolean@)">WorkProgress(int, int, ref bool)</h4>
+  <div class="markdown level1 summary"><p>Fires the event OnWorkProgress</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void WorkProgress(int records, int pagecount, ref bool docancel)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">records</span></td>
+        <td><p>Number of records processed</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">pagecount</span></td>
+        <td><p>Current page count</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">docancel</span></td>
+        <td><p>Set this reference variable to true to cancel report processing</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_MetaFile_WriteStringToStream_" data-uid="Reportman.Drawing.MetaFile.WriteStringToStream*"></a>
+  <h4 id="Reportman_Drawing_MetaFile_WriteStringToStream_System_String_System_IO_Stream_" data-uid="Reportman.Drawing.MetaFile.WriteStringToStream(System.String,System.IO.Stream)">WriteStringToStream(string, Stream)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void WriteStringToStream(string astring, Stream deststream)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">astring</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.stream">Stream</a></td>
+        <td><span class="parametername">deststream</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="events">Events
+</h3>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnBeginPrint" data-uid="Reportman.Drawing.MetaFile.OnBeginPrint">OnBeginPrint</h4>
+  <div class="markdown level1 summary"><p>Event to monitor when the printing starts</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event BeginPrintOut OnBeginPrint</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.BeginPrintOut.html">BeginPrintOut</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnLoadError" data-uid="Reportman.Drawing.MetaFile.OnLoadError">OnLoadError</h4>
+  <div class="markdown level1 summary"><p>Event to monitor error while loading a report</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaFileLoadError OnLoadError</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFileLoadError.html">MetaFileLoadError</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnLoadProgress" data-uid="Reportman.Drawing.MetaFile.OnLoadProgress">OnLoadProgress</h4>
+  <div class="markdown level1 summary"><p>Event to monitor loading of MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaFileLoadProgress OnLoadProgress</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFileLoadProgress.html">MetaFileLoadProgress</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnRelease" data-uid="Reportman.Drawing.MetaFile.OnRelease">OnRelease</h4>
+  <div class="markdown level1 summary"><p>Release resources (database connections if Report Active</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaStopWork OnRelease</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaStopWork.html">MetaStopWork</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnRequestPage" data-uid="Reportman.Drawing.MetaFile.OnRequestPage">OnRequestPage</h4>
+  <div class="markdown level1 summary"><p>Event to monitor when a page have been requested</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event RequestPageEvent OnRequestPage</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.RequestPageEvent.html">RequestPageEvent</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnSaveWorkProgress" data-uid="Reportman.Drawing.MetaFile.OnSaveWorkProgress">OnSaveWorkProgress</h4>
+  <div class="markdown level1 summary"><p>Event to monitor saving of MetaFile</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaFileSaveWorkProgress OnSaveWorkProgress</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFileSaveWorkProgress.html">MetaFileSaveWorkProgress</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnStopWork" data-uid="Reportman.Drawing.MetaFile.OnStopWork">OnStopWork</h4>
+  <div class="markdown level1 summary"><p>Event to monitor user cancels the work</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaStopWork OnStopWork</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaStopWork.html">MetaStopWork</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnWorkAsyncError" data-uid="Reportman.Drawing.MetaFile.OnWorkAsyncError">OnWorkAsyncError</h4>
+  <div class="markdown level1 summary"><p>Event to monitor error while processing the report</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaFileWorkAsyncError OnWorkAsyncError</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFileWorkAsyncError.html">MetaFileWorkAsyncError</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_MetaFile_OnWorkProgress" data-uid="Reportman.Drawing.MetaFile.OnWorkProgress">OnWorkProgress</h4>
+  <div class="markdown level1 summary"><p>Event to monitor report processing</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event MetaFileWorkProgress OnWorkProgress</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFileWorkProgress.html">MetaFileWorkProgress</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

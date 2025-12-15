@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class DatabaseInfo | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class DatabaseInfo | Reportman .Net Documentation ">
+    
+    <meta name="description" content="DatabaseInfo stores information about database connectivity, a Report have a collection of connection definitions. Each connection can use diferent connectivity technology (database providers).">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.DatabaseInfo">
+
+
+
+  <h1 id="Reportman_Reporting_DatabaseInfo" data-uid="Reportman.Reporting.DatabaseInfo" class="text-break">Class DatabaseInfo</h1>
+  <div class="markdown level0 summary"><p>DatabaseInfo stores information about database connectivity, a Report have a collection
+of connection definitions. Each connection can use diferent connectivity technology
+(database providers). <a class="xref" href="Reportman.Reporting.Variant.html">Report</a><a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfos</a></p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="Reportman.Reporting.ReportItem.html">ReportItem</a></div>
+    <div class="level2"><span class="xref">DatabaseInfo</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_SetReport_Reportman_Reporting_BaseReport_">ReportItem.SetReport(BaseReport)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Dispose">ReportItem.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Name">ReportItem.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Report">ReportItem.Report</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_ClassName">ReportItem.ClassName</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_DatabaseInfo_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class DatabaseInfo : ReportItem, IDisposable, ICloneable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo__ctor_" data-uid="Reportman.Reporting.DatabaseInfo.#ctor*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo__ctor" data-uid="Reportman.Reporting.DatabaseInfo.#ctor">DatabaseInfo()</h4>
+  <div class="markdown level1 summary"><p>Constructor</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DatabaseInfo()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_CustomProviderFactories" data-uid="Reportman.Reporting.DatabaseInfo.CustomProviderFactories">CustomProviderFactories</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static SortedList&lt;string, DbProviderFactory&gt; CustomProviderFactories</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.sortedlist-2">SortedList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbproviderfactory">DbProviderFactory</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_FIREBIRD_PROVIDER2" data-uid="Reportman.Reporting.DatabaseInfo.FIREBIRD_PROVIDER2">FIREBIRD_PROVIDER2</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static string FIREBIRD_PROVIDER2</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_MYSQL_PROVIDER" data-uid="Reportman.Reporting.DatabaseInfo.MYSQL_PROVIDER">MYSQL_PROVIDER</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static string MYSQL_PROVIDER</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_SQLITE_PROVIDER" data-uid="Reportman.Reporting.DatabaseInfo.SQLITE_PROVIDER">SQLITE_PROVIDER</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static string SQLITE_PROVIDER</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_SqlExecuter" data-uid="Reportman.Reporting.DatabaseInfo.SqlExecuter">SqlExecuter</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDbCommandExecuter SqlExecuter</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_TransIsolation" data-uid="Reportman.Reporting.DatabaseInfo.TransIsolation">TransIsolation</h4>
+  <div class="markdown level1 summary"><p>Default isolation level if a transaction have not assigned, all the querys related
+to this connection will run inside the same transaction</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IsolationLevel TransIsolation</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.isolationlevel">IsolationLevel</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_DatabaseInfo_Transaction" data-uid="Reportman.Reporting.DatabaseInfo.Transaction">Transaction</h4>
+  <div class="markdown level1 summary"><p>You can assign a transaction, so this transaction will be used instead a default created one</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDbTransaction Transaction</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbtransaction">IDbTransaction</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Alias_" data-uid="Reportman.Reporting.DatabaseInfo.Alias*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Alias" data-uid="Reportman.Reporting.DatabaseInfo.Alias">Alias</h4>
+  <div class="markdown level1 summary"><p>DatabaseInfo item name</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Alias { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Connection_" data-uid="Reportman.Reporting.DatabaseInfo.Connection*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Connection" data-uid="Reportman.Reporting.DatabaseInfo.Connection">Connection</h4>
+  <div class="markdown level1 summary"><p>You can assign a Connection, so this connection will be used, if you provide a connection,
+all the settings inside DatabaseInfo related to perform connection will be ignored and all
+querys will be executed against the provided connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonIgnore]
+[JsonIgnore]
+public IDbConnection Connection { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbconnection">IDbConnection</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ConnectionString_" data-uid="Reportman.Reporting.DatabaseInfo.ConnectionString*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ConnectionString" data-uid="Reportman.Reporting.DatabaseInfo.ConnectionString">ConnectionString</h4>
+  <div class="markdown level1 summary"><p>Connection string, for ADO and .Net drivers</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ConnectionString { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_CurrentTransaction_" data-uid="Reportman.Reporting.DatabaseInfo.CurrentTransaction*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_CurrentTransaction" data-uid="Reportman.Reporting.DatabaseInfo.CurrentTransaction">CurrentTransaction</h4>
+  <div class="markdown level1 summary"><p>Obtain current active transaction to execute querys</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonIgnore]
+[JsonIgnore]
+public IDbTransaction CurrentTransaction { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbtransaction">IDbTransaction</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_DotNetDriver_" data-uid="Reportman.Reporting.DatabaseInfo.DotNetDriver*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_DotNetDriver" data-uid="Reportman.Reporting.DatabaseInfo.DotNetDriver">DotNetDriver</h4>
+  <div class="markdown level1 summary"><p>DotNet driver type</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DotNetDriverType DotNetDriver { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.DotNetDriverType.html">DotNetDriverType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Driver_" data-uid="Reportman.Reporting.DatabaseInfo.Driver*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Driver" data-uid="Reportman.Reporting.DatabaseInfo.Driver">Driver</h4>
+  <div class="markdown level1 summary"><p>DatabaseInfo driver type</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DriverType Driver { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.DriverType.html">DriverType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ProviderFactory_" data-uid="Reportman.Reporting.DatabaseInfo.ProviderFactory*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ProviderFactory" data-uid="Reportman.Reporting.DatabaseInfo.ProviderFactory">ProviderFactory</h4>
+  <div class="markdown level1 summary"><p>Provider factory, only for .Net 2.x driver</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ProviderFactory { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ReportField_" data-uid="Reportman.Reporting.DatabaseInfo.ReportField*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ReportField" data-uid="Reportman.Reporting.DatabaseInfo.ReportField">ReportField</h4>
+  <div class="markdown level1 summary"><p>Report field when loading report items from a connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ReportField { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ReportGroupsTable_" data-uid="Reportman.Reporting.DatabaseInfo.ReportGroupsTable*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ReportGroupsTable" data-uid="Reportman.Reporting.DatabaseInfo.ReportGroupsTable">ReportGroupsTable</h4>
+  <div class="markdown level1 summary"><p>Report groups table when loading report items from a connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ReportGroupsTable { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ReportSearchField_" data-uid="Reportman.Reporting.DatabaseInfo.ReportSearchField*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ReportSearchField" data-uid="Reportman.Reporting.DatabaseInfo.ReportSearchField">ReportSearchField</h4>
+  <div class="markdown level1 summary"><p>Report search field when loading report items from a connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ReportSearchField { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_ReportTable_" data-uid="Reportman.Reporting.DatabaseInfo.ReportTable*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_ReportTable" data-uid="Reportman.Reporting.DatabaseInfo.ReportTable">ReportTable</h4>
+  <div class="markdown level1 summary"><p>Report table name when loading report items from a connection</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ReportTable { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Clone_" data-uid="Reportman.Reporting.DatabaseInfo.Clone*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Clone" data-uid="Reportman.Reporting.DatabaseInfo.Clone">Clone()</h4>
+  <div class="markdown level1 summary"><p>Clone the DatabaseInfo item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object Clone()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><p>A new DatabaseInfo item with same data as the original</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Clone_" data-uid="Reportman.Reporting.DatabaseInfo.Clone*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Clone_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.DatabaseInfo.Clone(Reportman.Reporting.Report)">Clone(Report)</h4>
+  <div class="markdown level1 summary"><p>Clone the DatabaseInfo item</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DatabaseInfo Clone(Report areport)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">areport</span></td>
+        <td><p>Report to assign to the item</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a></td>
+        <td><p>A new DatabaseInfo item with same data as the original</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_Connect_" data-uid="Reportman.Reporting.DatabaseInfo.Connect*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_Connect" data-uid="Reportman.Reporting.DatabaseInfo.Connect">Connect()</h4>
+  <div class="markdown level1 summary"><p>Connect to the database</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Connect()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_DisConnect_" data-uid="Reportman.Reporting.DatabaseInfo.DisConnect*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_DisConnect" data-uid="Reportman.Reporting.DatabaseInfo.DisConnect">DisConnect()</h4>
+  <div class="markdown level1 summary"><p>Disconnect from database, also dispose any transaction</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DisConnect()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_GetClassName_" data-uid="Reportman.Reporting.DatabaseInfo.GetClassName*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_GetClassName" data-uid="Reportman.Reporting.DatabaseInfo.GetClassName">GetClassName()</h4>
+  <div class="markdown level1 summary"><p>Internal function to determine the object type name</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override string GetClassName()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><p>Object type name</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_GetClassName">ReportItem.GetClassName()</a></div>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_GetDataReaderFromSQL_" data-uid="Reportman.Reporting.DatabaseInfo.GetDataReaderFromSQL*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_GetDataReaderFromSQL_System_String_System_String_Reportman_Reporting_Params_System_Boolean_" data-uid="Reportman.Reporting.DatabaseInfo.GetDataReaderFromSQL(System.String,System.String,Reportman.Reporting.Params,System.Boolean)">GetDataReaderFromSQL(string, string, Params, bool)</h4>
+  <div class="markdown level1 summary"><p>Obrains a IDataReader from a sql sentence</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDataReader GetDataReaderFromSQL(string sqlsentence, string dataalias, Params aparams, bool onlyexec)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">sqlsentence</span></td>
+        <td><p>A valid sql sentence</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">dataalias</span></td>
+        <td><p>Parameters related to this alias will be used</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Params.html">Params</a></td>
+        <td><span class="parametername">aparams</span></td>
+        <td><p>Report parameters</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">onlyexec</span></td>
+        <td><p>Execute only, not open the query</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idatareader">IDataReader</a></td>
+        <td><p>A valid IDataReader</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_DatabaseInfo_GetDriverDescriptions_" data-uid="Reportman.Reporting.DatabaseInfo.GetDriverDescriptions*"></a>
+  <h4 id="Reportman_Reporting_DatabaseInfo_GetDriverDescriptions" data-uid="Reportman.Reporting.DatabaseInfo.GetDriverDescriptions">GetDriverDescriptions()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static List&lt;string&gt; GetDriverDescriptions()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

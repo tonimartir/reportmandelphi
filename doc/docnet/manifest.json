@@ -1,0 +1,5264 @@
+{
+  "source_base_path": "C:/desarrollo/danzai/comunnt/reportman/doc",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Resource",
+      "output": {
+        "resource": {
+          "relative_path": "index.json"
+        }
+      }
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.AdvFontData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.AdvFontData.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.AdvFontData",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.AssemblyResolver.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.AssemblyResolver.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.AssemblyResolver",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.AutoScaleType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.AutoScaleType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.AutoScaleType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.AutoScaleType.yml\" sourcestartlinenumber=\"1\">When previewing pages of a report, visualization scale can be adjusted to predetermined sizes</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.BarType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.BarType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.BarType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.BeginPrintOut.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.BeginPrintOut.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.BeginPrintOut",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.BeginPrintOut.yml\" sourcestartlinenumber=\"1\">Event triggered when a driver starts printing</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.BitmapInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.BitmapInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.BitmapInfo",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.BitmapUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.BitmapUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.BitmapUtil",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.BrushType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.BrushType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.BrushType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.BrushType.yml\" sourcestartlinenumber=\"1\">Brush types, when drawing shapes, the filling area can be stablished to a specified pattern</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ChartDriver.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ChartDriver.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ChartDriver",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ChartType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ChartType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ChartType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.CompressionTask.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.CompressionTask.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.CompressionTask",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.CopyProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.CopyProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.CopyProgress",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.DataUtilities.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.DataUtilities.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.DataUtilities",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.DataUtilities.yml\" sourcestartlinenumber=\"1\">DataTable and DataSet utilities</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.DateUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.DateUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.DateUtil",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.DateUtil.yml\" sourcestartlinenumber=\"1\">Provide utitilies about handling DateTime values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.DbSqlExecuter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.DbSqlExecuter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.DbSqlExecuter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.DoubleUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.DoubleUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.DoubleUtil",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.DoubleUtil.yml\" sourcestartlinenumber=\"1\">Provide utitilies about handling double values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Doubles.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Doubles.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Doubles",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Doubles.yml\" sourcestartlinenumber=\"1\">Collection of double values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.EmbeddedFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.EmbeddedFile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.EmbeddedFile",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Encrypter.RijndaelSimple.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Encrypter.RijndaelSimple.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Encrypter.RijndaelSimple",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Encrypter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Encrypter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Encrypter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ExcelFileFormat.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ExcelFileFormat.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ExcelFileFormat",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ExceptionUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ExceptionUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ExceptionUtil",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ExceptionUtil.yml\" sourcestartlinenumber=\"1\">Provide utitilies about exception handling</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.FastSerializer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.FastSerializer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.FastSerializer",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.FileHash.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.FileHash.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.FileHash",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.FileHashes.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.FileHashes.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.FileHashes",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.FontInfoProvider.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.FontInfoProvider.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.FontInfoProvider",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.AdvancedEditingControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.AdvancedEditingControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.AdvancedEditingControl",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.AlterReportEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.AlterReportEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.AlterReportEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.AlterReportEvent.yml\" sourcestartlinenumber=\"1\">Event launched when Page Setup action is activated by the user</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.AutoCompleteInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.AutoCompleteInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.AutoCompleteInfo",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.BeforeEnterTabEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.BeforeEnterTabEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.BeforeEnterTabEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ButtonCalc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ButtonCalc.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ButtonCalc",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CalcReportProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CalcReportProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CalcReportProgress",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.Calculator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.Calculator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.Calculator",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CancelArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CancelArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CancelArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CancelEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CancelEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CancelEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CheckBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CheckBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CheckBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CollectionChange.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CollectionChange.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CollectionChange",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CollectionClear.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CollectionClear.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CollectionClear",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CollectionWithEvents.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CollectionWithEvents.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CollectionWithEvents",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ColorHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ColorHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ColorHelper",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ColumnDataType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ColumnDataType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ColumnDataType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ComboBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ComboBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ComboBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ComboBoxAdvancedItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ComboBoxAdvancedItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ComboBoxAdvancedItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ComboListMatcher.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ComboListMatcher.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ComboListMatcher",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ControlHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ControlHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ControlHelper",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CueHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CueHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CueHelper",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.CustomPaintControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.CustomPaintControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.CustomPaintControl",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataColumnButtonClickEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataColumnButtonClickEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataColumnButtonClickEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewAdvanced",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewAdvanced.yml\" sourcestartlinenumber=\"1\">Datagrid view Intro is tab</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewCellAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewCellAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewCellAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewColumnAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewColumnAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewColumnAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewNumericUpDownCell.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewNumericUpDownCell.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewNumericUpDownCell",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewNumericUpDownCell.yml\" sourcestartlinenumber=\"1\">Defines a NumericUpDown cell type for the System.Windows.Forms.DataGridView control</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DataGridViewNumericUpDownColumn.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DataGridViewNumericUpDownColumn.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DataGridViewNumericUpDownColumn",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewNumericUpDownColumn.yml\" sourcestartlinenumber=\"1\">Custom column type dedicated to the DataGridViewNumericUpDownCell cell type.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DateDropButton.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DateDropButton.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DateDropButton",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DateTimePickerAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DateTimePickerAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DateTimePickerAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DateTimePickerNullable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DateTimePickerNullable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DateTimePickerNullable",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DateTimePickerNullable.yml\" sourcestartlinenumber=\"1\">Nullable DateTime picker</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.Direction.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.Direction.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.Direction",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DoubleClickControlEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DoubleClickControlEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DoubleClickControlEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DrawHelper.CommandState.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DrawHelper.CommandState.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DrawHelper.CommandState",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.DrawHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.DrawHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.DrawHelper",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.Edge.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.Edge.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.Edge",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.EditCalc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.EditCalc.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.EditCalc",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.EventPrinterNamesArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.EventPrinterNamesArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.EventPrinterNamesArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.EventPrinterNamesHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.EventPrinterNamesHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.EventPrinterNamesHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.FormUtils.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.FormUtils.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.FormUtils",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.GroupBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.GroupBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.GroupBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.IDisplayDisable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.IDisplayDisable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.IDisplayDisable",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ISearchWindow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ISearchWindow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ISearchWindow",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.InertButton.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.InertButton.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.InertButton",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.InputBox.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.InputBox.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.InputBox",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.IsDateValidResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.IsDateValidResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.IsDateValidResult",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ListBoxNonSelectable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ListBoxNonSelectable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ListBoxNonSelectable",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.MessageBoxError.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.MessageBoxError.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.MessageBoxError",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.MessageBoxError.yml\" sourcestartlinenumber=\"1\">Descripción breve de MessageBoxError.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.NextColumnFocusEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.NextColumnFocusEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.NextColumnFocusEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.NoTitleForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.NoTitleForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.NoTitleForm",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.Number.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.Number.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.Number",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PageDrawnEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PageDrawnEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PageDrawnEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PageDrawnEvent.yml\" sourcestartlinenumber=\"1\">Event launched after a page is drawn</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PanelAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PanelAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PanelAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PopupWindow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PopupWindow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PopupWindow",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PreviewMetaFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PreviewMetaFile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PreviewMetaFile",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PreviewMetaFile.yml\" sourcestartlinenumber=\"1\">Windowed control to preview report MetaFiles, it's used by PreviewWinForms.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PreviewWinFormsControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PreviewWinFormsControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PreviewWinFormsControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PreviewWinFormsControl.yml\" sourcestartlinenumber=\"1\">Preview Window implementation for Windows.Forms</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PreviewWindowMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PreviewWindowMode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PreviewWindowMode",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PrintOutWinForms.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PrintOutWinForms.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PrintOutWinForms",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PrintOutWinForms.yml\" sourcestartlinenumber=\"1\">Report processing driver using Windows.Forms, it can preview, print, show a print dialog.\nThis driver does not support interaction with the Report, like altering Report parameters in\npreview window. But is useful when working the already generated MetaFiles.\nThe PrintOutReportWinForms at Reportman.Reporting.Forms provides the full interactive functionality\nlike page setup or altering parameters at preview window.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.PrintersConfiguration.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.PrintersConfiguration.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.PrintersConfiguration",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgresEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgresEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgresEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.MaxChangedHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.MaxChangedHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressBarAdvanced.MaxChangedHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressBarAdvanced.MaxChangedHandler.yml\" sourcestartlinenumber=\"1\">When the MaxValue property is changed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.MinChangedHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.MinChangedHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressBarAdvanced.MinChangedHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressBarAdvanced.MinChangedHandler.yml\" sourcestartlinenumber=\"1\">When the MinValue property is changed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.ValueChangedHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.ValueChangedHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressBarAdvanced.ValueChangedHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressBarAdvanced.ValueChangedHandler.yml\" sourcestartlinenumber=\"1\">When the Value property is changed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressBarAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressBarAdvanced",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressBarAdvanced.yml\" sourcestartlinenumber=\"1\">A replacement for the default ProgressBar control.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressForm.SetProgressCallback.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressForm.SetProgressCallback.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressForm.SetProgressCallback",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ProgressForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ProgressForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ProgressForm",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.RadioGroup.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.RadioGroup.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.RadioGroup",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.RawPrinterHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.RawPrinterHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.RawPrinterHelper",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.RawPrinterHelper.yml\" sourcestartlinenumber=\"1\">Utility class to send raw data to a printer queue, becase .Net library does not provide this functionalyty,\nit uses the pinvoke to call library functions</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ReportProgressForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ReportProgressForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ReportProgressForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ReportProgressForm.yml\" sourcestartlinenumber=\"1\">Form to show report processing progres</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.Ruler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.Ruler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.Ruler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.RulerBorder.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.RulerBorder.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.RulerBorder",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.RulerStyle.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.RulerStyle.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.RulerStyle",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ScreenKeyboard.Command.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ScreenKeyboard.Command.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ScreenKeyboard.Command",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ScreenKeyboard.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ScreenKeyboard.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ScreenKeyboard",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ScrollTextPanel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ScrollTextPanel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ScrollTextPanel",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.SearchWindowKeyOperation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.SearchWindowKeyOperation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.SearchWindowKeyOperation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.SendMailEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.SendMailEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.SendMailEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.SendMailEvent.yml\" sourcestartlinenumber=\"1\">Event launched to alter mail options before send to mail in preview is done</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.SendMailEventArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.SendMailEventArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.SendMailEventArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ShowSearchWindowArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ShowSearchWindowArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ShowSearchWindowArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ShowSearchWindowEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ShowSearchWindowEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ShowSearchWindowEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.SignatureControl.SignatureStyle.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.SignatureControl.SignatureStyle.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.SignatureControl.SignatureStyle",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.SignatureControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.SignatureControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.SignatureControl",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.StandardEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.StandardEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.StandardEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.StringEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.StringEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.StringEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.HostPanel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.HostPanel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.HostPanel",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.ImageStrip.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.ImageStrip.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.ImageStrip",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.MultiRect.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.MultiRect.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.MultiRect",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.PositionIndex.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.PositionIndex.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.PositionIndex",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabControlAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabControlAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.Property.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.Property.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabPageAdvanced.Property",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabPageAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabPageAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TabPageCollection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TabPageCollection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TabPageCollection",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TableLayoutPanelAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TableLayoutPanelAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TableLayoutPanelAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TextBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TextBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TextBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TextBoxDataType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TextBoxDataType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TextBoxDataType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TokenCalc.TokenType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TokenCalc.TokenType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TokenCalc.TokenType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TokenCalc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TokenCalc.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TokenCalc",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripButtonAllowDisable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripButtonAllowDisable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripButtonAllowDisable",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripComboBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripComboBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripComboBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripTextBoxAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripTextBoxAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripTextBoxAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolStripTextBoxFilter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolStripTextBoxFilter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolStripTextBoxFilter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.ToolTipAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.ToolTipAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.ToolTipAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TransformImageForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TransformImageForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TransformImageForm",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TransparentPanel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TransparentPanel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TransparentPanel",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvanced.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvanced.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TreeGridAdvanced",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedCell.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedCell.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TreeGridAdvancedCell",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TreeGridAdvancedCell.yml\" sourcestartlinenumber=\"1\">TreeGridAdvancedCell</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedColumn.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedColumn.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TreeGridAdvancedColumn",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedNode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TreeGridAdvancedNode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TreeGridAdvancedNode",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.TreeGridRow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.TreeGridRow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.TreeGridRow",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.UnSelectableButton.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.UnSelectableButton.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.UnSelectableButton",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.UpdateForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.UpdateForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.UpdateForm",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.VisualStyle.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.VisualStyle.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.VisualStyle",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.WinFormsGraphics.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.WinFormsGraphics.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms.WinFormsGraphics",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Forms.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Forms.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Forms",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.GS1_128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.GS1_128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.GS1_128",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.GlyphInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.GlyphInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.GlyphInfo",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.GraphicUtils.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.GraphicUtils.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.GraphicUtils",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.HashGenerator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.HashGenerator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.HashGenerator",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.IBitmapInfoProvider.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.IBitmapInfoProvider.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.IBitmapInfoProvider",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.IDbCommandExecuter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.IDbCommandExecuter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.IDbCommandExecuter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ISqlExecuter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ISqlExecuter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ISqlExecuter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ISqlExecuterPartialFillArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ISqlExecuterPartialFillArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ISqlExecuterPartialFillArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ISqlExecuterPartialFillEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ISqlExecuterPartialFillEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ISqlExecuterPartialFillEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ISqlExecuterProgressEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ISqlExecuterProgressEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ISqlExecuterProgressEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ImageDrawStyleType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ImageDrawStyleType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ImageDrawStyleType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ImageDrawStyleType.yml\" sourcestartlinenumber=\"1\">Drawing styles, determines the way the image adapt to a bounding box</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.IniFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.IniFile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.IniFile",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.IniSection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.IniSection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.IniSection",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Integers.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Integers.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Integers",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Integers.yml\" sourcestartlinenumber=\"1\">Collection of integer values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.LineInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.LineInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.LineInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.LineInfo.yml\" sourcestartlinenumber=\"1\">Line information when measuring pdf texts</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ListExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ListExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ListExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Longs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Longs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Longs",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Longs.yml\" sourcestartlinenumber=\"1\">Collection of Long values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MAPI.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MAPI.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MAPI",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MAPI.yml\" sourcestartlinenumber=\"1\">Utility class to access default Windows mail client</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MemStreams.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MemStreams.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MemStreams",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFile.MetaFileVersion.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFile.MetaFileVersion.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFile.MetaFileVersion",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFile",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFile.yml\" sourcestartlinenumber=\"1\">Class used engine to read/write metafiles.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFileLoadError.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFileLoadError.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFileLoadError",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFileLoadError.yml\" sourcestartlinenumber=\"1\">Event launched when the loading of a MetaFile causes an error</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFileLoadProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFileLoadProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFileLoadProgress",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFileLoadProgress.yml\" sourcestartlinenumber=\"1\">Event launched when reading a MetaFile, so, on large metafiles (or when low bandwidth)\nyou can show load progress to the user</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFileSaveWorkProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFileSaveWorkProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFileSaveWorkProgress",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFileSaveWorkProgress.yml\" sourcestartlinenumber=\"1\">Event launched when saving a MetaFile, so on large MetaFiles (or low bandwidth)\nyou can show save progress to the user</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFileWorkAsyncError.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFileWorkAsyncError.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFileWorkAsyncError",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFileWorkAsyncError.yml\" sourcestartlinenumber=\"1\">Event launched when the asynchronous report processing produces an error</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaFileWorkProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaFileWorkProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaFileWorkProgress",
+      "Summary": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObject.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObject.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObject",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObject.yml\" sourcestartlinenumber=\"1\">Base class for printable objects inside a MetaPage</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectDraw.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectDraw.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectDraw",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectDraw.yml\" sourcestartlinenumber=\"1\">Basic drawing object stored in a a MetaFile, it's a fixed length record</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectExport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectExport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectExport",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectExport.yml\" sourcestartlinenumber=\"1\">Export object stored in a a MetaFile, it's a fixed length record, still not implemented, it's used\nwhen exporting MetaFile to custom formats</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectImage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectImage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectImage",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectImage.yml\" sourcestartlinenumber=\"1\">Image drawing object stored in a a MetaFile, it's a fixed length record, image stream can be\nstored in MetaPage stream or in MetaFile stream (SharedImage=true)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectPolygon.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectPolygon.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectPolygon",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectPolygon.yml\" sourcestartlinenumber=\"1\">Polygon drawing object stored in a a MetaFile, it's a fixed length record, still not implemented, for future use</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectText.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectText.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectText",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectText.yml\" sourcestartlinenumber=\"1\">Text object stored in a a MetaFile, it's a fixed length record, so\nreferences to strings or streams are done throught position and sizes in page stream\nor MetaFile stream</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaObjectType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaObjectType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaObjectType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaObjectType.yml\" sourcestartlinenumber=\"1\">MetaFiles are composed by pages containing objects, each object can have a type that determines\nthe action when drawing (or printing)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaPage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaPage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaPage",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaPage.yml\" sourcestartlinenumber=\"1\">Metafile page, part of metafile</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaPages.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaPages.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaPages",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaPages.yml\" sourcestartlinenumber=\"1\">Collection of pages</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.MetaStopWork.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.MetaStopWork.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.MetaStopWork",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaStopWork.yml\" sourcestartlinenumber=\"1\">Event launched when the report processing stops by user or is aborted</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.NamedException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.NamedException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.NamedException",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.NamedException.yml\" sourcestartlinenumber=\"1\">Common exception, providing a name as additional exception information</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.NoDataToPrintEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.NoDataToPrintEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.NoDataToPrintEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.NoDataToPrintEvent.yml\" sourcestartlinenumber=\"1\">Event launched when there is no data available to print. Should return\ntrue if the action have been handled and no futher processing must happen</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.NoDataToPrintException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.NoDataToPrintException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.NoDataToPrintException",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.NoDataToPrintException.yml\" sourcestartlinenumber=\"1\">Custom exception to be controlled,when the report is empty</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ObjectViewModel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ObjectViewModel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ObjectViewModel",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ObjectViewModelHierarchy.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ObjectViewModelHierarchy.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ObjectViewModelHierarchy",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.OrientationType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.OrientationType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.OrientationType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.OrientationType.yml\" sourcestartlinenumber=\"1\">Page orientation</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFAFRelationShip.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFAFRelationShip.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFAFRelationShip",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFCanvas.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFCanvas.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFCanvas",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFConformance.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFConformance.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFConformance",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFConformance.yml\" sourcestartlinenumber=\"1\">PDF Conformance behaviour, modify default PDF Conformance</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFConformanceType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFConformanceType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFConformanceType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFConformanceType.yml\" sourcestartlinenumber=\"1\">PDF Conformance when writting a PDF</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFFile.PDFAnnotation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFFile.PDFAnnotation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFFile.PDFAnnotation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFFile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFFile",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFFont.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFFont.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFFont",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PDFFontType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PDFFontType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PDFFontType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFFontType.yml\" sourcestartlinenumber=\"1\">When exporting a document to PDF, there are some standard predefinded fonts you can use,\nusing this fonts redude file size</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PageSizeDetail.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PageSizeDetail.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PageSizeDetail",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PageSizeDetail.yml\" sourcestartlinenumber=\"1\">The PageSizeDetail structure contains advanced page information to select page size on a printer.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PenType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PenType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PenType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PenType.yml\" sourcestartlinenumber=\"1\">Pen types, used when drawing shapes</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PosText.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PosText.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PosText",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PreviewWindowStyleType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PreviewWindowStyleType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PreviewWindowStyleType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PreviewWindowStyleType.yml\" sourcestartlinenumber=\"1\">Preview window size the first time it's shown</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintLine.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintLine.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintLine",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOut.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOut.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOut",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOut.yml\" sourcestartlinenumber=\"1\">Base class for print drivers define the funtions to be implemented by\nany print driver (Report processing driver)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutBitmap.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutBitmap.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutBitmap",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutCSV.TextFormat.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutCSV.TextFormat",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutCSV.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutCSV.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutCSV",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutCSV.yml\" sourcestartlinenumber=\"1\">Report preocessing driver, capable of generate csv files</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutExcel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutExcel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutExcel",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutExcel.yml\" sourcestartlinenumber=\"1\">Report preocessing driver, capable of generate excel files</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutNet.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutNet.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutNet",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutNet.yml\" sourcestartlinenumber=\"1\">This is the base class for all Report processing drivers working in Reportman.Drawing space,\nthat is print to printer, preview on screen or exporting to bitmap, provides basic functionality\nto measure texts, bitmaps and shapes, but still not work with printers (System.Drawing.Printing)\nor printer dialogs (Windows Forms).\nSo it's a step forward to the implementation of some Report processing drivers, useful for\npreview, becuase it can use bitmap as output\nVariant</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutPDF.ImageDepth.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutPDF.ImageDepth.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutPDF.ImageDepth",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutPDF.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutPDF.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutPDF",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutPDFBase.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutPDFBase.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutPDFBase",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutPDFBase.yml\" sourcestartlinenumber=\"1\">Report preocessing driver, capable of generate Adobe PDF files</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutPrint.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutPrint.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutPrint",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutPrint.yml\" sourcestartlinenumber=\"1\">Print driver implementing output to printer, it does not allow showing print dialog becuase it does not\nhave dependencies on Windows.Forms</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutText.OemConvertOverride.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutText.OemConvertOverride.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutText.OemConvertOverride",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutText.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutText.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutText",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintStepType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintStepType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintStepType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintStepType.yml\" sourcestartlinenumber=\"1\">When printing to dot matrix devices, a fixed pitch font will be selected, the font to be selected can be specified\nusing the PrintStep</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrinterConfig.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrinterConfig.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrinterConfig",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrinterConfig.yml\" sourcestartlinenumber=\"1\">Printer configuration class to obtain default printer settigns</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrinterFontsType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrinterFontsType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrinterFontsType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrinterFontsType.yml\" sourcestartlinenumber=\"1\">When the Report is sent to a printer, there is an option to use the printer fonts, if the printer fonts\nare used, in some cases the print is faster (dot matrix printers)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrinterRawOperation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrinterRawOperation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrinterRawOperation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrinterSelectType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrinterSelectType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrinterSelectType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrinterSelectType.yml\" sourcestartlinenumber=\"1\">Report Manager allow automatic printer selection when processing reports, so you can assign\na predefined printer to a report, then assign on each computer a diferent printer to predefined\nprinters.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ProcessUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ProcessUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ProcessUtil",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ProcessUtil.yml\" sourcestartlinenumber=\"1\">Process utilities</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ProgressArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ProgressArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ProgressArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ProgressEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ProgressEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ProgressEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.QRCodeEncoder.ENCODE_MODE.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.QRCodeEncoder.ENCODE_MODE.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.QRCodeEncoder.ENCODE_MODE",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.QRCodeEncoder.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.QRCodeEncoder.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.QRCodeEncoder",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.RequestPageEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.RequestPageEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.RequestPageEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.RequestPageEvent.yml\" sourcestartlinenumber=\"1\">Event launched when a page is being requested</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Series.AutoRangeAxis.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Series.AutoRangeAxis.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Series.AutoRangeAxis",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Series.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Series.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Series",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.SeriesItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.SeriesItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.SeriesItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.ShapeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.ShapeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.ShapeType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ShapeType.yml\" sourcestartlinenumber=\"1\">Available shape types</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.StreamPosition.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.StreamPosition.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.StreamPosition",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.StreamUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.StreamUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.StreamUtil",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.StringExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.StringExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.StringExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.StringUtil.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.StringUtil.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.StringUtil",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.StringUtil.yml\" sourcestartlinenumber=\"1\">Provide utitilies about handling string values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Strings.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Strings.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Strings",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Strings.yml\" sourcestartlinenumber=\"1\">String collection</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TGlyphPos.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TGlyphPos.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TGlyphPos",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TTFontData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TTFontData.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TTFontData",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TableData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TableData.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TableData",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TaskCompressResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TaskCompressResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TaskCompressResult",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TextAlignType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TextAlignType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TextAlignType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the text alignment, that is how the text is drawn inside the defined box\nVariant</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TextAlignVerticalType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TextAlignVerticalType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TextAlignVerticalType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignVerticalType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating vertical text alignment, that is how the full text, after horizontal alignment is done, is drawn inside the defined box\nVariant</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TextObjectStruct.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TextObjectStruct.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TextObjectStruct",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextObjectStruct.yml\" sourcestartlinenumber=\"1\">This structure is used to store information about a block of text properties, alignment and content,\nit is used by some functions to measure texts or pass text and format information in a single variable</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TotalPage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TotalPage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TotalPage",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TotalPage.yml\" sourcestartlinenumber=\"1\">Structure containing a reference to pagecount object, the number of pages is not known until the\nreport is finished, so when the report is finished, all the references to PAGECOUNT special variable\nare updated</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TotalPages.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TotalPages.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TotalPages",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Translator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Translator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Translator",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Translator.yml\" sourcestartlinenumber=\"1\">Translator component helps in translating aplications to multiple languages\nusing current user regional configuration loads the specified file\nwith the regional extension for the file</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TrueTypeFontSubSet.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TrueTypeFontSubSet.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TrueTypeFontSubSet",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Twips.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Twips.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Twips",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Twips.yml\" sourcestartlinenumber=\"1\">Provide utitilies and constants related to Twips measurement unit.\nOne inch contains 1440 twips</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.TwipsGraphics.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.TwipsGraphics.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.TwipsGraphics",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.UnNamedException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.UnNamedException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.UnNamedException",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.UnNamedException.yml\" sourcestartlinenumber=\"1\">Provide utitilies for handling streams, write strings, read/write\ndatatypes etc.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Units.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Units.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Units",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Units.yml\" sourcestartlinenumber=\"1\">Measurement units</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Updater.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Updater.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Updater",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.VersionInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.VersionInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.VersionInfo",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.WMFOptimization.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.WMFOptimization.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.WMFOptimization",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.WMFOptimization.yml\" sourcestartlinenumber=\"1\">This enumeration indicates diferent optimization implementations while drawing pages\n(preview, web presentation or print). Microsoft .Net have an optimized graphic object,\ncalled Windows Metafile, so when the same graphic operations must be done multiple times,\nthey can be stored in it and &quot;played&quot; multiple times. This is the case for example,\nwhen previewing a Report, you can go forward and backwards drawing again and again the\nsame pages. If the engine have the capability of drawing multiple pages in the screen,\nlike Report Manager Windows Forms preview does, the use of playing optimized windows\nmetafiles can enhace performance, specially if the pages are dense (lot of text items).\nThe drawbacks of playing metafiles is that they must be stored into memory, so when you\noptimize performance you hit memory consumption.\nVariant</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.BitmapUtilWindows.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.BitmapUtilWindows.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.BitmapUtilWindows",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.FontUtils.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.FontUtils.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.FontUtils",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.GraphicUtils.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.GraphicUtils.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.GraphicUtils",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.PrintOutPDFWindows.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.PrintOutPDFWindows.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.PrintOutPDFWindows",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.TFontFaceCache.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.TFontFaceCache.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.TFontFaceCache",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.TGlyphLine.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.TGlyphLine.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.TGlyphLine",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.TTextExtentRenderer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.TTextExtentRenderer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows.TTextExtentRenderer",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Windows.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Windows.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Windows",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Aggregate.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Aggregate.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Aggregate",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.AggregateType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.AggregateType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.AggregateType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.AliasCollection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.AliasCollection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.AliasCollection",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.AliasCollectionItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.AliasCollectionItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.AliasCollectionItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.BackStyleType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.BackStyleType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.BackStyleType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.BackStyleType.yml\" sourcestartlinenumber=\"1\">The background of a section can be visible only on design time, while preview only (will not print) or\nalso print the background</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.BarcodeItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.BarcodeItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.BarcodeItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.BarcodeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.BarcodeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.BarcodeType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.BaseReport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.BaseReport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.BaseReport",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.BaseReport.yml\" sourcestartlinenumber=\"1\">Base class for Report, defines basic functionallity</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ChangeObjectOperation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ChangeObjectOperation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ChangeObjectOperation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ChangeOperationItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ChangeOperationItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ChangeOperationItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ChartItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ChartItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ChartItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DBFExport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DBFExport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DBFExport",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataChange.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataChange.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataChange",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataChange.yml\" sourcestartlinenumber=\"1\">Delegate used by ReportDataset to trigger an event when CurrentRow data changes</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataInfo.yml\" sourcestartlinenumber=\"1\">DatabaInfo stores information about a dataset, a Report have a collection\nof dataset definitions. Each dataset is related to one connection (DatabaseInfo)<xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=DataInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataInfos.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataInfos.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataInfos",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataInfos.yml\" sourcestartlinenumber=\"1\">Collection of DataInfo items</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataNeededEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataNeededEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataNeededEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataNeededEventArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataNeededEventArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataNeededEventArgs",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DataProgressEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DataProgressEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DataProgressEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DatabaseInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DatabaseInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DatabaseInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatabaseInfo.yml\" sourcestartlinenumber=\"1\">DatabaseInfo stores information about database connectivity, a Report have a collection\nof connection definitions. Each connection can use diferent connectivity technology\n(database providers). <xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=DatabaseInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DatabaseInfos.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DatabaseInfos.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DatabaseInfos",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DatasetAlias.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DatasetAlias.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DatasetAlias",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatasetAlias.yml\" sourcestartlinenumber=\"1\">DatasetAlias is a component that can contain references to datasets for substitution\nin report dataset list or expression evaluator</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DatasetType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DatasetType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DatasetType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatasetType.yml\" sourcestartlinenumber=\"1\">A dataset definition could represent a table inside a database or\na sql query, in .Net version, it's always a Query. <xref href=\"Reportman.Reporting.Variant?text=DataInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DotNetDriverType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DotNetDriverType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DotNetDriverType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DotNetDriverType.yml\" sourcestartlinenumber=\"1\">The DotNetDriverType indicates the database provider to be used when you select DriverType.DotNet, that\nis .Net 1.x, in this versions of .Net there were no abstraction for Database access, so you must select\nand pre-link into your executable references to the database client library.\nThis type is not used in .Net 2.x because the functionality of database providers,\nconfigured in machine.config or application.config<xref href=\"Reportman.Reporting.Variant?text=DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DriverType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DriverType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DriverType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DriverType.yml\" sourcestartlinenumber=\"1\">The DriverType is part of a report database information definition, indicating the technology to be used\nto connect to the database, in .Net version you can choose DotNet or DotNet2 depending on the version you\nare using. <xref href=\"Reportman.Reporting.Variant?text=DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalException",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalException.yml\" sourcestartlinenumber=\"1\">Definition of a specialiced exception used by expression evaluator</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalIdenExpression.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalIdenExpression.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalIdenExpression",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalIdentifier.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalIdentifier.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalIdentifier",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalIdentifier.yml\" sourcestartlinenumber=\"1\">EvalIdentifier is the base class for all objects capable of integration\nwith Evaluator,this includes variables, functions, constants...</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalIdentifiers.EvalIdentifierEnumerator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalIdentifiers.EvalIdentifierEnumerator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalIdentifiers.EvalIdentifierEnumerator",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalIdentifiers.EvalIdentifierEnumerator.yml\" sourcestartlinenumber=\"1\">Inner class implements IEnumerator interface:</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalIdentifiers.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalIdentifiers.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalIdentifiers",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalIdentifiers.yml\" sourcestartlinenumber=\"1\">Collections of Evaluator identifiers</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.EvalParser.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.EvalParser.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.EvalParser",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalParser.yml\" sourcestartlinenumber=\"1\">Class used by Evaluator to divide a expression into tokens</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Evaluator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Evaluator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Evaluator",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Evaluator.yml\" sourcestartlinenumber=\"1\">Evaluator is an expression evaluator, it includes variable assignment and support\nfor dataset fields, function calls are also supported</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ExpressionItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ExpressionItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ExpressionItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ExternalReport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ExternalReport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ExternalReport",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.DataGridViewPrint.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.DataGridViewPrint.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.DataGridViewPrint",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.DataGridViewPrintOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.DataGridViewPrintOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.DataGridViewPrintOptions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.DataProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.DataProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.DataProgress",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.DataProgressEventHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.DataProgressEventHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.DataProgressEventHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.DataShow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.DataShow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.DataShow",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.DataShow.yml\" sourcestartlinenumber=\"1\">Datashow is the form where the sample data of a DataSet is shown</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.EmbeddedFileForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.EmbeddedFileForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.EmbeddedFileForm",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.GridExport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.GridExport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.GridExport",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.PageSetup.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.PageSetup.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.PageSetup",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.PageSetup.yml\" sourcestartlinenumber=\"1\">Page setup form, page configuration and general options for the report</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.ParamsControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.ParamsControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.ParamsControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.ParamsControl.yml\" sourcestartlinenumber=\"1\">Window control used by parameters form, you can use it to build a custom parameters form</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.ParamsForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.ParamsForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.ParamsForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.ParamsForm.yml\" sourcestartlinenumber=\"1\">Report parameters form, it's used when the user click on show parameters icon on preview window.\nYou can show the parameters window before executing a report. See example.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.PrintOutReportWinForms.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.PrintOutReportWinForms.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.PrintOutReportWinForms",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.PrintOutReportWinForms.yml\" sourcestartlinenumber=\"1\">Report processing driver allowing report properties alteration like parameters and page setup.\nThis is the recommended driver for Windows.Forms applications</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.SearchForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.SearchForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms.SearchForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.SearchForm.yml\" sourcestartlinenumber=\"1\">This form is used by report parameters window to help user in selecting parameter values, possible\nif the parameter provide a lookup dataset</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Forms.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Forms.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Forms",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.IdenConstant.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.IdenConstant.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.IdenConstant",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.IdenConstant.yml\" sourcestartlinenumber=\"1\">Class avaible to define constants in expression evaluator</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.IdenFunction.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.IdenFunction.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.IdenFunction",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.IdenFunction.yml\" sourcestartlinenumber=\"1\">Base class to implement evaluator functions</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.IdenVariable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.IdenVariable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.IdenVariable",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.IdenVariable.yml\" sourcestartlinenumber=\"1\">Identifier with the functionality of a variable</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.IdenVariableParam.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.IdenVariableParam.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.IdenVariableParam",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ImageItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ImageItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ImageItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.LabelItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.LabelItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.LabelItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.OperationType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.OperationType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.OperationType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PageSizeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PageSizeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PageSizeType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PageSizeType.yml\" sourcestartlinenumber=\"1\">Page size configuration for report scheme</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PagedDataChange.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PagedDataChange.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PagedDataChange",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PagedDataTable.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PagedDataTable.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PagedDataTable",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Param.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Param.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Param",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ParamType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ParamType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ParamType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ParamType.yml\" sourcestartlinenumber=\"1\">Type used in report parameters, for each parameter type, a diferent action will be performed\nto assign the value before executing the report, a parameter can be assigned to\nany number of database querys</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Params.ParamEnumerator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Params.ParamEnumerator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Params.ParamEnumerator",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Params.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Params.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Params",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ParamsConverter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ParamsConverter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ParamsConverter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PrintItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PrintItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PrintItem",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintItem.yml\" sourcestartlinenumber=\"1\">Basic class providing more basic functionality this item provides printing capability and some events</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PrintItemAlign.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PrintItemAlign.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PrintItemAlign",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintItemAlign.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the alignment of a Report Item related to his parent. This is useful when the\nparent Section have properties like AutoExpand or AutoContract set, you can place a Rectangle\nand set Align to AllClient, the rectangle will be adapted at run time to fill the section. You can also\nalign to bottom or expand lines from top to bottom.\n<xref href=\"Reportman.Reporting.Variant?text=PrintPosItem\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PrintItemText.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PrintItemText.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PrintItemText",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintItemText.yml\" sourcestartlinenumber=\"1\">Base class for any report item containing text properties, ExpressionItem and LabelItem are examples</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PrintPosItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PrintPosItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PrintPosItem",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintPosItem.yml\" sourcestartlinenumber=\"1\">Base print item providing position and alignment properties</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PrintPosItemConverter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PrintPosItemConverter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PrintPosItemConverter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.PropertyType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.PropertyType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.PropertyType",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Report.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Report.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Report",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportDataset.CreateTableEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportDataset.CreateTableEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportDataset.CreateTableEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportDataset.UpdateDataEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportDataset.UpdateDataEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportDataset.UpdateDataEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportDataset.UpdateDataEventAsync.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportDataset.UpdateDataEventAsync.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportDataset.UpdateDataEventAsync",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportDataset.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportDataset.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportDataset",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportDataset.yml\" sourcestartlinenumber=\"1\">ReportDataset is used internally by the reporting engine.\nAllow navigation in a IDataReader, using a two record buffer, so you can go back one record, but\nnot two. The navigation is done forward, and does not consume memory (like IDataReader).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportException",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportException.yml\" sourcestartlinenumber=\"1\">Exception class, used by reporting engine when an error in report processing occur</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportItem",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportItem.yml\" sourcestartlinenumber=\"1\">Base classs for Report items providing common base functionality, and a relation to the owner (Report).\n<xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref>\n<xref href=\"Reportman.Reporting.Variant?text=Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportItems.ReportItemEnumerator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportItems.ReportItemEnumerator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportItems.ReportItemEnumerator",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportItems.ReportItemEnumerator.yml\" sourcestartlinenumber=\"1\">Inner class implements IEnumerator interface:</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportItems.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportItems.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportItems",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportItems.yml\" sourcestartlinenumber=\"1\">Collections of ReportItems</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportLibraryConfig.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportLibraryConfig.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportLibraryConfig",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportLibraryConfigCollection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportLibraryConfigCollection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportLibraryConfigCollection",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportLibrarySelection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportLibrarySelection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportLibrarySelection",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportNamedException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportNamedException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportNamedException",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportNamedException.yml\" sourcestartlinenumber=\"1\">Exception class, used by reporting engine when an error in report item by name</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportProgress",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportProgress.yml\" sourcestartlinenumber=\"1\">Delegate definition for report processing</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportReader.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportReader.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportReader",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportReader.yml\" sourcestartlinenumber=\"1\">Class used to read report template from a file (or stream) saved in xml format</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportWriter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportWriter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportWriter",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportWriter.yml\" sourcestartlinenumber=\"1\">Class used to write a report template to a file (or stream) in xml format</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Section.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Section.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Section",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Section.yml\" sourcestartlinenumber=\"1\">The sections are contained inside subreports, depending on the section type it\nwill print after the detail (group header), before the detail (group header),\nor in special places (page headers and footers)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SectionType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SectionType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SectionType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SectionType.yml\" sourcestartlinenumber=\"1\">Section type, each section of a subreport have different function</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Sections.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Sections.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Sections",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Sections.yml\" sourcestartlinenumber=\"1\">Collection of sections</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ShapeItem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ShapeItem.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ShapeItem",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SharedImageType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SharedImageType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SharedImageType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SharedImageType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating if the image should be shared, so only one instance of the image is stored\nwhile generating the report (ReportMetafile), if the image is repeated in the report, it's recommended\nto share it, so the image is stored only once, and not for each page (a internal reference is done).\n<xref href=\"Reportman.Reporting.Variant?text=ImageItem\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SkipType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SkipType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SkipType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SkipType.yml\" sourcestartlinenumber=\"1\">A section can skip to a page or position</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SqlParser.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SqlParser.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SqlParser",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SqlParser.yml\" sourcestartlinenumber=\"1\">Class used by Evaluator to divide a expression into tokens</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.StreamFormatType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.StreamFormatType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.StreamFormatType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.StreamFormatType.yml\" sourcestartlinenumber=\"1\">Report stream format</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.StreamVersion.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.StreamVersion.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.StreamVersion",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SubReport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SubReport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SubReport",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SubReportEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SubReportEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SubReportEvent",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SubReports.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SubReports.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SubReports",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.TokenType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.TokenType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.TokenType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.TokenType.yml\" sourcestartlinenumber=\"1\">This enumeration is used in string parsing functions, a string is divided in tokens,\neach token can represent operators, symbols...</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.UndoCue.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.UndoCue.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.UndoCue",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Variant.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Variant.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Variant",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Variant.yml\" sourcestartlinenumber=\"1\">Implementation of a Variant type with common arithmetic and\nlogic operations.\nVariant is a container, not a class reference, that is when you assign\na variant to another variant, you are copying content, just like you\nwork with base types like int, char, string.\nThe Variant type is a useful feature to implement an expression\n<xref href=\"Reportman.Reporting.Evaluator?text=evaluator\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.VariantJsonConverter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.VariantJsonConverter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.VariantJsonConverter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.VariantSystemTextJsonConverter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.VariantSystemTextJsonConverter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.VariantSystemTextJsonConverter",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.VariantType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.VariantType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.VariantType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantType.yml\" sourcestartlinenumber=\"1\">Variant internal type, used to store current type value for a <xref href=\"Reportman.Reporting.Variant?text=Variant\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Variants.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Variants.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Variants",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Variants.yml\" sourcestartlinenumber=\"1\">Collection of Variant values</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.WPF.PreviewWPF.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.WPF.PreviewWPF.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.WPF.PreviewWPF",
+      "Summary": "<p sourcefile=\"api/Reportman.WPF.PreviewWPF.yml\" sourcestartlinenumber=\"1\">Lógica de interacción para PreviewWPF.xaml</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.WPF.PreviewWindow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.WPF.PreviewWindow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.WPF.PreviewWindow",
+      "Summary": "<p sourcefile=\"api/Reportman.WPF.PreviewWindow.yml\" sourcestartlinenumber=\"1\">Lógica de interacción para PreviewWindow.xaml</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.WPF.PrintOutWPF.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.WPF.PrintOutWPF.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.WPF.PrintOutWPF",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.WPF.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.WPF.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.WPF",
+      "Summary": null
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "api/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/toc.html"
+        },
+        ".json": {
+          "relative_path": "api/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html"
+        }
+      },
+      "version": ""
+    }
+  ],
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}

@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class Section | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class Section | Reportman .Net Documentation ">
+    
+    <meta name="description" content="The sections are contained inside subreports, depending on the section type it will print after the detail (group header), before the detail (group header), or in special places (page headers and footers)">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Section">
+
+
+
+  <h1 id="Reportman_Reporting_Section" data-uid="Reportman.Reporting.Section" class="text-break">Class Section</h1>
+  <div class="markdown level0 summary"><p>The sections are contained inside subreports, depending on the section type it
+will print after the detail (group header), before the detail (group header),
+or in special places (page headers and footers)</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="Reportman.Reporting.ReportItem.html">ReportItem</a></div>
+    <div class="level2"><a class="xref" href="Reportman.Reporting.PrintItem.html">PrintItem</a></div>
+    <div class="level3"><span class="xref">Section</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintWidth">PrintItem.PrintWidth</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintHeight">PrintItem.PrintHeight</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Visible">PrintItem.Visible</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_LastExtent">PrintItem.LastExtent</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SelectionIndex">PrintItem.SelectionIndex</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SelectionRectangle">PrintItem.SelectionRectangle</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_EvaluatePrintCondition">PrintItem.EvaluatePrintCondition()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Print_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__">PrintItem.Print(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_ExecuteBeforePrint">PrintItem.ExecuteBeforePrint()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_ExecuteAfterPrint">PrintItem.ExecuteAfterPrint()</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Width">PrintItem.Width</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_Height">PrintItem.Height</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoBeforePrint">PrintItem.DoBeforePrint</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoAfterPrint">PrintItem.DoAfterPrint</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_PrintCondition">PrintItem.PrintCondition</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_SetReport_Reportman_Reporting_BaseReport_">ReportItem.SetReport(BaseReport)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Name">ReportItem.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Report">ReportItem.Report</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_ClassName">ReportItem.ClassName</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_Section_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class Section : PrintItem, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_Section__ctor_" data-uid="Reportman.Reporting.Section.#ctor*"></a>
+  <h4 id="Reportman_Reporting_Section__ctor" data-uid="Reportman.Reporting.Section.#ctor">Section()</h4>
+  <div class="markdown level1 summary"><p>Initialization of the section</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Section()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Reporting_Section_AlignBottom" data-uid="Reportman.Reporting.Section.AlignBottom">AlignBottom</h4>
+  <div class="markdown level1 summary"><p>If this property is true, the section will be aligned to the bottom of the page,
+and of course next section will be printed in the next page, the alignment is done
+after resizing (so it's compatible with Auto expand and Auto contract properties)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AlignBottom</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_AutoContract" data-uid="Reportman.Reporting.Section.AutoContract">AutoContract</h4>
+  <div class="markdown level1 summary"><p>The section will contract vertically to avoid unused space. This is useful
+when you want to print some variable text and you don't know how much page
+space you need, of if some of the components are printed under certain conditions
+and you want to profit space</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AutoContract</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_AutoExpand" data-uid="Reportman.Reporting.Section.AutoExpand">AutoExpand</h4>
+  <div class="markdown level1 summary"><p>The section will expand vertically to keep space for any component inside it.
+This is useful when you want to print some variable text and you don't know how
+much page space you need</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AutoExpand</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_BackExpression" data-uid="Reportman.Reporting.Section.BackExpression">BackExpression</h4>
+  <div class="markdown level1 summary"><p>The backgorund image can be embedded (Stream propery) or obtained throught
+this expression property, the expression is evaluated, if the expression result
+is a binary database field will try to read the image from there, see below the
+image formats supported. If the field is a string field or the result of evaluation
+is a string the engine will try to load the image as a file reference.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string BackExpression</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_BackStyle" data-uid="Reportman.Reporting.Section.BackStyle">BackStyle</h4>
+  <div class="markdown level1 summary"><p>The background of the section can be used for multiple purposes, one is help
+in design time to fill a form for example, but no preview or print (preprinted forms).
+You can also select to draw the background image in preview or print the image on
+the paper also.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BackStyleType BackStyle</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.BackStyleType.html">BackStyleType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_BeginPage" data-uid="Reportman.Reporting.Section.BeginPage">BeginPage</h4>
+  <div class="markdown level1 summary"><p>This expression is evaluated before printing, if result is true the group
+will begin a page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool BeginPage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_BeginPageExpression" data-uid="Reportman.Reporting.Section.BeginPageExpression">BeginPageExpression</h4>
+  <div class="markdown level1 summary"><p>This expression is evaluated before printing, if result is true the group will begin a page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string BeginPageExpression</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ChangeBool" data-uid="Reportman.Reporting.Section.ChangeBool">ChangeBool</h4>
+  <div class="markdown level1 summary"><p>If true, the engine breaks the group when the Group Expression is true,
+else will break the group when the group expression result changes</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ChangeBool</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ChangeExpression" data-uid="Reportman.Reporting.Section.ChangeExpression">ChangeExpression</h4>
+  <div class="markdown level1 summary"><p>This expression is evaluated for each record of the Main dataset for the subreport,
+it will determine a group break with the Bool Expression property</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ChangeExpression</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ChildSubReport" data-uid="Reportman.Reporting.Section.ChildSubReport">ChildSubReport</h4>
+  <div class="markdown level1 summary"><p>If a child subreport is assigned it will be processed and printed after
+printing this section</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonIgnore]
+[JsonIgnore]
+public SubReport ChildSubReport</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SubReport.html">SubReport</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ChildSubReportName" data-uid="Reportman.Reporting.Section.ChildSubReportName">ChildSubReportName</h4>
+  <div class="markdown level1 summary"><p>Child subreport name, it stores the reference to the other subreport</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ChildSubReportName</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_DrawStyle" data-uid="Reportman.Reporting.Section.DrawStyle">DrawStyle</h4>
+  <div class="markdown level1 summary"><p>Image draw style, for background image</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ImageDrawStyleType DrawStyle</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.ImageDrawStyleType.html">ImageDrawStyleType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalConnection" data-uid="Reportman.Reporting.Section.ExternalConnection">ExternalConnection</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a database so the reports can share sections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalConnection</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalField" data-uid="Reportman.Reporting.Section.ExternalField">ExternalField</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a database so the reports can share sections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalField</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalFilename" data-uid="Reportman.Reporting.Section.ExternalFilename">ExternalFilename</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a file so the report file can share sections.
+The external path canIf a child subreport is assigned it will be processed
+and printed after printing this section be an expression by preceding the
+string by the @ symbol.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalFilename</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalSearchField" data-uid="Reportman.Reporting.Section.ExternalSearchField">ExternalSearchField</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a database so the reports can share sections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalSearchField</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalSearchValue" data-uid="Reportman.Reporting.Section.ExternalSearchValue">ExternalSearchValue</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a database so the reports can share sections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalSearchValue</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ExternalTable" data-uid="Reportman.Reporting.Section.ExternalTable">ExternalTable</h4>
+  <div class="markdown level1 summary"><p>Will load the section from a database so the reports can share sections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ExternalTable</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_FirstPage" data-uid="Reportman.Reporting.Section.FirstPage">FirstPage</h4>
+  <div class="markdown level1 summary"><p>While processing the report, it contains the first page where the group began</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int FirstPage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_ForcePrint" data-uid="Reportman.Reporting.Section.ForcePrint">ForcePrint</h4>
+  <div class="markdown level1 summary"><p>For page footers, means the page footer must print at the end of the
+subreport if no data is still available. For group headers means the header
+will print also when footer is pending if page repeat is true</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ForcePrint</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_Global" data-uid="Reportman.Reporting.Section.Global">Global</h4>
+  <div class="markdown level1 summary"><p>For page header and footers only, if this property is true, the header/footer will
+be processed globally just like if it was outside the subreport</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Global</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_GroupName" data-uid="Reportman.Reporting.Section.GroupName">GroupName</h4>
+  <div class="markdown level1 summary"><p>For sections with type Group, is the group name</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GroupName</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_GroupValue" data-uid="Reportman.Reporting.Section.GroupValue">GroupValue</h4>
+  <div class="markdown level1 summary"><p>Latest group value while report processing is in progress</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Variant GroupValue</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_HorzDesp" data-uid="Reportman.Reporting.Section.HorzDesp">HorzDesp</h4>
+  <div class="markdown level1 summary"><p>When horizzontal desplacement is set to true, after printing the section
+the print position will move to the left, in an amount equivalent to the section
+width. But this will happen only when the next section to print has also the
+horizontal desplacement set to true, else the horizontal print position will be
+restored. Set this property to true in the detail section for example to print
+labels left to right, adjust the section with so many details fit in the
+total page width.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HorzDesp</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_IniNumPage" data-uid="Reportman.Reporting.Section.IniNumPage">IniNumPage</h4>
+  <div class="markdown level1 summary"><p>Available only for groups, initialize the variable PageNum to 1 when the group
+changes</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IniNumPage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_PageRepeat" data-uid="Reportman.Reporting.Section.PageRepeat">PageRepeat</h4>
+  <div class="markdown level1 summary"><p>If true, the group header will print in each page where the group is still active.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool PageRepeat</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SectionType" data-uid="Reportman.Reporting.Section.SectionType">SectionType</h4>
+  <div class="markdown level1 summary"><p>Type of section inside the subreport (page header,group header, detail)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SectionType SectionType</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SectionType.html">SectionType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SharedImage" data-uid="Reportman.Reporting.Section.SharedImage">SharedImage</h4>
+  <div class="markdown level1 summary"><p>Determines how the image is shared in the report to enhace final metafile
+or pdf size</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SharedImageType SharedImage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SharedImageType.html">SharedImageType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipExpreH" data-uid="Reportman.Reporting.Section.SkipExpreH">SkipExpreH</h4>
+  <div class="markdown level1 summary"><p>Determines the horizontal position, the result of the expression must be an integer,
+the unit is in twips (1440twips=1 inch), the skip may be relative or absolute
+depending on property bellow</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SkipExpreH</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipExpreV" data-uid="Reportman.Reporting.Section.SkipExpreV">SkipExpreV</h4>
+  <div class="markdown level1 summary"><p>Determines the verticalposition, the result of the expression must be an integer,
+the unit is in twips (1440twips=1 inch), the skip may be relative or absolute
+depending on property bellow</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SkipExpreV</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipPage" data-uid="Reportman.Reporting.Section.SkipPage">SkipPage</h4>
+  <div class="markdown level1 summary"><p>If this property is true, after printing the section a new page
+will begin (unless there is nothing more to print)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool SkipPage</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipRelativeH" data-uid="Reportman.Reporting.Section.SkipRelativeH">SkipRelativeH</h4>
+  <div class="markdown level1 summary"><p>If true the skip is relative to the print pointer else is relative to the current page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool SkipRelativeH</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipRelativeV" data-uid="Reportman.Reporting.Section.SkipRelativeV">SkipRelativeV</h4>
+  <div class="markdown level1 summary"><p>If true the skip is relative to the print pointer else is relative to the current page</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool SkipRelativeV</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipToPageExpre" data-uid="Reportman.Reporting.Section.SkipToPageExpre">SkipToPageExpre</h4>
+  <div class="markdown level1 summary"><p>If a skip type is assigned then this expression is used to determine the page to
+relocate the print pointer</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SkipToPageExpre</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SkipType" data-uid="Reportman.Reporting.Section.SkipType">SkipType</h4>
+  <div class="markdown level1 summary"><p>The skip is a repositioning of the print pointer, you can place print pointer to another
+page and/or page position with properties bellow</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SkipType SkipType</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SkipType.html">SkipType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_StreamFormat" data-uid="Reportman.Reporting.Section.StreamFormat">StreamFormat</h4>
+  <div class="markdown level1 summary"><p>Stream format while saving the image, by default, it matches the parent
+subreport stream format</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamFormatType StreamFormat</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.StreamFormatType.html">StreamFormatType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SubReport" data-uid="Reportman.Reporting.Section.SubReport">SubReport</h4>
+  <div class="markdown level1 summary"><p>Parent subreport of the section</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonIgnore]
+[JsonIgnore]
+public SubReport SubReport</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SubReport.html">SubReport</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SubReportName" data-uid="Reportman.Reporting.Section.SubReportName">SubReportName</h4>
+  <div class="markdown level1 summary"><p>Parent subreport name, it stores the reference to the parent subreport</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SubReportName</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_SyncWidth" data-uid="Reportman.Reporting.Section.SyncWidth">SyncWidth</h4>
+  <div class="markdown level1 summary"><p>At designtime sincrhonize width with other sections with syncWidth true</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool SyncWidth</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_VertDesp" data-uid="Reportman.Reporting.Section.VertDesp">VertDesp</h4>
+  <div class="markdown level1 summary"><p>When vertical desplacement is set to true, the print is performed as usually
+(up to down), after reaching the bottom of the page, the print position will
+place at the top of the page (or group header) , and the left print position
+will move an amount equivalent to the section with (if fits in the page),
+then printing continue. But this will happen only when the next section to print
+has also the vertical desplacement set to true, else the engine will skip to
+next page. Set this property to true in the detail section for example to
+print labels up to down, adjust the section with so many details fit in the
+total page width.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool VertDesp</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_Section_dpires" data-uid="Reportman.Reporting.Section.dpires">dpires</h4>
+  <div class="markdown level1 summary"><p>Resolution of the image in pixels per inch unit, the size of the bitmap and the
+resolution will determine the final size</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int dpires</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_Section_Components_" data-uid="Reportman.Reporting.Section.Components*"></a>
+  <h4 id="Reportman_Reporting_Section_Components" data-uid="Reportman.Reporting.Section.Components">Components</h4>
+  <div class="markdown level1 summary"><p>List of child components, this components are labels, expressions, images...</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;PrintPosItem&gt; Components { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Reporting.PrintPosItem.html">PrintPosItem</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_IsExternal_" data-uid="Reportman.Reporting.Section.IsExternal*"></a>
+  <h4 id="Reportman_Reporting_Section_IsExternal" data-uid="Reportman.Reporting.Section.IsExternal">IsExternal</h4>
+  <div class="markdown level1 summary"><p>Returns true if the section is an external section</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Browsable(false)]
+public bool IsExternal { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_Stream_" data-uid="Reportman.Reporting.Section.Stream*"></a>
+  <h4 id="Reportman_Reporting_Section_Stream" data-uid="Reportman.Reporting.Section.Stream">Stream</h4>
+  <div class="markdown level1 summary"><p>Embedded image, stored with the report structure containing a image stream,
+will be drawn bellow the grid, using the resolution bellow. When embedding
+large images you should set prefered save format in page setup to xml/gzip
+to enhace performance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Browsable(false)]
+[JsonIgnore]
+[JsonIgnore]
+public MemoryStream Stream { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_StreamBase64_" data-uid="Reportman.Reporting.Section.StreamBase64*"></a>
+  <h4 id="Reportman_Reporting_Section_StreamBase64" data-uid="Reportman.Reporting.Section.StreamBase64">StreamBase64</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string StreamBase64 { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_Section_ClearPageCountList_" data-uid="Reportman.Reporting.Section.ClearPageCountList*"></a>
+  <h4 id="Reportman_Reporting_Section_ClearPageCountList" data-uid="Reportman.Reporting.Section.ClearPageCountList">ClearPageCountList()</h4>
+  <div class="markdown level1 summary"><p>While processing the report, clears the page count items cache</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void ClearPageCountList()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_Section_Dispose_" data-uid="Reportman.Reporting.Section.Dispose*"></a>
+  <h4 id="Reportman_Reporting_Section_Dispose" data-uid="Reportman.Reporting.Section.Dispose">Dispose()</h4>
+  <div class="markdown level1 summary"><p>Free resources used by the section</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void Dispose()</code></pre>
+  </div>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Dispose">ReportItem.Dispose()</a></div>
+
+
+  <a id="Reportman_Reporting_Section_DoPrint_" data-uid="Reportman.Reporting.Section.DoPrint*"></a>
+  <h4 id="Reportman_Reporting_Section_DoPrint_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__" data-uid="Reportman.Reporting.Section.DoPrint(Reportman.Drawing.PrintOut,System.Int32,System.Int32,System.Int32,System.Int32,Reportman.Drawing.MetaFile,System.Drawing.Point,System.Boolean@)">DoPrint(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</h4>
+  <div class="markdown level1 summary"><p>Prints the full section in a specific position of the page, the section will iterate the
+child components, printing each one</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void DoPrint(PrintOut adriver, int aposx, int aposy, int newwidth, int newheight, MetaFile metafile, Point MaxExtent, ref bool PartialPrint)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposx</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">aposy</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newwidth</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">newheight</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></td>
+        <td><span class="parametername">metafile</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">PartialPrint</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_DoPrint_Reportman_Drawing_PrintOut_System_Int32_System_Int32_System_Int32_System_Int32_Reportman_Drawing_MetaFile_System_Drawing_Point_System_Boolean__">PrintItem.DoPrint(PrintOut, int, int, int, int, MetaFile, Point, ref bool)</a></div>
+
+
+  <a id="Reportman_Reporting_Section_EvaluateBeginPage_" data-uid="Reportman.Reporting.Section.EvaluateBeginPage*"></a>
+  <h4 id="Reportman_Reporting_Section_EvaluateBeginPage" data-uid="Reportman.Reporting.Section.EvaluateBeginPage">EvaluateBeginPage()</h4>
+  <div class="markdown level1 summary"><p>Evaluates the begin page expression, if true, the section must be the first
+page in the page, excluding page headers,group repeats</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool EvaluateBeginPage()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_GetClassName_" data-uid="Reportman.Reporting.Section.GetClassName*"></a>
+  <h4 id="Reportman_Reporting_Section_GetClassName" data-uid="Reportman.Reporting.Section.GetClassName">GetClassName()</h4>
+  <div class="markdown level1 summary"><p>Internal function to determine the object type name</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override string GetClassName()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><p>Object type name</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_GetClassName">ReportItem.GetClassName()</a></div>
+
+
+  <a id="Reportman_Reporting_Section_GetDisplayName_" data-uid="Reportman.Reporting.Section.GetDisplayName*"></a>
+  <h4 id="Reportman_Reporting_Section_GetDisplayName_System_Boolean_" data-uid="Reportman.Reporting.Section.GetDisplayName(System.Boolean)">GetDisplayName(bool)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GetDisplayName(bool addchildsubreport)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">addchildsubreport</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_GetExtension_" data-uid="Reportman.Reporting.Section.GetExtension*"></a>
+  <h4 id="Reportman_Reporting_Section_GetExtension_Reportman_Drawing_PrintOut_System_Drawing_Point_System_Boolean_" data-uid="Reportman.Reporting.Section.GetExtension(Reportman.Drawing.PrintOut,System.Drawing.Point,System.Boolean)">GetExtension(PrintOut, Point, bool)</h4>
+  <div class="markdown level1 summary"><p>Used by report processing to determine the size of the section, depending on
+the output driver the size may vary</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Point GetExtension(PrintOut adriver, Point MaxExtent, bool ForcePartial)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></td>
+        <td><span class="parametername">adriver</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">MaxExtent</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">ForcePartial</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_GetExtension_Reportman_Drawing_PrintOut_System_Drawing_Point_System_Boolean_">PrintItem.GetExtension(PrintOut, Point, bool)</a></div>
+
+
+  <a id="Reportman_Reporting_Section_GetExternalDataDescription_" data-uid="Reportman.Reporting.Section.GetExternalDataDescription*"></a>
+  <h4 id="Reportman_Reporting_Section_GetExternalDataDescription" data-uid="Reportman.Reporting.Section.GetExternalDataDescription">GetExternalDataDescription()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GetExternalDataDescription()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_GetStream_" data-uid="Reportman.Reporting.Section.GetStream*"></a>
+  <h4 id="Reportman_Reporting_Section_GetStream" data-uid="Reportman.Reporting.Section.GetStream">GetStream()</h4>
+  <div class="markdown level1 summary"><p>While processing the report, this is a helper to get the background image stream. It
+processes the background expression if necessary</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MemoryStream GetStream()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Section_SubReportChanged_" data-uid="Reportman.Reporting.Section.SubReportChanged*"></a>
+  <h4 id="Reportman_Reporting_Section_SubReportChanged_Reportman_Reporting_SubReportEvent_System_String_" data-uid="Reportman.Reporting.Section.SubReportChanged(Reportman.Reporting.SubReportEvent,System.String)">SubReportChanged(SubReportEvent, string)</h4>
+  <div class="markdown level1 summary"><p>The report notifies the section when a report starts or moves, so the section can
+update internal values</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SubReportChanged(SubReportEvent newstate, string newgroup)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.SubReportEvent.html">SubReportEvent</a></td>
+        <td><span class="parametername">newstate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">newgroup</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Reporting.PrintItem.html#Reportman_Reporting_PrintItem_SubReportChanged_Reportman_Reporting_SubReportEvent_System_String_">PrintItem.SubReportChanged(SubReportEvent, string)</a></div>
+
+
+  <a id="Reportman_Reporting_Section_UpdatePageCounts_" data-uid="Reportman.Reporting.Section.UpdatePageCounts*"></a>
+  <h4 id="Reportman_Reporting_Section_UpdatePageCounts" data-uid="Reportman.Reporting.Section.UpdatePageCounts">UpdatePageCounts()</h4>
+  <div class="markdown level1 summary"><p>While processing the report, update all page count references with the
+updated page count value, used by PAGEGROUPCOUNT special expression feature.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void UpdatePageCounts()</code></pre>
+  </div>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

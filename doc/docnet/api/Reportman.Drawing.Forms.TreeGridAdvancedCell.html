@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class TreeGridAdvancedCell | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class TreeGridAdvancedCell | Reportman .Net Documentation ">
+    
+    <meta name="description" content="TreeGridAdvancedCell">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell">
+
+
+
+  <h1 id="Reportman_Drawing_Forms_TreeGridAdvancedCell" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell" class="text-break">Class TreeGridAdvancedCell</h1>
+  <div class="markdown level0 summary"><p>TreeGridAdvancedCell</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement">DataGridViewElement</a></div>
+    <div class="level2"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell">DataGridViewCell</a></div>
+    <div class="level3"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell">DataGridViewTextBoxCell</a></div>
+    <div class="level4"><span class="xref">TreeGridAdvancedCell</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.createaccessibilityinstance">DataGridViewTextBoxCell.CreateAccessibilityInstance()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.detacheditingcontrol">DataGridViewTextBoxCell.DetachEditingControl()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.getcontentbounds">DataGridViewTextBoxCell.GetContentBounds(Graphics, DataGridViewCellStyle, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.geterroriconbounds">DataGridViewTextBoxCell.GetErrorIconBounds(Graphics, DataGridViewCellStyle, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.getpreferredsize">DataGridViewTextBoxCell.GetPreferredSize(Graphics, DataGridViewCellStyle, int, Size)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.initializeeditingcontrol">DataGridViewTextBoxCell.InitializeEditingControl(int, object, DataGridViewCellStyle)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.keyenterseditmode">DataGridViewTextBoxCell.KeyEntersEditMode(KeyEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.onenter">DataGridViewTextBoxCell.OnEnter(int, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.onleave">DataGridViewTextBoxCell.OnLeave(int, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.onmouseclick">DataGridViewTextBoxCell.OnMouseClick(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.positioneditingcontrol">DataGridViewTextBoxCell.PositionEditingControl(bool, bool, Rectangle, Rectangle, DataGridViewCellStyle, bool, bool, bool, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.tostring">DataGridViewTextBoxCell.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.formattedvaluetype">DataGridViewTextBoxCell.FormattedValueType</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.maxinputlength">DataGridViewTextBoxCell.MaxInputLength</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.valuetype">DataGridViewTextBoxCell.ValueType</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.adjustcellborderstyle">DataGridViewCell.AdjustCellBorderStyle(DataGridViewAdvancedBorderStyle, DataGridViewAdvancedBorderStyle, bool, bool, bool, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.borderwidths">DataGridViewCell.BorderWidths(DataGridViewAdvancedBorderStyle)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.clickunsharesrow">DataGridViewCell.ClickUnsharesRow(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.contentclickunsharesrow">DataGridViewCell.ContentClickUnsharesRow(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.contentdoubleclickunsharesrow">DataGridViewCell.ContentDoubleClickUnsharesRow(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.dispose#system-windows-forms-datagridviewcell-dispose">DataGridViewCell.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.doubleclickunsharesrow">DataGridViewCell.DoubleClickUnsharesRow(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.enterunsharesrow">DataGridViewCell.EnterUnsharesRow(int, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getclipboardcontent">DataGridViewCell.GetClipboardContent(int, bool, bool, bool, bool, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getcontentbounds#system-windows-forms-datagridviewcell-getcontentbounds(system-int32)">DataGridViewCell.GetContentBounds(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.geteditedformattedvalue">DataGridViewCell.GetEditedFormattedValue(int, DataGridViewDataErrorContexts)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.geterrortext">DataGridViewCell.GetErrorText(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getformattedvalue">DataGridViewCell.GetFormattedValue(object, int, ref DataGridViewCellStyle, TypeConverter, TypeConverter, DataGridViewDataErrorContexts)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getinheritedcontextmenustrip">DataGridViewCell.GetInheritedContextMenuStrip(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getinheritedstate">DataGridViewCell.GetInheritedState(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getinheritedstyle">DataGridViewCell.GetInheritedStyle(DataGridViewCellStyle, int, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getsize">DataGridViewCell.GetSize(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.getvalue">DataGridViewCell.GetValue(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.keydownunsharesrow">DataGridViewCell.KeyDownUnsharesRow(KeyEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.keypressunsharesrow">DataGridViewCell.KeyPressUnsharesRow(KeyPressEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.keyupunsharesrow">DataGridViewCell.KeyUpUnsharesRow(KeyEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.leaveunsharesrow">DataGridViewCell.LeaveUnsharesRow(int, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.measuretextheight#system-windows-forms-datagridviewcell-measuretextheight(system-drawing-graphics-system-string-system-drawing-font-system-int32-system-windows-forms-textformatflags)">DataGridViewCell.MeasureTextHeight(Graphics, string, Font, int, TextFormatFlags)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.measuretextheight#system-windows-forms-datagridviewcell-measuretextheight(system-drawing-graphics-system-string-system-drawing-font-system-int32-system-windows-forms-textformatflags-system-boolean@)">DataGridViewCell.MeasureTextHeight(Graphics, string, Font, int, TextFormatFlags, out bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.measuretextpreferredsize">DataGridViewCell.MeasureTextPreferredSize(Graphics, string, Font, float, TextFormatFlags)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.measuretextsize">DataGridViewCell.MeasureTextSize(Graphics, string, Font, TextFormatFlags)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.measuretextwidth">DataGridViewCell.MeasureTextWidth(Graphics, string, Font, int, TextFormatFlags)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mouseclickunsharesrow">DataGridViewCell.MouseClickUnsharesRow(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mousedoubleclickunsharesrow">DataGridViewCell.MouseDoubleClickUnsharesRow(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mousedownunsharesrow">DataGridViewCell.MouseDownUnsharesRow(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mouseenterunsharesrow">DataGridViewCell.MouseEnterUnsharesRow(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mouseleaveunsharesrow">DataGridViewCell.MouseLeaveUnsharesRow(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mousemoveunsharesrow">DataGridViewCell.MouseMoveUnsharesRow(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.mouseupunsharesrow">DataGridViewCell.MouseUpUnsharesRow(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onclick">DataGridViewCell.OnClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.oncontentclick">DataGridViewCell.OnContentClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.oncontentdoubleclick">DataGridViewCell.OnContentDoubleClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.ondoubleclick">DataGridViewCell.OnDoubleClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onkeydown">DataGridViewCell.OnKeyDown(KeyEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onkeypress">DataGridViewCell.OnKeyPress(KeyPressEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onkeyup">DataGridViewCell.OnKeyUp(KeyEventArgs, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmousedoubleclick">DataGridViewCell.OnMouseDoubleClick(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmouseenter">DataGridViewCell.OnMouseEnter(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmouseleave">DataGridViewCell.OnMouseLeave(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmousemove">DataGridViewCell.OnMouseMove(DataGridViewCellMouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.ondatagridviewchanged">DataGridViewCell.OnDataGridViewChanged()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.paintborder">DataGridViewCell.PaintBorder(Graphics, Rectangle, Rectangle, DataGridViewCellStyle, DataGridViewAdvancedBorderStyle)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.painterroricon">DataGridViewCell.PaintErrorIcon(Graphics, Rectangle, Rectangle, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.parseformattedvalue">DataGridViewCell.ParseFormattedValue(object, DataGridViewCellStyle, TypeConverter, TypeConverter)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.positioneditingpanel">DataGridViewCell.PositionEditingPanel(Rectangle, Rectangle, DataGridViewCellStyle, bool, bool, bool, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.setvalue">DataGridViewCell.SetValue(int, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.accessibilityobject">DataGridViewCell.AccessibilityObject</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.columnindex">DataGridViewCell.ColumnIndex</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.contentbounds">DataGridViewCell.ContentBounds</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.contextmenustrip">DataGridViewCell.ContextMenuStrip</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.defaultnewrowvalue">DataGridViewCell.DefaultNewRowValue</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.displayed">DataGridViewCell.Displayed</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.editedformattedvalue">DataGridViewCell.EditedFormattedValue</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.edittype">DataGridViewCell.EditType</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.erroriconbounds">DataGridViewCell.ErrorIconBounds</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.errortext">DataGridViewCell.ErrorText</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.formattedvalue">DataGridViewCell.FormattedValue</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.frozen">DataGridViewCell.Frozen</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.hasstyle">DataGridViewCell.HasStyle</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.inheritedstate">DataGridViewCell.InheritedState</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.inheritedstyle">DataGridViewCell.InheritedStyle</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.isineditmode">DataGridViewCell.IsInEditMode</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.owningcolumn">DataGridViewCell.OwningColumn</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.owningrow">DataGridViewCell.OwningRow</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.preferredsize">DataGridViewCell.PreferredSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.readonly">DataGridViewCell.ReadOnly</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.resizable">DataGridViewCell.Resizable</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.rowindex">DataGridViewCell.RowIndex</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.selected">DataGridViewCell.Selected</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.size">DataGridViewCell.Size</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.style">DataGridViewCell.Style</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.tag">DataGridViewCell.Tag</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.tooltiptext">DataGridViewCell.ToolTipText</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.value">DataGridViewCell.Value</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.visible">DataGridViewCell.Visible</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisecellclick">DataGridViewElement.RaiseCellClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisecellcontentclick">DataGridViewElement.RaiseCellContentClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisecellcontentdoubleclick">DataGridViewElement.RaiseCellContentDoubleClick(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisecellvaluechanged">DataGridViewElement.RaiseCellValueChanged(DataGridViewCellEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisedataerror">DataGridViewElement.RaiseDataError(DataGridViewDataErrorEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.raisemousewheel">DataGridViewElement.RaiseMouseWheel(MouseEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.state">DataGridViewElement.State</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelement.datagridview">DataGridViewElement.DataGridView</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Drawing.html">Drawing</a>.<a class="xref" href="Reportman.Drawing.Forms.html">Forms</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Drawing.Forms.dll</h6>
+  <h5 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class TreeGridAdvancedCell : DataGridViewTextBoxCell, ICloneable, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell__ctor_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.#ctor*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell__ctor" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.#ctor">TreeGridAdvancedCell()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TreeGridAdvancedCell()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_DEF_GLYPHWIDTH" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.DEF_GLYPHWIDTH">DEF_GLYPHWIDTH</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int DEF_GLYPHWIDTH = 15</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_INDENT_FIRST" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.INDENT_FIRST">INDENT_FIRST</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int INDENT_FIRST = 8</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_INDENT_MARGIN" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.INDENT_MARGIN">INDENT_MARGIN</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int INDENT_MARGIN = 5</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_INDENT_WIDTH_UNSCALED" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.INDENT_WIDTH_UNSCALED">INDENT_WIDTH_UNSCALED</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int INDENT_WIDTH_UNSCALED = 20</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_GlyphMargin_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.GlyphMargin*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_GlyphMargin" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.GlyphMargin">GlyphMargin</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual int GlyphMargin { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_GlyphOffset_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.GlyphOffset*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_GlyphOffset" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.GlyphOffset">GlyphOffset</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual int GlyphOffset { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_INDENT_WIDTH_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.INDENT_WIDTH*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_INDENT_WIDTH" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.INDENT_WIDTH">INDENT_WIDTH</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int INDENT_WIDTH { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Level_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Level*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Level" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Level">Level</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Level { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Clone_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Clone*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Clone" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Clone">Clone()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override object Clone()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.clone">DataGridViewTextBoxCell.Clone()</a></div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Dispose_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Dispose*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Dispose_System_Boolean_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Dispose(System.Boolean)">Dispose(bool)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void Dispose(bool disposing)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">disposing</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.dispose#system-windows-forms-datagridviewcell-dispose(system-boolean)">DataGridViewCell.Dispose(bool)</a></div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_OnMouseDown_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.OnMouseDown*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_OnMouseDown_System_Windows_Forms_DataGridViewCellMouseEventArgs_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.OnMouseDown(System.Windows.Forms.DataGridViewCellMouseEventArgs)">OnMouseDown(DataGridViewCellMouseEventArgs)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void OnMouseDown(DataGridViewCellMouseEventArgs e)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcellmouseeventargs">DataGridViewCellMouseEventArgs</a></td>
+        <td><span class="parametername">e</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmousedown">DataGridViewCell.OnMouseDown(DataGridViewCellMouseEventArgs)</a></div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_OnMouseUp_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.OnMouseUp*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_OnMouseUp_System_Windows_Forms_DataGridViewCellMouseEventArgs_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.OnMouseUp(System.Windows.Forms.DataGridViewCellMouseEventArgs)">OnMouseUp(DataGridViewCellMouseEventArgs)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void OnMouseUp(DataGridViewCellMouseEventArgs e)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcellmouseeventargs">DataGridViewCellMouseEventArgs</a></td>
+        <td><span class="parametername">e</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcell.onmouseup">DataGridViewCell.OnMouseUp(DataGridViewCellMouseEventArgs)</a></div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Paint_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Paint*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_Paint_System_Drawing_Graphics_System_Drawing_Rectangle_System_Drawing_Rectangle_System_Int32_System_Windows_Forms_DataGridViewElementStates_System_Object_System_Object_System_String_System_Windows_Forms_DataGridViewCellStyle_System_Windows_Forms_DataGridViewAdvancedBorderStyle_System_Windows_Forms_DataGridViewPaintParts_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.Paint(System.Drawing.Graphics,System.Drawing.Rectangle,System.Drawing.Rectangle,System.Int32,System.Windows.Forms.DataGridViewElementStates,System.Object,System.Object,System.String,System.Windows.Forms.DataGridViewCellStyle,System.Windows.Forms.DataGridViewAdvancedBorderStyle,System.Windows.Forms.DataGridViewPaintParts)">Paint(Graphics, Rectangle, Rectangle, int, DataGridViewElementStates, object, object, string, DataGridViewCellStyle, DataGridViewAdvancedBorderStyle, DataGridViewPaintParts)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds, int rowIndex, DataGridViewElementStates cellState, object value, object formattedValue, string errorText, DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle, DataGridViewPaintParts paintParts)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.graphics">Graphics</a></td>
+        <td><span class="parametername">graphics</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.rectangle">Rectangle</a></td>
+        <td><span class="parametername">clipBounds</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.rectangle">Rectangle</a></td>
+        <td><span class="parametername">cellBounds</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">rowIndex</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewelementstates">DataGridViewElementStates</a></td>
+        <td><span class="parametername">cellState</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">value</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">formattedValue</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">errorText</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewcellstyle">DataGridViewCellStyle</a></td>
+        <td><span class="parametername">cellStyle</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewadvancedborderstyle">DataGridViewAdvancedBorderStyle</a></td>
+        <td><span class="parametername">advancedBorderStyle</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewpaintparts">DataGridViewPaintParts</a></td>
+        <td><span class="parametername">paintParts</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewtextboxcell.paint">DataGridViewTextBoxCell.Paint(Graphics, Rectangle, Rectangle, int, DataGridViewElementStates, object, object, string, DataGridViewCellStyle, DataGridViewAdvancedBorderStyle, DataGridViewPaintParts)</a></div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_PrepareDraw_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.PrepareDraw*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_PrepareDraw" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.PrepareDraw">PrepareDraw()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void PrepareDraw()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Drawing_Forms_TreeGridAdvancedCell_UpdateStyle_" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.UpdateStyle*"></a>
+  <h4 id="Reportman_Drawing_Forms_TreeGridAdvancedCell_UpdateStyle" data-uid="Reportman.Drawing.Forms.TreeGridAdvancedCell.UpdateStyle">UpdateStyle()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual void UpdateStyle()</code></pre>
+  </div>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icloneable">ICloneable</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

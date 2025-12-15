@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class ReportDataset | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class ReportDataset | Reportman .Net Documentation ">
+    
+    <meta name="description" content="ReportDataset is used internally by the reporting engine. Allow navigation in a IDataReader, using a two record buffer, so you can go back one record, but not two. The navigation is done forward, and does not consume memory (like IDataReader).">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.ReportDataset">
+
+
+
+  <h1 id="Reportman_Reporting_ReportDataset" data-uid="Reportman.Reporting.ReportDataset" class="text-break">Class ReportDataset</h1>
+  <div class="markdown level0 summary"><p>ReportDataset is used internally by the reporting engine.
+Allow navigation in a IDataReader, using a two record buffer, so you can go back one record, but
+not two. The navigation is done forward, and does not consume memory (like IDataReader).</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent">MarshalByValueComponent</a></div>
+    <div class="level2"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a></div>
+    <div class="level3"><span class="xref">ReportDataset</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.icomponent">IComponent</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ilistsource">IListSource</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.isupportinitializenotification">ISupportInitializeNotification</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.isupportinitialize">ISupportInitialize</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.runtime.serialization.iserializable">ISerializable</a></div>
+    <div><span class="xref">IXmlSerializable</span></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.finitinprogress">DataTable.fInitInProgress</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.begininit">DataTable.BeginInit()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.endinit">DataTable.EndInit()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.acceptchanges">DataTable.AcceptChanges()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.createinstance">DataTable.CreateInstance()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.clone">DataTable.Clone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.copy">DataTable.Copy()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.clear">DataTable.Clear()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.compute">DataTable.Compute(string, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.getchanges#system-data-datatable-getchanges">DataTable.GetChanges()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.getchanges#system-data-datatable-getchanges(system-data-datarowstate)">DataTable.GetChanges(DataRowState)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.geterrors">DataTable.GetErrors()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.importrow">DataTable.ImportRow(DataRow)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.newrow">DataTable.NewRow()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.newrowfrombuilder">DataTable.NewRowFromBuilder(DataRowBuilder)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.getrowtype">DataTable.GetRowType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.newrowarray">DataTable.NewRowArray(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.oncolumnchanging">DataTable.OnColumnChanging(DataColumnChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.oncolumnchanged">DataTable.OnColumnChanged(DataColumnChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onpropertychanging">DataTable.OnPropertyChanging(PropertyChangedEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onremovecolumn">DataTable.OnRemoveColumn(DataColumn)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onrowchanged">DataTable.OnRowChanged(DataRowChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onrowchanging">DataTable.OnRowChanging(DataRowChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onrowdeleting">DataTable.OnRowDeleting(DataRowChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.onrowdeleted">DataTable.OnRowDeleted(DataRowChangeEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.ontablecleared">DataTable.OnTableCleared(DataTableClearEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.ontableclearing">DataTable.OnTableClearing(DataTableClearEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.ontablenewrow">DataTable.OnTableNewRow(DataTableNewRowEventArgs)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rejectchanges">DataTable.RejectChanges()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.reset">DataTable.Reset()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.select#system-data-datatable-select">DataTable.Select()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.select#system-data-datatable-select(system-string)">DataTable.Select(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.select#system-data-datatable-select(system-string-system-string)">DataTable.Select(string, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.select#system-data-datatable-select(system-string-system-string-system-data-dataviewrowstate)">DataTable.Select(string, string, DataViewRowState)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.tostring">DataTable.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.beginloaddata">DataTable.BeginLoadData()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.endloaddata">DataTable.EndLoadData()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.loaddatarow#system-data-datatable-loaddatarow(system-object()-system-boolean)">DataTable.LoadDataRow(object[], bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.loaddatarow#system-data-datatable-loaddatarow(system-object()-system-data-loadoption)">DataTable.LoadDataRow(object[], LoadOption)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.merge#system-data-datatable-merge(system-data-datatable)">DataTable.Merge(DataTable)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.merge#system-data-datatable-merge(system-data-datatable-system-boolean)">DataTable.Merge(DataTable, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.merge#system-data-datatable-merge(system-data-datatable-system-boolean-system-data-missingschemaaction)">DataTable.Merge(DataTable, bool, MissingSchemaAction)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.load#system-data-datatable-load(system-data-idatareader)">DataTable.Load(IDataReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.load#system-data-datatable-load(system-data-idatareader-system-data-loadoption)">DataTable.Load(IDataReader, LoadOption)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.load#system-data-datatable-load(system-data-idatareader-system-data-loadoption-system-data-fillerroreventhandler)">DataTable.Load(IDataReader, LoadOption, FillErrorEventHandler)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.createdatareader">DataTable.CreateDataReader()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-stream)">DataTable.WriteXml(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-stream-system-boolean)">DataTable.WriteXml(Stream, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-textwriter)">DataTable.WriteXml(TextWriter)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-textwriter-system-boolean)">DataTable.WriteXml(TextWriter, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-xml-xmlwriter)">DataTable.WriteXml(XmlWriter)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-xml-xmlwriter-system-boolean)">DataTable.WriteXml(XmlWriter, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-string)">DataTable.WriteXml(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-string-system-boolean)">DataTable.WriteXml(string, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-stream-system-data-xmlwritemode)">DataTable.WriteXml(Stream, XmlWriteMode)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-stream-system-data-xmlwritemode-system-boolean)">DataTable.WriteXml(Stream, XmlWriteMode, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-textwriter-system-data-xmlwritemode)">DataTable.WriteXml(TextWriter, XmlWriteMode)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-io-textwriter-system-data-xmlwritemode-system-boolean)">DataTable.WriteXml(TextWriter, XmlWriteMode, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-xml-xmlwriter-system-data-xmlwritemode)">DataTable.WriteXml(XmlWriter, XmlWriteMode)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-xml-xmlwriter-system-data-xmlwritemode-system-boolean)">DataTable.WriteXml(XmlWriter, XmlWriteMode, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-string-system-data-xmlwritemode)">DataTable.WriteXml(string, XmlWriteMode)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexml#system-data-datatable-writexml(system-string-system-data-xmlwritemode-system-boolean)">DataTable.WriteXml(string, XmlWriteMode, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-io-stream)">DataTable.WriteXmlSchema(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-io-stream-system-boolean)">DataTable.WriteXmlSchema(Stream, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-io-textwriter)">DataTable.WriteXmlSchema(TextWriter)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-io-textwriter-system-boolean)">DataTable.WriteXmlSchema(TextWriter, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-xml-xmlwriter)">DataTable.WriteXmlSchema(XmlWriter)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-xml-xmlwriter-system-boolean)">DataTable.WriteXmlSchema(XmlWriter, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-string)">DataTable.WriteXmlSchema(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.writexmlschema#system-data-datatable-writexmlschema(system-string-system-boolean)">DataTable.WriteXmlSchema(string, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxml#system-data-datatable-readxml(system-io-stream)">DataTable.ReadXml(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxml#system-data-datatable-readxml(system-io-textreader)">DataTable.ReadXml(TextReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxml#system-data-datatable-readxml(system-string)">DataTable.ReadXml(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxml#system-data-datatable-readxml(system-xml-xmlreader)">DataTable.ReadXml(XmlReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxmlschema#system-data-datatable-readxmlschema(system-io-stream)">DataTable.ReadXmlSchema(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxmlschema#system-data-datatable-readxmlschema(system-io-textreader)">DataTable.ReadXmlSchema(TextReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxmlschema#system-data-datatable-readxmlschema(system-string)">DataTable.ReadXmlSchema(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxmlschema#system-data-datatable-readxmlschema(system-xml-xmlreader)">DataTable.ReadXmlSchema(XmlReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.getdatatableschema">DataTable.GetDataTableSchema(XmlSchemaSet)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.getschema">DataTable.GetSchema()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.readxmlserializable">DataTable.ReadXmlSerializable(XmlReader)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.casesensitive">DataTable.CaseSensitive</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.isinitialized">DataTable.IsInitialized</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.remotingformat">DataTable.RemotingFormat</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.childrelations">DataTable.ChildRelations</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.columns">DataTable.Columns</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.constraints">DataTable.Constraints</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.dataset">DataTable.DataSet</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.defaultview">DataTable.DefaultView</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.displayexpression">DataTable.DisplayExpression</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.extendedproperties">DataTable.ExtendedProperties</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.haserrors">DataTable.HasErrors</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.locale">DataTable.Locale</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.minimumcapacity">DataTable.MinimumCapacity</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.parentrelations">DataTable.ParentRelations</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.primarykey">DataTable.PrimaryKey</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rows">DataTable.Rows</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.tablename">DataTable.TableName</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.namespace">DataTable.Namespace</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.prefix">DataTable.Prefix</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.site">DataTable.Site</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.columnchanging">DataTable.ColumnChanging</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.columnchanged">DataTable.ColumnChanged</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.initialized">DataTable.Initialized</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rowchanged">DataTable.RowChanged</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rowchanging">DataTable.RowChanging</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rowdeleting">DataTable.RowDeleting</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.rowdeleted">DataTable.RowDeleted</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.tableclearing">DataTable.TableClearing</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.tablecleared">DataTable.TableCleared</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable.tablenewrow">DataTable.TableNewRow</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.dispose#system-componentmodel-marshalbyvaluecomponent-dispose">MarshalByValueComponent.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.dispose#system-componentmodel-marshalbyvaluecomponent-dispose(system-boolean)">MarshalByValueComponent.Dispose(bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.getservice">MarshalByValueComponent.GetService(Type)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.events">MarshalByValueComponent.Events</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.container">MarshalByValueComponent.Container</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.designmode">MarshalByValueComponent.DesignMode</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.marshalbyvaluecomponent.disposed">MarshalByValueComponent.Disposed</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_ReportDataset_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ReportDataset : DataTable, IComponent, IDisposable, IServiceProvider, IListSource, ISupportInitializeNotification, ISupportInitialize, ISerializable, IXmlSerializable</code></pre>
+  </div>
+  <h5 id="Reportman_Reporting_ReportDataset_remarks"><strong>Remarks</strong></h5>
+  <div class="markdown level0 remarks"><p>A two record buffer is needed to do report grouping, the reporting engine must go back one record
+when a group expression changes, and print group footers. This class is a helper to perform this task,
+but you can use it also to access to information inside a DataReader using a
+DataTable approach instead a DataReader approach, you will obtain a performance improvement
+when the number of records is high because the records are not stored in memory</p>
+</div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_ReportDataset__ctor_" data-uid="Reportman.Reporting.ReportDataset.#ctor*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset__ctor" data-uid="Reportman.Reporting.ReportDataset.#ctor">ReportDataset()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportDataset()</code></pre>
+  </div>
+  <h3 id="fields">Fields
+</h3>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_ColumnSizes" data-uid="Reportman.Reporting.ReportDataset.ColumnSizes">ColumnSizes</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SortedList&lt;string, int&gt; ColumnSizes</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.sortedlist-2">SortedList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_OnCreateTable" data-uid="Reportman.Reporting.ReportDataset.OnCreateTable">OnCreateTable</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportDataset.CreateTableEvent OnCreateTable</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.ReportDataset.html">ReportDataset</a>.<a class="xref" href="Reportman.Reporting.ReportDataset.CreateTableEvent.html">CreateTableEvent</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_OnUpdateData" data-uid="Reportman.Reporting.ReportDataset.OnUpdateData">OnUpdateData</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportDataset.UpdateDataEvent OnUpdateData</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.ReportDataset.html">ReportDataset</a>.<a class="xref" href="Reportman.Reporting.ReportDataset.UpdateDataEvent.html">UpdateDataEvent</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_OnUpdateDataAsync" data-uid="Reportman.Reporting.ReportDataset.OnUpdateDataAsync">OnUpdateDataAsync</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportDataset.UpdateDataEventAsync OnUpdateDataAsync</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.ReportDataset.html">ReportDataset</a>.<a class="xref" href="Reportman.Reporting.ReportDataset.UpdateDataEventAsync.html">UpdateDataEventAsync</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_UpdateColumns" data-uid="Reportman.Reporting.ReportDataset.UpdateColumns">UpdateColumns</h4>
+  <div class="markdown level1 summary"><p>When a DataReader is assigned, by default columns in the DataTable are created from datareader information,
+you can turn off the column creation setting the property to false, that is useful to enhace performance when
+you assign diferent DataReaders but with the same columns</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool UpdateColumns</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_ReportDataset_Active_" data-uid="Reportman.Reporting.ReportDataset.Active*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_Active" data-uid="Reportman.Reporting.ReportDataset.Active">Active</h4>
+  <div class="markdown level1 summary"><p>Indicates if a DataReader have been assigned, this is a read only property</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Active { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_CurrentReader_" data-uid="Reportman.Reporting.ReportDataset.CurrentReader*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_CurrentReader" data-uid="Reportman.Reporting.ReportDataset.CurrentReader">CurrentReader</h4>
+  <div class="markdown level1 summary"><p>This is the main property of the class, you must assign it to provide data to the DataTable.
+One record is fetched (if available) when you assign this property.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDataReader CurrentReader { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idatareader">IDataReader</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_CurrentRow_" data-uid="Reportman.Reporting.ReportDataset.CurrentRow*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_CurrentRow" data-uid="Reportman.Reporting.ReportDataset.CurrentRow">CurrentRow</h4>
+  <div class="markdown level1 summary"><p>Returns current active row, if you never call Prior, it's the last fetched row in the DataReader</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataRow CurrentRow { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datarow">DataRow</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_CurrentRowCount_" data-uid="Reportman.Reporting.ReportDataset.CurrentRowCount*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_CurrentRowCount" data-uid="Reportman.Reporting.ReportDataset.CurrentRowCount">CurrentRowCount</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CurrentRowCount { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_CurrentView_" data-uid="Reportman.Reporting.ReportDataset.CurrentView*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_CurrentView" data-uid="Reportman.Reporting.ReportDataset.CurrentView">CurrentView</h4>
+  <div class="markdown level1 summary"><p>This is the main property of the class, you must assign it to provide data to the DataTable.
+One record is fetched (if available) when you assign this property.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataView CurrentView { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.dataview">DataView</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_Eof_" data-uid="Reportman.Reporting.ReportDataset.Eof*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_Eof" data-uid="Reportman.Reporting.ReportDataset.Eof">Eof</h4>
+  <div class="markdown level1 summary"><p>Returns true when there are no more records to fetch, or also when the assigned DataReader does not returned any data</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Eof { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_OtherRow_" data-uid="Reportman.Reporting.ReportDataset.OtherRow*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_OtherRow" data-uid="Reportman.Reporting.ReportDataset.OtherRow">OtherRow</h4>
+  <div class="markdown level1 summary"><p>Because there is a two record buffer you can access the row that is not active</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataRow OtherRow { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datarow">DataRow</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_ViewFilter_" data-uid="Reportman.Reporting.ReportDataset.ViewFilter*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_ViewFilter" data-uid="Reportman.Reporting.ReportDataset.ViewFilter">ViewFilter</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object[] ViewFilter { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_ReportDataset_First_" data-uid="Reportman.Reporting.ReportDataset.First*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_First" data-uid="Reportman.Reporting.ReportDataset.First">First()</h4>
+  <div class="markdown level1 summary"><p>Go to first record only for inmemeory views</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void First()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_ReportDataset_Next_" data-uid="Reportman.Reporting.ReportDataset.Next*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_Next" data-uid="Reportman.Reporting.ReportDataset.Next">Next()</h4>
+  <div class="markdown level1 summary"><p>Moves to the next record in the internal DataReader, storing the contents in the DataTable.
+If you called Prior, then only changes the row returned by CurrentRow</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Next()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_ReportDataset_Prior_" data-uid="Reportman.Reporting.ReportDataset.Prior*"></a>
+  <h4 id="Reportman_Reporting_ReportDataset_Prior" data-uid="Reportman.Reporting.ReportDataset.Prior">Prior()</h4>
+  <div class="markdown level1 summary"><p>Moves to the prior record in the DataTable, you can only go back one record</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Prior()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="events">Events
+</h3>
+
+
+  <h4 id="Reportman_Reporting_ReportDataset_OnDataChange" data-uid="Reportman.Reporting.ReportDataset.OnDataChange">OnDataChange</h4>
+  <div class="markdown level1 summary"><p>Assign this event if you are interested in knowing when the current record data changes</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event DataChange OnDataChange</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.DataChange.html">DataChange</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.icomponent">IComponent</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ilistsource">IListSource</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.isupportinitializenotification">ISupportInitializeNotification</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.isupportinitialize">ISupportInitialize</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.runtime.serialization.iserializable">ISerializable</a>
+  </div>
+  <div>
+      <span class="xref">System.Xml.Serialization.IXmlSerializable</span>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

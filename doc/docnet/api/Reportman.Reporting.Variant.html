@@ -1,0 +1,3188 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Struct Variant | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Struct Variant | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Implementation of a Variant type with common arithmetic and logic operations. Variant is a container, not a class reference, that is when you assign a variant to another variant, you are copying content, just like you work with base types like int, char, string. The Variant type is a useful feature to implement an expression .">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Variant">
+
+
+
+  <h1 id="Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant" class="text-break">Struct Variant</h1>
+  <div class="markdown level0 summary"><p>Implementation of a Variant type with common arithmetic and
+logic operations.
+Variant is a container, not a class reference, that is when you assign
+a variant to another variant, you are copying content, just like you
+work with base types like int, char, string.
+The Variant type is a useful feature to implement an expression
+<a class="xref" href="Reportman.Reporting.Evaluator.html">evaluator</a>.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_Variant_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonConverter(typeof(VariantJsonConverter))]
+[JsonConverter(typeof(VariantSystemTextJsonConverter))]
+public struct Variant : IConvertible, IComparable</code></pre>
+  </div>
+  <h5 id="Reportman_Reporting_Variant_remarks"><strong>Remarks</strong></h5>
+  <div class="markdown level0 remarks"><p>C# is a strongly typed language, this feature minimize runtime
+errors common when using implicit variable declaration (Visual Basic),
+or implicit type conversion (C or C++),
+however, at runtime, the requirements of an application can require
+the feature of operating with unknown/variable data types, usually this data
+comes from a database, and this data types can be unknown at compile time.
+Expression evaluation involving variable database fields is an example.
+Use only Variant type if your aplication requires this abstraction
+else it's better to use singular types.</p>
+</div>
+  <h5 id="Reportman_Reporting_Variant_examples"><strong>Examples</strong></h5>
+  <pre><code class="lang-csharp">Variant a=12;
+Variant b=13;
+Variant c=a+b;
+Variant d="The result is:";
+d=d+c.ToString();</code></pre>
+
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_Variant_AsDateTime_" data-uid="Reportman.Reporting.Variant.AsDateTime*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsDateTime" data-uid="Reportman.Reporting.Variant.AsDateTime">AsDateTime</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as a Datetime</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DateTime AsDateTime { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsDecimal_" data-uid="Reportman.Reporting.Variant.AsDecimal*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsDecimal" data-uid="Reportman.Reporting.Variant.AsDecimal">AsDecimal</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as a decimal</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public decimal AsDecimal { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsDouble_" data-uid="Reportman.Reporting.Variant.AsDouble*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsDouble" data-uid="Reportman.Reporting.Variant.AsDouble">AsDouble</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as a double</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double AsDouble { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsInteger_" data-uid="Reportman.Reporting.Variant.AsInteger*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsInteger" data-uid="Reportman.Reporting.Variant.AsInteger">AsInteger</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as an int</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int AsInteger { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsLong_" data-uid="Reportman.Reporting.Variant.AsLong*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsLong" data-uid="Reportman.Reporting.Variant.AsLong">AsLong</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as a long</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long AsLong { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsString_" data-uid="Reportman.Reporting.Variant.AsString*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsString" data-uid="Reportman.Reporting.Variant.AsString">AsString</h4>
+  <div class="markdown level1 summary"><p>Property to get the variant value as a string</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string AsString { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsNull_" data-uid="Reportman.Reporting.Variant.IsNull*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsNull" data-uid="Reportman.Reporting.Variant.IsNull">IsNull</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is null.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsNull { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the value is null (VariantType.Null).</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_VarType_" data-uid="Reportman.Reporting.Variant.VarType*"></a>
+  <h4 id="Reportman_Reporting_Variant_VarType" data-uid="Reportman.Reporting.Variant.VarType">VarType</h4>
+  <div class="markdown level1 summary"><p>Function to check the variant type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public VariantType VarType { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.VariantType.html">VariantType</a></td>
+        <td><p>Returns the VariantType for the current value.
+<a class="xref" href="Reportman.Reporting.VariantType.html">VariantType</a></p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_Variant_Abs_" data-uid="Reportman.Reporting.Variant.Abs*"></a>
+  <h4 id="Reportman_Reporting_Variant_Abs" data-uid="Reportman.Reporting.Variant.Abs">Abs()</h4>
+  <div class="markdown level1 summary"><p>Returns the variant as a positive number, absolute value</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Variant Abs()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_AsObject_" data-uid="Reportman.Reporting.Variant.AsObject*"></a>
+  <h4 id="Reportman_Reporting_Variant_AsObject" data-uid="Reportman.Reporting.Variant.AsObject">AsObject()</h4>
+  <div class="markdown level1 summary"><p>Get the Variant as an object</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object AsObject()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 id="Reportman_Reporting_Variant_AsObject_remarks">Remarks</h5>
+  <div class="markdown level1 remarks"><p>For Null value the result is DBNull.Value.
+For binary data type, the result is a byte[] type</p>
+</div>
+
+
+  <a id="Reportman_Reporting_Variant_AssignFromObject_" data-uid="Reportman.Reporting.Variant.AssignFromObject*"></a>
+  <h4 id="Reportman_Reporting_Variant_AssignFromObject_System_Object_" data-uid="Reportman.Reporting.Variant.AssignFromObject(System.Object)">AssignFromObject(object)</h4>
+  <div class="markdown level1 summary"><p>Procedure to assign a Variant from any object type</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AssignFromObject(object obj)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">obj</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 id="Reportman_Reporting_Variant_AssignFromObject_System_Object__remarks">Remarks</h5>
+  <div class="markdown level1 remarks"><p>If the object is a null reference, the result will be a Variant
+with type Null</p>
+</div>
+
+
+  <a id="Reportman_Reporting_Variant_CompareTo_" data-uid="Reportman.Reporting.Variant.CompareTo*"></a>
+  <h4 id="Reportman_Reporting_Variant_CompareTo_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.CompareTo(Reportman.Reporting.Variant)">CompareTo(Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare to other Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CompareTo(Variant obj)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">obj</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_CompareTo_" data-uid="Reportman.Reporting.Variant.CompareTo*"></a>
+  <h4 id="Reportman_Reporting_Variant_CompareTo_System_Object_" data-uid="Reportman.Reporting.Variant.CompareTo(System.Object)">CompareTo(object)</h4>
+  <div class="markdown level1 summary"><p>Compare a Variant to an object</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CompareTo(object obj)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">obj</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 id="Reportman_Reporting_Variant_CompareTo_System_Object__remarks">Remarks</h5>
+  <div class="markdown level1 remarks"><p>Returns 0 if both are equal, 1 if current instance is greater than object, else returns -1</p>
+</div>
+
+
+  <a id="Reportman_Reporting_Variant_Equals_" data-uid="Reportman.Reporting.Variant.Equals*"></a>
+  <h4 id="Reportman_Reporting_Variant_Equals_System_Object_" data-uid="Reportman.Reporting.Variant.Equals(System.Object)">Equals(object)</h4>
+  <div class="markdown level1 summary"><p>Compare a Variant with a object</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object obj)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">obj</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.equals">ValueType.Equals(object)</a></div>
+
+
+  <a id="Reportman_Reporting_Variant_GetDbType_" data-uid="Reportman.Reporting.Variant.GetDbType*"></a>
+  <h4 id="Reportman_Reporting_Variant_GetDbType" data-uid="Reportman.Reporting.Variant.GetDbType">GetDbType()</h4>
+  <div class="markdown level1 summary"><p>Returns a DbType based on the Variant type</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DbType GetDbType()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.dbtype">DbType</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_GetHashCode_" data-uid="Reportman.Reporting.Variant.GetHashCode*"></a>
+  <h4 id="Reportman_Reporting_Variant_GetHashCode" data-uid="Reportman.Reporting.Variant.GetHashCode">GetHashCode()</h4>
+  <div class="markdown level1 summary"><p>Necessary to override == operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode">ValueType.GetHashCode()</a></div>
+
+
+  <a id="Reportman_Reporting_Variant_GetStream_" data-uid="Reportman.Reporting.Variant.GetStream*"></a>
+  <h4 id="Reportman_Reporting_Variant_GetStream" data-uid="Reportman.Reporting.Variant.GetStream">GetStream()</h4>
+  <div class="markdown level1 summary"><p>Gets the stream on a binary type Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MemoryStream GetStream()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_GetTypeCode_" data-uid="Reportman.Reporting.Variant.GetTypeCode*"></a>
+  <h4 id="Reportman_Reporting_Variant_GetTypeCode" data-uid="Reportman.Reporting.Variant.GetTypeCode">GetTypeCode()</h4>
+  <div class="markdown level1 summary"><p>Returns a TypeCode based on the Variant type</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TypeCode GetTypeCode()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.typecode">TypeCode</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_GetTypeString_" data-uid="Reportman.Reporting.Variant.GetTypeString*"></a>
+  <h4 id="Reportman_Reporting_Variant_GetTypeString" data-uid="Reportman.Reporting.Variant.GetTypeString">GetTypeString()</h4>
+  <div class="markdown level1 summary"><p>Function to get the type of the value as a string.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GetTypeString()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><p>Returns the string representation from the type of the value.
+Possible values are:</p>
+<ul>
+<li>VariantType.Null</li>
+<li>VariantType.Boolean</li>
+<li>VariantType.Byte</li>
+<li>VariantType.Char</li>
+<li>VariantType.Integer</li>
+<li>VariantType.Long</li>
+<li>VariantType.Decimal</li>
+<li>VariantType.Double</li>
+<li>VariantType.DateTime</li>
+<li>VariantType.Binary</li>
+<li>VariantType.String</li>
+</ul>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsBoolean_" data-uid="Reportman.Reporting.Variant.IsBoolean*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsBoolean" data-uid="Reportman.Reporting.Variant.IsBoolean">IsBoolean()</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is a boolean value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsBoolean()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the current value is a boolean value.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsDateTime_" data-uid="Reportman.Reporting.Variant.IsDateTime*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsDateTime" data-uid="Reportman.Reporting.Variant.IsDateTime">IsDateTime()</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is a Datetime value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsDateTime()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the current value is a Datetime value.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsInteger_" data-uid="Reportman.Reporting.Variant.IsInteger*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsInteger" data-uid="Reportman.Reporting.Variant.IsInteger">IsInteger()</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is an integer value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsInteger()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the current value is an ordinal, integer value.
+That is currently a Byte, Integer or Long type values.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsNumber_" data-uid="Reportman.Reporting.Variant.IsNumber*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsNumber" data-uid="Reportman.Reporting.Variant.IsNumber">IsNumber()</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is a number.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsNumber()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the current value is number.
+That is any integer, Double or Decimal value.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_IsString_" data-uid="Reportman.Reporting.Variant.IsString*"></a>
+  <h4 id="Reportman_Reporting_Variant_IsString" data-uid="Reportman.Reporting.Variant.IsString">IsString()</h4>
+  <div class="markdown level1 summary"><p>Function to check if the current value is a string value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsString()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><p>Returns true if the current value is a string value.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_SetStream_" data-uid="Reportman.Reporting.Variant.SetStream*"></a>
+  <h4 id="Reportman_Reporting_Variant_SetStream_System_IO_MemoryStream_" data-uid="Reportman.Reporting.Variant.SetStream(System.IO.MemoryStream)">SetStream(MemoryStream)</h4>
+  <div class="markdown level1 summary"><p>Assigns a memory stream to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void SetStream(MemoryStream memstream)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.memorystream">MemoryStream</a></td>
+        <td><span class="parametername">memstream</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToBoolean_" data-uid="Reportman.Reporting.Variant.ToBoolean*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToBoolean_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToBoolean(System.IFormatProvider)">ToBoolean(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ToBoolean(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToByte_" data-uid="Reportman.Reporting.Variant.ToByte*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToByte_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToByte(System.IFormatProvider)">ToByte(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte ToByte(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToChar_" data-uid="Reportman.Reporting.Variant.ToChar*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToChar_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToChar(System.IFormatProvider)">ToChar(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public char ToChar(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToDateTime_" data-uid="Reportman.Reporting.Variant.ToDateTime*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToDateTime_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToDateTime(System.IFormatProvider)">ToDateTime(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DateTime ToDateTime(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToDecimal_" data-uid="Reportman.Reporting.Variant.ToDecimal*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToDecimal_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToDecimal(System.IFormatProvider)">ToDecimal(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public decimal ToDecimal(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToDouble_" data-uid="Reportman.Reporting.Variant.ToDouble*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToDouble_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToDouble(System.IFormatProvider)">ToDouble(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double ToDouble(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToInt16_" data-uid="Reportman.Reporting.Variant.ToInt16*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToInt16_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToInt16(System.IFormatProvider)">ToInt16(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public short ToInt16(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToInt32_" data-uid="Reportman.Reporting.Variant.ToInt32*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToInt32_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToInt32(System.IFormatProvider)">ToInt32(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int ToInt32(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToInt64_" data-uid="Reportman.Reporting.Variant.ToInt64*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToInt64_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToInt64(System.IFormatProvider)">ToInt64(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long ToInt64(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToSByte_" data-uid="Reportman.Reporting.Variant.ToSByte*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToSByte_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToSByte(System.IFormatProvider)">ToSByte(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sbyte ToSByte(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.sbyte">sbyte</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToSingle_" data-uid="Reportman.Reporting.Variant.ToSingle*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToSingle_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToSingle(System.IFormatProvider)">ToSingle(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public float ToSingle(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToString_" data-uid="Reportman.Reporting.Variant.ToString*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToString" data-uid="Reportman.Reporting.Variant.ToString">ToString()</h4>
+  <div class="markdown level1 summary"><p>Returns the value of a Variant as a string</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.tostring">ValueType.ToString()</a></div>
+
+
+  <a id="Reportman_Reporting_Variant_ToString_" data-uid="Reportman.Reporting.Variant.ToString*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToString_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToString(System.IFormatProvider)">ToString(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ToString(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToString_" data-uid="Reportman.Reporting.Variant.ToString*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToString_System_String_Reportman_Reporting_ParamType_System_Boolean_" data-uid="Reportman.Reporting.Variant.ToString(System.String,Reportman.Reporting.ParamType,System.Boolean)">ToString(string, ParamType, bool)</h4>
+  <div class="markdown level1 summary"><p>Formats a Variant, with a display format</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ToString(string displayformat, ParamType paramtype, bool printnulls)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">displayformat</span></td>
+        <td><p>The formatting string, depending on current value</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.ParamType.html">ParamType</a></td>
+        <td><span class="parametername">paramtype</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">printnulls</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToType_" data-uid="Reportman.Reporting.Variant.ToType*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToType_System_Type_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToType(System.Type,System.IFormatProvider)">ToType(Type, IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object ToType(Type conversionType, IFormatProvider provider)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.type">Type</a></td>
+        <td><span class="parametername">conversionType</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provider</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToUInt16_" data-uid="Reportman.Reporting.Variant.ToUInt16*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToUInt16_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToUInt16(System.IFormatProvider)">ToUInt16(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ushort ToUInt16(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToUInt32_" data-uid="Reportman.Reporting.Variant.ToUInt32*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToUInt32_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToUInt32(System.IFormatProvider)">ToUInt32(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public uint ToUInt32(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint32">uint</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_ToUInt64_" data-uid="Reportman.Reporting.Variant.ToUInt64*"></a>
+  <h4 id="Reportman_Reporting_Variant_ToUInt64_System_IFormatProvider_" data-uid="Reportman.Reporting.Variant.ToUInt64(System.IFormatProvider)">ToUInt64(IFormatProvider)</h4>
+  <div class="markdown level1 summary"><p>Type transformation using a IFormatProvider</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ulong ToUInt64(IFormatProvider provid)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></td>
+        <td><span class="parametername">provid</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_VariantFromObject_" data-uid="Reportman.Reporting.Variant.VariantFromObject*"></a>
+  <h4 id="Reportman_Reporting_Variant_VariantFromObject_System_Object_" data-uid="Reportman.Reporting.Variant.VariantFromObject(System.Object)">VariantFromObject(object)</h4>
+  <div class="markdown level1 summary"><p>This function creates a Variant from a object</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant VariantFromObject(object obj)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">obj</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="operators">Operators
+</h3>
+
+
+  <a id="Reportman_Reporting_Variant_op_Addition_" data-uid="Reportman.Reporting.Variant.op_Addition*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Addition_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Addition(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator +(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary add arithmetic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator +(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_BitwiseAnd_" data-uid="Reportman.Reporting.Variant.op_BitwiseAnd*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_BitwiseAnd_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_BitwiseAnd(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator &amp;(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary and logic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator &amp;(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_BitwiseOr_" data-uid="Reportman.Reporting.Variant.op_BitwiseOr*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_BitwiseOr_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_BitwiseOr(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator |(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary or logic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator |(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Division_" data-uid="Reportman.Reporting.Variant.op_Division*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Division_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Division(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator /(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary division arithmetic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator /(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Equality_" data-uid="Reportman.Reporting.Variant.op_Equality*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Equality_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Equality(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator ==(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 id="Reportman_Reporting_Variant_op_Equality_Reportman_Reporting_Variant_Reportman_Reporting_Variant__remarks">Remarks</h5>
+  <div class="markdown level1 remarks"><p>Two Variants containing null value are not equal</p>
+</div>
+
+
+  <a id="Reportman_Reporting_Variant_op_GreaterThan_" data-uid="Reportman.Reporting.Variant.op_GreaterThan*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_GreaterThan_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_GreaterThan(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator &gt;(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two Variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_GreaterThanOrEqual_" data-uid="Reportman.Reporting.Variant.op_GreaterThanOrEqual*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_GreaterThanOrEqual_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_GreaterThanOrEqual(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator &gt;=(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two Variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;=(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Boolean" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Boolean">implicit operator bool(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to bool</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator bool(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Byte" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Byte">implicit operator byte(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to byte</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator byte(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Char" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Char">implicit operator char(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to char</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator char(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_DateTime" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.DateTime">implicit operator DateTime(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to DateTime</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator DateTime(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Decimal" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Decimal">implicit operator decimal(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to decimal</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator decimal(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Double" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Double">implicit operator double(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to double</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator double(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Int16" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Int16">implicit operator short(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to short</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator short(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Int32" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Int32">implicit operator int(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to int</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator int(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_Int64" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.Int64">implicit operator long(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to long</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator long(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_Reportman_Reporting_Variant__System_String" data-uid="Reportman.Reporting.Variant.op_Implicit(Reportman.Reporting.Variant)~System.String">implicit operator string(Variant)</h4>
+  <div class="markdown level1 summary"><p>Implicit conversion from Variant to string</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator string(Variant avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Boolean__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Boolean)~Reportman.Reporting.Variant">implicit operator Variant(bool)</h4>
+  <div class="markdown level1 summary"><p>Assigns a bool value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(bool avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Byte__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Byte)~Reportman.Reporting.Variant">implicit operator Variant(byte)</h4>
+  <div class="markdown level1 summary"><p>Assigns a byte value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(byte avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Char__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Char)~Reportman.Reporting.Variant">implicit operator Variant(char)</h4>
+  <div class="markdown level1 summary"><p>Assigns a char value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(char avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_DateTime__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.DateTime)~Reportman.Reporting.Variant">implicit operator Variant(DateTime)</h4>
+  <div class="markdown level1 summary"><p>Assigns a DateTime value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(DateTime avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Decimal__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Decimal)~Reportman.Reporting.Variant">implicit operator Variant(decimal)</h4>
+  <div class="markdown level1 summary"><p>Assigns a decimal value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(decimal avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Double__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Double)~Reportman.Reporting.Variant">implicit operator Variant(double)</h4>
+  <div class="markdown level1 summary"><p>Assigns a double value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(double avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Int32__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Int32)~Reportman.Reporting.Variant">implicit operator Variant(int)</h4>
+  <div class="markdown level1 summary"><p>Assigns an int value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(int avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_Int64__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.Int64)~Reportman.Reporting.Variant">implicit operator Variant(long)</h4>
+  <div class="markdown level1 summary"><p>Assigns a long value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(long avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Implicit_" data-uid="Reportman.Reporting.Variant.op_Implicit*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Implicit_System_String__Reportman_Reporting_Variant" data-uid="Reportman.Reporting.Variant.op_Implicit(System.String)~Reportman.Reporting.Variant">implicit operator Variant(string)</h4>
+  <div class="markdown level1 summary"><p>Assigns a string value to a Variant</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Variant(string avalue)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">avalue</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Inequality_" data-uid="Reportman.Reporting.Variant.op_Inequality*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Inequality_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Inequality(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator !=(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two Variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_LessThan_" data-uid="Reportman.Reporting.Variant.op_LessThan*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_LessThan_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_LessThan(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator &lt;(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two Variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_LessThanOrEqual_" data-uid="Reportman.Reporting.Variant.op_LessThanOrEqual*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_LessThanOrEqual_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_LessThanOrEqual(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator &lt;=(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Compare two Variants</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;=(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Multiply_" data-uid="Reportman.Reporting.Variant.op_Multiply*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Multiply_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Multiply(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator *(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary multiplier arithmetic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator *(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_Subtraction_" data-uid="Reportman.Reporting.Variant.op_Subtraction*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_Subtraction_Reportman_Reporting_Variant_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_Subtraction(Reportman.Reporting.Variant,Reportman.Reporting.Variant)">operator -(Variant, Variant)</h4>
+  <div class="markdown level1 summary"><p>Binary substraction arithmetic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator -(Variant avalue1, Variant avalue2)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue2</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Variant_op_UnaryNegation_" data-uid="Reportman.Reporting.Variant.op_UnaryNegation*"></a>
+  <h4 id="Reportman_Reporting_Variant_op_UnaryNegation_Reportman_Reporting_Variant_" data-uid="Reportman.Reporting.Variant.op_UnaryNegation(Reportman.Reporting.Variant)">operator -(Variant)</h4>
+  <div class="markdown level1 summary"><p>Unary sign arithmetic operator</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Variant operator -(Variant avalue1)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td><span class="parametername">avalue1</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Variant.html">Variant</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>
