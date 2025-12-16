@@ -4626,15 +4626,12 @@ var
 begin
   if not MAPIChecked then
   begin
-    MAPIChecked := True;
     MAPIModule := 0;
     MAPIModule := LoadLibrary(PChar(MAPIDLL));
     if (MAPIModule = 0) then
       RaiseLastOSError;
-  end
-  else
-    raise Exception.Create('MAPI Not initialized');
-
+    MAPIChecked := True;
+  end;
 end;
 
 function MapiSendMailInt(lhSession: LHANDLE; ulUIParam: ULONG_PTR;
@@ -4770,8 +4767,11 @@ begin
    end;
   end;
   // 4 = MAPI_DIALOG_MODELESS
-  how:=MAPI_LOGON_UI or MAPI_DIALOG or 4;
-  CheckMAPI(MapiSendMail(0,0,amessage,how,0));
+//  how:=MAPI_LOGON_UI or MAPI_DIALOG or 4;
+  how:=MAPI_DIALOG;
+ //  CheckMAPI(MapiSendMail(0,0,amessage,how,0));
+  CheckMAPI(MapiSendMailInt(0,0,amessage,how,0));
+
  finally
   if (PtrMapiFileDescs<>nil) then
     FreeMem(PtrMapiFileDescs);

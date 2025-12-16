@@ -33,7 +33,7 @@ uses
   rpcsvdriver,rpgraphutilsvcl,rppreviewmeta,rpbasereport,rpreport,rppagesetupvcl,
   ActnList, ImgList,Printers,rpmdconsts, ToolWin, Mask, rpmaskedit,rpmunits,
   Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
-  System.Actions, System.ImageList, ComObj;
+  System.Actions, System.ImageList, ComObj, Winapi.ShellAPI, System.Win.Registry;
 
 type
   TFRpVPreview = class(TForm)
@@ -106,6 +106,8 @@ type
     Mailto1: TMenuItem;
     AMailToOutlook: TAction;
     MailToOutlook1: TMenuItem;
+    AMailToThunderbird: TAction;
+    MailtoThunderbird1: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure AFirstExecute(Sender: TObject);
     procedure ANextExecute(Sender: TObject);
@@ -143,6 +145,7 @@ type
     procedure ESearchChange(Sender: TObject);
     procedure AMailToOutlookExecute(Sender: TObject);
     procedure ToolButton8Click(Sender: TObject);
+    procedure AMailToThunderbirdExecute(Sender: TObject);
   private
     { Private declarations }
     printed:boolean;
@@ -307,6 +310,7 @@ begin
 }
 end;
 
+
 procedure TFRpVPreview.FormCreate(Sender: TObject);
 var
  dpiAwareContext:DPI_AWARENESS_CONTEXT;
@@ -380,6 +384,8 @@ begin
  AMailTo.Hint:=TranslateStr(1231,AMailTo.Hint);
  AMailToOutlook.Caption:=TranslateStr(1230,AMailTo.Caption) + '(Outlook)';
  AMailToOutlook.Hint:=TranslateStr(1231,AMailTo.Hint) + '(Outlook)';
+ AMailToThunderbird.Caption:=TranslateStr(1230,AMailTo.Caption) + '(Thunderbird)';
+ AMailToThunderbird.Hint:=TranslateStr(1231,AMailTo.Hint) + '(Thunderbird)';
  AExit.Caption:=TranslateStr(44,AExit.Caption);
  AExit.Hint:=TranslateStr(219,AExit.Hint);
  AParams.Caption:=TranslateStr(135,Aparams.Caption);
@@ -1080,12 +1086,115 @@ begin
     //vmailitem.saveas(savetofol + '_eml.doc', 4); // ^ +'.doc'
   // vmailitem.clear;
    vmailitem.Display;
-  // Outlook := Unassigned;
-
-  //  rptypes.SendMail(destination,subject,body,afilename,ExtractFileName(ChangeFileExt(afilename,'.pdf')));
+   // Outlook := Unassigned;
  finally
   sysutils.DeleteFile(afilename);
  end;
+end;
+
+
+function GetThunderbirdPath: string;
+var
+  Reg: TRegistry;
+begin
+  Result := '';
+  Reg := TRegistry.Create(KEY_READ);
+  try
+    Reg.RootKey := HKEY_LOCAL_MACHINE;
+    // Intentamos primero 64-bit
+    if Reg.OpenKeyReadOnly('SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\thunderbird.exe') then
+    begin
+      if Reg.ValueExists('') then
+        Result := Reg.ReadString('');
+      Reg.CloseKey;
+    end;
+    // Si no encontramos, intentamos WOW6432Node
+    if Result = '' then
+    begin
+      if Reg.OpenKeyReadOnly('SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\thunderbird.exe') then
+      begin
+        if Reg.ValueExists('') then
+          Result := Reg.ReadString('');
+        Reg.CloseKey;
+      end;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TFRpVPreview.AMailToThunderbirdExecute(Sender: TObject);
+var
+  afilename, destination, subject, body: string;
+  report: TRpBasereport;
+  filenameTitle: string;
+  ThunderbirdPath, Params: string;
+
+  function EscapeForTB(const S: string): string;
+  begin
+    // Escapa comillas simples y dobles para la línea de comando de Thunderbird
+    Result := StringReplace(S, '''', '\''', [rfReplaceAll]);
+    Result := StringReplace(Result, '"', '\"', [rfReplaceAll]);
+  end;
+
+begin
+  destination := '';
+  body := '';
+  subject := '';
+  afilename := '';
+
+  // Extraemos parámetros del reporte como antes
+  if (fpreviewcontrol is TRpPreviewControl) then
+  begin
+    report := TRpPreviewControl(fpreviewcontrol).Report;
+    if report.Params.IndexOf('MAIL_DESTINATION') >= 0 then
+      destination := report.Params.ParamByName('MAIL_DESTINATION').AsString;
+    if report.Params.IndexOf('MAIL_SUBJECT') >= 0 then
+      subject := report.Params.ParamByName('MAIL_SUBJECT').AsString;
+    if report.Params.IndexOf('MAIL_BODY') >= 0 then
+      body := report.Params.ParamByName('MAIL_BODY').AsString;
+    if report.Params.IndexOf('MAIL_FILE') >= 0 then
+      afilename := ExtractFilePath(afilename) + report.Params.ParamByName('MAIL_FILE').AsString;
+  end;
+
+  // Si no hay archivo, creamos temporal
+  if Length(afilename) < 1 then
+  begin
+    afilename := RpTempFileName;
+    afilename := ChangeFileExt(afilename, '.pdf');
+  end;
+
+  filenameTitle := ExtractFileName(ChangeFileExt(afilename, '.pdf'));
+
+  // Guardamos el reporte en PDF
+  SaveMetafileToPDF(fpreviewcontrol.Metafile, afilename, True, True);
+
+  try
+    if Length(subject) < 1 then
+      subject := filenameTitle;
+
+
+    ThunderbirdPath := GetThunderbirdPath;
+    if ThunderbirdPath = '' then
+    begin
+      Raise Exception.Create('Thunderbird not installed.');
+    end;
+
+
+    // Construimos parámetros para -compose
+    Params :=
+      '-compose "to=' + EscapeForTB(destination) +
+      ',subject=' + EscapeForTB(subject) +
+      ',body=' + EscapeForTB(body) +
+      ',attachment=''' + afilename + '''"';
+
+    // Ejecutamos Thunderbird
+    ShellExecute(0, 'open', PChar(ThunderbirdPath), PChar(Params), nil, SW_SHOWNORMAL);
+
+  finally
+    // Borramos temporal no se puede borrar error thunderbird no lo encuentra
+    // SysUtils.DeleteFile(afilename);
+  end;
 end;
 
 procedure TFRpVPreview.APageSetupExecute(Sender: TObject);
