@@ -16,26 +16,24 @@ interface
 {$I rpconf.inc}
 
 uses
-{$IFDEF LINUX}
+{$IFDEF MSWINDOWS}
+ Windows,
+{$ELSE}
 {$IFDEF FPC}
  dynlibs,
 {$ELSE}
  // Libc,
 {$ENDIF}
 {$ENDIF}
-{$IFDEF MSWINDOWS}
- Windows,
-{$ENDIF}
  SysUtils,rptypes;
 
 const
-{$IFDEF LINUX}
- C_FREETYPE='libfreetype.so.6';
- //C_FREETYPE='freetype';
-{$ENDIF}
 {$IFDEF MSWINDOWS}
 // C_FREETYPE='freetype6.dll';
  C_FREETYPE='freetype.dll';
+{$ELSE}
+ C_FREETYPE='libfreetype.so.6';
+ //C_FREETYPE='freetype';
 {$ENDIF}
  FT_LOAD_DEFAULT=$0;
  FT_LOAD_NO_SCALE=$1;
@@ -384,8 +382,7 @@ var
 var
 {$IFDEF MSWINDOWS}
  FreeTypeLib:HINST;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  {$IFDEF FPC}
   FreeTypeLib:TLibHandle;
  {$ELSE}
@@ -397,12 +394,11 @@ implementation
 
 procedure CheckFreeTypeLoaded;
 begin
-{$IFDEF LINUX}
- if (FreeTypeLib<>0) then
-  exit;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  if FreeTypeLib>HINSTANCE_ERROR then
+  exit;
+{$ELSE}
+ if (FreeTypeLib<>0) then
   exit;
 {$ENDIF}
  LoadFreeType;
@@ -416,8 +412,7 @@ procedure LoadFreeType;
     if not Assigned(Result) then
       RaiseLastOsError;
   end;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  function GetProcAddr(ProcName:Pchar):Pointer;
  begin
  {$IFDEF FPC}
@@ -434,7 +429,11 @@ procedure LoadFreeType;
  end;
 {$ENDIF}
 begin
-{$IFDEF LINUX}
+{$IFDEF MSWINDOWS}
+  FreeTypeLib := LoadLibrary(C_FREETYPE);
+  if (FreeTypeLib <= HINSTANCE_ERROR) then
+   Raise Exception.Create('Error opening:'+C_FREETYPE);
+{$ELSE}
 {$IFDEF FPC}
  FreeTypeLib:=dynlibs.LoadLibrary(C_FREETYPE);
  if FreeTypeLib=0 then
@@ -446,11 +445,6 @@ if FreeTypeLib=0 then
 {$ENDIF}
 {$ENDIF}
 
-{$IFDEF MSWINDOWS}
-  FreeTypeLib := LoadLibrary(C_FREETYPE);
-  if (FreeTypeLib <= HINSTANCE_ERROR) then
-   Raise Exception.Create('Error opening:'+C_FREETYPE);
-{$ENDIF}
 
  // Load function addresses
  FT_Init_FreeType:=GetProcAddr('FT_Init_FreeType');
@@ -493,8 +487,7 @@ end;
 initialization
 {$IFDEF MSWINDOWS}
  FreeTypeLib:=HINSTANCE_ERROR;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 {$IFDEF FPC}
  FreeTypeLib:=0;
 {$ELSE}

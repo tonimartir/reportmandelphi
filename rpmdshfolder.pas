@@ -62,12 +62,11 @@ const
   shlwapi32 = 'shlwapi.dll';
   shfolder  = 'shfolder.dll';
 {$ENDIF}
-{$IFDEF LINUX}
 const
- DIR_SEPARATOR='/';
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  DIR_SEPARATOR='\';
+{$ELSE}
+ DIR_SEPARATOR='/';
 {$ENDIF}
 
 
@@ -96,35 +95,15 @@ var
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
-{$IFDEF LINUX}
- ap:PCHar;
- szAppdata:array [0..MAX_PATH] of AnsiChar;
-{$ELSE}
+{$IFDEF MSWINDOWS}
 szAppDataA:array [0..MAX_PATH] of AnsiChar;
 szAppDataW:array [0..MAX_PATH] of WideChar;
+{$ELSE}
+ ap:PCHar;
+ szAppdata:array [0..MAX_PATH] of AnsiChar;
 {$ENDIF}
  nresult:THandle;
 begin
-
-{$IFDEF LINUX}
-{$IFDEF FPC}
- ap:=PChar(Sysutils.GetEnvironmentVariable('HOME'));
-{$ELSE}
- ap:=Pchar(System.SysUtils.GetEnvironmentVariable('HOME'));
-{$ENDIF}
- if assigned(ap) then
- begin
-  StrPCopy(szAppdata,ap);
-  Result:=StrPas(szAppdata)+'/.'
- end
- else
-  Result:='./.';
- if length(company)>0 then
-  Result:=Result+company+'.';
- if length(product)>0 then
-  Result:=Result+product+'.';
- Result:=Result+filename;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  if length(filename)<1 then
   Raise Exception.Create(SRpFileNameRequired);
@@ -169,7 +148,26 @@ begin
   if not PathAppendW(szAppdataW,PWidechar(WideString(filename+'.ini'))) then
     RaiseLastOSError;
   Result:=WideCharToString(szAppdataW);
+{$ELSE}
+{$IFDEF FPC}
+ ap:=PChar(Sysutils.GetEnvironmentVariable('HOME'));
+{$ELSE}
+ ap:=Pchar(System.SysUtils.GetEnvironmentVariable('HOME'));
 {$ENDIF}
+ if assigned(ap) then
+ begin
+  StrPCopy(szAppdata,ap);
+  Result:=StrPas(szAppdata)+'/.'
+ end
+ else
+  Result:='./.';
+ if length(company)>0 then
+  Result:=Result+company+'.';
+ if length(product)>0 then
+  Result:=Result+product+'.';
+ Result:=Result+filename;
+{$ENDIF}
+
 end;
 function Obtainininameuserconfig(company,product,filename:string):string;
 var
@@ -281,9 +279,6 @@ var
 hardcoded:boolean;
 begin
  hardcoded:=false;
-{$IFDEF LINUX}
- Result:='/etc/'+company+product+filename;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  if length(filename)<1 then
   Raise Exception.Create(SRpFileNameRequired);
@@ -375,7 +370,10 @@ begin
   if not PathAppendW(szAppdataW,PWidechar(WideString(filename+'.ini'))) then
     RaiseLastOSError;
   Result:=WideCharToString(szAppdataW);
+{$ELSE}
+ Result:='/etc/'+company+product+filename;
 {$ENDIF}
+
 end;
 
 
@@ -388,9 +386,6 @@ var
  wproduct:WideString;
  wfilename:WideString;
 begin
-{$IFDEF LINUX}
- Result:=Obtainininameuserconfig(company,product+'etc',filename);
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  if length(filename)<1 then
   Raise Exception.Create(SRpFileNameRequired);
@@ -434,6 +429,8 @@ begin
   if not PathAppendW(szAppdataW,PWidechar(WideString(filename+'.ini'))) then
     RaiseLastOSError;
   Result:=WideCharToString(szAppdataW);
+{$ELSE}
+ Result:=Obtainininameuserconfig(company,product+'etc',filename);
 {$ENDIF}
 end;
 
@@ -444,9 +441,6 @@ var
  asize:Integer;
 {$ENDIF}
 begin
-{$IFDEF LINUX}
- Result:='/lib';
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  pbuf:=AllocMem(MAX_PATH+1);
  try
@@ -463,6 +457,8 @@ begin
  finally
   FreeMem(pbuf);
  end;
+{$ELSE}
+ Result:='/lib';
 {$ENDIF}
 end;
 
@@ -505,14 +501,3 @@ if HandleLib2<>0 then
 {$ENDIF}
 
 end.
-
-
-
-
-
-
-
-
-
-
-

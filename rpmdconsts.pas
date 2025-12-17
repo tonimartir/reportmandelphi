@@ -2443,7 +2443,7 @@ begin
 
 
 
-{$IFDEF LINUX}
+{$IFNDEF MSWINDOWS}
 procedure RestoreEnviromentLocale;
 var
  avalue:string;

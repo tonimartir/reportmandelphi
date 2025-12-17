@@ -785,16 +785,15 @@ end;
 // also includes subdirectories
 procedure GetFontsDirectories(alist:TStringList);
 var
-{$IFDEF LINUX}
+{$IFDEF MSWINDOWS}
+  abuf:pchar;
+  szAppDataW:array [0..MAX_PATH] of WideChar;
+{$ELSE}
  afile:TStringList;
  astring:String;
  diderror:Boolean;
  apath:String;
  index:integer;
-{$ENDIF}
-{$IFDEF MSWINDOWS}
-  abuf:pchar;
-  szAppDataW:array [0..MAX_PATH] of WideChar;
 {$ENDIF}
 begin
 {$IFDEF MSWINDOWS}
@@ -812,8 +811,7 @@ begin
   FreeMem(abuf);
  end;
  exit;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  // Red hat linux fonts
  alist.Add('/usr/share/fonts');
  // Ubuntu fonts
