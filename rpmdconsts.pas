@@ -23,19 +23,18 @@ interface
 
 {$I rpconf.inc}
 
-{$IFDEF MSWINDOWS}
-uses SysUtils,Windows;
-{$ENDIF}
+uses SysUtils
 
-{$IFDEF LINUX}
-uses SysUtils;
+{$IFDEF MSWINDOWS}
+ ,Windows;
+{$ELSE}
+;
 {$ENDIF}
 
 {$IFDEF MSWINDOWS}
 const
  C_DIRSEPARATOR='\';
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 const
  C_DIRSEPARATOR='/';
 {$ENDIF}
@@ -547,7 +546,7 @@ var
   SRpOperatorDecM:WideString='IIF(condition,action1,action2)';
   SRpOperatorDecP:WideString='Condition is a boolean expresion, if it''s true the '+#10+' first parameter is executed, else the second is executed';
   SRpOperatorSep:WideString='Separator operator';
-  SRpOperatorSepP:WideString='Is used to execute more than one expresi�n, the last is the result';
+  SRpOperatorSepP:WideString='Is used to execute more than one expresi n, the last is the result';
   SRpErrorOpenImp:WideString='Error opening the printer ';
   SRpPaperexists:WideString='The paper size already exists';
   SRpPrinting:WideString='The printer is already printing';

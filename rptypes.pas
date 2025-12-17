@@ -26,19 +26,18 @@ interface
 uses
 {$IFDEF MSWINDOWS}
  Windows,
-{$IFNDEF FPC}
+ {$IFNDEF FPC}
  MApi,
  ShellApi,
 {$ENDIF}
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 {$IFNDEF FPC}
  System.IOUtils,
 //  Libc,
 {$ENDIF}
 {$ENDIF}
  Sysutils,IniFiles,
- rpmdshfolder,Classes,
+ Classes,
 {$IFDEF USEVARIANTS}
  Variants,Types,
  {$IFNDEF FPC}
@@ -50,10 +49,6 @@ uses
 {$ENDIF}
 {$IFDEF USEBCD}
  FMTBcd,
-{$ENDIF}
-{$IFDEF DOTNETD}
- System.IO,System.Text,
- System.Runtime.InteropServices,
 {$ENDIF}
 {$IFDEF BUILDER4}
  Db,
@@ -69,7 +64,7 @@ uses
 {$IFDEF USEINDY}
   IdCoderUUE,IdCoderMIME,
 {$ENDIF}
- rpmdconsts;
+ rpmdconsts,rpmdshfolder;
 
 
 const
@@ -307,7 +302,7 @@ procedure GetDrawStyleDescriptions(alist:TRpWideStrings);
 function StrToBackStyle(value:string):TrpBackStyle;
 function BackStyleToStr(value:TrpBackStyle):string;
 {$IFNDEF FPC}
-{$IFNDEF LINUX}
+{$IFDEF MSWINDOWS}
 procedure SendMail(destination,subject,content,filename,originalfile:AnsiString);overload;
 procedure SendMail(destination,subject,content:AnsiString;files,orignalfilenames:TStrings);overload;
 {$ENDIF}
@@ -1972,7 +1967,7 @@ begin
 			end
 			else
 			if (((Num div trillion) < 20) and (Num div trillion > 9)) then
-				Num2Str := Num2Str(Num div trillion) + ' trilijon�'
+				Num2Str := Num2Str(Num div trillion) + ' trilijon '
 			else
 			if (Num div trillion >= 20) then begin
 				if (((Num div trillion > 110) and (Num div trillion < 120)) or
@@ -1985,11 +1980,11 @@ begin
 				   ((Num div trillion > 810) and (Num div trillion < 820)) or
 				   ((Num div trillion > 910) and (Num div trillion < 920))) then
 				begin
-					Num2Str := Num2Str(Num div trillion) + ' trilijon�';
+					Num2Str := Num2Str(Num div trillion) + ' trilijon ';
 				end
 				else begin
 					case ((Num div trillion) mod 10) of
-						0 : Num2Str := Num2Str(Num div trillion) + ' trilijon�';
+						0 : Num2Str := Num2Str(Num div trillion) + ' trilijon ';
 						1 : Num2Str := Num2Str(Num div trillion) + ' trilijonas';
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div trillion) + ' trilijonai';
 					end;
@@ -2005,7 +2000,7 @@ begin
 			end
 			else
 			if (((Num div trillion) < 20) and (Num div trillion > 9)) then
-				Num2Str := Num2Str(Num div trillion) + ' trilijon� ' + Num2Str(Num mod trillion, gimine, 1)
+				Num2Str := Num2Str(Num div trillion) + ' trilijon  ' + Num2Str(Num mod trillion, gimine, 1)
 			else
 			if (Num div trillion >= 20) then begin
 				if (((Num div trillion > 110) and (Num div trillion < 120)) or
@@ -2018,11 +2013,11 @@ begin
 				   ((Num div trillion > 810) and (Num div trillion < 820)) or
 				   ((Num div trillion > 910) and (Num div trillion < 920))) then
 				begin
-					Num2Str := Num2Str(Num div trillion) + ' trilijon� ' + Num2Str(Num mod trillion, gimine, 1);
+					Num2Str := Num2Str(Num div trillion) + ' trilijon  ' + Num2Str(Num mod trillion, gimine, 1);
 				end
 				else begin
 					case ((Num div trillion) mod 10) of
-						0 : Num2Str := Num2Str(Num div trillion) + ' trilijon� ' + Num2Str(Num mod trillion, gimine, 1);
+						0 : Num2Str := Num2Str(Num div trillion) + ' trilijon  ' + Num2Str(Num mod trillion, gimine, 1);
 						1 : Num2Str := Num2Str(Num div trillion) + ' trilijonas ' + Num2Str(Num mod trillion, gimine, 1);
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div trillion) + ' trilijonai ' + Num2Str(Num mod trillion, gimine, 1);
 					end;
@@ -2041,7 +2036,7 @@ begin
 			end
 			else
 			if (((Num div billion) < 20) and (Num div billion > 9)) then
-				Num2Str := Num2Str(Num div billion) + ' milijard�'
+				Num2Str := Num2Str(Num div billion) + ' milijard '
 			else
 			if (Num div billion >= 20) then begin
 				if (((Num div billion > 110) and (Num div billion < 120)) or
@@ -2054,11 +2049,11 @@ begin
 				   ((Num div billion > 810) and (Num div billion < 820)) or
 				   ((Num div billion > 910) and (Num div billion < 920))) then
 				begin
-					Num2Str := Num2Str(Num div billion) + ' milijard�';
+					Num2Str := Num2Str(Num div billion) + ' milijard ';
 				end
 				else begin
 					case ((Num div billion) mod 10) of
-						0 : Num2Str := Num2Str(Num div billion) + ' milijard�';
+						0 : Num2Str := Num2Str(Num div billion) + ' milijard ';
 						1 : Num2Str := Num2Str(Num div billion) + ' milijardas';
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div billion) + ' milijardai';
 					end;
@@ -2074,7 +2069,7 @@ begin
 			end
 			else
 			if (((Num div billion) < 20) and (Num div billion > 9)) then
-				Num2Str := Num2Str(Num div billion) + ' milijard� ' + Num2Str(Num mod billion, gimine, 1)
+				Num2Str := Num2Str(Num div billion) + ' milijard  ' + Num2Str(Num mod billion, gimine, 1)
 			else
 			if (Num div billion >= 20) then begin
 				if (((Num div billion > 110) and (Num div billion < 120)) or
@@ -2087,11 +2082,11 @@ begin
 				   ((Num div billion > 810) and (Num div billion < 820)) or
 				   ((Num div billion > 910) and (Num div billion < 920))) then
 				begin
-					Num2Str := Num2Str(Num div billion) + ' milijard� ' + Num2Str(Num mod billion, gimine, 1);
+					Num2Str := Num2Str(Num div billion) + ' milijard  ' + Num2Str(Num mod billion, gimine, 1);
 				end
 				else begin
 					case ((Num div billion) mod 10) of
-						0 : Num2Str := Num2Str(Num div billion) + ' milijard� ' + Num2Str(Num mod billion, gimine, 1);
+						0 : Num2Str := Num2Str(Num div billion) + ' milijard  ' + Num2Str(Num mod billion, gimine, 1);
 						1 : Num2Str := Num2Str(Num div billion) + ' milijardas ' + Num2Str(Num mod billion, gimine, 1);
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div billion) + ' milijardai ' + Num2Str(Num mod billion, gimine, 1);
 					end;
@@ -2110,7 +2105,7 @@ begin
 			end
 			else
 			if (((Num div Million) < 20) and (Num div Million > 9)) then
-				Num2Str := Num2Str(Num div Million) + ' milijon�'
+				Num2Str := Num2Str(Num div Million) + ' milijon '
 			else
 			if (Num div Million >= 20) then begin
 				if (((Num div Million > 110) and (Num div Million < 120)) or
@@ -2123,11 +2118,11 @@ begin
 				   ((Num div Million > 810) and (Num div Million < 820)) or
 				   ((Num div Million > 910) and (Num div Million < 920))) then
 				begin
-					Num2Str := Num2Str(Num div Million) + ' milijon�';
+					Num2Str := Num2Str(Num div Million) + ' milijon ';
 				end
 				else begin
 					case ((Num div Million) mod 10) of
-						0 : Num2Str := Num2Str(Num div Million) + ' milijon�';
+						0 : Num2Str := Num2Str(Num div Million) + ' milijon ';
 						1 : Num2Str := Num2Str(Num div Million) + ' milijonas';
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Million) + ' milijonai';
 					end;
@@ -2143,7 +2138,7 @@ begin
 			end
 			else
 			if (((Num div Million) < 20) and (Num div Million > 9)) then
-				Num2Str := Num2Str(Num div Million) + ' milijon� ' + Num2Str(Num mod Million, gimine, 1)
+				Num2Str := Num2Str(Num div Million) + ' milijon  ' + Num2Str(Num mod Million, gimine, 1)
 			else
 			if (Num div Million >= 20) then begin
 				if (((Num div Million > 110) and (Num div Million < 120)) or
@@ -2156,11 +2151,11 @@ begin
 				   ((Num div Million > 810) and (Num div Million < 820)) or
 				   ((Num div Million > 910) and (Num div Million < 920))) then
 				begin
-					Num2Str := Num2Str(Num div Million) + ' milijon� ' + Num2Str(Num mod Million, gimine, 1);
+					Num2Str := Num2Str(Num div Million) + ' milijon  ' + Num2Str(Num mod Million, gimine, 1);
 				end
 				else begin
 					case ((Num div Million) mod 10) of
-						0 : Num2Str := Num2Str(Num div Million) + ' milijon� ' + Num2Str(Num mod Million, gimine, 1);
+						0 : Num2Str := Num2Str(Num div Million) + ' milijon  ' + Num2Str(Num mod Million, gimine, 1);
 						1 : Num2Str := Num2Str(Num div Million) + ' milijonas ' + Num2Str(Num mod Million, gimine, 1);
 						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Million) + ' milijonai ' + Num2Str(Num mod Million, gimine, 1);
 					end;
@@ -2173,13 +2168,13 @@ begin
 		if (Num mod Thousand) = 0 then begin // Jei dalinasi is tuksntancio be liekanos
 			if ((Num div Thousand) < 10) then begin
 				case (Num div Thousand) of
-					1 : Num2Str := Num2Str(Num div Thousand) + ' t�kstantis';
-					2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�iai';
+					1 : Num2Str := Num2Str(Num div Thousand) + ' t kstantis';
+					2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t kstan iai';
 				end;
 			end
 			else
 			if (((Num div Thousand) < 20) and (Num div Thousand > 9)) then
-				Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i�'
+				Num2Str := Num2Str(Num div Thousand) + ' t kstan i '
 			else
 			if (Num div Thousand >= 20) then begin
 				if (((Num div Thousand > 110) and (Num div Thousand < 120)) or
@@ -2192,27 +2187,27 @@ begin
 				   ((Num div Thousand > 810) and (Num div Thousand < 820)) or
 				   ((Num div Thousand > 910) and (Num div Thousand < 920))) then
 				begin
-					Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i�';
+					Num2Str := Num2Str(Num div Thousand) + ' t kstan i ';
 				end
 				else begin
 					case ((Num div Thousand) mod 10) of
-						0 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i�';
-						1 : Num2Str := Num2Str(Num div Thousand) + ' t�kstantis';
-						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�iai';
+						0 : Num2Str := Num2Str(Num div Thousand) + ' t kstan i ';
+						1 : Num2Str := Num2Str(Num div Thousand) + ' t kstantis';
+						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t kstan iai';
 					end;
 				end
 			end
 		end
-		else begin // is t�kstan�io dalinasi su liekana
+		else begin // is t kstan io dalinasi su liekana
 			if ((Num div Thousand) < 10) then begin
 				case (Num div Thousand) of
-					1 : Num2Str := Num2Str(Num div Thousand) + ' t�kstantis ' + Num2Str(Num mod Thousand, gimine, 1);
-					2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�iai ' + Num2Str(Num mod Thousand, gimine, 1);
+					1 : Num2Str := Num2Str(Num div Thousand) + ' t kstantis ' + Num2Str(Num mod Thousand, gimine, 1);
+					2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t kstan iai ' + Num2Str(Num mod Thousand, gimine, 1);
 				end;
 			end
 			else
 			if (((Num div Thousand) < 20) and (Num div Thousand > 9)) then
-				Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i� ' + Num2Str(Num mod Thousand, gimine, 1)
+				Num2Str := Num2Str(Num div Thousand) + ' t kstan i  ' + Num2Str(Num mod Thousand, gimine, 1)
 			else
 			if (Num div Thousand >= 20) then begin
 				if (((Num div Thousand > 110) and (Num div Thousand < 120)) or
@@ -2225,13 +2220,13 @@ begin
 				   ((Num div Thousand > 810) and (Num div Thousand < 820)) or
 				   ((Num div Thousand > 910) and (Num div Thousand < 920))) then
 				begin
-					Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i� ' + Num2Str(Num mod Thousand, gimine, 1);
+					Num2Str := Num2Str(Num div Thousand) + ' t kstan i  ' + Num2Str(Num mod Thousand, gimine, 1);
 				end
 				else begin
 					case ((Num div Thousand) mod 10) of
-						0 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�i� ' + Num2Str(Num mod Thousand, gimine, 1);
-						1 : Num2Str := Num2Str(Num div Thousand) + ' t�kstantis ' + Num2Str(Num mod Thousand, gimine, 1);
-						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t�kstan�iai ' + Num2Str(Num mod Thousand, gimine, 1);
+						0 : Num2Str := Num2Str(Num div Thousand) + ' t kstan i  ' + Num2Str(Num mod Thousand, gimine, 1);
+						1 : Num2Str := Num2Str(Num div Thousand) + ' t kstantis ' + Num2Str(Num mod Thousand, gimine, 1);
+						2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div Thousand) + ' t kstan iai ' + Num2Str(Num mod Thousand, gimine, 1);
 					end;
 				end;
 			end;
@@ -2241,51 +2236,51 @@ begin
 	if Num >= hundred then
 		if (Num mod hundred) = 0 then begin // Jei dalinasi is simto be liekanos
 			case (Num div hundred) of
-				1 : Num2Str := Num2Str(Num div hundred) + ' �imtas';
-				2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div hundred) + ' �imtai';
+				1 : Num2Str := Num2Str(Num div hundred) + '  imtas';
+				2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div hundred) + '  imtai';
 			end;
 		end
 		else begin
 			case (Num div hundred) of
-				1 : Num2Str := Num2Str(Num div hundred) + ' �imtas ' + Num2Str(Num mod hundred, gimine, 1);
-				2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div hundred) + ' �imtai ' + Num2Str(Num mod hundred, gimine, 1);
+				1 : Num2Str := Num2Str(Num div hundred) + '  imtas ' + Num2Str(Num mod hundred, gimine, 1);
+				2,3,4,5,6,7,8,9 : Num2Str := Num2Str(Num div hundred) + '  imtai ' + Num2Str(Num mod hundred, gimine, 1);
 			end;
 		end
 	// ---------------------- D E S I M T Y S
 	else begin
 		case (Num div 10) of
 			9: 	if Num = 90 then
-					Num2Str := 'devyniasde�imt'
+					Num2Str := 'devyniasde imt'
 				else
-					Num2Str := 'devyniasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'devyniasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			8: 	if Num = 80 then
-					Num2Str := 'a�tuoniasde�imt'
+					Num2Str := 'a tuoniasde imt'
 				else
-					Num2Str := 'a�tuoniasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'a tuoniasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			7: 	if Num = 70 then
-					Num2Str := 'septyniasde�imt'
+					Num2Str := 'septyniasde imt'
 				else
-					Num2Str := 'septyniasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'septyniasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			6: 	if Num = 60 then
-					Num2Str := '�e�iasde�imt'
+					Num2Str := ' e iasde imt'
 				else
-					Num2Str := '�e�iasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := ' e iasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			5: 	if Num = 50 then
-					Num2Str := 'penkiasde�imt'
+					Num2Str := 'penkiasde imt'
 				else
-					Num2Str := 'penkiasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'penkiasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			4: 	if Num = 40 then
-					Num2Str := 'keturiasde�imt'
+					Num2Str := 'keturiasde imt'
 				else
-					Num2Str := 'keturiasde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'keturiasde imt ' + Num2Str(Num mod 10, gimine, 1);
 			3: 	if Num = 30 then
-					Num2Str := 'trisde�imt'
+					Num2Str := 'trisde imt'
 				else
-					Num2Str := 'trisde�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'trisde imt ' + Num2Str(Num mod 10, gimine, 1);
 			2: 	if Num = 20 then
-					Num2Str := 'dvide�imt'
+					Num2Str := 'dvide imt'
 				else
-					Num2Str := 'dvide�imt ' + Num2Str(Num mod 10, gimine, 1);
+					Num2Str := 'dvide imt ' + Num2Str(Num mod 10, gimine, 1);
 			0,1: if gimine and (flag = 1) then begin // moteriska gimine ir jau pabaiga
 				case Num of
 						0: Num2Str := 'nulis';
@@ -2294,19 +2289,19 @@ begin
 						3: Num2Str := 'trys';
 						4: Num2Str := 'keturios';
 						5: Num2Str := 'penkios';
-						6: Num2Str := '�e�ios';
+						6: Num2Str := ' e ios';
 						7: Num2Str := 'septynios';
-						8: Num2Str := 'a�tuonios';
+						8: Num2Str := 'a tuonios';
 						9: Num2Str := 'devynios';
-						10: Num2Str := 'de�imt';
+						10: Num2Str := 'de imt';
 						11: Num2Str := 'vienuolika';
 						12: Num2Str := 'dvylika';
 						13: Num2Str := 'trylika';
 						14: Num2Str := 'keturiolika';
 						15: Num2Str := 'penkiolika';
-						16: Num2Str := '�e�iolika';
+						16: Num2Str := ' e iolika';
 						17: Num2Str := 'septyniolika';
-						18: Num2Str := 'a�tuoniolika';
+						18: Num2Str := 'a tuoniolika';
 						19: Num2Str := 'devyniolika'
 				end
 			end
@@ -2318,19 +2313,19 @@ begin
 						3: Num2Str := 'trys';
 						4: Num2Str := 'keturi';
 						5: Num2Str := 'penki';
-						6: Num2Str := '�e�i';
+						6: Num2Str := ' e i';
 						7: Num2Str := 'septyni';
-						8: Num2Str := 'a�tuoni';
+						8: Num2Str := 'a tuoni';
 						9: Num2Str := 'devyni';
-						10: Num2Str := 'de�imt';
+						10: Num2Str := 'de imt';
 						11: Num2Str := 'vienuolika';
 						12: Num2Str := 'dvylika';
 						13: Num2Str := 'trylika';
 						14: Num2Str := 'keturiolika';
 						15: Num2Str := 'penkiolika';
-						16: Num2Str := '�e�iolika';
+						16: Num2Str := ' e iolika';
 						17: Num2Str := 'septyniolika';
-						18: Num2Str := 'a�tuoniolika';
+						18: Num2Str := 'a tuoniolika';
 						19: Num2Str := 'devyniolika'
 				end;
 			end;
@@ -2340,8 +2335,8 @@ end {Num2Str};
 //..............................................................................
 begin
 	Result := Num2Str(Trunc(Abs(Amount)), Female);
-	if (copy(Result, 1,1) = '�') then begin
-		 Result := '�' + copy(Result, 2, length(Result));
+	if (copy(Result, 1,1) = ' ') then begin
+		 Result := ' ' + copy(Result, 2, length(Result));
 	end
 	else begin
 		Result := UpperCase(copy(Result,1,1)) + Copy(Result,2, length(Result));
@@ -2366,13 +2361,13 @@ string;
     end;
 
 
-    { Esta � a fun��o que gera os blocos de extenso que depois ser�o
+    { Esta   a fun  o que gera os blocos de extenso que depois ser o
 montados }
     function Extenso3em3( Numero : Word ) : string;
       const Valores : array[1..36] of word = ( 1, 2, 3, 4, 5, 6, 7, 8, 9,
               10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 30, 40, 50, 60,
               70, 80, 90,100, 200, 300, 400, 500, 600, 700, 800, 900 );
-            Nomes : array[0..36] of string[12] = ( '', 'um', 'dois', 'tr�s',
+            Nomes : array[0..36] of string[12] = ( '', 'um', 'dois', 'tr s',
   'quatro','cinco', 'seis', 'sete', 'oito', 'nove', 'dez',
   'onze','doze', 'treze', 'quatorze', 'quinze','dezesseis',
   'dezessete', 'dezoito', 'dezenove', 'vinte','trinta',
@@ -2402,22 +2397,22 @@ montados }
 
 
     {
-      A fun��o extenso divide os n�meros em grupos de tr�s e chama a fun��o
-      extenso3em3 para o obter extenso de cada parte e armazen�-los no vetor
+      A fun  o extenso divide os n meros em grupos de tr s e chama a fun  o
+      extenso3em3 para o obter extenso de cada parte e armazen -los no vetor
       Resposta.
     }
     function Extenso( Numero : extended ) : string;
-      const NoSingular : array[1..6] of string = ( 'trilh�o', 'bilh�o',
-'milh�o', 'mil', '', '');
+      const NoSingular : array[1..6] of string = ( 'trilh o', 'bilh o',
+'milh o', 'mil', '', '');
                                                   // 'REAL', 'CENTAVO' );
-            NoPlural   : array[1..6] of string = ( 'trilh�es', 'bilh�es',
-'milh�es', 'mil', '', '');
+            NoPlural   : array[1..6] of string = ( 'trilh es', 'bilh es',
+'milh es', 'mil', '', '');
                                                   // 'REAIS', 'CENTAVOS' );
             {
-              Estas constantes facilitam o entendimento do c�digo.
-              Como os valores de singular e plural s�o armazenados em um
+              Estas constantes facilitam o entendimento do c digo.
+              Como os valores de singular e plural s o armazenados em um
 vetor,
-              cada posicao indica a grandeza do n�mero armazenado (leia-se
+              cada posicao indica a grandeza do n mero armazenado (leia-se
 sempre
               da esquerda para a direita).
             }
@@ -2440,7 +2435,7 @@ boolean;
           TriosUsados   : set of CasaDosTrilhoes..CasaDosCentavos;
           NumTriosInt   : byte;
 
-      { Para os n�o pascalistas de tradi��o, observe o uso de uma fun��o
+      { Para os n o pascalistas de tradi  o, observe o uso de uma fun  o
         encapsulada na outra. }
       function ProximoTrio( i : byte ) : byte;
       begin
@@ -2460,17 +2455,17 @@ boolean;
       end;
 
       {
-        O n�mero � quebrado em partes distintas, agrupadas de tr�s em tr�s
+        O n mero   quebrado em partes distintas, agrupadas de tr s em tr s
 casas:
-        centenas, milhares, milh�es, bilh�es e trilh�es. A �ltima parte (a
+        centenas, milhares, milh es, bilh es e trilh es. A  ltima parte (a
 sexta)
-        cont�m apenas os centavos, com duas casas
+        cont m apenas os centavos, com duas casas
       }
       Str( Inteiro : 17 : 0, NumStr );
       TrioAtual    := 1;
       Inteiro      := Int( Inteiro / 100 ); { remove os centavos }
 
-      { Preenche os espa�os vazios com zeros para evitar erros de convers�o
+      { Preenche os espa os vazios com zeros para evitar erros de convers o
 }
       while NumStr[TrioAtual] = ' ' do begin
          NumStr[TrioAtual] := '0';
@@ -2479,10 +2474,10 @@ sexta)
 
       { Inicializa o conjunto como vazio }
       TriosUsados := [];
-      NumTriosInt := 0; { N�meros de trios da parte inteira (sem os
+      NumTriosInt := 0; { N meros de trios da parte inteira (sem os
 centavos) }
 
-      { Este loop gera os extensos de cada parte do n�mero }
+      { Este loop gera os extensos de cada parte do n mero }
       for TrioAtual := CasaDosTrilhoes to CasaDosCentavos do begin
       Val( Copy( NumStr, 3 * TrioAtual - 2, 3 ), RespostaN[TrioAtual], v );
           if RespostaN[TrioAtual] <> 0 then begin
@@ -2530,7 +2525,7 @@ plural }
       { Este loop vai percorrer apenas os trios preenchidos e saltar os
 vazios. }
       while TrioAtual <= CasaDosCentavos do begin
-         { se for apenas cem, n�o escrever 'cento' }
+         { se for apenas cem, n o escrever 'cento' }
          if Resposta[TrioAtual] = 'cento' then
             Resposta[TrioAtual] := 'cem';
 
@@ -2542,29 +2537,29 @@ vazios. }
             else
                NumStr := NumStr + NoSingular[TrioAtual] + ' ';
 
-            { Verifica a necessidade da particula 'e' para os n�meros }
+            { Verifica a necessidade da particula 'e' para os n meros }
             if ( TrioAtual < CasaDosCentavos ) and ( Resposta[TrioPosterior]
 <> '' )
                and ( Resposta[TrioPosterior] <> ' ' ) then begin
                {
                  Este trecho analisa diversos fatores e decide entre usar
 uma
-                 v�rgula ou um "E", em fun��o de uma peculiaridade da
-l�ngua. Veja
+                 v rgula ou um "E", em fun  o de uma peculiaridade da
+l ngua. Veja
                  os exemplos para compreender:
-                 - DOIS MIL, QUINHENTOS E CINQ�ENTA REAIS
+                 - DOIS MIL, QUINHENTOS E CINQ ENTA REAIS
                  - DOIS MIL E QUINHENTOS REAIS
                  - DOIS MIL E UM REAIS
-                 - TR�S MIL E NOVENTA E CINCO REAIS
+                 - TR S MIL E NOVENTA E CINCO REAIS
                  - QUATRO MIL, CENTO E UM REAIS
-                 - UM MILH�O E DUZENTOS MIL REAIS
-                 - UM MILH�O, DUZENTOS MIL E UM REAIS
-                 - UM MILH�O, OITOCENTOS E NOVENTA REAIS
-                 Obs.: Fiz o m�ximo esfor�o pra que o extenso soasse o mais
+                 - UM MILH O E DUZENTOS MIL REAIS
+                 - UM MILH O, DUZENTOS MIL E UM REAIS
+                 - UM MILH O, OITOCENTOS E NOVENTA REAIS
+                 Obs.: Fiz o m ximo esfor o pra que o extenso soasse o mais
 natural
-                       poss�vel em rela��o � lingua falada, mas se aparecer
+                       poss vel em rela  o   lingua falada, mas se aparecer
 alguma
-                       situa��o em que algo soe esquisito, pe�o a gentileza
+                       situa  o em que algo soe esquisito, pe o a gentileza
 de me
                        avisar.
                }
@@ -2579,13 +2574,13 @@ and
             end;
          end;
 
-         { se for apenas trilh�es, bilh�es ou milh�es, acrescenta o 'de' }
+         { se for apenas trilh es, bilh es ou milh es, acrescenta o 'de' }
          if ( NumTriosInt = 1 ) and ( Inteiro > 0 ) and ( TrioAtual <=
 CasaDosMilhoes ) then begin
             NumStr := NumStr + ' de ';
          end;
 
-         { se tiver centavos, acrescenta a part�cula 'e', mas somente se
+         { se tiver centavos, acrescenta a part cula 'e', mas somente se
 houver
            qualquer valor na parte inteira }
          if ( TrioAtual = CasaDasCentenas ) and ( Resposta[CasaDosCentavos]
@@ -2598,7 +2593,7 @@ houver
          TrioPosterior := ProximoTrio( TrioAtual );
       end;
 
-      { Eliminar algumas situa��es em que o extenso gera excessos de espa�os
+      { Eliminar algumas situa  es em que o extenso gera excessos de espa os
         da resposta. Mero perfeccionismo... }
       NumStr := ReplaceSubstring( '  ', ' ', NumStr );
       NumStr := ReplaceSubstring( ' ,', ',', NumStr );
@@ -2618,14 +2613,14 @@ const
         (* 0  1     2        3        4         5           6
 7         8          9 *)
 (*   1x*)
-('','Bir','iki',   '��',    'D�rt',   'Be?',      'Alt?',   'Yedi',
+('','Bir','iki',   '  ',    'D rt',   'Be?',      'Alt?',   'Yedi',
 'Sekiz',   'Dokuz'),
 (*  10x*)
 ('','On', 'Yirmi', 'Otuz',  'K?rk',   'Elli',     'Altm??', 'Yetmi?',
 'Seksen',  'Doksan'),
 (* 100x*)
-('','Y�z','?kiY�z','��Y�z', 'D�rtY�z','Be?Y�z',   'Alt?Y�z','YediY�z',
-'SekizY�z','DokuzY�z'),
+('','Y z','?kiY z','  Y z', 'D rtY z','Be?Y z',   'Alt?Y z','YediY z',
+'SekizY z','DokuzY z'),
 (*1000x*)
 ('','Bin','Milyon','Milyar','Trilyon','Katrilyon','',       '',
 '',        ''));
@@ -2688,7 +2683,7 @@ var s:String;
     fseparador:string;
 
      Function longitud(numero:LongInt):integer;
-     {Esta funci�n nos da la longitud del n�mero que vamos a
+     {Esta funci n nos da la longitud del n mero que vamos a
      deletrear}
      begin
 	  If numero div 10 =0 then
@@ -2728,7 +2723,7 @@ var s:String;
 	  13: Decenas:='trece';
 	  14: Decenas:='catorce';
 	  15: Decenas:='quince';
-	  16: Decenas:='diecis�is';
+	  16: Decenas:='diecis is';
 	  17: Decenas:='diecisiete';
 	  18: Decenas:='dieciocho';
 	  19: Decenas:='diecinueve';
@@ -2737,10 +2732,10 @@ var s:String;
          if female then
           Decenas:='veintiuna'
          else
-          Decenas:='veinti�n';
+          Decenas:='veinti n';
         end;
-	  22: Decenas:='veintid�s';
-	  23: Decenas:='veintitr�s';
+	  22: Decenas:='veintid s';
+	  23: Decenas:='veintitr s';
 	  24..29: Decenas:='veinti'+Unidades(numero mod 10);
 	  30: Decenas:='treinta';
 	  40: Decenas:='cuarenta';
@@ -2830,7 +2825,7 @@ var s:String;
 	  if numero > 1999999 then
 	  UnidadesDeMillon:=Unidades(Numero div 1000000)+' millones '+CentenasDeMillar(Numero mod 1000000)
 	  else
-	  UnidadesDeMillon:= 'un mill�n '+CentenasDeMillar(Numero mod 1000000)
+	  UnidadesDeMillon:= 'un mill n '+CentenasDeMillar(Numero mod 1000000)
      end;
 
      Function DecenasDeMillon(Numero:LongInt):String;
@@ -2914,7 +2909,7 @@ var s:String;
     fseparador:string;
 
      Function longitud(numero:LongInt):integer;
-     {Esta funci�n nos da la longitud del n�mero que vamos a
+     {Esta funci n nos da la longitud del n mero que vamos a
      deletrear}
      begin
 	  If numero div 10 =0 then
@@ -3082,7 +3077,7 @@ var s:String;
 	  if numero > 1999999 then
 	  UnidadesDeMillon:=Unidades(Numero div 1000000)+' milions '+CentenasDeMillar(Numero mod 1000000)
 	  else
-	  UnidadesDeMillon:= 'un mili� '+CentenasDeMillar(Numero mod 1000000)
+	  UnidadesDeMillon:= 'un mili  '+CentenasDeMillar(Numero mod 1000000)
      end;
 
      Function DecenasDeMillon(Numero:LongInt):String;
@@ -3165,7 +3160,7 @@ var s:String;
     fseparador:string;
 
      Function longitud(numero:LongInt):integer;
-     {Esta funci�n nos da la longitud del n�mero que vamos a
+     {Esta funci n nos da la longitud del n mero que vamos a
      deletrear}
      begin
 	  If numero div 10 =0 then
@@ -3205,7 +3200,7 @@ var s:String;
 	  13: Decenas:='trece';
 	  14: Decenas:='catorce';
 	  15: Decenas:='quince';
-	  16: Decenas:='diecis�is';
+	  16: Decenas:='diecis is';
 	  17: Decenas:='diecisiete';
 	  18: Decenas:='dieciocho';
 	  19: Decenas:='diecinueve';
@@ -3214,10 +3209,10 @@ var s:String;
          if female then
           Decenas:='veintiuna'
          else
-          Decenas:='veinti�n';
+          Decenas:='veinti n';
         end;
-	  22: Decenas:='veintid�s';
-	  23: Decenas:='veintitr�s';
+	  22: Decenas:='veintid s';
+	  23: Decenas:='veintitr s';
 	  24..29: Decenas:='veinti'+Unidades(numero mod 10);
 	  30: Decenas:='treinta';
 	  40: Decenas:='cuarenta';
@@ -3307,7 +3302,7 @@ var s:String;
 	  if numero > 1999999 then
 	  UnidadesDeMillon:=Unidades(Numero div 1000000)+' millones '+CentenasDeMillar(Numero mod 1000000)
 	  else
-	  UnidadesDeMillon:= 'un mill�n '+CentenasDeMillar(Numero mod 1000000)
+	  UnidadesDeMillon:= 'un mill n '+CentenasDeMillar(Numero mod 1000000)
      end;
 
      Function DecenasDeMillon(Numero:LongInt):String;
@@ -4040,12 +4035,11 @@ var
  buffer:array [0..3] of char;
  pbuf:Pchar;
  finish:boolean;
-{$IFDEF LINUX}
- readed:Integer;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  readed:DWORD;
  lasterror:Integer;
+{$ELSE}
+ readed:Integer;
 {$ENDIF}
 begin
  memstream:=TMemoryStream.Create;
@@ -4055,19 +4049,7 @@ begin
   finish:=false;
   buffer[1]:=chr(0);
   repeat
-{$IFDEF LINUX}
-   // In linux the handle 0 is the stdinput
-{$IFDEF FPC}
-        readed:=FileRead(0,pbuf^,1);
-        if readed=0 then
-         finish:=true;
-{$ELSE}
-         raise Exception.Create('Read from handle not implemented');
-  // readed:=__read(0,pbuf^,1);
-  // if readed=0 then
-  //  finish:=true;
-{$ENDIF}
-{$ENDIF}
+
 {$IFDEF MSWINDOWS}
    if not ReadFile(handle,pbuf^,1,readed,nil) then
    begin
@@ -4082,6 +4064,18 @@ begin
      readed:=0;
     end;
    end;
+{$ELSE}
+   // In linux the handle 0 is the stdinput
+{$IFDEF FPC}
+        readed:=FileRead(0,pbuf^,1);
+        if readed=0 then
+         finish:=true;
+{$ELSE}
+         raise Exception.Create('Read from handle not implemented');
+  // readed:=__read(0,pbuf^,1);
+  // if readed=0 then
+  //  finish:=true;
+{$ENDIF}
 {$ENDIF}
    if readed>0 then
    begin
@@ -4106,8 +4100,7 @@ function ReadFromStdInputStream:TMemoryStream;
 var
 // writed:DWORD;
  handle:THANDLE;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 var
 // writed:DWORD;
  handle:integer;
@@ -4118,8 +4111,7 @@ begin
  handle:=GetStdHandle(STD_INPUT_HANDLE);
  if handle=INVALID_HANDLE_VALUE then
   RaiseLastOsError;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  handle:=0;
 {$ENDIF}
  Result:=ReadStreamFromHandle(handle);
@@ -4169,8 +4161,7 @@ procedure WriteToStdError(astring:String);
 var
 // writed:DWORD;
  handle:THANDLE;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 var
 // writed:DWORD;
  handle:integer;
@@ -4187,8 +4178,7 @@ begin
  // No console created
  if (handle=0) then
    exit;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  handle:=2;
 {$ENDIF}
  astream:=TMemoryStream.Create;
@@ -4210,8 +4200,7 @@ procedure WriteStreamToStdOutput(astream:TStream);
 var
 // writed:DWORD;
  handle:THANDLE;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
 var
 // writed:DWORD;
  handle:integer;
@@ -4222,8 +4211,7 @@ begin
  handle:=Windows.GetStdHandle(STD_OUTPUT_HANDLE);
  if handle=INVALID_HANDLE_VALUE then
   RaiseLastOsError;
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
  handle:=1;
 {$ENDIF}
  WriteStreamToHandle(astream,handle);
@@ -4231,11 +4219,6 @@ end;
 
 
 function RpTempPath:String;
-{$IFDEF LINUX}
-begin
- Result:=System.IOUtils.TPath.GetTempPath;
-end;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
 var
  apath:Pchar;
@@ -4253,16 +4236,14 @@ begin
   FreeMem(apath);
  end;
 end;
-{$ENDIF}
-
-
-{$IFNDEF DOTNETD}
-function RpTempFileName:String;
-{$IFDEF LINUX}
+{$ELSE}
 begin
- Result:=System.IOUtils.TPath.GetTempFileName();
+ Result:=System.IOUtils.TPath.GetTempPath;
 end;
 {$ENDIF}
+
+
+function RpTempFileName:String;
 {$IFDEF MSWINDOWS}
 var
  apath:array [0..MAX_PATH] of char;
@@ -4280,23 +4261,15 @@ begin
  end;
  Result:=StrPas(afilename);
 end;
-{$ENDIF}
-{$ENDIF} // Endif dotnetd
-
-{$IFDEF DOTNETD}
-function RpTempPath:String;
+{$ELSE}
 begin
- Result:=System.IO.Path.GetTempPath;
-end;
-
-function RpTempFileName:String;
-begin
- Result:=System.IO.Path.GetTempFileName;
+ Result:=System.IOUtils.TPath.GetTempFileName();
 end;
 {$ENDIF}
 
 
-{$IFDEF LINUX}
+{$IFDEF MSWINDOWS}
+{$ELSE}
 procedure ReadFileLines(filename:String;dest:TStrings);
 var
  f:TextFile;
@@ -4347,69 +4320,24 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF DOTNETD}
-function CompareMem(const Mem1: array of Byte; const Mem2: array of Byte;
-  Count: Integer): Boolean;
-var
-  I: Integer;
-begin
-  Result := False;
-  for I := 0 to Count - 1 do
-    if Mem1[I] <> Mem2[I] then
-      Exit;
-  Result := True;
-end;
-{$ENDIF}
-
 
 procedure WriteWideStringToStream(astring:WideString;deststream:TStream);
-{$IFDEF DOTNETD}
-var
- i:integer;
- buf:array of Byte;
-{$ENDIF}
+
 begin
  if Length(astring)<1 then
   exit;
-{$IFDEF DOTNETD}
- SetLength(buf,Length(astring)*2);
- for i:=0 to Length(astring)-1 do
- begin
-  buf[i*2]:=Byte(astring[i+1]);
-  buf[i*2+1]:=Byte(Word(astring[i+1]) shr 8);
- end;
- deststream.Write(buf,Length(astring));
-{$ENDIF}
-{$IFNDEF DOTNETD}
  deststream.Write(astring[1],Length(astring)*2);
-{$ENDIF}
 end;
 
 
 procedure WriteStringToStream(astring:AnsiString;deststream:TStream);
-{$IFDEF DOTNETD}
-var
- i:integer;
- buf:array of Byte;
-{$ENDIF}
 begin
  if Length(astring)<1 then
   exit;
-{$IFDEF DOTNETD}
- SetLength(buf,Length(astring));
- for i:=0 to Length(astring)-1 do
- begin
-  buf[i]:=Byte(astring[i+1]);
- end;
- deststream.Write(buf,Length(astring));
-{$ENDIF}
-{$IFNDEF DOTNETD}
  deststream.Write(astring[1],Length(astring));
-{$ENDIF}
 end;
 
 {$IFDEF MSWINDOWS}
-{$IFNDEF DOTNETD}
 function ExeResourceToStream (resId: Integer):TMemoryStream;
 var
   Res: TResourceStream;
@@ -4435,7 +4363,6 @@ begin
    Res.Free;
   end;
 end;
-{$ENDIF}
 {$ENDIF}
 
 function AlignToStr(value:TRpPosAlign):string;

@@ -1045,10 +1045,10 @@ var
  langinfo:DWord;
  i:integer;
  index:integer;
- newsize:integer;
  klist:TStringList;
 {$ENDIF}
  fontCollectionBuffer: TBytes;
+ newsize:integer;
  header:string;
  dwtable: Cardinal;
  directoryoffset: Cardinal;

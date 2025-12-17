@@ -84,28 +84,33 @@ uses Classes,SysUtils,
 {$IFDEF FIREDAC}
   FireDAC.Phys, FireDAC.Stan.Intf, FireDAC.Comp.Client,FireDAC.Stan.Def,FireDAC.DApt,FireDAC.Stan.Option,
   FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,
+ {$IFDEF ANDROID}
+ {$ELSE}
   FireDAC.Phys.ADS,  FireDAC.Phys.ODBCBase,FireDAC.Phys.ODBCWrapper,
-  FireDAC.Phys.FB,FireDAC.Phys.IB,FireDAC.Phys.IBBase,
- FireDAC.Phys.PG,FireDAC.Phys.SQLite,FireDAC.Phys.SQLiteVDataset,
+  FireDAC.Phys.FB,FireDAC.Phys.IBBase,
+  FireDAC.Phys.PG,FireDAC.Phys.SQLiteVDataset,
   FireDAC.Phys.Intf,
-{$IFNDEF LINUX}
+  FireDAC.Phys.MySQL,
+ {$ENDIF}
+  FireDAC.Phys.SQLite,
+  FireDAC.Phys.IB,
+ {$IFDEF MSWINDOWS}
   FireDAC.Phys.MSAcc,
   FireDAC.Phys.DS,
+ {$ENDIF}
 {$ENDIF}
-  FireDAC.Phys.MySQL,
 
 {$IFDEF DELPHIENTERPRISEDBSTATIC}
   FireDAC.Phys.MSSQL,
   FireDAC.Phys.ASA,FireDAC.Phys.DB2,  FireDAC.Phys.Infx,
   FireDAC.Phys.TData,
-{$IFNDEF LINUX}
+ {$IFDEF MSWINDOWS}
   FireDAC.Phys.TDBX,
   FireDAC.Phys.TDBXBase,
-{$ENDIF}
+ {$ENDIF}
   FireDAC.Phys.Oracle,
   FireDAC.Phys.ODBCDef,
   FireDAC.Phys.ODBC,
-{$ENDIF}
 {$ENDIF}
 {$IFDEF USEBDE}
   dbtables,
@@ -139,7 +144,8 @@ uses Classes,SysUtils,
 {$ENDIF}
  rpdatatext;
 
-{$IFDEF LINUX}
+{$IFDEF MSWINWDOWS}
+{$ELSE}
 const
  DBXDRIVERFILENAME='dbxdrivers';
  DBXCONFIGFILENAME='dbxconnections';
@@ -506,8 +512,7 @@ const
   SDriverConfigFile = 'dbxdrivers.ini';            { Do not localize }
   SConnectionConfigFile = 'dbxconnections.ini';    { Do not localize }
   SDBEXPRESSREG_SETTING = '\Software\Borland\DBExpress'; { Do not localize }
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
   SDBEXPRESSREG_USERPATH = '/.borland/';          { Do not localize }
   SDBEXPRESSREG_GLOBALPATH = '/usr/local/etc/';   { Do not localize }
   SDriverConfigFile = 'dbxdrivers';                  { Do not localize }
@@ -3237,9 +3242,6 @@ end;
 procedure TRpConnAdmin.LoadConfig;
 var
  dbxconpath,dbxdrivpath:String;
-{$IFDEF LINUX}
- configdir:string;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  nconfigfilename:string;
  resstream:TResourceStream;
@@ -3248,6 +3250,8 @@ var
  hfind:HRSRC;
  nstrings:TStringList;
  memstream:TMemoryStream;
+{$ELSE}
+ configdir:string;
 {$ENDIF}
 
 begin
@@ -3262,7 +3266,12 @@ begin
   drivers:=nil;
  end;
  // Looks for ./borland in Linux registry in Windows
-{$IFDEF LINUX}
+ {$IFDEF MSWINDOWS}
+ // Looks the registry and if there is not registry
+ // Use current dir
+ driverfilename:=ObtainDriverRegistryFile;
+ configfilename:=ObtainConnectionRegistryFile;
+{$ELSE}
  configdir:=GetEnvironmentVariable('HOME')+'/.borland';
  if Length(configdir)>12 then
  begin
@@ -3281,12 +3290,6 @@ begin
   driverfilename:=driverfilename+'.conf';
   configfilename:=configfilename+'.conf';
  end;
-{$ENDIF}
-{$IFDEF MSWINDOWS}
- // Looks the registry and if there is not registry
- // Use current dir
- driverfilename:=ObtainDriverRegistryFile;
- configfilename:=ObtainConnectionRegistryFile;
 {$ENDIF}
 
  dbxconpath:=DBXConnectionsOverride;
@@ -3350,8 +3353,7 @@ begin
    end
    else
     Raise Exception.Create(SRpConfigFileNotExists+' - '+driverfilename);
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
   // Check if exists in the current dir
   if FileExists(DBXDRIVERFILENAME) then
   begin
@@ -3400,8 +3402,7 @@ begin
    config.CaseSensitive:=false;
  {$ENDIF}
 {$ENDIF}
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSE}
   // Check if exists in the current dir
   if FileExists(DBXCONFIGFILENAME) then
   begin
@@ -3482,14 +3483,13 @@ var
  i:integer;
  baseinfo:TRpDatabaseInfoItem;
  astring:string;
-{$IFDEF LINUX}
- aparams:TStringList;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  startinfo:TStartupinfo;
  linecount:string;
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
+{$ELSE}
+ aparams:TStringList;
 {$ENDIF}
 begin
  report:=TRpDataInfoList(Collection).FReport As TRpReport;
@@ -3507,23 +3507,7 @@ begin
      astring:=RpTempFileName;
      report.StreamFormat:=rpStreamXML;
      report.SaveToFile(astring);
-{$IFDEF LINUX}
-    raise Exception.Create('Not implemented');
-(*     aparams:=TStringList.Create;
-     try
-        aparams.Add('mono');
-        aparams.Add(ExtractFilePath(ParamStr(0))+'printreport.exe');
-        aparams.Add('-deletereport');
-        aparams.Add('-showfields');
-        aparams.Add(Alias);
-        aparams.Add(tmpfile);
-        aparams.Add(astring);
-        ExecuteSystemApp(aparams,true);
-     finally
-        aparams.free;
-     end;*)
-{$ENDIF}
-{$IFDEF MSWINDOWS}
+     {$IFDEF MSWINDOWS}
      linecount:='';
      with startinfo do
      begin
@@ -3550,7 +3534,23 @@ begin
      startinfo,procesinfo) then
       RaiseLastOSError;
      WaitForSingleObject(procesinfo.hProcess,60000);
+{$ELSE}
+    raise Exception.Create('Not implemented');
+(*     aparams:=TStringList.Create;
+     try
+        aparams.Add('mono');
+        aparams.Add(ExtractFilePath(ParamStr(0))+'printreport.exe');
+        aparams.Add('-deletereport');
+        aparams.Add('-showfields');
+        aparams.Add(Alias);
+        aparams.Add(tmpfile);
+        aparams.Add(astring);
+        ExecuteSystemApp(aparams,true);
+     finally
+        aparams.free;
+     end;*)
 {$ENDIF}
+
      alist.LoadFromFile(tmpfile);
      i:=0;
      while i<alist.Count do
@@ -3576,7 +3576,7 @@ begin
      astring:=RpTempFileName;
      report.StreamFormat:=rpStreamXML;
      report.SaveToFile(astring);
-{$IFDEF LINUX}
+{$IFNDEF MSWINDOWS}
      raise Exception.Create('Not Implemented');
      (*
      aparams:=TStringList.Create;
@@ -5273,33 +5273,18 @@ end;
 procedure GetDotNet2Drivers(alist:TStrings);
 var
  tmpfile:string;
-{$IFDEF LINUX}
- aparams:TStringList;
-{$ENDIF}
 {$IFDEF MSWINDOWS}
  startinfo:TStartupinfo;
  linecount:string;
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
+{$ELSE}
+ aparams:TStringList;
 {$ENDIF}
 begin
  tmpfile:=RpTempFileName;
  try
-{$IFDEF LINUX}
-     raise Exception.Create('Not Implemented');
-(*
-  aparams:=TStringList.Create;
-  try
-     aparams.Add('mono');
-     aparams.Add(ExtractFilePath(ParamStr(0))+'net2/printreport.exe');
-     aparams.Add('-getproviders');
-     aparams.Add(tmpfile);
-     ExecuteSystemApp(aparams,true);
-  finally
-     aparams.free;
-  end;*)
-{$ENDIF}
-{$IFDEF MSWINDOWS}
+ {$IFDEF MSWINDOWS}
      linecount:='';
      with startinfo do
      begin
@@ -5327,7 +5312,21 @@ begin
       startinfo,procesinfo) then
       RaiseLastOSError;
      WaitForSingleObject(procesinfo.hProcess,60000);
+{$ELSE}
+     raise Exception.Create('Not Implemented');
+(*
+  aparams:=TStringList.Create;
+  try
+     aparams.Add('mono');
+     aparams.Add(ExtractFilePath(ParamStr(0))+'net2/printreport.exe');
+     aparams.Add('-getproviders');
+     aparams.Add(tmpfile);
+     ExecuteSystemApp(aparams,true);
+  finally
+     aparams.free;
+  end;*)
 {$ENDIF}
+
      alist.LoadFromFile(tmpfile);
     finally
      SysUtils.DeleteFile(tmpfile);
@@ -5384,4 +5383,3 @@ initialization
 {$ENDIF}
 
 end.
-
