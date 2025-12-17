@@ -1,0 +1,127 @@
+package Reportman_PDF;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Reportman RTL (PDF)'}
+{$IMPLICITBUILD ON}
+
+requires
+{$IFDEF MSWINDOWS}
+  vcl,
+  dbexpress,
+  FireDACMSAccDriver,
+  FireDACDBXDriver,
+  FireDACDSDriver,
+{$ENDIF}
+{$IFDEF ANDROID}
+{$ELSE}
+  DataSnapClient,
+  DataSnapCommon,
+  FireDACPgDriver,
+  FireDACCommonODBC,
+  FireDACMySQLDriver,
+  FireDACADSDriver,
+{$ENDIF}
+  rtl,
+  dbrtl,
+  DbxCommonDriver,
+  DbxClientDriver,
+  CustomIPTransport,
+  dsnap,
+  FireDAC,
+  FireDACCommonDriver,
+  FireDACCommon,
+  FireDACIBDriver,
+  FireDACSqliteDriver;
+contains
+  rptypes in '..\Common\rptypes.pas',
+  rpmdshfolder in '..\Common\rpmdshfolder.pas',
+  rpmdconsts in '..\Common\rpmdconsts.pas',
+  rptranslator in '..\Common\rptranslator.pas',
+  rpmzlib in '..\Common\rpmzlib.pas',
+  rpzlib77 in '..\Common\rpzlib77.pas',
+  rpzlibadler in '..\Common\rpzlibadler.pas',
+  rpzlibinfblock in '..\Common\rpzlibinfblock.pas',
+  rpzlibinfcodes in '..\Common\rpzlibinfcodes.pas',
+  rpzlibinffast in '..\Common\rpzlibinffast.pas',
+  rpzlibinftrees in '..\Common\rpzlibinftrees.pas',
+  rpzlibinfutil in '..\Common\rpzlibinfutil.pas',
+  rpzlibtrees in '..\Common\rpzlibtrees.pas',
+  rpzlibzdeflate in '..\Common\rpzlibzdeflate.pas',
+  rpzlibzinflate in '..\Common\rpzlibzinflate.pas',
+  rpzlibzutil in '..\Common\rpzlibzutil.pas',
+  rpzlibzlib in '..\Common\rpzlibzlib.pas',
+  rpmetafile in '..\Common\rpmetafile.pas',
+  rpmdcharttypes in '..\Common\rpmdcharttypes.pas',
+  rpreport in '..\Common\rpreport.pas',
+  rpbasereport in '..\Common\rpbasereport.pas',
+  rpprintitem in '..\Common\rpprintitem.pas',
+  rpsubreport in '..\Common\rpsubreport.pas',
+  rpeval in '..\Common\rpeval.pas',
+  rpsecutil in '..\Common\rpsecutil.pas',
+  rpsection in '..\Common\rpsection.pas',
+  rpmunits in '..\Common\rpmunits.pas',
+  rptypeval in '..\Common\rptypeval.pas',
+  rpparser in '..\Common\rpparser.pas',
+  rpalias in '..\Common\rpalias.pas',
+  rpdatainfo in '..\Common\rpdatainfo.pas',
+  rpparams in '..\Common\rpparams.pas',
+  rpdataset in '..\Common\rpdataset.pas',
+  rpdatatext in '..\Common\rpdatatext.pas',
+  rpevalfunc in '..\Common\rpevalfunc.pas',
+  rplabelitem in '..\Common\rplabelitem.pas',
+  rpmdbarcode in '..\Common\rpmdbarcode.pas',
+  rpbarcodecons in '..\Common\rpbarcodecons.pas',
+  rpxmlstream in '..\Common\rpxmlstream.pas',
+  rpdrawitem in '..\Common\rpdrawitem.pas',
+  rpmdchart in '..\Common\rpmdchart.pas',
+  rppdfdriver in '..\Common\rppdfdriver.pas',
+  rppdffile in '..\Common\rppdffile.pas',
+  rpinfoprovid in '..\Common\rpinfoprovid.pas',
+{$IFDEF MSWINDOWS}
+  rpinfoprovgdi in '..\Common\rpinfoprovgdi.pas',
+  rpcompilerep in '..\Common\rpcompilerep.pas',
+  rpdirectwriterenderer in '..\Common\rpdirectwriterenderer.pas',
+{$ELSE}
+  rpfreetype2 in '..\Common\rpfreetype2.pas',
+  rpinfoprovft in '..\Common\rpinfoprovft.pas',
+  rpICU in '..\Common\rpICU.pas',
+  rpHarfBuzz in '..\Common\rpHarfbuzz.pas',
+  rpfontconfig in '..\Common\rpfontconfig.pas',
+{$ENDIF}
+  rpmreg in '..\Common\rpmreg.pas',
+  rpcompobase in '..\Common\rpcompobase.pas',
+  rphtmldriver in '..\Common\rphtmldriver.pas',
+  rpcsvdriver in '..\Common\rpcsvdriver.pas',
+  rpsvgdriver in '..\Common\rpsvgdriver.pas',
+  rppdfreport in '..\Common\rppdfreport.pas',
+  rptextdriver in '..\Common\rptextdriver.pas',
+  rpclientdataset in '..\Common\rpclientdataset.pas',
+  rplastsav in '..\Common\rplastsav.pas',
+  rptruetype in '..\Common\rptruetype.pas',
+  rpDelphiZXIngQRCode in '..\Common\rpDelphiZXIngQRCode.pas';
+
+end.

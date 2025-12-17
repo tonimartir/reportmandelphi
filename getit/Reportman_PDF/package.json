@@ -1,0 +1,62 @@
+{
+  "id": "reportman.pdf",
+  "name": "Reportman.PDF",
+  "version": "3.9.18",
+  "vendor": "Toni Martir",
+  "license": "MPL-2.0",
+  "summary": "PDF reporting engine with IDE integration for Delphi and C++Builder.",
+  "description": "Reportman PDF is a reporting engine implemented in Delphi. The package installs into the Delphi and C++Builder IDE on Windows only, while the generated runtime binaries are portable across supported platforms: Windows 32-bit/64-bit, Linux, and Android. On Windows it uses VCL-based font measurement, and on non-Windows platforms it relies on HarfBuzz-based text shaping.",
+  "category": "Reporting",
+  "tags": [
+    "reporting",
+    "pdf",
+    "reports",
+    "delphi",
+    "cbuilder"
+  ],
+  "platforms": {
+    "windows": {
+      "ide": true,
+      "runtime": true
+    },
+    "linux": {
+      "ide": false,
+      "runtime": true
+    },
+    "android": {
+      "ide": false,
+      "runtime": true
+    }
+  },
+  "ides": [
+    {
+      "name": "Delphi",
+      "versions": ["11","13"]
+    },
+    {
+      "name": "C++Builder",
+      "versions": ["11","13"]
+    }
+  ],
+  "frameworks": [
+    "RTL"
+  ],
+  "packages": [
+    {
+      "name": "Reportman.PDF",
+      "type": "design",
+      "path": "Source/Delphi11/Reportman_PDF.dpk"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "FireDAC",
+      "optional": true,
+      "description": "Only required when database-related functionality is used."
+    }
+  ],
+  "sourceIncluded": true,
+  "author": {
+    "name": "Toni Martir"
+  }
+}

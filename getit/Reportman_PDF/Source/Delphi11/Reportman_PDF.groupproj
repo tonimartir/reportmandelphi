@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{6AC18786-D54B-4090-A65C-B94445C6B8BB}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Reportman_PDF.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Reportman_PDF">
+        <MSBuild Projects="Reportman_PDF.dproj"/>
+    </Target>
+    <Target Name="Reportman_PDF:Clean">
+        <MSBuild Projects="Reportman_PDF.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Reportman_PDF:Make">
+        <MSBuild Projects="Reportman_PDF.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Reportman_PDF"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Reportman_PDF:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Reportman_PDF:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

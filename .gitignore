@@ -196,3 +196,7 @@ repman/binr32/net2/DocumentFormat.OpenXml.dll
 repman/binr32/net2/DocumentFormat.OpenXml.Framework.dll
 repman/binr32/net2/e_sqlite3.dll
 repman/binr32/net2/ExcelNumberFormat.dll
+*.pas
+*.dcr
+getit/Reportman_PDF/Source/Delphi11/Reportman_PDF_nonshared.a
+*.RES
