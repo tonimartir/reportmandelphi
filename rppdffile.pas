@@ -2201,7 +2201,7 @@ begin
 
   SWriteLine(FFile.FsTempStream,'BT');
   SWriteLine(FFile.FsTempStream,'/F'+
-  Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.Style)+' '+
+  Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
    IntToStr(Font.Size)+ ' Tf');
   if (RighttoLeft) then
   begin
@@ -3849,7 +3849,7 @@ begin
  end;
  if Not Assigned(InfoProvider) then
   exit;
- searchname:=Font.GetFontFamilyKey+IntToStr(Font.Style);
+ searchname:=Font.GetPDFFontFamilyStyleKey;
  index:=FFontTTData.IndexOf(searchname);
  if index<0 then
  begin
@@ -4336,7 +4336,7 @@ begin
      Font.LFontName:=newFontFamily;
      adata:=GetTTFontData;
      Result:=Result+'/F'+
-      Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.Style)+' '+
+      Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
        IntToStr(Font.Size)+ ' Tf'+EOL;
      actualFontFamily:=newfontFamily;
     end;

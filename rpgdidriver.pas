@@ -1368,6 +1368,8 @@ begin
     npdfdriver.PDFFile.Canvas.Font.Color := Canvas.Font.Color;
     npdfdriver.PDFFile.Canvas.Font.Italic := fsItalic in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
+    npdfdriver.PDFFile.Canvas.Font.Underline := fsUnderline in Canvas.Font.Style;
+    npdfdriver.PDFFile.Canvas.Font.StrikeOut := fsStrikeOut in Canvas.Font.Style;
 
     larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
      RightToLeft);

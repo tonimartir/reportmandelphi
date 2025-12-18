@@ -1573,14 +1573,14 @@ begin
   else
    stylestring:=' regular ';
 // WriteToStdError('Ask for font family: '+ afontName+ ' style: ' + stylestring+ chr(10));
- if ((currentname=afontname) and (currentstyle=pdffont.Style)) then
+ if ((currentname=afontname) and (currentstyle=pdffont.GetPDFStyleKey)) then
   exit;
  currentname:=afontname;
- currentstyle:=pdffont.Style;
+ currentstyle:=pdffont.GetPDFStyleKey;
  // Selects de font by font matching
  // First exact coincidence of family and style
- isbold:=(pdffont.style and 1)>0;
- isitalic:=(pdffont.style and (1 shl 1))>0;
+ isbold:=(pdffont.bold);
+ isitalic:=(pdffont.Italic);
  match:=false;
  i:=0;
  while i<fontlist.Count do

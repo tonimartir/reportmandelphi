@@ -253,6 +253,8 @@ begin
  FPDFFile.Canvas.Font.Size:=atext.FontSize;
  FPDFFile.Canvas.Font.Bold:=(atext.Fontstyle and 1)>0;
  FPDFFile.Canvas.Font.Italic:=(atext.Fontstyle and (1 shl 1))>0;
+ FPDFFile.Canvas.Font.Underline:=(atext.Fontstyle and (1 shl 2))>0;
+ FPDFFile.Canvas.Font.StrikeOut:=(atext.Fontstyle and (1 shl 3))>0;
  Rect.Left:=0;
  Rect.Top:=0;
  Rect.Bottom:=0;
@@ -295,7 +297,6 @@ begin
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
 {$ENDIF}
-    FPDFFile.Canvas.Font.Style:=obj.FontStyle;
     // Transparent ?
     if (PDFConformance = TPDFConformanceType.PDF_A_3) then
       FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded

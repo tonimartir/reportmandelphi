@@ -38,7 +38,6 @@ type
    LFontName:WideString;
    Size:integer;
    Color:integer;
-   Style:Integer;
    Italic:Boolean;
    Underline:boolean;
    Bold:boolean;
@@ -47,6 +46,9 @@ type
    BackColor:Integer;
    constructor Create;
    function GetFontFamilyKey: string;
+   function GetPDFFontFamilyStyleKey: string;
+   function GetFullStyleKey: integer;
+   function GetPDFStyleKey: integer;
    function GetFontFamily:string;
   end;
 
@@ -322,6 +324,52 @@ begin
  REsult:=StringReplace(WFontName,' ','',[rfReplaceAll]);;
 {$ENDIF}
 end;
+
+function TrpPDFFont.GetPDFFontFamilyStyleKey: string;
+var acum:integer;
+begin
+ Result:=GetFontFamilyKey+IntToStr(GetPDFStyleKey);
+end;
+
+function TrpPDFFont.GetFullStyleKey: integer;
+var acum:integer;
+begin
+ acum:=0;
+ if (Bold) then
+ begin
+  acum:=acum+1;;
+ end;
+ if (Italic) then
+ begin
+  acum:=acum+2;
+ end;
+ if (Underline) then
+ begin
+  acum:=acum+4;
+ end;
+ if (StrikeOut) then
+ begin
+  acum:=acum+8;
+ end;
+ Result:=acum;
+end;
+
+function TrpPDFFont.GetPDFStyleKey: integer;
+var acum:integer;
+begin
+ acum:=0;
+ if (Bold) then
+ begin
+  acum:=acum+1;
+ end;
+ if (Italic) then
+ begin
+  acum:=acum+2;
+ end;
+ Result:=acum;
+end;
+
+
 
 constructor TAdvFontData.Create;
 begin

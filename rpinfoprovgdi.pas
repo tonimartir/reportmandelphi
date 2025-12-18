@@ -814,10 +814,10 @@ var
 {$ENDIF}
  lastError:Integer;
 begin
- if ((currentname=pdffont.WFontName) and (currentstyle=pdffont.Style)) then
+ if ((currentname=pdffont.WFontName) and (currentstyle=pdffont.GetFullStyleKey)) then
   exit;
  currentname:=pdffont.WFontName;
- currentstyle:=pdffont.Style;
+ currentstyle:=pdffont.GetFullStyleKey;
  if fonthandle<>0 then
  begin
   DeleteObject(fonthandle);
@@ -829,19 +829,19 @@ begin
  LogFont.lfEscapement:=0;
  LogFont.lfOrientation:=0;
 
- if (pdffont.style and 1)>0 then
+ if (pdffont.Bold) then
   LogFont.lfWeight:=FW_BOLD
  else
   LogFont.lfWeight:=FW_NORMAL;
- if (pdffont.style and (1 shl 1))>0 then
+ if (pdffont.Italic) then
   LogFont.lfItalic:=1
  else
   LogFont.lfItalic:=0;
- if (pdffont.style and (1 shl 2))>0 then
+ if (pdffont.Underline) then
   LogFont.lfUnderline:=1
  else
   Logfont.lfUnderline:=0;
- if (pdffont.style and (1 shl 3))>0 then
+ if (pdffont.StrikeOut) then
   LogFont.lfStrikeOut:=1
  else
   LogFont.lfStrikeOut:=0;
