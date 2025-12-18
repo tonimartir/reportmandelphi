@@ -1,66 +1,19 @@
 {
-  "Id": "reportman.pdf",
-  "Name": "Reportman.PDF",
-  "Version": "3.9.18",
-  "Vendor": "Toni Martir",
-  "License": "MPL1.txt",
-  "Summary": "PDF reporting engine with IDE integration for Delphi.",
-  "Description": "Reportman PDF is a reporting engine implemented in Delphi. A full featured designer is available. Supports Windows, Linux and Android",
-  "Category": "Reporting",
-  "ProjectUrl": "https:\/\/www.reportman.es",
-  "Modified": "2025-12-12 00:15:15",
+ "Id": "Reportman.PDF",
+ "Name": "Reportman.PDF",
+ "Version": "3.9.15",
+ "Description": "Reportman.PDF is crosss platform reporting library to generate PDFs on the fly from report template files.",
+ "Vendor": "Toni Martir",
+ "VendorUrl": "http:\/\/www.reportman.es",
+ "Image": "logo.png",
+ "License": "MPL1.txt",
+ "Url": "Reportman_PDF.zip",
+ "ProjectUrl": "https:\/\/www.reportman.es",
+ "Modified": "2021-12-01 00:15:15",
  "LicenseName": "MOZILLA PUBLIC LICENSE",
-  "RequireElevation": "0",
+ "RequireElevation": "0",
  "AllUsers": "0",
-  "tags": [
-    "reporting",
-    "pdf",
-    "reports",
-    "delphi",
-    "cbuilder"
-  ],
-  "platforms": {
-    "windows": {
-      "ide": true,
-      "runtime": true
-    },
-    "linux": {
-      "ide": false,
-      "runtime": true
-    },
-    "android": {
-      "ide": false,
-      "runtime": true
-    }
-  },
-  "ides": [
-    {
-      "name": "Delphi",
-      "versions": ["11","12","13"]
-    },
-    {
-      "name": "C++Builder",
-      "versions": ["11","12","13"]
-    }
-  ],
-  "frameworks": [
-    "RTL",
-    "VCL"
-  ],
-  "packages": [
-    {
-      "name": "Reportman.PDF",
-      "type": "design",
-      "path": "Source/%IDE_VER%/Reportman_PDF.dpk"
-    }
-  ],
-  "dependencies": [],
-  "sourceIncluded": true,
-  "author": {
-    "name": "Toni Martir"
-  },
-  
-  "Actions": [
+ "Actions": [
       {
     "Id": "1",
     "ActionId": "6",
