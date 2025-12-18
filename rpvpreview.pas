@@ -472,6 +472,14 @@ begin
  allpages:=true;
  collate:=PreviewControl.metafile.CollateCopies;
  frompage:=1; topage:=MAX_PAGECOUNT;
+ if (PreviewControl.Metafile.Finished) then
+ begin
+  topage:=PreviewControl.Metafile.CurrentPageCount;
+ end
+ else
+ begin
+  topage:=MAX_PAGECOUNT;
+ end;
  copies:=PreviewControl.metafile.Copies;
  if Not DoShowPrintDialog(allpages,frompage,topage,copies,collate) then
   exit;
