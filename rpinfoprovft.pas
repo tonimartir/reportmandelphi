@@ -1445,6 +1445,16 @@ begin
   end;
   if (removeFamily) then
     familyName:='';
+
+  WriteToStdError('Ask for font: '+familyName);
+  if (pdffont.Bold) then
+  begin
+   WriteToStdError(' Bold ' +chr(10));
+  end
+  else
+  begin
+   WriteToStdError(' Regular ' +chr(10));
+  end;
   Pattern := rpfontconfig.FcCreatePattern(
     familyName,
     pdffont.Bold,
@@ -1484,6 +1494,7 @@ begin
        FontIndex:=0;
        FcPatternGetInteger(Match, PChar(FC_INDEX), 0, FontIndex);
        currentfont:=GetOrAddLogFont(filename,FontIndex);
+       WriteToStdError('CurrentFont is: '+filename+chr(10));
        if not assigned(currentFont.data) then
        begin
         currentfont.OpenFont;

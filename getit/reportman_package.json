@@ -15,7 +15,23 @@
  "AllUsers": "0",
  "Actions": [
       {
-    "Id": "1",
+     "Id": "1",
+     "ActionId": "1",
+     "ActionName": "AddOptionPath",
+     "Type": "3",
+     "Description": "Add path for All platforms",
+     "RequireElevation": "0",
+     "Active": "1",
+     "MinPV": "",
+     "MaxPV": "",
+     "Parameter": [
+       {"Parameter": "$(BDSCatalogRepository)\\Reportman.PDF\\Reportman_PDF\\Source\\Common"},
+       {"Parameter": "cPasLibraryPath"},
+       {"Parameter": "Delphi.Personality"}
+     ]
+   },
+      {
+    "Id": "2",
     "ActionId": "6",
     "Type": "3",
     "RequireElevation": "0",
@@ -31,8 +47,8 @@
     "Description": "Compile Reportman PDF design-time package"
     },
       {
-    "Id": "2",
-    "ActionId": "17",
+    "Id": "3",
+    "ActionId": "7",
     "Type": "3",
     "RequireElevation": "0",
     "Active": "1",
@@ -44,25 +60,10 @@
     "ActionName": "InstallPackage",
     "Description": "Install the Reportman PDF design-time package"
     },
-    {
-     "Id": "3",
-     "ActionId": "1",
-     "ActionName": "AddOptionPath",
-     "Type": "3",
-     "Description": "Add path for All platforms",
-     "RequireElevation": "0",
-     "Active": "1",
-     "MinPV": "",
-     "MaxPV": "",
-     "Parameter": [
-       {"Parameter": "$(BDSCatalogRepository)\\Reportman.PDF\\Reportman_PDF\\Source\\Common"},
-       {"Parameter": "cPasLibraryPath"},
-       {"Parameter": "Delphi.Personality"}
-     ]
-   },
+
   {
      "Id": "4",
-     "ActionId": "1",
+     "ActionId": "2",
      "ActionName": "RemoveOptionPath",
      "Type": "5",
      "Description": "Remove path for all platforms",
@@ -78,7 +79,7 @@
    },
    {
     "Id": "5",
-    "ActionId": "18",
+    "ActionId": "8",
     "Type": "5",
     "RequireElevation": "0",
     "Active": "1",

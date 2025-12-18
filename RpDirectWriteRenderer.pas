@@ -2,6 +2,9 @@
 
 interface
 
+
+{$I rpconf.inc}
+
 uses
   System.Classes, System.SysUtils, System.Types, System.Generics.Collections,
   Winapi.D2D1, VCL.Direct2D,
