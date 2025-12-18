@@ -23,7 +23,7 @@
     "MinPV": "",
     "MaxPV": "",
     "Parameter": [
-      { "Parameter": "Source\\%IDE_VER%\\Reportman_PDF.dpk" },
+      { "Parameter": "$(BDSCatalogRepository)\\Reportman.PDF\\Reportman_PDF\\Source\\Delphi12\\Reportman_PDF.dproj" },
       { "Parameter": "Win32;Win64" },
       { "Parameter": "Debug" }
     ],
