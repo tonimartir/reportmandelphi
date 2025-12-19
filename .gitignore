@@ -201,3 +201,4 @@ repman/binr32/net2/ExcelNumberFormat.dll
 getit/Reportman_PDF/Source/Delphi11/Reportman_PDF_nonshared.a
 *.RES
 getit/Reportman_PDF.zip
+getit/Reportman_PDF/Source/Examples/CreatePDF/Android64/

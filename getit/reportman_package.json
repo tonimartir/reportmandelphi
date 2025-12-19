@@ -1,7 +1,7 @@
 {
  "Id": "Reportman.PDF",
  "Name": "Reportman.PDF",
- "Version": "3.9.15",
+ "Version": "3.9.18",
  "Description": "Reportman.PDF is crosss platform reporting library to generate PDFs on the fly from report template files.",
  "Vendor": "Toni Martir",
  "VendorUrl": "http:\/\/www.reportman.es",
