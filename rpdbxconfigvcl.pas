@@ -387,8 +387,8 @@ begin
 end;
 
 procedure TFRpDBXConfigVCL.BConnectClick(Sender: TObject);
-{$IFDEF USESQLEXPRESS}
 var
+{$IFDEF USESQLEXPRESS}
  conname:string;
  funcname,drivername,vendorlib,libraryname:string;
  alist:TStringList;

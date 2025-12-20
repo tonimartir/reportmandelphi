@@ -19,7 +19,8 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,rpmdesignervcl,rprulervcl,rpwebmetaclient,rppanel,
+uses Classes,rpmdesignervcl,rprulervcl,
+ rppanel,
   DesignIntf, DesignEditors,rpmdfmainvcl;
 
 type
@@ -62,9 +63,6 @@ procedure Register;
 begin
  RegisterComponents('Reportman', [TRpDesignerVCL]);
  RegisterComponents('Reportman', [TRpPanel]);
-{$IFNDEF DELPHI2007UP}
-  RegisterComponents('Reportman', [TRpWebMetaPrint]);
-{$ENDIF}
  RegisterComponents('Reportman', [TRpRulerVCL]);
  RegisterComponentEditor(TRpDesignerVCL, TRpDesignerVCLEditor)
 end;

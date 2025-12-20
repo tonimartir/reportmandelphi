@@ -1,0 +1,128 @@
+object FRpSearchParamVCL: TFRpSearchParamVCL
+  Left = 252
+  Top = 196
+  Caption = 'Search'
+  ClientHeight = 587
+  ClientWidth = 838
+  Color = clBtnFace
+  ParentFont = True
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  PixelsPerInch = 120
+  TextHeight = 20
+  object PTop: TPanel
+    Left = 0
+    Top = 0
+    Width = 838
+    Height = 46
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
+    Align = alTop
+    TabOrder = 0
+    DesignSize = (
+      838
+      46)
+    object LSearch: TLabel
+      Left = 10
+      Top = 15
+      Width = 44
+      Height = 20
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Caption = 'Search'
+    end
+    object ESearch: TEdit
+      Left = 165
+      Top = 10
+      Width = 393
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 0
+      OnChange = ESearchChange
+    end
+    object BSearch: TButton
+      Left = 561
+      Top = 5
+      Width = 112
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Anchors = [akTop, akRight]
+      Caption = 'Search'
+      TabOrder = 1
+      OnClick = BSearchClick
+    end
+    object BOK: TButton
+      Left = 716
+      Top = 5
+      Width = 112
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Anchors = [akTop, akRight]
+      Caption = 'Ok'
+      Enabled = False
+      TabOrder = 2
+      OnClick = BOKClick
+    end
+  end
+  object GridData: TDBGrid
+    Left = 0
+    Top = 46
+    Width = 838
+    Height = 541
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
+    Align = alClient
+    DataSource = DataSource1
+    Options = [dgEditing, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgConfirmDelete, dgCancelOnExit]
+    ReadOnly = True
+    TabOrder = 1
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clWindowText
+    TitleFont.Height = -15
+    TitleFont.Name = 'Segoe UI'
+    TitleFont.Style = []
+    Visible = False
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 3000
+    OnTimer = Timer1Timer
+    Left = 164
+    Top = 40
+  end
+  object DataSource1: TDataSource
+    DataSet = DData
+    Left = 96
+    Top = 136
+  end
+  object DData: TClientDataSet
+    Aggregates = <>
+    FetchOnDemand = False
+    PacketRecords = 150
+    Params = <>
+    ProviderName = 'Dataprov'
+    AfterScroll = DDataAfterScroll
+    Left = 148
+    Top = 136
+  end
+  object Dataprov: TDataSetProvider
+    Left = 196
+    Top = 136
+  end
+end

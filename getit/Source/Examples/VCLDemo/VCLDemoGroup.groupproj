@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{051E5913-AA2C-4DEC-B3A6-4FFE5666DA23}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="VCLDemo.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="VCLDemo">
+        <MSBuild Projects="VCLDemo.dproj"/>
+    </Target>
+    <Target Name="VCLDemo:Clean">
+        <MSBuild Projects="VCLDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VCLDemo:Make">
+        <MSBuild Projects="VCLDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="VCLDemo"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="VCLDemo:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="VCLDemo:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

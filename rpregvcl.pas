@@ -23,7 +23,10 @@ interface
 uses
   Classes,Graphics,rpvclreport,rpexpredlgvcl,rpmaskedit,rpdbgridvcl,rpdbdatetimepicker,
 {$IFDEF DELPHI2007UP}
-  rpactivexreport,rpwebmetaclient,
+{$IFDEF USEINDY}
+  rpwebmetaclient,
+{$ENDIF}
+  rpactivexreport,
 {$ENDIF}
   rppreviewcontrol;
 
@@ -45,7 +48,9 @@ begin
   // with Delphi 6 Active X Control Wizard
 {$IFDEF DELPHI2007UP}
   RegisterComponents('Reportman', [TRpActiveXReport]);
+{$IFDEF USEINDY}
   RegisterComponents('Reportman', [TRpWebMetaPrint]);
+{$ENDIF}
 {$ENDIF}
 end;
 
