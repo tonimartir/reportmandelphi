@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=3.7.5
+AppVersion=3.9.20
 DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
@@ -25,8 +25,8 @@ OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=3.9.15
-OutputBaseFilename=reportman_designer_3_9_15_x86
+VersionInfoProductVersion=3.9.20
+OutputBaseFilename=reportman_designer_3_9_20_x86
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\repmandxp.exe"; DestDir: "{app}"
@@ -47,7 +47,7 @@ Source: "c:\desarrollo\prog\toni\reportman\server\config\binr32\repserverconfigx
 Source: "c:\desarrollo\prog\toni\reportman\server\service\binr32\repserverservice.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\server\service\binr32\repserviceinstall.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaview\binr32\metaviewxp.exe"; DestDir: "{app}"
-Source: "c:\desarrollo\prog\toni\reportman\server\web\-\binr32\repwebexe.exe"; DestDir: "{app}\Web"
+Source: "c:\desarrollo\prog\toni\reportman\server\web\binr32\repwebexe.exe"; DestDir: "{app}\Web"
 Source: "c:\desarrollo\prog\toni\reportman\server\web\binr32\repwebserver.dll"; DestDir: "{app}\Web"
 Source: "c:\desarrollo\prog\toni\reportman\server\web\*.html"; DestDir: "{app}\Web\Templates"
 

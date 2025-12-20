@@ -44,7 +44,7 @@ const
 
 
 const
- RM_VERSION='3.9.19';
+ RM_VERSION='3.9.20';
  REPMAN_WEBSITE='http://reportman.sourceforge.net';
  MAX_PAGECOUNT=999999;
 type
