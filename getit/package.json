@@ -5,6 +5,7 @@
   "Vendor": "Toni Martir",
   "VendorUrl": "http:\/\/www.reportman.es",
   "License": "MPL1.txt",
+  "Image": "getitImage.png",
   "Summary": "Cross platform reporting engine.",
   "Description": "Reportman is a cross platform reporting library, it generate PDFs on any platform. In Windows you can design, preview and print reports.",
   "Category": "Reporting",
