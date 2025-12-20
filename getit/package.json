@@ -1,11 +1,12 @@
 {
-  "Id": "reportman.pdf",
-  "Name": "Reportman.PDF",
+  "Id": "Reportman",
+  "Name": "Report Manager (Reportman)",
   "Version": "3.9.18",
   "Vendor": "Toni Martir",
+  "VendorUrl": "http:\/\/www.reportman.es",
   "License": "MPL1.txt",
-  "Summary": "PDF reporting engine with IDE integration for Delphi.",
-  "Description": "Reportman PDF is a reporting engine implemented in Delphi. A full featured designer is available. Supports Windows, Linux and Android",
+  "Summary": "Cross platform reporting engine.",
+  "Description": "Reportman is a cross platform reporting library, it generate PDFs on any platform. In Windows you can design, preview and print reports.",
   "Category": "Reporting",
   "ProjectUrl": "https:\/\/www.reportman.es",
   "Modified": "2025-12-12 00:15:15",
@@ -129,7 +130,7 @@
   "MinPV": "",
   "MaxPV": "",
   "Parameter": [
-    { "Parameter": "$(BDSCatalogRepository)\\Reportman\\Examples\\VCLDemo\\VCLDemoGroup.groupproj" }
+    { "Parameter": "$(BDSCatalogRepository)\\Reportman\\Source\\Examples\\VCLDemo\\VCLDemoGroup.groupproj" }
   ],
   "ActionName": "OpenProject",
   "Description": "Open the VCL demo group project after install"
