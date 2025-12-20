@@ -130,7 +130,7 @@
   "MinPV": "",
   "MaxPV": "",
   "Parameter": [
-    { "Parameter": "$(BDSCatalogRepository)\\Reportman\\Examples\\VCLDemo\\VCLDemoGroup.groupproj" }
+    { "Parameter": "$(BDSCatalogRepository)\\Reportman\\Source\\Examples\\VCLDemo\\VCLDemoGroup.groupproj" }
   ],
   "ActionName": "OpenProject",
   "Description": "Open the VCL demo group project after install"
