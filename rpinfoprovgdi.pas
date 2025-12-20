@@ -25,7 +25,8 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
 {$IFDEF WINDOWS_USEHARFBUZZ}
  rpICU,rpHarfBuzz,rpfreetype2,
 {$ELSE}
- ActiveX,Vcl.Direct2D,WinAPi.D2D1,ComObj,rpdirectwriterenderer,
+ ActiveX,
+ WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
     rpmdconsts, rptruetype, System.Generics.Collections;
 
@@ -238,6 +239,22 @@ begin
 end;
 
 
+var
+  SingletonDWriteFactory: IDWriteFactory;
+
+function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
+var
+  LDWriteFactory: IDWriteFactory;
+begin
+  if SingletonDWriteFactory = nil then
+  begin
+    DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
+    if InterlockedCompareExchangePointer(Pointer(SingletonDWriteFactory), Pointer(LDWriteFactory), nil) = nil then
+      LDWriteFactory._AddRef;
+  end;
+  Result := SingletonDWriteFactory;
+end;
+
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -286,7 +303,7 @@ begin
   tr.startPosition := 0;
   tr.length := Length(Text);
   Result := nil;
-  Factory := VCL.Direct2D.DWriteFactory;
+  Factory := DWriteFactory;
   if not Assigned(Factory) then Exit;
 
   FamilyNameWide := WideString(adata.FamilyName);

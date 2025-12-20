@@ -30,7 +30,6 @@ package reportman_rtl;
 
 requires
 {$IFDEF MSWINDOWS}
-  vcl,
   dbexpress,
   FireDACMSAccDriver,
   FireDACDBXDriver,

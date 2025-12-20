@@ -226,7 +226,6 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="dbexpress.dcp"/>
         <DCCReference Include="FireDACMSAccDriver.dcp"/>
         <DCCReference Include="FireDACDBXDriver.dcp"/>
