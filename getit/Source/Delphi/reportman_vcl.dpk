@@ -13,8 +13,8 @@ package reportman_vcl;
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
 {$OPTIMIZATION OFF}
-{$OVERFLOWCHECKS OFF}
-{$RANGECHECKS OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
 {$REFERENCEINFO ON}
 {$SAFEDIVIDE OFF}
 {$STACKFRAMES ON}
@@ -23,7 +23,6 @@ package reportman_vcl;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE COMPILINGREPMANPACKAGE}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Reportman VCL'}
@@ -36,20 +35,12 @@ requires
   vcl,
   vclFireDAC;
 
-{$I rpconf.inc}
-
 contains
   rpgdidriver in '..\Common\rpgdidriver.pas',
   rpmaskedit in '..\Common\rpmaskedit.pas',
   rpgdifonts in '..\Common\rpgdifonts.pas',
   rpgraphutilsvcl in '..\Common\rpgraphutilsvcl.pas' {FRpMessageDlgVCL},
   rpvgraphutils in '..\Common\rpvgraphutils.pas',
-{$IFDEF EXTENDEDGRAPHICS}
-  rpgraphicex in '..\Common\rpgraphicex.pas',
-  rpgraphiccompression in '..\Common\rpgraphiccompression.pas',
-  rpgraphicStrings in '..\Common\rpgraphicStrings.pas',
-  rpgraphiccolor in '..\Common\rpgraphiccolor.pas',
-{$ENDIF}
   rpregvcl in '..\Common\rpregvcl.pas',
   rpvclreport in '..\Common\rpvclreport.pas',
   rprfvparams in '..\Common\rprfvparams.pas' {FRpRTParams},
@@ -66,11 +57,6 @@ contains
   rpdbgridvcl in '..\Common\rpdbgridvcl.pas',
   rpdbdatetimepicker in '..\Common\rpdbdatetimepicker.pas',
   rpactivexreport in '..\Common\rpactivexreport.pas',
-{$IFDEF USEINDY}
-  rpfmainmetaviewvcl in '..\Common\rpfmainmetaviewvcl.pas' {FRpMainMetaVCL},
-  rpwebmetaclient in '..\Common\rpwebmetaclient.pas',
-  rpmdclitreevcl in '..\Common\rpmdclitreevcl.pas' {FRpCliTreeVCL: TFrame},
-{$ENDIF}
   rpmdfembeddedfile in '..\Common\rpmdfembeddedfile.pas' {FRpEmbeddedFile};
 
 end.

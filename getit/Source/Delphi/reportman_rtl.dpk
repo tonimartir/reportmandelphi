@@ -29,23 +29,18 @@ package reportman_rtl;
 {$IMPLICITBUILD ON}
 
 requires
-{$IFDEF MSWINDOWS}
   vcl,
   dbexpress,
   FireDACMSAccDriver,
   FireDACDBXDriver,
   FireDACDSDriver,
   adortl,
-{$ENDIF}
-{$IFDEF ANDROID}
-{$ELSE}
   DataSnapClient,
   DataSnapCommon,
   FireDACPgDriver,
   FireDACCommonODBC,
   FireDACMySQLDriver,
   FireDACADSDriver,
-{$ENDIF}
   rtl,
   dbrtl,
   DbxCommonDriver,
@@ -57,6 +52,7 @@ requires
   FireDACCommon,
   FireDACIBDriver,
   FireDACSqliteDriver;
+
 contains
   rptypes in '..\Common\rptypes.pas',
   rpmdshfolder in '..\Common\rpmdshfolder.pas',
@@ -102,17 +98,9 @@ contains
   rppdfdriver in '..\Common\rppdfdriver.pas',
   rppdffile in '..\Common\rppdffile.pas',
   rpinfoprovid in '..\Common\rpinfoprovid.pas',
-{$IFDEF MSWINDOWS}
   rpinfoprovgdi in '..\Common\rpinfoprovgdi.pas',
   rpcompilerep in '..\Common\rpcompilerep.pas',
   rpdirectwriterenderer in '..\Common\rpdirectwriterenderer.pas',
-{$ELSE}
-  rpfreetype2 in '..\Common\rpfreetype2.pas',
-  rpinfoprovft in '..\Common\rpinfoprovft.pas',
-  rpICU in '..\Common\rpICU.pas',
-  rpHarfBuzz in '..\Common\rpHarfbuzz.pas',
-  rpfontconfig in '..\Common\rpfontconfig.pas',
-{$ENDIF}
   rpmreg in '..\Common\rpmreg.pas',
   rpcompobase in '..\Common\rpcompobase.pas',
   rphtmldriver in '..\Common\rphtmldriver.pas',

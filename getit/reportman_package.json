@@ -7,7 +7,7 @@
  "VendorUrl": "http:\/\/www.reportman.es",
  "Image": "logo.png",
  "License": "MPL1.txt",
- "Url": "Reportman_PDF.zip",
+ "Url": "Reportman.zip",
  "ProjectUrl": "https:\/\/www.reportman.es",
  "Modified": "2021-12-01 00:15:15",
  "LicenseName": "MOZILLA PUBLIC LICENSE",
@@ -121,6 +121,20 @@
     "ActionName": "InstallPackage",
     "Description": "Install the Reportman Design VCL package"
    },
+   {
+  "Id": "8",
+  "ActionId": "41",
+  "Type": "3",
+  "RequireElevation": "0",
+  "Active": "1",
+  "MinPV": "",
+  "MaxPV": "",
+  "Parameter": [
+    { "Parameter": "$(BDSCatalogRepository)\\Reportman\\Examples\\VCLDemo\\VCLDemoGroup.groupproj" }
+  ],
+  "ActionName": "OpenProject",
+  "Description": "Open the VCL demo group project after install"
+},
    {
      "Id": "10",
      "ActionId": "2",
