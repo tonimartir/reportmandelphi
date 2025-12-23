@@ -1,14 +1,62 @@
-<html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
+<meta charset="UTF-8">
 <title>Report Manager Documentation Index</title>
-<meta http-equiv="Content-Type" content="text/html">
-  <meta name="google-adsense-account" content="ca-pub-6747268227242502">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-adsense-account" content="ca-pub-6747268227242502">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; font-family: sans-serif; }
+
+  .container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    flex: 0 0 320px; /* ancho fijo en escritorio */
+    min-width: 200px;
+    border-right: 1px solid #000;
+    overflow-y: auto;
+  }
+
+  .main {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  /* Mobile: left arriba, main abajo */
+  @media screen and (max-width: 768px) {
+    .container {
+      flex-direction: column;
+    }
+    .sidebar {
+      height: 50vh; /* left ocupa la mitad de la pantalla */
+      border-right: none;
+      border-bottom: 1px solid #000;
+    }
+    .main {
+      height: 50vh; /* main ocupa la otra mitad */
+    }
+  }
+</style>
 </head>
-
-<frameset cols="320,415*" frameborder="NO" border="0" framespacing="0" rows="*">
-  <frame name="leftFrame" noresize src="left.html" bordercolor="#000000" frameborder="YES">
-  <frame name="mainFrame" src="right.html" bordercolor="#000000" frameborder="YES">
-</frameset>
-<noframes></noframes>
-
+<body>
+<div class="container">
+  <div class="sidebar">
+    <iframe src="left.html" name="leftFrame"></iframe>
+  </div>
+  <div class="main">
+    <iframe src="right.html" name="mainFrame"></iframe>
+  </div>
+</div>
+</body>
 </html>
