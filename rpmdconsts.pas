@@ -1154,6 +1154,7 @@ var
   SRpPortuguesse:WideString='Portuguesse';
   SRpGerman:WideString='Germany';
   SRpItalian:WideString='Italian';
+  SRpIsHtml:WideString='Is Html';
   SRpHtmlFile:WideString='Html file';
   SRpHtmlFileSingle:WideString='Html file (single)';
   SRpPrintPDFRep13:WideString='         -html     Generate Html output';
