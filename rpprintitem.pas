@@ -146,6 +146,7 @@ type
    FType1Font:TRpType1Font;
    FBidiModes:TStrings;
    FMultiPage:Boolean;
+   FIsHtml:Boolean;
    FPrintStep:TRpSelectFontStep;
    procedure ReadWFontName(Reader:TReader);
    procedure WriteWFontName(Writer:TWriter);
@@ -183,6 +184,7 @@ type
    property SingleLine:boolean read FSingleLine write FSingleLine default false;
    property BidiModes:TStrings read FBidiModes write SetBidiModes;
    property MultiPage:Boolean read FMultiPage write FMultiPage default false;
+   property IsHtml:Boolean read FIsHtml write FIsHtml default false;
    property PrintStep:TRpSelectFontStep read FPrintStep write FPrintStep
     default rpselectsize;
   end;
@@ -492,6 +494,7 @@ begin
  FBackColor:=$FFFFFF;
  FTransparent:=true;
  FCutText:=false;
+ FIsHtml:=false;
  FBidiModes:=TStringList.Create;
 end;
 
