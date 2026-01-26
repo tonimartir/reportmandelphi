@@ -356,6 +356,7 @@ begin
  aTextObj.WordWrap:=WordWrap;
  aTextObj.RightToLeft:=RightToLeft;
  aTextObj.PrintStep:=PrintStep;
+ aTextObj.IsHtml:=IsHtml;
  aalign:=PrintAlignment or VAlignment;
  if SingleLine then
   aalign:=aalign or AlignmentFlags_SingleLine;
@@ -778,6 +779,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.IsHtml:=IsHtml;
  Result.Annotation:=GetAnnotation;
 end;
 
@@ -928,6 +930,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.IsHtml:=IsHtml;
 end;
 
 

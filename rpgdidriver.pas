@@ -22,6 +22,7 @@ uses
   Classes, sysutils, rpmetafile, rpmdconsts, Graphics, Forms,
   rpmunits, Printers, Dialogs, Controls, rpgdifonts, Math,
   StdCtrls, ExtCtrls, rppdffile, rpgraphutilsvcl, WinSpool, rpmdcharttypes,
+  rphtmlparser,
 {$IFDEF FIREDAC}
   Firedac.VCLUI.Wait,
 {$ENDIF}
@@ -955,6 +956,63 @@ begin
                 FontSizeToStep(Canvas.Font.Size, obj.PrintStep));
           end;
           // Justified text use pdf driver, also pdf conformance or truetype
+          if obj.IsHtml then
+          begin
+            var Segments := ParseHtml(page.GetText(obj));
+            try
+              var OriginalStyle := Canvas.Font.Style;
+              var TotalWidth: Integer := 0;
+              var Size: TSize;
+              var BoxWidth: Integer := Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
+
+              // Measure
+              for var Seg in Segments do
+              begin
+                Canvas.Font.Style := OriginalStyle;
+                if hsBold in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+                if hsItalic in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+                if hsUnderline in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+                if hsStrikeOut in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+
+                GetTextExtentPoint32W(Canvas.Handle, PWideChar(Seg.Text), Length(Seg.Text), Size);
+                TotalWidth := TotalWidth + Size.cx;
+              end;
+
+              var CurrentX: Integer := posx;
+              if (obj.Alignment and AlignmentFlags_AlignHCenter) > 0 then
+                 CurrentX := posx + (BoxWidth - TotalWidth) div 2
+              else if (obj.Alignment and AlignmentFlags_AlignRight) > 0 then
+                 CurrentX := posx + (BoxWidth - TotalWidth);
+
+              var YVal: Integer := posy;
+
+              if ((obj.Transparent) and (not selected)) then
+                SetBkMode(Canvas.handle, Transparent)
+              else
+                SetBkMode(Canvas.handle, OPAQUE);
+
+              // Draw
+              for var Seg in Segments do
+              begin
+                Canvas.Font.Style := OriginalStyle;
+                if hsBold in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+                if hsItalic in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+                if hsUnderline in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+                if hsStrikeOut in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+
+                var SegText := Seg.Text;
+                TextOutW(Canvas.Handle, CurrentX, YVal, PWideChar(SegText), Length(SegText));
+
+                GetTextExtentPoint32W(Canvas.Handle, PWideChar(SegText), Length(SegText), Size);
+                CurrentX := CurrentX + Size.cx;
+              end;
+
+              Canvas.Font.Style := OriginalStyle;
+            finally
+              Segments.Free;
+            end;
+          end
+          else
           if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
              OR (obj.Type1Font >  Integer(poEmbedded))) and  (not obj.RightToLeft)  ) then
           begin

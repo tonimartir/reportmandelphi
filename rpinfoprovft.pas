@@ -30,7 +30,7 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 {$IFDEF USEFONTCONFIG}
     rpfontconfig,
 {$ENDIF}
-    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU;
+    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU, rphtmlparser;
 
 
 type
@@ -104,7 +104,8 @@ type
     pdfFont: TRpPDFFont;
     wordwrap: Boolean;
     singleline: Boolean;
-    FontSize: Double
+    FontSize: Double;
+    IsHtml: Boolean
   ): TRpLineInfoArray;override;
 {$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
@@ -332,7 +333,8 @@ function TRpFTInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
@@ -390,7 +392,21 @@ begin
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 
- lineSubTexts := DividesIntoLines(Text);
+  if IsHtml then
+  begin
+    var Segments := ParseHtml(Text);
+    try
+      var PlainText: WideString := '';
+      for var Seg in Segments do
+        PlainText := PlainText + Seg.Text;
+      lineSubTexts := DividesIntoLines(PlainText);
+    finally
+      Segments.Free;
+    end;
+  end
+  else
+    lineSubTexts := DividesIntoLines(Text);
+
   SetLength(Result, 0);
   maxWidth := 0;
   lineWidthLimit := Rect.Right - Rect.Left;

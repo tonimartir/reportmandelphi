@@ -28,7 +28,7 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
  ActiveX,
  WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
-    rpmdconsts, rptruetype, System.Generics.Collections;
+    rpmdconsts, rptruetype, System.Generics.Collections, rphtmlparser;
 
 const
  MAXKERNINGS=10000;
@@ -56,7 +56,7 @@ type
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordwrap:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;override;
   function  GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 {$IFDEF WINDOWS_USEHARFBUZZ}
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
@@ -262,7 +262,8 @@ function TRpGDIInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean
 ): TRpLineInfoArray;
 const
   DIP_TO_TWIPS_FACTOR = 15.0;
@@ -294,6 +295,7 @@ var
   tr: TDWriteTextRange;
   ascentSpacing:integer;
   PWideChartext: PWideChar;
+  PlainText: WideString;
   minLineCluster:integer;
   maxLineCluster:integer;
   lineCluster:integer;
@@ -353,16 +355,64 @@ begin
     TextFormat
   );
 
-  PWideCharText:=PWideChar(Text);
-  // --- Crear TextLayout ---
-  Factory.CreateTextLayout(
-    PWideChartext,
-    Length(Text),
-    TextFormat,
-    MaxLineWidth / DIP_TO_TWIPS_FACTOR,
-    0,
-    TextLayout
-  );
+  if IsHtml then
+  begin
+    var Segments := ParseHtml(Text);
+    try
+      PlainText := '';
+      for var Seg in Segments do
+        PlainText := PlainText + Seg.Text;
+
+      PWideCharText := PWideChar(PlainText);
+      Factory.CreateTextLayout(
+        PWideCharText,
+        Length(PlainText),
+        TextFormat,
+        MaxLineWidth / DIP_TO_TWIPS_FACTOR,
+        0,
+        TextLayout
+      );
+
+      var CurrentPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var Range: DWRITE_TEXT_RANGE;
+        Range.startPosition := CurrentPos;
+        Range.length := SegLen;
+
+        if hsBold in Seg.Styles then
+          TextLayout.SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, Range)
+        else
+          TextLayout.SetFontWeight(FontWeight, Range);
+
+        if hsItalic in Seg.Styles then
+          TextLayout.SetFontStyle(DWRITE_FONT_STYLE_ITALIC, Range)
+        else
+          TextLayout.SetFontStyle(FontStyle, Range);
+
+        TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
+        TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
+
+        CurrentPos := CurrentPos + SegLen;
+      end;
+    finally
+      Segments.Free;
+    end;
+  end
+  else
+  begin
+    PWideCharText:=PWideChar(Text);
+    // --- Crear TextLayout ---
+    Factory.CreateTextLayout(
+      PWideChartext,
+      Length(Text),
+      TextFormat,
+      MaxLineWidth / DIP_TO_TWIPS_FACTOR,
+      0,
+      TextLayout
+    );
+  end;
 
   // --- Obtener métricas de la fuente ---
   FontFace.GetMetrics(FontMetrics);
@@ -449,7 +499,8 @@ function TRpGDIInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
