@@ -30,6 +30,19 @@ type
   PGlyphOffsetArray = ^TGlyphOffsetArray;
   PClusterMapArray = ^TClusterMapArray;
 
+  ISimpleStyleEffect = interface
+    ['{6E616D65-0000-0000-0000-000000000001}']
+    function GetStyle: Integer;
+  end;
+
+  TStyleEffect = class(TInterfacedObject, ISimpleStyleEffect)
+  private
+    FStyle: Integer;
+  public
+    constructor Create(AStyle: Integer);
+    function GetStyle: Integer;
+  end;
+
   // --- Estructura para línea de glifos ---
   TGlyphLine = class
   public
@@ -413,6 +426,13 @@ begin
       if (glyphrun.FontFace <> FontFace) then
         Glyphpos.FontFamily:=GetFontFamily(glyphrun.fontFace);
 
+      if Assigned(clientDrawingEffect) then
+      begin
+        var Effect: ISimpleStyleEffect;
+        if Supports(clientDrawingEffect, ISimpleStyleEffect, Effect) then
+          GlyphPos.Style := Effect.GetStyle;
+      end;
+
       GlyphList.Add(GlyphPos);
 
       FGlyphPositions.Add(GlyphPos);
@@ -507,7 +527,18 @@ begin
   Result := S_OK;
 end;
 
+{ TStyleEffect }
 
+constructor TStyleEffect.Create(AStyle: Integer);
+begin
+  inherited Create;
+  FStyle := AStyle;
+end;
+
+function TStyleEffect.GetStyle: Integer;
+begin
+  Result := FStyle;
+end;
 
 end.
 

@@ -284,6 +284,13 @@ var
  astring:WideString;
  intimageindex:integer;
  annotation: string;
+ Segments: THtmlSegmentList;
+ CurrentX: Integer;
+ YVal: Integer;
+ MeasureRect: TRect;
+ TotalWidth: Integer;
+ Seg: THtmlSegment;
+ DummyLInfo: TRpLineInfo;
 // bitmap:TBitmap;
 begin
  posx:=obj.Left;
@@ -319,16 +326,15 @@ begin
     // Unicode now supported
     if obj.IsHtml then
     begin
-        var Segments := ParseHtml(page.GetText(obj));
+        Segments := ParseHtml(page.GetText(obj));
         try
-          var CurrentX: Integer := rec.Left;
-          var YVal: Integer := rec.Top;
+          CurrentX := rec.Left;
+          YVal := rec.Top;
           // Calculate width for alignment if needed?
           // Assuming Left alignment for now or manual calculation.
 
-          var MeasureRect: TRect;
-          var TotalWidth: Integer := 0;
-          for var Seg in Segments do
+          TotalWidth := 0;
+          for Seg in Segments do
           begin
             FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
             if hsBold in Seg.Styles then FPDFFile.Canvas.Font.Bold := True;
@@ -351,7 +357,7 @@ begin
           else if (obj.Alignment and AlignmentFlags_AlignRight) > 0 then
              CurrentX := rec.Right - TotalWidth;
 
-          for var Seg in Segments do
+          for Seg in Segments do
           begin
             FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
             if hsBold in Seg.Styles then FPDFFile.Canvas.Font.Bold := True;
@@ -367,7 +373,6 @@ begin
 
             FPDFFile.Canvas.UpdateFonts;
 
-            var DummyLInfo: TRpLineInfo;
             FillChar(DummyLInfo, SizeOf(DummyLInfo), 0);
             FPDFFile.Canvas.TextOut(CurrentX, YVal, Seg.Text, 0, obj.FontRotation, False, DummyLInfo);
 

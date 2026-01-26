@@ -22,7 +22,7 @@ uses
   Classes, sysutils, rpmetafile, rpmdconsts, Graphics, Forms,
   rpmunits, Printers, Dialogs, Controls, rpgdifonts, Math,
   StdCtrls, ExtCtrls, rppdffile, rpgraphutilsvcl, WinSpool, rpmdcharttypes,
-  rphtmlparser,
+  rphtmlparser, Winapi.D2D1, Winapi.DirectWrite, Winapi.ActiveX, rpdirectwriterenderer,
 {$IFDEF FIREDAC}
   Firedac.VCLUI.Wait,
 {$ENDIF}
@@ -912,6 +912,27 @@ var
 {$ENDIF}
   propx, propy: double;
   penWidth:integer;
+  D2DFactory: ID2D1Factory;
+  DWriteFactory: IDWriteFactory;
+  RT: ID2D1DCRenderTarget;
+  Props: TD2D1RenderTargetProperties;
+  TextFormat: IDWriteTextFormat;
+  TextLayout: IDWriteTextLayout;
+  PlainText: WideString;
+  Segments: THtmlSegmentList;
+  HR: HResult;
+  Range: DWRITE_TEXT_RANGE;
+  Pos: Integer;
+  Brush: ID2D1SolidColorBrush;
+  Color: D2D1_COLOR_F;
+  VColor: TColor;
+  Origin: D2D_POINT_2F;
+  BoxWidth: Single;
+  BoxHeight: Single;
+  FontWeight: DWRITE_FONT_WEIGHT;
+  FontStyle: DWRITE_FONT_STYLE;
+  StyleVal: Integer;
+  Seg: THtmlSegment;
 begin
   // Switch to device points
   oldhandle := 0;
@@ -958,58 +979,107 @@ begin
           // Justified text use pdf driver, also pdf conformance or truetype
           if obj.IsHtml then
           begin
-            var Segments := ParseHtml(page.GetText(obj));
-            try
-              var OriginalStyle := Canvas.Font.Style;
-              var TotalWidth: Integer := 0;
-              var Size: TSize;
-              var BoxWidth: Integer := Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
+            HR := D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_ID2D1Factory, nil, D2DFactory);
+            if Succeeded(HR) then
+               HR := DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, IID_IDWriteFactory, IUnknown(DWriteFactory));
 
-              // Measure
-              for var Seg in Segments do
-              begin
-                Canvas.Font.Style := OriginalStyle;
-                if hsBold in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-                if hsItalic in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
-                if hsUnderline in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-                if hsStrikeOut in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+            if Succeeded(HR) then
+            begin
+               Props := D2D1RenderTargetProperties;
+               Props.pixelFormat.format := DXGI_FORMAT_B8G8R8A8_UNORM;
+               Props.pixelFormat.alphaMode := D2D1_ALPHA_MODE_IGNORE;
+               HR := D2DFactory.CreateDCRenderTarget(@Props, RT);
+            end;
 
-                GetTextExtentPoint32W(Canvas.Handle, PWideChar(Seg.Text), Length(Seg.Text), Size);
-                TotalWidth := TotalWidth + Size.cx;
-              end;
+            if Succeeded(HR) then
+            begin
+               rec.Right := posx + Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
+               rec.Bottom := posy + Ceil(obj.Height * dpiy / TWIPS_PER_INCHESS);
+               RT.BindDC(Canvas.Handle, rec);
+               RT.BeginDraw;
 
-              var CurrentX: Integer := posx;
-              if (obj.Alignment and AlignmentFlags_AlignHCenter) > 0 then
-                 CurrentX := posx + (BoxWidth - TotalWidth) div 2
-              else if (obj.Alignment and AlignmentFlags_AlignRight) > 0 then
-                 CurrentX := posx + (BoxWidth - TotalWidth);
+               Segments := ParseHtml(page.GetText(obj));
+               PlainText := '';
+               for Seg in Segments do PlainText := PlainText + Seg.Text;
 
-              var YVal: Integer := posy;
+               FontWeight := DWRITE_FONT_WEIGHT_NORMAL;
+               if (obj.FontStyle and 1) > 0 then FontWeight := DWRITE_FONT_WEIGHT_BOLD;
+               FontStyle := DWRITE_FONT_STYLE_NORMAL;
+               if (obj.FontStyle and 2) > 0 then FontStyle := DWRITE_FONT_STYLE_ITALIC;
 
-              if ((obj.Transparent) and (not selected)) then
-                SetBkMode(Canvas.handle, Transparent)
-              else
-                SetBkMode(Canvas.handle, OPAQUE);
+               HR := DWriteFactory.CreateTextFormat(
+                 PWideChar(page.GetWFontName(obj)),
+                 nil,
+                 FontWeight,
+                 FontStyle,
+                 DWRITE_FONT_STRETCH_NORMAL,
+                 obj.FontSize * (96.0/72.0),
+                 '',
+                 TextFormat
+               );
 
-              // Draw
-              for var Seg in Segments do
-              begin
-                Canvas.Font.Style := OriginalStyle;
-                if hsBold in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-                if hsItalic in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
-                if hsUnderline in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-                if hsStrikeOut in Seg.Styles then Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+               if Succeeded(HR) then
+               begin
+                 BoxWidth := (rec.Right - rec.Left) / dpix * 96.0;
+                 BoxHeight := (rec.Bottom - rec.Top) / dpiy * 96.0;
+                 if not obj.WordWrap then
+                   BoxWidth := 100000; // Large width to prevent wrap if disabled
 
-                var SegText := Seg.Text;
-                TextOutW(Canvas.Handle, CurrentX, YVal, PWideChar(SegText), Length(SegText));
+                 HR := DWriteFactory.CreateTextLayout(
+                   PWideChar(PlainText),
+                   Length(PlainText),
+                   TextFormat,
+                   BoxWidth,
+                   BoxHeight,
+                   TextLayout
+                 );
+               end;
 
-                GetTextExtentPoint32W(Canvas.Handle, PWideChar(SegText), Length(SegText), Size);
-                CurrentX := CurrentX + Size.cx;
-              end;
+               if Succeeded(HR) then
+               begin
+                 Pos := 0;
+                 for Seg in Segments do
+                 begin
+                   Range.startPosition := Pos;
+                   Range.length := Length(Seg.Text);
+                   if hsBold in Seg.Styles then TextLayout.SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, Range);
+                   if hsItalic in Seg.Styles then TextLayout.SetFontStyle(DWRITE_FONT_STYLE_ITALIC, Range);
+                   TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
+                   TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
 
-              Canvas.Font.Style := OriginalStyle;
-            finally
-              Segments.Free;
+                   StyleVal := 0;
+                   if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+                   if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+                   if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+                   if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+                   if StyleVal <> 0 then
+                     TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal) as IUnknown, Range);
+
+                   Pos := Pos + Length(Seg.Text);
+                 end;
+
+                 if (obj.Alignment and AlignmentFlags_AlignHCenter) <> 0 then
+                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER)
+                 else if (obj.Alignment and AlignmentFlags_AlignRight) <> 0 then
+                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING)
+                 else if (obj.Alignment and AlignmentFlags_AlignHJustify) <> 0 then
+                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
+
+                 VColor := CLXColorToVCLColor(obj.FontColor);
+                 Color.r := GetRValue(VColor) / 255.0;
+                 Color.g := GetGValue(VColor) / 255.0;
+                 Color.b := GetBValue(VColor) / 255.0;
+                 Color.a := 1.0;
+
+                 Origin.x := posx / dpix * 96.0;
+                 Origin.y := posy / dpiy * 96.0;
+
+                 RT.CreateSolidColorBrush(Color, nil, Brush);
+                 RT.DrawTextLayout(Origin, TextLayout, Brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+               end;
+
+               RT.EndDraw;
+               Segments.Free;
             end;
           end
           else

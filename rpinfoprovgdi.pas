@@ -394,6 +394,15 @@ begin
         TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
         TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
 
+        var StyleVal: Integer := 0;
+        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+
+        if StyleVal <> 0 then
+           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal) as IUnknown, Range);
+
         CurrentPos := CurrentPos + SegLen;
       end;
     finally

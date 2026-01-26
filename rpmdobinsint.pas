@@ -1328,6 +1328,14 @@ begin
  lcat.Add(SRpText);
  if Assigned(lvalues) then
   lvalues.Add(FormatCurr('#####0.0',TRpGenTextComponent(printitem).FontRotation/10));
+
+ // Is Html
+ lnames.Add(SRpIsHtml);
+ ltypes.Add(SRpSBool);
+ lhints.Add('refcommontext.html');
+ lcat.Add(SRpText);
+ if Assigned(lvalues) then
+  lvalues.Add(BoolToStr(TRpGenTextComponent(printitem).IsHtml,true));
 end;
 
 procedure TRpGenTextInterface.SetProperty(pname:string;value:Widestring);
@@ -1425,6 +1433,12 @@ begin
   TRpGenTextComponent(fprintitem).FontRotation:=Round(StrToCurr(Value)*10);
   exit;
  end;
+ if pname=SRpIsHtml then
+ begin
+  TRpGenTextComponent(fprintitem).IsHtml:=StrToBool(value);
+  Invalidate;
+  exit;
+ end;
 
  inherited SetProperty(pname,value);
 end;
@@ -1510,6 +1524,11 @@ begin
  if pname=SrpSSingleLine then
  begin
   Result:=BoolToStr(TRpGenTextComponent(printitem).SingleLine,true);
+  exit;
+ end;
+ if pname=SRpIsHtml then
+ begin
+  Result:=BoolToStr(TRpGenTextComponent(printitem).IsHtml,true);
   exit;
  end;
  Result:=inherited GetProperty(pname);

@@ -1400,6 +1400,7 @@ var
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
   SRpSAnnotation: WideString = 'Annotation Expression';
+  SRpIsHtml: WideString = 'Is Html';
 
 implementation
 
@@ -2437,6 +2438,7 @@ begin
   TranslateVar(1477,SRpModificationDateISO);
   TranslateVar(1478,SRpModify);
   TranslateVar(1479,SRpXMPmetadata);
+  TranslateVar(1480,SRpIsHtml);
 
  end;
 
