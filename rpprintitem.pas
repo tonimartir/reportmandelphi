@@ -148,6 +148,7 @@ type
    FMultiPage:Boolean;
    FIsHtml:Boolean;
    FPrintStep:TRpSelectFontStep;
+   FIsHtml:Boolean;
    procedure ReadWFontName(Reader:TReader);
    procedure WriteWFontName(Writer:TWriter);
    procedure ReadLFontName(Reader:TReader);
@@ -187,6 +188,7 @@ type
    property IsHtml:Boolean read FIsHtml write FIsHtml default false;
    property PrintStep:TRpSelectFontStep read FPrintStep write FPrintStep
     default rpselectsize;
+   property IsHtml:Boolean read FIsHtml write FIsHtml default false;
   end;
 
 implementation
@@ -496,6 +498,7 @@ begin
  FCutText:=false;
  FIsHtml:=false;
  FBidiModes:=TStringList.Create;
+ FIsHtml:=false;
 end;
 
 destructor TRpGenTextComponent.Destroy;

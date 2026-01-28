@@ -1328,7 +1328,6 @@ begin
  lcat.Add(SRpText);
  if Assigned(lvalues) then
   lvalues.Add(FormatCurr('#####0.0',TRpGenTextComponent(printitem).FontRotation/10));
-
  // Is Html
  lnames.Add(SRpIsHtml);
  ltypes.Add(SRpSBool);
@@ -1516,6 +1515,11 @@ begin
   Result:=FormatCurr('#####0.0',TRpGenTextComponent(printitem).FontRotation/10);
   exit;
  end;
+ if pname=SRpIsHtml then
+ begin
+  Result:=BoolToStr(TRpGenTextComponent(printitem).IsHtml,true);
+  exit;
+ end;
  if pname=SrpSWordWrap then
  begin
   Result:=BoolToStr(TRpGenTextComponent(printitem).WordWrap,true);
@@ -1524,11 +1528,6 @@ begin
  if pname=SrpSSingleLine then
  begin
   Result:=BoolToStr(TRpGenTextComponent(printitem).SingleLine,true);
-  exit;
- end;
- if pname=SRpIsHtml then
- begin
-  Result:=BoolToStr(TRpGenTextComponent(printitem).IsHtml,true);
   exit;
  end;
  Result:=inherited GetProperty(pname);
