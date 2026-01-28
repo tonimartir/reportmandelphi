@@ -1401,7 +1401,6 @@ var
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
   SRpSAnnotation: WideString = 'Annotation Expression';
-  SRpIsHtml: WideString = 'Is Html';
 
 implementation
 
