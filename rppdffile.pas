@@ -187,7 +187,7 @@ type
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
   public
    function TextExtent(const Text:WideString;var Rect:TRect;
-     wordbreak:boolean;singleline:boolean;rightToLeft: boolean): TRpLineInfoArray;
+     wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
 
    property Font:TRpPDFFont read FFOnt;
   end;
@@ -2700,13 +2700,13 @@ end;
 
 
 function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
- wordbreak:boolean;singleline:boolean;rightToLeft: boolean): TRpLineInfoArray;
+ wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
 begin
- if (rightToLeft) then
+ if (rightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml);
  end
  else
  begin

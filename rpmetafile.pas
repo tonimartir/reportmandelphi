@@ -160,6 +160,7 @@ type
   RightToLeft:Boolean;
   PrintStep:TRpSelectFontStep;
   Annotation: string;
+  IsHtml: Boolean;
  end;
 
 
@@ -185,7 +186,7 @@ type
     BackColor:integer;
     Transparent:boolean;
     CutText:boolean;Alignment:integer;WordWrap:boolean;
-    RightToLeft:Boolean;PrintStep:TRpSelectFontStep);
+    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;IsHtml:Boolean);
    rpMetaDraw:
     (DrawStyle:integer;
     BrushStyle:integer;
@@ -235,7 +236,7 @@ type
     BackColor:integer;
     Transparent:boolean;
     CutText:boolean;Alignment:integer;WordWrap:boolean;
-    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;
+    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;IsHtml:Boolean;
 //   rpMetaDraw:
     DrawStyle:integer;
     BrushStyle:integer;
@@ -776,6 +777,7 @@ begin
  FObjects[FObjectCount].WordWrap:=aText.WordWrap;
  FObjects[FObjectCount].RightToLeft:=aText.RightToLeft;
  FObjects[FObjectCount].PrintStep:=aText.PrintStep;
+ FObjects[FObjectCount].IsHtml:=aText.IsHtml;
  if Length(atext.Annotation)>0 then
    NewWideString(FObjects[FObjectCount].AnnotationP,FObjects[FObjectCount].AnnotationS, aText.Annotation);
 

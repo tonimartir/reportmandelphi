@@ -30,7 +30,7 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 {$IFDEF USEFONTCONFIG}
     rpfontconfig,
 {$ENDIF}
-    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU;
+    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU, rphtmlparser;
 
 
 type
@@ -104,8 +104,18 @@ type
     pdfFont: TRpPDFFont;
     wordwrap: Boolean;
     singleline: Boolean;
-    FontSize: Double
+    FontSize: Double;
+    IsHtml: Boolean
   ): TRpLineInfoArray;override;
+  function TextExtentHtml(
+    const Text: WideString;
+    var Rect: TRect;
+    adata: TRpTTFontData;
+    pdfFont: TRpPDFFont;
+    wordwrap: Boolean;
+    singleline: Boolean;
+    FontSize: Double
+  ): TRpLineInfoArray;
 {$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
   procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
@@ -332,6 +342,31 @@ function TRpFTInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
+  FontSize: Double;
+  IsHtml: Boolean
+): TRpLineInfoArray;
+begin
+  if IsHtml then
+    Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize)
+  else
+  begin
+    // Original implementation for non-HTML
+    Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize);
+    // Actually we can reuse the same function if we handle IsHtml=False inside
+    // But since I'm rewriting it to support HTML, I'll put the logic in TextExtentHtml
+    // and call it.
+    // Wait, I am REPLACING TextExtent.
+    // So I should put the logic here.
+  end;
+end;
+
+function TRpFTInfoProvider.TextExtentHtml(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordwrap: Boolean;
+  singleline: Boolean;
   FontSize: Double
 ): TRpLineInfoArray;
 var
@@ -363,295 +398,225 @@ var
   linespacingEM: double;
   textHeight:integer;
   ascentSpacing:integer;
-  dofallback:boolean;
   originalFont: TRpLogFont;
-  fallbackAscentSpacing: integer;
+  Segments: THtmlSegmentList;
+  PlainText: WideString;
+  TempFont: TRpPDFFont;
+  RunAbsStart: Integer;
+  RunLen: Integer;
+  CurrentRunOffset: Integer;
+  SegStartAbs: Integer;
+  Seg: THtmlSegment;
+  SegLen: Integer;
+  SegEndAbs: Integer;
+  IntStart: Integer;
+  IntEnd: Integer;
+  ChunkText: WideString;
+  minCluster: Integer;
+  maxCluster: Integer;
+  lst: TList<Integer>;
 begin
   InitICU;
   InitHarfBuzz;
   SelectFont(pdfFont,'',false);
- originalFont:=currentfont;
- //WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
- //WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
- //WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
- //WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
- // linespacing:=adata.Height;
- //linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
- //linespacing:=Round(((linespacing)/100000)*1440*FontSize);
- //linespacingEM:=(adata.Ascent-adata.Descent+adata.Leading)/1000;
- linespacingEM:=(adata.Height)/1000;
- linespacing:=Round(linespacingEM*FontSize*20);
-// WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
+  originalFont:=currentfont;
 
+  linespacingEM:=(adata.Height)/1000;
+  linespacing:=Round(linespacingEM*FontSize*20);
+  ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
+  PosY:=0;
+  PosY:=PosY+ascentSpacing;
 
-
- //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
- ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
- PosY:=0;
- PosY:=PosY+ascentSpacing;
-
- lineSubTexts := DividesIntoLines(Text);
-  SetLength(Result, 0);
-  maxWidth := 0;
-  lineWidthLimit := Rect.Right - Rect.Left;
-
+  Segments := ParseHtml(Text);
   try
-    for lineSubText in lineSubTexts do
-    begin
-      line := Copy(Text, lineSubText.Position, lineSubText.Length);
-      possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
-//      possibleBreaksCharIdx := FillPossibleWordBreaksString(line);
+    PlainText := '';
+    for Seg in Segments do
+      PlainText := PlainText + Seg.Text;
 
-      calculatedLines := TList<TLineGlyphs>.Create;
+    lineSubTexts := DividesIntoLines(PlainText);
+    SetLength(Result, 0);
+    maxWidth := 0;
+    lineWidthLimit := Rect.Right - Rect.Left;
+    TempFont := TRpPDFFont.Create;
+    try
+      TempFont.Name := pdfFont.Name;
+      TempFont.Size := pdfFont.Size;
+      TempFont.Color := pdfFont.Color;
+      TempFont.WFontName := pdfFont.WFontName;
+      TempFont.LFontName := pdfFont.LFontName;
 
-      // -----------------------------
-      // PRIMER BUCLE: logical runs → shaping → chunks
-      // -----------------------------
-      Bidi := TICUBidi.Create;
-      logicalRuns := nil;
-      try
-        if not Bidi.SetPara(line, $FF) then
-          raise Exception.Create('Bidi error');
-        logicalRuns := Bidi.GetLogicalRuns(line);
-      finally
-        Bidi.Free;
-      end;
-
-      remaining:=lineWidthLimit;
-
-      var textOffset:=lineSubtext.Position-1;
-      currentChunk:=TLineGlyphs.Create(textOffset);
-      for logicalRun in logicalRuns do
+      for lineSubText in lineSubTexts do
       begin
-        currentfont:=originalfont;
-        if logicalRun.Direction = UBIDI_RTL then
-          direction := RP_UBIDI_RTL
-        else
-          direction := RP_BIDI_LTR;
-        runOffset:=logicalRun.LogicalStart;
-        positions := CalcGlyphPositions(
-          Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
-          direction,
-          logicalRun.ScriptString,
-          FontSize
-        );
-        dofallback:=false;
-        for k:=0 to Length(positions)-1 do
-        begin
-         if (positions[k].GlyphIndex = 0) then
-         begin
-          dofallback:=true;
-          break;
-         end;
+        line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
+        possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
+        calculatedLines := TList<TLineGlyphs>.Create;
+
+        Bidi := TICUBidi.Create;
+        logicalRuns := nil;
+        try
+          if not Bidi.SetPara(line, $FF) then
+            raise Exception.Create('Bidi error');
+          logicalRuns := Bidi.GetLogicalRuns(line);
+        finally
+          Bidi.Free;
         end;
-        fallbackAscentSpacing:=ascentSpacing;
-        if (dofallback) then
+
+        remaining:=lineWidthLimit;
+        var textOffset:=lineSubtext.Position-1;
+        currentChunk:=TLineGlyphs.Create(textOffset);
+
+        for logicalRun in logicalRuns do
         begin
-         SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),false);
-         positions := CalcGlyphPositions(
-           Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
-           direction,
-           logicalRun.ScriptString,
-           FontSize
-         );
-         var secondFallback := false;
-         for k:=0 to Length(positions)-1 do
-         begin
-          if (positions[k].GlyphIndex = 0) then
+          RunAbsStart := lineSubText.Position + logicalRun.LogicalStart;
+          RunLen := logicalRun.Length;
+          CurrentRunOffset := 0;
+          SegStartAbs := 1;
+
+          for Seg in Segments do
           begin
-           secondFallback:=true;
-           break;
+             SegLen := Length(Seg.Text);
+             SegEndAbs := SegStartAbs + SegLen;
+             IntStart := Max(RunAbsStart, SegStartAbs);
+             IntEnd := Min(RunAbsStart + RunLen, SegEndAbs);
+
+             if IntStart < IntEnd then
+             begin
+               TempFont.Bold := pdfFont.Bold or (hsBold in Seg.Styles);
+               TempFont.Italic := pdfFont.Italic or (hsItalic in Seg.Styles);
+               SelectFont(TempFont, '', false);
+
+               if logicalRun.Direction = UBIDI_RTL then
+                 direction := RP_UBIDI_RTL
+               else
+                 direction := RP_BIDI_LTR;
+
+               ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
+               positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, FontSize);
+
+               runWidth:=0;
+               for k:=0 to Length(positions)-1 do
+               begin
+                 runWidth:=runWidth+positions[k].XAdvance;
+                 positions[k].LineCluster:=positions[k].Cluster + (IntStart - lineSubText.Position);
+                 positions[k].Style := 0;
+                 // Store style if needed for drawing, but TextExtent is for measuring.
+               end;
+
+               if ((runWidth<=remaining) or (not WordWrap)) then
+               begin
+                 for g in positions do
+                   currentChunk.AddGlyph(g, logicalRun.LogicalStart);
+               end
+               else
+               begin
+                 if direction = RP_UBIDI_RTL then
+                   chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
+                 else
+                   chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
+
+                 for j:=0 to chunks.Count-1 do
+                 begin
+                   chunk:=chunks[j];
+                   if (j=0) then
+                   begin
+                     for g in chunk do currentChunk.AddGlyph(g, logicalRun.LogicalStart);
+                     calculatedLines.Add(currentChunk);
+                     currentChunk:=TLineGlyphs.Create(textOffset);
+                     remaining:=lineWidthLimit;
+                   end
+                   else if (j=chunks.Count-1) then
+                   begin
+                     remaining:=lineWidthLimit;
+                     for g in chunk do
+                     begin
+                       currentChunk.AddGlyph(g, logicalRun.LogicalStart);
+                       remaining:=remaining-g.XAdvance;
+                     end;
+                   end
+                   else
+                   begin
+                     for g in chunk do currentChunk.AddGlyph(g, logicalRun.LogicalStart);
+                     remaining:=lineWidthLimit;
+                     calculatedLines.Add(currentChunk);
+                     currentChunk:=TLineGlyphs.Create(textOffset);
+                   end;
+                 end;
+               end;
+             end;
+             SegStartAbs := SegEndAbs;
           end;
-         end;
-         if (secondFallback) then
-         begin
-          SelectFont(pdfFont,Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),true);
-           positions := CalcGlyphPositions(
-             Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
-             direction,
-             logicalRun.ScriptString,
-             FontSize
-           );
-         end;
-
-
-
-         fallbackAscentSpacing:=Round((currentfont.data.Ascent)*FontSize/1000*20);
         end;
-        runWidth:=0;
-        for k:=0 to Length(positions)-1 do
-        begin
-         runWidth:=runWidth+positions[k].XAdvance;
-         positions[k].LineCluster:=positions[k].Cluster+logicalRun.LogicalStart;
-         if (dofallback) then
-         begin
-          positions[k].FontFamily:=currentfont.familyname;
-          // Adjust baseline
-          // Not needed adjusted by pdf engine
-          if (fallbackAscentSpacing<>ascentSpacing) then
-          begin
-           // positions[k].YOffset:=positions[k].YOffset+fallbackAscentSpacing-ascentSpacing;
-          end;
-         end;
+        if (currentChunk.Glyphs.Count>0) then calculatedLines.Add(currentChunk);
+
+        Bidi := TICUBidi.Create;
+        visualRuns := nil;
+        try
+          if not Bidi.SetPara(line, $FF) then raise Exception.Create('VisualRuns error');
+          visualRuns := Bidi.GetVisualRuns(line);
+        finally
+          Bidi.Free;
         end;
-        if ((runWidth<=remaining) or (not WordWrap)) then
+
+        for calculatedLine in calculatedLines do
         begin
-         for g in positions do
-         begin
-          currentChunk.AddGlyph(g, runOffset);
-         end;
-         remaining:=remaining-runwidth;
-        end
-        else
-        begin
-          if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
-          else
-            chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
-          for j:=0 to chunks.Count-1 do
+          minCluster:=calculatedline.MinClusterText;
+          maxCluster:=calculatedline.MaxClusterText;
+          visualGlyphs:=TList<TGlyphPos>.Create;
+          for vRun in visualRuns do
           begin
-           chunk:=chunks[j];
-           // Primer chunk en el currentchunk actual y completamos la línea
-           if (j=0) then
+           if vRun.Direction = UBIDI_RTL then
            begin
-            for g in chunk do
+            direction := RP_UBIDI_RTL;
+            for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
             begin
-              currentChunk.AddGlyph(g,runOffset);
+             if (calculatedLine.ClusterMap.ContainsKey(k)) then
+             begin
+              lst := calculatedLine.ClusterMap[k];
+              for j:=0 to lst.Count-1 do visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+             end;
             end;
-            calculatedLines.Add(currentChunk);
-            currentChunk:=TLineGlyphs.Create(textOffset);
-            remaining:=lineWidthLimit;
            end
            else
-           // Ultimo chunk calculamos restante y todavia no se completa
-           // la línea
-           if (j=chunks.Count-1) then
            begin
-            remaining:=lineWidthLimit;
-            for g in chunk do
+            direction := RP_BIDI_LTR;
+            for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
             begin
-              currentChunk.AddGlyph(g,runOffset);
-              remaining:=remaining-g.XAdvance;
-            end;
-           end
-           else
-           begin
-            // Chunk intermedio, es una linea completa
-            for g in chunk do
-            begin
-              currentChunk.AddGlyph(g,runOffset);
-            end;
-            remaining:=lineWidthLimit;
-            calculatedLines.Add(currentChunk);
-            currentChunk:=TLineGlyphs.Create(textOffset);
-           end;
-          end;
-        end
-      end;
-      if (currentChunk.Glyphs.Count>0) then
-      begin
-        calculatedLines.Add(currentChunk);
-      end;
-
-      // -----------------------------
-      // SEGUNDO BUCLE: recorrer chunks → visual runs → LineInfo
-      // -----------------------------
-      // obtener visual runs de toda la línea
-      Bidi := TICUBidi.Create;
-      visualRuns := nil;
-      try
-        if not Bidi.SetPara(line, $FF) then
-          raise Exception.Create('VisualRuns error');
-        visualRuns := Bidi.GetVisualRuns(line);
-      finally
-        Bidi.Free;
-      end;
-
-      for calculatedLine in calculatedLines do
-      begin
-        var minCluster:=calculatedline.MinClusterText;
-        var maxCluster:=calculatedline.MaxClusterText;
-
-        // Opcional para depuración obtener el texto a partir de indices de
-        // línea actual
-        //var minCluster:=calculatedline.MinClusterLine;
-        //var maxCluster:=calculatedline.MaxClusterLine;
-        //chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
-
-        // construir orderedGlyphs en orden visual
-        visualGlyphs:=TList<TGlyphPos>.Create;
-        for vRun in visualRuns do
-        begin
-         if vRun.Direction = UBIDI_RTL then
-         begin
-          direction := RP_UBIDI_RTL;
-          for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
-          begin
-           if (calculatedLine.ClusterMap.ContainsKey(k)) then
-           begin
-            var lst := calculatedLine.ClusterMap[k];
-            for j:=0 to lst.Count-1 do
-            begin
-             visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+             if (calculatedLine.ClusterMap.ContainsKey(k)) then
+             begin
+              lst := calculatedLine.ClusterMap[k];
+              for j:=0 to lst.Count-1 do visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+             end;
             end;
            end;
           end;
-         end
-         else
-         begin
-          direction := RP_BIDI_LTR;
-          for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
-         begin
-          if (calculatedLine.ClusterMap.ContainsKey(k)) then
-          begin
-           var lst := calculatedLine.ClusterMap[k];
-           for j:=0 to lst.Count-1 do
-           begin
-            visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
-           end;
-          end;
-         end;
-
-         end;
+          LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
+          LineInfo.Position := minCluster;
+          LineInfo.Size := maxCluster - minCluster + 1;
+          LineInfo.TopPos := Round(posY);
+          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
+          LineInfo.Width := 0;
+          for k := 0 to High(LineInfo.Glyphs) do LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
+          LineInfo.Height := Round(linespacing);
+          LineInfo.LineHeight := linespacing;
+          LineInfo.lastline := False;
+          SetLength(Result, Length(Result) + 1);
+          Result[High(Result)] := LineInfo;
+          if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
+          posY := posY + linespacing;
         end;
-        LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
-
-        // rellenar LineInfo
-        //LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
-        LineInfo.Position := minCluster;
-        LineInfo.Size := maxCluster - minCluster + 1;
-        LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=Copy(Text, minCluster, maxCluster - minCluster + 1);
-
-        LineInfo.Width := 0;
-        for k := 0 to High(LineInfo.Glyphs) do
-          LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
-
-        LineInfo.Height := Round(linespacing);
-        LineInfo.LineHeight := linespacing;
-        LineInfo.lastline := False;
-
-        SetLength(Result, Length(Result) + 1);
-        Result[High(Result)] := LineInfo;
-
-        if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
-        posY := posY + linespacing;
+        calculatedLines.Free;
+        possibleBreaksCharIdx.Free;
       end;
-
-      calculatedLines.Free;
-      possibleBreaksCharIdx.Free;
+    finally
+      TempFont.Free;
     end;
-
-    if Length(Result) > 0 then
-      Result[High(Result)].lastline := True;
-
+    if Length(Result) > 0 then Result[High(Result)].lastline := True;
   finally
+    Segments.Free;
     lineSubTexts.Free;
     currentfont:=originalfont;
   end;
-
   Rect.Right := Rect.Left + Round(maxWidth);
-  //Rect.Bottom := Rect.Top + Round(posY);
   Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
 end;
 

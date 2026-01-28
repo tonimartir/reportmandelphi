@@ -132,7 +132,7 @@ type
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;conent:string);virtual;abstract;
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;virtual;abstract;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;virtual;abstract;
   function NFCNormalize(astring:WideString):WideString;virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;

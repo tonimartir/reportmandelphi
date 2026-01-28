@@ -381,6 +381,8 @@ begin
   WritePropertyS('BIDIMODES',compt.BidiModes.Text,Stream);
   WritePropertyBool('MULTIPAGE',compt.Multipage,Stream);
   WritePropertyI('PRINTSTEP',Integer(compt.PrintStep),Stream);
+  if compt.IsHtml then
+   WritePropertyBool('ISHTML',compt.IsHtml,Stream);
  end;
  // TRpLabel
  if comp is TRpLabel then
@@ -1569,7 +1571,10 @@ begin
    compt.MultiPage:=RpStrToBool(propvalue)
   else
   if propname='PRINTSTEP' then
-   compt.PrintStep:=TRpSelectFontStep(StrToInt(propvalue));
+   compt.PrintStep:=TRpSelectFontStep(StrToInt(propvalue))
+  else
+  if propname='ISHTML' then
+   compt.IsHtml:=RpStrToBool(propvalue);
  end;
  // TRpLabel
  if comp is TRpLabel then

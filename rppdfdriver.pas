@@ -41,7 +41,7 @@ uses Classes,Sysutils,
 //  Libc,
 {$ENDIF}
 {$ENDIF}
- rpmunits,rpmdconsts,rpmdcharttypes;
+ rpmunits,rpmdconsts,rpmdcharttypes, rphtmlparser;
 
 type
  TRpPdfDriver=class(TRpPrintDriver)
@@ -259,7 +259,7 @@ begin
  Rect.Top:=0;
  Rect.Bottom:=0;
  Rect.Right:=extent.X;
- FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft);
+ FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft,atext.IsHtml);
  extent.X:=Rect.Right;
  extent.Y:=Rect.Bottom;
  if (atext.CutText) then
@@ -284,6 +284,13 @@ var
  astring:WideString;
  intimageindex:integer;
  annotation: string;
+ Segments: THtmlSegmentList;
+ CurrentX: Integer;
+ YVal: Integer;
+ MeasureRect: TRect;
+ TotalWidth: Integer;
+ Seg: THtmlSegment;
+ DummyLInfo: TRpLineInfo;
 // bitmap:TBitmap;
 begin
  posx:=obj.Left;
@@ -317,9 +324,72 @@ begin
     rec.Right:=posx+round(obj.Width);
     rec.Bottom:=posy+round(obj.Height);
     // Unicode now supported
-    astring:=page.GetText(Obj);
-    FPDFFile.Canvas.TextRect(rec,astring,aalign,obj.cuttext,
-    obj.WordWrap,obj.FontRotation,obj.RightToLeft);
+    if obj.IsHtml then
+    begin
+        Segments := ParseHtml(page.GetText(obj));
+        try
+          CurrentX := rec.Left;
+          YVal := rec.Top;
+          // Calculate width for alignment if needed?
+          // Assuming Left alignment for now or manual calculation.
+
+          TotalWidth := 0;
+          for Seg in Segments do
+          begin
+            FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
+            if hsBold in Seg.Styles then FPDFFile.Canvas.Font.Bold := True;
+            FPDFFile.Canvas.Font.Italic:=(obj.Fontstyle and (1 shl 1))>0;
+            if hsItalic in Seg.Styles then FPDFFile.Canvas.Font.Italic := True;
+            FPDFFile.Canvas.Font.Underline:=(obj.Fontstyle  and (1 shl 2))>0;
+            if hsUnderline in Seg.Styles then FPDFFile.Canvas.Font.Underline := True;
+            FPDFFile.Canvas.Font.StrikeOut:=(obj.Fontstyle and (1 shl 3))>0;
+            if hsStrikeOut in Seg.Styles then FPDFFile.Canvas.Font.StrikeOut := True;
+
+            FPDFFile.Canvas.UpdateFonts;
+
+            MeasureRect.Left:=0; MeasureRect.Top:=0; MeasureRect.Right:=0; MeasureRect.Bottom:=0;
+            FPDFFile.Canvas.TextExtent(Seg.Text, MeasureRect, False, True, False, False);
+            TotalWidth := TotalWidth + MeasureRect.Right;
+          end;
+
+          if (obj.Alignment and AlignmentFlags_AlignHCenter) > 0 then
+             CurrentX := rec.Left + ((rec.Right - rec.Left) - TotalWidth) div 2
+          else if (obj.Alignment and AlignmentFlags_AlignRight) > 0 then
+             CurrentX := rec.Right - TotalWidth;
+
+          for Seg in Segments do
+          begin
+            FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
+            if hsBold in Seg.Styles then FPDFFile.Canvas.Font.Bold := True;
+
+            FPDFFile.Canvas.Font.Italic:=(obj.Fontstyle and (1 shl 1))>0;
+            if hsItalic in Seg.Styles then FPDFFile.Canvas.Font.Italic := True;
+
+            FPDFFile.Canvas.Font.Underline:=(obj.Fontstyle  and (1 shl 2))>0;
+            if hsUnderline in Seg.Styles then FPDFFile.Canvas.Font.Underline := True;
+
+            FPDFFile.Canvas.Font.StrikeOut:=(obj.Fontstyle and (1 shl 3))>0;
+            if hsStrikeOut in Seg.Styles then FPDFFile.Canvas.Font.StrikeOut := True;
+
+            FPDFFile.Canvas.UpdateFonts;
+
+            FillChar(DummyLInfo, SizeOf(DummyLInfo), 0);
+            FPDFFile.Canvas.TextOut(CurrentX, YVal, Seg.Text, 0, obj.FontRotation, False, DummyLInfo);
+
+            MeasureRect.Left:=0; MeasureRect.Top:=0; MeasureRect.Right:=0; MeasureRect.Bottom:=0;
+            FPDFFile.Canvas.TextExtent(Seg.Text, MeasureRect, False, True, False, False);
+            CurrentX := CurrentX + MeasureRect.Right;
+          end;
+        finally
+          Segments.Free;
+        end;
+    end
+    else
+    begin
+      astring:=page.GetText(Obj);
+      FPDFFile.Canvas.TextRect(rec,astring,aalign,obj.cuttext,
+      obj.WordWrap,obj.FontRotation,obj.RightToLeft);
+    end;
     annotation:=page.GetAnnotation(obj);
     if Length(annotation)>0 then
       FPDFFile.NewAnnotation(rec.Left,rec.Top,rec.Width,rec.Height, annotation);
