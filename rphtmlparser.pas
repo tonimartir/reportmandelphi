@@ -66,11 +66,19 @@ var
     LastSeg: THtmlSegment;
   begin
     if Text = '' then Exit;
-    // optimization: merge with previous segment if styles are the same
+
+    // Do not merge if the new text is a newline (from <br>)
+    if Text = #13#10 then
+    begin
+      Result.Add(THtmlSegment.Create(Text, CurrentStyles));
+      Exit;
+    end;
+
+    // optimization: merge with previous segment if styles are the same AND previous segment is NOT a newline
     if Result.Count > 0 then
     begin
       LastSeg := Result.Last;
-      if LastSeg.Styles = CurrentStyles then
+      if (LastSeg.Styles = CurrentStyles) and (LastSeg.Text <> #13#10) then
       begin
         LastSeg.Text := LastSeg.Text + Text;
         Exit;
