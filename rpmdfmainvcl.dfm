@@ -2,7 +2,7 @@ object FRpMainFVCL: TFRpMainFVCL
   Left = 810
   Top = 196
   Caption = 'rp'
-  ClientHeight = 738
+  ClientHeight = 735
   ClientWidth = 1004
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -22,7 +22,7 @@ object FRpMainFVCL: TFRpMainFVCL
   TextHeight = 32
   object BStatus: TStatusBar
     Left = 0
-    Top = 718
+    Top = 715
     Width = 1004
     Height = 20
     Margins.Left = 4
@@ -446,7 +446,7 @@ object FRpMainFVCL: TFRpMainFVCL
     Left = 0
     Top = 78
     Width = 1004
-    Height = 640
+    Height = 637
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
@@ -456,12 +456,12 @@ object FRpMainFVCL: TFRpMainFVCL
     TabOrder = 2
     Visible = False
     ExplicitTop = 81
-    ExplicitHeight = 637
+    ExplicitHeight = 634
     object Splitter1: TSplitter
       Left = 198
       Top = 0
       Width = 7
-      Height = 640
+      Height = 637
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -469,13 +469,13 @@ object FRpMainFVCL: TFRpMainFVCL
       Beveled = True
       ResizeStyle = rsUpdate
       OnMoved = Splitter1Moved
-      ExplicitHeight = 636
+      ExplicitHeight = 634
     end
     object leftpanel: TPanel
       Left = 0
       Top = 0
       Width = 198
-      Height = 640
+      Height = 637
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -483,7 +483,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
-      ExplicitHeight = 636
+      ExplicitHeight = 634
       object Splitter2: TSplitter
         Left = 0
         Top = 0

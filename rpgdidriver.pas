@@ -22,7 +22,7 @@ uses
   Classes, sysutils, rpmetafile, rpmdconsts, Graphics, Forms,
   rpmunits, Printers, Dialogs, Controls, rpgdifonts, Math,
   StdCtrls, ExtCtrls, rppdffile, rpgraphutilsvcl, WinSpool, rpmdcharttypes,
-  rphtmlparser, Winapi.D2D1, Winapi.DirectWrite, Winapi.ActiveX, rpdirectwriterenderer,
+  rphtmlparser, Winapi.D2D1, Winapi.DxgiFormat, ActiveX, rpdirectwriterenderer,
 {$IFDEF FIREDAC}
   Firedac.VCLUI.Wait,
 {$ENDIF}
@@ -280,15 +280,7 @@ implementation
 
 {$R *.dfm}
 
-const
-  AlignmentFlags_SingleLine = 64;
-  AlignmentFlags_AlignHCenter = 4 { $4 };
-  AlignmentFlags_AlignHJustify = 1024 { $400 };
-  AlignmentFlags_AlignTop = 8 { $8 };
-  AlignmentFlags_AlignBottom = 16 { $10 };
-  AlignmentFlags_AlignVCenter = 32 { $20 };
-  AlignmentFlags_AlignLeft = 1 { $1 };
-  AlignmentFlags_AlignRight = 2 { $2 };
+
 
 function EqualsPageSizeQt(a, b: TPageSizeQt): boolean;
 begin
@@ -986,9 +978,9 @@ begin
             if Succeeded(HR) then
             begin
                Props := D2D1RenderTargetProperties;
-               Props.pixelFormat.format := DXGI_FORMAT_B8G8R8A8_UNORM;
+               Props.pixelFormat.format :=   DXGI_FORMAT_R8G8B8A8_UNORM;
                Props.pixelFormat.alphaMode := D2D1_ALPHA_MODE_IGNORE;
-               HR := D2DFactory.CreateDCRenderTarget(@Props, RT);
+               HR := D2DFactory.CreateDCRenderTarget(Props, RT);
             end;
 
             if Succeeded(HR) then
