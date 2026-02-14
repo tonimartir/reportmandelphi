@@ -3242,8 +3242,8 @@ begin
         // document properties after printer selection
         pconfig := GetPrinterConfig;
         pconfig.Changed := true;
-        rpvgraphutils.SwitchToPrinterIndex(index);
-        // Printer.PrinterIndex:=index;
+        // rpvgraphutils.SwitchToPrinterIndex(index);
+        Printer.PrinterIndex:=index;
       end;
     end;
   end;
