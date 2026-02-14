@@ -133,6 +133,12 @@ begin
  lcat.Add(SRpLabel);
  if Assigned(lvalues) then
   lvalues.Add(TRpLabel(printitem).Text);
+ lnames.Add(SRpIsHtml);
+ ltypes.Add(SRpSBool);
+ lhints.Add('reflabel.html');
+ lcat.Add(SRpLabel);
+ if Assigned(lvalues) then
+  lvalues.Add(BoolToStr(TRpLabel(printitem).IsHtml,true));
 end;
 
 procedure TRpLabelInterface.SetProperty(pname:string;value:Widestring);
@@ -141,6 +147,11 @@ begin
  begin
   TRpLabel(fprintitem).Text:=value;
   invalidate;
+  exit;
+ end;
+ if pname=SRpIsHtml then
+ begin
+  TRpLabel(fprintitem).IsHtml:=StrToBool(value);
   exit;
  end;
  inherited SetProperty(pname,value);
@@ -152,6 +163,11 @@ begin
  if pname=SrpSText then
  begin
   Result:=TRpLabel(printitem).Text;
+  exit;
+ end;
+ if pname=SRpIsHtml then
+ begin
+  Result:=BoolToStr(TRpLabel(printitem).IsHtml,true);
   exit;
  end;
  Result:=inherited GetProperty(pname);
@@ -325,6 +341,12 @@ begin
  lcat.Add(SRpExpression);
  if Assigned(lvalues) then
   lvalues.Add(TRpExpression(printitem).Expression);
+ lnames.Add(SRpIsHtml);
+ ltypes.Add(SRpSBool);
+ lhints.Add('refexpression.html');
+ lcat.Add(SRpExpression);
+ if Assigned(lvalues) then
+  lvalues.Add(BoolToStr(TRpExpression(printitem).IsHtml,true));
 
  // Data Type
  lnames.Add(SRpSDataType);
@@ -460,6 +482,11 @@ begin
   invalidate;
   exit;
  end;
+ if pname=SRpIsHtml then
+ begin
+  TRpExpression(fprintitem).IsHtml:=StrToBool(value);
+  exit;
+ end;
  if pname=SRpSDatatype then
  begin
   TRpExpression(fprintitem).DataType:=StringToParamType(Value);
@@ -549,6 +576,11 @@ begin
  if pname=SrpSExpression then
  begin
   Result:=TRpExpression(printitem).Expression;
+  exit;
+ end;
+ if pname=SRpIsHtml then
+ begin
+  Result:=BoolToStr(TRpExpression(printitem).IsHtml,true);
   exit;
  end;
  if pname=SRpSDataType then
