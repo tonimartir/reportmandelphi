@@ -977,10 +977,32 @@ begin
 
             if Succeeded(HR) then
             begin
-               Props := D2D1RenderTargetProperties;
-               Props.pixelFormat.format :=   DXGI_FORMAT_R8G8B8A8_UNORM;
-               Props.pixelFormat.alphaMode := D2D1_ALPHA_MODE_IGNORE;
-               HR := D2DFactory.CreateDCRenderTarget(Props, RT);
+// Limpieza de memoria
+                FillChar(Props, SizeOf(Props), 0);
+
+                // 1. Renderizado por Software (Seguridad para GDI)
+                Props.&type := D2D1_RENDER_TARGET_TYPE_SOFTWARE;
+
+                // 2. FORMATO NATIVO DE WINDOWS (Vital para que no se cuelgue)
+                // Usamos B8G8R8A8 en lugar de R8G8B8A8
+                Props.pixelFormat.format := DXGI_FORMAT_B8G8R8A8_UNORM;
+
+                // 3. MODO ALFA: PREMULTIPLIED (Vital para que el fondo NO sea negro)
+                // Ahora que el formato es correcto (B8...), podemos usar PREMULTIPLIED
+                // sin que falle la creación. Esto permite que el texto se "fusione"
+                // con el blanco del fondo.
+                Props.pixelFormat.alphaMode := D2D1_ALPHA_MODE_PREMULTIPLIED;
+
+                Props.dpiX := 0;
+                Props.dpiY := 0;
+
+                // 4. USAGE: GDI_COMPATIBLE
+                // Añadimos esto para asegurar que se lleve bien con el Canvas de Delphi
+                Props.usage := D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE;
+
+                Props.minLevel := D2D1_FEATURE_LEVEL_DEFAULT;
+
+                HR := D2DFactory.CreateDCRenderTarget(Props, RT);
             end;
 
             if Succeeded(HR) then

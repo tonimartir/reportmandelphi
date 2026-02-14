@@ -472,6 +472,8 @@ begin
  lcat.Add(SRpExpression);
  if Assigned(lvalues) then
   lvalues.Add(BoolToStr(TRpExpression(printitem).ExportDoNewLine,true));
+
+
 end;
 
 procedure TRpExpressionInterface.SetProperty(pname:string;value:Widestring);
