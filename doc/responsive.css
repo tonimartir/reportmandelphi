@@ -1,0 +1,90 @@
+/* Contenedor principal */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header .lang {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.header .flags img {
+  width: auto;
+  height: 20px;
+  margin-left: 5px;
+}
+
+/* Layout principal */
+.content {
+  display: flex;
+  gap: 20px;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin-bottom: 10px;
+}
+
+.sidebar li img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Main content */
+.main {
+  flex: 1;
+}
+
+.images-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Imágenes fluidas */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive móvil */
+@media screen and (max-width: 768px) {
+  .content {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .header .flags img {
+    height: 17px;
+  }
+
+  .sidebar li {
+    font-size: 14px;
+  }
+
+  .images-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
