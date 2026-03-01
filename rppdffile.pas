@@ -166,10 +166,10 @@ type
    function UnitsToYPosFont(Value: double;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
-    Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
+    Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo;IsHtml:Boolean=False);
    procedure TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;
-                       Wordbreak:boolean;Rotation:integer;RightToLeft:Boolean);
+                       Wordbreak:boolean;Rotation:integer;RightToLeft:Boolean;IsHtml:Boolean=False);
    procedure Rectangle(x1,y1,x2,y2:Integer);
    procedure DrawImage(rec:TRect;abitmap:TStream;dpires:integer;
     tile:boolean;clip:boolean;intimageindex:integer);
@@ -1925,7 +1925,7 @@ end;
 
 procedure TRpPDFCanvas.TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;Wordbreak:boolean;
-                       Rotation:integer;RightToLeft:Boolean);
+                       Rotation:integer;RightToLeft:Boolean;IsHtml:Boolean);
 var
  recsize:TRect;
  i,index:integer;
@@ -1942,11 +1942,12 @@ var
 begin
  FFile.CheckPrinting;
 
- if (RightToLeft) then
+ if (RightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  Text:=InfoProvider.NFCNormalize(Text);
+  if RightToLeft then
+   Text:=InfoProvider.NFCNormalize(Text);
  end;
 
  if (Clipping or (Rotation<>0)) then
@@ -1968,7 +1969,7 @@ begin
    wordbreak:=false;
   // Calculates text extent and apply alignment
   recsize:=ARect;
-  lInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
+  lInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft, IsHtml);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -2028,7 +2029,7 @@ begin
       for index:=0 to lwords.Count-1 do
       begin
        arec:=ARect;
-       TextExtent(lwords.Strings[index],arec,false,true, RightToLeft);
+       TextExtent(lwords.Strings[index],arec,false,true, RightToLeft, IsHtml);
        if RightToLeft then
         lwidths.Add(IntToStr(-(arec.Right-arec.Left)))
        else
@@ -2059,7 +2060,7 @@ begin
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
+        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
       end;
@@ -2082,7 +2083,7 @@ begin
      PenStyle:=oldPenStyle;
     end;
 
-    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
+    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
    end
   end;
  finally
@@ -2143,7 +2144,7 @@ end;
 
 
 procedure TRpPDFCanvas.TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
- Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
+ Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo;IsHtml:Boolean);
 var
  rotrad,fsize:double;
  rotstring:string;
@@ -2203,7 +2204,7 @@ begin
   SWriteLine(FFile.FsTempStream,'/F'+
   Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
    IntToStr(Font.Size)+ ' Tf');
-  if (RighttoLeft) then
+  if (RightToLeft) or (IsHtml) then
   begin
    SWriteLine(FFile.FsTempStream,'/Span << /ActualText '+
     EncodePdfText(Text) + ' >> BDC');
@@ -2224,7 +2225,7 @@ begin
   end
   else
   begin
-   if (not RightToLeft) then
+   if (not RightToLeft) and (not IsHtml) then
     //SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
     SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextY(Y+ascent)+' Td');
   end;
@@ -2236,7 +2237,7 @@ begin
    if adata.havekerning then
     havekerning:=true;
   end;
-  if (RightToLeft) then
+  if (RightToLeft) or (IsHtml) then
   begin
    stringResult:=PDFCompatibleTextShaping(adata,Font,RightToLeft, X,Y,Font.Size,lInfo);
    SWriteLine(FFile.FsTempStream,stringResult);
@@ -2250,7 +2251,7 @@ begin
    else
     SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
   end;
-  if (RightToLeft) then
+  if (RightToLeft) or (IsHtml) then
   begin
    SWriteLine(FFile.FsTempStream,'EMC');
   end;
@@ -4309,12 +4310,27 @@ var
   newFontFamily:string;
   actualFontFamily:string;
   originalFontFamily:string;
+  actualBold: Boolean;
+  originalBold: Boolean;
+  actualItalic: Boolean;
+  originalItalic: Boolean;
+  actualFontSize: Single;
+  originalFontSize: Single;
+  newBold: Boolean;
+  newItalic: Boolean;
+  newFontSize: Single;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
   actualFontFamily:=Font.GetFontFamily;
   originalFontFamily:=Font.GetFontFamily;
+  actualBold := Font.Bold;
+  originalBold := Font.Bold;
+  actualItalic := Font.Italic;
+  originalItalic := Font.Italic;
+  actualFontSize := FontSize;
+  originalFontSize := FontSize;
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4323,22 +4339,34 @@ begin
     // glyph id hex (tu helper)
     gidHex := IntToHex4(g.GlyphIndex);
     if (g.FontFamily<>'') then
-    begin
-     newfontFamily:=g.FontFamily;
-    end
+      newFontFamily:=g.FontFamily
     else
-    begin
-     newfontfamily:=originalFontFamily;
-    end;
-    if (actualfontFamily<>newFontFamily) then
+      newFontFamily:=originalFontFamily;
+
+    newBold := (g.Style and 1) > 0;
+    newItalic := (g.Style and 2) > 0;
+    if g.HasFontSize then
+      newFontSize := g.FontSize
+    else
+      newFontSize := originalFontSize;
+
+    if (actualFontFamily<>newFontFamily) or (actualBold<>newBold) or
+       (actualItalic<>newItalic) or (actualFontSize<>newFontSize) then
     begin
      Font.WFontName:=newFontFamily;
      Font.LFontName:=newFontFamily;
+     Font.Bold:=newBold;
+     Font.Italic:=newItalic;
+     Font.Size:=Round(newFontSize);
+     UpdateFonts;
      adata:=GetTTFontData;
      Result:=Result+'/F'+
       Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
        IntToStr(Font.Size)+ ' Tf'+EOL;
-     actualFontFamily:=newfontFamily;
+     actualFontFamily:=newFontFamily;
+     actualBold:=newBold;
+     actualItalic:=newItalic;
+     actualFontSize:=newFontSize;
     end;
     // llamadas auxiliares que tenías para compatibilidad
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
@@ -4358,10 +4386,15 @@ begin
     // avanzar cursor
     cursor := cursor + g.XAdvance;
   end;
-  if  (actualFontFamily<>originalFontFamily) then
+  if (actualFontFamily<>originalFontFamily) or (actualBold<>originalBold) or
+     (actualItalic<>originalItalic) or (actualFontSize<>originalFontSize) then
   begin
    Font.WFontName:=originalFontFamily;
    Font.LFontName:=originalFontFamily;
+   Font.Bold:=originalBold;
+   Font.Italic:=originalItalic;
+   Font.Size:=Round(originalFontSize);
+   UpdateFonts;
    adata:=GetTTFontData;
   end;
 end;

@@ -403,6 +403,7 @@ var
   IntStart: Integer;
   IntEnd: Integer;
   ChunkText: WideString;
+  activeSize: Double;
   minCluster: Integer;
   maxCluster: Integer;
   lst: TList<Integer>;
@@ -480,6 +481,14 @@ begin
              begin
                TempFont.Bold := pdfFont.Bold or (hsBold in Seg.Styles);
                TempFont.Italic := pdfFont.Italic or (hsItalic in Seg.Styles);
+               if Seg.FontFamily <> '' then
+                 TempFont.WFontName := Seg.FontFamily
+               else
+                 TempFont.WFontName := pdfFont.WFontName;
+               if Seg.HasFontSize then
+                 activeSize := Seg.FontSize
+               else
+                 activeSize := FontSize;
                SelectFont(TempFont, '', false);
 
                if logicalRun.Direction = UBIDI_RTL then
@@ -488,7 +497,7 @@ begin
                  direction := RP_BIDI_LTR;
 
                ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
-               positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, FontSize);
+               positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
 
                runWidth:=0;
                for k:=0 to Length(positions)-1 do
@@ -500,6 +509,9 @@ begin
                  if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
                  if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
                  if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
+                 positions[k].FontFamily := TempFont.WFontName;
+                 positions[k].FontSize := activeSize;
+                 positions[k].HasFontSize := Seg.HasFontSize;
                end;
 
                if ((runWidth<=remaining) or (not WordWrap)) then

@@ -546,6 +546,7 @@ var
   RunAbsStart, RunLen, SegStartAbs, SegLen, SegEndAbs: Integer;
   IntStart, IntEnd: Integer;
   ChunkText: WideString;
+  activeSize: Double;
 begin
   InitICU;
   InitHarfBuzz;
@@ -620,6 +621,10 @@ begin
 
           if IntStart < IntEnd then
           begin
+            if Seg.HasFontSize then
+              activeSize := Seg.FontSize
+            else
+              activeSize := FontSize;
             ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
             positions := CalcGlyphPositions(
               ChunkText,
@@ -627,7 +632,7 @@ begin
               pdfFont,
               direction,
               logicalRun.ScriptString,
-              FontSize
+              activeSize
             );
 
             runWidth:=0;
@@ -641,6 +646,12 @@ begin
               if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
               if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
               if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
+              if Seg.FontFamily <> '' then
+                positions[k].FontFamily := Seg.FontFamily
+              else
+                positions[k].FontFamily := pdfFont.WFontName;
+              positions[k].FontSize := activeSize;
+              positions[k].HasFontSize := Seg.HasFontSize;
             end;
 
             if ((runWidth<=remaining) or (not WordWrap)) then

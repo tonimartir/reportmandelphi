@@ -121,6 +121,8 @@ type
    Cluster: Cardinal;
    LineCluster: Cardinal;
    FontFamily: string;
+   FontSize: Single;
+   HasFontSize: Boolean;
    Style: Integer;
  end;
  TGlyphPosArray = array of TGlyphPos;
