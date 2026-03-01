@@ -1661,8 +1661,8 @@ begin
 
       // Horizontal alignment
       if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
-        posx := ARect.Right - larray[i].Width;
-      if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+        posx := ARect.Right - larray[i].Width
+      else if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
         posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
 
       // Draw glyphs grouped by style AND font family AND font size
@@ -1762,11 +1762,21 @@ begin
           GetTextMetrics(Canvas.Handle, runTM2);
           var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
 
-          arec2.Left := Round(runStartX * aintdpix / 1440);
           arec2.Top := Round(nposy * aintdpiy / 1440) - baselineOffset2;
           arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
           arec2.Right := Round(ARect.Right * aintdpix / 1440);
-          aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
+
+          // For right-aligned text, draw last run with DT_RIGHT to snap to right edge
+          if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+          begin
+            arec2.Left := Round(runStartX * aintdpix / 1440);
+            aalign := DT_NOPREFIX or DT_NOCLIP or DT_RIGHT or DT_SINGLELINE;
+          end
+          else
+          begin
+            arec2.Left := Round(runStartX * aintdpix / 1440);
+            aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
+          end;
           DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
         end;
         // Restore original font
