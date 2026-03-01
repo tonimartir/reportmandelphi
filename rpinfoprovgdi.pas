@@ -18,7 +18,7 @@ unit rpinfoprovgdi;
 
 interface
 
-uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
+uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,System.Math,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
