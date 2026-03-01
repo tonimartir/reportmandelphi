@@ -19,7 +19,7 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
+uses Classes,SysUtils,rptruetype,rptypes,rpmunits,System.Math,
 {$IFDEF USEVARIANTS}
     Types,
 {$ENDIF}
