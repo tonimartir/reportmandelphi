@@ -301,6 +301,11 @@ var
   lineCluster:integer;
   rectHeight:integer;
   lastTopPos:Integer;
+  // Per-character font info map for HTML
+  charFontFamilies: array of string;
+  charFontSizes: array of Single;
+  charHasFontSize: array of Boolean;
+  charStyles: array of Integer;
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -355,6 +360,12 @@ begin
     TextFormat
   );
 
+  // Initialize per-character font info arrays
+  SetLength(charFontFamilies, 0);
+  SetLength(charFontSizes, 0);
+  SetLength(charHasFontSize, 0);
+  SetLength(charStyles, 0);
+
   if IsHtml then
   begin
     var Segments := ParseHtml(Text);
@@ -362,6 +373,36 @@ begin
       PlainText := '';
       for var Seg in Segments do
         PlainText := PlainText + Seg.Text;
+
+      // Build per-character font info map
+      SetLength(charFontFamilies, Length(PlainText));
+      SetLength(charFontSizes, Length(PlainText));
+      SetLength(charHasFontSize, Length(PlainText));
+      SetLength(charStyles, Length(PlainText));
+      var MapPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var StyleVal: Integer := 0;
+        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+        for var ci := MapPos to MapPos + SegLen - 1 do
+        begin
+          if Seg.FontFamily <> '' then
+            charFontFamilies[ci] := Seg.FontFamily
+          else
+            charFontFamilies[ci] := adata.FamilyName;
+          if Seg.HasFontSize then
+            charFontSizes[ci] := Seg.FontSize
+          else
+            charFontSizes[ci] := FontSize;
+          charHasFontSize[ci] := Seg.HasFontSize;
+          charStyles[ci] := StyleVal;
+        end;
+        MapPos := MapPos + SegLen;
+      end;
 
       PWideCharText := PWideChar(PlainText);
       Factory.CreateTextLayout(
@@ -394,14 +435,22 @@ begin
         TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
         TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
 
-        var StyleVal: Integer := 0;
-        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
-        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
-        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
-        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+        // Apply font family change to DirectWrite layout
+        if Seg.FontFamily <> '' then
+          TextLayout.SetFontFamilyName(PWideChar(WideString(Seg.FontFamily)), Range);
 
-        if StyleVal <> 0 then
-           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal) as IUnknown, Range);
+        // Apply font size change to DirectWrite layout
+        if Seg.HasFontSize then
+          TextLayout.SetFontSize(Seg.FontSize * POINTS_TO_DIPS_FACTOR, Range);
+
+        var StyleVal2: Integer := 0;
+        if hsBold in Seg.Styles then StyleVal2 := StyleVal2 or 1;
+        if hsItalic in Seg.Styles then StyleVal2 := StyleVal2 or 2;
+        if hsUnderline in Seg.Styles then StyleVal2 := StyleVal2 or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal2 := StyleVal2 or 8;
+
+        if StyleVal2 <> 0 then
+           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal2) as IUnknown, Range);
 
         CurrentPos := CurrentPos + SegLen;
       end;
@@ -454,7 +503,14 @@ begin
         LineCluster:=LineInfo.Glyphs[j].LineCluster;
         Glyph:=Line.Glyphs[j];
         LineInfo.Width := LineInfo.Width + Line.Glyphs[j].XAdvance;
-        //LineInfo.Glyphs[j].CharCode:=PWideCharText[LineCluster];
+        // Propagate per-character font info to glyphs (HTML mode)
+        if (Length(charFontFamilies) > 0) and (LineCluster >= 0) and (LineCluster < Length(charFontFamilies)) then
+        begin
+          LineInfo.Glyphs[j].FontFamily := charFontFamilies[LineCluster];
+          LineInfo.Glyphs[j].FontSize := charFontSizes[LineCluster];
+          LineInfo.Glyphs[j].HasFontSize := charHasFontSize[LineCluster];
+          LineInfo.Glyphs[j].Style := charStyles[LineCluster];
+        end;
         if (maxLineCluster<LineCluster) then
           maxLineCluster:=LineCluster;
         if (minLineCluster>LineCluster) then

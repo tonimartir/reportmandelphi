@@ -1665,21 +1665,39 @@ begin
       if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
         posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
 
-      // Draw glyphs grouped by style
+      // Draw glyphs grouped by style AND font family AND font size
       if Length(larray[i].Glyphs) > 0 then
       begin
         nposx := posx;
         nposy := posy + larray[i].TopPos - ascent;
         runText := '';
         runStyle := larray[i].Glyphs[0].Style;
+        var runFontFamily: string := larray[i].Glyphs[0].FontFamily;
+        var runFontSize: Single := larray[i].Glyphs[0].FontSize;
+        var origFontName: string := Canvas.Font.Name;
+        var origFontSize: Integer := Canvas.Font.Size;
+        if not larray[i].Glyphs[0].HasFontSize then
+          runFontSize := origFontSize;
         var runStartX := nposx;
+
+        // Compute base font ascent for baseline alignment
+        var baseTM: TTextMetric;
+        Canvas.Font.Name := origFontName;
+        Canvas.Font.Size := origFontSize;
+        GetTextMetrics(Canvas.Handle, baseTM);
+        var baseAscent: Integer := baseTM.tmAscent;
 
         for k := 0 to High(larray[i].Glyphs) do
         begin
           glyphStyle := larray[i].Glyphs[k].Style;
+          var gFontFamily: string := larray[i].Glyphs[k].FontFamily;
+          var gFontSize: Single := larray[i].Glyphs[k].FontSize;
+          if not larray[i].Glyphs[k].HasFontSize then
+            gFontSize := origFontSize;
 
-          // If style changed, flush the current run
-          if (glyphStyle <> runStyle) and (Length(runText) > 0) then
+          // If style or font changed, flush the current run
+          if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
+              (gFontSize <> runFontSize)) and (Length(runText) > 0) then
           begin
             // Apply combined font style (base OR html)
             Canvas.Font.Style := [];
@@ -1691,10 +1709,19 @@ begin
               Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
             if baseStrikeOut or ((runStyle and 8) > 0) then
               Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+            // Apply font family and size
+            if runFontFamily <> '' then
+              Canvas.Font.Name := runFontFamily;
+            Canvas.Font.Size := Round(runFontSize);
 
-            // Draw this run at the run start position
+            // Compute baseline offset for this run's font
+            var runTM: TTextMetric;
+            GetTextMetrics(Canvas.Handle, runTM);
+            var baselineOffset: Integer := runTM.tmAscent - baseAscent;
+
+            // Draw this run at the run start position, adjusted for baseline
             arec2.Left := Round(runStartX * aintdpix / 1440);
-            arec2.Top := Round(nposy * aintdpiy / 1440);
+            arec2.Top := Round(nposy * aintdpiy / 1440) - baselineOffset;
             arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
             arec2.Right := Round(ARect.Right * aintdpix / 1440);
             aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
@@ -1702,6 +1729,8 @@ begin
 
             runText := '';
             runStyle := glyphStyle;
+            runFontFamily := gFontFamily;
+            runFontSize := gFontSize;
             runStartX := nposx;
           end;
 
@@ -1723,14 +1752,26 @@ begin
             Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
           if baseStrikeOut or ((runStyle and 8) > 0) then
             Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+          // Apply font family and size
+          if runFontFamily <> '' then
+            Canvas.Font.Name := runFontFamily;
+          Canvas.Font.Size := Round(runFontSize);
+
+          // Compute baseline offset for this run's font
+          var runTM2: TTextMetric;
+          GetTextMetrics(Canvas.Handle, runTM2);
+          var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
 
           arec2.Left := Round(runStartX * aintdpix / 1440);
-          arec2.Top := Round(nposy * aintdpiy / 1440);
+          arec2.Top := Round(nposy * aintdpiy / 1440) - baselineOffset2;
           arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
           arec2.Right := Round(ARect.Right * aintdpix / 1440);
           aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
           DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
         end;
+        // Restore original font
+        Canvas.Font.Name := origFontName;
+        Canvas.Font.Size := origFontSize;
       end
       else
       begin

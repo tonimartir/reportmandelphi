@@ -154,6 +154,7 @@ var
   p, p2: Integer;
   numStr: string;
   sizeVal: Integer;
+  hasPtSuffix: Boolean;
 begin
   Result := 0;
   p := Pos('size', LowerCase(Attrs));
@@ -168,16 +169,24 @@ begin
   numStr := Copy(Attrs, p, p2 - p);
   if numStr = '' then Exit;
   sizeVal := StrToIntDef(numStr, 0);
-  case sizeVal of
-    1: Result := 8;
-    2: Result := 10;
-    3: Result := 12;
-    4: Result := 14;
-    5: Result := 18;
-    6: Result := 24;
-    7: Result := 36;
+  // Check for 'pt' suffix - means literal point size, not legacy HTML size
+  hasPtSuffix := (p2 <= Length(Attrs) - 1) and
+    (LowerCase(Copy(Attrs, p2, 2)) = 'pt');
+  if hasPtSuffix then
+    Result := sizeVal
   else
-    Result := sizeVal; // Assume already a pt size
+  begin
+    case sizeVal of
+      1: Result := 8;
+      2: Result := 10;
+      3: Result := 12;
+      4: Result := 14;
+      5: Result := 18;
+      6: Result := 24;
+      7: Result := 36;
+    else
+      Result := sizeVal; // Assume already a pt size
+    end;
   end;
 end;
 

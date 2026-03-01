@@ -482,13 +482,20 @@ begin
                TempFont.Bold := pdfFont.Bold or (hsBold in Seg.Styles);
                TempFont.Italic := pdfFont.Italic or (hsItalic in Seg.Styles);
                if Seg.FontFamily <> '' then
-                 TempFont.WFontName := Seg.FontFamily
+               begin
+                 TempFont.WFontName := Seg.FontFamily;
+                 TempFont.LFontName := Seg.FontFamily;
+               end
                else
+               begin
                  TempFont.WFontName := pdfFont.WFontName;
+                 TempFont.LFontName := pdfFont.LFontName;
+               end;
                if Seg.HasFontSize then
                  activeSize := Seg.FontSize
                else
                  activeSize := FontSize;
+               TempFont.Size := Round(activeSize);
                SelectFont(TempFont, '', false);
 
                if logicalRun.Direction = UBIDI_RTL then

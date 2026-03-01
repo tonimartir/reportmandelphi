@@ -2264,58 +2264,144 @@ begin
   end;
  end;
  // Underline and strikeout
- if FFont.Underline then
+ // Per-glyph decorators for HTML text (grouped segments)
+ if (IsHtml) and (Length(lInfo.Glyphs) > 0) then
  begin
-  PenStyle:=0;
-  PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
-  PenColor:=FFont.Color;
-  if Rotation=0 then
+  var decCursor: Double := 0.0;
+  var inUnderline: Boolean := False;
+  var inStrikeOutDec: Boolean := False;
+  var ulStartX: Double := 0;
+  var soStartX: Double := 0;
+  var ulFontSz: Single := FFont.Size;
+  var soFontSz: Single := FFont.Size;
+  var fontSizeOffset: Integer := Round(FFont.Size / CONS_PDFRES * FResolution);
+  var gCount: Integer := Length(lInfo.Glyphs);
+
+  for var gi := 0 to gCount do
   begin
-   Posline:=Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   Line(X,Y+Posline,X+LineWidth,Y+Posline);
-  end
-  else
-  begin
-   Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   rotrad:=Rotation/10*(2*PI/360);
-   fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=-Round(fsize*cos(rotrad));
-   PosLineY1:=-Round(fsize*sin(rotrad));
-   PosLineX2:=Round(LineWidth*cos(rotrad));
-   PoslineY2:=-Round(LineWidth*sin(rotrad));
-   Line(X+PosLineX1,Y+PosLineY1,X+PosLineX2,Y+PosLineY2);
-   Y:=Y-Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+   var isLast: Boolean := (gi = gCount);
+   var gUnderline: Boolean := False;
+   var gStrikeOutDec: Boolean := False;
+   var gFontSz: Single := FFont.Size;
+
+   if not isLast then
+   begin
+    gUnderline := (lInfo.Glyphs[gi].Style and 4) > 0;
+    gStrikeOutDec := (lInfo.Glyphs[gi].Style and 8) > 0;
+    if lInfo.Glyphs[gi].HasFontSize then
+     gFontSz := lInfo.Glyphs[gi].FontSize;
+   end;
+
+   // Underline segment tracking
+   if gUnderline and (not inUnderline) then
+   begin
+    inUnderline := True;
+    ulStartX := X + decCursor;
+    ulFontSz := gFontSz;
+   end
+   else if ((not gUnderline) or isLast) and inUnderline then
+   begin
+    var ulEndX: Double := X + decCursor;
+    if gUnderline and isLast then
+     ulEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((ulFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_UNDERLINEPOS*(ulFontSz/CONS_PDFRES*FResolution));
+    Line(Round(ulStartX),Y-fontSizeOffset+PosLine,Round(ulEndX),Y-fontSizeOffset+PosLine);
+    inUnderline := gUnderline;
+    if gUnderline then
+    begin
+     ulStartX := X + decCursor;
+     ulFontSz := gFontSz;
+    end;
+   end;
+
+   // StrikeOut segment tracking
+   if gStrikeOutDec and (not inStrikeOutDec) then
+   begin
+    inStrikeOutDec := True;
+    soStartX := X + decCursor;
+    soFontSz := gFontSz;
+   end
+   else if ((not gStrikeOutDec) or isLast) and inStrikeOutDec then
+   begin
+    var soEndX: Double := X + decCursor;
+    if gStrikeOutDec and isLast then
+     soEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((soFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_STRIKEOUTPOS*(soFontSz/CONS_PDFRES*FResolution));
+    Line(Round(soStartX),Y-fontSizeOffset+PosLine,Round(soEndX),Y-fontSizeOffset+PosLine);
+    inStrikeOutDec := gStrikeOutDec;
+    if gStrikeOutDec then
+    begin
+     soStartX := X + decCursor;
+     soFontSz := gFontSz;
+    end;
+   end;
+
+   if not isLast then
+    decCursor := decCursor + lInfo.Glyphs[gi].XAdvance;
   end;
- end;
- if FFont.StrikeOut then
+ end
+ else
  begin
-  PenStyle:=0;
-  PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
-  PenColor:=FFont.Color;
-  if Rotation=0 then
+  // Element-level underline (non-HTML or full-element underline)
+  if FFont.Underline then
   begin
-   Posline:=Round(CONS_STRIKEOUTPOS*(Font.Size/CONS_PDFRES*FResolution));
-   Line(X,Y+Posline,X+LineWidth,Y+Posline);
-  end
-  else
+   PenStyle:=0;
+   PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+   PenColor:=FFont.Color;
+   if Rotation=0 then
+   begin
+    Posline:=Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    Line(X,Y+Posline,X+LineWidth,Y+Posline);
+   end
+   else
+   begin
+    Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    rotrad:=Rotation/10*(2*PI/360);
+    fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=-Round(fsize*cos(rotrad));
+    PosLineY1:=-Round(fsize*sin(rotrad));
+    PosLineX2:=Round(LineWidth*cos(rotrad));
+    PoslineY2:=-Round(LineWidth*sin(rotrad));
+    Line(X+PosLineX1,Y+PosLineY1,X+PosLineX2,Y+PosLineY2);
+    Y:=Y-Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+   end;
+  end;
+  if FFont.StrikeOut then
   begin
-   Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   rotrad:=Rotation/10*(2*PI/360);
-   fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=-Round(fsize*cos(rotrad));
-   PosLineY1:=-Round(fsize*sin(rotrad));
-   PosLineX2:=Round(LineWidth*cos(rotrad));
-   PoslineY2:=-Round(LineWidth*sin(rotrad));
-   fsize:=(1-CONS_STRIKEOUTPOS)*Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=X+PosLineX1;
-   PosLineY1:=Y+PosLineY1;
-   PosLineX2:=X+PosLineX2;
-   PosLineY2:=Y+PosLineY2;
-   PoslineX1:=PosLineX1-Round(fsize*sin(rotrad));
-   PoslineY1:=PosLineY1-Round(fsize*cos(rotrad));
-   PoslineX2:=PosLineX2-Round(fsize*sin(rotrad));
-   PoslineY2:=PosLineY2-Round(fsize*cos(rotrad));
-   Line(PoslineX1,PosLineY1,PosLineX2,PosLineY2);
+   PenStyle:=0;
+   PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+   PenColor:=FFont.Color;
+   if Rotation=0 then
+   begin
+    Posline:=Round(CONS_STRIKEOUTPOS*(Font.Size/CONS_PDFRES*FResolution));
+    Line(X,Y+Posline,X+LineWidth,Y+Posline);
+   end
+   else
+   begin
+    Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    rotrad:=Rotation/10*(2*PI/360);
+    fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=-Round(fsize*cos(rotrad));
+    PosLineY1:=-Round(fsize*sin(rotrad));
+    PosLineX2:=Round(LineWidth*cos(rotrad));
+    PoslineY2:=-Round(LineWidth*sin(rotrad));
+    fsize:=(1-CONS_STRIKEOUTPOS)*Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=X+PosLineX1;
+    PosLineY1:=Y+PosLineY1;
+    PosLineX2:=X+PosLineX2;
+    PosLineY2:=Y+PosLineY2;
+    PoslineX1:=PosLineX1-Round(fsize*sin(rotrad));
+    PoslineY1:=PosLineY1-Round(fsize*cos(rotrad));
+    PoslineX2:=PosLineX2-Round(fsize*sin(rotrad));
+    PoslineY2:=PosLineY2-Round(fsize*cos(rotrad));
+    Line(PoslineX1,PosLineY1,PosLineX2,PosLineY2);
+   end;
   end;
  end;
 end;
