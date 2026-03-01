@@ -162,6 +162,7 @@ type
   public
    constructor Create(AOwner:TComponent);override;
    destructor Destroy;override;
+   function EvaluateHtmlExpressions(const text: WideString): WideString;
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
    property BidiMode:TRpBidiMode read GetBidiMode write SetBidiMode;
@@ -191,7 +192,7 @@ type
 
 implementation
 
-uses rpbasereport,rpsection,rpsubreport;
+uses rpbasereport,rpsection,rpsubreport,StrUtils;
 
 const
  AlignmentFlags_AlignLeft = 1 { $1 };
@@ -626,6 +627,52 @@ begin
 
  Filer.DefineProperty('WFontName',ReadWFontName,WriteWFontName,True);
  Filer.DefineProperty('LFontName',ReadLFontName,WriteLFontName,True);
+end;
+
+function TRpGenTextComponent.EvaluateHtmlExpressions(const text: WideString): WideString;
+var
+  fevaluator: TRpEvaluator;
+  pos, startPos, endPos: Integer;
+  expr: WideString;
+  evalResult: Variant;
+begin
+  Result := '';
+  if Length(text) = 0 then
+    exit;
+  fevaluator := TRpBaseReport(GetReport).Evaluator;
+  if not Assigned(fevaluator) then
+  begin
+    Result := text;
+    exit;
+  end;
+  pos := 1;
+  while pos <= Length(text) do
+  begin
+    startPos := PosEx('{{', text, pos);
+    if startPos = 0 then
+    begin
+      Result := Result + Copy(text, pos, Length(text) - pos + 1);
+      Break;
+    end;
+    endPos := PosEx('}}', text, startPos + 2);
+    if endPos = 0 then
+    begin
+      Result := Result + Copy(text, pos, Length(text) - pos + 1);
+      Break;
+    end;
+    // Append text before {{
+    Result := Result + Copy(text, pos, startPos - pos);
+    // Extract and evaluate expression
+    expr := Trim(Copy(text, startPos + 2, endPos - startPos - 2));
+    try
+      evalResult := fevaluator.EvaluateText(expr);
+      Result := Result + WideString(evalResult);
+    except
+      // On error, keep the original placeholder
+      Result := Result + Copy(text, startPos, endPos + 2 - startPos);
+    end;
+    pos := endPos + 2;
+  end;
 end;
 
 

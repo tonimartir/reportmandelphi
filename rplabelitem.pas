@@ -344,7 +344,10 @@ var
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  apage:=metafile.Pages[metafile.CurrentPage];
- aTextObj.Text:=Text;
+ if IsHtml then
+  aTextObj.Text:=EvaluateHtmlExpressions(Text)
+ else
+  aTextObj.Text:=Text;
  aTextObj.LFontName:=LFontName;
  aTextObj.WFontName:=WFontName;
  aTextObj.FontSize:=FontSize;
@@ -457,6 +460,8 @@ begin
   Evaluate;
   try
    Result:=FormatVariant(displayformat,FValue,FDataType,FPrintNulls);
+   if IsHtml then
+    Result:=EvaluateHtmlExpressions(Result);
   except
    on E:Exception do
    begin
@@ -914,7 +919,10 @@ function TRpLabel.GetTextObject:TRpTextObject;
 var
  aalign:Integer;
 begin
- Result.Text:=GetText;
+ if IsHtml then
+  Result.Text:=EvaluateHtmlExpressions(GetText)
+ else
+  Result.Text:=GetText;
  Result.LFontName:=LFontName;
  Result.WFontName:=WFontName;
  Result.FontSize:=FontSize;

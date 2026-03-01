@@ -222,6 +222,10 @@ type
       Alignment: integer; Clipping: boolean; Wordbreak: boolean;
       Rotation: integer; RightToLeft: boolean; drawbackground: boolean;
       BackColor: TColor);
+    procedure TextRectHtml(Canvas: TCanvas; ARect: TRect; Text: Widestring;
+      Alignment: integer; Clipping: boolean; Wordbreak: boolean;
+      Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
+      BackColor: TColor);
     procedure GraphicExtent(Stream: TMemoryStream; var extent: TPoint;
       dpi: integer); override;
     procedure SetOrientation(Orientation: TRpOrientation); override;
@@ -775,8 +779,8 @@ var
 begin
   if atext.FontRotation <> 0 then
     exit;
-  // Justified text use pdf driver, also PDF Conformance or TrueType
-  if (  ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+  // Justified text use pdf driver, also PDF Conformance, TrueType, or IsHtml
+  if (  atext.IsHtml OR ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
      OR (atext.Type1Font >  Integer(poEmbedded)) and (not atext.RightToLeft)) then
   begin
     if not assigned(npdfdriver) then
@@ -904,27 +908,6 @@ var
 {$ENDIF}
   propx, propy: double;
   penWidth:integer;
-  D2DFactory: ID2D1Factory;
-  DWriteFactory: IDWriteFactory;
-  RT: ID2D1DCRenderTarget;
-  Props: TD2D1RenderTargetProperties;
-  TextFormat: IDWriteTextFormat;
-  TextLayout: IDWriteTextLayout;
-  PlainText: WideString;
-  Segments: THtmlSegmentList;
-  HR: HResult;
-  Range: DWRITE_TEXT_RANGE;
-  Pos: Integer;
-  Brush: ID2D1SolidColorBrush;
-  Color: D2D1_COLOR_F;
-  VColor: TColor;
-  Origin: D2D_POINT_2F;
-  BoxWidth: Single;
-  BoxHeight: Single;
-  FontWeight: DWRITE_FONT_WEIGHT;
-  FontStyle: DWRITE_FONT_STYLE;
-  StyleVal: Integer;
-  Seg: THtmlSegment;
 begin
   // Switch to device points
   oldhandle := 0;
@@ -971,130 +954,31 @@ begin
           // Justified text use pdf driver, also pdf conformance or truetype
           if obj.IsHtml then
           begin
-            HR := D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_ID2D1Factory, nil, D2DFactory);
-            if Succeeded(HR) then
-               HR := DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, IID_IDWriteFactory, IUnknown(DWriteFactory));
-
-            if Succeeded(HR) then
-            begin
-// Limpieza de memoria
-                FillChar(Props, SizeOf(Props), 0);
-
-                // 1. Renderizado por Software (Seguridad para GDI)
-                Props.&type := D2D1_RENDER_TARGET_TYPE_SOFTWARE;
-
-                // 2. FORMATO NATIVO DE WINDOWS (Vital para que no se cuelgue)
-                // Usamos B8G8R8A8 en lugar de R8G8B8A8
-                Props.pixelFormat.format := DXGI_FORMAT_B8G8R8A8_UNORM;
-
-                // 3. MODO ALFA: PREMULTIPLIED (Vital para que el fondo NO sea negro)
-                // Ahora que el formato es correcto (B8...), podemos usar PREMULTIPLIED
-                // sin que falle la creación. Esto permite que el texto se "fusione"
-                // con el blanco del fondo.
-                Props.pixelFormat.alphaMode := D2D1_ALPHA_MODE_PREMULTIPLIED;
-
-                Props.dpiX := 0;
-                Props.dpiY := 0;
-
-                // 4. USAGE: GDI_COMPATIBLE
-                // Añadimos esto para asegurar que se lleve bien con el Canvas de Delphi
-                Props.usage := D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE;
-
-                Props.minLevel := D2D1_FEATURE_LEVEL_DEFAULT;
-
-                HR := D2DFactory.CreateDCRenderTarget(Props, RT);
-            end;
-
-            if Succeeded(HR) then
-            begin
-               rec.Right := posx + Ceil(obj.Width * dpix / TWIPS_PER_INCHESS);
-               rec.Bottom := posy + Ceil(obj.Height * dpiy / TWIPS_PER_INCHESS);
-               RT.BindDC(Canvas.Handle, rec);
-               RT.BeginDraw;
-
-               Segments := ParseHtml(page.GetText(obj));
-               PlainText := '';
-               for Seg in Segments do PlainText := PlainText + Seg.Text;
-
-               FontWeight := DWRITE_FONT_WEIGHT_NORMAL;
-               if (obj.FontStyle and 1) > 0 then FontWeight := DWRITE_FONT_WEIGHT_BOLD;
-               FontStyle := DWRITE_FONT_STYLE_NORMAL;
-               if (obj.FontStyle and 2) > 0 then FontStyle := DWRITE_FONT_STYLE_ITALIC;
-
-               HR := DWriteFactory.CreateTextFormat(
-                 PWideChar(page.GetWFontName(obj)),
-                 nil,
-                 FontWeight,
-                 FontStyle,
-                 DWRITE_FONT_STRETCH_NORMAL,
-                 obj.FontSize * (96.0/72.0),
-                 '',
-                 TextFormat
-               );
-
-               if Succeeded(HR) then
-               begin
-                 BoxWidth := (rec.Right - rec.Left) / dpix * 96.0;
-                 BoxHeight := (rec.Bottom - rec.Top) / dpiy * 96.0;
-                 if not obj.WordWrap then
-                   BoxWidth := 100000; // Large width to prevent wrap if disabled
-
-                 HR := DWriteFactory.CreateTextLayout(
-                   PWideChar(PlainText),
-                   Length(PlainText),
-                   TextFormat,
-                   BoxWidth,
-                   BoxHeight,
-                   TextLayout
-                 );
-               end;
-
-               if Succeeded(HR) then
-               begin
-                 Pos := 0;
-                 for Seg in Segments do
-                 begin
-                   Range.startPosition := Pos;
-                   Range.length := Length(Seg.Text);
-                   if hsBold in Seg.Styles then TextLayout.SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, Range);
-                   if hsItalic in Seg.Styles then TextLayout.SetFontStyle(DWRITE_FONT_STYLE_ITALIC, Range);
-                   TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
-                   TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
-
-                   StyleVal := 0;
-                   if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
-                   if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
-                   if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
-                   if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
-                   if StyleVal <> 0 then
-                     TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal) as IUnknown, Range);
-
-                   Pos := Pos + Length(Seg.Text);
-                 end;
-
-                 if (obj.Alignment and AlignmentFlags_AlignHCenter) <> 0 then
-                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER)
-                 else if (obj.Alignment and AlignmentFlags_AlignRight) <> 0 then
-                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING)
-                 else if (obj.Alignment and AlignmentFlags_AlignHJustify) <> 0 then
-                   TextLayout.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
-
-                 VColor := CLXColorToVCLColor(obj.FontColor);
-                 Color.r := GetRValue(VColor) / 255.0;
-                 Color.g := GetGValue(VColor) / 255.0;
-                 Color.b := GetBValue(VColor) / 255.0;
-                 Color.a := 1.0;
-
-                 Origin.x := posx / dpix * 96.0;
-                 Origin.y := posy / dpiy * 96.0;
-
-                 RT.CreateSolidColorBrush(Color, nil, Brush);
-                 RT.DrawTextLayout(Origin, TextLayout, Brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
-               end;
-
-               RT.EndDraw;
-               Segments.Free;
-            end;
+             // IsHtml rendering using GDI (not DirectWrite, for WMF compatibility)
+             // Reuse TextRectJustify which uses PDF driver for text extent
+             astring := page.GetText(obj);
+             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
+             rec.Top := Round(posy / dpiy * TWIPS_PER_INCHESS);
+             rec.Right := rec.Left + obj.Width;
+             rec.Bottom := rec.Top + obj.Height;
+             if ((obj.Transparent) and (not selected)) then
+             begin
+               SetBkMode(Canvas.handle, Transparent);
+               drawbackground := false;
+             end
+             else
+             begin
+               SetBkMode(Canvas.handle, OPAQUE);
+               drawbackground := true;
+             end;
+             if selected then
+             begin
+               Canvas.Brush.Color := clHighlight;
+               Canvas.Font.Color := clHighlightText;
+             end;
+             TextRectHtml(Canvas, rec, astring, obj.Alignment, obj.CutText,
+               obj.WordWrap, obj.FontRotation, obj.FontStyle, drawbackground,
+               CLXColorToVCLColor(obj.BackColor));
           end
           else
           if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
@@ -1484,7 +1368,7 @@ begin
     end;
     if Clipping then
     begin
-      // Convertir ARect de twips a píxeles
+      // Convertir ARect de twips a pÃ­xeles
       clipRect.Left   := Round(ARect.Left   * aintdpix / 1440);
       clipRect.Right  := Round(ARect.Right  * aintdpix / 1440);
       clipRect.Top    := Round(ARect.Top    * aintdpiy / 1440);
@@ -1493,7 +1377,7 @@ begin
       // Guardar estado del DC (incluye clipping)
       savedDC := SaveDC(Canvas.Handle);
 
-      // Crear región de clipping y aplicarla
+      // Crear regiÃ³n de clipping y aplicarla
       clipRgn := CreateRectRgn(clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
       SelectClipRgn(Canvas.Handle, clipRgn);
     end;
@@ -1672,7 +1556,205 @@ begin
     begin
       // Restaurar el estado del DC (restablece el clipping anterior)
       RestoreDC(Canvas.Handle, savedDC);
-      // Liberar la región que creamos
+      // Liberar la regiÃ³n que creamos
+      DeleteObject(clipRgn);
+    end;
+  end;
+end;
+
+procedure TRpGDIDriver.TextRectHtml(Canvas: TCanvas; ARect: TRect;
+  Text: Widestring; Alignment: integer; Clipping: boolean; Wordbreak: boolean;
+  Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
+  BackColor: TColor);
+var
+  recsize: TRect;
+  i, k: integer;
+  posx, posy: integer;
+  singleline: boolean;
+  larray: TRpLineInfoArray;
+  ascent: Integer;
+  clipRgn: HRGN;
+  clipRect: TRect;
+  savedDC: Integer;
+  aintdpix, aintdpiy: integer;
+  nposx, nposy: integer;
+  arec2: TRect;
+  aalign: Cardinal;
+  runText: WideString;
+  runStyle, glyphStyle: Integer;
+  origFontStyle: TFontStyles;
+  baseBold, baseItalic, baseUnderline, baseStrikeOut: Boolean;
+begin
+  try
+    if drawbackground then
+    begin
+      Canvas.Pen.Color := BackColor;
+      Canvas.Brush.Color := BackColor;
+    end;
+    singleline := (Alignment AND AlignmentFlags_SingleLine) > 0;
+    if singleline then
+      Wordbreak := false;
+    if toprinter then
+    begin
+      if intdpix = 0 then
+      begin
+        intdpix := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSX);
+        intdpiy := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSY);
+      end;
+      aintdpix := intdpix;
+      aintdpiy := intdpiy;
+    end
+    else
+    begin
+      aintdpix := dpi;
+      aintdpiy := dpi;
+    end;
+    if Clipping then
+    begin
+      clipRect.Left   := Round(ARect.Left   * aintdpix / 1440);
+      clipRect.Right  := Round(ARect.Right  * aintdpix / 1440);
+      clipRect.Top    := Round(ARect.Top    * aintdpiy / 1440);
+      clipRect.Bottom := Round(ARect.Bottom * aintdpiy / 1440);
+      savedDC := SaveDC(Canvas.Handle);
+      clipRgn := CreateRectRgn(clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
+      SelectClipRgn(Canvas.Handle, clipRgn);
+    end;
+
+    // Use PDF driver to calculate text extent with IsHtml=true
+    recsize := ARect;
+    if not assigned(npdfdriver) then
+    begin
+      npdfdriver := TRpPDFDriver.Create;
+      npdfdriver.PDFConformance:= FReport.PDFConformance;
+    end;
+    npdfdriver.PDFFile.Canvas.Font.Size := Canvas.Font.Size;
+    npdfdriver.PDFFile.Canvas.Font.WFontName := Canvas.Font.Name;
+    npdfdriver.PDFFile.Canvas.Font.Name := poLinked;
+    npdfdriver.PDFFile.Canvas.Font.Color := Canvas.Font.Color;
+    npdfdriver.PDFFile.Canvas.Font.Italic := fsItalic in Canvas.Font.Style;
+    npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
+    npdfdriver.PDFFile.Canvas.Font.Underline := fsUnderline in Canvas.Font.Style;
+    npdfdriver.PDFFile.Canvas.Font.StrikeOut := fsStrikeOut in Canvas.Font.Style;
+
+    larray := npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
+      false, true); // IsHtml=true
+
+    // Base font style from the element
+    baseBold := (BaseFontStyle and 1) > 0;
+    baseItalic := (BaseFontStyle and 2) > 0;
+    baseUnderline := (BaseFontStyle and 4) > 0;
+    baseStrikeOut := (BaseFontStyle and 8) > 0;
+    origFontStyle := Canvas.Font.Style;
+
+    // Apply vertical alignment
+    posy := ARect.Top;
+    if (Alignment AND AlignmentFlags_AlignBottom) > 0 then
+      posy := ARect.Bottom - recsize.Bottom;
+    if (Alignment AND AlignmentFlags_AlignVCenter) > 0 then
+      posy := ARect.Top + (((ARect.Bottom - ARect.Top) - recsize.Bottom) div 2);
+
+    for i := 0 to Length(larray) - 1 do
+    begin
+      if (i = 0) then
+        ascent := larray[0].TopPos;
+      posx := ARect.Left;
+
+      // Horizontal alignment
+      if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+        posx := ARect.Right - larray[i].Width;
+      if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+        posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
+
+      // Draw glyphs grouped by style
+      if Length(larray[i].Glyphs) > 0 then
+      begin
+        nposx := posx;
+        nposy := posy + larray[i].TopPos - ascent;
+        runText := '';
+        runStyle := larray[i].Glyphs[0].Style;
+        var runStartX := nposx;
+
+        for k := 0 to High(larray[i].Glyphs) do
+        begin
+          glyphStyle := larray[i].Glyphs[k].Style;
+
+          // If style changed, flush the current run
+          if (glyphStyle <> runStyle) and (Length(runText) > 0) then
+          begin
+            // Apply combined font style (base OR html)
+            Canvas.Font.Style := [];
+            if baseBold or ((runStyle and 1) > 0) then
+              Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+            if baseItalic or ((runStyle and 2) > 0) then
+              Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+            if baseUnderline or ((runStyle and 4) > 0) then
+              Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+            if baseStrikeOut or ((runStyle and 8) > 0) then
+              Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+
+            // Draw this run at the run start position
+            arec2.Left := Round(runStartX * aintdpix / 1440);
+            arec2.Top := Round(nposy * aintdpiy / 1440);
+            arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
+            arec2.Right := Round(ARect.Right * aintdpix / 1440);
+            aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
+            DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
+
+            runText := '';
+            runStyle := glyphStyle;
+            runStartX := nposx;
+          end;
+
+          // Accumulate glyph text
+          runText := runText + larray[i].Glyphs[k].CharCode;
+          // Advance X position by this glyph's advance width
+          nposx := nposx + larray[i].Glyphs[k].XAdvance;
+        end;
+
+        // Flush the last run
+        if Length(runText) > 0 then
+        begin
+          Canvas.Font.Style := [];
+          if baseBold or ((runStyle and 1) > 0) then
+            Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+          if baseItalic or ((runStyle and 2) > 0) then
+            Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+          if baseUnderline or ((runStyle and 4) > 0) then
+            Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+          if baseStrikeOut or ((runStyle and 8) > 0) then
+            Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+
+          arec2.Left := Round(runStartX * aintdpix / 1440);
+          arec2.Top := Round(nposy * aintdpiy / 1440);
+          arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
+          arec2.Right := Round(ARect.Right * aintdpix / 1440);
+          aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
+          DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
+        end;
+      end
+      else
+      begin
+        // No glyphs â€” fall back to plain text drawing for this line
+        nposx := posx;
+        nposy := posy + larray[i].TopPos - ascent;
+        nposx := Round(nposx * aintdpix / 1440);
+        nposy := Round(nposy * aintdpiy / 1440);
+        arec2.Left := nposx;
+        arec2.Top := nposy;
+        arec2.Bottom := arec2.Top + 100;
+        arec2.Right := Round(ARect.Right * aintdpix / 1440);
+        aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT;
+        runText := larray[i].Text;
+        DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
+      end;
+    end;
+
+    // Restore original font style
+    Canvas.Font.Style := origFontStyle;
+  finally
+    if Clipping then
+    begin
+      RestoreDC(Canvas.Handle, savedDC);
       DeleteObject(clipRgn);
     end;
   end;

@@ -114,7 +114,8 @@ type
     pdfFont: TRpPDFFont;
     wordwrap: Boolean;
     singleline: Boolean;
-    FontSize: Double
+    FontSize: Double;
+    IsHtml: Boolean
   ): TRpLineInfoArray;
 {$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
@@ -346,18 +347,7 @@ function TRpFTInfoProvider.TextExtent(
   IsHtml: Boolean
 ): TRpLineInfoArray;
 begin
-  if IsHtml then
-    Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize)
-  else
-  begin
-    // Original implementation for non-HTML
-    Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize);
-    // Actually we can reuse the same function if we handle IsHtml=False inside
-    // But since I'm rewriting it to support HTML, I'll put the logic in TextExtentHtml
-    // and call it.
-    // Wait, I am REPLACING TextExtent.
-    // So I should put the logic here.
-  end;
+  Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml);
 end;
 
 function TRpFTInfoProvider.TextExtentHtml(
@@ -367,7 +357,8 @@ function TRpFTInfoProvider.TextExtentHtml(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
@@ -427,7 +418,13 @@ begin
   PosY:=0;
   PosY:=PosY+ascentSpacing;
 
-  Segments := ParseHtml(Text);
+  if IsHtml then
+    Segments := ParseHtml(Text)
+  else
+  begin
+    Segments := THtmlSegmentList.Create(True);
+    Segments.Add(THtmlSegment.Create(Text, []));
+  end;
   try
     PlainText := '';
     for Seg in Segments do
@@ -499,13 +496,17 @@ begin
                  runWidth:=runWidth+positions[k].XAdvance;
                  positions[k].LineCluster:=positions[k].Cluster + (IntStart - lineSubText.Position);
                  positions[k].Style := 0;
-                 // Store style if needed for drawing, but TextExtent is for measuring.
+                 if hsBold in Seg.Styles then positions[k].Style := positions[k].Style or 1;
+                 if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
+                 if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
+                 if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
                end;
 
                if ((runWidth<=remaining) or (not WordWrap)) then
                begin
                  for g in positions do
                    currentChunk.AddGlyph(g, logicalRun.LogicalStart);
+                 remaining:=remaining-runWidth;
                end
                else
                begin
