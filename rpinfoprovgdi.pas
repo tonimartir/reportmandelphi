@@ -360,6 +360,35 @@ begin
     TextFormat
   );
 
+  // Detect paragraph direction from first strong character (skip HTML tags)
+  var inTag: Boolean := False;
+  var firstStrongRTL: Boolean := False;
+  var dirDetected: Boolean := False;
+  for var ci := 1 to Length(Text) do
+  begin
+    if Text[ci] = '<' then begin inTag := True; Continue; end;
+    if Text[ci] = '>' then begin inTag := False; Continue; end;
+    if inTag then Continue;
+    var cp: Integer := Ord(Text[ci]);
+    if cp <= $40 then Continue; // skip whitespace, control, digits, punctuation
+    // Arabic
+    if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
+       ((cp >= $8A0) and (cp <= $8FF)) or ((cp >= $FB50) and (cp <= $FDFF)) or
+       ((cp >= $FE70) and (cp <= $FEFF)) then
+    begin firstStrongRTL := True; dirDetected := True; Break; end;
+    // Hebrew
+    if ((cp >= $590) and (cp <= $5FF)) or ((cp >= $FB1D) and (cp <= $FB4F)) then
+    begin firstStrongRTL := True; dirDetected := True; Break; end;
+    // Latin, Greek, Cyrillic = LTR
+    if (cp >= $41) and (cp <= $24F) then
+    begin dirDetected := True; Break; end;
+    // CJK = LTR
+    if (cp >= $4E00) and (cp <= $9FFF) then
+    begin dirDetected := True; Break; end;
+  end;
+//  if firstStrongRTL then
+//    TextFormat.SetReadingDirection(1); // DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1
+
   // Initialize per-character font info arrays
   SetLength(charFontFamilies, 0);
   SetLength(charFontSizes, 0);

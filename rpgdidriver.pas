@@ -1679,6 +1679,7 @@ begin
         if not larray[i].Glyphs[0].HasFontSize then
           runFontSize := origFontSize;
         var runStartX := nposx;
+        var singleRun: Boolean := True; // Track if line has only one run
 
         // Compute base font ascent for baseline alignment
         var baseTM: TTextMetric;
@@ -1728,6 +1729,7 @@ begin
             DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
 
             runText := '';
+            singleRun := False; // Multiple runs detected
             runStyle := glyphStyle;
             runFontFamily := gFontFamily;
             runFontSize := gFontSize;
@@ -1771,6 +1773,12 @@ begin
           begin
             arec2.Left := Round(runStartX * aintdpix / 1440);
             aalign := DT_NOPREFIX or DT_NOCLIP or DT_RIGHT or DT_SINGLELINE;
+          end
+          // For center-aligned text with a single run, use DT_CENTER with full rect
+          else if singleRun and ((Alignment AND AlignmentFlags_AlignHCenter) > 0) then
+          begin
+            arec2.Left := Round(ARect.Left * aintdpix / 1440);
+            aalign := DT_NOPREFIX or DT_NOCLIP or DT_CENTER or DT_SINGLELINE;
           end
           else
           begin

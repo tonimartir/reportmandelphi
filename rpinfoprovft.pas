@@ -506,6 +506,39 @@ begin
                ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
                positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
 
+               // Font fallback: if any glyph has GlyphIndex=0, the current font
+               // doesn't support these characters. Try re-selecting with content.
+               // This matches the old TextExtent fallback logic.
+               var doFallback := false;
+               for k:=0 to Length(positions)-1 do
+               begin
+                 if (positions[k].GlyphIndex = 0) then
+                 begin
+                   doFallback := true;
+                   break;
+                 end;
+               end;
+               if (doFallback) then
+               begin
+                 SelectFont(TempFont, ChunkText, false);
+                 positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
+                 // Second fallback: ignore family
+                 var secondFallback := false;
+                 for k:=0 to Length(positions)-1 do
+                 begin
+                   if (positions[k].GlyphIndex = 0) then
+                   begin
+                     secondFallback := true;
+                     break;
+                   end;
+                 end;
+                 if (secondFallback) then
+                 begin
+                   SelectFont(TempFont, ChunkText, true);
+                   positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
+                 end;
+               end;
+
                runWidth:=0;
                for k:=0 to Length(positions)-1 do
                begin
