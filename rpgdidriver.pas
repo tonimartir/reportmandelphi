@@ -1730,8 +1730,8 @@ begin
         if not larray[i].Glyphs[0].HasFontSize then
           runFontSize := origFontSize;
 
-        // Glyph index and advance width arrays for ETO_GLYPH_INDEX
-        var runFirstGlyph: Integer := 0; // Index of first glyph in current run
+        // Run tracking
+        var runFirstGlyph: Integer := 0;
         SetLength(runGlyphs, 0);
         SetLength(runDx, 0);
 
@@ -1754,7 +1754,6 @@ begin
           if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
               (gFontSize <> runFontSize)) and (Length(runGlyphs) > 0) then
           begin
-            // Apply combined font style (base OR html)
             Canvas.Font.Style := [];
             if baseBold or ((runStyle and 1) > 0) then
               Canvas.Font.Style := Canvas.Font.Style + [fsBold];
@@ -1774,9 +1773,7 @@ begin
 
             // Draw run at pre-computed pixel position
             var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
-            var pixX: Integer := allPixPos[runFirstGlyph];
-
-            ExtTextOutW(Canvas.Handle, pixX , pixY, ETO_GLYPH_INDEX, nil,
+            ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY, ETO_GLYPH_INDEX, nil,
               PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
 
             SetLength(runGlyphs, 0);
@@ -1819,6 +1816,7 @@ begin
           ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY2, ETO_GLYPH_INDEX, nil,
             PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
         end;
+
         // Restore original font
         Canvas.Font.Name := origFontName;
         Canvas.Font.Size := origFontSize;
