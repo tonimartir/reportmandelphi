@@ -1584,6 +1584,10 @@ var
   runStyle, glyphStyle: Integer;
   origFontStyle: TFontStyles;
   baseBold, baseItalic, baseUnderline, baseStrikeOut: Boolean;
+  allPixPos: array of Integer;
+  allDx: array of Integer;
+  runGlyphs: array of Word;
+  runDx: array of Integer;
 begin
   try
     if drawbackground then
@@ -1670,6 +1674,52 @@ begin
       // This prevents GDI from re-applying bidi/shaping (which breaks Arabic)
       if Length(larray[i].Glyphs) > 0 then
       begin
+        var glyphCount: Integer := Length(larray[i].Glyphs);
+
+        // Pre-compute pixel X position for each glyph
+        // For right alignment: anchor from right edge so rounding error goes LEFT
+        // For left/center: anchor from left so rounding error goes RIGHT
+        SetLength(allPixPos, glyphCount);
+        SetLength(allDx, glyphCount);
+
+        if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+        begin
+          // Right-anchored: iterate backwards from right edge
+          var pixRight: Integer := Round(ARect.Right * aintdpix / 1440);
+          var cumRight: Integer := 0; // cumulative twips from right
+          for k := glyphCount - 1 downto 0 do
+          begin
+            cumRight := cumRight + larray[i].Glyphs[k].XAdvance;
+            allPixPos[k] := pixRight - Round(cumRight * aintdpix / 1440);
+          end;
+        end
+        else
+        begin
+          // Left-anchored (left or center alignment)
+          var pixLeft: Integer := Round(ARect.Left * aintdpix / 1440);
+          if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+          begin
+            var totalTwips: Integer := 0;
+            for k := 0 to glyphCount - 1 do
+              totalTwips := totalTwips + larray[i].Glyphs[k].XAdvance;
+            var totalPix: Integer := Round(totalTwips * aintdpix / 1440);
+            var rectPix: Integer := Round(ARect.Right * aintdpix / 1440) - pixLeft;
+            pixLeft := pixLeft + ((rectPix - totalPix) div 2);
+          end;
+          var cumLeft: Integer := 0;
+          for k := 0 to glyphCount - 1 do
+          begin
+            allPixPos[k] := pixLeft + Round(cumLeft * aintdpix / 1440);
+            cumLeft := cumLeft + larray[i].Glyphs[k].XAdvance;
+          end;
+        end;
+
+        // Compute dx values from consecutive pixel positions
+        for k := 0 to glyphCount - 2 do
+          allDx[k] := allPixPos[k + 1] - allPixPos[k];
+        // Last glyph dx (cell width, no next glyph to position)
+        allDx[glyphCount - 1] := Round(larray[i].Glyphs[glyphCount - 1].XAdvance * aintdpix / 1440);
+
         nposx := posx;
         nposy := posy + larray[i].TopPos - ascent;
         runStyle := larray[i].Glyphs[0].Style;
@@ -1679,11 +1729,9 @@ begin
         var origFontSize: Integer := Canvas.Font.Size;
         if not larray[i].Glyphs[0].HasFontSize then
           runFontSize := origFontSize;
-        var runStartX := nposx;
 
         // Glyph index and advance width arrays for ETO_GLYPH_INDEX
-        var runGlyphs: array of Word;
-        var runDx: array of Integer;
+        var runFirstGlyph: Integer := 0; // Index of first glyph in current run
         SetLength(runGlyphs, 0);
         SetLength(runDx, 0);
 
@@ -1694,7 +1742,7 @@ begin
         GetTextMetrics(Canvas.Handle, baseTM);
         var baseAscent: Integer := baseTM.tmAscent;
 
-        for k := 0 to High(larray[i].Glyphs) do
+        for k := 0 to glyphCount - 1 do
         begin
           glyphStyle := larray[i].Glyphs[k].Style;
           var gFontFamily: string := larray[i].Glyphs[k].FontFamily;
@@ -1716,20 +1764,19 @@ begin
               Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
             if baseStrikeOut or ((runStyle and 8) > 0) then
               Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
-            // Apply font family and size
             if runFontFamily <> '' then
               Canvas.Font.Name := runFontFamily;
             Canvas.Font.Size := Round(runFontSize);
 
-            // Compute baseline offset for this run's font
             var runTM: TTextMetric;
             GetTextMetrics(Canvas.Handle, runTM);
             var baselineOffset: Integer := runTM.tmAscent - baseAscent;
 
-            // Draw run using ETO_GLYPH_INDEX — bypasses all GDI bidi/shaping
-            var pixX: Integer := Round(runStartX * aintdpix / 1440);
+            // Draw run at pre-computed pixel position
             var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
-            ExtTextOutW(Canvas.Handle, pixX, pixY, ETO_GLYPH_INDEX, nil,
+            var pixX: Integer := allPixPos[runFirstGlyph];
+
+            ExtTextOutW(Canvas.Handle, pixX , pixY, ETO_GLYPH_INDEX, nil,
               PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
 
             SetLength(runGlyphs, 0);
@@ -1737,15 +1784,14 @@ begin
             runStyle := glyphStyle;
             runFontFamily := gFontFamily;
             runFontSize := gFontSize;
-            runStartX := nposx;
+            runFirstGlyph := k;
           end;
 
-          // Accumulate glyph index and advance width
+          // Accumulate glyph index and pre-computed dx
           SetLength(runGlyphs, Length(runGlyphs) + 1);
           runGlyphs[High(runGlyphs)] := Word(larray[i].Glyphs[k].GlyphIndex);
           SetLength(runDx, Length(runDx) + 1);
-          runDx[High(runDx)] := Round(larray[i].Glyphs[k].XAdvance * aintdpix / 1440);
-          // Advance X position by this glyph's advance width
+          runDx[High(runDx)] := allDx[k];
           nposx := nposx + larray[i].Glyphs[k].XAdvance;
         end;
 
@@ -1761,20 +1807,16 @@ begin
             Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
           if baseStrikeOut or ((runStyle and 8) > 0) then
             Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
-          // Apply font family and size
           if runFontFamily <> '' then
             Canvas.Font.Name := runFontFamily;
           Canvas.Font.Size := Round(runFontSize);
 
-          // Compute baseline offset for this run's font
           var runTM2: TTextMetric;
           GetTextMetrics(Canvas.Handle, runTM2);
           var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
 
-          // Draw last run using ETO_GLYPH_INDEX
-          var pixX2: Integer := Round(runStartX * aintdpix / 1440);
           var pixY2: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset2;
-          ExtTextOutW(Canvas.Handle, pixX2, pixY2, ETO_GLYPH_INDEX, nil,
+          ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY2, ETO_GLYPH_INDEX, nil,
             PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
         end;
         // Restore original font
