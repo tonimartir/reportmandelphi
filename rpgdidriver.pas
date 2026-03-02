@@ -1,4 +1,4 @@
-// Report Manager
+﻿// Report Manager
 // Rpgdidriver
 // TRpGDIDriver: Printer driver for  VCL Lib
 // can be used only for windows }
@@ -1666,11 +1666,12 @@ begin
         posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
 
       // Draw glyphs grouped by style AND font family AND font size
+      // Uses ETO_GLYPH_INDEX to render pre-shaped glyph IDs from DirectWrite/HarfBuzz
+      // This prevents GDI from re-applying bidi/shaping (which breaks Arabic)
       if Length(larray[i].Glyphs) > 0 then
       begin
         nposx := posx;
         nposy := posy + larray[i].TopPos - ascent;
-        runText := '';
         runStyle := larray[i].Glyphs[0].Style;
         var runFontFamily: string := larray[i].Glyphs[0].FontFamily;
         var runFontSize: Single := larray[i].Glyphs[0].FontSize;
@@ -1679,7 +1680,12 @@ begin
         if not larray[i].Glyphs[0].HasFontSize then
           runFontSize := origFontSize;
         var runStartX := nposx;
-        var singleRun: Boolean := True; // Track if line has only one run
+
+        // Glyph index and advance width arrays for ETO_GLYPH_INDEX
+        var runGlyphs: array of Word;
+        var runDx: array of Integer;
+        SetLength(runGlyphs, 0);
+        SetLength(runDx, 0);
 
         // Compute base font ascent for baseline alignment
         var baseTM: TTextMetric;
@@ -1698,7 +1704,7 @@ begin
 
           // If style or font changed, flush the current run
           if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
-              (gFontSize <> runFontSize)) and (Length(runText) > 0) then
+              (gFontSize <> runFontSize)) and (Length(runGlyphs) > 0) then
           begin
             // Apply combined font style (base OR html)
             Canvas.Font.Style := [];
@@ -1720,30 +1726,31 @@ begin
             GetTextMetrics(Canvas.Handle, runTM);
             var baselineOffset: Integer := runTM.tmAscent - baseAscent;
 
-            // Draw this run at the run start position, adjusted for baseline
-            arec2.Left := Round(runStartX * aintdpix / 1440);
-            arec2.Top := Round(nposy * aintdpiy / 1440) - baselineOffset;
-            arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
-            arec2.Right := Round(ARect.Right * aintdpix / 1440);
-            aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
-            DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
+            // Draw run using ETO_GLYPH_INDEX — bypasses all GDI bidi/shaping
+            var pixX: Integer := Round(runStartX * aintdpix / 1440);
+            var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
+            ExtTextOutW(Canvas.Handle, pixX, pixY, ETO_GLYPH_INDEX, nil,
+              PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
 
-            runText := '';
-            singleRun := False; // Multiple runs detected
+            SetLength(runGlyphs, 0);
+            SetLength(runDx, 0);
             runStyle := glyphStyle;
             runFontFamily := gFontFamily;
             runFontSize := gFontSize;
             runStartX := nposx;
           end;
 
-          // Accumulate glyph text
-          runText := runText + larray[i].Glyphs[k].CharCode;
+          // Accumulate glyph index and advance width
+          SetLength(runGlyphs, Length(runGlyphs) + 1);
+          runGlyphs[High(runGlyphs)] := Word(larray[i].Glyphs[k].GlyphIndex);
+          SetLength(runDx, Length(runDx) + 1);
+          runDx[High(runDx)] := Round(larray[i].Glyphs[k].XAdvance * aintdpix / 1440);
           // Advance X position by this glyph's advance width
           nposx := nposx + larray[i].Glyphs[k].XAdvance;
         end;
 
         // Flush the last run
-        if Length(runText) > 0 then
+        if Length(runGlyphs) > 0 then
         begin
           Canvas.Font.Style := [];
           if baseBold or ((runStyle and 1) > 0) then
@@ -1764,28 +1771,11 @@ begin
           GetTextMetrics(Canvas.Handle, runTM2);
           var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
 
-          arec2.Top := Round(nposy * aintdpiy / 1440) - baselineOffset2;
-          arec2.Bottom := arec2.Top + Round(larray[i].Height * aintdpiy / 1440);
-          arec2.Right := Round(ARect.Right * aintdpix / 1440);
-
-          // For right-aligned text, draw last run with DT_RIGHT to snap to right edge
-          if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
-          begin
-            arec2.Left := Round(runStartX * aintdpix / 1440);
-            aalign := DT_NOPREFIX or DT_NOCLIP or DT_RIGHT or DT_SINGLELINE;
-          end
-          // For center-aligned text with a single run, use DT_CENTER with full rect
-          else if singleRun and ((Alignment AND AlignmentFlags_AlignHCenter) > 0) then
-          begin
-            arec2.Left := Round(ARect.Left * aintdpix / 1440);
-            aalign := DT_NOPREFIX or DT_NOCLIP or DT_CENTER or DT_SINGLELINE;
-          end
-          else
-          begin
-            arec2.Left := Round(runStartX * aintdpix / 1440);
-            aalign := DT_NOPREFIX or DT_NOCLIP or DT_LEFT or DT_SINGLELINE;
-          end;
-          DrawTextW(Canvas.handle, PWideChar(runText), Length(runText), arec2, aalign);
+          // Draw last run using ETO_GLYPH_INDEX
+          var pixX2: Integer := Round(runStartX * aintdpix / 1440);
+          var pixY2: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset2;
+          ExtTextOutW(Canvas.Handle, pixX2, pixY2, ETO_GLYPH_INDEX, nil,
+            PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
         end;
         // Restore original font
         Canvas.Font.Name := origFontName;
