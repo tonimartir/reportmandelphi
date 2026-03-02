@@ -4417,6 +4417,8 @@ begin
   originalItalic := Font.Italic;
   actualFontSize := FontSize;
   originalFontSize := FontSize;
+  var actualColor: Integer := Font.Color;
+  var originalColor: Integer := Font.Color;
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4454,6 +4456,19 @@ begin
      actualItalic:=newItalic;
      actualFontSize:=newFontSize;
     end;
+
+    // Color change via rg operator (valid inside BT/ET)
+    var newColor: Integer;
+    var newHasColor: Boolean := g.HasColor;
+    if newHasColor then
+      newColor := g.Color
+    else
+      newColor := originalColor;
+    if newColor <> actualColor then
+    begin
+      Result := Result + RGBToFloats(newColor) + ' rg' + EOL;
+      actualColor := newColor;
+    end;
     // llamadas auxiliares que tenías para compatibilidad
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
     InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
@@ -4483,6 +4498,9 @@ begin
    UpdateFonts;
    adata:=GetTTFontData;
   end;
+  // Restore original color if changed
+  if actualColor <> originalColor then
+    Result := Result + RGBToFloats(originalColor) + ' rg' + EOL;
 end;
 
 function TRpPDFCanvas.PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;

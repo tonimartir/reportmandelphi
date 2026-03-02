@@ -33,14 +33,20 @@ type
   ISimpleStyleEffect = interface
     ['{6E616D65-0000-0000-0000-000000000001}']
     function GetStyle: Integer;
+    function GetColor: Integer;
+    function GetHasColor: Boolean;
   end;
 
   TStyleEffect = class(TInterfacedObject, ISimpleStyleEffect)
   private
     FStyle: Integer;
+    FColor: Integer;
+    FHasColor: Boolean;
   public
-    constructor Create(AStyle: Integer);
+    constructor Create(AStyle: Integer; AColor: Integer = 0; AHasColor: Boolean = False);
     function GetStyle: Integer;
+    function GetColor: Integer;
+    function GetHasColor: Boolean;
   end;
 
   // --- Estructura para línea de glifos ---
@@ -430,7 +436,11 @@ begin
       begin
         var Effect: ISimpleStyleEffect;
         if Supports(clientDrawingEffect, ISimpleStyleEffect, Effect) then
+        begin
           GlyphPos.Style := Effect.GetStyle;
+          GlyphPos.Color := Effect.GetColor;
+          GlyphPos.HasColor := Effect.GetHasColor;
+        end;
       end;
 
       GlyphList.Add(GlyphPos);
@@ -529,15 +539,27 @@ end;
 
 { TStyleEffect }
 
-constructor TStyleEffect.Create(AStyle: Integer);
+constructor TStyleEffect.Create(AStyle: Integer; AColor: Integer; AHasColor: Boolean);
 begin
   inherited Create;
   FStyle := AStyle;
+  FColor := AColor;
+  FHasColor := AHasColor;
 end;
 
 function TStyleEffect.GetStyle: Integer;
 begin
   Result := FStyle;
+end;
+
+function TStyleEffect.GetColor: Integer;
+begin
+  Result := FColor;
+end;
+
+function TStyleEffect.GetHasColor: Boolean;
+begin
+  Result := FHasColor;
 end;
 
 end.

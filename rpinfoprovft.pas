@@ -552,6 +552,8 @@ begin
                  positions[k].FontFamily := TempFont.WFontName;
                  positions[k].FontSize := activeSize;
                  positions[k].HasFontSize := Seg.HasFontSize;
+                 positions[k].Color := Seg.Color;
+                 positions[k].HasColor := Seg.HasColor;
                end;
 
                if ((runWidth<=remaining) or (not WordWrap)) then

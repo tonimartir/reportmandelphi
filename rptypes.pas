@@ -124,6 +124,8 @@ type
    FontSize: Single;
    HasFontSize: Boolean;
    Style: Integer;
+   Color: Integer;
+   HasColor: Boolean;
  end;
  TGlyphPosArray = array of TGlyphPos;
  TRpLineInfo=record

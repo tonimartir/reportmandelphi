@@ -1725,8 +1725,11 @@ begin
         runStyle := larray[i].Glyphs[0].Style;
         var runFontFamily: string := larray[i].Glyphs[0].FontFamily;
         var runFontSize: Single := larray[i].Glyphs[0].FontSize;
+        var runColor: Integer := larray[i].Glyphs[0].Color;
+        var runHasColor: Boolean := larray[i].Glyphs[0].HasColor;
         var origFontName: string := Canvas.Font.Name;
         var origFontSize: Integer := Canvas.Font.Size;
+        var origFontColor: TColor := Canvas.Font.Color;
         if not larray[i].Glyphs[0].HasFontSize then
           runFontSize := origFontSize;
 
@@ -1750,9 +1753,13 @@ begin
           if not larray[i].Glyphs[k].HasFontSize then
             gFontSize := origFontSize;
 
-          // If style or font changed, flush the current run
+          var gColor: Integer := larray[i].Glyphs[k].Color;
+          var gHasColor: Boolean := larray[i].Glyphs[k].HasColor;
+
+          // If style, font, or color changed, flush the current run
           if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
-              (gFontSize <> runFontSize)) and (Length(runGlyphs) > 0) then
+              (gFontSize <> runFontSize) or (gColor <> runColor) or
+              (gHasColor <> runHasColor)) and (Length(runGlyphs) > 0) then
           begin
             Canvas.Font.Style := [];
             if baseBold or ((runStyle and 1) > 0) then
@@ -1766,6 +1773,10 @@ begin
             if runFontFamily <> '' then
               Canvas.Font.Name := runFontFamily;
             Canvas.Font.Size := Round(runFontSize);
+            if runHasColor then
+              Canvas.Font.Color := runColor
+            else
+              Canvas.Font.Color := origFontColor;
 
             var runTM: TTextMetric;
             GetTextMetrics(Canvas.Handle, runTM);
@@ -1781,6 +1792,8 @@ begin
             runStyle := glyphStyle;
             runFontFamily := gFontFamily;
             runFontSize := gFontSize;
+            runColor := gColor;
+            runHasColor := gHasColor;
             runFirstGlyph := k;
           end;
 
@@ -1807,6 +1820,10 @@ begin
           if runFontFamily <> '' then
             Canvas.Font.Name := runFontFamily;
           Canvas.Font.Size := Round(runFontSize);
+          if runHasColor then
+            Canvas.Font.Color := runColor
+          else
+            Canvas.Font.Color := origFontColor;
 
           var runTM2: TTextMetric;
           GetTextMetrics(Canvas.Handle, runTM2);
@@ -1820,6 +1837,7 @@ begin
         // Restore original font
         Canvas.Font.Name := origFontName;
         Canvas.Font.Size := origFontSize;
+        Canvas.Font.Color := origFontColor;
       end
       else
       begin

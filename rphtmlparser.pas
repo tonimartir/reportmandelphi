@@ -18,14 +18,19 @@ type
     FFontFamily: string;
     FFontSize: Single;
     FHasFontSize: Boolean;
+    FColor: Integer;
+    FHasColor: Boolean;
   public
     constructor Create(const AText: string; AStyles: THtmlStyles;
-      const AFontFamily: string = ''; AFontSize: Single = 0; AHasFontSize: Boolean = False);
+      const AFontFamily: string = ''; AFontSize: Single = 0; AHasFontSize: Boolean = False;
+      AColor: Integer = 0; AHasColor: Boolean = False);
     property Text: string read FText write FText;
     property Styles: THtmlStyles read FStyles write FStyles;
     property FontFamily: string read FFontFamily write FFontFamily;
     property FontSize: Single read FFontSize write FFontSize;
     property HasFontSize: Boolean read FHasFontSize write FHasFontSize;
+    property Color: Integer read FColor write FColor;
+    property HasColor: Boolean read FHasColor write FHasColor;
   end;
 
   { A list of HTML segments }
@@ -46,13 +51,16 @@ uses
 { THtmlSegment }
 
 constructor THtmlSegment.Create(const AText: string; AStyles: THtmlStyles;
-  const AFontFamily: string; AFontSize: Single; AHasFontSize: Boolean);
+  const AFontFamily: string; AFontSize: Single; AHasFontSize: Boolean;
+  AColor: Integer; AHasColor: Boolean);
 begin
   FText := AText;
   FStyles := AStyles;
   FFontFamily := AFontFamily;
   FFontSize := AFontSize;
   FHasFontSize := AHasFontSize;
+  FColor := AColor;
+  FHasColor := AHasColor;
 end;
 
 { Helper: Decode basic HTML entities }
@@ -93,6 +101,67 @@ begin
     while (p2 <= Length(Attrs)) and (Attrs[p2] <> ';') and (Attrs[p2] <> '''') and (Attrs[p2] <> '"') do
       Inc(p2);
     Result := Trim(Copy(Attrs, p, p2 - p));
+  end;
+end;
+
+{ Extract color from style attribute: color: #RRGGBB or color: #RGB or color: name }
+function ExtractColor(const Attrs: string; out AColor: Integer): Boolean;
+var
+  p, p2: Integer;
+  val: string;
+  r, g, b: Integer;
+begin
+  Result := False;
+  AColor := 0;
+  p := Pos('color', LowerCase(Attrs));
+  if p = 0 then Exit;
+  // Ensure it's not 'background-color'
+  if (p > 1) and (Attrs[p-1] <> ';') and (Attrs[p-1] <> ' ') and (Attrs[p-1] <> '"') then Exit;
+  p := PosEx(':', Attrs, p);
+  if p = 0 then Exit;
+  Inc(p);
+  while (p <= Length(Attrs)) and (Attrs[p] = ' ') do Inc(p);
+  p2 := p;
+  while (p2 <= Length(Attrs)) and (Attrs[p2] <> ';') and (Attrs[p2] <> '''') and (Attrs[p2] <> '"') do
+    Inc(p2);
+  val := Trim(Copy(Attrs, p, p2 - p));
+  if val = '' then Exit;
+
+  // Parse #RRGGBB or #RGB
+  if (Length(val) > 0) and (val[1] = '#') then
+  begin
+    val := Copy(val, 2, Length(val) - 1);
+    if Length(val) = 6 then
+    begin
+      r := StrToIntDef('$' + Copy(val, 1, 2), 0);
+      g := StrToIntDef('$' + Copy(val, 3, 2), 0);
+      b := StrToIntDef('$' + Copy(val, 5, 2), 0);
+      AColor := r or (g shl 8) or (b shl 16); // TColor BGR format
+      Result := True;
+    end
+    else if Length(val) = 3 then
+    begin
+      r := StrToIntDef('$' + val[1] + val[1], 0);
+      g := StrToIntDef('$' + val[2] + val[2], 0);
+      b := StrToIntDef('$' + val[3] + val[3], 0);
+      AColor := r or (g shl 8) or (b shl 16);
+      Result := True;
+    end;
+  end
+  else
+  begin
+    // Named colors
+    val := LowerCase(val);
+    if val = 'red' then begin AColor := $0000FF; Result := True; end
+    else if val = 'blue' then begin AColor := $FF0000; Result := True; end
+    else if val = 'green' then begin AColor := $008000; Result := True; end
+    else if val = 'black' then begin AColor := $000000; Result := True; end
+    else if val = 'white' then begin AColor := $FFFFFF; Result := True; end
+    else if val = 'yellow' then begin AColor := $00FFFF; Result := True; end
+    else if val = 'orange' then begin AColor := $00A5FF; Result := True; end
+    else if val = 'purple' then begin AColor := $800080; Result := True; end
+    else if val = 'gray' then begin AColor := $808080; Result := True; end
+    else if val = 'grey' then begin AColor := $808080; Result := True; end;
   end;
 end;
 
@@ -200,10 +269,14 @@ var
   CurrentFontFamily: string;
   CurrentFontSize: Single;
   CurrentHasFontSize: Boolean;
+  CurrentColor: Integer;
+  CurrentHasColor: Boolean;
   FontFamilyStack: TStack<string>;
   FontSizeStack: TStack<Single>;
+  ColorStack: TStack<Integer>;
   ExtFamily: string;
   ExtSize: Single;
+  ExtColor: Integer;
 
   procedure AddSegment(const Text: string);
   var
@@ -225,13 +298,15 @@ var
       if (LastSeg.Styles = CurrentStyles) and (LastSeg.Text <> #13#10)
          and (LastSeg.FontFamily = CurrentFontFamily)
          and (LastSeg.FontSize = CurrentFontSize)
-         and (LastSeg.HasFontSize = CurrentHasFontSize) then
+         and (LastSeg.HasFontSize = CurrentHasFontSize)
+         and (LastSeg.Color = CurrentColor)
+         and (LastSeg.HasColor = CurrentHasColor) then
       begin
         LastSeg.Text := LastSeg.Text + Text;
         Exit;
       end;
     end;
-    Result.Add(THtmlSegment.Create(Text, CurrentStyles, CurrentFontFamily, CurrentFontSize, CurrentHasFontSize));
+    Result.Add(THtmlSegment.Create(Text, CurrentStyles, CurrentFontFamily, CurrentFontSize, CurrentHasFontSize, CurrentColor, CurrentHasColor));
   end;
 
 begin
@@ -240,12 +315,16 @@ begin
   CurrentFontFamily := DefaultFontFamily;
   CurrentFontSize := 0;
   CurrentHasFontSize := False;
+  CurrentColor := 0;
+  CurrentHasColor := False;
 
   FontFamilyStack := TStack<string>.Create;
   FontSizeStack := TStack<Single>.Create;
+  ColorStack := TStack<Integer>.Create;
   try
     FontFamilyStack.Push(DefaultFontFamily);
     FontSizeStack.Push(0);
+    ColorStack.Push(-1); // -1 = no color override
 
     P := PChar(AText);
     while P^ <> #0 do
@@ -334,6 +413,21 @@ begin
                 CurrentHasFontSize := False;
               end;
             end;
+            if ColorStack.Count > 1 then
+            begin
+              ColorStack.Pop;
+              ExtColor := ColorStack.Peek;
+              if ExtColor >= 0 then
+              begin
+                CurrentColor := ExtColor;
+                CurrentHasColor := True;
+              end
+              else
+              begin
+                CurrentColor := 0;
+                CurrentHasColor := False;
+              end;
+            end;
           end
           else
           begin
@@ -355,6 +449,15 @@ begin
             end
             else
               FontSizeStack.Push(CurrentFontSize);
+
+            if ExtractColor(TagAttrs, ExtColor) then
+            begin
+              ColorStack.Push(ExtColor);
+              CurrentColor := ExtColor;
+              CurrentHasColor := True;
+            end
+            else
+              ColorStack.Push(ColorStack.Peek);
           end;
         end
         else if (TagName = 'font') then
@@ -381,6 +484,21 @@ begin
                 CurrentHasFontSize := False;
               end;
             end;
+            if ColorStack.Count > 1 then
+            begin
+              ColorStack.Pop;
+              ExtColor := ColorStack.Peek;
+              if ExtColor >= 0 then
+              begin
+                CurrentColor := ExtColor;
+                CurrentHasColor := True;
+              end
+              else
+              begin
+                CurrentColor := 0;
+                CurrentHasColor := False;
+              end;
+            end;
           end
           else
           begin
@@ -402,6 +520,15 @@ begin
             end
             else
               FontSizeStack.Push(CurrentFontSize);
+
+            if ExtractColor(TagAttrs, ExtColor) then
+            begin
+              ColorStack.Push(ExtColor);
+              CurrentColor := ExtColor;
+              CurrentHasColor := True;
+            end
+            else
+              ColorStack.Push(ColorStack.Peek);
           end;
         end;
         // Other unknown tags are silently ignored (stripped)
@@ -410,6 +537,7 @@ begin
   finally
     FontFamilyStack.Free;
     FontSizeStack.Free;
+    ColorStack.Free;
   end;
 end;
 

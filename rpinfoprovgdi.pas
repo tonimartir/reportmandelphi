@@ -478,8 +478,8 @@ begin
         if hsUnderline in Seg.Styles then StyleVal2 := StyleVal2 or 4;
         if hsStrikeOut in Seg.Styles then StyleVal2 := StyleVal2 or 8;
 
-        if StyleVal2 <> 0 then
-           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal2) as IUnknown, Range);
+        if (StyleVal2 <> 0) or Seg.HasColor then
+           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal2, Seg.Color, Seg.HasColor) as IUnknown, Range);
 
         CurrentPos := CurrentPos + SegLen;
       end;
