@@ -1946,7 +1946,7 @@ begin
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  if RightToLeft then
+  if (RightToLeft) or (IsHtml) then
    Text:=InfoProvider.NFCNormalize(Text);
  end;
 

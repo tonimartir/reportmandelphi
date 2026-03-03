@@ -293,9 +293,11 @@ begin
    begin
 {$IFDEF MSWINDOWS}
     FPDFFile.Canvas.Font.WFontName:=page.GetWFontName(Obj);
+    FPDFFile.Canvas.Font.LFontName:=FPDFFile.Canvas.Font.WFontName;
 {$ENDIF}
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
+    FPDFFile.Canvas.Font.WFontName:=FPDFFile.Canvas.Font.LFontName;
 {$ENDIF}
     // Transparent ?
     if (PDFConformance = TPDFConformanceType.PDF_A_3) then
