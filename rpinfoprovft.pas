@@ -453,7 +453,7 @@ var
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
   remaining:double;
   g:TGlyphPos;
-  runWidth:integer;
+  runWidth:double;
   currentChunk: TLineGlyphs;
   visualGlyphs:TList<TGlyphPos>;
   runOffset:integer;
@@ -736,6 +736,7 @@ begin
           Bidi.Free;
         end;
 
+        var lineIdx := 0;
         for calculatedLine in calculatedLines do
         begin
           minCluster:=calculatedline.MinClusterText;
@@ -768,6 +769,72 @@ begin
             end;
            end;
           end;
+
+          // Trim whitespace at word-wrap boundaries (matching C# FontInfoFt / DirectWrite AdjustLineSpaces)
+          var isParaRTL := (visualRuns.Count > 0) and (visualRuns[0].Direction = UBIDI_RTL);
+          if not isParaRTL then
+          begin
+            // LTR: remove trailing whitespace from END of list (visual right)
+            while visualGlyphs.Count > 0 do
+            begin
+              var ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+              if (ch = ' ') or (ch = #9) or (ch = #10) or (ch = #13) then
+                visualGlyphs.Delete(visualGlyphs.Count - 1)
+              else
+                break;
+            end;
+            // Remove leading whitespace from continuation lines (word-wrapped)
+            if lineIdx > 0 then
+            begin
+              while visualGlyphs.Count > 0 do
+              begin
+                var ch := visualGlyphs[0].CharCode;
+                if (ch = ' ') or (ch = #9) then
+                  visualGlyphs.Delete(0)
+                else
+                  break;
+              end;
+            end;
+          end
+          else
+          begin
+            // RTL: remove trailing whitespace from BEGINNING of list (visual left)
+            while visualGlyphs.Count > 0 do
+            begin
+              var ch := visualGlyphs[0].CharCode;
+              if (ch = ' ') or (ch = #9) or (ch = #10) or (ch = #13) then
+                visualGlyphs.Delete(0)
+              else
+                break;
+            end;
+            // Remove leading whitespace from continuation lines (visual right for RTL)
+            if lineIdx > 0 then
+            begin
+              while visualGlyphs.Count > 0 do
+              begin
+                var ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+                if (ch = ' ') or (ch = #9) then
+                  visualGlyphs.Delete(visualGlyphs.Count - 1)
+                else
+                  break;
+              end;
+            end;
+          end;
+
+          // Recompute min/max cluster after trimming
+          if visualGlyphs.Count > 0 then
+          begin
+            minCluster := MaxInt;
+            maxCluster := -1;
+            for k := 0 to visualGlyphs.Count - 1 do
+            begin
+              if visualGlyphs[k].LineCluster < minCluster then
+                minCluster := visualGlyphs[k].LineCluster;
+              if visualGlyphs[k].LineCluster > maxCluster then
+                maxCluster := visualGlyphs[k].LineCluster;
+            end;
+          end;
+
           LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
           LineInfo.Position := minCluster;
           LineInfo.Size := maxCluster - minCluster + 1;
@@ -815,6 +882,7 @@ begin
           Result[High(Result)] := LineInfo;
           if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
           rectTop := rectTop + currentLineSpacing;
+          Inc(lineIdx);
         end;
         calculatedLines.Free;
         possibleBreaksCharIdx.Free;
