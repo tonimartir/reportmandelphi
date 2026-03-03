@@ -117,15 +117,6 @@ type
     FontSize: Double;
     IsHtml: Boolean
   ): TRpLineInfoArray;
-   function TextExtentHtmlSegments(
-     const TextX: WideString;
-     var Rect: TRect;
-     adata: TRpTTFontData;
-     pdfFont: TRpPDFFont;
-     wordwrap: Boolean;
-     singleline: Boolean;
-     FontSize: Double
-   ): TRpLineInfoArray;
 {$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
   procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
@@ -345,6 +336,79 @@ begin
  Result:=NormalizeNFC(astring);
 end;
 
+type
+  TOS2Metrics = record
+    Found: Boolean;
+    sTypoAscender: SmallInt;
+    sTypoDescender: SmallInt;
+    sTypoLineGap: SmallInt;
+    usWinAscent: Word;
+    usWinDescent: Word;
+    fsSelection: Word;
+    function UseTypoMetrics: Boolean;
+  end;
+
+function TOS2Metrics.UseTypoMetrics: Boolean;
+begin
+  Result := (fsSelection and $0080) <> 0; // bit 7
+end;
+
+procedure ReadOS2Metrics(AStream: TMemoryStream; out AResult: TOS2Metrics);
+var
+  fontData: PByte;
+  dataLen: Integer;
+  numTables: Integer;
+  i, recordOffset, off: Integer;
+  tableOffset: Cardinal;
+  tag: AnsiString;
+begin
+  AResult := Default(TOS2Metrics);
+  if (AStream = nil) or (AStream.Size < 12) then Exit;
+
+  fontData := AStream.Memory;
+  dataLen := AStream.Size;
+
+  // Read number of tables from TrueType/OpenType header
+  numTables := (fontData[4] shl 8) or fontData[5];
+
+  // Each table record is 16 bytes, starting at offset 12
+  for i := 0 to numTables - 1 do
+  begin
+    recordOffset := 12 + i * 16;
+    if recordOffset + 16 > dataLen then Break;
+
+    // Table tag is 4 bytes ASCII
+    SetLength(tag, 4);
+    Move(fontData[recordOffset], tag[1], 4);
+
+    if tag = 'OS/2' then
+    begin
+      tableOffset := (Cardinal(fontData[recordOffset + 8]) shl 24) or
+                     (Cardinal(fontData[recordOffset + 9]) shl 16) or
+                     (Cardinal(fontData[recordOffset + 10]) shl 8) or
+                     Cardinal(fontData[recordOffset + 11]);
+
+      if tableOffset + 78 > Cardinal(dataLen) then Exit;
+
+      off := Integer(tableOffset);
+      // fsSelection at offset 62
+      AResult.fsSelection := (Word(fontData[off + 62]) shl 8) or Word(fontData[off + 63]);
+      // sTypoAscender at offset 68
+      AResult.sTypoAscender := SmallInt((Word(fontData[off + 68]) shl 8) or Word(fontData[off + 69]));
+      // sTypoDescender at offset 70
+      AResult.sTypoDescender := SmallInt((Word(fontData[off + 70]) shl 8) or Word(fontData[off + 71]));
+      // sTypoLineGap at offset 72
+      AResult.sTypoLineGap := SmallInt((Word(fontData[off + 72]) shl 8) or Word(fontData[off + 73]));
+      // usWinAscent at offset 74
+      AResult.usWinAscent := (Word(fontData[off + 74]) shl 8) or Word(fontData[off + 75]);
+      // usWinDescent at offset 76
+      AResult.usWinDescent := (Word(fontData[off + 76]) shl 8) or Word(fontData[off + 77]);
+      AResult.Found := True;
+      Exit;
+    end;
+  end;
+end;
+
 function TRpFTInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -356,10 +420,7 @@ function TRpFTInfoProvider.TextExtent(
   IsHtml: Boolean
 ): TRpLineInfoArray;
 begin
-  if IsHtml then
-    Result := TextExtentHtmlSegments(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize)
-  else
-    Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, False);
+  Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml);
 end;
 
 function TRpFTInfoProvider.TextExtentHtml(
@@ -381,7 +442,7 @@ var
   logicalRun, vRun: TBidiRun;
   direction: TRpBidiDirection;
   positions: TGlyphPosArray;
-  lineWidthLimit, posY, maxWidth: Double;
+  lineWidthLimit, rectTop, maxWidth: Double;
   chunks:TList<TGlyphPosArray>;
   chunk: TGlyphPosArray;
   calculatedLines: TList<TLineGlyphs>;
@@ -396,11 +457,6 @@ var
   currentChunk: TLineGlyphs;
   visualGlyphs:TList<TGlyphPos>;
   runOffset:integer;
-  leading: integer;
-  linespacing:integer;
-  linespacingEM: double;
-  textHeight:integer;
-  ascentSpacing:integer;
   originalFont: TRpLogFont;
   Segments: THtmlSegmentList;
   PlainText: WideString;
@@ -419,17 +475,21 @@ var
   minCluster: Integer;
   maxCluster: Integer;
   lst: TList<Integer>;
+  // Per-line spacing (matching C# FontInfoFt / GDI DirectWrite)
+  fontDataCache: TDictionary<string, TRpTTFontData>;
+  fontCacheKey: string;
+  cachedData: TRpTTFontData;
+  maxBaselineTwips, maxLineHeight: double;
+  gFontSize, gAscentTwips, gHeightTwips, gBaselineTwips: double;
+  currentLineSpacing, lineBaseline: integer;
+  lw: double;
 begin
   InitICU;
   InitHarfBuzz;
   SelectFont(pdfFont,'',false);
   originalFont:=currentfont;
 
-  linespacingEM:=(adata.Height)/1000;
-  linespacing:=Round(linespacingEM*FontSize*20);
-  ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
-  PosY:=0;
-  PosY:=PosY+ascentSpacing;
+  rectTop:=0;
 
   if IsHtml then
     Segments := ParseHtml(Text)
@@ -454,6 +514,10 @@ begin
       TempFont.Color := pdfFont.Color;
       TempFont.WFontName := pdfFont.WFontName;
       TempFont.LFontName := pdfFont.LFontName;
+      fontDataCache := TDictionary<string, TRpTTFontData>.Create;
+      // Cache the base font data
+      fontCacheKey := UpperCase(pdfFont.WFontName);
+      fontDataCache.AddOrSetValue(fontCacheKey, adata);
 
       for lineSubText in lineSubTexts do
       begin
@@ -509,6 +573,54 @@ begin
                  activeSize := FontSize;
                TempFont.Size := Round(activeSize);
                SelectFont(TempFont, '', false);
+
+               // Cache font data for per-line spacing calculation (key by family name only)
+               fontCacheKey := UpperCase(TempFont.WFontName);
+               if not fontDataCache.ContainsKey(fontCacheKey) then
+               begin
+                 cachedData := TRpTTFontData.Create;
+                 // Start with hhea-based metrics from currentfont
+                 cachedData.Ascent := currentfont.ascent;
+                 cachedData.Descent := currentfont.descent;
+                 cachedData.Leading := currentfont.leading;
+                 if currentfont.height > 0 then
+                   cachedData.Height := currentfont.height
+                 else
+                   cachedData.Height := currentfont.ascent - currentfont.descent + currentfont.leading;
+                 // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
+                 if FileExists(currentfont.filename) then
+                 begin
+                   var fontStream := TMemoryStream.Create;
+                   try
+                     fontStream.LoadFromFile(currentfont.filename);
+                     var os2: TOS2Metrics;
+                     ReadOS2Metrics(fontStream, os2);
+                     if os2.Found then
+                     begin
+                       var cf := currentfont.convfactor;
+                       if os2.UseTypoMetrics then
+                       begin
+                         var dwA := os2.sTypoAscender;
+                         var dwD := -os2.sTypoDescender;
+                         var dwG := os2.sTypoLineGap;
+                         cachedData.Ascent := Round(cf * dwA);
+                         cachedData.Descent := -Round(cf * dwD);
+                         cachedData.Height := Round(cf * (dwA + dwD + dwG));
+                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
+                       end
+                       else
+                       begin
+                         cachedData.Ascent := Round(cf * os2.usWinAscent);
+                         cachedData.Descent := -Round(cf * os2.usWinDescent);
+                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
+                       end;
+                     end;
+                   finally
+                     fontStream.Free;
+                   end;
+                 end;
+                 fontDataCache.Add(fontCacheKey, cachedData);
+               end;
 
                if logicalRun.Direction = UBIDI_RTL then
                  direction := RP_UBIDI_RTL
@@ -659,346 +771,63 @@ begin
           LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
           LineInfo.Position := minCluster;
           LineInfo.Size := maxCluster - minCluster + 1;
-          LineInfo.TopPos := Round(posY);
           LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
-          LineInfo.Width := 0;
-          for k := 0 to High(LineInfo.Glyphs) do LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
-          LineInfo.Height := Round(linespacing);
-          LineInfo.LineHeight := linespacing;
+
+          // Per-line width and max font size
+          lw := 0;
+          for k := 0 to High(LineInfo.Glyphs) do
+            lw := lw + LineInfo.Glyphs[k].XAdvance;
+          LineInfo.Width := Round(lw);
+
+          // Compute per-line baseline and height matching C# FontInfoFt / GDI DirectWrite
+          maxBaselineTwips := (adata.Ascent + Max(0, adata.Leading)) / 1000.0 * FontSize * 20.0;
+          maxLineHeight := adata.Height / 1000.0 * FontSize * 20.0;
+          for k := 0 to High(LineInfo.Glyphs) do
+          begin
+            if LineInfo.Glyphs[k].HasFontSize then
+              gFontSize := LineInfo.Glyphs[k].FontSize
+            else
+              gFontSize := FontSize;
+            fontCacheKey := UpperCase(LineInfo.Glyphs[k].FontFamily);
+            if fontDataCache.TryGetValue(fontCacheKey, cachedData) then
+            begin
+              gBaselineTwips := (cachedData.Ascent + Max(0, cachedData.Leading)) / 1000.0 * gFontSize * 20.0;
+              gHeightTwips := cachedData.Height / 1000.0 * gFontSize * 20.0;
+            end
+            else
+            begin
+              gBaselineTwips := (adata.Ascent + Max(0, adata.Leading)) / 1000.0 * gFontSize * 20.0;
+              gHeightTwips := adata.Height / 1000.0 * gFontSize * 20.0;
+            end;
+            if gBaselineTwips > maxBaselineTwips then
+              maxBaselineTwips := gBaselineTwips;
+            if gHeightTwips > maxLineHeight then
+              maxLineHeight := gHeightTwips;
+          end;
+          currentLineSpacing := Round(maxLineHeight);
+          lineBaseline := Round(maxBaselineTwips);
+
+          LineInfo.TopPos := Round(rectTop) + lineBaseline;
+          LineInfo.Height := currentLineSpacing;
+          LineInfo.LineHeight := currentLineSpacing;
           LineInfo.lastline := False;
           SetLength(Result, Length(Result) + 1);
           Result[High(Result)] := LineInfo;
           if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
-          posY := posY + linespacing;
+          rectTop := rectTop + currentLineSpacing;
         end;
         calculatedLines.Free;
         possibleBreaksCharIdx.Free;
       end;
     finally
       TempFont.Free;
-    end;
-    if Length(Result) > 0 then Result[High(Result)].lastline := True;
-  finally
-    Segments.Free;
-    lineSubTexts.Free;
-    currentfont:=originalfont;
-  end;
-  Rect.Right := Rect.Left + Round(maxWidth);
-  Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
-end;
-
-{ DEBUG: Separate HTML segments function - processes only first 2 segments }
-function TRpFTInfoProvider.TextExtentHtmlSegments(
-  const TextX: WideString;
-  var Rect: TRect;
-  adata: TRpTTFontData;
-  pdfFont: TRpPDFFont;
-  wordwrap: Boolean;
-  singleline: Boolean;
-  FontSize: Double
-): TRpLineInfoArray;
-var
-  lineSubTexts: TList<TLineSubText>;
-  lineSubText: TLineSubText;
-  line: string;
-  Bidi: TICUBidi;
-  logicalRuns: TList<TBidiRun>;
-  logicalRun, vRun: TBidiRun;
-  direction: TRpBidiDirection;
-  positions: TGlyphPosArray;
-  lineWidthLimit, posY, maxWidth: Double;
-  chunks:TList<TGlyphPosArray>;
-  chunk: TGlyphPosArray;
-  calculatedLines: TList<TLineGlyphs>;
-  calculatedLine:TLineGlyphs;
-  j, k: Integer;
-  visualRuns: TList<TBidiRun>;
-  LineInfo: TRpLineInfo;
-  possibleBreaksCharIdx: TDictionary<Integer,Integer>;
-  remaining:double;
-  g:TGlyphPos;
-  runWidth:integer;
-  currentChunk: TLineGlyphs;
-  visualGlyphs:TList<TGlyphPos>;
-  runOffset:integer;
-  leading: integer;
-  linespacing:integer;
-  linespacingEM: double;
-  textHeight:integer;
-  ascentSpacing:integer;
-  originalFont: TRpLogFont;
-  Segments: THtmlSegmentList;
-  PlainText: WideString;
-  TempFont: TRpPDFFont;
-  RunAbsStart: Integer;
-  RunLen: Integer;
-  CurrentRunOffset: Integer;
-  SegStartAbs: Integer;
-  Seg: THtmlSegment;
-  SegLen: Integer;
-  SegEndAbs: Integer;
-  IntStart: Integer;
-  IntEnd: Integer;
-  ChunkText: WideString;
-  activeSize: Double;
-  minCluster: Integer;
-  maxCluster: Integer;
-  lst: TList<Integer>;
-  segIndex: Integer;
-  maxSegments: Integer;
-begin
-  InitICU;
-  InitHarfBuzz;
-  SelectFont(pdfFont,'',false);
-  originalFont:=currentfont;
-
-  linespacingEM:=(adata.Height)/1000;
-  linespacing:=Round(linespacingEM*FontSize*20);
-  ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
-  PosY:=0;
-  PosY:=PosY+ascentSpacing;
-
-  // Always parse HTML in this function
-  Segments := ParseHtml(TextX);
-
-
-  try
-    PlainText := '';
-    for Seg in Segments do
-      PlainText := PlainText + Seg.Text;
-
-    lineSubTexts := DividesIntoLines(PlainText);
-    SetLength(Result, 0);
-    maxWidth := 0;
-    lineWidthLimit := Rect.Right - Rect.Left;
-    TempFont := TRpPDFFont.Create;
-    try
-      TempFont.Name := pdfFont.Name;
-      TempFont.Size := pdfFont.Size;
-      TempFont.Color := pdfFont.Color;
-      TempFont.WFontName := pdfFont.WFontName;
-      TempFont.LFontName := pdfFont.LFontName;
-
-      for lineSubText in lineSubTexts do
+      // Free cached font data objects (except adata which is not owned)
+      for cachedData in fontDataCache.Values do
       begin
-        line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
-        possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
-        calculatedLines := TList<TLineGlyphs>.Create;
-
-        Bidi := TICUBidi.Create;
-        logicalRuns := nil;
-        try
-          if not Bidi.SetPara(line, $FF) then
-            raise Exception.Create('Bidi error');
-          logicalRuns := Bidi.GetLogicalRuns(line);
-        finally
-          Bidi.Free;
-        end;
-
-        remaining:=lineWidthLimit;
-        var textOffset:=lineSubtext.Position-1;
-        currentChunk:=TLineGlyphs.Create(textOffset);
-
-        for logicalRun in logicalRuns do
-        begin
-          RunAbsStart := lineSubText.Position + logicalRun.LogicalStart;
-          RunLen := logicalRun.Length;
-          CurrentRunOffset := 0;
-          SegStartAbs := 1;
-          segIndex := 0;
-
-          for Seg in Segments do
-          begin
-             SegLen := Length(Seg.Text);
-             SegEndAbs := SegStartAbs + SegLen;
-             IntStart := Max(RunAbsStart, SegStartAbs);
-             IntEnd := Min(RunAbsStart + RunLen, SegEndAbs);
-
-             if IntStart < IntEnd then
-             begin
-                TempFont.Bold := pdfFont.Bold or (hsBold in Seg.Styles);
-                TempFont.Italic := pdfFont.Italic or (hsItalic in Seg.Styles);
-                if Seg.FontFamily <> '' then
-                begin
-                  TempFont.WFontName := Seg.FontFamily;
-                  TempFont.LFontName := Seg.FontFamily;
-                end
-                else
-                begin
-                  TempFont.WFontName := pdfFont.WFontName;
-                  TempFont.LFontName := pdfFont.LFontName;
-                end;
-                if Seg.HasFontSize then
-                  activeSize := Seg.FontSize
-                else
-                  activeSize := FontSize;
-                TempFont.Size := Round(activeSize);
-                SelectFont(TempFont, '', false);
-
-                if logicalRun.Direction = UBIDI_RTL then
-                  direction := RP_UBIDI_RTL
-                else
-                  direction := RP_BIDI_LTR;
-
-                ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
-                positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
-
-                // Font fallback
-                var doFallback := false;
-                for k:=0 to Length(positions)-1 do
-                begin
-                  if (positions[k].GlyphIndex = 0) then
-                  begin
-                    doFallback := true;
-                    break;
-                  end;
-                end;
-                if (doFallback) then
-                begin
-                  SelectFont(TempFont, ChunkText, false);
-                  positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
-                  var secondFallback := false;
-                  for k:=0 to Length(positions)-1 do
-                  begin
-                    if (positions[k].GlyphIndex = 0) then
-                    begin
-                      secondFallback := true;
-                      break;
-                    end;
-                  end;
-                  if (secondFallback) then
-                  begin
-                    SelectFont(TempFont, ChunkText, true);
-                    positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
-                  end;
-                end;
-
-                runWidth:=0;
-                for k:=0 to Length(positions)-1 do
-                begin
-                  runWidth:=runWidth+positions[k].XAdvance;
-                  positions[k].LineCluster:=positions[k].Cluster + (IntStart - lineSubText.Position);
-                  positions[k].Style := 0;
-                  if hsBold in Seg.Styles then positions[k].Style := positions[k].Style or 1;
-                  if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
-                  if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
-                  if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
-                  positions[k].FontFamily := TempFont.WFontName;
-                  positions[k].FontSize := activeSize;
-                  positions[k].HasFontSize := Seg.HasFontSize;
-                  positions[k].Color := Seg.Color;
-                  positions[k].HasColor := Seg.HasColor;
-                end;
-
-                if ((runWidth<=remaining) or (not WordWrap)) then
-                begin
-                  for g in positions do
-                    currentChunk.AddGlyph(g, logicalRun.LogicalStart);
-                  remaining:=remaining-runWidth;
-                end
-                else
-                begin
-                  if direction = RP_UBIDI_RTL then
-                    chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
-                  else
-                    chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
-
-                  for j:=0 to chunks.Count-1 do
-                  begin
-                    chunk:=chunks[j];
-                    if (j=0) then
-                    begin
-                      for g in chunk do currentChunk.AddGlyph(g, logicalRun.LogicalStart);
-                      calculatedLines.Add(currentChunk);
-                      currentChunk:=TLineGlyphs.Create(textOffset);
-                      remaining:=lineWidthLimit;
-                    end
-                    else if (j=chunks.Count-1) then
-                    begin
-                      remaining:=lineWidthLimit;
-                      for g in chunk do
-                      begin
-                        currentChunk.AddGlyph(g, logicalRun.LogicalStart);
-                        remaining:=remaining-g.XAdvance;
-                      end;
-                    end
-                    else
-                    begin
-                      for g in chunk do currentChunk.AddGlyph(g, logicalRun.LogicalStart);
-                      remaining:=lineWidthLimit;
-                      calculatedLines.Add(currentChunk);
-                      currentChunk:=TLineGlyphs.Create(textOffset);
-                    end;
-                  end;
-                end;
-             end;
-             SegStartAbs := SegEndAbs;
-             Inc(segIndex);
-          end;
-        end;
-        if (currentChunk.Glyphs.Count>0) then calculatedLines.Add(currentChunk);
-
-        Bidi := TICUBidi.Create;
-        visualRuns := nil;
-        try
-          if not Bidi.SetPara(line, $FF) then raise Exception.Create('VisualRuns error');
-          visualRuns := Bidi.GetVisualRuns(line);
-        finally
-          Bidi.Free;
-        end;
-
-        for calculatedLine in calculatedLines do
-        begin
-          minCluster:=calculatedline.MinClusterText;
-          maxCluster:=calculatedline.MaxClusterText;
-          visualGlyphs:=TList<TGlyphPos>.Create;
-          for vRun in visualRuns do
-          begin
-           if vRun.Direction = UBIDI_RTL then
-           begin
-            direction := RP_UBIDI_RTL;
-            for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
-            begin
-             if (calculatedLine.ClusterMap.ContainsKey(k)) then
-             begin
-              lst := calculatedLine.ClusterMap[k];
-              for j:=0 to lst.Count-1 do visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
-             end;
-            end;
-           end
-           else
-           begin
-            direction := RP_BIDI_LTR;
-            for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
-            begin
-             if (calculatedLine.ClusterMap.ContainsKey(k)) then
-             begin
-              lst := calculatedLine.ClusterMap[k];
-              for j:=0 to lst.Count-1 do visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
-             end;
-            end;
-           end;
-          end;
-          LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
-          LineInfo.Position := minCluster;
-          LineInfo.Size := maxCluster - minCluster + 1;
-          LineInfo.TopPos := Round(posY);
-          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
-          LineInfo.Width := 0;
-          for k := 0 to High(LineInfo.Glyphs) do LineInfo.Width := LineInfo.Width + LineInfo.Glyphs[k].XAdvance;
-          LineInfo.Height := Round(linespacing);
-          LineInfo.LineHeight := linespacing;
-          LineInfo.lastline := False;
-          SetLength(Result, Length(Result) + 1);
-          Result[High(Result)] := LineInfo;
-          if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
-          posY := posY + linespacing;
-        end;
-        calculatedLines.Free;
-        possibleBreaksCharIdx.Free;
+        if cachedData <> adata then
+          cachedData.Free;
       end;
-    finally
-      TempFont.Free;
+      fontDataCache.Free;
     end;
     if Length(Result) > 0 then Result[High(Result)].lastline := True;
   finally
@@ -1007,7 +836,7 @@ begin
     currentfont:=originalfont;
   end;
   Rect.Right := Rect.Left + Round(maxWidth);
-  Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
+  Rect.Bottom := Rect.Top + Round(rectTop);
 end;
 
 function TRpFTInfoProvider.CalcGlyphPositions(
@@ -2273,6 +2102,10 @@ end;
 
 
 procedure TRpFTInfoProvider.FillFontDataInt(data:TRpTTFontData);
+var
+  os2: TOS2Metrics;
+  cf: Double;
+  dwAscent, dwDescent, dwLineGap: Integer;
 begin
  crit.Enter;
  try
@@ -2288,7 +2121,47 @@ begin
   data.Ascent:=currentfont.ascent;
   data.Descent:=currentfont.descent;
   data.Leading:=currentfont.leading;
-  data.Height:=currentfont.height;
+  if currentfont.height > 0 then
+    data.Height:=currentfont.height
+  else
+    data.Height:=currentfont.ascent - currentfont.descent + currentfont.leading;
+
+  // Override with OS/2 table metrics to match DirectWrite/GDI
+  if data.fontdata.FontData.Size > 0 then
+  begin
+    ReadOS2Metrics(data.fontdata.FontData, os2);
+    if os2.Found then
+    begin
+      cf := currentfont.convfactor;
+
+      // DirectWrite checks fsSelection bit 7 (USE_TYPO_METRICS):
+      //   When set: uses sTypoAscender/sTypoDescender/sTypoLineGap
+      //   When not set: Ascent/Descent from usWinAscent/usWinDescent,
+      //                 but Height from hhea (already set above)
+      if os2.UseTypoMetrics then
+      begin
+        // USE_TYPO_METRICS: use sTypo* values directly
+        dwAscent := os2.sTypoAscender;
+        dwDescent := -os2.sTypoDescender; // sTypoDescender is negative
+        dwLineGap := os2.sTypoLineGap;
+        data.Ascent := Round(cf * dwAscent);
+        data.Descent := -Round(cf * dwDescent);
+        data.Height := Round(cf * (dwAscent + dwDescent + dwLineGap));
+        data.Leading := data.Height - data.Ascent + data.Descent;
+      end
+      else
+      begin
+        // Non-USE_TYPO_METRICS:
+        //   Ascent/Descent from OS/2 usWinAscent/usWinDescent (matches GDI)
+        //   Height from hhea table (already set above)
+        data.Ascent := Round(cf * os2.usWinAscent);
+        data.Descent := -Round(cf * os2.usWinDescent);
+        // data.Height stays as hhea-based (already set above)
+        data.Leading := data.Height - data.Ascent + data.Descent;
+      end;
+    end;
+  end;
+
   data.capHeight:=currentfont.Capheight;
   data.Encoding:='WinAnsiEncoding';
   data.FontWeight:=0;
