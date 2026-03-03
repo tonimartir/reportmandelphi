@@ -73,6 +73,8 @@ type
     FLines: TList<TGlyphLine>;
     FFontFamilyCache: TFontFaceCache;
     LastIsLTR: boolean;
+    FParagraphIsRTL: Boolean;
+    FParagraphDirectionDetected: Boolean;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
@@ -174,7 +176,7 @@ begin
       L.RunCount:=L.RunCount+1;
       Exit(L);
     end;
-  Result := TGlyphLine.Create(baselineY, firstRunIsRTL);
+  Result := TGlyphLine.Create(baselineY, FParagraphIsRTL);
   Result.LastRunIsLTR:=not firstRunIsRTL;
   Result.RunCount:=1;
   FLines.Add(Result);
@@ -392,6 +394,13 @@ begin
   else
     OffArray := nil;
   ClusterMapArray := PClusterMapArray(glyphRunDescription.clusterMap);
+
+  // Detect paragraph direction from the first run
+  if not FParagraphDirectionDetected then
+  begin
+    FParagraphIsRTL := runIsRTL;
+    FParagraphDirectionDetected := True;
+  end;
 
   Line := GetLineByBaseline(baselineOriginY, runIsRTL);
   currentCluster:=0;

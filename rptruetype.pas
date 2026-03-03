@@ -278,6 +278,7 @@ begin
 
   ID := ByteArrayToInt(FRFArray, FDirectoryOffset, 4);  // Usamos ByteArrayToInt con tres parámetros
   NIndex := FDirectoryOffset + 4;
+  Result:=true;
 
   if ID <> $00010000 then
   begin
