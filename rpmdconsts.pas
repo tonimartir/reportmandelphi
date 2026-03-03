@@ -45,7 +45,7 @@ const
 
 const
  RM_VERSION='3.10.1';
- REPMAN_WEBSITE='http://reportman.sourceforge.net';
+ REPMAN_WEBSITE='https://reportman.es';
  MAX_PAGECOUNT=999999;
 type
   TPageWidthHeight = record
@@ -772,7 +772,7 @@ var
   SRpNoStreamToSaveReport:WideString='No Stream to save Report (TRpDesigner)';
   SRpDocNotInstalled:WideString='Documentation not installed.';
   SRpDocNotInstalled2:WideString='Download it and install in the application directory.';
-  SRpDocNotInstalled3:WideString='http://reportman.sourceforge.net';
+  SRpDocNotInstalled3:WideString='https://reportman.es';
   SRpSelectAddConnection:WideString='You must select first add/select connection';
   SRpStreamNotValid:WideString='PDF Stream not valid';
   SRpNotPrintingPDF:WideString='Not in pdf printing state';
