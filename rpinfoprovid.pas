@@ -409,7 +409,7 @@ var
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
     // positions[j].Cluster assumed 0-based char index in subText
-    charIdx := positions[j].LineCluster - 1;
+    charIdx := positions[j].LineCluster;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
     if (not Result) then
@@ -501,7 +501,7 @@ var
   begin
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
-    charIdx := positions[j].LineCluster-1;
+    charIdx := positions[j].LineCluster;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
     if (not Result) then
