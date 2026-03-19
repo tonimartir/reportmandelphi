@@ -6,7 +6,7 @@
 {       Provides information about fonts                }
 {                                                       }
 {       Copyright (c) 1994-2019 Toni Martir             }
-{       toni@reportman.es                                   }
+{       toni@reportman.es                               }
 {                                                       }
 {                                                       }
 {*******************************************************}
@@ -71,8 +71,8 @@ type
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
  var
-  ftlibrary:FT_Library;
-  initialized:boolean = false;
+ ftlibrary:FT_Library;
+ initialized:boolean = false;
 {$ENDIF}
 
 implementation
@@ -93,13 +93,30 @@ const
 //  NormalizationKD    = 6   // Compatibility Decomposition (NFKD)
 //} NORM_FORM;
 
-function NormalizeString(
-  NormForm: DWORD;
-  lpSrcString: LPCWSTR;
-  cwSrcLength: Integer;
-  lpDstString: LPWSTR;
-  cwDstLength: Integer
-): Integer; stdcall; external 'kernel32.dll';
+type
+  TNormalizeStringFunc = function(
+    NormForm: DWORD;
+    lpSrcString: LPCWSTR;
+    cwSrcLength: Integer;
+    lpDstString: LPWSTR;
+    cwDstLength: Integer
+  ): Integer; stdcall;
+
+var
+  HKernel32: HMODULE = 0;
+  _NormalizeString: TNormalizeStringFunc = nil;
+  NormalizeStringChecked: Boolean = False;
+
+procedure LoadNormalizeString;
+begin
+  if not NormalizeStringChecked then
+  begin
+    HKernel32 := LoadLibrary('kernel32.dll');
+    if HKernel32 <> 0 then
+      @_NormalizeString := GetProcAddress(HKernel32, 'NormalizeString');
+    NormalizeStringChecked := True;
+  end;
+end;
 
 
 function NormalizeToNFC(const S: UnicodeString): UnicodeString;
@@ -113,9 +130,18 @@ begin
   if S = '' then
     Exit('');
 
+  LoadNormalizeString;
+
+  // Si la función no existe en esta versión de Windows, devolvemos la original
+  if not Assigned(_NormalizeString) then
+  begin
+    Result := S;
+    Exit;
+  end;
+
   // 1) pedir tamaño (devuelve número de caracteres necesarios, incluye terminador)
   //    Usamos Length(S) para no depender de terminadores NUL en la entrada.
-  requiredChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), nil, 0);
+  requiredChars := _NormalizeString(NormalizationC, PWideChar(S), Length(S), nil, 0);
   if requiredChars = 0 then
     RaiseLastOSError;
 
@@ -123,7 +149,7 @@ begin
   GetMem(buffer, requiredChars * SizeOf(WideChar));
   try
     // 2) normalizar: escribirá writtenChars (sin incluir el terminador)
-    writtenChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), buffer, requiredChars);
+    writtenChars := _NormalizeString(NormalizationC, PWideChar(S), Length(S), buffer, requiredChars);
     if writtenChars = 0 then
       RaiseLastOSError;
 
@@ -1042,7 +1068,7 @@ begin
 
  Fonthandle:= CreateFontIndirect(LogFont);
  if (FontHandle=0) then
- begin   
+ begin
   lasterror:=System.GetLastError();
   raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
    ' System Error Code: ' + IntToStr(lasterror));
@@ -1694,6 +1720,11 @@ begin
 end;
 
 initialization
-finalization
 
+finalization
+  if HKernel32 <> 0 then
+  begin
+    FreeLibrary(HKernel32);
+    HKernel32 := 0;
+  end;
 end.
