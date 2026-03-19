@@ -1438,7 +1438,7 @@ begin
  if FileExists(aurl) then
   ShowHelp(aurl)
  else
-  ShowHelp('http://reportman.es/doc/'+document);
+  ShowHelp('https://reportman.es/doc/'+document);
 end;
 
 procedure TFRpMainFVCL.ADocumentationExecute(Sender: TObject);
@@ -1454,7 +1454,7 @@ begin
  if FileExists(aurl) then
   ShowHelp(aurl)
  else
-  ShowHelp('http://reportman.es');
+  ShowHelp('https://reportman.es');
 end;
 
 procedure TFRpMainFVCL.AFeaturesExecute(Sender: TObject);
