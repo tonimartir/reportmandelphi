@@ -3993,22 +3993,31 @@ var
   bitmap: TBitmap;
   gpicture: TPicture;
   jpeg: TJPegImage;
-  stream:TMemoryStream;
+  stream: TMemoryStream;
+  width, height: Integer;
+  format: string;
 begin
+  // Skip conversion if it's already a JPEG
+  memstream.Seek(0, soFromBeginning);
+  format := '';
+  GetJPegInfo(memstream, width, height, format);
+  if ((format = 'JPEG') or (format = 'BMP')) then
+    exit;
+
   memstream.Seek(0, soFromBeginning);
   gpicture := TPicture.Create;
   try
     try
-     gpicture.LoadFromStream(memstream);
-     bitmap := TBitmap.Create;
-     bitmap.PixelFormat := pf24bit;
-     bitmap.Height := gpicture.Height;
-     bitmap.Width := gpicture.Width;
-     bitmap.Canvas.Draw(0,0,gpicture.Graphic);
-     jpeg:=TJPegImage.Create;
-     try
-      jpeg.CompressionQuality:=100;
-      jpeg.Assign(bitmap);
+      gpicture.LoadFromStream(memstream);
+      bitmap := TBitmap.Create;
+      bitmap.PixelFormat := pf24bit;
+      bitmap.Height := gpicture.Height;
+      bitmap.Width := gpicture.Width;
+      bitmap.Canvas.Draw(0, 0, gpicture.Graphic);
+      jpeg := TJPegImage.Create;
+      try
+        jpeg.CompressionQuality := 100;
+        jpeg.Assign(bitmap);
       memstream.Clear();
       jpeg.SaveToStream(memstream);
       bitmap.Free;

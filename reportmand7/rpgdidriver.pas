@@ -3301,7 +3301,17 @@ var
  bitmap:TBitmap;
  gpicture:TGraphicExGraphic;
  jpegimage:TJPegImage;
+ width, height: Integer;
+ format: string;
 begin
+ // Skip conversion if it's already a JPEG
+ memstream.Seek(0, soFromBeginning);
+ format := '';
+ GetJPegInfo(memstream, width, height, format);
+ if format = 'JPEG' then
+   exit;
+ memstream.Seek(0, soFromBeginning);
+
  // Use graphicex library to obtain type and convert it to jpeg
  gclass:=rpgraphicex.FileFormatList.GraphicFromContent(memstream);
  if (gclass=nil) then
