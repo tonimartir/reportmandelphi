@@ -28,7 +28,7 @@ uses Classes,sysutils,rptypes,rpreport,rpdatainfo,rpsubreport,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
- rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue;
+ rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue,rpbasereport;
 
 
 const
@@ -54,6 +54,7 @@ procedure WritePropertyB(propname:Ansistring;propvalue:TStream;stream:TStream);
 procedure WriteReportXML(areport:TComponent;Stream:TStream);
 procedure ReadReportXML(areport:TComponent;Stream:TStream);
 procedure ReadSectionXML(areport:TComponent;Stream:TStream);
+procedure EnsureReportItemNames(report: TRpBaseReport);
 
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
 procedure WriteDataInfoXML(dinfo:TRpDataInfoItem;Stream:TStream);
@@ -2206,6 +2207,90 @@ begin
    end;
   end;
  end;
+ EnsureReportItemNames(report);
+end;
+
+procedure EnsureReportItemNames(report: TRpBaseReport);
+var
+  i, j, k, n: Integer;
+  subrep: TRpSubReport;
+  sec: TRpSection;
+  dbitem: TRpDatabaseInfoItem;
+  ditem: TRpDataInfoItem;
+  param: TRpParam;
+  comp: TRpCommonComponent;
+  newname: string;
+begin
+  // DatabaseInfo: use Alias as Name if Name is empty
+  for i := 0 to report.DatabaseInfo.Count - 1 do
+  begin
+    dbitem := report.DatabaseInfo.Items[i];
+    if dbitem.Name = '' then
+    begin
+      newname := dbitem.Alias;
+      if newname = '' then
+      begin
+        n := 1;
+        repeat
+          newname := 'TRPDATABASEINFOITEM' + IntToStr(n);
+          Inc(n);
+        until report.FindReporItemByName(newname) = nil;
+      end;
+      dbitem.Name := newname;
+    end;
+  end;
+  // DataInfo: use Alias as Name if Name is empty
+  for i := 0 to report.DataInfo.Count - 1 do
+  begin
+    ditem := report.DataInfo.Items[i];
+    if ditem.Name = '' then
+    begin
+      newname := ditem.Alias;
+      if newname = '' then
+      begin
+        n := 1;
+        repeat
+          newname := 'TRPDATAINFOITEM' + IntToStr(n);
+          Inc(n);
+        until report.FindReporItemByName(newname) = nil;
+      end;
+      ditem.Name := newname;
+    end;
+  end;
+  // Params: Name is normally set, but ensure just in case
+  for i := 0 to report.Params.Count - 1 do
+  begin
+    param := report.Params.Items[i];
+    if param.Name = '' then
+    begin
+      n := 1;
+      repeat
+        newname := 'TRPPARAM' + IntToStr(n);
+        Inc(n);
+      until report.FindReporItemByName(newname) = nil;
+      param.Name := newname;
+    end;
+  end;
+  // SubReports and Sections
+  for i := 0 to report.SubReports.Count - 1 do
+  begin
+    subrep := report.SubReports.Items[i].SubReport;
+    if subrep.Name = '' then
+      Generatenewname(subrep);
+    for j := 0 to subrep.Sections.Count - 1 do
+    begin
+      sec := subrep.Sections.Items[j].Section;
+      if sec.Name = '' then
+        Generatenewname(sec);
+      // Components already have names from XML, but ensure just in case
+      for k := 0 to sec.ReportComponents.Count - 1 do
+      begin
+        comp := sec.ReportComponents.Items[k].Component;
+        if comp.Name = '' then
+          Generatenewname(comp);
+      end;
+    end;
+  end;
 end;
 
 end.

@@ -1059,6 +1059,7 @@ begin
  finally
   MemStream.free;
  end;
+ EnsureReportItemNames(Self);
 end;
 
 procedure TRpBaseReport.FInternalOnReadError(Reader: TReader; const Message: string;

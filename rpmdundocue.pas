@@ -516,6 +516,39 @@ begin
           else if target is TRpSubReport then
           begin
             FReport.DeleteSubReport(TRpSubReport(target));
+          end
+          else if target is TRpDataInfoItem then
+          begin
+            for i := 0 to FReport.DataInfo.Count - 1 do
+            begin
+              if FReport.DataInfo.Items[i].Name = operation.componentName then
+              begin
+                FReport.DataInfo.Delete(i);
+                Break;
+              end;
+            end;
+          end
+          else if target is TRpDatabaseInfoItem then
+          begin
+            for i := 0 to FReport.DatabaseInfo.Count - 1 do
+            begin
+              if FReport.DatabaseInfo.Items[i].Name = operation.componentName then
+              begin
+                FReport.DatabaseInfo.Delete(i);
+                Break;
+              end;
+            end;
+          end
+          else if target is TRpParam then
+          begin
+            for i := 0 to FReport.Params.Count - 1 do
+            begin
+              if FReport.Params.Items[i].Name = operation.componentName then
+              begin
+                FReport.Params.Delete(i);
+                Break;
+              end;
+            end;
           end;
           Exit;
         end;
