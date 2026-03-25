@@ -39,7 +39,13 @@ const
  MAX_ELEMENT_HEIGHT=86400;
 
 type
- TRpCommonComponent=class(TComponent)
+ IPropertiesItem = interface
+  ['{F8A7B6C5-D4E3-42F1-A0B9-C8D7E6F5A4B3}']
+  procedure SetItemProperty(const propName: string; const value: Variant);
+  function GetItemProperty(const propName: string): Variant;
+ end;
+
+ TRpCommonComponent=class(TComponent, IPropertiesItem)
   private
    FHeight:TRpTwips;
    FWidth:TRpTwips;
@@ -71,6 +77,8 @@ type
    procedure Print(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');virtual;
+   procedure SetItemProperty(const propName: string; const value: Variant); virtual;
+   function GetItemProperty(const propName: string): Variant; virtual;
    property Report:TComponent read GetReport;
    property OnBeforePrint:TNotifyEvent read FOnBeforePrint write FOnBeforePrint;
    property Visible:Boolean read FVisible write FVisible;
@@ -92,6 +100,8 @@ type
    PartialFlag:boolean;
    function GetParent:TRpCommonComponent;
    function GetAnnotation(): string;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property PosX:TRpTwips read FPosX write FPosX;
    property PosY:TRpTwips read FPosY write FPosY;
@@ -168,6 +178,8 @@ type
    property BidiMode:TRpBidiMode read GetBidiMode write SetBidiMode;
    property RightToLeft:Boolean read GetRightToLeft;
    property PrintAlignMent:Integer read GetPrintAlignMent;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property Type1Font:TRpType1Font read FType1Font write FType1Font;
    property FontSize:smallint read FFontSize write FFontSize default 10;
@@ -627,6 +639,332 @@ begin
 
  Filer.DefineProperty('WFontName',ReadWFontName,WriteWFontName,True);
  Filer.DefineProperty('LFontName',ReadLFontName,WriteLFontName,True);
+end;
+
+{ TRpCommonComponent - IPropertiesItem }
+
+procedure TRpCommonComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'Width') or (propName = SRpSWidth) then
+ begin
+  Width := value;
+  exit;
+ end;
+ if (propName = 'Height') or (propName = SRpSHeight) then
+ begin
+  Height := value;
+  exit;
+ end;
+ if (propName = 'PrintCondition') or (propName = SRpSPrintCondition) then
+ begin
+  FPrintCondition := value;
+  exit;
+ end;
+ if (propName = 'DoBeforePrint') or (propName = SRpSBeforePrint) then
+ begin
+  FDoBeforePrint := value;
+  exit;
+ end;
+ if (propName = 'DoAfterPrint') or (propName = SRpSAfterPrint) then
+ begin
+  FDoAfterPrint := value;
+  exit;
+ end;
+ if propName = 'Visible' then
+ begin
+  FVisible := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpCommonComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'Width') or (propName = SRpSWidth) then
+ begin
+  Result := FWidth;
+  exit;
+ end;
+ if (propName = 'Height') or (propName = SRpSHeight) then
+ begin
+  Result := FHeight;
+  exit;
+ end;
+ if (propName = 'PrintCondition') or (propName = SRpSPrintCondition) then
+ begin
+  Result := FPrintCondition;
+  exit;
+ end;
+ if (propName = 'DoBeforePrint') or (propName = SRpSBeforePrint) then
+ begin
+  Result := FDoBeforePrint;
+  exit;
+ end;
+ if (propName = 'DoAfterPrint') or (propName = SRpSAfterPrint) then
+ begin
+  Result := FDoAfterPrint;
+  exit;
+ end;
+ if propName = 'Visible' then
+ begin
+  Result := FVisible;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+{ TRpCommonPosComponent - IPropertiesItem }
+
+procedure TRpCommonPosComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'PosX') or (propName = SRpSLeft) then
+ begin
+  FPosX := value;
+  exit;
+ end;
+ if (propName = 'PosY') or (propName = SRpSTop) then
+ begin
+  FPosY := value;
+  exit;
+ end;
+ if (propName = 'Align') or (propName = SRPAlign) then
+ begin
+  FAlign := TRpPosAlign(Integer(value));
+  exit;
+ end;
+ if (propName = 'AnnotationExpression') or (propName = SRpSAnnotation) then
+ begin
+  FAnnotationExpression := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpCommonPosComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'PosX') or (propName = SRpSLeft) then
+ begin
+  Result := FPosX;
+  exit;
+ end;
+ if (propName = 'PosY') or (propName = SRpSTop) then
+ begin
+  Result := FPosY;
+  exit;
+ end;
+ if (propName = 'Align') or (propName = SRPAlign) then
+ begin
+  Result := Integer(FAlign);
+  exit;
+ end;
+ if (propName = 'AnnotationExpression') or (propName = SRpSAnnotation) then
+ begin
+  Result := FAnnotationExpression;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+{ TRpGenTextComponent - IPropertiesItem }
+
+procedure TRpGenTextComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'WFontName') or (propName = SRpSWFontName) then
+ begin
+  FWFontName := value;
+  exit;
+ end;
+ if (propName = 'LFontName') or (propName = SRpSLFontName) then
+ begin
+  FLFontName := value;
+  exit;
+ end;
+ if (propName = 'FontSize') or (propName = SRpSFontSize) then
+ begin
+  FFontSize := value;
+  exit;
+ end;
+ if (propName = 'FontColor') or (propName = SRpSFontColor) then
+ begin
+  FFontColor := value;
+  exit;
+ end;
+ if (propName = 'FontStyle') or (propName = SRpSFontStyle) then
+ begin
+  FFontStyle := value;
+  exit;
+ end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ begin
+  FBackColor := value;
+  exit;
+ end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ begin
+  FTransparent := value;
+  exit;
+ end;
+ if (propName = 'CutText') or (propName = SRpSCutText) then
+ begin
+  FCutText := value;
+  exit;
+ end;
+ if (propName = 'WordWrap') or (propName = SRpSWordWrap) then
+ begin
+  FWordWrap := value;
+  exit;
+ end;
+ if (propName = 'WordBreak') then
+ begin
+  FWordBreak := value;
+  exit;
+ end;
+ if (propName = 'SingleLine') or (propName = SRpSSingleLine) then
+ begin
+  FSingleLine := value;
+  exit;
+ end;
+ if (propName = 'Alignment') or (propName = SRpSAlignment) then
+ begin
+  FAlignment := value;
+  exit;
+ end;
+ if (propName = 'VAlignment') or (propName = SRpSVAlignment) then
+ begin
+  FVAlignment := value;
+  exit;
+ end;
+ if (propName = 'FontRotation') or (propName = SRpSFontRotation) then
+ begin
+  FFontRotation := value;
+  exit;
+ end;
+ if (propName = 'Type1Font') or (propName = SRpSType1Font) then
+ begin
+  FType1Font := TRpType1Font(Integer(value));
+  exit;
+ end;
+ if (propName = 'PrintStep') or (propName = SRpSFontStep) then
+ begin
+  FPrintStep := TRpSelectFontStep(Integer(value));
+  exit;
+ end;
+ if propName = 'InterLine' then
+ begin
+  FInterLine := value;
+  exit;
+ end;
+ if propName = 'MultiPage' then
+ begin
+  FMultiPage := value;
+  exit;
+ end;
+ if (propName = 'IsHtml') then
+ begin
+  FIsHtml := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpGenTextComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'WFontName') or (propName = SRpSWFontName) then
+ begin
+  Result := FWFontName;
+  exit;
+ end;
+ if (propName = 'LFontName') or (propName = SRpSLFontName) then
+ begin
+  Result := FLFontName;
+  exit;
+ end;
+ if (propName = 'FontSize') or (propName = SRpSFontSize) then
+ begin
+  Result := FFontSize;
+  exit;
+ end;
+ if (propName = 'FontColor') or (propName = SRpSFontColor) then
+ begin
+  Result := FFontColor;
+  exit;
+ end;
+ if (propName = 'FontStyle') or (propName = SRpSFontStyle) then
+ begin
+  Result := FFontStyle;
+  exit;
+ end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ begin
+  Result := FBackColor;
+  exit;
+ end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ begin
+  Result := FTransparent;
+  exit;
+ end;
+ if (propName = 'CutText') or (propName = SRpSCutText) then
+ begin
+  Result := FCutText;
+  exit;
+ end;
+ if (propName = 'WordWrap') or (propName = SRpSWordWrap) then
+ begin
+  Result := FWordWrap;
+  exit;
+ end;
+ if (propName = 'WordBreak') then
+ begin
+  Result := FWordBreak;
+  exit;
+ end;
+ if (propName = 'SingleLine') or (propName = SRpSSingleLine) then
+ begin
+  Result := FSingleLine;
+  exit;
+ end;
+ if (propName = 'Alignment') or (propName = SRpSAlignment) then
+ begin
+  Result := FAlignment;
+  exit;
+ end;
+ if (propName = 'VAlignment') or (propName = SRpSVAlignment) then
+ begin
+  Result := FVAlignment;
+  exit;
+ end;
+ if (propName = 'FontRotation') or (propName = SRpSFontRotation) then
+ begin
+  Result := FFontRotation;
+  exit;
+ end;
+ if (propName = 'Type1Font') or (propName = SRpSType1Font) then
+ begin
+  Result := Integer(FType1Font);
+  exit;
+ end;
+ if (propName = 'PrintStep') or (propName = SRpSFontStep) then
+ begin
+  Result := Integer(FPrintStep);
+  exit;
+ end;
+ if propName = 'InterLine' then
+ begin
+  Result := FInterLine;
+  exit;
+ end;
+ if propName = 'MultiPage' then
+ begin
+  Result := FMultiPage;
+  exit;
+ end;
+ if (propName = 'IsHtml') then
+ begin
+  Result := FIsHtml;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 function TRpGenTextComponent.EvaluateHtmlExpressions(const text: WideString): WideString;

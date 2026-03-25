@@ -118,7 +118,7 @@ type
 
  TThreadExecReport=class;
 
- TRpBaseReport=class(TComponent)
+ TRpBaseReport=class(TComponent, IPropertiesItem)
   private
    FSubReports:TRpSubReportList;
    FPageOrientation:TRpOrientation;
@@ -364,6 +364,8 @@ type
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
+   procedure SetItemProperty(const propName: string; const value: Variant); virtual;
+   function GetItemProperty(const propName: string): Variant; virtual;
 
   published
    property GridVisible:Boolean read FGridVisible write FGridVisible default true;
@@ -2482,6 +2484,154 @@ begin
     end;
   end;
  end;
+end;
+
+{ TRpBaseReport - IPropertiesItem }
+
+procedure TRpBaseReport.SetItemProperty(const propName: string; const value: Variant);
+begin
+ // Grid properties
+ if propName = 'GridVisible' then begin FGridVisible := value; exit; end;
+ if propName = 'GridLines' then begin FGridLines := value; exit; end;
+ if propName = 'GridEnabled' then begin FGridEnabled := value; exit; end;
+ if propName = 'GridColor' then begin FGridColor := value; exit; end;
+ if propName = 'GridWidth' then begin SetGridWidth(value); exit; end;
+ if propName = 'GridHeight' then begin SetGridHeight(value); exit; end;
+ // Page setup
+ if propName = 'PageOrientation' then begin FPageOrientation := TRpOrientation(Integer(value)); exit; end;
+ if propName = 'Pagesize' then begin FPagesize := TRpPageSize(Integer(value)); exit; end;
+ if propName = 'PagesizeQt' then begin FPagesizeQt := value; exit; end;
+ if propName = 'PageHeight' then begin FPageHeight := value; exit; end;
+ if propName = 'PageWidth' then begin FPageWidth := value; exit; end;
+ if propName = 'CustomPageHeight' then begin FCustomPageHeight := value; exit; end;
+ if propName = 'CustomPageWidth' then begin FCustomPageWidth := value; exit; end;
+ if propName = 'PageBackColor' then begin FPageBackColor := value; exit; end;
+ if propName = 'PreviewStyle' then begin FPreviewStyle := TRpPreviewStyle(Integer(value)); exit; end;
+ if propName = 'PreviewMargins' then begin FPreviewMargins := value; exit; end;
+ if propName = 'PreviewWindow' then begin FPreviewWindow := TRpPreviewWindowStyle(Integer(value)); exit; end;
+ // Margins
+ if propName = 'LeftMargin' then begin FLeftMargin := value; exit; end;
+ if propName = 'TopMargin' then begin FTopMargin := value; exit; end;
+ if propName = 'RightMargin' then begin FRightMargin := value; exit; end;
+ if propName = 'BottomMargin' then begin FBottomMargin := value; exit; end;
+ // Printer
+ if propName = 'PrinterSelect' then begin FPrinterSelect := TRpPrinterSelect(Integer(value)); exit; end;
+ if propName = 'Language' then begin SetLanguage(value); exit; end;
+ if propName = 'Copies' then begin FCopies := value; exit; end;
+ if propName = 'CollateCopies' then begin FCollateCopies := value; exit; end;
+ if propName = 'TwoPass' then begin FTwoPass := value; exit; end;
+ if propName = 'PrinterFonts' then begin FPrinterFonts := TRpPrinterFontsOption(Integer(value)); exit; end;
+ if propName = 'PrintOnlyIfDataAvailable' then begin FPrintOnlyIfDataAvailable := value; exit; end;
+ if propName = 'PreviewAbout' then begin FPreviewAbout := value; exit; end;
+ // Default font properties
+ if (propName = 'WFontName') or (propName = SRpSWFontName) then begin FWFontName := value; exit; end;
+ if (propName = 'LFontName') or (propName = SRpSLFontName) then begin FLFontName := value; exit; end;
+ if (propName = 'Type1Font') or (propName = SRpSType1Font) then begin FType1Font := TRpType1Font(Integer(value)); exit; end;
+ if (propName = 'FontSize') or (propName = SRpSFontSize) then begin FFontSize := value; exit; end;
+ if (propName = 'FontRotation') or (propName = SRpSFontRotation) then begin FFontRotation := value; exit; end;
+ if (propName = 'FontStyle') or (propName = SRpSFontStyle) then begin FFontStyle := value; exit; end;
+ if (propName = 'FontColor') or (propName = SRpSFontColor) then begin FFontColor := value; exit; end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then begin FBackColor := value; exit; end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then begin FTransparent := value; exit; end;
+ if (propName = 'CutText') or (propName = SRpSCutText) then begin FCutText := value; exit; end;
+ if (propName = 'Alignment') or (propName = SRpSAlignment) then begin FAlignment := value; exit; end;
+ if (propName = 'VAlignment') or (propName = SRpSVAlignment) then begin FVAlignment := value; exit; end;
+ if (propName = 'WordWrap') or (propName = SRpSWordWrap) then begin FWordWrap := value; exit; end;
+ if (propName = 'SingleLine') or (propName = SRpSSingleLine) then begin FSingleLine := value; exit; end;
+ if propName = 'MultiPage' then begin FMultiPage := value; exit; end;
+ if (propName = 'PrintStep') or (propName = SRpSFontStep) then begin FPrintStep := TRpSelectFontStep(Integer(value)); exit; end;
+ // Paper
+ if propName = 'PaperSource' then begin FPaperSource := value; exit; end;
+ if propName = 'Duplex' then begin FDuplex := value; exit; end;
+ if propName = 'ForcePaperName' then begin FForcePaperName := value; exit; end;
+ if propName = 'LinesPerInch' then begin FLinesPerInch := value; exit; end;
+ // PDF
+ if propName = 'PDFConformance' then begin FPDFConformance := TPDFConformanceType(Integer(value)); exit; end;
+ if propName = 'PDFCompressed' then begin FPDFCompressed := value; exit; end;
+ // Metadata
+ if propName = 'DocAuthor' then begin FDocAuthor := value; exit; end;
+ if propName = 'DocTitle' then begin FDocTitle := value; exit; end;
+ if propName = 'DocSubject' then begin FDocSubject := value; exit; end;
+ if propName = 'DocProducer' then begin FDocProducer := value; exit; end;
+ if propName = 'DocCreator' then begin FDocCreator := value; exit; end;
+ if propName = 'DocCreationDate' then begin FDocCreationDate := value; exit; end;
+ if propName = 'DocModificationDate' then begin FDocModificationDate := value; exit; end;
+ if propName = 'DocKeywords' then begin FDocKeywords := value; exit; end;
+ if propName = 'DocXMPContent' then begin FDocXMPContent := value; exit; end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpBaseReport.GetItemProperty(const propName: string): Variant;
+begin
+ // Grid properties
+ if propName = 'GridVisible' then begin Result := FGridVisible; exit; end;
+ if propName = 'GridLines' then begin Result := FGridLines; exit; end;
+ if propName = 'GridEnabled' then begin Result := FGridEnabled; exit; end;
+ if propName = 'GridColor' then begin Result := FGridColor; exit; end;
+ if propName = 'GridWidth' then begin Result := FGridWidth; exit; end;
+ if propName = 'GridHeight' then begin Result := FGridHeight; exit; end;
+ // Page setup
+ if propName = 'PageOrientation' then begin Result := Integer(FPageOrientation); exit; end;
+ if propName = 'Pagesize' then begin Result := Integer(FPagesize); exit; end;
+ if propName = 'PagesizeQt' then begin Result := FPagesizeQt; exit; end;
+ if propName = 'PageHeight' then begin Result := FPageHeight; exit; end;
+ if propName = 'PageWidth' then begin Result := FPageWidth; exit; end;
+ if propName = 'CustomPageHeight' then begin Result := FCustomPageHeight; exit; end;
+ if propName = 'CustomPageWidth' then begin Result := FCustomPageWidth; exit; end;
+ if propName = 'PageBackColor' then begin Result := FPageBackColor; exit; end;
+ if propName = 'PreviewStyle' then begin Result := Integer(FPreviewStyle); exit; end;
+ if propName = 'PreviewMargins' then begin Result := FPreviewMargins; exit; end;
+ if propName = 'PreviewWindow' then begin Result := Integer(FPreviewWindow); exit; end;
+ // Margins
+ if propName = 'LeftMargin' then begin Result := FLeftMargin; exit; end;
+ if propName = 'TopMargin' then begin Result := FTopMargin; exit; end;
+ if propName = 'RightMargin' then begin Result := FRightMargin; exit; end;
+ if propName = 'BottomMargin' then begin Result := FBottomMargin; exit; end;
+ // Printer
+ if propName = 'PrinterSelect' then begin Result := Integer(FPrinterSelect); exit; end;
+ if propName = 'Language' then begin Result := FLanguage; exit; end;
+ if propName = 'Copies' then begin Result := FCopies; exit; end;
+ if propName = 'CollateCopies' then begin Result := FCollateCopies; exit; end;
+ if propName = 'TwoPass' then begin Result := FTwoPass; exit; end;
+ if propName = 'PrinterFonts' then begin Result := Integer(FPrinterFonts); exit; end;
+ if propName = 'PrintOnlyIfDataAvailable' then begin Result := FPrintOnlyIfDataAvailable; exit; end;
+ if propName = 'PreviewAbout' then begin Result := FPreviewAbout; exit; end;
+ // Default font properties
+ if (propName = 'WFontName') or (propName = SRpSWFontName) then begin Result := FWFontName; exit; end;
+ if (propName = 'LFontName') or (propName = SRpSLFontName) then begin Result := FLFontName; exit; end;
+ if (propName = 'Type1Font') or (propName = SRpSType1Font) then begin Result := Integer(FType1Font); exit; end;
+ if (propName = 'FontSize') or (propName = SRpSFontSize) then begin Result := FFontSize; exit; end;
+ if (propName = 'FontRotation') or (propName = SRpSFontRotation) then begin Result := FFontRotation; exit; end;
+ if (propName = 'FontStyle') or (propName = SRpSFontStyle) then begin Result := FFontStyle; exit; end;
+ if (propName = 'FontColor') or (propName = SRpSFontColor) then begin Result := FFontColor; exit; end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then begin Result := FBackColor; exit; end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then begin Result := FTransparent; exit; end;
+ if (propName = 'CutText') or (propName = SRpSCutText) then begin Result := FCutText; exit; end;
+ if (propName = 'Alignment') or (propName = SRpSAlignment) then begin Result := FAlignment; exit; end;
+ if (propName = 'VAlignment') or (propName = SRpSVAlignment) then begin Result := FVAlignment; exit; end;
+ if (propName = 'WordWrap') or (propName = SRpSWordWrap) then begin Result := FWordWrap; exit; end;
+ if (propName = 'SingleLine') or (propName = SRpSSingleLine) then begin Result := FSingleLine; exit; end;
+ if propName = 'MultiPage' then begin Result := FMultiPage; exit; end;
+ if (propName = 'PrintStep') or (propName = SRpSFontStep) then begin Result := Integer(FPrintStep); exit; end;
+ // Paper
+ if propName = 'PaperSource' then begin Result := FPaperSource; exit; end;
+ if propName = 'Duplex' then begin Result := FDuplex; exit; end;
+ if propName = 'ForcePaperName' then begin Result := FForcePaperName; exit; end;
+ if propName = 'LinesPerInch' then begin Result := FLinesPerInch; exit; end;
+ // PDF
+ if propName = 'PDFConformance' then begin Result := Integer(FPDFConformance); exit; end;
+ if propName = 'PDFCompressed' then begin Result := FPDFCompressed; exit; end;
+ // Metadata
+ if propName = 'DocAuthor' then begin Result := FDocAuthor; exit; end;
+ if propName = 'DocTitle' then begin Result := FDocTitle; exit; end;
+ if propName = 'DocSubject' then begin Result := FDocSubject; exit; end;
+ if propName = 'DocProducer' then begin Result := FDocProducer; exit; end;
+ if propName = 'DocCreator' then begin Result := FDocCreator; exit; end;
+ if propName = 'DocCreationDate' then begin Result := FDocCreationDate; exit; end;
+ if propName = 'DocModificationDate' then begin Result := FDocModificationDate; exit; end;
+ if propName = 'DocKeywords' then begin Result := FDocKeywords; exit; end;
+ if propName = 'DocXMPContent' then begin Result := FDocXMPContent; exit; end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
 end;
 
 

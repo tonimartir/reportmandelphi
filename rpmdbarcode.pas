@@ -189,6 +189,8 @@ type
    constructor Create(Owner:TComponent); override;
 //   procedure DrawText(Canvas:TCanvas);
    property Expression:widestring read FExpression write FExpression;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
     // Width of the smallest line in a Barcode
    property Modul:integer read FModul  write SetModul;
@@ -3166,5 +3168,157 @@ begin
   end;
 end;
 
+
+{ TRpBarcode - IPropertiesItem }
+
+procedure TRpBarcode.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'Expression') or (propName = SRpSExpression) then
+ begin
+  FExpression := value;
+  exit;
+ end;
+ if (propName = 'Modul') or (propName = SRpSModul) then
+ begin
+  SetModul(value);
+  exit;
+ end;
+ if (propName = 'Ratio') or (propName = SRpSRatio) then
+ begin
+  FRatio := Double(value);
+  exit;
+ end;
+ if (propName = 'Typ') or (propName = SRpSBarcodeType) then
+ begin
+  FTyp := TRpBarcodeType(Integer(value));
+  exit;
+ end;
+ if (propName = 'Checksum') or (propName = SRpSChecksum) then
+ begin
+  FCheckSum := value;
+  exit;
+ end;
+ if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ begin
+  FDisplayFormat := value;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if propName = 'BColor' then
+ begin
+  FBColor := value;
+  exit;
+ end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ begin
+  FBackColor := value;
+  exit;
+ end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ begin
+  FTransparent := value;
+  exit;
+ end;
+ if propName = 'NumColumns' then
+ begin
+  FNumColumns := value;
+  exit;
+ end;
+ if propName = 'NumRows' then
+ begin
+  FNumRows := value;
+  exit;
+ end;
+ if propName = 'ECCLevel' then
+ begin
+  SetECCLevel(value);
+  exit;
+ end;
+ if propName = 'Truncated' then
+ begin
+  FTruncated := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpBarcode.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'Expression') or (propName = SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if (propName = 'Modul') or (propName = SRpSModul) then
+ begin
+  Result := FModul;
+  exit;
+ end;
+ if (propName = 'Ratio') or (propName = SRpSRatio) then
+ begin
+  Result := FRatio;
+  exit;
+ end;
+ if (propName = 'Typ') or (propName = SRpSBarcodeType) then
+ begin
+  Result := Integer(FTyp);
+  exit;
+ end;
+ if (propName = 'Checksum') or (propName = SRpSChecksum) then
+ begin
+  Result := FCheckSum;
+  exit;
+ end;
+ if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ begin
+  Result := FDisplayFormat;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if propName = 'BColor' then
+ begin
+  Result := FBColor;
+  exit;
+ end;
+ if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ begin
+  Result := FBackColor;
+  exit;
+ end;
+ if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ begin
+  Result := FTransparent;
+  exit;
+ end;
+ if propName = 'NumColumns' then
+ begin
+  Result := FNumColumns;
+  exit;
+ end;
+ if propName = 'NumRows' then
+ begin
+  Result := FNumRows;
+  exit;
+ end;
+ if propName = 'ECCLevel' then
+ begin
+  Result := FECCLevel;
+  exit;
+ end;
+ if propName = 'Truncated' then
+ begin
+  Result := FTruncated;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
 
 end.

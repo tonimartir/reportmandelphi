@@ -143,6 +143,8 @@ type
    property AutoRange:TRpAutoRangeAxis read FAutoRange write FAutoRange;
    property YMin:double read FYMin write FYMin;
    property YMax:double read FYMax write FYMax;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property Series:TRpSeries read FSeries write SetSeries;
    property ChangeSerieBool:boolean read FChangeSerieBool write FChangeSerieBool
@@ -787,6 +789,258 @@ begin
  Filer.DefineProperty('ClearExpression',ReadClearExpression,WriteClearExpression,True);
  Filer.DefineProperty('ColorExpression',ReadColorExpression,WriteColorExpression,True);
  Filer.DefineProperty('SerieColorExpression',ReadSerieColorExpression,WriteSerieColorExpression,True);
+end;
+
+{ TRpChart - IPropertiesItem }
+
+procedure TRpChart.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if propName = 'ChartType' then
+ begin
+  SetChartType(TRpChartType(Integer(value)));
+  exit;
+ end;
+ if (propName = 'Identifier') or (propName = SRpSIdentifier) then
+ begin
+  SetIdentifier(value);
+  exit;
+ end;
+ if propName = 'ChangeSerieBool' then
+ begin
+  FChangeSerieBool := value;
+  exit;
+ end;
+ if propName = 'ClearExpressionBool' then
+ begin
+  FClearExpressionBool := value;
+  exit;
+ end;
+ if propName = 'Driver' then
+ begin
+  FDriver := TRpChartDriver(Integer(value));
+  exit;
+ end;
+ if propName = 'View3d' then
+ begin
+  FView3d := value;
+  exit;
+ end;
+ if propName = 'View3dWalls' then
+ begin
+  FView3dWalls := value;
+  exit;
+ end;
+ if propName = 'Perspective' then
+ begin
+  FPerspective := value;
+  exit;
+ end;
+ if propName = 'Elevation' then
+ begin
+  FElevation := value;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if propName = 'Zoom' then
+ begin
+  FZoom := value;
+  exit;
+ end;
+ if propName = 'HorzOffset' then
+ begin
+  FHorzOffset := value;
+  exit;
+ end;
+ if propName = 'VertOffset' then
+ begin
+  FVertOffset := value;
+  exit;
+ end;
+ if propName = 'Tilt' then
+ begin
+  FTilt := value;
+  exit;
+ end;
+ if propName = 'Orthogonal' then
+ begin
+  FOrthogonal := value;
+  exit;
+ end;
+ if propName = 'MultiBar' then
+ begin
+  FMultiBar := TRpMultiBar(Integer(value));
+  exit;
+ end;
+ if propName = 'Resolution' then
+ begin
+  FResolution := value;
+  exit;
+ end;
+ if propName = 'ShowLegend' then
+ begin
+  FShowLegend := value;
+  exit;
+ end;
+ if propName = 'ShowHint' then
+ begin
+  FShowHint := value;
+  exit;
+ end;
+ if propName = 'MarkStyle' then
+ begin
+  FMarkStyle := value;
+  exit;
+ end;
+ if propName = 'HorzFontSize' then
+ begin
+  FHorzFontSize := value;
+  exit;
+ end;
+ if propName = 'VertFontSize' then
+ begin
+  FVertFontSize := value;
+  exit;
+ end;
+ if propName = 'HorzFontRotation' then
+ begin
+  FHorzFontRotation := value;
+  exit;
+ end;
+ if propName = 'VertFontRotation' then
+ begin
+  FVertFontRotation := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpChart.GetItemProperty(const propName: string): Variant;
+begin
+ if propName = 'ChartType' then
+ begin
+  Result := Integer(FChartType);
+  exit;
+ end;
+ if (propName = 'Identifier') or (propName = SRpSIdentifier) then
+ begin
+  Result := FIdentifier;
+  exit;
+ end;
+ if propName = 'ChangeSerieBool' then
+ begin
+  Result := FChangeSerieBool;
+  exit;
+ end;
+ if propName = 'ClearExpressionBool' then
+ begin
+  Result := FClearExpressionBool;
+  exit;
+ end;
+ if propName = 'Driver' then
+ begin
+  Result := Integer(FDriver);
+  exit;
+ end;
+ if propName = 'View3d' then
+ begin
+  Result := FView3d;
+  exit;
+ end;
+ if propName = 'View3dWalls' then
+ begin
+  Result := FView3dWalls;
+  exit;
+ end;
+ if propName = 'Perspective' then
+ begin
+  Result := FPerspective;
+  exit;
+ end;
+ if propName = 'Elevation' then
+ begin
+  Result := FElevation;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if propName = 'Zoom' then
+ begin
+  Result := FZoom;
+  exit;
+ end;
+ if propName = 'HorzOffset' then
+ begin
+  Result := FHorzOffset;
+  exit;
+ end;
+ if propName = 'VertOffset' then
+ begin
+  Result := FVertOffset;
+  exit;
+ end;
+ if propName = 'Tilt' then
+ begin
+  Result := FTilt;
+  exit;
+ end;
+ if propName = 'Orthogonal' then
+ begin
+  Result := FOrthogonal;
+  exit;
+ end;
+ if propName = 'MultiBar' then
+ begin
+  Result := Integer(FMultiBar);
+  exit;
+ end;
+ if propName = 'Resolution' then
+ begin
+  Result := FResolution;
+  exit;
+ end;
+ if propName = 'ShowLegend' then
+ begin
+  Result := FShowLegend;
+  exit;
+ end;
+ if propName = 'ShowHint' then
+ begin
+  Result := FShowHint;
+  exit;
+ end;
+ if propName = 'MarkStyle' then
+ begin
+  Result := FMarkStyle;
+  exit;
+ end;
+ if propName = 'HorzFontSize' then
+ begin
+  Result := FHorzFontSize;
+  exit;
+ end;
+ if propName = 'VertFontSize' then
+ begin
+  Result := FVertFontSize;
+  exit;
+ end;
+ if propName = 'HorzFontRotation' then
+ begin
+  Result := FHorzFontRotation;
+  exit;
+ end;
+ if propName = 'VertFontRotation' then
+ begin
+  Result := FVertFontRotation;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 end.

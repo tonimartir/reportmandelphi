@@ -1,4 +1,4 @@
-unit rpmdundocue;
+﻿unit rpmdundocue;
 
 {$I rpconf.inc}
 
@@ -6,7 +6,7 @@ interface
 
 uses
   System.SysUtils, System.Generics.Collections, System.DateUtils,
-  System.Rtti, System.TypInfo, System.Classes, System.JSON, System.Variants,
+  System.Classes, System.JSON, System.Variants,
   rpreport, rpbasereport, rpsubreport, rpsection, rpsecutil,
   rpprintitem, rpdatainfo, rpparams;
 
@@ -709,58 +709,24 @@ procedure TUndoCue.ApplyPropertiesToObject(operation: TChangeObjectOperation;
 var
   prop: TChangeOperationItem;
   nvalue: Variant;
-  ctx: TRttiContext;
-  rttiType: TRttiType;
-  rttiProp: TRttiProperty;
-  rttiField: TRttiField;
-  currentValue: TValue;
+  propsItem: IPropertiesItem;
 begin
-  ctx := TRttiContext.Create;
-  try
-    rttiType := ctx.GetType(target.ClassType);
-    for prop in operation.properties do
-    begin
-      if (isUndo) and (operation.operation <> otRemove) then
-        nvalue := prop.oldValue
-      else
-        nvalue := prop.newValue;
-
-      // Try property first
-      rttiProp := rttiType.GetProperty(prop.propertyName);
-      if (rttiProp <> nil) and (rttiProp.IsWritable) then
-      begin
-        try
-          currentValue := TValue.FromVariant(nvalue);
-          // Handle enum types: variant will be integer
-          if rttiProp.PropertyType.TypeKind = tkEnumeration then
-            currentValue := TValue.FromOrdinal(rttiProp.PropertyType.Handle, Integer(nvalue))
-          else if rttiProp.PropertyType.TypeKind = tkInteger then
-            currentValue := TValue.From<Integer>(Integer(nvalue));
-          rttiProp.SetValue(target, currentValue);
-          Continue;
-        except
-          // Fall through to field
-        end;
-      end;
-
-      // Try field
-      rttiField := rttiType.GetField(prop.propertyName);
-      if rttiField <> nil then
-      begin
-        try
-          currentValue := TValue.FromVariant(nvalue);
-          if rttiField.FieldType.TypeKind = tkEnumeration then
-            currentValue := TValue.FromOrdinal(rttiField.FieldType.Handle, Integer(nvalue))
-          else if rttiField.FieldType.TypeKind = tkInteger then
-            currentValue := TValue.From<Integer>(Integer(nvalue));
-          rttiField.SetValue(target, currentValue);
-        except
-          // Silently ignore if field not settable
-        end;
-      end;
-    end;
-  finally
-    ctx.Free;
+  if (Target is TRpCommonComponent) then
+  begin
+   propsItem:=TRpCommonComponent(target);
+  end
+  else
+   if (target is TrpBasereport) then
+    propsItem:=TrpBaseReport(propsItem)
+  else
+    raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
+  for prop in operation.properties do
+  begin
+    if (isUndo) and (operation.operation <> otRemove) then
+      nvalue := prop.oldValue
+    else
+      nvalue := prop.newValue;
+    propsItem.SetItemProperty(prop.propertyName, nvalue);
   end;
 end;
 

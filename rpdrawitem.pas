@@ -59,6 +59,8 @@ type
    constructor Create(AOwner:TComponent);override;
    destructor Destroy;override;
    function GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;override;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property BrushStyle:integer read FBrushStyle write FBrushStyle default 0;
    property BrushColor:integer read FBrushColor write FBrushColor default $FFFFFF;
@@ -97,6 +99,8 @@ type
    function GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;override;
    property Stream:TMemoryStream read FStream write SetStream;
    property Expression:WideString read FExpression write FExpression;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    // Rotating bitmaps still not implemented
    property Rotation:smallint read FRotation write FRotation default 0;
@@ -384,6 +388,149 @@ begin
  end;
 end;
 
+{ TRpShape - IPropertiesItem }
+
+procedure TRpShape.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'BrushStyle') or (propName = SRpSBrushStyle) then
+ begin
+  FBrushStyle := value;
+  exit;
+ end;
+ if (propName = 'BrushColor') or (propName = SRpSBrushColor) then
+ begin
+  FBrushColor := value;
+  exit;
+ end;
+ if (propName = 'PenStyle') or (propName = SRpSPenStyle) then
+ begin
+  FPenStyle := value;
+  exit;
+ end;
+ if (propName = 'PenColor') or (propName = SRpSPenColor) then
+ begin
+  FPenColor := value;
+  exit;
+ end;
+ if (propName = 'Shape') or (propName = SRpSShape) then
+ begin
+  FShape := TRpShapeType(Integer(value));
+  exit;
+ end;
+ if (propName = 'PenWidth') or (propName = SRpSPenWidth) then
+ begin
+  FPenWidth := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpShape.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'BrushStyle') or (propName = SRpSBrushStyle) then
+ begin
+  Result := FBrushStyle;
+  exit;
+ end;
+ if (propName = 'BrushColor') or (propName = SRpSBrushColor) then
+ begin
+  Result := FBrushColor;
+  exit;
+ end;
+ if (propName = 'PenStyle') or (propName = SRpSPenStyle) then
+ begin
+  Result := FPenStyle;
+  exit;
+ end;
+ if (propName = 'PenColor') or (propName = SRpSPenColor) then
+ begin
+  Result := FPenColor;
+  exit;
+ end;
+ if (propName = 'Shape') or (propName = SRpSShape) then
+ begin
+  Result := Integer(FShape);
+  exit;
+ end;
+ if (propName = 'PenWidth') or (propName = SRpSPenWidth) then
+ begin
+  Result := FPenWidth;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+{ TRpImage - IPropertiesItem }
+
+procedure TRpImage.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'Expression') or (propName = SRpSExpression) then
+ begin
+  FExpression := value;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if propName = 'DrawStyle' then
+ begin
+  FDrawStyle := TRpImageDrawStyle(Integer(value));
+  exit;
+ end;
+ if propName = 'dpires' then
+ begin
+  Fdpires := value;
+  exit;
+ end;
+ if propName = 'CopyMode' then
+ begin
+  FCopyMode := value;
+  exit;
+ end;
+ if propName = 'CachedImage' then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpImage.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'Expression') or (propName = SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if (propName = 'Rotation') or (propName = SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if propName = 'DrawStyle' then
+ begin
+  Result := Integer(FDrawStyle);
+  exit;
+ end;
+ if propName = 'dpires' then
+ begin
+  Result := Fdpires;
+  exit;
+ end;
+ if propName = 'CopyMode' then
+ begin
+  Result := FCopyMode;
+  exit;
+ end;
+ if propName = 'CachedImage' then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
 
 
 end.

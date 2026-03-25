@@ -178,6 +178,8 @@ type
    property BackExpression:WideString read FBackExpression write FBackExpression;
    property Stream:TMemoryStream read FStream write SetStream;
    property Name: string read FName write FName;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property SubReport:TComponent read FSubReport write FSubReport;
    property GroupName:String read FGroupName write SetGroupName;
@@ -1705,6 +1707,298 @@ begin
   if (not areport.TwoPass) then
    raise Exception.Create(SRpSTwoPassReportNeeded+'-'+TranslateStr(50,'Page setup'));
  ametafile.UpdateTotalPagesPCount(FPageGroupCountList,ametafile.CurrentPageCount-FirstPage);
+end;
+
+{ TRpSection - IPropertiesItem }
+
+procedure TRpSection.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ begin
+  SetGroupName(value);
+  exit;
+ end;
+ if (propName = 'ChangeBool') or (propName = SRpSChangeBool) then
+ begin
+  FChangeBool := value;
+  exit;
+ end;
+ if (propName = 'PageRepeat') or (propName = SRpSPageRepeat) then
+ begin
+  SetPageRepeat(value);
+  exit;
+ end;
+ if propName = 'SkipPage' then
+ begin
+  FSkipPage := value;
+  exit;
+ end;
+ if (propName = 'AlignBottom') or (propName = SRpAlignBottom) then
+ begin
+  FAlignBottom := value;
+  exit;
+ end;
+ if propName = 'SectionType' then
+ begin
+  FSectionType := TRpSectionType(Integer(value));
+  exit;
+ end;
+ if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ begin
+  FAutoExpand := value;
+  exit;
+ end;
+ if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ begin
+  FAutoContract := value;
+  exit;
+ end;
+ if propName = 'HorzDesp' then
+ begin
+  FHorzDesp := value;
+  exit;
+ end;
+ if propName = 'VertDesp' then
+ begin
+  FVertDesp := value;
+  exit;
+ end;
+ if propName = 'ExternalFilename' then
+ begin
+  FExternalFilename := value;
+  exit;
+ end;
+ if propName = 'ExternalConnection' then
+ begin
+  FExternalConnection := value;
+  exit;
+ end;
+ if propName = 'ExternalTable' then
+ begin
+  FExternalTable := value;
+  exit;
+ end;
+ if propName = 'ExternalField' then
+ begin
+  FExternalField := value;
+  exit;
+ end;
+ if propName = 'ExternalSearchField' then
+ begin
+  FExternalSearchField := value;
+  exit;
+ end;
+ if propName = 'ExternalSearchValue' then
+ begin
+  FExternalSearchValue := value;
+  exit;
+ end;
+ if propName = 'StreamFormat' then
+ begin
+  FStreamFormat := TRpStreamFormat(Integer(value));
+  exit;
+ end;
+ if (propName = 'BeginPage') or (propName = SRpSBeginPage) then
+ begin
+  FBeginPage := value;
+  exit;
+ end;
+ if propName = 'FooterAtReportEnd' then
+ begin
+  FFooterAtReportEnd := value;
+  exit;
+ end;
+ if propName = 'SkipRelativeH' then
+ begin
+  FSkipRelativeH := value;
+  exit;
+ end;
+ if propName = 'SkipRelativeV' then
+ begin
+  FSkipRelativeV := value;
+  exit;
+ end;
+ if (propName = 'SkipType') or (propName = SRpSSkipType) then
+ begin
+  FSkipType := TRpSkipType(Integer(value));
+  exit;
+ end;
+ if propName = 'IniNumPage' then
+ begin
+  SetIniNumPage(value);
+  exit;
+ end;
+ if propName = 'Global' then
+ begin
+  FGlobal := value;
+  exit;
+ end;
+ if propName = 'dpires' then
+ begin
+  Fdpires := value;
+  exit;
+ end;
+ if propName = 'BackStyle' then
+ begin
+  FBackStyle := TRpBackStyle(Integer(value));
+  exit;
+ end;
+ if propName = 'DrawStyle' then
+ begin
+  FDrawStyle := TRpImageDrawStyle(Integer(value));
+  exit;
+ end;
+ if propName = 'CachedImage' then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpSection.GetItemProperty(const propName: string): Variant;
+begin
+ if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ begin
+  Result := FGroupName;
+  exit;
+ end;
+ if (propName = 'ChangeBool') or (propName = SRpSChangeBool) then
+ begin
+  Result := FChangeBool;
+  exit;
+ end;
+ if (propName = 'PageRepeat') or (propName = SRpSPageRepeat) then
+ begin
+  Result := FPageRepeat;
+  exit;
+ end;
+ if propName = 'SkipPage' then
+ begin
+  Result := FSkipPage;
+  exit;
+ end;
+ if (propName = 'AlignBottom') or (propName = SRpAlignBottom) then
+ begin
+  Result := FAlignBottom;
+  exit;
+ end;
+ if propName = 'SectionType' then
+ begin
+  Result := Integer(FSectionType);
+  exit;
+ end;
+ if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ begin
+  Result := FAutoExpand;
+  exit;
+ end;
+ if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ begin
+  Result := FAutoContract;
+  exit;
+ end;
+ if propName = 'HorzDesp' then
+ begin
+  Result := FHorzDesp;
+  exit;
+ end;
+ if propName = 'VertDesp' then
+ begin
+  Result := FVertDesp;
+  exit;
+ end;
+ if propName = 'ExternalFilename' then
+ begin
+  Result := FExternalFilename;
+  exit;
+ end;
+ if propName = 'ExternalConnection' then
+ begin
+  Result := FExternalConnection;
+  exit;
+ end;
+ if propName = 'ExternalTable' then
+ begin
+  Result := FExternalTable;
+  exit;
+ end;
+ if propName = 'ExternalField' then
+ begin
+  Result := FExternalField;
+  exit;
+ end;
+ if propName = 'ExternalSearchField' then
+ begin
+  Result := FExternalSearchField;
+  exit;
+ end;
+ if propName = 'ExternalSearchValue' then
+ begin
+  Result := FExternalSearchValue;
+  exit;
+ end;
+ if propName = 'StreamFormat' then
+ begin
+  Result := Integer(FStreamFormat);
+  exit;
+ end;
+ if (propName = 'BeginPage') or (propName = SRpSBeginPage) then
+ begin
+  Result := FBeginPage;
+  exit;
+ end;
+ if propName = 'FooterAtReportEnd' then
+ begin
+  Result := FFooterAtReportEnd;
+  exit;
+ end;
+ if propName = 'SkipRelativeH' then
+ begin
+  Result := FSkipRelativeH;
+  exit;
+ end;
+ if propName = 'SkipRelativeV' then
+ begin
+  Result := FSkipRelativeV;
+  exit;
+ end;
+ if (propName = 'SkipType') or (propName = SRpSSkipType) then
+ begin
+  Result := Integer(FSkipType);
+  exit;
+ end;
+ if propName = 'IniNumPage' then
+ begin
+  Result := FIniNumPage;
+  exit;
+ end;
+ if propName = 'Global' then
+ begin
+  Result := FGlobal;
+  exit;
+ end;
+ if propName = 'dpires' then
+ begin
+  Result := Fdpires;
+  exit;
+ end;
+ if propName = 'BackStyle' then
+ begin
+  Result := Integer(FBackStyle);
+  exit;
+ end;
+ if propName = 'DrawStyle' then
+ begin
+  Result := Integer(FDrawStyle);
+  exit;
+ end;
+ if propName = 'CachedImage' then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 
