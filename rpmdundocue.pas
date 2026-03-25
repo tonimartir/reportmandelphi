@@ -717,7 +717,7 @@ begin
   end
   else
    if (target is TrpBasereport) then
-    propsItem:=TrpBaseReport(propsItem)
+    propsItem:=TrpBaseReport(target)
   else
     raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
   for prop in operation.properties do

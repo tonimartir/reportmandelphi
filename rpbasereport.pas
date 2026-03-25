@@ -2429,30 +2429,24 @@ end;
 
 function TRpBaseReport.FindReporItemByName(itemName: string):TObject;
 var
- i:integer;
+ i,j:integer;
  colItem: TCollectionItem;
  colItem2: TCollectionItem;
+ colItem3: TCollectionItem;
  secItem: TRpSectionListItem;
  dbInfoItem: TRpDatabaseInfoItem;
  dInfoItem: TRpDataInfoItem;
  subItem: TRpSubReportListItem;
  subreport:TRpSubreport;
+ compItem: TRpCommonListItem;
 begin
+ Result:=nil;
  for colItem in DatabaseInfo do
  begin
   dbInfoItem:=colItem as TRpDatabaseInfoItem;
   if (dbInfoItem.Name = itemName) then
   begin
    Result:=dbinfoItem;
-   exit;
-  end
- end;
- for colItem in DataInfo do
- begin
-  dInfoItem:=colItem as TRpDataInfoItem;
-  if (dInfoItem.Name = itemName) then
-  begin
-   Result:=dInfoItem;
    exit;
   end
  end;
@@ -2481,6 +2475,15 @@ begin
     begin
      Result:=secItem.Section;
      exit;
+    end;
+    for colItem3 in secItem.Section.ReportComponents do
+    begin
+     compItem:=colItem3 as TRpCommonListItem;
+     if (compItem.Component.Name = itemName) then
+     begin
+      Result:=compItem.Component;
+      exit;
+     end;
     end;
   end;
  end;
