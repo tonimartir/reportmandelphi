@@ -205,3 +205,5 @@ getit/Reportman_PDF/Source/Examples/CreatePDF/Android64/
 getit/Source/Examples/CreatePDF/Android64/
 getit/Reportman.zip
 repman/bin32/icudt69.dll
+Reportman.Reporting/obj/
+Reportman.Reporting/bin/

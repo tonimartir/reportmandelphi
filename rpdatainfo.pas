@@ -142,7 +142,7 @@ uses Classes,SysUtils,
   Memds,
  {$ENDIF}
 {$ENDIF}
- rpdatatext;
+ rpdatatext,rpprintitem;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}
@@ -196,7 +196,7 @@ type
   procedure GetParams(params:TStrings);
  end;
 
- TRpDatabaseInfoItem=class(TCollectionItem)
+ TRpDatabaseInfoItem=class(TCollectionItem, IPropertiesItem)
   private
    FName: string;
    FAlias:string;
@@ -265,6 +265,13 @@ type
    procedure Connect(params:TRpParamList);
    procedure DisConnect;
    constructor Create(Collection:TCollection);override;
+   { IInterface }
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+   { IPropertiesItem }
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
 {$IFDEF USESQLEXPRESS}
    property SQLConnection:TSQLConnection read FSQLConnection write FSQLConnection;
 {$ENDIF}
@@ -341,7 +348,7 @@ type
 
  TRpDataLink=class;
 
- TRpDataInfoItem=class(TCollectionItem)
+ TRpDataInfoItem=class(TCollectionItem, IPropertiesItem)
   private
    FDatabaseAlias:string;
    FSQL:widestring;
@@ -404,6 +411,13 @@ type
    procedure Disconnect;
    destructor Destroy;override;
    constructor Create(Collection:TCollection);override;
+   { IInterface }
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+   { IPropertiesItem }
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
    property Dataset:TDataset read FDataset write FDataset;
 {$IFDEF USERPDATASET}
    property CachedDataset:TRpDataset read FCachedDataset;
@@ -1079,6 +1093,118 @@ begin
  Changed(False);
 end;
 
+{ TRpDataInfoItem - IInterface }
+
+function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+function TRpDataInfoItem._AddRef: Integer;
+begin
+ Result := -1;
+end;
+
+function TRpDataInfoItem._Release: Integer;
+begin
+ Result := -1;
+end;
+
+{ TRpDataInfoItem - IPropertiesItem }
+
+procedure TRpDataInfoItem.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if propName = 'Name' then
+ begin
+  FName := value;
+  exit;
+ end;
+ if propName = 'Alias' then
+ begin
+  SetAlias(value);
+  exit;
+ end;
+ if propName = 'DatabaseAlias' then
+ begin
+  SetDatabaseAlias(value);
+  exit;
+ end;
+ if propName = 'SQL' then
+ begin
+  SetSQL(value);
+  exit;
+ end;
+ if propName = 'DataSource' then
+ begin
+  SetDataSource(value);
+  exit;
+ end;
+ if propName = 'GroupUnion' then
+ begin
+  FGroupUnion := value;
+  exit;
+ end;
+ if propName = 'OpenOnStart' then
+ begin
+  FOpenOnStart := value;
+  exit;
+ end;
+ if propName = 'ParallelUnion' then
+ begin
+  FParallelUnion := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpDataInfoItem.GetItemProperty(const propName: string): Variant;
+begin
+ if propName = 'Name' then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if propName = 'Alias' then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if propName = 'DatabaseAlias' then
+ begin
+  Result := FDatabaseAlias;
+  exit;
+ end;
+ if propName = 'SQL' then
+ begin
+  Result := FSQL;
+  exit;
+ end;
+ if propName = 'DataSource' then
+ begin
+  Result := FDataSource;
+  exit;
+ end;
+ if propName = 'GroupUnion' then
+ begin
+  Result := FGroupUnion;
+  exit;
+ end;
+ if propName = 'OpenOnStart' then
+ begin
+  Result := FOpenOnStart;
+  exit;
+ end;
+ if propName = 'ParallelUnion' then
+ begin
+  Result := FParallelUnion;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
 procedure TRpDataInfoItem.Assign(Source:TPersistent);
 begin
  if Source is TRpDataInfoItem then
@@ -1259,6 +1385,138 @@ procedure TRpDatabaseInfoItem.SetConfigFile(Value:string);
 begin
  FConfigFile:=Value;
  Changed(False);
+end;
+
+{ TRpDatabaseInfoItem - IInterface }
+
+function TRpDatabaseInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+function TRpDatabaseInfoItem._AddRef: Integer;
+begin
+ Result := -1;
+end;
+
+function TRpDatabaseInfoItem._Release: Integer;
+begin
+ Result := -1;
+end;
+
+{ TRpDatabaseInfoItem - IPropertiesItem }
+
+procedure TRpDatabaseInfoItem.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if propName = 'Name' then
+ begin
+  FName := value;
+  exit;
+ end;
+ if propName = 'Alias' then
+ begin
+  SetAlias(value);
+  exit;
+ end;
+ if propName = 'Driver' then
+ begin
+  FDriver := TRpDbDriver(Integer(value));
+  exit;
+ end;
+ if propName = 'ConfigFile' then
+ begin
+  SetConfigFile(value);
+  exit;
+ end;
+ if propName = 'LoginPrompt' then
+ begin
+  SetLoginPrompt(value);
+  exit;
+ end;
+ if propName = 'LoadParams' then
+ begin
+  SetLoadParams(value);
+  exit;
+ end;
+ if propName = 'LoadDriverParams' then
+ begin
+  SetLoadDriverParams(value);
+  exit;
+ end;
+ if propName = 'ADOConnectionString' then
+ begin
+  FADOConnectionString := value;
+  exit;
+ end;
+ if propName = 'ProviderFactory' then
+ begin
+  ProviderFactory := value;
+  exit;
+ end;
+ if propName = 'DotNetDriver' then
+ begin
+  DotNetDriver := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpDatabaseInfoItem.GetItemProperty(const propName: string): Variant;
+begin
+ if propName = 'Name' then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if propName = 'Alias' then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if propName = 'Driver' then
+ begin
+  Result := Integer(FDriver);
+  exit;
+ end;
+ if propName = 'ConfigFile' then
+ begin
+  Result := FConfigFile;
+  exit;
+ end;
+ if propName = 'LoginPrompt' then
+ begin
+  Result := FLoginPrompt;
+  exit;
+ end;
+ if propName = 'LoadParams' then
+ begin
+  Result := FLoadParams;
+  exit;
+ end;
+ if propName = 'LoadDriverParams' then
+ begin
+  Result := FLoadDriverParams;
+  exit;
+ end;
+ if propName = 'ADOConnectionString' then
+ begin
+  Result := FADOConnectionString;
+  exit;
+ end;
+ if propName = 'ProviderFactory' then
+ begin
+  Result := ProviderFactory;
+  exit;
+ end;
+ if propName = 'DotNetDriver' then
+ begin
+  Result := DotNetDriver;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
 end;
 
 procedure TRpDatabaseInfoItem.Assign(Source:TPersistent);

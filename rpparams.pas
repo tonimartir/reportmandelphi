@@ -33,7 +33,7 @@ uses Classes, SysUtils,rpmdconsts,
  rptypes;
 
 type
-  TRpParam=class(TCollectionitem)
+  TRpParam=class(TCollectionitem, IPropertiesItem)
    private
     FName:string;
     FDescription:widestring;
@@ -92,6 +92,13 @@ type
     Constructor Create(Collection:TCollection);override;
     procedure Assign(Source:TPersistent);override;
     destructor Destroy;override;
+    { IInterface }
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+    { IPropertiesItem }
+    procedure SetItemProperty(const propName: string; const value: Variant);
+    function GetItemProperty(const propName: string): Variant;
     procedure SetDatasets(AList:TStrings);
     procedure SetItems(AList:TStrings);
     procedure SetValues(AList:TStrings);
@@ -251,6 +258,177 @@ begin
  Changed(false);
 end;
 
+{ TRpParam - IInterface }
+
+function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+function TRpParam._AddRef: Integer;
+begin
+ Result := -1;
+end;
+
+function TRpParam._Release: Integer;
+begin
+ Result := -1;
+end;
+
+{ TRpParam - IPropertiesItem }
+
+procedure TRpParam.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if propName = 'Name' then
+ begin
+  SetName(value);
+  exit;
+ end;
+ if propName = 'ParamType' then
+ begin
+  SetParamType(TRpParamType(Integer(value)));
+  exit;
+ end;
+ if propName = 'Visible' then
+ begin
+  SetVisible(value);
+  exit;
+ end;
+ if propName = 'NeverVisible' then
+ begin
+  SetNeverVisible(value);
+  exit;
+ end;
+ if propName = 'IsReadOnly' then
+ begin
+  SetIsReadOnly(value);
+  exit;
+ end;
+ if propName = 'AllowNulls' then
+ begin
+  SetAllowNulls(value);
+  exit;
+ end;
+ if propName = 'Description' then
+ begin
+  SetDescription(value);
+  exit;
+ end;
+ if propName = 'Hint' then
+ begin
+  SetHint(value);
+  exit;
+ end;
+ if propName = 'Validation' then
+ begin
+  SetValidation(value);
+  exit;
+ end;
+ if propName = 'ErrorMessage' then
+ begin
+  SetErrorMessage(value);
+  exit;
+ end;
+ if propName = 'Value' then
+ begin
+  SetValue(value);
+  exit;
+ end;
+ if propName = 'LookupDataset' then
+ begin
+  FLookupDataset := value;
+  exit;
+ end;
+ if propName = 'SearchDataset' then
+ begin
+  FSearchDataset := value;
+  exit;
+ end;
+ if propName = 'SearchParam' then
+ begin
+  FSearchParam := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpParam.GetItemProperty(const propName: string): Variant;
+begin
+ if propName = 'Name' then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if propName = 'ParamType' then
+ begin
+  Result := Integer(FParamType);
+  exit;
+ end;
+ if propName = 'Visible' then
+ begin
+  Result := FVisible;
+  exit;
+ end;
+ if propName = 'NeverVisible' then
+ begin
+  Result := FNeverVisible;
+  exit;
+ end;
+ if propName = 'IsReadOnly' then
+ begin
+  Result := FIsReadOnly;
+  exit;
+ end;
+ if propName = 'AllowNulls' then
+ begin
+  Result := FAllowNulls;
+  exit;
+ end;
+ if propName = 'Description' then
+ begin
+  Result := FDescription;
+  exit;
+ end;
+ if propName = 'Hint' then
+ begin
+  Result := FHint;
+  exit;
+ end;
+ if propName = 'Validation' then
+ begin
+  Result := FValidation;
+  exit;
+ end;
+ if propName = 'ErrorMessage' then
+ begin
+  Result := FErrorMessage;
+  exit;
+ end;
+ if propName = 'Value' then
+ begin
+  Result := FValue;
+  exit;
+ end;
+ if propName = 'LookupDataset' then
+ begin
+  Result := FLookupDataset;
+  exit;
+ end;
+ if propName = 'SearchDataset' then
+ begin
+  Result := FSearchDataset;
+  exit;
+ end;
+ if propName = 'SearchParam' then
+ begin
+  Result := FSearchParam;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
 
 procedure TRpParam.Assign(Source:TPersistent);
 begin

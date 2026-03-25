@@ -27,7 +27,7 @@ uses SysUtils, Classes,
   Buttons, ExtCtrls, Controls, StdCtrls,Mask,
   rpdatainfo,rpreport,
   Variants,
-  DB,rpmdconsts,rpparams,
+  DB,rpmdconsts,rpparams,rpmdundocue,
   rpgraphutilsvcl, ToolWin,rptypes, rpmaskedit, CheckLst, Vcl.VirtualImageList,
   Vcl.BaseImageCollection, Vcl.ImageCollection, System.Actions, System.ImageList;
 
@@ -131,6 +131,11 @@ implementation
 procedure ShowParamDef(params:TRpParamList;datainfo:TRpDatainfoList;report:TRpReport);
 var
  dia:TFRpParamsVCL;
+ undoCue:TUndoCue;
+ i:integer;
+ origParam,newParam:TRpParam;
+ op:TChangeObjectOperation;
+ groupId:integer;
 begin
  params.RestoreInitialValues;
  dia:=TFRpParamsVCL.Create(Application);
@@ -140,7 +145,81 @@ begin
   dia.datainfo:=datainfo;
   dia.ShowModal;
   if dia.dook then
+  begin
+   // Record undo operations before applying changes
+   if Assigned(report) and Assigned(report.UndoCue) then
+   begin
+    undoCue:=TUndoCue(report.UndoCue);
+    groupId:=undoCue.GetGroupId;
+    // Detect removed params (in original but not in new list)
+    for i:=0 to params.Count-1 do
+    begin
+     origParam:=params.Items[i];
+     if dia.params.FindParam(origParam.Name)=nil then
+     begin
+      op:=TChangeObjectOperation.Create(otRemove,groupId);
+      op.componentName:=origParam.Name;
+      op.componentClass:='TRPPARAM';
+      op.oldItemIndex:=i;
+      undoCue.AddOperation(op);
+     end;
+    end;
+    // Detect added params (in new list but not in original)
+    for i:=0 to dia.params.Count-1 do
+    begin
+     newParam:=dia.params.Items[i];
+     if params.FindParam(newParam.Name)=nil then
+     begin
+      op:=TChangeObjectOperation.Create(otAdd,groupId);
+      op.componentName:=newParam.Name;
+      op.componentClass:='TRPPARAM';
+      op.oldItemIndex:=i;
+      undoCue.AddOperation(op);
+     end;
+    end;
+    // Detect modified params
+    for i:=0 to dia.params.Count-1 do
+    begin
+     newParam:=dia.params.Items[i];
+     origParam:=params.FindParam(newParam.Name);
+     if Assigned(origParam) then
+     begin
+      op:=TChangeObjectOperation.Create(otModify,groupId);
+      op.componentName:=newParam.Name;
+      op.componentClass:='TRPPARAM';
+      if origParam.Description<>newParam.Description then
+       op.AddProperty('Description',ptString,origParam.Description,newParam.Description);
+      if origParam.Hint<>newParam.Hint then
+       op.AddProperty('Hint',ptString,origParam.Hint,newParam.Hint);
+      if origParam.Validation<>newParam.Validation then
+       op.AddProperty('Validation',ptString,origParam.Validation,newParam.Validation);
+      if origParam.ErrorMessage<>newParam.ErrorMessage then
+       op.AddProperty('ErrorMessage',ptString,origParam.ErrorMessage,newParam.ErrorMessage);
+      if origParam.Visible<>newParam.Visible then
+       op.AddProperty('Visible',ptBoolean,origParam.Visible,newParam.Visible);
+      if origParam.NeverVisible<>newParam.NeverVisible then
+       op.AddProperty('NeverVisible',ptBoolean,origParam.NeverVisible,newParam.NeverVisible);
+      if origParam.IsReadOnly<>newParam.IsReadOnly then
+       op.AddProperty('IsReadOnly',ptBoolean,origParam.IsReadOnly,newParam.IsReadOnly);
+      if origParam.AllowNulls<>newParam.AllowNulls then
+       op.AddProperty('AllowNulls',ptBoolean,origParam.AllowNulls,newParam.AllowNulls);
+      if Integer(origParam.ParamType)<>Integer(newParam.ParamType) then
+       op.AddProperty('ParamType',ptInteger,Integer(origParam.ParamType),Integer(newParam.ParamType));
+      if origParam.LookupDataset<>newParam.LookupDataset then
+       op.AddProperty('LookupDataset',ptString,origParam.LookupDataset,newParam.LookupDataset);
+      if origParam.SearchDataset<>newParam.SearchDataset then
+       op.AddProperty('SearchDataset',ptString,origParam.SearchDataset,newParam.SearchDataset);
+      if origParam.SearchParam<>newParam.SearchParam then
+       op.AddProperty('SearchParam',ptString,origParam.SearchParam,newParam.SearchParam);
+      if op.properties.Count>0 then
+       undoCue.AddOperation(op)
+      else
+       op.Free;
+     end;
+    end;
+   end;
    params.assign(dia.params);
+  end;
  finally
   dia.free;
  end;

@@ -7,8 +7,7 @@ interface
 uses
   System.SysUtils, System.Generics.Collections, System.DateUtils,
   System.Classes, System.JSON, System.Variants,
-  rpreport, rpbasereport, rpsubreport, rpsection, rpsecutil,
-  rpprintitem, rpdatainfo, rpparams;
+  rpreport, rpbasereport, rpsubreport, rpsection, rpsecutil,rptypes;
 
 type
   TPropertyType = (
@@ -93,7 +92,7 @@ type
 
 implementation
 
-uses rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart;
+uses rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpprintitem, rpdatainfo, rpparams;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
 
@@ -432,10 +431,12 @@ begin
         begin
           loadTarget := False;
           // Undo remove = re-create the element
-          target := NewComponentByClassName(operation.componentClass, FReport);
-          TComponent(target).Name := operation.componentName;
+          // Items with a parent are TComponent-based (visual comps, sections)
+          // Items without a parent may be collection items (DataInfo, DatabaseInfo, Param)
           if operation.parentName <> '' then
           begin
+            target := NewComponentByClassName(operation.componentClass, FReport);
+            TComponent(target).Name := operation.componentName;
             parentItem := GetComponentByName(operation.parentName);
             if parentItem is TRpSection then
             begin
@@ -453,25 +454,29 @@ begin
           end
           else
           begin
-            // Add to report-level collection
+            // Report-level items: collection items and subreports
             if operation.componentClass = 'TRPDATAINFOITEM' then
             begin
               dinfo := FReport.DataInfo.Add('');
               dinfo.Name := operation.componentName;
+              target := dinfo;
             end
             else if operation.componentClass = 'TRPDATABASEINFOITEM' then
             begin
               dbinfo := FReport.DatabaseInfo.Add('');
               dbinfo.Name := operation.componentName;
+              target := dbinfo;
             end
             else if operation.componentClass = 'TRPPARAM' then
             begin
               param := FReport.Params.Add('');
               param.Name := operation.componentName;
+              target := param;
             end
             else if operation.componentClass = 'TRPSUBREPORT' then
             begin
-              FReport.AddSubReport.Name := operation.componentName;
+              target := FReport.AddSubReport;
+              TRpSubReport(target).Name := operation.componentName;
             end;
           end;
         end
@@ -745,6 +750,8 @@ var
   nvalue: Variant;
   propsItem: IPropertiesItem;
 begin
+  if operation.properties.Count = 0 then
+    Exit;
   if (Target is TRpCommonComponent) then
   begin
    propsItem:=TRpCommonComponent(target);
@@ -752,6 +759,15 @@ begin
   else
    if (target is TrpBasereport) then
     propsItem:=TrpBaseReport(target)
+  else
+   if (target is TRpParam) then
+    propsItem:=TRpParam(target)
+  else
+   if (target is TRpDataInfoItem) then
+    propsItem:=TRpDataInfoItem(target)
+  else
+   if (target is TRpDatabaseInfoItem) then
+    propsItem:=TRpDatabaseInfoItem(target)
   else
     raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
   for prop in operation.properties do
