@@ -6,7 +6,7 @@ interface
 
 uses
   System.SysUtils, System.Generics.Collections, System.DateUtils,
-  System.Classes, System.JSON, System.Variants,
+  System.Classes, System.JSON, System.Variants,rpprintitem,
   rpreport, rpbasereport, rpsubreport, rpsection, rpsecutil,rptypes;
 
 type
@@ -80,6 +80,7 @@ type
     destructor Destroy; override;
     function GetGroupId: Integer;
     procedure AddOperation(op: TChangeObjectOperation);
+    procedure AddAllComponentProperties(pitem: TRpCommonPosComponent; op: TChangeObjectOperation);
     function Undo: TObjectList<TChangeObjectOperation>;
     function Redo: TObjectList<TChangeObjectOperation>;
     procedure Clear;
@@ -92,7 +93,7 @@ type
 
 implementation
 
-uses rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpprintitem, rpdatainfo, rpparams;
+uses rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
 
@@ -836,6 +837,123 @@ begin
     Result := root.ToJSON;
   finally
     root.Free;
+  end;
+end;
+
+procedure TUndoCue.AddAllComponentProperties(pitem: TRpCommonPosComponent; op: TChangeObjectOperation);
+begin
+  // Common positional properties
+  op.AddProperty('PosX', ptInteger, Null, pitem.GetItemProperty('PosX'));
+  op.AddProperty('PosY', ptInteger, Null, pitem.GetItemProperty('PosY'));
+  op.AddProperty('Width', ptInteger, Null, pitem.GetItemProperty('Width'));
+  op.AddProperty('Height', ptInteger, Null, pitem.GetItemProperty('Height'));
+  op.AddProperty('Align', ptInteger, Null, pitem.GetItemProperty('Align'));
+  op.AddProperty('AnnotationExpression', ptString, Null, pitem.GetItemProperty('AnnotationExpression'));
+  op.AddProperty('PrintCondition', ptString, Null, pitem.GetItemProperty('PrintCondition'));
+  op.AddProperty('DoBeforePrint', ptString, Null, pitem.GetItemProperty('DoBeforePrint'));
+  op.AddProperty('DoAfterPrint', ptString, Null, pitem.GetItemProperty('DoAfterPrint'));
+  op.AddProperty('Visible', ptBoolean, Null, pitem.GetItemProperty('Visible'));
+  // Text component properties (TRpLabel, TRpExpression, TRpChart)
+  if pitem is TRpGenTextComponent then
+  begin
+    op.AddProperty('WFontName', ptString, Null, pitem.GetItemProperty('WFontName'));
+    op.AddProperty('LFontName', ptString, Null, pitem.GetItemProperty('LFontName'));
+    op.AddProperty('FontSize', ptInteger, Null, pitem.GetItemProperty('FontSize'));
+    op.AddProperty('FontColor', ptInteger, Null, pitem.GetItemProperty('FontColor'));
+    op.AddProperty('FontStyle', ptInteger, Null, pitem.GetItemProperty('FontStyle'));
+    op.AddProperty('BackColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
+    op.AddProperty('Transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
+    op.AddProperty('CutText', ptBoolean, Null, pitem.GetItemProperty('CutText'));
+    op.AddProperty('WordWrap', ptBoolean, Null, pitem.GetItemProperty('WordWrap'));
+    op.AddProperty('WordBreak', ptBoolean, Null, pitem.GetItemProperty('WordBreak'));
+    op.AddProperty('SingleLine', ptBoolean, Null, pitem.GetItemProperty('SingleLine'));
+    op.AddProperty('Alignment', ptInteger, Null, pitem.GetItemProperty('Alignment'));
+    op.AddProperty('VAlignment', ptInteger, Null, pitem.GetItemProperty('VAlignment'));
+    op.AddProperty('FontRotation', ptInteger, Null, pitem.GetItemProperty('FontRotation'));
+    op.AddProperty('Type1Font', ptInteger, Null, pitem.GetItemProperty('Type1Font'));
+    op.AddProperty('PrintStep', ptInteger, Null, pitem.GetItemProperty('PrintStep'));
+    op.AddProperty('InterLine', ptInteger, Null, pitem.GetItemProperty('InterLine'));
+    op.AddProperty('MultiPage', ptBoolean, Null, pitem.GetItemProperty('MultiPage'));
+    op.AddProperty('IsHtml', ptBoolean, Null, pitem.GetItemProperty('IsHtml'));
+    if pitem is TRpLabel then
+    begin
+      op.AddProperty('Text', ptString, Null, pitem.GetItemProperty('Text'));
+    end
+    else if pitem is TRpExpression then
+    begin
+      op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
+      op.AddProperty('DisplayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
+      op.AddProperty('DataType', ptInteger, Null, pitem.GetItemProperty('DataType'));
+      op.AddProperty('Identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
+      op.AddProperty('Aggregate', ptInteger, Null, pitem.GetItemProperty('Aggregate'));
+      op.AddProperty('GroupName', ptString, Null, pitem.GetItemProperty('GroupName'));
+      op.AddProperty('AgType', ptInteger, Null, pitem.GetItemProperty('AgType'));
+      op.AddProperty('AutoExpand', ptBoolean, Null, pitem.GetItemProperty('AutoExpand'));
+      op.AddProperty('AutoContract', ptBoolean, Null, pitem.GetItemProperty('AutoContract'));
+      op.AddProperty('PrintOnlyOne', ptBoolean, Null, pitem.GetItemProperty('PrintOnlyOne'));
+      op.AddProperty('PrintNulls', ptBoolean, Null, pitem.GetItemProperty('PrintNulls'));
+    end
+    else if pitem is TRpChart then
+    begin
+      op.AddProperty('ChartType', ptInteger, Null, pitem.GetItemProperty('ChartType'));
+      op.AddProperty('Identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
+      op.AddProperty('ChangeSerieBool', ptBoolean, Null, pitem.GetItemProperty('ChangeSerieBool'));
+      op.AddProperty('ClearExpressionBool', ptBoolean, Null, pitem.GetItemProperty('ClearExpressionBool'));
+      op.AddProperty('Driver', ptInteger, Null, pitem.GetItemProperty('Driver'));
+      op.AddProperty('View3d', ptBoolean, Null, pitem.GetItemProperty('View3d'));
+      op.AddProperty('View3dWalls', ptBoolean, Null, pitem.GetItemProperty('View3dWalls'));
+      op.AddProperty('Perspective', ptNumber, Null, pitem.GetItemProperty('Perspective'));
+      op.AddProperty('Elevation', ptNumber, Null, pitem.GetItemProperty('Elevation'));
+      op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+      op.AddProperty('Zoom', ptInteger, Null, pitem.GetItemProperty('Zoom'));
+      op.AddProperty('HorzOffset', ptNumber, Null, pitem.GetItemProperty('HorzOffset'));
+      op.AddProperty('VertOffset', ptNumber, Null, pitem.GetItemProperty('VertOffset'));
+      op.AddProperty('Tilt', ptNumber, Null, pitem.GetItemProperty('Tilt'));
+      op.AddProperty('Orthogonal', ptBoolean, Null, pitem.GetItemProperty('Orthogonal'));
+      op.AddProperty('MultiBar', ptInteger, Null, pitem.GetItemProperty('MultiBar'));
+      op.AddProperty('Resolution', ptInteger, Null, pitem.GetItemProperty('Resolution'));
+      op.AddProperty('ShowLegend', ptBoolean, Null, pitem.GetItemProperty('ShowLegend'));
+      op.AddProperty('ShowHint', ptBoolean, Null, pitem.GetItemProperty('ShowHint'));
+      op.AddProperty('MarkStyle', ptInteger, Null, pitem.GetItemProperty('MarkStyle'));
+      op.AddProperty('HorzFontSize', ptInteger, Null, pitem.GetItemProperty('HorzFontSize'));
+      op.AddProperty('VertFontSize', ptInteger, Null, pitem.GetItemProperty('VertFontSize'));
+      op.AddProperty('HorzFontRotation', ptInteger, Null, pitem.GetItemProperty('HorzFontRotation'));
+      op.AddProperty('VertFontRotation', ptInteger, Null, pitem.GetItemProperty('VertFontRotation'));
+    end;
+  end
+  else if pitem is TRpShape then
+  begin
+    op.AddProperty('BrushStyle', ptInteger, Null, pitem.GetItemProperty('BrushStyle'));
+    op.AddProperty('BrushColor', ptInteger, Null, pitem.GetItemProperty('BrushColor'));
+    op.AddProperty('PenStyle', ptInteger, Null, pitem.GetItemProperty('PenStyle'));
+    op.AddProperty('PenColor', ptInteger, Null, pitem.GetItemProperty('PenColor'));
+    op.AddProperty('Shape', ptInteger, Null, pitem.GetItemProperty('Shape'));
+    op.AddProperty('PenWidth', ptInteger, Null, pitem.GetItemProperty('PenWidth'));
+  end
+  else if pitem is TRpImage then
+  begin
+    op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
+    op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+    op.AddProperty('DrawStyle', ptInteger, Null, pitem.GetItemProperty('DrawStyle'));
+    op.AddProperty('dpires', ptInteger, Null, pitem.GetItemProperty('dpires'));
+    op.AddProperty('CopyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
+  end
+  else if pitem is TRpBarcode then
+  begin
+    op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
+    op.AddProperty('Modul', ptInteger, Null, pitem.GetItemProperty('Modul'));
+    op.AddProperty('Ratio', ptNumber, Null, pitem.GetItemProperty('Ratio'));
+    op.AddProperty('Typ', ptInteger, Null, pitem.GetItemProperty('Typ'));
+    op.AddProperty('Checksum', ptBoolean, Null, pitem.GetItemProperty('Checksum'));
+    op.AddProperty('DisplayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
+    op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+    op.AddProperty('BColor', ptInteger, Null, pitem.GetItemProperty('BColor'));
+    op.AddProperty('BackColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
+    op.AddProperty('Transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
+    op.AddProperty('NumColumns', ptInteger, Null, pitem.GetItemProperty('NumColumns'));
+    op.AddProperty('NumRows', ptInteger, Null, pitem.GetItemProperty('NumRows'));
+    op.AddProperty('ECCLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
+    op.AddProperty('Truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
   end;
 end;
 

@@ -1238,10 +1238,7 @@ begin
    op.parentName:=TRpSection(sectionintf.printitem).Name;
    op.oldparentName:=TRpSection(sectionintf.printitem).Name;
    op.oldItemIndex:=TRpSection(sectionintf.printitem).ReportComponents.IndexOf(pitem);
-   op.AddProperty('PosX',ptInteger,Null,pitem.PosX);
-   op.AddProperty('PosY',ptInteger,Null,pitem.PosY);
-   op.AddProperty('Width',ptInteger,Null,pitem.Width);
-   op.AddProperty('Height',ptInteger,Null,pitem.Height);
+   cue.AddAllComponentProperties(pitem, op);
    cue.AddOperation(op);
    TRpSection(sectionintf.printitem).DeleteComponent(aitem.printitem);
    sectionintf.DeleteChild(aitem);
