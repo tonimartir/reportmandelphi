@@ -157,6 +157,7 @@ type
    FStreamFormat:TRpStreamFormat;
    FReportAction:TRpReportActions;
    FPreviewAbout:Boolean;
+   FUndoCue:TObject;
    // Default font properties
    FWFontName:widestring;
    FLFontName:widestring;
@@ -420,6 +421,7 @@ type
     write FPrintOnlyIfDataAvailable default false;
    property StreamFormat:TRpStreamFormat read FStreamFormat
     write FStreamFormat;
+   property UndoCue:TObject read FUndoCue write FUndoCue;
    property ReportAction:TRpReportActions read FReportAction write FReportAction;
    property PreviewAbout:Boolean read FPreviewAbout write FPreviewAbout
     default true;
@@ -635,7 +637,7 @@ begin
  FTransparent:=true;
  FCutText:=false;
  FBidiModes:=TStringList.Create;
-
+ FUndoCue:=nil;
  //
  InitEvaluator;
 end;
@@ -744,6 +746,11 @@ begin
  FIdenEof.free;
  ClearTotalPagesList;
  FTotalPagesList.free;
+ if Assigned(FUndoCue) then
+ begin
+  FUndoCue.Free;
+  FUndoCue:=nil;
+ end;
  if Assigned(FEvaluator) then
  begin
   FEvaluator.free;

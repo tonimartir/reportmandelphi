@@ -137,7 +137,7 @@ implementation
 
 {$R *.dfm}
 
-uses rpmdfmainvcl;
+uses rpmdfmainvcl, rpmdundocue;
 
 procedure TrpScrollBox.AutoScrollInView(AControl: TControl);
 begin
@@ -737,6 +737,9 @@ var
  i,MaxY:integer;
  asection:TRpSection;
  dframe:TFRpDesignFrameVCL;
+ oldHeight:integer;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  inherited MouseUp(Button,Shift,X,Y);
 
@@ -777,9 +780,21 @@ begin
   // Resize with the diference
   if NewTop<>Top then
   begin
+   oldHeight:=asection.Height;
    asection.Height:=pixelstotwips(NewTop-MaxY,FFrame.Scale);
    if asection.Height=0 then
     asection.Height:=0;
+   // Record undo for section height change
+   if Assigned(FFrame.Report) and Assigned(FFrame.Report.UndoCue) then
+   begin
+    cue:=TUndoCue(FFrame.Report.UndoCue);
+    op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+    op.componentName:=asection.Name;
+    op.componentClass:=UpperCase(asection.ClassName);
+    op.AddProperty('Height',ptInteger,oldHeight,asection.Height);
+    cue.AddOperation(op);
+    TFRpMainFVCL(FFrame.Owner).RefreshCueView;
+   end;
    FFrame.UpdateInterface(true);
   end;
  end;
@@ -879,6 +894,9 @@ end;
 procedure TRpPanelRight.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
  NewLeft:integer;
+ oldWidth:integer;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  inherited MouseUp(Button,Shift,X,Y);
 
@@ -901,7 +919,19 @@ begin
   if NewLeft<0 then
    NewLeft:=0;
 
+  oldWidth:=section.Width;
   section.Width:=pixelstotwips(NewLeft,FFrame.Scale);
+  // Record undo for section width change
+  if Assigned(FFrame.Report) and Assigned(FFrame.Report.UndoCue) then
+  begin
+   cue:=TUndoCue(FFrame.Report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=section.Name;
+   op.componentClass:=UpperCase(section.ClassName);
+   op.AddProperty('Width',ptInteger,oldWidth,section.Width);
+   cue.AddOperation(op);
+   TFRpMainFVCL(FFrame.Owner).RefreshCueView;
+  end;
 
   FFrame.UpdateInterface(true);
  end;

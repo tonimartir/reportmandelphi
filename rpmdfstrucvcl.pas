@@ -102,7 +102,7 @@ implementation
 
 {$R *.dfm}
 
-uses rpmdfdesignvcl, rpmdfmainvcl;
+uses rpmdfdesignvcl, rpmdfmainvcl, rpmdundocue;
 
 
 
@@ -374,8 +374,12 @@ var
  i,index:integer;
  asectype:TRpSectionType;
  firstdetail,lastdetail:integer;
+ swapped:boolean;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Goes up
+ swapped:=false;
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -391,6 +395,7 @@ begin
     arep:=report.SubReports.Items[changesubrep].SubReport;
     report.SubReports.Items[changesubrep].SubReport:=subrep;
     report.SubReports.Items[i].SubReport:=arep;
+    swapped:=true;
     SetReport(FReport);
     SelectDataItem(subrep);
     break;
@@ -429,6 +434,7 @@ begin
       asec:=subrep.Sections[index-1].Section;
       subrep.Sections[index-1].Section:=subrep.Sections[index].Section;
       subrep.Sections[index].Section:=asec;
+      swapped:=true;
       SetReport(FReport);
       SelectDataItem(asection);
      end;
@@ -465,6 +471,7 @@ begin
      subrep.Sections.Items[firstdetail-index+1].Section:=subrep.Sections.Items[firstdetail-index].Section;
      subrep.Sections.Items[firstdetail-index].Section:=asec;
      // Update
+     swapped:=true;
      SetReport(FReport);
      SelectDataItem(asection);
     end
@@ -499,6 +506,7 @@ begin
       subrep.Sections.Items[firstdetail-index-1].Section:=subrep.Sections.Items[firstdetail-index].Section;
       subrep.Sections.Items[firstdetail-index].Section:=asec;
       // Update
+      swapped:=true;
       SetReport(FReport);
       SelectDataItem(asection);
      end
@@ -513,6 +521,25 @@ begin
    end;
   end;
  end;
+ // Record undo for swap up
+ if swapped and Assigned(Report) and Assigned(Report.UndoCue) then
+ begin
+  cue:=TUndoCue(Report.UndoCue);
+  op:=TChangeObjectOperation.Create(otSwapUp, cue.GetGroupId);
+  if (aobject is TRpSubReport) then
+  begin
+   op.componentName:=TRpSubReport(aobject).Name;
+   op.componentClass:='TRPSUBREPORT';
+  end
+  else
+  if (aobject is TRpSection) then
+  begin
+   op.componentName:=TRpSection(aobject).Name;
+   op.componentClass:='TRPSECTION';
+  end;
+  cue.AddOperation(op);
+  TFRpMainFVCL(Owner).RefreshCueView;
+ end;
 end;
 
 procedure TFRpStructureVCL.ADownExecute(Sender: TObject);
@@ -526,8 +553,12 @@ var
  asection,asec:TRpSection;
  asectype:TRpSectionType;
  firstdetail,lastdetail:integer;
+ swapped:boolean;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Goes down
+ swapped:=false;
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -548,7 +579,7 @@ begin
      report.SubReports.Items[i].SubReport:=subrep;
      report.SubReports.Items[changesubrep].SubReport:=arep;
 
-
+     swapped:=true;
      SetReport(FReport);
      SelectDataItem(subrep);
      break;
@@ -587,6 +618,7 @@ begin
      asec:=subrep.Sections[index+1].Section;
      subrep.Sections[index+1].Section:=subrep.Sections[index].Section;
      subrep.Sections[index].Section:=asec;
+     swapped:=true;
      SetReport(FReport);
      SelectDataItem(asection);
     end;
@@ -620,6 +652,7 @@ begin
      subrep.Sections.Items[firstdetail-index+1].Section:=subrep.Sections.Items[firstdetail-index].Section;
      subrep.Sections.Items[firstdetail-index].Section:=asec;
      // Update
+     swapped:=true;
      SetReport(FReport);
      SelectDataItem(asection);
     end
@@ -653,11 +686,31 @@ begin
      subrep.Sections.Items[firstdetail-index-1].Section:=subrep.Sections.Items[firstdetail-index].Section;
      subrep.Sections.Items[firstdetail-index].Section:=asec;
      // Update
+     swapped:=true;
      SetReport(FReport);
      SelectDataItem(asection);
     end
    end;
   end;
+ end;
+ // Record undo for swap down
+ if swapped and Assigned(Report) and Assigned(Report.UndoCue) then
+ begin
+  cue:=TUndoCue(Report.UndoCue);
+  op:=TChangeObjectOperation.Create(otSwapDown, cue.GetGroupId);
+  if (aobject is TRpSubReport) then
+  begin
+   op.componentName:=TRpSubReport(aobject).Name;
+   op.componentClass:='TRPSUBREPORT';
+  end
+  else
+  if (aobject is TRpSection) then
+  begin
+   op.componentName:=TRpSection(aobject).Name;
+   op.componentClass:='TRPSECTION';
+  end;
+  cue.AddOperation(op);
+  TFRpMainFVCL(Owner).RefreshCueView;
  end;
 end;
 

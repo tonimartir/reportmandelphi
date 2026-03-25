@@ -26,9 +26,7 @@ interface
 {$I rpconf.inc}
 
 uses
-{$IFDEF USEVARIANTS}
  Types,Variants,
-{$ENDIF}
   Graphics,Forms,Controls,Dialogs,ComCtrls,Menus,Windows,Messages,
  rpmdconsts,classes,sysutils,rpmunits,rpdbbrowservcl,
  rpprintitem,rpvgraphutils,rpgraphutilsvcl,rpsection,
@@ -189,7 +187,7 @@ type
 
 implementation
 
-uses rpmdobjinspvcl,rpmdfsectionintvcl,rpmdfmainvcl;
+uses rpmdobjinspvcl,rpmdfsectionintvcl,rpmdfmainvcl, rpmdundocue;
 
 
 const
@@ -800,6 +798,12 @@ var
  afitem:TRpSizePosInterface;
  secint:TRpSectionIntf;
  p1:Tpoint;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ mainf:TFRpMainFVCL;
+ oldPosXArr,oldPosYArr:array of integer;
+ oldPosXSingle,oldPosYSingle:integer;
 begin
  inherited MouseUp(Button,Shift,X,Y);
 
@@ -858,6 +862,18 @@ begin
     insp:=TFRpObjInspVCL(fobjinsp);
     difx:=TRpCOmmonPosComponent(printitem).PosX-pixelstotwips(NewLeft,Scale);
     dify:=TRpCOmmonPosComponent(printitem).PosY-pixelstotwips(NewTop,Scale);
+    // Capture old positions for undo
+    oldPosXArr:=nil;
+    oldPosYArr:=nil;
+    SetLength(oldPosXArr, insp.SelectedItems.Count);
+    SetLength(oldPosYArr, insp.SelectedItems.Count);
+    for i:=0 to insp.SelectedItems.Count-1 do
+    begin
+     afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
+     aitem:=TRpCommonPosComponent(afitem.printitem);
+     oldPosXArr[i]:=aitem.PosX;
+     oldPosYArr[i]:=aitem.PosY;
+    end;
     for i:=0 to insp.SelectedItems.Count-1 do
     begin
      afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
@@ -872,17 +888,52 @@ begin
      aitem.PosY:=NewTop;
      afitem.UpdatePos;
     end;
+    // Record undo for multi-select move
+    if Assigned(TRpReport(printitem.Report).UndoCue) then
+    begin
+     cue:=TUndoCue(TRpReport(printitem.Report).UndoCue);
+     gid:=cue.GetGroupId;
+     for i:=0 to insp.SelectedItems.Count-1 do
+     begin
+      afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
+      aitem:=TRpCommonPosComponent(afitem.printitem);
+      op:=TChangeObjectOperation.Create(otModify, gid);
+      op.componentName:=aitem.Name;
+      op.componentClass:=UpperCase(aitem.ClassName);
+      op.AddProperty('PosX',ptInteger,oldPosXArr[i],aitem.PosX);
+      op.AddProperty('PosY',ptInteger,oldPosYArr[i],aitem.PosY);
+      cue.AddOperation(op);
+     end;
+     mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+     mainf.RefreshCueView;
+    end;
     if (ssShift in Shift) then
      TFRpObjInspVCL(fobjinsp).AddCompItem(Self,Not (ssShift in Shift));
    end;
   end
   else
   begin
+   // Capture old position for undo (single item)
+   oldPosXSingle:=TRpCOmmonPosComponent(printitem).PosX;
+   oldPosYSingle:=TRpCOmmonPosComponent(printitem).PosY;
    if Not FBlocked then
    begin
     TRpCOmmonPosComponent(printitem).PosX:=pixelstotwips(NewLeft,Scale);
     TRpCOmmonPosComponent(printitem).PosY:=pixelstotwips(NewTop,Scale);
     UpdatePos;
+    // Record undo for single item move
+    if Assigned(TRpReport(printitem.Report).UndoCue) then
+    begin
+     cue:=TUndoCue(TRpReport(printitem.Report).UndoCue);
+     op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+     op.componentName:=printitem.Name;
+     op.componentClass:=UpperCase(printitem.ClassName);
+     op.AddProperty('PosX',ptInteger,oldPosXSingle,TRpCOmmonPosComponent(printitem).PosX);
+     op.AddProperty('PosY',ptInteger,oldPosYSingle,TRpCOmmonPosComponent(printitem).PosY);
+     cue.AddOperation(op);
+     mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+     mainf.RefreshCueView;
+    end;
    end;
    if Assigned(fobjinsp) then
     TFRpObjInspVCL(fobjinsp).AddCompItem(Self,Not (ssShift in Shift));

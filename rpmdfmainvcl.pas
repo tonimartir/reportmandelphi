@@ -65,7 +65,8 @@ uses
   rpsection,rpprintitem,rpmdfopenlibvcl,rpeditconnvcl,
   DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl, rpalias, System.Actions,
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
-  Vcl.VirtualImageList;
+  Vcl.VirtualImageList,
+  rpmdundocue, rpmdcueviewvcl, Vcl.Buttons, System.Generics.Collections;
 
 const
   // File name in menu width
@@ -341,6 +342,9 @@ type
     FObjFontColor:Integer;
     previewmodify:boolean;
     ThemeName:string;
+    fcueview:TFRpCueViewVCL;
+    fcuepanel:TPanel;
+    fcuesplitter:TSplitter;
     procedure FreeInterface;
     procedure CreateInterface;
     function checkmodified:boolean;
@@ -367,6 +371,11 @@ type
     procedure UpdateFonts;
     function GetScale:double;
     procedure menuthemeClick(Sender: TObject);
+    procedure EnsureUndoCue;
+    procedure DoUndo;
+    procedure DoRedo;
+    procedure OnUndoRedo(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   public
     { Public declarations }
     report:TRpReport;
@@ -374,6 +383,7 @@ type
     freportstructure:TFRpStructureVCL;
     browsecommandline:boolean;
     procedure RefreshInterface(Sender: TObject);
+    procedure RefreshCueView;
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
     function GetExpressionText:string;
@@ -511,6 +521,7 @@ begin
  lastsaved:=TMemorystream.create;
  report.SaveToStream(lastsaved);
 
+ EnsureUndoCue;
  CreateInterface;
 end;
 
@@ -599,6 +610,21 @@ begin
  APageSetup.Enabled:=false;
  Caption:=SRpRepman;
 
+ if Assigned(fcueview) then
+ begin
+  fcueview.Free;
+  fcueview:=nil;
+ end;
+ if Assigned(fcuesplitter) then
+ begin
+  fcuesplitter.Free;
+  fcuesplitter:=nil;
+ end;
+ if Assigned(fcuepanel) then
+ begin
+  fcuepanel.Free;
+  fcuepanel:=nil;
+ end;
  freportstructure.free;
  fdesignframe.free;
  fobjinsp.free;
@@ -691,6 +717,25 @@ begin
  freportstructure.report:=report;
  fdesignframe.report:=report;
 
+ // Create undo cue panel on the right side
+ fcuepanel:=TPanel.Create(Self);
+ fcuepanel.Width:=280;
+ fcuepanel.Align:=alRight;
+ fcuepanel.BevelOuter:=bvNone;
+ fcuepanel.Parent:=mainscrollbox;
+
+ fcuesplitter:=TSplitter.Create(Self);
+ fcuesplitter.Align:=alRight;
+ fcuesplitter.Width:=5;
+ fcuesplitter.Beveled:=True;
+ fcuesplitter.Parent:=mainscrollbox;
+
+ fcueview:=TFRpCueViewVCL.Create(Self);
+ fcueview.Align:=alClient;
+ fcueview.Parent:=fcuepanel;
+ fcueview.OnUndoRedo:=OnUndoRedo;
+ fcueview.Report:=report;
+
  mainscrollbox.Visible:=true;
 end;
 
@@ -759,6 +804,8 @@ begin
  Application.UpdateFormatSettings:=false;
  // Inits Bools Arrays
  BoolToStr(True,True);
+ KeyPreview:=True;
+ OnKeyDown:=FormKeyDown;
  ALeft.ShortCut:=ShortCut(VK_LEFT,[ssCtrl]);
  ARight.ShortCut:=ShortCut(VK_RIGHT,[ssCtrl]);
  AUp.ShortCut:=ShortCut(VK_UP,[ssCtrl]);
@@ -1014,11 +1061,19 @@ end;
 procedure TFRpMainFVCL.ANewPageHeaderExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new page header
  Assert(report<>nil,'Called AddNew PageHeader without a report assigned');
  asection:=freportstructure.FindSelectedSubreport.AddPageHeader;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1026,12 +1081,20 @@ end;
 procedure TFRpMainFVCL.ANewPageFooterExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new page footer
  Assert(report<>nil,'Called AddNewPageFooter without a report assigned');
 
  asection:=freportstructure.FindSelectedSubreport.AddPageFooter;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1040,6 +1103,8 @@ procedure TFRpMainFVCL.ANewGroupExecute(Sender: TObject);
 var
  newgroupname:string;
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddNewGroupout a report unassigned');
@@ -1048,6 +1113,13 @@ begin
  if length(newgroupname)>0 then
  begin
   asection:=freportstructure.FindSelectedSubreport.AddGroup(newgroupname);
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+  op.componentName:=asection.Name;
+  op.componentClass:='TRPSECTION';
+  op.parentName:=freportstructure.FindSelectedSubreport.Name;
+  cue.AddOperation(op);
   RefreshInterface(Self);
   freportstructure.SelectDataItem(asection);
  end;
@@ -1056,12 +1128,19 @@ end;
 procedure TFRpMainFVCL.ANewSubreportExecute(Sender: TObject);
 var
  subrep:TRpSubReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddSubReport a report unassigned');
 
  subrep:=report.AddSubReport;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=subrep.Name;
+ op.componentClass:='TRPSUBREPORT';
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(subrep);
 end;
@@ -1088,12 +1167,20 @@ end;
 procedure TFRpMainFVCL.ANewDetailExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
 
  asection:=freportstructure.FindSelectedSubreport.AddDetail;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1126,21 +1213,40 @@ var
  aitem:TRpSizePosInterface;
  alist:TStringList;
  i:integer;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ pitem:TRpCommonPosComponent;
 begin
  alist:=TStringList.Create;
  try
   sectionintf:=nil;
   alist.Assign(fobjinsp.SelectedItems);
   fobjinsp.ClearMultiSelect;
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  gid:=cue.GetGroupId;
   for i:=0 to alist.count-1 do
   begin
    aitem:=TRpSizePosInterface(alist.Objects[i]);
    sectionintf:=TRpSectionInterface(aitem.SectionInt);
+   pitem:=TRpCommonPosComponent(aitem.printitem);
+   // Record remove operation
+   op:=TChangeObjectOperation.Create(otRemove, gid);
+   op.componentName:=pitem.Name;
+   op.componentClass:=UpperCase(pitem.ClassName);
+   op.parentName:=TRpSection(sectionintf.printitem).Name;
+   op.AddProperty('PosX',ptInteger,pitem.PosX,Null);
+   op.AddProperty('PosY',ptInteger,pitem.PosY,Null);
+   op.AddProperty('Width',ptInteger,pitem.Width,Null);
+   op.AddProperty('Height',ptInteger,pitem.Height,Null);
+   cue.AddOperation(op);
    TRpSection(sectionintf.printitem).DeleteComponent(aitem.printitem);
    sectionintf.DeleteChild(aitem);
   end;
   if assigned(sectionintf) then
    fobjinsp.AddCompItem(sectionintf,true);
+  RefreshCueView;
  finally
   alist.free;
  end;
@@ -1201,6 +1307,8 @@ var
  alist:TList;
  pitem:TRpCommonPosComponent;
  ident:String;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  if fobjinsp.SelectedItems.Count<1 then
   exit;
@@ -1250,7 +1358,23 @@ begin
      report.InsertComponent(pitem);
     Generatenewname(pitem);
     TFRpObjInspVCL(fobjinsp).AddCompItem(secint.CreateChild(pitem),false);
+    // Record undo for pasted component
+    if Assigned(report.UndoCue) then
+    begin
+     cue:=TUndoCue(report.UndoCue);
+     op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+     op.componentName:=pitem.Name;
+     op.componentClass:=UpperCase(pitem.ClassName);
+     op.parentName:=section.Name;
+     op.AddProperty('PosX',ptInteger,Null,pitem.PosX);
+     op.AddProperty('PosY',ptInteger,Null,pitem.PosY);
+     op.AddProperty('Width',ptInteger,Null,pitem.Width);
+     op.AddProperty('Height',ptInteger,Null,pitem.Height);
+     cue.AddOperation(op);
+    end;
    end;
+   if Assigned(report.UndoCue) then
+    RefreshCueView;
 //   fdesignframe.UpdateSelection(true);
    // Select the items
   finally
@@ -2230,6 +2354,91 @@ begin
  if Assigned(fdesignframe) then
  begin
   fdesignframe.Scale:=GetScale;
+ end;
+end;
+
+procedure TFRpMainFVCL.EnsureUndoCue;
+begin
+ if not Assigned(report) then
+  Exit;
+ if not Assigned(report.UndoCue) then
+  report.UndoCue := TUndoCue.Create(report);
+end;
+
+procedure TFRpMainFVCL.DoUndo;
+var
+ cue: TUndoCue;
+ ops: TObjectList<TChangeObjectOperation>;
+begin
+ if not Assigned(report) then
+  Exit;
+ EnsureUndoCue;
+ cue := TUndoCue(report.UndoCue);
+ if cue.UndoOperations.Count = 0 then
+  Exit;
+ ops := cue.Undo;
+ if Assigned(ops) then
+ begin
+  ops.Free;
+  OnUndoRedo(Self);
+ end;
+end;
+
+procedure TFRpMainFVCL.DoRedo;
+var
+ cue: TUndoCue;
+ ops: TObjectList<TChangeObjectOperation>;
+begin
+ if not Assigned(report) then
+  Exit;
+ EnsureUndoCue;
+ cue := TUndoCue(report.UndoCue);
+ if cue.RedoOperations.Count = 0 then
+  Exit;
+ ops := cue.Redo;
+ if Assigned(ops) then
+ begin
+  ops.Free;
+  OnUndoRedo(Self);
+ end;
+end;
+
+procedure TFRpMainFVCL.OnUndoRedo(Sender: TObject);
+begin
+ if Assigned(fdesignframe) then
+ begin
+  fdesignframe.UpdateInterface(true);
+  fdesignframe.UpdateSelection(false);
+ end;
+ if Assigned(freportstructure) then
+  freportstructure.report := report;
+ if Assigned(fcueview) then
+ begin
+  fcueview.RefreshList;
+  fcueview.UpdateButtons;
+ end;
+end;
+
+procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+ if (Shift = [ssCtrl]) and (Key = Ord('Z')) then
+ begin
+  Key := 0;
+  DoUndo;
+ end
+ else if (Shift = [ssCtrl]) and (Key = Ord('Y')) then
+ begin
+  Key := 0;
+  DoRedo;
+ end;
+end;
+
+procedure TFRpMainFVCL.RefreshCueView;
+begin
+ if Assigned(fcueview) then
+ begin
+  fcueview.RefreshList;
+  fcueview.UpdateButtons;
  end;
 end;
 

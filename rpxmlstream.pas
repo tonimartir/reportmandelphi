@@ -28,7 +28,7 @@ uses Classes,sysutils,rptypes,rpreport,rpdatainfo,rpsubreport,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
- rpdrawitem,rpmdconsts,rpmdcharttypes;
+ rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue;
 
 
 const
@@ -131,7 +131,28 @@ begin
 end;
 
 procedure WriteReportPropsXML(report:TRpReport;Stream:TStream);
+var
+ undocue:TUndoCue;
+ memstream:TMemoryStream;
+ jsonBytes:TBytes;
 begin
+ // Write UndoCue if present (only for XML format)
+ if Assigned(report.UndoCue) then
+ begin
+  undocue:=TUndoCue(report.UndoCue);
+  if (undocue.UndoOperations.Count > 0) or (undocue.RedoOperations.Count > 0) then
+  begin
+   memstream:=TMemoryStream.Create;
+   try
+    jsonBytes:=TEncoding.UTF8.GetBytes(undocue.ToJSON);
+    memstream.Write(jsonBytes[0], Length(jsonBytes));
+    memstream.Position:=0;
+    WritePropertyB('BINCUE',memstream,Stream);
+   finally
+    memstream.Free;
+   end;
+  end;
+ end;
  WritePropertyW('WFONTNAME',report.WFontName,Stream);
  WritePropertyW('LFONTNAME',report.LFontName,Stream);
  WritePropertyBool('GRIDVISIBLE',report.GridVisible,Stream);
@@ -1467,7 +1488,30 @@ begin
   report.DocKeywords:=RpStringToString(propValue)
  else
  if propname='DOCXMPCONTENT' then
-  report.DocXMPContent:=RpStringToString(propValue);
+  report.DocXMPContent:=RpStringToString(propValue)
+ else
+ if propname='BINCUE' then
+ begin
+  // Read undo cue from binary JSON
+  if not Assigned(report.UndoCue) then
+   report.UndoCue:=TUndoCue.Create(TRpReport(report));
+  begin
+   var memstream:=TMemoryStream.Create;
+   try
+    BinToStream(memstream,RpStringToString(propvalue),propsize);
+    memstream.Position:=0;
+    var jsonBytes:TBytes;
+    SetLength(jsonBytes, memstream.Size);
+    if memstream.Size > 0 then
+    begin
+     memstream.Read(jsonBytes[0], memstream.Size);
+     TUndoCue(report.UndoCue).FromJSON(TEncoding.UTF8.GetString(jsonBytes));
+    end;
+   finally
+    memstream.Free;
+   end;
+  end;
+ end;
 
  report.ReportAction:=actions;
 end;
