@@ -142,7 +142,7 @@ uses Classes,SysUtils,
   Memds,
  {$ENDIF}
 {$ENDIF}
- rpdatatext,rpprintitem;
+ rpdatatext;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}

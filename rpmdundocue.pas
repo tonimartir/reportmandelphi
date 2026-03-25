@@ -238,7 +238,17 @@ begin
 end;
 
 procedure TUndoCue.AddOperation(op: TChangeObjectOperation);
+var
+  isPosComp: Boolean;
 begin
+  if (op.operation = otAdd) or (op.operation = otRemove) then
+  begin
+    isPosComp := (op.componentClass = 'TRPLABEL') or (op.componentClass = 'TRPEXPRESSION') or
+                 (op.componentClass = 'TRPSHAPE') or (op.componentClass = 'TRPIMAGE') or
+                 (op.componentClass = 'TRPBARCODE') or (op.componentClass = 'TRPCHART');
+    if isPosComp and (op.parentName = '') then
+      raise Exception.Create('UndoCue: La sección del componente no tiene nombre');
+  end;
   UndoOperations.Add(op);
   // se pierde el redo al hacer una nueva operación
   RedoOperations.Clear;
@@ -491,11 +501,11 @@ begin
             if operation.parentName <> '' then
             begin
               parentSection := TRpSection(GetComponentByName(operation.parentName));
-              indexOld := parentSection.ReportComponents.IndexOf(comp);
+              indexOld := parentSection.Components.IndexOf(comp);
               if indexOld >= 0 then
               begin
-                parentSection.ReportComponents.Items[indexOld].Component := nil;
-                parentSection.ReportComponents.Delete(indexOld);
+                parentSection.Components.Items[indexOld].Component := nil;
+                parentSection.Components.Delete(indexOld);
               end;
             end;
             comp.Free;
@@ -590,8 +600,8 @@ begin
         if indexOld >= 0 then
         begin
           operation.oldItemIndex := indexOld;
-          parentSection.ReportComponents.Items[indexOld].Component := nil;
-          parentSection.ReportComponents.Delete(indexOld);
+          parentSection.Components.Items[indexOld].Component := nil;
+          parentSection.Components.Delete(indexOld);
         end;
         TRpCommonPosComponent(target).Free;
         Exit;

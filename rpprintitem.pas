@@ -39,11 +39,6 @@ const
  MAX_ELEMENT_HEIGHT=86400;
 
 type
- IPropertiesItem = interface
-  procedure SetItemProperty(const propName: string; const value: Variant);
-  function GetItemProperty(const propName: string): Variant;
- end;
-
  TRpCommonComponent=class(TComponent, IPropertiesItem)
   private
    FHeight:TRpTwips;

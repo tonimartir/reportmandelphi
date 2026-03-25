@@ -1236,6 +1236,8 @@ begin
    op.componentName:=pitem.Name;
    op.componentClass:=UpperCase(pitem.ClassName);
    op.parentName:=TRpSection(sectionintf.printitem).Name;
+   op.oldparentName:=TRpSection(sectionintf.printitem).Name;
+   op.oldItemIndex:=TRpSection(sectionintf.printitem).ReportComponents.IndexOf(pitem);
    op.AddProperty('PosX',ptInteger,pitem.PosX,Null);
    op.AddProperty('PosY',ptInteger,pitem.PosY,Null);
    op.AddProperty('Width',ptInteger,pitem.Width,Null);

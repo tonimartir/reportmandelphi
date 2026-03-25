@@ -66,6 +66,12 @@ uses
 {$ENDIF}
  rpmdconsts,rpmdshfolder;
 
+type
+ IPropertiesItem = interface
+  ['{F8A7B6C5-D4E3-42F1-A0B9-C8D7E6F5A4B3}']
+  procedure SetItemProperty(const propName: string; const value: Variant);
+  function GetItemProperty(const propName: string): Variant;
+ end;
 
 const
  REP_C_WHEELINC=5;
