@@ -1367,10 +1367,10 @@ begin
      op.componentName:=pitem.Name;
      op.componentClass:=UpperCase(pitem.ClassName);
      op.parentName:=section.Name;
-     op.AddProperty('PosX',ptInteger,Null,pitem.PosX);
-     op.AddProperty('PosY',ptInteger,Null,pitem.PosY);
-     op.AddProperty('Width',ptInteger,Null,pitem.Width);
-     op.AddProperty('Height',ptInteger,Null,pitem.Height);
+    op.AddProperty('posX',ptInteger,Null,pitem.PosX);
+    op.AddProperty('posY',ptInteger,Null,pitem.PosY);
+    op.AddProperty('width',ptInteger,Null,pitem.Width);
+    op.AddProperty('height',ptInteger,Null,pitem.Height);
      cue.AddOperation(op);
     end;
    end;

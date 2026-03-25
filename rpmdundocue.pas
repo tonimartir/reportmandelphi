@@ -97,6 +97,290 @@ uses rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
 
+function GetJSONValueCaseInsensitive(jObj: TJSONObject; const camelName,
+  pascalName: string): TJSONValue;
+begin
+  Result := jObj.Values[camelName];
+  if (Result = nil) and (pascalName <> '') then
+    Result := jObj.Values[pascalName];
+end;
+
+function VariantIsStringArray(const value: Variant): Boolean;
+begin
+  Result := VarIsArray(value) and ((VarType(value) and varTypeMask) = varVariant);
+end;
+
+function VariantArrayToJSONValue(const value: Variant): TJSONValue;
+var
+  arrayValue: Variant;
+  lowBound, highBound, index: Integer;
+  jsonArray: TJSONArray;
+begin
+  arrayValue := value;
+  jsonArray := TJSONArray.Create;
+  lowBound := VarArrayLowBound(arrayValue, 1);
+  highBound := VarArrayHighBound(arrayValue, 1);
+  for index := lowBound to highBound do
+    jsonArray.Add(VarToStr(arrayValue[index]));
+  Result := jsonArray;
+end;
+
+function StringsToVariantArray(strings: TStrings): Variant;
+var
+  index: Integer;
+begin
+  Result := VarArrayCreate([0, strings.Count - 1], varVariant);
+  for index := 0 to strings.Count - 1 do
+    Result[index] := strings[index];
+end;
+
+procedure VariantArrayToStrings(const value: Variant; strings: TStrings);
+var
+  arrayValue: Variant;
+  lowBound, highBound, index: Integer;
+begin
+  strings.Clear;
+  if not VarIsArray(value) then
+  begin
+    if not VarIsNull(value) then
+      strings.Add(VarToStr(value));
+    Exit;
+  end;
+
+  arrayValue := value;
+  lowBound := VarArrayLowBound(arrayValue, 1);
+  highBound := VarArrayHighBound(arrayValue, 1);
+  for index := lowBound to highBound do
+    strings.Add(VarToStr(arrayValue[index]));
+end;
+
+function JSONStringArrayToVariant(jValue: TJSONValue): Variant;
+var
+  jsonArray: TJSONArray;
+  index: Integer;
+begin
+  if not (jValue is TJSONArray) then
+    Exit(Null);
+
+  jsonArray := TJSONArray(jValue);
+  Result := VarArrayCreate([0, jsonArray.Count - 1], varVariant);
+  for index := 0 to jsonArray.Count - 1 do
+    Result[index] := jsonArray.Items[index].Value;
+end;
+
+function VariantToJSONValue(const value: Variant; propType: TPropertyType): TJSONValue;
+var
+  variantType: Integer;
+begin
+  if (propType = ptStringArray) and VariantIsStringArray(value) then
+    Exit(VariantArrayToJSONValue(value));
+
+  if VarIsNull(value) then
+    Exit(TJSONNull.Create);
+
+  variantType := VarType(value) and varTypeMask;
+  case variantType of
+    varShortInt, varSmallint, varInteger, varByte, varWord, varLongWord, varInt64:
+      Result := TJSONNumber.Create(VarAsType(value, varInt64));
+    varSingle, varDouble, varCurrency:
+      Result := TJSONNumber.Create(VarAsType(value, varDouble));
+    varBoolean:
+      Result := TJSONBool.Create(value);
+    varDate:
+      Result := TJSONString.Create(DateToISO8601(VarToDateTime(value), False));
+  else
+    Result := TJSONString.Create(VarToStr(value));
+  end;
+end;
+
+function JSONValueToVariant(jValue: TJSONValue; propType: TPropertyType): Variant;
+var
+  numberText: string;
+  intValue: Int64;
+  floatValue: Double;
+begin
+  if (jValue = nil) or (jValue is TJSONNull) then
+    Exit(Null);
+
+  if propType = ptStringArray then
+    Exit(JSONStringArrayToVariant(jValue));
+
+  if jValue is TJSONTrue then
+    Exit(True);
+  if jValue is TJSONFalse then
+    Exit(False);
+
+  if jValue is TJSONNumber then
+  begin
+    numberText := jValue.Value;
+    if (Pos('.', numberText) > 0) or (Pos('e', LowerCase(numberText)) > 0) then
+    begin
+      floatValue := TJSONNumber(jValue).AsDouble;
+      Exit(floatValue);
+    end;
+
+    intValue := StrToInt64Def(numberText, 0);
+    Exit(intValue);
+  end;
+
+  if jValue is TJSONString then
+  begin
+    if propType = ptDate then
+    begin
+      try
+        Exit(ISO8601ToDate(TJSONString(jValue).Value, False));
+      except
+        Exit(TJSONString(jValue).Value);
+      end;
+    end;
+    Exit(TJSONString(jValue).Value);
+  end;
+
+  Result := jValue.ToJSON;
+end;
+
+function MapUndoPropertyName(target: TObject; const propName: string): string;
+begin
+  Result := propName;
+
+  if SameText(propName, 'posX') then Exit('PosX');
+  if SameText(propName, 'posY') then Exit('PosY');
+  if SameText(propName, 'width') then Exit('Width');
+  if SameText(propName, 'height') then Exit('Height');
+  if SameText(propName, 'align') then Exit('Align');
+  if SameText(propName, 'annotationExpression') then Exit('AnnotationExpression');
+  if SameText(propName, 'printCondition') then Exit('PrintCondition');
+  if SameText(propName, 'doBeforePrint') then Exit('DoBeforePrint');
+  if SameText(propName, 'doAfterPrint') then Exit('DoAfterPrint');
+  if SameText(propName, 'visible') then Exit('Visible');
+  if SameText(propName, 'wFontName') then Exit('WFontName');
+  if SameText(propName, 'lFontName') then Exit('LFontName');
+  if SameText(propName, 'fontSize') then Exit('FontSize');
+  if SameText(propName, 'fontColor') then Exit('FontColor');
+  if SameText(propName, 'fontStyle') then Exit('FontStyle');
+  if SameText(propName, 'backColor') then Exit('BackColor');
+  if SameText(propName, 'transparent') then Exit('Transparent');
+  if SameText(propName, 'cutText') then Exit('CutText');
+  if SameText(propName, 'wordWrap') then Exit('WordWrap');
+  if SameText(propName, 'wordBreak') then Exit('WordBreak');
+  if SameText(propName, 'singleLine') then Exit('SingleLine');
+  if SameText(propName, 'alignment') then Exit('Alignment');
+  if SameText(propName, 'vAlignment') then Exit('VAlignment');
+  if SameText(propName, 'fontRotation') then Exit('FontRotation');
+  if SameText(propName, 'type1Font') then Exit('Type1Font');
+  if SameText(propName, 'printStep') then Exit('PrintStep');
+  if SameText(propName, 'interLine') then Exit('InterLine');
+  if SameText(propName, 'multiPage') then Exit('MultiPage');
+  if SameText(propName, 'isHtml') then Exit('IsHtml');
+  if SameText(propName, 'allStrings') then Exit('Text');
+  if SameText(propName, 'expression') then Exit('Expression');
+  if SameText(propName, 'displayFormat') then Exit('DisplayFormat');
+  if SameText(propName, 'dataType') then Exit('DataType');
+  if SameText(propName, 'identifier') then Exit('Identifier');
+  if SameText(propName, 'aggregate') then Exit('Aggregate');
+  if SameText(propName, 'groupName') then Exit('GroupName');
+  if SameText(propName, 'agType') then Exit('AgType');
+  if SameText(propName, 'autoExpand') then Exit('AutoExpand');
+  if SameText(propName, 'autoContract') then Exit('AutoContract');
+  if SameText(propName, 'printOnlyOne') then Exit('PrintOnlyOne');
+  if SameText(propName, 'printNulls') then Exit('PrintNulls');
+  if SameText(propName, 'chartStyle') then Exit('ChartType');
+  if SameText(propName, 'changeSerieBool') then Exit('ChangeSerieBool');
+  if SameText(propName, 'clearExpressionBool') then Exit('ClearExpressionBool');
+  if SameText(propName, 'driver') then Exit('Driver');
+  if SameText(propName, 'view3d') then Exit('View3d');
+  if SameText(propName, 'view3dWalls') then Exit('View3dWalls');
+  if SameText(propName, 'perspective') then Exit('Perspective');
+  if SameText(propName, 'elevation') then Exit('Elevation');
+  if SameText(propName, 'rotation') then Exit('Rotation');
+  if SameText(propName, 'zoom') then Exit('Zoom');
+  if SameText(propName, 'horzOffset') then Exit('HorzOffset');
+  if SameText(propName, 'vertOffset') then Exit('VertOffset');
+  if SameText(propName, 'tilt') then Exit('Tilt');
+  if SameText(propName, 'orthogonal') then Exit('Orthogonal');
+  if SameText(propName, 'multiBar') then Exit('MultiBar');
+  if SameText(propName, 'resolution') then Exit('Resolution');
+  if SameText(propName, 'showLegend') then Exit('ShowLegend');
+  if SameText(propName, 'showHint') then Exit('ShowHint');
+  if SameText(propName, 'markStyle') then Exit('MarkStyle');
+  if SameText(propName, 'horzFontSize') then Exit('HorzFontSize');
+  if SameText(propName, 'vertFontSize') then Exit('VertFontSize');
+  if SameText(propName, 'horzFontRotation') then Exit('HorzFontRotation');
+  if SameText(propName, 'vertFontRotation') then Exit('VertFontRotation');
+  if SameText(propName, 'brushStyle') then Exit('BrushStyle');
+  if SameText(propName, 'brushColor') then Exit('BrushColor');
+  if SameText(propName, 'penStyle') then Exit('PenStyle');
+  if SameText(propName, 'penColor') then Exit('PenColor');
+  if SameText(propName, 'shape') then Exit('Shape');
+  if SameText(propName, 'penWidth') then Exit('PenWidth');
+  if SameText(propName, 'dpiRes') then Exit('dpires');
+  if SameText(propName, 'drawStyle') then Exit('DrawStyle');
+  if SameText(propName, 'copyMode') then Exit('CopyMode');
+  if SameText(propName, 'barType') then Exit('Typ');
+  if SameText(propName, 'checksum') then Exit('Checksum');
+  if SameText(propName, 'bColor') then Exit('BColor');
+  if SameText(propName, 'numColumns') then Exit('NumColumns');
+  if SameText(propName, 'numRows') then Exit('NumRows');
+  if SameText(propName, 'eccLevel') then Exit('ECCLevel');
+  if SameText(propName, 'truncated') then Exit('Truncated');
+  if SameText(propName, 'alias') and (target is TRpParam) then Exit('Name');
+  if SameText(propName, 'paramType') then Exit('ParamType');
+  if SameText(propName, 'neverVisible') then Exit('NeverVisible');
+  if SameText(propName, 'isReadOnly') then Exit('IsReadOnly');
+  if SameText(propName, 'allowNulls') then Exit('AllowNulls');
+  if SameText(propName, 'description') then Exit('Description');
+  if SameText(propName, 'hint') then Exit('Hint');
+  if SameText(propName, 'errorMessage') then Exit('ErrorMessage');
+  if SameText(propName, 'lookupDataset') then Exit('LookupDataset');
+  if SameText(propName, 'searchDataset') then Exit('SearchDataset');
+  if SameText(propName, 'searchParam') then Exit('SearchParam');
+  if SameText(propName, 'configFile') then Exit('ConfigFile');
+  if SameText(propName, 'loginPrompt') then Exit('LoginPrompt');
+  if SameText(propName, 'loadParams') then Exit('LoadParams');
+  if SameText(propName, 'loadDriverParams') then Exit('LoadDriverParams');
+  if SameText(propName, 'connectionString') then Exit('ADOConnectionString');
+  if SameText(propName, 'providerFactory') then Exit('ProviderFactory');
+  if SameText(propName, 'dotNetDriver') then Exit('DotNetDriver');
+  if SameText(propName, 'databaseAlias') then Exit('DatabaseAlias');
+  if SameText(propName, 'sql') then Exit('SQL');
+  if SameText(propName, 'dataSource') then Exit('DataSource');
+  if SameText(propName, 'groupUnion') then Exit('GroupUnion');
+  if SameText(propName, 'openOnStart') then Exit('OpenOnStart');
+  if SameText(propName, 'parallelUnion') then Exit('ParallelUnion');
+  if SameText(propName, 'dataUnions') then Exit('DataUnions');
+end;
+
+function ApplyStringArrayProperty(target: TObject; const propName: string;
+  const value: Variant): Boolean;
+var
+  list: TStringList;
+begin
+  Result := True;
+  list := TStringList.Create;
+  try
+    VariantArrayToStrings(value, list);
+    if (target is TRpParam) then
+    begin
+      if SameText(propName, 'Items') then
+        TRpParam(target).Items.Assign(list)
+      else if SameText(propName, 'Values') then
+        TRpParam(target).Values.Assign(list)
+      else if SameText(propName, 'Datasets') then
+        TRpParam(target).Datasets.Assign(list)
+      else if SameText(propName, 'Selected') then
+        TRpParam(target).Selected.Assign(list)
+      else
+        Result := False;
+    end
+    else if (target is TRpDataInfoItem) and SameText(propName, 'DataUnions') then
+      TRpDataInfoItem(target).DataUnions.Assign(list)
+    else
+      Result := False;
+  finally
+    list.Free;
+  end;
+end;
+
 { TChangeOperationItem }
 
 constructor TChangeOperationItem.Create(const APropertyName: string;
@@ -112,22 +396,24 @@ end;
 function TChangeOperationItem.ToJSON: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('PropertyName', propertyName);
-  Result.AddPair('PropertyType', TJSONNumber.Create(Ord(propertyType)));
-  Result.AddPair('OldValue', VarToStr(oldValue));
-  Result.AddPair('NewValue', VarToStr(newValue));
+  Result.AddPair('propertyName', propertyName);
+  Result.AddPair('propertyType', TJSONNumber.Create(Ord(propertyType)));
+  Result.AddPair('oldValue', VariantToJSONValue(oldValue, propertyType));
+  Result.AddPair('newValue', VariantToJSONValue(newValue, propertyType));
 end;
 
 class function TChangeOperationItem.FromJSON(jObj: TJSONObject): TChangeOperationItem;
 var
-  propName, sOld, sNew: string;
+  propName: string;
   pt: TPropertyType;
+  oldJson, newJson: TJSONValue;
 begin
-  propName := jObj.GetValue<string>('PropertyName', '');
-  pt := TPropertyType(jObj.GetValue<Integer>('PropertyType', 1));
-  sOld := jObj.GetValue<string>('OldValue', '');
-  sNew := jObj.GetValue<string>('NewValue', '');
-  Result := TChangeOperationItem.Create(propName, pt, sOld, sNew);
+  propName := jObj.GetValue<string>('propertyName', jObj.GetValue<string>('PropertyName', ''));
+  pt := TPropertyType(jObj.GetValue<Integer>('propertyType', jObj.GetValue<Integer>('PropertyType', 1)));
+  oldJson := GetJSONValueCaseInsensitive(jObj, 'oldValue', 'OldValue');
+  newJson := GetJSONValueCaseInsensitive(jObj, 'newValue', 'NewValue');
+  Result := TChangeOperationItem.Create(propName, pt,
+    JSONValueToVariant(oldJson, pt), JSONValueToVariant(newJson, pt));
 end;
 
 { TChangeObjectOperation }
@@ -163,19 +449,19 @@ var
   i: Integer;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('Operation', TJSONNumber.Create(Ord(operation)));
-  Result.AddPair('GroupId', TJSONNumber.Create(groupId));
-  Result.AddPair('ComponentName', componentName);
-  Result.AddPair('ComponentClass', componentClass);
-  Result.AddPair('ParentName', parentName);
-  Result.AddPair('OldItemIndex', TJSONNumber.Create(oldItemIndex));
-  Result.AddPair('OldParentName', oldParentName);
-  Result.AddPair('Date', DateToISO8601(date, False));
-  Result.AddPair('ExpandedProperties', TJSONBool.Create(expandedProperties));
+  Result.AddPair('operation', TJSONNumber.Create(Ord(operation)));
+  Result.AddPair('groupId', TJSONNumber.Create(groupId));
+  Result.AddPair('componentName', componentName);
+  Result.AddPair('componentClass', componentClass);
+  Result.AddPair('parentName', parentName);
+  Result.AddPair('oldItemIndex', TJSONNumber.Create(oldItemIndex));
+  Result.AddPair('oldParentName', oldParentName);
+  Result.AddPair('date', DateToISO8601(date, False));
+  Result.AddPair('expandedProperties', TJSONBool.Create(expandedProperties));
   propsArr := TJSONArray.Create;
   for i := 0 to properties.Count - 1 do
     propsArr.AddElement(properties[i].ToJSON);
-  Result.AddPair('Properties', propsArr);
+  Result.AddPair('properties', propsArr);
 end;
 
 class function TChangeObjectOperation.FromJSON(jObj: TJSONObject): TChangeObjectOperation;
@@ -186,16 +472,16 @@ var
   dateStr: string;
 begin
   Result := TChangeObjectOperation.Create(
-    TOperationType(jObj.GetValue<Integer>('Operation', 0)),
-    jObj.GetValue<Integer>('GroupId', 0)
+    TOperationType(jObj.GetValue<Integer>('operation', jObj.GetValue<Integer>('Operation', 0))),
+    jObj.GetValue<Integer>('groupId', jObj.GetValue<Integer>('GroupId', 0))
   );
-  Result.componentName := jObj.GetValue<string>('ComponentName', '');
-  Result.componentClass := jObj.GetValue<string>('ComponentClass', '');
-  Result.parentName := jObj.GetValue<string>('ParentName', '');
-  Result.oldItemIndex := jObj.GetValue<Integer>('OldItemIndex', -1);
-  Result.oldParentName := jObj.GetValue<string>('OldParentName', '');
-  Result.expandedProperties := jObj.GetValue<Boolean>('ExpandedProperties', True);
-  if jObj.TryGetValue<string>('Date', dateStr) then
+  Result.componentName := jObj.GetValue<string>('componentName', jObj.GetValue<string>('ComponentName', ''));
+  Result.componentClass := jObj.GetValue<string>('componentClass', jObj.GetValue<string>('ComponentClass', ''));
+  Result.parentName := jObj.GetValue<string>('parentName', jObj.GetValue<string>('ParentName', ''));
+  Result.oldItemIndex := jObj.GetValue<Integer>('oldItemIndex', jObj.GetValue<Integer>('OldItemIndex', -1));
+  Result.oldParentName := jObj.GetValue<string>('oldParentName', jObj.GetValue<string>('OldParentName', ''));
+  Result.expandedProperties := jObj.GetValue<Boolean>('expandedProperties', jObj.GetValue<Boolean>('ExpandedProperties', True));
+  if jObj.TryGetValue<string>('date', dateStr) or jObj.TryGetValue<string>('Date', dateStr) then
   begin
     try
       Result.date := ISO8601ToDate(dateStr, False);
@@ -204,7 +490,9 @@ begin
     end;
   end;
   propsArr := nil;
-  if jObj.TryGetValue<TJSONArray>('Properties', propsArr) then
+  if (not jObj.TryGetValue<TJSONArray>('properties', propsArr)) then
+    jObj.TryGetValue<TJSONArray>('Properties', propsArr);
+  if Assigned(propsArr) then
   begin
     for i := 0 to propsArr.Count - 1 do
     begin
@@ -760,6 +1048,7 @@ var
   prop: TChangeOperationItem;
   nvalue: Variant;
   propsItem: IPropertiesItem;
+  mappedPropName: string;
 begin
   if operation.properties.Count = 0 then
     Exit;
@@ -787,7 +1076,10 @@ begin
       nvalue := prop.oldValue
     else
       nvalue := prop.newValue;
-    propsItem.SetItemProperty(prop.propertyName, nvalue);
+    mappedPropName := MapUndoPropertyName(target, prop.propertyName);
+    if (prop.propertyType = ptStringArray) and ApplyStringArrayProperty(target, mappedPropName, nvalue) then
+      Continue;
+    propsItem.SetItemProperty(mappedPropName, nvalue);
   end;
 end;
 
@@ -823,16 +1115,16 @@ var
 begin
   root := TJSONObject.Create;
   try
-    root.AddPair('GroupId', TJSONNumber.Create(FGroupId));
+    root.AddPair('groupId', TJSONNumber.Create(FGroupId));
     undoArr := TJSONArray.Create;
     for i := 0 to UndoOperations.Count - 1 do
       undoArr.AddElement(UndoOperations[i].ToJSON);
-    root.AddPair('UndoOperations', undoArr);
+    root.AddPair('undoOperations', undoArr);
 
     redoArr := TJSONArray.Create;
     for i := 0 to RedoOperations.Count - 1 do
       redoArr.AddElement(RedoOperations[i].ToJSON);
-    root.AddPair('RedoOperations', redoArr);
+    root.AddPair('redoOperations', redoArr);
 
     Result := root.ToJSON;
   finally
@@ -843,117 +1135,117 @@ end;
 procedure TUndoCue.AddAllComponentProperties(pitem: TRpCommonPosComponent; op: TChangeObjectOperation);
 begin
   // Common positional properties
-  op.AddProperty('PosX', ptInteger, Null, pitem.GetItemProperty('PosX'));
-  op.AddProperty('PosY', ptInteger, Null, pitem.GetItemProperty('PosY'));
-  op.AddProperty('Width', ptInteger, Null, pitem.GetItemProperty('Width'));
-  op.AddProperty('Height', ptInteger, Null, pitem.GetItemProperty('Height'));
-  op.AddProperty('Align', ptInteger, Null, pitem.GetItemProperty('Align'));
-  op.AddProperty('AnnotationExpression', ptString, Null, pitem.GetItemProperty('AnnotationExpression'));
-  op.AddProperty('PrintCondition', ptString, Null, pitem.GetItemProperty('PrintCondition'));
-  op.AddProperty('DoBeforePrint', ptString, Null, pitem.GetItemProperty('DoBeforePrint'));
-  op.AddProperty('DoAfterPrint', ptString, Null, pitem.GetItemProperty('DoAfterPrint'));
-  op.AddProperty('Visible', ptBoolean, Null, pitem.GetItemProperty('Visible'));
+  op.AddProperty('posX', ptInteger, Null, pitem.GetItemProperty('PosX'));
+  op.AddProperty('posY', ptInteger, Null, pitem.GetItemProperty('PosY'));
+  op.AddProperty('width', ptInteger, Null, pitem.GetItemProperty('Width'));
+  op.AddProperty('height', ptInteger, Null, pitem.GetItemProperty('Height'));
+  op.AddProperty('align', ptInteger, Null, pitem.GetItemProperty('Align'));
+  op.AddProperty('annotationExpression', ptString, Null, pitem.GetItemProperty('AnnotationExpression'));
+  op.AddProperty('printCondition', ptString, Null, pitem.GetItemProperty('PrintCondition'));
+  op.AddProperty('doBeforePrint', ptString, Null, pitem.GetItemProperty('DoBeforePrint'));
+  op.AddProperty('doAfterPrint', ptString, Null, pitem.GetItemProperty('DoAfterPrint'));
+  op.AddProperty('visible', ptBoolean, Null, pitem.GetItemProperty('Visible'));
   // Text component properties (TRpLabel, TRpExpression, TRpChart)
   if pitem is TRpGenTextComponent then
   begin
-    op.AddProperty('WFontName', ptString, Null, pitem.GetItemProperty('WFontName'));
-    op.AddProperty('LFontName', ptString, Null, pitem.GetItemProperty('LFontName'));
-    op.AddProperty('FontSize', ptInteger, Null, pitem.GetItemProperty('FontSize'));
-    op.AddProperty('FontColor', ptInteger, Null, pitem.GetItemProperty('FontColor'));
-    op.AddProperty('FontStyle', ptInteger, Null, pitem.GetItemProperty('FontStyle'));
-    op.AddProperty('BackColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
-    op.AddProperty('Transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
-    op.AddProperty('CutText', ptBoolean, Null, pitem.GetItemProperty('CutText'));
-    op.AddProperty('WordWrap', ptBoolean, Null, pitem.GetItemProperty('WordWrap'));
-    op.AddProperty('WordBreak', ptBoolean, Null, pitem.GetItemProperty('WordBreak'));
-    op.AddProperty('SingleLine', ptBoolean, Null, pitem.GetItemProperty('SingleLine'));
-    op.AddProperty('Alignment', ptInteger, Null, pitem.GetItemProperty('Alignment'));
-    op.AddProperty('VAlignment', ptInteger, Null, pitem.GetItemProperty('VAlignment'));
-    op.AddProperty('FontRotation', ptInteger, Null, pitem.GetItemProperty('FontRotation'));
-    op.AddProperty('Type1Font', ptInteger, Null, pitem.GetItemProperty('Type1Font'));
-    op.AddProperty('PrintStep', ptInteger, Null, pitem.GetItemProperty('PrintStep'));
-    op.AddProperty('InterLine', ptInteger, Null, pitem.GetItemProperty('InterLine'));
-    op.AddProperty('MultiPage', ptBoolean, Null, pitem.GetItemProperty('MultiPage'));
-    op.AddProperty('IsHtml', ptBoolean, Null, pitem.GetItemProperty('IsHtml'));
+    op.AddProperty('wFontName', ptString, Null, pitem.GetItemProperty('WFontName'));
+    op.AddProperty('lFontName', ptString, Null, pitem.GetItemProperty('LFontName'));
+    op.AddProperty('fontSize', ptInteger, Null, pitem.GetItemProperty('FontSize'));
+    op.AddProperty('fontColor', ptInteger, Null, pitem.GetItemProperty('FontColor'));
+    op.AddProperty('fontStyle', ptInteger, Null, pitem.GetItemProperty('FontStyle'));
+    op.AddProperty('backColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
+    op.AddProperty('transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
+    op.AddProperty('cutText', ptBoolean, Null, pitem.GetItemProperty('CutText'));
+    op.AddProperty('wordWrap', ptBoolean, Null, pitem.GetItemProperty('WordWrap'));
+    op.AddProperty('wordBreak', ptBoolean, Null, pitem.GetItemProperty('WordBreak'));
+    op.AddProperty('singleLine', ptBoolean, Null, pitem.GetItemProperty('SingleLine'));
+    op.AddProperty('alignment', ptInteger, Null, pitem.GetItemProperty('Alignment'));
+    op.AddProperty('vAlignment', ptInteger, Null, pitem.GetItemProperty('VAlignment'));
+    op.AddProperty('fontRotation', ptInteger, Null, pitem.GetItemProperty('FontRotation'));
+    op.AddProperty('type1Font', ptInteger, Null, pitem.GetItemProperty('Type1Font'));
+    op.AddProperty('printStep', ptInteger, Null, pitem.GetItemProperty('PrintStep'));
+    op.AddProperty('interLine', ptInteger, Null, pitem.GetItemProperty('InterLine'));
+    op.AddProperty('multiPage', ptBoolean, Null, pitem.GetItemProperty('MultiPage'));
+    op.AddProperty('isHtml', ptBoolean, Null, pitem.GetItemProperty('IsHtml'));
     if pitem is TRpLabel then
     begin
-      op.AddProperty('Text', ptString, Null, pitem.GetItemProperty('Text'));
+      op.AddProperty('allStrings', ptString, Null, pitem.GetItemProperty('Text'));
     end
     else if pitem is TRpExpression then
     begin
-      op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
-      op.AddProperty('DisplayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
-      op.AddProperty('DataType', ptInteger, Null, pitem.GetItemProperty('DataType'));
-      op.AddProperty('Identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
-      op.AddProperty('Aggregate', ptInteger, Null, pitem.GetItemProperty('Aggregate'));
-      op.AddProperty('GroupName', ptString, Null, pitem.GetItemProperty('GroupName'));
-      op.AddProperty('AgType', ptInteger, Null, pitem.GetItemProperty('AgType'));
-      op.AddProperty('AutoExpand', ptBoolean, Null, pitem.GetItemProperty('AutoExpand'));
-      op.AddProperty('AutoContract', ptBoolean, Null, pitem.GetItemProperty('AutoContract'));
-      op.AddProperty('PrintOnlyOne', ptBoolean, Null, pitem.GetItemProperty('PrintOnlyOne'));
-      op.AddProperty('PrintNulls', ptBoolean, Null, pitem.GetItemProperty('PrintNulls'));
+      op.AddProperty('expression', ptString, Null, pitem.GetItemProperty('Expression'));
+      op.AddProperty('displayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
+      op.AddProperty('dataType', ptInteger, Null, pitem.GetItemProperty('DataType'));
+      op.AddProperty('identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
+      op.AddProperty('aggregate', ptInteger, Null, pitem.GetItemProperty('Aggregate'));
+      op.AddProperty('groupName', ptString, Null, pitem.GetItemProperty('GroupName'));
+      op.AddProperty('agType', ptInteger, Null, pitem.GetItemProperty('AgType'));
+      op.AddProperty('autoExpand', ptBoolean, Null, pitem.GetItemProperty('AutoExpand'));
+      op.AddProperty('autoContract', ptBoolean, Null, pitem.GetItemProperty('AutoContract'));
+      op.AddProperty('printOnlyOne', ptBoolean, Null, pitem.GetItemProperty('PrintOnlyOne'));
+      op.AddProperty('printNulls', ptBoolean, Null, pitem.GetItemProperty('PrintNulls'));
     end
     else if pitem is TRpChart then
     begin
-      op.AddProperty('ChartType', ptInteger, Null, pitem.GetItemProperty('ChartType'));
-      op.AddProperty('Identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
-      op.AddProperty('ChangeSerieBool', ptBoolean, Null, pitem.GetItemProperty('ChangeSerieBool'));
-      op.AddProperty('ClearExpressionBool', ptBoolean, Null, pitem.GetItemProperty('ClearExpressionBool'));
-      op.AddProperty('Driver', ptInteger, Null, pitem.GetItemProperty('Driver'));
-      op.AddProperty('View3d', ptBoolean, Null, pitem.GetItemProperty('View3d'));
-      op.AddProperty('View3dWalls', ptBoolean, Null, pitem.GetItemProperty('View3dWalls'));
-      op.AddProperty('Perspective', ptNumber, Null, pitem.GetItemProperty('Perspective'));
-      op.AddProperty('Elevation', ptNumber, Null, pitem.GetItemProperty('Elevation'));
-      op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
-      op.AddProperty('Zoom', ptInteger, Null, pitem.GetItemProperty('Zoom'));
-      op.AddProperty('HorzOffset', ptNumber, Null, pitem.GetItemProperty('HorzOffset'));
-      op.AddProperty('VertOffset', ptNumber, Null, pitem.GetItemProperty('VertOffset'));
-      op.AddProperty('Tilt', ptNumber, Null, pitem.GetItemProperty('Tilt'));
-      op.AddProperty('Orthogonal', ptBoolean, Null, pitem.GetItemProperty('Orthogonal'));
-      op.AddProperty('MultiBar', ptInteger, Null, pitem.GetItemProperty('MultiBar'));
-      op.AddProperty('Resolution', ptInteger, Null, pitem.GetItemProperty('Resolution'));
-      op.AddProperty('ShowLegend', ptBoolean, Null, pitem.GetItemProperty('ShowLegend'));
-      op.AddProperty('ShowHint', ptBoolean, Null, pitem.GetItemProperty('ShowHint'));
-      op.AddProperty('MarkStyle', ptInteger, Null, pitem.GetItemProperty('MarkStyle'));
-      op.AddProperty('HorzFontSize', ptInteger, Null, pitem.GetItemProperty('HorzFontSize'));
-      op.AddProperty('VertFontSize', ptInteger, Null, pitem.GetItemProperty('VertFontSize'));
-      op.AddProperty('HorzFontRotation', ptInteger, Null, pitem.GetItemProperty('HorzFontRotation'));
-      op.AddProperty('VertFontRotation', ptInteger, Null, pitem.GetItemProperty('VertFontRotation'));
+      op.AddProperty('chartStyle', ptInteger, Null, pitem.GetItemProperty('ChartType'));
+      op.AddProperty('identifier', ptString, Null, pitem.GetItemProperty('Identifier'));
+      op.AddProperty('changeSerieBool', ptBoolean, Null, pitem.GetItemProperty('ChangeSerieBool'));
+      op.AddProperty('clearExpressionBool', ptBoolean, Null, pitem.GetItemProperty('ClearExpressionBool'));
+      op.AddProperty('driver', ptInteger, Null, pitem.GetItemProperty('Driver'));
+      op.AddProperty('view3d', ptBoolean, Null, pitem.GetItemProperty('View3d'));
+      op.AddProperty('view3dWalls', ptBoolean, Null, pitem.GetItemProperty('View3dWalls'));
+      op.AddProperty('perspective', ptNumber, Null, pitem.GetItemProperty('Perspective'));
+      op.AddProperty('elevation', ptNumber, Null, pitem.GetItemProperty('Elevation'));
+      op.AddProperty('rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+      op.AddProperty('zoom', ptInteger, Null, pitem.GetItemProperty('Zoom'));
+      op.AddProperty('horzOffset', ptNumber, Null, pitem.GetItemProperty('HorzOffset'));
+      op.AddProperty('vertOffset', ptNumber, Null, pitem.GetItemProperty('VertOffset'));
+      op.AddProperty('tilt', ptNumber, Null, pitem.GetItemProperty('Tilt'));
+      op.AddProperty('orthogonal', ptBoolean, Null, pitem.GetItemProperty('Orthogonal'));
+      op.AddProperty('multiBar', ptInteger, Null, pitem.GetItemProperty('MultiBar'));
+      op.AddProperty('resolution', ptInteger, Null, pitem.GetItemProperty('Resolution'));
+      op.AddProperty('showLegend', ptBoolean, Null, pitem.GetItemProperty('ShowLegend'));
+      op.AddProperty('showHint', ptBoolean, Null, pitem.GetItemProperty('ShowHint'));
+      op.AddProperty('markStyle', ptInteger, Null, pitem.GetItemProperty('MarkStyle'));
+      op.AddProperty('horzFontSize', ptInteger, Null, pitem.GetItemProperty('HorzFontSize'));
+      op.AddProperty('vertFontSize', ptInteger, Null, pitem.GetItemProperty('VertFontSize'));
+      op.AddProperty('horzFontRotation', ptInteger, Null, pitem.GetItemProperty('HorzFontRotation'));
+      op.AddProperty('vertFontRotation', ptInteger, Null, pitem.GetItemProperty('VertFontRotation'));
     end;
   end
   else if pitem is TRpShape then
   begin
-    op.AddProperty('BrushStyle', ptInteger, Null, pitem.GetItemProperty('BrushStyle'));
-    op.AddProperty('BrushColor', ptInteger, Null, pitem.GetItemProperty('BrushColor'));
-    op.AddProperty('PenStyle', ptInteger, Null, pitem.GetItemProperty('PenStyle'));
-    op.AddProperty('PenColor', ptInteger, Null, pitem.GetItemProperty('PenColor'));
-    op.AddProperty('Shape', ptInteger, Null, pitem.GetItemProperty('Shape'));
-    op.AddProperty('PenWidth', ptInteger, Null, pitem.GetItemProperty('PenWidth'));
+    op.AddProperty('brushStyle', ptInteger, Null, pitem.GetItemProperty('BrushStyle'));
+    op.AddProperty('brushColor', ptInteger, Null, pitem.GetItemProperty('BrushColor'));
+    op.AddProperty('penStyle', ptInteger, Null, pitem.GetItemProperty('PenStyle'));
+    op.AddProperty('penColor', ptInteger, Null, pitem.GetItemProperty('PenColor'));
+    op.AddProperty('shape', ptInteger, Null, pitem.GetItemProperty('Shape'));
+    op.AddProperty('penWidth', ptInteger, Null, pitem.GetItemProperty('PenWidth'));
   end
   else if pitem is TRpImage then
   begin
-    op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
-    op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
-    op.AddProperty('DrawStyle', ptInteger, Null, pitem.GetItemProperty('DrawStyle'));
-    op.AddProperty('dpires', ptInteger, Null, pitem.GetItemProperty('dpires'));
-    op.AddProperty('CopyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
+    op.AddProperty('expression', ptString, Null, pitem.GetItemProperty('Expression'));
+    op.AddProperty('rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+    op.AddProperty('drawStyle', ptInteger, Null, pitem.GetItemProperty('DrawStyle'));
+    op.AddProperty('dpiRes', ptInteger, Null, pitem.GetItemProperty('dpires'));
+    op.AddProperty('copyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
   end
   else if pitem is TRpBarcode then
   begin
-    op.AddProperty('Expression', ptString, Null, pitem.GetItemProperty('Expression'));
-    op.AddProperty('Modul', ptInteger, Null, pitem.GetItemProperty('Modul'));
-    op.AddProperty('Ratio', ptNumber, Null, pitem.GetItemProperty('Ratio'));
-    op.AddProperty('Typ', ptInteger, Null, pitem.GetItemProperty('Typ'));
-    op.AddProperty('Checksum', ptBoolean, Null, pitem.GetItemProperty('Checksum'));
-    op.AddProperty('DisplayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
-    op.AddProperty('Rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
-    op.AddProperty('BColor', ptInteger, Null, pitem.GetItemProperty('BColor'));
-    op.AddProperty('BackColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
-    op.AddProperty('Transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
-    op.AddProperty('NumColumns', ptInteger, Null, pitem.GetItemProperty('NumColumns'));
-    op.AddProperty('NumRows', ptInteger, Null, pitem.GetItemProperty('NumRows'));
-    op.AddProperty('ECCLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
-    op.AddProperty('Truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
+    op.AddProperty('expression', ptString, Null, pitem.GetItemProperty('Expression'));
+    op.AddProperty('modul', ptInteger, Null, pitem.GetItemProperty('Modul'));
+    op.AddProperty('ratio', ptNumber, Null, pitem.GetItemProperty('Ratio'));
+    op.AddProperty('barType', ptInteger, Null, pitem.GetItemProperty('Typ'));
+    op.AddProperty('checksum', ptBoolean, Null, pitem.GetItemProperty('Checksum'));
+    op.AddProperty('displayFormat', ptString, Null, pitem.GetItemProperty('DisplayFormat'));
+    op.AddProperty('rotation', ptInteger, Null, pitem.GetItemProperty('Rotation'));
+    op.AddProperty('bColor', ptInteger, Null, pitem.GetItemProperty('BColor'));
+    op.AddProperty('backColor', ptInteger, Null, pitem.GetItemProperty('BackColor'));
+    op.AddProperty('transparent', ptBoolean, Null, pitem.GetItemProperty('Transparent'));
+    op.AddProperty('numColumns', ptInteger, Null, pitem.GetItemProperty('NumColumns'));
+    op.AddProperty('numRows', ptInteger, Null, pitem.GetItemProperty('NumRows'));
+    op.AddProperty('eccLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
+    op.AddProperty('truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
   end;
 end;
 
@@ -970,9 +1262,11 @@ begin
   if root = nil then
     Exit;
   try
-    FGroupId := root.GetValue<Integer>('GroupId', 0);
+    FGroupId := root.GetValue<Integer>('groupId', root.GetValue<Integer>('GroupId', 0));
     undoArr := nil;
-    if root.TryGetValue<TJSONArray>('UndoOperations', undoArr) then
+    if (not root.TryGetValue<TJSONArray>('undoOperations', undoArr)) then
+      root.TryGetValue<TJSONArray>('UndoOperations', undoArr);
+    if Assigned(undoArr) then
     begin
       for i := 0 to undoArr.Count - 1 do
       begin
@@ -981,7 +1275,9 @@ begin
       end;
     end;
     redoArr := nil;
-    if root.TryGetValue<TJSONArray>('RedoOperations', redoArr) then
+    if (not root.TryGetValue<TJSONArray>('redoOperations', redoArr)) then
+      root.TryGetValue<TJSONArray>('RedoOperations', redoArr);
+    if Assigned(redoArr) then
     begin
       for i := 0 to redoArr.Count - 1 do
       begin

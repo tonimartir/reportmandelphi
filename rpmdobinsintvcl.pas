@@ -900,8 +900,8 @@ begin
       op:=TChangeObjectOperation.Create(otModify, gid);
       op.componentName:=aitem.Name;
       op.componentClass:=UpperCase(aitem.ClassName);
-      op.AddProperty('PosX',ptInteger,oldPosXArr[i],aitem.PosX);
-      op.AddProperty('PosY',ptInteger,oldPosYArr[i],aitem.PosY);
+      op.AddProperty('posX',ptInteger,oldPosXArr[i],aitem.PosX);
+      op.AddProperty('posY',ptInteger,oldPosYArr[i],aitem.PosY);
       cue.AddOperation(op);
      end;
      mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
@@ -928,8 +928,8 @@ begin
      op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
      op.componentName:=printitem.Name;
      op.componentClass:=UpperCase(printitem.ClassName);
-     op.AddProperty('PosX',ptInteger,oldPosXSingle,TRpCOmmonPosComponent(printitem).PosX);
-     op.AddProperty('PosY',ptInteger,oldPosYSingle,TRpCOmmonPosComponent(printitem).PosY);
+    op.AddProperty('posX',ptInteger,oldPosXSingle,TRpCOmmonPosComponent(printitem).PosX);
+    op.AddProperty('posY',ptInteger,oldPosYSingle,TRpCOmmonPosComponent(printitem).PosY);
      cue.AddOperation(op);
      mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
      mainf.RefreshCueView;
@@ -1768,22 +1768,22 @@ begin
  rep:=TRpReport(printitem.Report);
  if Assigned(rep.UndoCue) then
  begin
-  oldWFontName:=rep.GetItemProperty('WFontName');
-  oldLFontName:=rep.GetItemProperty('LFontName');
-  oldType1Font:=rep.GetItemProperty('Type1Font');
-  oldFontSize:=rep.GetItemProperty('FontSize');
-  oldFontRotation:=rep.GetItemProperty('FontRotation');
-  oldFontStyle:=rep.GetItemProperty('FontStyle');
-  oldFontColor:=rep.GetItemProperty('FontColor');
-  oldBackColor:=rep.GetItemProperty('BackColor');
-  oldTransparent:=rep.GetItemProperty('Transparent');
-  oldCutText:=rep.GetItemProperty('CutText');
-  oldAlignment:=rep.GetItemProperty('Alignment');
-  oldVAlignment:=rep.GetItemProperty('VAlignment');
-  oldWordWrap:=rep.GetItemProperty('WordWrap');
-  oldSingleLine:=rep.GetItemProperty('SingleLine');
-  oldMultiPage:=rep.GetItemProperty('MultiPage');
-  oldPrintStep:=rep.GetItemProperty('PrintStep');
+  oldWFontName:=rep.GetItemProperty('wFontName');
+  oldLFontName:=rep.GetItemProperty('lFontName');
+  oldType1Font:=rep.GetItemProperty('type1Font');
+  oldFontSize:=rep.GetItemProperty('fontSize');
+  oldFontRotation:=rep.GetItemProperty('fontRotation');
+  oldFontStyle:=rep.GetItemProperty('fontStyle');
+  oldFontColor:=rep.GetItemProperty('fontColor');
+  oldBackColor:=rep.GetItemProperty('backColor');
+  oldTransparent:=rep.GetItemProperty('transparent');
+  oldCutText:=rep.GetItemProperty('cutText');
+  oldAlignment:=rep.GetItemProperty('alignment');
+  oldVAlignment:=rep.GetItemProperty('vAlignment');
+  oldWordWrap:=rep.GetItemProperty('wordWrap');
+  oldSingleLine:=rep.GetItemProperty('singleLine');
+  oldMultiPage:=rep.GetItemProperty('multiPage');
+  oldPrintStep:=rep.GetItemProperty('printStep');
  end;
 
  rep.GetDefaultFontFrom(TRpGenTextComponent(printitem));
@@ -1796,38 +1796,38 @@ begin
   op.componentName:='REPORT';
   op.componentClass:='TRPREPORT';
   op.parentName:='';
-  if oldWFontName<>rep.GetItemProperty('WFontName') then
-   op.AddProperty('WFontName', ptString, oldWFontName, rep.GetItemProperty('WFontName'));
-  if oldLFontName<>rep.GetItemProperty('LFontName') then
-   op.AddProperty('LFontName', ptString, oldLFontName, rep.GetItemProperty('LFontName'));
-  if oldType1Font<>rep.GetItemProperty('Type1Font') then
-   op.AddProperty('Type1Font', ptInteger, oldType1Font, rep.GetItemProperty('Type1Font'));
-  if oldFontSize<>rep.GetItemProperty('FontSize') then
-   op.AddProperty('FontSize', ptInteger, oldFontSize, rep.GetItemProperty('FontSize'));
-  if oldFontRotation<>rep.GetItemProperty('FontRotation') then
-   op.AddProperty('FontRotation', ptInteger, oldFontRotation, rep.GetItemProperty('FontRotation'));
-  if oldFontStyle<>rep.GetItemProperty('FontStyle') then
-   op.AddProperty('FontStyle', ptInteger, oldFontStyle, rep.GetItemProperty('FontStyle'));
-  if oldFontColor<>rep.GetItemProperty('FontColor') then
-   op.AddProperty('FontColor', ptInteger, oldFontColor, rep.GetItemProperty('FontColor'));
-  if oldBackColor<>rep.GetItemProperty('BackColor') then
-   op.AddProperty('BackColor', ptInteger, oldBackColor, rep.GetItemProperty('BackColor'));
-  if oldTransparent<>rep.GetItemProperty('Transparent') then
-   op.AddProperty('Transparent', ptBoolean, oldTransparent, rep.GetItemProperty('Transparent'));
-  if oldCutText<>rep.GetItemProperty('CutText') then
-   op.AddProperty('CutText', ptBoolean, oldCutText, rep.GetItemProperty('CutText'));
-  if oldAlignment<>rep.GetItemProperty('Alignment') then
-   op.AddProperty('Alignment', ptInteger, oldAlignment, rep.GetItemProperty('Alignment'));
-  if oldVAlignment<>rep.GetItemProperty('VAlignment') then
-   op.AddProperty('VAlignment', ptInteger, oldVAlignment, rep.GetItemProperty('VAlignment'));
-  if oldWordWrap<>rep.GetItemProperty('WordWrap') then
-   op.AddProperty('WordWrap', ptBoolean, oldWordWrap, rep.GetItemProperty('WordWrap'));
-  if oldSingleLine<>rep.GetItemProperty('SingleLine') then
-   op.AddProperty('SingleLine', ptBoolean, oldSingleLine, rep.GetItemProperty('SingleLine'));
-  if oldMultiPage<>rep.GetItemProperty('MultiPage') then
-   op.AddProperty('MultiPage', ptBoolean, oldMultiPage, rep.GetItemProperty('MultiPage'));
-  if oldPrintStep<>rep.GetItemProperty('PrintStep') then
-   op.AddProperty('PrintStep', ptInteger, oldPrintStep, rep.GetItemProperty('PrintStep'));
+  if oldWFontName<>rep.GetItemProperty('wFontName') then
+   op.AddProperty('wFontName', ptString, oldWFontName, rep.GetItemProperty('wFontName'));
+  if oldLFontName<>rep.GetItemProperty('lFontName') then
+   op.AddProperty('lFontName', ptString, oldLFontName, rep.GetItemProperty('lFontName'));
+  if oldType1Font<>rep.GetItemProperty('type1Font') then
+   op.AddProperty('type1Font', ptInteger, oldType1Font, rep.GetItemProperty('type1Font'));
+  if oldFontSize<>rep.GetItemProperty('fontSize') then
+   op.AddProperty('fontSize', ptInteger, oldFontSize, rep.GetItemProperty('fontSize'));
+  if oldFontRotation<>rep.GetItemProperty('fontRotation') then
+   op.AddProperty('fontRotation', ptInteger, oldFontRotation, rep.GetItemProperty('fontRotation'));
+  if oldFontStyle<>rep.GetItemProperty('fontStyle') then
+   op.AddProperty('fontStyle', ptInteger, oldFontStyle, rep.GetItemProperty('fontStyle'));
+  if oldFontColor<>rep.GetItemProperty('fontColor') then
+   op.AddProperty('fontColor', ptInteger, oldFontColor, rep.GetItemProperty('fontColor'));
+  if oldBackColor<>rep.GetItemProperty('backColor') then
+   op.AddProperty('backColor', ptInteger, oldBackColor, rep.GetItemProperty('backColor'));
+  if oldTransparent<>rep.GetItemProperty('transparent') then
+   op.AddProperty('transparent', ptBoolean, oldTransparent, rep.GetItemProperty('transparent'));
+  if oldCutText<>rep.GetItemProperty('cutText') then
+   op.AddProperty('cutText', ptBoolean, oldCutText, rep.GetItemProperty('cutText'));
+  if oldAlignment<>rep.GetItemProperty('alignment') then
+   op.AddProperty('alignment', ptInteger, oldAlignment, rep.GetItemProperty('alignment'));
+  if oldVAlignment<>rep.GetItemProperty('vAlignment') then
+   op.AddProperty('vAlignment', ptInteger, oldVAlignment, rep.GetItemProperty('vAlignment'));
+  if oldWordWrap<>rep.GetItemProperty('wordWrap') then
+   op.AddProperty('wordWrap', ptBoolean, oldWordWrap, rep.GetItemProperty('wordWrap'));
+  if oldSingleLine<>rep.GetItemProperty('singleLine') then
+   op.AddProperty('singleLine', ptBoolean, oldSingleLine, rep.GetItemProperty('singleLine'));
+  if oldMultiPage<>rep.GetItemProperty('multiPage') then
+   op.AddProperty('multiPage', ptBoolean, oldMultiPage, rep.GetItemProperty('multiPage'));
+  if oldPrintStep<>rep.GetItemProperty('printStep') then
+   op.AddProperty('printStep', ptInteger, oldPrintStep, rep.GetItemProperty('printStep'));
   if op.properties.Count>0 then
   begin
    cue.AddOperation(op);

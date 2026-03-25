@@ -134,17 +134,17 @@ begin
   op.componentClass:='TRPREPORT';
   op.parentName:='';
   if oldGridWidth<>report.GridWidth then
-   op.AddProperty('GridWidth', ptInteger, oldGridWidth, report.GridWidth);
+    op.AddProperty('gridWidth', ptInteger, oldGridWidth, report.GridWidth);
   if oldGridHeight<>report.GridHeight then
-   op.AddProperty('GridHeight', ptInteger, oldGridHeight, report.GridHeight);
+    op.AddProperty('gridHeight', ptInteger, oldGridHeight, report.GridHeight);
   if oldGridEnabled<>report.GridEnabled then
-   op.AddProperty('GridEnabled', ptBoolean, oldGridEnabled, report.GridEnabled);
+    op.AddProperty('gridEnabled', ptInteger, oldGridEnabled, report.GridEnabled);
   if oldGridVisible<>report.GridVisible then
-   op.AddProperty('GridVisible', ptBoolean, oldGridVisible, report.GridVisible);
+    op.AddProperty('gridVisible', ptInteger, oldGridVisible, report.GridVisible);
   if oldGridLines<>report.GridLines then
-   op.AddProperty('GridLines', ptBoolean, oldGridLines, report.GridLines);
+    op.AddProperty('gridLines', ptInteger, oldGridLines, report.GridLines);
   if oldGridColor<>report.GridColor then
-   op.AddProperty('GridColor', ptInteger, oldGridColor, report.GridColor);
+    op.AddProperty('gridColor', ptInteger, oldGridColor, report.GridColor);
   if op.properties.Count>0 then
    cue.AddOperation(op)
   else

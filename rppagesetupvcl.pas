@@ -388,45 +388,45 @@ var
 begin
  if Assigned(report.UndoCue) then
  begin
-  snapLinesPerInch:=report.GetItemProperty('LinesPerInch');
-  snapCopies:=report.GetItemProperty('Copies');
-  snapCollateCopies:=report.GetItemProperty('CollateCopies');
-  snapTwoPass:=report.GetItemProperty('TwoPass');
-  snapPreviewAbout:=report.GetItemProperty('PreviewAbout');
-  snapPrintOnlyIfData:=report.GetItemProperty('PrintOnlyIfDataAvailable');
-  snapPagesize:=report.GetItemProperty('Pagesize');
-  snapPagesizeQt:=report.GetItemProperty('PagesizeQt');
-  snapPageHeight:=report.GetItemProperty('PageHeight');
-  snapPageWidth:=report.GetItemProperty('PageWidth');
-  snapCustomPageWidth:=report.GetItemProperty('CustomPageWidth');
-  snapCustomPageHeight:=report.GetItemProperty('CustomPageHeight');
-  snapLeftMargin:=report.GetItemProperty('LeftMargin');
-  snapRightMargin:=report.GetItemProperty('RightMargin');
-  snapTopMargin:=report.GetItemProperty('TopMargin');
-  snapBottomMargin:=report.GetItemProperty('BottomMargin');
-  snapPageOrientation:=report.GetItemProperty('PageOrientation');
-  snapPageBackColor:=report.GetItemProperty('PageBackColor');
-  snapLanguage:=report.GetItemProperty('Language');
-  snapPrinterFonts:=report.GetItemProperty('PrinterFonts');
-  snapPreviewStyle:=report.GetItemProperty('PreviewStyle');
-  snapPreviewMargins:=report.GetItemProperty('PreviewMargins');
-  snapPreviewWindow:=report.GetItemProperty('PreviewWindow');
-  snapPrinterSelect:=report.GetItemProperty('PrinterSelect');
-  snapPaperSource:=report.GetItemProperty('PaperSource');
-  snapDuplex:=report.GetItemProperty('Duplex');
-  snapForcePaperName:=report.GetItemProperty('ForcePaperName');
-  snapPDFConformance:=report.GetItemProperty('PDFConformance');
-  snapPDFCompressed:=report.GetItemProperty('PDFCompressed');
-  snapDocAuthor:=report.GetItemProperty('DocAuthor');
-  snapDocCreator:=report.GetItemProperty('DocCreator');
-  snapDocProducer:=report.GetItemProperty('DocProducer');
-  snapDocTitle:=report.GetItemProperty('DocTitle');
-  snapDocSubject:=report.GetItemProperty('DocSubject');
-  snapDocCreationDate:=report.GetItemProperty('DocCreationDate');
-  snapDocModDate:=report.GetItemProperty('DocModificationDate');
-  snapDocKeywords:=report.GetItemProperty('DocKeywords');
-  snapDocXMPContent:=report.GetItemProperty('DocXMPContent');
-  snapStreamFormat:=report.GetItemProperty('StreamFormat');
+  snapLinesPerInch:=report.GetItemProperty('linesPerInch');
+  snapCopies:=report.GetItemProperty('copies');
+  snapCollateCopies:=report.GetItemProperty('collateCopies');
+  snapTwoPass:=report.GetItemProperty('twoPass');
+  snapPreviewAbout:=report.GetItemProperty('previewAbout');
+  snapPrintOnlyIfData:=report.GetItemProperty('printOnlyIfDataAvailable');
+  snapPagesize:=report.GetItemProperty('pageSize');
+  snapPagesizeQt:=report.GetItemProperty('pageSizeIndex');
+  snapPageHeight:=report.GetItemProperty('pageHeight');
+  snapPageWidth:=report.GetItemProperty('pageWidth');
+  snapCustomPageWidth:=report.GetItemProperty('customPageWidth');
+  snapCustomPageHeight:=report.GetItemProperty('customPageHeight');
+  snapLeftMargin:=report.GetItemProperty('leftMargin');
+  snapRightMargin:=report.GetItemProperty('rightMargin');
+  snapTopMargin:=report.GetItemProperty('topMargin');
+  snapBottomMargin:=report.GetItemProperty('bottomMargin');
+  snapPageOrientation:=report.GetItemProperty('pageOrientation');
+  snapPageBackColor:=report.GetItemProperty('pageBackColor');
+  snapLanguage:=report.GetItemProperty('language');
+  snapPrinterFonts:=report.GetItemProperty('printerFonts');
+  snapPreviewStyle:=report.GetItemProperty('autoScale');
+  snapPreviewMargins:=report.GetItemProperty('previewMargings');
+  snapPreviewWindow:=report.GetItemProperty('previewWindow');
+  snapPrinterSelect:=report.GetItemProperty('printerSelect');
+  snapPaperSource:=report.GetItemProperty('paperSource');
+  snapDuplex:=report.GetItemProperty('duplex');
+  snapForcePaperName:=report.GetItemProperty('forcePaperName');
+  snapPDFConformance:=report.GetItemProperty('pdfConformance');
+  snapPDFCompressed:=report.GetItemProperty('pdfCompressed');
+  snapDocAuthor:=report.GetItemProperty('docAuthor');
+  snapDocCreator:=report.GetItemProperty('docCreator');
+  snapDocProducer:=report.GetItemProperty('docProducer');
+  snapDocTitle:=report.GetItemProperty('docTitle');
+  snapDocSubject:=report.GetItemProperty('docSubject');
+  snapDocCreationDate:=report.GetItemProperty('docCreationDate');
+  snapDocModDate:=report.GetItemProperty('docModificationDate');
+  snapDocKeywords:=report.GetItemProperty('docKeywords');
+  snapDocXMPContent:=report.GetItemProperty('docXmpContent');
+  snapStreamFormat:=report.GetItemProperty('streamFormat');
   snapActionBefore:=report.GetItemProperty('actionBefore');
   snapActionAfter:=report.GetItemProperty('actionAfter');
  end;
@@ -525,84 +525,84 @@ begin
   op.componentName:='REPORT';
   op.componentClass:='TRPREPORT';
   op.parentName:='';
-  if snapLinesPerInch<>report.GetItemProperty('LinesPerInch') then
-   op.AddProperty('LinesPerInch', ptInteger, snapLinesPerInch, report.GetItemProperty('LinesPerInch'));
-  if snapCopies<>report.GetItemProperty('Copies') then
-   op.AddProperty('Copies', ptInteger, snapCopies, report.GetItemProperty('Copies'));
-  if snapCollateCopies<>report.GetItemProperty('CollateCopies') then
-   op.AddProperty('CollateCopies', ptBoolean, snapCollateCopies, report.GetItemProperty('CollateCopies'));
-  if snapTwoPass<>report.GetItemProperty('TwoPass') then
-   op.AddProperty('TwoPass', ptBoolean, snapTwoPass, report.GetItemProperty('TwoPass'));
-  if snapPreviewAbout<>report.GetItemProperty('PreviewAbout') then
-   op.AddProperty('PreviewAbout', ptBoolean, snapPreviewAbout, report.GetItemProperty('PreviewAbout'));
-  if snapPrintOnlyIfData<>report.GetItemProperty('PrintOnlyIfDataAvailable') then
-   op.AddProperty('PrintOnlyIfDataAvailable', ptBoolean, snapPrintOnlyIfData, report.GetItemProperty('PrintOnlyIfDataAvailable'));
-  if snapPagesize<>report.GetItemProperty('Pagesize') then
-   op.AddProperty('Pagesize', ptInteger, snapPagesize, report.GetItemProperty('Pagesize'));
-  if snapPagesizeQt<>report.GetItemProperty('PagesizeQt') then
-   op.AddProperty('PagesizeQt', ptInteger, snapPagesizeQt, report.GetItemProperty('PagesizeQt'));
-  if snapPageHeight<>report.GetItemProperty('PageHeight') then
-   op.AddProperty('PageHeight', ptInteger, snapPageHeight, report.GetItemProperty('PageHeight'));
-  if snapPageWidth<>report.GetItemProperty('PageWidth') then
-   op.AddProperty('PageWidth', ptInteger, snapPageWidth, report.GetItemProperty('PageWidth'));
-  if snapCustomPageWidth<>report.GetItemProperty('CustomPageWidth') then
-   op.AddProperty('CustomPageWidth', ptInteger, snapCustomPageWidth, report.GetItemProperty('CustomPageWidth'));
-  if snapCustomPageHeight<>report.GetItemProperty('CustomPageHeight') then
-   op.AddProperty('CustomPageHeight', ptInteger, snapCustomPageHeight, report.GetItemProperty('CustomPageHeight'));
-  if snapLeftMargin<>report.GetItemProperty('LeftMargin') then
-   op.AddProperty('LeftMargin', ptInteger, snapLeftMargin, report.GetItemProperty('LeftMargin'));
-  if snapRightMargin<>report.GetItemProperty('RightMargin') then
-   op.AddProperty('RightMargin', ptInteger, snapRightMargin, report.GetItemProperty('RightMargin'));
-  if snapTopMargin<>report.GetItemProperty('TopMargin') then
-   op.AddProperty('TopMargin', ptInteger, snapTopMargin, report.GetItemProperty('TopMargin'));
-  if snapBottomMargin<>report.GetItemProperty('BottomMargin') then
-   op.AddProperty('BottomMargin', ptInteger, snapBottomMargin, report.GetItemProperty('BottomMargin'));
-  if snapPageOrientation<>report.GetItemProperty('PageOrientation') then
-   op.AddProperty('PageOrientation', ptInteger, snapPageOrientation, report.GetItemProperty('PageOrientation'));
-  if snapPageBackColor<>report.GetItemProperty('PageBackColor') then
-   op.AddProperty('PageBackColor', ptInteger, snapPageBackColor, report.GetItemProperty('PageBackColor'));
-  if snapLanguage<>report.GetItemProperty('Language') then
-   op.AddProperty('Language', ptInteger, snapLanguage, report.GetItemProperty('Language'));
-  if snapPrinterFonts<>report.GetItemProperty('PrinterFonts') then
-   op.AddProperty('PrinterFonts', ptInteger, snapPrinterFonts, report.GetItemProperty('PrinterFonts'));
-  if snapPreviewStyle<>report.GetItemProperty('PreviewStyle') then
-   op.AddProperty('PreviewStyle', ptInteger, snapPreviewStyle, report.GetItemProperty('PreviewStyle'));
-  if snapPreviewMargins<>report.GetItemProperty('PreviewMargins') then
-   op.AddProperty('PreviewMargins', ptBoolean, snapPreviewMargins, report.GetItemProperty('PreviewMargins'));
-  if snapPreviewWindow<>report.GetItemProperty('PreviewWindow') then
-   op.AddProperty('PreviewWindow', ptInteger, snapPreviewWindow, report.GetItemProperty('PreviewWindow'));
-  if snapPrinterSelect<>report.GetItemProperty('PrinterSelect') then
-   op.AddProperty('PrinterSelect', ptInteger, snapPrinterSelect, report.GetItemProperty('PrinterSelect'));
-  if snapPaperSource<>report.GetItemProperty('PaperSource') then
-   op.AddProperty('PaperSource', ptInteger, snapPaperSource, report.GetItemProperty('PaperSource'));
-  if snapDuplex<>report.GetItemProperty('Duplex') then
-   op.AddProperty('Duplex', ptInteger, snapDuplex, report.GetItemProperty('Duplex'));
-  if snapForcePaperName<>report.GetItemProperty('ForcePaperName') then
-   op.AddProperty('ForcePaperName', ptString, snapForcePaperName, report.GetItemProperty('ForcePaperName'));
-  if snapPDFConformance<>report.GetItemProperty('PDFConformance') then
-   op.AddProperty('PDFConformance', ptInteger, snapPDFConformance, report.GetItemProperty('PDFConformance'));
-  if snapPDFCompressed<>report.GetItemProperty('PDFCompressed') then
-   op.AddProperty('PDFCompressed', ptBoolean, snapPDFCompressed, report.GetItemProperty('PDFCompressed'));
-  if snapDocAuthor<>report.GetItemProperty('DocAuthor') then
-   op.AddProperty('DocAuthor', ptString, snapDocAuthor, report.GetItemProperty('DocAuthor'));
-  if snapDocCreator<>report.GetItemProperty('DocCreator') then
-   op.AddProperty('DocCreator', ptString, snapDocCreator, report.GetItemProperty('DocCreator'));
-  if snapDocProducer<>report.GetItemProperty('DocProducer') then
-   op.AddProperty('DocProducer', ptString, snapDocProducer, report.GetItemProperty('DocProducer'));
-  if snapDocTitle<>report.GetItemProperty('DocTitle') then
-   op.AddProperty('DocTitle', ptString, snapDocTitle, report.GetItemProperty('DocTitle'));
-  if snapDocSubject<>report.GetItemProperty('DocSubject') then
-   op.AddProperty('DocSubject', ptString, snapDocSubject, report.GetItemProperty('DocSubject'));
-  if snapDocCreationDate<>report.GetItemProperty('DocCreationDate') then
-   op.AddProperty('DocCreationDate', ptString, snapDocCreationDate, report.GetItemProperty('DocCreationDate'));
-  if snapDocModDate<>report.GetItemProperty('DocModificationDate') then
-   op.AddProperty('DocModificationDate', ptString, snapDocModDate, report.GetItemProperty('DocModificationDate'));
-  if snapDocKeywords<>report.GetItemProperty('DocKeywords') then
-   op.AddProperty('DocKeywords', ptString, snapDocKeywords, report.GetItemProperty('DocKeywords'));
-  if snapDocXMPContent<>report.GetItemProperty('DocXMPContent') then
-   op.AddProperty('DocXMPContent', ptString, snapDocXMPContent, report.GetItemProperty('DocXMPContent'));
-  if snapStreamFormat<>report.GetItemProperty('StreamFormat') then
-   op.AddProperty('StreamFormat', ptInteger, snapStreamFormat, report.GetItemProperty('StreamFormat'));
+  if snapLinesPerInch<>report.GetItemProperty('linesPerInch') then
+   op.AddProperty('linesPerInch', ptInteger, snapLinesPerInch, report.GetItemProperty('linesPerInch'));
+  if snapCopies<>report.GetItemProperty('copies') then
+   op.AddProperty('copies', ptInteger, snapCopies, report.GetItemProperty('copies'));
+  if snapCollateCopies<>report.GetItemProperty('collateCopies') then
+   op.AddProperty('collateCopies', ptBoolean, snapCollateCopies, report.GetItemProperty('collateCopies'));
+  if snapTwoPass<>report.GetItemProperty('twoPass') then
+   op.AddProperty('twoPass', ptBoolean, snapTwoPass, report.GetItemProperty('twoPass'));
+  if snapPreviewAbout<>report.GetItemProperty('previewAbout') then
+   op.AddProperty('previewAbout', ptBoolean, snapPreviewAbout, report.GetItemProperty('previewAbout'));
+  if snapPrintOnlyIfData<>report.GetItemProperty('printOnlyIfDataAvailable') then
+   op.AddProperty('printOnlyIfDataAvailable', ptBoolean, snapPrintOnlyIfData, report.GetItemProperty('printOnlyIfDataAvailable'));
+  if snapPagesize<>report.GetItemProperty('pageSize') then
+   op.AddProperty('pageSize', ptInteger, snapPagesize, report.GetItemProperty('pageSize'));
+  if snapPagesizeQt<>report.GetItemProperty('pageSizeIndex') then
+   op.AddProperty('pageSizeIndex', ptInteger, snapPagesizeQt, report.GetItemProperty('pageSizeIndex'));
+  if snapPageHeight<>report.GetItemProperty('pageHeight') then
+   op.AddProperty('pageHeight', ptInteger, snapPageHeight, report.GetItemProperty('pageHeight'));
+  if snapPageWidth<>report.GetItemProperty('pageWidth') then
+   op.AddProperty('pageWidth', ptInteger, snapPageWidth, report.GetItemProperty('pageWidth'));
+  if snapCustomPageWidth<>report.GetItemProperty('customPageWidth') then
+   op.AddProperty('customPageWidth', ptInteger, snapCustomPageWidth, report.GetItemProperty('customPageWidth'));
+  if snapCustomPageHeight<>report.GetItemProperty('customPageHeight') then
+   op.AddProperty('customPageHeight', ptInteger, snapCustomPageHeight, report.GetItemProperty('customPageHeight'));
+  if snapLeftMargin<>report.GetItemProperty('leftMargin') then
+   op.AddProperty('leftMargin', ptInteger, snapLeftMargin, report.GetItemProperty('leftMargin'));
+  if snapRightMargin<>report.GetItemProperty('rightMargin') then
+   op.AddProperty('rightMargin', ptInteger, snapRightMargin, report.GetItemProperty('rightMargin'));
+  if snapTopMargin<>report.GetItemProperty('topMargin') then
+   op.AddProperty('topMargin', ptInteger, snapTopMargin, report.GetItemProperty('topMargin'));
+  if snapBottomMargin<>report.GetItemProperty('bottomMargin') then
+   op.AddProperty('bottomMargin', ptInteger, snapBottomMargin, report.GetItemProperty('bottomMargin'));
+  if snapPageOrientation<>report.GetItemProperty('pageOrientation') then
+   op.AddProperty('pageOrientation', ptInteger, snapPageOrientation, report.GetItemProperty('pageOrientation'));
+  if snapPageBackColor<>report.GetItemProperty('pageBackColor') then
+   op.AddProperty('pageBackColor', ptInteger, snapPageBackColor, report.GetItemProperty('pageBackColor'));
+  if snapLanguage<>report.GetItemProperty('language') then
+   op.AddProperty('language', ptInteger, snapLanguage, report.GetItemProperty('language'));
+  if snapPrinterFonts<>report.GetItemProperty('printerFonts') then
+   op.AddProperty('printerFonts', ptInteger, snapPrinterFonts, report.GetItemProperty('printerFonts'));
+  if snapPreviewStyle<>report.GetItemProperty('autoScale') then
+   op.AddProperty('autoScale', ptInteger, snapPreviewStyle, report.GetItemProperty('autoScale'));
+  if snapPreviewMargins<>report.GetItemProperty('previewMargings') then
+   op.AddProperty('previewMargings', ptBoolean, snapPreviewMargins, report.GetItemProperty('previewMargings'));
+  if snapPreviewWindow<>report.GetItemProperty('previewWindow') then
+   op.AddProperty('previewWindow', ptInteger, snapPreviewWindow, report.GetItemProperty('previewWindow'));
+  if snapPrinterSelect<>report.GetItemProperty('printerSelect') then
+   op.AddProperty('printerSelect', ptInteger, snapPrinterSelect, report.GetItemProperty('printerSelect'));
+  if snapPaperSource<>report.GetItemProperty('paperSource') then
+   op.AddProperty('paperSource', ptInteger, snapPaperSource, report.GetItemProperty('paperSource'));
+  if snapDuplex<>report.GetItemProperty('duplex') then
+   op.AddProperty('duplex', ptInteger, snapDuplex, report.GetItemProperty('duplex'));
+  if snapForcePaperName<>report.GetItemProperty('forcePaperName') then
+   op.AddProperty('forcePaperName', ptString, snapForcePaperName, report.GetItemProperty('forcePaperName'));
+  if snapPDFConformance<>report.GetItemProperty('pdfConformance') then
+   op.AddProperty('pdfConformance', ptInteger, snapPDFConformance, report.GetItemProperty('pdfConformance'));
+  if snapPDFCompressed<>report.GetItemProperty('pdfCompressed') then
+   op.AddProperty('pdfCompressed', ptBoolean, snapPDFCompressed, report.GetItemProperty('pdfCompressed'));
+  if snapDocAuthor<>report.GetItemProperty('docAuthor') then
+   op.AddProperty('docAuthor', ptString, snapDocAuthor, report.GetItemProperty('docAuthor'));
+  if snapDocCreator<>report.GetItemProperty('docCreator') then
+   op.AddProperty('docCreator', ptString, snapDocCreator, report.GetItemProperty('docCreator'));
+  if snapDocProducer<>report.GetItemProperty('docProducer') then
+   op.AddProperty('docProducer', ptString, snapDocProducer, report.GetItemProperty('docProducer'));
+  if snapDocTitle<>report.GetItemProperty('docTitle') then
+   op.AddProperty('docTitle', ptString, snapDocTitle, report.GetItemProperty('docTitle'));
+  if snapDocSubject<>report.GetItemProperty('docSubject') then
+   op.AddProperty('docSubject', ptString, snapDocSubject, report.GetItemProperty('docSubject'));
+  if snapDocCreationDate<>report.GetItemProperty('docCreationDate') then
+   op.AddProperty('docCreationDate', ptString, snapDocCreationDate, report.GetItemProperty('docCreationDate'));
+  if snapDocModDate<>report.GetItemProperty('docModificationDate') then
+   op.AddProperty('docModificationDate', ptString, snapDocModDate, report.GetItemProperty('docModificationDate'));
+  if snapDocKeywords<>report.GetItemProperty('docKeywords') then
+   op.AddProperty('docKeywords', ptString, snapDocKeywords, report.GetItemProperty('docKeywords'));
+  if snapDocXMPContent<>report.GetItemProperty('docXmpContent') then
+   op.AddProperty('docXmpContent', ptString, snapDocXMPContent, report.GetItemProperty('docXmpContent'));
+  if snapStreamFormat<>report.GetItemProperty('streamFormat') then
+   op.AddProperty('streamFormat', ptInteger, snapStreamFormat, report.GetItemProperty('streamFormat'));
   if snapActionBefore<>report.GetItemProperty('actionBefore') then
    op.AddProperty('actionBefore', ptBoolean, snapActionBefore, report.GetItemProperty('actionBefore'));
   if snapActionAfter<>report.GetItemProperty('actionAfter') then

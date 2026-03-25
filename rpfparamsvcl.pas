@@ -161,6 +161,19 @@ begin
       op.componentName:=origParam.Name;
       op.componentClass:='TRPPARAM';
       op.oldItemIndex:=i;
+      op.AddProperty('description',ptString,origParam.Description,Null);
+      op.AddProperty('hint',ptString,origParam.Hint,Null);
+      op.AddProperty('validation',ptString,origParam.Validation,Null);
+      op.AddProperty('errorMessage',ptString,origParam.ErrorMessage,Null);
+      op.AddProperty('visible',ptBoolean,origParam.Visible,Null);
+      op.AddProperty('neverVisible',ptBoolean,origParam.NeverVisible,Null);
+      op.AddProperty('isReadOnly',ptBoolean,origParam.IsReadOnly,Null);
+      op.AddProperty('allowNulls',ptBoolean,origParam.AllowNulls,Null);
+      op.AddProperty('paramType',ptInteger,Integer(origParam.ParamType),Null);
+      op.AddProperty('lookupDataset',ptString,origParam.LookupDataset,Null);
+      op.AddProperty('searchDataset',ptString,origParam.SearchDataset,Null);
+      op.AddProperty('searchParam',ptString,origParam.SearchParam,Null);
+      op.AddProperty('value',ptVariant,origParam.Value,Null);
       undoCue.AddOperation(op);
      end;
     end;
@@ -174,6 +187,19 @@ begin
       op.componentName:=newParam.Name;
       op.componentClass:='TRPPARAM';
       op.oldItemIndex:=i;
+      op.AddProperty('description',ptString,Null,newParam.Description);
+      op.AddProperty('hint',ptString,Null,newParam.Hint);
+      op.AddProperty('validation',ptString,Null,newParam.Validation);
+      op.AddProperty('errorMessage',ptString,Null,newParam.ErrorMessage);
+      op.AddProperty('visible',ptBoolean,Null,newParam.Visible);
+      op.AddProperty('neverVisible',ptBoolean,Null,newParam.NeverVisible);
+      op.AddProperty('isReadOnly',ptBoolean,Null,newParam.IsReadOnly);
+      op.AddProperty('allowNulls',ptBoolean,Null,newParam.AllowNulls);
+      op.AddProperty('paramType',ptInteger,Null,Integer(newParam.ParamType));
+      op.AddProperty('lookupDataset',ptString,Null,newParam.LookupDataset);
+      op.AddProperty('searchDataset',ptString,Null,newParam.SearchDataset);
+      op.AddProperty('searchParam',ptString,Null,newParam.SearchParam);
+      op.AddProperty('value',ptVariant,Null,newParam.Value);
       undoCue.AddOperation(op);
      end;
     end;
@@ -188,29 +214,29 @@ begin
       op.componentName:=newParam.Name;
       op.componentClass:='TRPPARAM';
       if origParam.Description<>newParam.Description then
-       op.AddProperty('Description',ptString,origParam.Description,newParam.Description);
+        op.AddProperty('description',ptString,origParam.Description,newParam.Description);
       if origParam.Hint<>newParam.Hint then
-       op.AddProperty('Hint',ptString,origParam.Hint,newParam.Hint);
+        op.AddProperty('hint',ptString,origParam.Hint,newParam.Hint);
       if origParam.Validation<>newParam.Validation then
-       op.AddProperty('Validation',ptString,origParam.Validation,newParam.Validation);
+        op.AddProperty('validation',ptString,origParam.Validation,newParam.Validation);
       if origParam.ErrorMessage<>newParam.ErrorMessage then
-       op.AddProperty('ErrorMessage',ptString,origParam.ErrorMessage,newParam.ErrorMessage);
+        op.AddProperty('errorMessage',ptString,origParam.ErrorMessage,newParam.ErrorMessage);
       if origParam.Visible<>newParam.Visible then
-       op.AddProperty('Visible',ptBoolean,origParam.Visible,newParam.Visible);
+        op.AddProperty('visible',ptBoolean,origParam.Visible,newParam.Visible);
       if origParam.NeverVisible<>newParam.NeverVisible then
-       op.AddProperty('NeverVisible',ptBoolean,origParam.NeverVisible,newParam.NeverVisible);
+        op.AddProperty('neverVisible',ptBoolean,origParam.NeverVisible,newParam.NeverVisible);
       if origParam.IsReadOnly<>newParam.IsReadOnly then
-       op.AddProperty('IsReadOnly',ptBoolean,origParam.IsReadOnly,newParam.IsReadOnly);
+        op.AddProperty('isReadOnly',ptBoolean,origParam.IsReadOnly,newParam.IsReadOnly);
       if origParam.AllowNulls<>newParam.AllowNulls then
-       op.AddProperty('AllowNulls',ptBoolean,origParam.AllowNulls,newParam.AllowNulls);
+        op.AddProperty('allowNulls',ptBoolean,origParam.AllowNulls,newParam.AllowNulls);
       if Integer(origParam.ParamType)<>Integer(newParam.ParamType) then
-       op.AddProperty('ParamType',ptInteger,Integer(origParam.ParamType),Integer(newParam.ParamType));
+        op.AddProperty('paramType',ptInteger,Integer(origParam.ParamType),Integer(newParam.ParamType));
       if origParam.LookupDataset<>newParam.LookupDataset then
-       op.AddProperty('LookupDataset',ptString,origParam.LookupDataset,newParam.LookupDataset);
+        op.AddProperty('lookupDataset',ptString,origParam.LookupDataset,newParam.LookupDataset);
       if origParam.SearchDataset<>newParam.SearchDataset then
-       op.AddProperty('SearchDataset',ptString,origParam.SearchDataset,newParam.SearchDataset);
+        op.AddProperty('searchDataset',ptString,origParam.SearchDataset,newParam.SearchDataset);
       if origParam.SearchParam<>newParam.SearchParam then
-       op.AddProperty('SearchParam',ptString,origParam.SearchParam,newParam.SearchParam);
+        op.AddProperty('searchParam',ptString,origParam.SearchParam,newParam.SearchParam);
       if op.properties.Count>0 then
        undoCue.AddOperation(op)
       else

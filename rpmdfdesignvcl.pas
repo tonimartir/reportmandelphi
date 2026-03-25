@@ -791,7 +791,7 @@ begin
     op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
     op.componentName:=asection.Name;
     op.componentClass:=UpperCase(asection.ClassName);
-    op.AddProperty('Height',ptInteger,oldHeight,asection.Height);
+      op.AddProperty('height',ptInteger,oldHeight,asection.Height);
     cue.AddOperation(op);
     TFRpMainFVCL(FFrame.Owner).RefreshCueView;
    end;
@@ -928,7 +928,7 @@ begin
    op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
    op.componentName:=section.Name;
    op.componentClass:=UpperCase(section.ClassName);
-   op.AddProperty('Width',ptInteger,oldWidth,section.Width);
+  op.AddProperty('width',ptInteger,oldWidth,section.Width);
    cue.AddOperation(op);
    TFRpMainFVCL(FFrame.Owner).RefreshCueView;
   end;

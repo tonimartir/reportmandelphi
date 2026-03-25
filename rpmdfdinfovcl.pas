@@ -156,6 +156,15 @@ begin
    op.componentName:=origDB.Name;
    op.componentClass:='TRPDATABASEINFOITEM';
    op.oldItemIndex:=i;
+  op.AddProperty('alias',ptString,origDB.Alias,Null);
+  op.AddProperty('driver',ptInteger,Integer(origDB.Driver),Null);
+  op.AddProperty('configFile',ptString,origDB.ConfigFile,Null);
+  op.AddProperty('loginPrompt',ptBoolean,origDB.LoginPrompt,Null);
+  op.AddProperty('loadParams',ptBoolean,origDB.LoadParams,Null);
+  op.AddProperty('loadDriverParams',ptBoolean,origDB.LoadDriverParams,Null);
+  op.AddProperty('connectionString',ptString,origDB.ADOConnectionString,Null);
+  op.AddProperty('providerFactory',ptString,origDB.ProviderFactory,Null);
+  op.AddProperty('dotNetDriver',ptInteger,origDB.DotNetDriver,Null);
    undoCue.AddOperation(op);
   end;
  end;
@@ -168,6 +177,15 @@ begin
    op.componentName:=newDB.Name;
    op.componentClass:='TRPDATABASEINFOITEM';
    op.oldItemIndex:=i;
+  op.AddProperty('alias',ptString,Null,newDB.Alias);
+  op.AddProperty('driver',ptInteger,Null,Integer(newDB.Driver));
+  op.AddProperty('configFile',ptString,Null,newDB.ConfigFile);
+  op.AddProperty('loginPrompt',ptBoolean,Null,newDB.LoginPrompt);
+  op.AddProperty('loadParams',ptBoolean,Null,newDB.LoadParams);
+  op.AddProperty('loadDriverParams',ptBoolean,Null,newDB.LoadDriverParams);
+  op.AddProperty('connectionString',ptString,Null,newDB.ADOConnectionString);
+  op.AddProperty('providerFactory',ptString,Null,newDB.ProviderFactory);
+  op.AddProperty('dotNetDriver',ptInteger,Null,newDB.DotNetDriver);
    undoCue.AddOperation(op);
   end;
  end;
@@ -181,23 +199,23 @@ begin
    op.componentName:=newDB.Name;
    op.componentClass:='TRPDATABASEINFOITEM';
    if origDB.Alias<>newDB.Alias then
-    op.AddProperty('Alias',ptString,origDB.Alias,newDB.Alias);
+    op.AddProperty('alias',ptString,origDB.Alias,newDB.Alias);
    if Integer(origDB.Driver)<>Integer(newDB.Driver) then
-    op.AddProperty('Driver',ptInteger,Integer(origDB.Driver),Integer(newDB.Driver));
+    op.AddProperty('driver',ptInteger,Integer(origDB.Driver),Integer(newDB.Driver));
    if origDB.ConfigFile<>newDB.ConfigFile then
-    op.AddProperty('ConfigFile',ptString,origDB.ConfigFile,newDB.ConfigFile);
+    op.AddProperty('configFile',ptString,origDB.ConfigFile,newDB.ConfigFile);
    if origDB.LoginPrompt<>newDB.LoginPrompt then
-    op.AddProperty('LoginPrompt',ptBoolean,origDB.LoginPrompt,newDB.LoginPrompt);
+    op.AddProperty('loginPrompt',ptBoolean,origDB.LoginPrompt,newDB.LoginPrompt);
    if origDB.LoadParams<>newDB.LoadParams then
-    op.AddProperty('LoadParams',ptBoolean,origDB.LoadParams,newDB.LoadParams);
+    op.AddProperty('loadParams',ptBoolean,origDB.LoadParams,newDB.LoadParams);
    if origDB.LoadDriverParams<>newDB.LoadDriverParams then
-    op.AddProperty('LoadDriverParams',ptBoolean,origDB.LoadDriverParams,newDB.LoadDriverParams);
+    op.AddProperty('loadDriverParams',ptBoolean,origDB.LoadDriverParams,newDB.LoadDriverParams);
    if origDB.ADOConnectionString<>newDB.ADOConnectionString then
-    op.AddProperty('ADOConnectionString',ptString,origDB.ADOConnectionString,newDB.ADOConnectionString);
+    op.AddProperty('connectionString',ptString,origDB.ADOConnectionString,newDB.ADOConnectionString);
    if origDB.ProviderFactory<>newDB.ProviderFactory then
-    op.AddProperty('ProviderFactory',ptString,origDB.ProviderFactory,newDB.ProviderFactory);
+    op.AddProperty('providerFactory',ptString,origDB.ProviderFactory,newDB.ProviderFactory);
    if origDB.DotNetDriver<>newDB.DotNetDriver then
-    op.AddProperty('DotNetDriver',ptInteger,origDB.DotNetDriver,newDB.DotNetDriver);
+    op.AddProperty('dotNetDriver',ptInteger,origDB.DotNetDriver,newDB.DotNetDriver);
    if op.properties.Count>0 then
     undoCue.AddOperation(op)
    else
@@ -214,6 +232,13 @@ begin
    op.componentName:=origDS.Name;
    op.componentClass:='TRPDATAINFOITEM';
    op.oldItemIndex:=i;
+  op.AddProperty('alias',ptString,origDS.Alias,Null);
+  op.AddProperty('databaseAlias',ptString,origDS.DatabaseAlias,Null);
+  op.AddProperty('sql',ptString,origDS.SQL,Null);
+  op.AddProperty('dataSource',ptString,origDS.DataSource,Null);
+  op.AddProperty('groupUnion',ptBoolean,origDS.GroupUnion,Null);
+  op.AddProperty('openOnStart',ptBoolean,origDS.OpenOnStart,Null);
+  op.AddProperty('parallelUnion',ptBoolean,origDS.ParallelUnion,Null);
    undoCue.AddOperation(op);
   end;
  end;
@@ -226,6 +251,13 @@ begin
    op.componentName:=newDS.Name;
    op.componentClass:='TRPDATAINFOITEM';
    op.oldItemIndex:=i;
+  op.AddProperty('alias',ptString,Null,newDS.Alias);
+  op.AddProperty('databaseAlias',ptString,Null,newDS.DatabaseAlias);
+  op.AddProperty('sql',ptString,Null,newDS.SQL);
+  op.AddProperty('dataSource',ptString,Null,newDS.DataSource);
+  op.AddProperty('groupUnion',ptBoolean,Null,newDS.GroupUnion);
+  op.AddProperty('openOnStart',ptBoolean,Null,newDS.OpenOnStart);
+  op.AddProperty('parallelUnion',ptBoolean,Null,newDS.ParallelUnion);
    undoCue.AddOperation(op);
   end;
  end;
@@ -239,19 +271,19 @@ begin
    op.componentName:=newDS.Name;
    op.componentClass:='TRPDATAINFOITEM';
    if origDS.Alias<>newDS.Alias then
-    op.AddProperty('Alias',ptString,origDS.Alias,newDS.Alias);
+    op.AddProperty('alias',ptString,origDS.Alias,newDS.Alias);
    if origDS.DatabaseAlias<>newDS.DatabaseAlias then
-    op.AddProperty('DatabaseAlias',ptString,origDS.DatabaseAlias,newDS.DatabaseAlias);
+    op.AddProperty('databaseAlias',ptString,origDS.DatabaseAlias,newDS.DatabaseAlias);
    if origDS.SQL<>newDS.SQL then
-    op.AddProperty('SQL',ptString,origDS.SQL,newDS.SQL);
+    op.AddProperty('sql',ptString,origDS.SQL,newDS.SQL);
    if origDS.DataSource<>newDS.DataSource then
-    op.AddProperty('DataSource',ptString,origDS.DataSource,newDS.DataSource);
+    op.AddProperty('dataSource',ptString,origDS.DataSource,newDS.DataSource);
    if origDS.GroupUnion<>newDS.GroupUnion then
-    op.AddProperty('GroupUnion',ptBoolean,origDS.GroupUnion,newDS.GroupUnion);
+    op.AddProperty('groupUnion',ptBoolean,origDS.GroupUnion,newDS.GroupUnion);
    if origDS.OpenOnStart<>newDS.OpenOnStart then
-    op.AddProperty('OpenOnStart',ptBoolean,origDS.OpenOnStart,newDS.OpenOnStart);
+    op.AddProperty('openOnStart',ptBoolean,origDS.OpenOnStart,newDS.OpenOnStart);
    if origDS.ParallelUnion<>newDS.ParallelUnion then
-    op.AddProperty('ParallelUnion',ptBoolean,origDS.ParallelUnion,newDS.ParallelUnion);
+    op.AddProperty('parallelUnion',ptBoolean,origDS.ParallelUnion,newDS.ParallelUnion);
    if op.properties.Count>0 then
     undoCue.AddOperation(op)
    else
