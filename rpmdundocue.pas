@@ -181,9 +181,9 @@ begin
   variantType := VarType(value) and varTypeMask;
   case variantType of
     varShortInt, varSmallint, varInteger, varByte, varWord, varLongWord, varInt64:
-      Result := TJSONNumber.Create(VarAsType(value, varInt64));
+      Result := TJSONNumber.Create(Int64(VarAsType(value, varInt64)));
     varSingle, varDouble, varCurrency:
-      Result := TJSONNumber.Create(VarAsType(value, varDouble));
+      Result := TJSONNumber.Create(Double(VarAsType(value, varDouble)));
     varBoolean:
       Result := TJSONBool.Create(value);
     varDate:

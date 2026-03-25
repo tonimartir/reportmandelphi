@@ -142,7 +142,7 @@ uses Classes,SysUtils,
   Memds,
  {$ENDIF}
 {$ENDIF}
- rpdatatext;
+ rpdatahttp, rpauthmanager, rpdatatext;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}
@@ -152,7 +152,8 @@ const
 {$ENDIF}
 type
  TRpDbDriver=(rpdatadbexpress=0,rpdatamybase=1,rpdataibx=2,
-  rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9);
+  rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9,
+  rpdatahttp=10);
 
 
  TRpConnAdmin=class(TObject)
@@ -240,6 +241,7 @@ type
 {$IFDEF USEIBO}
    FIBODatabase: TIB_Database;
 {$ENDIF}
+   FHttpDatabase: TRpDatabaseHttp;
    FDriver:TRpDbDriver;
    procedure SetAlias(Value:string);
    procedure SetConfigFile(Value:string);
@@ -2174,6 +2176,41 @@ begin
       Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
   {$ENDIF}
      end;
+    rpdatahttp:
+     begin
+       if Not Assigned(FHttpDatabase) then
+         FHttpDatabase := TRpDatabaseHttp.Create(Self);
+       
+       if FHttpDatabase.Connected then
+         Exit;
+
+       if FLoadParams then
+       begin
+         if Not Assigned(ConAdmin) then
+           UpdateConAdmin;
+         
+         alist2 := TStringList.Create;
+         try
+           ConAdmin.GetConnectionParams(Alias, alist2);
+           FHttpDatabase.Url := alist2.Values['Url'];
+           FHttpDatabase.ApiKey := alist2.Values['ApiKey'];
+           FHttpDatabase.HubDatabaseId := StrToInt64Def(alist2.Values['HubDatabaseId'], 0);
+           FHttpDatabase.InstallId := alist2.Values['InstallId'];
+           
+           // If No URL in params, use default from AuthManager if available
+           if FHttpDatabase.Url = '' then
+              FHttpDatabase.Url := TRpAuthManager.Instance.Url;
+           
+           // Use AuthManager token if available and no ApiKey
+           if (FHttpDatabase.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
+              FHttpDatabase.Token := TRpAuthManager.Instance.Token;
+
+         finally
+           alist2.Free;
+         end;
+       end;
+       FHttpDatabase.Connected := True;
+     end;
        end;
  finally
   paramlist.free;
@@ -2969,7 +3006,23 @@ begin
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
 {$ENDIF}
       end;
-   end;
+     rpdatahttp:
+      begin
+        // Use the new HTTP driver to fill the ClientDataSet
+        if not Assigned(baseinfo.FHttpDatabase) then
+           baseinfo.FHttpDatabase := TRpDatabaseHttp.Create(baseinfo);
+           
+        with TRpDatasetHttp.Create(baseinfo.FHttpDatabase, TClientDataSet(FSQLInternalQuery)) do
+        try
+          Sql := SQLsentence;
+          // TODO: Bind parameters from TRpParams to the HTTP request
+          Open;
+          // Data is now in Dataset (TClientDataSet), which is assigned to FSQLInternalQuery
+        finally
+          Free;
+        end;
+      end;
+    end;
    // Assigns parameters
    for i:=0 to params.count-1 do
    begin
@@ -3054,14 +3107,23 @@ begin
         TIBOQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
 {$ENDIF}
        end;
-    rpfiredac:
-     begin
-{$IFDEF FIREDAC}
-       TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
-        TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
-{$ENDIF}
-     end;
-     end;
+      rpfiredac:
+       begin
+  {$IFDEF FIREDAC}
+         TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+          TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+  {$ENDIF}
+       end;
+      rpdatahttp:
+       begin
+         // Parameters are already handled via TRpDatasetHttp.Open if passed in Sql
+         // But let's ensure they are available in the underlying dataset if needed
+         if TClientDataSet(FSQLInternalQuery).FindField(param.Name) = nil then
+         begin
+            // TODO: Optional: Add parameters to a list for the HTTP driver if not using macro/text replacement
+         end;
+       end;
+      end;
     end;
    end;
 
@@ -3217,6 +3279,10 @@ begin
         FMasterSource.DataSet:=datainfosource.Dataset;
        AssignParamValuesFiredac(TFDCustomQuery(FSQLInternalQuery),datainfosource.Dataset);
 {$ENDIF}
+      end;
+     rpdatahttp:
+      begin
+        TClientDataSet(FSQLInternalQuery).RemoteServer := nil;
       end;
     end;
    end;
@@ -4406,6 +4472,7 @@ begin
  alist.Add('Dot Net Connection');
  alist.Add('Dot Net 2 Connection');
  alist.Add('FireDac');
+ alist.Add('Reportman AI Agent');
 end;
 
 

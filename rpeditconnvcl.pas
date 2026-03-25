@@ -329,7 +329,7 @@ end;
 procedure TFRpEditConVCL.BConfigClick(Sender: TObject);
 begin
 {$IFNDEF BUILDER4}
- ShowDBXConfig(TRpDbDriver(ComboDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase]);
+ ShowDBXConfig(TRpDbDriver(ComboDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase,rpdatahttp]);
 {$ENDIF}
 // conadmin.free;
 // conadmin:=TRPCOnnAdmin.Create;

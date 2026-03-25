@@ -21,9 +21,7 @@ interface
 
 uses
  windows,Classes,sysutils,Dialogs,Controls,Graphics,Forms,rpmdconsts,
-{$IFDEF USEVARIANTS}
- types,
-{$ENDIF}
+ types,variants,
  rptypes,rpdatainfo,rpreport,rpmdundocue,
  rpmdfdatasetsvcl,rpmdfconnectionvcl,
  StdCtrls, ExtCtrls, ComCtrls;

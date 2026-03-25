@@ -275,6 +275,9 @@ begin
    MHelp.Lines.Text:=SRpDriverDotNetDesc;
   9:
    MHelp.Lines.Text:=SRpFireDacDesc;
+  10:
+   MHelp.Lines.Text:='Executes SQL remotely via Reportman AI Hub-Agent bridge. '+
+    'Supports secure, non-interactive queries with API Keys.';
  end;
  // Loads the alias config
  case TrpDbDriver(index) of
@@ -334,6 +337,12 @@ begin
     BBuild.Visible:=false;
     ComboAvailable.Items.Clear;
    end;
+  rpdatahttp:
+   begin
+    BConfig.Visible:=true;
+    BBuild.Visible:=false;
+    ComboAvailable.Items.Clear;
+   end;
  end;
 end;
 
@@ -376,7 +385,7 @@ procedure TFRpConnectionVCL.BConfigClick(Sender: TObject);
 var
  i:integer;
 begin
- ShowDBXConfig(TRpDbDriver(GDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase]);
+ ShowDBXConfig(TRpDbDriver(GDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase,rpdatahttp]);
  conadmin.free;
  conadmin:=TRPCOnnAdmin.Create;
  conadmin.GetConnectionNames(ComboAvailable.Items,'');
