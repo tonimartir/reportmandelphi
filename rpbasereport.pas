@@ -2552,6 +2552,24 @@ begin
  // PDF
  if propName = 'PDFConformance' then begin FPDFConformance := TPDFConformanceType(Integer(value)); exit; end;
  if propName = 'PDFCompressed' then begin FPDFCompressed := value; exit; end;
+ if (propName = 'actionBefore') or (propName = 'ActionBefore') then
+ begin
+  if value then
+   Include(FReportAction, rpDrawerBefore)
+  else
+   Exclude(FReportAction, rpDrawerBefore);
+  exit;
+ end;
+ if (propName = 'actionAfter') or (propName = 'ActionAfter') then
+ begin
+  if value then
+   Include(FReportAction, rpDrawerAfter)
+  else
+   Exclude(FReportAction, rpDrawerAfter);
+  exit;
+ end;
+if propName = 'StreamFormat' then begin FStreamFormat := TRpStreamFormat(Integer(value)); exit; end;
+if propName = 'ReportAction' then begin FReportAction := TRpReportActions(Byte(Integer(value))); exit; end;
  // Metadata
  if propName = 'DocAuthor' then begin FDocAuthor := value; exit; end;
  if propName = 'DocTitle' then begin FDocTitle := value; exit; end;
@@ -2625,6 +2643,10 @@ begin
  // PDF
  if propName = 'PDFConformance' then begin Result := Integer(FPDFConformance); exit; end;
  if propName = 'PDFCompressed' then begin Result := FPDFCompressed; exit; end;
+ if (propName = 'actionBefore') or (propName = 'ActionBefore') then begin Result := rpDrawerBefore in FReportAction; exit; end;
+ if (propName = 'actionAfter') or (propName = 'ActionAfter') then begin Result := rpDrawerAfter in FReportAction; exit; end;
+if propName = 'StreamFormat' then begin Result := Integer(FStreamFormat); exit; end;
+if propName = 'ReportAction' then begin Result := Integer(Byte(FReportAction)); exit; end;
  // Metadata
  if propName = 'DocAuthor' then begin Result := FDocAuthor; exit; end;
  if propName = 'DocTitle' then begin Result := FDocTitle; exit; end;

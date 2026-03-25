@@ -28,7 +28,7 @@ uses SysUtils, Classes,
 {$IFDEF XE3UP}
   System.UITypes,
 {$ENDIF}
-  rpmdconsts,rpmunits,rpreport, Mask, rpmaskedit;
+  rpmdconsts,rpmunits,rpreport, Mask, rpmaskedit, rpmdundocue;
 
 type
   TFRpGridOptionsVCL = class(TForm)
@@ -103,7 +103,20 @@ begin
 end;
 
 procedure TFRpGridOptionsVCL.BOKClick(Sender: TObject);
+var
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ oldGridWidth,oldGridHeight,oldGridColor:Integer;
+ oldGridEnabled,oldGridVisible,oldGridLines:Boolean;
 begin
+ oldGridWidth:=report.GridWidth;
+ oldGridHeight:=report.GridHeight;
+ oldGridEnabled:=report.GridEnabled;
+ oldGridVisible:=report.GridVisible;
+ oldGridLines:=report.GridLines;
+ oldGridColor:=report.GridColor;
+
  // Save and close
  report.GridWidth:=rpmunits.gettwipsfromtext(EGridX.Text);
  report.GridHeight:=rpmunits.gettwipsfromtext(EGridY.Text);
@@ -111,6 +124,32 @@ begin
  report.GridVisible:=CheckVisible.Checked;
  report.GridLines:=CheckLines.Checked;
  report.GridColor:=GridColor.Brush.Color;
+
+ if Assigned(report.UndoCue) then
+ begin
+  cue:=TUndoCue(report.UndoCue);
+  gid:=cue.GetGroupId;
+  op:=TChangeObjectOperation.Create(otModify, gid);
+  op.componentName:='REPORT';
+  op.componentClass:='TRPREPORT';
+  op.parentName:='';
+  if oldGridWidth<>report.GridWidth then
+   op.AddProperty('GridWidth', ptInteger, oldGridWidth, report.GridWidth);
+  if oldGridHeight<>report.GridHeight then
+   op.AddProperty('GridHeight', ptInteger, oldGridHeight, report.GridHeight);
+  if oldGridEnabled<>report.GridEnabled then
+   op.AddProperty('GridEnabled', ptBoolean, oldGridEnabled, report.GridEnabled);
+  if oldGridVisible<>report.GridVisible then
+   op.AddProperty('GridVisible', ptBoolean, oldGridVisible, report.GridVisible);
+  if oldGridLines<>report.GridLines then
+   op.AddProperty('GridLines', ptBoolean, oldGridLines, report.GridLines);
+  if oldGridColor<>report.GridColor then
+   op.AddProperty('GridColor', ptInteger, oldGridColor, report.GridColor);
+  if op.properties.Count>0 then
+   cue.AddOperation(op)
+  else
+   op.Free;
+ end;
 
  Close;
 end;

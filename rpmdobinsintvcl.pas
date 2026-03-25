@@ -1753,8 +1753,90 @@ begin
 end;
 
 procedure TRpGenTextInterface.SetFontDefaultClick(Sender:TObject);
+var
+ rep:TRpReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ mainf:TFRpMainFVCL;
+ oldWFontName,oldLFontName,oldType1Font:Variant;
+ oldFontSize,oldFontRotation,oldFontStyle,oldFontColor:Variant;
+ oldBackColor,oldTransparent,oldCutText:Variant;
+ oldAlignment,oldVAlignment,oldWordWrap,oldSingleLine:Variant;
+ oldMultiPage,oldPrintStep:Variant;
 begin
- TrpReport(printitem.Report).GetDefaultFontFrom(TRpGenTextComponent(printitem));
+ rep:=TRpReport(printitem.Report);
+ if Assigned(rep.UndoCue) then
+ begin
+  oldWFontName:=rep.GetItemProperty('WFontName');
+  oldLFontName:=rep.GetItemProperty('LFontName');
+  oldType1Font:=rep.GetItemProperty('Type1Font');
+  oldFontSize:=rep.GetItemProperty('FontSize');
+  oldFontRotation:=rep.GetItemProperty('FontRotation');
+  oldFontStyle:=rep.GetItemProperty('FontStyle');
+  oldFontColor:=rep.GetItemProperty('FontColor');
+  oldBackColor:=rep.GetItemProperty('BackColor');
+  oldTransparent:=rep.GetItemProperty('Transparent');
+  oldCutText:=rep.GetItemProperty('CutText');
+  oldAlignment:=rep.GetItemProperty('Alignment');
+  oldVAlignment:=rep.GetItemProperty('VAlignment');
+  oldWordWrap:=rep.GetItemProperty('WordWrap');
+  oldSingleLine:=rep.GetItemProperty('SingleLine');
+  oldMultiPage:=rep.GetItemProperty('MultiPage');
+  oldPrintStep:=rep.GetItemProperty('PrintStep');
+ end;
+
+ rep.GetDefaultFontFrom(TRpGenTextComponent(printitem));
+
+ if Assigned(rep.UndoCue) then
+ begin
+  cue:=TUndoCue(rep.UndoCue);
+  gid:=cue.GetGroupId;
+  op:=TChangeObjectOperation.Create(otModify, gid);
+  op.componentName:='REPORT';
+  op.componentClass:='TRPREPORT';
+  op.parentName:='';
+  if oldWFontName<>rep.GetItemProperty('WFontName') then
+   op.AddProperty('WFontName', ptString, oldWFontName, rep.GetItemProperty('WFontName'));
+  if oldLFontName<>rep.GetItemProperty('LFontName') then
+   op.AddProperty('LFontName', ptString, oldLFontName, rep.GetItemProperty('LFontName'));
+  if oldType1Font<>rep.GetItemProperty('Type1Font') then
+   op.AddProperty('Type1Font', ptInteger, oldType1Font, rep.GetItemProperty('Type1Font'));
+  if oldFontSize<>rep.GetItemProperty('FontSize') then
+   op.AddProperty('FontSize', ptInteger, oldFontSize, rep.GetItemProperty('FontSize'));
+  if oldFontRotation<>rep.GetItemProperty('FontRotation') then
+   op.AddProperty('FontRotation', ptInteger, oldFontRotation, rep.GetItemProperty('FontRotation'));
+  if oldFontStyle<>rep.GetItemProperty('FontStyle') then
+   op.AddProperty('FontStyle', ptInteger, oldFontStyle, rep.GetItemProperty('FontStyle'));
+  if oldFontColor<>rep.GetItemProperty('FontColor') then
+   op.AddProperty('FontColor', ptInteger, oldFontColor, rep.GetItemProperty('FontColor'));
+  if oldBackColor<>rep.GetItemProperty('BackColor') then
+   op.AddProperty('BackColor', ptInteger, oldBackColor, rep.GetItemProperty('BackColor'));
+  if oldTransparent<>rep.GetItemProperty('Transparent') then
+   op.AddProperty('Transparent', ptBoolean, oldTransparent, rep.GetItemProperty('Transparent'));
+  if oldCutText<>rep.GetItemProperty('CutText') then
+   op.AddProperty('CutText', ptBoolean, oldCutText, rep.GetItemProperty('CutText'));
+  if oldAlignment<>rep.GetItemProperty('Alignment') then
+   op.AddProperty('Alignment', ptInteger, oldAlignment, rep.GetItemProperty('Alignment'));
+  if oldVAlignment<>rep.GetItemProperty('VAlignment') then
+   op.AddProperty('VAlignment', ptInteger, oldVAlignment, rep.GetItemProperty('VAlignment'));
+  if oldWordWrap<>rep.GetItemProperty('WordWrap') then
+   op.AddProperty('WordWrap', ptBoolean, oldWordWrap, rep.GetItemProperty('WordWrap'));
+  if oldSingleLine<>rep.GetItemProperty('SingleLine') then
+   op.AddProperty('SingleLine', ptBoolean, oldSingleLine, rep.GetItemProperty('SingleLine'));
+  if oldMultiPage<>rep.GetItemProperty('MultiPage') then
+   op.AddProperty('MultiPage', ptBoolean, oldMultiPage, rep.GetItemProperty('MultiPage'));
+  if oldPrintStep<>rep.GetItemProperty('PrintStep') then
+   op.AddProperty('PrintStep', ptInteger, oldPrintStep, rep.GetItemProperty('PrintStep'));
+  if op.properties.Count>0 then
+  begin
+   cue.AddOperation(op);
+   mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+   mainf.RefreshCueView;
+  end
+  else
+   op.Free;
+ end;
 end;
 
 initialization

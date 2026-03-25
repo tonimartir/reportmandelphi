@@ -985,6 +985,7 @@ begin
  if (propName = 'Text') or (propName = SRpSText) then
  begin
   FWideText := value;
+  UpdateAllStrings;
   exit;
  end;
  inherited;

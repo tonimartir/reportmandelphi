@@ -761,6 +761,7 @@ begin
 
  if ExecutePageSetup(report) then
  begin
+  RefreshCueView;
   fdesignframe.UpdateInterface(true);
   fdesignframe.UpdateSelection(false);
  end;
@@ -1204,6 +1205,7 @@ procedure TFRpMainFVCL.AGridOptionsExecute(Sender: TObject);
 begin
  fobjinsp.ClearMultiSelect;
  ModifyGridProperties(report);
+ RefreshCueView;
  fdesignframe.UpdateSelection(true);
 end;
 
