@@ -183,6 +183,7 @@ var
   propsArr: TJSONArray;
   i: Integer;
   propObj: TJSONObject;
+  dateStr: string;
 begin
   Result := TChangeObjectOperation.Create(
     TOperationType(jObj.GetValue<Integer>('Operation', 0)),
@@ -194,10 +195,10 @@ begin
   Result.oldItemIndex := jObj.GetValue<Integer>('OldItemIndex', -1);
   Result.oldParentName := jObj.GetValue<string>('OldParentName', '');
   Result.expandedProperties := jObj.GetValue<Boolean>('ExpandedProperties', True);
-  if jObj.TryGetValue<string>('Date', Result.componentName) then
+  if jObj.TryGetValue<string>('Date', dateStr) then
   begin
     try
-      Result.date := ISO8601ToDate(jObj.GetValue<string>('Date', ''), False);
+      Result.date := ISO8601ToDate(dateStr, False);
     except
       Result.date := Now;
     end;
