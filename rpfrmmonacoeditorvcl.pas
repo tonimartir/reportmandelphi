@@ -30,12 +30,15 @@ type
       AResult: HRESULT);
     procedure EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
       Args: TWebMessageReceivedEventArgs);
+    procedure TimerInitTimer(Sender: TObject);
   private
     FAISelection: TFRpAISelectionVCL;
     FSQL: string;
     FIsReady: Boolean;
     FSchema: string;
     FOnContentChanged: TNotifyEvent;
+    FTimer: TTimer;
+    FAppDataPath: string;
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
@@ -58,31 +61,42 @@ var
   LResStream: TResourceStream;
   LZip: TZipFile;
   LDestPath: string;
+  LDllPath: string;
 begin
   inherited Create(AOwner);
   FIsReady := False;
-  
-  LDestPath := TPath.Combine(ExtractFilePath(ParamStr(0)), 'MonacoEditor');
 
-  // Auto-extract if main file missing
-  if not FileExists(TPath.Combine(LDestPath, 'index.html')) then
+  // 1. Determine safe extraction path in %LOCALAPPDATA%
+  FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
+  if FAppDataPath = '' then FAppDataPath := TPath.GetTempPath;
+  LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
+  
+  // 2. Extract assets from resource if missing or if folder doesn't exist
+  if not TDirectory.Exists(LDestPath) then
   begin
-    if FindResource(HInstance, 'MONACO_ZIP', RT_RCDATA) <> 0 then
-    begin
-      LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
+    TDirectory.CreateDirectory(LDestPath);
+    LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
+    try
+      LZip := TZipFile.Create;
       try
-        LZip := TZipFile.Create;
-        try
-          LZip.Open(LResStream, zmRead);
-          LZip.ExtractAll(ExtractFilePath(ParamStr(0)));
-        finally
-          LZip.Free;
-        end;
+        LZip.Open(LResStream, zmRead);
+        LZip.ExtractAll(LDestPath);
       finally
-        LResStream.Free;
+        LZip.Free;
       end;
+    finally
+      LResStream.Free;
     end;
   end;
+
+  // 3. Preload WebView2Loader.dll based on architecture
+  if SizeOf(Pointer) = 8 then
+    LDllPath := TPath.Combine(LDestPath, 'x64\WebView2Loader.dll')
+  else
+    LDllPath := TPath.Combine(LDestPath, 'x86\WebView2Loader.dll');
+
+  if TFile.Exists(LDllPath) then
+    LoadLibrary(PChar(LDllPath));
 
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
@@ -90,17 +104,47 @@ begin
   FAISelection.Align := alRight;
   FAISelection.Width := 320;
 
-  // Initialize Edge
-  Edge.UserDataFolder := TPath.Combine(ExtractFilePath(ParamStr(0)), 'EdgeData');
-  Edge.Navigate('file:///' + TPath.Combine(LDestPath, 'index.html'));
+  // Initialize Timer for delayed Edge creation
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := 2000;
+  FTimer.OnTimer := TimerInitTimer;
+  FTimer.Enabled := True;
+
+  // Ensure Edge events are hooked up
+  Edge.OnWebMessageReceived := EdgeWebMessageReceived;
+end;
+
+procedure TFRpMonacoEditorVCL.TimerInitTimer(Sender: TObject);
+var
+  LDestPath: string;
+begin
+  FTimer.Enabled := False;
+  
+  if not Edge.WebViewCreated then
+  begin
+    LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco');
+    Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+    Edge.CreateWebView;
+  end;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(
   Sender: TCustomEdgeBrowser; AResult: HRESULT);
+var
+  LDestPath, LURL: string;
 begin
   if Succeeded(AResult) then
   begin
     FIsReady := True;
+    
+    LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
+    
+    LURL := 'file:///' + LDestPath.Replace('\', '/');
+    if not LURL.EndsWith('/') then LURL := LURL + '/';
+    LURL := LURL + 'index.html';
+    
+    Edge.Navigate(LURL);
+
     if FSQL <> '' then
       SetSQL(FSQL);
   end;
@@ -130,7 +174,6 @@ end;
 procedure TFRpMonacoEditorVCL.SetSchema(const ASchema: string);
 begin
   FSchema := ASchema;
-  // Notify JS if needed
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
@@ -154,16 +197,21 @@ begin
   if LMessage = '' then Exit;
   LObj := TJSONObject.ParseJSONValue(LMessage) as TJSONObject;
   try
-    if LObj = nil then Exit;
-    LType := LObj.Values['type'].Value;
-    
-    if LType = 'GET_AI_COMPLETIONS' then
-      HandleAICompletionRequest(LObj)
-    else if LType = 'CONTENT_CHANGED' then
+    if (LObj <> nil) and (LObj.Values['type'] <> nil) then
     begin
-      FSQL := LObj.Values['content'].Value;
-      if Assigned(FOnContentChanged) then
-        FOnContentChanged(Self);
+      LType := LObj.Values['type'].Value;
+      
+      if LType = 'GET_AI_COMPLETIONS' then
+        HandleAICompletionRequest(LObj)
+      else if LType = 'CONTENT_CHANGED' then
+      begin
+        if LObj.Values['content'] <> nil then
+        begin
+          FSQL := LObj.Values['content'].Value;
+          if Assigned(FOnContentChanged) then
+            FOnContentChanged(Self);
+        end;
+      end;
     end;
   finally
     LObj.Free;

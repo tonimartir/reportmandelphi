@@ -1,42 +1,62 @@
 object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
   Left = 0
   Top = 0
-  Width = 600
-  Height = 400
+  Width = 750
+  Height = 500
+  Margins.Left = 4
+  Margins.Top = 4
+  Margins.Right = 4
+  Margins.Bottom = 4
   TabOrder = 0
+  PixelsPerInch = 120
   object PTop: TPanel
     Left = 0
     Top = 0
-    Width = 600
-    Height = 40
+    Width = 750
+    Height = 50
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
     object ComboSchema: TComboBox
-      Left = 10
-      Top = 10
-      Width = 150
-      Height = 21
+      Left = 13
+      Top = 13
+      Width = 187
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Style = csDropDownList
       TabOrder = 0
     end
     object BLogin: TButton
-      Left = 170
-      Top = 8
-      Width = 80
-      Height = 25
+      Left = 213
+      Top = 10
+      Width = 100
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Login'
       TabOrder = 1
     end
   end
   object Edge: TEdgeBrowser
     Left = 0
-    Top = 40
-    Width = 600
-    Height = 360
+    Top = 50
+    Width = 750
+    Height = 450
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alClient
     TabOrder = 1
     OnCreateWebViewCompleted = EdgeCreateWebViewCompleted
-    OnWebMessageReceived = EdgeWebMessageReceived
   end
 end
