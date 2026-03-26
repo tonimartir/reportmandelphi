@@ -196,10 +196,13 @@ repman/binr32/net2/DocumentFormat.OpenXml.dll
 repman/binr32/net2/DocumentFormat.OpenXml.Framework.dll
 repman/binr32/net2/e_sqlite3.dll
 repman/binr32/net2/ExcelNumberFormat.dll
-*.pas
-*.dcr
-getit/Reportman_PDF/Source/Delphi11/Reportman_PDF_nonshared.a
-*.RES
+# Allow Delphi source and forms
+!*.pas
+!*.dfm
+!*.dcr
+!*.RES
+!*.rc
+!*.inc
 getit/Reportman_PDF.zip
 getit/Reportman_PDF/Source/Examples/CreatePDF/Android64/
 getit/Source/Examples/CreatePDF/Android64/

@@ -33,6 +33,8 @@ type
       Args: TWebMessageReceivedEventArgs);
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+    procedure BLoginClick(Sender: TObject);
+    procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
     FSQL: string;
@@ -113,7 +115,9 @@ begin
   FAISelection.Align := alRight;
   FAISelection.Width := 320;
 
-
+  BLogin.OnClick := BLoginClick;
+  TRpAuthManager.Instance.OnAuthChanged := AuthChanged;
+  UpdateAuthUI;
 end;
 
 procedure TFRpMonacoEditorVCL.CreateWnd;
@@ -430,6 +434,37 @@ end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
 begin
+  if TRpAuthManager.Instance.IsLoggedIn then
+  begin
+    BLogin.Caption := 'Logout (' + TRpAuthManager.Instance.Profile.UserName + ')';
+    // When logged in, we should refresh agent list or other state
+  end
+  else
+  begin
+    BLogin.Caption := 'Login';
+  end;
+  FAISelection.RefreshState;
+end;
+
+procedure TFRpMonacoEditorVCL.BLoginClick(Sender: TObject);
+begin
+  if TRpAuthManager.Instance.IsLoggedIn then
+  begin
+    if MessageDlg('Are you sure you want to logout?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+      TRpAuthManager.Instance.Logout;
+  end
+  else
+  begin
+    if ShowLoginDialog(Self) then
+    begin
+      // Login success
+    end;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.AuthChanged(ASuccess: Boolean);
+begin
+  UpdateAuthUI;
 end;
 
 end.
