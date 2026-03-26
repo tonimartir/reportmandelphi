@@ -137,7 +137,9 @@ uses
   FireDAC.Phys.ODBCMeta in 'FireDAC.Phys.ODBCMeta.pas',
   rpmdfembeddedfile in '..\rpmdfembeddedfile.pas' {FRpEmbeddedFile},
   rptruetype in '..\rptruetype.pas',
+  rpfrmmonacoeditorvcl in '..\rpfrmmonacoeditorvcl.pas' {FRpMonacoEditorVCL},
   rpmdundocue in '..\rpmdundocue.pas';
+
 
 {$R *.res}
 

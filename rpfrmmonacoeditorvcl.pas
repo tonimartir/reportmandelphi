@@ -30,6 +30,8 @@ type
       AResult: HRESULT);
     procedure EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
       Args: TWebMessageReceivedEventArgs);
+    procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
+      IsSuccess: Boolean; WebErrorStatus: TOleEnum);
   private
     FAISelection: TFRpAISelectionVCL;
     FSQL: string;
@@ -56,8 +58,6 @@ implementation
 
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
-
-
 
 constructor TFRpMonacoEditorVCL.Create(AOwner: TComponent);
 var
@@ -106,8 +106,6 @@ begin
   FAISelection.Parent := PTop;
   FAISelection.Align := alRight;
   FAISelection.Width := 320;
-
-
 end;
 
 procedure TFRpMonacoEditorVCL.CreateWnd;
@@ -136,6 +134,8 @@ begin
   begin
     // Ensure Edge events are hooked up
     Edge.OnWebMessageReceived := EdgeWebMessageReceived;
+    Edge.OnNavigationCompleted := EdgeNavigationCompleted;
+
     LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
 
     LURL := 'file:///' + LDestPath.Replace('\', '/');
@@ -147,13 +147,23 @@ begin
   end;
 end;
 
+procedure TFRpMonacoEditorVCL.EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
+  IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+begin
+  if IsSuccess then
+  begin
+    if FSQL <> '' then
+      SetSQL(FSQL);
+  end;
+end;
+
 procedure TFRpMonacoEditorVCL.SetSQL(const Value: string);
 var
   LJSON: TJSONString;
   LScript: string;
 begin
   FSQL := Value;
-  if FEditorReady then
+  if Edge.WebViewCreated then
   begin
     LJSON := TJSONString.Create(FSQL);
     try
@@ -179,35 +189,34 @@ procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
   Sender: TCustomEdgeBrowser;
   Args: TWebMessageReceivedEventArgs);
 var
+  LArgs: ICoreWebView2WebMessageReceivedEventArgs;
   LP: PWideChar;
   LMessage: string;
 begin
- // if not Supports(Args, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
- //   Exit;
-
-  LP := nil;
-
-  if Succeeded(Args.ArgsInterface.TryGetWebMessageAsString(LP)) then
-  begin
-    if LP <> nil then
-      LMessage := LP;
-  end;
-(*
-
-  if Succeeded(LArgs.Get_WebMessageAsJson(LPMessage)) then
-  begin
-    LMessage := LPMessage;
-    CoTaskMemFree(LPMessage);
-  end;
-
-  if LMessage = '' then
+  if not Supports(Args.ArgsInterface, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
     Exit;
 
-  TThread.Queue(nil,
-    procedure
+  LP := nil;
+  if Succeeded(LArgs.TryGetWebMessageAsString(LP)) then
+  begin
+    if LP <> nil then
     begin
+      LMessage := LP;
+      CoTaskMemFree(LP);
       ProcessWebMessage(LMessage);
-    end);*)
+      Exit;
+    end;
+  end;
+
+  if Succeeded(LArgs.Get_WebMessageAsJson(LP)) then
+  begin
+    if LP <> nil then
+    begin
+      LMessage := LP;
+      CoTaskMemFree(LP);
+      ProcessWebMessage(LMessage);
+    end;
+  end;
 end;
 
 procedure TFRpMonacoEditorVCL.ProcessWebMessage(const LMessage: string);
@@ -217,36 +226,41 @@ var
   LType: string;
 begin
   LVal := TJSONObject.ParseJSONValue(LMessage);
-  if LVal = nil then
-    Exit;
-
   try
-    if LVal is TJSONString then
-    begin
-      FSQL := TJSONString(LVal).Value;
-      if Assigned(FOnContentChanged) then
-        FOnContentChanged(Self);
-    end
-    else if LVal is TJSONObject then
+    if (LVal <> nil) and (LVal is TJSONObject) then
     begin
       LObj := TJSONObject(LVal);
-
       if LObj.Values['type'] <> nil then
       begin
         LType := LObj.Values['type'].Value;
 
         if LType = 'GET_AI_COMPLETIONS' then
-          HandleAICompletionRequest(LObj)
+        begin
+          HandleAICompletionRequest(LObj);
+          Exit;
+        end
         else if LType = 'EDITOR_READY' then
         begin
           FEditorReady := True;
-          if FSQL <> '' then
-            SetSQL(FSQL);
+          SetSQL(FSQL);
+          Exit;
         end;
       end;
     end;
+
+    // If we reach here, it's either not JSON or JSON without a recognized command type.
+    // Treat as the SQL content itself.
+    if (LVal <> nil) and (LVal is TJSONString) then
+      FSQL := TJSONString(LVal).Value
+    else
+      FSQL := LMessage;
+
+    if Assigned(FOnContentChanged) then
+      FOnContentChanged(Self);
+
   finally
-    LVal.Free;
+    if LVal <> nil then
+      LVal.Free;
   end;
 end;
 

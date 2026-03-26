@@ -64,7 +64,7 @@ type
     PBottom: TPanel;
     PControl: TPageControl;
     TabSQL: TTabSheet;
-    FMonaco: TFRpMonacoEditorVCL;
+    MSQL: TMemo;
     TabBDEType: TTabSheet;
     RBDEType: TRadioGroup;
     Panel4: TPanel;
@@ -135,6 +135,7 @@ type
     procedure ADownExecute(Sender: TObject);
   private
     { Private declarations }
+    FMonaco: TFRpMonacoEditorVCL;
     Report:TRpReport;
     procedure SetDataInfo(Value:TRpDataInfoList);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -230,6 +231,7 @@ begin
  PBottom.Height:=250;
 
  PLBrowser.Caption:=SRpDatabaseBrowser;
+ MSQL.Visible := False;
   browser:=TFRpBrowserVCL.Create(Self);
   browser.ShowDatasets:=false;
   browser.ShowEval:=false;
@@ -239,7 +241,6 @@ begin
   FMonaco := TFRpMonacoEditorVCL.Create(Self);
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
-  FMonaco.OnContentChanged := MSQLChange;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
