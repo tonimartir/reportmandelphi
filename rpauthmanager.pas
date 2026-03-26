@@ -440,9 +440,9 @@ begin
                 for i := 0 to LPairs.Count - 1 do
                 begin
                   if SameText(LPairs.Names[i], 'code') then
-                    FOAuthCode := LPairs.ValueFromIndex[i]
+                    Self.FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
                   else if SameText(LPairs.Names[i], 'error') then
-                    FOAuthError := LPairs.ValueFromIndex[i];
+                    Self.FOAuthError := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i]);
                 end;
               finally
                 LPairs.Free;
