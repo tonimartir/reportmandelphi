@@ -59,7 +59,7 @@ procedure ShowDataConfig(report:TRpReport);
 
 implementation
 
-uses rpdbxconfigvcl;
+uses rpdbxconfigvcl, rpbasereport, rpxmlstream;
 
 
 {$R *.dfm}
@@ -293,7 +293,7 @@ end;
 procedure TFRpDInfoVCL.BOkClick(Sender: TObject);
 begin
  fdatasets.Databaseinfo:=fconnections.Databaseinfo;
- RecordUndoChanges;
+ // RecordUndoChanges;
  freport.DatabaseInfo.Assign(fdatasets.Databaseinfo);
  freport.DataInfo.Assign(fdatasets.Datainfo);
  freport.Params.Assign(fdatasets.Params);

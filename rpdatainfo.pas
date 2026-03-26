@@ -153,7 +153,7 @@ const
 type
  TRpDbDriver=(rpdatadbexpress=0,rpdatamybase=1,rpdataibx=2,
   rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9,
-  rpdatahttp=10);
+  rpdbHttp=10);
 
 
  TRpConnAdmin=class(TObject)
@@ -1360,6 +1360,11 @@ begin
   ConAdmin.free;
   ConAdmin:=nil;
  end;
+ if Assigned(FHttpDatabase) then
+ begin
+  FHttpDatabase.Free;
+  FHttpDatabase:=nil;
+ end;
  inherited Destroy;
 end;
 
@@ -2176,10 +2181,10 @@ begin
       Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
   {$ENDIF}
      end;
-    rpdatahttp:
+    rpdbHttp:
      begin
        if Not Assigned(FHttpDatabase) then
-         FHttpDatabase := TRpDatabaseHttp.Create(Self);
+         FHttpDatabase := TRpDatabaseHttp.Create;
        
        if FHttpDatabase.Connected then
          Exit;
@@ -2192,10 +2197,10 @@ begin
          alist2 := TStringList.Create;
          try
            ConAdmin.GetConnectionParams(Alias, alist2);
-           FHttpDatabase.Url := alist2.Values['Url'];
+//           FHttpDatabase.Url := alist2.Values['Url'];
            FHttpDatabase.ApiKey := alist2.Values['ApiKey'];
            FHttpDatabase.HubDatabaseId := StrToInt64Def(alist2.Values['HubDatabaseId'], 0);
-           FHttpDatabase.InstallId := alist2.Values['InstallId'];
+//           FHttpDatabase.InstallId := alist2.Values['InstallId'];
            
            // If No URL in params, use default from AuthManager if available
            if FHttpDatabase.Url = '' then
@@ -2725,6 +2730,15 @@ begin
        end
 {$ENDIF}
       end;
+     rpdbHttp:
+      begin
+        if Not (FSQLInternalQuery is TClientDataSet) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TClientDataSet.Create(nil);
+        end;
+      end;
     end;
    end;
 
@@ -3006,18 +3020,19 @@ begin
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
 {$ENDIF}
       end;
-     rpdatahttp:
+     rpdbHttp:
       begin
         // Use the new HTTP driver to fill the ClientDataSet
         if not Assigned(baseinfo.FHttpDatabase) then
-           baseinfo.FHttpDatabase := TRpDatabaseHttp.Create(baseinfo);
+           baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
            
         with TRpDatasetHttp.Create(baseinfo.FHttpDatabase, TClientDataSet(FSQLInternalQuery)) do
         try
           Sql := SQLsentence;
           // TODO: Bind parameters from TRpParams to the HTTP request
           Open;
-          // Data is now in Dataset (TClientDataSet), which is assigned to FSQLInternalQuery
+          FSQLInternalQuery := Dataset;
+          FDataset := FSQLInternalQuery;
         finally
           Free;
         end;
@@ -3114,7 +3129,7 @@ begin
           TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
   {$ENDIF}
        end;
-      rpdatahttp:
+      rpdbHttp:
        begin
          // Parameters are already handled via TRpDatasetHttp.Open if passed in Sql
          // But let's ensure they are available in the underlying dataset if needed
@@ -3280,7 +3295,7 @@ begin
        AssignParamValuesFiredac(TFDCustomQuery(FSQLInternalQuery),datainfosource.Dataset);
 {$ENDIF}
       end;
-     rpdatahttp:
+     rpdbHttp:
       begin
         TClientDataSet(FSQLInternalQuery).RemoteServer := nil;
       end;

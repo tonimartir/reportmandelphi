@@ -19,13 +19,14 @@ object FRpEditConVCL: TFRpEditConVCL
     Left = 0
     Top = 0
     Width = 932
+    Height = 29
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
     AutoSize = True
-    ButtonHeight = 32
-    ButtonWidth = 33
+    ButtonHeight = 0
+    ButtonWidth = 0
     Caption = 'ToolBar1'
     Images = VirtualImageList1
     TabOrder = 0

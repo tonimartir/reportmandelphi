@@ -23,7 +23,7 @@ interface
 
 {$I rpconf.inc}
 
-uses SysUtils, Classes,
+uses SysUtils, Classes, Types,
   Graphics, Forms,ComCtrls, ImgList,
   Buttons, ExtCtrls, Controls, StdCtrls,Dialogs,
   rpgraphutilsvcl,rpdatainfo,
@@ -51,7 +51,7 @@ uses SysUtils, Classes,
 {$IFDEF FIREDAC}
   FireDAC.VCLUI.ConnEdit,FireDAC.Comp.Client,
 {$ENDIF}
-  Vcl.BaseImageCollection, Vcl.ImageCollection;
+  Vcl.BaseImageCollection, Vcl.ImageCollection, rpdatahttp, Vcl.Menus;
 
 const
  CONTROL_DISTANCEY=5;
@@ -109,6 +109,8 @@ type
     procedure FreeParamsControls;
     procedure CreateParamsControls;
     procedure Edit1Change(Sender:TObject);
+    procedure BSelectHubConnectionClick(Sender: TObject);
+    procedure HubConnectionMenuItemClick(Sender: TObject);
     procedure UpdateIBX;
   public
     { Public declarations }
@@ -243,6 +245,21 @@ begin
      TEdit(Edit1).OnChange:=Edit1Change;
     if AnsiUpperCase(params.Names[i])='PASSWORD' then
      TEdit(Edit1).PasswordChar:='*';
+    // Special discovery button for HubDatabaseId
+    if AnsiUpperCase(params.Names[i])='HUBDATABASEID' then
+    begin
+      with TSpeedButton.Create(Self) do
+      begin
+        Parent := ScrollParams;
+        Caption := 'Select Connection...';
+        Width := ScaleDPI(130);
+        Top := 0; // Will be set after Edit1.Top
+        Left := ScrollParams.Width - Width - ScaleDPI(6);
+        Anchors := [akRight, akTop];
+        OnClick := BSelectHubConnectionClick;
+        Tag := i;
+      end;
+    end;
    end
    else
    begin
@@ -260,11 +277,21 @@ begin
    Edit1.Tag:=i;
    Edit1.Top:=Top;
    Edit1.Left:=ScaleDPi(CONTROL_DISTANCEX2);
-   //Edit1.Width:=CONTROL_WIDTHX;
    Edit1.Width := ScrollParams.Width-ScaleDPI(30)-ScaleDPi(CONTROL_DISTANCEX2);
-   Edit1.Anchors := [akLeft,akTop,akRight];
+   // Shrink if button exists
+   if AnsiUpperCase(params.Names[i])='HUBDATABASEID' then
+     Edit1.Width := Edit1.Width - ScaleDPI(136);
 
+   Edit1.Anchors := [akLeft,akTop,akRight];
    Edit1.Visible:=True;
+
+   // Fix button top if created
+   for index := 0 to ScrollParams.ControlCount - 1 do
+     if (ScrollParams.Controls[index] is TSpeedButton) and (ScrollParams.Controls[index].Tag = i) then
+     begin
+       ScrollParams.Controls[index].Top := Edit1.Top;
+       ScrollParams.Controls[index].Height := Edit1.Height;
+     end;
 
    top:=top+Edit1.Height+ScaleDPi(CONTROL_DISTANCEY);
   end;
@@ -546,6 +573,81 @@ begin
  if ComboDrivers.ItemIndex<0 then
   ComboDrivers.ItemIndex:=0;
  ComboDriversClick(Self);
+end;
+
+procedure TFRpDBXConfigVCL.BSelectHubConnectionClick(Sender: TObject);
+var
+  LApiKey: string;
+  LDiscoveryList: TStringList;
+  LPopupMenu: TPopupMenu;
+  LMenuItem: TMenuItem;
+  i: Integer;
+  LPoint: TPoint;
+begin
+  LApiKey := '';
+  // Find ApiKey value in other edits
+  for i := 0 to ScrollParams.ControlCount - 1 do
+  begin
+    if (ScrollParams.Controls[i] is TEdit) and
+       (AnsiUpperCase(params.Names[ScrollParams.Controls[i].Tag]) = 'APIKEY') then
+    begin
+      LApiKey := TEdit(ScrollParams.Controls[i]).Text;
+      break;
+    end;
+  end;
+
+  if Length(LApiKey) < 5 then
+  begin
+    RpShowMessage('Please enter a valid API Key first.');
+    Exit;
+  end;
+
+  LDiscoveryList := TStringList.Create;
+  try
+    if TRpDatabaseHttp.GetHubDatabases(LApiKey, LDiscoveryList) then
+    begin
+      if LDiscoveryList.Count = 0 then
+      begin
+        RpShowMessage('No databases found for this API Key.');
+        Exit;
+      end;
+
+      LPopupMenu := TPopupMenu.Create(Self);
+      for i := 0 to LDiscoveryList.Count - 1 do
+      begin
+        LMenuItem := TMenuItem.Create(LPopupMenu);
+        LMenuItem.Caption := LDiscoveryList.Names[i];
+        LMenuItem.Hint := LDiscoveryList.ValueFromIndex[i];
+        LMenuItem.Tag := StrToIntDef(LDiscoveryList.ValueFromIndex[i], 0);
+        LMenuItem.OnClick := HubConnectionMenuItemClick;
+        LPopupMenu.Items.Add(LMenuItem);
+      end;
+      LPoint := TControl(Sender).ClientToScreen(Point(0, TControl(Sender).Height));
+      LPopupMenu.Popup(LPoint.X, LPoint.Y);
+    end
+    else
+      RpShowMessage('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
+  finally
+    LDiscoveryList.Free;
+  end;
+end;
+
+procedure TFRpDBXConfigVCL.HubConnectionMenuItemClick(Sender: TObject);
+var
+  LId: Integer;
+  j: Integer;
+begin
+  LId := TMenuItem(Sender).Tag;
+  for j := 0 to ScrollParams.ControlCount - 1 do
+  begin
+     if (ScrollParams.Controls[j] is TEdit) and
+        (AnsiUpperCase(params.Names[ScrollParams.Controls[j].Tag]) = 'HUBDATABASEID') then
+     begin
+       TEdit(ScrollParams.Controls[j]).Text := IntToStr(LId);
+       Edit1Change(ScrollParams.Controls[j]);
+       break;
+     end;
+  end;
 end;
 
 end.

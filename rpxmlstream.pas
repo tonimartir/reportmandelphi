@@ -64,6 +64,7 @@ procedure WriteSubreportXML(subrep:TRpSubReport;Stream:TStream);
 procedure WriteSectionXML(section:TRpSection;Stream:TStream);
 procedure WriteComponentXML(comp:TRpCommonPosComponent;Stream:TStream);
 
+
 function RpIsAlpha(achar:Ansichar):Boolean;
 function RpIsAlphaW(achar:Widechar):Boolean;
 

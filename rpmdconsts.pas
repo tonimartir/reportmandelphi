@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -600,6 +600,7 @@ var
   SRpDatabaseAliasNull:WideString='A database alias cannot be null';
   SRpDatabasenotassined:WideString='There is not database to connect/disconnect in alias';
   SRpConnectionsuccesfull:WideString='Connection Test OK';
+  SRpConnectionFailed:WideString='Connection Test Failed';
   SRpNewaliasDef:WideString='New table/query';
   SRpAliasName:WideString='Alias Name';
   SRpTableAliasExists:WideString='The Alias Name already exists';
