@@ -326,6 +326,7 @@ begin
       dbinfo.UpdateConAdmin;
       dbinfo.ConAdmin.GetConnectionParams(dbinfo.Alias, LParams);
       FMonaco.HubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
+      FMonaco.HubSchemaId := StrToInt64Def(LParams.Values['HubSchemaId'], 0);
     finally
       LParams.Free;
     end;

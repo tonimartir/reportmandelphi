@@ -102,7 +102,7 @@
                             type: 'GET_AI_COMPLETIONS',
                             requestId: requestId,
                             code: model.getValue(),
-                            position: position
+                            position: model.getOffsetAt(position)
                         }));
                     } else {
                         resolve({ inlineItems: [], completionItems: [] });

@@ -300,46 +300,59 @@ var
   LPos: Integer;
   LRequestId: string;
   LCompletions: TJSONArray;
-  LAIMode: string;
+  LVal: TJSONValue;
 begin
   LRequestId := '';
-  if ARequest.Values['requestId'] <> nil then
-    LRequestId := ARequest.Values['requestId'].Value;
+  LVal := ARequest.Values['requestId'];
+  if (LVal <> nil) and (not LVal.Null) then
+    LRequestId := LVal.Value;
 
   LSql := '';
-  if ARequest.Values['code'] <> nil then
-    LSql := ARequest.Values['code'].Value;
+  LVal := ARequest.Values['code'];
+  if (LVal <> nil) and (not LVal.Null) then
+    LSql := LVal.Value;
 
   LPos := 0;
-  if ARequest.Values['position'] <> nil then
-    LPos := (ARequest.Values['position'] as TJSONNumber).AsInt;
-
-  LAIMode := FAISelection.ComboAIMode.Text;
-  if LAIMode = '' then
-    LAIMode := 'NaturalLanguage';
+  LVal := ARequest.Values['position'];
+  if (LVal <> nil) and (not LVal.Null) then
+  begin
+    if LVal is TJSONNumber then
+      LPos := TJSONNumber(LVal).AsInt
+    else
+      LPos := StrToIntDef(LVal.Value, 0);
+  end;
 
   LHttp := TRpDatabaseHttp.Create;
   try
     LHttp.Url := TRpAuthManager.Instance.Url;
     LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
     LHttp.HubDatabaseId := FHubDatabaseId;
+    LHttp.HubSchemaId := FHubSchemaId;
 
-    // Call SuggestSql which performs the POST to the Hub
-    LCompletions := LHttp.SuggestSql(LSql, LPos, LAIMode);
+    // Read tier/mode/agent from the redesigned AISelection frame
+    LHttp.AITier := FAISelection.AITier;
+    LHttp.AgentSecret := FAISelection.AgentSecret;
+    LHttp.AgentAiId := FAISelection.AgentAiId;
+
+    try
+      LCompletions := LHttp.SuggestSql(LSql, LPos, FAISelection.AIMode);
+    except
+      on E: Exception do
+      begin
+        LCompletions := nil;
+      end;
+    end;
 
     if LCompletions <> nil then
-    begin
-      SendAICompletions(LCompletions, LRequestId);
-    end
+      SendAICompletions(LCompletions, LRequestId)
     else
-    begin
-      // Return empty completions to unblock the editor promise
       SendAICompletions(TJSONArray.Create, LRequestId);
-    end;
   finally
     LHttp.Free;
   end;
 end;
+
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
 var
