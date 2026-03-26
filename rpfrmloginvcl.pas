@@ -33,11 +33,16 @@ type
     EditCode: TEdit;
     BtnLoginCode: TButton;
     LStatus: TLabel;
+    MemoLog: TMemo;
     procedure BtnGoogleClick(Sender: TObject);
     procedure BtnMicrosoftClick(Sender: TObject);
     procedure BtnEmailClick(Sender: TObject);
     procedure BtnSendCodeClick(Sender: TObject);
     procedure BtnLoginCodeClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    procedure AddLog(const AMsg: string);
+    procedure AuthLog(const AMsg: string);
   end;
 
   function ShowLoginDialog(AOwner: TComponent): Boolean;
@@ -52,24 +57,45 @@ var
 begin
   LForm := TFRpLoginVCL.Create(AOwner);
   try
+    TRpAuthManager.Instance.OnLog := LForm.AuthLog;
     Result := LForm.ShowModal = mrOk;
   finally
+    TRpAuthManager.Instance.OnLog := nil;
     LForm.Free;
   end;
 end;
 
+procedure TFRpLoginVCL.FormCreate(Sender: TObject);
+begin
+  // Handled in ShowLoginDialog for simplicity with Instance
+end;
+
+procedure TFRpLoginVCL.AddLog(const AMsg: string);
+begin
+  MemoLog.Lines.Add(FormatDateTime('hh:nn:ss', Now) + ' - ' + AMsg);
+  Application.ProcessMessages;
+end;
+
+procedure TFRpLoginVCL.AuthLog(const AMsg: string);
+begin
+  AddLog(AMsg);
+end;
+
 procedure TFRpLoginVCL.BtnGoogleClick(Sender: TObject);
 begin
-  LStatus.Caption := 'Opening browser for Google login...';
+  LStatus.Caption := 'Starting Google Login...';
+  AddLog('BtnGoogleClick: Requesting Google login');
   LStatus.Font.Color := clWindowText;
   Application.ProcessMessages;
 
   if TRpAuthManager.Instance.LoginGoogle then
   begin
+    AddLog('LoginGoogle returned True');
     ModalResult := mrOk;
   end
   else
   begin
+    AddLog('LoginGoogle returned False');
     LStatus.Caption := 'Google login failed or cancelled.';
     LStatus.Font.Color := clRed;
   end;
@@ -77,16 +103,19 @@ end;
 
 procedure TFRpLoginVCL.BtnMicrosoftClick(Sender: TObject);
 begin
-  LStatus.Caption := 'Opening browser for Microsoft login...';
+  LStatus.Caption := 'Starting Microsoft Login...';
+  AddLog('BtnMicrosoftClick: Requesting Microsoft login');
   LStatus.Font.Color := clWindowText;
   Application.ProcessMessages;
 
   if TRpAuthManager.Instance.LoginMicrosoft then
   begin
+    AddLog('LoginMicrosoft returned True');
     ModalResult := mrOk;
   end
   else
   begin
+    AddLog('LoginMicrosoft returned False');
     LStatus.Caption := 'Microsoft login failed or cancelled.';
     LStatus.Font.Color := clRed;
   end;

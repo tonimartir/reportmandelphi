@@ -48,9 +48,12 @@ type
     Credits: Int64;
   end;
 
-  { TRpAuthManager }
+  { TRpAuthEvent }
   TRpAuthEvent = procedure(ASuccess: Boolean) of object;
+  { TRpAuthLog }
+  TRpAuthLog = procedure(const AMsg: string) of object;
 
+  { TRpAuthManager }
   TRpAuthManager = class
   private
     FUrl: string;
@@ -59,8 +62,8 @@ type
     FProfile: TRpUserProfile;
     FTiers: TArray<TRpTier>;
     FIsLoggedIn: Boolean;
+    FOnLog: TRpAuthLog;
     FOnAuthChanged: TRpAuthEvent;
-    // OAuth callback state
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
@@ -71,9 +74,10 @@ type
     procedure ParseProfile(AProfileObj: TJSONObject);
     function GenerateInstallId: string;
     procedure SetIsLoggedIn(Value: Boolean);
+    procedure Log(const AMsg: string);
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
-    function ExchangeMicrosoftCode(const ACode: string): Boolean;
+    function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
 
   public
     class function Instance: TRpAuthManager;
@@ -99,9 +103,8 @@ type
     property Tiers: TArray<TRpTier> read FTiers;
     property IsLoggedIn: Boolean read FIsLoggedIn;
     property OnAuthChanged: TRpAuthEvent read FOnAuthChanged write FOnAuthChanged;
+    property OnLog: TRpAuthLog read FOnLog write FOnLog;
   end;
-
-
 
 implementation
 
@@ -144,6 +147,12 @@ begin
   inherited Destroy;
 end;
 
+procedure TRpAuthManager.Log(const AMsg: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(AMsg);
+end;
+
 class function TRpAuthManager.Instance: TRpAuthManager;
 begin
   if FInstance = nil then
@@ -152,34 +161,83 @@ begin
 end;
 
 procedure TRpAuthManager.ParseProfile(AProfileObj: TJSONObject);
+var
+  LValue: TJSONValue;
 begin
   if AProfileObj = nil then Exit;
-  FProfile.UserId := (AProfileObj.Values['userId'] as TJSONNumber).AsInt64;
-  FProfile.Email := AProfileObj.Values['email'].Value;
-  FProfile.UserName := AProfileObj.Values['userName'].Value;
-  FProfile.AccountType := (AProfileObj.Values['accountType'] as TJSONNumber).AsInt;
-  if AProfileObj.Values['credits'] <> nil then
-    FProfile.Credits := (AProfileObj.Values['credits'] as TJSONNumber).AsInt64;
+  Log('Parsing User Profile...');
+  
+  LValue := AProfileObj.GetValue('userId');
+  if LValue = nil then LValue := AProfileObj.GetValue('UserId');
+  if LValue <> nil then FProfile.UserId := StrToInt64Def(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('email');
+  if LValue = nil then LValue := AProfileObj.GetValue('Email');
+  if LValue <> nil then FProfile.Email := LValue.Value;
+
+  LValue := AProfileObj.GetValue('userName');
+  if LValue = nil then LValue := AProfileObj.GetValue('UserName');
+  if LValue <> nil then FProfile.UserName := LValue.Value;
+
+  LValue := AProfileObj.GetValue('accountType');
+  if LValue = nil then LValue := AProfileObj.GetValue('AccountType');
+  if LValue <> nil then FProfile.AccountType := StrToIntDef(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('credits');
+  if LValue = nil then LValue := AProfileObj.GetValue('Credits');
+  if LValue <> nil then FProfile.Credits := StrToInt64Def(LValue.Value, 0);
+
+  Log('Profile Parsed: ' + FProfile.Email);
 end;
 
 procedure TRpAuthManager.ParseTiers(ATiersArray: TJSONArray);
 var
   I: Integer;
   TierObj: TJSONObject;
+  LValue: TJSONValue;
 begin
+  if ATiersArray = nil then Exit;
+  Log('Parsing Tiers (' + IntToStr(ATiersArray.Count) + ' found)...');
   SetLength(FTiers, ATiersArray.Count);
   for I := 0 to ATiersArray.Count - 1 do
   begin
     TierObj := ATiersArray.Items[I] as TJSONObject;
-    FTiers[I].Id := (TierObj.Values['id'] as TJSONNumber).AsInt64;
-    FTiers[I].Name := TierObj.Values['name'].Value;
-    FTiers[I].MonthlyPrice := (TierObj.Values['monthlyPrice'] as TJSONNumber).AsDouble;
-    FTiers[I].YearlyPrice := (TierObj.Values['yearlyPrice'] as TJSONNumber).AsDouble;
-    FTiers[I].MaxCreditsDay := (TierObj.Values['maxCreditsDay'] as TJSONNumber).AsInt64;
-    FTiers[I].MaxFreeCredits := (TierObj.Values['maxFreeCredits'] as TJSONNumber).AsInt64;
-    FTiers[I].MaxConnections := (TierObj.Values['maxConnections'] as TJSONNumber).AsInt;
-    FTiers[I].MaxTables := (TierObj.Values['maxTables'] as TJSONNumber).AsInt;
-    FTiers[I].MaxKpis := (TierObj.Values['maxKpis'] as TJSONNumber).AsInt;
+    
+    LValue := TierObj.GetValue('id');
+    if LValue = nil then LValue := TierObj.GetValue('Id');
+    if LValue <> nil then FTiers[I].Id := StrToInt64Def(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('name');
+    if LValue = nil then LValue := TierObj.GetValue('Name');
+    if LValue <> nil then FTiers[I].Name := LValue.Value;
+
+    LValue := TierObj.GetValue('monthlyPrice');
+    if LValue = nil then LValue := TierObj.GetValue('MonthlyPrice');
+    if LValue <> nil then FTiers[I].MonthlyPrice := StrToFloatDef(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('yearlyPrice');
+    if LValue = nil then LValue := TierObj.GetValue('YearlyPrice');
+    if LValue <> nil then FTiers[I].YearlyPrice := StrToFloatDef(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('maxCreditsDay');
+    if LValue = nil then LValue := TierObj.GetValue('MaxCreditsDay');
+    if LValue <> nil then FTiers[I].MaxCreditsDay := StrToInt64Def(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('maxFreeCredits');
+    if LValue = nil then LValue := TierObj.GetValue('MaxFreeCredits');
+    if LValue <> nil then FTiers[I].MaxFreeCredits := StrToInt64Def(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('maxConnections');
+    if LValue = nil then LValue := TierObj.GetValue('MaxConnections');
+    if LValue <> nil then FTiers[I].MaxConnections := StrToIntDef(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('maxTables');
+    if LValue = nil then LValue := TierObj.GetValue('MaxTables');
+    if LValue <> nil then FTiers[I].MaxTables := StrToIntDef(LValue.Value, 0);
+
+    LValue := TierObj.GetValue('maxKpis');
+    if LValue = nil then LValue := TierObj.GetValue('MaxKpis');
+    if LValue <> nil then FTiers[I].MaxKpis := StrToIntDef(LValue.Value, 0);
   end;
 end;
 
@@ -216,6 +274,7 @@ var
   SourceStream: TStringStream;
   Response: IHTTPResponse;
   ResponseJson: TJSONObject;
+  LValue: TJSONValue;
 begin
   Result := False;
   HttpClient := TNetHTTPClient.Create(nil);
@@ -232,12 +291,25 @@ begin
       if Response.StatusCode = 200 then
       begin
         ResponseJson := TJSONObject.ParseJSONValue(Response.ContentAsString) as TJSONObject;
+        if ResponseJson <> nil then
         try
-          FToken := ResponseJson.Values['token'].Value;
-          ParseProfile(ResponseJson.Values['profile'] as TJSONObject);
-          ParseTiers(ResponseJson.Values['tiers'] as TJSONArray);
-          SetIsLoggedIn(True);
-          Result := True;
+          LValue := ResponseJson.GetValue('token');
+          if LValue = nil then LValue := ResponseJson.GetValue('Token');
+          if LValue <> nil then
+            FToken := LValue.Value;
+
+          LValue := ResponseJson.GetValue('profile');
+          if LValue = nil then LValue := ResponseJson.GetValue('Profile');
+          if (LValue <> nil) and (LValue is TJSONObject) then
+            ParseProfile(LValue as TJSONObject);
+
+          LValue := ResponseJson.GetValue('tiers');
+          if LValue = nil then LValue := ResponseJson.GetValue('Tiers');
+          if (LValue <> nil) and (LValue is TJSONArray) then
+            ParseTiers(LValue as TJSONArray);
+
+          SetIsLoggedIn(FToken <> '');
+          Result := FToken <> '';
         finally
           ResponseJson.Free;
         end;
@@ -280,7 +352,7 @@ var
   LBuf: array[0..4095] of AnsiChar;
   LBytesRead: Integer;
   LRequest, LQueryString, LResponseHtml: string;
-  LPosQ, LPosSpace: Integer;
+  LPosQ, LPosSpace, i: Integer;
   LPairs: TStringList;
 begin
   Result := False;
@@ -297,7 +369,8 @@ begin
     LAddr.sin_addr.S_addr := htonl(INADDR_LOOPBACK);
     LAddr.sin_port := htons(APort);
 
-    if bind(LListenSocket, LAddr, SizeOf(LAddr)) = SOCKET_ERROR then Exit;
+    Log('Loopback server listening on port ' + IntToStr(APort) + '...');
+    if bind(LListenSocket, PSockAddr(@LAddr)^, SizeOf(LAddr)) = SOCKET_ERROR then Exit;
     if listen(LListenSocket, 1) = SOCKET_ERROR then Exit;
 
     // Wait for connection with timeout (5 min)
@@ -314,7 +387,7 @@ begin
       if select(0, @LFDSet, nil, nil, @LTimeout) > 0 then
       begin
         LAddrLen := SizeOf(LAddr);
-        LClientSocket := accept(LListenSocket, @LAddr, @LAddrLen);
+        LClientSocket := accept(LListenSocket, PSockAddr(@LAddr), @LAddrLen);
         if LClientSocket <> INVALID_SOCKET then
         try
           // Read request
@@ -325,7 +398,6 @@ begin
             LRequest := string(PAnsiChar(@LBuf[0]));
 
             // Parse "GET /?code=XXX&state=YYY HTTP/1.1"
-            // or    "GET /?error=access_denied HTTP/1.1"
             // Skip favicon
             if Pos('/favicon.ico', LRequest) > 0 then
             begin
@@ -347,8 +419,15 @@ begin
                 LPairs.Delimiter := '&';
                 LPairs.StrictDelimiter := True;
                 LPairs.DelimitedText := LQueryString;
-                FOAuthCode := LPairs.Values['code'];
-                FOAuthError := LPairs.Values['error'];
+                FOAuthCode := '';
+                FOAuthError := '';
+                for i := 0 to LPairs.Count - 1 do
+                begin
+                  if SameText(LPairs.Names[i], 'code') then
+                    FOAuthCode := LPairs.ValueFromIndex[i]
+                  else if SameText(LPairs.Names[i], 'error') then
+                    FOAuthError := LPairs.ValueFromIndex[i];
+                end;
               finally
                 LPairs.Free;
               end;
@@ -392,6 +471,7 @@ var
   LSourceStream: TStringStream;
   LResponse: IHTTPResponse;
   LResponseJson: TJSONObject;
+  LValue: TJSONValue;
 begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
@@ -404,18 +484,35 @@ begin
       LSourceStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
       try
         LHttpClient.ContentType := 'application/json';
+        Log('Step 1: Sending Google Authorization Code to Hub API...');
         LResponse := LHttpClient.Post(FUrl + '/api/login/google', LSourceStream);
         if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
         begin
+          Log('Hub API accepted Google login.');
           LResponseJson := TJSONObject.ParseJSONValue(LResponse.ContentAsString) as TJSONObject;
           if LResponseJson <> nil then
           try
-            FToken := LResponseJson.Values['token'].Value;
-            ParseProfile(LResponseJson.Values['profile'] as TJSONObject);
-            if LResponseJson.Values['tiers'] is TJSONArray then
-              ParseTiers(LResponseJson.Values['tiers'] as TJSONArray);
-            SetIsLoggedIn(True);
-            Result := True;
+            LValue := LResponseJson.GetValue('token');
+            if LValue = nil then LValue := LResponseJson.GetValue('Token');
+            if LValue <> nil then
+              FToken := LValue.Value;
+
+            LValue := LResponseJson.GetValue('profile');
+            if LValue = nil then LValue := LResponseJson.GetValue('Profile');
+            if (LValue <> nil) and (LValue is TJSONObject) then
+              ParseProfile(LValue as TJSONObject);
+
+            LValue := LResponseJson.GetValue('tiers');
+            if LValue = nil then LValue := LResponseJson.GetValue('Tiers');
+            if (LValue <> nil) and (LValue is TJSONArray) then
+              ParseTiers(LValue as TJSONArray);
+
+            SetIsLoggedIn(FToken <> '');
+            if FToken <> '' then
+              Log('Google Login SUCCESS. Token received.')
+            else
+              Log('Google Login FAILURE: Token was empty in response.');
+            Result := FToken <> '';
           finally
             LResponseJson.Free;
           end;
@@ -431,20 +528,53 @@ begin
   end;
 end;
 
-function TRpAuthManager.ExchangeMicrosoftCode(const ACode: string): Boolean;
+function TRpAuthManager.ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
 var
   LHttpClient: TNetHTTPClient;
   LRequest: TJSONObject;
   LSourceStream: TStringStream;
   LResponse: IHTTPResponse;
   LResponseJson: TJSONObject;
+  LValue: TJSONValue;
+  LAccessToken: string;
 begin
   Result := False;
+  LAccessToken := '';
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    Log('Step 1: Requesting Microsoft Access Token (no secret needed)...');
+    LSourceStream := TStringStream.Create(
+      'client_id=' + TNetEncoding.URL.Encode('bc88d289-ded3-4389-a62b-2f12ad635dac') +
+      '&code=' + TNetEncoding.URL.Encode(ACode) +
+      '&redirect_uri=' + TNetEncoding.URL.Encode(ARedirectUri) +
+      '&grant_type=authorization_code',
+      TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/x-www-form-urlencoded';
+      LResponse := LHttpClient.Post('https://login.microsoftonline.com/common/oauth2/v2.0/token', LSourceStream);
+      if LResponse.StatusCode = 200 then
+      begin
+        Log('Microsoft token received.');
+        LResponseJson := TJSONObject.ParseJSONValue(LResponse.ContentAsString) as TJSONObject;
+        if LResponseJson <> nil then
+        try
+          LValue := LResponseJson.GetValue('access_token');
+          if LValue <> nil then
+            LAccessToken := LValue.Value;
+        finally
+          LResponseJson.Free;
+        end;
+      end;
+    finally
+      LSourceStream.Free;
+    end;
+
+    if LAccessToken = '' then Exit;
+
+    Log('Step 2: Sending Microsoft Access Token to Hub API...');
     LRequest := TJSONObject.Create;
     try
-      LRequest.AddPair('microsoftCode', ACode);
+      LRequest.AddPair('microsoftCode', LAccessToken);
       LRequest.AddPair('installId', FInstallId);
       LSourceStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
       try
@@ -452,15 +582,27 @@ begin
         LResponse := LHttpClient.Post(FUrl + '/api/login/microsoft', LSourceStream);
         if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
         begin
+          Log('Hub API accepted Microsoft login.');
           LResponseJson := TJSONObject.ParseJSONValue(LResponse.ContentAsString) as TJSONObject;
           if LResponseJson <> nil then
           try
-            FToken := LResponseJson.Values['token'].Value;
-            ParseProfile(LResponseJson.Values['profile'] as TJSONObject);
-            if LResponseJson.Values['tiers'] is TJSONArray then
-              ParseTiers(LResponseJson.Values['tiers'] as TJSONArray);
-            SetIsLoggedIn(True);
-            Result := True;
+            LValue := LResponseJson.GetValue('token');
+            if LValue = nil then LValue := LResponseJson.GetValue('Token');
+            if LValue <> nil then
+              FToken := LValue.Value;
+
+            LValue := LResponseJson.GetValue('profile');
+            if LValue = nil then LValue := LResponseJson.GetValue('Profile');
+            if (LValue <> nil) and (LValue is TJSONObject) then
+              ParseProfile(LValue as TJSONObject);
+
+            LValue := LResponseJson.GetValue('tiers');
+            if LValue = nil then LValue := LResponseJson.GetValue('Tiers');
+            if (LValue <> nil) and (LValue is TJSONArray) then
+              ParseTiers(LValue as TJSONArray);
+
+            SetIsLoggedIn(FToken <> '');
+            Result := FToken <> '';
           finally
             LResponseJson.Free;
           end;
@@ -489,7 +631,8 @@ begin
   if WSAStartup(MakeWord(2, 2), LWSAData) <> 0 then Exit;
   try
     LPort := 49152 + Random(16384);
-    LRedirectUri := 'http://127.0.0.1:' + IntToStr(LPort) + '/';
+    LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
+    Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
 
     LState := IntToHex(Random(MaxInt), 8) + IntToHex(Random(MaxInt), 8);
     LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?' +
@@ -522,7 +665,8 @@ begin
   if WSAStartup(MakeWord(2, 2), LWSAData) <> 0 then Exit;
   try
     LPort := 49152 + Random(16384);
-    LRedirectUri := 'http://127.0.0.1:' + IntToStr(LPort) + '/';
+    LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
+    Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
 
     LState := IntToHex(Random(MaxInt), 8) + IntToHex(Random(MaxInt), 8);
     LAuthUrl := 'https://login.microsoftonline.com/' + MS_TENANT + '/oauth2/v2.0/authorize?' +
@@ -535,18 +679,18 @@ begin
     ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
 
     if WaitForOAuthCallback(LPort) then
-      Result := ExchangeMicrosoftCode(FOAuthCode);
+      Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
   finally
     WSACleanup;
   end;
 end;
 
-
 function TRpAuthManager.RefreshTiers: Boolean;
 var
   HttpClient: TNetHTTPClient;
   Response: IHTTPResponse;
-  ResponseJson: TJSONArray;
+  ResponseJsonTable: TJSONValue;
+  ResponseJsonArray: TJSONArray;
 begin
   Result := False;
   HttpClient := TNetHTTPClient.Create(nil);
@@ -554,13 +698,19 @@ begin
     Response := HttpClient.Get(FUrl + '/api/Tiers');
     if Response.StatusCode = 200 then
     begin
-      ResponseJson := TJSONObject.ParseJSONValue(Response.ContentAsString) as TJSONArray;
-      try
-        ParseTiers(ResponseJson);
-        Result := True;
-      finally
-        ResponseJson.Free;
+      ResponseJsonTable := TJSONObject.ParseJSONValue(Response.ContentAsString);
+      if ResponseJsonTable is TJSONArray then
+      begin
+        ResponseJsonArray := TJSONArray(ResponseJsonTable);
+        try
+          ParseTiers(ResponseJsonArray);
+          Result := True;
+        finally
+          // ParseTiers doesn't take ownership
+        end;
       end;
+      if ResponseJsonTable <> nil then
+        ResponseJsonTable.Free;
     end;
   finally
     HttpClient.Free;
@@ -583,7 +733,7 @@ begin
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('tierId', TJSONNumber.Create(ATierId));
     RequestBody.AddPair('isYearly', TJSONBool.Create(AIsYearly));
-    RequestBody.AddPair('userEmail', FProfile.Email);
+    RequestBody.AddPair('userEmail', TJSONString.Create(FProfile.Email));
     
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
