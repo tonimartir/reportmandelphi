@@ -45,6 +45,18 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       Caption = 'Login'
       TabOrder = 1
     end
+    object BSQL: TButton
+      Left = 321
+      Top = 10
+      Width = 280
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Caption = 'BSQL'
+      TabOrder = 2
+    end
   end
   object Edge: TEdgeBrowser
     Left = 0

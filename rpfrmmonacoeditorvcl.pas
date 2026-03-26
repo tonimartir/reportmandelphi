@@ -26,6 +26,8 @@ type
     ComboSchema: TComboBox;
     Edge: TEdgeBrowser;
     BLogin: TButton;
+    BSQL: TButton;
+
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
     procedure EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
@@ -39,6 +41,7 @@ type
     FOnContentChanged: TNotifyEvent;
     FAppDataPath: string;
     FEditorReady: Boolean;
+    FUpdatingFromBrowser: Boolean;
     procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
@@ -106,6 +109,8 @@ begin
   FAISelection.Parent := PTop;
   FAISelection.Align := alRight;
   FAISelection.Width := 320;
+
+
 end;
 
 procedure TFRpMonacoEditorVCL.CreateWnd;
@@ -162,6 +167,9 @@ var
   LJSON: TJSONString;
   LScript: string;
 begin
+  if FUpdatingFromBrowser then
+    Exit;
+
   FSQL := Value;
   if Edge.WebViewCreated then
   begin
@@ -191,31 +199,38 @@ procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
 var
   LArgs: ICoreWebView2WebMessageReceivedEventArgs;
   LP: PWideChar;
-  LMessage: string;
 begin
-  if not Supports(Args.ArgsInterface, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
-    Exit;
+  try
+//    if not Supports(Args.ArgsInterface, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
+//      Exit;
+///    LArgs := Args.ArgsInterface as ICoreWebView2WebMessageReceivedEventArgs;
+    LP:=nil;
+    Args.ArgsInterface.TryGetWebMessageAsString(LP);
 
-  LP := nil;
-  if Succeeded(LArgs.TryGetWebMessageAsString(LP)) then
-  begin
-    if LP <> nil then
+    LP := nil;
+    if Succeeded(LArgs.TryGetWebMessageAsString(LP)) then
     begin
-      LMessage := LP;
-      CoTaskMemFree(LP);
-      ProcessWebMessage(LMessage);
-      Exit;
-    end;
-  end;
-
-  if Succeeded(LArgs.Get_WebMessageAsJson(LP)) then
-  begin
-    if LP <> nil then
+      if LP <> nil then
+      begin
+        FSQL := LP;
+        CoTaskMemFree(LP);
+        if BSQL <> nil then
+          BSQL.Caption := 'SQL: ' + Copy(FSQL.Replace(#13, ' ').Replace(#10, ' '), 1, 20);
+      end;
+    end
+    else if Succeeded(LArgs.Get_WebMessageAsJson(LP)) then
     begin
-      LMessage := LP;
-      CoTaskMemFree(LP);
-      ProcessWebMessage(LMessage);
+      if LP <> nil then
+      begin
+        FSQL := LP;
+        CoTaskMemFree(LP);
+        if BSQL <> nil then
+          BSQL.Caption := 'JSON: ' + Copy(FSQL, 1, 20);
+      end;
     end;
+  except
+    on E: Exception do
+      if BSQL <> nil then BSQL.Caption := 'AV: ' + E.Message;
   end;
 end;
 
@@ -224,9 +239,14 @@ var
   LVal: TJSONValue;
   LObj: TJSONObject;
   LType: string;
+  LNewSQL: string;
 begin
+  if FUpdatingFromBrowser then 
+    Exit;
+
   LVal := TJSONObject.ParseJSONValue(LMessage);
   try
+    LNewSQL := '';
     if (LVal <> nil) and (LVal is TJSONObject) then
     begin
       LObj := TJSONObject(LVal);
@@ -246,18 +266,34 @@ begin
           Exit;
         end;
       end;
+      // If it's a JSON object but not a command, it's probably specialized SQL or data
+      LNewSQL := LMessage;
+    end
+    else if (LVal <> nil) and (LVal is TJSONString) then
+    begin
+      // Extract the unquoted string value
+      LNewSQL := TJSONString(LVal).Value;
+    end
+    else
+    begin
+      // Raw string
+      LNewSQL := LMessage;
     end;
 
-    // If we reach here, it's either not JSON or JSON without a recognized command type.
-    // Treat as the SQL content itself.
-    if (LVal <> nil) and (LVal is TJSONString) then
-      FSQL := TJSONString(LVal).Value
-    else
-      FSQL := LMessage;
+    // Normalizing line endings handles the difference between JS (\n) and Delphi (\r\n)
+    LNewSQL := LNewSQL.Replace(#13#10, #10).Replace(#13, #10).Replace(#10, #13#10);
 
-    if Assigned(FOnContentChanged) then
-      FOnContentChanged(Self);
-
+    if FSQL <> LNewSQL then
+    begin
+      FUpdatingFromBrowser := True;
+      try
+        FSQL := LNewSQL;
+        if Assigned(FOnContentChanged) then
+          FOnContentChanged(Self);
+      finally
+        FUpdatingFromBrowser := False;
+      end;
+    end;
   finally
     if LVal <> nil then
       LVal.Free;
