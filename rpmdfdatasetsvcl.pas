@@ -230,6 +230,10 @@ begin
  PBottom.Height:=250;
 
  PLBrowser.Caption:=SRpDatabaseBrowser;
+  browser:=TFRpBrowserVCL.Create(Self);
+  browser.ShowDatasets:=false;
+  browser.ShowEval:=false;
+  browser.Align:=alClient;
   browser.Parent:=PBrowser;
 
   FMonaco := TFRpMonacoEditorVCL.Create(Self);
