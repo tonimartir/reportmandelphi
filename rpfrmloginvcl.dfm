@@ -1,128 +1,129 @@
 object FRpLoginVCL: TFRpLoginVCL
   Left = 0
   Top = 0
-  Width = 320
-  Height = 240
-  TabOrder = 0
-  object PGuest: TPanel
+  BorderStyle = bsDialog
+  Caption = 'Login - Reportman AI'
+  ClientHeight = 320
+  ClientWidth = 380
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Segoe UI'
+  Font.Style = []
+  Position = poMainFormCenter
+  object PanelButtons: TPanel
     Left = 0
     Top = 0
-    Width = 320
-    Height = 180
+    Width = 380
+    Height = 200
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
-    object BLoginGoogle: TButton
-      Left = 40
-      Top = 20
-      Width = 240
-      Height = 40
-      Caption = 'Login with Google'
+    object LTitle: TLabel
+      Left = 24
+      Top = 16
+      Width = 332
+      Height = 24
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'Sign in to Reportman AI'
+      Font.Height = -16
+      Font.Name = 'Segoe UI'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object BtnGoogle: TButton
+      Left = 60
+      Top = 56
+      Width = 260
+      Height = 36
+      Caption = 'Continue with Google'
       TabOrder = 0
-      OnClick = BLoginGoogleClick
+      OnClick = BtnGoogleClick
     end
-    object BLoginMicrosoft: TButton
-      Left = 40
-      Top = 70
-      Width = 240
-      Height = 40
-      Caption = 'Login with Microsoft'
+    object BtnMicrosoft: TButton
+      Left = 60
+      Top = 100
+      Width = 260
+      Height = 36
+      Caption = 'Continue with Microsoft'
       TabOrder = 1
-      OnClick = BLoginMicrosoftClick
+      OnClick = BtnMicrosoftClick
     end
-    object BLoginEmail: TButton
-      Left = 40
-      Top = 120
-      Width = 240
-      Height = 40
-      Caption = 'Login with Email'
+    object BtnEmail: TButton
+      Left = 60
+      Top = 144
+      Width = 260
+      Height = 36
+      Caption = 'Continue with Email'
       TabOrder = 2
-      OnClick = BLoginEmailClick
+      OnClick = BtnEmailClick
     end
   end
-  object PEmail: TPanel
+  object PanelEmail: TPanel
     Left = 0
-    Top = 0
-    Width = 320
+    Top = 200
+    Width = 380
     Height = 120
-    Align = alTop
+    Align = alClient
     BevelOuter = bvNone
-    Visible = False
     TabOrder = 1
+    Visible = False
     object LEmail: TLabel
-      Left = 20
-      Top = 10
-      Width = 32
+      Left = 24
+      Top = 8
+      Width = 30
       Height = 13
       Caption = 'Email:'
     end
-    object EEmail: TEdit
-      Left = 20
-      Top = 30
-      Width = 280
+    object LCode: TLabel
+      Left = 24
+      Top = 56
+      Width = 30
+      Height = 13
+      Caption = 'Code:'
+    end
+    object EditEmail: TEdit
+      Left = 60
+      Top = 4
+      Width = 200
       Height = 21
       TabOrder = 0
     end
-    object BSendCode: TButton
-      Left = 20
-      Top = 60
-      Width = 130
-      Height = 30
+    object BtnSendCode: TButton
+      Left = 268
+      Top = 2
+      Width = 100
+      Height = 25
       Caption = 'Send Code'
       TabOrder = 1
-      OnClick = BSendCodeClick
+      OnClick = BtnSendCodeClick
     end
-    object BCancelEmail: TButton
-      Left = 170
-      Top = 60
-      Width = 130
-      Height = 30
-      Caption = 'Cancel'
-      TabOrder = 2
-      OnClick = BCancelEmailClick
-    end
-  end
-  object PCode: TPanel
-    Left = 0
-    Top = 0
-    Width = 320
-    Height = 120
-    Align = alTop
-    BevelOuter = bvNone
-    Visible = False
-    TabOrder = 2
-    object LCode: TLabel
-      Left = 20
-      Top = 10
-      Width = 84
-      Height = 13
-      Caption = 'Validation Code:'
-    end
-    object ECode: TEdit
-      Left = 20
-      Top = 30
-      Width = 280
+    object EditCode: TEdit
+      Left = 60
+      Top = 52
+      Width = 100
       Height = 21
-      TabOrder = 0
+      TabOrder = 2
     end
-    object BLogin: TButton
-      Left = 20
-      Top = 60
-      Width = 280
-      Height = 40
+    object BtnLoginCode: TButton
+      Left = 168
+      Top = 50
+      Width = 100
+      Height = 25
       Caption = 'Login'
-      TabOrder = 1
-      OnClick = BLoginClick
+      TabOrder = 3
+      OnClick = BtnLoginCodeClick
     end
-  end
-  object LStatus: TLabel
-    Left = 0
-    Top = 227
-    Width = 320
-    Height = 13
-    Align = alBottom
-    Alignment = taCenter
-    Caption = 'Status'
-    ExplicitWidth = 31
+    object LStatus: TLabel
+      Left = 24
+      Top = 88
+      Width = 340
+      Height = 13
+      AutoSize = False
+      Font.Color = clRed
+      ParentFont = False
+    end
   end
 end

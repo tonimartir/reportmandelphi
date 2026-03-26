@@ -46,7 +46,7 @@ type
     procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
-    procedure SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
+    procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
     procedure UpdateAuthUI;
   protected
     procedure CreateWnd; override;
@@ -299,8 +299,13 @@ var
   LSql: string;
   LPos: Integer;
   LRequestId: string;
-  LCompletions: TJSONArray;
+  LResponse: TJSONObject;
+  LResult, LAutoComplete: TJSONObject;
+  LInlineArr, LListArr: TJSONArray;
   LVal: TJSONValue;
+  LInlineItems, LCompletionItems: TJSONArray;
+  I: Integer;
+  LItem: TJSONObject;
 begin
   LRequestId := '';
   LVal := ARequest.Values['requestId'];
@@ -328,46 +333,98 @@ begin
     LHttp.InstallId := TRpAuthManager.Instance.InstallId;
     LHttp.HubDatabaseId := FHubDatabaseId;
     LHttp.HubSchemaId := FHubSchemaId;
-
-    // Read tier/mode/agent from the redesigned AISelection frame
     LHttp.AITier := FAISelection.AITier;
     LHttp.AgentSecret := FAISelection.AgentSecret;
     LHttp.AgentAiId := FAISelection.AgentAiId;
 
+    LResponse := nil;
     try
-      LCompletions := LHttp.SuggestSql(LSql, LPos, FAISelection.AIMode);
+      LResponse := LHttp.SuggestSql(LSql, LPos, FAISelection.AIMode);
     except
       on E: Exception do
-      begin
-        LCompletions := nil;
-      end;
+        LResponse := nil;
     end;
 
-    if LCompletions <> nil then
-      SendAICompletions(LCompletions, LRequestId)
-    else
-      SendAICompletions(TJSONArray.Create, LRequestId);
+    // Build Monaco-compatible response: { inlineItems: [...], completionItems: [...] }
+    LInlineItems := TJSONArray.Create;
+    LCompletionItems := TJSONArray.Create;
+
+    if LResponse <> nil then
+    try
+      // Navigate: response.result.autoComplete
+      LVal := LResponse.Values['result'];
+      if (LVal <> nil) and (LVal is TJSONObject) then
+      begin
+        LResult := LVal as TJSONObject;
+        LVal := LResult.Values['autoComplete'];
+        if (LVal <> nil) and (LVal is TJSONObject) then
+        begin
+          LAutoComplete := LVal as TJSONObject;
+
+          // Parse inlineCompletions → inlineItems (ghost text)
+          LVal := LAutoComplete.Values['inlineCompletions'];
+          if (LVal <> nil) and (LVal is TJSONArray) then
+          begin
+            LInlineArr := LVal as TJSONArray;
+            for I := 0 to LInlineArr.Count - 1 do
+            begin
+              LItem := TJSONObject.Create;
+              LItem.AddPair('insertText', LInlineArr.Items[I].Value);
+              LInlineItems.AddElement(LItem);
+            end;
+          end;
+
+          // Parse listCompletions → completionItems (dropdown)
+          LVal := LAutoComplete.Values['listCompletions'];
+          if (LVal <> nil) and (LVal is TJSONArray) then
+          begin
+            LListArr := LVal as TJSONArray;
+            for I := 0 to LListArr.Count - 1 do
+            begin
+              LItem := TJSONObject.Create;
+              LItem.AddPair('label', LListArr.Items[I].Value);
+              LItem.AddPair('insertText', LListArr.Items[I].Value);
+              LItem.AddPair('detail', 'AI');
+              LCompletionItems.AddElement(LItem);
+            end;
+          end;
+        end;
+      end;
+
+      // Update credit gauge from userProfile in the response
+      LVal := LResponse.Values['userProfile'];
+      if (LVal <> nil) and (LVal is TJSONObject) then
+        FAISelection.UpdateFromUserProfile(LVal as TJSONObject);
+    finally
+      LResponse.Free;
+    end;
+
+    SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
   finally
     LHttp.Free;
   end;
 end;
 
-
-procedure TFRpMonacoEditorVCL.SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
+procedure TFRpMonacoEditorVCL.SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
 var
   LResponse: TJSONObject;
   LScript: string;
+  LEscapedJson: string;
 begin
+  // Build { inlineItems: [...], completionItems: [...] }
   LResponse := TJSONObject.Create;
   try
-    LResponse.AddPair('type', 'AI_COMPLETIONS_RESPONSE');
-    LResponse.AddPair('requestId', ARequestId);
-    LResponse.AddPair('completions', ACompletions.Clone as TJSONArray);
+    LResponse.AddPair('inlineItems', AInlineItems.Clone as TJSONArray);
+    LResponse.AddPair('completionItems', ACompletionItems.Clone as TJSONArray);
 
-    LScript := 'window.receiveAICompletions(' + LResponse.ToJSON + ');';
+    // Match Desktop: receiveAICompletions(requestId, response)
+    LEscapedJson := LResponse.ToJSON;
+    LScript := 'window.receiveAICompletions(''' + ARequestId + ''', ' + LEscapedJson + ');';
     Edge.ExecuteScript(LScript);
   finally
     LResponse.Free;
+    AInlineItems.Free;
+    ACompletionItems.Free;
   end;
 end;
 
@@ -376,3 +433,4 @@ begin
 end;
 
 end.
+

@@ -1,13 +1,13 @@
 object FRpAISelectionVCL: TFRpAISelectionVCL
   Left = 0
   Top = 0
-  Width = 400
+  Width = 420
   Height = 32
   TabOrder = 0
   object PAI: TPanel
     Left = 0
     Top = 0
-    Width = 400
+    Width = 420
     Height = 32
     Align = alClient
     BevelOuter = bvNone
@@ -20,20 +20,22 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       Caption = 'AI:'
     end
     object PaintBoxGauge: TPaintBox
-      Left = 348
+      Left = 260
       Top = 4
       Width = 24
       Height = 24
+      Hint = 'Credits'
+      ShowHint = True
       OnPaint = PaintBoxGaugePaint
     end
     object LCredits: TLabel
-      Left = 262
+      Left = 288
       Top = 9
-      Width = 80
+      Width = 120
       Height = 13
-      AutoSize = False
-      Caption = 'Credits'
-      Alignment = taRightJustify
+      Hint = 'Credits'
+      ShowHint = True
+      Caption = 'Guest'
     end
     object ComboAIProvider: TComboBox
       Left = 24
