@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -26,7 +26,6 @@ type
     ComboSchema: TComboBox;
     Edge: TEdgeBrowser;
     BLogin: TButton;
-    BSQL: TButton;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -216,7 +215,11 @@ begin
     end;
   except
     on E: Exception do
-      if BSQL <> nil then BSQL.Caption := 'AV: ' + E.Message;
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          ShowMessage('Error in Monaco messaging: '+E.Message);
+        end);
   end;
 end;
 
