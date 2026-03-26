@@ -197,18 +197,17 @@ procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
   Sender: TCustomEdgeBrowser;
   Args: TWebMessageReceivedEventArgs);
 var
-  LArgs: ICoreWebView2WebMessageReceivedEventArgs;
   LP: PWideChar;
 begin
   try
+    // No usar este codigo, no funciona
 //    if not Supports(Args.ArgsInterface, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
 //      Exit;
 ///    LArgs := Args.ArgsInterface as ICoreWebView2WebMessageReceivedEventArgs;
     LP:=nil;
     Args.ArgsInterface.TryGetWebMessageAsString(LP);
 
-    LP := nil;
-    if Succeeded(LArgs.TryGetWebMessageAsString(LP)) then
+    if Succeeded(Args.ArgsInterface.TryGetWebMessageAsString(LP)) then
     begin
       if LP <> nil then
       begin
@@ -218,7 +217,7 @@ begin
           BSQL.Caption := 'SQL: ' + Copy(FSQL.Replace(#13, ' ').Replace(#10, ' '), 1, 20);
       end;
     end
-    else if Succeeded(LArgs.Get_WebMessageAsJson(LP)) then
+    else if Succeeded(Args.ArgsInterface.Get_WebMessageAsJson(LP)) then
     begin
       if LP <> nil then
       begin
