@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="./vs/editor/editor.main.css" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1e1e1e;
+        }
+
+        #container {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <script src="./vs/loader.js"></script>
+    <script>
+        require.config({ paths: { 'vs': './vs' } });
+
+        require(['vs/editor/editor.main'], function () {
+            // Creamos el editor y lo asignamos a window.editor para que tu C# lo vea
+            window.editor = monaco.editor.create(document.getElementById('container'), {
+                value: '-- Generando SQL con IA...',
+                language: 'sql',
+                theme: 'vs',
+                automaticLayout: true,
+                fontSize: 14,
+                minimap: { enabled: true },
+                inlineSuggest: {
+                    enabled: true,
+                    showToolbar: 'always'
+                }
+            });
+
+            // Función para cambiar el lenguaje desde C#
+            window.setEditorLanguage = function(languageId) {
+                if (window.editor) {
+                    var model = window.editor.getModel();
+                    monaco.editor.setModelLanguage(model, languageId);
+                }
+            };
+
+            // Función para cambiar el tema desde C#
+            window.setEditorTheme = function(themeId) {
+                if (window.editor) {
+                    monaco.editor.setTheme(themeId);
+                }
+            };
+
+            // Puente de vuelta al ViewModel
+            window.editor.getModel().onDidChangeContent((event) => {
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage(window.editor.getValue());
+                }
+            });
+
+            // ============================================================
+            // UNIFIED AI COMPLETION SYSTEM
+            // Single C# entry point returns both inline and dropdown items.
+            // A shared cache ensures only ONE request per cursor position.
+            // ============================================================
+
+            window.pendingCompletionRequests = {};
+
+            // Callback from C# — receives the unified response
+            window.receiveAICompletions = function(requestId, response) {
+                var callback = window.pendingCompletionRequests[requestId];
+                if (callback) {
+                    delete window.pendingCompletionRequests[requestId];
+                    callback(response);
+                }
+            };
+
+            // Shared cache: one AI request per cursor position
+            var _aiCache = { key: '', promise: null };
+
+            function getAICompletions(model, position) {
+                var cacheKey = position.lineNumber + ':' + position.column;
+                
+                // Reuse cached response for same position
+                if (_aiCache.key === cacheKey && _aiCache.promise) {
+                    return _aiCache.promise;
+                }
+
+                var requestId = 'ai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                var promise = new Promise(function(resolve) {
+                    window.pendingCompletionRequests[requestId] = function(response) {
+                        console.log('AI Completions received:', 
+                            (response.inlineItems || []).length, 'inline,', 
+                            (response.completionItems || []).length, 'dropdown');
+                        resolve(response);
+                    };
+
+                    if (window.chrome && window.chrome.webview) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            type: 'GET_AI_COMPLETIONS',
+                            requestId: requestId,
+                            code: model.getValue(),
+                            position: position
+                        }));
+                    } else {
+                        resolve({ inlineItems: [], completionItems: [] });
+                    }
+                });
+
+                _aiCache = { key: cacheKey, promise: promise };
+
+                // Expire cache after 2 seconds (next keystroke will trigger fresh request)
+                setTimeout(function() { 
+                    if (_aiCache.key === cacheKey) _aiCache = { key: '', promise: null }; 
+                }, 2000);
+
+                return promise;
+            }
+
+            // Register both providers for all SQL languages
+            var sqlLanguages = ['sql', 'pgsql', 'mysql'];
+
+            sqlLanguages.forEach(function(lang) {
+
+                // 1) INLINE COMPLETIONS — Ghost text (cycle with Alt+] / Alt+[)
+                monaco.languages.registerInlineCompletionsProvider(lang, {
+                    provideInlineCompletions: function(model, position, context, token) {
+                        if (token.isCancellationRequested) {
+                            return Promise.resolve({ items: [] });
+                        }
+                        return getAICompletions(model, position).then(function(response) {
+                            var items = response.inlineItems || [];
+                            return { items: items };
+                        });
+                    },
+                    freeInlineCompletions: function(completions) {}
+                });
+
+                // 2) COMPLETION ITEM PROVIDER — Dropdown list
+                monaco.languages.registerCompletionItemProvider(lang, {
+                    triggerCharacters: [' ', '.', '(', ','],
+                    provideCompletionItems: function(model, position) {
+                        return new Promise(function(resolve) {
+                            getAICompletions(model, position).then(function(response) {
+                                var items = response.completionItems || [];
+                                
+                                // Get current word to bypass Monaco's text-based filtering
+                                var word = model.getWordUntilPosition(position);
+                                var range = {
+                                    startLineNumber: position.lineNumber,
+                                    endLineNumber: position.lineNumber,
+                                    startColumn: word.startColumn,
+                                    endColumn: word.endColumn
+                                };
+                                var typedPrefix = word.word || '';
+
+                                var suggestions = items.map(function(item, index) {
+                                    return {
+                                        label: item.label || item.insertText,
+                                        kind: monaco.languages.CompletionItemKind.Text,
+                                        insertText: item.insertText,
+                                        detail: item.detail || 'AI',
+                                        range: range,
+                                        // Trick: prepend typed prefix so Monaco's filter always matches
+                                        filterText: typedPrefix + (item.label || item.insertText),
+                                        sortText: '!' + String(index).padStart(5, '0') // '!' sorts before letters
+                                    };
+                                });
+                                resolve({ suggestions: suggestions });
+                            });
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

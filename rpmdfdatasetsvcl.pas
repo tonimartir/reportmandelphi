@@ -32,7 +32,8 @@ uses
 
   rptypes,rpdatainfo,rpreport,rpfparamsvcl,rpmdfsampledatavcl, ActnList,
   rpdbbrowservcl,rpparams, System.Actions, System.ImageList,
-  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection;
+  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
+  rpfrmmonacoeditorvcl;
 
 type
   TFRpDatasetsVCL = class(TFrame)
@@ -63,7 +64,7 @@ type
     PBottom: TPanel;
     PControl: TPageControl;
     TabSQL: TTabSheet;
-    MSQL: TMemo;
+    FMonaco: TFRpMonacoEditorVCL;
     TabBDEType: TTabSheet;
     RBDEType: TRadioGroup;
     Panel4: TPanel;
@@ -229,11 +230,12 @@ begin
  PBottom.Height:=250;
 
  PLBrowser.Caption:=SRpDatabaseBrowser;
- browser:=TFRpBrowserVCL.Create(Self);
- browser.ShowDatasets:=false;
- browser.ShowEval:=false;
- browser.Align:=alClient;
- browser.Parent:=PBrowser;
+  browser.Parent:=PBrowser;
+
+  FMonaco := TFRpMonacoEditorVCL.Create(Self);
+  FMonaco.Parent := TabSQL;
+  FMonaco.Align := alClient;
+  FMonaco.OnContentChanged := MSQLChange;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -305,7 +307,7 @@ begin
  CheckOpen.Checked:=dinfo.OpenOnStart;
  PControl.Visible:=true;
  PanelBasic.Visible:=true;
- MSQL.Text:=WideStringToDOS(dinfo.SQL);
+  FMonaco.SQL := WideStringToDOS(dinfo.SQL);
  EMyBase.Text:=dinfo.MyBaseFilename;
  EMyBaseDefs.Text:=dinfo.MyBaseFields;
  EIndexFields.Text:=dinfo.MyBaseIndexFields;
@@ -412,9 +414,9 @@ begin
  if Sender=CheckParallelUnion then
   dinfo.ParallelUnion:=CheckParallelUnion.Checked
  else
- if Sender=MSQL then
+ if Sender=FMonaco then
  begin
-  dinfo.SQL:=TMemo(Sender).Text;
+  dinfo.SQL:=FMonaco.SQL;
  end
  else
  if Sender=ComboConnection then
