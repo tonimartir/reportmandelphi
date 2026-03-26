@@ -241,6 +241,7 @@ begin
   FMonaco := TFRpMonacoEditorVCL.Create(Self);
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
+  FMonaco.OnContentChanged := MSQLChange;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);

@@ -198,34 +198,21 @@ procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
   Args: TWebMessageReceivedEventArgs);
 var
   LP: PWideChar;
+  LMsg: string;
 begin
   try
-    // No usar este codigo, no funciona
-//    if not Supports(Args.ArgsInterface, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
-//      Exit;
-///    LArgs := Args.ArgsInterface as ICoreWebView2WebMessageReceivedEventArgs;
     LP:=nil;
+    // THIS LINE IS THE ONE THE USER SAYS WORKS FOR THEM:
     Args.ArgsInterface.TryGetWebMessageAsString(LP);
-
-    if Succeeded(Args.ArgsInterface.TryGetWebMessageAsString(LP)) then
+    if LP <> nil then
     begin
-      if LP <> nil then
-      begin
-        FSQL := LP;
-        CoTaskMemFree(LP);
-        if BSQL <> nil then
-          BSQL.Caption := 'SQL: ' + Copy(FSQL.Replace(#13, ' ').Replace(#10, ' '), 1, 20);
-      end;
-    end
-    else if Succeeded(Args.ArgsInterface.Get_WebMessageAsJson(LP)) then
-    begin
-      if LP <> nil then
-      begin
-        FSQL := LP;
-        CoTaskMemFree(LP);
-        if BSQL <> nil then
-          BSQL.Caption := 'JSON: ' + Copy(FSQL, 1, 20);
-      end;
+      LMsg := LP;
+      CoTaskMemFree(LP);
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          ProcessWebMessage(LMsg);
+        end);
     end;
   except
     on E: Exception do
@@ -301,16 +288,16 @@ end;
 
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
+  LValue: TJSONValue;
   LRequestId: string;
-  LPrefix, LSuffix: string;
-  LCompletions: TJSONArray;
 begin
-  LRequestId := ARequest.Values['requestId'].Value;
-  LPrefix := ARequest.Values['prefix'].Value;
-  LSuffix := ARequest.Values['suffix'].Value;
+  LRequestId := '';
+  LValue := ARequest.Values['requestId'];
+  if LValue <> nil then
+    LRequestId := LValue.Value;
 
-  LCompletions := TJSONArray.Create;
-  SendAICompletions(LCompletions, LRequestId);
+  // Enviar respuesta vacía para desbloquear el editor mientras implementamos el resto
+  SendAICompletions(TJSONArray.Create, LRequestId);
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
