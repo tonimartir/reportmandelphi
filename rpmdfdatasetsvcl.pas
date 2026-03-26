@@ -299,61 +299,78 @@ end;
 
 procedure TFRpDatasetsVCL.LDatasetsClick(Sender: TObject);
 var
- dinfo:TRpDatainfoItem;
- index:integer;
+  dinfo: TRpDataInfoItem;
+  dbinfo: TRpDatabaseInfoItem;
+  LParams: TStringList;
+  index: Integer;
 begin
- // Fils the info of the current dataset
- dinfo:=FindDataInfoItem;
- if dinfo=nil then
- begin
-  PControl.Visible:=false;
-  PanelBasic.Visible:=False;
-  exit;
- end;
- CheckOpen.Checked:=dinfo.OpenOnStart;
- PControl.Visible:=true;
- PanelBasic.Visible:=true;
+  // Fils the info of the current dataset
+  dinfo := FindDataInfoItem;
+  if dinfo = nil then
+  begin
+    PControl.Visible := False;
+    PanelBasic.Visible := False;
+    Exit;
+  end;
+  CheckOpen.Checked := dinfo.OpenOnStart;
+  PControl.Visible := True;
+  PanelBasic.Visible := True;
+
   FMonaco.SQL := WideStringToDOS(dinfo.SQL);
- EMyBase.Text:=dinfo.MyBaseFilename;
- EMyBaseDefs.Text:=dinfo.MyBaseFields;
- EIndexFields.Text:=dinfo.MyBaseIndexFields;
- LUnions.Items.Assign(dinfo.DataUnions);
- CheckGroupUnion.Checked:=dinfo.GroupUnion;
- CheckParallelUnion.Checked:=dinfo.ParallelUnion;
- EBDEIndexFields.Text:=dinfo.BDEIndexFields;
- MBDEFilter.Text:=dinfo.BDEFilter;
- EBDEIndexName.Text:=dinfo.BDEIndexName;
- EBDEFirstRange.Text:=dinfo.BDEFirstRange;
- EBDELastRange.Text:=dinfo.BDELastRange;
- EBDETable.Text:=dinfo.BDETable;
- EBDEMasterFields.Text:=dinfo.BDEMasterFields;
- EMasterFields.Text:=dinfo.MyBaseMasterFields;
- RBDEType.ItemIndex:=Integer(dinfo.BDEType);
- index:=ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
- if index<0 then
-  dinfo.DatabaseAlias:='';
- ComboConnection.ItemIndex:=Index;
+  // Set Hub context for AI
+  dbinfo := Report.DatabaseInfo.ItemByName(dinfo.DatabaseAlias);
+  if dbinfo <> nil then
+  begin
+    LParams := TStringList.Create;
+    try
+      dbinfo.UpdateConAdmin;
+      dbinfo.ConAdmin.GetConnectionParams(dbinfo.Alias, LParams);
+      FMonaco.HubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
+    finally
+      LParams.Free;
+    end;
+  end;
 
- ComboDataSource.Items.Assign(Ldatasets.Items);
- index:=ComboDataSource.Items.IndexOf(dinfo.alias);
- if index>=0 then
-  ComboDataSource.Items.Delete(index);
+  EMyBase.Text := dinfo.MyBaseFilename;
+  EMyBaseDefs.Text := dinfo.MyBaseFields;
+  EIndexFields.Text := dinfo.MyBaseIndexFields;
+  LUnions.Items.Assign(dinfo.DataUnions);
+  CheckGroupUnion.Checked := dinfo.GroupUnion;
+  CheckParallelUnion.Checked := dinfo.ParallelUnion;
+  EBDEIndexFields.Text := dinfo.BDEIndexFields;
+  MBDEFilter.Text := dinfo.BDEFilter;
+  EBDEIndexName.Text := dinfo.BDEIndexName;
+  EBDEFirstRange.Text := dinfo.BDEFirstRange;
+  EBDELastRange.Text := dinfo.BDELastRange;
+  EBDETable.Text := dinfo.BDETable;
+  EBDEMasterFields.Text := dinfo.BDEMasterFields;
+  EMasterFields.Text := dinfo.MyBaseMasterFields;
+  RBDEType.ItemIndex := Integer(dinfo.BDEType);
+  index := ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
+  if index < 0 then
+    dinfo.DatabaseAlias := '';
+  ComboConnection.ItemIndex := index;
 
- index:=ComboDataSource.Items.IndexOf(dinfo.DataSource);
- if index<0 then
- begin
-  dinfo.DataSource:='';
- end;
- ComboDataSource.Items.Insert(0,' ');
- inc(index);
- ComboDatasource.ItemIndex:=Index;
- ComboUnions.Items.Assign(LDatasets.Items);
- ComboUnions.Items.Delete(LDatasets.ItemIndex);
- if ComboUnions.Items.Count<1 then
-  ComboUnions.ItemIndex:=-1
- else
-  ComboUnions.ItemIndex:=0;
- MSQLChange(ComboConnection);
+  ComboDataSource.Items.Assign(LDatasets.Items);
+  index := ComboDataSource.Items.IndexOf(dinfo.alias);
+  if index >= 0 then
+    ComboDataSource.Items.Delete(index);
+
+  index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+  if index < 0 then
+  begin
+    dinfo.DataSource := '';
+  end;
+  ComboDataSource.Items.Insert(0, ' ');
+  Inc(index);
+  ComboDataSource.ItemIndex := index;
+  ComboUnions.Items.Assign(LDatasets.Items);
+  ComboUnions.Items.Delete(LDatasets.ItemIndex);
+  if ComboUnions.Items.Count < 1 then
+    ComboUnions.ItemIndex := -1
+  else
+    ComboUnions.ItemIndex := 0;
+  MSQLChange(ComboConnection);
 end;
 
 procedure TFRpDatasetsVCL.LRangeClick(Sender: TObject);

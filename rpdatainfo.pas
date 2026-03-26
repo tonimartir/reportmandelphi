@@ -206,7 +206,6 @@ type
    FSQLConnection:TSQLConnection;
    FSQLInternalConnection:TSQLConnection;
 {$ENDIF}
-   ConAdmin:TRpConnAdmin;
    FConfigFile:string;
    FLoadParams:boolean;
    FReportTable,FReportGroupsTable,FReportSearchField,FReportField:String;
@@ -261,6 +260,7 @@ type
   public
    DotNetDriver:integer;
    ProviderFactory:string;
+   ConAdmin:TRpConnAdmin;
    procedure UpdateConAdmin;
    procedure Assign(Source:TPersistent);override;
    destructor Destroy;override;

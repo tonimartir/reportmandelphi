@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -41,6 +41,8 @@ type
     FAppDataPath: string;
     FEditorReady: Boolean;
     FUpdatingFromBrowser: Boolean;
+    FHubDatabaseId: Int64;
+    FHubSchemaId: Int64;
     procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
@@ -53,6 +55,8 @@ type
     procedure LoadSQL(const ASQL: string);
     procedure SetSchema(const ASchema: string);
     property SQL: string read FSQL write SetSQL;
+    property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
+    property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
   end;
 
@@ -291,16 +295,50 @@ end;
 
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
-  LValue: TJSONValue;
+  LHttp: TRpDatabaseHttp;
+  LSql: string;
+  LPos: Integer;
   LRequestId: string;
+  LCompletions: TJSONArray;
+  LAIMode: string;
 begin
   LRequestId := '';
-  LValue := ARequest.Values['requestId'];
-  if LValue <> nil then
-    LRequestId := LValue.Value;
+  if ARequest.Values['requestId'] <> nil then
+    LRequestId := ARequest.Values['requestId'].Value;
 
-  // Enviar respuesta vacía para desbloquear el editor mientras implementamos el resto
-  SendAICompletions(TJSONArray.Create, LRequestId);
+  LSql := '';
+  if ARequest.Values['code'] <> nil then
+    LSql := ARequest.Values['code'].Value;
+
+  LPos := 0;
+  if ARequest.Values['position'] <> nil then
+    LPos := (ARequest.Values['position'] as TJSONNumber).AsInt;
+
+  LAIMode := FAISelection.ComboAIMode.Text;
+  if LAIMode = '' then
+    LAIMode := 'NaturalLanguage';
+
+  LHttp := TRpDatabaseHttp.Create;
+  try
+    LHttp.Url := TRpAuthManager.Instance.Url;
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.HubDatabaseId := FHubDatabaseId;
+
+    // Call SuggestSql which performs the POST to the Hub
+    LCompletions := LHttp.SuggestSql(LSql, LPos, LAIMode);
+
+    if LCompletions <> nil then
+    begin
+      SendAICompletions(LCompletions, LRequestId);
+    end
+    else
+    begin
+      // Return empty completions to unblock the editor promise
+      SendAICompletions(TJSONArray.Create, LRequestId);
+    end;
+  finally
+    LHttp.Free;
+  end;
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
