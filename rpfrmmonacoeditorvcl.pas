@@ -30,19 +30,20 @@ type
       AResult: HRESULT);
     procedure EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
       Args: TWebMessageReceivedEventArgs);
-    procedure TimerInitTimer(Sender: TObject);
   private
     FAISelection: TFRpAISelectionVCL;
     FSQL: string;
-    FIsReady: Boolean;
     FSchema: string;
     FOnContentChanged: TNotifyEvent;
-    FTimer: TTimer;
     FAppDataPath: string;
+    FEditorReady: Boolean;
+    procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const ACompletions: TJSONArray; const ARequestId: string);
     procedure UpdateAuthUI;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadSQL(const ASQL: string);
@@ -56,6 +57,8 @@ implementation
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
 
+
+
 constructor TFRpMonacoEditorVCL.Create(AOwner: TComponent);
 var
   LResStream: TResourceStream;
@@ -64,13 +67,13 @@ var
   LDllPath: string;
 begin
   inherited Create(AOwner);
-  FIsReady := False;
+  FEditorReady := False;
 
   // 1. Determine safe extraction path in %LOCALAPPDATA%
   FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
   if FAppDataPath = '' then FAppDataPath := TPath.GetTempPath;
   LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
-  
+
   // 2. Extract assets from resource if missing or if folder doesn't exist
   if not TDirectory.Exists(LDestPath) then
   begin
@@ -104,26 +107,22 @@ begin
   FAISelection.Align := alRight;
   FAISelection.Width := 320;
 
-  // Initialize Timer for delayed Edge creation
-  FTimer := TTimer.Create(Self);
-  FTimer.Interval := 2000;
-  FTimer.OnTimer := TimerInitTimer;
-  FTimer.Enabled := True;
 
-  // Ensure Edge events are hooked up
-  Edge.OnWebMessageReceived := EdgeWebMessageReceived;
 end;
 
-procedure TFRpMonacoEditorVCL.TimerInitTimer(Sender: TObject);
+procedure TFRpMonacoEditorVCL.CreateWnd;
 var
   LDestPath: string;
 begin
-  FTimer.Enabled := False;
-  
+  inherited;
+
   if not Edge.WebViewCreated then
   begin
+    Edge.HandleNeeded;
+
     LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco');
     Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+
     Edge.CreateWebView;
   end;
 end;
@@ -135,34 +134,34 @@ var
 begin
   if Succeeded(AResult) then
   begin
-    FIsReady := True;
-    
+    // Ensure Edge events are hooked up
+    Edge.OnWebMessageReceived := EdgeWebMessageReceived;
     LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
-    
-    LURL := 'file:///' + LDestPath.Replace('\', '/');
-    if not LURL.EndsWith('/') then LURL := LURL + '/';
-    LURL := LURL + 'index.html';
-    
-    Edge.Navigate(LURL);
 
-    if FSQL <> '' then
-      SetSQL(FSQL);
+    LURL := 'file:///' + LDestPath.Replace('\', '/');
+    if not LURL.EndsWith('/') then
+      LURL := LURL + '/';
+    LURL := LURL + 'index.html';
+
+    Edge.Navigate(LURL);
   end;
 end;
 
 procedure TFRpMonacoEditorVCL.SetSQL(const Value: string);
 var
-  LEscapedSQL: string;
+  LJSON: TJSONString;
+  LScript: string;
 begin
   FSQL := Value;
-  if FIsReady then
+  if FEditorReady then
   begin
-    // Simple escape for JS string
-    LEscapedSQL := StringReplace(FSQL, '\', '\\', [rfReplaceAll]);
-    LEscapedSQL := StringReplace(LEscapedSQL, '''', '\''', [rfReplaceAll]);
-    LEscapedSQL := StringReplace(LEscapedSQL, #13, '\r', [rfReplaceAll]);
-    LEscapedSQL := StringReplace(LEscapedSQL, #10, '\n', [rfReplaceAll]);
-    Edge.ExecuteScript('window.editor.setValue(''' + LEscapedSQL + ''');');
+    LJSON := TJSONString.Create(FSQL);
+    try
+      LScript := 'if (window.editor) { window.editor.setValue(' + LJSON.ToJSON + '); }';
+      Edge.ExecuteScript(LScript);
+    finally
+      LJSON.Free;
+    end;
   end;
 end;
 
@@ -176,45 +175,78 @@ begin
   FSchema := ASchema;
 end;
 
-procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
+procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
+  Sender: TCustomEdgeBrowser;
   Args: TWebMessageReceivedEventArgs);
 var
-  LArgs: ICoreWebView2WebMessageReceivedEventArgs;
-  LPMessage: PWideChar;
+  LP: PWideChar;
   LMessage: string;
-  LObj: TJSONObject;
-  LType: string;
 begin
-  if not Supports(Args, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
-    Exit;
+ // if not Supports(Args, ICoreWebView2WebMessageReceivedEventArgs, LArgs) then
+ //   Exit;
+
+  LP := nil;
+
+  if Succeeded(Args.ArgsInterface.TryGetWebMessageAsString(LP)) then
+  begin
+    if LP <> nil then
+      LMessage := LP;
+  end;
+(*
 
   if Succeeded(LArgs.Get_WebMessageAsJson(LPMessage)) then
   begin
     LMessage := LPMessage;
     CoTaskMemFree(LPMessage);
   end;
-  
-  if LMessage = '' then Exit;
-  LObj := TJSONObject.ParseJSONValue(LMessage) as TJSONObject;
-  try
-    if (LObj <> nil) and (LObj.Values['type'] <> nil) then
+
+  if LMessage = '' then
+    Exit;
+
+  TThread.Queue(nil,
+    procedure
     begin
-      LType := LObj.Values['type'].Value;
-      
-      if LType = 'GET_AI_COMPLETIONS' then
-        HandleAICompletionRequest(LObj)
-      else if LType = 'CONTENT_CHANGED' then
+      ProcessWebMessage(LMessage);
+    end);*)
+end;
+
+procedure TFRpMonacoEditorVCL.ProcessWebMessage(const LMessage: string);
+var
+  LVal: TJSONValue;
+  LObj: TJSONObject;
+  LType: string;
+begin
+  LVal := TJSONObject.ParseJSONValue(LMessage);
+  if LVal = nil then
+    Exit;
+
+  try
+    if LVal is TJSONString then
+    begin
+      FSQL := TJSONString(LVal).Value;
+      if Assigned(FOnContentChanged) then
+        FOnContentChanged(Self);
+    end
+    else if LVal is TJSONObject then
+    begin
+      LObj := TJSONObject(LVal);
+
+      if LObj.Values['type'] <> nil then
       begin
-        if LObj.Values['content'] <> nil then
+        LType := LObj.Values['type'].Value;
+
+        if LType = 'GET_AI_COMPLETIONS' then
+          HandleAICompletionRequest(LObj)
+        else if LType = 'EDITOR_READY' then
         begin
-          FSQL := LObj.Values['content'].Value;
-          if Assigned(FOnContentChanged) then
-            FOnContentChanged(Self);
+          FEditorReady := True;
+          if FSQL <> '' then
+            SetSQL(FSQL);
         end;
       end;
     end;
   finally
-    LObj.Free;
+    LVal.Free;
   end;
 end;
 
@@ -223,20 +255,11 @@ var
   LRequestId: string;
   LPrefix, LSuffix: string;
   LCompletions: TJSONArray;
-  LPresenter: TRpDatabaseHttp;
 begin
   LRequestId := ARequest.Values['requestId'].Value;
   LPrefix := ARequest.Values['prefix'].Value;
   LSuffix := ARequest.Values['suffix'].Value;
 
-  // We need a reference to the active database
-  // For now, I'll use a hack or assume it's set
-  // This should probably be passed during initialization
-  // LPresenter := ...
-  
-  // Dummy implementation for now, using the Hub driver if available
-  // In a real scenario, this would call TRpDatabaseHttp.SuggestSql
-  
   LCompletions := TJSONArray.Create;
   SendAICompletions(LCompletions, LRequestId);
 end;
@@ -251,7 +274,7 @@ begin
     LResponse.AddPair('type', 'AI_COMPLETIONS_RESPONSE');
     LResponse.AddPair('requestId', ARequestId);
     LResponse.AddPair('completions', ACompletions.Clone as TJSONArray);
-    
+
     LScript := 'window.receiveAICompletions(' + LResponse.ToJSON + ');';
     Edge.ExecuteScript(LScript);
   finally
@@ -261,7 +284,6 @@ end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
 begin
-  // Update FAISelection and BLogin state
 end;
 
 end.
