@@ -324,7 +324,6 @@ begin
 
   LHttp := TRpDatabaseHttp.Create;
   try
-    LHttp.Url := TRpAuthManager.Instance.Url;
     LHttp.Token := TRpAuthManager.Instance.Token;
     LHttp.InstallId := TRpAuthManager.Instance.InstallId;
     LHttp.HubDatabaseId := FHubDatabaseId;

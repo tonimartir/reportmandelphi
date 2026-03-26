@@ -2202,9 +2202,6 @@ begin
            FHttpDatabase.HubDatabaseId := StrToInt64Def(alist2.Values['HubDatabaseId'], 0);
 //           FHttpDatabase.InstallId := alist2.Values['InstallId'];
            
-           // If No URL in params, use default from AuthManager if available
-           if FHttpDatabase.Url = '' then
-              FHttpDatabase.Url := TRpAuthManager.Instance.Url;
            
            // Use AuthManager token if available and no ApiKey
            if (FHttpDatabase.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
