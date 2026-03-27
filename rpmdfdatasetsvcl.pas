@@ -294,7 +294,7 @@ end;
 
 procedure TFRpDatasetsVCL.BParamsClick(Sender: TObject);
 begin
- ShowParamDef(report.params,report.datainfo,report);
+ ShowParamDef(report.params,report.datainfo,report,True);
 end;
 
 procedure TFRpDatasetsVCL.LDatasetsClick(Sender: TObject);

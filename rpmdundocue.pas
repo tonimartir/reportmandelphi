@@ -968,15 +968,17 @@ begin
     else
     begin
       // Redo add = re-create
-      target := NewComponentByClassName(operation.componentClass, FReport);
-      TComponent(target).Name := operation.componentName;
       if parentSection <> nil then
       begin
+        target := NewComponentByClassName(operation.componentClass, FReport);
+        TComponent(target).Name := operation.componentName;
         compItem := parentSection.ReportComponents.Insert(operation.oldItemIndex);
         compItem.Component := TRpCommonPosComponent(target);
       end
       else if parentSubreport <> nil then
       begin
+        target := NewComponentByClassName(operation.componentClass, FReport);
+        TComponent(target).Name := operation.componentName;
         secItem := TRpSectionListItem(
           parentSubreport.Sections.Insert(operation.oldItemIndex));
         secItem.Section := TRpSection(target);

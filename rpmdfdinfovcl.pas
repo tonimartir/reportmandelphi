@@ -22,7 +22,7 @@ interface
 uses
  windows,Classes,sysutils,Dialogs,Controls,Graphics,Forms,rpmdconsts,
  types,variants,
- rptypes,rpdatainfo,rpreport,rpmdundocue,
+ rptypes,rpdatainfo,rpreport,rpmdundocue,rpparams,
  rpmdfdatasetsvcl,rpmdfconnectionvcl,
  StdCtrls, ExtCtrls, ComCtrls;
 
@@ -46,6 +46,7 @@ type
     fconnections:TFRpConnectionVCL;
     origDatabaseInfo:TRpDatabaseInfoList;
     origDataInfo:TRpDataInfoList;
+    origParams:TRpParamList;
     procedure SetReport(value:TRpReport);
     procedure RecordUndoChanges;
   public
@@ -59,7 +60,7 @@ procedure ShowDataConfig(report:TRpReport);
 
 implementation
 
-uses rpdbxconfigvcl, rpbasereport, rpxmlstream;
+uses rpdbxconfigvcl, rpbasereport, rpxmlstream, rpfparamsvcl;
 
 
 {$R *.dfm}
@@ -73,6 +74,8 @@ begin
  origDatabaseInfo.Assign(value.DatabaseInfo);
  origDataInfo:=TRpDataInfoList.Create(nil);
  origDataInfo.Assign(value.DataInfo);
+ origParams:=TRpParamList.Create(nil);
+ origParams.Assign(value.Params);
  fconnections:=TFRpConnectionVCL.Create(Self);
  fconnections.Parent:=TabConnections;
  fdatasets:=TFRpDatasetsVCL.Create(Self);
@@ -120,6 +123,7 @@ procedure TFRpDInfoVCL.FormDestroy(Sender: TObject);
 begin
  FreeAndNil(origDatabaseInfo);
  FreeAndNil(origDataInfo);
+ FreeAndNil(origParams);
 end;
 
 procedure TFRpDInfoVCL.PControlChange(Sender: TObject);
@@ -169,8 +173,10 @@ var
     end;
   end;
 begin
- if not Assigned(freport) or not Assigned(freport.UndoCue) then
+ if not Assigned(freport) then
   exit;
+ if not Assigned(freport.UndoCue) then
+  freport.UndoCue:=TUndoCue.Create(freport);
  undoCue:=TUndoCue(freport.UndoCue);
  groupId:=undoCue.GetGroupId;
  newDBInfo:=fconnections.DatabaseInfo;
@@ -319,6 +325,7 @@ begin
     op.Free;
   end;
  end;
+   RecordParamUndoChanges(origParams,fdatasets.Params,freport,groupId);
 end;
 
 procedure TFRpDInfoVCL.BOkClick(Sender: TObject);

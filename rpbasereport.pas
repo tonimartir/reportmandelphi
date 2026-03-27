@@ -2437,6 +2437,7 @@ var
  secItem: TRpSectionListItem;
  dbInfoItem: TRpDatabaseInfoItem;
  dInfoItem: TRpDataInfoItem;
+ paramItem: TRpParam;
  subItem: TRpSubReportListItem;
  subreport:TRpSubreport;
  compItem: TRpCommonListItem;
@@ -2459,6 +2460,15 @@ begin
    Result:=dInfoItem;
    exit;
   end
+ end;
+ for i:=0 to Params.Count-1 do
+ begin
+  paramItem:=Params.Items[i];
+  if paramItem.Name=itemName then
+  begin
+   Result:=paramItem;
+   exit;
+  end;
  end;
  for colItem in SubReports do
  begin
