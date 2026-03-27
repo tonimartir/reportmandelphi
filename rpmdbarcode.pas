@@ -3173,72 +3173,72 @@ end;
 
 procedure TRpBarcode.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   FExpression := value;
   exit;
  end;
- if (propName = 'Modul') or (propName = SRpSModul) then
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
  begin
   SetModul(value);
   exit;
  end;
- if (propName = 'Ratio') or (propName = SRpSRatio) then
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
  begin
   FRatio := Double(value);
   exit;
  end;
- if (propName = 'Typ') or (propName = SRpSBarcodeType) then
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
  begin
   FTyp := TRpBarcodeType(Integer(value));
   exit;
  end;
- if (propName = 'Checksum') or (propName = SRpSChecksum) then
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
  begin
   FCheckSum := value;
   exit;
  end;
- if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
  begin
   FDisplayFormat := value;
   exit;
  end;
- if (propName = 'Rotation') or (propName = SRpSRotation) then
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
  begin
   FRotation := value;
   exit;
  end;
- if propName = 'BColor' then
+ if SameText(propName, 'BColor') then
  begin
   FBColor := value;
   exit;
  end;
- if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
  begin
   FBackColor := value;
   exit;
  end;
- if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
  begin
   FTransparent := value;
   exit;
  end;
- if propName = 'NumColumns' then
+ if SameText(propName, 'NumColumns') then
  begin
   FNumColumns := value;
   exit;
  end;
- if propName = 'NumRows' then
+ if SameText(propName, 'NumRows') then
  begin
   FNumRows := value;
   exit;
  end;
- if propName = 'ECCLevel' then
+ if SameText(propName, 'ECCLevel') then
  begin
   SetECCLevel(value);
   exit;
  end;
- if propName = 'Truncated' then
+ if SameText(propName, 'Truncated') then
  begin
   FTruncated := value;
   exit;
@@ -3248,72 +3248,72 @@ end;
 
 function TRpBarcode.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   Result := FExpression;
   exit;
  end;
- if (propName = 'Modul') or (propName = SRpSModul) then
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
  begin
   Result := FModul;
   exit;
  end;
- if (propName = 'Ratio') or (propName = SRpSRatio) then
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
  begin
   Result := FRatio;
   exit;
  end;
- if (propName = 'Typ') or (propName = SRpSBarcodeType) then
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
  begin
   Result := Integer(FTyp);
   exit;
  end;
- if (propName = 'Checksum') or (propName = SRpSChecksum) then
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
  begin
   Result := FCheckSum;
   exit;
  end;
- if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
  begin
   Result := FDisplayFormat;
   exit;
  end;
- if (propName = 'Rotation') or (propName = SRpSRotation) then
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
  begin
   Result := FRotation;
   exit;
  end;
- if propName = 'BColor' then
+ if SameText(propName, 'BColor') then
  begin
   Result := FBColor;
   exit;
  end;
- if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
  begin
   Result := FBackColor;
   exit;
  end;
- if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
  begin
   Result := FTransparent;
   exit;
  end;
- if propName = 'NumColumns' then
+ if SameText(propName, 'NumColumns') then
  begin
   Result := FNumColumns;
   exit;
  end;
- if propName = 'NumRows' then
+ if SameText(propName, 'NumRows') then
  begin
   Result := FNumRows;
   exit;
  end;
- if propName = 'ECCLevel' then
+ if SameText(propName, 'ECCLevel') then
  begin
   Result := FECCLevel;
   exit;
  end;
- if propName = 'Truncated' then
+ if SameText(propName, 'Truncated') then
  begin
   Result := FTruncated;
   exit;

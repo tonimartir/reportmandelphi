@@ -1738,142 +1738,142 @@ procedure TRpSection.SetItemProperty(const propName: string; const value: Varian
 var
  tempStream: TMemoryStream;
 begin
- if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
   SetGroupName(value);
   exit;
  end;
- if (propName = 'ChangeBool') or (propName = SRpSChangeBool) then
+ if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
  begin
   FChangeBool := value;
   exit;
  end;
- if (propName = 'PageRepeat') or (propName = SRpSPageRepeat) then
+ if SameText(propName, 'PageRepeat') or SameText(propName, SRpSPageRepeat) then
  begin
   SetPageRepeat(value);
   exit;
  end;
- if propName = 'SkipPage' then
+ if SameText(propName, 'SkipPage') then
  begin
   FSkipPage := value;
   exit;
  end;
- if (propName = 'AlignBottom') or (propName = SRpAlignBottom) then
+ if SameText(propName, 'AlignBottom') or SameText(propName, SRpAlignBottom) then
  begin
   FAlignBottom := value;
   exit;
  end;
- if propName = 'SectionType' then
+ if SameText(propName, 'SectionType') then
  begin
   FSectionType := TRpSectionType(Integer(value));
   exit;
  end;
- if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
  begin
   FAutoExpand := value;
   exit;
  end;
- if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
  begin
   FAutoContract := value;
   exit;
  end;
- if propName = 'HorzDesp' then
+ if SameText(propName, 'HorzDesp') then
  begin
   FHorzDesp := value;
   exit;
  end;
- if propName = 'VertDesp' then
+ if SameText(propName, 'VertDesp') then
  begin
   FVertDesp := value;
   exit;
  end;
- if propName = 'ExternalFilename' then
+ if SameText(propName, 'ExternalFilename') then
  begin
   FExternalFilename := value;
   exit;
  end;
- if propName = 'ExternalConnection' then
+ if SameText(propName, 'ExternalConnection') then
  begin
   FExternalConnection := value;
   exit;
  end;
- if propName = 'ExternalTable' then
+ if SameText(propName, 'ExternalTable') then
  begin
   FExternalTable := value;
   exit;
  end;
- if propName = 'ExternalField' then
+ if SameText(propName, 'ExternalField') then
  begin
   FExternalField := value;
   exit;
  end;
- if propName = 'ExternalSearchField' then
+ if SameText(propName, 'ExternalSearchField') then
  begin
   FExternalSearchField := value;
   exit;
  end;
- if propName = 'ExternalSearchValue' then
+ if SameText(propName, 'ExternalSearchValue') then
  begin
   FExternalSearchValue := value;
   exit;
  end;
- if propName = 'StreamFormat' then
+ if SameText(propName, 'StreamFormat') then
  begin
   FStreamFormat := TRpStreamFormat(Integer(value));
   exit;
  end;
- if (propName = 'BeginPage') or (propName = SRpSBeginPage) then
+ if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
  begin
   FBeginPage := value;
   exit;
  end;
- if propName = 'FooterAtReportEnd' then
+ if SameText(propName, 'FooterAtReportEnd') then
  begin
   FFooterAtReportEnd := value;
   exit;
  end;
- if propName = 'SkipRelativeH' then
+ if SameText(propName, 'SkipRelativeH') then
  begin
   FSkipRelativeH := value;
   exit;
  end;
- if propName = 'SkipRelativeV' then
+ if SameText(propName, 'SkipRelativeV') then
  begin
   FSkipRelativeV := value;
   exit;
  end;
- if (propName = 'SkipType') or (propName = SRpSSkipType) then
+ if SameText(propName, 'SkipType') or SameText(propName, SRpSSkipType) then
  begin
   FSkipType := TRpSkipType(Integer(value));
   exit;
  end;
- if propName = 'IniNumPage' then
+ if SameText(propName, 'IniNumPage') then
  begin
   SetIniNumPage(value);
   exit;
  end;
- if propName = 'Global' then
+ if SameText(propName, 'Global') then
  begin
   FGlobal := value;
   exit;
  end;
- if propName = 'dpires' then
+ if SameText(propName, 'dpires') then
  begin
   Fdpires := value;
   exit;
  end;
- if propName = 'BackStyle' then
+ if SameText(propName, 'BackStyle') then
  begin
   FBackStyle := TRpBackStyle(Integer(value));
   exit;
  end;
- if propName = 'DrawStyle' then
+ if SameText(propName, 'DrawStyle') then
  begin
   FDrawStyle := TRpImageDrawStyle(Integer(value));
   exit;
  end;
- if propName = 'CachedImage' then
+ if SameText(propName, 'CachedImage') then
  begin
   FCachedImage := TRpCachedImage(Integer(value));
   exit;
@@ -1900,142 +1900,142 @@ end;
 
 function TRpSection.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
   Result := FGroupName;
   exit;
  end;
- if (propName = 'ChangeBool') or (propName = SRpSChangeBool) then
+ if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
  begin
   Result := FChangeBool;
   exit;
  end;
- if (propName = 'PageRepeat') or (propName = SRpSPageRepeat) then
+ if SameText(propName, 'PageRepeat') or SameText(propName, SRpSPageRepeat) then
  begin
   Result := FPageRepeat;
   exit;
  end;
- if propName = 'SkipPage' then
+ if SameText(propName, 'SkipPage') then
  begin
   Result := FSkipPage;
   exit;
  end;
- if (propName = 'AlignBottom') or (propName = SRpAlignBottom) then
+ if SameText(propName, 'AlignBottom') or SameText(propName, SRpAlignBottom) then
  begin
   Result := FAlignBottom;
   exit;
  end;
- if propName = 'SectionType' then
+ if SameText(propName, 'SectionType') then
  begin
   Result := Integer(FSectionType);
   exit;
  end;
- if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
  begin
   Result := FAutoExpand;
   exit;
  end;
- if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
  begin
   Result := FAutoContract;
   exit;
  end;
- if propName = 'HorzDesp' then
+ if SameText(propName, 'HorzDesp') then
  begin
   Result := FHorzDesp;
   exit;
  end;
- if propName = 'VertDesp' then
+ if SameText(propName, 'VertDesp') then
  begin
   Result := FVertDesp;
   exit;
  end;
- if propName = 'ExternalFilename' then
+ if SameText(propName, 'ExternalFilename') then
  begin
   Result := FExternalFilename;
   exit;
  end;
- if propName = 'ExternalConnection' then
+ if SameText(propName, 'ExternalConnection') then
  begin
   Result := FExternalConnection;
   exit;
  end;
- if propName = 'ExternalTable' then
+ if SameText(propName, 'ExternalTable') then
  begin
   Result := FExternalTable;
   exit;
  end;
- if propName = 'ExternalField' then
+ if SameText(propName, 'ExternalField') then
  begin
   Result := FExternalField;
   exit;
  end;
- if propName = 'ExternalSearchField' then
+ if SameText(propName, 'ExternalSearchField') then
  begin
   Result := FExternalSearchField;
   exit;
  end;
- if propName = 'ExternalSearchValue' then
+ if SameText(propName, 'ExternalSearchValue') then
  begin
   Result := FExternalSearchValue;
   exit;
  end;
- if propName = 'StreamFormat' then
+ if SameText(propName, 'StreamFormat') then
  begin
   Result := Integer(FStreamFormat);
   exit;
  end;
- if (propName = 'BeginPage') or (propName = SRpSBeginPage) then
+ if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
  begin
   Result := FBeginPage;
   exit;
  end;
- if propName = 'FooterAtReportEnd' then
+ if SameText(propName, 'FooterAtReportEnd') then
  begin
   Result := FFooterAtReportEnd;
   exit;
  end;
- if propName = 'SkipRelativeH' then
+ if SameText(propName, 'SkipRelativeH') then
  begin
   Result := FSkipRelativeH;
   exit;
  end;
- if propName = 'SkipRelativeV' then
+ if SameText(propName, 'SkipRelativeV') then
  begin
   Result := FSkipRelativeV;
   exit;
  end;
- if (propName = 'SkipType') or (propName = SRpSSkipType) then
+ if SameText(propName, 'SkipType') or SameText(propName, SRpSSkipType) then
  begin
   Result := Integer(FSkipType);
   exit;
  end;
- if propName = 'IniNumPage' then
+ if SameText(propName, 'IniNumPage') then
  begin
   Result := FIniNumPage;
   exit;
  end;
- if propName = 'Global' then
+ if SameText(propName, 'Global') then
  begin
   Result := FGlobal;
   exit;
  end;
- if propName = 'dpires' then
+ if SameText(propName, 'dpires') then
  begin
   Result := Fdpires;
   exit;
  end;
- if propName = 'BackStyle' then
+ if SameText(propName, 'BackStyle') then
  begin
   Result := Integer(FBackStyle);
   exit;
  end;
- if propName = 'DrawStyle' then
+ if SameText(propName, 'DrawStyle') then
  begin
   Result := Integer(FDrawStyle);
   exit;
  end;
- if propName = 'CachedImage' then
+ if SameText(propName, 'CachedImage') then
  begin
   Result := Integer(FCachedImage);
   exit;

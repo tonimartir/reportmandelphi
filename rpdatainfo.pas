@@ -1119,42 +1119,42 @@ end;
 
 procedure TRpDataInfoItem.SetItemProperty(const propName: string; const value: Variant);
 begin
- if propName = 'Name' then
+ if SameText(propName, 'Name') then
  begin
   FName := value;
   exit;
  end;
- if propName = 'Alias' then
+ if SameText(propName, 'Alias') then
  begin
   SetAlias(value);
   exit;
  end;
- if propName = 'DatabaseAlias' then
+ if SameText(propName, 'DatabaseAlias') then
  begin
   SetDatabaseAlias(value);
   exit;
  end;
- if propName = 'SQL' then
+ if SameText(propName, 'SQL') then
  begin
   SetSQL(value);
   exit;
  end;
- if propName = 'DataSource' then
+ if SameText(propName, 'DataSource') then
  begin
   SetDataSource(value);
   exit;
  end;
- if propName = 'GroupUnion' then
+ if SameText(propName, 'GroupUnion') then
  begin
   FGroupUnion := value;
   exit;
  end;
- if propName = 'OpenOnStart' then
+ if SameText(propName, 'OpenOnStart') then
  begin
   FOpenOnStart := value;
   exit;
  end;
- if propName = 'ParallelUnion' then
+ if SameText(propName, 'ParallelUnion') then
  begin
   FParallelUnion := value;
   exit;
@@ -1164,42 +1164,42 @@ end;
 
 function TRpDataInfoItem.GetItemProperty(const propName: string): Variant;
 begin
- if propName = 'Name' then
+ if SameText(propName, 'Name') then
  begin
   Result := FName;
   exit;
  end;
- if propName = 'Alias' then
+ if SameText(propName, 'Alias') then
  begin
   Result := FAlias;
   exit;
  end;
- if propName = 'DatabaseAlias' then
+ if SameText(propName, 'DatabaseAlias') then
  begin
   Result := FDatabaseAlias;
   exit;
  end;
- if propName = 'SQL' then
+ if SameText(propName, 'SQL') then
  begin
   Result := FSQL;
   exit;
  end;
- if propName = 'DataSource' then
+ if SameText(propName, 'DataSource') then
  begin
   Result := FDataSource;
   exit;
  end;
- if propName = 'GroupUnion' then
+ if SameText(propName, 'GroupUnion') then
  begin
   Result := FGroupUnion;
   exit;
  end;
- if propName = 'OpenOnStart' then
+ if SameText(propName, 'OpenOnStart') then
  begin
   Result := FOpenOnStart;
   exit;
  end;
- if propName = 'ParallelUnion' then
+ if SameText(propName, 'ParallelUnion') then
  begin
   Result := FParallelUnion;
   exit;
@@ -1419,52 +1419,52 @@ end;
 
 procedure TRpDatabaseInfoItem.SetItemProperty(const propName: string; const value: Variant);
 begin
- if propName = 'Name' then
+ if SameText(propName, 'Name') then
  begin
   FName := value;
   exit;
  end;
- if propName = 'Alias' then
+ if SameText(propName, 'Alias') then
  begin
   SetAlias(value);
   exit;
  end;
- if propName = 'Driver' then
+ if SameText(propName, 'Driver') then
  begin
   FDriver := TRpDbDriver(Integer(value));
   exit;
  end;
- if propName = 'ConfigFile' then
+ if SameText(propName, 'ConfigFile') then
  begin
   SetConfigFile(value);
   exit;
  end;
- if propName = 'LoginPrompt' then
+ if SameText(propName, 'LoginPrompt') then
  begin
   SetLoginPrompt(value);
   exit;
  end;
- if propName = 'LoadParams' then
+ if SameText(propName, 'LoadParams') then
  begin
   SetLoadParams(value);
   exit;
  end;
- if propName = 'LoadDriverParams' then
+ if SameText(propName, 'LoadDriverParams') then
  begin
   SetLoadDriverParams(value);
   exit;
  end;
- if propName = 'ADOConnectionString' then
+ if SameText(propName, 'ADOConnectionString') then
  begin
   FADOConnectionString := value;
   exit;
  end;
- if propName = 'ProviderFactory' then
+ if SameText(propName, 'ProviderFactory') then
  begin
   ProviderFactory := value;
   exit;
  end;
- if propName = 'DotNetDriver' then
+ if SameText(propName, 'DotNetDriver') then
  begin
   DotNetDriver := value;
   exit;
@@ -1474,52 +1474,52 @@ end;
 
 function TRpDatabaseInfoItem.GetItemProperty(const propName: string): Variant;
 begin
- if propName = 'Name' then
+ if SameText(propName, 'Name') then
  begin
   Result := FName;
   exit;
  end;
- if propName = 'Alias' then
+ if SameText(propName, 'Alias') then
  begin
   Result := FAlias;
   exit;
  end;
- if propName = 'Driver' then
+ if SameText(propName, 'Driver') then
  begin
   Result := Integer(FDriver);
   exit;
  end;
- if propName = 'ConfigFile' then
+ if SameText(propName, 'ConfigFile') then
  begin
   Result := FConfigFile;
   exit;
  end;
- if propName = 'LoginPrompt' then
+ if SameText(propName, 'LoginPrompt') then
  begin
   Result := FLoginPrompt;
   exit;
  end;
- if propName = 'LoadParams' then
+ if SameText(propName, 'LoadParams') then
  begin
   Result := FLoadParams;
   exit;
  end;
- if propName = 'LoadDriverParams' then
+ if SameText(propName, 'LoadDriverParams') then
  begin
   Result := FLoadDriverParams;
   exit;
  end;
- if propName = 'ADOConnectionString' then
+ if SameText(propName, 'ADOConnectionString') then
  begin
   Result := FADOConnectionString;
   exit;
  end;
- if propName = 'ProviderFactory' then
+ if SameText(propName, 'ProviderFactory') then
  begin
   Result := ProviderFactory;
   exit;
  end;
- if propName = 'DotNetDriver' then
+ if SameText(propName, 'DotNetDriver') then
  begin
   Result := DotNetDriver;
   exit;

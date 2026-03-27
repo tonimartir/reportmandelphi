@@ -429,32 +429,32 @@ end;
 
 procedure TRpShape.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'BrushStyle') or (propName = SRpSBrushStyle) then
+ if SameText(propName, 'BrushStyle') or SameText(propName, SRpSBrushStyle) then
  begin
   FBrushStyle := value;
   exit;
  end;
- if (propName = 'BrushColor') or (propName = SRpSBrushColor) then
+ if SameText(propName, 'BrushColor') or SameText(propName, SRpSBrushColor) then
  begin
   FBrushColor := value;
   exit;
  end;
- if (propName = 'PenStyle') or (propName = SRpSPenStyle) then
+ if SameText(propName, 'PenStyle') or SameText(propName, SRpSPenStyle) then
  begin
   FPenStyle := value;
   exit;
  end;
- if (propName = 'PenColor') or (propName = SRpSPenColor) then
+ if SameText(propName, 'PenColor') or SameText(propName, SRpSPenColor) then
  begin
   FPenColor := value;
   exit;
  end;
- if (propName = 'Shape') or (propName = SRpSShape) then
+ if SameText(propName, 'Shape') or SameText(propName, SRpSShape) then
  begin
   FShape := TRpShapeType(Integer(value));
   exit;
  end;
- if (propName = 'PenWidth') or (propName = SRpSPenWidth) then
+ if SameText(propName, 'PenWidth') or SameText(propName, SRpSPenWidth) then
  begin
   FPenWidth := value;
   exit;
@@ -464,32 +464,32 @@ end;
 
 function TRpShape.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'BrushStyle') or (propName = SRpSBrushStyle) then
+ if SameText(propName, 'BrushStyle') or SameText(propName, SRpSBrushStyle) then
  begin
   Result := FBrushStyle;
   exit;
  end;
- if (propName = 'BrushColor') or (propName = SRpSBrushColor) then
+ if SameText(propName, 'BrushColor') or SameText(propName, SRpSBrushColor) then
  begin
   Result := FBrushColor;
   exit;
  end;
- if (propName = 'PenStyle') or (propName = SRpSPenStyle) then
+ if SameText(propName, 'PenStyle') or SameText(propName, SRpSPenStyle) then
  begin
   Result := FPenStyle;
   exit;
  end;
- if (propName = 'PenColor') or (propName = SRpSPenColor) then
+ if SameText(propName, 'PenColor') or SameText(propName, SRpSPenColor) then
  begin
   Result := FPenColor;
   exit;
  end;
- if (propName = 'Shape') or (propName = SRpSShape) then
+ if SameText(propName, 'Shape') or SameText(propName, SRpSShape) then
  begin
   Result := Integer(FShape);
   exit;
  end;
- if (propName = 'PenWidth') or (propName = SRpSPenWidth) then
+ if SameText(propName, 'PenWidth') or SameText(propName, SRpSPenWidth) then
  begin
   Result := FPenWidth;
   exit;
@@ -503,32 +503,32 @@ procedure TRpImage.SetItemProperty(const propName: string; const value: Variant)
 var
  tempStream: TMemoryStream;
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   FExpression := value;
   exit;
  end;
- if (propName = 'Rotation') or (propName = SRpSRotation) then
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
  begin
   FRotation := value;
   exit;
  end;
- if propName = 'DrawStyle' then
+ if SameText(propName, 'DrawStyle') then
  begin
   FDrawStyle := TRpImageDrawStyle(Integer(value));
   exit;
  end;
- if propName = 'dpires' then
+ if SameText(propName, 'dpires') then
  begin
   Fdpires := value;
   exit;
  end;
- if propName = 'CopyMode' then
+ if SameText(propName, 'CopyMode') then
  begin
   FCopyMode := value;
   exit;
  end;
- if propName = 'CachedImage' then
+ if SameText(propName, 'CachedImage') then
  begin
   FCachedImage := TRpCachedImage(Integer(value));
   exit;
@@ -557,32 +557,32 @@ end;
 
 function TRpImage.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   Result := FExpression;
   exit;
  end;
- if (propName = 'Rotation') or (propName = SRpSRotation) then
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
  begin
   Result := FRotation;
   exit;
  end;
- if propName = 'DrawStyle' then
+ if SameText(propName, 'DrawStyle') then
  begin
   Result := Integer(FDrawStyle);
   exit;
  end;
- if propName = 'dpires' then
+ if SameText(propName, 'dpires') then
  begin
   Result := Fdpires;
   exit;
  end;
- if propName = 'CopyMode' then
+ if SameText(propName, 'CopyMode') then
  begin
   Result := FCopyMode;
   exit;
  end;
- if propName = 'CachedImage' then
+ if SameText(propName, 'CachedImage') then
  begin
   Result := Integer(FCachedImage);
   exit;

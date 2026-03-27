@@ -982,7 +982,7 @@ end;
 
 procedure TRpLabel.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'Text') or (propName = SRpSText) then
+ if SameText(propName, 'Text') or SameText(propName, SRpSText) then
  begin
   FWideText := value;
   UpdateAllStrings;
@@ -993,7 +993,7 @@ end;
 
 function TRpLabel.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'Text') or (propName = SRpSText) then
+ if SameText(propName, 'Text') or SameText(propName, SRpSText) then
  begin
   Result := FWideText;
   exit;
@@ -1005,82 +1005,82 @@ end;
 
 procedure TRpExpression.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   FExpression := value;
   exit;
  end;
- if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
  begin
   FDisplayFormat := value;
   exit;
  end;
- if (propName = 'DataType') or (propName = SRpSDataType) then
+ if SameText(propName, 'DataType') or SameText(propName, SRpSDataType) then
  begin
   FDataType := TRpParamType(Integer(value));
   exit;
  end;
- if (propName = 'Identifier') or (propName = SRpSIdentifier) then
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
  begin
   SetIdentifier(value);
   exit;
  end;
- if (propName = 'Aggregate') or (propName = SRpSAggregate) then
+ if SameText(propName, 'Aggregate') or SameText(propName, SRpSAggregate) then
  begin
   FAggregate := TRpAggregate(Integer(value));
   exit;
  end;
- if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
   FGroupName := value;
   exit;
  end;
- if (propName = 'AgType') or (propName = SRpSAgeType) then
+ if SameText(propName, 'AgType') or SameText(propName, SRpSAgeType) then
  begin
   FAgType := TRpAggregateType(Integer(value));
   exit;
  end;
- if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
  begin
   FAutoExpand := value;
   exit;
  end;
- if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
  begin
   FAutoContract := value;
   exit;
  end;
- if (propName = 'PrintOnlyOne') or (propName = SRpSOnlyOne) then
+ if SameText(propName, 'PrintOnlyOne') or SameText(propName, SRpSOnlyOne) then
  begin
   FPrintOnlyOne := value;
   exit;
  end;
- if propName = 'PrintNulls' then
+ if SameText(propName, 'PrintNulls') then
  begin
   FPrintNulls := value;
   exit;
  end;
- if propName = 'ExportDisplayFormat' then
+ if SameText(propName, 'ExportDisplayFormat') then
  begin
   FExportDisplayFormat := value;
   exit;
  end;
- if propName = 'ExportLine' then
+ if SameText(propName, 'ExportLine') then
  begin
   FExportLine := value;
   exit;
  end;
- if propName = 'ExportPosition' then
+ if SameText(propName, 'ExportPosition') then
  begin
   FExportPosition := value;
   exit;
  end;
- if propName = 'ExportSize' then
+ if SameText(propName, 'ExportSize') then
  begin
   FExportSize := value;
   exit;
  end;
- if propName = 'ExportDoNewLine' then
+ if SameText(propName, 'ExportDoNewLine') then
  begin
   FExportDoNewLine := value;
   exit;
@@ -1090,82 +1090,82 @@ end;
 
 function TRpExpression.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'Expression') or (propName = SRpSExpression) then
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   Result := FExpression;
   exit;
  end;
- if (propName = 'DisplayFormat') or (propName = SRpSDisplayFormat) then
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
  begin
   Result := FDisplayFormat;
   exit;
  end;
- if (propName = 'DataType') or (propName = SRpSDataType) then
+ if SameText(propName, 'DataType') or SameText(propName, SRpSDataType) then
  begin
   Result := Integer(FDataType);
   exit;
  end;
- if (propName = 'Identifier') or (propName = SRpSIdentifier) then
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
  begin
   Result := FIdentifier;
   exit;
  end;
- if (propName = 'Aggregate') or (propName = SRpSAggregate) then
+ if SameText(propName, 'Aggregate') or SameText(propName, SRpSAggregate) then
  begin
   Result := Integer(FAggregate);
   exit;
  end;
- if (propName = 'GroupName') or (propName = SRpSGroupName) then
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
   Result := FGroupName;
   exit;
  end;
- if (propName = 'AgType') or (propName = SRpSAgeType) then
+ if SameText(propName, 'AgType') or SameText(propName, SRpSAgeType) then
  begin
   Result := Integer(FAgType);
   exit;
  end;
- if (propName = 'AutoExpand') or (propName = SRpSAutoExpand) then
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
  begin
   Result := FAutoExpand;
   exit;
  end;
- if (propName = 'AutoContract') or (propName = SRpSAutoContract) then
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
  begin
   Result := FAutoContract;
   exit;
  end;
- if (propName = 'PrintOnlyOne') or (propName = SRpSOnlyOne) then
+ if SameText(propName, 'PrintOnlyOne') or SameText(propName, SRpSOnlyOne) then
  begin
   Result := FPrintOnlyOne;
   exit;
  end;
- if propName = 'PrintNulls' then
+ if SameText(propName, 'PrintNulls') then
  begin
   Result := FPrintNulls;
   exit;
  end;
- if propName = 'ExportDisplayFormat' then
+ if SameText(propName, 'ExportDisplayFormat') then
  begin
   Result := FExportDisplayFormat;
   exit;
  end;
- if propName = 'ExportLine' then
+ if SameText(propName, 'ExportLine') then
  begin
   Result := FExportLine;
   exit;
  end;
- if propName = 'ExportPosition' then
+ if SameText(propName, 'ExportPosition') then
  begin
   Result := FExportPosition;
   exit;
  end;
- if propName = 'ExportSize' then
+ if SameText(propName, 'ExportSize') then
  begin
   Result := FExportSize;
   exit;
  end;
- if propName = 'ExportDoNewLine' then
+ if SameText(propName, 'ExportDoNewLine') then
  begin
   Result := FExportDoNewLine;
   exit;

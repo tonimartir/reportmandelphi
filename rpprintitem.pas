@@ -639,32 +639,32 @@ end;
 
 procedure TRpCommonComponent.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'Width') or (propName = SRpSWidth) then
+ if SameText(propName, 'Width') or SameText(propName, SRpSWidth) then
  begin
   Width := value;
   exit;
  end;
- if (propName = 'Height') or (propName = SRpSHeight) then
+ if SameText(propName, 'Height') or SameText(propName, SRpSHeight) then
  begin
   Height := value;
   exit;
  end;
- if (propName = 'PrintCondition') or (propName = SRpSPrintCondition) then
+ if SameText(propName, 'PrintCondition') or SameText(propName, SRpSPrintCondition) then
  begin
   FPrintCondition := value;
   exit;
  end;
- if (propName = 'DoBeforePrint') or (propName = SRpSBeforePrint) then
+ if SameText(propName, 'DoBeforePrint') or SameText(propName, SRpSBeforePrint) then
  begin
   FDoBeforePrint := value;
   exit;
  end;
- if (propName = 'DoAfterPrint') or (propName = SRpSAfterPrint) then
+ if SameText(propName, 'DoAfterPrint') or SameText(propName, SRpSAfterPrint) then
  begin
   FDoAfterPrint := value;
   exit;
  end;
- if propName = 'Visible' then
+ if SameText(propName, 'Visible') then
  begin
   FVisible := value;
   exit;
@@ -674,32 +674,32 @@ end;
 
 function TRpCommonComponent.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'Width') or (propName = SRpSWidth) then
+ if SameText(propName, 'Width') or SameText(propName, SRpSWidth) then
  begin
   Result := FWidth;
   exit;
  end;
- if (propName = 'Height') or (propName = SRpSHeight) then
+ if SameText(propName, 'Height') or SameText(propName, SRpSHeight) then
  begin
   Result := FHeight;
   exit;
  end;
- if (propName = 'PrintCondition') or (propName = SRpSPrintCondition) then
+ if SameText(propName, 'PrintCondition') or SameText(propName, SRpSPrintCondition) then
  begin
   Result := FPrintCondition;
   exit;
  end;
- if (propName = 'DoBeforePrint') or (propName = SRpSBeforePrint) then
+ if SameText(propName, 'DoBeforePrint') or SameText(propName, SRpSBeforePrint) then
  begin
   Result := FDoBeforePrint;
   exit;
  end;
- if (propName = 'DoAfterPrint') or (propName = SRpSAfterPrint) then
+ if SameText(propName, 'DoAfterPrint') or SameText(propName, SRpSAfterPrint) then
  begin
   Result := FDoAfterPrint;
   exit;
  end;
- if propName = 'Visible' then
+ if SameText(propName, 'Visible') then
  begin
   Result := FVisible;
   exit;
@@ -711,22 +711,22 @@ end;
 
 procedure TRpCommonPosComponent.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'PosX') or (propName = SRpSLeft) then
+ if SameText(propName, 'PosX') or SameText(propName, SRpSLeft) then
  begin
   FPosX := value;
   exit;
  end;
- if (propName = 'PosY') or (propName = SRpSTop) then
+ if SameText(propName, 'PosY') or SameText(propName, SRpSTop) then
  begin
   FPosY := value;
   exit;
  end;
- if (propName = 'Align') or (propName = SRPAlign) then
+ if SameText(propName, 'Align') or SameText(propName, SRPAlign) then
  begin
   FAlign := TRpPosAlign(Integer(value));
   exit;
  end;
- if (propName = 'AnnotationExpression') or (propName = SRpSAnnotation) then
+ if SameText(propName, 'AnnotationExpression') or SameText(propName, SRpSAnnotation) then
  begin
   FAnnotationExpression := value;
   exit;
@@ -736,22 +736,22 @@ end;
 
 function TRpCommonPosComponent.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'PosX') or (propName = SRpSLeft) then
+ if SameText(propName, 'PosX') or SameText(propName, SRpSLeft) then
  begin
   Result := FPosX;
   exit;
  end;
- if (propName = 'PosY') or (propName = SRpSTop) then
+ if SameText(propName, 'PosY') or SameText(propName, SRpSTop) then
  begin
   Result := FPosY;
   exit;
  end;
- if (propName = 'Align') or (propName = SRPAlign) then
+ if SameText(propName, 'Align') or SameText(propName, SRPAlign) then
  begin
   Result := Integer(FAlign);
   exit;
  end;
- if (propName = 'AnnotationExpression') or (propName = SRpSAnnotation) then
+ if SameText(propName, 'AnnotationExpression') or SameText(propName, SRpSAnnotation) then
  begin
   Result := FAnnotationExpression;
   exit;
@@ -763,97 +763,97 @@ end;
 
 procedure TRpGenTextComponent.SetItemProperty(const propName: string; const value: Variant);
 begin
- if (propName = 'WFontName') or (propName = SRpSWFontName) then
+ if SameText(propName, 'WFontName') or SameText(propName, SRpSWFontName) then
  begin
   FWFontName := value;
   exit;
  end;
- if (propName = 'LFontName') or (propName = SRpSLFontName) then
+ if SameText(propName, 'LFontName') or SameText(propName, SRpSLFontName) then
  begin
   FLFontName := value;
   exit;
  end;
- if (propName = 'FontSize') or (propName = SRpSFontSize) then
+ if SameText(propName, 'FontSize') or SameText(propName, SRpSFontSize) then
  begin
   FFontSize := value;
   exit;
  end;
- if (propName = 'FontColor') or (propName = SRpSFontColor) then
+ if SameText(propName, 'FontColor') or SameText(propName, SRpSFontColor) then
  begin
   FFontColor := value;
   exit;
  end;
- if (propName = 'FontStyle') or (propName = SRpSFontStyle) then
+ if SameText(propName, 'FontStyle') or SameText(propName, SRpSFontStyle) then
  begin
   FFontStyle := value;
   exit;
  end;
- if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
  begin
   FBackColor := value;
   exit;
  end;
- if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
  begin
   FTransparent := value;
   exit;
  end;
- if (propName = 'CutText') or (propName = SRpSCutText) then
+ if SameText(propName, 'CutText') or SameText(propName, SRpSCutText) then
  begin
   FCutText := value;
   exit;
  end;
- if (propName = 'WordWrap') or (propName = SRpSWordWrap) then
+ if SameText(propName, 'WordWrap') or SameText(propName, SRpSWordWrap) then
  begin
   FWordWrap := value;
   exit;
  end;
- if (propName = 'WordBreak') then
+ if SameText(propName, 'WordBreak') then
  begin
   FWordBreak := value;
   exit;
  end;
- if (propName = 'SingleLine') or (propName = SRpSSingleLine) then
+ if SameText(propName, 'SingleLine') or SameText(propName, SRpSSingleLine) then
  begin
   FSingleLine := value;
   exit;
  end;
- if (propName = 'Alignment') or (propName = SRpSAlignment) then
+ if SameText(propName, 'Alignment') or SameText(propName, SRpSAlignment) then
  begin
   FAlignment := value;
   exit;
  end;
- if (propName = 'VAlignment') or (propName = SRpSVAlignment) then
+ if SameText(propName, 'VAlignment') or SameText(propName, SRpSVAlignment) then
  begin
   FVAlignment := value;
   exit;
  end;
- if (propName = 'FontRotation') or (propName = SRpSFontRotation) then
+ if SameText(propName, 'FontRotation') or SameText(propName, SRpSFontRotation) then
  begin
   FFontRotation := value;
   exit;
  end;
- if (propName = 'Type1Font') or (propName = SRpSType1Font) then
+ if SameText(propName, 'Type1Font') or SameText(propName, SRpSType1Font) then
  begin
   FType1Font := TRpType1Font(Integer(value));
   exit;
  end;
- if (propName = 'PrintStep') or (propName = SRpSFontStep) then
+ if SameText(propName, 'PrintStep') or SameText(propName, SRpSFontStep) then
  begin
   FPrintStep := TRpSelectFontStep(Integer(value));
   exit;
  end;
- if propName = 'InterLine' then
+ if SameText(propName, 'InterLine') then
  begin
   FInterLine := value;
   exit;
  end;
- if propName = 'MultiPage' then
+ if SameText(propName, 'MultiPage') then
  begin
   FMultiPage := value;
   exit;
  end;
- if (propName = 'IsHtml') then
+ if SameText(propName, 'IsHtml') then
  begin
   FIsHtml := value;
   exit;
@@ -863,97 +863,97 @@ end;
 
 function TRpGenTextComponent.GetItemProperty(const propName: string): Variant;
 begin
- if (propName = 'WFontName') or (propName = SRpSWFontName) then
+ if SameText(propName, 'WFontName') or SameText(propName, SRpSWFontName) then
  begin
   Result := FWFontName;
   exit;
  end;
- if (propName = 'LFontName') or (propName = SRpSLFontName) then
+ if SameText(propName, 'LFontName') or SameText(propName, SRpSLFontName) then
  begin
   Result := FLFontName;
   exit;
  end;
- if (propName = 'FontSize') or (propName = SRpSFontSize) then
+ if SameText(propName, 'FontSize') or SameText(propName, SRpSFontSize) then
  begin
   Result := FFontSize;
   exit;
  end;
- if (propName = 'FontColor') or (propName = SRpSFontColor) then
+ if SameText(propName, 'FontColor') or SameText(propName, SRpSFontColor) then
  begin
   Result := FFontColor;
   exit;
  end;
- if (propName = 'FontStyle') or (propName = SRpSFontStyle) then
+ if SameText(propName, 'FontStyle') or SameText(propName, SRpSFontStyle) then
  begin
   Result := FFontStyle;
   exit;
  end;
- if (propName = 'BackColor') or (propName = SRpSBackColor) then
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
  begin
   Result := FBackColor;
   exit;
  end;
- if (propName = 'Transparent') or (propName = SRpSTransparent) then
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
  begin
   Result := FTransparent;
   exit;
  end;
- if (propName = 'CutText') or (propName = SRpSCutText) then
+ if SameText(propName, 'CutText') or SameText(propName, SRpSCutText) then
  begin
   Result := FCutText;
   exit;
  end;
- if (propName = 'WordWrap') or (propName = SRpSWordWrap) then
+ if SameText(propName, 'WordWrap') or SameText(propName, SRpSWordWrap) then
  begin
   Result := FWordWrap;
   exit;
  end;
- if (propName = 'WordBreak') then
+ if SameText(propName, 'WordBreak') then
  begin
   Result := FWordBreak;
   exit;
  end;
- if (propName = 'SingleLine') or (propName = SRpSSingleLine) then
+ if SameText(propName, 'SingleLine') or SameText(propName, SRpSSingleLine) then
  begin
   Result := FSingleLine;
   exit;
  end;
- if (propName = 'Alignment') or (propName = SRpSAlignment) then
+ if SameText(propName, 'Alignment') or SameText(propName, SRpSAlignment) then
  begin
   Result := FAlignment;
   exit;
  end;
- if (propName = 'VAlignment') or (propName = SRpSVAlignment) then
+ if SameText(propName, 'VAlignment') or SameText(propName, SRpSVAlignment) then
  begin
   Result := FVAlignment;
   exit;
  end;
- if (propName = 'FontRotation') or (propName = SRpSFontRotation) then
+ if SameText(propName, 'FontRotation') or SameText(propName, SRpSFontRotation) then
  begin
   Result := FFontRotation;
   exit;
  end;
- if (propName = 'Type1Font') or (propName = SRpSType1Font) then
+ if SameText(propName, 'Type1Font') or SameText(propName, SRpSType1Font) then
  begin
   Result := Integer(FType1Font);
   exit;
  end;
- if (propName = 'PrintStep') or (propName = SRpSFontStep) then
+ if SameText(propName, 'PrintStep') or SameText(propName, SRpSFontStep) then
  begin
   Result := Integer(FPrintStep);
   exit;
  end;
- if propName = 'InterLine' then
+ if SameText(propName, 'InterLine') then
  begin
   Result := FInterLine;
   exit;
  end;
- if propName = 'MultiPage' then
+ if SameText(propName, 'MultiPage') then
  begin
   Result := FMultiPage;
   exit;
  end;
- if (propName = 'IsHtml') then
+ if SameText(propName, 'IsHtml') then
  begin
   Result := FIsHtml;
   exit;
