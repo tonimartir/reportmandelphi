@@ -33,16 +33,12 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       Style = csDropDownList
       TabOrder = 0
     end
-    object BLogin: TButton
+    object PLoginControl: TPanel
       Left = 213
-      Top = 10
-      Width = 100
-      Height = 31
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      Caption = 'Login'
+      Top = 5
+      Width = 250
+      Height = 40
+      BevelOuter = bvNone
       TabOrder = 1
     end
   end

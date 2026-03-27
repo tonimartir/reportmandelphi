@@ -44,6 +44,7 @@ type
     UserId: Int64;
     Email: string;
     UserName: string;
+    AvatarUrl: string;
     AccountType: Integer;
     Credits: Int64;
   end;
@@ -78,6 +79,12 @@ type
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
+    
+    // Persistence
+    function GetConfigFileName: string;
+    procedure SaveConfig;
+    procedure LoadConfig;
+    procedure ClearConfig;
 
   public
     class function Instance: TRpAuthManager;
@@ -108,7 +115,7 @@ type
 
 implementation
 
-uses Winapi.Windows, Winapi.WinSock, Forms;
+uses Winapi.Windows, Winapi.WinSock, Forms, IniFiles, IOUtils;
 
 { TRpAuthManager }
 
@@ -122,6 +129,7 @@ begin
 {$ENDIF}
   FIsLoggedIn := False;
   FInstallId := GenerateInstallId;
+  LoadConfig;
 end;
 
 function TRpAuthManager.GenerateInstallId: string;
@@ -178,6 +186,10 @@ begin
   LValue := AProfileObj.GetValue('userName');
   if LValue = nil then LValue := AProfileObj.GetValue('UserName');
   if LValue <> nil then Self.FProfile.UserName := LValue.Value;
+
+  LValue := AProfileObj.GetValue('avatarUrl');
+  if LValue = nil then LValue := AProfileObj.GetValue('AvatarUrl');
+  if LValue <> nil then Self.FProfile.AvatarUrl := LValue.Value;
 
   LValue := AProfileObj.GetValue('accountType');
   if LValue = nil then LValue := AProfileObj.GetValue('AccountType');
@@ -323,6 +335,7 @@ begin
 
           SetIsLoggedIn(FToken <> '');
           Result := FToken <> '';
+          if Result then SaveConfig;
         finally
           ResponseJson.Free;
         end;
@@ -347,9 +360,11 @@ begin
   FProfile.UserId := 0;
   FProfile.Email := '';
   FProfile.UserName := '';
+  FProfile.AvatarUrl := '';
   FProfile.AccountType := 0;
   FProfile.Credits := 0;
   FTiers := [];
+  ClearConfig;
   SetIsLoggedIn(False);
 end;
 
@@ -524,6 +539,7 @@ begin
 
               SetIsLoggedIn(FToken <> '');
               Result := FToken <> '';
+              if Result then SaveConfig;
             finally
               LResponseJson.Free;
             end;
@@ -627,6 +643,7 @@ begin
 
               SetIsLoggedIn(FToken <> '');
               Result := FToken <> '';
+              if Result then SaveConfig;
             finally
               LResponseJson.Free;
             end;
@@ -808,6 +825,70 @@ end;
 procedure TRpAuthManager.OpenUrl(const AUrl: string);
 begin
   if AUrl <> '' then ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+end;
+
+function TRpAuthManager.GetConfigFileName: string;
+var
+  LPath: string;
+begin
+  LPath := GetEnvironmentVariable('LOCALAPPDATA');
+  if LPath = '' then LPath := TPath.GetHomePath;
+  LPath := TPath.Combine(LPath, 'Reportman');
+  if not TDirectory.Exists(LPath) then
+    TDirectory.CreateDirectory(LPath);
+  Result := TPath.Combine(LPath, 'reportman_auth.ini');
+end;
+
+procedure TRpAuthManager.SaveConfig;
+var
+  LIni: TIniFile;
+begin
+  LIni := TIniFile.Create(GetConfigFileName);
+  try
+    LIni.WriteString('Auth', 'Token', FToken);
+    LIni.WriteString('Auth', 'InstallId', FInstallId);
+    
+    LIni.WriteString('Profile', 'UserId', IntToStr(FProfile.UserId));
+    LIni.WriteString('Profile', 'Email', FProfile.Email);
+    LIni.WriteString('Profile', 'UserName', FProfile.UserName);
+    LIni.WriteString('Profile', 'AvatarUrl', FProfile.AvatarUrl);
+    LIni.WriteInteger('Profile', 'AccountType', FProfile.AccountType);
+    LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
+end;
+
+procedure TRpAuthManager.LoadConfig;
+var
+  LIni: TIniFile;
+begin
+  LIni := TIniFile.Create(GetConfigFileName);
+  try
+    FToken := LIni.ReadString('Auth', 'Token', '');
+    FInstallId := LIni.ReadString('Auth', 'InstallId', FInstallId);
+    
+    FProfile.UserId := StrToInt64Def(LIni.ReadString('Profile', 'UserId', '0'), 0);
+    FProfile.Email := LIni.ReadString('Profile', 'Email', '');
+    FProfile.UserName := LIni.ReadString('Profile', 'UserName', '');
+    FProfile.AvatarUrl := LIni.ReadString('Profile', 'AvatarUrl', '');
+    FProfile.AccountType := LIni.ReadInteger('Profile', 'AccountType', 0);
+    FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
+    
+    FIsLoggedIn := FToken <> '';
+  finally
+    LIni.Free;
+  end;
+end;
+
+procedure TRpAuthManager.ClearConfig;
+var
+  LFile: string;
+begin
+  LFile := GetConfigFileName;
+  if TFile.Exists(LFile) then
+    TFile.Delete(LFile);
 end;
 
 initialization

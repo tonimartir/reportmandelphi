@@ -209,29 +209,32 @@ begin
   InflateRect(Rect, -3, -3);
 
   // Background circle (track)
-  Canvas.Pen.Width := 3;
-  Canvas.Pen.Color := $D0D0D0;
+  Canvas.Pen.Width := 4;
+  Canvas.Pen.Color := $00E0E0E0;
   Canvas.Brush.Style := bsClear;
   Canvas.Ellipse(Rect);
 
   if FGaugeValue <= 0 then Exit;
 
-  // Color based on usage ratio (matching Desktop CircularGauge)
-  if FGaugeValue < 0.5 then IndicatorColor := $00A5D6A7  // Green
-  else if FGaugeValue < 0.75 then IndicatorColor := $0080CBFF  // Orange
-  else if FGaugeValue < 0.9 then IndicatorColor := $0000D4FF   // Yellow-Orange
-  else IndicatorColor := $004040FF; // Red
+  // Indicator color based on usage ratio (matching C# CircularGauge)
+  if FGaugeValue < 0.5 then IndicatorColor := $004CAF50  // Material Green
+  else if FGaugeValue < 0.75 then IndicatorColor := clYellow
+  else if FGaugeValue < 0.9 then IndicatorColor := $0000A5FF  // Orange
+  else IndicatorColor := clRed;
 
   Canvas.Pen.Color := IndicatorColor;
 
-  PStart := GetPointOnCircle(Rect, 90);  // top
-  PEnd := GetPointOnCircle(Rect, 90 - (FGaugeValue * 360));
+  // C# starts at 90 deg in WPF (Bottom, since +Y is down)
+  // In VCL math, +Y is Up if we use CenterY - Sin
+  // So 270 is Bottom
+  PStart := GetPointOnCircle(Rect, 270);
+  PEnd := GetPointOnCircle(Rect, 270 - (FGaugeValue * 360));
 
   if FGaugeValue >= 0.999 then
     Canvas.Ellipse(Rect)
   else
     Canvas.Arc(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom,
-      PStart.X, PStart.Y, PEnd.X, PEnd.Y);
+      PEnd.X, PEnd.Y, PStart.X, PStart.Y); // VCL Arc direction fix
 end;
 
 procedure TFRpAISelectionVCL.ComboAIModeChange(Sender: TObject);

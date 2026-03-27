@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
-  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, System.JSON, rpdatahttp,
+  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, rpfrmloginframevcl, System.JSON, rpdatahttp,
   System.Zip, System.IOUtils;
 
 type
@@ -25,7 +25,7 @@ type
     PTop: TPanel;
     ComboSchema: TComboBox;
     Edge: TEdgeBrowser;
-    BLogin: TButton;
+    PLoginControl: TPanel;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -33,10 +33,10 @@ type
       Args: TWebMessageReceivedEventArgs);
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
-    procedure BLoginClick(Sender: TObject);
     procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
+    FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
     FOnContentChanged: TNotifyEvent;
@@ -113,9 +113,13 @@ begin
   FAISelection := TFRpAISelectionVCL.Create(Self);
   FAISelection.Parent := PTop;
   FAISelection.Align := alRight;
-  FAISelection.Width := 320;
+  FAISelection.Width := 340;
 
-  BLogin.OnClick := BLoginClick;
+  // Create Login Frame
+  FLoginFrame := TFRpLoginFrameVCL.Create(Self);
+  FLoginFrame.Parent := PLoginControl;
+  FLoginFrame.Align := alClient;
+
   TRpAuthManager.Instance.OnAuthChanged := AuthChanged;
   UpdateAuthUI;
 end;
@@ -434,32 +438,8 @@ end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
 begin
-  if TRpAuthManager.Instance.IsLoggedIn then
-  begin
-    BLogin.Caption := 'Logout (' + TRpAuthManager.Instance.Profile.UserName + ')';
-    // When logged in, we should refresh agent list or other state
-  end
-  else
-  begin
-    BLogin.Caption := 'Login';
-  end;
-  FAISelection.RefreshState;
-end;
-
-procedure TFRpMonacoEditorVCL.BLoginClick(Sender: TObject);
-begin
-  if TRpAuthManager.Instance.IsLoggedIn then
-  begin
-    if MessageDlg('Are you sure you want to logout?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-      TRpAuthManager.Instance.Logout;
-  end
-  else
-  begin
-    if ShowLoginDialog(Self) then
-    begin
-      // Login success
-    end;
-  end;
+  if FAISelection <> nil then
+    FAISelection.RefreshState;
 end;
 
 procedure TFRpMonacoEditorVCL.AuthChanged(ASuccess: Boolean);
