@@ -41,7 +41,7 @@ implementation
 constructor TFRpLoginFrameVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  TRpAuthManager.Instance.OnAuthChanged := AuthChanged;
+  TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
 end;
 
 procedure TFRpLoginFrameVCL.AfterConstruction;
@@ -51,12 +51,8 @@ begin
 end;
 
 destructor TFRpLoginFrameVCL.Destroy;
-var
-  LMethod: TMethod;
 begin
-  LMethod := TMethod(TRpAuthManager.Instance.OnAuthChanged);
-  if (LMethod.Code = @TFRpLoginFrameVCL.AuthChanged) and (LMethod.Data = Self) then
-    TRpAuthManager.Instance.OnAuthChanged := nil;
+  TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited;
 end;
 

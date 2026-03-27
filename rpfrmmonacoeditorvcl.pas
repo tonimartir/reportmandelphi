@@ -54,6 +54,7 @@ type
     procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure LoadSQL(const ASQL: string);
     procedure SetSchema(const ASchema: string);
     property SQL: string read FSQL write SetSQL;
@@ -120,8 +121,14 @@ begin
   FLoginFrame.Parent := PLoginControl;
   FLoginFrame.Align := alClient;
 
-  TRpAuthManager.Instance.OnAuthChanged := AuthChanged;
+  TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
   UpdateAuthUI;
+end;
+
+destructor TFRpMonacoEditorVCL.Destroy;
+begin
+  TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
+  inherited;
 end;
 
 procedure TFRpMonacoEditorVCL.CreateWnd;

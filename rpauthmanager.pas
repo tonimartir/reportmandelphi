@@ -23,7 +23,7 @@ uses
 {$ELSE}
   IdHTTP,
 {$ENDIF}
-  ShellAPI, rptypes;
+  ShellAPI, rptypes, System.Generics.Collections;
 
 type
   { TRpTier }
@@ -64,7 +64,7 @@ type
     FTiers: TArray<TRpTier>;
     FIsLoggedIn: Boolean;
     FOnLog: TRpAuthLog;
-    FOnAuthChanged: TRpAuthEvent;
+    FAuthListeners: TList<TRpAuthEvent>;
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
@@ -103,13 +103,15 @@ type
     function LoginGoogle: Boolean;
     function LoginMicrosoft: Boolean;
 
+    procedure RegisterAuthListener(AListener: TRpAuthEvent);
+    procedure UnregisterAuthListener(AListener: TRpAuthEvent);
+
     property Url: string read FUrl write FUrl;
     property Token: string read FToken;
     property InstallId: string read FInstallId write FInstallId;
     property Profile: TRpUserProfile read FProfile;
     property Tiers: TArray<TRpTier> read FTiers;
     property IsLoggedIn: Boolean read FIsLoggedIn;
-    property OnAuthChanged: TRpAuthEvent read FOnAuthChanged write FOnAuthChanged;
     property OnLog: TRpAuthLog read FOnLog write FOnLog;
   end;
 
@@ -128,6 +130,7 @@ begin
   FUrl := 'https://api.reportman.es:7006';
 {$ENDIF}
   FIsLoggedIn := False;
+  FAuthListeners := TList<TRpAuthEvent>.Create;
   FInstallId := GenerateInstallId;
   LoadConfig;
 end;
@@ -152,6 +155,7 @@ end;
 
 destructor TRpAuthManager.Destroy;
 begin
+  FAuthListeners.Free;
   inherited Destroy;
 end;
 
@@ -369,13 +373,23 @@ begin
 end;
 
 procedure TRpAuthManager.SetIsLoggedIn(Value: Boolean);
+var
+  LListener: TRpAuthEvent;
 begin
-  if FIsLoggedIn <> Value then
-  begin
-    FIsLoggedIn := Value;
-    if Assigned(FOnAuthChanged) then
-      FOnAuthChanged(FIsLoggedIn);
-  end;
+  FIsLoggedIn := Value;
+  for LListener in FAuthListeners do
+    LListener(FIsLoggedIn);
+end;
+
+procedure TRpAuthManager.RegisterAuthListener(AListener: TRpAuthEvent);
+begin
+  if FAuthListeners.IndexOf(AListener) < 0 then
+    FAuthListeners.Add(AListener);
+end;
+
+procedure TRpAuthManager.UnregisterAuthListener(AListener: TRpAuthEvent);
+begin
+  FAuthListeners.Remove(AListener);
 end;
 
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
@@ -435,10 +449,10 @@ begin
             begin
               LResponseHtml := 'HTTP/1.1 404 Not Found'#13#10'Content-Length: 0'#13#10#13#10;
               send(LClientSocket, PAnsiChar(AnsiString(LResponseHtml))^, Length(AnsiString(LResponseHtml)), 0);
-              Continue;
-            end;
-
-            LPosQ := Pos('?', LRequest);
+            end
+            else
+            begin
+              LPosQ := Pos('?', LRequest);
             if LPosQ > 0 then
             begin
               LPosSpace := Pos(' ', LRequest, LPosQ);
@@ -480,11 +494,12 @@ begin
               end;
             end;
           end;
-        finally
+        end; // end else begin at 452
+      finally
           closesocket(LClientSocket);
         end;
       end;
-    end;
+    end; // end while
     Result := FOAuthGotCallback and (FOAuthCode <> '');
   finally
     closesocket(LListenSocket);
@@ -583,9 +598,9 @@ begin
   try
     Log('Step 1: Requesting Microsoft Access Token...');
     LSourceStream := TStringStream.Create(
-      'client_id=' + TNetEncoding.URL.Encode('bc88d289-ded3-4389-a62b-2f12ad635dac') +
-      '&code=' + TNetEncoding.URL.Encode(ACode) +
-      '&redirect_uri=' + TNetEncoding.URL.Encode(ARedirectUri) +
+      'client_id=' + TURLEncoding.URL.Encode('bc88d289-ded3-4389-a62b-2f12ad635dac') +
+      '&code=' + TURLEncoding.URL.Encode(ACode) +
+      '&redirect_uri=' + TURLEncoding.URL.Encode(ARedirectUri) +
       '&grant_type=authorization_code',
       TEncoding.UTF8);
     try
@@ -685,7 +700,7 @@ begin
     LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
     LState := IntToHex(Random(MaxInt), 8);
-    LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TNetEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
+    LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
     ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
     if WaitForOAuthCallback(LPort) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
   finally
@@ -708,7 +723,7 @@ begin
     LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
     LState := IntToHex(Random(MaxInt), 8);
-    LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TNetEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
+    LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
     ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
     if WaitForOAuthCallback(LPort) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
   finally
