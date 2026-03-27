@@ -2403,13 +2403,14 @@ end;
 
 procedure TFRpMainFVCL.OnUndoRedo(Sender: TObject);
 begin
+ if Assigned(freportstructure) then
+  freportstructure.report := report;
  if Assigned(fdesignframe) then
  begin
   fdesignframe.UpdateInterface(true);
   fdesignframe.UpdateSelection(false);
  end;
- if Assigned(freportstructure) then
-  freportstructure.report := report;
+
  if Assigned(fcueview) then
  begin
   fcueview.RefreshList;

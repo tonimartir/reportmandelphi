@@ -1246,6 +1246,9 @@ begin
    if (target is TRpDatabaseInfoItem) then
     propsItem:=TRpDatabaseInfoItem(target)
   else
+   if (target is TRpSubReport) then
+    propsItem:=TRpSubReport(target)
+  else
     raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
   for prop in operation.properties do
   begin

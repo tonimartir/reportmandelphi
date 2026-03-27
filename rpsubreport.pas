@@ -25,10 +25,13 @@ interface
 {$I rpconf.inc}
 
 uses Classes,SysUtils,rpsecutil,rpsection,rptypes,rpmdconsts,
- rplabelitem,rpprintitem,rpeval,rpmdbarcode,rpdatainfo;
+ rplabelitem,rpprintitem,rpeval,rpmdbarcode,
+ {$IFDEF USEVARIANTS}
+ Variants,Types,
+ {$ENDIF}rpdatainfo;
 
 type
- TRpSubReport=class(TComponent)
+ TRpSubReport=class(TComponent, IPropertiesItem)
   private
    FSections:TRpSectionList;
    FAlias:string;
@@ -82,6 +85,10 @@ type
    procedure InitGroups(groupindex:integer);
    function GetDisplayName(includedataset:Boolean):string;
    function IsDataAvailable:boolean;
+  public
+   // IPropertiesItem implementation
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
   published
    property Sections:TRpSectionList read FSections write SetSections;
    property Alias:String read FAlias write SetAlias;
@@ -831,6 +838,57 @@ begin
  end;
 end;
 
+{ TRpSubReport - IPropertiesItem }
 
+procedure TRpSubReport.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if SameText(propName, 'Name') then
+ begin
+  Name := Value;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  FAlias := Value;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyIfDataAvailable') then
+ begin
+  FPrintOnlyIfDataAvailable := Value;
+  exit;
+ end;
+ if SameText(propName, 'ReOpenOnPrint') then
+ begin
+  FReOpenOnPrint := Value;
+  exit;
+ end;
+ // For other properties not handled, do nothing
+end;
+
+function TRpSubReport.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Name') then
+ begin
+  Result := Name;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyIfDataAvailable') then
+ begin
+  Result := FPrintOnlyIfDataAvailable;
+  exit;
+ end;
+ if SameText(propName, 'ReOpenOnPrint') then
+ begin
+  Result := FReOpenOnPrint;
+  exit;
+ end;
+ // For other properties not handled, return Null
+ Result := Null;
+end;
 
 end.

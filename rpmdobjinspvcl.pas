@@ -823,18 +823,57 @@ end;
 procedure TRpPanelObj.ComboAliasChange(Sender:TObject);
 var
   FRpMainf:TFRpMainFVCL;
+  cue:TUndoCue;
+  op:TChangeObjectOperation;
+  oldValue:string;
 begin
- subrep.Alias:=TComboBox(Sender).Text;
- FRpMainf:=TFRpMainFVCL(Owner.Owner);
- FRpMainf.freportstructure.RView.Selected.Text:=TRpSubReport(FRpMainf.freportstructure.RView.Selected.Data).GetDisplayName(true);
+  // Capture old value before change
+  oldValue:=subrep.Alias;
+  subrep.Alias:=TComboBox(Sender).Text;
+  
+  // Record undo operation
+  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=subrep.Name;
+   op.componentClass:='TRPSUBREPORT';
+   op.AddProperty('alias', ptString, oldValue, subrep.Alias);
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
+  end;
+  
+  FRpMainf.freportstructure.RView.Selected.Text:=TRpSubReport(FRpMainf.freportstructure.RView.Selected.Data).GetDisplayName(true);
 end;
 
 procedure TRpPanelObj.ComboPrintOnlyChange(Sender:TObject);
+var
+  FRpMainf:TFRpMainFVCL;
+  cue:TUndoCue;
+  op:TChangeObjectOperation;
+  oldValue:Boolean;
 begin
- if ComboPrintOnly.ItemIndex=0 then
-  subrep.PrintOnlyIfDataAvailable:=false
- else
-  subrep.PrintOnlyIfDataAvailable:=true;
+  // Capture old value before change
+  oldValue:=subrep.PrintOnlyIfDataAvailable;
+  
+  if ComboPrintOnly.ItemIndex=0 then
+   subrep.PrintOnlyIfDataAvailable:=false
+  else
+   subrep.PrintOnlyIfDataAvailable:=true;
+   
+  // Record undo operation
+  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=subrep.Name;
+   op.componentClass:='TRPSUBREPORT';
+   op.AddProperty('printOnlyIfDataAvailable', ptBoolean, oldValue, subrep.PrintOnlyIfDataAvailable);
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
+  end;
 end;
 
 procedure TFRpObjInspVCL.RecreateChangeSize;
