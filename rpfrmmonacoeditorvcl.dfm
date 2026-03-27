@@ -22,9 +22,9 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
     BevelOuter = bvNone
     TabOrder = 0
     object ComboSchema: TComboBox
-      Left = 13
+      Left = 8
       Top = 13
-      Width = 187
+      Width = 150
       Height = 28
       Margins.Left = 4
       Margins.Top = 4
@@ -34,7 +34,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       TabOrder = 0
     end
     object PLoginControl: TPanel
-      Left = 213
+      Left = 168
       Top = 5
       Width = 250
       Height = 40

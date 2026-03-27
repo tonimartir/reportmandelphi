@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -77,6 +77,14 @@ const
  REP_C_WHEELINC=5;
  REP_C_WHEELSCALE=4;
  LINE_FEED=#13+#10;
+
+ HUB_API_URL_DEBUG = 'https://api.reportman.es:7006';
+ HUB_API_URL_RELEASE = 'https://api.reportman.es:44568';
+{$IFDEF DEBUG}
+ HUB_API_URL = HUB_API_URL_DEBUG;
+{$ELSE}
+ HUB_API_URL = HUB_API_URL_RELEASE;
+{$ENDIF}
 
 
  {$IFNDEF USEVARIANTS}

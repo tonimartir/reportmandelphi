@@ -42,10 +42,6 @@ type
   private
     FGaugeValue: Double; // 0.0 to 1.0
     FAgentEndpoints: array of TAgentEndpointInfo;
-    FFreeRemaining: Int64;
-    FFreeInitial: Int64;
-    FDailyConsumed: Int64;
-    FDailyMax: Int64;
     procedure SetGaugeValue(const Value: Double);
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
     function GetAITier: string;
@@ -75,10 +71,6 @@ constructor TFRpAISelectionVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FGaugeValue := 0.0;
-  FFreeRemaining := 0;
-  FFreeInitial := 0;
-  FDailyConsumed := 0;
-  FDailyMax := 0;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
   RefreshState;
@@ -91,51 +83,38 @@ end;
 
 procedure TFRpAISelectionVCL.UpdateGaugeDisplay;
 var
-  LProfile: TRpUserProfile;
+  LProfile: TRpProfile;
   LUsed, LMax: Int64;
   LPct: Double;
   LHint: string;
+  LAuth: TRpAuthManager;
 begin
-  LProfile := TRpAuthManager.Instance.Profile;
+  LAuth := TRpAuthManager.Instance;
+  LProfile := LAuth.Profile;
 
-  // If we have data from API userProfile response, use it
-  if (FFreeInitial > 0) or (FDailyMax > 0) then
+  if LAuth.IsLoggedIn then
   begin
-    // Calculate based on API data
-    if FFreeInitial > 0 then
-    begin
-      LUsed := FFreeInitial - FFreeRemaining;
-      LMax := FFreeInitial;
-    end
-    else
-    begin
-      LUsed := FDailyConsumed;
-      LMax := FDailyMax;
-    end;
+    LUsed := LAuth.GetCreditsConsumed;
+    LMax := LAuth.GetCreditsMax;
+    FGaugeValue := LAuth.GetCreditsRatio;
+    LPct := FGaugeValue * 100;
 
     if LMax > 0 then
-    begin
-      LPct := (LUsed / LMax) * 100;
-      FGaugeValue := LUsed / LMax;
-      LCredits.Caption := Format('%d/%d', [LUsed, LMax]);
-      LHint := Format('Used: %d / Max: %d (%.0f%%)', [LUsed, LMax, LPct]) + #13#10 +
-               Format('Remaining: %d', [LMax - LUsed]);
-    end
+      LCredits.Caption := Format('%d/%d', [LUsed, LMax])
     else
-    begin
-      FGaugeValue := 0;
       LCredits.Caption := 'Free';
-      LHint := 'Free tier';
-    end;
-  end
-  else if TRpAuthManager.Instance.IsLoggedIn then
-  begin
-    LCredits.Caption := IntToStr(LProfile.Credits) + ' credits';
-    LHint := IntToStr(LProfile.Credits) + ' credits remaining';
-    if LProfile.Credits > 0 then
-      FGaugeValue := 0.0
+
+    // Construct rich tooltip matching Desktop
+    LHint := 'Tier: ' + LProfile.TierName + #13#10;
+    if LAuth.UsesFreeCredits then
+      LHint := LHint + 'Créditos Gratuitos' + #13#10
     else
-      FGaugeValue := 1.0;
+      LHint := LHint + 'Créditos Diarios' + #13#10;
+      
+    LHint := LHint + Format('Consumidos: %d / %d (%.0f%%)', [LUsed, LMax, LPct]) + #13#10;
+    
+    if LProfile.ServerDay > 0 then
+      LHint := LHint + 'Día del Servidor: ' + DateToStr(LProfile.ServerDay);
   end
   else
   begin
@@ -146,31 +125,17 @@ begin
 
   LCredits.Hint := LHint;
   PaintBoxGauge.Hint := LHint;
+  // Enable hints
+  LCredits.ShowHint := True;
+  PaintBoxGauge.ShowHint := True;
+  
   PaintBoxGauge.Invalidate;
 end;
 
 procedure TFRpAISelectionVCL.UpdateFromUserProfile(AProfile: TJSONObject);
-var
-  LVal: TJSONValue;
 begin
-  if AProfile = nil then Exit;
-
-  LVal := AProfile.Values['freeRemaining'];
-  if (LVal <> nil) and (LVal is TJSONNumber) then
-    FFreeRemaining := TJSONNumber(LVal).AsInt64;
-
-  LVal := AProfile.Values['freeInitial'];
-  if (LVal <> nil) and (LVal is TJSONNumber) then
-    FFreeInitial := TJSONNumber(LVal).AsInt64;
-
-  LVal := AProfile.Values['dailyConsumed'];
-  if (LVal <> nil) and (LVal is TJSONNumber) then
-    FDailyConsumed := TJSONNumber(LVal).AsInt64;
-
-  LVal := AProfile.Values['dailyMax'];
-  if (LVal <> nil) and (LVal is TJSONNumber) then
-    FDailyMax := TJSONNumber(LVal).AsInt64;
-
+  // Implementation moved to TRpAuthManager.CheckStatus
+  // This method kept for backward compatibility if needed
   UpdateGaugeDisplay;
 end;
 

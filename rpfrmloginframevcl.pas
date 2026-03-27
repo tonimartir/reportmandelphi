@@ -11,6 +11,7 @@ uses
 type
   TFRpLoginFrameVCL = class(TFrame)
     PContainer: TPanel;
+    LabelTier: TLabel;
     ImageAvatar: TImage;
     LabelUser: TLabel;
     LabelArrow: TLabel;
@@ -67,22 +68,71 @@ end;
 
 procedure TFRpLoginFrameVCL.UpdateUI;
 var
-  LProfile: TRpUserProfile;
+  LProfile: TRpProfile;
+  LName: string;
 begin
   if TRpAuthManager.Instance.IsLoggedIn then
   begin
     BtnLogin.Visible := False;
+    LabelTier.Visible := True;
     ImageAvatar.Visible := True;
     LabelUser.Visible := True;
     LabelArrow.Visible := True;
+    
     LProfile := TRpAuthManager.Instance.Profile;
     LabelUser.Caption := LProfile.UserName;
+    
+    // Tier Badge Styling
+    LName := UpperCase(LProfile.TierName);
+    if LName = '' then LName := 'GUEST';
+    if LName = 'ENTERPRISE' then LName := 'ENT';
+    LabelTier.Caption := LName;
+    
+    case LProfile.TierId of
+      1: // Guest
+        begin
+          LabelTier.Color := $E0E0E0;
+          LabelTier.Font.Color := $4F4536;
+        end;
+      2: // Free
+        begin
+          LabelTier.Color := $F1F2E0;
+          LabelTier.Font.Color := $205E1B;
+        end;
+      3: // Lite
+        begin
+          LabelTier.Color := $FEF5E1;
+          LabelTier.Font.Color := $A1470D;
+        end;
+      4: // Pro
+        begin
+          LabelTier.Color := $BD7702; // Dark Blue
+          LabelTier.Font.Color := clWhite;
+        end;
+      5: // Enterprise
+        begin
+          LabelTier.Color := $212121;
+          LabelTier.Font.Color := $00D7FF; // Gold
+        end;
+    else
+      // Default / Unknown
+      LabelTier.Color := $E0E0E0;
+      LabelTier.Font.Color := $4F4536;
+    end;
+
     if LProfile.AvatarUrl <> '' then
       DownloadAvatar(LProfile.AvatarUrl);
+      
+    // Vertically center labels
+    LabelUser.Top := (PContainer.Height - LabelUser.Height) div 2;
+    LabelArrow.Top := (PContainer.Height - LabelArrow.Height) div 2;
+    LabelTier.Top := (PContainer.Height - LabelTier.Height) div 2;
+    ImageAvatar.Top := (PContainer.Height - ImageAvatar.Height) div 2;
   end
   else
   begin
     BtnLogin.Visible := True;
+    LabelTier.Visible := False;
     ImageAvatar.Visible := False;
     LabelUser.Visible := False;
     LabelArrow.Visible := False;

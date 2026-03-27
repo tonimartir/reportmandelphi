@@ -113,8 +113,10 @@ begin
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
   FAISelection.Parent := PTop;
-  FAISelection.Align := alRight;
-  FAISelection.Width := 340;
+  FAISelection.Left := 420;
+  FAISelection.Top := 0;
+  FAISelection.Width := 400;
+  FAISelection.Height := PTop.Height;
 
   // Create Login Frame
   FLoginFrame := TFRpLoginFrameVCL.Create(Self);
@@ -357,7 +359,10 @@ begin
       LResponse := LHttp.SuggestSql(LSql, LPos, FAISelection.AIMode);
     except
       on E: Exception do
+      begin
+        TRpAuthManager.Instance.Log('SuggestSql Error: ' + E.Message);
         LResponse := nil;
+      end;
     end;
 
     // Build Monaco-compatible response: { inlineItems: [...], completionItems: [...] }

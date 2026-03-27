@@ -17,7 +17,7 @@ interface
 {$I rpconf.inc}
 
 uses
-  SysUtils, Classes, System.JSON, System.NetEncoding,
+  SysUtils, Classes, System.JSON, System.NetEncoding, System.DateUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent,
 {$ELSE}
@@ -30,23 +30,31 @@ type
   TRpTier = record
     Id: Int64;
     Name: string;
-    MonthlyPrice: Currency;
-    YearlyPrice: Currency;
+    MonthlyPrice: Double;
+    YearlyPrice: Double;
     MaxCreditsDay: Int64;
     MaxFreeCredits: Int64;
     MaxConnections: Integer;
     MaxTables: Integer;
+    MaxColumnsPerTable: Integer;
     MaxKpis: Integer;
   end;
 
-  { TRpUserProfile }
-  TRpUserProfile = record
+  TRpProfile = record
     UserId: Int64;
-    Email: string;
+    InstallId: string;
     UserName: string;
+    Email: string;
     AvatarUrl: string;
     AccountType: Integer;
-    Credits: Int64;
+    TierId: Int64;
+    TierName: string;
+    DailyMax: Int64;
+    DailyConsumed: Int64;
+    FreeInitial: Int64;
+    FreeRemaining: Int64;
+    ServerDay: TDateTime;
+    Credits: Int64; // Deprecated but kept for compatibility
   end;
 
   { TRpAuthEvent }
@@ -57,10 +65,9 @@ type
   { TRpAuthManager }
   TRpAuthManager = class
   private
-    FUrl: string;
     FToken: string;
     FInstallId: string;
-    FProfile: TRpUserProfile;
+    FProfile: TRpProfile;
     FTiers: TArray<TRpTier>;
     FIsLoggedIn: Boolean;
     FOnLog: TRpAuthLog;
@@ -73,6 +80,7 @@ type
     constructor Create;
     procedure ParseTiers(ATiersArray: TJSONArray);
     procedure ParseProfile(AProfileObj: TJSONObject);
+    procedure NotifyListeners(ASuccess: Boolean);
     function GenerateInstallId: string;
     procedure SetIsLoggedIn(Value: Boolean);
     function WaitForOAuthCallback(APort: Integer): Boolean;
@@ -101,15 +109,19 @@ type
     // AI/OAuth additions
     function LoginGoogle: Boolean;
     function LoginMicrosoft: Boolean;
+    procedure CheckStatus;
+    function UsesFreeCredits: Boolean;
+    function GetCreditsRatio: Double;
+    function GetCreditsConsumed: Int64;
+    function GetCreditsMax: Int64;
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
     procedure Log(const AMsg: string);
 
-    property Url: string read FUrl write FUrl;
     property Token: string read FToken;
     property InstallId: string read FInstallId write FInstallId;
-    property Profile: TRpUserProfile read FProfile;
+    property Profile: TRpProfile read FProfile;
     property Tiers: TArray<TRpTier> read FTiers;
     property IsLoggedIn: Boolean read FIsLoggedIn;
     property OnLog: TRpAuthLog read FOnLog write FOnLog;
@@ -124,11 +136,6 @@ uses Winapi.Windows, Winapi.WinSock, Forms, IniFiles, IOUtils;
 constructor TRpAuthManager.Create;
 begin
   inherited Create;
-{$IFDEF REPMANRELEASE}
-  FUrl := 'https://api.reportman.es:44568';
-{$ELSE}
-  FUrl := 'https://api.reportman.es:7006';
-{$ENDIF}
   FIsLoggedIn := False;
   FAuthListeners := TList<TRpAuthEvent>.Create;
   FInstallId := GenerateInstallId;
@@ -161,6 +168,7 @@ end;
 
 procedure TRpAuthManager.Log(const AMsg: string);
 begin
+  OutputDebugString(PChar('RpAuth: ' + AMsg));
   if Assigned(FOnLog) then
     FOnLog(AMsg);
 end;
@@ -181,29 +189,208 @@ begin
   
   LValue := AProfileObj.GetValue('userId');
   if LValue = nil then LValue := AProfileObj.GetValue('UserId');
-  if LValue <> nil then Self.FProfile.UserId := StrToInt64Def(LValue.Value, 0);
+  if LValue = nil then LValue := AProfileObj.GetValue('userid');
+  if LValue <> nil then 
+  begin
+    FProfile.UserId := StrToInt64Def(LValue.Value, 0);
+    Log('UserId: ' + IntToStr(FProfile.UserId));
+  end;
 
   LValue := AProfileObj.GetValue('email');
   if LValue = nil then LValue := AProfileObj.GetValue('Email');
+  if LValue = nil then LValue := AProfileObj.GetValue('email'); // redundant but consistent
   if LValue <> nil then Self.FProfile.Email := LValue.Value;
 
   LValue := AProfileObj.GetValue('userName');
   if LValue = nil then LValue := AProfileObj.GetValue('UserName');
+  if LValue = nil then LValue := AProfileObj.GetValue('username');
   if LValue <> nil then Self.FProfile.UserName := LValue.Value;
 
   LValue := AProfileObj.GetValue('profileImageUrl');
   if LValue = nil then LValue := AProfileObj.GetValue('ProfileImageUrl');
+  if LValue = nil then LValue := AProfileObj.GetValue('profileimageurl');
   if LValue <> nil then Self.FProfile.AvatarUrl := LValue.Value;
 
   LValue := AProfileObj.GetValue('accountType');
   if LValue = nil then LValue := AProfileObj.GetValue('AccountType');
+  if LValue = nil then LValue := AProfileObj.GetValue('accounttype');
   if LValue <> nil then Self.FProfile.AccountType := StrToIntDef(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('tierId');
+  if LValue = nil then LValue := AProfileObj.GetValue('TierId');
+  if LValue = nil then LValue := AProfileObj.GetValue('tierid');
+  if LValue <> nil then 
+  begin
+    FProfile.TierId := StrToInt64Def(LValue.Value, 1);
+    Log('TierId: ' + IntToStr(FProfile.TierId));
+  end;
+
+  LValue := AProfileObj.GetValue('tierName');
+  if LValue = nil then LValue := AProfileObj.GetValue('TierName');
+  if LValue = nil then LValue := AProfileObj.GetValue('tiername');
+  if LValue <> nil then 
+  begin
+    FProfile.TierName := LValue.Value;
+    Log('TierName: ' + FProfile.TierName);
+  end;
+
+  LValue := AProfileObj.GetValue('dailyMax');
+  if LValue = nil then LValue := AProfileObj.GetValue('DailyMax');
+  if LValue = nil then LValue := AProfileObj.GetValue('dailymax');
+  if LValue <> nil then Self.FProfile.DailyMax := StrToInt64Def(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('dailyConsumed');
+  if LValue = nil then LValue := AProfileObj.GetValue('DailyConsumed');
+  if LValue = nil then LValue := AProfileObj.GetValue('dailyconsumed');
+  if LValue <> nil then Self.FProfile.DailyConsumed := StrToInt64Def(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('freeInitial');
+  if LValue = nil then LValue := AProfileObj.GetValue('FreeInitial');
+  if LValue = nil then LValue := AProfileObj.GetValue('freeinitial');
+  if LValue <> nil then Self.FProfile.FreeInitial := StrToInt64Def(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('freeRemaining');
+  if LValue = nil then LValue := AProfileObj.GetValue('FreeRemaining');
+  if LValue = nil then LValue := AProfileObj.GetValue('freeremaining');
+  if LValue <> nil then Self.FProfile.FreeRemaining := StrToInt64Def(LValue.Value, 0);
+
+  LValue := AProfileObj.GetValue('serverDay');
+  if LValue = nil then LValue := AProfileObj.GetValue('ServerDay');
+  if LValue = nil then LValue := AProfileObj.GetValue('serverday');
+  // Simple ISO date parsing for Delphi
+  if LValue <> nil then Self.FProfile.ServerDay := ISO8601ToDate(LValue.Value);
 
   LValue := AProfileObj.GetValue('credits');
   if LValue = nil then LValue := AProfileObj.GetValue('Credits');
   if LValue <> nil then Self.FProfile.Credits := StrToInt64Def(LValue.Value, 0);
 
-  Log('Profile Parsed: ' + Self.FProfile.Email);
+  Log('Profile Parsed: ' + Self.FProfile.Email + ' Tier: ' + Self.FProfile.TierName +
+    ' (Daily: ' + IntToStr(FProfile.DailyConsumed) + '/' + IntToStr(FProfile.DailyMax) +
+    ', Free: ' + IntToStr(FProfile.FreeRemaining) + '/' + IntToStr(FProfile.FreeInitial) + ')');
+end;
+
+function TRpAuthManager.UsesFreeCredits: Boolean;
+begin
+  Result := (FProfile.Email = '') or (FProfile.TierId <= 2);
+end;
+
+function TRpAuthManager.GetCreditsRatio: Double;
+var
+  LMax: Int64;
+  LConsumed: Int64;
+begin
+  if UsesFreeCredits then
+  begin
+    LMax := FProfile.FreeInitial;
+    LConsumed := FProfile.FreeInitial - FProfile.FreeRemaining;
+  end
+  else
+  begin
+    LMax := FProfile.DailyMax;
+    LConsumed := FProfile.DailyConsumed;
+  end;
+
+  if LMax > 0 then
+    Result := LConsumed / LMax
+  else
+    Result := 0.0;
+end;
+
+function TRpAuthManager.GetCreditsConsumed: Int64;
+begin
+  if UsesFreeCredits then
+    Result := FProfile.FreeInitial - FProfile.FreeRemaining
+  else
+    Result := FProfile.DailyConsumed;
+end;
+
+function TRpAuthManager.GetCreditsMax: Int64;
+begin
+  if UsesFreeCredits then
+    Result := FProfile.FreeInitial
+  else
+    Result := FProfile.DailyMax;
+end;
+
+procedure TRpAuthManager.CheckStatus;
+var
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LRoot: TJSONObject;
+  LPicture: TStream;
+  LValue: TJSONValue;
+begin
+  if FToken = '' then Exit;
+
+  LClient := TNetHTTPClient.Create(nil);
+  try
+    LClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+    if FInstallId <> '' then
+      LClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+    try
+      // Use lowercase URL and cast nil to TStream to avoid ambiguous overload
+      LResponse := LClient.Post(HUB_API_URL + '/api/userprofile/status', TStream(nil), TStream(nil));
+      Log('CheckStatus: Response Status ' + IntToStr(LResponse.StatusCode));
+
+      if (LResponse.StatusCode = 200) then
+      begin
+        LRoot := TJSONObject.ParseJSONValue(LResponse.ContentAsString) as TJSONObject;
+        if LRoot <> nil then
+        try
+          LValue := LRoot.GetValue('profile');
+          if LValue = nil then LValue := LRoot.GetValue('Profile');
+          if (LValue <> nil) and (LValue is TJSONObject) then
+            ParseProfile(LValue as TJSONObject);
+          
+          LValue := LRoot.GetValue('tiers');
+          if LValue = nil then LValue := LRoot.GetValue('Tiers');
+          if (LValue <> nil) and (LValue is TJSONArray) then
+            ParseTiers(LValue as TJSONArray);
+            
+          NotifyListeners(True);
+          
+          // Refresh Avatar if changed
+          if FProfile.AvatarUrl <> '' then
+          begin
+             LPicture := TMemoryStream.Create;
+             try
+               LResponse := LClient.Get(FProfile.AvatarUrl);
+               if LResponse.StatusCode = 200 then
+               begin
+                 LPicture.CopyFrom(LResponse.ContentStream, 0);
+                 LPicture.Position := 0;
+               end;
+             finally
+               LPicture.Free;
+             end;
+          end;
+        finally
+          LRoot.Free;
+        end;
+      end
+      else if LResponse.StatusCode = 401 then
+      begin
+        Log('CheckStatus: Unauthorized (401). Token expired or invalid. Logging out.');
+        Logout;
+      end
+      else
+      begin
+        Log('CheckStatus: Unexpected status ' + IntToStr(LResponse.StatusCode) + ': ' + LResponse.ContentAsString);
+      end;
+    except
+      on E: Exception do Log('CheckStatus Error: ' + E.Message);
+    end;
+  finally
+    LClient.Free;
+  end;
+end;
+
+procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
+var
+  LListener: TRpAuthEvent;
+begin
+  for LListener in FAuthListeners do
+    LListener(ASuccess);
 end;
 
 procedure TRpAuthManager.ParseTiers(ATiersArray: TJSONArray);
@@ -251,6 +438,10 @@ begin
     if LValue = nil then LValue := TierObj.GetValue('MaxTables');
     if LValue <> nil then Self.FTiers[I].MaxTables := StrToIntDef(LValue.Value, 0);
 
+    LValue := TierObj.GetValue('maxColumnsPerTable');
+    if LValue = nil then LValue := TierObj.GetValue('MaxColumnsPerTable');
+    if LValue <> nil then Self.FTiers[I].MaxColumnsPerTable := StrToIntDef(LValue.Value, 0);
+
     LValue := TierObj.GetValue('maxKpis');
     if LValue = nil then LValue := TierObj.GetValue('MaxKpis');
     if LValue <> nil then Self.FTiers[I].MaxKpis := StrToIntDef(LValue.Value, 0);
@@ -273,8 +464,10 @@ begin
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
+      if FInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
       try
-        Response := HttpClient.Post(FUrl + '/api/LoginResend/send', SourceStream);
+        Response := HttpClient.Post(HUB_API_URL + '/api/LoginResend/send', SourceStream, TStream(nil));
         Log('Hub API Response Code (Resend): ' + IntToStr(Response.StatusCode));
         Result := Response.StatusCode = 200;
       except
@@ -316,7 +509,9 @@ begin
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
-      Response := HttpClient.Post(FUrl + '/api/Login/email', SourceStream);
+      if FInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      Response := HttpClient.Post(HUB_API_URL + '/api/Login/email', SourceStream, TStream(nil));
       if Response.StatusCode = 200 then
       begin
         ResponseJson := TJSONObject.ParseJSONValue(Response.ContentAsString) as TJSONObject;
@@ -529,7 +724,10 @@ begin
         LHttpClient.ContentType := 'application/json';
         Log('Step 1: Sending Google Authorization Code to Hub API...');
         try
-          LResponse := LHttpClient.Post(FUrl + '/api/login/google', LSourceStream);
+          if FInstallId <> '' then
+            LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+          // All API calls use the global HUB_API_URL from rptypes
+          LResponse := LHttpClient.Post(HUB_API_URL + '/api/Login/google', LSourceStream, TStream(nil));
           Log('Hub API Response Code: ' + IntToStr(LResponse.StatusCode));
           if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
           begin
@@ -553,6 +751,7 @@ begin
                 ParseTiers(LValue as TJSONArray);
 
               SetIsLoggedIn(FToken <> '');
+              CheckStatus;
               Result := FToken <> '';
               if Result then SaveConfig;
             finally
@@ -605,6 +804,8 @@ begin
       TEncoding.UTF8);
     try
       LHttpClient.ContentType := 'application/x-www-form-urlencoded';
+      if FInstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
       LResponse := LHttpClient.Post('https://login.microsoftonline.com/common/oauth2/v2.0/token', LSourceStream);
       if LResponse.StatusCode = 200 then
       begin
@@ -632,9 +833,11 @@ begin
       LSourceStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
       try
         LHttpClient.ContentType := 'application/json';
+        if FInstallId <> '' then
+          LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
         Log('Step 2: Sending Microsoft Access Token to Hub API...');
         try
-          LResponse := LHttpClient.Post(FUrl + '/api/login/microsoft', LSourceStream);
+          LResponse := LHttpClient.Post(HUB_API_URL + '/api/Login/microsoft', LSourceStream, TStream(nil));
           Log('Hub API Response Code: ' + IntToStr(LResponse.StatusCode));
           if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
           begin
@@ -657,6 +860,7 @@ begin
                 ParseTiers(LValue as TJSONArray);
 
               SetIsLoggedIn(FToken <> '');
+              CheckStatus;
               Result := FToken <> '';
               if Result then SaveConfig;
             finally
@@ -742,7 +946,11 @@ begin
   HttpClient := TNetHTTPClient.Create(nil);
   try
     try
-      Response := HttpClient.Get(FUrl + '/api/Tiers');
+      if FToken <> '' then
+        HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+      if FInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      Response := HttpClient.Get(HUB_API_URL + '/api/Tiers');
       Log('Hub API Response Code (Tiers): ' + IntToStr(Response.StatusCode));
       if Response.StatusCode = 200 then
       begin
@@ -787,8 +995,10 @@ begin
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
+      if FInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
       try
-        Response := HttpClient.Post(FUrl + '/api/stripe/subscribe', SourceStream);
+        Response := HttpClient.Post(HUB_API_URL + '/api/stripe/subscribe', SourceStream, TStream(nil));
         Log('Hub API Response Code (Stripe): ' + IntToStr(Response.StatusCode));
         if Response.StatusCode = 200 then Result := Response.ContentAsString;
       except
@@ -819,8 +1029,9 @@ begin
   HttpClient := TNetHTTPClient.Create(nil);
   try
     if FToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+    if FInstallId <> '' then HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
     try
-      Response := HttpClient.Post(FUrl + '/api/stripe/portal', TStream(nil));
+      Response := HttpClient.Post(HUB_API_URL + '/api/stripe/portal', TStream(nil), TStream(nil));
       Log('Hub API Response Code (Portal): ' + IntToStr(Response.StatusCode));
       if Response.StatusCode = 200 then Result := Response.ContentAsString;
     except
@@ -889,9 +1100,14 @@ begin
     FProfile.UserName := LIni.ReadString('Profile', 'UserName', '');
     FProfile.AvatarUrl := LIni.ReadString('Profile', 'AvatarUrl', '');
     FProfile.AccountType := LIni.ReadInteger('Profile', 'AccountType', 0);
+    FProfile.TierId := LIni.ReadInteger('Profile', 'TierId', 1);
+    FProfile.TierName := LIni.ReadString('Profile', 'TierName', 'Guest');
     FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
     
     FIsLoggedIn := FToken <> '';
+    
+    if FIsLoggedIn then
+      CheckStatus;
   finally
     LIni.Free;
   end;

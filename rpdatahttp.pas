@@ -76,14 +76,7 @@ type
     property Dataset: TClientDataSet read FDataset;
   end;
 
-const
-  HUB_API_URL_DEBUG = 'https://api.reportman.es:7006';
-  HUB_API_URL_RELEASE = 'https://api.reportman.es:44568';
-{$IFDEF DEBUG}
-  HUB_API_URL = HUB_API_URL_DEBUG;
-{$ELSE}
-  HUB_API_URL = HUB_API_URL_RELEASE;
-{$ENDIF}
+// HUB_API_URL constants moved to rptypes.pas
 
 implementation
 { TRpDatabaseHttp }
@@ -238,7 +231,9 @@ begin
       LUrl := HUB_API_URL;
       if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
       LUrl := LUrl + AAction;
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
       LResponse := LHttpClient.Post(LUrl, LSourceStream, ResponseStream);
+      TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode));
       
       if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
          Result := True
@@ -248,6 +243,14 @@ begin
          try
            ResponseStream.Position := 0;
            LErrorStream.CopyFrom(ResponseStream, 0);
+           TRpAuthManager.Instance.Log('HTTP Error Body: ' + LErrorStream.DataString);
+           
+           if LResponse.StatusCode = 401 then
+           begin
+             TRpAuthManager.Instance.Log('Unauthorized (401) detected in InternalRequest. Logging out.');
+             TRpAuthManager.Instance.Logout;
+           end;
+
            raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s', [LResponse.StatusCode, LResponse.StatusText, LErrorStream.DataString]);
          finally
            LErrorStream.Free;
@@ -282,7 +285,7 @@ begin
       
       if FInstallId <> '' then
         LIdHttp.Request.CustomHeaders.Values['X-Reportman-WebInstallId'] := FInstallId;
-      LUrl := FUrl;
+      LUrl := HUB_API_URL;
       if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
       LUrl := LUrl + AAction;
       LIdHttp.Post(LUrl, LSourceStream, ResponseStream);
@@ -451,6 +454,10 @@ begin
   LResponseStream := TMemoryStream.Create;
   try
     LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AApiKey;
+    if TRpAuthManager.Instance.Token <> '' then
+      LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + TRpAuthManager.Instance.Token;
+    if TRpAuthManager.Instance.InstallId <> '' then
+      LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := TRpAuthManager.Instance.InstallId;
     // Use the compiled URL for discovery
     try
       LResponse := LHttpClient.Get(HUB_API_URL + '/api/agent/databases', LResponseStream);

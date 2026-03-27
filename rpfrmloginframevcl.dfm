@@ -29,8 +29,29 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
     DesignSize = (
       248
       38)
-    object ImageAvatar: TImage
+    object LabelTier: TLabel
       Left = 6
+      Top = 10
+      Width = 35
+      Height = 16
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'FREE'
+      Color = clGray
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWhite
+      Font.Height = -11
+      Font.Name = 'Segoe UI'
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+      Visible = False
+      Layout = tlCenter
+      OnClick = ImageAvatarClick
+    end
+    object ImageAvatar: TImage
+      Left = 46
       Top = 5
       Width = 28
       Height = 28
@@ -46,7 +67,7 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
       OnClick = ImageAvatarClick
     end
     object LabelUser: TLabel
-      Left = 40
+      Left = 80
       Top = 12
       Width = 73
       Height = 20
