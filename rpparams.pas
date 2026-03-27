@@ -282,72 +282,72 @@ end;
 
 procedure TRpParam.SetItemProperty(const propName: string; const value: Variant);
 begin
- if propName = 'Name' then
+ if SameText(propName, 'Name') then
  begin
   SetName(value);
   exit;
  end;
- if propName = 'ParamType' then
+ if SameText(propName, 'ParamType') then
  begin
   SetParamType(TRpParamType(Integer(value)));
   exit;
  end;
- if propName = 'Visible' then
+ if SameText(propName, 'Visible') then
  begin
   SetVisible(value);
   exit;
  end;
- if propName = 'NeverVisible' then
+ if SameText(propName, 'NeverVisible') then
  begin
   SetNeverVisible(value);
   exit;
  end;
- if propName = 'IsReadOnly' then
+ if SameText(propName, 'IsReadOnly') then
  begin
   SetIsReadOnly(value);
   exit;
  end;
- if propName = 'AllowNulls' then
+ if SameText(propName, 'AllowNulls') then
  begin
   SetAllowNulls(value);
   exit;
  end;
- if propName = 'Description' then
+ if SameText(propName, 'Description') then
  begin
   SetDescription(value);
   exit;
  end;
- if propName = 'Hint' then
+ if SameText(propName, 'Hint') then
  begin
   SetHint(value);
   exit;
  end;
- if propName = 'Validation' then
+ if SameText(propName, 'Validation') then
  begin
   SetValidation(value);
   exit;
  end;
- if propName = 'ErrorMessage' then
+ if SameText(propName, 'ErrorMessage') then
  begin
   SetErrorMessage(value);
   exit;
  end;
- if propName = 'Value' then
+ if SameText(propName, 'Value') then
  begin
   SetValue(value);
   exit;
  end;
- if propName = 'LookupDataset' then
+ if SameText(propName, 'LookupDataset') then
  begin
   FLookupDataset := value;
   exit;
  end;
- if propName = 'SearchDataset' then
+ if SameText(propName, 'SearchDataset') then
  begin
   FSearchDataset := value;
   exit;
  end;
- if propName = 'SearchParam' then
+ if SameText(propName, 'SearchParam') then
  begin
   FSearchParam := value;
   exit;
