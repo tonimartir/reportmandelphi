@@ -2,26 +2,26 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
   Left = 0
   Top = 0
   Width = 420
-  Height = 32
+  Height = 50
   TabOrder = 0
   object PAI: TPanel
     Left = 0
     Top = 0
     Width = 420
-    Height = 32
+    Height = 50
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
     object LProvider: TLabel
       Left = 4
-      Top = 9
+      Top = 18
       Width = 16
       Height = 13
       Caption = 'AI:'
     end
     object PaintBoxGauge: TPaintBox
       Left = 260
-      Top = 4
+      Top = 13
       Width = 24
       Height = 24
       Hint = 'Credits'
@@ -30,7 +30,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
     end
     object LCredits: TLabel
       Left = 288
-      Top = 9
+      Top = 18
       Width = 120
       Height = 13
       Hint = 'Credits'
@@ -39,7 +39,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
     end
     object ComboAIProvider: TComboBox
       Left = 24
-      Top = 5
+      Top = 14
       Width = 110
       Height = 21
       Style = csDropDownList
@@ -53,7 +53,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
     end
     object ComboAIMode: TComboBox
       Left = 140
-      Top = 5
+      Top = 14
       Width = 110
       Height = 21
       Style = csDropDownList

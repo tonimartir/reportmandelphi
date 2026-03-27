@@ -5,13 +5,15 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls,
-  Vcl.Menus, rpauthmanager, rpfrmloginvcl, System.Net.HttpClient, System.Net.HttpClientComponent;
+  Vcl.Menus, rpauthmanager, rpfrmloginvcl, System.Net.HttpClient, System.Net.HttpClientComponent,
+  Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg;
 
 type
   TFRpLoginFrameVCL = class(TFrame)
     PContainer: TPanel;
     ImageAvatar: TImage;
     LabelUser: TLabel;
+    LabelArrow: TLabel;
     BtnLogin: TButton;
     PopupUser: TPopupMenu;
     MenuItemProfile: TMenuItem;
@@ -72,6 +74,7 @@ begin
     BtnLogin.Visible := False;
     ImageAvatar.Visible := True;
     LabelUser.Visible := True;
+    LabelArrow.Visible := True;
     LProfile := TRpAuthManager.Instance.Profile;
     LabelUser.Caption := LProfile.UserName;
     if LProfile.AvatarUrl <> '' then
@@ -82,6 +85,7 @@ begin
     BtnLogin.Visible := True;
     ImageAvatar.Visible := False;
     LabelUser.Visible := False;
+    LabelArrow.Visible := False;
   end;
 end;
 
@@ -91,20 +95,29 @@ var
   LResponse: IHTTPResponse;
   LStream: TMemoryStream;
 begin
-  // Simple async-ish download (but blocking for now to avoid complexity, 
-  // though better done in a thread if it impacts UI)
+  if AUrl = '' then Exit;
+  
+  TRpAuthManager.Instance.Log('DownloadAvatar: requesting ' + AUrl);
   LHttpClient := TNetHTTPClient.Create(nil);
   LStream := TMemoryStream.Create;
   try
     try
       LResponse := LHttpClient.Get(AUrl, LStream);
+      TRpAuthManager.Instance.Log('DownloadAvatar: status ' + IntToStr(LResponse.StatusCode));
       if LResponse.StatusCode = 200 then
       begin
         LStream.Position := 0;
-        ImageAvatar.Picture.LoadFromStream(LStream);
+        try
+          ImageAvatar.Picture.LoadFromStream(LStream);
+          TRpAuthManager.Instance.Log('DownloadAvatar: successfully loaded image.');
+        except
+          on E: Exception do
+            TRpAuthManager.Instance.Log('DownloadAvatar: LoadFromStream error: ' + E.Message);
+        end;
       end;
     except
-      // Ignore avatar download errors
+      on E: Exception do
+        TRpAuthManager.Instance.Log('DownloadAvatar: HTTP error ' + E.Message);
     end;
   finally
     LStream.Free;

@@ -75,7 +75,6 @@ type
     procedure ParseProfile(AProfileObj: TJSONObject);
     function GenerateInstallId: string;
     procedure SetIsLoggedIn(Value: Boolean);
-    procedure Log(const AMsg: string);
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
@@ -105,6 +104,7 @@ type
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
+    procedure Log(const AMsg: string);
 
     property Url: string read FUrl write FUrl;
     property Token: string read FToken;
@@ -191,8 +191,8 @@ begin
   if LValue = nil then LValue := AProfileObj.GetValue('UserName');
   if LValue <> nil then Self.FProfile.UserName := LValue.Value;
 
-  LValue := AProfileObj.GetValue('avatarUrl');
-  if LValue = nil then LValue := AProfileObj.GetValue('AvatarUrl');
+  LValue := AProfileObj.GetValue('profileImageUrl');
+  if LValue = nil then LValue := AProfileObj.GetValue('ProfileImageUrl');
   if LValue <> nil then Self.FProfile.AvatarUrl := LValue.Value;
 
   LValue := AProfileObj.GetValue('accountType');
