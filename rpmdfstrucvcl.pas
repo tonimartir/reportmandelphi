@@ -377,9 +377,13 @@ var
  swapped:boolean;
  cue:TUndoCue;
  op:TChangeObjectOperation;
+ oldItemIndex:integer;
+ parentName:string;
 begin
  // Goes up
  swapped:=false;
+ oldItemIndex:=-1;
+ parentName:='';
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -392,6 +396,7 @@ begin
    begin
     if changesubrep<0 then
      break;
+    oldItemIndex:=i;
     arep:=report.SubReports.Items[changesubrep].SubReport;
     report.SubReports.Items[changesubrep].SubReport:=subrep;
     report.SubReports.Items[i].SubReport:=arep;
@@ -431,6 +436,8 @@ begin
     begin
      if index>firstdetail then
      begin
+        oldItemIndex:=index;
+        parentName:=subrep.Name;
       asec:=subrep.Sections[index-1].Section;
       subrep.Sections[index-1].Section:=subrep.Sections[index].Section;
       subrep.Sections[index].Section:=asec;
@@ -462,6 +469,8 @@ begin
       exit;
      if index<2 then
       exit;
+    oldItemIndex:=lastdetail+index;
+    parentName:=subrep.Name;
      // Group footer
      asec:=subrep.Sections.Items[lastdetail+index-1].Section;
      subrep.Sections.Items[lastdetail+index-1].Section:=subrep.Sections.Items[lastdetail+index].Section;
@@ -497,6 +506,8 @@ begin
        exit;
       if index>=subrep.groupcount then
        exit;
+      oldItemIndex:=firstdetail-index;
+      parentName:=subrep.Name;
       // Group footer
       asec:=subrep.Sections.Items[lastdetail+index+1].Section;
       subrep.Sections.Items[lastdetail+index+1].Section:=subrep.Sections.Items[lastdetail+index].Section;
@@ -530,12 +541,15 @@ begin
   begin
    op.componentName:=TRpSubReport(aobject).Name;
    op.componentClass:='TRPSUBREPORT';
+    op.oldItemIndex:=oldItemIndex;
   end
   else
   if (aobject is TRpSection) then
   begin
    op.componentName:=TRpSection(aobject).Name;
    op.componentClass:='TRPSECTION';
+    op.parentName:=parentName;
+    op.oldItemIndex:=oldItemIndex;
   end;
   cue.AddOperation(op);
   TFRpMainFVCL(Owner).RefreshCueView;
@@ -556,9 +570,13 @@ var
  swapped:boolean;
  cue:TUndoCue;
  op:TChangeObjectOperation;
+ oldItemIndex:integer;
+ parentName:string;
 begin
  // Goes down
  swapped:=false;
+ oldItemIndex:=-1;
+ parentName:='';
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -575,6 +593,7 @@ begin
    begin
     if changesubrep>=0 then
     begin
+       oldItemIndex:=changesubrep;
      arep:=report.SubReports.Items[i].SubReport;
      report.SubReports.Items[i].SubReport:=subrep;
      report.SubReports.Items[changesubrep].SubReport:=arep;
@@ -615,6 +634,8 @@ begin
      exit;
     if index<lastdetail then
     begin
+      oldItemIndex:=index;
+      parentName:=subrep.Name;
      asec:=subrep.Sections[index+1].Section;
      subrep.Sections[index+1].Section:=subrep.Sections[index].Section;
      subrep.Sections[index].Section:=asec;
@@ -643,6 +664,8 @@ begin
      end;
      if index<=1 then
       exit;
+    oldItemIndex:=firstdetail-index;
+    parentName:=subrep.Name;
      // Group footer
      asec:=subrep.Sections.Items[lastdetail+index-1].Section;
      subrep.Sections.Items[lastdetail+index-1].Section:=subrep.Sections.Items[lastdetail+index].Section;
@@ -677,6 +700,8 @@ begin
       exit;
      if index>=subrep.GroupCount then
       exit;
+    oldItemIndex:=lastdetail+index;
+    parentName:=subrep.Name;
      // Group footer
      asec:=subrep.Sections.Items[lastdetail+index+1].Section;
      subrep.Sections.Items[lastdetail+index+1].Section:=subrep.Sections.Items[lastdetail+index].Section;
@@ -702,12 +727,15 @@ begin
   begin
    op.componentName:=TRpSubReport(aobject).Name;
    op.componentClass:='TRPSUBREPORT';
+    op.oldItemIndex:=oldItemIndex;
   end
   else
   if (aobject is TRpSection) then
   begin
    op.componentName:=TRpSection(aobject).Name;
    op.componentClass:='TRPSECTION';
+    op.parentName:=parentName;
+    op.oldItemIndex:=oldItemIndex;
   end;
   cue.AddOperation(op);
   TFRpMainFVCL(Owner).RefreshCueView;

@@ -236,7 +236,44 @@ procedure GetSkipTypePossibleValues(alist:TRpWideStrings);
 
 implementation
 
-uses rpsubreport,rpbasereport, Math,rpxmlstream;
+uses rpsubreport,rpbasereport, Math,rpxmlstream, System.NetEncoding;
+
+function StreamToBase64String(stream: TMemoryStream): string;
+var
+  bytes: TBytes;
+  oldPosition: Int64;
+begin
+  Result := '';
+  if (stream = nil) or (stream.Size = 0) then
+    Exit;
+
+  SetLength(bytes, stream.Size);
+  oldPosition := stream.Position;
+  try
+    stream.Position := 0;
+    stream.ReadBuffer(bytes[0], Length(bytes));
+  finally
+    stream.Position := oldPosition;
+  end;
+  Result := System.NetEncoding.TNetEncoding.Base64.EncodeBytesToString(bytes);
+end;
+
+procedure Base64StringToStream(const value: string; stream: TMemoryStream);
+var
+  bytes: TBytes;
+begin
+  stream.SetSize(0);
+  if value = '' then
+  begin
+    stream.Position := 0;
+    Exit;
+  end;
+
+  bytes := System.NetEncoding.TNetEncoding.Base64.DecodeStringToBytes(value);
+  if Length(bytes) > 0 then
+    stream.WriteBuffer(bytes[0], Length(bytes));
+  stream.Position := 0;
+end;
 
 type
   TGraphicHeader = record
@@ -1698,6 +1735,8 @@ end;
 { TRpSection - IPropertiesItem }
 
 procedure TRpSection.SetItemProperty(const propName: string; const value: Variant);
+var
+ tempStream: TMemoryStream;
 begin
  if (propName = 'GroupName') or (propName = SRpSGroupName) then
  begin
@@ -1837,6 +1876,23 @@ begin
  if propName = 'CachedImage' then
  begin
   FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  tempStream := TMemoryStream.Create;
+  try
+    if not VarIsNull(value) and not VarIsEmpty(value) then
+      Base64StringToStream(VarToStr(value), tempStream);
+    SetStream(tempStream);
+  finally
+    tempStream.Free;
+  end;
   exit;
  end;
  inherited;
@@ -1982,6 +2038,19 @@ begin
  if propName = 'CachedImage' then
  begin
   Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  if FStream.Size = 0 then
+    Result := Unassigned
+  else
+    Result := StreamToBase64String(FStream);
   exit;
  end;
  Result := inherited GetItemProperty(propName);

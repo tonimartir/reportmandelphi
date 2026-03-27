@@ -138,7 +138,7 @@ var
 begin
  if strings.Count=0 then
  begin
-  Result:=Null;
+  Result:=VarArrayCreate([0,-1],varVariant);
   Exit;
  end;
  Result:=VarArrayCreate([0,strings.Count-1],varVariant);
@@ -252,7 +252,7 @@ begin
     op.AddProperty('isReadOnly',ptBoolean,origParam.IsReadOnly,newParam.IsReadOnly);
    if origParam.AllowNulls<>newParam.AllowNulls then
     op.AddProperty('allowNulls',ptBoolean,origParam.AllowNulls,newParam.AllowNulls);
-   if Integer(origParam.ParamType)<>Integer(newParam.ParamType) then
+  if Integer(origParam.ParamType)<>Integer(newParam.ParamType) then
     op.AddProperty('paramType',ptInteger,Integer(origParam.ParamType),Integer(newParam.ParamType));
    if origParam.LookupDataset<>newParam.LookupDataset then
     op.AddProperty('lookupDataset',ptString,origParam.LookupDataset,newParam.LookupDataset);
@@ -260,7 +260,8 @@ begin
     op.AddProperty('searchDataset',ptString,origParam.SearchDataset,newParam.SearchDataset);
    if origParam.SearchParam<>newParam.SearchParam then
     op.AddProperty('searchParam',ptString,origParam.SearchParam,newParam.SearchParam);
-   if not VarSameValue(origParam.Value,newParam.Value) then
+   if (Integer(origParam.ParamType)<>Integer(newParam.ParamType)) or
+     (not VarSameValue(origParam.Value,newParam.Value)) then
     op.AddProperty('value',ptVariant,origParam.Value,newParam.Value);
    if not SameStringLists(origParam.Datasets,newParam.Datasets) then
     op.AddProperty('datasets',ptStringArray,ParamStringListToVariant(origParam.Datasets),ParamStringListToVariant(newParam.Datasets));

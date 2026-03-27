@@ -118,8 +118,12 @@ var
 begin
   arrayValue := value;
   jsonArray := TJSONArray.Create;
+  if VarArrayDimCount(arrayValue) = 0 then
+    Exit(jsonArray);
   lowBound := VarArrayLowBound(arrayValue, 1);
   highBound := VarArrayHighBound(arrayValue, 1);
+  if highBound < lowBound then
+    Exit(jsonArray);
   for index := lowBound to highBound do
     jsonArray.Add(VarToStr(arrayValue[index]));
   Result := jsonArray;
@@ -129,6 +133,11 @@ function StringsToVariantArray(strings: TStrings): Variant;
 var
   index: Integer;
 begin
+  if strings.Count = 0 then
+  begin
+    Result := VarArrayCreate([0, -1], varVariant);
+    Exit;
+  end;
   Result := VarArrayCreate([0, strings.Count - 1], varVariant);
   for index := 0 to strings.Count - 1 do
     Result[index] := strings[index];
@@ -142,14 +151,20 @@ begin
   strings.Clear;
   if not VarIsArray(value) then
   begin
+    if VarIsEmpty(value) then
+      Exit;
     if not VarIsNull(value) then
       strings.Add(VarToStr(value));
     Exit;
   end;
 
   arrayValue := value;
+  if VarArrayDimCount(arrayValue) = 0 then
+    Exit;
   lowBound := VarArrayLowBound(arrayValue, 1);
   highBound := VarArrayHighBound(arrayValue, 1);
+  if highBound < lowBound then
+    Exit;
   for index := lowBound to highBound do
     strings.Add(VarToStr(arrayValue[index]));
 end;
@@ -160,12 +175,144 @@ var
   index: Integer;
 begin
   if not (jValue is TJSONArray) then
-    Exit(Null);
+    Exit(Unassigned);
 
   jsonArray := TJSONArray(jValue);
+  if jsonArray.Count = 0 then
+  begin
+    Result := VarArrayCreate([0, -1], varVariant);
+    Exit;
+  end;
   Result := VarArrayCreate([0, jsonArray.Count - 1], varVariant);
   for index := 0 to jsonArray.Count - 1 do
     Result[index] := jsonArray.Items[index].Value;
+end;
+
+function DateTimeToJavaScriptJSON(const value: TDateTime): string;
+var
+  utcValue: TDateTime;
+  formatSettings: TFormatSettings;
+begin
+  utcValue := TTimeZone.Local.ToUniversalTime(value);
+  formatSettings := TFormatSettings.Create;
+  Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"."zzz"Z"',
+    utcValue, formatSettings);
+end;
+
+function VariantTypeToJSONName(const value: Variant): string;
+var
+  variantType: Integer;
+begin
+  if VarIsNull(value) then
+    Exit('Null');
+
+  variantType := VarType(value) and varTypeMask;
+  case variantType of
+    varByte:
+      Result := 'Byte';
+    varBoolean:
+      Result := 'Boolean';
+    varShortInt, varSmallint, varInteger, varWord:
+      Result := 'Integer';
+    varLongWord, varInt64:
+      Result := 'Long';
+    varSingle, varDouble:
+      Result := 'Double';
+    varCurrency:
+      Result := 'Decimal';
+    varDate:
+      Result := 'DateTime';
+  else
+    Result := 'String';
+  end;
+end;
+
+function VariantToTypedJSONValue(const value: Variant): TJSONValue;
+var
+  jsonObject: TJSONObject;
+  typeName: string;
+begin
+  jsonObject := TJSONObject.Create;
+  typeName := VariantTypeToJSONName(value);
+  jsonObject.AddPair('type', typeName);
+  if typeName = 'Null' then
+    jsonObject.AddPair('value', TJSONNull.Create)
+  else if typeName = 'Boolean' then
+    jsonObject.AddPair('value', TJSONBool.Create(Boolean(value)))
+  else if (typeName = 'Integer') or (typeName = 'Byte') then
+    jsonObject.AddPair('value', TJSONNumber.Create(Integer(value)))
+  else if typeName = 'Long' then
+    jsonObject.AddPair('value', TJSONNumber.Create(Int64(value)))
+  else if typeName = 'Decimal' then
+    jsonObject.AddPair('value', TJSONNumber.Create(Double(VarAsType(value, varDouble))))
+  else if typeName = 'Double' then
+    jsonObject.AddPair('value', TJSONNumber.Create(Double(VarAsType(value, varDouble))))
+  else if typeName = 'DateTime' then
+    jsonObject.AddPair('value', TJSONString.Create(DateTimeToJavaScriptJSON(VarToDateTime(value))))
+  else
+    jsonObject.AddPair('value', TJSONString.Create(VarToStr(value)));
+  Result := jsonObject;
+end;
+
+function JSONTypedValueToVariant(jValue: TJSONValue): Variant;
+var
+  jsonObject: TJSONObject;
+  typeValue, valueNode: TJSONValue;
+  typeName, valueText: string;
+begin
+  if jValue = nil then
+    Exit(Unassigned);
+  if jValue is TJSONNull then
+    Exit(Null);
+
+  if not (jValue is TJSONObject) then
+    Exit(Unassigned);
+
+  jsonObject := TJSONObject(jValue);
+  typeValue := GetJSONValueCaseInsensitive(jsonObject, 'type', 'Type');
+  valueNode := GetJSONValueCaseInsensitive(jsonObject, 'value', 'Value');
+  if typeValue = nil then
+    Exit(Unassigned);
+  if valueNode = nil then
+    Exit(Unassigned);
+
+  typeName := typeValue.Value;
+  if SameText(typeName, 'Null') or (valueNode is TJSONNull) then
+    Exit(Null);
+  if SameText(typeName, 'Boolean') then
+  begin
+    if valueNode is TJSONTrue then
+      Exit(True);
+    Exit(False);
+  end;
+  if SameText(typeName, 'Byte') then
+    Exit(Byte(StrToIntDef(valueNode.Value, 0)));
+  if SameText(typeName, 'Integer') then
+    Exit(StrToIntDef(valueNode.Value, 0));
+  if SameText(typeName, 'Long') then
+    Exit(StrToInt64Def(valueNode.Value, 0));
+  if SameText(typeName, 'Decimal') then
+  begin
+    if valueNode is TJSONNumber then
+      Exit(VarAsType(TJSONNumber(valueNode).AsDouble, varCurrency));
+    Exit(VarAsType(StrToFloatDef(valueNode.Value, 0), varCurrency));
+  end;
+  if SameText(typeName, 'Double') then
+  begin
+    if valueNode is TJSONNumber then
+      Exit(TJSONNumber(valueNode).AsDouble);
+    Exit(StrToFloatDef(valueNode.Value, 0));
+  end;
+  if SameText(typeName, 'DateTime') then
+  begin
+    valueText := valueNode.Value;
+    try
+      Exit(ISO8601ToDate(valueText, False));
+    except
+      Exit(valueText);
+    end;
+  end;
+  Exit(valueNode.Value);
 end;
 
 function VariantToJSONValue(const value: Variant; propType: TPropertyType): TJSONValue;
@@ -174,6 +321,9 @@ var
 begin
   if (propType = ptStringArray) and VariantIsStringArray(value) then
     Exit(VariantArrayToJSONValue(value));
+
+  if propType = ptVariant then
+    Exit(VariantToTypedJSONValue(value));
 
   if VarIsNull(value) then
     Exit(TJSONNull.Create);
@@ -187,7 +337,7 @@ begin
     varBoolean:
       Result := TJSONBool.Create(value);
     varDate:
-      Result := TJSONString.Create(DateToISO8601(VarToDateTime(value), False));
+      Result := TJSONString.Create(DateTimeToJavaScriptJSON(VarToDateTime(value)));
   else
     Result := TJSONString.Create(VarToStr(value));
   end;
@@ -198,12 +348,22 @@ var
   numberText: string;
   intValue: Int64;
   floatValue: Double;
+  typedValue: Variant;
 begin
-  if (jValue = nil) or (jValue is TJSONNull) then
+  if jValue = nil then
+    Exit(Unassigned);
+  if jValue is TJSONNull then
     Exit(Null);
 
   if propType = ptStringArray then
     Exit(JSONStringArrayToVariant(jValue));
+
+  if propType = ptVariant then
+  begin
+    typedValue := JSONTypedValueToVariant(jValue);
+    if not VarIsEmpty(typedValue) then
+      Exit(typedValue);
+  end;
 
   if jValue is TJSONTrue then
     Exit(True);
@@ -398,8 +558,10 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('propertyName', propertyName);
   Result.AddPair('propertyType', TJSONNumber.Create(Ord(propertyType)));
-  Result.AddPair('oldValue', VariantToJSONValue(oldValue, propertyType));
-  Result.AddPair('newValue', VariantToJSONValue(newValue, propertyType));
+  if not VarIsEmpty(oldValue) then
+    Result.AddPair('oldValue', VariantToJSONValue(oldValue, propertyType));
+  if not VarIsEmpty(newValue) then
+    Result.AddPair('newValue', VariantToJSONValue(newValue, propertyType));
 end;
 
 class function TChangeOperationItem.FromJSON(jObj: TJSONObject): TChangeOperationItem;
@@ -437,8 +599,16 @@ end;
 
 procedure TChangeObjectOperation.AddProperty(const propName: string;
   propType: TPropertyType; const oldValue, newValue: Variant);
+var
+  storedOldValue, storedNewValue: Variant;
 begin
-  properties.Add(TChangeOperationItem.Create(propName, propType, oldValue, newValue));
+  storedOldValue := oldValue;
+  storedNewValue := newValue;
+  if (operation = otAdd) and VarIsNull(storedOldValue) then
+    storedOldValue := Unassigned;
+  if (operation = otRemove) and VarIsNull(storedNewValue) then
+    storedNewValue := Unassigned;
+  properties.Add(TChangeOperationItem.Create(propName, propType, storedOldValue, storedNewValue));
   if properties.Count > 5 then
     expandedProperties := False;
 end;
@@ -449,19 +619,24 @@ var
   i: Integer;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('operation', TJSONNumber.Create(Ord(operation)));
-  Result.AddPair('groupId', TJSONNumber.Create(groupId));
-  Result.AddPair('componentName', componentName);
-  Result.AddPair('componentClass', componentClass);
-  Result.AddPair('parentName', parentName);
-  Result.AddPair('oldItemIndex', TJSONNumber.Create(oldItemIndex));
-  Result.AddPair('oldParentName', oldParentName);
-  Result.AddPair('date', DateToISO8601(date, False));
-  Result.AddPair('expandedProperties', TJSONBool.Create(expandedProperties));
+  if componentName <> '' then
+    Result.AddPair('componentName', componentName);
+  if componentClass <> '' then
+    Result.AddPair('componentClass', componentClass);
+  if parentName <> '' then
+    Result.AddPair('parentName', parentName);
+  if oldItemIndex >= 0 then
+    Result.AddPair('oldItemIndex', TJSONNumber.Create(oldItemIndex));
+  if oldParentName <> '' then
+    Result.AddPair('oldParentName', oldParentName);
+  Result.AddPair('date', DateTimeToJavaScriptJSON(date));
   propsArr := TJSONArray.Create;
   for i := 0 to properties.Count - 1 do
     propsArr.AddElement(properties[i].ToJSON);
   Result.AddPair('properties', propsArr);
+  Result.AddPair('expandedProperties', TJSONBool.Create(expandedProperties));
+  Result.AddPair('operation', TJSONNumber.Create(Ord(operation)));
+  Result.AddPair('groupId', TJSONNumber.Create(groupId));
 end;
 
 class function TChangeObjectOperation.FromJSON(jObj: TJSONObject): TChangeObjectOperation;
@@ -1231,6 +1406,8 @@ begin
     op.AddProperty('drawStyle', ptInteger, Null, pitem.GetItemProperty('DrawStyle'));
     op.AddProperty('dpiRes', ptInteger, Null, pitem.GetItemProperty('dpires'));
     op.AddProperty('copyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
+    op.AddProperty('sharedImage', ptInteger, Null, pitem.GetItemProperty('sharedImage'));
+    op.AddProperty('streamBase64', ptString, Null, pitem.GetItemProperty('streamBase64'));
   end
   else if pitem is TRpBarcode then
   begin

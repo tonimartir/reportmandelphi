@@ -1379,10 +1379,7 @@ begin
     undoop.componentName:=asizepos.Name;
     undoop.componentClass:=UpperCase(asizepos.ClassName);
     undoop.parentName:=TRpSection(printitem).Name;
-    undoop.AddProperty('posX',ptInteger,Null,asizepos.PosX);
-    undoop.AddProperty('posY',ptInteger,Null,asizepos.PosY);
-    undoop.AddProperty('width',ptInteger,Null,asizepos.Width);
-    undoop.AddProperty('height',ptInteger,Null,asizepos.Height);
+      cue.AddAllComponentProperties(asizepos, undoop);
     cue.AddOperation(undoop);
    end;
    FRpMainf.RefreshCueView;
