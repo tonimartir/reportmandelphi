@@ -1,47 +1,74 @@
 object FRpAISelectionVCL: TFRpAISelectionVCL
   Left = 0
   Top = 0
-  Width = 420
-  Height = 50
+  Width = 525
+  Height = 63
+  Margins.Left = 4
+  Margins.Top = 4
+  Margins.Right = 4
+  Margins.Bottom = 4
   TabOrder = 0
+  PixelsPerInch = 120
   object PAI: TPanel
     Left = 0
     Top = 0
-    Width = 420
-    Height = 50
+    Width = 525
+    Height = 63
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
     object LProvider: TLabel
-      Left = 4
-      Top = 18
-      Width = 16
-      Height = 13
+      Left = 30
+      Top = 23
+      Width = 17
+      Height = 20
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'AI:'
     end
     object PaintBoxGauge: TPaintBox
-      Left = 260
-      Top = 13
-      Width = 24
-      Height = 24
+      Left = 350
+      Top = 16
+      Width = 30
+      Height = 30
       Hint = 'Credits'
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      ParentShowHint = False
       ShowHint = True
       OnPaint = PaintBoxGaugePaint
     end
     object LCredits: TLabel
-      Left = 288
-      Top = 18
-      Width = 120
-      Height = 13
+      Left = 385
+      Top = 23
+      Width = 37
+      Height = 20
       Hint = 'Credits'
-      ShowHint = True
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Guest'
+      ParentShowHint = False
+      ShowHint = True
     end
     object ComboAIProvider: TComboBox
-      Left = 24
-      Top = 14
-      Width = 110
-      Height = 21
+      Left = 55
+      Top = 18
+      Width = 138
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Style = csDropDownList
       ItemIndex = 0
       TabOrder = 0
@@ -52,10 +79,14 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         'Precision')
     end
     object ComboAIMode: TComboBox
-      Left = 140
-      Top = 14
-      Width = 110
-      Height = 21
+      Left = 200
+      Top = 18
+      Width = 138
+      Height = 28
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Style = csDropDownList
       ItemIndex = 0
       TabOrder = 1
@@ -64,6 +95,19 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       Items.Strings = (
         'Fast'
         'Reasoning')
+    end
+    object ProgressBarAI: TProgressBar
+      Left = 5
+      Top = 20
+      Width = 20
+      Height = 20
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      MarqueeInterval = 30
+      TabOrder = 2
+      Visible = False
     end
   end
 end

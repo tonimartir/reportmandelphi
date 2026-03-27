@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -18,7 +18,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, rpfrmloginframevcl, System.JSON, rpdatahttp,
-  System.Zip, System.IOUtils;
+  System.Zip, System.IOUtils, System.Threading;
 
 type
   TFRpMonacoEditorVCL = class(TFrame)
@@ -45,6 +45,11 @@ type
     FUpdatingFromBrowser: Boolean;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
+    FDebounceTimer: TTimer;
+    FPendingRequestId, FPendingSql: string;
+    FPendingPos: Integer;
+    FInferenceTask: ITask;
+    procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
@@ -125,6 +130,11 @@ begin
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
   UpdateAuthUI;
+
+  FDebounceTimer := TTimer.Create(Self);
+  FDebounceTimer.Interval := 1000;
+  FDebounceTimer.Enabled := False;
+  FDebounceTimer.OnTimer := OnDebounceTimer;
 end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
@@ -312,117 +322,169 @@ end;
 
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
-  LHttp: TRpDatabaseHttp;
-  LSql: string;
-  LPos: Integer;
-  LRequestId: string;
-  LResponse: TJSONObject;
-  LResult, LAutoComplete: TJSONObject;
-  LInlineArr, LListArr: TJSONArray;
   LVal: TJSONValue;
-  LInlineItems, LCompletionItems: TJSONArray;
-  I: Integer;
-  LItem: TJSONObject;
 begin
-  LRequestId := '';
+  FDebounceTimer.Enabled := False;
+  
+  FPendingRequestId := '';
   LVal := ARequest.Values['requestId'];
   if (LVal <> nil) and (not LVal.Null) then
-    LRequestId := LVal.Value;
+    FPendingRequestId := LVal.Value;
 
-  LSql := '';
+  FPendingSql := '';
   LVal := ARequest.Values['code'];
   if (LVal <> nil) and (not LVal.Null) then
-    LSql := LVal.Value;
+    FPendingSql := LVal.Value;
 
-  LPos := 0;
+  FPendingPos := 0;
   LVal := ARequest.Values['position'];
   if (LVal <> nil) and (not LVal.Null) then
   begin
     if LVal is TJSONNumber then
-      LPos := TJSONNumber(LVal).AsInt
+      FPendingPos := TJSONNumber(LVal).AsInt
     else
-      LPos := StrToIntDef(LVal.Value, 0);
+      FPendingPos := StrToIntDef(LVal.Value, 0);
   end;
 
-  LHttp := TRpDatabaseHttp.Create;
-  try
-    LHttp.Token := TRpAuthManager.Instance.Token;
-    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-    LHttp.HubDatabaseId := FHubDatabaseId;
-    LHttp.HubSchemaId := FHubSchemaId;
-    LHttp.AITier := FAISelection.AITier;
-    LHttp.AgentSecret := FAISelection.AgentSecret;
-    LHttp.AgentAiId := FAISelection.AgentAiId;
+  FDebounceTimer.Enabled := True;
+end;
 
-    LResponse := nil;
-    try
-      LResponse := LHttp.SuggestSql(LSql, LPos, FAISelection.AIMode);
-    except
-      on E: Exception do
-      begin
-        TRpAuthManager.Instance.Log('SuggestSql Error: ' + E.Message);
-        LResponse := nil;
-      end;
-    end;
-
-    // Build Monaco-compatible response: { inlineItems: [...], completionItems: [...] }
-    LInlineItems := TJSONArray.Create;
-    LCompletionItems := TJSONArray.Create;
-
-    if LResponse <> nil then
-    try
-      // Navigate: response.result.autoComplete
-      LVal := LResponse.Values['result'];
-      if (LVal <> nil) and (LVal is TJSONObject) then
-      begin
-        LResult := LVal as TJSONObject;
-        LVal := LResult.Values['autoComplete'];
-        if (LVal <> nil) and (LVal is TJSONObject) then
+procedure TFRpMonacoEditorVCL.OnDebounceTimer(Sender: TObject);
+begin
+  FDebounceTimer.Enabled := False;
+  
+  // Create AI completion task (asynchronous)
+  FInferenceTask := TTask.Run(
+    procedure
+    var
+      LHttp: TRpDatabaseHttp;
+      LRequestId, LSql: string;
+      LPos: Integer;
+      LResponse: TJSONObject;
+      LResult, LAutoComplete: TJSONObject;
+      LInlineArr, LListArr: TJSONArray;
+      LVal: TJSONValue;
+      LInlineItems, LCompletionItems: TJSONArray;
+      I: Integer;
+      LItem: TJSONObject;
+      LUAIMode: string;
+    begin
+      LRequestId := FPendingRequestId;
+      LSql := FPendingSql;
+      LPos := FPendingPos;
+      
+      TThread.Queue(nil,
+        procedure
         begin
-          LAutoComplete := LVal as TJSONObject;
+          if not (csDestroying in ComponentState) then
+            FAISelection.SetInferenceProgress(True);
+        end);
 
-          // Parse inlineCompletions → inlineItems (ghost text)
-          LVal := LAutoComplete.Values['inlineCompletions'];
-          if (LVal <> nil) and (LVal is TJSONArray) then
-          begin
-            LInlineArr := LVal as TJSONArray;
-            for I := 0 to LInlineArr.Count - 1 do
-            begin
-              LItem := TJSONObject.Create;
-              LItem.AddPair('insertText', LInlineArr.Items[I].Value);
-              LInlineItems.AddElement(LItem);
-            end;
-          end;
+      LHttp := TRpDatabaseHttp.Create;
+      try
+        LHttp.Token := TRpAuthManager.Instance.Token;
+        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+        LHttp.HubDatabaseId := FHubDatabaseId;
+        LHttp.HubSchemaId := FHubSchemaId;
+        LHttp.AITier := FAISelection.AITier;
+        LHttp.AgentSecret := FAISelection.AgentSecret;
+        LHttp.AgentAiId := FAISelection.AgentAiId;
+        LUAIMode := FAISelection.AIMode;
 
-          // Parse listCompletions → completionItems (dropdown)
-          LVal := LAutoComplete.Values['listCompletions'];
-          if (LVal <> nil) and (LVal is TJSONArray) then
+        LResponse := nil;
+        try
+          LResponse := LHttp.SuggestSql(LSql, LPos, LUAIMode);
+        except
+          on E: Exception do
           begin
-            LListArr := LVal as TJSONArray;
-            for I := 0 to LListArr.Count - 1 do
-            begin
-              LItem := TJSONObject.Create;
-              LItem.AddPair('label', LListArr.Items[I].Value);
-              LItem.AddPair('insertText', LListArr.Items[I].Value);
-              LItem.AddPair('detail', 'AI');
-              LCompletionItems.AddElement(LItem);
-            end;
+            TRpAuthManager.Instance.Log('SuggestSql Error: ' + E.Message);
+            LResponse := nil;
           end;
         end;
+
+        // Build Monaco-compatible response: { inlineItems: [...], completionItems: [...] }
+        LInlineItems := TJSONArray.Create;
+        LCompletionItems := TJSONArray.Create;
+
+        if LResponse <> nil then
+        try
+          // Navigate: response.result.autoComplete
+          LVal := LResponse.Values['result'];
+          if (LVal <> nil) and (LVal is TJSONObject) then
+          begin
+            LResult := LVal as TJSONObject;
+            LVal := LResult.Values['autoComplete'];
+            if (LVal <> nil) and (LVal is TJSONObject) then
+            begin
+              LAutoComplete := LVal as TJSONObject;
+
+              // Parse inlineCompletions → inlineItems (ghost text)
+              LVal := LAutoComplete.Values['inlineCompletions'];
+              if (LVal <> nil) and (LVal is TJSONArray) then
+              begin
+                LInlineArr := LVal as TJSONArray;
+                for I := 0 to LInlineArr.Count - 1 do
+                begin
+                  LItem := TJSONObject.Create;
+                  LItem.AddPair('insertText', LInlineArr.Items[I].Value);
+                  LInlineItems.AddElement(LItem);
+                end;
+              end;
+
+              // Parse listCompletions → completionItems (dropdown)
+              LVal := LAutoComplete.Values['listCompletions'];
+              if (LVal <> nil) and (LVal is TJSONArray) then
+              begin
+                LListArr := LVal as TJSONArray;
+                for I := 0 to LListArr.Count - 1 do
+                begin
+                  LItem := TJSONObject.Create;
+                  LItem.AddPair('label', LListArr.Items[I].Value);
+                  LItem.AddPair('insertText', LListArr.Items[I].Value);
+                  LItem.AddPair('detail', 'AI');
+                  LCompletionItems.AddElement(LItem);
+                end;
+              end;
+            end;
+          end;
+
+          // Update credit gauge if available
+          LVal := LResponse.Values['userProfile'];
+          if (LVal <> nil) and (LVal is TJSONObject) then
+          begin
+             LItem := LVal.Clone as TJSONObject;
+             TThread.Queue(nil,
+               procedure
+               begin
+                 if not (csDestroying in ComponentState) then
+                   FAISelection.UpdateFromUserProfile(LItem);
+                 LItem.Free;
+               end);
+          end;
+        finally
+          LResponse.Free;
+        end;
+
+        // Dispatch back to main thread for WebView interaction
+        TThread.Queue(nil,
+          procedure
+          begin
+            if not (csDestroying in ComponentState) then
+            begin
+              SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
+              FAISelection.SetInferenceProgress(False);
+            end
+            else
+            begin
+              LInlineItems.Free;
+              LCompletionItems.Free;
+            end;
+          end);
+      finally
+        LHttp.Free;
       end;
-
-      // Update credit gauge from userProfile in the response
-      LVal := LResponse.Values['userProfile'];
-      if (LVal <> nil) and (LVal is TJSONObject) then
-        FAISelection.UpdateFromUserProfile(LVal as TJSONObject);
-    finally
-      LResponse.Free;
-    end;
-
-    SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
-  finally
-    LHttp.Free;
-  end;
+    end
+  );
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);

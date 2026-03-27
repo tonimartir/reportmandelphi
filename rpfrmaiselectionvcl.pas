@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -16,7 +16,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, System.JSON, rpauthmanager;
+  Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON, rpauthmanager;
 
 type
   // Mirrors Desktop NLToSQLProvider: Standard, Precision, Agent
@@ -36,6 +36,7 @@ type
     PaintBoxGauge: TPaintBox;
     LCredits: TLabel;
     LProvider: TLabel;
+    ProgressBarAI: TProgressBar;
     procedure PaintBoxGaugePaint(Sender: TObject);
     procedure ComboAIModeChange(Sender: TObject);
     procedure ComboAIProviderChange(Sender: TObject);
@@ -55,6 +56,7 @@ type
     procedure UpdateFromUserProfile(AProfile: TJSONObject);
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
     procedure ClearAgentEndpoints;
+    procedure SetInferenceProgress(AActive: Boolean);
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
     // Properties for the HTTP driver
     property AITier: string read GetAITier;
@@ -110,9 +112,9 @@ begin
       LHint := LHint + 'Créditos Gratuitos' + #13#10
     else
       LHint := LHint + 'Créditos Diarios' + #13#10;
-      
+
     LHint := LHint + Format('Consumidos: %d / %d (%.0f%%)', [LUsed, LMax, LPct]) + #13#10;
-    
+
     if LProfile.ServerDay > 0 then
       LHint := LHint + 'Día del Servidor: ' + DateToStr(LProfile.ServerDay);
   end
@@ -128,7 +130,7 @@ begin
   // Enable hints
   LCredits.ShowHint := True;
   PaintBoxGauge.ShowHint := True;
-  
+
   PaintBoxGauge.Invalidate;
 end;
 
@@ -286,6 +288,18 @@ begin
     ComboAIProvider.Items.Delete(ComboAIProvider.Items.Count - 1);
   if ComboAIProvider.ItemIndex >= ComboAIProvider.Items.Count then
     ComboAIProvider.ItemIndex := 0;
+end;
+
+procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);
+const
+  PBM_SETMARQUEE = $040A; // WM_USER + 10
+begin
+  ProgressBarAI.Visible := AActive;
+  if AActive then
+  begin
+    ProgressBarAI.Style := TProgressBarStyle.pbstMarquee;
+    //SendMessage(ProgressBarAI.Handle, PBM_SETMARQUEE, 1, 0);
+  end;
 end;
 
 end.
