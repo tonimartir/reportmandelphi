@@ -67,6 +67,7 @@ uses rpdbxconfigvcl, rpbasereport, rpxmlstream;
 procedure TFRpDInfoVCL.SetReport(value:TRpReport);
 begin
  freport:=value;
+ EnsureReportItemNames(value);
  // Snapshot originals for undo comparison
  origDatabaseInfo:=TRpDatabaseInfoList.Create(nil);
  origDatabaseInfo.Assign(value.DatabaseInfo);
@@ -137,6 +138,36 @@ var
  newDBInfo:TRpDatabaseInfoList;
  newDataInfo:TRpDataInfoList;
  op:TChangeObjectOperation;
+  function FindDatabaseInfoByComponentName(infoList: TRpDatabaseInfoList;
+    const componentName: string): TRpDatabaseInfoItem;
+  var
+    itemIndex: Integer;
+  begin
+    Result:=nil;
+    for itemIndex:=0 to infoList.Count-1 do
+    begin
+      if SameText(infoList.Items[itemIndex].Name, componentName) then
+      begin
+        Result:=infoList.Items[itemIndex];
+        Exit;
+      end;
+    end;
+  end;
+  function FindDataInfoByComponentName(infoList: TRpDataInfoList;
+    const componentName: string): TRpDataInfoItem;
+  var
+    itemIndex: Integer;
+  begin
+    Result:=nil;
+    for itemIndex:=0 to infoList.Count-1 do
+    begin
+      if SameText(infoList.Items[itemIndex].Name, componentName) then
+      begin
+        Result:=infoList.Items[itemIndex];
+        Exit;
+      end;
+    end;
+  end;
 begin
  if not Assigned(freport) or not Assigned(freport.UndoCue) then
   exit;
@@ -148,7 +179,7 @@ begin
  for i:=0 to origDatabaseInfo.Count-1 do
  begin
   origDB:=origDatabaseInfo.Items[i];
-  if newDBInfo.ItemByName(origDB.Name)=nil then
+  if FindDatabaseInfoByComponentName(newDBInfo, origDB.Name)=nil then
   begin
    op:=TChangeObjectOperation.Create(otRemove,groupId);
    op.componentName:=origDB.Name;
@@ -169,7 +200,7 @@ begin
  for i:=0 to newDBInfo.Count-1 do
  begin
   newDB:=newDBInfo.Items[i];
-  if origDatabaseInfo.ItemByName(newDB.Name)=nil then
+  if FindDatabaseInfoByComponentName(origDatabaseInfo, newDB.Name)=nil then
   begin
    op:=TChangeObjectOperation.Create(otAdd,groupId);
    op.componentName:=newDB.Name;
@@ -190,7 +221,7 @@ begin
  for i:=0 to newDBInfo.Count-1 do
  begin
   newDB:=newDBInfo.Items[i];
-  origDB:=origDatabaseInfo.ItemByName(newDB.Name);
+  origDB:=FindDatabaseInfoByComponentName(origDatabaseInfo, newDB.Name);
   if Assigned(origDB) then
   begin
    op:=TChangeObjectOperation.Create(otModify,groupId);
@@ -224,7 +255,7 @@ begin
  for i:=0 to origDataInfo.Count-1 do
  begin
   origDS:=origDataInfo.Items[i];
-  if newDataInfo.ItemByName(origDS.Name)=nil then
+  if FindDataInfoByComponentName(newDataInfo, origDS.Name)=nil then
   begin
    op:=TChangeObjectOperation.Create(otRemove,groupId);
    op.componentName:=origDS.Name;
@@ -243,7 +274,7 @@ begin
  for i:=0 to newDataInfo.Count-1 do
  begin
   newDS:=newDataInfo.Items[i];
-  if origDataInfo.ItemByName(newDS.Name)=nil then
+  if FindDataInfoByComponentName(origDataInfo, newDS.Name)=nil then
   begin
    op:=TChangeObjectOperation.Create(otAdd,groupId);
    op.componentName:=newDS.Name;
@@ -262,7 +293,7 @@ begin
  for i:=0 to newDataInfo.Count-1 do
  begin
   newDS:=newDataInfo.Items[i];
-  origDS:=origDataInfo.ItemByName(newDS.Name);
+  origDS:=FindDataInfoByComponentName(origDataInfo, newDS.Name);
   if Assigned(origDS) then
   begin
    op:=TChangeObjectOperation.Create(otModify,groupId);
@@ -293,7 +324,8 @@ end;
 procedure TFRpDInfoVCL.BOkClick(Sender: TObject);
 begin
  fdatasets.Databaseinfo:=fconnections.Databaseinfo;
- // RecordUndoChanges;
+ EnsureReportItemNames(freport);
+ RecordUndoChanges;
  freport.DatabaseInfo.Assign(fdatasets.Databaseinfo);
  freport.DataInfo.Assign(fdatasets.Datainfo);
  freport.Params.Assign(fdatasets.Params);

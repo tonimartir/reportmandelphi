@@ -54,6 +54,13 @@ procedure WritePropertyB(propname:Ansistring;propvalue:TStream;stream:TStream);
 procedure WriteReportXML(areport:TComponent;Stream:TStream);
 procedure ReadReportXML(areport:TComponent;Stream:TStream);
 procedure ReadSectionXML(areport:TComponent;Stream:TStream);
+function GetUniqueReportItemName(report: TRpBaseReport; currentItem: TObject;
+  const preferredName, basePrefix: string): string;
+procedure EnsureDatabaseInfoItemName(report: TRpBaseReport;
+  dbitem: TRpDatabaseInfoItem);
+procedure EnsureDataInfoItemName(report: TRpBaseReport;
+  ditem: TRpDataInfoItem);
+procedure EnsureParamName(report: TRpBaseReport; param: TRpParam);
 procedure EnsureReportItemNames(report: TRpBaseReport);
 
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
@@ -2211,68 +2218,101 @@ begin
  EnsureReportItemNames(report);
 end;
 
+function GetUniqueReportItemName(report: TRpBaseReport; currentItem: TObject;
+  const preferredName, basePrefix: string): string;
+var
+  n: Integer;
+  candidate: string;
+  existing: TObject;
+begin
+  if not Assigned(report) then
+    Exit(preferredName);
+
+  candidate := Trim(preferredName);
+  if candidate <> '' then
+  begin
+    existing := report.FindReporItemByName(candidate);
+    if (existing = nil) or (existing = currentItem) then
+      Exit(candidate);
+
+    n := 1;
+    repeat
+      candidate := Trim(preferredName) + IntToStr(n);
+      Inc(n);
+      existing := report.FindReporItemByName(candidate);
+    until (existing = nil) or (existing = currentItem);
+    Exit(candidate);
+  end;
+
+  n := 1;
+  repeat
+    candidate := basePrefix + IntToStr(n);
+    Inc(n);
+    existing := report.FindReporItemByName(candidate);
+  until (existing = nil) or (existing = currentItem);
+  Result := candidate;
+end;
+
+procedure EnsureDatabaseInfoItemName(report: TRpBaseReport;
+  dbitem: TRpDatabaseInfoItem);
+var
+  preferredName: string;
+begin
+  if not Assigned(report) or not Assigned(dbitem) then
+    Exit;
+  preferredName := Trim(dbitem.Name);
+  if preferredName = '' then
+    preferredName := dbitem.Alias;
+  dbitem.Name := GetUniqueReportItemName(report, dbitem,
+    preferredName, 'TRPDATABASEINFOITEM');
+end;
+
+procedure EnsureDataInfoItemName(report: TRpBaseReport;
+  ditem: TRpDataInfoItem);
+var
+  preferredName: string;
+begin
+  if not Assigned(report) or not Assigned(ditem) then
+    Exit;
+  preferredName := Trim(ditem.Name);
+  if preferredName = '' then
+    preferredName := ditem.Alias;
+  ditem.Name := GetUniqueReportItemName(report, ditem,
+    preferredName, 'TRPDATAINFOITEM');
+end;
+
+procedure EnsureParamName(report: TRpBaseReport; param: TRpParam);
+begin
+  if not Assigned(report) or not Assigned(param) then
+    Exit;
+  param.Name := GetUniqueReportItemName(report, param, param.Name, 'TRPPARAM');
+end;
+
 procedure EnsureReportItemNames(report: TRpBaseReport);
 var
-  i, j, k, n: Integer;
+  i, j, k: Integer;
   subrep: TRpSubReport;
   sec: TRpSection;
   dbitem: TRpDatabaseInfoItem;
   ditem: TRpDataInfoItem;
   param: TRpParam;
   comp: TRpCommonComponent;
-  newname: string;
 begin
-  // DatabaseInfo: use Alias as Name if Name is empty
   for i := 0 to report.DatabaseInfo.Count - 1 do
   begin
     dbitem := report.DatabaseInfo.Items[i];
-    if dbitem.Name = '' then
-    begin
-      newname := dbitem.Alias;
-      if newname = '' then
-      begin
-        n := 1;
-        repeat
-          newname := 'TRPDATABASEINFOITEM' + IntToStr(n);
-          Inc(n);
-        until report.FindReporItemByName(newname) = nil;
-      end;
-      dbitem.Name := newname;
-    end;
+    EnsureDatabaseInfoItemName(report, dbitem);
   end;
-  // DataInfo: use Alias as Name if Name is empty
   for i := 0 to report.DataInfo.Count - 1 do
   begin
     ditem := report.DataInfo.Items[i];
-    if ditem.Name = '' then
-    begin
-      newname := ditem.Alias;
-      if newname = '' then
-      begin
-        n := 1;
-        repeat
-          newname := 'TRPDATAINFOITEM' + IntToStr(n);
-          Inc(n);
-        until report.FindReporItemByName(newname) = nil;
-      end;
-      ditem.Name := newname;
-    end;
+    EnsureDataInfoItemName(report, ditem);
   end;
-  // Params: Name is normally set, but ensure just in case
   for i := 0 to report.Params.Count - 1 do
   begin
     param := report.Params.Items[i];
-    if param.Name = '' then
-    begin
-      n := 1;
-      repeat
-        newname := 'TRPPARAM' + IntToStr(n);
-        Inc(n);
-      until report.FindReporItemByName(newname) = nil;
-      param.Name := newname;
-    end;
+    EnsureParamName(report, param);
   end;
-  // SubReports and Sections
   for i := 0 to report.SubReports.Count - 1 do
   begin
     subrep := report.SubReports.Items[i].SubReport;

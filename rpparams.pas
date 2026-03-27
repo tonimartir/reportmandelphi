@@ -736,7 +736,7 @@ end;
 function TRpParamList.Add(AName:String):TRpParam;
 begin
  // Checks if it exists
- if IndexOf(AName)>0 then
+ if IndexOf(AName)>=0 then
   Raise Exception.Create(SRpParameterExists+ ':'+AName);
  Result:=TRpParam(inherited Add);
  Result.FName:=AName;

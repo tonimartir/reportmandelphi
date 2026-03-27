@@ -1211,6 +1211,7 @@ procedure TRpDataInfoItem.Assign(Source:TPersistent);
 begin
  if Source is TRpDataInfoItem then
  begin
+  FName:=TRpDataInfoItem(Source).FName;
   FAlias:=TRpDataInfoItem(Source).FAlias;
   FDatabaseAlias:=TRpDataInfoItem(Source).FDatabaseAlias;
   FDataSource:=TRpDataInfoItem(Source).FDataSource;
@@ -1530,6 +1531,7 @@ procedure TRpDatabaseInfoItem.Assign(Source:TPersistent);
 begin
  if Source is TRpDatabaseInfoItem then
  begin
+  FName:=TRpDatabaseInfoItem(Source).FName;
   FAlias:=TRpDatabaseInfoItem(Source).FAlias;
   FLoadParams:=TRpDatabaseInfoItem(Source).FLoadParams;
   FLoginPrompt:=TRpDatabaseInfoItem(Source).FLoginPrompt;

@@ -29,7 +29,8 @@ uses SysUtils, Classes,
   Variants,
   DB,rpmdconsts,rpparams,rpmdundocue,
   rpgraphutilsvcl, ToolWin,rptypes, rpmaskedit, CheckLst, Vcl.VirtualImageList,
-  Vcl.BaseImageCollection, Vcl.ImageCollection, System.Actions, System.ImageList;
+  Vcl.BaseImageCollection, Vcl.ImageCollection, System.Actions, System.ImageList,
+  rpxmlstream, rpbasereport;
 
 type
   TFRpParamsVCL = class(TForm)
@@ -683,6 +684,8 @@ begin
 
  // Adds a param
  aparam:=params.Add(paramname);
+ if Assigned(report) then
+  EnsureParamName(TRpBaseReport(report), aparam);
  aparam.AllowNulls:=false;
  aparam.Value:='';
 

@@ -161,7 +161,7 @@ type
 
 implementation
 
-uses rpmdfdatatextvcl;
+uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 {$R *.DFM}
 
@@ -709,6 +709,7 @@ begin
  if Length(aliasname)<1 then
   exit;
  aitem:=datainfo.Add(aliasname);
+ EnsureDataInfoItemName(TRpBaseReport(report), aitem);
  if databaseinfo.Count>0 then
   aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
  FillDatasets;
