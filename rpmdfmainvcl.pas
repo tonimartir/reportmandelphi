@@ -1103,9 +1103,11 @@ end;
 procedure TFRpMainFVCL.ANewGroupExecute(Sender: TObject);
 var
  newgroupname:string;
- asection:TRPSection;
+ asection,footersec:TRPSection;
  cue:TUndoCue;
  op:TChangeObjectOperation;
+ subrep:TRpSubReport;
+ i:integer;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddNewGroupout a report unassigned');
@@ -1113,14 +1115,39 @@ begin
  newgroupname:=Uppercase(Trim(RpInputBox(SRpNewGroup,SRpSGroupName,'')));
  if length(newgroupname)>0 then
  begin
-  asection:=freportstructure.FindSelectedSubreport.AddGroup(newgroupname);
+  subrep:=freportstructure.FindSelectedSubreport;
+  asection:=subrep.AddGroup(newgroupname);
   EnsureUndoCue;
   cue:=TUndoCue(report.UndoCue);
+  
+  // Register both sections (header and footer) in the same undo group
   op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
   op.componentName:=asection.Name;
   op.componentClass:='TRPSECTION';
-  op.parentName:=freportstructure.FindSelectedSubreport.Name;
+  op.parentName:=subrep.Name;
   cue.AddOperation(op);
+  
+  // Find and register the footer section (created by AddGroup)
+  footersec:=nil;
+  for i := subrep.Sections.Count - 1 downto 0 do
+  begin
+   if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and 
+      (subrep.Sections.Items[i].Section.GroupName = newgroupname) then
+    begin
+     footersec:=subrep.Sections.Items[i].Section;
+     break;
+    end;
+  end;
+  
+  if Assigned(footersec) then
+  begin
+   op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+   op.componentName:=footersec.Name;
+   op.componentClass:='TRPSECTION';
+   op.parentName:=subrep.Name;
+   cue.AddOperation(op);
+  end;
+  
   RefreshInterface(Self);
   freportstructure.SelectDataItem(asection);
  end;
@@ -1149,6 +1176,14 @@ end;
 procedure TFRpMainFVCL.ADeleteSelectionExecute(Sender: TObject);
 var
  currentsubrep:TRpSubReport;
+ secorsub:TObject;
+ sec:TRpSection;
+ subrep:TRpSubReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ groupname:string;
+ i:integer;
+ footersec:TRpSection;
 begin
  // Deletes section
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
@@ -1156,10 +1191,74 @@ begin
  if RpMessageBox(SRpSureDeleteSection,SRpWarning,[smbok,smbcancel],smsWarning,smbCancel)=smbOk then
  begin
   currentsubrep:=nil;
-  if (not (freportstructure.FindSelectedObject is TRpSubReport)) then
-   currentsubrep:=freportstructure.FindSelectedSubreport;
+  secorsub:=freportstructure.FindSelectedObject;
+  
+  // Register undo operation before deleting
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  
+  if (secorsub is TRpSubReport) then
+  begin
+   // Delete subreport
+   op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+   op.componentName:=TRpSubReport(secorsub).Name;
+   op.componentClass:='TRPSUBREPORT';
+   cue.AddOperation(op);
+   currentsubrep:=nil;
+  end
+  else if (secorsub is TRpSection) then
+  begin
+   sec:=TRpSection(secorsub);
+   subrep:=freportstructure.FindSelectedSubreport;
+   
+   // For group sections, register both header and footer in same undo group
+   if sec.SectionType in [rpsecgheader, rpsecgfooter] then
+   begin
+    groupname:=sec.GroupName;
+    
+    // Register header section
+    op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+    op.componentName:=sec.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    cue.AddOperation(op);
+    
+    // Find and register footer section
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
+        (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+     begin
+      footersec:=subrep.Sections.Items[i].Section;
+      op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+      op.componentName:=footersec.Name;
+      op.componentClass:='TRPSECTION';
+      op.parentName:=subrep.Name;
+      cue.AddOperation(op);
+      break;
+     end;
+    end;
+    
+    currentsubrep:=nil;
+   end
+   else
+   begin
+    // Regular section (detail, page header, page footer)
+    op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+    op.componentName:=sec.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    cue.AddOperation(op);
+    
+    currentsubrep:=nil;
+   end;
+  end;
+  
+  // Now perform the deletion
   freportstructure.DeleteSelectedNode;
+  RefreshCueView;
   RefreshInterface(Self);
+  
   if Assigned(currentsubrep) then
    freportstructure.SelectDataItem(currentsubrep);
  end;
