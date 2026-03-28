@@ -100,8 +100,9 @@ type
    cachedpos:Int64;
    FCachedImage:TRpCachedImage;
    procedure SetReportComponents(Value:TRpCommonList);
-   procedure SetGroupName(Value:string);
-   procedure SetChangeExpression(Value:widestring);
+   procedure SetGroupName(Value:string;CheckGroupExists:boolean);
+   procedure SetGroupNameInt(Value:string);
+    procedure SetChangeExpression(Value:widestring);
    procedure OnReadError(Reader: TReader; const Message: string; var Handled: Boolean);
    procedure SetChildSubReport(Value:TComponent);
    procedure AssignSection(sec:TRpSection);
@@ -178,7 +179,7 @@ type
    function GetItemProperty(const propName: string): Variant; override;
   published
    property SubReport:TComponent read FSubReport write FSubReport;
-   property GroupName:String read FGroupName write SetGroupName;
+   property GroupName:String read FGroupName write SetGroupNameInt;
    property ChangeBool:boolean read FChangeBool write FChangeBool;
    property PageRepeat:boolean read FPageRepeat write SetPageRepeat;
    property SkipPage:boolean read FSkipPage write FSkipPage;
@@ -477,7 +478,13 @@ begin
 end;
 
 
-procedure TRpSection.SetGroupName(Value:string);
+
+procedure TRpSection.SetGroupNameInt(Value:string);
+begin
+ SetGroupName(Value, true);
+end;
+
+procedure TRpSection.SetGroupName(Value:string;CheckGroupExists:boolean);
 var
  subrep:TRpSubreport;
  i:integer;
@@ -498,7 +505,8 @@ begin
   exit;
  end;
  subrep:=TRpSubreport(FSubReport);
- subrep.CheckGroupExists(Value);
+ if (CheckGroupExists) then
+   subrep.CheckGroupExists(Value);
  if Length(FGroupName)>0 then
  begin
   for i:=0 to Owner.ComponentCount-1 do
@@ -1740,7 +1748,7 @@ var
 begin
  if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
-  SetGroupName(value);
+  SetGroupName(value,false);
   exit;
  end;
  if SameText(propName, 'ChangeExpression') or SameText(propName, SRpSGroupExpression) then
