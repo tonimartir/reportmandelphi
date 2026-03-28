@@ -1210,7 +1210,24 @@ var
  i,j,sectionIndex,removedSections:integer;
  secToDelete:TList<TRpSection>;
  asec:TRpSection;
+ pitem:TRpCommonPosComponent;
  groupId:integer;
+  procedure DeleteSectionComponentsWithUndo(ASection: TRpSection);
+  begin
+   while ASection.ReportComponents.Count>0 do
+   begin
+    pitem:=TRpCommonPosComponent(ASection.ReportComponents.Items[0].Component);
+    op:=TChangeObjectOperation.Create(otRemove, groupId);
+    op.componentName:=pitem.Name;
+    op.componentClass:=UpperCase(pitem.ClassName);
+    op.parentName:=ASection.Name;
+    op.oldParentName:=ASection.Name;
+    op.oldItemIndex:=0;
+    cue.AddAllComponentProperties(pitem, op);
+    cue.AddOperation(op);
+    ASection.DeleteComponent(pitem);
+   end;
+  end;
 begin
  // Deletes section
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
@@ -1268,6 +1285,7 @@ begin
      end;
       if sectionIndex < 0 then
        continue;
+        DeleteSectionComponentsWithUndo(secToDelete[i]);
       op:=TChangeObjectOperation.Create(otRemove, groupId);
       op.componentName:=secToDelete[i].Name;
       op.componentClass:='TRPSECTION';
@@ -1290,6 +1308,7 @@ begin
     begin
      if subrep.Sections.Items[i].Section = sec then
      begin
+      DeleteSectionComponentsWithUndo(sec);
       op:=TChangeObjectOperation.Create(otRemove, groupId);
       op.componentName:=sec.Name;
       op.componentClass:='TRPSECTION';
