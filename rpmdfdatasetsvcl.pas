@@ -150,6 +150,7 @@ type
     { Public declarations }
     browser:TFRpBrowserVCL;
     constructor Create(AOwner:TComponent);override;
+    destructor Destroy; override;
     procedure FillDatasets;
     property Datainfo:TRpDataInfoList read GetDatainfo
      write SetDataInfo;
@@ -164,6 +165,22 @@ implementation
 uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 {$R *.DFM}
+
+var
+  GCachedMonaco: TFRpMonacoEditorVCL = nil;
+
+destructor TFRpDatasetsVCL.Destroy;
+begin
+  if (FMonaco <> nil) and (FMonaco = GCachedMonaco) then
+  begin
+    if FMonaco.Parent = TabSQL then
+    begin
+      FMonaco.OnContentChanged := nil;
+      FMonaco.Parent := nil;
+    end;
+  end;
+  inherited Destroy;
+end;
 
 
 function TFRpDatasetsVCL.GetParams:TRpParamList;
@@ -231,14 +248,16 @@ begin
  PBottom.Height:=250;
 
  PLBrowser.Caption:=SRpDatabaseBrowser;
- MSQL.Visible := False;
-  browser:=TFRpBrowserVCL.Create(Self);
-  browser.ShowDatasets:=false;
-  browser.ShowEval:=false;
-  browser.Align:=alClient;
-  browser.Parent:=PBrowser;
+  MSQL.Visible := False;
+   browser:=TFRpBrowserVCL.Create(Self);
+   browser.ShowDatasets:=false;
+   browser.ShowEval:=false;
+   browser.Align:=alClient;
+   browser.Parent:=PBrowser;
 
-  FMonaco := TFRpMonacoEditorVCL.Create(Self);
+  if GCachedMonaco = nil then
+    GCachedMonaco := TFRpMonacoEditorVCL.Create(Application);
+  FMonaco := GCachedMonaco;
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
   FMonaco.OnContentChanged := MSQLChange;
@@ -949,5 +968,11 @@ begin
  dbinfo.Connect(Params);
  ShowDataTextConfig(dbinfo.MyBasePath+EMyBaseDefs.Text,dbinfo.MyBasePath+EMyBase.Text);
 end;
+
+initialization
+
+finalization
+  if GCachedMonaco <> nil then
+    FreeAndNil(GCachedMonaco);
 
 end.

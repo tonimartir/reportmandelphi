@@ -274,7 +274,7 @@ begin
   FSchemaConfigButton.Parent := PSchemaConfigHost;
   FSchemaConfigButton.Align := alClient;
   FSchemaConfigButton.Flat := False;
-  FSchemaConfigButton.Hint := 'Configurar esquemas';
+  FSchemaConfigButton.Hint := 'Open schema configuration on the web';
   FSchemaConfigButton.ShowHint := True;
   FSchemaConfigButton.Cursor := crHandPoint;
   FSchemaConfigButton.OnClick := SchemaConfigClick;
