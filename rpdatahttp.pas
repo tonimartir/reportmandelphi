@@ -139,6 +139,8 @@ begin
       LRequest.AddPair('agentSecret', FAgentSecret);
     if FAgentAiId <> 0 then
       LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
     
     // Config sub-object
     LConfig := TJSONObject.Create;
