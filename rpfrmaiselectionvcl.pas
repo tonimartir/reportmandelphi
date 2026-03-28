@@ -16,7 +16,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON, rpauthmanager;
+  Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON, System.Threading,
+  rpauthmanager;
 
 type
   // Mirrors Desktop NLToSQLProvider: Standard, Precision, Agent
@@ -77,6 +78,11 @@ begin
   ComboAIMode.ItemIndex := 0;    // Fast
   LCredits.Visible := False;
   RefreshState;
+  TTask.Run(
+    procedure
+    begin
+      TRpAuthManager.Instance.CheckStatus;
+    end);
 end;
 
 procedure TFRpAISelectionVCL.RefreshState;

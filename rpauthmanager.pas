@@ -76,6 +76,7 @@ type
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
+    procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
 
     class var FInstance: TRpAuthManager;
     constructor Create;
@@ -325,11 +326,12 @@ var
   LPicture: TStream;
   LValue: TJSONValue;
 begin
-  if FToken = '' then Exit;
+  if FInstallId = '' then Exit;
 
   LClient := TNetHTTPClient.Create(nil);
   try
-    LClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+    if FToken <> '' then
+      LClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
     if FInstallId <> '' then
       LClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
     try
@@ -375,8 +377,13 @@ begin
       end
       else if LResponse.StatusCode = 401 then
       begin
-        Log('CheckStatus: Unauthorized (401). Token expired or invalid. Logging out.');
-        Logout;
+        if FToken <> '' then
+        begin
+          Log('CheckStatus: Unauthorized (401). Token expired or invalid. Logging out.');
+          Logout;
+        end
+        else
+          Log('CheckStatus: Guest status not available (401).');
       end
       else
       begin
@@ -399,12 +406,24 @@ begin
   NotifyListeners(True);
 end;
 
+procedure TRpAuthManager.DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+begin
+  if GetCurrentThreadId = MainThreadID then
+    AListener(ASuccess)
+  else
+    TThread.Queue(nil,
+      procedure
+      begin
+        AListener(ASuccess);
+      end);
+end;
+
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
 var
   LListener: TRpAuthEvent;
 begin
   for LListener in FAuthListeners do
-    LListener(ASuccess);
+    DispatchAuthListener(LListener, ASuccess);
 end;
 
 procedure TRpAuthManager.ParseTiers(ATiersArray: TJSONArray);
@@ -587,7 +606,7 @@ var
 begin
   FIsLoggedIn := Value;
   for LListener in FAuthListeners do
-    LListener(FIsLoggedIn);
+    DispatchAuthListener(LListener, FIsLoggedIn);
 end;
 
 procedure TRpAuthManager.SetAIEnabled(Value: Boolean);

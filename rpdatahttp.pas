@@ -23,6 +23,8 @@ uses
   IdHTTP, IdSSLOpenSSL,
 {$ENDIF}
   System.JSON,
+  System.DateUtils,
+  System.NetEncoding,
 {$IFDEF USERPDATASET}
   DBClient,
 {$ENDIF}
@@ -328,6 +330,7 @@ procedure TRpDatasetHttp.Open;
 var
   ColType, ColName: string;
   FDef: TFieldDef;
+  Field: TField;
   RowData: TJSONArray;
   Val: TJSONValue;
   Buffer: TBytes;
@@ -339,9 +342,16 @@ var
   ColObj: TJSONObject;
   LData: TJSONObject;
   jsonString: String;
+  LFloatValue: Double;
+  LDateTimeValue: TDateTime;
+  LBlobBytes: TBytes;
+  LBlobStream: TBytesStream;
+  LByteIndex: Integer;
+  LInvariantFormatSettings: TFormatSettings;
 begin
   if FDatabase = nil then
     raise Exception.Create('Database not assigned');
+  LInvariantFormatSettings := TFormatSettings.Invariant;
   RequestBody := TJSONObject.Create;
   try
     RequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(FDatabase.HubDatabaseId));
@@ -395,14 +405,18 @@ begin
           FDef.Name := ColName;
           
           // Map .NET types to Delphi TFieldType
-          if (ColType = 'Int32') or (ColType = 'Int64') then
+          if ColType = 'Int32' then
             FDef.DataType := ftInteger
+          else if ColType = 'Int64' then
+            FDef.DataType := ftLargeint
           else if (ColType = 'Double') or (ColType = 'Decimal') or (ColType = 'Single') then
             FDef.DataType := ftFloat
           else if (ColType = 'DateTime') then
             FDef.DataType := ftDateTime
           else if (ColType = 'Boolean') then
             FDef.DataType := ftBoolean
+          else if (ColType = 'Byte[]') then
+            FDef.DataType := ftBlob
           else
           begin
             FDef.DataType := ftString;
@@ -418,10 +432,64 @@ begin
           for J := 0 to Columns.Count - 1 do
           begin
             Val := RowData.Items[J];
+            Field := FDataset.Fields[J];
             if Val is TJSONNull then
-               FDataset.Fields[J].Clear
+              Field.Clear
             else
-               FDataset.Fields[J].AsString := Val.Value;
+            begin
+              case Field.DataType of
+                ftSmallint, ftInteger, ftWord, ftAutoInc:
+                  Field.AsInteger := StrToIntDef(Val.Value, 0);
+                ftLargeint:
+                  Field.AsLargeInt := StrToInt64Def(Val.Value, 0);
+                ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftSingle, ftExtended:
+                  begin
+                    if Val is TJSONNumber then
+                      Field.AsFloat := TJSONNumber(Val).AsDouble
+                    else if TryStrToFloat(Val.Value, LFloatValue, LInvariantFormatSettings) then
+                      Field.AsFloat := LFloatValue
+                    else
+                      raise Exception.CreateFmt('Invalid floating point value ''%s'' for field ''%s''', [Val.Value, Field.FieldName]);
+                  end;
+                ftDate, ftTime, ftDateTime, ftTimeStamp:
+                  begin
+                    if not TryISO8601ToDate(Val.Value, LDateTimeValue, True) then
+                      raise Exception.CreateFmt('Invalid datetime value ''%s'' for field ''%s''', [Val.Value, Field.FieldName]);
+                    Field.AsDateTime := LDateTimeValue;
+                  end;
+                ftBoolean:
+                  begin
+                    if SameText(Val.Value, 'true') then
+                      Field.AsBoolean := True
+                    else if SameText(Val.Value, 'false') then
+                      Field.AsBoolean := False
+                    else
+                      Field.AsBoolean := StrToIntDef(Val.Value, 0) <> 0;
+                  end;
+                ftBlob:
+                  begin
+                    if Val is TJSONString then
+                      LBlobBytes := TNetEncoding.Base64.DecodeStringToBytes(Val.Value)
+                    else if Val is TJSONArray then
+                    begin
+                      SetLength(LBlobBytes, TJSONArray(Val).Count);
+                      for LByteIndex := 0 to TJSONArray(Val).Count - 1 do
+                        LBlobBytes[LByteIndex] := Byte(StrToIntDef(TJSONArray(Val).Items[LByteIndex].Value, 0));
+                    end
+                    else
+                      raise Exception.CreateFmt('Invalid binary value for field ''%s''', [Field.FieldName]);
+
+                    LBlobStream := TBytesStream.Create(LBlobBytes);
+                    try
+                      TBlobField(Field).LoadFromStream(LBlobStream);
+                    finally
+                      LBlobStream.Free;
+                    end;
+                  end;
+              else
+                Field.AsString := Val.Value;
+              end;
+            end;
           end;
           FDataset.Post;
         end;
