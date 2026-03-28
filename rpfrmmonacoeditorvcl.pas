@@ -456,9 +456,12 @@ begin
              TThread.Queue(nil,
                procedure
                begin
-                 if not (csDestroying in ComponentState) then
-                   FAISelection.UpdateFromUserProfile(LItem);
-                 LItem.Free;
+                 try
+                   if not (csDestroying in ComponentState) then
+                     TRpAuthManager.Instance.UpdateProfileFromJson(LItem);
+                 finally
+                   LItem.Free;
+                 end;
                end);
           end;
         finally

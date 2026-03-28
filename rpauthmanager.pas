@@ -110,6 +110,7 @@ type
     function LoginGoogle: Boolean;
     function LoginMicrosoft: Boolean;
     procedure CheckStatus;
+    procedure UpdateProfileFromJson(AProfileObj: TJSONObject);
     function UsesFreeCredits: Boolean;
     function GetCreditsRatio: Double;
     function GetCreditsConsumed: Int64;
@@ -383,6 +384,15 @@ begin
   finally
     LClient.Free;
   end;
+end;
+
+procedure TRpAuthManager.UpdateProfileFromJson(AProfileObj: TJSONObject);
+begin
+  if AProfileObj = nil then
+    Exit;
+
+  ParseProfile(AProfileObj);
+  NotifyListeners(True);
 end;
 
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);

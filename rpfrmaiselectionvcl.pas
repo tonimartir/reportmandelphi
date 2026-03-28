@@ -128,9 +128,7 @@ end;
 
 procedure TFRpAISelectionVCL.UpdateFromUserProfile(AProfile: TJSONObject);
 begin
-  // Implementation moved to TRpAuthManager.CheckStatus
-  // This method kept for backward compatibility if needed
-  UpdateGaugeDisplay;
+  TRpAuthManager.Instance.UpdateProfileFromJson(AProfile);
 end;
 
 procedure TFRpAISelectionVCL.SetGaugeValue(const Value: Double);
