@@ -99,10 +99,10 @@ type
    FPageGroupCountList:TList;
    cachedpos:Int64;
    FCachedImage:TRpCachedImage;
-   procedure SetReportComponents(Value:TRpCommonList);
-   procedure SetGroupName(Value:string;CheckGroupExists:boolean);
-   procedure SetGroupNameInt(Value:string);
-    procedure SetChangeExpression(Value:widestring);
+  procedure SetReportComponents(Value:TRpCommonList);
+  procedure SetGroupNameInt(Value:string; CheckGroupExists:Boolean);
+  procedure SetGroupName(Value:string);
+   procedure SetChangeExpression(Value:widestring);
    procedure OnReadError(Reader: TReader; const Message: string; var Handled: Boolean);
    procedure SetChildSubReport(Value:TComponent);
    procedure AssignSection(sec:TRpSection);
@@ -179,7 +179,7 @@ type
    function GetItemProperty(const propName: string): Variant; override;
   published
    property SubReport:TComponent read FSubReport write FSubReport;
-   property GroupName:String read FGroupName write SetGroupNameInt;
+   property GroupName:String read FGroupName write SetGroupName;
    property ChangeBool:boolean read FChangeBool write FChangeBool;
    property PageRepeat:boolean read FPageRepeat write SetPageRepeat;
    property SkipPage:boolean read FSkipPage write FSkipPage;
@@ -478,13 +478,7 @@ begin
 end;
 
 
-
-procedure TRpSection.SetGroupNameInt(Value:string);
-begin
- SetGroupName(Value, true);
-end;
-
-procedure TRpSection.SetGroupName(Value:string;CheckGroupExists:boolean);
+procedure TRpSection.SetGroupNameInt(Value:string; CheckGroupExists:Boolean);
 var
  subrep:TRpSubreport;
  i:integer;
@@ -505,8 +499,8 @@ begin
   exit;
  end;
  subrep:=TRpSubreport(FSubReport);
- if (CheckGroupExists) then
-   subrep.CheckGroupExists(Value);
+ if CheckGroupExists then
+  subrep.CheckGroupExists(Value);
  if Length(FGroupName)>0 then
  begin
   for i:=0 to Owner.ComponentCount-1 do
@@ -527,6 +521,11 @@ begin
    if subrep.Sections.Items[i].Section.FGroupName=AGroupName then
     subrep.Sections.Items[i].Section.FGroupName:=Value;
  end;
+end;
+
+procedure TRpSection.SetGroupName(Value:string);
+begin
+ SetGroupNameInt(Value,True);
 end;
 
 procedure TRpSection.DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
@@ -1745,18 +1744,59 @@ end;
 procedure TRpSection.SetItemProperty(const propName: string; const value: Variant);
 var
  tempStream: TMemoryStream;
+ rep: TRpBaseReport;
+ i: Integer;
+ requestedChildSubReportName: string;
 begin
  if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
-  SetGroupName(value,false);
+  SetGroupNameInt(value, False);
   exit;
  end;
- if SameText(propName, 'ChangeExpression') or SameText(propName, SRpSGroupExpression) then
+ if SameText(propName, 'ChildSubReportName') then
  begin
-  FChangeExpression:= value;
+  requestedChildSubReportName := Trim(VarToStr(value));
+  rep := TRpBaseReport(SubReport.Owner);
+  ChildSubReport := nil;
+  for i := 0 to rep.Subreports.Count - 1 do
+  begin
+   if rep.Subreports.Items[i].SubReport.ParentSection = Self then
+   begin
+    rep.Subreports.Items[i].SubReport.ParentSection := nil;
+    rep.Subreports.Items[i].SubReport.ParentSubReport := nil;
+   end;
+  if SameText(rep.Subreports.Items[i].SubReport.Name, requestedChildSubReportName) then
+   begin
+    rep.Subreports.Items[i].SubReport.ParentSection := Self;
+    rep.Subreports.Items[i].SubReport.ParentSubReport := TRpSubReport(SubReport);
+    ChildSubReport := rep.Subreports.Items[i].SubReport;
+   end;
+  end;
   exit;
  end;
-
+ if SameText(propName, 'SubReportName') then
+ begin
+  SubReportName := Trim(VarToStr(value));
+  if Assigned(Owner) and (Owner is TRpBaseReport) then
+  begin
+   rep := TRpBaseReport(Owner);
+   SubReport := nil;
+   for i := 0 to rep.Subreports.Count - 1 do
+   begin
+    if SameText(rep.Subreports.Items[i].SubReport.Name, SubReportName) then
+    begin
+     SubReport := rep.Subreports.Items[i].SubReport;
+     break;
+    end;
+   end;
+  end;
+  exit;
+ end;
+ if SameText(propName, 'ChangeExpression') then
+ begin
+  SetChangeExpression(value);
+  exit;
+ end;
  if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
  begin
   FChangeBool := value;
@@ -1780,6 +1820,16 @@ begin
  if SameText(propName, 'SectionType') then
  begin
   FSectionType := TRpSectionType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'BackExpression') then
+ begin
+  FBackExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'BeginPageExpression') then
+ begin
+  FBeginPageExpression := value;
   exit;
  end;
  if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
@@ -1837,9 +1887,29 @@ begin
   FStreamFormat := TRpStreamFormat(Integer(value));
   exit;
  end;
+ if SameText(propName, 'SkipExpreH') then
+ begin
+  FSkipExpreH := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreV') then
+ begin
+  FSkipExpreV := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipToPageExpre') then
+ begin
+  FSkipToPageExpre := value;
+  exit;
+ end;
  if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
  begin
   FBeginPage := value;
+  exit;
+ end;
+ if SameText(propName, 'ForcePrint') then
+ begin
+  FFooterAtReportEnd := value;
   exit;
  end;
  if SameText(propName, 'FooterAtReportEnd') then
@@ -1919,6 +1989,27 @@ begin
   Result := FGroupName;
   exit;
  end;
+ if SameText(propName, 'ChildSubReportName') then
+ begin
+  if Assigned(ChildSubReport) then
+   Result := ChildSubReport.Name
+  else
+   Result := '';
+  exit;
+ end;
+ if SameText(propName, 'SubReportName') then
+ begin
+  if Assigned(SubReport) then
+   Result := SubReport.Name
+  else
+   Result := '';
+  exit;
+ end;
+ if SameText(propName, 'ChangeExpression') then
+ begin
+  Result := FChangeExpression;
+  exit;
+ end;
  if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
  begin
   Result := FChangeBool;
@@ -1942,6 +2033,16 @@ begin
  if SameText(propName, 'SectionType') then
  begin
   Result := Integer(FSectionType);
+  exit;
+ end;
+ if SameText(propName, 'BackExpression') then
+ begin
+  Result := FBackExpression;
+  exit;
+ end;
+ if SameText(propName, 'BeginPageExpression') then
+ begin
+  Result := FBeginPageExpression;
   exit;
  end;
  if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
@@ -1999,9 +2100,29 @@ begin
   Result := Integer(FStreamFormat);
   exit;
  end;
+ if SameText(propName, 'SkipExpreH') then
+ begin
+  Result := FSkipExpreH;
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreV') then
+ begin
+  Result := FSkipExpreV;
+  exit;
+ end;
+ if SameText(propName, 'SkipToPageExpre') then
+ begin
+  Result := FSkipToPageExpre;
+  exit;
+ end;
  if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
  begin
   Result := FBeginPage;
+  exit;
+ end;
+ if SameText(propName, 'ForcePrint') then
+ begin
+  Result := FFooterAtReportEnd;
   exit;
  end;
  if SameText(propName, 'FooterAtReportEnd') then
@@ -2065,11 +2186,6 @@ begin
     Result := Unassigned
   else
     Result := StreamToBase64String(FStream);
-  exit;
- end;
- if SameText(propName, 'ChangeExpression') or SameText(propName, SRpSGroupExpression) then
- begin
-  Result := ChangeExpression;
   exit;
  end;
  Result := inherited GetItemProperty(propName);

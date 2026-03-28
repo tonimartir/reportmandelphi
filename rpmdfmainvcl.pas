@@ -1207,9 +1207,11 @@ var
  cue:TUndoCue;
  op:TChangeObjectOperation;
  groupname:string;
- i,j,sectionIndex,removedSections:integer;
+ i,j,sectionIndex,removedSections,subrepIndex:integer;
  secToDelete:TList<TRpSection>;
  asec:TRpSection;
+ refSubrep:TRpSubReport;
+ refSection:TRpSection;
  pitem:TRpCommonPosComponent;
  groupId:integer;
   procedure DeleteSectionComponentsWithUndo(ASection: TRpSection);
@@ -1245,11 +1247,56 @@ begin
   
   if (secorsub is TRpSubReport) then
   begin
-   // Delete subreport
-   op:=TChangeObjectOperation.Create(otRemove, groupId);
-   op.componentName:=TRpSubReport(secorsub).Name;
-   op.componentClass:='TRPSUBREPORT';
-   cue.AddOperation(op);
+    subrep:=TRpSubReport(secorsub);
+    subrepIndex:=-1;
+    for i := 0 to report.SubReports.Count - 1 do
+    begin
+     if report.SubReports.Items[i].SubReport = subrep then
+     begin
+      subrepIndex:=i;
+      break;
+     end;
+    end;
+
+    for i := 0 to report.SubReports.Count - 1 do
+    begin
+     refSubrep:=report.SubReports.Items[i].SubReport;
+     for j := 0 to refSubrep.Sections.Count - 1 do
+     begin
+      refSection:=refSubrep.Sections.Items[j].Section;
+      if Assigned(refSection) and (refSection.ChildSubReport = subrep) then
+      begin
+      op:=TChangeObjectOperation.Create(otModify, groupId);
+      op.componentName:=refSection.Name;
+      op.componentClass:='TRPSECTION';
+      op.AddProperty('childSubreportName', ptString, subrep.Name, '');
+      cue.AddOperation(op);
+      refSection.ChildSubReport:=nil;
+      end;
+     end;
+    end;
+
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     asec:=subrep.Sections.Items[i].Section;
+     if not Assigned(asec) then
+      continue;
+     DeleteSectionComponentsWithUndo(asec);
+     op:=TChangeObjectOperation.Create(otRemove, groupId);
+     op.componentName:=asec.Name;
+     op.componentClass:='TRPSECTION';
+     op.parentName:=subrep.Name;
+     op.oldItemIndex:=0;
+     cue.AddSectionProperties(asec, op);
+     cue.AddOperation(op);
+    end;
+
+    op:=TChangeObjectOperation.Create(otRemove, groupId);
+    op.componentName:=subrep.Name;
+    op.componentClass:='TRPSUBREPORT';
+    op.oldItemIndex:=subrepIndex;
+    cue.AddSubreportProperties(subrep, op);
+    cue.AddOperation(op);
    currentsubrep:=nil;
   end
   else if (secorsub is TRpSection) then

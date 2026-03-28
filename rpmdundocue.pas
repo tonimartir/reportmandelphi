@@ -848,6 +848,7 @@ var
   compItem: TRpCommonListItem;
   sec: TRpSection;
   secItem: TRpSectionListItem;
+  subrepItem: TRpSubReportListItem;
   dinfo: TRpDataInfoItem;
   dbinfo: TRpDatabaseInfoItem;
   param: TRpParam;
@@ -930,8 +931,12 @@ begin
             end
             else if operation.componentClass = 'TRPSUBREPORT' then
             begin
-              target := FReport.AddSubReport;
+              target := TRpSubReport.Create(FReport);
               TRpSubReport(target).Name := operation.componentName;
+              subrepItem := FReport.SubReports.Add;
+              subrepItem.SubReport := TRpSubReport(target);
+              if operation.oldItemIndex >= 0 then
+                subrepItem.Index := operation.oldItemIndex;
             end;
           end;
         end
@@ -1432,20 +1437,43 @@ end;
 procedure TUndoCue.AddSectionProperties(sec: TRpSection;
   op: TChangeObjectOperation);
 begin
-  op.AddProperty('width', ptInteger, Null, sec.GetItemProperty('Width'));
-  op.AddProperty('height', ptInteger, Null, sec.GetItemProperty('Height'));
   op.AddProperty('printCondition', ptString, Null, sec.GetItemProperty('PrintCondition'));
-  op.AddProperty('doBeforePrint', ptString, Null, sec.GetItemProperty('DoBeforePrint'));
+  op.AddProperty('alignBottom', ptBoolean, Null, sec.GetItemProperty('AlignBottom'));
+  op.AddProperty('autoContract', ptBoolean, Null, sec.GetItemProperty('AutoContract'));
+  op.AddProperty('autoExpand', ptBoolean, Null, sec.GetItemProperty('AutoExpand'));
+  op.AddProperty('autoExpand', ptBoolean, Null, sec.GetItemProperty('AutoExpand'));
+  op.AddProperty('backExpression', ptString, Null, sec.GetItemProperty('BackExpression'));
+  op.AddProperty('backStyle', ptInteger, Null, sec.GetItemProperty('BackStyle'));
+  op.AddProperty('beginPageExpression', ptString, Null, sec.GetItemProperty('BeginPageExpression'));
+  op.AddProperty('childSubreportName', ptString, Null, sec.GetItemProperty('ChildSubReportName'));
   op.AddProperty('doAfterPrint', ptString, Null, sec.GetItemProperty('DoAfterPrint'));
-  op.AddProperty('visible', ptBoolean, Null, sec.GetItemProperty('Visible'));
+  op.AddProperty('doBeforePrint', ptString, Null, sec.GetItemProperty('DoBeforePrint'));
+  op.AddProperty('dpiRes', ptInteger, Null, sec.GetItemProperty('dpires'));
+  op.AddProperty('drawStyle', ptInteger, Null, sec.GetItemProperty('DrawStyle'));
+  op.AddProperty('forcePrint', ptBoolean, Null, sec.GetItemProperty('ForcePrint'));
+  op.AddProperty('global', ptBoolean, Null, sec.GetItemProperty('Global'));
+  op.AddProperty('height', ptInteger, Null, sec.GetItemProperty('Height'));
+  op.AddProperty('width', ptInteger, Null, sec.GetItemProperty('Width'));
+  op.AddProperty('horzDesp', ptBoolean, Null, sec.GetItemProperty('HorzDesp'));
+  op.AddProperty('iniNumPage', ptBoolean, Null, sec.GetItemProperty('IniNumPage'));
+  op.AddProperty('pageRepeat', ptBoolean, Null, sec.GetItemProperty('PageRepeat'));
+  op.AddProperty('printCondition', ptString, Null, sec.GetItemProperty('PrintCondition'));
   op.AddProperty('sectionType', ptInteger, Null, sec.GetItemProperty('SectionType'));
+  op.AddProperty('sharedImage', ptInteger, Null, sec.GetItemProperty('sharedImage'));
+  op.AddProperty('skipExpreH', ptString, Null, sec.GetItemProperty('SkipExpreH'));
+  op.AddProperty('skipExpreV', ptString, Null, sec.GetItemProperty('SkipExpreV'));
+  op.AddProperty('skipPage', ptBoolean, Null, sec.GetItemProperty('SkipPage'));
+  op.AddProperty('skipRelativeH', ptBoolean, Null, sec.GetItemProperty('SkipRelativeH'));
+  op.AddProperty('skipRelativeV', ptBoolean, Null, sec.GetItemProperty('SkipRelativeV'));
+  op.AddProperty('skipToPageExpre', ptString, Null, sec.GetItemProperty('SkipToPageExpre'));
+  op.AddProperty('skipType', ptInteger, Null, sec.GetItemProperty('SkipType'));
+  op.AddProperty('streamBase64', ptString, Null, sec.GetItemProperty('streamBase64'));
+  op.AddProperty('subReportName', ptString, Null, sec.GetItemProperty('SubReportName'));
+  op.AddProperty('streamFormat', ptInteger, Null, sec.GetItemProperty('StreamFormat'));
+  op.AddProperty('vertDesp', ptBoolean, Null, sec.GetItemProperty('VertDesp'));
   op.AddProperty('groupName', ptString, Null, sec.GetItemProperty('GroupName'));
   op.AddProperty('changeExpression', ptString, Null, sec.GetItemProperty('ChangeExpression'));
   op.AddProperty('changeBool', ptBoolean, Null, sec.GetItemProperty('ChangeBool'));
-  op.AddProperty('pageRepeat', ptBoolean, Null, sec.GetItemProperty('PageRepeat'));
-  op.AddProperty('alignBottom', ptBoolean, Null, sec.GetItemProperty('AlignBottom'));
-  op.AddProperty('autoExpand', ptBoolean, Null, sec.GetItemProperty('AutoExpand'));
-  op.AddProperty('autoContract', ptBoolean, Null, sec.GetItemProperty('AutoContract'));
 end;
 
 procedure TUndoCue.AddSubreportProperties(subrep: TRpSubReport;
