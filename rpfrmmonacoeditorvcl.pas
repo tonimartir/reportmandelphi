@@ -38,6 +38,9 @@ type
     ComboSchema: TComboBox;
     Edge: TEdgeBrowser;
     PLoginControl: TPanel;
+    GridTopHeader: TGridPanel;
+    PAIButtonHost: TPanel;
+    PAISelectionHost: TPanel;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -64,18 +67,23 @@ type
     FPendingRequestId, FPendingSql: string;
     FPendingPos: Integer;
     FInferenceTask: ITask;
+    FInferenceRunning: Boolean;
+    FRestartPendingInference: Boolean;
+    FLastAutoCompleteSql: string;
     procedure AIToggleClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ClearSchemaItems;
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
     procedure LoadUserSchemas;
+    procedure LoadUserAgents;
     procedure SelectCurrentSchema;
     procedure SetSQL(const Value: string);
     procedure SetHubDatabaseId(const Value: Int64);
     procedure SetHubSchemaId(const Value: Int64);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
+    procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
   protected
@@ -191,10 +199,8 @@ begin
     LoadLibrary(PChar(LDllPath));
 
   FAIButton := TAIToggleButton.Create(Self);
-  FAIButton.Parent := PTop;
-  FAIButton.Width := 52;
-  FAIButton.Height := 34;
-  FAIButton.Top := 8;
+  FAIButton.Parent := PAIButtonHost;
+  FAIButton.Align := alClient;
   FAIButton.Flat := False;
   FAIButton.AllowAllUp := True;
   FAIButton.GroupIndex := 1;
@@ -210,11 +216,8 @@ begin
 
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
-  FAISelection.Parent := PTop;
-  FAISelection.Left := 420;
-  FAISelection.Top := 0;
-  FAISelection.Width := 400;
-  FAISelection.Height := PTop.Height;
+  FAISelection.Parent := PAISelectionHost;
+  FAISelection.Align := alClient;
 
   // Create Login Frame
   FLoginFrame := TFRpLoginFrameVCL.Create(Self);
@@ -390,6 +393,71 @@ begin
     ComboSchema.Items.EndUpdate;
     FLoadingSchemas := False;
   end;
+end;
+
+procedure TFRpMonacoEditorVCL.LoadUserAgents;
+var
+  LHttp: TRpDatabaseHttp;
+  LAgents: TStringList;
+  I: Integer;
+  LAgentName: string;
+  LAgentValue: string;
+  LParts: TStringList;
+  LAgentAiId: Int64;
+  LAgentSecret: string;
+  LAgentOnline: Boolean;
+  LSelectedTier: string;
+  LSelectedAgentAiId: Int64;
+begin
+  LSelectedTier := FAISelection.AITier;
+  LSelectedAgentAiId := FAISelection.AgentAiId;
+
+  FAISelection.ClearAgentEndpoints;
+
+  if TRpAuthManager.Instance.Token = '' then
+  begin
+    FAISelection.RestoreProviderSelection(LSelectedTier, LSelectedAgentAiId);
+    Exit;
+  end;
+
+  LAgents := TStringList.Create;
+  try
+    LHttp := TRpDatabaseHttp.Create;
+    try
+      LHttp.Token := TRpAuthManager.Instance.Token;
+      LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+      if LHttp.GetUserAgents(LAgents) then
+      begin
+        LParts := TStringList.Create;
+        try
+          LParts.Delimiter := '|';
+          LParts.StrictDelimiter := True;
+          for I := 0 to LAgents.Count - 1 do
+          begin
+            LAgentName := LAgents.Names[I];
+            LAgentValue := LAgents.ValueFromIndex[I];
+            LParts.DelimitedText := LAgentValue;
+            if LParts.Count >= 2 then
+            begin
+              LAgentAiId := StrToInt64Def(LParts[0], 0);
+              LAgentSecret := LParts[1];
+              LAgentOnline := (LParts.Count >= 3) and (LParts[2] = '1');
+              if LAgentOnline then
+                FAISelection.AddAgentEndpoint(LAgentAiId, LAgentSecret, LAgentName, True);
+            end;
+          end;
+        finally
+          LParts.Free;
+        end;
+      end;
+    finally
+      LHttp.Free;
+    end;
+  finally
+    LAgents.Free;
+  end;
+
+  FAISelection.RestoreProviderSelection(LSelectedTier, LSelectedAgentAiId);
 end;
 
 procedure TFRpMonacoEditorVCL.SetSchema(const ASchema: string);
@@ -614,6 +682,14 @@ begin
       FPendingPos := StrToIntDef(LVal.Value, 0);
   end;
 
+  if FPendingSql = FLastAutoCompleteSql then
+  begin
+    LEmptyInlineItems := TJSONArray.Create;
+    LEmptyCompletionItems := TJSONArray.Create;
+    SendAICompletions(LEmptyInlineItems, LEmptyCompletionItems, FPendingRequestId);
+    Exit;
+  end;
+
   if not TRpAuthManager.Instance.AIEnabled then
   begin
     LEmptyInlineItems := TJSONArray.Create;
@@ -622,7 +698,10 @@ begin
     Exit;
   end;
 
-  FDebounceTimer.Enabled := True;
+  if FInferenceRunning then
+    FRestartPendingInference := True
+  else
+    FDebounceTimer.Enabled := True;
 end;
 
 procedure TFRpMonacoEditorVCL.OnDebounceTimer(Sender: TObject);
@@ -631,7 +710,38 @@ begin
 
   if not TRpAuthManager.Instance.AIEnabled then
     Exit;
-  
+
+  if FInferenceRunning then
+  begin
+    FRestartPendingInference := True;
+    Exit;
+  end;
+
+  StartPendingInference;
+end;
+
+procedure TFRpMonacoEditorVCL.StartPendingInference;
+var
+  LStartRequestId: string;
+  LStartSql: string;
+  LStartPos: Integer;
+begin
+  if FInferenceRunning then
+    Exit;
+
+  if not TRpAuthManager.Instance.AIEnabled then
+    Exit;
+
+  LStartRequestId := FPendingRequestId;
+  LStartSql := FPendingSql;
+  LStartPos := FPendingPos;
+  if LStartRequestId = '' then
+    Exit;
+
+  FLastAutoCompleteSql := LStartSql;
+  FInferenceRunning := True;
+  FRestartPendingInference := False;
+
   // Create AI completion task (asynchronous)
   FInferenceTask := TTask.Run(
     procedure
@@ -647,10 +757,11 @@ begin
       I: Integer;
       LItem: TJSONObject;
       LUAIMode: string;
+      LShouldRestart: Boolean;
     begin
-      LRequestId := FPendingRequestId;
-      LSql := FPendingSql;
-      LPos := FPendingPos;
+      LRequestId := LStartRequestId;
+      LSql := LStartSql;
+      LPos := LStartPos;
       
       TThread.Queue(nil,
         procedure
@@ -751,15 +862,23 @@ begin
         TThread.Queue(nil,
           procedure
           begin
+            LShouldRestart := False;
             if not (csDestroying in ComponentState) then
             begin
               SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
               FAISelection.SetInferenceProgress(False);
+              LShouldRestart := FRestartPendingInference and (FPendingRequestId <> LRequestId);
+              FInferenceRunning := False;
+              FRestartPendingInference := False;
+              if LShouldRestart then
+                StartPendingInference;
             end
             else
             begin
               LInlineItems.Free;
               LCompletionItems.Free;
+              FInferenceRunning := False;
+              FRestartPendingInference := False;
             end;
           end);
       finally
@@ -795,18 +914,7 @@ end;
 procedure TFRpMonacoEditorVCL.LayoutTopControls;
 begin
   if FAIButton <> nil then
-  begin
-    FAIButton.Left := PLoginControl.Left + PLoginControl.Width + 8;
-    FAIButton.Top := (PTop.Height - FAIButton.Height) div 2;
-  end;
-
-  if FAISelection <> nil then
-  begin
-    if FAIButton <> nil then
-      FAISelection.Left := FAIButton.Left + FAIButton.Width + 8;
-    FAISelection.Top := 0;
-    FAISelection.Height := PTop.Height;
-  end;
+    FAIButton.Invalidate;
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
@@ -819,11 +927,17 @@ begin
 
   ComboSchema.Enabled := TRpAuthManager.Instance.IsLoggedIn;
   if not TRpAuthManager.Instance.IsLoggedIn then
-    ComboSchema.Clear
+  begin
+    ComboSchema.Clear;
+    FAISelection.ClearAgentEndpoints;
+  end
   else if ComboSchema.Items.Count = 0 then
     LoadUserSchemas
   else
     SelectCurrentSchema;
+
+  if TRpAuthManager.Instance.IsLoggedIn and (FAISelection.AgentEndpointCount = 0) then
+    LoadUserAgents;
 
   if FAISelection <> nil then
   begin

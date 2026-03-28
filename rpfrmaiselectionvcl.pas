@@ -32,11 +32,10 @@ type
 
   TFRpAISelectionVCL = class(TFrame)
     PAI: TPanel;
+    GridAI: TGridPanel;
     ComboAIProvider: TComboBox;
     ComboAIMode: TComboBox;
     PaintBoxGauge: TPaintBox;
-    LCredits: TLabel;
-    LProvider: TLabel;
     ProgressBarAI: TProgressBar;
     procedure PaintBoxGaugePaint(Sender: TObject);
     procedure ComboAIModeChange(Sender: TObject);
@@ -45,6 +44,7 @@ type
     FGaugeValue: Double; // 0.0 to 1.0
     FAgentEndpoints: array of TAgentEndpointInfo;
     procedure SetGaugeValue(const Value: Double);
+    procedure UpdateDropDownWidths;
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
     function GetAITier: string;
     function GetAIMode: string;
@@ -53,10 +53,13 @@ type
     procedure UpdateGaugeDisplay;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure Resize; override;
     procedure RefreshState;
     procedure UpdateFromUserProfile(AProfile: TJSONObject);
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
     procedure ClearAgentEndpoints;
+    procedure RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
+    function AgentEndpointCount: Integer;
     procedure SetInferenceProgress(AActive: Boolean);
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
     // Properties for the HTTP driver
@@ -76,13 +79,19 @@ begin
   FGaugeValue := 0.0;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
-  LCredits.Visible := False;
+  UpdateDropDownWidths;
   RefreshState;
   TTask.Run(
     procedure
     begin
       TRpAuthManager.Instance.CheckStatus;
     end);
+end;
+
+procedure TFRpAISelectionVCL.Resize;
+begin
+  inherited;
+  UpdateDropDownWidths;
 end;
 
 procedure TFRpAISelectionVCL.RefreshState;
@@ -251,6 +260,27 @@ begin
   end;
 end;
 
+procedure TFRpAISelectionVCL.UpdateDropDownWidths;
+var
+  I: Integer;
+  LTextWidth: Integer;
+  LMaxWidth: Integer;
+begin
+  if not ComboAIProvider.HandleAllocated then
+    Exit;
+
+  LMaxWidth := ComboAIProvider.Width;
+  ComboAIProvider.Canvas.Font.Assign(ComboAIProvider.Font);
+  for I := 0 to ComboAIProvider.Items.Count - 1 do
+  begin
+    LTextWidth := ComboAIProvider.Canvas.TextWidth(ComboAIProvider.Items[I]) + 32;
+    if LTextWidth > LMaxWidth then
+      LMaxWidth := LTextWidth;
+  end;
+
+  SendMessage(ComboAIProvider.Handle, CB_SETDROPPEDWIDTH, LMaxWidth, 0);
+end;
+
 function TFRpAISelectionVCL.GetAITier: string;
 begin
   case ComboAIProvider.ItemIndex of
@@ -292,7 +322,6 @@ end;
 procedure TFRpAISelectionVCL.AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
 var
   LLen: Integer;
-  LDisplayName: string;
 begin
   LLen := Length(FAgentEndpoints);
   SetLength(FAgentEndpoints, LLen + 1);
@@ -300,12 +329,8 @@ begin
   FAgentEndpoints[LLen].AgentSecret := ASecret;
   FAgentEndpoints[LLen].DisplayName := AName;
   FAgentEndpoints[LLen].IsOnline := AOnline;
-
-  if AOnline then
-    LDisplayName := AName
-  else
-    LDisplayName := AName + ' (offline)';
-  ComboAIProvider.Items.Add(LDisplayName);
+  ComboAIProvider.Items.Add(AName);
+  UpdateDropDownWidths;
 end;
 
 procedure TFRpAISelectionVCL.ClearAgentEndpoints;
@@ -315,6 +340,36 @@ begin
     ComboAIProvider.Items.Delete(ComboAIProvider.Items.Count - 1);
   if ComboAIProvider.ItemIndex >= ComboAIProvider.Items.Count then
     ComboAIProvider.ItemIndex := 0;
+  ComboAIProviderChange(ComboAIProvider);
+end;
+
+function TFRpAISelectionVCL.AgentEndpointCount: Integer;
+begin
+  Result := Length(FAgentEndpoints);
+end;
+
+procedure TFRpAISelectionVCL.RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
+var
+  I: Integer;
+begin
+  if SameText(AAITier, 'Precision') then
+    ComboAIProvider.ItemIndex := 1
+  else if SameText(AAITier, 'LocalAgent') and (AAgentAiId <> 0) then
+  begin
+    ComboAIProvider.ItemIndex := 0;
+    for I := 0 to High(FAgentEndpoints) do
+    begin
+      if FAgentEndpoints[I].Id = AAgentAiId then
+      begin
+        ComboAIProvider.ItemIndex := I + 2;
+        Break;
+      end;
+    end;
+  end
+  else
+    ComboAIProvider.ItemIndex := 0;
+
+  ComboAIProviderChange(ComboAIProvider);
 end;
 
 procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);

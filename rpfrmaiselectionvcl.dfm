@@ -21,81 +21,105 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
-    object LProvider: TLabel
-      Left = 30
-      Top = 23
-      Width = 17
-      Height = 20
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      Caption = 'AI:'
-    end
-    object PaintBoxGauge: TPaintBox
-      Left = 350
-      Top = 16
-      Width = 30
-      Height = 30
-      Hint = 'Credits'
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      ParentShowHint = False
-      ShowHint = True
-      OnPaint = PaintBoxGaugePaint
-    end
-    object LCredits: TLabel
-      Left = 385
-      Top = 23
-      Width = 37
-      Height = 20
-      Hint = 'Credits'
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      Caption = 'Guest'
-      ParentShowHint = False
-      ShowHint = True
-      Visible = False
-    end
-    object ComboAIProvider: TComboBox
-      Left = 55
-      Top = 18
-      Width = 138
-      Height = 28
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      Style = csDropDownList
-      ItemIndex = 0
+    object GridAI: TGridPanel
+      Left = 0
+      Top = 0
+      Width = 525
+      Height = 63
+      Align = alClient
+      BevelOuter = bvNone
+      ColumnCollection = <
+        item
+          SizeStyle = ssPercent
+          Value = 50.000000000000000000
+        end
+        item
+          SizeStyle = ssPercent
+          Value = 50.000000000000000000
+        end
+        item
+          SizeStyle = ssAuto
+          Value = 30.000000000000000000
+        end>
+      ControlCollection = <
+        item
+          Column = 0
+          Control = ComboAIProvider
+          Row = 0
+        end
+        item
+          Column = 1
+          Control = ComboAIMode
+          Row = 0
+        end
+        item
+          Column = 2
+          Control = PaintBoxGauge
+          Row = 0
+        end>
+      ParentBackground = False
+      RowCollection = <
+        item
+          SizeStyle = ssPercent
+          Value = 100.000000000000000000
+        end>
       TabOrder = 0
-      Text = 'Standard'
-      OnChange = ComboAIProviderChange
-      Items.Strings = (
-        'Standard'
-        'Precision')
-    end
-    object ComboAIMode: TComboBox
-      Left = 200
-      Top = 18
-      Width = 138
-      Height = 28
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      Style = csDropDownList
-      ItemIndex = 0
-      TabOrder = 1
-      Text = 'Fast'
-      OnChange = ComboAIModeChange
-      Items.Strings = (
-        'Fast'
-        'Reasoning')
+      object ComboAIProvider: TComboBox
+        AlignWithMargins = True
+        Left = 4
+        Top = 11
+        Width = 241
+        Height = 28
+        Margins.Left = 4
+        Margins.Top = 11
+        Margins.Right = 4
+        Margins.Bottom = 11
+        Align = alClient
+        Style = csDropDownList
+        ItemIndex = 0
+        TabOrder = 0
+        Text = 'Standard'
+        OnChange = ComboAIProviderChange
+        Items.Strings = (
+          'Standard'
+          'Precision')
+      end
+      object ComboAIMode: TComboBox
+        AlignWithMargins = True
+        Left = 253
+        Top = 11
+        Width = 241
+        Height = 28
+        Margins.Left = 4
+        Margins.Top = 11
+        Margins.Right = 4
+        Margins.Bottom = 11
+        Align = alClient
+        Style = csDropDownList
+        ItemIndex = 0
+        TabOrder = 1
+        Text = 'Fast'
+        OnChange = ComboAIModeChange
+        Items.Strings = (
+          'Fast'
+          'Reasoning')
+      end
+      object PaintBoxGauge: TPaintBox
+        AlignWithMargins = True
+        Left = 493
+        Top = 10
+        Width = 30
+        Height = 30
+        Hint = 'Credits'
+        Margins.Left = 4
+        Margins.Top = 10
+        Margins.Right = 4
+        Margins.Bottom = 10
+        Align = alClient
+        ParentShowHint = False
+        ShowHint = True
+        OnPaint = PaintBoxGaugePaint
+      end
     end
     object ProgressBarAI: TProgressBar
       Left = 5

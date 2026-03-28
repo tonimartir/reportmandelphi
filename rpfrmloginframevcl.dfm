@@ -1,7 +1,7 @@
 object FRpLoginFrameVCL: TFRpLoginFrameVCL
   Left = 0
   Top = 0
-  Width = 250
+  Width = 200
   Height = 40
   Margins.Left = 4
   Margins.Top = 4
@@ -12,7 +12,7 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
   object PContainer: TPanel
     Left = 0
     Top = 0
-    Width = 250
+    Width = 200
     Height = 40
     Cursor = crHandPoint
     Margins.Left = 4
@@ -27,7 +27,7 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
     TabOrder = 0
     OnClick = ImageAvatarClick
     DesignSize = (
-      248
+      198
       38)
     object LabelTier: TLabel
       Left = 6
@@ -81,7 +81,7 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
       OnClick = ImageAvatarClick
     end
     object LabelArrow: TLabel
-      Left = 224
+      Left = 174
       Top = 13
       Width = 14
       Height = 14
@@ -104,7 +104,7 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
     object BtnLogin: TButton
       Left = 0
       Top = 0
-      Width = 248
+      Width = 198
       Height = 38
       Margins.Left = 4
       Margins.Top = 4

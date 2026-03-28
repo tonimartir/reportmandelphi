@@ -641,6 +641,10 @@ var
   LAiEndpoints: TJSONArray;
   I: Integer;
   LItem: TJSONObject;
+  LName: string;
+  LAgentName: string;
+  LIsOnline: string;
+  LIsOnlineValue: TJSONValue;
 begin
   Result := False;
   AList.Clear;
@@ -658,11 +662,30 @@ begin
           for I := 0 to LAiEndpoints.Count - 1 do
           begin
             LItem := LAiEndpoints.Items[I] as TJSONObject;
-            AList.Add(Format('%s (%s)=%s|%s', [
-              LItem.Values['name'].Value,
-              LItem.Values['agentName'].Value,
+            if LItem.Values['name'] <> nil then
+              LName := LItem.Values['name'].Value
+            else
+              LName := 'Agent';
+
+            if LItem.Values['agentName'] <> nil then
+              LAgentName := LItem.Values['agentName'].Value
+            else
+              LAgentName := 'Agent';
+
+            LIsOnlineValue := LItem.Values['isOnline'];
+            if (LIsOnlineValue is TJSONBool) and TJSONBool(LIsOnlineValue).AsBoolean then
+              LIsOnline := '1'
+            else if Assigned(LIsOnlineValue) and SameText(LIsOnlineValue.Value, 'true') then
+              LIsOnline := '1'
+            else
+              LIsOnline := '0';
+
+            AList.Add(Format('%s (%s)=%s|%s|%s', [
+              LName,
+              LAgentName,
               LItem.Values['id'].Value,
-              LItem.Values['agentSecret'].Value
+              LItem.Values['agentSecret'].Value,
+              LIsOnline
             ]));
           end;
           Result := True;
