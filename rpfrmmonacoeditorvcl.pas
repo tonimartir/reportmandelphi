@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -302,6 +302,8 @@ end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
 begin
+  if Edge.WebViewCreated then
+    Edge.CloseWebView;
   ClearSchemaItems;
   TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited;

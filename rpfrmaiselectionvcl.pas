@@ -35,6 +35,7 @@ type
     GridAI: TGridPanel;
     ComboAIProvider: TComboBox;
     ComboAIMode: TComboBox;
+    PGaugeHost: TPanel;
     PaintBoxGauge: TPaintBox;
     ProgressBarAI: TProgressBar;
     procedure PaintBoxGaugePaint(Sender: TObject);
@@ -43,6 +44,7 @@ type
   private
     FGaugeValue: Double; // 0.0 to 1.0
     FAgentEndpoints: array of TAgentEndpointInfo;
+    procedure LayoutGaugeControls;
     procedure SetGaugeValue(const Value: Double);
     procedure UpdateDropDownWidths;
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
@@ -79,6 +81,7 @@ begin
   FGaugeValue := 0.0;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
+  LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
   TTask.Run(
@@ -91,7 +94,36 @@ end;
 procedure TFRpAISelectionVCL.Resize;
 begin
   inherited;
+  LayoutGaugeControls;
   UpdateDropDownWidths;
+end;
+
+procedure TFRpAISelectionVCL.LayoutGaugeControls;
+const
+  GaugeSize = 30;
+  ProgressSize = 20;
+var
+  LLeft: Integer;
+  LTop: Integer;
+begin
+  if PGaugeHost <> nil then
+  begin
+    LLeft := (PGaugeHost.ClientWidth - GaugeSize) div 2;
+    LTop := (PGaugeHost.ClientHeight - GaugeSize) div 2;
+    if LLeft < 0 then
+      LLeft := 0;
+    if LTop < 0 then
+      LTop := 0;
+    PaintBoxGauge.SetBounds(LLeft, LTop, GaugeSize, GaugeSize);
+
+    LLeft := (PGaugeHost.ClientWidth - ProgressSize) div 2;
+    LTop := (PGaugeHost.ClientHeight - ProgressSize) div 2;
+    if LLeft < 0 then
+      LLeft := 0;
+    if LTop < 0 then
+      LTop := 0;
+    ProgressBarAI.SetBounds(LLeft, LTop, ProgressSize, ProgressSize);
+  end;
 end;
 
 procedure TFRpAISelectionVCL.RefreshState;
@@ -253,11 +285,13 @@ begin
   if ComboAIProvider.ItemIndex >= 2 then
   begin
     PaintBoxGauge.Visible := False;
+    ProgressBarAI.Visible := False;
   end
   else
   begin
     PaintBoxGauge.Visible := True;
   end;
+  LayoutGaugeControls;
 end;
 
 procedure TFRpAISelectionVCL.UpdateDropDownWidths;
@@ -382,6 +416,7 @@ begin
     ProgressBarAI.Style := TProgressBarStyle.pbstMarquee;
     //SendMessage(ProgressBarAI.Handle, PBM_SETMARQUEE, 1, 0);
   end;
+  LayoutGaugeControls;
 end;
 
 end.

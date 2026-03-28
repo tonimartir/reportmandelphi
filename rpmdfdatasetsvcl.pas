@@ -160,6 +160,8 @@ type
      write SetParams;
   end;
 
+procedure FreeMonacoCache;
+
 implementation
 
 uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
@@ -168,6 +170,12 @@ uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 var
   GCachedMonaco: TFRpMonacoEditorVCL = nil;
+
+procedure FreeMonacoCache;
+begin
+  if GCachedMonaco <> nil then
+    FreeAndNil(GCachedMonaco);
+end;
 
 destructor TFRpDatasetsVCL.Destroy;
 begin
@@ -969,10 +977,5 @@ begin
  ShowDataTextConfig(dbinfo.MyBasePath+EMyBaseDefs.Text,dbinfo.MyBasePath+EMyBase.Text);
 end;
 
-initialization
-
-finalization
-  if GCachedMonaco <> nil then
-    FreeAndNil(GCachedMonaco);
-
 end.
+

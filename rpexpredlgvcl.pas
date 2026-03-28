@@ -32,7 +32,7 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
-  rpmdconsts;
+  rpmdconsts, rpfrmexpressionchatvcl;
 
 const
  FMaxlisthelp=5;
@@ -70,6 +70,7 @@ type
   end;
 
   TFRpExpredialogVCL = class(TForm)
+    PLeftHost: TPanel;
     PBottom: TPanel;
     LabelCategory: TLabel;
     LOperation: TLabel;
@@ -81,6 +82,9 @@ type
     BOK: TButton;
     LCategory: TListBox;
     PAlClient: TPanel;
+    SplitterChat: TSplitter;
+    PChatHost: TPanel;
+    PExpressionHost: TPanel;
     MemoExpre: TMemo;
     Panel1: TPanel;
     BShowResult: TButton;
@@ -95,13 +99,17 @@ type
     procedure BitBtn1Click(Sender: TObject);
     procedure LItemsDblClick(Sender: TObject);
     procedure BOKClick(Sender: TObject);
+    procedure MemoExpreChange(Sender: TObject);
   private
     { Private declarations }
     validate:Boolean;
     dook:boolean;
     AResult:Variant;
     Fevaluator:TRpCustomEvaluator;
+    FExpressionChat: TFRpExpressionChatFrame;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
+    procedure ExpressionChatApplySuggestion(Sender: TObject; const AExpression: string);
+    procedure ExpressionChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure Setevaluator(aval:TRpCustomEvaluator);
   public
     { Public declarations }
@@ -163,6 +171,14 @@ var
 begin
  inherited;
  ActiveControl:=MemoExpre;
+ MemoExpre.OnChange := MemoExpreChange;
+ FExpressionChat := TFRpExpressionChatFrame.Create(Self);
+ FExpressionChat.Parent := PChatHost;
+ FExpressionChat.Align := alClient;
+ FExpressionChat.OnSendPrompt := ExpressionChatSendPrompt;
+ FExpressionChat.OnApplySuggestion := ExpressionChatApplySuggestion;
+ FExpressionChat.SetCurrentExpression(MemoExpre.Text);
+ FExpressionChat.AddAssistantMessage('Ask for help rewriting, simplifying or validating the current expression.');
  for i:=0 to FMaxlisthelp-1 do
  begin
   llistes[i]:=TStringList.create;
@@ -361,6 +377,12 @@ begin
  end;
 end;
 
+procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
+begin
+ if FExpressionChat <> nil then
+  FExpressionChat.SetCurrentExpression(MemoExpre.Text);
+end;
+
 procedure TFRpExpredialogVCL.LCategoryClick(Sender: TObject);
 begin
   inherited;
@@ -436,6 +458,31 @@ begin
   inherited;
  if litems.itemindex>-1 then
   memoexpre.text:=memoexpre.text+litems.Items.strings[litems.itemindex];
+end;
+
+procedure TFRpExpredialogVCL.ExpressionChatSendPrompt(Sender: TObject; const APrompt,
+  AExpression: string);
+begin
+ if FExpressionChat = nil then
+  Exit;
+
+ if Trim(AExpression) = '' then
+ begin
+  FExpressionChat.AddAssistantMessage('Chat UI is attached. AI generation is not connected yet and the current expression is empty.');
+  Exit;
+ end;
+
+ FExpressionChat.SetSuggestedExpression(AExpression,
+  'Chat UI is attached and ready. AI generation is the next step, so the current expression is echoed as a placeholder suggestion for now.');
+end;
+
+procedure TFRpExpredialogVCL.ExpressionChatApplySuggestion(Sender: TObject;
+  const AExpression: string);
+begin
+ MemoExpre.Text := AExpression;
+ MemoExpre.SetFocus;
+ MemoExpre.SelStart := Length(MemoExpre.Text);
+ MemoExpre.SelLength := 0;
 end;
 
 

@@ -54,7 +54,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         end
         item
           Column = 2
-          Control = PaintBoxGauge
+          Control = PGaugeHost
           Row = 0
         end>
       ParentBackground = False
@@ -104,35 +104,41 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           'Fast'
           'Reasoning')
       end
-      object PaintBoxGauge: TPaintBox
+      object PGaugeHost: TPanel
         AlignWithMargins = True
         Left = 493
-        Top = 10
-        Width = 30
-        Height = 30
-        Hint = 'Credits'
+        Top = 0
+        Width = 32
+        Height = 63
         Margins.Left = 4
-        Margins.Top = 10
+        Margins.Top = 0
         Margins.Right = 4
-        Margins.Bottom = 10
+        Margins.Bottom = 0
         Align = alClient
+        BevelOuter = bvNone
         ParentShowHint = False
         ShowHint = True
-        OnPaint = PaintBoxGaugePaint
+        TabOrder = 2
+        object PaintBoxGauge: TPaintBox
+          Left = 1
+          Top = 16
+          Width = 30
+          Height = 30
+          Hint = 'Credits'
+          ParentShowHint = False
+          ShowHint = True
+          OnPaint = PaintBoxGaugePaint
+        end
+        object ProgressBarAI: TProgressBar
+          Left = 6
+          Top = 21
+          Width = 20
+          Height = 20
+          MarqueeInterval = 30
+          TabOrder = 0
+          Visible = False
+        end
       end
-    end
-    object ProgressBarAI: TProgressBar
-      Left = 5
-      Top = 20
-      Width = 20
-      Height = 20
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
-      MarqueeInterval = 30
-      TabOrder = 2
-      Visible = False
     end
   end
 end
