@@ -21,6 +21,13 @@ uses
   System.Zip, System.IOUtils, System.Threading;
 
 type
+  TSchemaComboItem = class
+  public
+    HubDatabaseId: Int64;
+    HubSchemaId: Int64;
+    constructor Create(AHubDatabaseId, AHubSchemaId: Int64);
+  end;
+
   TFRpMonacoEditorVCL = class(TFrame)
     PTop: TPanel;
     ComboSchema: TComboBox;
@@ -40,6 +47,7 @@ type
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
+    FBaseHubDatabaseId: Int64;
     FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
     FAppDataPath: string;
@@ -53,6 +61,7 @@ type
     FInferenceTask: ITask;
     procedure AIToggleClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
+    procedure ClearSchemaItems;
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
     procedure LoadUserSchemas;
@@ -82,6 +91,13 @@ implementation
 
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
+
+constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64);
+begin
+  inherited Create;
+  HubDatabaseId := AHubDatabaseId;
+  HubSchemaId := AHubSchemaId;
+end;
 
 constructor TFRpMonacoEditorVCL.Create(AOwner: TComponent);
 var
@@ -166,6 +182,7 @@ end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
 begin
+  ClearSchemaItems;
   TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited;
 end;
@@ -251,12 +268,24 @@ begin
   SetSQL(ASQL);
 end;
 
+procedure TFRpMonacoEditorVCL.ClearSchemaItems;
+var
+  I: Integer;
+begin
+  for I := 0 to ComboSchema.Items.Count - 1 do
+    ComboSchema.Items.Objects[I].Free;
+  ComboSchema.Clear;
+end;
+
 procedure TFRpMonacoEditorVCL.LoadUserSchemas;
 var
   LHttp: TRpDatabaseHttp;
   LSchemas: TStringList;
   I: Integer;
   LSchemaName: string;
+  LSchemaValue: string;
+  LPosSep: Integer;
+  LHubDatabaseId: Int64;
   LSchemaId: Int64;
 begin
   if FLoadingSchemas then
@@ -265,9 +294,13 @@ begin
   FLoadingSchemas := True;
   ComboSchema.Items.BeginUpdate;
   try
-    ComboSchema.Clear;
+    ClearSchemaItems;
+    ComboSchema.Items.Add('');
     if TRpAuthManager.Instance.Token = '' then
+    begin
+      SelectCurrentSchema;
       Exit;
+    end;
 
     LSchemas := TStringList.Create;
     try
@@ -280,8 +313,19 @@ begin
           for I := 0 to LSchemas.Count - 1 do
           begin
             LSchemaName := LSchemas.Names[I];
-            LSchemaId := StrToInt64Def(LSchemas.ValueFromIndex[I], 0);
-            ComboSchema.Items.AddObject(LSchemaName, TObject(NativeInt(LSchemaId)));
+            LSchemaValue := LSchemas.ValueFromIndex[I];
+            LPosSep := Pos('|', LSchemaValue);
+            if LPosSep > 0 then
+            begin
+              LHubDatabaseId := StrToInt64Def(Copy(LSchemaValue, 1, LPosSep - 1), 0);
+              LSchemaId := StrToInt64Def(Copy(LSchemaValue, LPosSep + 1, MaxInt), 0);
+            end
+            else
+            begin
+              LHubDatabaseId := 0;
+              LSchemaId := StrToInt64Def(LSchemaValue, 0);
+            end;
+            ComboSchema.Items.AddObject(LSchemaName, TSchemaComboItem.Create(LHubDatabaseId, LSchemaId));
           end;
         end;
       finally
@@ -310,6 +354,7 @@ end;
 
 procedure TFRpMonacoEditorVCL.SetHubDatabaseId(const Value: Int64);
 begin
+  FBaseHubDatabaseId := Value;
   if FHubDatabaseId = Value then
     Exit;
 
@@ -327,38 +372,63 @@ begin
   end;
 
   FHubSchemaId := Value;
+  if FHubSchemaId = 0 then
+    FHubDatabaseId := FBaseHubDatabaseId;
   SelectCurrentSchema;
 end;
 
 procedure TFRpMonacoEditorVCL.SelectCurrentSchema;
 var
   I: Integer;
+  LItem: TSchemaComboItem;
 begin
-  ComboSchema.ItemIndex := -1;
-  for I := 0 to ComboSchema.Items.Count - 1 do
+  if ComboSchema.Items.Count = 0 then
+    Exit;
+
+  if FHubSchemaId = 0 then
   begin
-    if NativeInt(ComboSchema.Items.Objects[I]) = FHubSchemaId then
+    ComboSchema.ItemIndex := 0;
+    FSchema := '';
+    FHubDatabaseId := FBaseHubDatabaseId;
+    Exit;
+  end;
+
+  ComboSchema.ItemIndex := 0;
+  for I := 1 to ComboSchema.Items.Count - 1 do
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) and
+      ((FHubDatabaseId = 0) or (LItem.HubDatabaseId = FHubDatabaseId)) then
     begin
       ComboSchema.ItemIndex := I;
       FSchema := ComboSchema.Items[I];
+      FHubDatabaseId := LItem.HubDatabaseId;
       Break;
     end;
   end;
 end;
 
 procedure TFRpMonacoEditorVCL.ComboSchemaChange(Sender: TObject);
+var
+  LItem: TSchemaComboItem;
 begin
   if FLoadingSchemas then
     Exit;
 
-  if ComboSchema.ItemIndex >= 0 then
+  if ComboSchema.ItemIndex > 0 then
   begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
     FSchema := ComboSchema.Items[ComboSchema.ItemIndex];
-    FHubSchemaId := NativeInt(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+    begin
+      FHubDatabaseId := LItem.HubDatabaseId;
+      FHubSchemaId := LItem.HubSchemaId;
+    end;
   end
   else
   begin
     FSchema := '';
+    FHubDatabaseId := FBaseHubDatabaseId;
     FHubSchemaId := 0;
   end;
 end;
