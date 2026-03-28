@@ -40,6 +40,7 @@ type
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
+    FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
     FAppDataPath: string;
     FEditorReady: Boolean;
@@ -51,9 +52,14 @@ type
     FPendingPos: Integer;
     FInferenceTask: ITask;
     procedure AIToggleClick(Sender: TObject);
+    procedure ComboSchemaChange(Sender: TObject);
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
+    procedure LoadUserSchemas;
+    procedure SelectCurrentSchema;
     procedure SetSQL(const Value: string);
+    procedure SetHubDatabaseId(const Value: Int64);
+    procedure SetHubSchemaId(const Value: Int64);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
     procedure LayoutTopControls;
@@ -67,8 +73,8 @@ type
     procedure LoadSQL(const ASQL: string);
     procedure SetSchema(const ASchema: string);
     property SQL: string read FSQL write SetSQL;
-    property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
-    property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
+    property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
+    property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
   end;
 
@@ -124,14 +130,17 @@ begin
   FAIButton.Width := 52;
   FAIButton.Height := 34;
   FAIButton.Top := 8;
-  FAIButton.Flat := True;
+  FAIButton.Flat := False;
   FAIButton.AllowAllUp := True;
   FAIButton.GroupIndex := 1;
   FAIButton.Caption := 'AI';
   FAIButton.Hint := 'Activar o desactivar inferencia AI';
   FAIButton.ShowHint := True;
   FAIButton.Font.Name := 'Segoe UI Semibold';
+  FAIButton.Cursor := crHandPoint;
   FAIButton.OnClick := AIToggleClick;
+
+  ComboSchema.OnChange := ComboSchemaChange;
 
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
@@ -242,9 +251,116 @@ begin
   SetSQL(ASQL);
 end;
 
+procedure TFRpMonacoEditorVCL.LoadUserSchemas;
+var
+  LHttp: TRpDatabaseHttp;
+  LSchemas: TStringList;
+  I: Integer;
+  LSchemaName: string;
+  LSchemaId: Int64;
+begin
+  if FLoadingSchemas then
+    Exit;
+
+  FLoadingSchemas := True;
+  ComboSchema.Items.BeginUpdate;
+  try
+    ComboSchema.Clear;
+    if TRpAuthManager.Instance.Token = '' then
+      Exit;
+
+    LSchemas := TStringList.Create;
+    try
+      LHttp := TRpDatabaseHttp.Create;
+      try
+        LHttp.Token := TRpAuthManager.Instance.Token;
+        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+        if LHttp.GetUserSchemas(LSchemas) then
+        begin
+          for I := 0 to LSchemas.Count - 1 do
+          begin
+            LSchemaName := LSchemas.Names[I];
+            LSchemaId := StrToInt64Def(LSchemas.ValueFromIndex[I], 0);
+            ComboSchema.Items.AddObject(LSchemaName, TObject(NativeInt(LSchemaId)));
+          end;
+        end;
+      finally
+        LHttp.Free;
+      end;
+    finally
+      LSchemas.Free;
+    end;
+
+    SelectCurrentSchema;
+  finally
+    ComboSchema.Items.EndUpdate;
+    FLoadingSchemas := False;
+  end;
+end;
+
 procedure TFRpMonacoEditorVCL.SetSchema(const ASchema: string);
+var
+  LIndex: Integer;
 begin
   FSchema := ASchema;
+  LIndex := ComboSchema.Items.IndexOf(ASchema);
+  if LIndex >= 0 then
+    ComboSchema.ItemIndex := LIndex;
+end;
+
+procedure TFRpMonacoEditorVCL.SetHubDatabaseId(const Value: Int64);
+begin
+  if FHubDatabaseId = Value then
+    Exit;
+
+  FHubDatabaseId := Value;
+  if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
+    LoadUserSchemas;
+end;
+
+procedure TFRpMonacoEditorVCL.SetHubSchemaId(const Value: Int64);
+begin
+  if FHubSchemaId = Value then
+  begin
+    SelectCurrentSchema;
+    Exit;
+  end;
+
+  FHubSchemaId := Value;
+  SelectCurrentSchema;
+end;
+
+procedure TFRpMonacoEditorVCL.SelectCurrentSchema;
+var
+  I: Integer;
+begin
+  ComboSchema.ItemIndex := -1;
+  for I := 0 to ComboSchema.Items.Count - 1 do
+  begin
+    if NativeInt(ComboSchema.Items.Objects[I]) = FHubSchemaId then
+    begin
+      ComboSchema.ItemIndex := I;
+      FSchema := ComboSchema.Items[I];
+      Break;
+    end;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.ComboSchemaChange(Sender: TObject);
+begin
+  if FLoadingSchemas then
+    Exit;
+
+  if ComboSchema.ItemIndex >= 0 then
+  begin
+    FSchema := ComboSchema.Items[ComboSchema.ItemIndex];
+    FHubSchemaId := NativeInt(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+  end
+  else
+  begin
+    FSchema := '';
+    FHubSchemaId := 0;
+  end;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
@@ -576,7 +692,21 @@ end;
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
 begin
   if FAIButton <> nil then
+  begin
     FAIButton.Down := TRpAuthManager.Instance.AIEnabled;
+    if FAIButton.Down then
+      FAIButton.Font.Color := clHighlightText
+    else
+      FAIButton.Font.Color := clWindowText;
+  end;
+
+  ComboSchema.Enabled := TRpAuthManager.Instance.IsLoggedIn;
+  if not TRpAuthManager.Instance.IsLoggedIn then
+    ComboSchema.Clear
+  else if ComboSchema.Items.Count = 0 then
+    LoadUserSchemas
+  else
+    SelectCurrentSchema;
 
   if FAISelection <> nil then
   begin
