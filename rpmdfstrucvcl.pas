@@ -34,7 +34,7 @@ uses
   Graphics, Controls, Forms, Dialogs,
   ComCtrls,Menus, ActnList, ImgList, Buttons, ExtCtrls,
   rpreport,rpsubreport,rpmdconsts,rpdbbrowservcl,rpgraphutilsvcl,
-  rpsection,rpmdobjinspvcl,rpprintitem, ToolWin, System.Actions,
+  rpsection,rpmdobjinspvcl,rpprintitem,rptypes, ToolWin, System.Actions,
   System.ImageList, Vcl.VirtualImageList, Vcl.BaseImageCollection,
   Vcl.ImageCollection;
 
@@ -82,6 +82,13 @@ type
     procedure CreateInterface;
     procedure DisableRView;
     procedure EnableRView;
+    function FindSectionIndex(ASubReport: TRpSubReport; ASection: TRpSection): Integer;
+    function FindGroupSection(ASubReport: TRpSubReport; const AGroupName: string;
+      ASectionType: TRpSectionType): TRpSection;
+    procedure AddSectionSwapUndo(ASection: TRpSection; const AParentName: string;
+      AOldItemIndex: Integer; AOperation: TOperationType; AGroupId: Integer);
+    function MoveSection(ASection: TRpSection; MoveUp, SecondStep: Boolean;
+      AGroupId: Integer): Boolean;
   public
     { Public declarations }
     designframe:TControl;
@@ -362,6 +369,142 @@ begin
  end;
 end;
 
+function TFRpStructureVCL.FindSectionIndex(ASubReport: TRpSubReport;
+  ASection: TRpSection): Integer;
+var
+  i: Integer;
+begin
+ Result:=-1;
+ if (not Assigned(ASubReport)) or (not Assigned(ASection)) then
+  exit;
+ for i:=0 to ASubReport.Sections.Count-1 do
+ begin
+  if ASubReport.Sections.Items[i].Section=ASection then
+  begin
+   Result:=i;
+   break;
+  end;
+ end;
+end;
+
+function TFRpStructureVCL.FindGroupSection(ASubReport: TRpSubReport;
+  const AGroupName: string; ASectionType: TRpSectionType): TRpSection;
+var
+  i: Integer;
+  asec: TRpSection;
+begin
+ Result:=nil;
+ if not Assigned(ASubReport) then
+  exit;
+ for i:=0 to ASubReport.Sections.Count-1 do
+ begin
+  asec:=ASubReport.Sections.Items[i].Section;
+  if Assigned(asec) and (asec.SectionType=ASectionType) and
+    SameText(asec.GroupName,AGroupName) then
+  begin
+   Result:=asec;
+   break;
+  end;
+ end;
+end;
+
+procedure TFRpStructureVCL.AddSectionSwapUndo(ASection: TRpSection;
+  const AParentName: string; AOldItemIndex: Integer; AOperation: TOperationType;
+  AGroupId: Integer);
+var
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+begin
+ if (AOldItemIndex<0) or (not Assigned(ASection)) or (not Assigned(Report)) or
+   (not Assigned(Report.UndoCue)) then
+  exit;
+ cue:=TUndoCue(Report.UndoCue);
+ op:=TChangeObjectOperation.Create(AOperation,AGroupId);
+ op.componentName:=ASection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=AParentName;
+ op.oldItemIndex:=AOldItemIndex;
+ cue.AddOperation(op);
+end;
+
+function TFRpStructureVCL.MoveSection(ASection: TRpSection; MoveUp,
+  SecondStep: Boolean; AGroupId: Integer): Boolean;
+var
+  subrep: TRpSubReport;
+  oldIndex,newIndex: Integer;
+  swapSection: TRpSection;
+  otherSection: TRpSection;
+  canSwap: Boolean;
+  asec: TRpSection;
+  operation: TOperationType;
+begin
+ Result:=false;
+ if not Assigned(ASection) then
+  exit;
+ subrep:=TrpSubReport(ASection.SubReport);
+ if not Assigned(subrep) then
+  exit;
+ oldIndex:=FindSectionIndex(subrep,ASection);
+ if oldIndex<0 then
+  exit;
+ if MoveUp then
+  newIndex:=oldIndex-1
+ else
+  newIndex:=oldIndex+1;
+ if (newIndex<0) or (newIndex>=subrep.Sections.Count) then
+  exit;
+ swapSection:=subrep.Sections.Items[newIndex].Section;
+ if not Assigned(swapSection) then
+  exit;
+ canSwap:=true;
+ case ASection.SectionType of
+  rpsecdetail,rpsecpheader,rpsecpfooter:
+   if swapSection.SectionType<>ASection.SectionType then
+    canSwap:=false;
+  rpsecgheader:
+   begin
+    if swapSection.SectionType<>rpsecgheader then
+     canSwap:=false
+    else
+    if not SecondStep then
+    begin
+     otherSection:=FindGroupSection(subrep,ASection.GroupName,rpsecgfooter);
+     if Assigned(otherSection) then
+      canSwap:=MoveSection(otherSection,not MoveUp,true,AGroupId)
+     else
+      canSwap:=false;
+    end;
+   end;
+  rpsecgfooter:
+   begin
+    if swapSection.SectionType<>rpsecgfooter then
+     canSwap:=false
+    else
+    if not SecondStep then
+    begin
+     otherSection:=FindGroupSection(subrep,ASection.GroupName,rpsecgheader);
+     if Assigned(otherSection) then
+      canSwap:=MoveSection(otherSection,not MoveUp,true,AGroupId)
+     else
+      canSwap:=false;
+    end;
+   end;
+ else
+  canSwap:=false;
+ end;
+ if not canSwap then
+  exit;
+ asec:=subrep.Sections.Items[newIndex].Section;
+ subrep.Sections.Items[newIndex].Section:=subrep.Sections.Items[oldIndex].Section;
+ subrep.Sections.Items[oldIndex].Section:=asec;
+ if MoveUp then
+  operation:=otSwapUp
+ else
+  operation:=otSwapDown;
+ AddSectionSwapUndo(ASection,subrep.Name,oldIndex,operation,AGroupId);
+ Result:=true;
+end;
+
 
 procedure TFRpStructureVCL.AUpExecute(Sender: TObject);
 var
@@ -369,21 +512,17 @@ var
  arep:TRpSubReport;
  aobject:TObject;
  changesubrep:integer;
- asection:TRpSection;
- asec:TRpSection;
- i,index:integer;
- asectype:TRpSectionType;
- firstdetail,lastdetail:integer;
+ i:integer;
  swapped:boolean;
  cue:TUndoCue;
  op:TChangeObjectOperation;
  oldItemIndex:integer;
- parentName:string;
+ groupId:Integer;
 begin
  // Goes up
  swapped:=false;
  oldItemIndex:=-1;
- parentName:='';
+ groupId:=-1;
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -396,165 +535,43 @@ begin
    begin
     if changesubrep<0 then
      break;
-    oldItemIndex:=i;
-    arep:=report.SubReports.Items[changesubrep].SubReport;
-    report.SubReports.Items[changesubrep].SubReport:=subrep;
-    report.SubReports.Items[i].SubReport:=arep;
-    swapped:=true;
-    SetReport(FReport);
-    SelectDataItem(subrep);
-    break;
-   end;
-   changesubrep:=i;
-   inc(i);
-  end;
- end
- else
- begin
-  if (aobject is TRpSection) then
-  begin
-   subrep:=FindSelectedSubreport;
-   asection:=TRpSection(aobject);
-   // It can be a detail,pheader,pfooter
-   if asection.SectionType in [rpsecdetail,rpsecpheader,rpsecpfooter] then
-   begin
-    asectype:=asection.SectionType;
-    firstdetail:=subrep.FirstSectionThatIs(asectype);
-    lastdetail:=subrep.LastSectionThatIs(asectype);
-    if firstdetail=lastdetail then
-     exit;
-    index:=-1;
-    for i:=firstdetail to lastdetail do
-    begin
-     if subrep.Sections[i].Section=asection then
-     begin
-      index:=i;
-      break;
-     end;
-    end;
-    if index>=0 then
-    begin
-     if index>firstdetail then
-     begin
-        oldItemIndex:=index;
-        parentName:=subrep.Name;
-      asec:=subrep.Sections[index-1].Section;
-      subrep.Sections[index-1].Section:=subrep.Sections[index].Section;
-      subrep.Sections[index].Section:=asec;
-      swapped:=true;
-      SetReport(FReport);
-      SelectDataItem(asection);
-     end;
-    end;
-   end
-   else
-   begin
-    if asection.SectionType=rpsecgfooter then
-    begin
-     if subrep.GroupCount<2 then
-      exit;
-     index:=-1;
-     lastdetail:=subrep.LastDetail;
-     firstdetail:=subrep.FirstDetail;
-     for i:=1 to subrep.GroupCount do
-     begin
-      asec:=subrep.Sections.Items[lastdetail+i].Section;
-      if asec=asection then
-      begin
-       index:=i;
-       break;
-      end;
-     end;
-     if index<0 then
-      exit;
-     if index<2 then
-      exit;
-    oldItemIndex:=lastdetail+index;
-    parentName:=subrep.Name;
-     // Group footer
-     asec:=subrep.Sections.Items[lastdetail+index-1].Section;
-     subrep.Sections.Items[lastdetail+index-1].Section:=subrep.Sections.Items[lastdetail+index].Section;
-     subrep.Sections.Items[lastdetail+index].Section:=asec;
-     // Group Header
-     asec:=subrep.Sections.Items[firstdetail-index+1].Section;
-     subrep.Sections.Items[firstdetail-index+1].Section:=subrep.Sections.Items[firstdetail-index].Section;
-     subrep.Sections.Items[firstdetail-index].Section:=asec;
-     // Update
+     oldItemIndex:=i;
+     arep:=report.SubReports.Items[changesubrep].SubReport;
+     report.SubReports.Items[changesubrep].SubReport:=subrep;
+     report.SubReports.Items[i].SubReport:=arep;
      swapped:=true;
      SetReport(FReport);
-     SelectDataItem(asection);
-    end
-    else
-    begin
-     if asection.SectionType=rpsecgheader then
-     begin
-      if subrep.GroupCount<2 then
-       exit;
-      index:=-1;
-      lastdetail:=subrep.LastDetail;
-      firstdetail:=subrep.FirstDetail;
-      for i:=1 to subrep.GroupCount do
-      begin
-       asec:=subrep.Sections.Items[firstdetail-i].Section;
-       if asec=asection then
-       begin
-        index:=i;
-        break;
-       end;
-      end;
-      if index<0 then
-       exit;
-      if index>=subrep.groupcount then
-       exit;
-      oldItemIndex:=firstdetail-index;
-      parentName:=subrep.Name;
-      // Group footer
-      asec:=subrep.Sections.Items[lastdetail+index+1].Section;
-      subrep.Sections.Items[lastdetail+index+1].Section:=subrep.Sections.Items[lastdetail+index].Section;
-      subrep.Sections.Items[lastdetail+index].Section:=asec;
-      // Group Header
-      asec:=subrep.Sections.Items[firstdetail-index-1].Section;
-      subrep.Sections.Items[firstdetail-index-1].Section:=subrep.Sections.Items[firstdetail-index].Section;
-      subrep.Sections.Items[firstdetail-index].Section:=asec;
-      // Update
-      swapped:=true;
-      SetReport(FReport);
-      SelectDataItem(asection);
-     end
-     else
-     begin
-      if asection.SectionType=rpsecpheader then
-      begin
-
-      end;
-     end;
+     SelectDataItem(subrep);
+     break;
     end;
+    changesubrep:=i;
+    inc(i);
    end;
-  end;
- end;
- // Record undo for swap up
- if swapped and Assigned(Report) and Assigned(Report.UndoCue) then
- begin
-  cue:=TUndoCue(Report.UndoCue);
-  op:=TChangeObjectOperation.Create(otSwapUp, cue.GetGroupId);
-  if (aobject is TRpSubReport) then
-  begin
-   op.componentName:=TRpSubReport(aobject).Name;
-   op.componentClass:='TRPSUBREPORT';
-    op.oldItemIndex:=oldItemIndex;
   end
   else
   if (aobject is TRpSection) then
   begin
-   op.componentName:=TRpSection(aobject).Name;
-   op.componentClass:='TRPSECTION';
-    op.parentName:=parentName;
-    op.oldItemIndex:=oldItemIndex;
+   if Assigned(Report) and Assigned(Report.UndoCue) then
+    groupId:=TUndoCue(Report.UndoCue).GetGroupId;
+   swapped:=MoveSection(TRpSection(aobject),true,false,groupId);
+   if swapped then
+   begin
+    SetReport(FReport);
+    SelectDataItem(TRpSection(aobject));
+    TFRpMainFVCL(Owner).RefreshCueView;
+   end;
   end;
-  cue.AddOperation(op);
-  TFRpMainFVCL(Owner).RefreshCueView;
+  if swapped and (aobject is TRpSubReport) and Assigned(Report) and Assigned(Report.UndoCue) then
+  begin
+   cue:=TUndoCue(Report.UndoCue);
+   op:=TChangeObjectOperation.Create(otSwapUp, cue.GetGroupId);
+   op.componentName:=TRpSubReport(aobject).Name;
+   op.componentClass:='TRPSUBREPORT';
+   op.oldItemIndex:=oldItemIndex;
+   cue.AddOperation(op);
+   TFRpMainFVCL(Owner).RefreshCueView;
+  end;
  end;
-end;
 
 procedure TFRpStructureVCL.ADownExecute(Sender: TObject);
 var
@@ -563,20 +580,16 @@ var
  changesubrep:integer;
  i:integer;
  aobject:TObject;
- index:integer;
- asection,asec:TRpSection;
- asectype:TRpSectionType;
- firstdetail,lastdetail:integer;
  swapped:boolean;
  cue:TUndoCue;
  op:TChangeObjectOperation;
  oldItemIndex:integer;
- parentName:string;
+ groupId:Integer;
 begin
  // Goes down
  swapped:=false;
  oldItemIndex:=-1;
- parentName:='';
+ groupId:=-1;
  aobject:=FindSelectedObject;
  if (aobject is TRpSubReport) then
  begin
@@ -608,135 +621,25 @@ begin
   end;
  end
  else
+ if (aobject is TRpSection) then
  begin
-  if (aobject is TRpSection) then
+  if Assigned(Report) and Assigned(Report.UndoCue) then
+   groupId:=TUndoCue(Report.UndoCue).GetGroupId;
+  swapped:=MoveSection(TRpSection(aobject),false,false,groupId);
+  if swapped then
   begin
-   subrep:=FindSelectedSubreport;
-   asection:=TRpSection(aobject);
-   // It can be a detail,pheader,pfooter
-   if asection.SectionType in [rpsecdetail,rpsecpheader,rpsecpfooter] then
-   begin
-    asectype:=asection.SectionType;
-    firstdetail:=subrep.FirstSectionThatIs(asectype);
-    lastdetail:=subrep.LastSectionThatIs(asectype);
-    if firstdetail=lastdetail then
-     exit;
-    index:=-1;
-    for i:=firstdetail to lastdetail do
-    begin
-     if subrep.Sections[i].Section=asection then
-     begin
-      index:=i;
-      break;
-     end;
-    end;
-    if index<0 then
-     exit;
-    if index<lastdetail then
-    begin
-      oldItemIndex:=index;
-      parentName:=subrep.Name;
-     asec:=subrep.Sections[index+1].Section;
-     subrep.Sections[index+1].Section:=subrep.Sections[index].Section;
-     subrep.Sections[index].Section:=asec;
-     swapped:=true;
-     SetReport(FReport);
-     SelectDataItem(asection);
-    end;
-   end
-   else
-   begin
-    if asection.SectionType=rpsecgheader then
-    begin
-     if subrep.GroupCount<2 then
-      exit;
-     index:=-1;
-     lastdetail:=subrep.LastDetail;
-     firstdetail:=subrep.FirstDetail;
-     for i:=1 to subrep.GroupCount do
-     begin
-      asec:=subrep.Sections.Items[firstdetail-i].Section;
-      if asec=asection then
-      begin
-       index:=i;
-       break;
-      end;
-     end;
-     if index<=1 then
-      exit;
-    oldItemIndex:=firstdetail-index;
-    parentName:=subrep.Name;
-     // Group footer
-     asec:=subrep.Sections.Items[lastdetail+index-1].Section;
-     subrep.Sections.Items[lastdetail+index-1].Section:=subrep.Sections.Items[lastdetail+index].Section;
-     subrep.Sections.Items[lastdetail+index].Section:=asec;
-     // Group Header
-     asec:=subrep.Sections.Items[firstdetail-index+1].Section;
-     subrep.Sections.Items[firstdetail-index+1].Section:=subrep.Sections.Items[firstdetail-index].Section;
-     subrep.Sections.Items[firstdetail-index].Section:=asec;
-     // Update
-     swapped:=true;
-     SetReport(FReport);
-     SelectDataItem(asection);
-    end
-    else
-    if asection.SectionType=rpsecgfooter then
-    begin
-     if subrep.GroupCount<2 then
-      exit;
-     index:=-1;
-     lastdetail:=subrep.LastDetail;
-     firstdetail:=subrep.FirstDetail;
-     for i:=1 to subrep.GroupCount do
-     begin
-      asec:=subrep.Sections.Items[lastdetail+i].Section;
-      if asec=asection then
-      begin
-       index:=i;
-       break;
-      end;
-     end;
-     if index<0 then
-      exit;
-     if index>=subrep.GroupCount then
-      exit;
-    oldItemIndex:=lastdetail+index;
-    parentName:=subrep.Name;
-     // Group footer
-     asec:=subrep.Sections.Items[lastdetail+index+1].Section;
-     subrep.Sections.Items[lastdetail+index+1].Section:=subrep.Sections.Items[lastdetail+index].Section;
-     subrep.Sections.Items[lastdetail+index].Section:=asec;
-     // Group Header
-     asec:=subrep.Sections.Items[firstdetail-index-1].Section;
-     subrep.Sections.Items[firstdetail-index-1].Section:=subrep.Sections.Items[firstdetail-index].Section;
-     subrep.Sections.Items[firstdetail-index].Section:=asec;
-     // Update
-     swapped:=true;
-     SetReport(FReport);
-     SelectDataItem(asection);
-    end
-   end;
+   SetReport(FReport);
+   SelectDataItem(TRpSection(aobject));
+   TFRpMainFVCL(Owner).RefreshCueView;
   end;
  end;
- // Record undo for swap down
- if swapped and Assigned(Report) and Assigned(Report.UndoCue) then
+ if swapped and (aobject is TRpSubReport) and Assigned(Report) and Assigned(Report.UndoCue) then
  begin
   cue:=TUndoCue(Report.UndoCue);
   op:=TChangeObjectOperation.Create(otSwapDown, cue.GetGroupId);
-  if (aobject is TRpSubReport) then
-  begin
-   op.componentName:=TRpSubReport(aobject).Name;
-   op.componentClass:='TRPSUBREPORT';
-    op.oldItemIndex:=oldItemIndex;
-  end
-  else
-  if (aobject is TRpSection) then
-  begin
-   op.componentName:=TRpSection(aobject).Name;
-   op.componentClass:='TRPSECTION';
-    op.parentName:=parentName;
-    op.oldItemIndex:=oldItemIndex;
-  end;
+  op.componentName:=TRpSubReport(aobject).Name;
+  op.componentClass:='TRPSUBREPORT';
+  op.oldItemIndex:=oldItemIndex;
   cue.AddOperation(op);
   TFRpMainFVCL(Owner).RefreshCueView;
  end;

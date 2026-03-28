@@ -24,7 +24,7 @@ interface
 
 uses SysUtils, Classes,
   Graphics, Forms,
-  Buttons, ExtCtrls, Controls, StdCtrls,Dialogs,
+  Buttons, ExtCtrls, Controls, StdCtrls,Dialogs,rptypes,
 {$IFDEF XE3UP}
   System.UITypes,
 {$ENDIF}

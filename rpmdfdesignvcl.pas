@@ -33,7 +33,7 @@ uses
   ExtCtrls,Windows,Messages,
   rpmdfstrucvcl,rpmdobinsintvcl,rpgraphutilsvcl,
   rpmdfsectionintvcl,rpmdobjinspvcl,rprulervcl,
-  rpsubreport,rpsection,rpreport,rpmunits;
+  rpsubreport,rpsection,rpreport,rpmunits, rptypes;
 
 type
   TRpPaintEventPanel=class;

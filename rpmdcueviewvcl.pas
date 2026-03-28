@@ -24,7 +24,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections,
   Vcl.Controls, Vcl.Forms, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Buttons, Vcl.Dialogs, Vcl.Graphics,
-  rpreport, rpmdundocue, Variants;
+  rpreport, rptypes, rpmdundocue, Variants;
 
 type
   TOnUndoRedoEvent = procedure(Sender: TObject) of object;

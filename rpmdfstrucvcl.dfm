@@ -1,37 +1,59 @@
 object FRpStructureVCL: TFRpStructureVCL
   Left = 0
   Top = 0
-  Width = 318
-  Height = 207
+  Width = 398
+  Height = 259
+  Margins.Left = 4
+  Margins.Top = 4
+  Margins.Right = 4
+  Margins.Bottom = 4
   ParentShowHint = False
   ShowHint = True
   TabOrder = 0
+  PixelsPerInch = 120
   object PControl: TPageControl
     Left = 0
     Top = 0
-    Width = 318
-    Height = 207
+    Width = 398
+    Height = 259
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     ActivePage = TabStructure
     Align = alClient
     HotTrack = True
     TabOrder = 0
     object TabStructure: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Structure'
       OnResize = TabStructureResize
       object Panel1: TToolBar
         Left = 0
         Top = 0
-        Width = 310
+        Width = 390
         Height = 35
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         AutoSize = True
         ButtonHeight = 35
         ButtonWidth = 34
         Images = VirtualImageList1
         TabOrder = 0
+        ExplicitWidth = 388
         object BNew: TToolButton
           Left = 0
           Top = 0
           Hint = 'Adds a section to the selected subreport'
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Caption = 'ANewSection'
           DropdownMenu = PopupMenu1
           ImageIndex = 2
@@ -42,27 +64,43 @@ object FRpStructureVCL: TFRpStructureVCL
         object ToolButton2: TToolButton
           Left = 53
           Top = 0
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Action = ADelete
         end
         object ToolButton3: TToolButton
           Left = 87
           Top = 0
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Action = AUp
         end
         object ToolButton4: TToolButton
           Left = 121
           Top = 0
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
           Action = ADown
           AutoSize = True
         end
       end
       object RView: TTreeView
-        Left = 16
-        Top = 45
-        Width = 265
-        Height = 131
+        Left = 20
+        Top = 56
+        Width = 331
+        Height = 164
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
         HideSelection = False
-        Indent = 19
+        Indent = 24
         ReadOnly = True
         TabOrder = 1
         OnChange = RViewChange
@@ -70,6 +108,10 @@ object FRpStructureVCL: TFRpStructureVCL
       end
     end
     object TabData: TTabSheet
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Data'
       ImageIndex = 1
     end
@@ -595,8 +637,8 @@ object FRpStructureVCL: TFRpStructureVCL
         Name = 'Item4'
       end>
     ImageCollection = ImageCollection1
-    Width = 21
-    Height = 21
+    Width = 26
+    Height = 26
     Left = 244
     Top = 80
   end

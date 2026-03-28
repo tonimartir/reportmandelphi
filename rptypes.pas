@@ -187,6 +187,15 @@ type
 
  TRpStreamFormat=(rpStreamzlib,rpStreamText,rpStreambinary,rpStreamXML,rpStreamXMLZlib);
 
+ TOperationType = (
+  otAdd,
+  otModify,
+  otRemove,
+  otSwapDown,
+  otSwapUp,
+  otRename
+ );
+
  TRpBidiMode=(rpBidiNo,rpBidiPartial,rpBidiFull);
 
  TRpParamtype=(rpParamString,rpParamInteger,rpParamDouble,rpParamDate,

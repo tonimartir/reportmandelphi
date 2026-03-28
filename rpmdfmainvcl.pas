@@ -1207,9 +1207,9 @@ var
  cue:TUndoCue;
  op:TChangeObjectOperation;
  groupname:string;
- i,headerIndex,footerIndex:integer;
- footersec:TRpSection;
- headersec:TRpSection;
+ i,j,sectionIndex,removedSections:integer;
+ secToDelete:TList<TRpSection>;
+ asec:TRpSection;
  groupId:integer;
 begin
  // Deletes section
@@ -1244,57 +1244,41 @@ begin
    if sec.SectionType in [rpsecgheader, rpsecgfooter] then
    begin
     groupname:=sec.GroupName;
-    headersec:=nil;
-    footersec:=nil;
-    
-    // Find header section index
-    headerIndex:=-1;
-    for i := 0 to subrep.Sections.Count - 1 do
-    begin
-     if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
-         (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+    secToDelete:=TList<TRpSection>.Create;
+    try
+     for i := 0 to subrep.Sections.Count - 1 do
      begin
-      headerIndex:=i;
-      headersec:=subrep.Sections.Items[i].Section;
-      break;
+      asec:=subrep.Sections.Items[i].Section;
+      if Assigned(asec) and SameText(asec.GroupName, groupname) and
+      (asec.SectionType in [rpsecgheader, rpsecgfooter]) then
+       secToDelete.Add(asec);
      end;
-    end;
-    
-    // Find footer section index
-    footerIndex:=-1;
-    for i := 0 to subrep.Sections.Count - 1 do
+
+     removedSections:=0;
+    for i := 0 to secToDelete.Count - 1 do
     begin
-     if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
-         (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+     sectionIndex:=-1;
+      for j := 0 to subrep.Sections.Count - 1 do
      begin
-      footerIndex:=i;
-      footersec:=subrep.Sections.Items[i].Section;
-      break;
+       if subrep.Sections.Items[j].Section = secToDelete[i] then
+      begin
+        sectionIndex:=j-removedSections;
+       break;
+      end;
      end;
-    end;
-    
-    // Register header section with its index (same groupId for both!)
-    if (headerIndex >= 0) and Assigned(headersec) then
-    begin
-     op:=TChangeObjectOperation.Create(otRemove, groupId);
-     op.componentName:=headersec.Name;
-     op.componentClass:='TRPSECTION';
-     op.parentName:=subrep.Name;
-     op.oldItemIndex:=headerIndex;
-     cue.AddSectionProperties(headersec, op);
-     cue.AddOperation(op);
-    end;
-    
-    // Register footer section with its index (same groupId!)
-    if (footerIndex >= 0) and Assigned(footersec) then
-    begin
-     op:=TChangeObjectOperation.Create(otRemove, groupId);
-     op.componentName:=footersec.Name;
-     op.componentClass:='TRPSECTION';
-     op.parentName:=subrep.Name;
-     op.oldItemIndex:=footerIndex;
-     cue.AddSectionProperties(footersec, op);
-     cue.AddOperation(op);
+      if sectionIndex < 0 then
+       continue;
+      op:=TChangeObjectOperation.Create(otRemove, groupId);
+      op.componentName:=secToDelete[i].Name;
+      op.componentClass:='TRPSECTION';
+      op.parentName:=subrep.Name;
+      op.oldItemIndex:=sectionIndex;
+      cue.AddSectionProperties(secToDelete[i], op);
+      cue.AddOperation(op);
+      inc(removedSections);
+     end;
+    finally
+     secToDelete.Free;
     end;
     
     currentsubrep:=nil;

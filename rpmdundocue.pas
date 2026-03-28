@@ -21,15 +21,6 @@ type
     ptStringArray = 8
   );
 
-  TOperationType = (
-    otAdd,
-    otModify,
-    otRemove,
-    otSwapDown,
-    otSwapUp,
-    otRename
-  );
-
 type
   TChangeOperationItem = class
   public

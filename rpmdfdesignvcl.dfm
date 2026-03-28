@@ -1,8 +1,12 @@
 object FRpDesignFrameVCL: TFRpDesignFrameVCL
   Left = 0
   Top = 0
-  Width = 443
-  Height = 270
+  Width = 554
+  Height = 338
+  Margins.Left = 4
+  Margins.Top = 4
+  Margins.Right = 4
+  Margins.Bottom = 4
   HorzScrollBar.Tracking = True
   VertScrollBar.Tracking = True
   Align = alClient
@@ -11,20 +15,29 @@ object FRpDesignFrameVCL: TFRpDesignFrameVCL
   ParentShowHint = False
   ShowHint = True
   TabOrder = 0
+  PixelsPerInch = 120
   object PTop: TPanel
     Left = 0
     Top = 0
-    Width = 443
-    Height = 20
+    Width = 554
+    Height = 25
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
   end
   object PLeft: TPanel
     Left = 0
-    Top = 20
-    Width = 20
-    Height = 250
+    Top = 25
+    Width = 25
+    Height = 313
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alLeft
     BevelOuter = bvNone
     TabOrder = 1
