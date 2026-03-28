@@ -525,6 +525,8 @@ var
   LDatabases: TJSONArray;
   I: Integer;
   LItem: TJSONObject;
+  LDisplayName: string;
+  LValue: TJSONValue;
 begin
   Result := False;
   AList.Clear;
@@ -542,7 +544,15 @@ begin
           for I := 0 to LDatabases.Count - 1 do
           begin
             LItem := LDatabases.Items[I] as TJSONObject;
-            AList.Add(LItem.Values['name'].Value + '=' + LItem.Values['hubSchemaId'].Value);
+            LValue := LItem.Values['displayName'];
+            if (LValue <> nil) and (LValue.Value <> '') then
+              LDisplayName := StringReplace(LValue.Value, ' - ', ' / ', [])
+            else
+              LDisplayName := LItem.Values['name'].Value;
+
+            AList.Add(LDisplayName + '=' +
+              LItem.Values['hubDatabaseId'].Value + '|' +
+              LItem.Values['hubSchemaId'].Value);
           end;
           Result := True;
         end;
