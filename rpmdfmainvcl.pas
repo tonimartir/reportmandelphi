@@ -345,6 +345,7 @@ type
     fcueview:TFRpCueViewVCL;
     fcuepanel:TPanel;
     fcuesplitter:TSplitter;
+    frightpanel:TPanel;
     procedure FreeInterface;
     procedure CreateInterface;
     function checkmodified:boolean;
@@ -625,11 +626,19 @@ begin
   fcuepanel.Free;
   fcuepanel:=nil;
  end;
+ if Assigned(fdesignframe) then
+ begin
+  fdesignframe.Free;
+  fdesignframe:=nil;
+ end;
+ if Assigned(frightpanel) then
+ begin
+  frightpanel.Free;
+  frightpanel:=nil;
+ end;
  freportstructure.free;
- fdesignframe.free;
  fobjinsp.free;
  fobjinsp:=nil;
- fdesignframe:=nil;
  freportstructure:=nil;
  mainscrollbox.Visible:=false;
 end;
@@ -706,8 +715,14 @@ begin
  fdesignframe.Scale:=GetScale;
 
  fobjinsp.DesignFrame:=fdesignframe;
+
+ frightpanel:=TPanel.Create(Self);
+ frightpanel.Align:=alClient;
+ frightpanel.BevelOuter:=bvNone;
+ frightpanel.Parent:=MainScrollBox;
+
  fdesignframe.Align:=alclient;
- fdesignframe.Parent:=MainScrollBox;
+ fdesignframe.Parent:=frightpanel;
  fdesignframe.freportstructure:=freportstructure;
  freportstructure.designframe:=fdesignframe;
  splitter2.Top:=freportstructure.Height+10;
@@ -722,13 +737,13 @@ begin
  fcuepanel.Width:=280;
  fcuepanel.Align:=alRight;
  fcuepanel.BevelOuter:=bvNone;
- fcuepanel.Parent:=mainscrollbox;
+ fcuepanel.Parent:=frightpanel;
 
  fcuesplitter:=TSplitter.Create(Self);
  fcuesplitter.Align:=alRight;
  fcuesplitter.Width:=5;
  fcuesplitter.Beveled:=True;
- fcuesplitter.Parent:=mainscrollbox;
+ fcuesplitter.Parent:=frightpanel;
 
  fcueview:=TFRpCueViewVCL.Create(Self);
  fcueview.Align:=alClient;
