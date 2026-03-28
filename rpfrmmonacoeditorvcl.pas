@@ -21,6 +21,11 @@ uses
   System.Zip, System.IOUtils, System.Threading;
 
 type
+  TAIToggleButton = class(TSpeedButton)
+  protected
+    procedure Paint; override;
+  end;
+
   TSchemaComboItem = class
   public
     HubDatabaseId: Int64;
@@ -43,7 +48,7 @@ type
     procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
-    FAIButton: TSpeedButton;
+    FAIButton: TAIToggleButton;
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
@@ -91,6 +96,50 @@ implementation
 
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
+
+procedure TAIToggleButton.Paint;
+var
+  R: TRect;
+  Flags: Longint;
+  BackColor: TColor;
+  FontColor: TColor;
+begin
+  R := ClientRect;
+
+  if not Enabled then
+  begin
+    BackColor := clBtnFace;
+    FontColor := clGrayText;
+  end
+  else if Down then
+  begin
+    BackColor := clHighlight;
+    FontColor := clHighlightText;
+  end
+  else
+  begin
+    BackColor := clBtnFace;
+    FontColor := clBtnText;
+  end;
+
+  Canvas.Brush.Color := BackColor;
+  Canvas.FillRect(R);
+
+  if Down then
+    DrawEdge(Canvas.Handle, R, BDR_SUNKENOUTER, BF_RECT)
+  else
+    DrawEdge(Canvas.Handle, R, BDR_RAISEDINNER, BF_RECT);
+
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Color := FontColor;
+
+  if Down then
+    OffsetRect(R, 1, 1);
+
+  Flags := DT_CENTER or DT_VCENTER or DT_SINGLELINE;
+  DrawText(Canvas.Handle, PChar(Caption), Length(Caption), R, Flags);
+end;
 
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64);
 begin
@@ -141,7 +190,7 @@ begin
   if TFile.Exists(LDllPath) then
     LoadLibrary(PChar(LDllPath));
 
-  FAIButton := TSpeedButton.Create(Self);
+  FAIButton := TAIToggleButton.Create(Self);
   FAIButton.Parent := PTop;
   FAIButton.Width := 52;
   FAIButton.Height := 34;
@@ -153,6 +202,7 @@ begin
   FAIButton.Hint := 'Activar o desactivar inferencia AI';
   FAIButton.ShowHint := True;
   FAIButton.Font.Name := 'Segoe UI Semibold';
+  FAIButton.Font.Size := 9;
   FAIButton.Cursor := crHandPoint;
   FAIButton.OnClick := AIToggleClick;
 
@@ -764,10 +814,7 @@ begin
   if FAIButton <> nil then
   begin
     FAIButton.Down := TRpAuthManager.Instance.AIEnabled;
-    if FAIButton.Down then
-      FAIButton.Font.Color := clHighlightText
-    else
-      FAIButton.Font.Color := clWindowText;
+    FAIButton.Invalidate;
   end;
 
   ComboSchema.Enabled := TRpAuthManager.Instance.IsLoggedIn;
