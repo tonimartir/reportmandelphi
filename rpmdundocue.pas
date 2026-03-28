@@ -1,4 +1,4 @@
-﻿unit rpmdundocue;
+unit rpmdundocue;
 
 {$I rpconf.inc}
 
@@ -81,6 +81,8 @@ type
     function GetGroupId: Integer;
     procedure AddOperation(op: TChangeObjectOperation);
     procedure AddAllComponentProperties(pitem: TRpCommonPosComponent; op: TChangeObjectOperation);
+    procedure AddSectionProperties(sec: TRpSection; op: TChangeObjectOperation);
+    procedure AddSubreportProperties(subrep: TRpSubReport; op: TChangeObjectOperation);
     function Undo: TObjectList<TChangeObjectOperation>;
     function Redo: TObjectList<TChangeObjectOperation>;
     procedure Clear;
@@ -910,6 +912,8 @@ begin
               secItem := TRpSectionListItem(
                 TRpSubReport(parentItem).Sections.Insert(operation.oldItemIndex));
               secItem.Section := TRpSection(target);
+              // Set SubReport reference so the section works correctly
+              TRpSection(target).SubReport := TRpSubReport(parentItem);
             end;
           end
           else
@@ -969,12 +973,16 @@ begin
               begin
                 if SameText(parentSubreport.Sections.Items[i].Section.Name, sec.Name) then
                 begin
+                  // Remove the section from the list but nil slot first
+                  // (do NOT call FreeSection - that would delete the group pair)
                   parentSubreport.Sections.Items[i].Section := nil;
                   parentSubreport.Sections.Delete(i);
                   Break;
                 end;
               end;
             end;
+            // Free subcomponents then the section itself
+            sec.FreeComponents;
             sec.Free;
           end
           else if target is TRpSubReport then
@@ -1154,6 +1162,8 @@ begin
         secItem := TRpSectionListItem(
           parentSubreport.Sections.Insert(operation.oldItemIndex));
         secItem.Section := TRpSection(target);
+        // Set SubReport reference so the section works correctly
+        TRpSection(target).SubReport := parentSubreport;
       end
       else
       begin
@@ -1426,6 +1436,33 @@ begin
     op.AddProperty('eccLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
     op.AddProperty('truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
   end;
+end;
+
+procedure TUndoCue.AddSectionProperties(sec: TRpSection;
+  op: TChangeObjectOperation);
+begin
+  op.AddProperty('width', ptInteger, Null, sec.GetItemProperty('Width'));
+  op.AddProperty('height', ptInteger, Null, sec.GetItemProperty('Height'));
+  op.AddProperty('printCondition', ptString, Null, sec.GetItemProperty('PrintCondition'));
+  op.AddProperty('doBeforePrint', ptString, Null, sec.GetItemProperty('DoBeforePrint'));
+  op.AddProperty('doAfterPrint', ptString, Null, sec.GetItemProperty('DoAfterPrint'));
+  op.AddProperty('visible', ptBoolean, Null, sec.GetItemProperty('Visible'));
+  op.AddProperty('sectionType', ptInteger, Null, sec.GetItemProperty('SectionType'));
+  op.AddProperty('groupName', ptString, Null, sec.GetItemProperty('GroupName'));
+  op.AddProperty('changeExpression', ptString, Null, sec.GetItemProperty('ChangeExpression'));
+  op.AddProperty('changeBool', ptBoolean, Null, sec.GetItemProperty('ChangeBool'));
+  op.AddProperty('pageRepeat', ptBoolean, Null, sec.GetItemProperty('PageRepeat'));
+  op.AddProperty('alignBottom', ptBoolean, Null, sec.GetItemProperty('AlignBottom'));
+  op.AddProperty('autoExpand', ptBoolean, Null, sec.GetItemProperty('AutoExpand'));
+  op.AddProperty('autoContract', ptBoolean, Null, sec.GetItemProperty('AutoContract'));
+end;
+
+procedure TUndoCue.AddSubreportProperties(subrep: TRpSubReport;
+  op: TChangeObjectOperation);
+begin
+  op.AddProperty('alias', ptString, Null, subrep.GetItemProperty('Alias'));
+  op.AddProperty('printOnlyIfDataAvailable', ptBoolean, Null, subrep.GetItemProperty('PrintOnlyIfDataAvailable'));
+  op.AddProperty('reOpenOnPrint', ptBoolean, Null, subrep.GetItemProperty('ReOpenOnPrint'));
 end;
 
 procedure TUndoCue.FromJSON(const jsonStr: string);

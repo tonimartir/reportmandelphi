@@ -1743,6 +1743,12 @@ begin
   SetGroupName(value);
   exit;
  end;
+ if SameText(propName, 'ChangeExpression') or SameText(propName, SRpSGroupExpression) then
+ begin
+  FChangeExpression:= value;
+  exit;
+ end;
+
  if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
  begin
   FChangeBool := value;
@@ -2051,6 +2057,11 @@ begin
     Result := Unassigned
   else
     Result := StreamToBase64String(FStream);
+  exit;
+ end;
+ if SameText(propName, 'ChangeExpression') or SameText(propName, SRpSGroupExpression) then
+ begin
+  Result := ChangeExpression;
   exit;
  end;
  Result := inherited GetItemProperty(propName);

@@ -1074,7 +1074,9 @@ begin
  op.componentName:=asection.Name;
  op.componentClass:='TRPSECTION';
  op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddSectionProperties(asection, op);
  cue.AddOperation(op);
+ RefreshCueView;
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1095,7 +1097,9 @@ begin
  op.componentName:=asection.Name;
  op.componentClass:='TRPSECTION';
  op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddSectionProperties(asection, op);
  cue.AddOperation(op);
+ RefreshCueView;
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1108,6 +1112,7 @@ var
  op:TChangeObjectOperation;
  subrep:TRpSubReport;
  i,headerIndex,footerIndex:integer;
+ groupId:integer;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddNewGroupout a report unassigned');
@@ -1121,16 +1126,17 @@ begin
   // Find header and footer indices after AddGroup creates them
   headerIndex:=-1;
   footerIndex:=-1;
+  footersec:=nil;
   for i := 0 to subrep.Sections.Count - 1 do
   begin
    if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
-      (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
+       (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
     begin
      headerIndex:=i;
      asection:=subrep.Sections.Items[i].Section;
     end;
    if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
-      (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
+       (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
     begin
      footerIndex:=i;
      footersec:=subrep.Sections.Items[i].Section;
@@ -1139,29 +1145,34 @@ begin
   
   EnsureUndoCue;
   cue:=TUndoCue(report.UndoCue);
+  // Capture groupId ONCE so both header and footer share the same undo group
+  groupId:=cue.GetGroupId;
   
   // Register header section with its index
-  if (headerIndex >= 0) and Assigned(asection) then
-  begin
-   op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
-   op.componentName:=asection.Name;
-   op.componentClass:='TRPSECTION';
-   op.parentName:=subrep.Name;
-   op.oldItemIndex:=headerIndex;
-   cue.AddOperation(op);
-  end;
+   if (headerIndex >= 0) and Assigned(asection) then
+   begin
+    op:=TChangeObjectOperation.Create(otAdd, groupId);
+    op.componentName:=asection.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    op.oldItemIndex:=headerIndex;
+    cue.AddSectionProperties(asection, op);
+    cue.AddOperation(op);
+   end;
   
-  // Register footer section with its index
-  if (footerIndex >= 0) and Assigned(footersec) then
-  begin
-   op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
-   op.componentName:=footersec.Name;
-   op.componentClass:='TRPSECTION';
-   op.parentName:=subrep.Name;
-   op.oldItemIndex:=footerIndex;
-   cue.AddOperation(op);
-  end;
+  // Register footer section with its index (same groupId!)
+   if (footerIndex >= 0) and Assigned(footersec) then
+   begin
+    op:=TChangeObjectOperation.Create(otAdd, groupId);
+    op.componentName:=footersec.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    op.oldItemIndex:=footerIndex;
+    cue.AddSectionProperties(footersec, op);
+    cue.AddOperation(op);
+   end;
   
+  RefreshCueView;
   RefreshInterface(Self);
   freportstructure.SelectDataItem(asection);
  end;
@@ -1199,6 +1210,7 @@ var
  i,headerIndex,footerIndex:integer;
  footersec:TRpSection;
  headersec:TRpSection;
+ groupId:integer;
 begin
  // Deletes section
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
@@ -1211,11 +1223,13 @@ begin
   // Register undo operation before deleting
   EnsureUndoCue;
   cue:=TUndoCue(report.UndoCue);
+  // Capture groupId ONCE - all operations in this delete action share the same undo group
+  groupId:=cue.GetGroupId;
   
   if (secorsub is TRpSubReport) then
   begin
    // Delete subreport
-   op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+   op:=TChangeObjectOperation.Create(otRemove, groupId);
    op.componentName:=TRpSubReport(secorsub).Name;
    op.componentClass:='TRPSUBREPORT';
    cue.AddOperation(op);
@@ -1230,13 +1244,15 @@ begin
    if sec.SectionType in [rpsecgheader, rpsecgfooter] then
    begin
     groupname:=sec.GroupName;
+    headersec:=nil;
+    footersec:=nil;
     
     // Find header section index
     headerIndex:=-1;
     for i := 0 to subrep.Sections.Count - 1 do
     begin
      if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
-        (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+         (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
      begin
       headerIndex:=i;
       headersec:=subrep.Sections.Items[i].Section;
@@ -1249,7 +1265,7 @@ begin
     for i := 0 to subrep.Sections.Count - 1 do
     begin
      if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
-        (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+         (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
      begin
       footerIndex:=i;
       footersec:=subrep.Sections.Items[i].Section;
@@ -1257,25 +1273,27 @@ begin
      end;
     end;
     
-    // Register header section with its index
+    // Register header section with its index (same groupId for both!)
     if (headerIndex >= 0) and Assigned(headersec) then
     begin
-     op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+     op:=TChangeObjectOperation.Create(otRemove, groupId);
      op.componentName:=headersec.Name;
      op.componentClass:='TRPSECTION';
      op.parentName:=subrep.Name;
      op.oldItemIndex:=headerIndex;
+     cue.AddSectionProperties(headersec, op);
      cue.AddOperation(op);
     end;
     
-    // Register footer section with its index
+    // Register footer section with its index (same groupId!)
     if (footerIndex >= 0) and Assigned(footersec) then
     begin
-     op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+     op:=TChangeObjectOperation.Create(otRemove, groupId);
      op.componentName:=footersec.Name;
      op.componentClass:='TRPSECTION';
      op.parentName:=subrep.Name;
      op.oldItemIndex:=footerIndex;
+     cue.AddSectionProperties(footersec, op);
      cue.AddOperation(op);
     end;
     
@@ -1288,11 +1306,12 @@ begin
     begin
      if subrep.Sections.Items[i].Section = sec then
      begin
-      op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+      op:=TChangeObjectOperation.Create(otRemove, groupId);
       op.componentName:=sec.Name;
       op.componentClass:='TRPSECTION';
       op.parentName:=subrep.Name;
       op.oldItemIndex:=i;
+      cue.AddSectionProperties(sec, op);
       cue.AddOperation(op);
       break;
      end;
