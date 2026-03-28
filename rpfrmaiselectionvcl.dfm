@@ -59,6 +59,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       Caption = 'Guest'
       ParentShowHint = False
       ShowHint = True
+      Visible = False
     end
     object ComboAIProvider: TComboBox
       Left = 55

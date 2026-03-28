@@ -75,6 +75,7 @@ begin
   FGaugeValue := 0.0;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
+  LCredits.Visible := False;
   RefreshState;
 end;
 
@@ -101,11 +102,6 @@ begin
     FGaugeValue := LAuth.GetCreditsRatio;
     LPct := FGaugeValue * 100;
 
-    if LMax > 0 then
-      LCredits.Caption := Format('%d/%d', [LUsed, LMax])
-    else
-      LCredits.Caption := 'Free';
-
     // Construct rich tooltip matching Desktop
     LHint := 'Tier: ' + LProfile.TierName + #13#10;
     if LAuth.UsesFreeCredits then
@@ -120,18 +116,14 @@ begin
   end
   else
   begin
-    LCredits.Caption := 'Guest';
     LHint := 'Guest access - limited credits';
     FGaugeValue := 0;
   end;
 
-  LCredits.Hint := LHint;
   PaintBoxGauge.Hint := LHint;
   // Enable hints
-  LCredits.ShowHint := True;
   PaintBoxGauge.ShowHint := True;
-
-  PaintBoxGauge.Invalidate;
+  SetGaugeValue(FGaugeValue);
 end;
 
 procedure TFRpAISelectionVCL.UpdateFromUserProfile(AProfile: TJSONObject);
@@ -143,11 +135,8 @@ end;
 
 procedure TFRpAISelectionVCL.SetGaugeValue(const Value: Double);
 begin
-  if FGaugeValue <> Value then
-  begin
-    FGaugeValue := Value;
-    PaintBoxGauge.Invalidate;
-  end;
+  FGaugeValue := Value;
+  PaintBoxGauge.Invalidate;
 end;
 
 function TFRpAISelectionVCL.GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
@@ -169,39 +158,73 @@ var
   Canvas: TCanvas;
   Rect: TRect;
   IndicatorColor: TColor;
-  PStart, PEnd: TPoint;
+  DisplayValue: Double;
+  PercentageValue: Integer;
+  PercentageText: string;
+  AngleStep: Double;
+  AngleValue: Double;
+  PointCount: Integer;
+  PointIndex: Integer;
+  GaugePoints: array of TPoint;
+  TextRect: TRect;
 begin
   Canvas := PaintBoxGauge.Canvas;
   Rect := PaintBoxGauge.ClientRect;
   InflateRect(Rect, -3, -3);
+  DisplayValue := FGaugeValue;
 
   // Background circle (track)
   Canvas.Pen.Width := 4;
-  Canvas.Pen.Color := $00E0E0E0;
+  Canvas.Pen.Color := $00C0C0C0;
   Canvas.Brush.Style := bsClear;
   Canvas.Ellipse(Rect);
 
-  if FGaugeValue <= 0 then Exit;
-
   // Indicator color based on usage ratio (matching C# CircularGauge)
-  if FGaugeValue < 0.5 then IndicatorColor := $004CAF50  // Material Green
-  else if FGaugeValue < 0.75 then IndicatorColor := clYellow
-  else if FGaugeValue < 0.9 then IndicatorColor := $0000A5FF  // Orange
-  else IndicatorColor := clRed;
+  if DisplayValue < 0.5 then IndicatorColor := RGB(76, 175, 80)
+  else if DisplayValue < 0.75 then IndicatorColor := RGB(255, 193, 7)
+  else if DisplayValue < 0.9 then IndicatorColor := RGB(255, 152, 0)
+  else IndicatorColor := RGB(244, 67, 54);
 
-  Canvas.Pen.Color := IndicatorColor;
+  if DisplayValue > 0 then
+  begin
+    Canvas.Pen.Color := IndicatorColor;
+    if DisplayValue >= 0.999 then
+      Canvas.Ellipse(Rect)
+    else
+    begin
+      PointCount := Round(DisplayValue * 72) + 1;
+      if PointCount < 2 then
+        PointCount := 2;
+      SetLength(GaugePoints, PointCount);
+      AngleStep := (DisplayValue * 360) / (PointCount - 1);
+      AngleValue := 270;
+      for PointIndex := 0 to PointCount - 1 do
+      begin
+        GaugePoints[PointIndex] := GetPointOnCircle(Rect, AngleValue);
+        AngleValue := AngleValue - AngleStep;
+      end;
+      Canvas.Polyline(GaugePoints);
+    end;
+  end;
 
-  // C# starts at 90 deg in WPF (Bottom, since +Y is down)
-  // In VCL math, +Y is Up if we use CenterY - Sin
-  // So 270 is Bottom
-  PStart := GetPointOnCircle(Rect, 270);
-  PEnd := GetPointOnCircle(Rect, 270 - (FGaugeValue * 360));
+  PercentageValue := Round(DisplayValue * 100);
+  if PercentageValue < 0 then
+    PercentageValue := 0
+  else if PercentageValue > 100 then
+    PercentageValue := 100;
+  PercentageText := IntToStr(PercentageValue) + '%';
 
-  if FGaugeValue >= 0.999 then
-    Canvas.Ellipse(Rect)
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Name := 'Segoe UI';
+  Canvas.Font.Style := [];
+  Canvas.Font.Height := -7;
+  if DisplayValue > 0 then
+    Canvas.Font.Color := IndicatorColor
   else
-    Canvas.Arc(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom,
-      PEnd.X, PEnd.Y, PStart.X, PStart.Y); // VCL Arc direction fix
+    Canvas.Font.Color := $00707070;
+  TextRect := Rect;
+  DrawText(Canvas.Handle, PChar(PercentageText), Length(PercentageText), TextRect,
+    DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
 end;
 
 procedure TFRpAISelectionVCL.ComboAIModeChange(Sender: TObject);
@@ -215,12 +238,10 @@ begin
   if ComboAIProvider.ItemIndex >= 2 then
   begin
     PaintBoxGauge.Visible := False;
-    LCredits.Visible := False;
   end
   else
   begin
     PaintBoxGauge.Visible := True;
-    LCredits.Visible := True;
   end;
 end;
 
