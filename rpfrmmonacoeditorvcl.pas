@@ -16,7 +16,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, StdCtrls, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
+  Dialogs, ExtCtrls, StdCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, rpfrmloginframevcl, System.JSON, rpdatahttp,
   System.Zip, System.IOUtils, System.Threading;
 
@@ -36,6 +36,7 @@ type
     procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
+    FAIButton: TSpeedButton;
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
@@ -49,14 +50,17 @@ type
     FPendingRequestId, FPendingSql: string;
     FPendingPos: Integer;
     FInferenceTask: ITask;
+    procedure AIToggleClick(Sender: TObject);
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
     procedure SetSQL(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
+    procedure LayoutTopControls;
     procedure UpdateAuthUI;
   protected
     procedure CreateWnd; override;
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -115,6 +119,20 @@ begin
   if TFile.Exists(LDllPath) then
     LoadLibrary(PChar(LDllPath));
 
+  FAIButton := TSpeedButton.Create(Self);
+  FAIButton.Parent := PTop;
+  FAIButton.Width := 52;
+  FAIButton.Height := 34;
+  FAIButton.Top := 8;
+  FAIButton.Flat := True;
+  FAIButton.AllowAllUp := True;
+  FAIButton.GroupIndex := 1;
+  FAIButton.Caption := 'AI';
+  FAIButton.Hint := 'Activar o desactivar inferencia AI';
+  FAIButton.ShowHint := True;
+  FAIButton.Font.Name := 'Segoe UI Semibold';
+  FAIButton.OnClick := AIToggleClick;
+
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
   FAISelection.Parent := PTop;
@@ -158,6 +176,12 @@ begin
 
     Edge.CreateWebView;
   end;
+end;
+
+procedure TFRpMonacoEditorVCL.Resize;
+begin
+  inherited;
+  LayoutTopControls;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(
@@ -320,9 +344,17 @@ begin
   end;
 end;
 
+procedure TFRpMonacoEditorVCL.AIToggleClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.AIEnabled := FAIButton.Down;
+  UpdateAuthUI;
+end;
+
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
   LVal: TJSONValue;
+  LEmptyInlineItems: TJSONArray;
+  LEmptyCompletionItems: TJSONArray;
 begin
   FDebounceTimer.Enabled := False;
   
@@ -346,12 +378,23 @@ begin
       FPendingPos := StrToIntDef(LVal.Value, 0);
   end;
 
+  if not TRpAuthManager.Instance.AIEnabled then
+  begin
+    LEmptyInlineItems := TJSONArray.Create;
+    LEmptyCompletionItems := TJSONArray.Create;
+    SendAICompletions(LEmptyInlineItems, LEmptyCompletionItems, FPendingRequestId);
+    Exit;
+  end;
+
   FDebounceTimer.Enabled := True;
 end;
 
 procedure TFRpMonacoEditorVCL.OnDebounceTimer(Sender: TObject);
 begin
   FDebounceTimer.Enabled := False;
+
+  if not TRpAuthManager.Instance.AIEnabled then
+    Exit;
   
   // Create AI completion task (asynchronous)
   FInferenceTask := TTask.Run(
@@ -513,10 +556,37 @@ begin
   end;
 end;
 
+procedure TFRpMonacoEditorVCL.LayoutTopControls;
+begin
+  if FAIButton <> nil then
+  begin
+    FAIButton.Left := PLoginControl.Left + PLoginControl.Width + 8;
+    FAIButton.Top := (PTop.Height - FAIButton.Height) div 2;
+  end;
+
+  if FAISelection <> nil then
+  begin
+    if FAIButton <> nil then
+      FAISelection.Left := FAIButton.Left + FAIButton.Width + 8;
+    FAISelection.Top := 0;
+    FAISelection.Height := PTop.Height;
+  end;
+end;
+
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
 begin
+  if FAIButton <> nil then
+    FAIButton.Down := TRpAuthManager.Instance.AIEnabled;
+
   if FAISelection <> nil then
+  begin
+    FAISelection.Visible := TRpAuthManager.Instance.AIEnabled;
+    if not FAISelection.Visible then
+      FAISelection.SetInferenceProgress(False);
     FAISelection.RefreshState;
+  end;
+
+  LayoutTopControls;
 end;
 
 procedure TFRpMonacoEditorVCL.AuthChanged(ASuccess: Boolean);

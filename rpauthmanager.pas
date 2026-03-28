@@ -70,6 +70,7 @@ type
     FProfile: TRpProfile;
     FTiers: TArray<TRpTier>;
     FIsLoggedIn: Boolean;
+    FAIEnabled: Boolean;
     FOnLog: TRpAuthLog;
     FAuthListeners: TList<TRpAuthEvent>;
     FOAuthCode: string;
@@ -83,6 +84,7 @@ type
     procedure NotifyListeners(ASuccess: Boolean);
     function GenerateInstallId: string;
     procedure SetIsLoggedIn(Value: Boolean);
+    procedure SetAIEnabled(Value: Boolean);
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
@@ -125,6 +127,7 @@ type
     property Profile: TRpProfile read FProfile;
     property Tiers: TArray<TRpTier> read FTiers;
     property IsLoggedIn: Boolean read FIsLoggedIn;
+    property AIEnabled: Boolean read FAIEnabled write SetAIEnabled;
     property OnLog: TRpAuthLog read FOnLog write FOnLog;
   end;
 
@@ -138,6 +141,7 @@ constructor TRpAuthManager.Create;
 begin
   inherited Create;
   FIsLoggedIn := False;
+  FAIEnabled := True;
   FAuthListeners := TList<TRpAuthEvent>.Create;
   FInstallId := GenerateInstallId;
   LoadConfig;
@@ -584,6 +588,15 @@ begin
   FIsLoggedIn := Value;
   for LListener in FAuthListeners do
     LListener(FIsLoggedIn);
+end;
+
+procedure TRpAuthManager.SetAIEnabled(Value: Boolean);
+begin
+  if FAIEnabled = Value then
+    Exit;
+
+  FAIEnabled := Value;
+  SaveConfig;
 end;
 
 procedure TRpAuthManager.RegisterAuthListener(AListener: TRpAuthEvent);
@@ -1090,6 +1103,7 @@ begin
     LIni.WriteString('Profile', 'AvatarUrl', FProfile.AvatarUrl);
     LIni.WriteInteger('Profile', 'AccountType', FProfile.AccountType);
     LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
+    LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
     LIni.UpdateFile;
   finally
     LIni.Free;
@@ -1113,6 +1127,7 @@ begin
     FProfile.TierId := LIni.ReadInteger('Profile', 'TierId', 1);
     FProfile.TierName := LIni.ReadString('Profile', 'TierName', 'Guest');
     FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
+    FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
     
     FIsLoggedIn := FToken <> '';
     
@@ -1125,11 +1140,17 @@ end;
 
 procedure TRpAuthManager.ClearConfig;
 var
-  LFile: string;
+  LIni: TIniFile;
 begin
-  LFile := GetConfigFileName;
-  if TFile.Exists(LFile) then
-    TFile.Delete(LFile);
+  LIni := TIniFile.Create(GetConfigFileName);
+  try
+    LIni.EraseSection('Auth');
+    LIni.EraseSection('Profile');
+    LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
 end;
 
 initialization
