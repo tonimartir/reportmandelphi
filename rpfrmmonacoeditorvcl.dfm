@@ -35,6 +35,10 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         end
         item
           SizeStyle = ssAuto
+          Value = 42.000000000000000000
+        end
+        item
+          SizeStyle = ssAuto
           Value = 200.000000000000000000
         end
         item
@@ -52,16 +56,21 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         end
         item
           Column = 1
-          Control = PLoginControl
+          Control = PSchemaConfigHost
           Row = 0
         end
         item
           Column = 2
-          Control = PAIButtonHost
+          Control = PLoginControl
           Row = 0
         end
         item
           Column = 3
+          Control = PAIButtonHost
+          Row = 0
+        end
+        item
+          Column = 4
           Control = PAISelectionHost
           Row = 0
         end>
@@ -87,7 +96,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       end
       object PLoginControl: TPanel
         AlignWithMargins = True
-        Left = 166
+        Left = 212
         Top = 5
         Width = 200
         Height = 40
@@ -99,9 +108,23 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         BevelOuter = bvNone
         TabOrder = 1
       end
+      object PSchemaConfigHost: TPanel
+        AlignWithMargins = True
+        Left = 166
+        Top = 8
+        Width = 30
+        Height = 34
+        Margins.Left = 0
+        Margins.Top = 8
+        Margins.Right = 8
+        Margins.Bottom = 8
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 2
+      end
       object PAIButtonHost: TPanel
         AlignWithMargins = True
-        Left = 382
+        Left = 428
         Top = 8
         Width = 52
         Height = 34
@@ -111,13 +134,13 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Margins.Bottom = 8
         Align = alClient
         BevelOuter = bvNone
-        TabOrder = 2
+        TabOrder = 3
       end
       object PAISelectionHost: TPanel
         AlignWithMargins = True
-        Left = 450
+        Left = 496
         Top = 0
-        Width = 300
+        Width = 254
         Height = 50
         Margins.Left = 8
         Margins.Top = 0
@@ -125,7 +148,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Margins.Bottom = 0
         Align = alClient
         BevelOuter = bvNone
-        TabOrder = 3
+        TabOrder = 4
       end
     end
   end

@@ -26,6 +26,11 @@ type
     procedure Paint; override;
   end;
 
+  TConfigIconButton = class(TSpeedButton)
+  protected
+    procedure Paint; override;
+  end;
+
   TSchemaComboItem = class
   public
     HubDatabaseId: Int64;
@@ -39,6 +44,7 @@ type
     Edge: TEdgeBrowser;
     PLoginControl: TPanel;
     GridTopHeader: TGridPanel;
+    PSchemaConfigHost: TPanel;
     PAIButtonHost: TPanel;
     PAISelectionHost: TPanel;
 
@@ -52,6 +58,7 @@ type
   private
     FAISelection: TFRpAISelectionVCL;
     FAIButton: TAIToggleButton;
+    FSchemaConfigButton: TConfigIconButton;
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
@@ -71,6 +78,7 @@ type
     FRestartPendingInference: Boolean;
     FLastAutoCompleteSql: string;
     procedure AIToggleClick(Sender: TObject);
+    procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ClearSchemaItems;
     procedure OnDebounceTimer(Sender: TObject);
@@ -149,6 +157,56 @@ begin
   DrawText(Canvas.Handle, PChar(Caption), Length(Caption), R, Flags);
 end;
 
+procedure TConfigIconButton.Paint;
+var
+  R: TRect;
+  CX, CY: Integer;
+  OuterRadius, InnerRadius, CenterRadius: Integer;
+  FontColor: TColor;
+
+  procedure DrawSpoke(const DX1, DY1, DX2, DY2: Integer);
+  begin
+    Canvas.MoveTo(CX + DX1, CY + DY1);
+    Canvas.LineTo(CX + DX2, CY + DY2);
+  end;
+begin
+  R := ClientRect;
+
+  if not Enabled then
+    FontColor := clGrayText
+  else
+    FontColor := clBtnText;
+
+  Canvas.Brush.Color := clBtnFace;
+  Canvas.FillRect(R);
+  DrawEdge(Canvas.Handle, R, BDR_RAISEDINNER, BF_RECT);
+
+  CX := (R.Left + R.Right) div 2;
+  CY := (R.Top + R.Bottom) div 2;
+  if Width < Height then
+    OuterRadius := Width div 4
+  else
+    OuterRadius := Height div 4;
+  InnerRadius := OuterRadius - 3;
+  CenterRadius := OuterRadius div 2;
+
+  Canvas.Pen.Color := FontColor;
+  Canvas.Pen.Width := 2;
+  Canvas.Brush.Style := bsClear;
+
+  DrawSpoke(0, -OuterRadius - 2, 0, -InnerRadius);
+  DrawSpoke(0, InnerRadius, 0, OuterRadius + 2);
+  DrawSpoke(-OuterRadius - 2, 0, -InnerRadius, 0);
+  DrawSpoke(InnerRadius, 0, OuterRadius + 2, 0);
+  DrawSpoke(-OuterRadius + 1, -OuterRadius + 1, -InnerRadius + 1, -InnerRadius + 1);
+  DrawSpoke(InnerRadius - 1, InnerRadius - 1, OuterRadius - 1, OuterRadius - 1);
+  DrawSpoke(OuterRadius - 1, -OuterRadius + 1, InnerRadius - 1, -InnerRadius + 1);
+  DrawSpoke(-OuterRadius + 1, OuterRadius - 1, -InnerRadius + 1, InnerRadius - 1);
+
+  Canvas.Ellipse(CX - OuterRadius, CY - OuterRadius, CX + OuterRadius, CY + OuterRadius);
+  Canvas.Ellipse(CX - CenterRadius, CY - CenterRadius, CX + CenterRadius, CY + CenterRadius);
+end;
+
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64);
 begin
   inherited Create;
@@ -211,6 +269,15 @@ begin
   FAIButton.Font.Size := 9;
   FAIButton.Cursor := crHandPoint;
   FAIButton.OnClick := AIToggleClick;
+
+  FSchemaConfigButton := TConfigIconButton.Create(Self);
+  FSchemaConfigButton.Parent := PSchemaConfigHost;
+  FSchemaConfigButton.Align := alClient;
+  FSchemaConfigButton.Flat := False;
+  FSchemaConfigButton.Hint := 'Configurar esquemas';
+  FSchemaConfigButton.ShowHint := True;
+  FSchemaConfigButton.Cursor := crHandPoint;
+  FSchemaConfigButton.OnClick := SchemaConfigClick;
 
   ComboSchema.OnChange := ComboSchemaChange;
 
@@ -654,6 +721,11 @@ begin
   UpdateAuthUI;
 end;
 
+procedure TFRpMonacoEditorVCL.SchemaConfigClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
+end;
+
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
   LVal: TJSONValue;
@@ -915,6 +987,8 @@ procedure TFRpMonacoEditorVCL.LayoutTopControls;
 begin
   if FAIButton <> nil then
     FAIButton.Invalidate;
+  if FSchemaConfigButton <> nil then
+    FSchemaConfigButton.Invalidate;
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
