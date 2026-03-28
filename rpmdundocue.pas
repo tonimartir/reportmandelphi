@@ -848,7 +848,6 @@ var
   parentSection: TRpSection;
   parentSubreport: TRpSubReport;
   parentItem: TObject;
-  targetReportItem: TObject;
   newParentName, sOldParentName: string;
   oldParentSection, newParentSection: TRpSection;
   indexOld, i: Integer;
@@ -856,7 +855,6 @@ var
   compItem: TRpCommonListItem;
   sec: TRpSection;
   secItem: TRpSectionListItem;
-  subItem: TRpSubReportListItem;
   dinfo: TRpDataInfoItem;
   dbinfo: TRpDatabaseInfoItem;
   param: TRpParam;
@@ -865,12 +863,6 @@ begin
   loadTarget := True;
 
   case operation.operation of
-    otAdd:
-      begin
-        if not isUndo then
-          loadTarget := False;
-      end;
-
     otSwapDown, otSwapUp:
       begin
         ApplySwapOperation(
@@ -884,8 +876,6 @@ begin
 
     otRename:
       begin
-        // For rename: componentName = new name, oldParentName = old name
-        // When undoing, we switch from componentName back to oldParentName
         if isUndo then
         begin
           target := GetComponentByName(operation.componentName);
@@ -903,10 +893,7 @@ begin
       begin
         if isUndo then
         begin
-          loadTarget := False;
           // Undo remove = re-create the element
-          // Items with a parent are TComponent-based (visual comps, sections)
-          // Items without a parent may be collection items (DataInfo, DatabaseInfo, Param)
           if operation.parentName <> '' then
           begin
             target := NewComponentByClassName(operation.componentClass, FReport);
@@ -920,7 +907,6 @@ begin
             end
             else if parentItem is TRpSubReport then
             begin
-              // Insert section into subreport
               secItem := TRpSectionListItem(
                 TRpSubReport(parentItem).Sections.Insert(operation.oldItemIndex));
               secItem.Section := TRpSection(target);
@@ -961,7 +947,6 @@ begin
           if target is TRpCommonPosComponent then
           begin
             comp := TRpCommonPosComponent(target);
-            // Find parent section and remove
             if operation.parentName <> '' then
             begin
               parentSection := TRpSection(GetComponentByName(operation.parentName));
@@ -982,7 +967,7 @@ begin
               parentSubreport := TRpSubReport(GetComponentByName(operation.parentName));
               for i := 0 to parentSubreport.Sections.Count - 1 do
               begin
-                if parentSubreport.Sections.Items[i].Section = sec then
+                if SameText(parentSubreport.Sections.Items[i].Section.Name, sec.Name) then
                 begin
                   parentSubreport.Sections.Items[i].Section := nil;
                   parentSubreport.Sections.Delete(i);
@@ -1000,7 +985,7 @@ begin
           begin
             for i := 0 to FReport.DataInfo.Count - 1 do
             begin
-              if FReport.DataInfo.Items[i].Name = operation.componentName then
+              if SameText(FReport.DataInfo.Items[i].Name, operation.componentName) then
               begin
                 FReport.DataInfo.Delete(i);
                 Break;
@@ -1011,7 +996,7 @@ begin
           begin
             for i := 0 to FReport.DatabaseInfo.Count - 1 do
             begin
-              if FReport.DatabaseInfo.Items[i].Name = operation.componentName then
+              if SameText(FReport.DatabaseInfo.Items[i].Name, operation.componentName) then
               begin
                 FReport.DatabaseInfo.Delete(i);
                 Break;
@@ -1022,7 +1007,7 @@ begin
           begin
             for i := 0 to FReport.Params.Count - 1 do
             begin
-              if FReport.Params.Items[i].Name = operation.componentName then
+              if SameText(FReport.Params.Items[i].Name, operation.componentName) then
               begin
                 FReport.Params.Delete(i);
                 Break;
@@ -1032,10 +1017,18 @@ begin
           Exit;
         end;
       end;
+
+    otAdd:
+      begin
+        if not isUndo then
+          loadTarget := False;
+      end;
   else
     loadTarget := True;
   end;
 
+  // For otAdd with isUndo=False, we don't need target (we create it)
+  // For other operations or otAdd with isUndo=True, get the target
   if loadTarget then
     target := GetComponentByName(operation.componentName);
 
@@ -1044,6 +1037,7 @@ begin
 
   if operation.operation = otAdd then
   begin
+    // Get parent info BEFORE checking isUndo, following TypeScript pattern
     if operation.parentName <> '' then
     begin
       parentItem := GetComponentByName(operation.parentName);
@@ -1055,90 +1049,93 @@ begin
 
     if isUndo then
     begin
-      // Undo add = remove the component
-      if target = nil then
-        Exit;
+      // Undo add = remove the component - FOLLOW TYPESCRIPT EXACTLY
+      // TypeScript searches in parent array by comparing names, not using getComponentByName
+      // This way it works even if previous operations already removed components
+      
       if parentSection <> nil then
       begin
-        indexOld := parentSection.ReportComponents.IndexOf(TRpCommonPosComponent(target));
-        if indexOld >= 0 then
+        // Search for component in section by name (like TypeScript)
+        for i := 0 to parentSection.Components.Count - 1 do
         begin
-          operation.oldItemIndex := indexOld;
-          parentSection.Components.Items[indexOld].Component := nil;
-          parentSection.Components.Delete(indexOld);
+          comp := TrpCommonPosComponent(parentSection.Components.Items[i].Component);
+          if SameText(comp.Name, operation.componentName) then
+          begin
+            operation.oldItemIndex := i;
+            parentSection.Components.Items[i].Component := nil;
+            parentSection.Components.Delete(i);
+            comp.Free;
+            Exit;
+          end;
         end;
-        TRpCommonPosComponent(target).Free;
-        Exit;
       end
-      else
+      else if parentSubreport <> nil then
       begin
-        if target is TRpSection then
+        // Search for section in subreport by name (like TypeScript)
+        for i := 0 to parentSubreport.Sections.Count - 1 do
         begin
-          if parentSubreport = nil then
-            raise Exception.Create('No parentSubreport');
-          for i := 0 to parentSubreport.Sections.Count - 1 do
+          if SameText(parentSubreport.Sections.Items[i].Section.Name, operation.componentName) then
           begin
-            if parentSubreport.Sections.Items[i].Section = TRpSection(target) then
-            begin
-              operation.oldItemIndex := i;
-              parentSubreport.Sections.Items[i].Section := nil;
-              parentSubreport.Sections.Delete(i);
-              TRpSection(target).Free;
-              Exit;
-            end;
+            operation.oldItemIndex := i;
+            sec := parentSubreport.Sections.Items[i].Section;
+            parentSubreport.Sections.Items[i].Section := nil;
+            parentSubreport.Sections.Delete(i);
+            sec.Free;
+            Exit;
           end;
-          raise Exception.Create('Section not found');
-        end
-        else if target is TRpSubReport then
+        end;
+      end
+      else if operation.componentClass = 'TRPSUBREPORT' then
+      begin
+        for i := 0 to FReport.SubReports.Count - 1 do
         begin
-          for i := 0 to FReport.SubReports.Count - 1 do
+          if SameText(FReport.SubReports.Items[i].SubReport.Name, operation.componentName) then
           begin
-            if FReport.SubReports.Items[i].SubReport = TRpSubReport(target) then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DeleteSubReport(TRpSubReport(target));
-              Exit;
-            end;
+            operation.oldItemIndex := i;
+            FReport.DeleteSubReport(FReport.SubReports.Items[i].SubReport);
+            Exit;
           end;
-          raise Exception.Create('Subreport not found');
-        end
-        else if target is TRpDataInfoItem then
+        end;
+      end
+      else if operation.componentClass = 'TRPDATAINFOITEM' then
+      begin
+        for i := 0 to FReport.DataInfo.Count - 1 do
         begin
-          for i := 0 to FReport.DataInfo.Count - 1 do
+          if SameText(FReport.DataInfo.Items[i].Name, operation.componentName) then
           begin
-            if FReport.DataInfo.Items[i].Name = operation.componentName then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DataInfo.Delete(i);
-              Exit;
-            end;
+            operation.oldItemIndex := i;
+            FReport.DataInfo.Delete(i);
+            Exit;
           end;
-        end
-        else if target is TRpDatabaseInfoItem then
+        end;
+      end
+      else if operation.componentClass = 'TRPDATABASEINFOITEM' then
+      begin
+        for i := 0 to FReport.DatabaseInfo.Count - 1 do
         begin
-          for i := 0 to FReport.DatabaseInfo.Count - 1 do
+          if SameText(FReport.DatabaseInfo.Items[i].Name, operation.componentName) then
           begin
-            if FReport.DatabaseInfo.Items[i].Name = operation.componentName then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DatabaseInfo.Delete(i);
-              Exit;
-            end;
+            operation.oldItemIndex := i;
+            FReport.DatabaseInfo.Delete(i);
+            Exit;
           end;
-        end
-        else if target is TRpParam then
+        end;
+      end
+      else if operation.componentClass = 'TRPPARAM' then
+      begin
+        for i := 0 to FReport.Params.Count - 1 do
         begin
-          for i := 0 to FReport.Params.Count - 1 do
+          if SameText(FReport.Params.Items[i].Name, operation.componentName) then
           begin
-            if FReport.Params.Items[i].Name = operation.componentName then
-            begin
-              operation.oldItemIndex := i;
-              FReport.Params.Delete(i);
-              Exit;
-            end;
+            operation.oldItemIndex := i;
+            FReport.Params.Delete(i);
+            Exit;
           end;
         end;
       end;
+      
+      // Component not found - it may have been removed by a previous operation in the same group
+      Exit;
     end
     else
     begin

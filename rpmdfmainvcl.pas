@@ -1107,7 +1107,7 @@ var
  cue:TUndoCue;
  op:TChangeObjectOperation;
  subrep:TRpSubReport;
- i:integer;
+ i,headerIndex,footerIndex:integer;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddNewGroupout a report unassigned');
@@ -1117,34 +1117,48 @@ begin
  begin
   subrep:=freportstructure.FindSelectedSubreport;
   asection:=subrep.AddGroup(newgroupname);
-  EnsureUndoCue;
-  cue:=TUndoCue(report.UndoCue);
   
-  // Register both sections (header and footer) in the same undo group
-  op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
-  op.componentName:=asection.Name;
-  op.componentClass:='TRPSECTION';
-  op.parentName:=subrep.Name;
-  cue.AddOperation(op);
-  
-  // Find and register the footer section (created by AddGroup)
-  footersec:=nil;
-  for i := subrep.Sections.Count - 1 downto 0 do
+  // Find header and footer indices after AddGroup creates them
+  headerIndex:=-1;
+  footerIndex:=-1;
+  for i := 0 to subrep.Sections.Count - 1 do
   begin
-   if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and 
-      (subrep.Sections.Items[i].Section.GroupName = newgroupname) then
+   if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
+      (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
     begin
+     headerIndex:=i;
+     asection:=subrep.Sections.Items[i].Section;
+    end;
+   if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
+      (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
+    begin
+     footerIndex:=i;
      footersec:=subrep.Sections.Items[i].Section;
-     break;
     end;
   end;
   
-  if Assigned(footersec) then
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  
+  // Register header section with its index
+  if (headerIndex >= 0) and Assigned(asection) then
+  begin
+   op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+   op.componentName:=asection.Name;
+   op.componentClass:='TRPSECTION';
+   op.parentName:=subrep.Name;
+   op.oldItemIndex:=headerIndex;
+   cue.AddOperation(op);
+  end;
+  
+  // Register footer section with its index
+  if (footerIndex >= 0) and Assigned(footersec) then
   begin
    op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
    op.componentName:=footersec.Name;
    op.componentClass:='TRPSECTION';
    op.parentName:=subrep.Name;
+   op.oldItemIndex:=footerIndex;
    cue.AddOperation(op);
   end;
   
@@ -1182,8 +1196,9 @@ var
  cue:TUndoCue;
  op:TChangeObjectOperation;
  groupname:string;
- i:integer;
+ i,headerIndex,footerIndex:integer;
  footersec:TRpSection;
+ headersec:TRpSection;
 begin
  // Deletes section
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
@@ -1216,39 +1231,72 @@ begin
    begin
     groupname:=sec.GroupName;
     
-    // Register header section
-    op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
-    op.componentName:=sec.Name;
-    op.componentClass:='TRPSECTION';
-    op.parentName:=subrep.Name;
-    cue.AddOperation(op);
+    // Find header section index
+    headerIndex:=-1;
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
+        (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
+     begin
+      headerIndex:=i;
+      headersec:=subrep.Sections.Items[i].Section;
+      break;
+     end;
+    end;
     
-    // Find and register footer section
+    // Find footer section index
+    footerIndex:=-1;
     for i := 0 to subrep.Sections.Count - 1 do
     begin
      if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
         (SameText(subrep.Sections.Items[i].Section.GroupName, groupname)) then
      begin
+      footerIndex:=i;
       footersec:=subrep.Sections.Items[i].Section;
-      op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
-      op.componentName:=footersec.Name;
-      op.componentClass:='TRPSECTION';
-      op.parentName:=subrep.Name;
-      cue.AddOperation(op);
       break;
      end;
+    end;
+    
+    // Register header section with its index
+    if (headerIndex >= 0) and Assigned(headersec) then
+    begin
+     op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+     op.componentName:=headersec.Name;
+     op.componentClass:='TRPSECTION';
+     op.parentName:=subrep.Name;
+     op.oldItemIndex:=headerIndex;
+     cue.AddOperation(op);
+    end;
+    
+    // Register footer section with its index
+    if (footerIndex >= 0) and Assigned(footersec) then
+    begin
+     op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+     op.componentName:=footersec.Name;
+     op.componentClass:='TRPSECTION';
+     op.parentName:=subrep.Name;
+     op.oldItemIndex:=footerIndex;
+     cue.AddOperation(op);
     end;
     
     currentsubrep:=nil;
    end
    else
    begin
-    // Regular section (detail, page header, page footer)
-    op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
-    op.componentName:=sec.Name;
-    op.componentClass:='TRPSECTION';
-    op.parentName:=subrep.Name;
-    cue.AddOperation(op);
+    // Regular section (detail, page header, page footer) - find its index
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     if subrep.Sections.Items[i].Section = sec then
+     begin
+      op:=TChangeObjectOperation.Create(otRemove, cue.GetGroupId);
+      op.componentName:=sec.Name;
+      op.componentClass:='TRPSECTION';
+      op.parentName:=subrep.Name;
+      op.oldItemIndex:=i;
+      cue.AddOperation(op);
+      break;
+     end;
+    end;
     
     currentsubrep:=nil;
    end;
