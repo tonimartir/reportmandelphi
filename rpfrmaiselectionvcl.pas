@@ -95,29 +95,31 @@ begin
   LAuth := TRpAuthManager.Instance;
   LProfile := LAuth.Profile;
 
-  if LAuth.IsLoggedIn then
+  LUsed := LAuth.GetCreditsConsumed;
+  LMax := LAuth.GetCreditsMax;
+  FGaugeValue := LAuth.GetCreditsRatio;
+  LPct := FGaugeValue * 100;
+
+  if LMax > 0 then
   begin
-    LUsed := LAuth.GetCreditsConsumed;
-    LMax := LAuth.GetCreditsMax;
-    FGaugeValue := LAuth.GetCreditsRatio;
-    LPct := FGaugeValue * 100;
-
-    // Construct rich tooltip matching Desktop
-    LHint := 'Tier: ' + LProfile.TierName + #13#10;
     if LAuth.UsesFreeCredits then
-      LHint := LHint + 'Créditos Gratuitos' + #13#10
+      LHint := 'Créditos Gratuitos' + #13#10
     else
-      LHint := LHint + 'Créditos Diarios' + #13#10;
+      LHint := 'Consumo Diario de Créditos' + #13#10;
 
-    LHint := LHint + Format('Consumidos: %d / %d (%.0f%%)', [LUsed, LMax, LPct]) + #13#10;
+    LHint := LHint + 'Usados: ' + FormatFloat('#,##0', LUsed) +
+      ' (' + FormatFloat('0', LPct) + '%)' + #13#10;
+    LHint := LHint + 'Máx: ' + FormatFloat('#,##0', LMax);
 
-    if LProfile.ServerDay > 0 then
-      LHint := LHint + 'Día del Servidor: ' + DateToStr(LProfile.ServerDay);
+    if (not LAuth.UsesFreeCredits) and (LProfile.ServerDay > 0) then
+      LHint := LHint + #13#10 + DateToStr(LProfile.ServerDay);
   end
   else
   begin
-    LHint := 'Guest access - limited credits';
-    FGaugeValue := 0;
+    LHint := 'Créditos Gratuitos' + #13#10 +
+      'Usados: 0 (0%)' + #13#10 +
+      'Máx: 0';
+    FGaugeValue := 0.0;
   end;
 
   PaintBoxGauge.Hint := LHint;
