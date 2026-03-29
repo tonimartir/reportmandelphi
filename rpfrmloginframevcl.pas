@@ -25,10 +25,11 @@ type
     procedure MenuItemProfileClick(Sender: TObject);
     procedure ImageAvatarClick(Sender: TObject);
   private
+    FAvatarRequestVersion: Integer;
     FOnAuthChanged: TNotifyEvent;
     procedure UpdateUI;
     procedure AuthChanged(ASuccess: Boolean);
-    procedure DownloadAvatar(const AUrl: string);
+    procedure DownloadAvatarAsync(const AUrl: string);
   protected
   public
     constructor Create(AOwner: TComponent); override;
@@ -44,6 +45,7 @@ implementation
 constructor TFRpLoginFrameVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FAvatarRequestVersion := 0;
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
 end;
 
@@ -121,7 +123,9 @@ begin
     end;
 
     if LProfile.AvatarUrl <> '' then
-      DownloadAvatar(LProfile.AvatarUrl);
+      DownloadAvatarAsync(LProfile.AvatarUrl)
+    else
+      ImageAvatar.Picture := nil;
       
     // Vertically center labels
     LabelUser.Top := (PContainer.Height - LabelUser.Height) div 2;
@@ -139,40 +143,69 @@ begin
   end;
 end;
 
-procedure TFRpLoginFrameVCL.DownloadAvatar(const AUrl: string);
+procedure TFRpLoginFrameVCL.DownloadAvatarAsync(const AUrl: string);
 var
-  LHttpClient: TNetHTTPClient;
-  LResponse: IHTTPResponse;
-  LStream: TMemoryStream;
+  LRequestVersion: Integer;
 begin
   if AUrl = '' then Exit;
-  
-  TRpAuthManager.Instance.Log('DownloadAvatar: requesting ' + AUrl);
-  LHttpClient := TNetHTTPClient.Create(nil);
-  LStream := TMemoryStream.Create;
-  try
-    try
-      LResponse := LHttpClient.Get(AUrl, LStream);
-      TRpAuthManager.Instance.Log('DownloadAvatar: status ' + IntToStr(LResponse.StatusCode));
-      if LResponse.StatusCode = 200 then
-      begin
-        LStream.Position := 0;
+
+  Inc(FAvatarRequestVersion);
+  LRequestVersion := FAvatarRequestVersion;
+  TRpAuthManager.Instance.Log('DownloadAvatar: scheduling ' + AUrl);
+
+  TTask.Run(
+    procedure
+    var
+      LBytes: TBytes;
+      LHttpClient: TNetHTTPClient;
+      LResponse: IHTTPResponse;
+      LStream: TMemoryStream;
+    begin
+      LHttpClient := TNetHTTPClient.Create(nil);
+      LStream := TMemoryStream.Create;
+      try
         try
-          ImageAvatar.Picture.LoadFromStream(LStream);
-          TRpAuthManager.Instance.Log('DownloadAvatar: successfully loaded image.');
+          LResponse := LHttpClient.Get(AUrl, LStream);
+          TRpAuthManager.Instance.Log('DownloadAvatar: status ' + IntToStr(LResponse.StatusCode));
+          if LResponse.StatusCode = 200 then
+          begin
+            SetLength(LBytes, LStream.Size);
+            if LStream.Size > 0 then
+            begin
+              LStream.Position := 0;
+              Move(LStream.Memory^, LBytes[0], LStream.Size);
+            end;
+
+            TThread.Queue(nil,
+              procedure
+              var
+                LUiStream: TBytesStream;
+              begin
+                if LRequestVersion <> FAvatarRequestVersion then
+                  Exit;
+                LUiStream := TBytesStream.Create(LBytes);
+                try
+                  try
+                    ImageAvatar.Picture.LoadFromStream(LUiStream);
+                    TRpAuthManager.Instance.Log('DownloadAvatar: successfully loaded image.');
+                  except
+                    on E: Exception do
+                      TRpAuthManager.Instance.Log('DownloadAvatar: LoadFromStream error: ' + E.Message);
+                  end;
+                finally
+                  LUiStream.Free;
+                end;
+              end);
+          end;
         except
           on E: Exception do
-            TRpAuthManager.Instance.Log('DownloadAvatar: LoadFromStream error: ' + E.Message);
+            TRpAuthManager.Instance.Log('DownloadAvatar: HTTP error ' + E.Message);
         end;
+      finally
+        LStream.Free;
+        LHttpClient.Free;
       end;
-    except
-      on E: Exception do
-        TRpAuthManager.Instance.Log('DownloadAvatar: HTTP error ' + E.Message);
-    end;
-  finally
-    LStream.Free;
-    LHttpClient.Free;
-  end;
+    end);
 end;
 
 procedure TFRpLoginFrameVCL.BtnLoginClick(Sender: TObject);

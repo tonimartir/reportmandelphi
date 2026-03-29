@@ -160,7 +160,6 @@ type
      write SetParams;
   end;
 
-procedure FreeMonacoCache;
 
 implementation
 
@@ -168,25 +167,8 @@ uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 {$R *.DFM}
 
-var
-  GCachedMonaco: TFRpMonacoEditorVCL = nil;
-
-procedure FreeMonacoCache;
-begin
-  if GCachedMonaco <> nil then
-    FreeAndNil(GCachedMonaco);
-end;
-
 destructor TFRpDatasetsVCL.Destroy;
 begin
-  if (FMonaco <> nil) and (FMonaco = GCachedMonaco) then
-  begin
-    if FMonaco.Parent = TabSQL then
-    begin
-      FMonaco.OnContentChanged := nil;
-      FMonaco.Parent := nil;
-    end;
-  end;
   inherited Destroy;
 end;
 
@@ -263,9 +245,7 @@ begin
    browser.Align:=alClient;
    browser.Parent:=PBrowser;
 
-  if GCachedMonaco = nil then
-    GCachedMonaco := TFRpMonacoEditorVCL.Create(Application);
-  FMonaco := GCachedMonaco;
+  FMonaco := TFRpMonacoEditorVCL.Create(Self);
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
   FMonaco.OnContentChanged := MSQLChange;

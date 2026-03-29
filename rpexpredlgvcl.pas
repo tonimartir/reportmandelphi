@@ -511,6 +511,12 @@ begin
   MemoExpre.SelStart:=Length(MemoExpre.Text);
   MemoExpre.SelLength:=0;
   UpdateExpressionCursorPosition;
+  TThread.Queue(nil,
+    procedure
+    begin
+      if (FExpressionChat<>nil) and Visible then
+        FExpressionChat.StartOnlineInitialization;
+    end);
 end;
 procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
 begin

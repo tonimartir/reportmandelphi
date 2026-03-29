@@ -56,6 +56,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure Resize; override;
+    procedure RefreshStatusInBackground;
     procedure RefreshState;
     procedure UpdateFromUserProfile(AProfile: TJSONObject);
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
@@ -84,6 +85,10 @@ begin
   LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
+end;
+
+procedure TFRpAISelectionVCL.RefreshStatusInBackground;
+begin
   TTask.Run(
     procedure
     begin

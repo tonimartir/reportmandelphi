@@ -809,8 +809,6 @@ procedure TFRpMainFVCL.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
  try
   canclose:=CheckSave;
-  if canclose then
-   FreeMonacoCache;
  except
   canclose:=false;
  end;
