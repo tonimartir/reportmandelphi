@@ -547,7 +547,8 @@ begin
     FError:=E.ErrorMessage;
     FLineError:=E.ErrorLine;
     FPosError:=E.ErrorPosition;
-    Raise;
+    Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
    end;
   on E:EVariantError do
    begin
@@ -567,20 +568,30 @@ begin
       FPosError:=Rpparser.SourcePos;
       Raise TRpEvalException.Create(Ferror,
          Rpparser.TokenString,FLineError,FPosError);
+     end
+     else
+     begin
+      FError:=E.Message;
+      FLineError:=Rpparser.SourceLine;
+      FPosError:=Rpparser.SourcePos;
+      Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
      end;
    end;
-  else
-  begin
-   FError:=SRpEvalSyntax;
+  on E:Exception do
+   begin
+   FError:=SRpEvalSyntax + ' ' + E.Message;
    FLineError:=Rpparser.SourceLine;
    FPosError:=Rpparser.SourcePos;
-   Raise;
-  end;
+   Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
+   end;
  end;
 
  if Rpparser.Token<>toEOF then
  begin
-  FError:=SRpEvalSyntax;
+  if Length(Ferror)=0 then
+   FError:=SRpEvalSyntax;
   FLineError:=Rpparser.SourceLine;
   FPosError:=Rpparser.SourcePos;
   Raise TRpEvalException.Create(SRpEvalSyntax+Rpparser.TokenString,

@@ -25,6 +25,7 @@ uses
   SysUtils, Classes,
   Graphics,Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls,Buttons,
+  System.JSON, System.Threading,
   rpalias,rpeval, rptypeval,rpgraphutilsvcl,
 {$IFDEF USEEVALHASH}
   rphashtable,rpstringhash,
@@ -32,7 +33,7 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
-  rpmdconsts, rpfrmexpressionchatvcl;
+  rpmdconsts, rpfrmexpressionchatvcl, rpdatahttp;
 
 const
  FMaxlisthelp=5;
@@ -106,8 +107,24 @@ type
     dook:boolean;
     AResult:Variant;
     Fevaluator:TRpCustomEvaluator;
+    FCancelExpressionRequest: Boolean;
     FExpressionChat: TFRpExpressionChatFrame;
+    FExpressionStreamError: string;
+    FExpressionStreamResult: TJSONObject;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
+    function BuildExpressionSemanticContextJson: string;
+    function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
+    procedure ExpressionStreamProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AOutputTokens: Integer);
+    procedure ExpressionStreamResult(Sender: TObject; AResultJson: TJSONObject;
+      const AErrorMessage: string);
+    function ExtractExpressionFromApiResult(AResultJson: TJSONObject;
+      out AExpression, AExplanation, AErrorMessage: string): Boolean;
+    function GetExpressionPrefillPercent(const AStage, AChunkType: string): Integer;
+    procedure ResetExpressionStreamState;
+    procedure StopExpressionRequest(Sender: TObject);
+    function ValidateExpressionText(const AExpression: string;
+      out AErrorMessage: string): Boolean;
     procedure ExpressionChatApplySuggestion(Sender: TObject; const AExpression: string);
     procedure ExpressionChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure Setevaluator(aval:TRpCustomEvaluator);
@@ -125,7 +142,7 @@ function ExpressionCalculateW(formul:Widestring;aval:TRpCustomEvaluator):Variant
 implementation
 
 {$R *.dfm}
-uses rplabelitem;
+uses rplabelitem, rpauthmanager;
 
 constructor TRpExpreDialogVCL.create(AOwner:TComponent);
 begin
@@ -172,11 +189,15 @@ begin
  inherited;
  ActiveControl:=MemoExpre;
  MemoExpre.OnChange := MemoExpreChange;
+ FCancelExpressionRequest := False;
+ FExpressionStreamError := '';
+ FExpressionStreamResult := nil;
  FExpressionChat := TFRpExpressionChatFrame.Create(Self);
  FExpressionChat.Parent := PChatHost;
  FExpressionChat.Align := alClient;
  FExpressionChat.OnSendPrompt := ExpressionChatSendPrompt;
  FExpressionChat.OnApplySuggestion := ExpressionChatApplySuggestion;
+ FExpressionChat.OnStopRequest := StopExpressionRequest;
  FExpressionChat.SetCurrentExpression(MemoExpre.Text);
  FExpressionChat.AddAssistantMessage('Ask for help rewriting, simplifying or validating the current expression.');
  for i:=0 to FMaxlisthelp-1 do
@@ -367,6 +388,8 @@ var
  i,j:integer;
 begin
   inherited;
+ if FExpressionStreamResult <> nil then
+  FExpressionStreamResult.Free;
  for i:=0 to FMaxlisthelp-1 do
  begin
   for j:=0 to llistes[i].count-1 do
@@ -381,6 +404,230 @@ procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
 begin
  if FExpressionChat <> nil then
   FExpressionChat.SetCurrentExpression(MemoExpre.Text);
+end;
+
+procedure TFRpExpredialogVCL.ResetExpressionStreamState;
+begin
+ if FExpressionStreamResult <> nil then
+ begin
+  FExpressionStreamResult.Free;
+  FExpressionStreamResult := nil;
+ end;
+ FExpressionStreamError := '';
+end;
+
+function TFRpExpredialogVCL.ExpressionStreamCancelRequested(Sender: TObject): Boolean;
+begin
+ Result := FCancelExpressionRequest;
+end;
+
+function TFRpExpredialogVCL.GetExpressionPrefillPercent(const AStage,
+  AChunkType: string): Integer;
+begin
+ if SameText(AStage, 'PreparingContext') then
+  Result := 10
+ else if SameText(AStage, 'SendingRequest') then
+  Result := 45
+ else if SameText(AStage, 'ReceivingResponse') then
+ begin
+  if SameText(AChunkType, 'Start') then
+   Result := 70
+  else
+   Result := 100;
+ end
+ else
+  Result := 100;
+end;
+
+procedure TFRpExpredialogVCL.ExpressionStreamProgress(Sender: TObject;
+  const AStage, AChunkType, AChunk: string; AOutputTokens: Integer);
+var
+ LChunk: string;
+ LPrefill: Integer;
+begin
+ LChunk := '';
+ if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+  LChunk := AChunk;
+ LPrefill := GetExpressionPrefillPercent(AStage, AChunkType);
+ TThread.Queue(nil,
+  procedure
+  begin
+   if FExpressionChat <> nil then
+    FExpressionChat.UpdateStreamingResponse(LChunk, LPrefill);
+  end);
+end;
+
+procedure TFRpExpredialogVCL.ExpressionStreamResult(Sender: TObject;
+  AResultJson: TJSONObject; const AErrorMessage: string);
+begin
+ if AErrorMessage <> '' then
+  FExpressionStreamError := AErrorMessage;
+ if AResultJson <> nil then
+ begin
+  if FExpressionStreamResult <> nil then
+   FExpressionStreamResult.Free;
+  FExpressionStreamResult := AResultJson;
+ end;
+end;
+
+function TFRpExpredialogVCL.ExtractExpressionFromApiResult(
+  AResultJson: TJSONObject; out AExpression, AExplanation,
+  AErrorMessage: string): Boolean;
+var
+ LResultObj: TJSONObject;
+begin
+ Result := False;
+ AExpression := '';
+ AExplanation := '';
+ AErrorMessage := FExpressionStreamError;
+ if AErrorMessage <> '' then
+  Exit;
+ if AResultJson = nil then
+ begin
+  AErrorMessage := 'No final response received';
+  Exit;
+ end;
+
+ if (AResultJson.Values['errorMessage'] <> nil) and
+   (AResultJson.Values['errorMessage'].Value <> '') then
+ begin
+  AErrorMessage := AResultJson.Values['errorMessage'].Value;
+  Exit;
+ end;
+
+ LResultObj := AResultJson.Values['result'] as TJSONObject;
+ if LResultObj = nil then
+ begin
+  AErrorMessage := 'Response without result';
+  Exit;
+ end;
+
+ if LResultObj.Values['expression'] <> nil then
+  AExpression := LResultObj.Values['expression'].Value;
+ if LResultObj.Values['explanation'] <> nil then
+  AExplanation := LResultObj.Values['explanation'].Value;
+
+ if AExpression = '' then
+ begin
+  if (LResultObj.Values['errorMessage'] <> nil) and
+    (LResultObj.Values['errorMessage'].Value <> '') then
+    AErrorMessage := LResultObj.Values['errorMessage'].Value
+  else
+    AErrorMessage := 'Empty expression returned';
+  Exit;
+ end;
+
+ Result := True;
+end;
+
+function TFRpExpredialogVCL.ValidateExpressionText(const AExpression: string;
+  out AErrorMessage: string): Boolean;
+var
+ LOldExpression: string;
+begin
+ Result := False;
+ AErrorMessage := '';
+ if evaluator = nil then
+ begin
+  Result := Trim(AExpression) <> '';
+  if not Result then
+    AErrorMessage := 'Empty expression returned';
+  Exit;
+ end;
+
+ LOldExpression := evaluator.Expression;
+ try
+  evaluator.Expression := AExpression;
+  evaluator.CheckSyntax;
+  Result := True;
+ except
+  on E: Exception do
+  begin
+   AErrorMessage := E.Message;
+   Result := False;
+  end;
+ end;
+ evaluator.Expression := LOldExpression;
+end;
+
+procedure TFRpExpredialogVCL.StopExpressionRequest(Sender: TObject);
+begin
+ FCancelExpressionRequest := True;
+end;
+
+function TFRpExpredialogVCL.BuildExpressionSemanticContextJson: string;
+var
+ LRoot: TJSONObject;
+ LFields: TJSONArray;
+ LIdentifiers: TJSONArray;
+ LFieldList: TStringList;
+ LFieldObj: TJSONObject;
+ LIdentifierObj: TJSONObject;
+ I: Integer;
+ LIdentifier: TRpIdentifier;
+{$IFDEF USEEVALHASH}
+ LIterator: TstrHashIterator;
+{$ENDIF}
+begin
+ LRoot := TJSONObject.Create;
+ try
+  LFields := TJSONArray.Create;
+  LIdentifiers := TJSONArray.Create;
+  LRoot.AddPair('fields', LFields);
+  LRoot.AddPair('identifiers', LIdentifiers);
+
+  if (evaluator <> nil) and (evaluator.Rpalias <> nil) then
+  begin
+   LFieldList := TStringList.Create;
+   try
+    evaluator.Rpalias.FillWithFields(LFieldList);
+    for I := 0 to LFieldList.Count - 1 do
+    begin
+      LFieldObj := TJSONObject.Create;
+      LFieldObj.AddPair('name', LFieldList[I]);
+      LFields.AddElement(LFieldObj);
+    end;
+   finally
+    LFieldList.Free;
+   end;
+  end;
+
+  if evaluator <> nil then
+  begin
+{$IFDEF USEEVALHASH}
+   LIterator := evaluator.Identifiers.GetIterator;
+   while LIterator.HasNext do
+   begin
+    LIterator.Next;
+    LIdentifier := TRpIdentifier(LIterator.GetValue);
+    LIdentifierObj := TJSONObject.Create;
+    LIdentifierObj.AddPair('name', LIterator.GetKey);
+    LIdentifierObj.AddPair('kind', IntToStr(Integer(LIdentifier.RType)));
+    LIdentifierObj.AddPair('help', LIdentifier.Help);
+    LIdentifierObj.AddPair('model', LIdentifier.Model);
+    LIdentifierObj.AddPair('params', LIdentifier.aparams);
+    LIdentifiers.AddElement(LIdentifierObj);
+   end;
+{$ENDIF}
+{$IFNDEF USEEVALHASH}
+   for I := 0 to evaluator.Identifiers.Count - 1 do
+   begin
+    LIdentifier := TRpIdentifier(evaluator.Identifiers.Objects[I]);
+    LIdentifierObj := TJSONObject.Create;
+    LIdentifierObj.AddPair('name', evaluator.Identifiers[I]);
+    LIdentifierObj.AddPair('kind', IntToStr(Integer(LIdentifier.RType)));
+    LIdentifierObj.AddPair('help', LIdentifier.Help);
+    LIdentifierObj.AddPair('model', LIdentifier.Model);
+    LIdentifierObj.AddPair('params', LIdentifier.aparams);
+    LIdentifiers.AddElement(LIdentifierObj);
+   end;
+{$ENDIF}
+  end;
+
+  Result := LRoot.ToJSON;
+ finally
+  LRoot.Free;
+ end;
 end;
 
 procedure TFRpExpredialogVCL.LCategoryClick(Sender: TObject);
@@ -442,6 +689,13 @@ begin
    MemoExpre.SelLength:=0;
    raise Exception.Create(E.MEssage);
   end;
+  On E:TRpEvalException do
+  begin
+   MemoExpre.SetFocus;
+   MemoExpre.SelStart:=E.ErrorPosition;
+   MemoExpre.SelLength:=0;
+   raise Exception.Create(E.MEssage + ' at position ' + IntToStr(E.ErrorPosition));
+  end;
  end;
  RpShowmessage(TRpValueToString(evaluator.EvalResult));
 end;
@@ -462,18 +716,185 @@ end;
 
 procedure TFRpExpredialogVCL.ExpressionChatSendPrompt(Sender: TObject; const APrompt,
   AExpression: string);
+var
+ LAITier: string;
+ LAIMode: string;
+ LAgentSecret: string;
+ LAgentAiId: Int64;
+ LCursorPosition: Integer;
+ LPrompt: string;
+ LSemanticContext: string;
 begin
  if FExpressionChat = nil then
   Exit;
 
- if Trim(AExpression) = '' then
- begin
-  FExpressionChat.AddAssistantMessage('Chat UI is attached. AI generation is not connected yet and the current expression is empty.');
+ LPrompt := Trim(APrompt);
+ if LPrompt = '' then
   Exit;
- end;
 
- FExpressionChat.SetSuggestedExpression(AExpression,
-  'Chat UI is attached and ready. AI generation is the next step, so the current expression is echoed as a placeholder suggestion for now.');
+ LAITier := FExpressionChat.GetAITier;
+ LAIMode := FExpressionChat.GetAIMode;
+ LAgentSecret := FExpressionChat.GetAgentSecret;
+ LAgentAiId := FExpressionChat.GetAgentAiId;
+ LCursorPosition := MemoExpre.SelStart;
+ LSemanticContext := BuildExpressionSemanticContextJson;
+
+ FCancelExpressionRequest := False;
+ ResetExpressionStreamState;
+ FExpressionChat.BeginStreamingResponse;
+
+ TTask.Run(
+   procedure
+   var
+    LCurrentExpression: string;
+    LErrorMessage: string;
+    LExpression: string;
+      LExplanation: string;
+    LHttp: TRpDatabaseHttp;
+    LNeedRetry: Boolean;
+    LRetryMessage: string;
+    LUserProfile: TJSONObject;
+   begin
+    LCurrentExpression := AExpression;
+    LNeedRetry := False;
+    LRetryMessage := '';
+    LHttp := TRpDatabaseHttp.Create;
+    try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.AITier := LAITier;
+          LHttp.AgentSecret := LAgentSecret;
+          LHttp.AgentAiId := LAgentAiId;
+
+          repeat
+            ResetExpressionStreamState;
+            if LNeedRetry then
+            begin
+              TThread.Queue(nil,
+                procedure
+                begin
+                  if FExpressionChat <> nil then
+                  begin
+                    FExpressionChat.AddAssistantMessage('Local validation failed. Running one automatic fix.');
+                    FExpressionChat.BeginStreamingResponse;
+                  end;
+                end);
+            end;
+
+            LHttp.SuggestExpressionStream(LPrompt, LCurrentExpression, LCursorPosition,
+              LAIMode, LNeedRetry, LSemanticContext, Self, ExpressionStreamProgress,
+              ExpressionStreamResult, ExpressionStreamCancelRequested);
+
+            if FCancelExpressionRequest then
+            begin
+              TThread.Queue(nil,
+                procedure
+                begin
+                  if FExpressionChat <> nil then
+                  begin
+                    FExpressionChat.FinishStreamingResponse;
+                    FExpressionChat.AddAssistantMessage('Generation stopped.');
+                  end;
+                end);
+              Exit;
+            end;
+
+            if not ExtractExpressionFromApiResult(FExpressionStreamResult,
+              LExpression, LExplanation, LErrorMessage) then
+            begin
+              TThread.Queue(nil,
+                procedure
+                begin
+                  if FExpressionChat <> nil then
+                  begin
+                    FExpressionChat.FinishStreamingResponse;
+                    FExpressionChat.AddAssistantMessage(LErrorMessage);
+                  end;
+                end);
+              Exit;
+            end;
+
+            LUserProfile := nil;
+            if (FExpressionStreamResult <> nil) and (FExpressionStreamResult.Values['userProfile'] is TJSONObject) then
+              LUserProfile := TJSONObject((FExpressionStreamResult.Values['userProfile'] as TJSONObject).Clone);
+            if LUserProfile <> nil then
+            begin
+              TThread.Queue(nil,
+                procedure
+                begin
+                  try
+                    if FExpressionChat <> nil then
+                      FExpressionChat.UpdateUserProfile(LUserProfile);
+                  finally
+                    LUserProfile.Free;
+                  end;
+                end);
+            end;
+
+            if (not LNeedRetry) and (not ValidateExpressionText(LExpression, LErrorMessage)) then
+            begin
+              LCurrentExpression := LExpression;
+              LNeedRetry := True;
+              Continue;
+            end;
+
+            if LNeedRetry and (not ValidateExpressionText(LExpression, LErrorMessage)) then
+            begin
+              TThread.Queue(nil,
+                procedure
+                begin
+                  if FExpressionChat <> nil then
+                  begin
+                    FExpressionChat.FinishStreamingResponse;
+                    FExpressionChat.AddAssistantMessage('Generated expression is still invalid after one automatic fix: ' + LErrorMessage);
+                  end;
+                end);
+              Exit;
+            end;
+
+            if LNeedRetry then
+          begin
+            if Trim(LExplanation) <> '' then
+              LRetryMessage := 'Expression fixed after local validation.' +
+                sLineBreak + sLineBreak + LExplanation
+            else
+              LRetryMessage := 'Expression fixed after local validation.';
+          end
+            else
+          begin
+            if Trim(LExplanation) <> '' then
+              LRetryMessage := LExplanation
+            else
+              LRetryMessage := 'Expression generated.';
+          end;
+
+            TThread.Queue(nil,
+              procedure
+              begin
+                if FExpressionChat <> nil then
+                  FExpressionChat.SetSuggestedExpression(LExpression, LRetryMessage);
+              end);
+            Break;
+          until False;
+        except
+          on E: Exception do
+          begin
+            TThread.Queue(nil,
+              procedure
+              begin
+                if FExpressionChat <> nil then
+                begin
+                  FExpressionChat.FinishStreamingResponse;
+                  FExpressionChat.AddAssistantMessage(E.Message);
+                end;
+              end);
+          end;
+        end;
+    finally
+      LHttp.Free;
+    end;
+   end);
 end;
 
 procedure TFRpExpredialogVCL.ExpressionChatApplySuggestion(Sender: TObject;

@@ -15,7 +15,7 @@ interface
 
 
 uses
-  SysUtils, Classes, DB,
+  SysUtils, Classes, DB, StrUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
@@ -30,6 +30,11 @@ uses
 {$ENDIF}
   rptypes, rpmdconsts, rpauthmanager;
 type
+  TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AStage,
+    AChunkType, AChunk: string; AOutputTokens: Integer) of object;
+  TRpExpressionStreamResultEvent = procedure(Sender: TObject;
+    AResultJson: TJSONObject; const AErrorMessage: string) of object;
+  TRpExpressionStreamCancelEvent = function(Sender: TObject): Boolean of object;
 
   { TRpDatabaseHttp }
   TRpDatabaseHttp = class(TObject)
@@ -58,6 +63,12 @@ type
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
     property Connected: Boolean read FConnected write SetConnected;
     function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string): TJSONObject;
+    function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
+      ACursorPosition: Integer; const AMode: string; AFix: Boolean;
+      const ASemanticContextJson: string; Sender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnResult: TRpExpressionStreamResultEvent;
+      ACancel: TRpExpressionStreamCancelEvent): Boolean;
     function GetSchemas(AList: TStrings): Boolean;
     function GetUserSchemas(AList: TStrings): Boolean;
     function GetUserAgents(AList: TStrings): Boolean;
@@ -81,7 +92,185 @@ type
 // HUB_API_URL constants moved to rptypes.pas
 
 implementation
+
+type
+  TRpExpressionStreamContext = class
+  private
+    FCancelled: Boolean;
+    FLastReadPos: Int64;
+    FPendingBytes: TBytes;
+    FResponseStream: TMemoryStream;
+    FSender: TObject;
+    FOnCancel: TRpExpressionStreamCancelEvent;
+    FOnProgress: TRpExpressionStreamProgressEvent;
+    FOnResult: TRpExpressionStreamResultEvent;
+    procedure AppendBytes(const ASource: TBytes; ACount: Integer);
+    procedure DispatchDone;
+    procedure DispatchJson(const AJsonText: string);
+    procedure ProcessPendingBytes;
+  public
+    constructor Create(AResponseStream: TMemoryStream; ASender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnResult: TRpExpressionStreamResultEvent;
+      AOnCancel: TRpExpressionStreamCancelEvent);
+    procedure HandleReceiveData(const SenderHttp: TObject; AContentLength,
+      AReadCount: Int64; var Abort: Boolean);
+    procedure ReadNewBytes;
+    property Cancelled: Boolean read FCancelled;
+  end;
+
 { TRpDatabaseHttp }
+
+constructor TRpExpressionStreamContext.Create(AResponseStream: TMemoryStream;
+  ASender: TObject; AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnResult: TRpExpressionStreamResultEvent;
+  AOnCancel: TRpExpressionStreamCancelEvent);
+begin
+  inherited Create;
+  FResponseStream := AResponseStream;
+  FSender := ASender;
+  FOnProgress := AOnProgress;
+  FOnResult := AOnResult;
+  FOnCancel := AOnCancel;
+  FCancelled := False;
+  FLastReadPos := 0;
+  SetLength(FPendingBytes, 0);
+end;
+
+procedure TRpExpressionStreamContext.AppendBytes(const ASource: TBytes;
+  ACount: Integer);
+var
+  LOldLen: Integer;
+begin
+  if ACount <= 0 then
+    Exit;
+  LOldLen := Length(FPendingBytes);
+  SetLength(FPendingBytes, LOldLen + ACount);
+  Move(ASource[0], FPendingBytes[LOldLen], ACount);
+end;
+
+procedure TRpExpressionStreamContext.DispatchDone;
+begin
+  if Assigned(FOnResult) then
+    FOnResult(FSender, nil, '');
+end;
+
+procedure TRpExpressionStreamContext.DispatchJson(const AJsonText: string);
+var
+  LJson: TJSONObject;
+  LStage: string;
+  LChunkType: string;
+  LChunk: string;
+  LOutputTokens: Integer;
+begin
+  LJson := TJSONObject.ParseJSONValue(AJsonText) as TJSONObject;
+  if LJson = nil then
+    Exit;
+  try
+    if (LJson.Values['actor'] <> nil) and (LJson.Values['stage'] <> nil) then
+    begin
+      if Assigned(FOnProgress) then
+      begin
+        LStage := LJson.Values['stage'].Value;
+        if LJson.Values['chunkType'] <> nil then
+          LChunkType := LJson.Values['chunkType'].Value
+        else
+          LChunkType := '';
+        if LJson.Values['chunk'] <> nil then
+          LChunk := LJson.Values['chunk'].Value
+        else
+          LChunk := '';
+        if LJson.Values['outputTokens'] <> nil then
+          LOutputTokens := StrToIntDef(LJson.Values['outputTokens'].Value, 0)
+        else
+          LOutputTokens := 0;
+        FOnProgress(FSender, LStage, LChunkType, LChunk, LOutputTokens);
+      end;
+    end
+    else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
+    begin
+      if Assigned(FOnResult) then
+        FOnResult(FSender, TJSONObject(LJson.Clone), '');
+    end;
+  finally
+    LJson.Free;
+  end;
+end;
+
+procedure TRpExpressionStreamContext.ProcessPendingBytes;
+var
+  I: Integer;
+  LLineBytes: TBytes;
+  LLineText: string;
+  LRemaining: TBytes;
+  LLineLen: Integer;
+begin
+  I := 0;
+  while I < Length(FPendingBytes) do
+  begin
+    if FPendingBytes[I] = 10 then
+    begin
+      LLineLen := I;
+      if (LLineLen > 0) and (FPendingBytes[LLineLen - 1] = 13) then
+        Dec(LLineLen);
+      SetLength(LLineBytes, LLineLen);
+      if LLineLen > 0 then
+        Move(FPendingBytes[0], LLineBytes[0], LLineLen);
+      LLineText := TEncoding.UTF8.GetString(LLineBytes);
+
+      if StartsText('data: ', LLineText) then
+      begin
+        LLineText := Copy(LLineText, 7, MaxInt);
+        if LLineText = '[DONE]' then
+          DispatchDone
+        else if LLineText <> '' then
+          DispatchJson(LLineText);
+      end;
+
+      SetLength(LRemaining, Length(FPendingBytes) - (I + 1));
+      if Length(LRemaining) > 0 then
+        Move(FPendingBytes[I + 1], LRemaining[0], Length(LRemaining));
+      FPendingBytes := LRemaining;
+      I := 0;
+    end
+    else
+      Inc(I);
+  end;
+end;
+
+procedure TRpExpressionStreamContext.ReadNewBytes;
+var
+  LNewSize: Int64;
+  LChunkBytes: TBytes;
+  LChunkCount: Integer;
+begin
+  LNewSize := FResponseStream.Size - FLastReadPos;
+  if LNewSize <= 0 then
+    Exit;
+
+  SetLength(LChunkBytes, LNewSize);
+  FResponseStream.Position := FLastReadPos;
+  LChunkCount := FResponseStream.Read(LChunkBytes[0], LNewSize);
+  if LChunkCount > 0 then
+  begin
+    AppendBytes(LChunkBytes, LChunkCount);
+    Inc(FLastReadPos, LChunkCount);
+    ProcessPendingBytes;
+  end;
+end;
+
+procedure TRpExpressionStreamContext.HandleReceiveData(const SenderHttp: TObject;
+  AContentLength, AReadCount: Int64; var Abort: Boolean);
+begin
+  FCancelled := Assigned(FOnCancel) and FOnCancel(FSender);
+  if FCancelled then
+  begin
+    Abort := True;
+    Exit;
+  end;
+  ReadNewBytes;
+end;
+
 constructor TRpDatabaseHttp.Create;
 begin
   inherited Create;
@@ -167,6 +356,130 @@ begin
     LRequest.Free;
   end;
 end;
+
+function TRpDatabaseHttp.SuggestExpressionStream(const APrompt,
+  ACurrentExpression: string; ACursorPosition: Integer; const AMode: string;
+  AFix: Boolean; const ASemanticContextJson: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnResult: TRpExpressionStreamResultEvent;
+  ACancel: TRpExpressionStreamCancelEvent): Boolean;
+{$IFDEF FIREDAC}
+var
+  LHttpClient: TNetHTTPClient;
+  LContext: TRpExpressionStreamContext;
+  LRequestStream: TStringStream;
+  LResponseStream: TMemoryStream;
+  LResponse: IHTTPResponse;
+  LRequest: TJSONObject;
+  LConfig: TJSONObject;
+  LUserQuery: TJSONArray;
+  LUrl: string;
+begin
+  Result := False;
+  LHttpClient := TNetHTTPClient.Create(nil);
+  LResponseStream := TMemoryStream.Create;
+  LContext := TRpExpressionStreamContext.Create(LResponseStream, Sender,
+    AOnProgress, AOnResult, ACancel);
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('currentExpression', ACurrentExpression);
+    LRequest.AddPair('fix', TJSONBool.Create(AFix));
+    LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('semanticContextJson', ASemanticContextJson);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+
+    LUserQuery := TJSONArray.Create;
+    LUserQuery.Add(APrompt);
+    LRequest.AddPair('userQuery', LUserQuery);
+
+    LConfig := TJSONObject.Create;
+    if FHubDatabaseId <> 0 then
+      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+    LRequestStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/json';
+      LHttpClient.Accept := 'text/event-stream';
+      if FApiKey <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;
+      if FToken <> '' then
+        LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+      if FInstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+
+      LHttpClient.OnReceiveData := LContext.HandleReceiveData;
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then
+        LUrl := LUrl + '/';
+      LUrl := LUrl + 'ReportmanExpression/SuggestExpressionStream';
+
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+      LResponse := LHttpClient.Post(LUrl, LRequestStream, LResponseStream);
+      LContext.ReadNewBytes;
+
+      if LContext.Cancelled then
+        Exit(False);
+
+      if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
+        Result := True
+      else
+        raise Exception.CreateFmt('HTTP Error %d: %s', [LResponse.StatusCode, LResponse.StatusText]);
+    finally
+      LRequestStream.Free;
+    end;
+  finally
+    LRequest.Free;
+    LContext.Free;
+    LResponseStream.Free;
+    LHttpClient.Free;
+  end;
+end;
+{$ELSE}
+var
+  LRequest: TJSONObject;
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+begin
+  Result := False;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('currentExpression', ACurrentExpression);
+    LRequest.AddPair('fix', TJSONBool.Create(AFix));
+    LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('semanticContextJson', ASemanticContextJson);
+    LRequest.AddPair('userQuery', TJSONArray.Create(APrompt));
+    LRequest.AddPair('config', TJSONObject.Create);
+    LResponseStream := TStringStream.Create;
+    try
+      Result := InternalRequest('ReportmanExpression/SuggestExpression', LRequest, LResponseStream);
+      if Result and Assigned(AOnResult) then
+      begin
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          AOnResult(Sender, LResponseJson, '')
+        else
+          AOnResult(Sender, nil, 'Invalid JSON response');
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequest.Free;
+  end;
+end;
+{$ENDIF}
 
 function TRpDatabaseHttp.GetSchemas(AList: TStrings): Boolean;
 var

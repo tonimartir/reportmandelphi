@@ -12,6 +12,14 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
   OnDestroy = FormDestroy
   PixelsPerInch = 120
   TextHeight = 20
+  object SplitterChat: TSplitter
+    Left = 733
+    Top = 0
+    Width = 6
+    Height = 558
+    Align = alRight
+    ResizeStyle = rsUpdate
+  end
   object PChatHost: TPanel
     Left = 739
     Top = 0
@@ -20,14 +28,6 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 0
-  end
-  object SplitterChat: TSplitter
-    Left = 733
-    Top = 0
-    Width = 6
-    Height = 558
-    Align = alRight
-    ResizeStyle = rsUpdate
   end
   object PLeftHost: TPanel
     Left = 0
@@ -55,8 +55,8 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
       object LabelCategory: TLabel
         Left = 6
         Top = 6
-        Width = 75
-        Height = 25
+        Width = 60
+        Height = 20
         Margins.Left = 5
         Margins.Top = 5
         Margins.Right = 5
@@ -66,8 +66,8 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
       object LOperation: TLabel
         Left = 188
         Top = 6
-        Width = 83
-        Height = 25
+        Width = 67
+        Height = 20
         Margins.Left = 5
         Margins.Top = 5
         Margins.Right = 5
@@ -91,8 +91,8 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
       object LHelp: TLabel
         Left = 6
         Top = 181
-        Width = 40
-        Height = 25
+        Width = 32
+        Height = 20
         Margins.Left = 5
         Margins.Top = 5
         Margins.Right = 5
