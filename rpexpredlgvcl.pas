@@ -23,6 +23,7 @@ interface
 
 uses
   SysUtils, Classes,
+  DB,
   Graphics,Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls,Buttons,
   System.JSON, System.Threading,
@@ -37,6 +38,7 @@ uses
 
 const
  FMaxlisthelp=5;
+ SExpressionChatInitialMessage='Ask for help rewriting, simplifying or validating the current expression.';
 type
   TRpRecHelp=class(TObject)
   public
@@ -95,6 +97,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure LCategoryClick(Sender: TObject);
     procedure LItemsClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure BCheckSynClick(Sender: TObject);
     procedure BShowResultClick(Sender: TObject);
     procedure BitBtn1Click(Sender: TObject);
@@ -107,11 +110,18 @@ type
     dook:boolean;
     AResult:Variant;
     Fevaluator:TRpCustomEvaluator;
+    FOwnsEvaluator: Boolean;
     FCancelExpressionRequest: Boolean;
     FExpressionChat: TFRpExpressionChatFrame;
+    FExpressionCursorPosition: Integer;
     FExpressionStreamError: string;
     FExpressionStreamResult: TJSONObject;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
+    procedure ClearHelpLists;
+    procedure InitializeDialog(const AExpression: string;
+      AEvaluator: TRpCustomEvaluator; AOwnsEvaluator, AValidate,
+      AWantReturns: Boolean);
+    procedure ReleaseOwnedEvaluator;
     function BuildExpressionSemanticContextJson: string;
     function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
     procedure ExpressionStreamProgress(Sender: TObject; const AStage,
@@ -125,8 +135,13 @@ type
     procedure StopExpressionRequest(Sender: TObject);
     function ValidateExpressionText(const AExpression: string;
       out AErrorMessage: string): Boolean;
+    procedure UpdateExpressionCursorPosition;
     procedure ExpressionChatApplySuggestion(Sender: TObject; const AExpression: string);
     procedure ExpressionChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
+    procedure MemoExpreClick(Sender: TObject);
+    procedure MemoExpreKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure MemoExpreMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure Setevaluator(aval:TRpCustomEvaluator);
   public
     { Public declarations }
@@ -143,6 +158,46 @@ implementation
 
 {$R *.dfm}
 uses rplabelitem, rpauthmanager;
+
+var
+ GSharedExpreDialogVCL: TFRpExpredialogVCL = nil;
+
+function GetSharedExpreDialogVCL: TFRpExpredialogVCL;
+begin
+ if GSharedExpreDialogVCL=nil then
+  GSharedExpreDialogVCL:=TFRpExpredialogVCL.Create(Application);
+ Result:=GSharedExpreDialogVCL;
+end;
+
+function GetSemanticFieldDataType(AFieldType: TFieldType): string;
+begin
+ case AFieldType of
+  ftString, ftWideString, ftFixedChar:
+    Result := 'string';
+  ftSmallint, ftInteger, ftWord, ftAutoInc, ftLargeint:
+    Result := 'integer';
+  ftFloat, ftBCD, ftFMTBcd, ftSingle, ftExtended:
+    Result := 'float';
+  ftCurrency:
+    Result := 'currency';
+  ftDate:
+    Result := 'date';
+  ftTime:
+    Result := 'time';
+  ftDateTime:
+    Result := 'datetime';
+  ftBoolean:
+    Result := 'boolean';
+  ftMemo, ftWideMemo:
+    Result := 'memo';
+  ftBlob, ftGraphic, ftBytes, ftVarBytes:
+    Result := 'blob';
+ else
+  Result := 'unknown';
+ end;
+end;
+
+
 
 constructor TRpExpreDialogVCL.create(AOwner:TComponent);
 begin
@@ -189,17 +244,21 @@ begin
  inherited;
  ActiveControl:=MemoExpre;
  MemoExpre.OnChange := MemoExpreChange;
+ MemoExpre.OnClick := MemoExpreClick;
+ MemoExpre.OnKeyUp := MemoExpreKeyUp;
+ MemoExpre.OnMouseUp := MemoExpreMouseUp;
  FCancelExpressionRequest := False;
+ FExpressionCursorPosition := MemoExpre.SelStart;
  FExpressionStreamError := '';
  FExpressionStreamResult := nil;
+ FOwnsEvaluator := False;
  FExpressionChat := TFRpExpressionChatFrame.Create(Self);
  FExpressionChat.Parent := PChatHost;
  FExpressionChat.Align := alClient;
  FExpressionChat.OnSendPrompt := ExpressionChatSendPrompt;
  FExpressionChat.OnApplySuggestion := ExpressionChatApplySuggestion;
  FExpressionChat.OnStopRequest := StopExpressionRequest;
- FExpressionChat.SetCurrentExpression(MemoExpre.Text);
- FExpressionChat.AddAssistantMessage('Ask for help rewriting, simplifying or validating the current expression.');
+ FExpressionChat.Initialize(MemoExpre.Text, SExpressionChatInitialMessage);
  for i:=0 to FMaxlisthelp-1 do
  begin
   llistes[i]:=TStringList.create;
@@ -222,6 +281,52 @@ begin
  
 end;
 
+procedure TFRpExpredialogVCL.ReleaseOwnedEvaluator;
+begin
+ if FOwnsEvaluator and (Fevaluator<>nil) then
+ begin
+  Fevaluator.Free;
+  Fevaluator:=nil;
+ end;
+ FOwnsEvaluator:=False;
+end;
+
+procedure TFRpExpredialogVCL.ClearHelpLists;
+var
+ i,j:integer;
+begin
+ for i:=0 to FMaxlisthelp-1 do
+ begin
+  if llistes[i]=nil then
+   continue;
+  for j:=0 to llistes[i].count-1 do
+   llistes[i].objects[j].free;
+  llistes[i].clear;
+ end;
+end;
+
+procedure TFRpExpredialogVCL.InitializeDialog(const AExpression: string;
+  AEvaluator: TRpCustomEvaluator; AOwnsEvaluator, AValidate,
+  AWantReturns: Boolean);
+begin
+ dook:=False;
+ AResult:=Null;
+ validate:=AValidate;
+ MemoExpre.WantReturns:=AWantReturns;
+ FCancelExpressionRequest:=False;
+ ResetExpressionStreamState;
+ if (Fevaluator<>AEvaluator) and FOwnsEvaluator then
+  ReleaseOwnedEvaluator;
+ FOwnsEvaluator:=AOwnsEvaluator;
+ Setevaluator(AEvaluator);
+ MemoExpre.Text:=AExpression;
+ if FExpressionChat<>nil then
+  FExpressionChat.Initialize(MemoExpre.Text, SExpressionChatInitialMessage);
+ MemoExpre.SelStart:=Length(MemoExpre.Text);
+ MemoExpre.SelLength:=0;
+ UpdateExpressionCursorPosition;
+end;
+
 procedure TFRpExpredialogVCL.Setevaluator(aval:TRpCustomEvaluator);
 var
  lista1:Tstringlist;
@@ -233,10 +338,9 @@ var
 {$ENDIF}
 begin
  Fevaluator:=Aval;
- for i:=0 to FMaxlisthelp-1 do
- begin
-  llistes[i].clear;
- end;
+ ClearHelpLists;
+ if aval=nil then
+  exit;
  lista1:=llistes[0];
  if aval.Rpalias<>nil then
  begin
@@ -385,25 +489,57 @@ end;
 
 procedure TFRpExpredialogVCL.FormDestroy(Sender: TObject);
 var
- i,j:integer;
+ i:integer;
 begin
   inherited;
+ ReleaseOwnedEvaluator;
  if FExpressionStreamResult <> nil then
   FExpressionStreamResult.Free;
+ ClearHelpLists;
  for i:=0 to FMaxlisthelp-1 do
- begin
-  for j:=0 to llistes[i].count-1 do
-  begin
-   llistes[i].objects[j].freE;
-  end;
   llistes[i].free;
- end;
+ if GSharedExpreDialogVCL=Self then
+  GSharedExpreDialogVCL:=nil;
 end;
 
+procedure TFRpExpredialogVCL.FormShow(Sender: TObject);
+begin
+  inherited;
+  ActiveControl:=MemoExpre;
+  if MemoExpre.CanFocus then
+    MemoExpre.SetFocus;
+  MemoExpre.SelStart:=Length(MemoExpre.Text);
+  MemoExpre.SelLength:=0;
+  UpdateExpressionCursorPosition;
+end;
 procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
 begin
+ UpdateExpressionCursorPosition;
  if FExpressionChat <> nil then
   FExpressionChat.SetCurrentExpression(MemoExpre.Text);
+end;
+
+procedure TFRpExpredialogVCL.UpdateExpressionCursorPosition;
+begin
+ if MemoExpre <> nil then
+  FExpressionCursorPosition := MemoExpre.SelStart;
+end;
+
+procedure TFRpExpredialogVCL.MemoExpreClick(Sender: TObject);
+begin
+ UpdateExpressionCursorPosition;
+end;
+
+procedure TFRpExpredialogVCL.MemoExpreKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+ UpdateExpressionCursorPosition;
+end;
+
+procedure TFRpExpredialogVCL.MemoExpreMouseUp(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+ UpdateExpressionCursorPosition;
 end;
 
 procedure TFRpExpredialogVCL.ResetExpressionStreamState;
@@ -525,7 +661,6 @@ function TFRpExpredialogVCL.ValidateExpressionText(const AExpression: string;
 var
  LOldExpression: string;
 begin
- Result := False;
  AErrorMessage := '';
  if evaluator = nil then
  begin
@@ -557,13 +692,17 @@ end;
 
 function TFRpExpredialogVCL.BuildExpressionSemanticContextJson: string;
 var
+ LAlias: string;
+ LAliasItem: TRpAliasListItem;
+ LDataset: TDataSet;
+ LField: TField;
  LRoot: TJSONObject;
  LFields: TJSONArray;
  LIdentifiers: TJSONArray;
- LFieldList: TStringList;
  LFieldObj: TJSONObject;
  LIdentifierObj: TJSONObject;
  I: Integer;
+ J: Integer;
  LIdentifier: TRpIdentifier;
 {$IFDEF USEEVALHASH}
  LIterator: TstrHashIterator;
@@ -578,18 +717,27 @@ begin
 
   if (evaluator <> nil) and (evaluator.Rpalias <> nil) then
   begin
-   LFieldList := TStringList.Create;
-   try
-    evaluator.Rpalias.FillWithFields(LFieldList);
-    for I := 0 to LFieldList.Count - 1 do
+    for I := 0 to evaluator.Rpalias.List.Count - 1 do
     begin
-      LFieldObj := TJSONObject.Create;
-      LFieldObj.AddPair('name', LFieldList[I]);
-      LFields.AddElement(LFieldObj);
+      LAliasItem := evaluator.Rpalias.List.Items[I];
+      if LAliasItem = nil then
+        Continue;
+      LDataset := LAliasItem.Dataset;
+      if LDataset = nil then
+        Continue;
+
+      LAlias := LAliasItem.Alias;
+      for J := 0 to LDataset.FieldCount - 1 do
+      begin
+        LField := LDataset.Fields[J];
+        LFieldObj := TJSONObject.Create;
+        LFieldObj.AddPair('name', LAlias + '.' + LField.FieldName);
+        LFieldObj.AddPair('dataset', LAlias);
+        LFieldObj.AddPair('field', LField.FieldName);
+        LFieldObj.AddPair('dataType', GetSemanticFieldDataType(LField.DataType));
+        LFields.AddElement(LFieldObj);
+      end;
     end;
-   finally
-    LFieldList.Free;
-   end;
   end;
 
   if evaluator <> nil then
@@ -682,6 +830,13 @@ begin
  try
   evaluator.evaluate;
  except
+   On E:TRpEvalException do
+  begin
+   MemoExpre.SetFocus;
+   MemoExpre.SelStart:=E.ErrorPosition;
+   MemoExpre.SelLength:=0;
+   raise Exception.Create(E.MEssage + ' at position ' + IntToStr(E.ErrorPosition));
+  end;
   On E:Exception do
   begin
    MemoExpre.SetFocus;
@@ -689,13 +844,7 @@ begin
    MemoExpre.SelLength:=0;
    raise Exception.Create(E.MEssage);
   end;
-  On E:TRpEvalException do
-  begin
-   MemoExpre.SetFocus;
-   MemoExpre.SelStart:=E.ErrorPosition;
-   MemoExpre.SelLength:=0;
-   raise Exception.Create(E.MEssage + ' at position ' + IntToStr(E.ErrorPosition));
-  end;
+
  end;
  RpShowmessage(TRpValueToString(evaluator.EvalResult));
 end;
@@ -736,7 +885,8 @@ begin
  LAIMode := FExpressionChat.GetAIMode;
  LAgentSecret := FExpressionChat.GetAgentSecret;
  LAgentAiId := FExpressionChat.GetAgentAiId;
- LCursorPosition := MemoExpre.SelStart;
+ UpdateExpressionCursorPosition;
+ LCursorPosition := FExpressionCursorPosition;
  LSemanticContext := BuildExpressionSemanticContextJson;
 
  FCancelExpressionRequest := False;
@@ -841,14 +991,20 @@ begin
 
             if LNeedRetry and (not ValidateExpressionText(LExpression, LErrorMessage)) then
             begin
+              if Trim(LExplanation) <> '' then
+                LRetryMessage := 'Generated expression is still invalid after one automatic fix: ' +
+                  LErrorMessage + sLineBreak + sLineBreak + LExplanation +
+                  sLineBreak + sLineBreak + 'You can still apply it and edit it manually.'
+              else
+                LRetryMessage := 'Generated expression is still invalid after one automatic fix: ' +
+                  LErrorMessage + sLineBreak + sLineBreak +
+                  'You can still apply it and edit it manually.';
+
               TThread.Queue(nil,
                 procedure
                 begin
                   if FExpressionChat <> nil then
-                  begin
-                    FExpressionChat.FinishStreamingResponse;
-                    FExpressionChat.AddAssistantMessage('Generated expression is still invalid after one automatic fix: ' + LErrorMessage);
-                  end;
+                    FExpressionChat.SetSuggestedExpression(LExpression, LRetryMessage);
                 end);
               Exit;
             end;
@@ -904,6 +1060,7 @@ begin
  MemoExpre.SetFocus;
  MemoExpre.SelStart := Length(MemoExpre.Text);
  MemoExpre.SelLength := 0;
+ UpdateExpressionCursorPosition;
 end;
 
 
@@ -911,40 +1068,30 @@ function ChangeExpression(formul:string;aval:TRpCustomEvaluator):string;
 var
  dia:TFRpExpredialogVCL;
 begin
-  dia:=TFRpExpredialogVCL.create(Application);
-  try
-   if not assigned(aval) then
-    dia.evaluator:=TRpEvaluator.Create(dia)
-   else
-    dia.evaluator:=aval;
-   dia.MemoExpre.text:=formul;
-   result:=formul;
-   dia.showmodal;
-   if dia.dook then
-    result:=dia.MemoExpre.text;
-  finally
-   dia.freE;
-  end;
+  dia:=GetSharedExpreDialogVCL;
+  if not assigned(aval) then
+   dia.InitializeDialog(formul,TRpEvaluator.Create(nil),True,False,True)
+  else
+   dia.InitializeDialog(formul,aval,False,False,True);
+  result:=formul;
+  dia.showmodal;
+  if dia.dook then
+   result:=dia.MemoExpre.text;
 end;
 
 function ChangeExpressionW(formul:Widestring;aval:TRpCustomEvaluator):Widestring;
 var
  dia:TFRpExpredialogVCL;
 begin
-  dia:=TFRpExpredialogVCL.create(Application);
-  try
-   if not assigned(aval) then
-    dia.evaluator:=TRpEvaluator.Create(dia)
-   else
-    dia.evaluator:=aval;
-   dia.MemoExpre.text:=formul;
-   result:=formul;
-   dia.showmodal;
-   if dia.dook then
-    result:=dia.MemoExpre.text;
-  finally
-   dia.freE;
-  end;
+  dia:=GetSharedExpreDialogVCL;
+  if not assigned(aval) then
+   dia.InitializeDialog(formul,TRpEvaluator.Create(nil),True,False,True)
+  else
+   dia.InitializeDialog(formul,aval,False,False,True);
+  result:=formul;
+  dia.showmodal;
+  if dia.dook then
+   result:=dia.MemoExpre.text;
 end;
 
 function ExpressionCalculateW(formul:Widestring;aval:TRpCustomEvaluator):Variant;
@@ -952,22 +1099,15 @@ var
  dia:TFRpExpredialogVCL;
 begin
   Result:=Null;
-  dia:=TFRpExpredialogVCL.create(Application);
-  try
-   dia.validate:=true;
-   dia.MEmoExpre.WantReturns:=false;
-   if not assigned(aval) then
-    dia.evaluator:=TRpEvaluator.Create(dia)
-   else
-    dia.evaluator:=aval;
-   dia.MemoExpre.text:=formul;
+  dia:=GetSharedExpreDialogVCL;
+  if not assigned(aval) then
+   dia.InitializeDialog(formul,TRpEvaluator.Create(nil),True,True,False)
+  else
+   dia.InitializeDialog(formul,aval,False,True,False);
+  result:=dia.AResult;
+  dia.showmodal;
+  if dia.dook then
    result:=dia.AResult;
-   dia.showmodal;
-   if dia.dook then
-    result:=dia.AResult;
-  finally
-   dia.freE;
-  end;
 end;
 
 
@@ -976,17 +1116,12 @@ var
  dia:TFRpExpredialogVCL;
 begin
   Fevaluator.Rpalias:=FRpalias;
-  dia:=TFRpExpredialogVCL.create(Application);
-  try
-   dia.evaluator:=Fevaluator;
-   dia.MemoExpre.text:=Expresion.text;
-   dia.ShowModal;
-   result:=dia.dook;
-   if result then
-    Expresion.text:=dia.MemoExpre.text;
-  finally
-   dia.freE;
-  end;
+  dia:=GetSharedExpreDialogVCL;
+  dia.InitializeDialog(Expresion.text,Fevaluator,False,False,True);
+  dia.ShowModal;
+  result:=dia.dook;
+  if result then
+   Expresion.text:=dia.MemoExpre.text;
 end;
 
 procedure TFRpExpredialogVCL.BOKClick(Sender: TObject);
@@ -1010,5 +1145,11 @@ begin
  dook:=true;
  Close;
 end;
+
+initialization
+
+finalization
+ if GSharedExpreDialogVCL<>nil then
+  GSharedExpreDialogVCL.Free;
 
 end.

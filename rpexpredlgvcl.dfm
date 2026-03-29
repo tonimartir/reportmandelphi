@@ -10,6 +10,7 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
   ShowHint = True
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnShow = FormShow
   PixelsPerInch = 120
   TextHeight = 20
   object SplitterChat: TSplitter
