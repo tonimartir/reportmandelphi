@@ -1165,19 +1165,19 @@ begin
       begin
         if operation.componentClass = 'TRPPARAM' then
         begin
-          param := FReport.Params.Add('');
+          param := FReport.Params.Add(operation.componentName);
           param.Name := operation.componentName;
           target := param;
         end
         else if operation.componentClass = 'TRPDATAINFOITEM' then
         begin
-          dinfo := FReport.DataInfo.Add('');
+          dinfo := FReport.DataInfo.Add(operation.componentName);
           dinfo.Name := operation.componentName;
           target := dinfo;
         end
         else if operation.componentClass = 'TRPDATABASEINFOITEM' then
         begin
-          dbinfo := FReport.DatabaseInfo.Add('');
+          dbinfo := FReport.DatabaseInfo.Add(operation.componentName);
           dbinfo.Name := operation.componentName;
           target := dbinfo;
         end

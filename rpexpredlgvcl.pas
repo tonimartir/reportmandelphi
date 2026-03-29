@@ -649,6 +649,9 @@ begin
     (LResultObj.Values['errorMessage'].Value <> '') then
     AErrorMessage := LResultObj.Values['errorMessage'].Value
   else
+  if Trim(AExplanation) <> '' then
+    AErrorMessage := AExplanation
+  else
     AErrorMessage := 'Empty expression returned';
   Exit;
  end;
@@ -699,21 +702,60 @@ var
  LRoot: TJSONObject;
  LFields: TJSONArray;
  LIdentifiers: TJSONArray;
+ LFunctions: TJSONArray;
+ LVariables: TJSONArray;
+ LConstants: TJSONArray;
  LFieldObj: TJSONObject;
- LIdentifierObj: TJSONObject;
  I: Integer;
  J: Integer;
  LIdentifier: TRpIdentifier;
 {$IFDEF USEEVALHASH}
  LIterator: TstrHashIterator;
 {$ENDIF}
+  function CreateIdentifierObject(const AName: string;
+    AIdentifier: TRpIdentifier): TJSONObject;
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('name', AName);
+    Result.AddPair('kind', IntToStr(Integer(AIdentifier.RType)));
+    Result.AddPair('help', AIdentifier.Help);
+    Result.AddPair('model', AIdentifier.Model);
+    Result.AddPair('params', AIdentifier.aparams);
+  end;
+
+  procedure AddIdentifierToCategories(const AName: string;
+    AIdentifier: TRpIdentifier);
+  begin
+    LIdentifiers.AddElement(CreateIdentifierObject(AName, AIdentifier));
+
+    if AIdentifier is TIdenRpExpression then
+    begin
+      LVariables.AddElement(CreateIdentifierObject(AName, AIdentifier));
+      Exit;
+    end;
+
+    case AIdentifier.RType of
+      RTypeidenfunction:
+        LFunctions.AddElement(CreateIdentifierObject(AName, AIdentifier));
+      RTypeidenvariable:
+        LVariables.AddElement(CreateIdentifierObject(AName, AIdentifier));
+      RTypeidenconstant:
+        LConstants.AddElement(CreateIdentifierObject(AName, AIdentifier));
+    end;
+  end;
 begin
  LRoot := TJSONObject.Create;
  try
   LFields := TJSONArray.Create;
   LIdentifiers := TJSONArray.Create;
+  LFunctions := TJSONArray.Create;
+  LVariables := TJSONArray.Create;
+  LConstants := TJSONArray.Create;
   LRoot.AddPair('fields', LFields);
   LRoot.AddPair('identifiers', LIdentifiers);
+  LRoot.AddPair('functions', LFunctions);
+  LRoot.AddPair('variables', LVariables);
+  LRoot.AddPair('constants', LConstants);
 
   if (evaluator <> nil) and (evaluator.Rpalias <> nil) then
   begin
@@ -748,26 +790,14 @@ begin
    begin
     LIterator.Next;
     LIdentifier := TRpIdentifier(LIterator.GetValue);
-    LIdentifierObj := TJSONObject.Create;
-    LIdentifierObj.AddPair('name', LIterator.GetKey);
-    LIdentifierObj.AddPair('kind', IntToStr(Integer(LIdentifier.RType)));
-    LIdentifierObj.AddPair('help', LIdentifier.Help);
-    LIdentifierObj.AddPair('model', LIdentifier.Model);
-    LIdentifierObj.AddPair('params', LIdentifier.aparams);
-    LIdentifiers.AddElement(LIdentifierObj);
+   AddIdentifierToCategories(LIterator.GetKey, LIdentifier);
    end;
 {$ENDIF}
 {$IFNDEF USEEVALHASH}
    for I := 0 to evaluator.Identifiers.Count - 1 do
    begin
     LIdentifier := TRpIdentifier(evaluator.Identifiers.Objects[I]);
-    LIdentifierObj := TJSONObject.Create;
-    LIdentifierObj.AddPair('name', evaluator.Identifiers[I]);
-    LIdentifierObj.AddPair('kind', IntToStr(Integer(LIdentifier.RType)));
-    LIdentifierObj.AddPair('help', LIdentifier.Help);
-    LIdentifierObj.AddPair('model', LIdentifier.Model);
-    LIdentifierObj.AddPair('params', LIdentifier.aparams);
-    LIdentifiers.AddElement(LIdentifierObj);
+   AddIdentifierToCategories(evaluator.Identifiers[I], LIdentifier);
    end;
 {$ENDIF}
   end;
