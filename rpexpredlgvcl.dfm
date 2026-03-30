@@ -223,10 +223,24 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
           Margins.Bottom = 5
           Align = alBottom
           TabOrder = 1
-          object BShowResult: TButton
-            Left = 488
+          object BRefresh: TButton
+            Left = 6
             Top = 6
-            Width = 232
+            Width = 150
+            Height = 39
+            Hint = 'Reopen datasets and refresh fields'
+            Margins.Left = 5
+            Margins.Top = 5
+            Margins.Right = 5
+            Margins.Bottom = 5
+            Caption = 'Refresh'
+            TabOrder = 0
+            OnClick = BRefreshClick
+          end
+          object BShowResult: TButton
+            Left = 533
+            Top = 6
+            Width = 187
             Height = 39
             Hint = 'Evaluates the expresion and shows the result'
             Margins.Left = 5
@@ -234,13 +248,13 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
             Margins.Right = 5
             Margins.Bottom = 5
             Caption = 'Show Result'
-            TabOrder = 0
+            TabOrder = 3
             OnClick = BShowResultClick
           end
           object BCheckSyn: TButton
-            Left = 231
+            Left = 360
             Top = 6
-            Width = 227
+            Width = 167
             Height = 39
             Hint = 'Syntax check the expresion'
             Margins.Left = 5
@@ -248,20 +262,20 @@ object FRpExpredialogVCL: TFRpExpredialogVCL
             Margins.Right = 5
             Margins.Bottom = 5
             Caption = 'Syntax check'
-            TabOrder = 1
+            TabOrder = 2
             OnClick = BCheckSynClick
           end
           object BAdd: TButton
-            Left = 6
+            Left = 162
             Top = 6
-            Width = 202
+            Width = 192
             Height = 39
             Margins.Left = 5
             Margins.Top = 5
             Margins.Right = 5
             Margins.Bottom = 5
             Caption = 'Add selection'
-            TabOrder = 2
+            TabOrder = 1
             OnClick = BitBtn1Click
           end
         end

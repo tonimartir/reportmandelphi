@@ -35,7 +35,7 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
-  rpmdconsts, rpfrmexpressionchatvcl, rpdatahttp;
+  rpmdconsts, rpfrmexpressionchatvcl, rpdatahttp, rpreport, rpmetafile;
 
 const
  FMaxlisthelp=5;
@@ -60,6 +60,12 @@ type
     destructor Destroy; override;
   end;
 
+  TRpQueuedExpressionRefreshPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+  end;
+
   TRpRecHelp=class(TObject)
   public
     rfunction:string;
@@ -74,6 +80,8 @@ type
     FExpresion:TStrings;
     FRpalias:TRpalias;
     Fevaluator:TRpEvaluator;
+    FReport: TRpReport;
+    FPrintDriver: TRpPrintDriver;
     procedure setexpresion(valor:TStrings);
     procedure SetRpalias(Rpalias1:TRpalias);
   protected
@@ -84,6 +92,8 @@ type
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
     function Execute:Boolean;
+    property Report: TRpReport read FReport write FReport;
+    property PrintDriver: TRpPrintDriver read FPrintDriver write FPrintDriver;
   published
     { Published declarations }
     property Expresion:TStrings read FExpresion write setexpresion;
@@ -110,6 +120,7 @@ type
     PExpressionHost: TPanel;
     MemoExpre: TMemo;
     Panel1: TPanel;
+    BRefresh: TButton;
     BShowResult: TButton;
     BCheckSyn: TButton;
     BAdd: TButton;
@@ -124,6 +135,7 @@ type
     procedure LItemsDblClick(Sender: TObject);
     procedure BOKClick(Sender: TObject);
     procedure MemoExpreChange(Sender: TObject);
+    procedure BRefreshClick(Sender: TObject);
   private
     { Private declarations }
     validate:Boolean;
@@ -136,12 +148,22 @@ type
     FExpressionCursorPosition: Integer;
     FExpressionStreamError: string;
     FExpressionStreamResult: TJSONObject;
+    FRefreshReport: TRpReport;
+    FRefreshPrintDriver: TRpPrintDriver;
+    FRefreshAlias: TRpAlias;
+    FEmptyAlias: TRpAlias;
+    FRefreshVersion: Integer;
+    FRefreshRunning: Boolean;
+    FAliasReady: Boolean;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
     procedure ClearHelpLists;
+    procedure ConfigureReportRefresh(AReport: TRpReport;
+      APrintDriver: TRpPrintDriver; ATargetAlias: TRpAlias);
     procedure InitializeDialog(const AExpression: string;
       AEvaluator: TRpCustomEvaluator; AOwnsEvaluator, AValidate,
       AWantReturns: Boolean);
     procedure ReleaseOwnedEvaluator;
+    procedure AssignEmptyAlias;
     function BuildExpressionSemanticContextJson: string;
     function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
     procedure ExpressionStreamProgress(Sender: TObject; const AStage,
@@ -163,8 +185,12 @@ type
     procedure MemoExpreMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure WMHandleExpressionChatPayload(var Message: TMessage); message WM_USER + 204;
+    procedure WMHandleExpressionRefresh(var Message: TMessage); message WM_USER + 205;
     procedure WMStartOnlineInitialization(var Message: TMessage); message WM_USER + 201;
+    procedure PopulateAliasFromReport(ATargetAlias: TRpAlias);
     procedure PostExpressionChatPayload(APayload: TRpQueuedExpressionChatPayload);
+    procedure StartReportRefresh;
+    procedure UpdateRefreshUIState;
     procedure Setevaluator(aval:TRpCustomEvaluator);
   public
     { Public declarations }
@@ -282,6 +308,13 @@ begin
  FExpressionStreamError := '';
  FExpressionStreamResult := nil;
  FOwnsEvaluator := False;
+ FRefreshReport := nil;
+ FRefreshPrintDriver := nil;
+ FRefreshAlias := nil;
+ FRefreshVersion := 0;
+ FRefreshRunning := False;
+ FAliasReady := True;
+ FEmptyAlias := TRpAlias.Create(Self);
  FExpressionChat := TFRpExpressionChatFrame.Create(Self);
  FExpressionChat.Parent := PChatHost;
  FExpressionChat.Align := alClient;
@@ -301,6 +334,7 @@ begin
  LabelCategory.Caption:=TranslateStr(241,LabelCategory.Caption);
  LOperation.Caption:=TranslateStr(242,LOperation.Caption);
  BAdd.Caption:=TranslateStr(243,BAdd.Caption);
+ BRefresh.Caption:='Refresh';
  BCheckSyn.Caption:=TranslateStr(244,BCheckSyn.Caption);
  BShowResult.Caption:=TranslateStr(246,BShowResult.Caption);
  LCategory.Items.Strings[0]:=TranslateStr(247,LCategory.Items.Strings[0]);
@@ -309,6 +343,24 @@ begin
  LCategory.Items.Strings[3]:=TranslateStr(250,LCategory.Items.Strings[3]);
  LCategory.Items.Strings[4]:=TranslateStr(251,LCategory.Items.Strings[4]);
  
+end;
+
+procedure TFRpExpredialogVCL.ConfigureReportRefresh(AReport: TRpReport;
+  APrintDriver: TRpPrintDriver; ATargetAlias: TRpAlias);
+begin
+ FRefreshReport := AReport;
+ FRefreshPrintDriver := APrintDriver;
+ FRefreshAlias := ATargetAlias;
+ FRefreshVersion := 0;
+ FRefreshRunning := False;
+ if FRefreshReport <> nil then
+ begin
+  FAliasReady := False;
+  AssignEmptyAlias;
+ end
+ else
+  FAliasReady := evaluator <> nil;
+ UpdateRefreshUIState;
 end;
 
 procedure TFRpExpredialogVCL.ReleaseOwnedEvaluator;
@@ -355,7 +407,17 @@ begin
  MemoExpre.SelStart:=Length(MemoExpre.Text);
  MemoExpre.SelLength:=0;
  UpdateExpressionCursorPosition;
+   FAliasReady := evaluator <> nil;
+   UpdateRefreshUIState;
 end;
+
+  procedure TFRpExpredialogVCL.AssignEmptyAlias;
+  begin
+   if FEmptyAlias <> nil then
+    FEmptyAlias.List.Clear;
+   if evaluator <> nil then
+    evaluator.Rpalias := FEmptyAlias;
+  end;
 
 procedure TFRpExpredialogVCL.Setevaluator(aval:TRpCustomEvaluator);
 var
@@ -370,7 +432,10 @@ begin
  Fevaluator:=Aval;
  ClearHelpLists;
  if aval=nil then
+ begin
+  UpdateRefreshUIState;
   exit;
+ end;
  lista1:=llistes[0];
  if aval.Rpalias<>nil then
  begin
@@ -515,6 +580,7 @@ begin
 
  LCategory.Itemindex:=0;
  LCategoryClick(self);
+ UpdateRefreshUIState;
 end;
 
 procedure TFRpExpredialogVCL.FormDestroy(Sender: TObject);
@@ -543,6 +609,8 @@ begin
   UpdateExpressionCursorPosition;
   if HandleAllocated then
     PostMessage(Handle, WM_USER + 201, 0, 0);
+  if FRefreshReport <> nil then
+    StartReportRefresh;
 end;
 
 procedure TFRpExpredialogVCL.WMStartOnlineInitialization(var Message: TMessage);
@@ -603,6 +671,137 @@ begin
   finally
     LPayload.Free;
   end;
+end;
+
+procedure TFRpExpredialogVCL.UpdateRefreshUIState;
+var
+ LCanUseEvaluator: Boolean;
+begin
+ LCanUseEvaluator := FAliasReady and (not FRefreshRunning) and (evaluator <> nil);
+ BAdd.Enabled := LCanUseEvaluator;
+ BCheckSyn.Enabled := LCanUseEvaluator;
+ BShowResult.Enabled := LCanUseEvaluator;
+ LCategory.Enabled := LCanUseEvaluator;
+ LItems.Enabled := LCanUseEvaluator;
+ BRefresh.Visible := FRefreshReport <> nil;
+ BRefresh.Enabled := (FRefreshReport <> nil) and (not FRefreshRunning);
+ if FRefreshRunning then
+  BRefresh.Caption := 'Refreshing...'
+ else
+  BRefresh.Caption := 'Refresh';
+end;
+
+procedure TFRpExpredialogVCL.PopulateAliasFromReport(ATargetAlias: TRpAlias);
+var
+ I: Integer;
+ LItem: TRpAliasListItem;
+begin
+ if (ATargetAlias = nil) or (FRefreshReport = nil) then
+  Exit;
+
+ ATargetAlias.List.Clear;
+ for I := 0 to FRefreshReport.DataInfo.Count - 1 do
+ begin
+  LItem := ATargetAlias.List.Add;
+  LItem.Alias := FRefreshReport.DataInfo.Items[I].Alias;
+{$IFDEF USERPDATASET}
+  if FRefreshReport.DataInfo.Items[I].Cached then
+   LItem.Dataset := FRefreshReport.DataInfo.Items[I].CachedDataset
+  else
+{$ENDIF}
+   LItem.Dataset := FRefreshReport.DataInfo.Items[I].Dataset;
+ end;
+end;
+
+procedure TFRpExpredialogVCL.StartReportRefresh;
+var
+ LWorker: TThread;
+ LRequestVersion: Integer;
+ LReport: TRpReport;
+ LPrintDriver: TRpPrintDriver;
+begin
+ if FRefreshRunning then
+  Exit;
+ if (FRefreshReport = nil) or (FRefreshPrintDriver = nil) then
+  Exit;
+
+ Inc(FRefreshVersion);
+ LRequestVersion := FRefreshVersion;
+ LReport := FRefreshReport;
+ LPrintDriver := FRefreshPrintDriver;
+ if not FOwnsEvaluator then
+ begin
+  Setevaluator(TRpEvaluator.Create(nil));
+  FOwnsEvaluator := True;
+ end;
+ FRefreshRunning := True;
+ FAliasReady := False;
+ AssignEmptyAlias;
+ UpdateRefreshUIState;
+
+ LWorker := TThread.CreateAnonymousThread(
+   procedure
+   var
+    LPayload: TRpQueuedExpressionRefreshPayload;
+   begin
+    LPayload := TRpQueuedExpressionRefreshPayload.Create;
+    try
+      LPayload.RequestVersion := LRequestVersion;
+      try
+        LReport.BeginPrint(LPrintDriver);
+      except
+        on E: Exception do
+          LPayload.ErrorMessage := E.Message;
+      end;
+
+      if HandleAllocated then
+        PostMessage(Handle, WM_USER + 205, WPARAM(LPayload), 0)
+      else
+        LPayload.Free;
+      LPayload := nil;
+    finally
+      LPayload.Free;
+    end;
+   end);
+ LWorker.FreeOnTerminate := True;
+ LWorker.Start;
+end;
+
+procedure TFRpExpredialogVCL.WMHandleExpressionRefresh(var Message: TMessage);
+var
+ LPayload: TRpQueuedExpressionRefreshPayload;
+begin
+ LPayload := TRpQueuedExpressionRefreshPayload(Message.WParam);
+ try
+  if LPayload = nil then
+    Exit;
+  if LPayload.RequestVersion <> FRefreshVersion then
+    Exit;
+
+  FRefreshRunning := False;
+  if LPayload.ErrorMessage <> '' then
+  begin
+    FAliasReady := False;
+    UpdateRefreshUIState;
+    RpShowMessage(LPayload.ErrorMessage);
+    Exit;
+  end;
+
+  PopulateAliasFromReport(FRefreshAlias);
+  if FRefreshReport <> nil then
+  begin
+    if FOwnsEvaluator then
+      ReleaseOwnedEvaluator;
+    FOwnsEvaluator := False;
+    if FRefreshReport.Evaluator <> nil then
+      FRefreshReport.Evaluator.Rpalias := FRefreshAlias;
+    Setevaluator(FRefreshReport.Evaluator);
+  end;
+  FAliasReady := True;
+  UpdateRefreshUIState;
+ finally
+  LPayload.Free;
+ end;
 end;
 procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
 begin
@@ -971,6 +1170,11 @@ begin
  RpShowmessage(TRpValueToString(evaluator.EvalResult));
 end;
 
+procedure TFRpExpredialogVCL.BRefreshClick(Sender: TObject);
+begin
+ StartReportRefresh;
+end;
+
 procedure TFRpExpredialogVCL.BitBtn1Click(Sender: TObject);
 begin
   inherited;
@@ -1212,9 +1416,18 @@ function TRpExpreDialogVCL.Execute:Boolean;
 var
  dia:TFRpExpredialogVCL;
 begin
-  Fevaluator.Rpalias:=FRpalias;
   dia:=GetSharedExpreDialogVCL;
-  dia.InitializeDialog(Expresion.text,Fevaluator,False,False,True);
+  if FReport <> nil then
+  begin
+   dia.InitializeDialog(Expresion.text,TRpEvaluator.Create(nil),True,False,True);
+   dia.ConfigureReportRefresh(FReport, FPrintDriver, FRpalias);
+  end
+  else
+  begin
+   Fevaluator.Rpalias:=FRpalias;
+   dia.InitializeDialog(Expresion.text,Fevaluator,False,False,True);
+   dia.ConfigureReportRefresh(nil, nil, nil);
+  end;
   dia.ShowModal;
   result:=dia.dook;
   if result then

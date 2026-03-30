@@ -643,36 +643,17 @@ end;
 procedure TRpPanelObj.ExpressionClick(Sender:TObject);
 var
  report:TRpReport;
- i:integer;
- item:TRpAliaslistItem;
  FRpMainF:TFRpMainFVCL;
  expredia:TRpExpreDialogVCL;
 begin
  FRpMainF:=TFRpMainFVCL(Owner.Owner);
  report:=FRpMainf.report;
- try
-  fpdfdriver.PDFConformance:=report.PDFConformance;
-  report.BeginPrint(fpdfdriver);
- except
-  on E:Exception do
-  begin
-   RpShowMessage(E.Message);
-  end;
- end;
-
- TFRpObjInspVCL(Owner).RpAlias1.List.Clear;
- for i:=0 to report.DataInfo.Count-1 do
- begin
-  item:=TFRpObjInspVCL(Owner).RpAlias1.List.Add;
-  item.Alias:=report.DataInfo.Items[i].Alias;
-  item.Dataset:=report.DataInfo.Items[i].Dataset;
- end;
  expredia:=TRpExpreDialogVCL.Create(Application);
  try
   expredia.Rpalias:=TFRpObjInspVCL(Owner).RpAlias1;
-  report.InitEvaluator;
-  report.AddReportItemsToEvaluator(report.evaluator);
-  expredia.evaluator:=report.Evaluator;
+  expredia.Report := report;
+  fpdfdriver.PDFConformance:=report.PDFConformance;
+  expredia.PrintDriver := fpdfdriver;
   expredia.Expresion.Text:=TRpMaskEdit(LControls.Objects[TButton(Sender).Tag]).Text;
   if expredia.Execute then
   begin

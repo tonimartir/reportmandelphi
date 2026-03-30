@@ -63,6 +63,18 @@ implementation
 uses rpdbxconfigvcl, rpbasereport, rpxmlstream, rpfparamsvcl;
 
 
+var
+ GDataConfigDialog: TFRpDInfoVCL = nil;
+
+procedure ShowDataConfig(report:TRpReport);
+begin
+ if GDataConfigDialog = nil then
+  GDataConfigDialog := TFRpDInfoVCL.Create(Application);
+ GDataConfigDialog.report := report;
+ GDataConfigDialog.ShowModal;
+end;
+
+
 {$R *.dfm}
 
 procedure TFRpDInfoVCL.SetReport(value:TRpReport);
@@ -70,16 +82,29 @@ begin
  freport:=value;
  EnsureReportItemNames(value);
  // Snapshot originals for undo comparison
+ if Assigned(origDatabaseInfo) then FreeAndNil(origDatabaseInfo);
  origDatabaseInfo:=TRpDatabaseInfoList.Create(nil);
  origDatabaseInfo.Assign(value.DatabaseInfo);
+ if Assigned(origDataInfo) then FreeAndNil(origDataInfo);
  origDataInfo:=TRpDataInfoList.Create(nil);
  origDataInfo.Assign(value.DataInfo);
+ if Assigned(origParams) then FreeAndNil(origParams);
  origParams:=TRpParamList.Create(nil);
  origParams.Assign(value.Params);
- fconnections:=TFRpConnectionVCL.Create(Self);
- fconnections.Parent:=TabConnections;
- fdatasets:=TFRpDatasetsVCL.Create(Self);
- fdatasets.Parent:=TabDatasets;
+
+ if fconnections=nil then
+ begin
+  fconnections:=TFRpConnectionVCL.Create(Self);
+  fconnections.Parent:=TabConnections;
+  fconnections.Align := alClient;
+ end;
+ if fdatasets=nil then
+ begin
+  fdatasets:=TFRpDatasetsVCL.Create(Self);
+  fdatasets.Parent:=TabDatasets;
+  fdatasets.Align := alClient;
+ end;
+
  fdatasets.Datainfo:=report.DataInfo;
  fdatasets.Databaseinfo:=report.DatabaseInfo;
  fconnections.Databaseinfo:=report.DatabaseInfo;
@@ -89,24 +114,8 @@ begin
   PControl.ActivePage:=TabDatasets
  else
   PControl.ActivePage:=TabConnections;
- //fconnections.Align := alClient;
- fdatasets.Align := alClient;
 end;
 
-procedure ShowDataConfig(report:TRpReport);
-var
- dia:TFRpDInfoVCL;
-begin
-// UpdateConAdmin;
-
- dia:=TFRpDInfoVCL.Create(Application);
- try
-  dia.report:=report;
-  dia.showmodal;
- finally
-  dia.free;
- end;
-end;
 
 
 
