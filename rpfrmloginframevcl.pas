@@ -9,6 +9,12 @@ uses
   Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg;
 
 type
+  TRpQueuedAvatarPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    Bytes: TBytes;
+  end;
+
   TFRpLoginFrameVCL = class(TFrame)
     PContainer: TPanel;
     LabelTier: TLabel;
@@ -27,6 +33,7 @@ type
   private
     FAvatarRequestVersion: Integer;
     FOnAuthChanged: TNotifyEvent;
+    procedure WMApplyAvatar(var Message: TMessage); message WM_USER + 203;
     procedure UpdateUI;
     procedure AuthChanged(ASuccess: Boolean);
     procedure DownloadAvatarAsync(const AUrl: string);
@@ -145,7 +152,9 @@ end;
 
 procedure TFRpLoginFrameVCL.DownloadAvatarAsync(const AUrl: string);
 var
+  LPayload: TRpQueuedAvatarPayload;
   LRequestVersion: Integer;
+  LWorker: TThread;
 begin
   if AUrl = '' then Exit;
 
@@ -153,7 +162,7 @@ begin
   LRequestVersion := FAvatarRequestVersion;
   TRpAuthManager.Instance.Log('DownloadAvatar: scheduling ' + AUrl);
 
-  TTask.Run(
+  LWorker := TThread.CreateAnonymousThread(
     procedure
     var
       LBytes: TBytes;
@@ -176,26 +185,13 @@ begin
               Move(LStream.Memory^, LBytes[0], LStream.Size);
             end;
 
-            TThread.Queue(nil,
-              procedure
-              var
-                LUiStream: TBytesStream;
-              begin
-                if LRequestVersion <> FAvatarRequestVersion then
-                  Exit;
-                LUiStream := TBytesStream.Create(LBytes);
-                try
-                  try
-                    ImageAvatar.Picture.LoadFromStream(LUiStream);
-                    TRpAuthManager.Instance.Log('DownloadAvatar: successfully loaded image.');
-                  except
-                    on E: Exception do
-                      TRpAuthManager.Instance.Log('DownloadAvatar: LoadFromStream error: ' + E.Message);
-                  end;
-                finally
-                  LUiStream.Free;
-                end;
-              end);
+            LPayload := TRpQueuedAvatarPayload.Create;
+            LPayload.RequestVersion := LRequestVersion;
+            LPayload.Bytes := Copy(LBytes, 0, Length(LBytes));
+            if HandleAllocated then
+              PostMessage(Handle, WM_USER + 203, WPARAM(LPayload), 0)
+            else
+              LPayload.Free;
           end;
         except
           on E: Exception do
@@ -206,6 +202,37 @@ begin
         LHttpClient.Free;
       end;
     end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+procedure TFRpLoginFrameVCL.WMApplyAvatar(var Message: TMessage);
+var
+  LPayload: TRpQueuedAvatarPayload;
+  LUiStream: TBytesStream;
+begin
+  LPayload := TRpQueuedAvatarPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FAvatarRequestVersion then
+      Exit;
+
+    LUiStream := TBytesStream.Create(LPayload.Bytes);
+    try
+      try
+        ImageAvatar.Picture.LoadFromStream(LUiStream);
+        TRpAuthManager.Instance.Log('DownloadAvatar: successfully loaded image.');
+      except
+        on E: Exception do
+          TRpAuthManager.Instance.Log('DownloadAvatar: LoadFromStream error: ' + E.Message);
+      end;
+    finally
+      LUiStream.Free;
+    end;
+  finally
+    LPayload.Free;
+  end;
 end;
 
 procedure TFRpLoginFrameVCL.BtnLoginClick(Sender: TObject);

@@ -22,9 +22,10 @@ interface
 {$R rpexpredlg.dcr}
 
 uses
+  Winapi.Windows,
   SysUtils, Classes,
   DB,
-  Graphics,Controls, Forms, Dialogs,
+  Graphics,Controls, Forms, Dialogs, Messages,
   StdCtrls, ExtCtrls,Buttons,
   System.JSON, System.Threading,
   rpalias,rpeval, rptypeval,rpgraphutilsvcl,
@@ -40,6 +41,25 @@ const
  FMaxlisthelp=5;
  SExpressionChatInitialMessage='Ask for help rewriting, simplifying or validating the current expression.';
 type
+  TRpQueuedExpressionChatPayloadKind = (
+    rpqecUpdateStreamingResponse,
+    rpqecBeginRetry,
+    rpqecGenerationStopped,
+    rpqecAddAssistantMessage,
+    rpqecSetSuggestedExpression,
+    rpqecUpdateUserProfile
+  );
+
+  TRpQueuedExpressionChatPayload = class(TObject)
+  public
+    Kind: TRpQueuedExpressionChatPayloadKind;
+    Text1: string;
+    Text2: string;
+    PrefillPercent: Integer;
+    UserProfile: TJSONObject;
+    destructor Destroy; override;
+  end;
+
   TRpRecHelp=class(TObject)
   public
     rfunction:string;
@@ -142,6 +162,9 @@ type
     procedure MemoExpreKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoExpreMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure WMHandleExpressionChatPayload(var Message: TMessage); message WM_USER + 204;
+    procedure WMStartOnlineInitialization(var Message: TMessage); message WM_USER + 201;
+    procedure PostExpressionChatPayload(APayload: TRpQueuedExpressionChatPayload);
     procedure Setevaluator(aval:TRpCustomEvaluator);
   public
     { Public declarations }
@@ -161,6 +184,13 @@ uses rplabelitem, rpauthmanager;
 
 var
  GSharedExpreDialogVCL: TFRpExpredialogVCL = nil;
+
+destructor TRpQueuedExpressionChatPayload.Destroy;
+begin
+ if UserProfile <> nil then
+  UserProfile.Free;
+ inherited Destroy;
+end;
 
 function GetSharedExpreDialogVCL: TFRpExpredialogVCL;
 begin
@@ -511,12 +541,68 @@ begin
   MemoExpre.SelStart:=Length(MemoExpre.Text);
   MemoExpre.SelLength:=0;
   UpdateExpressionCursorPosition;
-  TThread.Queue(nil,
-    procedure
-    begin
-      if (FExpressionChat<>nil) and Visible then
-        FExpressionChat.StartOnlineInitialization;
-    end);
+  if HandleAllocated then
+    PostMessage(Handle, WM_USER + 201, 0, 0);
+end;
+
+procedure TFRpExpredialogVCL.WMStartOnlineInitialization(var Message: TMessage);
+begin
+  if (FExpressionChat<>nil) and Visible then
+    FExpressionChat.StartOnlineInitialization;
+end;
+
+procedure TFRpExpredialogVCL.PostExpressionChatPayload(
+  APayload: TRpQueuedExpressionChatPayload);
+begin
+  if APayload = nil then
+    Exit;
+  if HandleAllocated then
+    PostMessage(Handle, WM_USER + 204, WPARAM(APayload), 0)
+  else
+    APayload.Free;
+end;
+
+procedure TFRpExpredialogVCL.WMHandleExpressionChatPayload(var Message: TMessage);
+var
+  LPayload: TRpQueuedExpressionChatPayload;
+begin
+  LPayload := TRpQueuedExpressionChatPayload(Message.WParam);
+  try
+    if (LPayload = nil) or (FExpressionChat = nil) then
+      Exit;
+
+    case LPayload.Kind of
+      rpqecUpdateStreamingResponse:
+        FExpressionChat.UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+      rpqecBeginRetry:
+        begin
+          FExpressionChat.AddAssistantMessage('Local validation failed. Running one automatic fix.');
+          FExpressionChat.BeginStreamingResponse;
+        end;
+      rpqecGenerationStopped:
+        begin
+          FExpressionChat.FinishStreamingResponse;
+          FExpressionChat.AddAssistantMessage('Generation stopped.');
+        end;
+      rpqecAddAssistantMessage:
+        begin
+          FExpressionChat.FinishStreamingResponse;
+          FExpressionChat.AddAssistantMessage(LPayload.Text1);
+        end;
+      rpqecSetSuggestedExpression:
+        FExpressionChat.SetSuggestedExpression(LPayload.Text1, LPayload.Text2);
+      rpqecUpdateUserProfile:
+        begin
+          if LPayload.UserProfile <> nil then
+          begin
+            FExpressionChat.UpdateUserProfile(LPayload.UserProfile);
+            LPayload.UserProfile := nil;
+          end;
+        end;
+    end;
+  finally
+    LPayload.Free;
+  end;
 end;
 procedure TFRpExpredialogVCL.MemoExpreChange(Sender: TObject);
 begin
@@ -585,18 +671,18 @@ procedure TFRpExpredialogVCL.ExpressionStreamProgress(Sender: TObject;
   const AStage, AChunkType, AChunk: string; AOutputTokens: Integer);
 var
  LChunk: string;
+ LPayload: TRpQueuedExpressionChatPayload;
  LPrefill: Integer;
 begin
  LChunk := '';
  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
   LChunk := AChunk;
  LPrefill := GetExpressionPrefillPercent(AStage, AChunkType);
- TThread.Queue(nil,
-  procedure
-  begin
-   if FExpressionChat <> nil then
-    FExpressionChat.UpdateStreamingResponse(LChunk, LPrefill);
-  end);
+ LPayload := TRpQueuedExpressionChatPayload.Create;
+ LPayload.Kind := rpqecUpdateStreamingResponse;
+ LPayload.Text1 := LChunk;
+ LPayload.PrefillPercent := LPrefill;
+ PostExpressionChatPayload(LPayload);
 end;
 
 procedure TFRpExpredialogVCL.ExpressionStreamResult(Sender: TObject;
@@ -909,6 +995,7 @@ var
  LCursorPosition: Integer;
  LPrompt: string;
  LSemanticContext: string;
+ LWorker: TThread;
 begin
  if FExpressionChat = nil then
   Exit;
@@ -929,13 +1016,14 @@ begin
  ResetExpressionStreamState;
  FExpressionChat.BeginStreamingResponse;
 
- TTask.Run(
+ LWorker := TThread.CreateAnonymousThread(
    procedure
    var
     LCurrentExpression: string;
     LErrorMessage: string;
     LExpression: string;
       LExplanation: string;
+      LChatPayload: TRpQueuedExpressionChatPayload;
     LHttp: TRpDatabaseHttp;
     LNeedRetry: Boolean;
     LRetryMessage: string;
@@ -957,15 +1045,9 @@ begin
             ResetExpressionStreamState;
             if LNeedRetry then
             begin
-              TThread.Queue(nil,
-                procedure
-                begin
-                  if FExpressionChat <> nil then
-                  begin
-                    FExpressionChat.AddAssistantMessage('Local validation failed. Running one automatic fix.');
-                    FExpressionChat.BeginStreamingResponse;
-                  end;
-                end);
+              LChatPayload := TRpQueuedExpressionChatPayload.Create;
+              LChatPayload.Kind := rpqecBeginRetry;
+              PostExpressionChatPayload(LChatPayload);
             end;
 
             LHttp.SuggestExpressionStream(LPrompt, LCurrentExpression, LCursorPosition,
@@ -974,30 +1056,19 @@ begin
 
             if FCancelExpressionRequest then
             begin
-              TThread.Queue(nil,
-                procedure
-                begin
-                  if FExpressionChat <> nil then
-                  begin
-                    FExpressionChat.FinishStreamingResponse;
-                    FExpressionChat.AddAssistantMessage('Generation stopped.');
-                  end;
-                end);
+              LChatPayload := TRpQueuedExpressionChatPayload.Create;
+              LChatPayload.Kind := rpqecGenerationStopped;
+              PostExpressionChatPayload(LChatPayload);
               Exit;
             end;
 
             if not ExtractExpressionFromApiResult(FExpressionStreamResult,
               LExpression, LExplanation, LErrorMessage) then
             begin
-              TThread.Queue(nil,
-                procedure
-                begin
-                  if FExpressionChat <> nil then
-                  begin
-                    FExpressionChat.FinishStreamingResponse;
-                    FExpressionChat.AddAssistantMessage(LErrorMessage);
-                  end;
-                end);
+              LChatPayload := TRpQueuedExpressionChatPayload.Create;
+              LChatPayload.Kind := rpqecAddAssistantMessage;
+              LChatPayload.Text1 := LErrorMessage;
+              PostExpressionChatPayload(LChatPayload);
               Exit;
             end;
 
@@ -1006,16 +1077,11 @@ begin
               LUserProfile := TJSONObject((FExpressionStreamResult.Values['userProfile'] as TJSONObject).Clone);
             if LUserProfile <> nil then
             begin
-              TThread.Queue(nil,
-                procedure
-                begin
-                  try
-                    if FExpressionChat <> nil then
-                      FExpressionChat.UpdateUserProfile(LUserProfile);
-                  finally
-                    LUserProfile.Free;
-                  end;
-                end);
+              LChatPayload := TRpQueuedExpressionChatPayload.Create;
+              LChatPayload.Kind := rpqecUpdateUserProfile;
+              LChatPayload.UserProfile := LUserProfile;
+              LUserProfile := nil;
+              PostExpressionChatPayload(LChatPayload);
             end;
 
             if (not LNeedRetry) and (not ValidateExpressionText(LExpression, LErrorMessage)) then
@@ -1036,12 +1102,11 @@ begin
                   LErrorMessage + sLineBreak + sLineBreak +
                   'You can still apply it and edit it manually.';
 
-              TThread.Queue(nil,
-                procedure
-                begin
-                  if FExpressionChat <> nil then
-                    FExpressionChat.SetSuggestedExpression(LExpression, LRetryMessage);
-                end);
+              LChatPayload := TRpQueuedExpressionChatPayload.Create;
+              LChatPayload.Kind := rpqecSetSuggestedExpression;
+              LChatPayload.Text1 := LExpression;
+              LChatPayload.Text2 := LRetryMessage;
+              PostExpressionChatPayload(LChatPayload);
               Exit;
             end;
 
@@ -1061,32 +1126,28 @@ begin
               LRetryMessage := 'Expression generated.';
           end;
 
-            TThread.Queue(nil,
-              procedure
-              begin
-                if FExpressionChat <> nil then
-                  FExpressionChat.SetSuggestedExpression(LExpression, LRetryMessage);
-              end);
+            LChatPayload := TRpQueuedExpressionChatPayload.Create;
+            LChatPayload.Kind := rpqecSetSuggestedExpression;
+            LChatPayload.Text1 := LExpression;
+            LChatPayload.Text2 := LRetryMessage;
+            PostExpressionChatPayload(LChatPayload);
             Break;
           until False;
         except
           on E: Exception do
           begin
-            TThread.Queue(nil,
-              procedure
-              begin
-                if FExpressionChat <> nil then
-                begin
-                  FExpressionChat.FinishStreamingResponse;
-                  FExpressionChat.AddAssistantMessage(E.Message);
-                end;
-              end);
+            LChatPayload := TRpQueuedExpressionChatPayload.Create;
+            LChatPayload.Kind := rpqecAddAssistantMessage;
+            LChatPayload.Text1 := E.Message;
+            PostExpressionChatPayload(LChatPayload);
           end;
         end;
     finally
       LHttp.Free;
     end;
-   end);
+  end);
+ LWorker.FreeOnTerminate := True;
+ LWorker.Start;
 end;
 
 procedure TFRpExpredialogVCL.ExpressionChatApplySuggestion(Sender: TObject;

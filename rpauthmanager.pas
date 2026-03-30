@@ -17,6 +17,7 @@ interface
 {$I rpconf.inc}
 
 uses
+  Winapi.Windows, Winapi.Messages,
   SysUtils, Classes, System.JSON, System.NetEncoding, System.DateUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent,
@@ -62,6 +63,12 @@ type
   { TRpAuthLog }
   TRpAuthLog = procedure(const AMsg: string) of object;
 
+  TRpQueuedAuthListenerPayload = class(TObject)
+  public
+    Listener: TRpAuthEvent;
+    Success: Boolean;
+  end;
+
   { TRpAuthManager }
   TRpAuthManager = class
   private
@@ -73,10 +80,12 @@ type
     FAIEnabled: Boolean;
     FOnLog: TRpAuthLog;
     FAuthListeners: TList<TRpAuthEvent>;
+    FDispatchHandle: HWND;
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+    procedure DispatchWndProc(var Msg: TMessage);
 
     class var FInstance: TRpAuthManager;
     constructor Create;
@@ -134,7 +143,10 @@ type
 
 implementation
 
-uses Winapi.Windows, Winapi.WinSock, Forms, IniFiles, IOUtils;
+uses Winapi.WinSock, Forms, IniFiles, IOUtils;
+
+const
+  WM_RP_AUTH_DISPATCH = WM_USER + 210;
 
 { TRpAuthManager }
 
@@ -144,6 +156,7 @@ begin
   FIsLoggedIn := False;
   FAIEnabled := True;
   FAuthListeners := TList<TRpAuthEvent>.Create;
+  FDispatchHandle := AllocateHWnd(DispatchWndProc);
   FInstallId := GenerateInstallId;
   LoadConfig;
 end;
@@ -168,8 +181,28 @@ end;
 
 destructor TRpAuthManager.Destroy;
 begin
+  if FDispatchHandle <> 0 then
+    DeallocateHWnd(FDispatchHandle);
   FAuthListeners.Free;
   inherited Destroy;
+end;
+
+procedure TRpAuthManager.DispatchWndProc(var Msg: TMessage);
+var
+  LPayload: TRpQueuedAuthListenerPayload;
+begin
+  if Msg.Msg = WM_RP_AUTH_DISPATCH then
+  begin
+    LPayload := TRpQueuedAuthListenerPayload(Msg.WParam);
+    try
+      if (LPayload <> nil) and Assigned(LPayload.Listener) then
+        LPayload.Listener(LPayload.Success);
+    finally
+      LPayload.Free;
+    end;
+  end
+  else
+    Msg.Result := DefWindowProc(FDispatchHandle, Msg.Msg, Msg.WParam, Msg.LParam);
 end;
 
 procedure TRpAuthManager.Log(const AMsg: string);
@@ -407,15 +440,19 @@ begin
 end;
 
 procedure TRpAuthManager.DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+var
+  LPayload: TRpQueuedAuthListenerPayload;
 begin
   if GetCurrentThreadId = MainThreadID then
     AListener(ASuccess)
   else
-    TThread.Queue(nil,
-      procedure
-      begin
-        AListener(ASuccess);
-      end);
+  begin
+    LPayload := TRpQueuedAuthListenerPayload.Create;
+    LPayload.Listener := AListener;
+    LPayload.Success := ASuccess;
+    if not PostMessage(FDispatchHandle, WM_RP_AUTH_DISPATCH, WPARAM(LPayload), 0) then
+      LPayload.Free;
+  end;
 end;
 
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
@@ -1149,9 +1186,11 @@ begin
     FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
     
     FIsLoggedIn := FToken <> '';
-    
+
+    // Do not touch the network while constructing the singleton.
+    // UI code triggers status refresh explicitly after the dialog is visible.
     if FIsLoggedIn then
-      CheckStatus;
+      Log('LoadConfig: deferred CheckStatus until explicit background refresh.');
   finally
     LIni.Free;
   end;

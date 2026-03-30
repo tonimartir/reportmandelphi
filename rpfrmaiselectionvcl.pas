@@ -16,7 +16,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON, System.Threading,
+  Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON,
   rpauthmanager;
 
 type
@@ -88,12 +88,16 @@ begin
 end;
 
 procedure TFRpAISelectionVCL.RefreshStatusInBackground;
+var
+  LWorker: TThread;
 begin
-  TTask.Run(
+  LWorker := TThread.CreateAnonymousThread(
     procedure
     begin
       TRpAuthManager.Instance.CheckStatus;
     end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
 end;
 
 procedure TFRpAISelectionVCL.Resize;

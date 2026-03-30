@@ -77,14 +77,18 @@ type
     FInferenceRunning: Boolean;
     FRestartPendingInference: Boolean;
     FLastAutoCompleteSql: string;
+    FAuthUIUpdateVersion: Integer;
     procedure AIToggleClick(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ClearSchemaItems;
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
-    procedure LoadUserSchemas;
-    procedure LoadUserAgents;
+    function LoadUserSchemas(AList: TStrings): Boolean;
+    function LoadUserAgents(AList: TStrings): Boolean;
+    procedure ApplyUserSchemas(AList: TStrings);
+    procedure ApplyUserAgents(AList: TStrings; const ASelectedTier: string;
+      ASelectedAgentAiId: Int64);
     procedure SelectCurrentSchema;
     procedure SetSQL(const Value: string);
     procedure SetHubDatabaseId(const Value: Int64);
@@ -112,6 +116,32 @@ implementation
 
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
+
+type
+  TMonacoAuthRefreshPayload = class
+  public
+    RequestVersion: Integer;
+    SelectedTier: string;
+    SelectedAgentAiId: Int64;
+    Schemas: TStringList;
+    Agents: TStringList;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+constructor TMonacoAuthRefreshPayload.Create;
+begin
+  inherited Create;
+  Schemas := TStringList.Create;
+  Agents := TStringList.Create;
+end;
+
+destructor TMonacoAuthRefreshPayload.Destroy;
+begin
+  Agents.Free;
+  Schemas.Free;
+  inherited Destroy;
+end;
 
 procedure TAIToggleButton.Paint;
 var
@@ -223,6 +253,7 @@ var
 begin
   inherited Create(AOwner);
   FEditorReady := False;
+  FAuthUIUpdateVersion := 0;
 
   // 1. Determine safe extraction path in %LOCALAPPDATA%
   FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
@@ -399,10 +430,27 @@ begin
   ComboSchema.Clear;
 end;
 
-procedure TFRpMonacoEditorVCL.LoadUserSchemas;
+function TFRpMonacoEditorVCL.LoadUserSchemas(AList: TStrings): Boolean;
 var
   LHttp: TRpDatabaseHttp;
-  LSchemas: TStringList;
+begin
+  Result := False;
+  AList.Clear;
+  if TRpAuthManager.Instance.Token = '' then
+    Exit;
+
+  LHttp := TRpDatabaseHttp.Create;
+  try
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    Result := LHttp.GetUserSchemas(AList);
+  finally
+    LHttp.Free;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.ApplyUserSchemas(AList: TStrings);
+var
   I: Integer;
   LSchemaName: string;
   LSchemaValue: string;
@@ -418,43 +466,23 @@ begin
   try
     ClearSchemaItems;
     ComboSchema.Items.Add('');
-    if TRpAuthManager.Instance.Token = '' then
+    for I := 0 to AList.Count - 1 do
     begin
-      SelectCurrentSchema;
-      Exit;
-    end;
-
-    LSchemas := TStringList.Create;
-    try
-      LHttp := TRpDatabaseHttp.Create;
-      try
-        LHttp.Token := TRpAuthManager.Instance.Token;
-        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-        if LHttp.GetUserSchemas(LSchemas) then
-        begin
-          for I := 0 to LSchemas.Count - 1 do
-          begin
-            LSchemaName := LSchemas.Names[I];
-            LSchemaValue := LSchemas.ValueFromIndex[I];
-            LPosSep := Pos('|', LSchemaValue);
-            if LPosSep > 0 then
-            begin
-              LHubDatabaseId := StrToInt64Def(Copy(LSchemaValue, 1, LPosSep - 1), 0);
-              LSchemaId := StrToInt64Def(Copy(LSchemaValue, LPosSep + 1, MaxInt), 0);
-            end
-            else
-            begin
-              LHubDatabaseId := 0;
-              LSchemaId := StrToInt64Def(LSchemaValue, 0);
-            end;
-            ComboSchema.Items.AddObject(LSchemaName, TSchemaComboItem.Create(LHubDatabaseId, LSchemaId));
-          end;
-        end;
-      finally
-        LHttp.Free;
+      LSchemaName := AList.Names[I];
+      LSchemaValue := AList.ValueFromIndex[I];
+      LPosSep := Pos('|', LSchemaValue);
+      if LPosSep > 0 then
+      begin
+        LHubDatabaseId := StrToInt64Def(Copy(LSchemaValue, 1, LPosSep - 1), 0);
+        LSchemaId := StrToInt64Def(Copy(LSchemaValue, LPosSep + 1, MaxInt), 0);
+      end
+      else
+      begin
+        LHubDatabaseId := 0;
+        LSchemaId := StrToInt64Def(LSchemaValue, 0);
       end;
-    finally
-      LSchemas.Free;
+      ComboSchema.Items.AddObject(LSchemaName,
+        TSchemaComboItem.Create(LHubDatabaseId, LSchemaId));
     end;
 
     SelectCurrentSchema;
@@ -464,10 +492,28 @@ begin
   end;
 end;
 
-procedure TFRpMonacoEditorVCL.LoadUserAgents;
+function TFRpMonacoEditorVCL.LoadUserAgents(AList: TStrings): Boolean;
 var
   LHttp: TRpDatabaseHttp;
-  LAgents: TStringList;
+begin
+  Result := False;
+  AList.Clear;
+  if TRpAuthManager.Instance.Token = '' then
+    Exit;
+
+  LHttp := TRpDatabaseHttp.Create;
+  try
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    Result := LHttp.GetUserAgents(AList);
+  finally
+    LHttp.Free;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.ApplyUserAgents(AList: TStrings;
+  const ASelectedTier: string; ASelectedAgentAiId: Int64);
+var
   I: Integer;
   LAgentName: string;
   LAgentValue: string;
@@ -475,58 +521,32 @@ var
   LAgentAiId: Int64;
   LAgentSecret: string;
   LAgentOnline: Boolean;
-  LSelectedTier: string;
-  LSelectedAgentAiId: Int64;
 begin
-  LSelectedTier := FAISelection.AITier;
-  LSelectedAgentAiId := FAISelection.AgentAiId;
-
   FAISelection.ClearAgentEndpoints;
 
-  if TRpAuthManager.Instance.Token = '' then
-  begin
-    FAISelection.RestoreProviderSelection(LSelectedTier, LSelectedAgentAiId);
-    Exit;
-  end;
-
-  LAgents := TStringList.Create;
+  LParts := TStringList.Create;
   try
-    LHttp := TRpDatabaseHttp.Create;
-    try
-      LHttp.Token := TRpAuthManager.Instance.Token;
-      LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-      if LHttp.GetUserAgents(LAgents) then
+    LParts.Delimiter := '|';
+    LParts.StrictDelimiter := True;
+    for I := 0 to AList.Count - 1 do
+    begin
+      LAgentName := AList.Names[I];
+      LAgentValue := AList.ValueFromIndex[I];
+      LParts.DelimitedText := LAgentValue;
+      if LParts.Count >= 2 then
       begin
-        LParts := TStringList.Create;
-        try
-          LParts.Delimiter := '|';
-          LParts.StrictDelimiter := True;
-          for I := 0 to LAgents.Count - 1 do
-          begin
-            LAgentName := LAgents.Names[I];
-            LAgentValue := LAgents.ValueFromIndex[I];
-            LParts.DelimitedText := LAgentValue;
-            if LParts.Count >= 2 then
-            begin
-              LAgentAiId := StrToInt64Def(LParts[0], 0);
-              LAgentSecret := LParts[1];
-              LAgentOnline := (LParts.Count >= 3) and (LParts[2] = '1');
-              if LAgentOnline then
-                FAISelection.AddAgentEndpoint(LAgentAiId, LAgentSecret, LAgentName, True);
-            end;
-          end;
-        finally
-          LParts.Free;
-        end;
+        LAgentAiId := StrToInt64Def(LParts[0], 0);
+        LAgentSecret := LParts[1];
+        LAgentOnline := (LParts.Count >= 3) and (LParts[2] = '1');
+        if LAgentOnline then
+          FAISelection.AddAgentEndpoint(LAgentAiId, LAgentSecret, LAgentName, True);
       end;
-    finally
-      LHttp.Free;
     end;
   finally
-    LAgents.Free;
+    LParts.Free;
   end;
 
-  FAISelection.RestoreProviderSelection(LSelectedTier, LSelectedAgentAiId);
+  FAISelection.RestoreProviderSelection(ASelectedTier, ASelectedAgentAiId);
 end;
 
 procedure TFRpMonacoEditorVCL.SetSchema(const ASchema: string);
@@ -547,7 +567,7 @@ begin
 
   FHubDatabaseId := Value;
   if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
-    LoadUserSchemas;
+    UpdateAuthUI;
 end;
 
 procedure TFRpMonacoEditorVCL.SetHubSchemaId(const Value: Int64);
@@ -994,36 +1014,121 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;
+var
+  LLoggedIn: Boolean;
+  LAIEnabled: Boolean;
+  LSelectedTier: string;
+  LSelectedAgentAiId: Int64;
+  LRequestVersion: Integer;
+  LNeedsSchemas: Boolean;
+  LNeedsAgents: Boolean;
+  LWorker: TThread;
 begin
+  Inc(FAuthUIUpdateVersion);
+  LRequestVersion := FAuthUIUpdateVersion;
+  LLoggedIn := TRpAuthManager.Instance.IsLoggedIn;
+  LAIEnabled := TRpAuthManager.Instance.AIEnabled;
+  if FAISelection <> nil then
+  begin
+    LSelectedTier := FAISelection.AITier;
+    LSelectedAgentAiId := FAISelection.AgentAiId;
+  end
+  else
+  begin
+    LSelectedTier := '';
+    LSelectedAgentAiId := 0;
+  end;
+
   if FAIButton <> nil then
   begin
-    FAIButton.Down := TRpAuthManager.Instance.AIEnabled;
+    FAIButton.Down := LAIEnabled;
     FAIButton.Invalidate;
   end;
 
-  ComboSchema.Enabled := TRpAuthManager.Instance.IsLoggedIn;
-  if not TRpAuthManager.Instance.IsLoggedIn then
+  ComboSchema.Enabled := LLoggedIn;
+  if not LLoggedIn then
   begin
     ComboSchema.Clear;
-    FAISelection.ClearAgentEndpoints;
-  end
-  else if ComboSchema.Items.Count = 0 then
-    LoadUserSchemas
-  else
+    if FAISelection <> nil then
+    begin
+      FAISelection.ClearAgentEndpoints;
+      FAISelection.Visible := LAIEnabled;
+      if not FAISelection.Visible then
+        FAISelection.SetInferenceProgress(False);
+      FAISelection.RefreshState;
+    end;
+    LayoutTopControls;
+    Exit;
+  end;
+
+  if ComboSchema.Items.Count > 0 then
     SelectCurrentSchema;
 
-  if TRpAuthManager.Instance.IsLoggedIn and (FAISelection.AgentEndpointCount = 0) then
-    LoadUserAgents;
+  LNeedsSchemas := ComboSchema.Items.Count = 0;
+  LNeedsAgents := (FAISelection <> nil) and (FAISelection.AgentEndpointCount = 0);
 
   if FAISelection <> nil then
   begin
-    FAISelection.Visible := TRpAuthManager.Instance.AIEnabled;
+    FAISelection.Visible := LAIEnabled;
     if not FAISelection.Visible then
       FAISelection.SetInferenceProgress(False);
     FAISelection.RefreshState;
   end;
 
   LayoutTopControls;
+
+  if not (LNeedsSchemas or LNeedsAgents) then
+    Exit;
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LPayload: TMonacoAuthRefreshPayload;
+    begin
+      LPayload := TMonacoAuthRefreshPayload.Create;
+      try
+        LPayload.RequestVersion := LRequestVersion;
+        LPayload.SelectedTier := LSelectedTier;
+        LPayload.SelectedAgentAiId := LSelectedAgentAiId;
+        if LNeedsSchemas then
+          LoadUserSchemas(LPayload.Schemas);
+        if LNeedsAgents then
+          LoadUserAgents(LPayload.Agents);
+
+        TThread.Queue(nil,
+          procedure
+          begin
+            try
+              if (csDestroying in ComponentState) or
+                (LPayload.RequestVersion <> FAuthUIUpdateVersion) then
+                Exit;
+
+              if LNeedsSchemas then
+                ApplyUserSchemas(LPayload.Schemas);
+              if LNeedsAgents then
+                ApplyUserAgents(LPayload.Agents, LPayload.SelectedTier,
+                  LPayload.SelectedAgentAiId);
+
+              if FAISelection <> nil then
+              begin
+                FAISelection.Visible := TRpAuthManager.Instance.AIEnabled;
+                if not FAISelection.Visible then
+                  FAISelection.SetInferenceProgress(False);
+                FAISelection.RefreshState;
+              end;
+
+              LayoutTopControls;
+            finally
+              LPayload.Free;
+            end;
+          end);
+        LPayload := nil;
+      finally
+        LPayload.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
 end;
 
 procedure TFRpMonacoEditorVCL.AuthChanged(ASuccess: Boolean);
