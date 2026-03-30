@@ -21,6 +21,11 @@ uses
   System.Zip, System.IOUtils, System.Threading;
 
 type
+  IEditorGuard = interface
+    function IsCancelled: Boolean;
+    procedure Invalidate;
+  end;
+
   TAIToggleButton = class(TSpeedButton)
   protected
     procedure Paint; override;
@@ -78,6 +83,7 @@ type
     FRestartPendingInference: Boolean;
     FLastAutoCompleteSql: string;
     FAuthUIUpdateVersion: Integer;
+    FGuard: IEditorGuard;
     procedure AIToggleClick(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
@@ -117,7 +123,19 @@ implementation
 {$R *.dfm}
 {$R MonacoEditorAssets.res}
 
+uses
+  rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ComCtrls, Vcl.ToolWin, Vcl.ActnList;
+
 type
+  TEditorGuard = class(TInterfacedObject, IEditorGuard)
+  private
+    FActive: Boolean;
+  public
+    constructor Create;
+    function IsCancelled: Boolean;
+    procedure Invalidate;
+  end;
+
   TMonacoAuthRefreshPayload = class
   public
     RequestVersion: Integer;
@@ -128,6 +146,22 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+
+constructor TEditorGuard.Create;
+begin
+  inherited Create;
+  FActive := True;
+end;
+
+function TEditorGuard.IsCancelled: Boolean;
+begin
+  Result := not FActive;
+end;
+
+procedure TEditorGuard.Invalidate;
+begin
+  FActive := False;
+end;
 
 constructor TMonacoAuthRefreshPayload.Create;
 begin
@@ -252,6 +286,7 @@ var
   LDllPath: string;
 begin
   inherited Create(AOwner);
+  FGuard := TEditorGuard.Create;
   FEditorReady := False;
   FAuthUIUpdateVersion := 0;
 
@@ -333,6 +368,8 @@ end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
 begin
+  if FGuard <> nil then
+    FGuard.Invalidate;
   if Edge.WebViewCreated then
     Edge.CloseWebView;
   ClearSchemaItems;
@@ -816,9 +853,12 @@ end;
 
 procedure TFRpMonacoEditorVCL.StartPendingInference;
 var
+  LGuard: IEditorGuard;
+  LCurrentVersion: Integer;
   LStartRequestId: string;
   LStartSql: string;
   LStartPos: Integer;
+  LTaskProc: TProc;
 begin
   if FInferenceRunning then
     Exit;
@@ -835,10 +875,11 @@ begin
   FLastAutoCompleteSql := LStartSql;
   FInferenceRunning := True;
   FRestartPendingInference := False;
+  LGuard := FGuard;
+  LCurrentVersion := FAuthUIUpdateVersion;
 
   // Create AI completion task (asynchronous)
-  FInferenceTask := TTask.Run(
-    procedure
+  LTaskProc := procedure
     var
       LHttp: TRpDatabaseHttp;
       LRequestId, LSql: string;
@@ -852,17 +893,18 @@ begin
       LItem: TJSONObject;
       LUAIMode: string;
       LShouldRestart: Boolean;
+      LInnerQueueProc: TThreadProcedure;
     begin
       LRequestId := LStartRequestId;
       LSql := LStartSql;
       LPos := LStartPos;
       
-      TThread.Queue(nil,
-        procedure
+      LInnerQueueProc := procedure
         begin
-          if not (csDestroying in ComponentState) then
+          if (LGuard <> nil) and (not LGuard.IsCancelled) then
             FAISelection.SetInferenceProgress(True);
-        end);
+        end;
+      TThread.Queue(nil, LInnerQueueProc);
 
       LHttp := TRpDatabaseHttp.Create;
       try
@@ -937,28 +979,29 @@ begin
           if (LVal <> nil) and (LVal is TJSONObject) then
           begin
              LItem := LVal.Clone as TJSONObject;
-             TThread.Queue(nil,
-               procedure
+             LInnerQueueProc := procedure
                begin
                  try
-                   if not (csDestroying in ComponentState) then
+                   if (LGuard <> nil) and (not LGuard.IsCancelled) then
                      TRpAuthManager.Instance.UpdateProfileFromJson(LItem);
                  finally
                    LItem.Free;
                  end;
-               end);
+               end;
+             TThread.Queue(nil, LInnerQueueProc);
           end;
         finally
           LResponse.Free;
         end;
 
         // Dispatch back to main thread for WebView interaction
-        TThread.Queue(nil,
-          procedure
+        LInnerQueueProc := procedure
           begin
             LShouldRestart := False;
-            if not (csDestroying in ComponentState) then
+            if (LGuard <> nil) and (not LGuard.IsCancelled) then
             begin
+              if LRequestId <> FPendingRequestId then
+                Exit;
               SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
               FAISelection.SetInferenceProgress(False);
               LShouldRestart := FRestartPendingInference and (FPendingRequestId <> LRequestId);
@@ -974,12 +1017,13 @@ begin
               FInferenceRunning := False;
               FRestartPendingInference := False;
             end;
-          end);
+          end;
+        TThread.Queue(nil, LInnerQueueProc);
       finally
         LHttp.Free;
       end;
-    end
-  );
+    end;
+  FInferenceTask := TTask.Run(LTaskProc);
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
@@ -1023,8 +1067,12 @@ var
   LNeedsSchemas: Boolean;
   LNeedsAgents: Boolean;
   LWorker: TThread;
+  LGuard: IEditorGuard;
+  LCurrentVersion: Integer;
+  LQueueProc: TThreadProcedure;
 begin
   Inc(FAuthUIUpdateVersion);
+  LCurrentVersion := FAuthUIUpdateVersion;
   LRequestVersion := FAuthUIUpdateVersion;
   LLoggedIn := TRpAuthManager.Instance.IsLoggedIn;
   LAIEnabled := TRpAuthManager.Instance.AIEnabled;
@@ -1080,12 +1128,15 @@ begin
   if not (LNeedsSchemas or LNeedsAgents) then
     Exit;
 
+  LGuard := FGuard;
   LWorker := TThread.CreateAnonymousThread(
     procedure
     var
       LPayload: TMonacoAuthRefreshPayload;
+      LHasQueued: Boolean;
     begin
       LPayload := TMonacoAuthRefreshPayload.Create;
+      LHasQueued := False;
       try
         LPayload.RequestVersion := LRequestVersion;
         LPayload.SelectedTier := LSelectedTier;
@@ -1095,12 +1146,11 @@ begin
         if LNeedsAgents then
           LoadUserAgents(LPayload.Agents);
 
-        TThread.Queue(nil,
-          procedure
+        LQueueProc := procedure
           begin
             try
-              if (csDestroying in ComponentState) or
-                (LPayload.RequestVersion <> FAuthUIUpdateVersion) then
+              if (LGuard = nil) or LGuard.IsCancelled or
+                (LPayload.RequestVersion <> LCurrentVersion) then
                 Exit;
 
               if LNeedsSchemas then
@@ -1121,10 +1171,12 @@ begin
             finally
               LPayload.Free;
             end;
-          end);
-        LPayload := nil;
+          end;
+        TThread.Queue(nil, LQueueProc);
+        LHasQueued := True;
       finally
-        LPayload.Free;
+        if not LHasQueued then
+          LPayload.Free;
       end;
     end);
   LWorker.FreeOnTerminate := True;
@@ -1137,4 +1189,3 @@ begin
 end;
 
 end.
-

@@ -69,7 +69,7 @@ var
 procedure ShowDataConfig(report:TRpReport);
 begin
  if GDataConfigDialog = nil then
-  GDataConfigDialog := TFRpDInfoVCL.Create(Application);
+  GDataConfigDialog := TFRpDInfoVCL.Create(nil);
  GDataConfigDialog.report := report;
  GDataConfigDialog.ShowModal;
 end;

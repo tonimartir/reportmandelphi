@@ -94,23 +94,9 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Style = csDropDownList
         TabOrder = 0
       end
-      object PLoginControl: TPanel
-        AlignWithMargins = True
-        Left = 212
-        Top = 5
-        Width = 200
-        Height = 40
-        Margins.Left = 8
-        Margins.Top = 5
-        Margins.Right = 8
-        Margins.Bottom = 5
-        Align = alClient
-        BevelOuter = bvNone
-        TabOrder = 1
-      end
       object PSchemaConfigHost: TPanel
         AlignWithMargins = True
-        Left = 166
+        Left = 158
         Top = 8
         Width = 30
         Height = 34
@@ -121,10 +107,26 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 2
+        ExplicitLeft = 166
+      end
+      object PLoginControl: TPanel
+        AlignWithMargins = True
+        Left = 204
+        Top = 5
+        Width = 200
+        Height = 40
+        Margins.Left = 8
+        Margins.Top = 5
+        Margins.Right = 8
+        Margins.Bottom = 5
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 1
+        ExplicitLeft = 212
       end
       object PAIButtonHost: TPanel
         AlignWithMargins = True
-        Left = 428
+        Left = 420
         Top = 8
         Width = 52
         Height = 34
@@ -135,12 +137,13 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 3
+        ExplicitLeft = 428
       end
       object PAISelectionHost: TPanel
         AlignWithMargins = True
-        Left = 496
+        Left = 488
         Top = 0
-        Width = 254
+        Width = 262
         Height = 50
         Margins.Left = 8
         Margins.Top = 0
@@ -149,6 +152,8 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 4
+        ExplicitLeft = 496
+        ExplicitWidth = 254
       end
     end
   end
