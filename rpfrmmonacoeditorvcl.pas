@@ -715,6 +715,7 @@ var
   LType: string;
   LNewSQL: string;
 begin
+  OutputDebugString(PChar('MonacoWebMessage: ' + LMessage));
   if FUpdatingFromBrowser then 
     Exit;
 
@@ -785,34 +786,75 @@ begin
   TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
 end;
 
+function CalculateCursorPosition(const ACode: string; ALineNumber, AColumn: Integer): Integer;
+var
+  LLines: TArray<string>;
+  I: Integer;
+begin
+  // Dividimos estrictamente por #10 igual que .Split('\n') en C#
+  LLines := ACode.Split([#10]);
+  Result := 0;
+
+  // C# equivalent: for (int i = 0; i < lineNumber - 1 && i < lines.Length; i++)
+  for I := 0 to ALineNumber - 2 do
+  begin
+    if I >= Length(LLines) then
+      Break;
+    Result := Result + Length(LLines[I]) + 1; // +1 al restituir el salto de línea eliminado
+  end;
+
+  Result := Result + AColumn - 1;
+  if Result < 0 then
+    Result := 0;
+end;
+
 procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
 var
-  LVal: TJSONValue;
-  LEmptyInlineItems: TJSONArray;
-  LEmptyCompletionItems: TJSONArray;
+  LVal, LValL, LValC: TJSONValue;
+  LEmptyInlineItems, LEmptyCompletionItems: TJSONArray;
+  LLineNumber, LColumn: Integer;
 begin
   FDebounceTimer.Enabled := False;
   
   FPendingRequestId := '';
-  LVal := ARequest.Values['requestId'];
+  LVal := ARequest.GetValue('requestId');
   if (LVal <> nil) and (not LVal.Null) then
     FPendingRequestId := LVal.Value;
 
   FPendingSql := '';
-  LVal := ARequest.Values['code'];
+  LVal := ARequest.GetValue('code');
   if (LVal <> nil) and (not LVal.Null) then
     FPendingSql := LVal.Value;
 
   FPendingPos := 0;
-  LVal := ARequest.Values['position'];
+  LVal := ARequest.GetValue('position');
   if (LVal <> nil) and (not LVal.Null) then
   begin
-    if LVal is TJSONNumber then
-      FPendingPos := TJSONNumber(LVal).AsInt
+    if LVal is TJSONObject then
+    begin
+      // Recibimos un objeto { lineNumber: X, column: Y } tal cual esperas
+      LLineNumber := 1;
+      LColumn := 1;
+      
+      LValL := TJSONObject(LVal).GetValue('lineNumber');
+      if (LValL <> nil) and (not LValL.Null) then
+        LLineNumber := StrToIntDef(LValL.ToString.Replace('"', ''), 1);
+
+      LValC := TJSONObject(LVal).GetValue('column');
+      if (LValC <> nil) and (not LValC.Null) then
+        LColumn := StrToIntDef(LValC.ToString.Replace('"', ''), 1);
+
+      // Calculamos el cursor character offset como en tu C# code
+      FPendingPos := CalculateCursorPosition(FPendingSql, LLineNumber, LColumn);
+    end
     else
-      FPendingPos := StrToIntDef(LVal.Value, 0);
+    begin
+      // Si llegara plano por algún motivo
+      FPendingPos := StrToIntDef(LVal.ToString.Replace('"', ''), 0);
+    end;
   end;
 
+  // Restaurado a petición: cancela la inferencia devolviendo vacío si el texto no ha cambiado (ej: solo movimiento de cursor)
   if FPendingSql = FLastAutoCompleteSql then
   begin
     LEmptyInlineItems := TJSONArray.Create;
