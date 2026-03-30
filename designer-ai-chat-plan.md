@@ -1,64 +1,72 @@
-## Plan: Designer AI Chat
+## Plan: ReportMan AI Multiplataforma
 
-Integrar un chat de IA persistente en el diseñador principal de Report Manager, reutilizando la infraestructura ya creada para autenticación, selección de modelo/agente, streaming y chat contextual, pero ampliándola para operar sobre el informe completo. El flujo será único: modificar el informe actual. Si el usuario pide crear uno nuevo, el sistema ejecutará antes `report new` y continuará por el mismo pipeline de modificación, siempre con cambios aplicados de forma segura y compatibles con UndoCue.
+Replantear la integración de IA para que la lógica principal no viva dentro de ningún diseñador concreto. El núcleo debe residir en `C:\desarrollo\ReportmanAI\Reportman.AI.Api`, los contratos compartidos en `C:\desarrollo\ReportmanAI\Reportman.AI.Query`, y Delphi/C#/web deben actuar como adaptadores finos que serializan contexto, envían una única petición principal de IA y aplican localmente las operaciones devueltas con su propio sistema nativo de undo/historial.
 
 **Steps**
-1. Añadir un panel lateral compartido para IA y cola de deshacer en el diseñador principal dentro de `c:\desarrollo\prog\toni\reportman\rpmdfmainvcl.pas` y `c:\desarrollo\prog\toni\reportman\rpmdfmainvcl.dfm`, siguiendo el patrón ya usado para `fcuepanel` y `fcuesplitter`. El panel debe contener ambas vistas en pestañas distintas, con la pestaña del chat activa por omisión al abrir la interfaz. Su ciclo de vida debe seguir gestionado desde `CreateInterface` / `FreeInterface`. *Bloquea el resto*.
-2. Crear un frame específico para chat de diseñador, preferiblemente en un nuevo archivo VCL reutilizable, tomando como base `c:\desarrollo\prog\toni\reportman\rpfrmexpressionchatvcl.pas` y `c:\desarrollo\prog\toni\reportman\rpfrmaiselectionvcl.pas`. Debe conservar: login embebido, selección de tier/agente, streaming asíncrono, botones de enviar/aplicar/limpiar y layout adaptable. Debe excluir lo específico del diálogo de expresiones. *Depende de 1*.
-3. Definir una capa de contexto de diseño que el chat pueda consultar antes de cada prompt. Esa capa debe exponer: estructura del informe (subreports, sections, componentes), selección actual del diseñador, datasets/aliases/campos disponibles, parámetros, y posiblemente propiedades visuales relevantes. El contexto debe construirse desde el estado del diseñador/report actual sin acoplar el chat a controles visuales concretos. *Depende de 2*.
-4. Diseñar un contrato de prompts y respuestas para un único flujo de trabajo: modificar el informe actual. Si el usuario pide crear uno nuevo, el sistema hará `report new` antes de procesar la solicitud y seguirá exactamente el mismo pipeline. Separar claramente respuestas informativas de respuestas aplicables. Para cambios aplicables, la IA debe devolver una representación estructurada de acciones sobre el diseñador, no solo texto libre. *Depende de 3*.
-5. Integrar la aplicación de cambios con UndoCue usando la arquitectura existente del repositorio. Toda operación sugerida por IA que modifique el informe debe traducirse a operaciones undoables (`add`, `modify`, `remove`, `reorder`) y refrescar inmediatamente el cue view. Esto incluye creación de secciones, componentes, cambios de propiedades y enlaces a datasets. *Depende de 4*.
-6. Implementar un pipeline de aplicación incremental para el diseñador principal: previsualizar la propuesta, validar referencias (dataset, alias, componente, section), aplicar cambios por lotes coherentes y abortar con mensaje claro si alguna referencia no existe. Recomendación: empezar por un subconjunto seguro de operaciones y ampliar después. *Depende de 5*.
-7. Añadir soporte para resetear el informe cuando el usuario pida uno nuevo: ejecutar `report new`, reconstruir el contexto base del diseñador y continuar la petición como una modificación normal del informe recién creado. *Depende de 5 y 6*.
-8. Añadir soporte de contexto para modificación del informe actual: cuando exista selección actual o contexto activo, el chat debe poder operar sobre componentes concretos, secciones concretas o el informe entero. Recomendación: enriquecer el contexto con selección, jerarquía y nombres internos, no solo captions. *Depende de 3, 5 y 6*.
-9. Reutilizar la infraestructura de autenticación y carga de agentes existente (`TRpAuthManager`, `TFRpAISelectionVCL`, patrón `TThread.CreateAnonymousThread` + `PostMessage`) para que el panel de diseñador no reimplemente login ni refresco de agentes. *Paralelo con 2 una vez fijada la API del frame*.
-10. Añadir verificación y seguridad operativa: no aplicar cambios destructivos sin representación estructurada válida, tolerar respuestas parciales, descartar resultados obsoletos de prompts anteriores, y mantener el diseñador usable mientras llega la respuesta. *Depende de 4, 5 y 6*.
+1. Definir la frontera arquitectónica principal: la IA no opera directamente sobre forms, frames ni controles VCL/WPF/web. Opera sobre contratos compartidos de contexto y operaciones de edición de informe. Esta decisión bloquea el resto.
+2. Crear en `C:\desarrollo\ReportmanAI\Reportman.AI.Query` los contratos comunes del sistema. Mínimo recomendado: `ReportDesignContext`, `DesignSelectionContext`, `AIDesignRequest`, `AIDesignResponse`, `DesignOperation`, `DesignOperationProperty`, `DesignValidationIssue`. *Depende de 1*.
+3. Definir la interfaz `IAIReportEditor` en `C:\desarrollo\ReportmanAI\Reportman.AI.Query` como superficie local y determinista para aplicar operaciones sobre un informe ya cargado. Su responsabilidad no debe ser llamar a la IA, sino resolver nombres, validar operaciones y ejecutarlas por lotes. *Depende de 2*.
+4. Separar explícitamente NL-to-SQL del flujo de edición de informes. Crear o mantener un contrato aparte como `INLToSqlService` en el backend compartido, sin mezclarlo con `IAIReportEditor`. Si `nltosqlcontroller` se reutiliza, debe hacerlo como servicio especializado, no como centro de toda la arquitectura. *Depende de 2*.
+5. Implementar en `C:\desarrollo\ReportmanAI\Reportman.AI.Api` un servicio orquestador único para diseño asistido por IA. Debe recibir contexto serializado del informe, construir el prompt, ejecutar una sola llamada principal al modelo y devolver una respuesta estructurada con operaciones, avisos y texto explicativo. *Depende de 2 y 4*.
+6. Diseñar el DSL de operaciones como contrato multiplataforma y no como API Delphi-específica. El núcleo debe usar operaciones `Add`, `Remove` y `Modify`, con destino explícito, nombres internos estables, clase lógica del objeto y array de propiedades `{name, value}`. *Depende de 2 y 5*.
+7. Definir el pipeline host-agnostic completo: el host extrae contexto local del informe, llama a la API compartida, recibe operaciones, las valida contra su modelo local mediante `IAIReportEditor`, las aplica en lote y registra undo/historial con su mecanismo nativo. *Depende de 3, 5 y 6*.
+8. Implementar primero un adaptador Delphi mínimo que convierta el estado actual del diseñador en `ReportDesignContext` y traduzca `DesignOperation` a operaciones locales undoables. Debe reutilizar `UndoCue`, pero sin mover la inteligencia del sistema al diseñador. *Depende de 7*.
+9. Diseñar desde el principio adaptadores equivalentes para futuro diseñador C# y diseñador web TypeScript. No hace falta implementarlos todavía, pero sí fijar las expectativas del contrato para que el backend no dependa de detalles Delphi como nombres de clases VCL o units. *Depende de 2, 6 y 7*.
+10. Modelar el caso `report new` como una operación previa local del host, no como un modo aparte de la IA. Si el usuario pide un informe nuevo, el host crea o reinicia el documento y luego ejecuta el mismo flujo normal de modificación con contexto limpio. *Depende de 7*.
+11. Limitar el primer alcance funcional a operaciones seguras y comunes: estructura base, secciones, labels, expressions, propiedades simples y enlaces de dataset. Dejar fuera en la primera fase los casos complejos como charts avanzados, diseño gráfico fino o subreports muy anidados. *Depende de 6 y 7*.
+12. Añadir validación robusta en el backend y en cada host: no aplicar operaciones con referencias inexistentes, no inventar datasets/campos, rechazar propiedades no válidas para cada `className`, y devolver errores de validación claros antes de tocar el documento. *Depende de 5, 6 y 7*.
+13. Definir soporte de explicación y previsualización: la respuesta puede incluir texto natural para el usuario, pero las modificaciones reales solo deben venir por la parte estructurada del contrato. *Depende de 5 y 6*.
+14. Preparar verificación cruzada entre hosts con un conjunto compartido de casos de prueba sobre contratos JSON. La misma petición y el mismo contexto deben producir operaciones equivalentes para Delphi, C# y web, salvo diferencias deliberadas de capacidades. *Depende de 6, 7 y 9*.
 
 **Relevant files**
-- `c:\desarrollo\prog\toni\reportman\rpmdfmainvcl.pas` — `TFRpMainFVCL`, `CreateInterface`, `FreeInterface`, `EnsureUndoCue`, `RefreshCueView`; punto de entrada del panel de IA en el diseñador principal.
-- `c:\desarrollo\prog\toni\reportman\rpmdfmainvcl.dfm` — layout base del diseñador; referencia para acoplar nuevo panel/splitter sin romper la distribución actual.
-- `c:\desarrollo\prog\toni\reportman\rpfrmexpressionchatvcl.pas` — patrón reutilizable de chat, auth, AI selection, streaming y carga asíncrona de agentes.
-- `c:\desarrollo\prog\toni\reportman\rpfrmaiselectionvcl.pas` — selector común de proveedor/modo/agente y estado de créditos.
-- `c:\desarrollo\prog\toni\reportman\rpauthmanager.pas` — autenticación global y estado del usuario.
-- `c:\desarrollo\prog\toni\reportman\rpdatahttp.pas` — transporte HTTP para prompts/respuestas/streaming.
-- `c:\desarrollo\prog\toni\reportman\rpmdundocue.pas` — integración obligatoria para aplicar cambios undoables sugeridos por IA.
-- `c:\desarrollo\prog\toni\reportman\rpmdcueviewvcl.pas` — visualización del cue/undo, a refrescar tras cambios aplicados por IA.
-- `c:\desarrollo\prog\toni\reportman\rpmdfdesignvcl.pas` — acceso al frame/canvas del diseñador y posible fuente del contexto de selección actual.
-- `c:\desarrollo\prog\toni\reportman\rpmdobjinspvcl.pas` y `c:\desarrollo\prog\toni\reportman\rpmdfstrucvcl.pas` — referencias para selección, estructura y edición actual del informe.
+- `C:\desarrollo\ReportmanAI\Reportman.AI.Api` — backend principal donde debe vivir la orquestación común de IA para edición de informes.
+- `C:\desarrollo\ReportmanAI\Reportman.AI.Query` — contratos compartidos, DTOs, interfaz `IAIReportEditor` y separación con `INLToSqlService`.
+- `c:\desarrollo\prog\toni\reportman\rpdatahttp.pas` — referencia para el transporte actual Delphi hacia servicios externos.
+- `c:\desarrollo\prog\toni\reportman\rpauthmanager.pas` — autenticación y estado de usuario reutilizable desde el host Delphi.
+- `c:\desarrollo\prog\toni\reportman\rpmdundocue.pas` — mecanismo actual de undo local, a reutilizar por el adaptador Delphi al aplicar operaciones.
+- `c:\desarrollo\prog\toni\reportman\rpmdcueviewvcl.pas` — visualización del historial/undo en Delphi, que debe reflejar cambios aplicados localmente.
+- `c:\desarrollo\prog\toni\reportman\rpmdfdesignvcl.pas` — fuente principal para extraer selección, estructura visible y contexto del diseñador Delphi.
+- `c:\desarrollo\prog\toni\reportman\rpmdobjinspvcl.pas` — referencia para propiedades, selección y edición local del informe.
+- `c:\desarrollo\prog\toni\reportman\rpmdfstrucvcl.pas` — referencia útil para obtener jerarquía de subreports, sections y componentes desde Delphi.
+- `c:\desarrollo\prog\toni\reportman\designer-ai-chat-plan.md` — copia visible en la raíz que debe reflejar este enfoque multiplataforma.
 
 **Verification**
-1. Abrir el diseñador principal y comprobar que el panel de IA aparece y desaparece junto con `CreateInterface` / `FreeInterface` sin fugas visuales ni AVs.
-2. Verificar login, carga de agentes y selección de tier/agente usando la misma cuenta ya soportada por Monaco y el diálogo de expresiones.
-3. En un informe vacío, pedir a la IA crear una estructura básica y comprobar que el resultado se aplica mediante operaciones undoables y queda reflejado en el cue view.
-4. En un informe existente, pedir una modificación localizada y comprobar que solo se alteran los elementos referidos y que Undo/Redo revierte/aplica correctamente.
-5. Forzar respuestas inválidas o incompletas y comprobar que el diseñador no queda corrupto, que se informa al usuario y que no se aplican cambios parciales inseguros.
-6. Validar que el panel sigue siendo usable mientras hay prompts en curso y que respuestas obsoletas no pisan estado más reciente.
-7. Compilar al menos los archivos nuevos del chat del diseñador y `rpmdfmainvcl.pas`; idealmente compilar el proyecto/paquete VCL completo afectado.
+1. Validar que los contratos de `Reportman.AI.Query` no contienen tipos ni dependencias de VCL, WPF ni TypeScript.
+2. Verificar que `AIDesignRequest` permite representar el mismo informe desde Delphi y desde futuros hosts sin pérdida de contexto esencial.
+3. Confirmar que una respuesta `AIDesignResponse` con operaciones `Add` / `Remove` / `Modify` puede aplicarse localmente en Delphi sin llamadas extra de IA.
+4. Probar el flujo `report new` como prepaso local seguido del mismo pipeline normal de modificación.
+5. Comprobar que NL-to-SQL puede evolucionar aparte sin tocar el contrato base de edición del informe.
+6. Validar que operaciones inválidas fallan antes de modificar el documento y generan mensajes de validación útiles.
+7. Preparar al menos varios ejemplos JSON canónicos y verificar que serían consumibles por Delphi, C# y web.
 
 **Decisions**
-- El chat del diseñador debe ser específico del informe completo; no conviene reutilizar tal cual el frame de expresiones porque ese frame arrastra semántica y UI orientadas a expresiones. Sí conviene reutilizar sus patrones internos.
-- Los cambios aplicados por IA deben ser estructurados y undoables; texto libre sin traducción a operaciones no es suficiente para modificar el informe con seguridad. El DSL inicial debe ser mínimo: un array de operaciones con tipo `Add`, `Remove` o `Modify`, nombre del objeto cuando aplique y bloque de propiedades. `Modify` debe aceptar varias propiedades a la vez (`set-properties`), no cambios atómicos demasiado finos.
-- El soporte inicial debe priorizar operaciones seguras y comunes: resetear con `report new` cuando el usuario lo pida, y después añadir/modificar estructura base, labels, expressions y propiedades, antes de cubrir casos complejos como charts o subreports anidados complejos.
-- La experiencia debe tener un único flujo de modificación, con contexto del diseñador y de la selección activa; crear un informe nuevo será solo un caso especial que empieza con `report new`.
-- El chat de IA y la cola de deshacer deben compartir un único panel lateral en la banda derecha, organizados en pestañas separadas. La pestaña activa por omisión debe ser la del chat.
-- Los botones Undo y Redo deben salir del panel de la cola y pasar a la barra de herramientas principal del diseñador, para que queden accesibles de forma directa y coherente con el resto de acciones frecuentes.
-- Mantener una copia visible del plan en la raíz del repositorio para otros agentes y herramientas del workspace; esa copia debe reflejar fielmente este plan persistente y actualizarse cuando cambien las decisiones arquitectónicas.
+- La arquitectura principal deja de estar centrada en el diseñador VCL. Delphi pasa a ser un consumidor del sistema, no su lugar de definición.
+- `C:\desarrollo\ReportmanAI\Reportman.AI.Api` será el punto central de orquestación de IA para edición de informes.
+- `C:\desarrollo\ReportmanAI\Reportman.AI.Query` será la frontera de contratos compartidos entre backend y hosts.
+- `IAIReportEditor` debe ser local, determinista y pequeña: validar, resolver y aplicar operaciones; no decidir prompts ni hacer routing de IA.
+- No hace falta un `IAReportAssistant` adicional como otra capa de IA. Es más simple y portable usar una sola llamada principal al modelo y coordinación local determinista.
+- `INLToSqlService` debe mantenerse separado del flujo de edición del informe.
+- El DSL inicial debe seguir siendo genérico: `Add`, `Remove`, `Modify`, `className`, `name`, destino y `properties` como array `{name, value}`.
+- Los hosts deben conservar su propio undo/historial. La IA propone operaciones; cada host las aplica con sus mecanismos nativos.
+- El primer host a implementar puede ser Delphi, pero el contrato se diseña para sobrevivir al paso a C# y web sin rehacer el backend.
 
 **Further Considerations**
-1. Diseñar la integración visual del panel compartido para que el cambio entre pestañas Chat y UndoCue no reste demasiado ancho útil al canvas. Recomendación: mantener una cabecera de pestañas simple y conservar el splitter actual de la banda derecha.
-2. Definir pronto el formato del contexto serializado del informe. Recomendación: JSON jerárquico por subreport -> section -> component, con nombres internos estables y metadatos de datasets/fields aparte.
-3. Definir pronto el formato de “acciones aplicables” devueltas por IA. Recomendación: array ordenado de operaciones `Add` / `Remove` / `Modify`, con propiedades útiles por tipo de objeto y reglas globales explícitas en el prompt, por ejemplo que posición y tamaño se expresan en twips.
+1. Decidir pronto si `className` será un nombre lógico multiplataforma (`Label`, `Expression`, `Section`) o una mezcla con nombres internos de ReportMan. Recomendación: usar nombres lógicos estables y mapearlos localmente en cada host.
+2. Decidir si `IAIReportEditor` debe vivir solo como interfaz .NET o si además conviene publicar un esquema JSON independiente como fuente de verdad. Recomendación: el esquema JSON debe ser la frontera real multiplataforma; la interfaz puede ser una ayuda interna en .NET.
+3. Definir pronto el catálogo inicial de propiedades permitidas por tipo de objeto para evitar respuestas ambiguas del modelo.
 
 **Operation JSON**
 - Estructura base recomendada por operación:
   - `operation`: `Add` | `Remove` | `Modify`
-  - `name`: `UniqueObjectName` (vacío o `null` para objetos nuevos si el runtime genera el nombre)
-  - `className`: tipo lógico del objeto, por ejemplo `Expression`, `Label`, `Section`, `SubReport`
-  - `properties`: array de pares propiedad/valor para mantener el formato genérico
-- Recomendación práctica: serializar `properties` como array de objetos `{ "name": string, "value": any }` en lugar de tuplas posicionales, porque es más robusto para validación, evolución del esquema y parsing en Delphi.
-- Para que `Add` sea realmente aplicable de forma genérica, conviene añadir al menos un dato de contenedor o destino, por ejemplo `parentName` o `sectionName`, ya que un objeto nuevo necesita saber dónde crearse.
-- Para `Remove` y `Modify`, `name` debe referirse siempre al nombre interno único del objeto, no al caption visible.
-- Reglas globales del prompt: posiciones y tamaños en twips; no inventar nombres de datasets/campos/sections; usar solo propiedades válidas para `className`; omitir propiedades irrelevantes en vez de rellenarlas con valores ficticios.
+  - `name`: nombre interno único del objeto cuando ya existe
+  - `className`: tipo lógico multiplataforma, por ejemplo `Report`, `SubReport`, `Section`, `Label`, `Expression`
+  - `parentName`: contenedor lógico cuando aplique
+  - `properties`: array de objetos `{ "name": string, "value": any }`
+- Reglas globales:
+  - posiciones y tamaños en twips
+  - no inventar nombres de datasets, campos ni sections
+  - usar solo propiedades válidas para el `className`
+  - no aplicar cambios destructivos si la validación local falla
 - Ejemplo conceptual:
   - `{ "operation": "Modify", "name": "EXP_CLIENT_TOTAL", "className": "Expression", "properties": [{"name":"Left","value":1440},{"name":"Top","value":720},{"name":"Width","value":2880},{"name":"Expression","value":"Customers.Total"}] }`
-- Decisión: el DSL inicial debe seguir siendo genérico y pequeño; la semántica específica de cada tipo de objeto vendrá dada por el catálogo de propiedades permitidas en el prompt y por la validación local antes de traducir a operaciones reales y a UndoCue.
+- El contrato debe seguir siendo pequeño; la complejidad específica de cada host debe resolverse en el adaptador local, no en la respuesta de IA.
