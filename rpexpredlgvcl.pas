@@ -162,6 +162,8 @@ type
     procedure InitializeDialog(const AExpression: string;
       AEvaluator: TRpCustomEvaluator; AOwnsEvaluator, AValidate,
       AWantReturns: Boolean);
+    function BuildRefreshSnapshotEvaluator: TRpEvaluator;
+    function CloneAlias(AOwner: TComponent; ASource: TRpAlias): TRpAlias;
     procedure ReleaseOwnedEvaluator;
     procedure AssignEmptyAlias;
     function BuildExpressionSemanticContextJson: string;
@@ -411,6 +413,40 @@ begin
    UpdateRefreshUIState;
 end;
 
+function TFRpExpredialogVCL.CloneAlias(AOwner: TComponent;
+  ASource: TRpAlias): TRpAlias;
+var
+ I: Integer;
+ LNewItem: TRpAliasListItem;
+begin
+ Result := TRpAlias.Create(AOwner);
+ if ASource = nil then
+  Exit;
+
+ for I := 0 to ASource.List.Count - 1 do
+ begin
+  LNewItem := Result.List.Add;
+  LNewItem.Alias := ASource.List.Items[I].Alias;
+  LNewItem.Dataset := ASource.List.Items[I].Dataset;
+ end;
+end;
+
+function TFRpExpredialogVCL.BuildRefreshSnapshotEvaluator: TRpEvaluator;
+var
+ LAliasSnapshot: TRpAlias;
+begin
+ Result := TRpEvaluator.Create(nil);
+ if FRefreshReport <> nil then
+  FRefreshReport.AddReportItemsToEvaluator(Result);
+
+ if FAliasReady and (FRefreshAlias <> nil) then
+  LAliasSnapshot := CloneAlias(Result, FRefreshAlias)
+ else
+  LAliasSnapshot := CloneAlias(Result, nil);
+
+ Result.Rpalias := LAliasSnapshot;
+end;
+
   procedure TFRpExpredialogVCL.AssignEmptyAlias;
   begin
    if FEmptyAlias <> nil then
@@ -609,6 +645,13 @@ begin
   UpdateExpressionCursorPosition;
   if HandleAllocated then
     PostMessage(Handle, WM_USER + 201, 0, 0);
+  if FExpressionChat <> nil then
+    TThread.Queue(nil,
+      procedure
+      begin
+        if (FExpressionChat <> nil) and Visible then
+          FExpressionChat.Resize;
+      end);
   if FRefreshReport <> nil then
     StartReportRefresh;
 end;
@@ -674,17 +717,8 @@ begin
 end;
 
 procedure TFRpExpredialogVCL.UpdateRefreshUIState;
-var
- LCanUseEvaluator: Boolean;
 begin
- LCanUseEvaluator := FAliasReady and (not FRefreshRunning) and (evaluator <> nil);
- BAdd.Enabled := LCanUseEvaluator;
- BCheckSyn.Enabled := LCanUseEvaluator;
- BShowResult.Enabled := LCanUseEvaluator;
- LCategory.Enabled := LCanUseEvaluator;
- LItems.Enabled := LCanUseEvaluator;
  BRefresh.Visible := FRefreshReport <> nil;
- BRefresh.Enabled := (FRefreshReport <> nil) and (not FRefreshRunning);
  if FRefreshRunning then
   BRefresh.Caption := 'Refreshing...'
  else
@@ -731,12 +765,10 @@ begin
  LPrintDriver := FRefreshPrintDriver;
  if not FOwnsEvaluator then
  begin
-  Setevaluator(TRpEvaluator.Create(nil));
+  Setevaluator(BuildRefreshSnapshotEvaluator);
   FOwnsEvaluator := True;
  end;
  FRefreshRunning := True;
- FAliasReady := False;
- AssignEmptyAlias;
  UpdateRefreshUIState;
 
  LWorker := TThread.CreateAnonymousThread(

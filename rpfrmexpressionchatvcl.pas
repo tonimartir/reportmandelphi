@@ -62,11 +62,13 @@ type
     procedure AuthChanged(ASuccess: Boolean);
     procedure AppendMessage(const ATitle, AText: string);
     procedure LoadUserAgents;
+    procedure RefreshTopLayout;
     procedure RebuildConversation;
     procedure UpdateButtons;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure Resize; override;
     procedure AddAssistantMessage(const AText: string);
     procedure AddUserMessage(const AText: string);
     procedure BeginStreamingResponse;
@@ -132,6 +134,7 @@ begin
   FUserAgentsReloadVersion := 0;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
   Initialize('', '');
+  RefreshTopLayout;
 end;
 
 destructor TFRpExpressionChatFrame.Destroy;
@@ -139,6 +142,29 @@ begin
   FConversationBlocks.Free;
   TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited Destroy;
+end;
+
+procedure TFRpExpressionChatFrame.Resize;
+begin
+  inherited;
+  RefreshTopLayout;
+end;
+
+procedure TFRpExpressionChatFrame.RefreshTopLayout;
+begin
+  if GridTop <> nil then
+    GridTop.Realign;
+  if PTop <> nil then
+    PTop.Realign;
+  if PAISelectionHost <> nil then
+    PAISelectionHost.Realign;
+  if FAISelection <> nil then
+  begin
+    FAISelection.SetBounds(0, 0, PAISelectionHost.ClientWidth,
+      PAISelectionHost.ClientHeight);
+    FAISelection.Realign;
+    FAISelection.Resize;
+  end;
 end;
 
 procedure TFRpExpressionChatFrame.AuthChanged(ASuccess: Boolean);
