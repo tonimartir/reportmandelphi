@@ -66,7 +66,7 @@ uses
   DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl, rpalias, System.Actions,
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
   Vcl.VirtualImageList,
-  rpmdundocue, rpmdcueviewvcl, Vcl.Buttons, System.Generics.Collections;
+  rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections;
 
 const
   // File name in menu width
@@ -127,6 +127,9 @@ type
     ToolButton5: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
+    BUndoToolbar: TToolButton;
+    BRedoToolbar: TToolButton;
+    ToolButton26: TToolButton;
     ToolButton9: TToolButton;
     BLabel: TToolButton;
     BArrow: TToolButton;
@@ -320,6 +323,8 @@ type
     procedure MAsyncClick(Sender: TObject);
     procedure APrintDialogExecute(Sender: TObject);
     procedure ComboScaleClick(Sender: TObject);
+    procedure BUndoToolbarClick(Sender: TObject);
+    procedure BRedoToolbarClick(Sender: TObject);
   private
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
@@ -345,6 +350,10 @@ type
     fcueview:TFRpCueViewVCL;
     fcuepanel:TPanel;
     fcuesplitter:TSplitter;
+    fcuepages:TPageControl;
+    fchattab:TTabSheet;
+    fhistorytab:TTabSheet;
+    fchatframe:TFRpChatFrame;
     frightpanel:TPanel;
     procedure FreeInterface;
     procedure CreateInterface;
@@ -376,6 +385,8 @@ type
     procedure DoUndo;
     procedure DoRedo;
     procedure OnUndoRedo(Sender: TObject);
+    procedure UpdateUndoToolbarButtons;
+    procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   public
     { Public declarations }
@@ -607,16 +618,13 @@ begin
  BImage.Down:=false;
  BBarcode.Down:=false;
  BChart.Down:=false;
+ BUndoToolbar.Enabled:=false;
+ BRedoToolbar.Enabled:=false;
 
  AParams.Enabled:=False;
  APageSetup.Enabled:=false;
  Caption:=SRpRepman;
 
- if Assigned(fcueview) then
- begin
-  fcueview.Free;
-  fcueview:=nil;
- end;
  if Assigned(fcuesplitter) then
  begin
   fcuesplitter.Free;
@@ -626,6 +634,11 @@ begin
  begin
   fcuepanel.Free;
   fcuepanel:=nil;
+  fcuepages:=nil;
+  fchattab:=nil;
+  fhistorytab:=nil;
+  fchatframe:=nil;
+  fcueview:=nil;
  end;
  if Assigned(fdesignframe) then
  begin
@@ -685,6 +698,8 @@ begin
  BBarcode.Enabled:=true;
  BChart.Enabled:=true;
  BArrow.Down:=true;
+ BUndoToolbar.Enabled:=true;
+ BRedoToolbar.Enabled:=true;
 
  AParams.Enabled:=True;
  if length(filename)>0 then
@@ -733,7 +748,7 @@ begin
  freportstructure.report:=report;
  fdesignframe.report:=report;
 
- // Create undo cue panel on the right side
+ // Create right panel with chat and history tabs
  fcuepanel:=TPanel.Create(Self);
  fcuepanel.Width:=280;
  fcuepanel.Align:=alRight;
@@ -746,11 +761,38 @@ begin
  fcuesplitter.Beveled:=True;
  fcuesplitter.Parent:=frightpanel;
 
- fcueview:=TFRpCueViewVCL.Create(Self);
+ fcuepages:=TPageControl.Create(fcuepanel);
+ fcuepages.Align:=alClient;
+ fcuepages.Parent:=fcuepanel;
+
+ fchattab:=TTabSheet.Create(fcuepages);
+ fchattab.PageControl:=fcuepages;
+ fchattab.Caption:='Chat';
+
+ fhistorytab:=TTabSheet.Create(fcuepages);
+ fhistorytab.PageControl:=fcuepages;
+ fhistorytab.Caption:='Historial';
+
+ fchatframe:=TFRpChatFrame.Create(fchattab);
+ fchatframe.Align:=alClient;
+ fchatframe.Parent:=fchattab;
+ fchatframe.OnSendPrompt:=DesignerChatSendPrompt;
+ fchatframe.Initialize('',
+  'Describe report design changes here. In this phase the panel is UI-only and no backend request will be sent.');
+
+ fcueview:=TFRpCueViewVCL.Create(fhistorytab);
  fcueview.Align:=alClient;
- fcueview.Parent:=fcuepanel;
+ fcueview.Parent:=fhistorytab;
  fcueview.OnUndoRedo:=OnUndoRedo;
  fcueview.Report:=report;
+ fcueview.BUndo.Visible:=False;
+ fcueview.BRedo.Visible:=False;
+ fcueview.BClear.Left:=0;
+ fcueview.LTitle.Left:=42;
+ fcueview.LTitle.Caption:='Historial';
+
+ fcuepages.ActivePage:=fchattab;
+ UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
 end;
@@ -952,6 +994,8 @@ begin
  BImage.Hint:=TranslateStr(85,BImage.Hint);
  BBarCode.Hint:=TranslateStr(86,BBarCode.Hint);
  BChart.Hint:=TranslateStr(87,BChart.Hint);
+ BUndoToolbar.Hint:='Deshacer (Ctrl+Z)';
+ BRedoToolbar.Hint:='Rehacer (Ctrl+Y)';
  MAlign1_6.Caption:=TranslateStr(1059,MAlign1_6.Caption);
  MAlign1_6.Hint:=TranslateStr(1060,MAlign1_6.Hint);
  MLibraries.Caption:=TranslateStr(1080,MLibraries.Caption);
@@ -2612,6 +2656,7 @@ begin
   ops.Free;
   OnUndoRedo(Self);
  end;
+   UpdateUndoToolbarButtons;
 end;
 
 procedure TFRpMainFVCL.DoRedo;
@@ -2631,6 +2676,7 @@ begin
   ops.Free;
   OnUndoRedo(Self);
  end;
+   UpdateUndoToolbarButtons;
 end;
 
 procedure TFRpMainFVCL.OnUndoRedo(Sender: TObject);
@@ -2648,6 +2694,40 @@ begin
   fcueview.RefreshList;
   fcueview.UpdateButtons;
  end;
+
+   UpdateUndoToolbarButtons;
+  end;
+
+  procedure TFRpMainFVCL.UpdateUndoToolbarButtons;
+  var
+   cue: TUndoCue;
+  begin
+   BUndoToolbar.Enabled:=False;
+   BRedoToolbar.Enabled:=False;
+   if not Assigned(report) then
+    Exit;
+   EnsureUndoCue;
+   cue:=TUndoCue(report.UndoCue);
+   BUndoToolbar.Enabled:=cue.UndoOperations.Count>0;
+   BRedoToolbar.Enabled:=cue.RedoOperations.Count>0;
+  end;
+
+  procedure TFRpMainFVCL.BUndoToolbarClick(Sender: TObject);
+  begin
+   DoUndo;
+  end;
+
+  procedure TFRpMainFVCL.BRedoToolbarClick(Sender: TObject);
+  begin
+   DoRedo;
+  end;
+
+  procedure TFRpMainFVCL.DesignerChatSendPrompt(Sender: TObject; const APrompt,
+    AExpression: string);
+  begin
+   if Assigned(fchatframe) then
+    fchatframe.AddAssistantMessage(
+      'Design mode is connected only at UI level in this phase. No backend request has been sent yet.');
 end;
 
 procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -2671,6 +2751,7 @@ begin
   fcueview.RefreshList;
   fcueview.UpdateButtons;
  end;
+   UpdateUndoToolbarButtons;
 end;
 
 end.

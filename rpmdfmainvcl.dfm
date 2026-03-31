@@ -131,8 +131,39 @@ object FRpMainFVCL: TFRpMainFVCL
       Margins.Bottom = 4
       Action = APreview
     end
-    object ToolButton9: TToolButton
+    object BUndoToolbar: TToolButton
       Left = 209
+      Top = 0
+      Hint = 'Deshacer (Ctrl+Z)'
+      AutoSize = True
+      Caption = 'Undo'
+      Enabled = False
+      ParentShowHint = False
+      ShowHint = True
+      Style = tbsTextButton
+      OnClick = BUndoToolbarClick
+    end
+    object BRedoToolbar: TToolButton
+      Left = 243
+      Top = 0
+      Hint = 'Rehacer (Ctrl+Y)'
+      AutoSize = True
+      Caption = 'Redo'
+      Enabled = False
+      ParentShowHint = False
+      ShowHint = True
+      Style = tbsTextButton
+      OnClick = BRedoToolbarClick
+    end
+    object ToolButton26: TToolButton
+      Left = 289
+      Top = 0
+      Width = 6
+      Caption = 'ToolButton26'
+      Style = tbsSeparator
+    end
+    object ToolButton9: TToolButton
+      Left = 295
       Top = 0
       Width = 14
       Margins.Left = 4
@@ -145,7 +176,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsSeparator
     end
     object BArrow: TToolButton
-      Left = 223
+      Left = 309
       Top = 0
       Hint = 'Select objects'
       Margins.Left = 4
@@ -160,7 +191,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BLabel: TToolButton
-      Left = 256
+      Left = 342
       Top = 0
       Hint = 'Inserts a static text'
       Margins.Left = 4
@@ -175,7 +206,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BExpression: TToolButton
-      Left = 289
+      Left = 375
       Top = 0
       Hint = 'Inserts a expression'
       Margins.Left = 4
@@ -190,7 +221,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BShape: TToolButton
-      Left = 322
+      Left = 408
       Top = 0
       Hint = 'Inserts a simple drawing'
       Margins.Left = 4
@@ -205,7 +236,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BImage: TToolButton
-      Left = 355
+      Left = 441
       Top = 0
       Hint = 'Inserts a image'
       Margins.Left = 4
@@ -220,7 +251,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BChart: TToolButton
-      Left = 388
+      Left = 474
       Top = 0
       Hint = 'Inserts a chart'
       Margins.Left = 4
@@ -235,7 +266,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BBarcode: TToolButton
-      Left = 421
+      Left = 507
       Top = 0
       Hint = 'Inserts a barcode'
       Margins.Left = 4
