@@ -1,72 +1,59 @@
-## Plan: ReportMan AI Multiplataforma
+## Plan: Reportman.Reporting.Design First
 
-Replantear la integración de IA para que la lógica principal no viva dentro de ningún diseñador concreto. El núcleo debe residir en `C:\desarrollo\ReportmanAI\Reportman.AI.Api`, los contratos compartidos en `C:\desarrollo\ReportmanAI\Reportman.AI.Query`, y Delphi/C#/web deben actuar como adaptadores finos que serializan contexto, envían una única petición principal de IA y aplican localmente las operaciones devueltas con su propio sistema nativo de undo/historial.
+El primer paso de esta arquitectura será crear `Reportman.Reporting.Design` dentro del repositorio C# de Reportman. Esta biblioteca no depende de IA. Su responsabilidad será única y explícita: recibir un `Report`, validar y aplicar operaciones sobre él, y actualizar `UndoCue` en consecuencia. Toda la lógica de modificación real del informe debe concentrarse aquí. La IA y los distintos diseñadores serán consumidores de esta capacidad, no su lugar de definición.
+
+El patrón objetivo para los hosts será simple: Delphi, el diseñador C# y el diseñador Angular enviarán el informe completo serializado junto con la instrucción del chat, y recibirán el informe completo ya modificado. La API usará `Reportman.Reporting.Design` como motor autoritativo de edición.
 
 **Steps**
-1. Definir la frontera arquitectónica principal: la IA no opera directamente sobre forms, frames ni controles VCL/WPF/web. Opera sobre contratos compartidos de contexto y operaciones de edición de informe. Esta decisión bloquea el resto.
-2. Crear en `C:\desarrollo\ReportmanAI\Reportman.AI.Query` los contratos comunes del sistema. Mínimo recomendado: `ReportDesignContext`, `DesignSelectionContext`, `AIDesignRequest`, `AIDesignResponse`, `DesignOperation`, `DesignOperationProperty`, `DesignValidationIssue`. *Depende de 1*.
-3. Definir la interfaz `IAIReportEditor` en `C:\desarrollo\ReportmanAI\Reportman.AI.Query` como superficie local y determinista para aplicar operaciones sobre un informe ya cargado. Su responsabilidad no debe ser llamar a la IA, sino resolver nombres, validar operaciones y ejecutarlas por lotes. *Depende de 2*.
-4. Separar explícitamente NL-to-SQL del flujo de edición de informes. Crear o mantener un contrato aparte como `INLToSqlService` en el backend compartido, sin mezclarlo con `IAIReportEditor`. Si `nltosqlcontroller` se reutiliza, debe hacerlo como servicio especializado, no como centro de toda la arquitectura. *Depende de 2*.
-5. Implementar en `C:\desarrollo\ReportmanAI\Reportman.AI.Api` un servicio orquestador único para diseño asistido por IA. Debe recibir contexto serializado del informe, construir el prompt, ejecutar una sola llamada principal al modelo y devolver una respuesta estructurada con operaciones, avisos y texto explicativo. *Depende de 2 y 4*.
-6. Diseñar el DSL de operaciones como contrato multiplataforma y no como API Delphi-específica. El núcleo debe usar operaciones `Add`, `Remove` y `Modify`, con destino explícito, nombres internos estables, clase lógica del objeto y array de propiedades `{name, value}`. *Depende de 2 y 5*.
-7. Definir el pipeline host-agnostic completo: el host extrae contexto local del informe, llama a la API compartida, recibe operaciones, las valida contra su modelo local mediante `IAIReportEditor`, las aplica en lote y registra undo/historial con su mecanismo nativo. *Depende de 3, 5 y 6*.
-8. Implementar primero un adaptador Delphi mínimo que convierta el estado actual del diseñador en `ReportDesignContext` y traduzca `DesignOperation` a operaciones locales undoables. Debe reutilizar `UndoCue`, pero sin mover la inteligencia del sistema al diseñador. *Depende de 7*.
-9. Diseñar desde el principio adaptadores equivalentes para futuro diseñador C# y diseñador web TypeScript. No hace falta implementarlos todavía, pero sí fijar las expectativas del contrato para que el backend no dependa de detalles Delphi como nombres de clases VCL o units. *Depende de 2, 6 y 7*.
-10. Modelar el caso `report new` como una operación previa local del host, no como un modo aparte de la IA. Si el usuario pide un informe nuevo, el host crea o reinicia el documento y luego ejecuta el mismo flujo normal de modificación con contexto limpio. *Depende de 7*.
-11. Limitar el primer alcance funcional a operaciones seguras y comunes: estructura base, secciones, labels, expressions, propiedades simples y enlaces de dataset. Dejar fuera en la primera fase los casos complejos como charts avanzados, diseño gráfico fino o subreports muy anidados. *Depende de 6 y 7*.
-12. Añadir validación robusta en el backend y en cada host: no aplicar operaciones con referencias inexistentes, no inventar datasets/campos, rechazar propiedades no válidas para cada `className`, y devolver errores de validación claros antes de tocar el documento. *Depende de 5, 6 y 7*.
-13. Definir soporte de explicación y previsualización: la respuesta puede incluir texto natural para el usuario, pero las modificaciones reales solo deben venir por la parte estructurada del contrato. *Depende de 5 y 6*.
-14. Preparar verificación cruzada entre hosts con un conjunto compartido de casos de prueba sobre contratos JSON. La misma petición y el mismo contexto deben producir operaciones equivalentes para Delphi, C# y web, salvo diferencias deliberadas de capacidades. *Depende de 6, 7 y 9*.
+1. Crear `Reportman.Reporting.Design` en la solución C# de Reportman como nueva biblioteca de edición determinista. Debe depender de `Reportman.Reporting` y no de ningún proyecto IA. Este paso bloquea el resto.
+2. Definir dentro de `Reportman.Reporting.Design` el modelo interno de operación de edición sobre `Report`. Mínimo recomendado: `ReportEditOperation`, `ReportEditProperty`, `ReportEditResult`, `ReportEditIssue`. Estas clases son internas al dominio de diseño y no tienen que vivir en `Reportman.AI.Query`. *Depende de 1*.
+3. Implementar el validador semántico de operaciones contra un `Report` real. Debe comprobar existencia de nombres internos, padres válidos, compatibilidad entre tipo de objeto y propiedad, reglas estructurales de secciones/subreports y referencias a datasets/campos. *Depende de 2*.
+4. Implementar el aplicador de operaciones sobre `Report`. Debe soportar al menos altas, bajas y modificaciones simples, y registrar `UndoCue` de forma coherente con los cambios aplicados. *Depende de 2 y 3*.
+5. Definir el caso `report new` como operación de reinicialización del documento dentro del flujo de diseño. La biblioteca debe poder partir de un informe vacío o recién creado y seguir aplicando cambios en el mismo pipeline. *Depende de 4*.
+6. Implementar un constructor de contexto del informe a partir de `Report`, suficiente para alimentar después a la IA: estructura, selección lógica, datasets, params, aliases y propiedades relevantes. Esta parte sigue siendo no-IA; solo describe el informe. *Depende de 1 y 4*.
+7. Integrar `Reportman.Reporting.Design` en la API. La API debe deserializar el informe recibido, llamar al modelo IA para decidir cambios y delegar siempre en `Reportman.Reporting.Design` la validación y aplicación real. *Depende de 3, 4 y 6*.
+8. Definir el contrato HTTP principal como `report in / report out`: el host envía el informe serializado completo y la petición del chat, y recibe el informe completo ya modificado, más explicación, warnings y opcionalmente un resumen de cambios. *Depende de 7*.
+9. Adaptar Delphi al patrón nuevo usando el informe completo como frontera. Delphi no tendrá que aplicar operaciones IA localmente; enviará el informe y recargará el resultado. *Depende de 8*.
+10. Adaptar el diseñador Angular al mismo patrón. Como ya utiliza el motor C# para ejecución en backend, podrá usar también esta misma capacidad de edición asistida sin reimplementar la semántica del informe en TypeScript. *Depende de 8*.
+11. Integrar después el diseñador C# con `Reportman.Reporting.Design`, primero para edición no-IA y luego para chat IA, de modo que Delphi, WinForms y Angular converjan sobre la misma semántica de cambios. *Depende de 4 y 8*.
+12. Limitar el primer alcance funcional a operaciones seguras y frecuentes: crear estructura básica, secciones, labels, expressions y cambios simples de propiedades. Dejar fuera charts complejos, maquetación avanzada y escenarios muy anidados hasta estabilizar el flujo. *Depende de 4*.
 
-**Relevant files**
-- `C:\desarrollo\ReportmanAI\Reportman.AI.Api` — backend principal donde debe vivir la orquestación común de IA para edición de informes.
-- `C:\desarrollo\ReportmanAI\Reportman.AI.Query` — contratos compartidos, DTOs, interfaz `IAIReportEditor` y separación con `INLToSqlService`.
-- `c:\desarrollo\prog\toni\reportman\rpdatahttp.pas` — referencia para el transporte actual Delphi hacia servicios externos.
-- `c:\desarrollo\prog\toni\reportman\rpauthmanager.pas` — autenticación y estado de usuario reutilizable desde el host Delphi.
-- `c:\desarrollo\prog\toni\reportman\rpmdundocue.pas` — mecanismo actual de undo local, a reutilizar por el adaptador Delphi al aplicar operaciones.
-- `c:\desarrollo\prog\toni\reportman\rpmdcueviewvcl.pas` — visualización del historial/undo en Delphi, que debe reflejar cambios aplicados localmente.
-- `c:\desarrollo\prog\toni\reportman\rpmdfdesignvcl.pas` — fuente principal para extraer selección, estructura visible y contexto del diseñador Delphi.
-- `c:\desarrollo\prog\toni\reportman\rpmdobjinspvcl.pas` — referencia para propiedades, selección y edición local del informe.
-- `c:\desarrollo\prog\toni\reportman\rpmdfstrucvcl.pas` — referencia útil para obtener jerarquía de subreports, sections y componentes desde Delphi.
-- `c:\desarrollo\prog\toni\reportman\designer-ai-chat-plan.md` — copia visible en la raíz que debe reflejar este enfoque multiplataforma.
+**Relevant files and projects**
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Reporting\BaseReport.cs` — base del modelo del informe y punto natural de integración con la edición.
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Reporting\Report.cs` — objeto principal sobre el que actuará `Reportman.Reporting.Design`.
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Reporting\UndoCue.cs` — estado de undo/redo que debe actualizar la nueva biblioteca.
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Designer\FrameMainDesigner.cs` — host WinForms que más adelante consumirá la nueva biblioteca.
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Designer\DesignerInterface.cs` — referencia de semántica de edición actualmente mezclada con UI.
+- `c:\desarrollo\danzai\comunnt\reportman\Reportman.Designer\UndoCuePanel.cs` — referencia visual del undo actual en C#.
+- `C:\desarrollo\ReportmanAI\Reportman.AI.Api` — API que deberá depender de `Reportman.Reporting.Design` para materializar cambios.
+- `c:\desarrollo\prog\toni\reportman\rpdatahttp.pas` — transporte Delphi para consumir la nueva llamada de modificación de informe.
+- `c:\desarrollo\prog\toni\reportman\designer-ai-chat-plan.md` — copia visible de este plan.
 
 **Verification**
-1. Validar que los contratos de `Reportman.AI.Query` no contienen tipos ni dependencias de VCL, WPF ni TypeScript.
-2. Verificar que `AIDesignRequest` permite representar el mismo informe desde Delphi y desde futuros hosts sin pérdida de contexto esencial.
-3. Confirmar que una respuesta `AIDesignResponse` con operaciones `Add` / `Remove` / `Modify` puede aplicarse localmente en Delphi sin llamadas extra de IA.
-4. Probar el flujo `report new` como prepaso local seguido del mismo pipeline normal de modificación.
-5. Comprobar que NL-to-SQL puede evolucionar aparte sin tocar el contrato base de edición del informe.
-6. Validar que operaciones inválidas fallan antes de modificar el documento y generan mensajes de validación útiles.
-7. Preparar al menos varios ejemplos JSON canónicos y verificar que serían consumibles por Delphi, C# y web.
+1. Crear un `Report` en C# y comprobar que `Reportman.Reporting.Design` puede aplicarle operaciones sin depender de IA ni de UI.
+2. Verificar que cada cambio aplicado actualiza `UndoCue` correctamente y que undo/redo sigue funcionando después de la modificación.
+3. Confirmar que la validación detecta operaciones inválidas antes de tocar el informe.
+4. Confirmar que la API puede recibir un informe serializado, deserializarlo, modificarlo mediante `Reportman.Reporting.Design` y devolverlo sin pérdida de información.
+5. Probar que Delphi puede reemplazar el informe actual por el informe devuelto sin corromper estructura ni estado persistente.
+6. Repetir el mismo flujo desde Angular con el informe completo como frontera.
 
 **Decisions**
-- La arquitectura principal deja de estar centrada en el diseñador VCL. Delphi pasa a ser un consumidor del sistema, no su lugar de definición.
-- `C:\desarrollo\ReportmanAI\Reportman.AI.Api` será el punto central de orquestación de IA para edición de informes.
-- `C:\desarrollo\ReportmanAI\Reportman.AI.Query` será la frontera de contratos compartidos entre backend y hosts.
-- `IAIReportEditor` debe ser local, determinista y pequeña: validar, resolver y aplicar operaciones; no decidir prompts ni hacer routing de IA.
-- No hace falta un `IAReportAssistant` adicional como otra capa de IA. Es más simple y portable usar una sola llamada principal al modelo y coordinación local determinista.
-- `INLToSqlService` debe mantenerse separado del flujo de edición del informe.
-- El DSL inicial debe seguir siendo genérico: `Add`, `Remove`, `Modify`, `className`, `name`, destino y `properties` como array `{name, value}`.
-- Los hosts deben conservar su propio undo/historial. La IA propone operaciones; cada host las aplica con sus mecanismos nativos.
-- El primer host a implementar puede ser Delphi, pero el contrato se diseña para sobrevivir al paso a C# y web sin rehacer el backend.
+- `Reportman.Reporting.Design` será el primer paso y el núcleo autoritativo de edición del informe.
+- `Reportman.Reporting.Design` no depende de IA; solo conoce `Report`, operaciones de edición, validación y `UndoCue`.
+- La API sí dependerá de `Reportman.Reporting.Design`, porque la edición real se resolverá en C#.
+- Los hosts Delphi, C# y Angular usarán el mismo patrón: enviar informe completo, recibir informe completo.
+- `Reportman.AI.Query` no necesita convertirse en la frontera principal de edición del informe para este caso.
+- La edición asistida por IA pasa a ser una capacidad del sistema de diseño, no una lógica especial embebida en cada host.
 
 **Further Considerations**
-1. Decidir pronto si `className` será un nombre lógico multiplataforma (`Label`, `Expression`, `Section`) o una mezcla con nombres internos de ReportMan. Recomendación: usar nombres lógicos estables y mapearlos localmente en cada host.
-2. Decidir si `IAIReportEditor` debe vivir solo como interfaz .NET o si además conviene publicar un esquema JSON independiente como fuente de verdad. Recomendación: el esquema JSON debe ser la frontera real multiplataforma; la interfaz puede ser una ayuda interna en .NET.
-3. Definir pronto el catálogo inicial de propiedades permitidas por tipo de objeto para evitar respuestas ambiguas del modelo.
+1. Mantener separadas dentro de `Reportman.Reporting.Design` la lógica de contexto, la validación y la aplicación de cambios, aunque vivan en el mismo proyecto.
+2. Aunque el contrato principal sea `report in / report out`, conviene devolver también warnings y un resumen de cambios para diagnóstico y UI.
+3. La estabilidad real de esta arquitectura dependerá de la serialización cruzada Delphi/C# del informe y de `UndoCue`.
 
-**Operation JSON**
-- Estructura base recomendada por operación:
-  - `operation`: `Add` | `Remove` | `Modify`
-  - `name`: nombre interno único del objeto cuando ya existe
-  - `className`: tipo lógico multiplataforma, por ejemplo `Report`, `SubReport`, `Section`, `Label`, `Expression`
-  - `parentName`: contenedor lógico cuando aplique
-  - `properties`: array de objetos `{ "name": string, "value": any }`
-- Reglas globales:
-  - posiciones y tamaños en twips
-  - no inventar nombres de datasets, campos ni sections
-  - usar solo propiedades válidas para el `className`
-  - no aplicar cambios destructivos si la validación local falla
-- Ejemplo conceptual:
-  - `{ "operation": "Modify", "name": "EXP_CLIENT_TOTAL", "className": "Expression", "properties": [{"name":"Left","value":1440},{"name":"Top","value":720},{"name":"Width","value":2880},{"name":"Expression","value":"Customers.Total"}] }`
-- El contrato debe seguir siendo pequeño; la complejidad específica de cada host debe resolverse en el adaptador local, no en la respuesta de IA.
+**Initial Scope of Reportman.Reporting.Design**
+- Recibir un `Report` cargado.
+- Validar operaciones contra el modelo real.
+- Aplicar operaciones sobre el informe.
+- Actualizar `UndoCue` según los cambios realizados.
+- Construir contexto del informe para consumo por la IA.
+- No depender de proveedores IA, prompts, streaming ni transporte HTTP.
