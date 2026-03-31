@@ -48,7 +48,7 @@ uses
   rppagesetupvcl in '..\rppagesetupvcl.pas' {FRpPageSetupVCL},
   rpfparamsvcl in '..\rpfparamsvcl.pas' {FRpParamsVCL},
   rpgraphutilsvcl in '..\rpgraphutilsvcl.pas' {FRpMessageDlgVCL},
-  rpexpredlgvcl in '..\rpexpredlgvcl.pas' {FRpExpredialogVCL},
+  rpchatdialogvcl in '..\rpchatdialogvcl.pas' {FRpExpredialogVCL},
   rprfvparams in '..\rprfvparams.pas' {FRpRTParams},
   rpmdfsearchvcl in '..\rpmdfsearchvcl.pas' {TFRpSearchParamVCL},
   rpmdfsectionintvcl in '..\rpmdfsectionintvcl.pas',

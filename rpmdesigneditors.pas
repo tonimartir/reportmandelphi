@@ -25,7 +25,7 @@ interface
 
 uses Classes,SysUtils,rptypes,rpcompobase,rpalias,rpdatainfo,DB,rpeval,
 {$IFDEF MSWINDOWS}
- rpmdfopenlibvcl,rprfvparams,rpexpredlgvcl,Dialogs,
+ rpmdfopenlibvcl,rprfvparams,rpchatdialogvcl,Dialogs,
 {$ENDIF}
 {$IFDEF LINUX}
  rpmdfopenlib,rprfparams,rpexpredlg,QDialogs,

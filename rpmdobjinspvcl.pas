@@ -28,7 +28,7 @@ uses
   Classes,rppdfdriver, Dialogs, ExtDlgs, Menus, rpalias,
   Windows,Graphics, Controls, Forms,ExtCtrls,StdCtrls,
   rpmdobinsintvcl,rpmdconsts,rpprintitem,comctrls,
-  rpgraphutilsvcl,rpsection,rpmunits, rpexpredlgvcl,rpmdfextsecvcl,
+  rpgraphutilsvcl,rpsection,rpmunits, rpchatdialogvcl,rpmdfextsecvcl,
  jpeg,
 {$IFDEF XE3UP}
   System.UITypes,
