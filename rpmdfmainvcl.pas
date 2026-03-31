@@ -123,6 +123,8 @@ type
     Parameters1: TMenuItem;
     APrint: TAction;
     APreview: TAction;
+    AUndo: TAction;
+    ARedo: TAction;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
     ToolButton7: TToolButton;
@@ -325,6 +327,8 @@ type
     procedure ComboScaleClick(Sender: TObject);
     procedure BUndoToolbarClick(Sender: TObject);
     procedure BRedoToolbarClick(Sender: TObject);
+    procedure AUndoExecute(Sender: TObject);
+    procedure ARedoExecute(Sender: TObject);
   private
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
@@ -618,8 +622,8 @@ begin
  BImage.Down:=false;
  BBarcode.Down:=false;
  BChart.Down:=false;
- BUndoToolbar.Enabled:=false;
- BRedoToolbar.Enabled:=false;
+ AUndo.Enabled:=false;
+ ARedo.Enabled:=false;
 
  AParams.Enabled:=False;
  APageSetup.Enabled:=false;
@@ -698,8 +702,8 @@ begin
  BBarcode.Enabled:=true;
  BChart.Enabled:=true;
  BArrow.Down:=true;
- BUndoToolbar.Enabled:=true;
- BRedoToolbar.Enabled:=true;
+ AUndo.Enabled:=true;
+ ARedo.Enabled:=true;
 
  AParams.Enabled:=True;
  if length(filename)>0 then
@@ -994,8 +998,8 @@ begin
  BImage.Hint:=TranslateStr(85,BImage.Hint);
  BBarCode.Hint:=TranslateStr(86,BBarCode.Hint);
  BChart.Hint:=TranslateStr(87,BChart.Hint);
- BUndoToolbar.Hint:='Deshacer (Ctrl+Z)';
- BRedoToolbar.Hint:='Rehacer (Ctrl+Y)';
+ AUndo.Hint:='Deshacer (Ctrl+Z)';
+ ARedo.Hint:='Rehacer (Ctrl+Y)';
  MAlign1_6.Caption:=TranslateStr(1059,MAlign1_6.Caption);
  MAlign1_6.Hint:=TranslateStr(1060,MAlign1_6.Hint);
  MLibraries.Caption:=TranslateStr(1080,MLibraries.Caption);
@@ -2702,24 +2706,34 @@ begin
   var
    cue: TUndoCue;
   begin
-   BUndoToolbar.Enabled:=False;
-   BRedoToolbar.Enabled:=False;
+  AUndo.Enabled:=False;
+  ARedo.Enabled:=False;
    if not Assigned(report) then
     Exit;
    EnsureUndoCue;
    cue:=TUndoCue(report.UndoCue);
-   BUndoToolbar.Enabled:=cue.UndoOperations.Count>0;
-   BRedoToolbar.Enabled:=cue.RedoOperations.Count>0;
+  AUndo.Enabled:=cue.UndoOperations.Count>0;
+  ARedo.Enabled:=cue.RedoOperations.Count>0;
+  end;
+
+  procedure TFRpMainFVCL.AUndoExecute(Sender: TObject);
+  begin
+  DoUndo;
+  end;
+
+  procedure TFRpMainFVCL.ARedoExecute(Sender: TObject);
+  begin
+  DoRedo;
   end;
 
   procedure TFRpMainFVCL.BUndoToolbarClick(Sender: TObject);
   begin
-   DoUndo;
+  AUndoExecute(Sender);
   end;
 
   procedure TFRpMainFVCL.BRedoToolbarClick(Sender: TObject);
   begin
-   DoRedo;
+  ARedoExecute(Sender);
   end;
 
   procedure TFRpMainFVCL.DesignerChatSendPrompt(Sender: TObject; const APrompt,

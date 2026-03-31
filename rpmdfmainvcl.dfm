@@ -134,26 +134,12 @@ object FRpMainFVCL: TFRpMainFVCL
     object BUndoToolbar: TToolButton
       Left = 209
       Top = 0
-      Hint = 'Deshacer (Ctrl+Z)'
-      AutoSize = True
-      Caption = 'Undo'
-      Enabled = False
-      ParentShowHint = False
-      ShowHint = True
-      Style = tbsTextButton
-      OnClick = BUndoToolbarClick
+      Action = AUndo
     end
     object BRedoToolbar: TToolButton
       Left = 243
       Top = 0
-      Hint = 'Rehacer (Ctrl+Y)'
-      AutoSize = True
-      Caption = 'Redo'
-      Enabled = False
-      ParentShowHint = False
-      ShowHint = True
-      Style = tbsTextButton
-      OnClick = BRedoToolbarClick
+      Action = ARedo
     end
     object ToolButton26: TToolButton
       Left = 289
@@ -666,6 +652,20 @@ object FRpMainFVCL: TFRpMainFVCL
       ImageIndex = 6
       ImageName = 'Item7'
       OnExecute = APreviewExecute
+    end
+    object AUndo: TAction
+      Category = 'Edit'
+      Caption = ''
+      Enabled = False
+      Hint = 'Deshacer (Ctrl+Z)'
+      OnExecute = AUndoExecute
+    end
+    object ARedo: TAction
+      Category = 'Edit'
+      Caption = ''
+      Enabled = False
+      Hint = 'Rehacer (Ctrl+Y)'
+      OnExecute = ARedoExecute
     end
     object AGridOptions: TAction
       Category = 'Display'
