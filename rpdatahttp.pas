@@ -28,7 +28,7 @@ uses
 {$IFDEF USERPDATASET}
   DBClient,
 {$ENDIF}
-  rptypes, rpmdconsts, rpauthmanager;
+  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts;
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AStage,
     AChunkType, AChunk: string; AOutputTokens: Integer) of object;
@@ -63,6 +63,7 @@ type
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
     property Connected: Boolean read FConnected write SetConnected;
     function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string): TJSONObject;
+    function ModifyReport(ARequest: TRpApiModifyReportRequest): TRpApiModifyReportResult;
     function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
       ACursorPosition: Integer; const AMode: string; AFix: Boolean;
       const ASemanticContextJson: string; Sender: TObject;
@@ -354,6 +355,48 @@ begin
     end;
   finally
     LRequest.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.ModifyReport(
+  ARequest: TRpApiModifyReportRequest): TRpApiModifyReportResult;
+var
+  LRequestJson: TJSONObject;
+  LResponseJson: TJSONObject;
+  LResponseStream: TStringStream;
+begin
+  Result := nil;
+  if ARequest = nil then
+    raise Exception.Create('ModifyReport request not assigned');
+
+  LRequestJson := ARequest.ToJsonObject;
+  try
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('ReportDesigner/ModifyReport', LRequestJson, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        try
+          if LResponseJson = nil then
+            raise Exception.Create('Invalid JSON response from ReportDesigner/ModifyReport');
+
+          Result := TRpApiModifyReportResult.Create;
+          try
+            Result.FromJsonObject(LResponseJson);
+          except
+            Result.Free;
+            raise;
+          end;
+        finally
+          LResponseJson.Free;
+        end;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequestJson.Free;
   end;
 end;
 

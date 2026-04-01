@@ -35,12 +35,13 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
-  rpmdconsts, rpfrmchatvcl, rpdatahttp, rpreport, rpmetafile;
+  rpmdconsts, rpfrmchatvcl, rpdatahttp, rpreport, rpmetafile, rpxmlstream,
+  rpreportdesignercontracts;
 
 const
  FMaxlisthelp=5;
  SExpressionChatInitialMessage='Ask for help rewriting, simplifying or validating the current expression.';
- SDesignChatInitialMessage='Use this chat to describe report design changes. Design backend wiring will be added in a later phase.';
+ SDesignChatInitialMessage='Describe report design changes here. The current report will be sent to the API and the returned XML will be applied.';
 type
   TRpChatMode = (rcmExpression, rcmDesign);
 
@@ -50,12 +51,14 @@ type
     rpqecGenerationStopped,
     rpqecAddAssistantMessage,
     rpqecSetSuggestedExpression,
-    rpqecUpdateUserProfile
+    rpqecUpdateUserProfile,
+    rpqecApplyDesignResult
   );
 
   TRpQueuedExpressionChatPayload = class(TObject)
   public
     Kind: TRpQueuedExpressionChatPayloadKind;
+    RequestVersion: Integer;
     Text1: string;
     Text2: string;
     PrefillPercent: Integer;
@@ -161,6 +164,7 @@ type
     FRefreshVersion: Integer;
     FRefreshRunning: Boolean;
     FAliasReady: Boolean;
+    FDesignRequestVersion: Integer;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
     procedure ClearHelpLists;
     procedure ConfigureReportRefresh(AReport: TRpReport;
@@ -183,6 +187,10 @@ type
     function GetExpressionPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure ResetExpressionStreamState;
     procedure StopExpressionRequest(Sender: TObject);
+    function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    procedure ApplyModifiedReportDocumentToRefreshReport(
+      const AModifiedReportDocument: string);
+    function SaveRefreshReportAsXml: string;
     function ValidateExpressionText(const AExpression: string;
       out AErrorMessage: string): Boolean;
     procedure UpdateExpressionCursorPosition;
@@ -329,6 +337,7 @@ begin
  FRefreshVersion := 0;
  FRefreshRunning := False;
  FAliasReady := True;
+ FDesignRequestVersion := 0;
  FEmptyAlias := TRpAlias.Create(Self);
  FChat := TFRpChatFrame.Create(Self);
  FChat.Parent := PChatHost;
@@ -716,6 +725,9 @@ begin
         end;
       rpqecAddAssistantMessage:
         begin
+          if (LPayload.RequestVersion <> 0) and
+            (LPayload.RequestVersion <> FDesignRequestVersion) then
+            Exit;
           FChat.FinishStreamingResponse;
           FChat.AddAssistantMessage(LPayload.Text1);
         end;
@@ -728,6 +740,39 @@ begin
             FChat.UpdateUserProfile(LPayload.UserProfile);
             LPayload.UserProfile := nil;
           end;
+        end;
+      rpqecApplyDesignResult:
+        begin
+          if LPayload.RequestVersion <> FDesignRequestVersion then
+            Exit;
+
+          FChat.FinishStreamingResponse;
+          if LPayload.UserProfile <> nil then
+          begin
+            FChat.UpdateUserProfile(LPayload.UserProfile);
+            LPayload.UserProfile := nil;
+          end;
+
+          if Trim(LPayload.Text1) <> '' then
+          begin
+            try
+              ApplyModifiedReportDocumentToRefreshReport(LPayload.Text1);
+            except
+              on E: Exception do
+              begin
+                FChat.AddAssistantMessage(
+                  'The server returned a modified report, but it could not be loaded: ' + E.Message);
+                Exit;
+              end;
+            end;
+          end;
+
+          if Trim(LPayload.Text2) <> '' then
+            FChat.AddAssistantMessage(LPayload.Text2)
+          else if Trim(LPayload.Text1) <> '' then
+            FChat.AddAssistantMessage('Report updated.')
+          else
+            FChat.AddAssistantMessage('No report changes were returned.');
         end;
     end;
   finally
@@ -1057,7 +1102,85 @@ end;
 
 procedure TFRpExpredialogVCL.StopExpressionRequest(Sender: TObject);
 begin
- FCancelExpressionRequest := True;
+ if FChatMode = rcmDesign then
+ begin
+  Inc(FDesignRequestVersion);
+  if FChat <> nil then
+  begin
+   FChat.SetBusy(False);
+   FChat.AddAssistantMessage(
+     'The current design request cannot be aborted mid-flight, but its result will be ignored.');
+  end;
+ end
+ else
+  FCancelExpressionRequest := True;
+end;
+
+function TFRpExpredialogVCL.SaveRefreshReportAsXml: string;
+var
+ LStream: TStringStream;
+begin
+ Result := '';
+ if FRefreshReport = nil then
+  Exit;
+
+ LStream := TStringStream.Create('', TEncoding.UTF8);
+ try
+  WriteReportXML(FRefreshReport, LStream);
+  Result := LStream.DataString;
+ finally
+  LStream.Free;
+ end;
+end;
+
+function TFRpExpredialogVCL.BuildDesignChatRequest(
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+ Result := TRpApiModifyReportRequest.Create;
+ Result.AITier := RpAITierTypeFromString(FChat.GetAITier);
+ Result.Mode := RpReportDesignerModeFromString(FChat.GetAIMode);
+ Result.ReportDocument := SaveRefreshReportAsXml;
+ Result.ReportFormat := rdfXml;
+ Result.ReturnModifiedDocument := True;
+ Result.SimplifiedPrompt := False;
+ Result.UserInstructions.Add(APrompt);
+ if Result.AITier = ratLocalAgent then
+ begin
+  Result.AgentSecret := FChat.GetAgentSecret;
+  Result.AgentAiId := FChat.GetAgentAiId;
+  Result.HasAgentAiId := Result.AgentAiId <> 0;
+ end;
+end;
+
+procedure TFRpExpredialogVCL.ApplyModifiedReportDocumentToRefreshReport(
+  const AModifiedReportDocument: string);
+var
+ LStream: TStringStream;
+begin
+ if (FRefreshReport = nil) or (Trim(AModifiedReportDocument) = '') then
+  Exit;
+
+ LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
+ try
+	 FRefreshReport.DeActivateDatasets;
+	 FRefreshReport.FreeSubreports;
+	 FRefreshReport.DataInfo.Clear;
+	 FRefreshReport.DatabaseInfo.Clear;
+	 FRefreshReport.Params.Clear;
+  FRefreshReport.LoadFromStream(LStream);
+  if not FOwnsEvaluator then
+  begin
+   Setevaluator(BuildRefreshSnapshotEvaluator);
+   FOwnsEvaluator := True;
+  end;
+  FAliasReady := False;
+  if FRefreshPrintDriver <> nil then
+   StartReportRefresh
+  else
+   UpdateRefreshUIState;
+ finally
+  LStream.Free;
+ end;
 end;
 
 function TFRpExpredialogVCL.BuildExpressionSemanticContextJson: string;
@@ -1450,18 +1573,106 @@ end;
 procedure TFRpExpredialogVCL.SendDesignPrompt(const APrompt,
   AExpression: string);
 var
- LChatPayload: TRpQueuedExpressionChatPayload;
+ LPrompt: string;
+ LRequest: TRpApiModifyReportRequest;
+ LRequestVersion: Integer;
+ LWorker: TThread;
 begin
- if Trim(APrompt) = '' then
+ if FChat = nil then
   Exit;
 
- if FChat <> nil then
-  FChat.SetBusy(False);
+ LPrompt := Trim(APrompt);
+ if LPrompt = '' then
+  Exit;
 
- LChatPayload := TRpQueuedExpressionChatPayload.Create;
- LChatPayload.Kind := rpqecAddAssistantMessage;
- LChatPayload.Text1 := 'Design mode has been separated from expression mode. Backend request wiring is pending in this phase.';
- PostExpressionChatPayload(LChatPayload);
+ if FRefreshReport = nil then
+ begin
+  FChat.AddAssistantMessage('Design mode requires a report instance to serialize and send to the API.');
+  Exit;
+ end;
+
+ LRequest := BuildDesignChatRequest(LPrompt);
+ if Trim(LRequest.ReportDocument) = '' then
+ begin
+  LRequest.Free;
+  FChat.AddAssistantMessage('Unable to serialize the current report to XML.');
+  Exit;
+ end;
+
+ Inc(FDesignRequestVersion);
+ LRequestVersion := FDesignRequestVersion;
+ FChat.BeginStreamingResponse;
+
+ LWorker := TThread.CreateAnonymousThread(
+   procedure
+   var
+    LChatPayload: TRpQueuedExpressionChatPayload;
+    LHttp: TRpDatabaseHttp;
+    LResponse: TRpApiModifyReportResult;
+   begin
+    LHttp := TRpDatabaseHttp.Create;
+    LResponse := nil;
+    try
+      try
+        LHttp.Token := TRpAuthManager.Instance.Token;
+        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+        LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
+        LHttp.AgentSecret := LRequest.AgentSecret;
+        if LRequest.HasAgentAiId then
+          LHttp.AgentAiId := LRequest.AgentAiId;
+
+        LResponse := LHttp.ModifyReport(LRequest);
+
+        if (LResponse <> nil) and (Trim(LResponse.ErrorMessage) <> '') then
+        begin
+          LChatPayload := TRpQueuedExpressionChatPayload.Create;
+          LChatPayload.Kind := rpqecAddAssistantMessage;
+          LChatPayload.RequestVersion := LRequestVersion;
+          LChatPayload.Text1 := LResponse.ErrorMessage;
+          PostExpressionChatPayload(LChatPayload);
+          Exit;
+        end;
+
+        if (LResponse <> nil) and (Trim(LResponse.ResultData.ErrorMessage) <> '') then
+        begin
+          LChatPayload := TRpQueuedExpressionChatPayload.Create;
+          LChatPayload.Kind := rpqecAddAssistantMessage;
+          LChatPayload.RequestVersion := LRequestVersion;
+          LChatPayload.Text1 := LResponse.ResultData.ErrorMessage;
+          PostExpressionChatPayload(LChatPayload);
+          Exit;
+        end;
+
+        LChatPayload := TRpQueuedExpressionChatPayload.Create;
+        LChatPayload.Kind := rpqecApplyDesignResult;
+        LChatPayload.RequestVersion := LRequestVersion;
+        if LResponse <> nil then
+        begin
+          LChatPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
+          LChatPayload.Text2 := LResponse.ResultData.Explanation;
+          if (Trim(LResponse.UserProfileJson) <> '') and
+            (not SameText(Trim(LResponse.UserProfileJson), 'null')) then
+            LChatPayload.UserProfile := TJSONObject.ParseJSONValue(LResponse.UserProfileJson) as TJSONObject;
+        end;
+        PostExpressionChatPayload(LChatPayload);
+      except
+        on E: Exception do
+        begin
+          LChatPayload := TRpQueuedExpressionChatPayload.Create;
+          LChatPayload.Kind := rpqecAddAssistantMessage;
+          LChatPayload.RequestVersion := LRequestVersion;
+          LChatPayload.Text1 := E.Message;
+          PostExpressionChatPayload(LChatPayload);
+        end;
+      end;
+    finally
+      LResponse.Free;
+      LHttp.Free;
+      LRequest.Free;
+    end;
+   end);
+ LWorker.FreeOnTerminate := True;
+ LWorker.Start;
 end;
 
 procedure TFRpExpredialogVCL.ChatApplySuggestion(Sender: TObject;

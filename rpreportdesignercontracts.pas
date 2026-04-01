@@ -585,7 +585,7 @@ begin
   FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   LUserProfile := AObject.Values['userProfile'];
-  if LUserProfile <> nil then
+  if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
     FUserProfileJson := LUserProfile.ToJSON
   else
     FUserProfileJson := '';
@@ -606,10 +606,10 @@ begin
   if FHasCreditsConsumed then
     Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
   Result.AddPair('errorMessage', FErrorMessage);
-  if FUserProfileJson <> '' then
+  if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
   begin
     LProfileValue := TJSONObject.ParseJSONValue(FUserProfileJson);
-    if LProfileValue <> nil then
+    if (LProfileValue <> nil) and (LProfileValue is TJSONObject) then
       Result.AddPair('userProfile', LProfileValue);
   end;
 end;

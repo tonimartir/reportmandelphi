@@ -34,6 +34,7 @@ uses
 {$ENDIF}
   Classes,Graphics,rpvgraphutils, DBLogDlg,
   rpgdidriver,rpvpreview,rprfvparams,windows,
+  Messages,
   Controls, Forms,
   StdCtrls, ComCtrls, ActnList, ImgList, Menus,ExtCtrls,
   Clipbrd,Printers,Consts, Dialogs,ShellApi,
@@ -61,17 +62,28 @@ uses
 {$IFDEF XE3UP}
   System.UITypes,
 {$ENDIF}
+  System.JSON,
   rpmdsysinfo,rppdfdriver,
   rpsection,rpprintitem,rpmdfopenlibvcl,rpeditconnvcl,
   DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl, rpalias, System.Actions,
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
   Vcl.VirtualImageList,
-  rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections;
+  rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections,
+  rpdatahttp, rpauthmanager, rpreportdesignercontracts, rpxmlstream;
 
 const
   // File name in menu width
   C_FILENAME_WIDTH=40;
 type
+  TRpQueuedDesignChatPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+    Explanation: string;
+    ModifiedReportDocument: string;
+    UserProfileJson: string;
+  end;
+
   TFRpMainFVCL = class(TForm)
     MainMenu1: TMainMenu;
     File1: TMenuItem;
@@ -359,6 +371,7 @@ type
     fhistorytab:TTabSheet;
     fchatframe:TFRpChatFrame;
     frightpanel:TPanel;
+    FDesignChatRequestVersion: Integer;
     procedure FreeInterface;
     procedure CreateInterface;
     function checkmodified:boolean;
@@ -390,8 +403,14 @@ type
     procedure DoRedo;
     procedure OnUndoRedo(Sender: TObject);
     procedure UpdateUndoToolbarButtons;
+    function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
     procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
+    procedure StopDesignChatRequest(Sender: TObject);
+    procedure PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
+    function SaveReportAsXml: string;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 206;
   public
     { Public declarations }
     report:TRpReport;
@@ -782,7 +801,7 @@ begin
  fchatframe.Parent:=fchattab;
  fchatframe.OnSendPrompt:=DesignerChatSendPrompt;
  fchatframe.Initialize('',
-  'Describe report design changes here. In this phase the panel is UI-only and no backend request will be sent.');
+  'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
 
  fcueview:=TFRpCueViewVCL.Create(fhistorytab);
  fcueview.Align:=alClient;
@@ -799,6 +818,8 @@ begin
  UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
+ if Assigned(fchatframe) then
+  fchatframe.OnStopRequest:=StopDesignChatRequest;
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -2738,10 +2759,234 @@ begin
 
   procedure TFRpMainFVCL.DesignerChatSendPrompt(Sender: TObject; const APrompt,
     AExpression: string);
+  var
+   LPrompt: string;
+   LRequest: TRpApiModifyReportRequest;
+   LRequestVersion: Integer;
+   LWorker: TThread;
   begin
-   if Assigned(fchatframe) then
-    fchatframe.AddAssistantMessage(
-      'Design mode is connected only at UI level in this phase. No backend request has been sent yet.');
+   if (not Assigned(fchatframe)) or (not Assigned(report)) then
+    Exit;
+
+   LPrompt := Trim(APrompt);
+   if LPrompt = '' then
+    Exit;
+
+   LRequest := BuildDesignChatRequest(LPrompt);
+   Inc(FDesignChatRequestVersion);
+   LRequestVersion := FDesignChatRequestVersion;
+   fchatframe.SetBusy(True);
+
+   LWorker := TThread.CreateAnonymousThread(
+     procedure
+     var
+      LHttp: TRpDatabaseHttp;
+      LPayload: TRpQueuedDesignChatPayload;
+      LResponse: TRpApiModifyReportResult;
+     begin
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
+          LHttp.AgentSecret := LRequest.AgentSecret;
+          if LRequest.HasAgentAiId then
+            LHttp.AgentAiId := LRequest.AgentAiId;
+
+          LResponse := LHttp.ModifyReport(LRequest);
+          LPayload := TRpQueuedDesignChatPayload.Create;
+          LPayload.RequestVersion := LRequestVersion;
+          if LResponse <> nil then
+          begin
+            LPayload.ErrorMessage := LResponse.ErrorMessage;
+            if Trim(LPayload.ErrorMessage) = '' then
+              LPayload.ErrorMessage := LResponse.ResultData.ErrorMessage;
+            LPayload.Explanation := LResponse.ResultData.Explanation;
+            LPayload.ModifiedReportDocument := LResponse.ResultData.ModifiedReportDocument;
+            LPayload.UserProfileJson := LResponse.UserProfileJson;
+          end;
+          PostDesignChatPayload(LPayload);
+        except
+          on E: Exception do
+          begin
+            LPayload := TRpQueuedDesignChatPayload.Create;
+            LPayload.RequestVersion := LRequestVersion;
+            LPayload.ErrorMessage := E.Message;
+            PostDesignChatPayload(LPayload);
+          end;
+        end;
+      finally
+        LResponse.Free;
+        LHttp.Free;
+        LRequest.Free;
+      end;
+     end);
+   LWorker.FreeOnTerminate := True;
+   LWorker.Start;
+  end;
+
+procedure TFRpMainFVCL.StopDesignChatRequest(Sender: TObject);
+begin
+ if not Assigned(fchatframe) then
+  Exit;
+
+ Inc(FDesignChatRequestVersion);
+ fchatframe.SetBusy(False);
+ fchatframe.AddAssistantMessage(
+   'The current design request cannot be aborted mid-flight, but its result will be ignored.');
+end;
+
+procedure TFRpMainFVCL.PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
+begin
+ if APayload = nil then
+  Exit;
+ if HandleAllocated then
+  PostMessage(Handle, WM_USER + 206, WPARAM(APayload), 0)
+ else
+  APayload.Free;
+end;
+
+function TFRpMainFVCL.SaveReportAsXml: string;
+var
+ LStream: TStringStream;
+begin
+ Result := '';
+ if not Assigned(report) then
+  Exit;
+
+ LStream := TStringStream.Create('', TEncoding.UTF8);
+ try
+  WriteReportXML(report, LStream);
+  Result := LStream.DataString;
+ finally
+  LStream.Free;
+ end;
+end;
+
+function TFRpMainFVCL.BuildDesignChatRequest(
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+ Result := TRpApiModifyReportRequest.Create;
+ Result.AITier := RpAITierTypeFromString(fchatframe.GetAITier);
+ Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
+ Result.ReportDocument := SaveReportAsXml;
+ Result.ReportFormat := rdfXml;
+ Result.ReturnModifiedDocument := True;
+ Result.SimplifiedPrompt := False;
+ Result.UserInstructions.Add(APrompt);
+ if Result.AITier = ratLocalAgent then
+ begin
+  Result.AgentSecret := fchatframe.GetAgentSecret;
+  Result.AgentAiId := fchatframe.GetAgentAiId;
+  Result.HasAgentAiId := Result.AgentAiId <> 0;
+ end;
+end;
+
+procedure TFRpMainFVCL.ApplyModifiedReportDocument(
+  const AModifiedReportDocument: string);
+var
+ LStream: TStringStream;
+begin
+ if (not Assigned(report)) or (Trim(AModifiedReportDocument) = '') then
+  Exit;
+
+ LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
+ try
+	 report.DeActivateDatasets;
+	 report.FreeSubreports;
+	 report.DataInfo.Clear;
+	 report.DatabaseInfo.Clear;
+	 report.Params.Clear;
+  report.LoadFromStream(LStream);
+  report.AsyncExecution := MAsync.Checked;
+  report.IsDesignTime := True;
+  report.OnReadError := OnReadError;
+  report.FailIfLoadExternalError := False;
+  EnsureUndoCue;
+
+  if Assigned(freportstructure) then
+    freportstructure.Report := report;
+  if Assigned(fdesignframe) then
+  begin
+    fdesignframe.report := report;
+    fdesignframe.UpdateInterface(True);
+    fdesignframe.UpdateSelection(False);
+  end;
+  if Assigned(fcueview) then
+    fcueview.Report := report;
+
+  RefreshCueView;
+  FormResize(Self);
+ finally
+  LStream.Free;
+ end;
+end;
+
+procedure TFRpMainFVCL.WMHandleDesignChatPayload(var Message: TMessage);
+var
+ LPayload: TRpQueuedDesignChatPayload;
+ LProfile: TJSONObject;
+ LMessage: string;
+begin
+ LPayload := TRpQueuedDesignChatPayload(Message.WParam);
+ try
+  if LPayload = nil then
+    Exit;
+  if LPayload.RequestVersion <> FDesignChatRequestVersion then
+    Exit;
+
+  if Assigned(fchatframe) then
+    fchatframe.SetBusy(False);
+
+  if (Trim(LPayload.UserProfileJson) <> '') and
+    (not SameText(Trim(LPayload.UserProfileJson), 'null')) then
+  begin
+    LProfile := TJSONObject.ParseJSONValue(LPayload.UserProfileJson) as TJSONObject;
+    try
+      if (LProfile <> nil) and Assigned(fchatframe) then
+        fchatframe.UpdateUserProfile(LProfile);
+    finally
+      LProfile.Free;
+    end;
+  end;
+
+  if Trim(LPayload.ErrorMessage) <> '' then
+  begin
+    if Assigned(fchatframe) then
+      fchatframe.AddAssistantMessage(LPayload.ErrorMessage);
+    Exit;
+  end;
+
+  if Trim(LPayload.ModifiedReportDocument) <> '' then
+  begin
+    try
+      ApplyModifiedReportDocument(LPayload.ModifiedReportDocument);
+    except
+      on E: Exception do
+      begin
+        if Assigned(fchatframe) then
+          fchatframe.AddAssistantMessage('The server returned a modified report, but it could not be loaded: ' + E.Message);
+        Exit;
+      end;
+    end;
+  end;
+
+  LMessage := Trim(LPayload.Explanation);
+  if LMessage = '' then
+  begin
+    if Trim(LPayload.ModifiedReportDocument) <> '' then
+      LMessage := 'Report updated.'
+    else
+      LMessage := 'No report changes were returned.';
+  end;
+
+  if Assigned(fchatframe) then
+    fchatframe.AddAssistantMessage(LMessage);
+ finally
+  LPayload.Free;
+ end;
 end;
 
 procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

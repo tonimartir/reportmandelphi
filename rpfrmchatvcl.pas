@@ -82,6 +82,7 @@ type
     procedure StartOnlineInitialization;
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
+    procedure SetInferenceProgress(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
     procedure UpdateStreamingResponse(const AChunk: string; APrefillPercent: Integer);
     procedure UpdateUserProfile(AProfile: TJSONObject);
@@ -420,11 +421,19 @@ end;
 procedure TFRpChatFrame.SetBusy(AValue: Boolean);
 begin
   FBusy := AValue;
+  if FAISelection <> nil then
+    FAISelection.SetInferenceProgress(AValue);
   if FBusy then
     BClear.Caption := 'Stop'
   else
     BClear.Caption := 'Clear';
   UpdateButtons;
+end;
+
+procedure TFRpChatFrame.SetInferenceProgress(AValue: Boolean);
+begin
+  if FAISelection <> nil then
+    FAISelection.SetInferenceProgress(AValue);
 end;
 
 procedure TFRpChatFrame.SetSuggestedExpression(const AExpression, AMessage: string);
