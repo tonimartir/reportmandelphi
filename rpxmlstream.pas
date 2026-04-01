@@ -100,6 +100,7 @@ end;
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
 begin
  WritePropertyS('ALIAS',dbinfo.Alias,Stream);
+ WritePropertyS('NAME',dbinfo.Name,Stream);
  WritePropertyS('CONFIGFILE',dbinfo.Configfile,Stream);
  WritePropertyBool('LOADPARAMS',dbinfo.LoadParams,Stream);
  WritePropertyBool('LOADDRIVERPARAMS',dbinfo.LoadDriverParams,Stream);
@@ -118,6 +119,7 @@ end;
 procedure WriteDataInfoXML(dinfo:TRpDataInfoItem;Stream:TStream);
 begin
  WritePropertyS('ALIAS',dinfo.Alias,Stream);
+ WritePropertyS('NAME',dinfo.Name,Stream);
  WritePropertyS('DATABASEALIAS',dinfo.DatabaseAlias,Stream);
  WritePropertyW('SQL',dinfo.SQL,Stream);
  WritePropertyS('DATASOURCE',dinfo.DataSource,Stream);
@@ -232,6 +234,7 @@ end;
 procedure WriteParamXML(aparam:TRpParam;Stream:TStream);
 begin
  WritePropertyS('NAME',aparam.Name,Stream);
+ WritePropertyS('INTNAME',aparam.IntName,Stream);
  WritePropertyW('DESCRIPTION',aparam.Descriptions,Stream);
  WritePropertyW('HINT',aparam.Hints,Stream);
  WritePropertyW('ERRORMESSAGE',aparam.ErrorMessage,Stream);
@@ -953,6 +956,9 @@ end;
 procedure ReadPropDBInfo(dbitem:TRpDatabaseInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='NAME' then
+  dbitem.Name:=RpStringToString(propvalue)
+ else
  if propname='CONFIGFILE' then
   dbitem.Configfile:=RpStringToString(propvalue)
  else
@@ -1154,6 +1160,9 @@ end;
 procedure ReadPropDataInfo(ditem:TRpDataInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='NAME' then
+  ditem.Name:=RpStringToString(propvalue)
+ else
  if propname='DATABASEALIAS' then
   ditem.DataBaseAlias:=RpStringToString(propvalue)
  else
@@ -1218,6 +1227,9 @@ end;
 procedure ReadPropParam(aparam:TRpParam;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='INTNAME' then
+  aparam.IntName:=RpStringToString(propvalue)
+ else
  if propname='DESCRIPTION' then
   aparam.Descriptions:=RpStringToWString(propvalue)
  else
@@ -2255,37 +2267,30 @@ end;
 
 procedure EnsureDatabaseInfoItemName(report: TRpBaseReport;
   dbitem: TRpDatabaseInfoItem);
-var
-  preferredName: string;
 begin
   if not Assigned(report) or not Assigned(dbitem) then
     Exit;
-  preferredName := Trim(dbitem.Name);
-  if preferredName = '' then
-    preferredName := dbitem.Alias;
-  dbitem.Name := GetUniqueReportItemName(report, dbitem,
-    preferredName, 'TRPDATABASEINFOITEM');
+  if Trim(dbitem.Name) = '' then
+    dbitem.Name := GetUniqueReportItemName(report, dbitem,
+      '', 'TRPDATABASEINFOITEM');
 end;
 
 procedure EnsureDataInfoItemName(report: TRpBaseReport;
   ditem: TRpDataInfoItem);
-var
-  preferredName: string;
 begin
   if not Assigned(report) or not Assigned(ditem) then
     Exit;
-  preferredName := Trim(ditem.Name);
-  if preferredName = '' then
-    preferredName := ditem.Alias;
-  ditem.Name := GetUniqueReportItemName(report, ditem,
-    preferredName, 'TRPDATAINFOITEM');
+  if Trim(ditem.Name) = '' then
+    ditem.Name := GetUniqueReportItemName(report, ditem,
+      '', 'TRPDATAINFOITEM');
 end;
 
 procedure EnsureParamName(report: TRpBaseReport; param: TRpParam);
 begin
   if not Assigned(report) or not Assigned(param) then
     Exit;
-  param.Name := GetUniqueReportItemName(report, param, param.Name, 'TRPPARAM');
+  if Trim(param.IntName) = '' then
+    param.IntName := GetUniqueReportItemName(report, param, '', 'TRPPARAM');
 end;
 
 procedure EnsureReportItemNames(report: TRpBaseReport);

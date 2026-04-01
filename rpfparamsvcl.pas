@@ -151,6 +151,15 @@ begin
  Result:=list1.Text=list2.Text;
 end;
 
+function GetParamOperationName(param: TRpParam): string;
+begin
+ if not Assigned(param) then
+  raise Exception.Create('GetParamOperationName: parameter is nil');
+ if Trim(param.IntName)='' then
+  raise Exception.Create('GetParamOperationName: parameter '+param.Name+' has empty IntName');
+ Result:=param.IntName;
+end;
+
 procedure RecordParamUndoChanges(origParams,newParams:TRpParamList;report:TRpReport;
   groupId:integer=-1);
 var
@@ -170,12 +179,13 @@ begin
  for i:=0 to origParams.Count-1 do
  begin
   origParam:=origParams.Items[i];
-  if newParams.FindParam(origParam.Name)=nil then
+    if newParams.FindParamByIntName(GetParamOperationName(origParam))=nil then
   begin
    op:=TChangeObjectOperation.Create(otRemove,groupId);
-   op.componentName:=origParam.Name;
+     op.componentName:=GetParamOperationName(origParam);
    op.componentClass:='TRPPARAM';
    op.oldItemIndex:=i;
+     op.AddProperty('alias',ptString,origParam.Name,Null);
    op.AddProperty('description',ptString,origParam.Description,Null);
    op.AddProperty('hint',ptString,origParam.Hint,Null);
    op.AddProperty('validation',ptString,origParam.Validation,Null);
@@ -200,12 +210,13 @@ begin
  for i:=0 to newParams.Count-1 do
  begin
   newParam:=newParams.Items[i];
-  if origParams.FindParam(newParam.Name)=nil then
+    if origParams.FindParamByIntName(GetParamOperationName(newParam))=nil then
   begin
    op:=TChangeObjectOperation.Create(otAdd,groupId);
-   op.componentName:=newParam.Name;
+     op.componentName:=GetParamOperationName(newParam);
    op.componentClass:='TRPPARAM';
    op.oldItemIndex:=i;
+     op.AddProperty('alias',ptString,Null,newParam.Name);
    op.AddProperty('description',ptString,Null,newParam.Description);
    op.AddProperty('hint',ptString,Null,newParam.Hint);
    op.AddProperty('validation',ptString,Null,newParam.Validation);
@@ -230,12 +241,14 @@ begin
  for i:=0 to newParams.Count-1 do
  begin
   newParam:=newParams.Items[i];
-  origParam:=origParams.FindParam(newParam.Name);
+    origParam:=origParams.FindParamByIntName(GetParamOperationName(newParam));
   if Assigned(origParam) then
   begin
    op:=TChangeObjectOperation.Create(otModify,groupId);
-   op.componentName:=newParam.Name;
+     op.componentName:=GetParamOperationName(newParam);
    op.componentClass:='TRPPARAM';
+     if origParam.Name<>newParam.Name then
+      op.AddProperty('alias',ptString,origParam.Name,newParam.Name);
    if origParam.Description<>newParam.Description then
     op.AddProperty('description',ptString,origParam.Description,newParam.Description);
    if origParam.Hint<>newParam.Hint then

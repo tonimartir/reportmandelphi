@@ -2464,7 +2464,7 @@ begin
  for i:=0 to Params.Count-1 do
  begin
   paramItem:=Params.Items[i];
-  if paramItem.Name=itemName then
+  if SameText(paramItem.IntName,itemName) then
   begin
    Result:=paramItem;
    exit;

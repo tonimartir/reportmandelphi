@@ -569,6 +569,7 @@ begin
  if Length(conname)<1 then
   exit;
  item:=Fdatabaseinfo.Add(conname);
+ EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=TRpDbDriver(GDriver.ItemIndex);
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);

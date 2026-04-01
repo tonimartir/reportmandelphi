@@ -915,18 +915,24 @@ begin
             begin
               dinfo := FReport.DataInfo.Add('');
               dinfo.Name := operation.componentName;
+              if operation.oldItemIndex >= 0 then
+                dinfo.Index := operation.oldItemIndex;
               target := dinfo;
             end
             else if operation.componentClass = 'TRPDATABASEINFOITEM' then
             begin
               dbinfo := FReport.DatabaseInfo.Add('');
               dbinfo.Name := operation.componentName;
+              if operation.oldItemIndex >= 0 then
+                dbinfo.Index := operation.oldItemIndex;
               target := dbinfo;
             end
             else if operation.componentClass = 'TRPPARAM' then
             begin
               param := FReport.Params.Add('');
-              param.Name := operation.componentName;
+              param.IntName := operation.componentName;
+              if operation.oldItemIndex >= 0 then
+                param.Index := operation.oldItemIndex;
               target := param;
             end
             else if operation.componentClass = 'TRPSUBREPORT' then
@@ -1011,7 +1017,7 @@ begin
           begin
             for i := 0 to FReport.Params.Count - 1 do
             begin
-              if SameText(FReport.Params.Items[i].Name, operation.componentName) then
+              if SameText(FReport.Params.Items[i].IntName, operation.componentName) then
               begin
                 FReport.Params.Delete(i);
                 Break;
@@ -1129,7 +1135,7 @@ begin
       begin
         for i := 0 to FReport.Params.Count - 1 do
         begin
-          if SameText(FReport.Params.Items[i].Name, operation.componentName) then
+          if SameText(FReport.Params.Items[i].IntName, operation.componentName) then
           begin
             operation.oldItemIndex := i;
             FReport.Params.Delete(i);
@@ -1165,20 +1171,26 @@ begin
       begin
         if operation.componentClass = 'TRPPARAM' then
         begin
-          param := FReport.Params.Add(operation.componentName);
-          param.Name := operation.componentName;
+          param := FReport.Params.Add('');
+          param.IntName := operation.componentName;
+          if operation.oldItemIndex >= 0 then
+            param.Index := operation.oldItemIndex;
           target := param;
         end
         else if operation.componentClass = 'TRPDATAINFOITEM' then
         begin
-          dinfo := FReport.DataInfo.Add(operation.componentName);
+          dinfo := FReport.DataInfo.Add('');
           dinfo.Name := operation.componentName;
+          if operation.oldItemIndex >= 0 then
+            dinfo.Index := operation.oldItemIndex;
           target := dinfo;
         end
         else if operation.componentClass = 'TRPDATABASEINFOITEM' then
         begin
-          dbinfo := FReport.DatabaseInfo.Add(operation.componentName);
+          dbinfo := FReport.DatabaseInfo.Add('');
           dbinfo.Name := operation.componentName;
+          if operation.oldItemIndex >= 0 then
+            dbinfo.Index := operation.oldItemIndex;
           target := dbinfo;
         end
         else if operation.componentClass = 'TRPSUBREPORT' then
