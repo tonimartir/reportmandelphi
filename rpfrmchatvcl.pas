@@ -10,6 +10,7 @@ type
   TChatSendEvent = procedure(Sender: TObject; const APrompt, AExpression: string) of object;
   TChatApplyEvent = procedure(Sender: TObject; const AExpression: string) of object;
   TChatStopEvent = procedure(Sender: TObject) of object;
+  TChatRefreshEvent = procedure(Sender: TObject) of object;
 
   TExpressionChatSendEvent = TChatSendEvent;
   TExpressionChatApplyEvent = TChatApplyEvent;
@@ -51,6 +52,7 @@ type
     FCurrentExpression: string;
     FLoginFrame: TFRpLoginFrameVCL;
     FOnApplySuggestion: TChatApplyEvent;
+    FOnRefreshContext: TChatRefreshEvent;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
     FSuggestedExpression: string;
@@ -59,6 +61,7 @@ type
     FStreamingText: string;
     FOnlineInitializationQueued: Boolean;
     FUserAgentsReloadVersion: Integer;
+    FUseRefreshAction: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
@@ -83,6 +86,7 @@ type
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
+    procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
     procedure UpdateStreamingResponse(const AChunk: string; APrefillPercent: Integer);
     procedure UpdateUserProfile(AProfile: TJSONObject);
@@ -92,6 +96,7 @@ type
     function GetAgentAiId: Int64;
   published
     property OnApplySuggestion: TChatApplyEvent read FOnApplySuggestion write FOnApplySuggestion;
+    property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
     property OnStopRequest: TChatStopEvent read FOnStopRequest write FOnStopRequest;
   end;
@@ -139,6 +144,7 @@ begin
   FStreamingText := '';
   FOnlineInitializationQueued := False;
   FUserAgentsReloadVersion := 0;
+  FUseRefreshAction := False;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
   Initialize('', '');
   RefreshTopLayout;
@@ -436,6 +442,16 @@ begin
     FAISelection.SetInferenceProgress(AValue);
 end;
 
+procedure TFRpChatFrame.SetRefreshAction(AValue: Boolean);
+begin
+  FUseRefreshAction := AValue;
+  if FUseRefreshAction then
+    BApply.Caption := 'Refresh'
+  else
+    BApply.Caption := 'Apply';
+  UpdateButtons;
+end;
+
 procedure TFRpChatFrame.SetSuggestedExpression(const AExpression, AMessage: string);
 begin
   FinishStreamingResponse;
@@ -450,7 +466,10 @@ end;
 procedure TFRpChatFrame.UpdateButtons;
 begin
   BSend.Enabled := (not FBusy) and (Trim(MemoPrompt.Text) <> '');
-  BApply.Enabled := (not FBusy) and (Trim(FSuggestedExpression) <> '');
+  if FUseRefreshAction then
+    BApply.Enabled := (not FBusy) and Assigned(FOnRefreshContext)
+  else
+    BApply.Enabled := (not FBusy) and (Trim(FSuggestedExpression) <> '');
 end;
 
 procedure TFRpChatFrame.UpdateStreamingResponse(const AChunk: string;
@@ -530,6 +549,13 @@ end;
 
 procedure TFRpChatFrame.BApplyClick(Sender: TObject);
 begin
+  if FUseRefreshAction then
+  begin
+    if Assigned(FOnRefreshContext) then
+      FOnRefreshContext(Self);
+    Exit;
+  end;
+
   if Trim(FSuggestedExpression) = '' then
     Exit;
 

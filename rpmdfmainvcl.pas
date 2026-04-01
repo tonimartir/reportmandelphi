@@ -84,6 +84,12 @@ type
     UserProfileJson: string;
   end;
 
+  TRpQueuedDesignContextPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+  end;
+
   TFRpMainFVCL = class(TForm)
     MainMenu1: TMainMenu;
     File1: TMenuItem;
@@ -372,6 +378,12 @@ type
     fchatframe:TFRpChatFrame;
     frightpanel:TPanel;
     FDesignChatRequestVersion: Integer;
+    FDesignContextRefreshVersion: Integer;
+    FDesignChatContextJson: string;
+    FDesignChatContextInitialized: Boolean;
+    FDesignChatPendingPrompt: string;
+    FDesignContextRefreshRunning: Boolean;
+    FDesignContextProgress: TProgressBar;
     procedure FreeInterface;
     procedure CreateInterface;
     function checkmodified:boolean;
@@ -407,10 +419,18 @@ type
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
     procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure StopDesignChatRequest(Sender: TObject);
+    procedure RefreshDesignChatContext(Sender: TObject);
     procedure PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
+    procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
+    procedure ResetDesignChatContextCache;
+    procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
+      ANotifyOnSuccess: Boolean);
+    procedure ExecuteDesignChatPrompt(const APrompt: string);
+    procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
     function SaveReportAsXml: string;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 206;
+    procedure WMHandleDesignContextPayload(var Message: TMessage); message WM_USER + 207;
   public
     { Public declarations }
     report:TRpReport;
@@ -431,7 +451,7 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 
 implementation
 
-uses rpmdfdatasetsvcl;
+uses rpmdfdatasetsvcl, rpchatdialogvcl;
 
 {$R *.dfm}
 
@@ -541,6 +561,7 @@ begin
  filename:='';
  alibrary:='';
  areportname:='';
+ ResetDesignChatContextCache;
 
  DoEnable;
  FormResize(Self);
@@ -800,8 +821,22 @@ begin
  fchatframe.Align:=alClient;
  fchatframe.Parent:=fchattab;
  fchatframe.OnSendPrompt:=DesignerChatSendPrompt;
+ fchatframe.OnStopRequest:=StopDesignChatRequest;
+ fchatframe.OnRefreshContext:=RefreshDesignChatContext;
+ fchatframe.SetRefreshAction(True);
  fchatframe.Initialize('',
   'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
+
+ if FDesignContextProgress = nil then
+ begin
+  FDesignContextProgress := TProgressBar.Create(Self);
+  FDesignContextProgress.Parent := BStatus;
+  FDesignContextProgress.Visible := False;
+  FDesignContextProgress.Min := 0;
+  FDesignContextProgress.Max := 100;
+  FDesignContextProgress.Position := 0;
+  FDesignContextProgress.Style := pbstMarquee;
+ end;
 
  fcueview:=TFRpCueViewVCL.Create(fhistorytab);
  fcueview.Align:=alClient;
@@ -818,8 +853,6 @@ begin
  UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
- if Assigned(fchatframe) then
-  fchatframe.OnStopRequest:=StopDesignChatRequest;
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -908,6 +941,12 @@ begin
  // Sets on exception event
  oldonexception:=Application.OnException;
  Forms.Application.OnException:=MyExceptionHandler;
+ FDesignChatContextJson := '';
+ FDesignChatContextInitialized := False;
+ FDesignChatPendingPrompt := '';
+ FDesignContextRefreshVersion := 0;
+ FDesignContextRefreshRunning := False;
+ FDesignContextProgress := nil;
 
 
   LastUsedFiles.CaseSensitive:=False;
@@ -2500,6 +2539,7 @@ begin
   report.OnReadError:=OnReadError;
   report.FailIfLoadExternalError:=false;
   report.LoadFromStream(astream);
+  ResetDesignChatContextCache;
   DoEnable;
  except
   report.free;
@@ -2761,9 +2801,6 @@ begin
     AExpression: string);
   var
    LPrompt: string;
-   LRequest: TRpApiModifyReportRequest;
-   LRequestVersion: Integer;
-   LWorker: TThread;
   begin
    if (not Assigned(fchatframe)) or (not Assigned(report)) then
     Exit;
@@ -2772,7 +2809,25 @@ begin
    if LPrompt = '' then
     Exit;
 
-   LRequest := BuildDesignChatRequest(LPrompt);
+  if not FDesignChatContextInitialized then
+  begin
+      BeginDesignChatContextRefresh(LPrompt, False);
+      Exit;
+  end;
+
+    ExecuteDesignChatPrompt(LPrompt);
+   end;
+
+  procedure TFRpMainFVCL.ExecuteDesignChatPrompt(const APrompt: string);
+  var
+   LRequest: TRpApiModifyReportRequest;
+   LRequestVersion: Integer;
+   LWorker: TThread;
+  begin
+   if (not Assigned(fchatframe)) or (not Assigned(report)) then
+    Exit;
+
+   LRequest := BuildDesignChatRequest(APrompt);
    Inc(FDesignChatRequestVersion);
    LRequestVersion := FDesignChatRequestVersion;
    fchatframe.SetBusy(True);
@@ -2833,6 +2888,10 @@ begin
   Exit;
 
  Inc(FDesignChatRequestVersion);
+ Inc(FDesignContextRefreshVersion);
+ FDesignContextRefreshRunning := False;
+ FDesignChatPendingPrompt := '';
+ UpdateDesignContextProgress(False, '');
  fchatframe.SetBusy(False);
  fchatframe.AddAssistantMessage(
    'The current design request cannot be aborted mid-flight, but its result will be ignored.');
@@ -2844,6 +2903,16 @@ begin
   Exit;
  if HandleAllocated then
   PostMessage(Handle, WM_USER + 206, WPARAM(APayload), 0)
+ else
+  APayload.Free;
+end;
+
+procedure TFRpMainFVCL.PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
+begin
+ if APayload = nil then
+  Exit;
+ if HandleAllocated then
+  PostMessage(Handle, WM_USER + 207, WPARAM(APayload), 0)
  else
   APayload.Free;
 end;
@@ -2873,6 +2942,7 @@ begin
  Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
  Result.ReportDocument := SaveReportAsXml;
  Result.ReportFormat := rdfXml;
+ Result.ExistingContextJson := FDesignChatContextJson;
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
  Result.UserInstructions.Add(APrompt);
@@ -2882,6 +2952,88 @@ begin
   Result.AgentAiId := fchatframe.GetAgentAiId;
   Result.HasAgentAiId := Result.AgentAiId <> 0;
  end;
+end;
+
+procedure TFRpMainFVCL.ResetDesignChatContextCache;
+begin
+ FDesignChatContextJson := '';
+ FDesignChatContextInitialized := False;
+ FDesignChatPendingPrompt := '';
+end;
+
+procedure TFRpMainFVCL.UpdateDesignContextProgress(AActive: Boolean;
+  const AStatus: string);
+begin
+ if Assigned(BStatus) and (BStatus.Panels.Count > 0) then
+  BStatus.Panels.Items[0].Text := AStatus;
+
+ if FDesignContextProgress = nil then
+  Exit;
+
+ FDesignContextProgress.Visible := AActive;
+ if AActive and Assigned(BStatus) then
+ begin
+  FDesignContextProgress.SetBounds(BStatus.Width - 190, 2, 180, BStatus.Height - 4);
+  FDesignContextProgress.BringToFront;
+ end;
+end;
+
+procedure TFRpMainFVCL.BeginDesignChatContextRefresh(const APendingPrompt: string;
+  ANotifyOnSuccess: Boolean);
+var
+ LWorker: TThread;
+ LRequestVersion: Integer;
+ LReport: TRpReport;
+begin
+ if (not Assigned(fchatframe)) or (not Assigned(report)) then
+  Exit;
+
+ if FDesignContextRefreshRunning then
+  Exit;
+
+ fchatframe.SetBusy(True);
+ FDesignChatPendingPrompt := APendingPrompt;
+ Inc(FDesignContextRefreshVersion);
+ LRequestVersion := FDesignContextRefreshVersion;
+ LReport := report;
+ FDesignContextRefreshRunning := True;
+ if ANotifyOnSuccess then
+  UpdateDesignContextProgress(True, 'Refreshing design context...')
+ else
+  UpdateDesignContextProgress(True, 'Initializing design context...');
+
+ LWorker := TThread.CreateAnonymousThread(
+   procedure
+   var
+    LPayload: TRpQueuedDesignContextPayload;
+    LPrintDriver: TRpPDFDriver;
+   begin
+    LPayload := TRpQueuedDesignContextPayload.Create;
+    LPrintDriver := TRpPDFDriver.Create;
+    try
+      LPayload.RequestVersion := LRequestVersion;
+      LPrintDriver.PDFConformance := LReport.PDFConformance;
+      try
+        LReport.BeginPrint(LPrintDriver);
+      except
+        on E: Exception do
+          LPayload.ErrorMessage := E.Message;
+      end;
+
+      PostDesignContextPayload(LPayload);
+      LPayload := nil;
+    finally
+      LPrintDriver.Free;
+      LPayload.Free;
+    end;
+   end);
+ LWorker.FreeOnTerminate := True;
+ LWorker.Start;
+end;
+
+procedure TFRpMainFVCL.RefreshDesignChatContext(Sender: TObject);
+begin
+ BeginDesignChatContextRefresh('', True);
 end;
 
 procedure TFRpMainFVCL.ApplyModifiedReportDocument(
@@ -2984,6 +3136,55 @@ begin
   LPayload.Free;
  end;
 end;
+
+  procedure TFRpMainFVCL.WMHandleDesignContextPayload(var Message: TMessage);
+  var
+   LPayload: TRpQueuedDesignContextPayload;
+   LErrorMessage: string;
+   LPendingPrompt: string;
+  begin
+   LPayload := TRpQueuedDesignContextPayload(Message.WParam);
+   try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FDesignContextRefreshVersion then
+      Exit;
+
+    FDesignContextRefreshRunning := False;
+    if Trim(LPayload.ErrorMessage) <> '' then
+      LErrorMessage := LPayload.ErrorMessage
+    else
+    begin
+      FDesignChatContextJson := BuildDesignExpressionContextJson(report, RpAlias1, LErrorMessage);
+      FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
+    end;
+
+    UpdateDesignContextProgress(False, '');
+    if Assigned(fchatframe) then
+      fchatframe.SetBusy(False);
+
+    if Trim(LErrorMessage) <> '' then
+    begin
+      if Assigned(fchatframe) then
+        fchatframe.AddAssistantMessage('Context refresh failed: ' + LErrorMessage);
+      FDesignChatPendingPrompt := '';
+      Exit;
+    end;
+
+    LPendingPrompt := Trim(FDesignChatPendingPrompt);
+    FDesignChatPendingPrompt := '';
+    if LPendingPrompt <> '' then
+    begin
+      ExecuteDesignChatPrompt(LPendingPrompt);
+      Exit;
+    end;
+
+    if Assigned(fchatframe) then
+      fchatframe.AddAssistantMessage('Context refreshed.');
+   finally
+    LPayload.Free;
+   end;
+  end;
 
 procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin

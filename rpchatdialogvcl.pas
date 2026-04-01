@@ -35,6 +35,7 @@ uses
 {$IFDEF USEVARIANTS}
   Variants,
 {$ENDIF}
+  rpdatainfo,
   rpmdconsts, rpfrmchatvcl, rpdatahttp, rpreport, rpmetafile, rpxmlstream,
   rpreportdesignercontracts;
 
@@ -222,6 +223,8 @@ type
 function ChangeExpression(formul:string;aval:TRpCustomEvaluator):string;
 function ChangeExpressionW(formul:Widestring;aval:TRpCustomEvaluator):Widestring;
 function ExpressionCalculateW(formul:Widestring;aval:TRpCustomEvaluator):Variant;
+function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias;
+  out AErrorMessage: string): string;
 
 
 
@@ -273,6 +276,183 @@ begin
  else
   Result := 'unknown';
  end;
+end;
+
+function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias;
+  out AErrorMessage: string): string;
+var
+  dia: TFRpExpredialogVCL;
+  LRoot: TJSONObject;
+  LExpressionContext: TJSONObject;
+  LRuntimeDataSources: TJSONArray;
+  LExpressionFields: TJSONArray;
+  LTargetAlias: TRpAlias;
+  LOwnAlias: Boolean;
+  I: Integer;
+  J: Integer;
+  LDataInfo: TRpDataInfoItem;
+  LRuntimeSource: TJSONObject;
+  LRuntimeSchema: TJSONObject;
+  LRuntimeFields: TJSONArray;
+  LIssues: TJSONArray;
+  LFieldValue: TJSONValue;
+  LFieldObject: TJSONObject;
+  LFieldDataset: string;
+  LDataSourceName: string;
+
+  procedure AddIssue(AIssues: TJSONArray; const ASeverity, ACode,
+    AMessage: string);
+  var
+    LIssue: TJSONObject;
+  begin
+    LIssue := TJSONObject.Create;
+    LIssue.AddPair('severity', ASeverity);
+    LIssue.AddPair('code', ACode);
+    LIssue.AddPair('message', AMessage);
+    AIssues.AddElement(LIssue);
+  end;
+
+  function BuildRuntimeSource(const AName, AAlias, AStatus, ASource: string;
+    ARefreshRequired: Boolean; AFields, AIssues: TJSONArray): TJSONObject;
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('name', AName);
+    if Trim(AAlias) <> '' then
+      Result.AddPair('alias', AAlias);
+
+    LRuntimeSchema := TJSONObject.Create;
+    LRuntimeSchema.AddPair('status', AStatus);
+    LRuntimeSchema.AddPair('source', ASource);
+    LRuntimeSchema.AddPair('refreshRequired', TJSONBool.Create(ARefreshRequired));
+    LRuntimeSchema.AddPair('fields', AFields);
+    LRuntimeSchema.AddPair('issues', AIssues);
+    Result.AddPair('runtimeSchema', LRuntimeSchema);
+  end;
+
+  function CloneJsonValue(AValue: TJSONValue): TJSONValue;
+  begin
+    if AValue = nil then
+      Result := TJSONNull.Create
+    else
+      Result := TJSONObject.ParseJSONValue(AValue.ToJSON);
+  end;
+
+begin
+  AErrorMessage := '';
+  Result := '{}';
+  if AReport = nil then
+    Exit;
+
+  dia := TFRpExpredialogVCL.Create(nil);
+  LRoot := TJSONObject.Create;
+  LOwnAlias := False;
+  LTargetAlias := nil;
+  try
+    if ARpAlias <> nil then
+      LTargetAlias := ARpAlias
+    else
+    begin
+      LTargetAlias := TRpAlias.Create(dia);
+      LOwnAlias := True;
+    end;
+
+    dia.ConfigureReportRefresh(AReport, nil, LTargetAlias);
+    try
+      dia.PopulateAliasFromReport(LTargetAlias);
+      if AReport.Evaluator = nil then
+        raise Exception.Create('The report evaluator is not available after dataset refresh.');
+
+      AReport.Evaluator.Rpalias := LTargetAlias;
+      dia.Setevaluator(AReport.Evaluator);
+      dia.FAliasReady := True;
+      LExpressionContext := TJSONObject.ParseJSONValue(
+        dia.BuildExpressionSemanticContextJson) as TJSONObject;
+      if LExpressionContext = nil then
+        LExpressionContext := TJSONObject.Create;
+    except
+      on E: Exception do
+      begin
+        AErrorMessage := E.Message;
+        dia.FAliasReady := False;
+        LExpressionContext := TJSONObject.Create;
+      end;
+    end;
+
+    LRuntimeDataSources := TJSONArray.Create;
+    LRoot.AddPair('expressionContext', LExpressionContext);
+    LRoot.AddPair('runtimeDataSources', LRuntimeDataSources);
+
+    if LExpressionContext <> nil then
+      LExpressionFields := LExpressionContext.Values['fields'] as TJSONArray
+    else
+      LExpressionFields := nil;
+
+    for I := 0 to AReport.DataInfo.Count - 1 do
+    begin
+      LDataInfo := AReport.DataInfo.Items[I];
+      LDataSourceName := Trim(LDataInfo.Name);
+      if LDataSourceName = '' then
+        LDataSourceName := Trim(LDataInfo.Alias);
+      LRuntimeFields := TJSONArray.Create;
+      LIssues := TJSONArray.Create;
+
+      if AErrorMessage = '' then
+      begin
+        if LExpressionFields <> nil then
+        begin
+          for J := 0 to LExpressionFields.Count - 1 do
+          begin
+            LFieldValue := LExpressionFields.Items[J];
+            if not (LFieldValue is TJSONObject) then
+              Continue;
+
+            LFieldObject := TJSONObject(LFieldValue);
+            LFieldDataset := '';
+            if LFieldObject.Values['dataset'] <> nil then
+              LFieldDataset := LFieldObject.Values['dataset'].Value;
+            if not SameText(Trim(LFieldDataset), Trim(LDataInfo.Alias)) then
+              Continue;
+
+            LRuntimeFields.AddElement(CloneJsonValue(LFieldObject));
+          end;
+        end;
+
+        if LRuntimeFields.Count = 0 then
+          AddIssue(LIssues, 'info', 'no_live_fields',
+            'No live fields were returned by the Delphi evaluator for this datasource.');
+
+        LRuntimeSource := BuildRuntimeSource(
+          LDataSourceName,
+          LDataInfo.Alias,
+          'live_context',
+          'delphi_evaluator',
+          False,
+          LRuntimeFields,
+          LIssues);
+      end
+      else
+      begin
+        AddIssue(LIssues, 'error', 'refresh_failed', AErrorMessage);
+        LRuntimeSource := BuildRuntimeSource(
+          LDataSourceName,
+          LDataInfo.Alias,
+          'refresh_failed',
+          'delphi_evaluator',
+          True,
+          LRuntimeFields,
+          LIssues);
+      end;
+
+      LRuntimeDataSources.AddElement(LRuntimeSource);
+    end;
+
+    Result := LRoot.ToJSON;
+  finally
+    if LOwnAlias and (LTargetAlias <> nil) then
+      LTargetAlias.Free;
+    LRoot.Free;
+    dia.Free;
+  end;
 end;
 
 
@@ -663,6 +843,8 @@ begin
 end;
 
 procedure TFRpExpredialogVCL.FormShow(Sender: TObject);
+var
+  LQueueProc: TThreadProcedure;
 begin
   inherited;
   ActiveControl:=MemoExpre;
@@ -674,12 +856,15 @@ begin
   if HandleAllocated then
     PostMessage(Handle, WM_USER + 201, 0, 0);
   if FChat <> nil then
-    TThread.Queue(nil,
+  begin
+    LQueueProc :=
       procedure
       begin
         if (FChat <> nil) and Visible then
           FChat.Resize;
-      end);
+      end;
+    TThread.Queue(nil, LQueueProc);
+  end;
   if FRefreshReport <> nil then
     StartReportRefresh;
 end;
