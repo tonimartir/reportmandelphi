@@ -309,6 +309,7 @@ type
    maximum_height:integer;
    TouchEnabled:Boolean;
    EmbeddedFiles: array of TEmbeddedFile;
+   procedure Clear;
    procedure LoadExternals;virtual;
    procedure AddReportItemsToEvaluator(eval:TRpEvaluator);
    procedure InitEvaluator;
@@ -932,6 +933,18 @@ begin
  end;
 end;
 
+procedure TRpBaseReport.Clear();
+begin
+ DeActivateDatasets;
+ FreeSubreports;
+ DataInfo.Clear;
+ DatabaseInfo.Clear;
+ Params.Clear;
+ while (ComponentCount>0) do
+ begin
+  RemoveComponent(Components[0]);
+ end;
+end;
 
 procedure TRpBaseReport.LoadFromStream(Stream:TStream);
 var

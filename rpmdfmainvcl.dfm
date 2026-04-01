@@ -137,19 +137,19 @@ object FRpMainFVCL: TFRpMainFVCL
       Action = AUndo
     end
     object BRedoToolbar: TToolButton
-      Left = 243
+      Left = 242
       Top = 0
       Action = ARedo
     end
     object ToolButton26: TToolButton
-      Left = 289
+      Left = 275
       Top = 0
       Width = 6
       Caption = 'ToolButton26'
       Style = tbsSeparator
     end
     object ToolButton9: TToolButton
-      Left = 295
+      Left = 281
       Top = 0
       Width = 14
       Margins.Left = 4
@@ -162,7 +162,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsSeparator
     end
     object BArrow: TToolButton
-      Left = 309
+      Left = 295
       Top = 0
       Hint = 'Select objects'
       Margins.Left = 4
@@ -177,7 +177,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BLabel: TToolButton
-      Left = 342
+      Left = 328
       Top = 0
       Hint = 'Inserts a static text'
       Margins.Left = 4
@@ -192,7 +192,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BExpression: TToolButton
-      Left = 375
+      Left = 361
       Top = 0
       Hint = 'Inserts a expression'
       Margins.Left = 4
@@ -207,7 +207,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BShape: TToolButton
-      Left = 408
+      Left = 394
       Top = 0
       Hint = 'Inserts a simple drawing'
       Margins.Left = 4
@@ -222,7 +222,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BImage: TToolButton
-      Left = 441
+      Left = 427
       Top = 0
       Hint = 'Inserts a image'
       Margins.Left = 4
@@ -237,7 +237,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BChart: TToolButton
-      Left = 474
+      Left = 460
       Top = 0
       Hint = 'Inserts a chart'
       Margins.Left = 4
@@ -252,7 +252,7 @@ object FRpMainFVCL: TFRpMainFVCL
       Style = tbsCheck
     end
     object BBarcode: TToolButton
-      Left = 507
+      Left = 493
       Top = 0
       Hint = 'Inserts a barcode'
       Margins.Left = 4
@@ -655,14 +655,12 @@ object FRpMainFVCL: TFRpMainFVCL
     end
     object AUndo: TAction
       Category = 'Edit'
-      Caption = ''
       Enabled = False
       Hint = 'Deshacer (Ctrl+Z)'
       OnExecute = AUndoExecute
     end
     object ARedo: TAction
       Category = 'Edit'
-      Caption = ''
       Enabled = False
       Hint = 'Rehacer (Ctrl+Y)'
       OnExecute = ARedoExecute

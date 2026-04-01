@@ -94,6 +94,9 @@ type
 
 implementation
 
+const
+  MODIFY_REPORT_TIMEOUT_MS = 10 * 60 * 1000;
+
 type
   TRpExpressionStreamContext = class
   private
@@ -575,6 +578,12 @@ begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    begin
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
+    end;
+
     LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       LHttpClient.ContentType := 'application/json';
@@ -633,6 +642,12 @@ begin
   Result := False;
   LIdHttp := TIdHTTP.Create(nil);
   try
+    if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    begin
+      LIdHttp.ConnectTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LIdHttp.ReadTimeout := MODIFY_REPORT_TIMEOUT_MS;
+    end;
+
     LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       LIdHttp.Request.ContentType := 'application/json';

@@ -2894,11 +2894,7 @@ begin
 
  LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
  try
-	 report.DeActivateDatasets;
-	 report.FreeSubreports;
-	 report.DataInfo.Clear;
-	 report.DatabaseInfo.Clear;
-	 report.Params.Clear;
+  report.Clear();
   report.LoadFromStream(LStream);
   report.AsyncExecution := MAsync.Checked;
   report.IsDesignTime := True;
