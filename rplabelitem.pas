@@ -1040,6 +1040,11 @@ begin
   FAgType := TRpAggregateType(Integer(value));
   exit;
  end;
+ if SameText(propName, 'AgIniValue') then
+ begin
+  FAgIniValue := value;
+  exit;
+ end;
  if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
  begin
   FAutoExpand := value;
@@ -1123,6 +1128,11 @@ begin
  if SameText(propName, 'AgType') or SameText(propName, SRpSAgeType) then
  begin
   Result := Integer(FAgType);
+  exit;
+ end;
+ if SameText(propName, 'AgIniValue') then
+ begin
+  Result := FAgIniValue;
   exit;
  end;
  if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then

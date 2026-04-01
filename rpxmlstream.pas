@@ -210,7 +210,6 @@ begin
  WritePropertyI('VALIGNMENT',report.VAlignment,Stream);
  WritePropertyBool('WORDWRAP',report.WordWrap,Stream);
  WritePropertyBool('SINGLELINE',report.SingleLine,Stream);
- WritePropertyS('BIDIMODES',report.BidiModes.Text,Stream);
  WritePropertyBool('MULTIPAGE',report.MultiPage,Stream);
  WritePropertyI('PRINTSTEP',Integer(report.PrintStep),Stream);
  WritePropertyI('PAPERSOURCE',report.PaperSource,Stream);
@@ -396,7 +395,10 @@ begin
   compt:=TRpGenTextComponent(comp);
   WritePropertyW('WFONTNAME',compt.WFontName,Stream);
   WritePropertyW('LFONTNAME',compt.LFontName,Stream);
-  WritePropertyI('BIDIMODE',Integer(compt.BidiMode),Stream);
+  if compt.RightToLeft then
+   WritePropertyI('BIDIMODE',Integer(rpBidiPartial),Stream)
+  else
+   WritePropertyI('BIDIMODE',Integer(rpBidiNo),Stream);
   WritePropertyI('TYPE1FONT',Integer(compt.Type1Font),Stream);
   WritePropertyI('FONTSIZE',compt.FontSize,Stream);
   WritePropertyI('FONTROTATION',compt.FontRotation,Stream);
@@ -411,7 +413,6 @@ begin
   WritePropertyBool('WORDWRAP',compt.WordWrap,Stream);
   WritePropertyBool('WORDBREAK',compt.WordBreak,Stream);
   WritePropertyBool('SINGLELINE',compt.SingleLine,Stream);
-  WritePropertyS('BIDIMODES',compt.BidiModes.Text,Stream);
   WritePropertyBool('MULTIPAGE',compt.Multipage,Stream);
   WritePropertyI('PRINTSTEP',Integer(compt.PrintStep),Stream);
   if compt.IsHtml then

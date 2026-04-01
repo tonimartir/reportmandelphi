@@ -853,6 +853,14 @@ begin
   FMultiPage := value;
   exit;
  end;
+ if SameText(propName, 'RightToLeft') then
+ begin
+  if value then
+   SetBidiMode(rpBidiPartial)
+  else
+   SetBidiMode(rpBidiNo);
+  exit;
+ end;
  if SameText(propName, 'IsHtml') then
  begin
   FIsHtml := value;
@@ -951,6 +959,11 @@ begin
  if SameText(propName, 'MultiPage') then
  begin
   Result := FMultiPage;
+  exit;
+ end;
+ if SameText(propName, 'RightToLeft') then
+ begin
+  Result := GetRightToLeft;
   exit;
  end;
  if SameText(propName, 'IsHtml') then

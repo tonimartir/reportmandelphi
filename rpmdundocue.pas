@@ -424,6 +424,7 @@ begin
   if SameText(propName, 'printStep') then Exit('PrintStep');
   if SameText(propName, 'interLine') then Exit('InterLine');
   if SameText(propName, 'multiPage') then Exit('MultiPage');
+  if SameText(propName, 'rightToLeft') then Exit('RightToLeft');
   if SameText(propName, 'isHtml') then Exit('IsHtml');
   if SameText(propName, 'allStrings') then Exit('Text');
   if SameText(propName, 'expression') then Exit('Expression');
@@ -433,6 +434,7 @@ begin
   if SameText(propName, 'aggregate') then Exit('Aggregate');
   if SameText(propName, 'groupName') then Exit('GroupName');
   if SameText(propName, 'agType') then Exit('AgType');
+  if SameText(propName, 'agIniValue') then Exit('AgIniValue');
   if SameText(propName, 'autoExpand') then Exit('AutoExpand');
   if SameText(propName, 'autoContract') then Exit('AutoContract');
   if SameText(propName, 'printOnlyOne') then Exit('PrintOnlyOne');
@@ -1369,6 +1371,7 @@ begin
     op.AddProperty('printStep', ptInteger, Null, pitem.GetItemProperty('PrintStep'));
     op.AddProperty('interLine', ptInteger, Null, pitem.GetItemProperty('InterLine'));
     op.AddProperty('multiPage', ptBoolean, Null, pitem.GetItemProperty('MultiPage'));
+    op.AddProperty('rightToLeft', ptBoolean, Null, pitem.GetItemProperty('RightToLeft'));
     op.AddProperty('isHtml', ptBoolean, Null, pitem.GetItemProperty('IsHtml'));
     if pitem is TRpLabel then
     begin
@@ -1383,6 +1386,7 @@ begin
       op.AddProperty('aggregate', ptInteger, Null, pitem.GetItemProperty('Aggregate'));
       op.AddProperty('groupName', ptString, Null, pitem.GetItemProperty('GroupName'));
       op.AddProperty('agType', ptInteger, Null, pitem.GetItemProperty('AgType'));
+      op.AddProperty('agIniValue', ptString, Null, pitem.GetItemProperty('AgIniValue'));
       op.AddProperty('autoExpand', ptBoolean, Null, pitem.GetItemProperty('AutoExpand'));
       op.AddProperty('autoContract', ptBoolean, Null, pitem.GetItemProperty('AutoContract'));
       op.AddProperty('printOnlyOne', ptBoolean, Null, pitem.GetItemProperty('PrintOnlyOne'));

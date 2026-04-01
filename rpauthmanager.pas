@@ -386,6 +386,7 @@ begin
           if LValue = nil then LValue := LRoot.GetValue('Tiers');
           if (LValue <> nil) and (LValue is TJSONArray) then
             ParseTiers(LValue as TJSONArray);
+          SaveConfig;
             
           NotifyListeners(True);
           
@@ -436,6 +437,7 @@ begin
     Exit;
 
   ParseProfile(AProfileObj);
+  SaveConfig;
   NotifyListeners(True);
 end;
 
@@ -1158,6 +1160,12 @@ begin
     LIni.WriteString('Profile', 'UserName', FProfile.UserName);
     LIni.WriteString('Profile', 'AvatarUrl', FProfile.AvatarUrl);
     LIni.WriteInteger('Profile', 'AccountType', FProfile.AccountType);
+    LIni.WriteString('Profile', 'TierId', IntToStr(FProfile.TierId));
+    LIni.WriteString('Profile', 'TierName', FProfile.TierName);
+    LIni.WriteString('Profile', 'DailyMax', IntToStr(FProfile.DailyMax));
+    LIni.WriteString('Profile', 'DailyConsumed', IntToStr(FProfile.DailyConsumed));
+    LIni.WriteString('Profile', 'FreeInitial', IntToStr(FProfile.FreeInitial));
+    LIni.WriteString('Profile', 'FreeRemaining', IntToStr(FProfile.FreeRemaining));
     LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
     LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
     LIni.UpdateFile;
@@ -1180,8 +1188,12 @@ begin
     FProfile.UserName := LIni.ReadString('Profile', 'UserName', '');
     FProfile.AvatarUrl := LIni.ReadString('Profile', 'AvatarUrl', '');
     FProfile.AccountType := LIni.ReadInteger('Profile', 'AccountType', 0);
-    FProfile.TierId := LIni.ReadInteger('Profile', 'TierId', 1);
+    FProfile.TierId := StrToInt64Def(LIni.ReadString('Profile', 'TierId', '1'), 1);
     FProfile.TierName := LIni.ReadString('Profile', 'TierName', 'Guest');
+    FProfile.DailyMax := StrToInt64Def(LIni.ReadString('Profile', 'DailyMax', '0'), 0);
+    FProfile.DailyConsumed := StrToInt64Def(LIni.ReadString('Profile', 'DailyConsumed', '0'), 0);
+    FProfile.FreeInitial := StrToInt64Def(LIni.ReadString('Profile', 'FreeInitial', '0'), 0);
+    FProfile.FreeRemaining := StrToInt64Def(LIni.ReadString('Profile', 'FreeRemaining', '0'), 0);
     FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
     FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
     
