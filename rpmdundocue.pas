@@ -690,6 +690,14 @@ end;
 
 function TUndoCue.GetGroupId: Integer;
 begin
+  if (UndoOperations.Count > 0) or ((RedoOperations.Count > 0) and (FGroupId = 0)) then
+  begin
+    if UndoOperations.Count > 0 then
+      FGroupId := UndoOperations.Last.groupId;
+    if RedoOperations.Count > 0 then
+      if RedoOperations.First.groupId > FGroupId then
+        FGroupId := RedoOperations.First.groupId;
+  end;
   Inc(FGroupId);
   Result := FGroupId;
 end;
