@@ -71,6 +71,7 @@ type
     procedure LoadUserAgents;
     procedure RefreshTopLayout;
     procedure RebuildConversation;
+    procedure ScrollConversationToEnd;
     procedure UpdateButtons;
   public
     constructor Create(AOwner: TComponent); override;
@@ -218,7 +219,15 @@ begin
   end;
 
   MemoConversation.Lines.Text := LText;
+  ScrollConversationToEnd;
+end;
+
+procedure TFRpChatFrame.ScrollConversationToEnd;
+begin
+  MemoConversation.SelLength := 0;
   MemoConversation.SelStart := Length(MemoConversation.Text);
+  MemoConversation.Perform(EM_SCROLLCARET, 0, 0);
+  MemoConversation.Perform(WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
 procedure TFRpChatFrame.LoadUserAgents;

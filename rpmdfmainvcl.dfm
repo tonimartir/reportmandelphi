@@ -656,13 +656,13 @@ object FRpMainFVCL: TFRpMainFVCL
     object AUndo: TAction
       Category = 'Edit'
       Enabled = False
-      Hint = 'Deshacer (Ctrl+Z)'
+      Hint = 'Deshacer'
       OnExecute = AUndoExecute
     end
     object ARedo: TAction
       Category = 'Edit'
       Enabled = False
-      Hint = 'Rehacer (Ctrl+Y)'
+      Hint = 'Rehacer'
       OnExecute = ARedoExecute
     end
     object AGridOptions: TAction

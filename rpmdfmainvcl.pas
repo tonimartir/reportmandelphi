@@ -1058,8 +1058,8 @@ begin
  BImage.Hint:=TranslateStr(85,BImage.Hint);
  BBarCode.Hint:=TranslateStr(86,BBarCode.Hint);
  BChart.Hint:=TranslateStr(87,BChart.Hint);
- AUndo.Hint:='Deshacer (Ctrl+Z)';
- ARedo.Hint:='Rehacer (Ctrl+Y)';
+ AUndo.Hint:='Deshacer';
+ ARedo.Hint:='Rehacer';
  MAlign1_6.Caption:=TranslateStr(1059,MAlign1_6.Caption);
  MAlign1_6.Hint:=TranslateStr(1060,MAlign1_6.Hint);
  MLibraries.Caption:=TranslateStr(1080,MLibraries.Caption);
