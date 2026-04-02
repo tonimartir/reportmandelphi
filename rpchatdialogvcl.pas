@@ -1381,6 +1381,7 @@ var
  LVariables: TJSONArray;
  LConstants: TJSONArray;
  LFieldObj: TJSONObject;
+ LFieldDataType: string;
  I: Integer;
  J: Integer;
  LIdentifier: TRpIdentifier;
@@ -1453,11 +1454,14 @@ begin
       for J := 0 to LDataset.FieldCount - 1 do
       begin
         LField := LDataset.Fields[J];
+        LFieldDataType := GetSemanticFieldDataType(LField.DataType);
         LFieldObj := TJSONObject.Create;
         LFieldObj.AddPair('name', LAlias + '.' + LField.FieldName);
         LFieldObj.AddPair('dataset', LAlias);
         LFieldObj.AddPair('field', LField.FieldName);
-        LFieldObj.AddPair('dataType', GetSemanticFieldDataType(LField.DataType));
+        LFieldObj.AddPair('dataType', LFieldDataType);
+        if (LFieldDataType = 'string') and (LField.Size > 0) then
+          LFieldObj.AddPair('size', TJSONNumber.Create(LField.Size));
         LFields.AddElement(LFieldObj);
       end;
     end;
