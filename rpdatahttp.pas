@@ -428,6 +428,7 @@ begin
     AOnProgress, AOnResult, ACancel);
   LRequest := TJSONObject.Create;
   try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     LRequest.AddPair('currentExpression', ACurrentExpression);
     LRequest.AddPair('fix', TJSONBool.Create(AFix));
     LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
@@ -578,6 +579,7 @@ begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     if SameText(AAction, 'ReportDesigner/ModifyReport') then
     begin
       LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
@@ -894,6 +896,7 @@ begin
   LHttpClient := TNetHTTPClient.Create(nil);
   LResponseStream := TMemoryStream.Create;
   try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AApiKey;
     if TRpAuthManager.Instance.Token <> '' then
       LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + TRpAuthManager.Instance.Token;
@@ -943,6 +946,7 @@ begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     LHttpClient.ContentType := 'application/json';
     if FApiKey <> '' then
       LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;

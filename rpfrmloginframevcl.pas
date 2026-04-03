@@ -174,6 +174,7 @@ begin
       LHttpClient := TNetHTTPClient.Create(nil);
       LStream := TMemoryStream.Create;
       try
+        TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
         try
           LResponse := LHttpClient.Get(AUrl, LStream);
           TRpAuthManager.Instance.Log('DownloadAvatar: status ' + IntToStr(LResponse.StatusCode));

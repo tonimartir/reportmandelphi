@@ -20,7 +20,7 @@ uses
   Winapi.Windows, Winapi.Messages,
   SysUtils, Classes, System.JSON, System.NetEncoding, System.DateUtils,
 {$IFDEF FIREDAC}
-  System.Net.HttpClient, System.Net.HttpClientComponent,
+  System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
   IdHTTP,
 {$ENDIF}
@@ -98,6 +98,11 @@ type
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
+{$IFDEF FIREDAC}
+    procedure AcceptAnyServerCertificate(const Sender: TObject;
+      const ARequest: TURLRequest; const Certificate: TCertificate;
+      var Accepted: Boolean);
+{$ENDIF}
     
     // Persistence
     function GetConfigFileName: string;
@@ -108,6 +113,10 @@ type
   public
     class function Instance: TRpAuthManager;
     destructor Destroy; override;
+
+{$IFDEF FIREDAC}
+    procedure ConfigureDebugHttpClient(AHttpClient: TNetHTTPClient);
+{$ENDIF}
 
     function RequestLoginCode(const AEmail: string): Boolean;
     function LoginWithCode(const AEmail, ACode: string): Boolean;
@@ -178,6 +187,26 @@ begin
   Result := 'repman-' + IntToHex(VolumeSerialNumber, 8) + '-' +
     LowerCase(string(ComputerName));
 end;
+
+{$IFDEF FIREDAC}
+procedure TRpAuthManager.AcceptAnyServerCertificate(const Sender: TObject;
+  const ARequest: TURLRequest; const Certificate: TCertificate;
+  var Accepted: Boolean);
+begin
+{$IFDEF DEBUG}
+  Accepted := True;
+{$ENDIF}
+end;
+
+procedure TRpAuthManager.ConfigureDebugHttpClient(AHttpClient: TNetHTTPClient);
+begin
+  if AHttpClient = nil then
+    Exit;
+{$IFDEF DEBUG}
+  AHttpClient.OnValidateServerCertificate := Self.AcceptAnyServerCertificate;
+{$ENDIF}
+end;
+{$ENDIF}
 
 destructor TRpAuthManager.Destroy;
 begin
@@ -363,6 +392,7 @@ begin
 
   LClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(LClient);
     if FToken <> '' then
       LClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
     if FInstallId <> '' then
@@ -531,6 +561,7 @@ begin
   Result := False;
   HttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(HttpClient);
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('email', AEmail);
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
@@ -573,6 +604,7 @@ begin
   Result := False;
   HttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(HttpClient);
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('email', AEmail);
     RequestBody.AddPair('emailCode', ACode);
@@ -795,6 +827,7 @@ begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(LHttpClient);
     LRequest := TJSONObject.Create;
     try
       LRequest.AddPair('code', ACode);
@@ -876,6 +909,7 @@ begin
   LAccessToken := '';
   LHttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(LHttpClient);
     Log('Step 1: Requesting Microsoft Access Token...');
     LSourceStream := TStringStream.Create(
       'client_id=' + TURLEncoding.URL.Encode('bc88d289-ded3-4389-a62b-2f12ad635dac') +
@@ -1026,6 +1060,7 @@ begin
   Result := False;
   HttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(HttpClient);
     try
       if FToken <> '' then
         HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
@@ -1068,6 +1103,7 @@ begin
   Result := '';
   HttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(HttpClient);
     if FToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('tierId', TJSONNumber.Create(ATierId));
@@ -1109,6 +1145,7 @@ begin
   Result := '';
   HttpClient := TNetHTTPClient.Create(nil);
   try
+    ConfigureDebugHttpClient(HttpClient);
     if FToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
     if FInstallId <> '' then HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
     try
