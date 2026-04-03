@@ -16,7 +16,7 @@ object FRpChatFrame: TFRpChatFrame
       Left = 0
       Top = 0
       Width = 320
-      Height = 90
+      Height = 120
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 0
@@ -24,7 +24,7 @@ object FRpChatFrame: TFRpChatFrame
         Left = 0
         Top = 0
         Width = 320
-        Height = 90
+        Height = 120
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 0
@@ -43,6 +43,11 @@ object FRpChatFrame: TFRpChatFrame
             Column = 0
             Control = PAISelectionHost
             Row = 1
+          end
+          item
+            Column = 0
+            Control = PSchemaHost
+            Row = 2
           end>
         ParentBackground = False
         RowCollection = <
@@ -53,6 +58,10 @@ object FRpChatFrame: TFRpChatFrame
           item
             SizeStyle = ssAuto
             Value = 50.000000000000000000
+          end
+          item
+            SizeStyle = ssAuto
+            Value = 30.000000000000000000
           end>
         object PLoginHost: TPanel
           AlignWithMargins = True
@@ -82,13 +91,45 @@ object FRpChatFrame: TFRpChatFrame
           BevelOuter = bvNone
           TabOrder = 1
         end
+        object PSchemaHost: TPanel
+          AlignWithMargins = True
+          Left = 0
+          Top = 90
+          Width = 320
+          Height = 30
+          Margins.Left = 0
+          Margins.Top = 0
+          Margins.Right = 0
+          Margins.Bottom = 0
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 2
+          object LSchema: TLabel
+            Left = 0
+            Top = 0
+            Width = 44
+            Height = 30
+            Align = alLeft
+            Caption = 'Schema'
+            Layout = tlCenter
+          end
+          object ComboSchema: TComboBox
+            Left = 44
+            Top = 0
+            Width = 276
+            Height = 21
+            Align = alClient
+            Style = csDropDownList
+            TabOrder = 0
+          end
+        end
       end
     end
     object MemoConversation: TMemo
       Left = 0
-      Top = 90
+      Top = 120
       Width = 320
-      Height = 380
+      Height = 350
       Align = alClient
       ReadOnly = True
       ScrollBars = ssVertical

@@ -1328,6 +1328,7 @@ begin
  Result.ReportFormat := rdfXml;
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
+ Result.ApiKey := FChat.GetSchemaApiKey;
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin
@@ -1765,6 +1766,8 @@ var
  LPrompt: string;
  LRequest: TRpApiModifyReportRequest;
  LRequestVersion: Integer;
+ LSelectedHubDatabaseId: Int64;
+ LSelectedHubSchemaId: Int64;
  LWorker: TThread;
 begin
  if FChat = nil then
@@ -1790,6 +1793,8 @@ begin
 
  Inc(FDesignRequestVersion);
  LRequestVersion := FDesignRequestVersion;
+ LSelectedHubDatabaseId := FChat.GetHubDatabaseId;
+ LSelectedHubSchemaId := FChat.GetHubSchemaId;
  FChat.BeginStreamingResponse;
 
  LWorker := TThread.CreateAnonymousThread(
@@ -1806,6 +1811,8 @@ begin
         LHttp.Token := TRpAuthManager.Instance.Token;
         LHttp.InstallId := TRpAuthManager.Instance.InstallId;
         LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
+        LHttp.HubDatabaseId := LSelectedHubDatabaseId;
+        LHttp.HubSchemaId := LSelectedHubSchemaId;
         LHttp.AgentSecret := LRequest.AgentSecret;
         if LRequest.HasAgentAiId then
           LHttp.AgentAiId := LRequest.AgentAiId;

@@ -2822,12 +2822,16 @@ begin
   var
    LRequest: TRpApiModifyReportRequest;
    LRequestVersion: Integer;
+    LSelectedHubDatabaseId: Int64;
+    LSelectedHubSchemaId: Int64;
    LWorker: TThread;
   begin
    if (not Assigned(fchatframe)) or (not Assigned(report)) then
     Exit;
 
    LRequest := BuildDesignChatRequest(APrompt);
+    LSelectedHubDatabaseId := fchatframe.GetHubDatabaseId;
+    LSelectedHubSchemaId := fchatframe.GetHubSchemaId;
    Inc(FDesignChatRequestVersion);
    LRequestVersion := FDesignChatRequestVersion;
    fchatframe.SetBusy(True);
@@ -2846,6 +2850,8 @@ begin
           LHttp.Token := TRpAuthManager.Instance.Token;
           LHttp.InstallId := TRpAuthManager.Instance.InstallId;
           LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
+          LHttp.HubDatabaseId := LSelectedHubDatabaseId;
+          LHttp.HubSchemaId := LSelectedHubSchemaId;
           LHttp.AgentSecret := LRequest.AgentSecret;
           if LRequest.HasAgentAiId then
             LHttp.AgentAiId := LRequest.AgentAiId;
@@ -2945,6 +2951,7 @@ begin
  Result.ExistingContextJson := FDesignChatContextJson;
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
+ Result.ApiKey := fchatframe.GetSchemaApiKey;
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin

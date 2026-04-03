@@ -7,6 +7,14 @@ uses
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp;
 
 type
+  TSchemaComboItem = class(TObject)
+  public
+    ApiKey: string;
+    HubDatabaseId: Int64;
+    HubSchemaId: Int64;
+    constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
+  end;
+
   TChatSendEvent = procedure(Sender: TObject; const APrompt, AExpression: string) of object;
   TChatApplyEvent = procedure(Sender: TObject; const AExpression: string) of object;
   TChatStopEvent = procedure(Sender: TObject) of object;
@@ -32,6 +40,9 @@ type
     GridTop: TGridPanel;
     PLoginHost: TPanel;
     PAISelectionHost: TPanel;
+    PSchemaHost: TPanel;
+    LSchema: TLabel;
+    ComboSchema: TComboBox;
     MemoConversation: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
@@ -50,27 +61,41 @@ type
     FBusy: Boolean;
     FConversationBlocks: TStringList;
     FCurrentExpression: string;
+    FHubDatabaseId: Int64;
+    FHubSchemaId: Int64;
     FLoginFrame: TFRpLoginFrameVCL;
+    FLoadingSchemas: Boolean;
     FOnApplySuggestion: TChatApplyEvent;
     FOnRefreshContext: TChatRefreshEvent;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
+    FSchemaApiKey: string;
     FSuggestedExpression: string;
     FStreamingActive: Boolean;
     FStreamingPrefillPercent: Integer;
     FStreamingText: string;
     FOnlineInitializationQueued: Boolean;
     FUserAgentsReloadVersion: Integer;
+    FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
+    procedure WMApplyLoadedSchemas(var Message: TMessage); message WM_USER + 203;
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
       AReloadVersion: Integer);
+    procedure ApplyLoadedSchemas(ALoadedSchemas: TStringList;
+      AReloadVersion: Integer);
     procedure AuthChanged(ASuccess: Boolean);
     procedure AppendMessage(const ATitle, AText: string);
+    procedure ClearSchemaItems;
+    procedure ComboSchemaChange(Sender: TObject);
+    function LoadConfiguredApiKeySchemas(AList: TStrings): Boolean;
+    procedure LoadSchemas;
+    function LoadUserSchemas(AList: TStrings): Boolean;
     procedure LoadUserAgents;
     procedure RefreshTopLayout;
     procedure RebuildConversation;
+    procedure SelectCurrentSchema;
     procedure ScrollConversationToEnd;
     procedure UpdateButtons;
   public
@@ -95,6 +120,9 @@ type
     function GetAIMode: string;
     function GetAgentSecret: string;
     function GetAgentAiId: Int64;
+    function GetHubDatabaseId: Int64;
+    function GetHubSchemaId: Int64;
+    function GetSchemaApiKey: string;
   published
     property OnApplySuggestion: TChatApplyEvent read FOnApplySuggestion write FOnApplySuggestion;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
@@ -108,6 +136,27 @@ implementation
 
 {$R *.dfm}
 
+uses
+  rpdatainfo;
+
+type
+  TRpQueuedSchemasPayload = class(TObject)
+  public
+    ReloadVersion: Integer;
+    Schemas: TStringList;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
+  const AApiKey: string);
+begin
+  inherited Create;
+  HubDatabaseId := AHubDatabaseId;
+  HubSchemaId := AHubSchemaId;
+  ApiKey := AApiKey;
+end;
+
 constructor TRpQueuedAgentsPayload.Create;
 begin
   inherited Create;
@@ -117,6 +166,18 @@ end;
 destructor TRpQueuedAgentsPayload.Destroy;
 begin
   Agents.Free;
+  inherited Destroy;
+end;
+
+constructor TRpQueuedSchemasPayload.Create;
+begin
+  inherited Create;
+  Schemas := TStringList.Create;
+end;
+
+destructor TRpQueuedSchemasPayload.Destroy;
+begin
+  Schemas.Free;
   inherited Destroy;
 end;
 
@@ -134,6 +195,13 @@ begin
   FAISelection.Constraints.MinHeight := 50;
   FAISelection.Constraints.MaxHeight := 50;
 
+  ComboSchema.Style := csDropDownList;
+  ComboSchema.OnChange := ComboSchemaChange;
+  FHubDatabaseId := 0;
+  FHubSchemaId := 0;
+  FSchemaApiKey := '';
+  FLoadingSchemas := False;
+
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
 
   MemoConversation.Clear;
@@ -145,6 +213,7 @@ begin
   FStreamingText := '';
   FOnlineInitializationQueued := False;
   FUserAgentsReloadVersion := 0;
+  FUserSchemasReloadVersion := 0;
   FUseRefreshAction := False;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
   Initialize('', '');
@@ -153,6 +222,7 @@ end;
 
 destructor TFRpChatFrame.Destroy;
 begin
+  ClearSchemaItems;
   FConversationBlocks.Free;
   TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited Destroy;
@@ -172,6 +242,8 @@ begin
     PTop.Realign;
   if PAISelectionHost <> nil then
     PAISelectionHost.Realign;
+  if PSchemaHost <> nil then
+    PSchemaHost.Realign;
   if FAISelection <> nil then
   begin
     FAISelection.SetBounds(0, 0, PAISelectionHost.ClientWidth,
@@ -188,6 +260,7 @@ begin
     FAISelection.RefreshState;
     LoadUserAgents;
   end;
+  LoadSchemas;
 end;
 
 procedure TFRpChatFrame.AppendMessage(const ATitle, AText: string);
@@ -296,6 +369,182 @@ begin
   LWorker.Start;
 end;
 
+procedure TFRpChatFrame.ClearSchemaItems;
+var
+  I: Integer;
+begin
+  for I := 0 to ComboSchema.Items.Count - 1 do
+    ComboSchema.Items.Objects[I].Free;
+  ComboSchema.Clear;
+end;
+
+function TFRpChatFrame.LoadUserSchemas(AList: TStrings): Boolean;
+var
+  LHttp: TRpDatabaseHttp;
+begin
+  Result := False;
+  if TRpAuthManager.Instance.Token = '' then
+    Exit;
+
+  LHttp := TRpDatabaseHttp.Create;
+  try
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    Result := LHttp.GetUserSchemas(AList);
+  finally
+    LHttp.Free;
+  end;
+end;
+
+function TFRpChatFrame.LoadConfiguredApiKeySchemas(AList: TStrings): Boolean;
+var
+  I, J, LPosSep: Integer;
+  LApiKey: string;
+  LConAdmin: TRpConnAdmin;
+  LConnectionNames: TStringList;
+  LParams: TStringList;
+  LRawSchemas: TStringList;
+  LSeenApiKeys: TStringList;
+  LHttp: TRpDatabaseHttp;
+  LSchemaDisplayName: string;
+  LSchemaValue: string;
+  LSchemaKey: string;
+begin
+  Result := False;
+  AList.Clear;
+  LConAdmin := TRpConnAdmin.Create;
+  LConnectionNames := TStringList.Create;
+  LParams := TStringList.Create;
+  LRawSchemas := TStringList.Create;
+  LSeenApiKeys := TStringList.Create;
+  try
+    LSeenApiKeys.Sorted := True;
+    LSeenApiKeys.Duplicates := dupIgnore;
+    LConAdmin.GetConnectionNames(LConnectionNames, '');
+    for I := 0 to LConnectionNames.Count - 1 do
+    begin
+      LParams.Clear;
+      LConAdmin.GetConnectionParams(LConnectionNames[I], LParams);
+      LApiKey := Trim(LParams.Values['ApiKey']);
+      if LApiKey = '' then
+        Continue;
+      if LSeenApiKeys.IndexOf(LApiKey) >= 0 then
+        Continue;
+      LSeenApiKeys.Add(LApiKey);
+
+      LHttp := TRpDatabaseHttp.Create;
+      try
+        LHttp.ApiKey := LApiKey;
+        LHttp.Token := TRpAuthManager.Instance.Token;
+        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+        LRawSchemas.Clear;
+        if LHttp.GetUserSchemas(LRawSchemas) then
+        begin
+          Result := True;
+          for J := 0 to LRawSchemas.Count - 1 do
+          begin
+            LSchemaDisplayName := LRawSchemas.Names[J];
+            LSchemaValue := LRawSchemas.ValueFromIndex[J];
+            LPosSep := Pos('|', LSchemaValue);
+            if LPosSep > 0 then
+              LSchemaKey := LSchemaValue
+            else
+              LSchemaKey := '0|' + LSchemaValue;
+            AList.Add(LSchemaDisplayName + '=' + LSchemaKey + '|' + LApiKey);
+          end;
+        end;
+      finally
+        LHttp.Free;
+      end;
+    end;
+  finally
+    LSeenApiKeys.Free;
+    LRawSchemas.Free;
+    LParams.Free;
+    LConnectionNames.Free;
+    LConAdmin.Free;
+  end;
+end;
+
+procedure TFRpChatFrame.LoadSchemas;
+var
+  LReloadVersion: Integer;
+  LWorker: TThread;
+begin
+  Inc(FUserSchemasReloadVersion);
+  LReloadVersion := FUserSchemasReloadVersion;
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      I, LPosSep: Integer;
+      LPayload: TRpQueuedSchemasPayload;
+      LUserSchemas: TStringList;
+      LApiKeySchemas: TStringList;
+      LSeenSchemaKeys: TStringList;
+      LDisplayName: string;
+      LValue: string;
+      LSchemaKey: string;
+    begin
+      LPayload := TRpQueuedSchemasPayload.Create;
+      LUserSchemas := TStringList.Create;
+      LApiKeySchemas := TStringList.Create;
+      LSeenSchemaKeys := TStringList.Create;
+      try
+        LSeenSchemaKeys.Sorted := True;
+        LSeenSchemaKeys.Duplicates := dupIgnore;
+        try
+          LoadUserSchemas(LUserSchemas);
+        except
+          LUserSchemas.Clear;
+        end;
+        try
+          LoadConfiguredApiKeySchemas(LApiKeySchemas);
+        except
+          LApiKeySchemas.Clear;
+        end;
+
+        for I := 0 to LUserSchemas.Count - 1 do
+        begin
+          LDisplayName := LUserSchemas.Names[I];
+          LValue := LUserSchemas.ValueFromIndex[I];
+          LSchemaKey := LValue;
+          if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
+            Continue;
+          LSeenSchemaKeys.Add(LSchemaKey);
+          LPayload.Schemas.Add(LDisplayName + '=' + LValue + '|');
+        end;
+
+        for I := 0 to LApiKeySchemas.Count - 1 do
+        begin
+          LDisplayName := LApiKeySchemas.Names[I];
+          LValue := LApiKeySchemas.ValueFromIndex[I];
+          LPosSep := LastDelimiter('|', LValue);
+          if LPosSep > 0 then
+            LSchemaKey := Copy(LValue, 1, LPosSep - 1)
+          else
+            LSchemaKey := LValue;
+          if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
+            Continue;
+          LSeenSchemaKeys.Add(LSchemaKey);
+          LPayload.Schemas.Add(LDisplayName + '=' + LValue);
+        end;
+
+        LPayload.ReloadVersion := LReloadVersion;
+        if HandleAllocated then
+          PostMessage(Handle, WM_USER + 203, WPARAM(LPayload), 0)
+        else
+          LPayload.Free;
+      finally
+        LSeenSchemaKeys.Free;
+        LApiKeySchemas.Free;
+        LUserSchemas.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
 procedure TFRpChatFrame.WMApplyLoadedUserAgents(var Message: TMessage);
 var
   LPayload: TRpQueuedAgentsPayload;
@@ -307,6 +556,21 @@ begin
     ApplyLoadedUserAgents(LPayload.Agents, LPayload.SelectedTier,
       LPayload.SelectedAgentAiId, LPayload.ReloadVersion);
     LPayload.Agents := nil;
+  finally
+    LPayload.Free;
+  end;
+end;
+
+procedure TFRpChatFrame.WMApplyLoadedSchemas(var Message: TMessage);
+var
+  LPayload: TRpQueuedSchemasPayload;
+begin
+  LPayload := TRpQueuedSchemasPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    ApplyLoadedSchemas(LPayload.Schemas, LPayload.ReloadVersion);
+    LPayload.Schemas := nil;
   finally
     LPayload.Free;
   end;
@@ -356,6 +620,118 @@ begin
     FAISelection.RestoreProviderSelection(ASelectedTier, ASelectedAgentAiId);
   finally
     ALoadedAgents.Free;
+  end;
+end;
+
+procedure TFRpChatFrame.SelectCurrentSchema;
+var
+  I: Integer;
+  LItem: TSchemaComboItem;
+begin
+  if ComboSchema.Items.Count = 0 then
+    Exit;
+
+  if FHubSchemaId = 0 then
+  begin
+    ComboSchema.ItemIndex := 0;
+    FHubDatabaseId := 0;
+    FSchemaApiKey := '';
+    Exit;
+  end;
+
+  ComboSchema.ItemIndex := 0;
+  for I := 1 to ComboSchema.Items.Count - 1 do
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) then
+    begin
+      ComboSchema.ItemIndex := I;
+      FHubDatabaseId := LItem.HubDatabaseId;
+      FSchemaApiKey := LItem.ApiKey;
+      Break;
+    end;
+  end;
+end;
+
+procedure TFRpChatFrame.ApplyLoadedSchemas(ALoadedSchemas: TStringList;
+  AReloadVersion: Integer);
+var
+  I: Integer;
+  LDisplayName: string;
+  LValue: string;
+  LParts: TStringList;
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LApiKey: string;
+begin
+  try
+    if AReloadVersion <> FUserSchemasReloadVersion then
+      Exit;
+
+    FLoadingSchemas := True;
+    ComboSchema.Items.BeginUpdate;
+    LParts := TStringList.Create;
+    try
+      LParts.Delimiter := '|';
+      LParts.StrictDelimiter := True;
+      ClearSchemaItems;
+      ComboSchema.Items.Add('');
+      for I := 0 to ALoadedSchemas.Count - 1 do
+      begin
+        LDisplayName := ALoadedSchemas.Names[I];
+        LValue := ALoadedSchemas.ValueFromIndex[I];
+        LParts.DelimitedText := LValue;
+        if LParts.Count >= 2 then
+        begin
+          LHubDatabaseId := StrToInt64Def(LParts[0], 0);
+          LHubSchemaId := StrToInt64Def(LParts[1], 0);
+        end
+        else
+        begin
+          LHubDatabaseId := 0;
+          LHubSchemaId := 0;
+        end;
+        if LParts.Count >= 3 then
+          LApiKey := LParts[2]
+        else
+          LApiKey := '';
+
+        ComboSchema.Items.AddObject(LDisplayName,
+          TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LApiKey));
+      end;
+      SelectCurrentSchema;
+    finally
+      LParts.Free;
+      ComboSchema.Items.EndUpdate;
+      FLoadingSchemas := False;
+    end;
+  finally
+    ALoadedSchemas.Free;
+  end;
+end;
+
+procedure TFRpChatFrame.ComboSchemaChange(Sender: TObject);
+var
+  LItem: TSchemaComboItem;
+begin
+  if FLoadingSchemas then
+    Exit;
+
+  if ComboSchema.ItemIndex > 0 then
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+    begin
+      FHubDatabaseId := LItem.HubDatabaseId;
+      FHubSchemaId := LItem.HubSchemaId;
+      FSchemaApiKey := LItem.ApiKey;
+    end;
+  end
+  else
+  begin
+    FHubDatabaseId := 0;
+    FHubSchemaId := 0;
+    FSchemaApiKey := '';
   end;
 end;
 
@@ -423,6 +799,7 @@ begin
     Exit;
 
   FOnlineInitializationQueued := True;
+  LoadSchemas;
   LoadUserAgents;
   if FAISelection <> nil then
     FAISelection.RefreshStatusInBackground;
@@ -517,6 +894,21 @@ end;
 function TFRpChatFrame.GetAgentAiId: Int64;
 begin
   Result := FAISelection.AgentAiId;
+end;
+
+function TFRpChatFrame.GetHubDatabaseId: Int64;
+begin
+  Result := FHubDatabaseId;
+end;
+
+function TFRpChatFrame.GetHubSchemaId: Int64;
+begin
+  Result := FHubSchemaId;
+end;
+
+function TFRpChatFrame.GetSchemaApiKey: string;
+begin
+  Result := FSchemaApiKey;
 end;
 
 procedure TFRpChatFrame.BSendClick(Sender: TObject);
