@@ -871,7 +871,7 @@ end;
 
 procedure TFRpExpredialogVCL.WMStartOnlineInitialization(var Message: TMessage);
 begin
-  if (FChat<>nil) and Visible then
+  if FChat<>nil then
     FChat.StartOnlineInitialization;
 end;
 
@@ -1329,6 +1329,12 @@ begin
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
  Result.ApiKey := FChat.GetSchemaApiKey;
+ Result.Config.HubDatabaseId := FChat.GetHubDatabaseId;
+ Result.Config.HubSchemaId := FChat.GetHubSchemaId;
+ TRpAuthManager.Instance.Log(
+  'BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
+  ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+  ' SchemaApiKey=' + Result.ApiKey);
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin

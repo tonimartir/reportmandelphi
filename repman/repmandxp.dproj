@@ -1075,9 +1075,9 @@
                 <ProjectRoot Platform="OSX32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="OSX64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Android64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Android" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="iOSDevice64" Name="$(PROJECTNAME).app"/>
@@ -1121,7 +1121,7 @@
         <DCCReference Include="..\rpgraphutilsvcl.pas">
             <Form>FRpMessageDlgVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\rpexpredlgvcl.pas">
+        <DCCReference Include="..\rpchatdialogvcl.pas">
             <Form>FRpExpredialogVCL</Form>
         </DCCReference>
         <DCCReference Include="..\rprfvparams.pas">

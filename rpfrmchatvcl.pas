@@ -42,6 +42,7 @@ type
     PAISelectionHost: TPanel;
     PSchemaHost: TPanel;
     LSchema: TLabel;
+    BRefreshSchemas: TButton;
     ComboSchema: TComboBox;
     MemoConversation: TMemo;
     PBottom: TPanel;
@@ -52,6 +53,7 @@ type
     BClear: TButton;
     procedure BApplyClick(Sender: TObject);
     procedure BClearClick(Sender: TObject);
+    procedure BRefreshSchemasClick(Sender: TObject);
     procedure BSendClick(Sender: TObject);
     procedure MemoPromptChange(Sender: TObject);
     procedure MemoPromptKeyDown(Sender: TObject; var Key: Word;
@@ -473,6 +475,8 @@ var
 begin
   Inc(FUserSchemasReloadVersion);
   LReloadVersion := FUserSchemasReloadVersion;
+  FLoadingSchemas := True;
+  UpdateButtons;
 
   LWorker := TThread.CreateAnonymousThread(
     procedure
@@ -633,9 +637,30 @@ begin
 
   if FHubSchemaId = 0 then
   begin
-    ComboSchema.ItemIndex := 0;
-    FHubDatabaseId := 0;
-    FSchemaApiKey := '';
+    if ComboSchema.Items.Count > 1 then
+    begin
+      ComboSchema.ItemIndex := 1;
+      LItem := TSchemaComboItem(ComboSchema.Items.Objects[1]);
+      if LItem <> nil then
+      begin
+        FHubDatabaseId := LItem.HubDatabaseId;
+        FHubSchemaId := LItem.HubSchemaId;
+        FSchemaApiKey := LItem.ApiKey;
+      end
+      else
+      begin
+        FHubDatabaseId := 0;
+        FHubSchemaId := 0;
+        FSchemaApiKey := '';
+      end;
+    end
+    else
+    begin
+      ComboSchema.ItemIndex := 0;
+      FHubDatabaseId := 0;
+      FHubSchemaId := 0;
+      FSchemaApiKey := '';
+    end;
     Exit;
   end;
 
@@ -643,12 +668,26 @@ begin
   for I := 1 to ComboSchema.Items.Count - 1 do
   begin
     LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) then
+    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) and
+      ((FHubDatabaseId = 0) or (LItem.HubDatabaseId = FHubDatabaseId)) then
     begin
       ComboSchema.ItemIndex := I;
       FHubDatabaseId := LItem.HubDatabaseId;
+      FHubSchemaId := LItem.HubSchemaId;
       FSchemaApiKey := LItem.ApiKey;
       Break;
+    end;
+  end;
+
+  if (ComboSchema.ItemIndex = 0) and (ComboSchema.Items.Count > 1) then
+  begin
+    ComboSchema.ItemIndex := 1;
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[1]);
+    if LItem <> nil then
+    begin
+      FHubDatabaseId := LItem.HubDatabaseId;
+      FHubSchemaId := LItem.HubSchemaId;
+      FSchemaApiKey := LItem.ApiKey;
     end;
   end;
 end;
@@ -668,7 +707,6 @@ begin
     if AReloadVersion <> FUserSchemasReloadVersion then
       Exit;
 
-    FLoadingSchemas := True;
     ComboSchema.Items.BeginUpdate;
     LParts := TStringList.Create;
     try
@@ -696,6 +734,13 @@ begin
         else
           LApiKey := '';
 
+        TRpAuthManager.Instance.Log(
+          'ApplyLoadedSchemas: DisplayName=' + LDisplayName +
+          ' RawValue=' + LValue +
+          ' ParsedHubDatabaseId=' + IntToStr(LHubDatabaseId) +
+          ' ParsedHubSchemaId=' + IntToStr(LHubSchemaId) +
+          ' ApiKey=' + LApiKey);
+
         ComboSchema.Items.AddObject(LDisplayName,
           TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LApiKey));
       end;
@@ -704,6 +749,13 @@ begin
       LParts.Free;
       ComboSchema.Items.EndUpdate;
       FLoadingSchemas := False;
+      ComboSchemaChange(ComboSchema);
+      TRpAuthManager.Instance.Log(
+        'ApplyLoadedSchemas: FinalItemIndex=' + IntToStr(ComboSchema.ItemIndex) +
+        ' FinalHubDatabaseId=' + IntToStr(GetHubDatabaseId) +
+        ' FinalHubSchemaId=' + IntToStr(GetHubSchemaId) +
+        ' FinalApiKey=' + GetSchemaApiKey);
+      UpdateButtons;
     end;
   finally
     ALoadedSchemas.Free;
@@ -725,6 +777,11 @@ begin
       FHubDatabaseId := LItem.HubDatabaseId;
       FHubSchemaId := LItem.HubSchemaId;
       FSchemaApiKey := LItem.ApiKey;
+      TRpAuthManager.Instance.Log(
+        'ComboSchemaChange: ItemIndex=' + IntToStr(ComboSchema.ItemIndex) +
+        ' HubDatabaseId=' + IntToStr(FHubDatabaseId) +
+        ' HubSchemaId=' + IntToStr(FHubSchemaId) +
+        ' ApiKey=' + FSchemaApiKey);
     end;
   end
   else
@@ -732,6 +789,7 @@ begin
     FHubDatabaseId := 0;
     FHubSchemaId := 0;
     FSchemaApiKey := '';
+    TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=0 HubDatabaseId=0 HubSchemaId=0 ApiKey=');
   end;
 end;
 
@@ -794,13 +852,21 @@ begin
 end;
 
 procedure TFRpChatFrame.StartOnlineInitialization;
+var
+  LNeedsSchemas: Boolean;
+  LNeedsAgents: Boolean;
 begin
-  if FOnlineInitializationQueued then
+  LNeedsSchemas := ComboSchema.Items.Count = 0;
+  LNeedsAgents := (FAISelection <> nil) and (FAISelection.AgentEndpointCount = 0);
+
+  if FOnlineInitializationQueued and not (LNeedsSchemas or LNeedsAgents) then
     Exit;
 
   FOnlineInitializationQueued := True;
-  LoadSchemas;
-  LoadUserAgents;
+  if LNeedsSchemas then
+    LoadSchemas;
+  if LNeedsAgents then
+    LoadUserAgents;
   if FAISelection <> nil then
     FAISelection.RefreshStatusInBackground;
 end;
@@ -856,6 +922,11 @@ begin
     BApply.Enabled := (not FBusy) and Assigned(FOnRefreshContext)
   else
     BApply.Enabled := (not FBusy) and (Trim(FSuggestedExpression) <> '');
+  BRefreshSchemas.Enabled := not FLoadingSchemas;
+  if FLoadingSchemas then
+    BRefreshSchemas.Caption := '...'
+  else
+    BRefreshSchemas.Caption := 'Refresh';
 end;
 
 procedure TFRpChatFrame.UpdateStreamingResponse(const AChunk: string;
@@ -897,18 +968,49 @@ begin
 end;
 
 function TFRpChatFrame.GetHubDatabaseId: Int64;
+var
+  LItem: TSchemaComboItem;
 begin
+  if ComboSchema.ItemIndex > 0 then
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+      Exit(LItem.HubDatabaseId);
+  end;
   Result := FHubDatabaseId;
 end;
 
 function TFRpChatFrame.GetHubSchemaId: Int64;
+var
+  LItem: TSchemaComboItem;
 begin
+  if ComboSchema.ItemIndex > 0 then
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+      Exit(LItem.HubSchemaId);
+  end;
   Result := FHubSchemaId;
 end;
 
 function TFRpChatFrame.GetSchemaApiKey: string;
+var
+  LItem: TSchemaComboItem;
 begin
+  if ComboSchema.ItemIndex > 0 then
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+      Exit(LItem.ApiKey);
+  end;
   Result := FSchemaApiKey;
+end;
+
+procedure TFRpChatFrame.BRefreshSchemasClick(Sender: TObject);
+begin
+  if FLoadingSchemas then
+    Exit;
+  LoadSchemas;
 end;
 
 procedure TFRpChatFrame.BSendClick(Sender: TObject);

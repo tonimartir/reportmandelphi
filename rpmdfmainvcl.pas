@@ -2952,6 +2952,12 @@ begin
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
  Result.ApiKey := fchatframe.GetSchemaApiKey;
+ Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
+ Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
+ TRpAuthManager.Instance.Log(
+  'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
+  ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+  ' SchemaApiKey=' + Result.ApiKey);
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin

@@ -21,6 +21,18 @@ type
   TRpReportDocumentFormat = (rdfJson, rdfXml);
   TRpAITierType = (ratStandard, ratPrecision, ratLocalAgent);
 
+  TRpApiDatabaseConfig = class(TPersistent)
+  private
+    FHubDatabaseId: Int64;
+    FHubSchemaId: Int64;
+  public
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
+    property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
+  end;
+
   TRpTokenUsage = class(TPersistent)
   private
     FInputTokens: Integer;
@@ -91,6 +103,7 @@ type
     FAgentSecret: string;
     FAITier: TRpAITierType;
     FApiKey: string;
+    FConfig: TRpApiDatabaseConfig;
     FExistingContextJson: string;
     FExistingOperationsJson: string;
     FHasAgentAiId: Boolean;
@@ -101,6 +114,10 @@ type
     FSimplifiedPrompt: Boolean;
     FUserInstructions: TStringList;
     FUserLanguage: string;
+    function GetHubDatabaseId: Int64;
+    function GetHubSchemaId: Int64;
+    procedure SetHubDatabaseId(const Value: Int64);
+    procedure SetHubSchemaId(const Value: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -112,9 +129,12 @@ type
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AITier: TRpAITierType read FAITier write FAITier;
     property ApiKey: string read FApiKey write FApiKey;
+    property Config: TRpApiDatabaseConfig read FConfig;
     property ExistingContextJson: string read FExistingContextJson write FExistingContextJson;
     property ExistingOperationsJson: string read FExistingOperationsJson write FExistingOperationsJson;
     property HasAgentAiId: Boolean read FHasAgentAiId write FHasAgentAiId;
+    property HubDatabaseId: Int64 read GetHubDatabaseId write SetHubDatabaseId;
+    property HubSchemaId: Int64 read GetHubSchemaId write SetHubSchemaId;
     property Mode: TRpReportDesignerMode read FMode write FMode;
     property ReportDocument: string read FReportDocument write FReportDocument;
     property ReportFormat: TRpReportDocumentFormat read FReportFormat write FReportFormat;
@@ -155,6 +175,43 @@ function RpAITierTypeToString(ATier: TRpAITierType): string;
 function RpAITierTypeFromString(const AValue: string): TRpAITierType;
 
 implementation
+
+function JsonValueToBoolean(AValue: TJSONValue; ADefault: Boolean): Boolean; forward;
+function JsonValueToInt(AValue: TJSONValue; ADefault: Integer): Integer; forward;
+function JsonValueToInt64(AValue: TJSONValue; ADefault: Int64): Int64; forward;
+function JsonValueToString(AValue: TJSONValue; const ADefault: string): string; forward;
+
+procedure TRpApiDatabaseConfig.Assign(Source: TPersistent);
+begin
+  if Source is TRpApiDatabaseConfig then
+  begin
+    FHubDatabaseId := TRpApiDatabaseConfig(Source).HubDatabaseId;
+    FHubSchemaId := TRpApiDatabaseConfig(Source).HubSchemaId;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpApiDatabaseConfig.FromJsonObject(AObject: TJSONObject);
+begin
+  if AObject = nil then
+  begin
+    FHubDatabaseId := 0;
+    FHubSchemaId := 0;
+    Exit;
+  end;
+  FHubDatabaseId := JsonValueToInt64(AObject.Values['hubDatabaseId'], 0);
+  FHubSchemaId := JsonValueToInt64(AObject.Values['hubSchemaId'], 0);
+end;
+
+function TRpApiDatabaseConfig.ToJsonObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  if FHubDatabaseId <> 0 then
+    Result.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+  if FHubSchemaId <> 0 then
+    Result.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+end;
 
 function JsonValueToBoolean(AValue: TJSONValue; ADefault: Boolean): Boolean;
 begin
@@ -415,6 +472,7 @@ end;
 constructor TRpApiModifyReportRequest.Create;
 begin
   inherited Create;
+  FConfig := TRpApiDatabaseConfig.Create;
   FUserInstructions := TStringList.Create;
   FMode := rdmFast;
   FReportFormat := rdfXml;
@@ -425,6 +483,7 @@ end;
 
 destructor TRpApiModifyReportRequest.Destroy;
 begin
+  FConfig.Free;
   FUserInstructions.Free;
   inherited Destroy;
 end;
@@ -440,6 +499,7 @@ begin
     FAgentSecret := LSource.AgentSecret;
     FAITier := LSource.AITier;
     FApiKey := LSource.ApiKey;
+    FConfig.Assign(LSource.Config);
     FExistingContextJson := LSource.ExistingContextJson;
     FExistingOperationsJson := LSource.ExistingOperationsJson;
     FHasAgentAiId := LSource.HasAgentAiId;
@@ -469,9 +529,12 @@ begin
 end;
 
 procedure TRpApiModifyReportRequest.FromJsonObject(AObject: TJSONObject);
+var
+  LConfig: TJSONObject;
 begin
   if AObject = nil then
     Exit;
+  LConfig := AObject.Values['config'] as TJSONObject;
   FAITier := RpAITierTypeFromString(JsonValueToString(AObject.Values['aiTier'], 'Standard'));
   FMode := RpReportDesignerModeFromString(JsonValueToString(AObject.Values['mode'], 'Fast'));
   FSimplifiedPrompt := JsonValueToBoolean(AObject.Values['simplifiedPrompt'], False);
@@ -479,6 +542,7 @@ begin
   FAgentSecret := JsonValueToString(AObject.Values['agentSecret'], '');
   FHasAgentAiId := AObject.Values['agentAiId'] <> nil;
   FAgentAiId := JsonValueToInt64(AObject.Values['agentAiId'], 0);
+  FConfig.FromJsonObject(LConfig);
   FReportDocument := JsonValueToString(AObject.Values['reportDocument'], '');
   FReportFormat := RpReportDocumentFormatFromString(JsonValueToString(AObject.Values['reportFormat'], 'Xml'));
   LoadStringsFromJsonArray(FUserInstructions, AObject.Values['userInstructions'] as TJSONArray);
@@ -500,6 +564,7 @@ begin
     Result.AddPair('agentSecret', FAgentSecret);
   if FHasAgentAiId then
     Result.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+  Result.AddPair('config', FConfig.ToJsonObject);
   Result.AddPair('reportDocument', FReportDocument);
   Result.AddPair('reportFormat', RpReportDocumentFormatToString(FReportFormat));
   Result.AddPair('userInstructions', StringsToJsonArray(FUserInstructions));
@@ -507,6 +572,26 @@ begin
   Result.AddPair('existingOperationsJson', FExistingOperationsJson);
   Result.AddPair('existingContextJson', FExistingContextJson);
   Result.AddPair('returnModifiedDocument', TJSONBool.Create(FReturnModifiedDocument));
+end;
+
+function TRpApiModifyReportRequest.GetHubDatabaseId: Int64;
+begin
+  Result := FConfig.HubDatabaseId;
+end;
+
+function TRpApiModifyReportRequest.GetHubSchemaId: Int64;
+begin
+  Result := FConfig.HubSchemaId;
+end;
+
+procedure TRpApiModifyReportRequest.SetHubDatabaseId(const Value: Int64);
+begin
+  FConfig.HubDatabaseId := Value;
+end;
+
+procedure TRpApiModifyReportRequest.SetHubSchemaId(const Value: Int64);
+begin
+  FConfig.HubSchemaId := Value;
 end;
 
 constructor TRpApiModifyReportResult.Create;

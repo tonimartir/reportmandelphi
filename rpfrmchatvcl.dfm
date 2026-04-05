@@ -116,11 +116,21 @@ object FRpChatFrame: TFRpChatFrame
           object ComboSchema: TComboBox
             Left = 44
             Top = 0
-            Width = 276
+            Width = 216
             Height = 21
             Align = alClient
             Style = csDropDownList
             TabOrder = 0
+          end
+          object BRefreshSchemas: TButton
+            Left = 260
+            Top = 0
+            Width = 60
+            Height = 30
+            Align = alRight
+            Caption = 'Refresh'
+            TabOrder = 1
+            OnClick = BRefreshSchemasClick
           end
         end
       end

@@ -589,6 +589,8 @@ begin
     LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       LHttpClient.ContentType := 'application/json';
+      if SameText(AAction, 'ReportDesigner/ModifyReport') then
+        TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
       
       // Authentication Headers - Match AgentController.cs / TokenAuthenticationMiddleware.cs
       if FApiKey <> '' then
