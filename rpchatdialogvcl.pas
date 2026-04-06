@@ -24,7 +24,7 @@ interface
 uses
   Winapi.Windows,
   SysUtils, Classes,
-  DB,
+  DB,rptypes,
   Graphics,Controls, Forms, Dialogs, Messages,
   StdCtrls, ExtCtrls,Buttons,
   System.JSON, System.Threading,
@@ -36,6 +36,7 @@ uses
   Variants,
 {$ENDIF}
   rpdatainfo,
+  rpparams,
   rpmdconsts, rpfrmchatvcl, rpdatahttp, rpreport, rpmetafile, rpxmlstream,
   rpreportdesignercontracts;
 
@@ -193,6 +194,10 @@ type
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure ResetExpressionStreamState;
     procedure StopExpressionRequest(Sender: TObject);
+    function BuildDesignChatRequestForFrame(Sender: TObject;
+      const APrompt: string): TRpApiModifyReportRequest;
+    procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+      const AModifiedReportDocument: string);
     function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
     procedure ApplyModifiedReportDocumentToRefreshReport(
       const AModifiedReportDocument: string);
@@ -342,6 +347,35 @@ var
       Result := TJSONObject.ParseJSONValue(AValue.ToJSON);
   end;
 
+  function ExtractDatasetFromFieldObject(AFieldObject: TJSONObject): string;
+  var
+    LModelValue: string;
+    LDotPos: Integer;
+    LColonPos: Integer;
+  begin
+    Result := '';
+    if (AFieldObject <> nil) and (AFieldObject.Values['dataset'] <> nil) then
+    begin
+      Result := Trim(AFieldObject.Values['dataset'].Value);
+      if Result <> '' then
+        Exit;
+    end;
+
+    if (AFieldObject = nil) or (AFieldObject.Values['model'] = nil) then
+      Exit;
+
+    LModelValue := Trim(AFieldObject.Values['model'].Value);
+    LDotPos := Pos('.', LModelValue);
+    if LDotPos <= 1 then
+      Exit;
+
+    LColonPos := Pos(':', LModelValue);
+    if (LColonPos > 0) and (LColonPos < LDotPos) then
+      Exit;
+
+    Result := Copy(LModelValue, 1, LDotPos - 1);
+  end;
+
 begin
   AErrorMessage := '';
   Result := '{}';
@@ -412,9 +446,7 @@ begin
               Continue;
 
             LFieldObject := TJSONObject(LFieldValue);
-            LFieldDataset := '';
-            if LFieldObject.Values['dataset'] <> nil then
-              LFieldDataset := LFieldObject.Values['dataset'].Value;
+            LFieldDataset := ExtractDatasetFromFieldObject(LFieldObject);
             if not SameText(Trim(LFieldDataset), Trim(LDataInfo.Alias)) then
               Continue;
 
@@ -992,6 +1024,19 @@ procedure TFRpExpredialogVCL.SetChatMode(AMode: TRpChatMode);
 begin
  if FChatMode = AMode then
  begin
+  if FChat <> nil then
+  begin
+   if FChatMode = rcmDesign then
+   begin
+    FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+    FChat.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+   end
+   else
+   begin
+    FChat.OnBuildDesignRequest := nil;
+    FChat.OnApplyDesignResult := nil;
+   end;
+  end;
   UpdateRefreshUIState;
   Exit;
  end;
@@ -999,6 +1044,19 @@ begin
  FChatMode := AMode;
  if FChatMode = rcmDesign then
   validate := False;
+ if FChat <> nil then
+ begin
+  if FChatMode = rcmDesign then
+  begin
+   FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+   FChat.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+  end
+  else
+  begin
+   FChat.OnBuildDesignRequest := nil;
+   FChat.OnApplyDesignResult := nil;
+  end;
+ end;
  UpdateRefreshUIState;
 end;
 
@@ -1346,18 +1404,20 @@ end;
 
 procedure TFRpExpredialogVCL.StopExpressionRequest(Sender: TObject);
 begin
- if FChatMode = rcmDesign then
- begin
-  Inc(FDesignRequestVersion);
-  if FChat <> nil then
-  begin
-   FChat.SetBusy(False);
-   FChat.AddAssistantMessage(
-     'The current design request cannot be aborted mid-flight, but its result will be ignored.');
-  end;
- end
- else
+ if FChatMode <> rcmDesign then
   FCancelExpressionRequest := True;
+end;
+
+function TFRpExpredialogVCL.BuildDesignChatRequestForFrame(Sender: TObject;
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+ Result := BuildDesignChatRequest(APrompt);
+end;
+
+procedure TFRpExpredialogVCL.ApplyModifiedReportDocumentFromFrame(
+  Sender: TObject; const AModifiedReportDocument: string);
+begin
+ ApplyModifiedReportDocumentToRefreshReport(AModifiedReportDocument);
 end;
 
 function TFRpExpredialogVCL.SaveRefreshReportAsXml: string;
@@ -1439,50 +1499,122 @@ var
  LAlias: string;
  LAliasItem: TRpAliasListItem;
  LDataset: TDataSet;
+ LParam: TRpParam;
  LField: TField;
  LRoot: TJSONObject;
  LFields: TJSONArray;
- LIdentifiers: TJSONArray;
  LFunctions: TJSONArray;
- LVariables: TJSONArray;
+ LParameters: TJSONArray;
  LConstants: TJSONArray;
- LFieldObj: TJSONObject;
- LFieldDataType: string;
  I: Integer;
  J: Integer;
  LIdentifier: TRpIdentifier;
 {$IFDEF USEEVALHASH}
  LIterator: TstrHashIterator;
 {$ENDIF}
-  function CreateIdentifierObject(const AName: string;
-    AIdentifier: TRpIdentifier): TJSONObject;
+  function GetSemanticParamType(AParamType: TRpParamType): string;
   begin
-    Result := TJSONObject.Create;
-    Result.AddPair('name', AName);
-    Result.AddPair('kind', IntToStr(Integer(AIdentifier.RType)));
-    Result.AddPair('help', AIdentifier.Help);
-    Result.AddPair('model', AIdentifier.Model);
-    Result.AddPair('params', AIdentifier.aparams);
+    case AParamType of
+      rpParamString:
+        Result := 'string';
+      rpParamInteger:
+        Result := 'integer';
+      rpParamDouble:
+        Result := 'float';
+      rpParamDate:
+        Result := 'date';
+      rpParamTime:
+        Result := 'time';
+      rpParamDateTime:
+        Result := 'datetime';
+      rpParamCurrency:
+        Result := 'currency';
+      rpParamBool:
+        Result := 'boolean';
+      rpParamExpreB:
+        Result := 'expression_boolean';
+      rpParamExpreA:
+        Result := 'expression_string';
+      rpParamSubst:
+        Result := 'substitution';
+      rpParamList:
+        Result := 'list';
+      rpParamMultiple:
+        Result := 'multiple';
+      rpParamSubstE:
+        Result := 'substitution_expression';
+      rpParamSubstList:
+        Result := 'substitution_list';
+      rpParamInitialExpression:
+        Result := 'initial_expression';
+    else
+      Result := 'unknown';
+    end;
   end;
 
-  procedure AddIdentifierToCategories(const AName: string;
-    AIdentifier: TRpIdentifier);
+  function CreateCatalogEntry(const AModel, AHelp: string): TJSONObject;
   begin
-    LIdentifiers.AddElement(CreateIdentifierObject(AName, AIdentifier));
+    Result := TJSONObject.Create;
+    Result.AddPair('model', AModel);
+    if Trim(AHelp) <> '' then
+      Result.AddPair('help', AHelp);
+  end;
 
-    if AIdentifier is TIdenRpExpression then
+  function CreateIdentifierObject(AIdentifier: TRpIdentifier): TJSONObject;
+  var
+    LAIHelp: string;
+  begin
+    LAIHelp := Trim(AIdentifier.AIHelp);
+    Result := CreateCatalogEntry(AIdentifier.Model, LAIHelp);
+  end;
+
+  function CreateFieldObject(const ADatasetAlias: string;
+    AField: TField): TJSONObject;
+  begin
+    Result := CreateCatalogEntry(
+      ADatasetAlias + '.' + AField.FieldName + ':' + GetSemanticFieldDataType(AField.DataType),
+      'Field from dataset ' + ADatasetAlias);
+  end;
+
+  function CreateParameterObject(AParam: TRpParam): TJSONObject;
+  var
+    LDatasets: TJSONArray;
+    LHelp: string;
+    LDatasetName: string;
+    J: integer;
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('model', 'parameter ' + 'M.' + AParam.Name + ':' + GetSemanticParamType(AParam.ParamType));
+
+    LDatasets := TJSONArray.Create;
+    for J := 0 to AParam.Datasets.Count - 1 do
     begin
-      LVariables.AddElement(CreateIdentifierObject(AName, AIdentifier));
-      Exit;
+      LDatasetName := Trim(AParam.Datasets[J]);
+      if LDatasetName <> '' then
+        LDatasets.Add(LDatasetName);
     end;
+    Result.AddPair('datasets', LDatasets);
+
+    LHelp := Trim(AParam.Description);
+    if LHelp = '' then
+      LHelp := Trim(AParam.Hint);
+    if LHelp <> '' then
+      Result.AddPair('help', LHelp);
+  end;
+
+  procedure AddIdentifierToCategories(AIdentifier: TRpIdentifier);
+  begin
+    if AIdentifier is TIdenRpExpression then
+      Exit;
+
+    if Trim(AIdentifier.AIHelp) = '' then
+      Exit;
 
     case AIdentifier.RType of
       RTypeidenfunction:
-        LFunctions.AddElement(CreateIdentifierObject(AName, AIdentifier));
-      RTypeidenvariable:
-        LVariables.AddElement(CreateIdentifierObject(AName, AIdentifier));
+        LFunctions.AddElement(CreateIdentifierObject(AIdentifier));
       RTypeidenconstant:
-        LConstants.AddElement(CreateIdentifierObject(AName, AIdentifier));
+        LConstants.AddElement(CreateIdentifierObject(AIdentifier));
     end;
   end;
 begin
@@ -1495,14 +1627,12 @@ begin
  LRoot := TJSONObject.Create;
  try
   LFields := TJSONArray.Create;
-  LIdentifiers := TJSONArray.Create;
   LFunctions := TJSONArray.Create;
-  LVariables := TJSONArray.Create;
+  LParameters := TJSONArray.Create;
   LConstants := TJSONArray.Create;
   LRoot.AddPair('fields', LFields);
-  LRoot.AddPair('identifiers', LIdentifiers);
   LRoot.AddPair('functions', LFunctions);
-  LRoot.AddPair('variables', LVariables);
+  LRoot.AddPair('parameters', LParameters);
   LRoot.AddPair('constants', LConstants);
 
   if (evaluator <> nil) and (evaluator.Rpalias <> nil) then
@@ -1520,16 +1650,19 @@ begin
       for J := 0 to LDataset.FieldCount - 1 do
       begin
         LField := LDataset.Fields[J];
-        LFieldDataType := GetSemanticFieldDataType(LField.DataType);
-        LFieldObj := TJSONObject.Create;
-        LFieldObj.AddPair('name', LAlias + '.' + LField.FieldName);
-        LFieldObj.AddPair('dataset', LAlias);
-        LFieldObj.AddPair('field', LField.FieldName);
-        LFieldObj.AddPair('dataType', LFieldDataType);
-        if (LFieldDataType = 'string') and (LField.Size > 0) then
-          LFieldObj.AddPair('size', TJSONNumber.Create(LField.Size));
-        LFields.AddElement(LFieldObj);
+        LFields.AddElement(CreateFieldObject(LAlias, LField));
       end;
+    end;
+  end;
+
+  if FRefreshReport <> nil then
+  begin
+    for I := 0 to FRefreshReport.Params.Count - 1 do
+    begin
+      LParam := FRefreshReport.Params[I];
+      if LParam = nil then
+        Continue;
+      LParameters.AddElement(CreateParameterObject(LParam));
     end;
   end;
 
@@ -1541,14 +1674,14 @@ begin
    begin
     LIterator.Next;
     LIdentifier := TRpIdentifier(LIterator.GetValue);
-   AddIdentifierToCategories(LIterator.GetKey, LIdentifier);
+    AddIdentifierToCategories(LIdentifier);
    end;
 {$ENDIF}
 {$IFNDEF USEEVALHASH}
    for I := 0 to evaluator.Identifiers.Count - 1 do
    begin
     LIdentifier := TRpIdentifier(evaluator.Identifiers.Objects[I]);
-   AddIdentifierToCategories(evaluator.Identifiers[I], LIdentifier);
+    AddIdentifierToCategories(LIdentifier);
    end;
 {$ENDIF}
   end;

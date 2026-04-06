@@ -609,6 +609,7 @@ begin
  FParamcount:=1;
  IdenName:='Uppercase';
  Help:=SRpUppercase;
+ AIHelp:='Converts a string to uppercase, input type must be string';
  Model:='function '+'Uppercase'+'(s:string):string';
  AParams:=SRpPUppercase;
 end;
@@ -644,6 +645,7 @@ begin
  FParamcount:=1;
  IdenName:='FileExists';
  Help:=SRpFileExists;
+ AIHelp:='Check if file exists, input type must be string';
  Model:='function '+'FileExists'+'(s:string):Boolean';
  AParams:=SRpPFileExists;
 end;
@@ -676,6 +678,7 @@ begin
  FParamcount:=1;
  IdenName:='Lowercase';
  Help:=SRpLowercase;
+ AIHelp:='Converts a string to lowercase, input type must be string';
  Model:='function '+'Lowercase'+'(s:string):string';
  AParams:=SRpPLowercase;
 end;
@@ -708,6 +711,7 @@ begin
  FParamcount:=4;
  IdenName:='HourMinSec';
  Help:=SRpHourMinSec;
+ AIHelp:='Converts a timespan expressed in hours (h) into a string concatenatint: HH+idenH+mm+idenM+ss+idenS';
  Model:='function '+'HourMinSec'+'(h:Double;idenH:string;idenM:string;idenS:string):string';
  AParams:=SRpPHourMinSec;
 end;
@@ -762,6 +766,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='FloatToDateTime';
+ AIHelp:='Converts OADate number to a real datetime type';
  Help:=SRpFloatToDateTime;
  Model:='function '+'FloatToDateTime'+'(n:Double):TDateTime';
  AParams:=SRpPFloatToDateTime;
@@ -796,6 +801,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='Sin';
+ AIHelp:='Sine function';
  Help:=SRpSin;
  Model:='function '+'Sin'+'(ang:Double):double';
  AParams:=SRpPSin;
@@ -819,6 +825,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='Max';
+ AIHelp:='Max function';
  Help:=SRpMax;
  Model:='function '+'Max'+'(a,y:double):double';
 end;
@@ -851,6 +858,7 @@ begin
  FParamcount:=2;
  IdenName:='Round';
  Help:=SRpRound;
+ AIHelp:='Rounds to a multiple of a number, example to round to 2 decimals use 0.01 as the second parameter';
  model:='function '+'Round'+'(num:double,r:double):double';
  aParams:=SRpPRound;
 end;
@@ -879,6 +887,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='RoundToInteger';
+ AIHelp:='Rounds to an integer';
  Help:=SRpRound;
  model:='function '+'RoundToInteger'+'(num:double):integer';
  aParams:='';
@@ -911,6 +920,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='Abs';
+ AIHelp:='Returns the absolute value of a number';
  Help:=SRpAbs;
  model:='function '+'Abs'+'(num:double):double';
  aParams:=SRpPAbs;
@@ -937,6 +947,8 @@ begin
  inherited Create(AOwner);
  FParamcount:=3;
  IdenName:='CompareValue';
+ AIHelp:='Returns -1 if first number is lower, 1 if first number is greater or zero if equal. Epsilon allow to consider equals by the epsilon margin.';
+
  Help:=SRpCompareValue;
  model:='function '+'Compare'+'(num1,num2,epsilon:double):integer';
  aParams:=SRpPCompareValue;
@@ -988,6 +1000,7 @@ begin
  FParamcount:=1;
  IdenName:='Int';
  Help:=SRpInt;
+ AIHelp:='Converts a number to integer truncating';
  model:='function '+'Int'+'(num:double):integer';
  aParams:=SRpPInt;
 end;
@@ -1024,6 +1037,7 @@ begin
  FParamcount:=1;
  IdenName:='Str';
  Help:=SRpStr;
+ AIHelp:='Converts any value to string to allow operations with other strings like concatenating';
  model:='function '+'Str'+'(num:variant):string';
  aParams:=SRpPStr;
 end;
@@ -1087,6 +1101,7 @@ end;
 constructor TIdenVal.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Parse a string to a number';
  FParamcount:=1;
  IdenName:='Val';
  Help:=SRpVal;
@@ -1126,6 +1141,7 @@ end;
 constructor TIdenTrim.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Trim left and right';
  FParamcount:=1;
  IdenName:='Trim';
  Help:=SRpTrim;
@@ -1158,6 +1174,7 @@ end;
 constructor TIdenLEFT.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Left substring function';
  FParamcount:=2;
  IdenName:='Left';
  Help:=SRpLeft;
@@ -1189,6 +1206,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='Length';
+ AIHelp:='Returns the length of a string';
  Help:=SRpLength;
  model:='function '+'Length'+'(s:string):Integer';
  aParams:=SRpPLength;
@@ -1218,6 +1236,7 @@ constructor TIdenIsInteger.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
  FParamcount:=1;
+ AIHelp:='Parse the string to check if it''s a valid integer';
  IdenName:='IsInteger';
  Help:=SRpIsInteger;
  model:='function '+'IsInteger'+'(s:string):boolean';
@@ -1249,6 +1268,7 @@ constructor TIdenIsNumeric.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
  FParamcount:=1;
+ AIHelp:='Parse the string to check if it''s a valid number';
  IdenName:='IsNumeric';
  Help:=SRpIsNumeric;
  model:='function '+'IsNumeric'+'(s:string):boolean';
@@ -1279,6 +1299,7 @@ end;
 constructor TIdenIsValidDateTime.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Parse the string to check if it''s a valid datetime';
  FParamcount:=1;
  IdenName:='IsValidDateTime';
  Help:=SRpIsValidDateTime;
@@ -1340,6 +1361,7 @@ end;
 constructor TIdenPos.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Returns the 1 based position of a substring in a string, zero if not found';
  FParamcount:=2;
  IdenName:='Pos';
  Help:=SRpPos;
@@ -1703,6 +1725,7 @@ begin
  inherited Create(Aowner);
  FParamcount:=1;
  IdenName:='Sqrt';
+ AIHelp:='Returns the math square root of a number';
  Help:=SRpSqrt;
  model:='function '+'Sqrt'+'(num:double):double';
  aParams:=SRpPSQrt;
@@ -1822,6 +1845,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='Mod';
+ AIHelp:='Returns the modulus of a division operation d1/d2';
  Help:=SRpMod;
  model:='function '+'Mod'+'(d1:integer,d2:integer):integer';
  aParams:=SRpPMod;
@@ -1844,6 +1868,8 @@ end;
 constructor TIdenToday.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+
+ AIHelp:='Returns a datetime, the day when the expression is evaluated';
 
  IdenName:='Today';
  Help:=SRpToday;
@@ -1875,6 +1901,7 @@ end;
 constructor TIdenNULL.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
+ AIHelp:='Literal NULL identifier';
  IdenName:='NULL';
  Help:=SRpNull;
  model:='function '+'NULL'+':variant';
@@ -1892,6 +1919,9 @@ constructor TIdenNow.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
  IdenName:='Now';
+ AIHelp:='Returns a datetime, the timestamp when the expression is evaluated';
+
+
  Help:=SRpNow;
  model:='function '+'Now'+':datetime';
 end;
@@ -1910,6 +1940,7 @@ constructor TIdenMonthname.Create(AOwner:TComponent);
 begin
  inherited Create(Aowner);
  FParamcount:=1;
+ AIHelp:='Returns the long month name of a datetime, 1 based.';
  IdenName:='Monthname';
  Help:=SRpMonthname;
  model:='function '+'Monthname'+'(d:datetime):string';
@@ -2006,6 +2037,7 @@ constructor TIdenMonth.Create(AOwner:TComponent);
 begin
  inherited Create(Aowner);
  FParamcount:=1;
+ AIHelp:='Returns the month index of a datetime, 1 to 12.';
  IdenName:='Month';
  Help:=SRpMonth;
  model:='function '+'Month'+'(d:datetime):integer';
@@ -2036,6 +2068,7 @@ constructor TIdenYear.Create(AOwner:TComponent);
 begin
  inherited Create(Aowner);
  FParamcount:=1;
+ AIHelp:='Returns the year of a datetime.';
  IdenName:='Year';
  Help:=SRpYear;
  model:='function '+'Year'+'(d:datetime):integer';
@@ -2067,6 +2100,7 @@ begin
  inherited Create(Aowner);
  FParamcount:=1;
  IdenName:='Day';
+ AIHelp:='Returns the month day of a datetime.';
  Help:=SRpDay;
  model:='function '+'Day'+'(d:datetime):integer';
  aParams:=SRpPDay;
@@ -2094,6 +2128,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='Right';
+ AIHelp:='Returns the right substring, from the right, copy count chars.';
  Help:=SRpRight;
  model:='function '+'Right'+'(s:string,count:integer):string';
  aParams:=SRpPRight;
@@ -2132,6 +2167,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=3;
  IdenName:='Substr';
+ AIHelp:='Returns a substring from index for count, 1 based.';
  Help:=SRpSubStr;
  model:='function '+'Substr'+'(s:string,index:integer,count:integer):string';
  aParams:=SRpPSubStr;
@@ -2181,6 +2217,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='FormatStr';
+ AIHelp:='Formats any value (datetime, numbers, boolean) using the provided formatting string, for numbers prefer FormatNum';
  Help:=SRpFormatStr;
  model:='function '+'Formatstr'+'(format:string,v:variant):string';
  aParams:=SRpPFormatStr;
@@ -2240,7 +2277,9 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='FormatNum';
+ AIHelp:='Formats any number given a mask';
  Help:=SRpFormatNum;
+ AIHelp:='Formats any value using the provided formatting string. The pattern uses # 0 . for decimal and , for thousand separator';
  model:='function '+'FormatNum'+'(mask:string;number:double):string';
  aParams:=SRpPFormatNum;
 end;
@@ -2305,6 +2344,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='NumToText';
+ AIHelp:='Generate the natural language representation of a number, f true means to use female gender.';
  Help:=SRpNumToText;
  model:='function '+'NumToText'+'(n:double,f:boolean):WideString';
  aParams:=SRpPNumToText;
@@ -2389,6 +2429,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=3;
  IdenName:='ReplaceStr';
+ AIHelp:='Replaces all occurrences of a string with a new string.';
  Help:=SRpReplaceStr;
  model:='function '+'ReplaceStr'+'(const S, OldPattern, NewPattern:string;): string;';
  aParams:=SRpPReplaceStr;
@@ -2991,6 +3032,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=1;
  IdenName:='StringToBin';
+ AIHelp:='Transforms a base64 string to a binary value for image expressions for example.';
  Help:=SRpStringToBin;
  model:='function '+'StringToBin'+'(base64:string):binary';
  aParams:='';

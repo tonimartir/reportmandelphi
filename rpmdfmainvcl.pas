@@ -432,6 +432,10 @@ type
     procedure DoRedo;
     procedure OnUndoRedo(Sender: TObject);
     procedure UpdateUndoToolbarButtons;
+    function BuildDesignChatRequestForFrame(Sender: TObject;
+      const APrompt: string): TRpApiModifyReportRequest;
+    procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+      const AModifiedReportDocument: string);
     function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
     procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
@@ -841,7 +845,8 @@ begin
  fchatframe:=TFRpChatFrame.Create(fchattab);
  fchatframe.Align:=alClient;
  fchatframe.Parent:=fchattab;
- fchatframe.OnSendPrompt:=DesignerChatSendPrompt;
+ fchatframe.OnBuildDesignRequest:=BuildDesignChatRequestForFrame;
+ fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
  fchatframe.OnStopRequest:=StopDesignChatRequest;
  fchatframe.OnRefreshContext:=RefreshDesignChatContext;
  fchatframe.SetRefreshAction(True);
@@ -2933,15 +2938,10 @@ begin
  if not Assigned(fchatframe) then
   Exit;
 
- Inc(FDesignChatRequestVersion);
  Inc(FDesignContextRefreshVersion);
  FDesignContextRefreshRunning := False;
  FDesignChatPendingPrompt := '';
  UpdateDesignContextProgress(False, '');
- fchatframe.FinishStreamingResponse;
- fchatframe.SetBusy(False);
- fchatframe.AddAssistantMessage(
-   'The current design request cannot be aborted mid-flight, but its result will be ignored.');
 end;
 
 function TFRpMainFVCL.GetDesignChatPrefillPercent(const AStage,
@@ -3061,6 +3061,34 @@ begin
   Result.HasAgentAiId := Result.AgentAiId <> 0;
  end;
 end;
+
+  function TFRpMainFVCL.BuildDesignChatRequestForFrame(Sender: TObject;
+    const APrompt: string): TRpApiModifyReportRequest;
+  var
+   LPrompt: string;
+  begin
+   Result := nil;
+   if (not Assigned(fchatframe)) or (not Assigned(report)) then
+    Exit;
+
+   LPrompt := Trim(APrompt);
+   if LPrompt = '' then
+    Exit;
+
+   if not FDesignChatContextInitialized then
+   begin
+    BeginDesignChatContextRefresh(LPrompt, False);
+    Exit;
+   end;
+
+   Result := BuildDesignChatRequest(LPrompt);
+  end;
+
+  procedure TFRpMainFVCL.ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+    const AModifiedReportDocument: string);
+  begin
+   ApplyModifiedReportDocument(AModifiedReportDocument);
+  end;
 
 procedure TFRpMainFVCL.ResetDesignChatContextCache;
 begin
@@ -3307,7 +3335,7 @@ end;
     FDesignChatPendingPrompt := '';
     if LPendingPrompt <> '' then
     begin
-      ExecuteDesignChatPrompt(LPendingPrompt);
+      fchatframe.StartDesignPrompt(LPendingPrompt);
       Exit;
     end;
 

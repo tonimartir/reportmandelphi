@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, System.JSON,
-  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp;
+  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
+  rpreportdesignercontracts;
 
 type
   TSchemaComboItem = class(TObject)
@@ -19,6 +20,10 @@ type
   TChatApplyEvent = procedure(Sender: TObject; const AExpression: string) of object;
   TChatStopEvent = procedure(Sender: TObject) of object;
   TChatRefreshEvent = procedure(Sender: TObject) of object;
+  TBuildDesignRequestEvent = function(Sender: TObject;
+    const APrompt: string): TRpApiModifyReportRequest of object;
+  TApplyDesignResultEvent = procedure(Sender: TObject;
+    const AModifiedReportDocument: string) of object;
 
   TExpressionChatSendEvent = TChatSendEvent;
   TExpressionChatApplyEvent = TChatApplyEvent;
@@ -74,7 +79,9 @@ type
     FHubSchemaId: Int64;
     FLoginFrame: TFRpLoginFrameVCL;
     FLoadingSchemas: Boolean;
+    FOnApplyDesignResult: TApplyDesignResultEvent;
     FOnApplySuggestion: TChatApplyEvent;
+    FOnBuildDesignRequest: TBuildDesignRequestEvent;
     FOnRefreshContext: TChatRefreshEvent;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
@@ -87,8 +94,10 @@ type
     FUserAgentsReloadVersion: Integer;
     FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
+    FDesignRequestVersion: Integer;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
     procedure WMApplyLoadedSchemas(var Message: TMessage); message WM_USER + 203;
+    procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 208;
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
       AReloadVersion: Integer);
@@ -102,10 +111,16 @@ type
     procedure LoadSchemas;
     function LoadUserSchemas(AList: TStrings): Boolean;
     procedure LoadUserAgents;
+    function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
+    procedure PostDesignChatPayload(APayload: TObject);
+    procedure DesignStreamProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+    function DesignStreamCancelRequested(Sender: TObject): Boolean;
     procedure RefreshTopLayout;
     procedure RebuildConversation;
     procedure SelectCurrentSchema;
     procedure ScrollConversationToEnd;
+    procedure StopDesignPrompt;
     procedure UpdateButtons;
   public
     constructor Create(AOwner: TComponent); override;
@@ -119,6 +134,7 @@ type
     procedure FinishStreamingResponse;
     procedure Initialize(const ACurrentExpression, AInitialAssistantMessage: string);
     procedure StartOnlineInitialization;
+    procedure StartDesignPrompt(const APrompt: string);
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
@@ -135,7 +151,9 @@ type
     function GetHubSchemaId: Int64;
     function GetSchemaApiKey: string;
   published
+    property OnApplyDesignResult: TApplyDesignResultEvent read FOnApplyDesignResult write FOnApplyDesignResult;
     property OnApplySuggestion: TChatApplyEvent read FOnApplySuggestion write FOnApplySuggestion;
+    property OnBuildDesignRequest: TBuildDesignRequestEvent read FOnBuildDesignRequest write FOnBuildDesignRequest;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
     property OnStopRequest: TChatStopEvent read FOnStopRequest write FOnStopRequest;
@@ -157,6 +175,29 @@ type
     Schemas: TStringList;
     constructor Create;
     destructor Destroy; override;
+  end;
+
+  TRpQueuedDesignChatPayloadKind = (
+    rpqdcUpdateStreamingResponse,
+    rpqdcAddAssistantMessage,
+    rpqdcApplyDesignResult
+  );
+
+  TRpQueuedDesignChatPayload = class(TObject)
+  public
+    Kind: TRpQueuedDesignChatPayloadKind;
+    RequestVersion: Integer;
+    Text1: string;
+    Text2: string;
+    PrefillPercent: Integer;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+    UserProfileJson: string;
+  end;
+
+  TRpDesignChatStreamContext = class(TObject)
+  public
+    RequestVersion: Integer;
   end;
 
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
@@ -234,6 +275,7 @@ begin
   FUserAgentsReloadVersion := 0;
   FUserSchemasReloadVersion := 0;
   FUseRefreshAction := False;
+  FDesignRequestVersion := 0;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
   Initialize('', '');
   RefreshTopLayout;
@@ -820,8 +862,79 @@ begin
   AppendMessage('You', AText);
 end;
 
+function TFRpChatFrame.GetDesignPrefillPercent(const AStage,
+  AChunkType: string): Integer;
+begin
+  if SameText(AStage, 'PreparingContext') then
+    Result := 15
+  else if SameText(AStage, 'SendingRequest') then
+    Result := 45
+  else if SameText(AStage, 'ReceivingResponse') then
+  begin
+    if SameText(AChunkType, 'Start') then
+      Result := 70
+    else
+      Result := 100;
+  end
+  else if SameText(AStage, 'ApplyingOperations') then
+    Result := 95
+  else
+    Result := 100;
+end;
+
+procedure TFRpChatFrame.PostDesignChatPayload(APayload: TObject);
+begin
+  if APayload = nil then
+    Exit;
+  if HandleAllocated then
+    PostMessage(Handle, WM_USER + 208, WPARAM(APayload), 0)
+  else
+    APayload.Free;
+end;
+
+procedure TFRpChatFrame.DesignStreamProgress(Sender: TObject; const AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+var
+  LPayload: TRpQueuedDesignChatPayload;
+  LChunk: string;
+begin
+  LChunk := '';
+  if Trim(AChunk) <> '' then
+  begin
+    if SameText(AStage, 'ReceivingResponse') then
+      LChunk := AChunk
+    else
+      LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
+  end;
+
+  LPayload := TRpQueuedDesignChatPayload.Create;
+  LPayload.Kind := rpqdcUpdateStreamingResponse;
+  if Sender is TRpDesignChatStreamContext then
+    LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
+  LPayload.Text1 := LChunk;
+  LPayload.PrefillPercent := GetDesignPrefillPercent(AStage, AChunkType);
+  LPayload.InputTokens := AInputTokens;
+  LPayload.OutputTokens := AOutputTokens;
+  PostDesignChatPayload(LPayload);
+end;
+
+function TFRpChatFrame.DesignStreamCancelRequested(Sender: TObject): Boolean;
+begin
+  Result := False;
+  if Sender is TRpDesignChatStreamContext then
+    Result := TRpDesignChatStreamContext(Sender).RequestVersion <> FDesignRequestVersion;
+end;
+
 procedure TFRpChatFrame.AISelectionStopRequest(Sender: TObject);
 begin
+  if Assigned(FOnBuildDesignRequest) and Assigned(FOnApplyDesignResult) then
+  begin
+    StopDesignPrompt;
+    if Assigned(FOnStopRequest) then
+      FOnStopRequest(Self);
+    Exit;
+  end;
+
   if Assigned(FOnStopRequest) then
     FOnStopRequest(Self);
 end;
@@ -881,6 +994,130 @@ begin
     AddAssistantMessage(AInitialAssistantMessage);
 end;
 
+procedure TFRpChatFrame.StartDesignPrompt(const APrompt: string);
+var
+  LRequest: TRpApiModifyReportRequest;
+  LRequestVersion: Integer;
+  LSelectedHubDatabaseId: Int64;
+  LSelectedHubSchemaId: Int64;
+  LWorker: TThread;
+begin
+  if not Assigned(FOnBuildDesignRequest) then
+    Exit;
+
+  LRequest := FOnBuildDesignRequest(Self, APrompt);
+  if LRequest = nil then
+    Exit;
+
+  if Trim(LRequest.ReportDocument) = '' then
+  begin
+    LRequest.Free;
+    AddAssistantMessage('Unable to serialize the current report to XML.');
+    Exit;
+  end;
+
+  Inc(FDesignRequestVersion);
+  LRequestVersion := FDesignRequestVersion;
+  LSelectedHubDatabaseId := GetHubDatabaseId;
+  LSelectedHubSchemaId := GetHubSchemaId;
+  BeginStreamingResponse;
+  SetBusy(True);
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      I: Integer;
+      LHttp: TRpDatabaseHttp;
+      LPayload: TRpQueuedDesignChatPayload;
+      LResponse: TRpApiModifyReportResult;
+      LStreamContext: TRpDesignChatStreamContext;
+    begin
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      LStreamContext := TRpDesignChatStreamContext.Create;
+      LStreamContext.RequestVersion := LRequestVersion;
+      try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
+          LHttp.HubDatabaseId := LSelectedHubDatabaseId;
+          LHttp.HubSchemaId := LSelectedHubSchemaId;
+          LHttp.AgentSecret := LRequest.AgentSecret;
+          if LRequest.HasAgentAiId then
+            LHttp.AgentAiId := LRequest.AgentAiId;
+
+          LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
+            DesignStreamProgress, DesignStreamCancelRequested);
+
+          if LRequestVersion <> FDesignRequestVersion then
+            Exit;
+
+          if (LResponse <> nil) and (Trim(LResponse.ErrorMessage) <> '') then
+          begin
+            LPayload := TRpQueuedDesignChatPayload.Create;
+            LPayload.Kind := rpqdcAddAssistantMessage;
+            LPayload.RequestVersion := LRequestVersion;
+            LPayload.Text1 := LResponse.ErrorMessage;
+            PostDesignChatPayload(LPayload);
+            Exit;
+          end;
+
+          if (LResponse <> nil) and Assigned(LResponse.ResultData) and
+            (Trim(LResponse.ResultData.ErrorMessage) <> '') then
+          begin
+            LPayload := TRpQueuedDesignChatPayload.Create;
+            LPayload.Kind := rpqdcAddAssistantMessage;
+            LPayload.RequestVersion := LRequestVersion;
+            LPayload.Text1 := LResponse.ResultData.ErrorMessage;
+            PostDesignChatPayload(LPayload);
+            Exit;
+          end;
+
+          LPayload := TRpQueuedDesignChatPayload.Create;
+          LPayload.Kind := rpqdcApplyDesignResult;
+          LPayload.RequestVersion := LRequestVersion;
+          if LResponse <> nil then
+          begin
+            if Assigned(LResponse.ResultData) then
+            begin
+              LPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
+              LPayload.Text2 := LResponse.ResultData.Explanation;
+            end;
+            LPayload.UserProfileJson := LResponse.UserProfileJson;
+            for I := 0 to LResponse.Steps.Count - 1 do
+            begin
+              if LResponse.Steps[I] is TRpTokenUsage then
+              begin
+                Inc(LPayload.InputTokens,
+                  TRpTokenUsage(LResponse.Steps[I]).InputTokens);
+                Inc(LPayload.OutputTokens,
+                  TRpTokenUsage(LResponse.Steps[I]).OutputTokens);
+              end;
+            end;
+          end;
+          PostDesignChatPayload(LPayload);
+        except
+          on E: Exception do
+          begin
+            LPayload := TRpQueuedDesignChatPayload.Create;
+            LPayload.Kind := rpqdcAddAssistantMessage;
+            LPayload.RequestVersion := LRequestVersion;
+            LPayload.Text1 := E.Message;
+            PostDesignChatPayload(LPayload);
+          end;
+        end;
+      finally
+        LStreamContext.Free;
+        LResponse.Free;
+        LHttp.Free;
+        LRequest.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
 procedure TFRpChatFrame.StartOnlineInitialization;
 var
   LNeedsSchemas: Boolean;
@@ -904,6 +1141,14 @@ end;
 procedure TFRpChatFrame.SetCurrentExpression(const AExpression: string);
 begin
   FCurrentExpression := AExpression;
+end;
+
+procedure TFRpChatFrame.StopDesignPrompt;
+begin
+  Inc(FDesignRequestVersion);
+  FinishStreamingResponse;
+  SetBusy(False);
+  AddAssistantMessage('Generation stopped.');
 end;
 
 procedure TFRpChatFrame.SetBusy(AValue: Boolean);
@@ -991,6 +1236,85 @@ begin
     FAISelection.UpdateFromUserProfile(AProfile);
 end;
 
+procedure TFRpChatFrame.WMHandleDesignChatPayload(var Message: TMessage);
+var
+  LPayload: TRpQueuedDesignChatPayload;
+  LMessage: string;
+  LProfile: TJSONObject;
+begin
+  LPayload := TRpQueuedDesignChatPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FDesignRequestVersion then
+      Exit;
+
+    case LPayload.Kind of
+      rpqdcUpdateStreamingResponse:
+        begin
+          UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+          UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+          Exit;
+        end;
+      rpqdcAddAssistantMessage:
+        begin
+          FinishStreamingResponse;
+          SetBusy(False);
+          AddAssistantMessage(LPayload.Text1);
+          Exit;
+        end;
+    end;
+
+    if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
+      UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+    FinishStreamingResponse;
+    SetBusy(False);
+
+    if (Trim(LPayload.UserProfileJson) <> '') and
+      (not SameText(Trim(LPayload.UserProfileJson), 'null')) then
+    begin
+      LProfile := TJSONObject.ParseJSONValue(LPayload.UserProfileJson) as TJSONObject;
+      try
+        if LProfile <> nil then
+          UpdateUserProfile(LProfile);
+      finally
+        LProfile.Free;
+      end;
+    end;
+
+    if Trim(LPayload.Text1) <> '' then
+    begin
+      if Assigned(FOnApplyDesignResult) then
+      begin
+        try
+          FOnApplyDesignResult(Self, LPayload.Text1);
+        except
+          on E: Exception do
+          begin
+            AddAssistantMessage('The server returned a modified report, but it could not be loaded: ' + E.Message);
+            Exit;
+          end;
+        end;
+      end
+      else
+        AddAssistantMessage('A design result was received, but no apply handler is connected.');
+    end;
+
+    LMessage := Trim(LPayload.Text2);
+    if LMessage = '' then
+    begin
+      if Trim(LPayload.Text1) <> '' then
+        LMessage := 'Report updated.'
+      else
+        LMessage := 'No report changes were returned.';
+    end;
+
+    AddAssistantMessage(LMessage);
+  finally
+    LPayload.Free;
+  end;
+end;
+
 function TFRpChatFrame.GetAITier: string;
 begin
   Result := FAISelection.AITier;
@@ -1072,7 +1396,9 @@ begin
   MemoPrompt.Clear;
   UpdateButtons;
 
-  if Assigned(FOnSendPrompt) then
+  if Assigned(FOnBuildDesignRequest) and Assigned(FOnApplyDesignResult) then
+    StartDesignPrompt(LPrompt)
+  else if Assigned(FOnSendPrompt) then
     FOnSendPrompt(Self, LPrompt, FCurrentExpression)
   else
     AddAssistantMessage('Chat UI is ready, but no AI handler is connected yet.');
@@ -1114,8 +1440,7 @@ procedure TFRpChatFrame.BClearClick(Sender: TObject);
 begin
   if FBusy then
   begin
-    if Assigned(FOnStopRequest) then
-      FOnStopRequest(Self);
+    AISelectionStopRequest(Self);
   end
   else
     ClearConversation;
