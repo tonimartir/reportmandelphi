@@ -262,6 +262,7 @@ type
    ProviderFactory:string;
    ConAdmin:TRpConnAdmin;
    procedure UpdateConAdmin;
+    procedure LoadConnectionParams(AParams: TStrings);
    procedure Assign(Source:TPersistent);override;
    destructor Destroy;override;
    procedure Connect(params:TRpParamList);
@@ -388,6 +389,8 @@ type
    FOnDisConnect:TDatasetNotifyEvent;
    FParallelUnion:Boolean;
    FName: string;
+  FSQLExplanation: WideString;
+  FSQLExplanationError: WideString;
    procedure SetDataUnions(Value:TStrings);
    procedure SetDatabaseAlias(Value:string);
    procedure SetAlias(Value:string);
@@ -429,6 +432,8 @@ type
    property externalDataset: Pointer read FexternalDataSet write FexternalDataSet;
 {$ENDIF}
    property Name: string read FName write FName;
+  property SQLExplanation: WideString read FSQLExplanation write FSQLExplanation;
+  property SQLExplanationError: WideString read FSQLExplanationError write FSQLExplanationError;
   published
    property Alias:string read FAlias write SetAlias;
    property DatabaseAlias:string read FDatabaseAlias write SetDatabaseAlias;
@@ -1091,6 +1096,11 @@ end;
 
 procedure TRpDataInfoItem.SetSQL(Value:widestring);
 begin
+ if FSQL<>Value then
+ begin
+  FSQLExplanation:='';
+  FSQLExplanationError:='';
+ end;
  FSQL:=Value;
  Changed(False);
 end;
@@ -1184,6 +1194,16 @@ begin
   Result := FSQL;
   exit;
  end;
+ if SameText(propName, 'SQLExplanation') then
+ begin
+  Result := FSQLExplanation;
+  exit;
+ end;
+ if SameText(propName, 'SQLExplanationError') then
+ begin
+  Result := FSQLExplanationError;
+  exit;
+ end;
  if SameText(propName, 'DataSource') then
  begin
   Result := FDataSource;
@@ -1216,6 +1236,8 @@ begin
   FDatabaseAlias:=TRpDataInfoItem(Source).FDatabaseAlias;
   FDataSource:=TRpDataInfoItem(Source).FDataSource;
   FSQL:=TRpDataInfoItem(Source).FSQL;
+  FSQLExplanation:=TRpDataInfoItem(Source).FSQLExplanation;
+  FSQLExplanationError:=TRpDataInfoItem(Source).FSQLExplanationError;
   FMyBaseFilename:=TRpDataInfoItem(Source).FMyBaseFilename;
   FMyBaseFields:=TRpDataInfoItem(Source).FMyBaseFields;
   FMyBaseIndexFields:=TRpDataInfoItem(Source).FMyBaseIndexFields;
@@ -1634,6 +1656,16 @@ begin
    ConAdmin.LoadConfig;
   end;
  end;
+end;
+
+procedure TRpDatabaseinfoitem.LoadConnectionParams(AParams: TStrings);
+begin
+ if AParams = nil then
+  Exit;
+ if not Assigned(ConAdmin) then
+  UpdateConAdmin;
+ AParams.Clear;
+ ConAdmin.GetConnectionParams(Alias, AParams);
 end;
 
 
@@ -3888,7 +3920,6 @@ begin
         aparams.free;
      end;*)
 {$ENDIF}
-
      alist.LoadFromFile(tmpfile);
      i:=0;
      while i<alist.Count do

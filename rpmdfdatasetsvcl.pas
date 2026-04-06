@@ -25,7 +25,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls, ToolWin, ImgList,rpmdconsts,rpgraphutilsvcl,
-
+  rpdatahttp,
 {$IFDEF USEBDE}
   DBTables,
 {$ENDIF}
@@ -133,6 +133,7 @@ type
     procedure FrameResize(Sender: TObject);
     procedure AUpExecute(Sender: TObject);
     procedure ADownExecute(Sender: TObject);
+    procedure MonacoAuditSql(Sender: TObject);
   private
     { Private declarations }
     FMonaco: TFRpMonacoEditorVCL;
@@ -145,6 +146,9 @@ type
     function GetDataInfo:TRpDataInfoList;
 //    function FindDatabaseInfoItem:TRpDatabaseInfoItem;
     function FindDataInfoItem:TRpDataInfoItem;
+    function GetUserLanguageCode: string;
+    procedure MonacoAuditProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure  Removedependences(oldalias:string);
   public
     { Public declarations }
@@ -163,7 +167,7 @@ type
 
 implementation
 
-uses rpmdfdatatextvcl, rpxmlstream, rpbasereport;
+uses System.JSON, rpauthmanager, rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 {$R *.DFM}
 
@@ -249,6 +253,7 @@ begin
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
   FMonaco.OnContentChanged := MSQLChange;
+  FMonaco.OnAuditSql := MonacoAuditSql;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -324,6 +329,7 @@ begin
   PanelBasic.Visible := True;
 
   FMonaco.SQL := WideStringToDOS(dinfo.SQL);
+  FMonaco.AuditText := WideStringToDOS(dinfo.SQLExplanation);
   // Set Hub context for AI
   dbinfo := Report.DatabaseInfo.ItemByName(dinfo.DatabaseAlias);
   if dbinfo <> nil then
@@ -448,6 +454,7 @@ begin
  if Sender=FMonaco then
  begin
   dinfo.SQL:=FMonaco.SQL;
+  FMonaco.AuditText := WideStringToDOS(dinfo.SQLExplanation);
  end
  else
  if Sender=ComboConnection then
@@ -585,6 +592,186 @@ begin
  begin
   dinfo.OpenOnStart:=CheckOpen.Checked;
  end;
+end;
+
+function TFRpDatasetsVCL.GetUserLanguageCode: string;
+var
+  LBuffer: array[0..15] of Char;
+begin
+  Result := '';
+  if GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, LBuffer,
+    Length(LBuffer)) > 0 then
+    Result := LowerCase(string(LBuffer));
+  if Result = '' then
+    Result := 'en';
+end;
+
+procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+begin
+  TThread.Queue(nil,
+    procedure
+    begin
+      FMonaco.UpdateAITokens(AInputTokens, AOutputTokens);
+      if SameText(AStage, 'ReceivingResponse') and (AChunk <> '') then
+        FMonaco.AppendLog(AChunk)
+      else if AChunk <> '' then
+        FMonaco.AppendLog('[' + AStage + '] ' + AChunk);
+    end);
+end;
+
+procedure TFRpDatasetsVCL.MonacoAuditSql(Sender: TObject);
+var
+  LDataInfo: TRpDataInfoItem;
+  LWorker: TThread;
+  LSql: string;
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LAITier: string;
+  LAIMode: string;
+  LAgentSecret: string;
+  LAgentAiId: Int64;
+  LLanguage: string;
+begin
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+
+  LSql := FMonaco.SQL;
+  if Trim(LSql) = '' then
+  begin
+    FMonaco.ActivateAuditTab;
+    FMonaco.AppendLog('Audit SQL skipped: SQL is empty.');
+    Exit;
+  end;
+
+  LHubDatabaseId := FMonaco.HubDatabaseId;
+  LHubSchemaId := FMonaco.HubSchemaId;
+  LAITier := FMonaco.AITier;
+  LAIMode := FMonaco.AIMode;
+  LAgentSecret := FMonaco.AgentSecret;
+  LAgentAiId := FMonaco.AgentAiId;
+  LLanguage := GetUserLanguageCode;
+
+  FMonaco.ActivateAuditTab;
+  FMonaco.SetAuditBusy(True);
+  FMonaco.ClearLog;
+  FMonaco.AppendLog('Starting SQL audit...');
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LHttp: TRpDatabaseHttp;
+      LResponse: TJSONObject;
+      LResult: TJSONObject;
+      LUserProfile: TJSONObject;
+      LErrorMessage: string;
+      LExplanation: string;
+      LResponseData: TJSONObject;
+      LInputTokens: Integer;
+      LOutputTokens: Integer;
+      LTokenUsage: TJSONObject;
+      LVal: TJSONValue;
+    begin
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      LUserProfile := nil;
+      LErrorMessage := '';
+      LExplanation := '';
+      LInputTokens := 0;
+      LOutputTokens := 0;
+      try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.HubDatabaseId := LHubDatabaseId;
+          LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.AITier := LAITier;
+          LHttp.AgentSecret := LAgentSecret;
+          LHttp.AgentAiId := LAgentAiId;
+
+          LResponse := LHttp.ExplainSql(LSql, LAIMode, LLanguage, Self,
+            MonacoAuditProgress, nil);
+
+          if LResponse <> nil then
+          begin
+            LVal := LResponse.Values['errorMessage'];
+            if LVal <> nil then
+              LErrorMessage := LVal.Value;
+
+            if Trim(LErrorMessage) = '' then
+            begin
+              LVal := LResponse.Values['result'];
+              if (LVal <> nil) and (LVal is TJSONObject) then
+              begin
+                LResult := TJSONObject(LVal);
+                LExplanation := '';
+                if LResult.Values['explanation'] <> nil then
+                  LExplanation := LResult.Values['explanation'].Value;
+
+                LResponseData := LResult;
+                LVal := LResponseData.Values['tokenUsage'];
+                if (LVal <> nil) and (LVal is TJSONObject) then
+                begin
+                  LTokenUsage := TJSONObject(LVal);
+                  if LTokenUsage.Values['inputTokens'] <> nil then
+                    LInputTokens := StrToIntDef(LTokenUsage.Values['inputTokens'].Value, 0);
+                  if LTokenUsage.Values['outputTokens'] <> nil then
+                    LOutputTokens := StrToIntDef(LTokenUsage.Values['outputTokens'].Value, 0);
+                end;
+              end;
+            end;
+
+            LVal := LResponse.Values['userProfile'];
+            if (LVal <> nil) and (LVal is TJSONObject) then
+              LUserProfile := TJSONObject(LVal.Clone);
+          end;
+        except
+          on E: Exception do
+            LErrorMessage := E.Message;
+        end;
+
+        TThread.Synchronize(nil,
+          procedure
+          begin
+            try
+              LDataInfo := FindDataInfoItem;
+              if LDataInfo <> nil then
+              begin
+                if Trim(LErrorMessage) = '' then
+                begin
+                  LDataInfo.SQLExplanation := LExplanation;
+                  LDataInfo.SQLExplanationError := '';
+                  FMonaco.AuditText := LExplanation;
+                  if LInputTokens > 0 then
+                    FMonaco.AppendLog('Audit SQL complete. Input Tokens: ' +
+                      IntToStr(LInputTokens) + ' Output Tokens: ' + IntToStr(LOutputTokens))
+                  else
+                    FMonaco.AppendLog('Audit SQL complete.');
+                end
+                else
+                begin
+                  LDataInfo.SQLExplanation := '';
+                  LDataInfo.SQLExplanationError := LErrorMessage;
+                  FMonaco.AuditText := '';
+                  FMonaco.AppendLog('Audit SQL error: ' + LErrorMessage);
+                end;
+              end;
+
+              if LUserProfile <> nil then
+                TRpAuthManager.Instance.UpdateProfileFromJson(LUserProfile);
+            finally
+              FMonaco.SetAuditBusy(False);
+            end;
+          end);
+      finally
+        LUserProfile.Free;
+        LResponse.Free;
+        LHttp.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
 end;
 
 procedure TFRpDatasetsVCL.BMyBaseClick(Sender: TObject);

@@ -26,6 +26,8 @@ type
     procedure Invalidate;
   end;
 
+  TAuditSqlEvent = procedure(Sender: TObject) of object;
+
   TAIToggleButton = class(TSpeedButton)
   protected
     procedure Paint; override;
@@ -54,6 +56,10 @@ type
     PAISelectionHost: TPanel;
     PControl: TPageControl;
     TabSQL: TTabSheet;
+    TabAudit: TTabSheet;
+    PAuditTop: TPanel;
+    BAuditSQL: TButton;
+    MemoAudit: TMemo;
     TabLog: TTabSheet;
     PLogTop: TPanel;
     BClearLog: TButton;
@@ -65,6 +71,7 @@ type
       Args: TWebMessageReceivedEventArgs);
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+    procedure BAuditSQLClick(Sender: TObject);
     procedure BClearLogClick(Sender: TObject);
     procedure AuthChanged(ASuccess: Boolean);
   private
@@ -74,6 +81,7 @@ type
     FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
+    FAuditText: string;
     FBaseHubDatabaseId: Int64;
     FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
@@ -92,6 +100,7 @@ type
     FLastAutoCompleteSql: string;
     FAuthUIUpdateVersion: Integer;
     FGuard: IEditorGuard;
+    FOnAuditSql: TAuditSqlEvent;
     procedure AIToggleClick(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
@@ -107,6 +116,7 @@ type
     procedure SetSQL(const Value: string);
     procedure SetHubDatabaseId(const Value: Int64);
     procedure SetHubSchemaId(const Value: Int64);
+    procedure SetAuditText(const Value: string);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
     function SuggestSqlStreamCancelRequested(Sender: TObject): Boolean;
@@ -123,10 +133,25 @@ type
     destructor Destroy; override;
     procedure LoadSQL(const ASQL: string);
     procedure SetSchema(const ASchema: string);
+    procedure ClearLog;
+    procedure AppendLog(const AText: string);
+    procedure ActivateAuditTab;
+    procedure SetAuditBusy(AValue: Boolean);
+    procedure UpdateAITokens(AInTokens, AOutTokens: Integer);
+    function GetAITier: string;
+    function GetAIMode: string;
+    function GetAgentSecret: string;
+    function GetAgentAiId: Int64;
     property SQL: string read FSQL write SetSQL;
+    property AuditText: string read FAuditText write SetAuditText;
     property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
     property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
+    property AITier: string read GetAITier;
+    property AIMode: string read GetAIMode;
+    property AgentSecret: string read GetAgentSecret;
+    property AgentAiId: Int64 read GetAgentAiId;
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
+    property OnAuditSql: TAuditSqlEvent read FOnAuditSql write FOnAuditSql;
   end;
 
 implementation
@@ -380,12 +405,21 @@ begin
 
   MemoLog.WordWrap := True;
   MemoLog.ScrollBars := ssVertical;
+  MemoAudit.ReadOnly := True;
+  MemoAudit.WordWrap := True;
+  MemoAudit.ScrollBars := ssVertical;
+end;
+
+procedure TFRpMonacoEditorVCL.BAuditSQLClick(Sender: TObject);
+begin
+  ActivateAuditTab;
+  if Assigned(FOnAuditSql) then
+    FOnAuditSql(Self);
 end;
 
 procedure TFRpMonacoEditorVCL.BClearLogClick(Sender: TObject);
 begin
-  if MemoLog <> nil then
-    MemoLog.Clear;
+  ClearLog;
 end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
@@ -475,9 +509,81 @@ begin
   end;
 end;
 
+procedure TFRpMonacoEditorVCL.SetAuditText(const Value: string);
+begin
+  FAuditText := Value;
+  if MemoAudit <> nil then
+    MemoAudit.Lines.Text := Value;
+end;
+
 procedure TFRpMonacoEditorVCL.LoadSQL(const ASQL: string);
 begin
   SetSQL(ASQL);
+end;
+
+procedure TFRpMonacoEditorVCL.ClearLog;
+begin
+  if MemoLog <> nil then
+    MemoLog.Clear;
+end;
+
+procedure TFRpMonacoEditorVCL.AppendLog(const AText: string);
+begin
+  if MemoLog = nil then
+    Exit;
+  MemoLog.Lines.Add(AText);
+end;
+
+procedure TFRpMonacoEditorVCL.ActivateAuditTab;
+begin
+  if PControl <> nil then
+    PControl.ActivePage := TabAudit;
+end;
+
+procedure TFRpMonacoEditorVCL.SetAuditBusy(AValue: Boolean);
+begin
+  if BAuditSQL <> nil then
+    BAuditSQL.Enabled := not AValue;
+  if FAISelection <> nil then
+    FAISelection.SetInferenceProgress(AValue);
+end;
+
+procedure TFRpMonacoEditorVCL.UpdateAITokens(AInTokens, AOutTokens: Integer);
+begin
+  if FAISelection <> nil then
+    FAISelection.UpdateTokens(AInTokens, AOutTokens);
+end;
+
+function TFRpMonacoEditorVCL.GetAITier: string;
+begin
+  if FAISelection <> nil then
+    Result := FAISelection.AITier
+  else
+    Result := 'Standard';
+end;
+
+function TFRpMonacoEditorVCL.GetAIMode: string;
+begin
+  if FAISelection <> nil then
+    Result := FAISelection.AIMode
+  else
+    Result := 'Fast';
+end;
+
+function TFRpMonacoEditorVCL.GetAgentSecret: string;
+begin
+  if FAISelection <> nil then
+    Result := FAISelection.AgentSecret
+  else
+    Result := '';
+end;
+
+function TFRpMonacoEditorVCL.GetAgentAiId: Int64;
+begin
+  if FAISelection <> nil then
+    Result := FAISelection.AgentAiId
+  else
+    Result := 0;
 end;
 
 procedure TFRpMonacoEditorVCL.ClearSchemaItems;

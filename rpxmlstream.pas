@@ -122,6 +122,8 @@ begin
  WritePropertyS('NAME',dinfo.Name,Stream);
  WritePropertyS('DATABASEALIAS',dinfo.DatabaseAlias,Stream);
  WritePropertyW('SQL',dinfo.SQL,Stream);
+ WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
+ WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
  WritePropertyS('DATASOURCE',dinfo.DataSource,Stream);
  WritePropertyS('MYBASEFILENAME',dinfo.MyBaseFileName,Stream);
  WritePropertyS('MYBASEFIELDS',dinfo.MyBaseFields,Stream);
@@ -1169,6 +1171,12 @@ begin
  else
  if propname='SQL' then
   ditem.SQL:=RpStringToWString(propvalue)
+   else
+   if propname='SQLEXPLANATION' then
+    ditem.SQLExplanation:=RpStringToWString(propvalue)
+   else
+   if propname='SQLEXPLANATIONERROR' then
+    ditem.SQLExplanationError:=RpStringToWString(propvalue)
  else
  if propname='DATASOURCE' then
   ditem.DataSource:=RpStringToString(propvalue)

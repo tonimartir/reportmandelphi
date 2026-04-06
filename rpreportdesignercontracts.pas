@@ -167,6 +167,90 @@ type
     property UserProfileJson: string read FUserProfileJson write FUserProfileJson;
   end;
 
+  TRpApiPreprocessSqlContextDataSource = class(TPersistent)
+  private
+    FConfig: TRpApiDatabaseConfig;
+    FDataInfoName: string;
+    FDatabaseAlias: string;
+    FSql: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property Config: TRpApiDatabaseConfig read FConfig;
+    property DataInfoName: string read FDataInfoName write FDataInfoName;
+    property DatabaseAlias: string read FDatabaseAlias write FDatabaseAlias;
+    property Sql: string read FSql write FSql;
+  end;
+
+  TRpApiPreprocessSqlContextDataSourceResult = class(TPersistent)
+  private
+    FDataInfoName: string;
+    FErrorMessage: string;
+    FSqlExplanation: string;
+  public
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property DataInfoName: string read FDataInfoName write FDataInfoName;
+    property ErrorMessage: string read FErrorMessage write FErrorMessage;
+    property SqlExplanation: string read FSqlExplanation write FSqlExplanation;
+  end;
+
+  TRpApiPreprocessSqlContextRequest = class(TPersistent)
+  private
+    FAgentAiId: Int64;
+    FAgentSecret: string;
+    FAITier: TRpAITierType;
+    FApiKey: string;
+    FConfig: TRpApiDatabaseConfig;
+    FDataSources: TObjectList;
+    FHasAgentAiId: Boolean;
+    FMode: TRpReportDesignerMode;
+    FUserLanguage: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
+    property AgentSecret: string read FAgentSecret write FAgentSecret;
+    property AITier: TRpAITierType read FAITier write FAITier;
+    property ApiKey: string read FApiKey write FApiKey;
+    property Config: TRpApiDatabaseConfig read FConfig;
+    property DataSources: TObjectList read FDataSources;
+    property HasAgentAiId: Boolean read FHasAgentAiId write FHasAgentAiId;
+    property Mode: TRpReportDesignerMode read FMode write FMode;
+    property UserLanguage: string read FUserLanguage write FUserLanguage;
+  end;
+
+  TRpApiPreprocessSqlContextResult = class(TPersistent)
+  private
+    FCreditsConsumed: Integer;
+    FDataSources: TObjectList;
+    FErrorMessage: string;
+    FHasCreditsConsumed: Boolean;
+    FSteps: TObjectList;
+    FUserProfileJson: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure ClearDataSources;
+    procedure ClearSteps;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property CreditsConsumed: Integer read FCreditsConsumed write FCreditsConsumed;
+    property DataSources: TObjectList read FDataSources;
+    property ErrorMessage: string read FErrorMessage write FErrorMessage;
+    property HasCreditsConsumed: Boolean read FHasCreditsConsumed write FHasCreditsConsumed;
+    property Steps: TObjectList read FSteps;
+    property UserProfileJson: string read FUserProfileJson write FUserProfileJson;
+  end;
+
 function RpReportDesignerModeToString(AMode: TRpReportDesignerMode): string;
 function RpReportDesignerModeFromString(const AValue: string): TRpReportDesignerMode;
 function RpReportDocumentFormatToString(AFormat: TRpReportDocumentFormat): string;
@@ -684,6 +768,338 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('result', FResult.ToJsonObject);
+  LArray := TJSONArray.Create;
+  for I := 0 to FSteps.Count - 1 do
+    LArray.AddElement(TRpTokenUsage(FSteps[I]).ToJsonObject);
+  Result.AddPair('steps', LArray);
+  if FHasCreditsConsumed then
+    Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
+  Result.AddPair('errorMessage', FErrorMessage);
+  if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
+  begin
+    LProfileValue := TJSONObject.ParseJSONValue(FUserProfileJson);
+    if (LProfileValue <> nil) and (LProfileValue is TJSONObject) then
+      Result.AddPair('userProfile', LProfileValue);
+  end;
+end;
+
+constructor TRpApiPreprocessSqlContextDataSource.Create;
+begin
+  inherited Create;
+  FConfig := TRpApiDatabaseConfig.Create;
+end;
+
+destructor TRpApiPreprocessSqlContextDataSource.Destroy;
+begin
+  FConfig.Free;
+  inherited Destroy;
+end;
+
+procedure TRpApiPreprocessSqlContextDataSource.Assign(Source: TPersistent);
+var
+  LSource: TRpApiPreprocessSqlContextDataSource;
+begin
+  if Source is TRpApiPreprocessSqlContextDataSource then
+  begin
+    LSource := TRpApiPreprocessSqlContextDataSource(Source);
+    FConfig.Assign(LSource.Config);
+    FDataInfoName := LSource.DataInfoName;
+    FDatabaseAlias := LSource.DatabaseAlias;
+    FSql := LSource.Sql;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpApiPreprocessSqlContextDataSource.FromJsonObject(AObject: TJSONObject);
+var
+  LConfig: TJSONObject;
+begin
+  if AObject = nil then
+    Exit;
+  FDataInfoName := JsonValueToString(AObject.Values['dataInfoName'], '');
+  FDatabaseAlias := JsonValueToString(AObject.Values['databaseAlias'], '');
+  FSql := JsonValueToString(AObject.Values['sql'], '');
+  LConfig := AObject.Values['config'] as TJSONObject;
+  FConfig.FromJsonObject(LConfig);
+end;
+
+function TRpApiPreprocessSqlContextDataSource.ToJsonObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('dataInfoName', FDataInfoName);
+  Result.AddPair('databaseAlias', FDatabaseAlias);
+  Result.AddPair('sql', FSql);
+  if (FConfig.HubDatabaseId <> 0) or (FConfig.HubSchemaId <> 0) then
+    Result.AddPair('config', FConfig.ToJsonObject);
+end;
+
+procedure TRpApiPreprocessSqlContextDataSourceResult.Assign(Source: TPersistent);
+var
+  LSource: TRpApiPreprocessSqlContextDataSourceResult;
+begin
+  if Source is TRpApiPreprocessSqlContextDataSourceResult then
+  begin
+    LSource := TRpApiPreprocessSqlContextDataSourceResult(Source);
+    FDataInfoName := LSource.DataInfoName;
+    FErrorMessage := LSource.ErrorMessage;
+    FSqlExplanation := LSource.SqlExplanation;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpApiPreprocessSqlContextDataSourceResult.FromJsonObject(AObject: TJSONObject);
+begin
+  if AObject = nil then
+    Exit;
+  FDataInfoName := JsonValueToString(AObject.Values['dataInfoName'], '');
+  FSqlExplanation := JsonValueToString(AObject.Values['sqlExplanation'], '');
+  FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
+end;
+
+function TRpApiPreprocessSqlContextDataSourceResult.ToJsonObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('dataInfoName', FDataInfoName);
+  Result.AddPair('sqlExplanation', FSqlExplanation);
+  Result.AddPair('errorMessage', FErrorMessage);
+end;
+
+constructor TRpApiPreprocessSqlContextRequest.Create;
+begin
+  inherited Create;
+  FConfig := TRpApiDatabaseConfig.Create;
+  FDataSources := TObjectList.Create(True);
+  FAITier := ratStandard;
+  FMode := rdmFast;
+  FHasAgentAiId := False;
+end;
+
+destructor TRpApiPreprocessSqlContextRequest.Destroy;
+begin
+  FDataSources.Free;
+  FConfig.Free;
+  inherited Destroy;
+end;
+
+procedure TRpApiPreprocessSqlContextRequest.Assign(Source: TPersistent);
+var
+  I: Integer;
+  LItem: TRpApiPreprocessSqlContextDataSource;
+  LSource: TRpApiPreprocessSqlContextRequest;
+begin
+  if Source is TRpApiPreprocessSqlContextRequest then
+  begin
+    LSource := TRpApiPreprocessSqlContextRequest(Source);
+    FAgentAiId := LSource.AgentAiId;
+    FAgentSecret := LSource.AgentSecret;
+    FAITier := LSource.AITier;
+    FApiKey := LSource.ApiKey;
+    FConfig.Assign(LSource.Config);
+    FHasAgentAiId := LSource.HasAgentAiId;
+    FMode := LSource.Mode;
+    FUserLanguage := LSource.UserLanguage;
+    FDataSources.Clear;
+    for I := 0 to LSource.DataSources.Count - 1 do
+    begin
+      LItem := TRpApiPreprocessSqlContextDataSource.Create;
+      LItem.Assign(TRpApiPreprocessSqlContextDataSource(LSource.DataSources[I]));
+      FDataSources.Add(LItem);
+    end;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpApiPreprocessSqlContextRequest.FromJsonObject(AObject: TJSONObject);
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LConfig: TJSONObject;
+  LItem: TRpApiPreprocessSqlContextDataSource;
+  LObject: TJSONObject;
+begin
+  if AObject = nil then
+    Exit;
+  FAITier := RpAITierTypeFromString(JsonValueToString(AObject.Values['aiTier'], 'Standard'));
+  FMode := RpReportDesignerModeFromString(JsonValueToString(AObject.Values['mode'], 'Fast'));
+  FApiKey := JsonValueToString(AObject.Values['apiKey'], '');
+  FAgentSecret := JsonValueToString(AObject.Values['agentSecret'], '');
+  FHasAgentAiId := AObject.Values['agentAiId'] <> nil;
+  FAgentAiId := JsonValueToInt64(AObject.Values['agentAiId'], 0);
+  FUserLanguage := JsonValueToString(AObject.Values['userLanguage'], '');
+  LConfig := AObject.Values['config'] as TJSONObject;
+  FConfig.FromJsonObject(LConfig);
+  FDataSources.Clear;
+  LArray := AObject.Values['dataSources'] as TJSONArray;
+  if LArray <> nil then
+  begin
+    for I := 0 to LArray.Count - 1 do
+    begin
+      LObject := LArray.Items[I] as TJSONObject;
+      if LObject <> nil then
+      begin
+        LItem := TRpApiPreprocessSqlContextDataSource.Create;
+        LItem.FromJsonObject(LObject);
+        FDataSources.Add(LItem);
+      end;
+    end;
+  end;
+end;
+
+function TRpApiPreprocessSqlContextRequest.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('aiTier', RpAITierTypeToString(FAITier));
+  Result.AddPair('mode', RpReportDesignerModeToString(FMode));
+  if FApiKey <> '' then
+    Result.AddPair('apiKey', FApiKey);
+  if FAgentSecret <> '' then
+    Result.AddPair('agentSecret', FAgentSecret);
+  if FHasAgentAiId then
+    Result.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+  Result.AddPair('config', FConfig.ToJsonObject);
+  Result.AddPair('userLanguage', FUserLanguage);
+  LArray := TJSONArray.Create;
+  for I := 0 to FDataSources.Count - 1 do
+    LArray.AddElement(TRpApiPreprocessSqlContextDataSource(FDataSources[I]).ToJsonObject);
+  Result.AddPair('dataSources', LArray);
+end;
+
+constructor TRpApiPreprocessSqlContextResult.Create;
+begin
+  inherited Create;
+  FDataSources := TObjectList.Create(True);
+  FSteps := TObjectList.Create(True);
+  FHasCreditsConsumed := False;
+end;
+
+destructor TRpApiPreprocessSqlContextResult.Destroy;
+begin
+  FSteps.Free;
+  FDataSources.Free;
+  inherited Destroy;
+end;
+
+procedure TRpApiPreprocessSqlContextResult.Assign(Source: TPersistent);
+var
+  I: Integer;
+  LDataSource: TRpApiPreprocessSqlContextDataSourceResult;
+  LSource: TRpApiPreprocessSqlContextResult;
+  LStep: TRpTokenUsage;
+begin
+  if Source is TRpApiPreprocessSqlContextResult then
+  begin
+    LSource := TRpApiPreprocessSqlContextResult(Source);
+    FCreditsConsumed := LSource.CreditsConsumed;
+    FErrorMessage := LSource.ErrorMessage;
+    FHasCreditsConsumed := LSource.HasCreditsConsumed;
+    FUserProfileJson := LSource.UserProfileJson;
+    ClearDataSources;
+    for I := 0 to LSource.DataSources.Count - 1 do
+    begin
+      LDataSource := TRpApiPreprocessSqlContextDataSourceResult.Create;
+      LDataSource.Assign(TRpApiPreprocessSqlContextDataSourceResult(LSource.DataSources[I]));
+      FDataSources.Add(LDataSource);
+    end;
+    ClearSteps;
+    for I := 0 to LSource.Steps.Count - 1 do
+    begin
+      LStep := TRpTokenUsage.Create;
+      LStep.Assign(TRpTokenUsage(LSource.Steps[I]));
+      FSteps.Add(LStep);
+    end;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpApiPreprocessSqlContextResult.ClearDataSources;
+begin
+  FDataSources.Clear;
+end;
+
+procedure TRpApiPreprocessSqlContextResult.ClearSteps;
+begin
+  FSteps.Clear;
+end;
+
+procedure TRpApiPreprocessSqlContextResult.FromJsonObject(AObject: TJSONObject);
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LDataObject: TJSONObject;
+  LItem: TRpApiPreprocessSqlContextDataSourceResult;
+  LResultObject: TJSONObject;
+  LStep: TRpTokenUsage;
+  LStepObject: TJSONObject;
+  LUserProfile: TJSONValue;
+begin
+  if AObject = nil then
+    Exit;
+  ClearDataSources;
+  LResultObject := AObject.Values['result'] as TJSONObject;
+  if LResultObject <> nil then
+  begin
+    LArray := LResultObject.Values['dataSources'] as TJSONArray;
+    if LArray <> nil then
+    begin
+      for I := 0 to LArray.Count - 1 do
+      begin
+        LDataObject := LArray.Items[I] as TJSONObject;
+        if LDataObject <> nil then
+        begin
+          LItem := TRpApiPreprocessSqlContextDataSourceResult.Create;
+          LItem.FromJsonObject(LDataObject);
+          FDataSources.Add(LItem);
+        end;
+      end;
+    end;
+  end;
+  ClearSteps;
+  LArray := AObject.Values['steps'] as TJSONArray;
+  if LArray <> nil then
+  begin
+    for I := 0 to LArray.Count - 1 do
+    begin
+      LStepObject := LArray.Items[I] as TJSONObject;
+      if LStepObject <> nil then
+      begin
+        LStep := TRpTokenUsage.Create;
+        LStep.FromJsonObject(LStepObject);
+        FSteps.Add(LStep);
+      end;
+    end;
+  end;
+  FHasCreditsConsumed := AObject.Values['creditsConsumed'] <> nil;
+  FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
+  FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
+  LUserProfile := AObject.Values['userProfile'];
+  if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
+    FUserProfileJson := LUserProfile.ToJSON
+  else
+    FUserProfileJson := '';
+end;
+
+function TRpApiPreprocessSqlContextResult.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LProfileValue: TJSONValue;
+  LResultObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  LResultObject := TJSONObject.Create;
+  LArray := TJSONArray.Create;
+  for I := 0 to FDataSources.Count - 1 do
+    LArray.AddElement(TRpApiPreprocessSqlContextDataSourceResult(FDataSources[I]).ToJsonObject);
+  LResultObject.AddPair('dataSources', LArray);
+  Result.AddPair('result', LResultObject);
+
   LArray := TJSONArray.Create;
   for I := 0 to FSteps.Count - 1 do
     LArray.AddElement(TRpTokenUsage(FSteps[I]).ToJsonObject);

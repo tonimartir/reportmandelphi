@@ -196,9 +196,16 @@ type
     procedure StopExpressionRequest(Sender: TObject);
     function BuildDesignChatRequestForFrame(Sender: TObject;
       const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
+      TRpApiPreprocessSqlContextRequest;
     procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
       const AModifiedReportDocument: string);
     function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+    procedure ApplyPreprocessSqlContextResult(
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+      AResult: TRpApiPreprocessSqlContextResult);
     procedure ApplyModifiedReportDocumentToRefreshReport(
       const AModifiedReportDocument: string);
     function SaveRefreshReportAsXml: string;
@@ -1029,12 +1036,16 @@ begin
    if FChatMode = rcmDesign then
    begin
     FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+    FChat.OnBuildPreprocessSqlContextRequest := BuildPreprocessSqlContextRequestForFrame;
     FChat.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+    FChat.OnApplyPreprocessSqlContextResult := ApplyPreprocessSqlContextResultFromFrame;
    end
    else
    begin
     FChat.OnBuildDesignRequest := nil;
+    FChat.OnBuildPreprocessSqlContextRequest := nil;
     FChat.OnApplyDesignResult := nil;
+    FChat.OnApplyPreprocessSqlContextResult := nil;
    end;
   end;
   UpdateRefreshUIState;
@@ -1049,12 +1060,16 @@ begin
   if FChatMode = rcmDesign then
   begin
    FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+    FChat.OnBuildPreprocessSqlContextRequest := BuildPreprocessSqlContextRequestForFrame;
    FChat.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+    FChat.OnApplyPreprocessSqlContextResult := ApplyPreprocessSqlContextResultFromFrame;
   end
   else
   begin
    FChat.OnBuildDesignRequest := nil;
+    FChat.OnBuildPreprocessSqlContextRequest := nil;
    FChat.OnApplyDesignResult := nil;
+    FChat.OnApplyPreprocessSqlContextResult := nil;
   end;
  end;
  UpdateRefreshUIState;
@@ -1414,6 +1429,18 @@ begin
  Result := BuildDesignChatRequest(APrompt);
 end;
 
+function TFRpExpredialogVCL.BuildPreprocessSqlContextRequestForFrame(
+  Sender: TObject): TRpApiPreprocessSqlContextRequest;
+begin
+ Result := BuildPreprocessSqlContextRequest;
+end;
+
+procedure TFRpExpredialogVCL.ApplyPreprocessSqlContextResultFromFrame(
+  Sender: TObject; AResult: TRpApiPreprocessSqlContextResult);
+begin
+ ApplyPreprocessSqlContextResult(AResult);
+end;
+
 procedure TFRpExpredialogVCL.ApplyModifiedReportDocumentFromFrame(
   Sender: TObject; const AModifiedReportDocument: string);
 begin
@@ -1462,6 +1489,119 @@ begin
   Result.HasAgentAiId := Result.AgentAiId <> 0;
  end;
 end;
+
+  function TFRpExpredialogVCL.BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+  var
+   I: Integer;
+   LConnectionParams: TStringList;
+   LDataInfo: TRpDataInfoItem;
+   LDataSource: TRpApiPreprocessSqlContextDataSource;
+   LDatabaseInfo: TRpDatabaseInfoItem;
+   LDataInfoName: string;
+  begin
+   Result := nil;
+   if (FRefreshReport = nil) or (FChat = nil) then
+    Exit;
+
+   LConnectionParams := TStringList.Create;
+   try
+    for I := 0 to FRefreshReport.DataInfo.Count - 1 do
+    begin
+     LDataInfo := FRefreshReport.DataInfo.Items[I];
+     if Trim(LDataInfo.SQL) = '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanation) <> '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanationError) <> '' then
+      Continue;
+
+     if Result = nil then
+     begin
+      Result := TRpApiPreprocessSqlContextRequest.Create;
+      Result.AITier := RpAITierTypeFromString(FChat.GetAITier);
+      Result.Mode := RpReportDesignerModeFromString(FChat.GetAIMode);
+      Result.ApiKey := FChat.GetSchemaApiKey;
+      Result.Config.HubDatabaseId := FChat.GetHubDatabaseId;
+      Result.Config.HubSchemaId := FChat.GetHubSchemaId;
+      if Result.AITier = ratLocalAgent then
+      begin
+       Result.AgentSecret := FChat.GetAgentSecret;
+       Result.AgentAiId := FChat.GetAgentAiId;
+       Result.HasAgentAiId := Result.AgentAiId <> 0;
+      end;
+     end;
+
+     LDataSource := TRpApiPreprocessSqlContextDataSource.Create;
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     LDataSource.DataInfoName := LDataInfoName;
+     LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
+     LDataSource.Sql := LDataInfo.SQL;
+
+     LDatabaseInfo := FRefreshReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+     if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+     begin
+      LConnectionParams.Clear;
+      LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+      LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+      LDataSource.Config.HubSchemaId := StrToInt64Def(LConnectionParams.Values['HubSchemaId'], 0);
+     end;
+
+     Result.DataSources.Add(LDataSource);
+    end;
+
+    if (Result <> nil) and (Result.DataSources.Count = 0) then
+    begin
+     Result.Free;
+     Result := nil;
+    end;
+   finally
+    LConnectionParams.Free;
+   end;
+  end;
+
+  procedure TFRpExpredialogVCL.ApplyPreprocessSqlContextResult(
+    AResult: TRpApiPreprocessSqlContextResult);
+  var
+   I: Integer;
+   J: Integer;
+   LDataInfo: TRpDataInfoItem;
+   LDataInfoName: string;
+   LResultItem: TRpApiPreprocessSqlContextDataSourceResult;
+  begin
+   if (FRefreshReport = nil) or (AResult = nil) then
+    Exit;
+
+   for I := 0 to AResult.DataSources.Count - 1 do
+   begin
+    if not (AResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+     Continue;
+
+    LResultItem := TRpApiPreprocessSqlContextDataSourceResult(AResult.DataSources[I]);
+    for J := 0 to FRefreshReport.DataInfo.Count - 1 do
+    begin
+     LDataInfo := FRefreshReport.DataInfo.Items[J];
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     if not SameText(LDataInfoName, LResultItem.DataInfoName) then
+      Continue;
+
+     if Trim(LResultItem.SqlExplanation) <> '' then
+     begin
+      LDataInfo.SQLExplanation := LResultItem.SqlExplanation;
+      LDataInfo.SQLExplanationError := '';
+     end
+     else
+     begin
+      LDataInfo.SQLExplanation := '';
+      LDataInfo.SQLExplanationError := LResultItem.ErrorMessage;
+     end;
+     Break;
+    end;
+   end;
+  end;
 
 procedure TFRpExpredialogVCL.ApplyModifiedReportDocumentToRefreshReport(
   const AModifiedReportDocument: string);
@@ -1962,6 +2102,7 @@ procedure TFRpExpredialogVCL.SendDesignPrompt(const APrompt,
   AExpression: string);
 var
  LPrompt: string;
+ LPreprocessRequest: TRpApiPreprocessSqlContextRequest;
  LRequest: TRpApiModifyReportRequest;
  LRequestVersion: Integer;
  LSelectedHubDatabaseId: Int64;
@@ -1981,9 +2122,11 @@ begin
   Exit;
  end;
 
+ LPreprocessRequest := BuildPreprocessSqlContextRequest;
  LRequest := BuildDesignChatRequest(LPrompt);
  if Trim(LRequest.ReportDocument) = '' then
  begin
+  LPreprocessRequest.Free;
   LRequest.Free;
   FChat.AddAssistantMessage('Unable to serialize the current report to XML.');
   Exit;
@@ -2001,10 +2144,14 @@ begin
    var
     LChatPayload: TRpQueuedExpressionChatPayload;
     LHttp: TRpDatabaseHttp;
+      LPreprocessResponse: TRpApiPreprocessSqlContextResult;
+      LPreprocessUserProfile: TJSONObject;
     LResponse: TRpApiModifyReportResult;
       I: Integer;
    begin
     LHttp := TRpDatabaseHttp.Create;
+      LPreprocessResponse := nil;
+      LPreprocessUserProfile := nil;
     LResponse := nil;
     try
       try
@@ -2016,6 +2163,38 @@ begin
         LHttp.AgentSecret := LRequest.AgentSecret;
         if LRequest.HasAgentAiId then
           LHttp.AgentAiId := LRequest.AgentAiId;
+
+        if LPreprocessRequest <> nil then
+        begin
+          LPreprocessResponse := LHttp.PreprocessSqlContext(LPreprocessRequest, Self,
+            DesignStreamProgress, ExpressionStreamCancelRequested);
+
+          if FCancelExpressionRequest then
+          begin
+            LChatPayload := TRpQueuedExpressionChatPayload.Create;
+            LChatPayload.Kind := rpqecGenerationStopped;
+            LChatPayload.RequestVersion := LRequestVersion;
+            PostExpressionChatPayload(LChatPayload);
+            Exit;
+          end;
+
+          if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.ErrorMessage) <> '') then
+            raise Exception.Create(LPreprocessResponse.ErrorMessage);
+
+          TThread.Synchronize(nil,
+            procedure
+            begin
+              ApplyPreprocessSqlContextResult(LPreprocessResponse);
+              LRequest.ReportDocument := SaveRefreshReportAsXml;
+            end);
+
+          if Trim(LRequest.ReportDocument) = '' then
+            raise Exception.Create('Unable to serialize the current report to XML after preprocessing SQL context.');
+
+          if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.UserProfileJson) <> '') and
+            (not SameText(Trim(LPreprocessResponse.UserProfileJson), 'null')) then
+            LPreprocessUserProfile := TJSONObject.ParseJSONValue(LPreprocessResponse.UserProfileJson) as TJSONObject;
+        end;
 
         LResponse := LHttp.ModifyReport(LRequest, Self, DesignStreamProgress,
           ExpressionStreamCancelRequested);
@@ -2052,6 +2231,19 @@ begin
         LChatPayload := TRpQueuedExpressionChatPayload.Create;
         LChatPayload.Kind := rpqecApplyDesignResult;
         LChatPayload.RequestVersion := LRequestVersion;
+        if LPreprocessResponse <> nil then
+        begin
+          for I := 0 to LPreprocessResponse.Steps.Count - 1 do
+          begin
+            if LPreprocessResponse.Steps[I] is TRpTokenUsage then
+            begin
+              Inc(LChatPayload.InputTokens,
+                TRpTokenUsage(LPreprocessResponse.Steps[I]).InputTokens);
+              Inc(LChatPayload.OutputTokens,
+                TRpTokenUsage(LPreprocessResponse.Steps[I]).OutputTokens);
+            end;
+          end;
+        end;
         if LResponse <> nil then
         begin
           LChatPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
@@ -2070,6 +2262,11 @@ begin
             (not SameText(Trim(LResponse.UserProfileJson), 'null')) then
             LChatPayload.UserProfile := TJSONObject.ParseJSONValue(LResponse.UserProfileJson) as TJSONObject;
         end;
+        if (LChatPayload.UserProfile = nil) and (LPreprocessUserProfile <> nil) then
+        begin
+          LChatPayload.UserProfile := LPreprocessUserProfile;
+          LPreprocessUserProfile := nil;
+        end;
         PostExpressionChatPayload(LChatPayload);
       except
         on E: Exception do
@@ -2082,8 +2279,11 @@ begin
         end;
       end;
     finally
+      LPreprocessUserProfile.Free;
+      LPreprocessResponse.Free;
       LResponse.Free;
       LHttp.Free;
+      LPreprocessRequest.Free;
       LRequest.Free;
     end;
    end);

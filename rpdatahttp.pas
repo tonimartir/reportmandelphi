@@ -66,10 +66,18 @@ type
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function ExplainSql(const ASql: string; const AMode, AUserLanguage: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
     function ModifyReport(ARequest: TRpApiModifyReportRequest;
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiModifyReportResult;
+    function PreprocessSqlContext(ARequest: TRpApiPreprocessSqlContextRequest;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiPreprocessSqlContextResult;
     function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
       ACursorPosition: Integer; const AMode: string; AFix: Boolean;
       const ASemanticContextJson: string; Sender: TObject;
@@ -564,6 +572,61 @@ begin
   end;
 end;
 
+function TRpDatabaseHttp.ExplainSql(const ASql: string; const AMode,
+  AUserLanguage: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest, LConfig: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+{$ENDIF}
+begin
+  Result := nil;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('sqlToExplain', ASql);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('transcribeLanguage', 'Auto');
+    if Trim(AUserLanguage) <> '' then
+      LRequest.AddPair('userLanguage', AUserLanguage);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+
+    LConfig := TJSONObject.Create;
+    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/ExplainSQLStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/ExplainSQL', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          Result := LResponseJson;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
 function TRpDatabaseHttp.ModifyReport(
   ARequest: TRpApiModifyReportRequest; Sender: TObject;
   AOnProgress: TRpExpressionStreamProgressEvent;
@@ -610,6 +673,71 @@ begin
             raise Exception.Create('Invalid JSON response from ReportDesigner/ModifyReport');
 
           Result := TRpApiModifyReportResult.Create;
+          try
+            Result.FromJsonObject(LResponseJson);
+          except
+            Result.Free;
+            raise;
+          end;
+        finally
+          LResponseJson.Free;
+        end;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequestJson.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.PreprocessSqlContext(
+  ARequest: TRpApiPreprocessSqlContextRequest; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TRpApiPreprocessSqlContextResult;
+var
+  LRequestJson: TJSONObject;
+  LResponseJson: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  Result := nil;
+  if ARequest = nil then
+    raise Exception.Create('PreprocessSqlContext request not assigned');
+
+  LRequestJson := ARequest.ToJsonObject;
+  try
+{$IFDEF FIREDAC}
+    LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/PreprocessSqlContextStream',
+      LRequestJson, Sender, AOnProgress, ACancel);
+    try
+      if LResponseJson <> nil then
+      begin
+        Result := TRpApiPreprocessSqlContextResult.Create;
+        try
+          Result.FromJsonObject(LResponseJson);
+        except
+          Result.Free;
+          raise;
+        end;
+      end;
+    finally
+      LResponseJson.Free;
+    end;
+{$ELSE}
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('ReportDesigner/PreprocessSqlContext', LRequestJson, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        try
+          if LResponseJson = nil then
+            raise Exception.Create('Invalid JSON response from ReportDesigner/PreprocessSqlContext');
+
+          Result := TRpApiPreprocessSqlContextResult.Create;
           try
             Result.FromJsonObject(LResponseJson);
           except

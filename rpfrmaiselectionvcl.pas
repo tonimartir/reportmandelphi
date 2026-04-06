@@ -184,22 +184,22 @@ begin
   if LMax > 0 then
   begin
     if LAuth.UsesFreeCredits then
-      LHint := 'Créditos Gratuitos' + #13#10
+      LHint := 'Free Credits' + #13#10
     else
-      LHint := 'Consumo Diario de Créditos' + #13#10;
+      LHint := 'Daily Credit Usage' + #13#10;
 
-    LHint := LHint + 'Usados: ' + FormatFloat('#,##0', LUsed) +
+    LHint := LHint + 'Used: ' + FormatFloat('#,##0', LUsed) +
       ' (' + FormatFloat('0', LPct) + '%)' + #13#10;
-    LHint := LHint + 'Máx: ' + FormatFloat('#,##0', LMax);
+    LHint := LHint + 'Max: ' + FormatFloat('#,##0', LMax);
 
     if (not LAuth.UsesFreeCredits) and (LProfile.ServerDay > 0) then
       LHint := LHint + #13#10 + DateToStr(LProfile.ServerDay);
   end
   else
   begin
-    LHint := 'Créditos Gratuitos' + #13#10 +
-      'Usados: 0 (0%)' + #13#10 +
-      'Máx: 0';
+    LHint := 'Free Credits' + #13#10 +
+      'Used: 0 (0%)' + #13#10 +
+      'Max: 0';
     FGaugeValue := 0.0;
   end;
 

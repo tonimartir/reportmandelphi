@@ -434,9 +434,16 @@ type
     procedure UpdateUndoToolbarButtons;
     function BuildDesignChatRequestForFrame(Sender: TObject;
       const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
+      TRpApiPreprocessSqlContextRequest;
     procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
       const AModifiedReportDocument: string);
     function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+    procedure ApplyPreprocessSqlContextResult(
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+      AResult: TRpApiPreprocessSqlContextResult);
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
     procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure StopDesignChatRequest(Sender: TObject);
@@ -846,7 +853,9 @@ begin
  fchatframe.Align:=alClient;
  fchatframe.Parent:=fchattab;
  fchatframe.OnBuildDesignRequest:=BuildDesignChatRequestForFrame;
+ fchatframe.OnBuildPreprocessSqlContextRequest:=BuildPreprocessSqlContextRequestForFrame;
  fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
+ fchatframe.OnApplyPreprocessSqlContextResult:=ApplyPreprocessSqlContextResultFromFrame;
  fchatframe.OnStopRequest:=StopDesignChatRequest;
  fchatframe.OnRefreshContext:=RefreshDesignChatContext;
  fchatframe.SetRefreshAction(True);
@@ -2846,6 +2855,7 @@ begin
 
   procedure TFRpMainFVCL.ExecuteDesignChatPrompt(const APrompt: string);
   var
+    LPreprocessRequest: TRpApiPreprocessSqlContextRequest;
    LRequest: TRpApiModifyReportRequest;
    LRequestVersion: Integer;
     LSelectedHubDatabaseId: Int64;
@@ -2855,6 +2865,7 @@ begin
    if (not Assigned(fchatframe)) or (not Assigned(report)) then
     Exit;
 
+    LPreprocessRequest := BuildPreprocessSqlContextRequest;
    LRequest := BuildDesignChatRequest(APrompt);
     LSelectedHubDatabaseId := fchatframe.GetHubDatabaseId;
     LSelectedHubSchemaId := fchatframe.GetHubSchemaId;
@@ -2868,11 +2879,15 @@ begin
      var
       LHttp: TRpDatabaseHttp;
       LPayload: TRpQueuedDesignChatPayload;
+      LPreprocessResponse: TRpApiPreprocessSqlContextResult;
+      LPreprocessUserProfileJson: string;
       LResponse: TRpApiModifyReportResult;
         LStreamContext: TRpDesignChatStreamContext;
         I: Integer;
      begin
       LHttp := TRpDatabaseHttp.Create;
+      LPreprocessResponse := nil;
+      LPreprocessUserProfileJson := '';
       LResponse := nil;
         LStreamContext := TRpDesignChatStreamContext.Create;
         LStreamContext.RequestVersion := LRequestVersion;
@@ -2887,11 +2902,45 @@ begin
           if LRequest.HasAgentAiId then
             LHttp.AgentAiId := LRequest.AgentAiId;
 
+          if LPreprocessRequest <> nil then
+          begin
+            LPreprocessResponse := LHttp.PreprocessSqlContext(LPreprocessRequest,
+              LStreamContext, DesignChatStreamProgress, DesignChatStreamCancelRequested);
+
+            if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.ErrorMessage) <> '') then
+              raise Exception.Create(LPreprocessResponse.ErrorMessage);
+
+            TThread.Synchronize(nil,
+              procedure
+              begin
+                ApplyPreprocessSqlContextResult(LPreprocessResponse);
+                LRequest.ReportDocument := SaveReportAsXml;
+              end);
+
+            if Trim(LRequest.ReportDocument) = '' then
+              raise Exception.Create('Unable to serialize the current report to XML after preprocessing SQL context.');
+
+            LPreprocessUserProfileJson := LPreprocessResponse.UserProfileJson;
+          end;
+
           LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
             DesignChatStreamProgress, DesignChatStreamCancelRequested);
           LPayload := TRpQueuedDesignChatPayload.Create;
           LPayload.Kind := rpqdcApplyDesignResult;
           LPayload.RequestVersion := LRequestVersion;
+          if LPreprocessResponse <> nil then
+          begin
+            for I := 0 to LPreprocessResponse.Steps.Count - 1 do
+            begin
+              if LPreprocessResponse.Steps[I] is TRpTokenUsage then
+              begin
+                Inc(LPayload.InputTokens,
+                  TRpTokenUsage(LPreprocessResponse.Steps[I]).InputTokens);
+                Inc(LPayload.OutputTokens,
+                  TRpTokenUsage(LPreprocessResponse.Steps[I]).OutputTokens);
+              end;
+            end;
+          end;
           if LResponse <> nil then
           begin
             LPayload.ErrorMessage := LResponse.ErrorMessage;
@@ -2911,6 +2960,8 @@ begin
               end;
             end;
           end;
+          if Trim(LPayload.UserProfileJson) = '' then
+            LPayload.UserProfileJson := LPreprocessUserProfileJson;
           PostDesignChatPayload(LPayload);
         except
           on E: Exception do
@@ -2923,9 +2974,11 @@ begin
           end;
         end;
       finally
+        LPreprocessResponse.Free;
         LStreamContext.Free;
         LResponse.Free;
         LHttp.Free;
+        LPreprocessRequest.Free;
         LRequest.Free;
       end;
      end);
@@ -3062,6 +3115,119 @@ begin
  end;
 end;
 
+  function TFRpMainFVCL.BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+  var
+   I: Integer;
+   LConnectionParams: TStringList;
+   LDataInfo: TRpDataInfoItem;
+   LDataSource: TRpApiPreprocessSqlContextDataSource;
+   LDatabaseInfo: TRpDatabaseInfoItem;
+   LDataInfoName: string;
+  begin
+   Result := nil;
+   if (not Assigned(report)) or (not Assigned(fchatframe)) then
+    Exit;
+
+   LConnectionParams := TStringList.Create;
+   try
+    for I := 0 to report.DataInfo.Count - 1 do
+    begin
+     LDataInfo := report.DataInfo.Items[I];
+     if Trim(LDataInfo.SQL) = '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanation) <> '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanationError) <> '' then
+      Continue;
+
+     if Result = nil then
+     begin
+      Result := TRpApiPreprocessSqlContextRequest.Create;
+      Result.AITier := RpAITierTypeFromString(fchatframe.GetAITier);
+      Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
+      Result.ApiKey := fchatframe.GetSchemaApiKey;
+      Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
+      Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
+      if Result.AITier = ratLocalAgent then
+      begin
+       Result.AgentSecret := fchatframe.GetAgentSecret;
+       Result.AgentAiId := fchatframe.GetAgentAiId;
+       Result.HasAgentAiId := Result.AgentAiId <> 0;
+      end;
+     end;
+
+     LDataSource := TRpApiPreprocessSqlContextDataSource.Create;
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     LDataSource.DataInfoName := LDataInfoName;
+     LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
+     LDataSource.Sql := LDataInfo.SQL;
+
+     LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+     if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+     begin
+      LConnectionParams.Clear;
+      LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+      LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+      LDataSource.Config.HubSchemaId := StrToInt64Def(LConnectionParams.Values['HubSchemaId'], 0);
+     end;
+
+     Result.DataSources.Add(LDataSource);
+    end;
+
+    if (Result <> nil) and (Result.DataSources.Count = 0) then
+    begin
+     Result.Free;
+     Result := nil;
+    end;
+   finally
+    LConnectionParams.Free;
+   end;
+  end;
+
+  procedure TFRpMainFVCL.ApplyPreprocessSqlContextResult(
+    AResult: TRpApiPreprocessSqlContextResult);
+  var
+   I: Integer;
+   J: Integer;
+   LDataInfo: TRpDataInfoItem;
+   LDataInfoName: string;
+   LResultItem: TRpApiPreprocessSqlContextDataSourceResult;
+  begin
+   if (not Assigned(report)) or (AResult = nil) then
+    Exit;
+
+   for I := 0 to AResult.DataSources.Count - 1 do
+   begin
+    if not (AResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+     Continue;
+
+    LResultItem := TRpApiPreprocessSqlContextDataSourceResult(AResult.DataSources[I]);
+    for J := 0 to report.DataInfo.Count - 1 do
+    begin
+     LDataInfo := report.DataInfo.Items[J];
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     if not SameText(LDataInfoName, LResultItem.DataInfoName) then
+      Continue;
+
+     if Trim(LResultItem.SqlExplanation) <> '' then
+     begin
+      LDataInfo.SQLExplanation := LResultItem.SqlExplanation;
+      LDataInfo.SQLExplanationError := '';
+     end
+     else
+     begin
+      LDataInfo.SQLExplanation := '';
+      LDataInfo.SQLExplanationError := LResultItem.ErrorMessage;
+     end;
+     Break;
+    end;
+   end;
+  end;
+
   function TFRpMainFVCL.BuildDesignChatRequestForFrame(Sender: TObject;
     const APrompt: string): TRpApiModifyReportRequest;
   var
@@ -3082,6 +3248,18 @@ end;
    end;
 
    Result := BuildDesignChatRequest(LPrompt);
+  end;
+
+  function TFRpMainFVCL.BuildPreprocessSqlContextRequestForFrame(
+    Sender: TObject): TRpApiPreprocessSqlContextRequest;
+  begin
+   Result := BuildPreprocessSqlContextRequest;
+  end;
+
+  procedure TFRpMainFVCL.ApplyPreprocessSqlContextResultFromFrame(
+    Sender: TObject; AResult: TRpApiPreprocessSqlContextResult);
+  begin
+   ApplyPreprocessSqlContextResult(AResult);
   end;
 
   procedure TFRpMainFVCL.ApplyModifiedReportDocumentFromFrame(Sender: TObject;

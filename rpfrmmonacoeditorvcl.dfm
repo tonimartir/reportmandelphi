@@ -177,9 +177,47 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         OnCreateWebViewCompleted = EdgeCreateWebViewCompleted
       end
     end
+    object TabAudit: TTabSheet
+      Caption = 'Audit'
+      ImageIndex = 1
+      object PAuditTop: TPanel
+        Left = 0
+        Top = 0
+        Width = 742
+        Height = 33
+        Align = alTop
+        BevelOuter = bvNone
+        Padding.Left = 6
+        Padding.Top = 4
+        Padding.Right = 6
+        Padding.Bottom = 4
+        TabOrder = 0
+        object BAuditSQL: TButton
+          Left = 6
+          Top = 4
+          Width = 90
+          Height = 25
+          Align = alLeft
+          Caption = 'Audit SQL'
+          TabOrder = 0
+          OnClick = BAuditSQLClick
+        end
+      end
+      object MemoAudit: TMemo
+        Left = 0
+        Top = 33
+        Width = 742
+        Height = 389
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssVertical
+        TabOrder = 1
+        WordWrap = True
+      end
+    end
     object TabLog: TTabSheet
       Caption = 'Log'
-      ImageIndex = 1
+      ImageIndex = 2
       object PLogTop: TPanel
         Left = 0
         Top = 0

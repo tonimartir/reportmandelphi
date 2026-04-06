@@ -22,8 +22,12 @@ type
   TChatRefreshEvent = procedure(Sender: TObject) of object;
   TBuildDesignRequestEvent = function(Sender: TObject;
     const APrompt: string): TRpApiModifyReportRequest of object;
+  TBuildPreprocessSqlContextRequestEvent = function(Sender: TObject):
+    TRpApiPreprocessSqlContextRequest of object;
   TApplyDesignResultEvent = procedure(Sender: TObject;
     const AModifiedReportDocument: string) of object;
+  TApplyPreprocessSqlContextResultEvent = procedure(Sender: TObject;
+    AResult: TRpApiPreprocessSqlContextResult) of object;
 
   TExpressionChatSendEvent = TChatSendEvent;
   TExpressionChatApplyEvent = TChatApplyEvent;
@@ -80,8 +84,10 @@ type
     FLoginFrame: TFRpLoginFrameVCL;
     FLoadingSchemas: Boolean;
     FOnApplyDesignResult: TApplyDesignResultEvent;
+    FOnApplyPreprocessSqlContextResult: TApplyPreprocessSqlContextResultEvent;
     FOnApplySuggestion: TChatApplyEvent;
     FOnBuildDesignRequest: TBuildDesignRequestEvent;
+    FOnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent;
     FOnRefreshContext: TChatRefreshEvent;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
@@ -152,8 +158,10 @@ type
     function GetSchemaApiKey: string;
   published
     property OnApplyDesignResult: TApplyDesignResultEvent read FOnApplyDesignResult write FOnApplyDesignResult;
+    property OnApplyPreprocessSqlContextResult: TApplyPreprocessSqlContextResultEvent read FOnApplyPreprocessSqlContextResult write FOnApplyPreprocessSqlContextResult;
     property OnApplySuggestion: TChatApplyEvent read FOnApplySuggestion write FOnApplySuggestion;
     property OnBuildDesignRequest: TBuildDesignRequestEvent read FOnBuildDesignRequest write FOnBuildDesignRequest;
+    property OnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent read FOnBuildPreprocessSqlContextRequest write FOnBuildPreprocessSqlContextRequest;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
     property OnStopRequest: TChatStopEvent read FOnStopRequest write FOnStopRequest;
@@ -996,6 +1004,7 @@ end;
 
 procedure TFRpChatFrame.StartDesignPrompt(const APrompt: string);
 var
+  LPreprocessRequest: TRpApiPreprocessSqlContextRequest;
   LRequest: TRpApiModifyReportRequest;
   LRequestVersion: Integer;
   LSelectedHubDatabaseId: Int64;
@@ -1005,12 +1014,20 @@ begin
   if not Assigned(FOnBuildDesignRequest) then
     Exit;
 
+  LPreprocessRequest := nil;
+  if Assigned(FOnBuildPreprocessSqlContextRequest) then
+    LPreprocessRequest := FOnBuildPreprocessSqlContextRequest(Self);
+
   LRequest := FOnBuildDesignRequest(Self, APrompt);
   if LRequest = nil then
+  begin
+    LPreprocessRequest.Free;
     Exit;
+  end;
 
   if Trim(LRequest.ReportDocument) = '' then
   begin
+    LPreprocessRequest.Free;
     LRequest.Free;
     AddAssistantMessage('Unable to serialize the current report to XML.');
     Exit;
@@ -1029,10 +1046,14 @@ begin
       I: Integer;
       LHttp: TRpDatabaseHttp;
       LPayload: TRpQueuedDesignChatPayload;
+      LPreprocessResponse: TRpApiPreprocessSqlContextResult;
+      LPreprocessUserProfileJson: string;
       LResponse: TRpApiModifyReportResult;
       LStreamContext: TRpDesignChatStreamContext;
     begin
       LHttp := TRpDatabaseHttp.Create;
+      LPreprocessResponse := nil;
+      LPreprocessUserProfileJson := '';
       LResponse := nil;
       LStreamContext := TRpDesignChatStreamContext.Create;
       LStreamContext.RequestVersion := LRequestVersion;
@@ -1046,6 +1067,44 @@ begin
           LHttp.AgentSecret := LRequest.AgentSecret;
           if LRequest.HasAgentAiId then
             LHttp.AgentAiId := LRequest.AgentAiId;
+
+          if LPreprocessRequest <> nil then
+          begin
+            LPreprocessResponse := LHttp.PreprocessSqlContext(LPreprocessRequest,
+              LStreamContext, DesignStreamProgress, DesignStreamCancelRequested);
+
+            if LRequestVersion <> FDesignRequestVersion then
+              Exit;
+
+            if (LPreprocessResponse <> nil) and
+              (Trim(LPreprocessResponse.ErrorMessage) <> '') then
+              raise Exception.Create(LPreprocessResponse.ErrorMessage);
+
+            TThread.Synchronize(nil,
+              procedure
+              var
+                LUpdatedRequest: TRpApiModifyReportRequest;
+              begin
+                if Assigned(FOnApplyPreprocessSqlContextResult) then
+                  FOnApplyPreprocessSqlContextResult(Self, LPreprocessResponse);
+
+                LUpdatedRequest := nil;
+                try
+                  LUpdatedRequest := FOnBuildDesignRequest(Self, APrompt);
+                  if LUpdatedRequest <> nil then
+                    LRequest.Assign(LUpdatedRequest)
+                  else
+                    LRequest.ReportDocument := '';
+                finally
+                  LUpdatedRequest.Free;
+                end;
+              end);
+
+            if Trim(LRequest.ReportDocument) = '' then
+              raise Exception.Create('Unable to serialize the current report to XML after preprocessing SQL context.');
+
+            LPreprocessUserProfileJson := LPreprocessResponse.UserProfileJson;
+          end;
 
           LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
             DesignStreamProgress, DesignStreamCancelRequested);
@@ -1077,6 +1136,19 @@ begin
           LPayload := TRpQueuedDesignChatPayload.Create;
           LPayload.Kind := rpqdcApplyDesignResult;
           LPayload.RequestVersion := LRequestVersion;
+          if LPreprocessResponse <> nil then
+          begin
+            for I := 0 to LPreprocessResponse.Steps.Count - 1 do
+            begin
+              if LPreprocessResponse.Steps[I] is TRpTokenUsage then
+              begin
+                Inc(LPayload.InputTokens,
+                  TRpTokenUsage(LPreprocessResponse.Steps[I]).InputTokens);
+                Inc(LPayload.OutputTokens,
+                  TRpTokenUsage(LPreprocessResponse.Steps[I]).OutputTokens);
+              end;
+            end;
+          end;
           if LResponse <> nil then
           begin
             if Assigned(LResponse.ResultData) then
@@ -1096,6 +1168,8 @@ begin
               end;
             end;
           end;
+          if Trim(LPayload.UserProfileJson) = '' then
+            LPayload.UserProfileJson := LPreprocessUserProfileJson;
           PostDesignChatPayload(LPayload);
         except
           on E: Exception do
@@ -1108,9 +1182,11 @@ begin
           end;
         end;
       finally
+        LPreprocessResponse.Free;
         LStreamContext.Free;
         LResponse.Free;
         LHttp.Free;
+        LPreprocessRequest.Free;
         LRequest.Free;
       end;
     end);
