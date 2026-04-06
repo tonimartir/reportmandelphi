@@ -9,6 +9,13 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
   Margins.Bottom = 4
   TabOrder = 0
   PixelsPerInch = 120
+  object SpinnerTimer: TTimer
+    Enabled = False
+    Interval = 90
+    OnTimer = SpinnerTimerTimer
+    Left = 24
+    Top = 24
+  end
   object PAI: TPanel
     Left = 0
     Top = 0
@@ -207,7 +214,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           end
           item
             SizeStyle = ssAuto
-            Value = 120.000000000000000000
+            Value = 80.000000000000000000
           end>
         ControlCollection = <
           item
@@ -251,7 +258,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           AlignWithMargins = True
           Left = 67
           Top = 0
-          Width = 338
+          Width = 362
           Height = 63
           Margins.Left = 8
           Margins.Top = 0
@@ -263,7 +270,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           object LTokensInfo: TLabel
             Left = 0
             Top = 0
-            Width = 338
+            Width = 362
             Height = 63
             Align = alClient
             Alignment = taCenter
@@ -273,9 +280,9 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         end
         object PProgressHost: TPanel
           AlignWithMargins = True
-          Left = 421
+          Left = 445
           Top = 0
-          Width = 104
+          Width = 36
           Height = 63
           Margins.Left = 8
           Margins.Top = 0
@@ -285,58 +292,17 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           BevelOuter = bvNone
           Constraints.MinWidth = 30
           TabOrder = 2
-          object ProgressBarAI: TProgressBar
-            AlignWithMargins = True
-            Left = 0
-            Top = 22
-            Width = 104
-            Height = 18
-            Margins.Left = 0
-            Margins.Top = 22
-            Margins.Right = 0
-            Margins.Bottom = 23
-            Align = alClient
-            MarqueeInterval = 30
-            TabOrder = 0
+          object PaintBoxProgress: TPaintBox
+            Left = 3
+            Top = 16
+            Width = 30
+            Height = 30
+            OnPaint = PaintBoxProgressPaint
           end
         end
       end
     end
   end
 end
-          AutoSize = True
-          Caption = 'Tokens (In/Out): 0 / 0'
-        end
-        object PProgressHost: TPanel
-          AlignWithMargins = True
-          Left = 197
-          Top = 0
-          Width = 328
-          Height = 63
-          Margins.Left = 4
-          Margins.Top = 0
-          Margins.Right = 0
-          Margins.Bottom = 0
-          Align = alClient
-          BevelOuter = bvNone
-          Constraints.MinWidth = 30
-          TabOrder = 1
-          object ProgressBarAI: TProgressBar
-            AlignWithMargins = True
-            Left = 0
-            Top = 22
-            Width = 328
-            Height = 18
-            Margins.Left = 0
-            Margins.Top = 22
-            Margins.Right = 0
-            Margins.Bottom = 23
-            Align = alClient
-            MarqueeInterval = 30
-            TabOrder = 0
-          end
-        end
-      end
-    end
   end
 end

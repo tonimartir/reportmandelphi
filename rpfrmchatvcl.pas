@@ -203,8 +203,8 @@ begin
   FAISelection := TFRpAISelectionVCL.Create(Self);
   FAISelection.Parent := PAISelectionHost;
   FAISelection.Align := alClient;
-  FAISelection.Constraints.MinHeight := 50;
-  FAISelection.Constraints.MaxHeight := 50;
+  FAISelection.Constraints.MinHeight := 63;
+  FAISelection.Constraints.MaxHeight := 63;
   FAISelection.OnStopRequest := AISelectionStopRequest;
 
   ComboSchema.Style := csDropDownList;

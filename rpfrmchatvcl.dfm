@@ -16,7 +16,7 @@ object FRpChatFrame: TFRpChatFrame
       Left = 0
       Top = 0
       Width = 320
-      Height = 120
+      Height = 133
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 0
@@ -24,7 +24,7 @@ object FRpChatFrame: TFRpChatFrame
         Left = 0
         Top = 0
         Width = 320
-        Height = 120
+        Height = 133
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 0
@@ -57,7 +57,7 @@ object FRpChatFrame: TFRpChatFrame
           end
           item
             SizeStyle = ssAuto
-            Value = 50.000000000000000000
+            Value = 63.000000000000000000
           end
           item
             SizeStyle = ssAuto
@@ -82,7 +82,7 @@ object FRpChatFrame: TFRpChatFrame
           Left = 0
           Top = 40
           Width = 320
-          Height = 50
+          Height = 63
           Margins.Left = 0
           Margins.Top = 0
           Margins.Right = 0
@@ -94,7 +94,7 @@ object FRpChatFrame: TFRpChatFrame
         object PSchemaHost: TPanel
           AlignWithMargins = True
           Left = 0
-          Top = 90
+          Top = 103
           Width = 320
           Height = 30
           Margins.Left = 0

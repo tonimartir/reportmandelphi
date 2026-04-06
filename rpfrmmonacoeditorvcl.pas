@@ -362,6 +362,8 @@ begin
   FAISelection := TFRpAISelectionVCL.Create(Self);
   FAISelection.Parent := PAISelectionHost;
   FAISelection.Align := alClient;
+  FAISelection.Constraints.MinHeight := 63;
+  FAISelection.Constraints.MaxHeight := 63;
 
   // Create Login Frame
   FLoginFrame := TFRpLoginFrameVCL.Create(Self);

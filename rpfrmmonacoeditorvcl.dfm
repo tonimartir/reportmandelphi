@@ -13,7 +13,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
     Left = 0
     Top = 0
     Width = 750
-    Height = 50
+    Height = 63
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
@@ -25,7 +25,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       Left = 0
       Top = 0
       Width = 750
-      Height = 50
+      Height = 63
       Align = alClient
       BevelOuter = bvNone
       ColumnCollection = <
@@ -144,7 +144,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Left = 488
         Top = 0
         Width = 262
-        Height = 50
+        Height = 63
         Margins.Left = 8
         Margins.Top = 0
         Margins.Right = 0

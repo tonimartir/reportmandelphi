@@ -46,17 +46,25 @@ type
     PProgressHost: TPanel;
     PGaugeHost: TPanel;
     PaintBoxGauge: TPaintBox;
-    ProgressBarAI: TProgressBar;
+    PaintBoxProgress: TPaintBox;
+    SpinnerTimer: TTimer;
     procedure PaintBoxGaugePaint(Sender: TObject);
+    procedure PaintBoxProgressPaint(Sender: TObject);
     procedure ComboAIModeChange(Sender: TObject);
     procedure ComboAIProviderChange(Sender: TObject);
     procedure BStopInferenceClick(Sender: TObject);
+    procedure SpinnerTimerTimer(Sender: TObject);
   private
     FGaugeValue: Double; // 0.0 to 1.0
+    FSpinnerAngle: Integer;
     FAgentEndpoints: array of TAgentEndpointInfo;
     FOnStopRequest: TNotifyEvent;
+    procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
+    procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
+      AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
     procedure LayoutGaugeControls;
     procedure SetGaugeValue(const Value: Double);
+    procedure UpdateSpinnerState;
     procedure UpdateDropDownWidths;
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
     function GetAITier: string;
@@ -93,8 +101,10 @@ constructor TFRpAISelectionVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FGaugeValue := 0.0;
+  FSpinnerAngle := 270;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
+  SpinnerTimer.Enabled := False;
   LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
@@ -136,6 +146,16 @@ begin
     if LTop < 0 then
       LTop := 0;
     PaintBoxGauge.SetBounds(LLeft, LTop, GaugeSize, GaugeSize);
+  end;
+  if PProgressHost <> nil then
+  begin
+    LLeft := (PProgressHost.ClientWidth - GaugeSize) div 2;
+    LTop := (PProgressHost.ClientHeight - GaugeSize) div 2;
+    if LLeft < 0 then
+      LLeft := 0;
+    if LTop < 0 then
+      LTop := 0;
+    PaintBoxProgress.SetBounds(LLeft, LTop, GaugeSize, GaugeSize);
   end;
 end;
 
@@ -198,6 +218,33 @@ procedure TFRpAISelectionVCL.SetGaugeValue(const Value: Double);
 begin
   FGaugeValue := Value;
   PaintBoxGauge.Invalidate;
+end;
+
+procedure TFRpAISelectionVCL.DrawCircularArc(ACanvas: TCanvas;
+  const ARect: TRect; AStartAngle, ASweepAngle: Double; AColor: TColor;
+  APenWidth: Integer);
+var
+  AngleStep: Double;
+  AngleValue: Double;
+  PointCount: Integer;
+  PointIndex: Integer;
+  GaugePoints: array of TPoint;
+begin
+  PointCount := Round(Abs(ASweepAngle) / 8) + 2;
+  if PointCount < 2 then
+    PointCount := 2;
+  SetLength(GaugePoints, PointCount);
+  AngleStep := ASweepAngle / (PointCount - 1);
+  AngleValue := AStartAngle;
+  for PointIndex := 0 to PointCount - 1 do
+  begin
+    GaugePoints[PointIndex] := GetPointOnCircle(ARect, AngleValue);
+    AngleValue := AngleValue + AngleStep;
+  end;
+  ACanvas.Pen.Width := APenWidth;
+  ACanvas.Pen.Color := AColor;
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Polyline(GaugePoints);
 end;
 
 function TFRpAISelectionVCL.GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
@@ -288,6 +335,23 @@ begin
     DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
 end;
 
+procedure TFRpAISelectionVCL.PaintBoxProgressPaint(Sender: TObject);
+var
+  Canvas: TCanvas;
+  Rect: TRect;
+begin
+  Canvas := PaintBoxProgress.Canvas;
+  Rect := PaintBoxProgress.ClientRect;
+  InflateRect(Rect, -3, -3);
+
+  Canvas.Pen.Width := 3;
+  Canvas.Pen.Color := $00D8D8D8;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Ellipse(Rect);
+
+  DrawCircularArc(Canvas, Rect, FSpinnerAngle, -110, RGB(0, 122, 204), 4);
+end;
+
 procedure TFRpAISelectionVCL.ComboAIModeChange(Sender: TObject);
 begin
   // Mode changed: Fast or Reasoning
@@ -305,6 +369,12 @@ begin
     PaintBoxGauge.Visible := True;
   end;
   LayoutGaugeControls;
+end;
+
+procedure TFRpAISelectionVCL.CMVisibleChanged(var Message: TMessage);
+begin
+  inherited;
+  UpdateSpinnerState;
 end;
 
 procedure TFRpAISelectionVCL.UpdateDropDownWidths;
@@ -424,14 +494,12 @@ begin
   PNonInference.Visible := not AActive;
   PInferenceProgress.Visible := AActive;
   if AActive then
-  begin
-    ProgressBarAI.Style := TProgressBarStyle.pbstMarquee;
     LTokensInfo.Caption := 'Tokens (In/Out): 0 / 0';
-  end;
   if PProgressHost <> nil then
     PProgressHost.Constraints.MinWidth := 30;
   if PInferenceProgress <> nil then
     PInferenceProgress.Realign;
+  UpdateSpinnerState;
   LayoutGaugeControls;
 end;
 
@@ -446,6 +514,31 @@ procedure TFRpAISelectionVCL.BStopInferenceClick(Sender: TObject);
 begin
   if Assigned(FOnStopRequest) then
     FOnStopRequest(Self);
+end;
+
+procedure TFRpAISelectionVCL.SpinnerTimerTimer(Sender: TObject);
+begin
+  if not SpinnerTimer.Enabled then
+    Exit;
+  FSpinnerAngle := (FSpinnerAngle + 24) mod 360;
+  if PaintBoxProgress.Visible then
+    PaintBoxProgress.Invalidate;
+end;
+
+procedure TFRpAISelectionVCL.UpdateSpinnerState;
+var
+  LShouldAnimate: Boolean;
+begin
+  LShouldAnimate := Visible and Assigned(PaintBoxProgress) and
+    PaintBoxProgress.Visible and Assigned(PInferenceProgress) and
+    PInferenceProgress.Visible;
+  SpinnerTimer.Enabled := LShouldAnimate;
+  if not LShouldAnimate then
+  begin
+    FSpinnerAngle := 270;
+    if Assigned(PaintBoxProgress) then
+      PaintBoxProgress.Invalidate;
+  end;
 end;
 
 end.
