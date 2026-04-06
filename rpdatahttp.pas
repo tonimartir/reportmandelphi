@@ -337,11 +337,6 @@ begin
   ReadNewBytes;
 end;
 
-function IsHttpNotFoundError(const AMessage: string): Boolean;
-begin
-  Result := StartsText('HTTP Error 404', Trim(AMessage));
-end;
-
 constructor TRpApiStreamCapture.Create(ASender: TObject;
   AOnProgress: TRpExpressionStreamProgressEvent;
   AOnCancel: TRpExpressionStreamCancelEvent);
@@ -576,7 +571,9 @@ function TRpDatabaseHttp.ModifyReport(
 var
   LRequestJson: TJSONObject;
   LResponseJson: TJSONObject;
+{$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
+{$ENDIF}
 begin
   Result := nil;
   if ARequest = nil then
@@ -585,57 +582,21 @@ begin
   LRequestJson := ARequest.ToJsonObject;
   try
 {$IFDEF FIREDAC}
+    LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/ModifyReportStream',
+      LRequestJson, Sender, AOnProgress, ACancel);
     try
-      LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/ModifyReportStream',
-        LRequestJson, Sender, AOnProgress, ACancel);
-      try
-        if LResponseJson <> nil then
-        begin
-          Result := TRpApiModifyReportResult.Create;
-          try
-            Result.FromJsonObject(LResponseJson);
-          except
-            Result.Free;
-            raise;
-          end;
-        end;
-      finally
-        LResponseJson.Free;
-      end;
-    except
-      on E: Exception do
+      if LResponseJson <> nil then
       begin
-        if not IsHttpNotFoundError(E.Message) then
-          raise;
-
-        TRpAuthManager.Instance.Log(
-          'ModifyReportStream not available on server, falling back to ModifyReport.');
-
-        LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+        Result := TRpApiModifyReportResult.Create;
         try
-          if InternalRequest('ReportDesigner/ModifyReport', LRequestJson, LResponseStream) then
-          begin
-            LResponseStream.Position := 0;
-            LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
-            try
-              if LResponseJson = nil then
-                raise Exception.Create('Invalid JSON response from ReportDesigner/ModifyReport');
-
-              Result := TRpApiModifyReportResult.Create;
-              try
-                Result.FromJsonObject(LResponseJson);
-              except
-                Result.Free;
-                raise;
-              end;
-            finally
-              LResponseJson.Free;
-            end;
-          end;
-        finally
-          LResponseStream.Free;
+          Result.FromJsonObject(LResponseJson);
+        except
+          Result.Free;
+          raise;
         end;
       end;
+    finally
+      LResponseJson.Free;
     end;
 {$ELSE}
     LResponseStream := TStringStream.Create('', TEncoding.UTF8);

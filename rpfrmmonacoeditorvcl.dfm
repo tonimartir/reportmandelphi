@@ -180,15 +180,38 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
     object TabLog: TTabSheet
       Caption = 'Log'
       ImageIndex = 1
-      object MemoLog: TMemo
+      object PLogTop: TPanel
         Left = 0
         Top = 0
         Width = 742
-        Height = 422
+        Height = 33
+        Align = alTop
+        BevelOuter = bvNone
+        Padding.Left = 6
+        Padding.Top = 4
+        Padding.Right = 6
+        Padding.Bottom = 4
+        TabOrder = 0
+        object BClearLog: TButton
+          Left = 6
+          Top = 4
+          Width = 75
+          Height = 25
+          Align = alLeft
+          Caption = 'Clear'
+          TabOrder = 0
+          OnClick = BClearLogClick
+        end
+      end
+      object MemoLog: TMemo
+        Left = 0
+        Top = 33
+        Width = 742
+        Height = 389
         Align = alClient
         ReadOnly = True
         ScrollBars = ssBoth
-        TabOrder = 0
+        TabOrder = 1
         WordWrap = False
       end
     end

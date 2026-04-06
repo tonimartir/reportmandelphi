@@ -939,6 +939,9 @@ begin
           if LPayload.RequestVersion <> FDesignRequestVersion then
             Exit;
 
+          if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
+            FChat.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+
           FChat.FinishStreamingResponse;
           if LPayload.UserProfile <> nil then
           begin
@@ -1221,8 +1224,13 @@ var
   LPrefill: Integer;
 begin
   LChunk := '';
-  if SameText(AStage, 'ReceivingResponse') then
-    LChunk := AChunk;
+  if Trim(AChunk) <> '' then
+  begin
+    if SameText(AStage, 'ReceivingResponse') then
+      LChunk := AChunk
+    else
+      LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
+  end;
   LPrefill := GetDesignPrefillPercent(AStage, AChunkType);
   LPayload := TRpQueuedExpressionChatPayload.Create;
   LPayload.Kind := rpqecUpdateStreamingResponse;
@@ -1861,6 +1869,7 @@ begin
     LChatPayload: TRpQueuedExpressionChatPayload;
     LHttp: TRpDatabaseHttp;
     LResponse: TRpApiModifyReportResult;
+      I: Integer;
    begin
     LHttp := TRpDatabaseHttp.Create;
     LResponse := nil;
@@ -1914,6 +1923,16 @@ begin
         begin
           LChatPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
           LChatPayload.Text2 := LResponse.ResultData.Explanation;
+          for I := 0 to LResponse.Steps.Count - 1 do
+          begin
+            if LResponse.Steps[I] is TRpTokenUsage then
+            begin
+              Inc(LChatPayload.InputTokens,
+                TRpTokenUsage(LResponse.Steps[I]).InputTokens);
+              Inc(LChatPayload.OutputTokens,
+                TRpTokenUsage(LResponse.Steps[I]).OutputTokens);
+            end;
+          end;
           if (Trim(LResponse.UserProfileJson) <> '') and
             (not SameText(Trim(LResponse.UserProfileJson), 'null')) then
             LChatPayload.UserProfile := TJSONObject.ParseJSONValue(LResponse.UserProfileJson) as TJSONObject;

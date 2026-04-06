@@ -48,6 +48,8 @@ type
     TabChat: TTabSheet;
     MemoConversation: TMemo;
     TabLog: TTabSheet;
+    PLogTop: TPanel;
+    BClearLog: TButton;
     MemoLog: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
@@ -57,6 +59,7 @@ type
     BClear: TButton;
     procedure BApplyClick(Sender: TObject);
     procedure BClearClick(Sender: TObject);
+    procedure BClearLogClick(Sender: TObject);
     procedure BRefreshSchemasClick(Sender: TObject);
     procedure BSendClick(Sender: TObject);
     procedure MemoPromptChange(Sender: TObject);
@@ -218,6 +221,8 @@ begin
   if MemoLog <> nil then
   begin
     MemoLog.HandleNeeded;
+    MemoLog.WordWrap := True;
+    MemoLog.ScrollBars := ssVertical;
     MemoLog.Clear;
   end;
   FBusy := False;
@@ -1114,6 +1119,12 @@ begin
   end
   else
     ClearConversation;
+end;
+
+procedure TFRpChatFrame.BClearLogClick(Sender: TObject);
+begin
+  if MemoLog <> nil then
+    MemoLog.Clear;
 end;
 
 end.

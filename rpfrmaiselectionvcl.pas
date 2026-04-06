@@ -32,14 +32,18 @@ type
 
   TFRpAISelectionVCL = class(TFrame)
     PAI: TPanel;
+    PNonInference: TPanel;
     GridAI: TGridPanel;
     PActionHost: TPanel;
     GridCombos: TGridPanel;
     ComboAIProvider: TComboBox;
     ComboAIMode: TComboBox;
     PInferenceProgress: TPanel;
+    GridInference: TGridPanel;
     BStopInference: TButton;
+    PTokensHost: TPanel;
     LTokensInfo: TLabel;
+    PProgressHost: TPanel;
     PGaugeHost: TPanel;
     PaintBoxGauge: TPaintBox;
     ProgressBarAI: TProgressBar;
@@ -137,6 +141,7 @@ end;
 
 procedure TFRpAISelectionVCL.RefreshState;
 begin
+  LayoutGaugeControls;
   UpdateGaugeDisplay;
 end;
 
@@ -416,19 +421,25 @@ end;
 
 procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);
 begin
-  GridCombos.Visible := not AActive;
+  PNonInference.Visible := not AActive;
   PInferenceProgress.Visible := AActive;
   if AActive then
   begin
     ProgressBarAI.Style := TProgressBarStyle.pbstMarquee;
     LTokensInfo.Caption := 'Tokens (In/Out): 0 / 0';
   end;
+  if PProgressHost <> nil then
+    PProgressHost.Constraints.MinWidth := 30;
+  if PInferenceProgress <> nil then
+    PInferenceProgress.Realign;
   LayoutGaugeControls;
 end;
 
 procedure TFRpAISelectionVCL.UpdateTokens(AInTokens, AOutTokens: Integer);
 begin
   LTokensInfo.Caption := 'Tokens (In/Out): ' + IntToStr(AInTokens) + ' / ' + IntToStr(AOutTokens);
+  if PInferenceProgress.Visible then
+    PInferenceProgress.Realign;
 end;
 
 procedure TFRpAISelectionVCL.BStopInferenceClick(Sender: TObject);

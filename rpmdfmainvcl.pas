@@ -75,13 +75,30 @@ const
   // File name in menu width
   C_FILENAME_WIDTH=40;
 type
+  TRpQueuedDesignChatPayloadKind = (
+    rpqdcUpdateStreamingResponse,
+    rpqdcAddAssistantMessage,
+    rpqdcApplyDesignResult
+  );
+
   TRpQueuedDesignChatPayload = class(TObject)
   public
+    Kind: TRpQueuedDesignChatPayloadKind;
     RequestVersion: Integer;
+    Text1: string;
+    Text2: string;
+    PrefillPercent: Integer;
+    InputTokens: Integer;
+    OutputTokens: Integer;
     ErrorMessage: string;
     Explanation: string;
     ModifiedReportDocument: string;
     UserProfileJson: string;
+  end;
+
+  TRpDesignChatStreamContext = class(TObject)
+  public
+    RequestVersion: Integer;
   end;
 
   TRpQueuedDesignContextPayload = class(TObject)
@@ -426,6 +443,10 @@ type
     procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
       ANotifyOnSuccess: Boolean);
     procedure ExecuteDesignChatPrompt(const APrompt: string);
+    function GetDesignChatPrefillPercent(const AStage, AChunkType: string): Integer;
+    procedure DesignChatStreamProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+    function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
     procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
     function SaveReportAsXml: string;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -2834,6 +2855,7 @@ begin
     LSelectedHubSchemaId := fchatframe.GetHubSchemaId;
    Inc(FDesignChatRequestVersion);
    LRequestVersion := FDesignChatRequestVersion;
+   fchatframe.BeginStreamingResponse;
    fchatframe.SetBusy(True);
 
    LWorker := TThread.CreateAnonymousThread(
@@ -2842,9 +2864,13 @@ begin
       LHttp: TRpDatabaseHttp;
       LPayload: TRpQueuedDesignChatPayload;
       LResponse: TRpApiModifyReportResult;
+        LStreamContext: TRpDesignChatStreamContext;
+        I: Integer;
      begin
       LHttp := TRpDatabaseHttp.Create;
       LResponse := nil;
+        LStreamContext := TRpDesignChatStreamContext.Create;
+        LStreamContext.RequestVersion := LRequestVersion;
       try
         try
           LHttp.Token := TRpAuthManager.Instance.Token;
@@ -2856,29 +2882,43 @@ begin
           if LRequest.HasAgentAiId then
             LHttp.AgentAiId := LRequest.AgentAiId;
 
-          LResponse := LHttp.ModifyReport(LRequest);
+          LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
+            DesignChatStreamProgress, DesignChatStreamCancelRequested);
           LPayload := TRpQueuedDesignChatPayload.Create;
+          LPayload.Kind := rpqdcApplyDesignResult;
           LPayload.RequestVersion := LRequestVersion;
           if LResponse <> nil then
           begin
             LPayload.ErrorMessage := LResponse.ErrorMessage;
             if Trim(LPayload.ErrorMessage) = '' then
               LPayload.ErrorMessage := LResponse.ResultData.ErrorMessage;
-            LPayload.Explanation := LResponse.ResultData.Explanation;
-            LPayload.ModifiedReportDocument := LResponse.ResultData.ModifiedReportDocument;
+            LPayload.Text2 := LResponse.ResultData.Explanation;
+            LPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
             LPayload.UserProfileJson := LResponse.UserProfileJson;
+            for I := 0 to LResponse.Steps.Count - 1 do
+            begin
+              if LResponse.Steps[I] is TRpTokenUsage then
+              begin
+                Inc(LPayload.InputTokens,
+                  TRpTokenUsage(LResponse.Steps[I]).InputTokens);
+                Inc(LPayload.OutputTokens,
+                  TRpTokenUsage(LResponse.Steps[I]).OutputTokens);
+              end;
+            end;
           end;
           PostDesignChatPayload(LPayload);
         except
           on E: Exception do
           begin
             LPayload := TRpQueuedDesignChatPayload.Create;
+            LPayload.Kind := rpqdcAddAssistantMessage;
             LPayload.RequestVersion := LRequestVersion;
-            LPayload.ErrorMessage := E.Message;
+            LPayload.Text1 := E.Message;
             PostDesignChatPayload(LPayload);
           end;
         end;
       finally
+        LStreamContext.Free;
         LResponse.Free;
         LHttp.Free;
         LRequest.Free;
@@ -2898,9 +2938,64 @@ begin
  FDesignContextRefreshRunning := False;
  FDesignChatPendingPrompt := '';
  UpdateDesignContextProgress(False, '');
+ fchatframe.FinishStreamingResponse;
  fchatframe.SetBusy(False);
  fchatframe.AddAssistantMessage(
    'The current design request cannot be aborted mid-flight, but its result will be ignored.');
+end;
+
+function TFRpMainFVCL.GetDesignChatPrefillPercent(const AStage,
+  AChunkType: string): Integer;
+begin
+ if SameText(AStage, 'PreparingContext') then
+  Result := 15
+ else if SameText(AStage, 'SendingRequest') then
+  Result := 45
+ else if SameText(AStage, 'ReceivingResponse') then
+ begin
+  if SameText(AChunkType, 'Start') then
+   Result := 70
+  else
+   Result := 100;
+ end
+ else if SameText(AStage, 'ApplyingOperations') then
+  Result := 95
+ else
+  Result := 100;
+end;
+
+procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject;
+  const AStage, AChunkType, AChunk: string; AInputTokens,
+  AOutputTokens: Integer);
+var
+ LPayload: TRpQueuedDesignChatPayload;
+ LChunk: string;
+begin
+ LChunk := '';
+ if Trim(AChunk) <> '' then
+ begin
+  if SameText(AStage, 'ReceivingResponse') then
+   LChunk := AChunk
+  else
+   LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
+ end;
+
+ LPayload := TRpQueuedDesignChatPayload.Create;
+ LPayload.Kind := rpqdcUpdateStreamingResponse;
+ if Sender is TRpDesignChatStreamContext then
+  LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
+ LPayload.Text1 := LChunk;
+ LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
+ LPayload.InputTokens := AInputTokens;
+ LPayload.OutputTokens := AOutputTokens;
+ PostDesignChatPayload(LPayload);
+end;
+
+function TFRpMainFVCL.DesignChatStreamCancelRequested(Sender: TObject): Boolean;
+begin
+ Result := False;
+ if Sender is TRpDesignChatStreamContext then
+  Result := TRpDesignChatStreamContext(Sender).RequestVersion <> FDesignChatRequestVersion;
 end;
 
 procedure TFRpMainFVCL.PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
@@ -3099,7 +3194,31 @@ begin
     Exit;
 
   if Assigned(fchatframe) then
+  begin
+    case LPayload.Kind of
+      rpqdcUpdateStreamingResponse:
+        begin
+          fchatframe.UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+          fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+          Exit;
+        end;
+      rpqdcAddAssistantMessage:
+        begin
+          fchatframe.FinishStreamingResponse;
+          fchatframe.SetBusy(False);
+          fchatframe.AddAssistantMessage(LPayload.Text1);
+          Exit;
+        end;
+    end;
+  end;
+
+  if Assigned(fchatframe) then
+  begin
+    if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
+      fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+    fchatframe.FinishStreamingResponse;
     fchatframe.SetBusy(False);
+  end;
 
   if (Trim(LPayload.UserProfileJson) <> '') and
     (not SameText(Trim(LPayload.UserProfileJson), 'null')) then
@@ -3120,10 +3239,10 @@ begin
     Exit;
   end;
 
-  if Trim(LPayload.ModifiedReportDocument) <> '' then
+  if Trim(LPayload.Text1) <> '' then
   begin
     try
-      ApplyModifiedReportDocument(LPayload.ModifiedReportDocument);
+      ApplyModifiedReportDocument(LPayload.Text1);
     except
       on E: Exception do
       begin
@@ -3134,10 +3253,10 @@ begin
     end;
   end;
 
-  LMessage := Trim(LPayload.Explanation);
+  LMessage := Trim(LPayload.Text2);
   if LMessage = '' then
   begin
-    if Trim(LPayload.ModifiedReportDocument) <> '' then
+    if Trim(LPayload.Text1) <> '' then
       LMessage := 'Report updated.'
     else
       LMessage := 'No report changes were returned.';

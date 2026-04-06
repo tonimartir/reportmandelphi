@@ -55,6 +55,8 @@ type
     PControl: TPageControl;
     TabSQL: TTabSheet;
     TabLog: TTabSheet;
+    PLogTop: TPanel;
+    BClearLog: TButton;
     MemoLog: TMemo;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
@@ -63,6 +65,7 @@ type
       Args: TWebMessageReceivedEventArgs);
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+    procedure BClearLogClick(Sender: TObject);
     procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
@@ -372,6 +375,15 @@ begin
   FDebounceTimer.Interval := 1000;
   FDebounceTimer.Enabled := False;
   FDebounceTimer.OnTimer := OnDebounceTimer;
+
+  MemoLog.WordWrap := True;
+  MemoLog.ScrollBars := ssVertical;
+end;
+
+procedure TFRpMonacoEditorVCL.BClearLogClick(Sender: TObject);
+begin
+  if MemoLog <> nil then
+    MemoLog.Clear;
 end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
