@@ -3,7 +3,7 @@ unit rpfrmchatvcl;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, System.JSON,
+  Windows, Messages, SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, System.JSON,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp;
 
 type
@@ -44,7 +44,11 @@ type
     LSchema: TLabel;
     BRefreshSchemas: TButton;
     ComboSchema: TComboBox;
+    PControl: TPageControl;
+    TabChat: TTabSheet;
     MemoConversation: TMemo;
+    TabLog: TTabSheet;
+    MemoLog: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
     PButtons: TPanel;
@@ -104,6 +108,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Resize; override;
+    procedure AISelectionStopRequest(Sender: TObject);
     procedure AddAssistantMessage(const AText: string);
     procedure AddUserMessage(const AText: string);
     procedure BeginStreamingResponse;
@@ -114,6 +119,7 @@ type
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
+    procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
     procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
     procedure UpdateStreamingResponse(const AChunk: string; APrefillPercent: Integer);
@@ -196,6 +202,7 @@ begin
   FAISelection.Align := alClient;
   FAISelection.Constraints.MinHeight := 50;
   FAISelection.Constraints.MaxHeight := 50;
+  FAISelection.OnStopRequest := AISelectionStopRequest;
 
   ComboSchema.Style := csDropDownList;
   ComboSchema.OnChange := ComboSchemaChange;
@@ -208,6 +215,11 @@ begin
 
   MemoConversation.Clear;
   MemoPrompt.Clear;
+  if MemoLog <> nil then
+  begin
+    MemoLog.HandleNeeded;
+    MemoLog.Clear;
+  end;
   FBusy := False;
   FSuggestedExpression := '';
   FStreamingActive := False;
@@ -803,12 +815,23 @@ begin
   AppendMessage('You', AText);
 end;
 
+procedure TFRpChatFrame.AISelectionStopRequest(Sender: TObject);
+begin
+  if Assigned(FOnStopRequest) then
+    FOnStopRequest(Self);
+end;
+
 procedure TFRpChatFrame.BeginStreamingResponse;
 begin
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
   FStreamingActive := True;
+  
+  if MemoLog.Lines.Count > 0 then
+    MemoLog.Lines.Add('');
+  MemoLog.Lines.Add('actor: Assistant');
+  
   SetBusy(True);
   RebuildConversation;
 end;
@@ -817,6 +840,7 @@ procedure TFRpChatFrame.ClearConversation;
 begin
   FConversationBlocks.Clear;
   MemoPrompt.Clear;
+  MemoLog.Clear;
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
@@ -841,6 +865,7 @@ begin
   FConversationBlocks.Clear;
   MemoPrompt.Clear;
   MemoConversation.Clear;
+  MemoLog.Clear;
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
@@ -894,6 +919,12 @@ begin
     FAISelection.SetInferenceProgress(AValue);
 end;
 
+procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
+begin
+  if FAISelection <> nil then
+    FAISelection.UpdateTokens(AInTokens, AOutTokens);
+end;
+
 procedure TFRpChatFrame.SetRefreshAction(AValue: Boolean);
 begin
   FUseRefreshAction := AValue;
@@ -937,7 +968,15 @@ begin
   if APrefillPercent > FStreamingPrefillPercent then
     FStreamingPrefillPercent := APrefillPercent;
   if AChunk <> '' then
+  begin
     FStreamingText := FStreamingText + AChunk;
+    if MemoLog <> nil then
+    begin
+      MemoLog.HandleNeeded;
+      SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
+      SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(AChunk)));
+    end;
+  end;
   RebuildConversation;
 end;
 

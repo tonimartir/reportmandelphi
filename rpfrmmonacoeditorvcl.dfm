@@ -157,17 +157,40 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       end
     end
   end
-  object Edge: TEdgeBrowser
+  object PControl: TPageControl
     Left = 0
     Top = 50
     Width = 750
     Height = 450
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    ActivePage = TabSQL
     Align = alClient
     TabOrder = 1
-    OnCreateWebViewCompleted = EdgeCreateWebViewCompleted
+    object TabSQL: TTabSheet
+      Caption = 'Editor SQL'
+      object Edge: TEdgeBrowser
+        Left = 0
+        Top = 0
+        Width = 742
+        Height = 422
+        Align = alClient
+        TabOrder = 0
+        OnCreateWebViewCompleted = EdgeCreateWebViewCompleted
+      end
+    end
+    object TabLog: TTabSheet
+      Caption = 'Log'
+      ImageIndex = 1
+      object MemoLog: TMemo
+        Left = 0
+        Top = 0
+        Width = 742
+        Height = 422
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        TabOrder = 0
+        WordWrap = False
+      end
+    end
   end
 end

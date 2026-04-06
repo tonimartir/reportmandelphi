@@ -135,16 +135,43 @@ object FRpChatFrame: TFRpChatFrame
         end
       end
     end
-    object MemoConversation: TMemo
+    object PControl: TPageControl
       Left = 0
       Top = 120
       Width = 320
       Height = 350
+      ActivePage = TabChat
       Align = alClient
-      ReadOnly = True
-      ScrollBars = ssVertical
       TabOrder = 1
-      WordWrap = True
+      object TabChat: TTabSheet
+        Caption = 'Chat'
+        object MemoConversation: TMemo
+          Left = 0
+          Top = 0
+          Width = 312
+          Height = 322
+          Align = alClient
+          ReadOnly = True
+          ScrollBars = ssVertical
+          TabOrder = 0
+          WordWrap = True
+        end
+      end
+      object TabLog: TTabSheet
+        Caption = 'Log'
+        ImageIndex = 1
+        object MemoLog: TMemo
+          Left = 0
+          Top = 0
+          Width = 312
+          Height = 322
+          Align = alClient
+          ReadOnly = True
+          ScrollBars = ssBoth
+          TabOrder = 0
+          WordWrap = False
+        end
+      end
     end
     object PBottom: TPanel
       Left = 0

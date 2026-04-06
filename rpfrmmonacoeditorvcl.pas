@@ -16,7 +16,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, StdCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
+  Dialogs, ExtCtrls, StdCtrls, ComCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, rpfrmloginframevcl, System.JSON, rpdatahttp,
   System.Zip, System.IOUtils, System.Threading;
 
@@ -52,6 +52,10 @@ type
     PSchemaConfigHost: TPanel;
     PAIButtonHost: TPanel;
     PAISelectionHost: TPanel;
+    PControl: TPageControl;
+    TabSQL: TTabSheet;
+    TabLog: TTabSheet;
+    MemoLog: TMemo;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -80,6 +84,7 @@ type
     FPendingPos: Integer;
     FInferenceTask: ITask;
     FInferenceRunning: Boolean;
+    FActiveInferenceRequestId: string;
     FRestartPendingInference: Boolean;
     FLastAutoCompleteSql: string;
     FAuthUIUpdateVersion: Integer;
@@ -101,6 +106,9 @@ type
     procedure SetHubSchemaId(const Value: Int64);
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
+    function SuggestSqlStreamCancelRequested(Sender: TObject): Boolean;
+    procedure SuggestSqlStreamProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
@@ -124,7 +132,7 @@ implementation
 {$R MonacoEditorAssets.res}
 
 uses
-  rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ComCtrls, Vcl.ToolWin, Vcl.ActnList;
+  rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ToolWin, Vcl.ActnList;
 
 type
   TEditorGuard = class(TInterfacedObject, IEditorGuard)
@@ -915,6 +923,7 @@ begin
     Exit;
 
   FLastAutoCompleteSql := LStartSql;
+  FActiveInferenceRequestId := LStartRequestId;
   FInferenceRunning := True;
   FRestartPendingInference := False;
   LGuard := FGuard;
@@ -930,6 +939,8 @@ begin
       LResult, LAutoComplete: TJSONObject;
       LInlineArr, LListArr: TJSONArray;
       LVal: TJSONValue;
+      LTokenUsage: TJSONObject;
+      LInT, LOutT: Integer;
       LInlineItems, LCompletionItems: TJSONArray;
       I: Integer;
       LItem: TJSONObject;
@@ -940,11 +951,18 @@ begin
       LRequestId := LStartRequestId;
       LSql := LStartSql;
       LPos := LStartPos;
+      LInT := 0;
+      LOutT := 0;
       
       LInnerQueueProc := procedure
         begin
           if (LGuard <> nil) and (not LGuard.IsCancelled) then
+          begin
             FAISelection.SetInferenceProgress(True);
+            if MemoLog.Lines.Count > 0 then
+              MemoLog.Lines.Add('');
+            MemoLog.Lines.Add('Actor: Assistant');
+          end;
         end;
       TThread.Queue(nil, LInnerQueueProc);
 
@@ -961,7 +979,8 @@ begin
 
         LResponse := nil;
         try
-          LResponse := LHttp.SuggestSql(LSql, LPos, LUAIMode);
+          LResponse := LHttp.SuggestSql(LSql, LPos, LUAIMode, Self,
+            SuggestSqlStreamProgress, SuggestSqlStreamCancelRequested);
         except
           on E: Exception do
           begin
@@ -1032,6 +1051,36 @@ begin
                end;
              TThread.Queue(nil, LInnerQueueProc);
           end;
+          // Update token info for UI log & selector
+          LVal := LResponse.Values['tokenUsage'];
+          if LVal = nil then
+          begin
+            LVal := LResponse.Values['result'];
+            if (LVal <> nil) and (LVal is TJSONObject) then
+              LVal := (LVal as TJSONObject).Values['tokenUsage'];
+          end;
+
+          if (LVal <> nil) and (LVal is TJSONObject) then
+          begin
+            LTokenUsage := LVal as TJSONObject;
+            LVal := LTokenUsage.Values['inputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              if LVal is TJSONNumber then
+                LInT := (LVal as TJSONNumber).AsInt
+              else
+                LInT := StrToIntDef(LVal.Value, 0);
+            end;
+            
+            LVal := LTokenUsage.Values['outputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              if LVal is TJSONNumber then
+                LOutT := (LVal as TJSONNumber).AsInt
+              else
+                LOutT := StrToIntDef(LVal.Value, 0);
+            end;
+          end;
         finally
           LResponse.Free;
         end;
@@ -1043,11 +1092,32 @@ begin
             if (LGuard <> nil) and (not LGuard.IsCancelled) then
             begin
               if LRequestId <> FPendingRequestId then
+              begin
+                LInlineItems.Free;
+                LCompletionItems.Free;
+                FAISelection.SetInferenceProgress(False);
+                FInferenceRunning := False;
+                if FActiveInferenceRequestId = LRequestId then
+                  FActiveInferenceRequestId := '';
+                LShouldRestart := FRestartPendingInference;
+                FRestartPendingInference := False;
+                if LShouldRestart then
+                  StartPendingInference;
                 Exit;
+              end;
+
+              FAISelection.UpdateTokens(LInT, LOutT);
+              if LInT > 0 then
+                MemoLog.Lines.Add('Autocomplete inference complete. Input Tokens: ' + IntToStr(LInT) + ' Output Tokens: ' + IntToStr(LOutT))
+              else
+                MemoLog.Lines.Add('Autocomplete inference complete.');
+
               SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
               FAISelection.SetInferenceProgress(False);
               LShouldRestart := FRestartPendingInference and (FPendingRequestId <> LRequestId);
               FInferenceRunning := False;
+              if FActiveInferenceRequestId = LRequestId then
+                FActiveInferenceRequestId := '';
               FRestartPendingInference := False;
               if LShouldRestart then
                 StartPendingInference;
@@ -1057,6 +1127,8 @@ begin
               LInlineItems.Free;
               LCompletionItems.Free;
               FInferenceRunning := False;
+              if FActiveInferenceRequestId = LRequestId then
+                FActiveInferenceRequestId := '';
               FRestartPendingInference := False;
             end;
           end;
@@ -1066,6 +1138,47 @@ begin
       end;
     end;
   FInferenceTask := TTask.Run(LTaskProc);
+end;
+
+function TFRpMonacoEditorVCL.SuggestSqlStreamCancelRequested(
+  Sender: TObject): Boolean;
+begin
+  Result := (FActiveInferenceRequestId <> '') and
+    (FActiveInferenceRequestId <> FPendingRequestId);
+end;
+
+procedure TFRpMonacoEditorVCL.SuggestSqlStreamProgress(Sender: TObject;
+  const AStage, AChunkType, AChunk: string; AInputTokens,
+  AOutputTokens: Integer);
+var
+  LStage: string;
+  LChunk: string;
+  LChunkType: string;
+  LInputTokens: Integer;
+  LOutputTokens: Integer;
+begin
+  LStage := AStage;
+  LChunk := AChunk;
+  LChunkType := AChunkType;
+  LInputTokens := AInputTokens;
+  LOutputTokens := AOutputTokens;
+  TThread.Queue(nil,
+    procedure
+    begin
+      if FAISelection <> nil then
+        FAISelection.UpdateTokens(LInputTokens, LOutputTokens);
+      if not SameText(FActiveInferenceRequestId, FPendingRequestId) then
+        Exit;
+      if not SameText(LStage, 'ReceivingResponse') then
+        Exit;
+      if LChunk = '' then
+        Exit;
+      MemoLog.HandleNeeded;
+      SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
+      SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(LChunk)));
+      if SameText(LChunkType, 'End') then
+        MemoLog.Lines.Add('');
+    end);
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);

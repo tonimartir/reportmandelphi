@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -33,17 +33,24 @@ type
   TFRpAISelectionVCL = class(TFrame)
     PAI: TPanel;
     GridAI: TGridPanel;
+    PActionHost: TPanel;
+    GridCombos: TGridPanel;
     ComboAIProvider: TComboBox;
     ComboAIMode: TComboBox;
+    PInferenceProgress: TPanel;
+    BStopInference: TButton;
+    LTokensInfo: TLabel;
     PGaugeHost: TPanel;
     PaintBoxGauge: TPaintBox;
     ProgressBarAI: TProgressBar;
     procedure PaintBoxGaugePaint(Sender: TObject);
     procedure ComboAIModeChange(Sender: TObject);
     procedure ComboAIProviderChange(Sender: TObject);
+    procedure BStopInferenceClick(Sender: TObject);
   private
     FGaugeValue: Double; // 0.0 to 1.0
     FAgentEndpoints: array of TAgentEndpointInfo;
+    FOnStopRequest: TNotifyEvent;
     procedure LayoutGaugeControls;
     procedure SetGaugeValue(const Value: Double);
     procedure UpdateDropDownWidths;
@@ -64,7 +71,9 @@ type
     procedure RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
     function AgentEndpointCount: Integer;
     procedure SetInferenceProgress(AActive: Boolean);
+    procedure UpdateTokens(AInTokens, AOutTokens: Integer);
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
+    property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
     // Properties for the HTTP driver
     property AITier: string read GetAITier;
     property AIMode: string read GetAIMode;
@@ -110,7 +119,6 @@ end;
 procedure TFRpAISelectionVCL.LayoutGaugeControls;
 const
   GaugeSize = 30;
-  ProgressSize = 20;
 var
   LLeft: Integer;
   LTop: Integer;
@@ -124,14 +132,6 @@ begin
     if LTop < 0 then
       LTop := 0;
     PaintBoxGauge.SetBounds(LLeft, LTop, GaugeSize, GaugeSize);
-
-    LLeft := (PGaugeHost.ClientWidth - ProgressSize) div 2;
-    LTop := (PGaugeHost.ClientHeight - ProgressSize) div 2;
-    if LLeft < 0 then
-      LLeft := 0;
-    if LTop < 0 then
-      LTop := 0;
-    ProgressBarAI.SetBounds(LLeft, LTop, ProgressSize, ProgressSize);
   end;
 end;
 
@@ -294,7 +294,6 @@ begin
   if ComboAIProvider.ItemIndex >= 2 then
   begin
     PaintBoxGauge.Visible := False;
-    ProgressBarAI.Visible := False;
   end
   else
   begin
@@ -416,16 +415,26 @@ begin
 end;
 
 procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);
-const
-  PBM_SETMARQUEE = $040A; // WM_USER + 10
 begin
-  ProgressBarAI.Visible := AActive;
+  GridCombos.Visible := not AActive;
+  PInferenceProgress.Visible := AActive;
   if AActive then
   begin
     ProgressBarAI.Style := TProgressBarStyle.pbstMarquee;
-    //SendMessage(ProgressBarAI.Handle, PBM_SETMARQUEE, 1, 0);
+    LTokensInfo.Caption := 'Tokens (In/Out): 0 / 0';
   end;
   LayoutGaugeControls;
+end;
+
+procedure TFRpAISelectionVCL.UpdateTokens(AInTokens, AOutTokens: Integer);
+begin
+  LTokensInfo.Caption := 'Tokens (In/Out): ' + IntToStr(AInTokens) + ' / ' + IntToStr(AOutTokens);
+end;
+
+procedure TFRpAISelectionVCL.BStopInferenceClick(Sender: TObject);
+begin
+  if Assigned(FOnStopRequest) then
+    FOnStopRequest(Self);
 end;
 
 end.

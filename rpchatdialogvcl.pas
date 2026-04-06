@@ -63,6 +63,8 @@ type
     Text1: string;
     Text2: string;
     PrefillPercent: Integer;
+    InputTokens: Integer;
+    OutputTokens: Integer;
     UserProfile: TJSONObject;
     destructor Destroy; override;
   end;
@@ -180,12 +182,15 @@ type
     function BuildExpressionSemanticContextJson: string;
     function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
     procedure ExpressionStreamProgress(Sender: TObject; const AStage,
-      AChunkType, AChunk: string; AOutputTokens: Integer);
+        AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure ExpressionStreamResult(Sender: TObject; AResultJson: TJSONObject;
       const AErrorMessage: string);
     function ExtractExpressionFromApiResult(AResultJson: TJSONObject;
       out AExpression, AExplanation, AErrorMessage: string): Boolean;
+    function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     function GetExpressionPrefillPercent(const AStage, AChunkType: string): Integer;
+    procedure DesignStreamProgress(Sender: TObject; const AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure ResetExpressionStreamState;
     procedure StopExpressionRequest(Sender: TObject);
     function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
@@ -897,7 +902,10 @@ begin
 
     case LPayload.Kind of
       rpqecUpdateStreamingResponse:
-        FChat.UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+        begin
+          FChat.UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+          FChat.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+        end;
       rpqecBeginRetry:
         begin
           FChat.AddAssistantMessage('Local validation failed. Running one automatic fix.');
@@ -1164,8 +1172,28 @@ begin
   Result := 100;
 end;
 
+  function TFRpExpredialogVCL.GetDesignPrefillPercent(const AStage,
+    AChunkType: string): Integer;
+  begin
+    if SameText(AStage, 'PreparingContext') then
+      Result := 15
+    else if SameText(AStage, 'SendingRequest') then
+      Result := 45
+    else if SameText(AStage, 'ReceivingResponse') then
+    begin
+      if SameText(AChunkType, 'Start') then
+        Result := 70
+      else
+        Result := 100;
+    end
+    else if SameText(AStage, 'ApplyingOperations') then
+      Result := 95
+    else
+      Result := 100;
+  end;
+
 procedure TFRpExpredialogVCL.ExpressionStreamProgress(Sender: TObject;
-  const AStage, AChunkType, AChunk: string; AOutputTokens: Integer);
+  const AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 var
  LChunk: string;
  LPayload: TRpQueuedExpressionChatPayload;
@@ -1179,7 +1207,30 @@ begin
  LPayload.Kind := rpqecUpdateStreamingResponse;
  LPayload.Text1 := LChunk;
  LPayload.PrefillPercent := LPrefill;
+ LPayload.InputTokens := AInputTokens;
+ LPayload.OutputTokens := AOutputTokens;
  PostExpressionChatPayload(LPayload);
+end;
+
+procedure TFRpExpredialogVCL.DesignStreamProgress(Sender: TObject;
+  const AStage, AChunkType, AChunk: string; AInputTokens,
+  AOutputTokens: Integer);
+var
+  LChunk: string;
+  LPayload: TRpQueuedExpressionChatPayload;
+  LPrefill: Integer;
+begin
+  LChunk := '';
+  if SameText(AStage, 'ReceivingResponse') then
+    LChunk := AChunk;
+  LPrefill := GetDesignPrefillPercent(AStage, AChunkType);
+  LPayload := TRpQueuedExpressionChatPayload.Create;
+  LPayload.Kind := rpqecUpdateStreamingResponse;
+  LPayload.Text1 := LChunk;
+  LPayload.PrefillPercent := LPrefill;
+  LPayload.InputTokens := AInputTokens;
+  LPayload.OutputTokens := AOutputTokens;
+  PostExpressionChatPayload(LPayload);
 end;
 
 procedure TFRpExpredialogVCL.ExpressionStreamResult(Sender: TObject;
@@ -1801,6 +1852,7 @@ begin
  LRequestVersion := FDesignRequestVersion;
  LSelectedHubDatabaseId := FChat.GetHubDatabaseId;
  LSelectedHubSchemaId := FChat.GetHubSchemaId;
+ FCancelExpressionRequest := False;
  FChat.BeginStreamingResponse;
 
  LWorker := TThread.CreateAnonymousThread(
@@ -1823,7 +1875,17 @@ begin
         if LRequest.HasAgentAiId then
           LHttp.AgentAiId := LRequest.AgentAiId;
 
-        LResponse := LHttp.ModifyReport(LRequest);
+        LResponse := LHttp.ModifyReport(LRequest, Self, DesignStreamProgress,
+          ExpressionStreamCancelRequested);
+
+        if FCancelExpressionRequest then
+        begin
+          LChatPayload := TRpQueuedExpressionChatPayload.Create;
+          LChatPayload.Kind := rpqecGenerationStopped;
+          LChatPayload.RequestVersion := LRequestVersion;
+          PostExpressionChatPayload(LChatPayload);
+          Exit;
+        end;
 
         if (LResponse <> nil) and (Trim(LResponse.ErrorMessage) <> '') then
         begin

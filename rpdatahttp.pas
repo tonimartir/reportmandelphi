@@ -15,7 +15,7 @@ interface
 
 
 uses
-  SysUtils, Classes, DB, StrUtils,
+  SysUtils, Classes, DB, StrUtils, System.IOUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
@@ -31,7 +31,7 @@ uses
   rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts;
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AStage,
-    AChunkType, AChunk: string; AOutputTokens: Integer) of object;
+    AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer) of object;
   TRpExpressionStreamResultEvent = procedure(Sender: TObject;
     AResultJson: TJSONObject; const AErrorMessage: string) of object;
   TRpExpressionStreamCancelEvent = function(Sender: TObject): Boolean of object;
@@ -62,8 +62,14 @@ type
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
     property Connected: Boolean read FConnected write SetConnected;
-    function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string): TJSONObject;
-    function ModifyReport(ARequest: TRpApiModifyReportRequest): TRpApiModifyReportResult;
+    function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function ModifyReport(ARequest: TRpApiModifyReportRequest;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiModifyReportResult;
     function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
       ACursorPosition: Integer; const AMode: string; AFix: Boolean;
       const ASemanticContextJson: string; Sender: TObject;
@@ -123,6 +129,27 @@ type
     property Cancelled: Boolean read FCancelled;
   end;
 
+  TRpApiStreamCapture = class
+  private
+    FErrorMessage: string;
+    FForwardCancel: TRpExpressionStreamCancelEvent;
+    FForwardProgress: TRpExpressionStreamProgressEvent;
+    FResultJson: TJSONObject;
+    FSender: TObject;
+  public
+    constructor Create(ASender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnCancel: TRpExpressionStreamCancelEvent);
+    destructor Destroy; override;
+    function HandleCancel(Sender: TObject): Boolean;
+    procedure HandleProgress(Sender: TObject; const AStage, AChunkType,
+      AChunk: string; AInputTokens, AOutputTokens: Integer);
+    procedure HandleResult(Sender: TObject; AResultJson: TJSONObject;
+      const AErrorMessage: string);
+    function TakeResultJson: TJSONObject;
+    property ErrorMessage: string read FErrorMessage;
+  end;
+
 { TRpDatabaseHttp }
 
 constructor TRpExpressionStreamContext.Create(AResponseStream: TMemoryStream;
@@ -165,39 +192,74 @@ var
   LStage: string;
   LChunkType: string;
   LChunk: string;
+  LInputTokens: Integer;
   LOutputTokens: Integer;
+  LVal: TJSONValue;
 begin
-  LJson := TJSONObject.ParseJSONValue(AJsonText) as TJSONObject;
-  if LJson = nil then
-    Exit;
   try
-    if (LJson.Values['actor'] <> nil) and (LJson.Values['stage'] <> nil) then
-    begin
-      if Assigned(FOnProgress) then
+    try
+      LJson := TJSONObject.ParseJSONValue(AJsonText) as TJSONObject;
+      if LJson = nil then
       begin
-        LStage := LJson.Values['stage'].Value;
-        if LJson.Values['chunkType'] <> nil then
-          LChunkType := LJson.Values['chunkType'].Value
-        else
-          LChunkType := '';
-        if LJson.Values['chunk'] <> nil then
-          LChunk := LJson.Values['chunk'].Value
-        else
-          LChunk := '';
-        if LJson.Values['outputTokens'] <> nil then
-          LOutputTokens := StrToIntDef(LJson.Values['outputTokens'].Value, 0)
-        else
-          LOutputTokens := 0;
-        FOnProgress(FSender, LStage, LChunkType, LChunk, LOutputTokens);
+        TFile.AppendAllText(ExtractFilePath(ParamStr(0)) + 'sse_debug.log', 'FAILED TO PARSE JSON' + #13#10);
+        Exit;
       end;
-    end
-    else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
-    begin
-      if Assigned(FOnResult) then
-        FOnResult(FSender, TJSONObject(LJson.Clone), '');
+      
+      try
+        if (LJson.Values['actor'] <> nil) and (LJson.Values['stage'] <> nil) then
+        begin
+          if Assigned(FOnProgress) then
+          begin
+            LStage := LJson.Values['stage'].Value;
+            if LJson.Values['chunkType'] <> nil then
+              LChunkType := LJson.Values['chunkType'].Value
+            else
+              LChunkType := '';
+            if LJson.Values['chunk'] <> nil then
+              LChunk := LJson.Values['chunk'].Value
+            else
+              LChunk := '';
+              
+            LVal := LJson.Values['inputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                LInputTokens := StrToIntDef(LVal.Value, 0);
+              except
+                LInputTokens := 0;
+              end;
+            end
+            else
+              LInputTokens := 0;
+
+            LVal := LJson.Values['outputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                LOutputTokens := StrToIntDef(LVal.Value, 0);
+              except
+                LOutputTokens := 0;
+              end;
+            end
+            else
+              LOutputTokens := 0;
+              
+            FOnProgress(FSender, LStage, LChunkType, LChunk, LInputTokens, LOutputTokens);
+          end;
+        end
+        else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
+        begin
+          if Assigned(FOnResult) then
+            FOnResult(FSender, TJSONObject(LJson.Clone), '');
+        end;
+      finally
+        LJson.Free;
+      end;
+    except
+      on E: Exception do
+        TFile.AppendAllText(ExtractFilePath(ParamStr(0)) + 'sse_debug.log', 'EXCEPTION in DispatchJson: ' + E.Message + #13#10);
     end;
-  finally
-    LJson.Free;
+  except
   end;
 end;
 
@@ -275,6 +337,142 @@ begin
   ReadNewBytes;
 end;
 
+function IsHttpNotFoundError(const AMessage: string): Boolean;
+begin
+  Result := StartsText('HTTP Error 404', Trim(AMessage));
+end;
+
+constructor TRpApiStreamCapture.Create(ASender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnCancel: TRpExpressionStreamCancelEvent);
+begin
+  inherited Create;
+  FSender := ASender;
+  FForwardProgress := AOnProgress;
+  FForwardCancel := AOnCancel;
+  FResultJson := nil;
+  FErrorMessage := '';
+end;
+
+destructor TRpApiStreamCapture.Destroy;
+begin
+  FResultJson.Free;
+  inherited Destroy;
+end;
+
+function TRpApiStreamCapture.HandleCancel(Sender: TObject): Boolean;
+begin
+  Result := Assigned(FForwardCancel) and FForwardCancel(FSender);
+end;
+
+procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+begin
+  if Assigned(FForwardProgress) then
+    FForwardProgress(FSender, AStage, AChunkType, AChunk, AInputTokens,
+      AOutputTokens);
+end;
+
+procedure TRpApiStreamCapture.HandleResult(Sender: TObject;
+  AResultJson: TJSONObject; const AErrorMessage: string);
+begin
+  if AErrorMessage <> '' then
+    FErrorMessage := AErrorMessage;
+  if AResultJson <> nil then
+  begin
+    FreeAndNil(FResultJson);
+    FResultJson := AResultJson;
+  end;
+end;
+
+function TRpApiStreamCapture.TakeResultJson: TJSONObject;
+begin
+  Result := FResultJson;
+  FResultJson := nil;
+end;
+
+{$IFDEF FIREDAC}
+function StreamJsonRequest(AClient: TRpDatabaseHttp; const AAction: string;
+  const RequestBody: TJSONObject; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LCapture: TRpApiStreamCapture;
+  LContext: TRpExpressionStreamContext;
+  LHttpClient: TNetHTTPClient;
+  LRequestStream: TStringStream;
+  LResponse: IHTTPResponse;
+  LResponseStream: TMemoryStream;
+  LUrl: string;
+begin
+  Result := nil;
+  LHttpClient := TNetHTTPClient.Create(nil);
+  LResponseStream := TMemoryStream.Create;
+  LCapture := TRpApiStreamCapture.Create(Sender, AOnProgress, ACancel);
+  LContext := TRpExpressionStreamContext.Create(LResponseStream, LCapture,
+    LCapture.HandleProgress, LCapture.HandleResult, LCapture.HandleCancel);
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    if SameText(AAction, 'ReportDesigner/ModifyReportStream') then
+    begin
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
+    end;
+
+    LRequestStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/json';
+      LHttpClient.Accept := 'text/event-stream';
+
+      if AClient.ApiKey <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AClient.ApiKey;
+
+      if AClient.Token <> '' then
+        LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + AClient.Token;
+
+      if AClient.InstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := AClient.InstallId;
+
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then
+        LUrl := LUrl + '/';
+      LUrl := LUrl + AAction;
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+
+      LHttpClient.OnReceiveData := LContext.HandleReceiveData;
+      LResponse := LHttpClient.Post(LUrl, LRequestStream, LResponseStream);
+      LContext.ReadNewBytes;
+
+      TRpAuthManager.Instance.Log('HTTP Response Status: ' +
+        IntToStr(LResponse.StatusCode));
+
+      if LContext.Cancelled then
+        Exit(nil);
+
+      if (LResponse.StatusCode < 200) or (LResponse.StatusCode >= 300) then
+      begin
+        LResponseStream.Position := 0;
+        raise Exception.CreateFmt('HTTP Error %d: %s',
+          [LResponse.StatusCode, LResponse.StatusText]);
+      end;
+
+      if LCapture.ErrorMessage <> '' then
+        raise Exception.Create(LCapture.ErrorMessage);
+
+      Result := LCapture.TakeResultJson;
+    finally
+      LRequestStream.Free;
+    end;
+  finally
+    LContext.Free;
+    LCapture.Free;
+    LResponseStream.Free;
+    LHttpClient.Free;
+  end;
+end;
+{$ENDIF}
+
 constructor TRpDatabaseHttp.Create;
 begin
   inherited Create;
@@ -317,11 +515,16 @@ begin
     LRequestBody.Free;
   end;
 end;
-function TRpDatabaseHttp.SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string): TJSONObject;
+function TRpDatabaseHttp.SuggestSql(const ASql: string;
+  ACursorPosition: Integer; AMode: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
 var
   LRequest, LConfig: TJSONObject;
+{$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
   LResponseJson: TJSONObject;
+{$ENDIF}
 begin
   Result := nil;
   LRequest := TJSONObject.Create;
@@ -343,7 +546,11 @@ begin
     if FHubSchemaId <> 0 then
       LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
     LRequest.AddPair('config', LConfig);
-    
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/SuggestSqlCodeStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
     LResponseStream := TStringStream.Create;
     try
       if InternalRequest('NlToSql/SuggestSqlCode', LRequest, LResponseStream) then
@@ -356,13 +563,16 @@ begin
     finally
       LResponseStream.Free;
     end;
+{$ENDIF}
   finally
     LRequest.Free;
   end;
 end;
 
 function TRpDatabaseHttp.ModifyReport(
-  ARequest: TRpApiModifyReportRequest): TRpApiModifyReportResult;
+  ARequest: TRpApiModifyReportRequest; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TRpApiModifyReportResult;
 var
   LRequestJson: TJSONObject;
   LResponseJson: TJSONObject;
@@ -374,6 +584,60 @@ begin
 
   LRequestJson := ARequest.ToJsonObject;
   try
+{$IFDEF FIREDAC}
+    try
+      LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/ModifyReportStream',
+        LRequestJson, Sender, AOnProgress, ACancel);
+      try
+        if LResponseJson <> nil then
+        begin
+          Result := TRpApiModifyReportResult.Create;
+          try
+            Result.FromJsonObject(LResponseJson);
+          except
+            Result.Free;
+            raise;
+          end;
+        end;
+      finally
+        LResponseJson.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        if not IsHttpNotFoundError(E.Message) then
+          raise;
+
+        TRpAuthManager.Instance.Log(
+          'ModifyReportStream not available on server, falling back to ModifyReport.');
+
+        LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+        try
+          if InternalRequest('ReportDesigner/ModifyReport', LRequestJson, LResponseStream) then
+          begin
+            LResponseStream.Position := 0;
+            LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+            try
+              if LResponseJson = nil then
+                raise Exception.Create('Invalid JSON response from ReportDesigner/ModifyReport');
+
+              Result := TRpApiModifyReportResult.Create;
+              try
+                Result.FromJsonObject(LResponseJson);
+              except
+                Result.Free;
+                raise;
+              end;
+            finally
+              LResponseJson.Free;
+            end;
+          end;
+        finally
+          LResponseStream.Free;
+        end;
+      end;
+    end;
+{$ELSE}
     LResponseStream := TStringStream.Create('', TEncoding.UTF8);
     try
       if InternalRequest('ReportDesigner/ModifyReport', LRequestJson, LResponseStream) then
@@ -398,6 +662,7 @@ begin
     finally
       LResponseStream.Free;
     end;
+{$ENDIF}
   finally
     LRequestJson.Free;
   end;

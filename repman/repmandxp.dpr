@@ -53,6 +53,7 @@ uses
   rpmdfsearchvcl in '..\rpmdfsearchvcl.pas' {TFRpSearchParamVCL},
   rpmdfsectionintvcl in '..\rpmdfsectionintvcl.pas',
   rptextdriver in '..\rptextdriver.pas',
+  rpdatahttp in '..\rpdatahttp.pas',
   rpxmlstream in '..\rpxmlstream.pas',
   rpcolumnar in '..\rpcolumnar.pas',
   rpstringhash in '..\rpstringhash.pas',
