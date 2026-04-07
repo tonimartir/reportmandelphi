@@ -43,6 +43,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AfterConstruction; override;
+    procedure Resize; override;
+    procedure RefreshLayout;
     property OnAuthChanged: TNotifyEvent read FOnAuthChanged write FOnAuthChanged;
   end;
 
@@ -61,6 +63,24 @@ procedure TFRpLoginFrameVCL.AfterConstruction;
 begin
   inherited;
   UpdateUI;
+end;
+
+procedure TFRpLoginFrameVCL.Resize;
+begin
+  inherited;
+  RefreshLayout;
+end;
+
+procedure TFRpLoginFrameVCL.RefreshLayout;
+begin
+  if PContainer <> nil then
+  begin
+    PContainer.SetBounds(0, 0, ClientWidth, ClientHeight);
+    PContainer.Realign;
+  end;
+  UpdateUI;
+  Realign;
+  Invalidate;
 end;
 
 destructor TFRpLoginFrameVCL.Destroy;

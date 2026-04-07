@@ -149,6 +149,7 @@ type
     function GetUserLanguageCode: string;
     procedure MonacoAuditProgress(Sender: TObject; const AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+    procedure MonacoSchemaChange(Sender: TObject);
     procedure  Removedependences(oldalias:string);
   public
     { Public declarations }
@@ -253,6 +254,7 @@ begin
   FMonaco.Parent := TabSQL;
   FMonaco.Align := alClient;
   FMonaco.OnContentChanged := MSQLChange;
+  FMonaco.OnSchemaChanged := MonacoSchemaChange;
   FMonaco.OnAuditSql := MonacoAuditSql;
 end;
 
@@ -330,6 +332,8 @@ begin
 
   FMonaco.SQL := WideStringToDOS(dinfo.SQL);
   FMonaco.AuditText := WideStringToDOS(dinfo.SQLExplanation);
+  FMonaco.HubDatabaseId := 0;
+  FMonaco.HubSchemaId := 0;
   // Set Hub context for AI
   dbinfo := Report.DatabaseInfo.ItemByName(dinfo.DatabaseAlias);
   if dbinfo <> nil then
@@ -339,7 +343,7 @@ begin
       dbinfo.UpdateConAdmin;
       dbinfo.ConAdmin.GetConnectionParams(dbinfo.Alias, LParams);
       FMonaco.HubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
-      FMonaco.HubSchemaId := StrToInt64Def(LParams.Values['HubSchemaId'], 0);
+      FMonaco.HubSchemaId := dinfo.HubSchemaId;
     finally
       LParams.Free;
     end;
@@ -431,6 +435,8 @@ procedure TFRpDatasetsVCL.MSQLChange(Sender: TObject);
 var
  dinfo:TRpDatainfoItem;
  index:integer;
+ LParams: TStringList;
+ LPreviousDatabaseAlias: string;
 begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
@@ -459,7 +465,10 @@ begin
  else
  if Sender=ComboConnection then
  begin
+  LPreviousDatabaseAlias:=dinfo.DatabaseAlias;
   dinfo.DatabaseAlias:=COmboConnection.Text;
+  if not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias) then
+   dinfo.HubSchemaId:=0;
   // Finds the driver
   index:=databaseinfo.IndexOf(dinfo.DatabaseAlias);
   if index<0 then
@@ -468,8 +477,23 @@ begin
    TabBDETable.TabVisible:=false;
    TabMyBase.TabVisible:=false;
    TabBDEType.TabVisible:=false;
+   FMonaco.HubDatabaseId:=0;
+   FMonaco.HubSchemaId:=0;
    exit;
   end;
+  if databaseinfo.items[index].Driver=rpdbHttp then
+  begin
+   LParams:=TStringList.Create;
+   try
+    databaseinfo.items[index].LoadConnectionParams(LParams);
+    FMonaco.HubDatabaseId:=StrToInt64Def(LParams.Values['HubDatabaseId'],0);
+   finally
+    LParams.Free;
+   end;
+  end
+  else
+   FMonaco.HubDatabaseId:=0;
+  FMonaco.HubSchemaId:=dinfo.HubSchemaId;
   PBrowser.Visible:=not (databaseinfo.items[index].Driver=rpdatadriver);
   if databaseinfo.items[index].Driver=rpdatamybase then
   begin
@@ -592,6 +616,16 @@ begin
  begin
   dinfo.OpenOnStart:=CheckOpen.Checked;
  end;
+end;
+
+procedure TFRpDatasetsVCL.MonacoSchemaChange(Sender: TObject);
+var
+ dinfo:TRpDatainfoItem;
+begin
+ dinfo:=FindDataInfoItem;
+ if dinfo=nil then
+  Exit;
+ dinfo.HubSchemaId:=FMonaco.HubSchemaId;
 end;
 
 function TFRpDatasetsVCL.GetUserLanguageCode: string;

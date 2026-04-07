@@ -497,6 +497,7 @@ begin
   if SameText(propName, 'providerFactory') then Exit('ProviderFactory');
   if SameText(propName, 'dotNetDriver') then Exit('DotNetDriver');
   if SameText(propName, 'databaseAlias') then Exit('DatabaseAlias');
+  if SameText(propName, 'hubSchemaId') then Exit('HubSchemaId');
   if SameText(propName, 'sql') then Exit('SQL');
   if SameText(propName, 'dataSource') then Exit('DataSource');
   if SameText(propName, 'groupUnion') then Exit('GroupUnion');

@@ -23,7 +23,7 @@ interface
 
 uses
   Winapi.Windows,
-  SysUtils, Classes,
+  SysUtils, StrUtils, Classes,
   DB,rptypes,
   Graphics,Controls, Forms, Dialogs, Messages,
   StdCtrls, ExtCtrls,Buttons,
@@ -74,6 +74,10 @@ type
   public
     RequestVersion: Integer;
     ErrorMessage: string;
+    OpenErrors: TStringList;
+    SchemaOnlyFields: TStringList;
+    SchemaOnlyErrors: TStringList;
+    destructor Destroy; override;
   end;
 
   TRpRecHelp=class(TObject)
@@ -165,6 +169,8 @@ type
     FRefreshPrintDriver: TRpPrintDriver;
     FRefreshAlias: TRpAlias;
     FEmptyAlias: TRpAlias;
+    FSchemaOnlyFields: TStringList;
+    FSchemaOnlyErrors: TStringList;
     FRefreshVersion: Integer;
     FRefreshRunning: Boolean;
     FAliasReady: Boolean;
@@ -226,6 +232,7 @@ type
     procedure PopulateAliasFromReport(ATargetAlias: TRpAlias);
     procedure PostExpressionChatPayload(APayload: TRpQueuedExpressionChatPayload);
     procedure StartReportRefresh;
+    procedure SetSchemaOnlyContext(AFields, AErrors: TStrings);
     procedure SetChatMode(AMode: TRpChatMode);
     procedure UpdateRefreshUIState;
     procedure Setevaluator(aval:TRpCustomEvaluator);
@@ -240,7 +247,10 @@ type
 function ChangeExpression(formul:string;aval:TRpCustomEvaluator):string;
 function ChangeExpressionW(formul:Widestring;aval:TRpCustomEvaluator):Widestring;
 function ExpressionCalculateW(formul:Widestring;aval:TRpCustomEvaluator):Variant;
+procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
+  AErrors: TStrings);
 function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias;
+  AOpenErrors, ASchemaOnlyFields, ASchemaOnlyErrors: TStrings;
   out AErrorMessage: string): string;
 
 
@@ -250,6 +260,9 @@ implementation
 {$R *.dfm}
 uses rplabelitem, rpauthmanager;
 
+const
+  CSchemaFieldSep = #1;
+
 var
  GSharedExpreDialogVCL: TFRpExpredialogVCL = nil;
 
@@ -258,6 +271,229 @@ begin
  if UserProfile <> nil then
   UserProfile.Free;
  inherited Destroy;
+end;
+
+destructor TRpQueuedExpressionRefreshPayload.Destroy;
+begin
+ if OpenErrors <> nil then
+  OpenErrors.Free;
+ if SchemaOnlyFields <> nil then
+  SchemaOnlyFields.Free;
+ if SchemaOnlyErrors <> nil then
+  SchemaOnlyErrors.Free;
+ inherited Destroy;
+end;
+
+function EncodeSchemaFieldEntry(const ADatasetAlias, AFieldName,
+  ADataType: string): string;
+begin
+ Result := Trim(ADatasetAlias) + CSchemaFieldSep + Trim(AFieldName) +
+   CSchemaFieldSep + Trim(ADataType);
+end;
+
+function SchemaFieldEntryAlias(const AEntry: string): string;
+var
+ LPos: Integer;
+begin
+ LPos := Pos(CSchemaFieldSep, AEntry);
+ if LPos > 0 then
+  Result := Copy(AEntry, 1, LPos - 1)
+ else
+  Result := '';
+end;
+
+function SchemaFieldEntryFieldName(const AEntry: string): string;
+var
+ LFirstPos: Integer;
+ LSecondPos: Integer;
+begin
+ Result := '';
+ LFirstPos := Pos(CSchemaFieldSep, AEntry);
+ if LFirstPos <= 0 then
+  Exit;
+ LSecondPos := PosEx(CSchemaFieldSep, AEntry, LFirstPos + 1);
+ if LSecondPos > 0 then
+  Result := Copy(AEntry, LFirstPos + 1, LSecondPos - LFirstPos - 1)
+ else
+  Result := Copy(AEntry, LFirstPos + 1, MaxInt);
+end;
+
+function SchemaFieldEntryDataType(const AEntry: string): string;
+var
+ LFirstPos: Integer;
+ LSecondPos: Integer;
+begin
+ Result := '';
+ LFirstPos := Pos(CSchemaFieldSep, AEntry);
+ if LFirstPos <= 0 then
+  Exit;
+ LSecondPos := PosEx(CSchemaFieldSep, AEntry, LFirstPos + 1);
+ if LSecondPos > 0 then
+  Result := Copy(AEntry, LSecondPos + 1, MaxInt);
+end;
+
+function MapSchemaTypeToSemanticType(const ADataType: string): string;
+var
+ LType: string;
+begin
+ LType := LowerCase(Trim(ADataType));
+ if (LType = 'system.int16') or (LType = 'system.int32') or
+   (LType = 'system.int64') or (LType = 'int16') or (LType = 'int32') or
+   (LType = 'int64') then
+  Result := 'integer'
+ else if (LType = 'system.decimal') or (LType = 'system.double') or
+   (LType = 'system.single') or (LType = 'decimal') or (LType = 'double') or
+   (LType = 'single') then
+  Result := 'float'
+ else if LType = 'system.boolean' then
+  Result := 'boolean'
+ else if LType = 'system.datetime' then
+  Result := 'datetime'
+ else if LType = 'system.byte[]' then
+  Result := 'blob'
+ else
+  Result := 'string';
+end;
+
+function GetMappedError(AErrors: TStrings; const AAlias, AName: string): string;
+var
+ LIndex: Integer;
+begin
+ Result := '';
+ if AErrors = nil then
+  Exit;
+ LIndex := AErrors.IndexOfName(Trim(AAlias));
+ if LIndex >= 0 then
+ begin
+  Result := Trim(AErrors.ValueFromIndex[LIndex]);
+  if Result <> '' then
+    Exit;
+ end;
+ if Trim(AName) <> '' then
+ begin
+  LIndex := AErrors.IndexOfName(Trim(AName));
+  if LIndex >= 0 then
+    Result := Trim(AErrors.ValueFromIndex[LIndex]);
+ end;
+end;
+
+procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
+  AErrors: TStrings);
+var
+ I: Integer;
+ J: Integer;
+ LDataInfo: TRpDataInfoItem;
+ LDatabaseInfo: TRpDatabaseInfoItem;
+ LHttp: TRpDatabaseHttp;
+ LConnectionParams: TStringList;
+ LResponse: TJSONObject;
+ LRoot: TJSONObject;
+ LColumns: TJSONArray;
+ LRows: TJSONArray;
+ LColumnIndexes: TStringList;
+ LRow: TJSONArray;
+ LColIndex: Integer;
+ LDataTypeIndex: Integer;
+ LFieldName: string;
+ LDataType: string;
+ LAlias: string;
+
+  function GetColumnIndex(const AName: string): Integer;
+  begin
+   Result := LColumnIndexes.IndexOf(LowerCase(AName));
+  end;
+
+  function ReadCellString(ARow: TJSONArray; AIndex: Integer): string;
+  var
+   LValue: TJSONValue;
+  begin
+   Result := '';
+   if (ARow = nil) or (AIndex < 0) or (AIndex >= ARow.Count) then
+    Exit;
+   LValue := ARow.Items[AIndex];
+   if (LValue <> nil) and (not (LValue is TJSONNull)) then
+     Result := LValue.Value;
+  end;
+
+begin
+ if AFields <> nil then
+  AFields.Clear;
+ if AErrors <> nil then
+  AErrors.Clear;
+ if AReport = nil then
+  Exit;
+
+ LConnectionParams := TStringList.Create;
+ LColumnIndexes := TStringList.Create;
+ try
+  for I := 0 to AReport.DataInfo.Count - 1 do
+  begin
+   LDataInfo := AReport.DataInfo.Items[I];
+   if Trim(LDataInfo.SQL) = '' then
+    Continue;
+
+   LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+   if (LDatabaseInfo = nil) or (LDatabaseInfo.Driver <> rpdbHttp) then
+    Continue;
+
+   LAlias := Trim(LDataInfo.Alias);
+   if LAlias = '' then
+    LAlias := Trim(LDataInfo.Name);
+
+   LHttp := TRpDatabaseHttp.Create;
+   LResponse := nil;
+   try
+    LConnectionParams.Clear;
+    LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+    LHttp.ApiKey := LConnectionParams.Values['ApiKey'];
+    LHttp.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+    LHttp.HubSchemaId := LDataInfo.HubSchemaId;
+    if (LHttp.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
+    begin
+      LHttp.Token := TRpAuthManager.Instance.Token;
+      LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    end;
+
+    LResponse := LHttp.GetTableSchema(LDataInfo.SQL);
+    if LResponse = nil then
+      raise Exception.Create('Empty schema response.');
+
+    LRoot := LResponse;
+    if (LRoot.Values['data'] <> nil) and (LRoot.Values['data'] is TJSONObject) then
+      LRoot := TJSONObject(LRoot.Values['data']);
+    if not ((LRoot.Values['columns'] is TJSONArray) and (LRoot.Values['rows'] is TJSONArray)) then
+      raise Exception.Create('Invalid schema response format.');
+
+    LColumns := TJSONArray(LRoot.Values['columns']);
+    LRows := TJSONArray(LRoot.Values['rows']);
+    LColumnIndexes.Clear;
+    for LColIndex := 0 to LColumns.Count - 1 do
+      LColumnIndexes.Add(LowerCase(TJSONObject(LColumns.Items[LColIndex]).Values['name'].Value));
+
+    LColIndex := GetColumnIndex('ColumnName');
+    LDataTypeIndex := GetColumnIndex('DataType');
+    for J := 0 to LRows.Count - 1 do
+    begin
+      if not (LRows.Items[J] is TJSONArray) then
+        Continue;
+      LRow := TJSONArray(LRows.Items[J]);
+      LFieldName := ReadCellString(LRow, LColIndex);
+      LDataType := MapSchemaTypeToSemanticType(ReadCellString(LRow, LDataTypeIndex));
+      if (Trim(LFieldName) <> '') and (AFields <> nil) then
+        AFields.Add(EncodeSchemaFieldEntry(LAlias, LFieldName, LDataType));
+    end;
+   except
+    on E: Exception do
+      if AErrors <> nil then
+        AErrors.Values[LAlias] := E.Message;
+   end;
+   LResponse.Free;
+   LHttp.Free;
+  end;
+ finally
+  LColumnIndexes.Free;
+  LConnectionParams.Free;
+ end;
 end;
 
 function GetSharedExpreDialogVCL: TFRpExpredialogVCL;
@@ -296,6 +532,7 @@ begin
 end;
 
 function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias;
+  AOpenErrors, ASchemaOnlyFields, ASchemaOnlyErrors: TStrings;
   out AErrorMessage: string): string;
 var
   dia: TFRpExpredialogVCL;
@@ -316,6 +553,9 @@ var
   LFieldObject: TJSONObject;
   LFieldDataset: string;
   LDataSourceName: string;
+  LDataSourceError: string;
+  LRuntimeSourceName: string;
+  LDatabaseInfo: TRpDatabaseInfoItem;
 
   procedure AddIssue(AIssues: TJSONArray; const ASeverity, ACode,
     AMessage: string);
@@ -403,6 +643,7 @@ begin
     end;
 
     dia.ConfigureReportRefresh(AReport, nil, LTargetAlias);
+    dia.SetSchemaOnlyContext(ASchemaOnlyFields, ASchemaOnlyErrors);
     try
       dia.PopulateAliasFromReport(LTargetAlias);
       if AReport.Evaluator = nil then
@@ -441,6 +682,14 @@ begin
         LDataSourceName := Trim(LDataInfo.Alias);
       LRuntimeFields := TJSONArray.Create;
       LIssues := TJSONArray.Create;
+      LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+        LRuntimeSourceName := 'agent_schema_only'
+      else
+        LRuntimeSourceName := 'delphi_evaluator';
+      LDataSourceError := GetMappedError(AOpenErrors, LDataInfo.Alias, LDataSourceName);
+      if LDataSourceError = '' then
+        LDataSourceError := GetMappedError(ASchemaOnlyErrors, LDataInfo.Alias, LDataSourceName);
 
       if AErrorMessage = '' then
       begin
@@ -461,18 +710,37 @@ begin
           end;
         end;
 
-        if LRuntimeFields.Count = 0 then
+        if Trim(LDataSourceError) <> '' then
+        begin
+          if LRuntimeSourceName = 'agent_schema_only' then
+            AddIssue(LIssues, 'error', 'datasource_schema_failed', LDataSourceError)
+          else
+            AddIssue(LIssues, 'error', 'datasource_open_failed', LDataSourceError);
+
+          LRuntimeSource := BuildRuntimeSource(
+            LDataSourceName,
+            LDataInfo.Alias,
+            'refresh_failed',
+            LRuntimeSourceName,
+            True,
+            LRuntimeFields,
+            LIssues);
+        end
+        else
+        begin
+          if LRuntimeFields.Count = 0 then
           AddIssue(LIssues, 'info', 'no_live_fields',
             'No live fields were returned by the Delphi evaluator for this datasource.');
 
-        LRuntimeSource := BuildRuntimeSource(
-          LDataSourceName,
-          LDataInfo.Alias,
-          'live_context',
-          'delphi_evaluator',
-          False,
-          LRuntimeFields,
-          LIssues);
+          LRuntimeSource := BuildRuntimeSource(
+            LDataSourceName,
+            LDataInfo.Alias,
+            'live_context',
+            LRuntimeSourceName,
+            False,
+            LRuntimeFields,
+            LIssues);
+        end;
       end
       else
       begin
@@ -481,7 +749,7 @@ begin
           LDataSourceName,
           LDataInfo.Alias,
           'refresh_failed',
-          'delphi_evaluator',
+          LRuntimeSourceName,
           True,
           LRuntimeFields,
           LIssues);
@@ -563,6 +831,8 @@ begin
  FAliasReady := True;
  FDesignRequestVersion := 0;
  FEmptyAlias := TRpAlias.Create(Self);
+ FSchemaOnlyFields := TStringList.Create;
+ FSchemaOnlyErrors := TStringList.Create;
  FChat := TFRpChatFrame.Create(Self);
  FChat.Parent := PChatHost;
  FChat.Align := alClient;
@@ -570,6 +840,7 @@ begin
  FChat.OnApplySuggestion := ChatApplySuggestion;
  FChat.OnStopRequest := StopExpressionRequest;
  FChat.Initialize(MemoExpre.Text, SExpressionChatInitialMessage);
+ FChat.RefreshLayout;
  for i:=0 to FMaxlisthelp-1 do
  begin
   llistes[i]:=TStringList.create;
@@ -599,6 +870,10 @@ begin
  FRefreshReport := AReport;
  FRefreshPrintDriver := APrintDriver;
  FRefreshAlias := ATargetAlias;
+ if FSchemaOnlyFields <> nil then
+  FSchemaOnlyFields.Clear;
+ if FSchemaOnlyErrors <> nil then
+  FSchemaOnlyErrors.Clear;
  FRefreshVersion := 0;
  FRefreshRunning := False;
  if FRefreshReport <> nil then
@@ -609,6 +884,22 @@ begin
  else
   FAliasReady := evaluator <> nil;
  UpdateRefreshUIState;
+end;
+
+procedure TFRpExpredialogVCL.SetSchemaOnlyContext(AFields, AErrors: TStrings);
+begin
+ if FSchemaOnlyFields <> nil then
+ begin
+  FSchemaOnlyFields.Clear;
+  if AFields <> nil then
+    FSchemaOnlyFields.Assign(AFields);
+ end;
+ if FSchemaOnlyErrors <> nil then
+ begin
+  FSchemaOnlyErrors.Clear;
+  if AErrors <> nil then
+    FSchemaOnlyErrors.Assign(AErrors);
+ end;
 end;
 
 procedure TFRpExpredialogVCL.ReleaseOwnedEvaluator;
@@ -733,6 +1024,21 @@ begin
    rec:=TRpRecHelp.Create;
    rec.rfunction:=lista1.strings[i];
    lista1.Objects[i]:=rec;
+  end;
+ end;
+ if FSchemaOnlyFields <> nil then
+ begin
+  for i := 0 to FSchemaOnlyFields.Count - 1 do
+  begin
+   if lista1.IndexOf(SchemaFieldEntryAlias(FSchemaOnlyFields[i]) + '.' +
+     SchemaFieldEntryFieldName(FSchemaOnlyFields[i])) >= 0 then
+     Continue;
+   rec := TRpRecHelp.Create;
+   rec.rfunction := SchemaFieldEntryAlias(FSchemaOnlyFields[i]) + '.' +
+     SchemaFieldEntryFieldName(FSchemaOnlyFields[i]);
+   rec.help := 'Field from dataset ' + SchemaFieldEntryAlias(FSchemaOnlyFields[i]);
+   rec.model := rec.rfunction + ':' + SchemaFieldEntryDataType(FSchemaOnlyFields[i]);
+   lista1.AddObject(rec.rfunction, rec);
   end;
  end;
 {$IFDEF USEEVALHASH}
@@ -882,6 +1188,10 @@ begin
  ClearHelpLists;
  for i:=0 to FMaxlisthelp-1 do
   llistes[i].free;
+ if FSchemaOnlyFields <> nil then
+  FSchemaOnlyFields.Free;
+ if FSchemaOnlyErrors <> nil then
+  FSchemaOnlyErrors.Free;
  if GSharedExpreDialogVCL=Self then
   GSharedExpreDialogVCL:=nil;
 end;
@@ -905,7 +1215,7 @@ begin
       procedure
       begin
         if (FChat <> nil) and Visible then
-          FChat.Resize;
+          FChat.RefreshLayout;
       end;
     TThread.Queue(nil, LQueueProc);
   end;
@@ -1102,17 +1412,15 @@ var
  LWorker: TThread;
  LRequestVersion: Integer;
  LReport: TRpReport;
- LPrintDriver: TRpPrintDriver;
 begin
  if FRefreshRunning then
   Exit;
- if (FRefreshReport = nil) or (FRefreshPrintDriver = nil) then
+ if (FRefreshReport = nil) then
   Exit;
 
  Inc(FRefreshVersion);
  LRequestVersion := FRefreshVersion;
  LReport := FRefreshReport;
- LPrintDriver := FRefreshPrintDriver;
  if not FOwnsEvaluator then
  begin
   Setevaluator(BuildRefreshSnapshotEvaluator);
@@ -1125,12 +1433,25 @@ begin
    procedure
    var
     LPayload: TRpQueuedExpressionRefreshPayload;
+    LOpenErrors: TStringList;
+    LSchemaOnlyFields: TStringList;
+    LSchemaOnlyErrors: TStringList;
    begin
     LPayload := TRpQueuedExpressionRefreshPayload.Create;
+    LOpenErrors := TStringList.Create;
+    LSchemaOnlyFields := TStringList.Create;
+    LSchemaOnlyErrors := TStringList.Create;
     try
       LPayload.RequestVersion := LRequestVersion;
       try
-        LReport.BeginPrint(LPrintDriver);
+        LReport.PrepareLiveContext(LOpenErrors);
+        CollectAgentSchemaOnlyContext(LReport, LSchemaOnlyFields, LSchemaOnlyErrors);
+        LPayload.OpenErrors := TStringList.Create;
+        LPayload.OpenErrors.Assign(LOpenErrors);
+        LPayload.SchemaOnlyFields := TStringList.Create;
+        LPayload.SchemaOnlyFields.Assign(LSchemaOnlyFields);
+        LPayload.SchemaOnlyErrors := TStringList.Create;
+        LPayload.SchemaOnlyErrors.Assign(LSchemaOnlyErrors);
       except
         on E: Exception do
           LPayload.ErrorMessage := E.Message;
@@ -1142,6 +1463,9 @@ begin
         LPayload.Free;
       LPayload := nil;
     finally
+      LSchemaOnlyErrors.Free;
+      LSchemaOnlyFields.Free;
+      LOpenErrors.Free;
       LPayload.Free;
     end;
    end);
@@ -1164,11 +1488,13 @@ begin
   if LPayload.ErrorMessage <> '' then
   begin
     FAliasReady := False;
+    SetSchemaOnlyContext(nil, nil);
     UpdateRefreshUIState;
     RpShowMessage(LPayload.ErrorMessage);
     Exit;
   end;
 
+  SetSchemaOnlyContext(LPayload.SchemaOnlyFields, LPayload.SchemaOnlyErrors);
   PopulateAliasFromReport(FRefreshAlias);
   if FRefreshReport <> nil then
   begin
@@ -1716,6 +2042,39 @@ var
       'Field from dataset ' + ADatasetAlias);
   end;
 
+  function CreateSchemaFieldObject(const AEntry: string): TJSONObject;
+  var
+    LDatasetAlias: string;
+    LFieldName: string;
+    LFieldType: string;
+  begin
+    LDatasetAlias := SchemaFieldEntryAlias(AEntry);
+    LFieldName := SchemaFieldEntryFieldName(AEntry);
+    LFieldType := SchemaFieldEntryDataType(AEntry);
+    Result := CreateCatalogEntry(
+      LDatasetAlias + '.' + LFieldName + ':' + LFieldType,
+      'Field from dataset ' + LDatasetAlias);
+  end;
+
+  function HasFieldModel(const AModel: string): Boolean;
+  var
+    K: Integer;
+    LExisting: TJSONObject;
+  begin
+    Result := False;
+    for K := 0 to LFields.Count - 1 do
+    begin
+      if not (LFields.Items[K] is TJSONObject) then
+        Continue;
+      LExisting := TJSONObject(LFields.Items[K]);
+      if (LExisting.Values['model'] <> nil) and SameText(LExisting.Values['model'].Value, AModel) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
   function CreateParameterObject(AParam: TRpParam): TJSONObject;
   var
     LDatasets: TJSONArray;
@@ -1792,6 +2151,20 @@ begin
         LField := LDataset.Fields[J];
         LFields.AddElement(CreateFieldObject(LAlias, LField));
       end;
+    end;
+  end;
+
+  if FSchemaOnlyFields <> nil then
+  begin
+    for I := 0 to FSchemaOnlyFields.Count - 1 do
+    begin
+      if Trim(FSchemaOnlyFields[I]) = '' then
+        Continue;
+      if HasFieldModel(SchemaFieldEntryAlias(FSchemaOnlyFields[I]) + '.' +
+        SchemaFieldEntryFieldName(FSchemaOnlyFields[I]) + ':' +
+        SchemaFieldEntryDataType(FSchemaOnlyFields[I])) then
+        Continue;
+      LFields.AddElement(CreateSchemaFieldObject(FSchemaOnlyFields[I]));
     end;
   end;
 

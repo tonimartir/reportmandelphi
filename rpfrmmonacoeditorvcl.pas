@@ -85,6 +85,7 @@ type
     FBaseHubDatabaseId: Int64;
     FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
+    FOnSchemaChanged: TNotifyEvent;
     FAppDataPath: string;
     FEditorReady: Boolean;
     FUpdatingFromBrowser: Boolean;
@@ -151,6 +152,7 @@ type
     property AgentSecret: string read GetAgentSecret;
     property AgentAiId: Int64 read GetAgentAiId;
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
+    property OnSchemaChanged: TNotifyEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnAuditSql: TAuditSqlEvent read FOnAuditSql write FOnAuditSql;
   end;
 
@@ -803,6 +805,9 @@ begin
     FHubDatabaseId := FBaseHubDatabaseId;
     FHubSchemaId := 0;
   end;
+
+  if Assigned(FOnSchemaChanged) then
+    FOnSchemaChanged(Self);
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(

@@ -141,6 +141,7 @@ type
     procedure Initialize(const ACurrentExpression, AInitialAssistantMessage: string);
     procedure StartOnlineInitialization;
     procedure StartDesignPrompt(const APrompt: string);
+    procedure RefreshLayout;
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
@@ -305,21 +306,47 @@ end;
 
 procedure TFRpChatFrame.RefreshTopLayout;
 begin
+  DisableAlign;
+  try
+  if PTop <> nil then
+    PTop.SetBounds(0, 0, PRoot.ClientWidth, PTop.Height);
+  if GridTop <> nil then
+    GridTop.SetBounds(0, 0, PTop.ClientWidth, PTop.ClientHeight);
   if GridTop <> nil then
     GridTop.Realign;
   if PTop <> nil then
     PTop.Realign;
+  if PLoginHost <> nil then
+    PLoginHost.Realign;
   if PAISelectionHost <> nil then
     PAISelectionHost.Realign;
   if PSchemaHost <> nil then
     PSchemaHost.Realign;
+  if FLoginFrame <> nil then
+  begin
+    FLoginFrame.SetBounds(0, 0, PLoginHost.ClientWidth, PLoginHost.ClientHeight);
+    FLoginFrame.RefreshLayout;
+  end;
   if FAISelection <> nil then
   begin
     FAISelection.SetBounds(0, 0, PAISelectionHost.ClientWidth,
       PAISelectionHost.ClientHeight);
-    FAISelection.Realign;
-    FAISelection.Resize;
+    FAISelection.RefreshLayout;
   end;
+  if PSchemaHost <> nil then
+    PSchemaHost.Realign;
+  finally
+    EnableAlign;
+  end;
+  if PRoot <> nil then
+    PRoot.Realign;
+  Invalidate;
+end;
+
+procedure TFRpChatFrame.RefreshLayout;
+begin
+  RefreshTopLayout;
+  UpdateButtons;
 end;
 
 procedure TFRpChatFrame.AuthChanged(ASuccess: Boolean);

@@ -335,7 +335,9 @@ type
    procedure Createnew;
    // Print functions
    procedure ActivateDatasets;
+  procedure ActivateDatasetsTolerant(AOpenErrors: TStrings);
    procedure DeActivateDatasets;
+  procedure PrepareLiveContext(AOpenErrors: TStrings);
    procedure AddTotalPagesItem(apageindex,aobjectindex:integer;
     adisplayformat:widestring);
    function IsDotNet:boolean;
@@ -1254,6 +1256,167 @@ begin
   Raise;
  end;
 end;
+
+  procedure TRpBaseReport.ActivateDatasetsTolerant(AOpenErrors: TStrings);
+  var
+   i,index:integer;
+   alias:string;
+   dbinfo:TRpDatabaseInfoItem;
+   dbalias:string;
+   LErrorKey: string;
+  begin
+   if AOpenErrors <> nil then
+    AOpenErrors.Clear;
+   if FDataInfo.Count<1 then
+    exit;
+
+   for i:=0 to FDataInfo.Count-1 do
+   begin
+    FDataInfo.Items[i].Cached:=false;
+    FDataInfo.Items[i].SQLOverride:='';
+   end;
+   // The main datasets must be cached
+   for i:=0 to SubReports.Count-1 do
+   begin
+    alias:=SubReports.items[i].Subreport.Alias;
+    if Length(alias)>0 then
+    begin
+     index:=DataInfo.IndexOf(alias);
+     if index<0 then
+     begin
+      if AOpenErrors <> nil then
+        AOpenErrors.Values[alias] := SRpSubreportAliasNotFound+':'+alias;
+      Continue;
+     end;
+     dbalias:=UpperCase(FDataInfo.Items[index].DatabaseAlias);
+     index:=DatabaseInfo.IndexOf(dbalias);
+     if index<0 then
+     begin
+      if AOpenErrors <> nil then
+        AOpenErrors.Values[alias] := SRpSubreportAliasNotFound+':'+alias;
+      Continue;
+     end;
+     dbinfo:=DatabaseInfo.Items[index];
+     index:=DataInfo.IndexOf(alias);
+     if (Not (dbinfo.Driver in [rpfiredac,rpdataibx,rpdatamybase,rpdatazeos])) then
+     begin
+      FDataInfo.Items[index].Cached:=true;
+     end;
+    end;
+   end;
+
+   for i:=0 to FDataInfo.Count-1 do
+   begin
+    // Watch if external dataset
+    if Assigned(FAliasList) then
+    begin
+     index:=FAliasList.List.indexof(FDataInfo.Items[i].Alias);
+     if index>=0 then
+     begin
+      if Assigned(FAliasList.List.Items[index].dataset) then
+      begin
+       FDataInfo.Items[i].Cached:=false;
+       FDataInfo.Items[i].Dataset:=FAliasList.List.Items[index].dataset;
+      end;
+     end;
+    end;
+    CheckProgress(false);
+   end;
+
+   for i:=0 to FDataInfo.Count-1 do
+   begin
+    if not FDataInfo.Items[i].OpenOnStart then
+      Continue;
+    try
+     UpdateParamsBeforeOpen(i,true);
+     FDataInfo.Items[i].Connect(DatabaseInfo,Params);
+    except
+     on E: Exception do
+     begin
+      if AOpenErrors <> nil then
+      begin
+       LErrorKey := Trim(FDataInfo.Items[i].Alias);
+       if LErrorKey = '' then
+         LErrorKey := Trim(FDataInfo.Items[i].Name);
+       if LErrorKey = '' then
+         LErrorKey := IntToStr(i + 1);
+       AOpenErrors.Values[LErrorKey] := E.Message;
+      end;
+     end;
+    end;
+   end;
+  end;
+
+  procedure TRpBaseReport.PrepareLiveContext(AOpenErrors: TStrings);
+  var
+   i,index:integer;
+   item:TRpAliaslistItem;
+   paramname:string;
+   param1: TRpParam;
+  begin
+   DeActivateDatasets;
+
+   InitEvaluator;
+   AddReportItemsToEvaluator(FEvaluator);
+
+   // Evaluate parameter expressions needed before datasource open.
+   for i:=0 to Params.Count-1 do
+   begin
+    param1:=params.Items[i];
+    if param1.ParamType=rpParamExpreB then
+    begin
+     paramname:=param1.Name;
+     try
+      if Not VarIsNull(param1.Value) then
+      begin
+       FEvaluator.EvaluateText(paramname+':=('+String(param1.Value)+')');
+       param1.LastValue:=FEvaluator.EvaluateText(paramname);
+      end;
+     except
+      on E:Exception do
+      begin
+  {$IFDEF DOTNETD}
+       Raise Exception.Create(E.Message+SRpParameter+'-'+paramname);
+  {$ENDIF}
+  {$IFNDEF DOTNETD}
+       E.Message:=E.Message+SRpParameter+'-'+paramname;
+       Raise;
+  {$ENDIF}
+      end;
+     end;
+    end
+    else
+    begin
+     param1.LastValue:=param1.ListValue;
+    end;
+   end;
+
+   FDataAlias.List.Clear;
+   for i:=0 to DataInfo.Count-1 do
+   begin
+    item:=FDataAlias.List.Add;
+    item.Alias:=DataInfo.Items[i].Alias;
+    DataInfo.Items[i].OnConnect:=item.CacheFields;
+    DataInfo.Items[i].OnDisConnect:=item.UnCacheFields;
+   end;
+
+   ActivateDatasetsTolerant(AOpenErrors);
+
+   for i:=0 to DataInfo.Count-1 do
+   begin
+    index:=FDataAlias.List.indexof(DataInfo.Items[i].Alias);
+    if index<0 then
+      Continue;
+    item:=FDataAlias.List.Items[index];
+  {$IFDEF USERPDATASET}
+    if Datainfo.Items[i].Cached then
+     item.Dataset:=DataInfo.Items[i].CachedDataset
+    else
+  {$ENDIF}
+     item.Dataset:=DataInfo.Items[i].Dataset;
+   end;
+   FEvaluator.Rpalias:=FDataAlias;
+  end;
 
 procedure TRpBaseReport.DeActivateDatasets;
 var

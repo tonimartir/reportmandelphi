@@ -105,6 +105,10 @@ type
   public
     RequestVersion: Integer;
     ErrorMessage: string;
+    OpenErrors: TStringList;
+    SchemaOnlyFields: TStringList;
+    SchemaOnlyErrors: TStringList;
+    destructor Destroy; override;
   end;
 
   TFRpMainFVCL = class(TForm)
@@ -486,6 +490,14 @@ implementation
 uses rpmdfdatasetsvcl, rpchatdialogvcl;
 
 {$R *.dfm}
+
+destructor TRpQueuedDesignContextPayload.Destroy;
+begin
+ OpenErrors.Free;
+ SchemaOnlyFields.Free;
+ SchemaOnlyErrors.Free;
+ inherited Destroy;
+end;
 
 destructor TFRpMainFVCL.Destroy;
 begin
@@ -888,6 +900,19 @@ begin
  UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
+ TThread.Queue(nil,
+  procedure
+  begin
+   if (fchatframe <> nil) and (fcuepanel <> nil) and (fchattab <> nil) and mainscrollbox.Visible then
+   begin
+    MainScrollBox.Realign;
+    frightpanel.Realign;
+    fcuepanel.Realign;
+    fcuepages.Realign;
+    fchattab.Realign;
+    fchatframe.RefreshLayout;
+   end;
+  end);
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -3170,7 +3195,7 @@ end;
       LConnectionParams.Clear;
       LDatabaseInfo.LoadConnectionParams(LConnectionParams);
       LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
-      LDataSource.Config.HubSchemaId := StrToInt64Def(LConnectionParams.Values['HubSchemaId'], 0);
+        LDataSource.Config.HubSchemaId := LDataInfo.HubSchemaId;
      end;
 
      Result.DataSources.Add(LDataSource);
@@ -3320,15 +3345,25 @@ begin
    procedure
    var
     LPayload: TRpQueuedDesignContextPayload;
-    LPrintDriver: TRpPDFDriver;
+      LOpenErrors: TStringList;
+      LSchemaOnlyFields: TStringList;
+      LSchemaOnlyErrors: TStringList;
    begin
     LPayload := TRpQueuedDesignContextPayload.Create;
-    LPrintDriver := TRpPDFDriver.Create;
+      LOpenErrors := TStringList.Create;
+      LSchemaOnlyFields := TStringList.Create;
+      LSchemaOnlyErrors := TStringList.Create;
     try
       LPayload.RequestVersion := LRequestVersion;
-      LPrintDriver.PDFConformance := LReport.PDFConformance;
       try
-        LReport.BeginPrint(LPrintDriver);
+          LReport.PrepareLiveContext(LOpenErrors);
+          CollectAgentSchemaOnlyContext(LReport, LSchemaOnlyFields, LSchemaOnlyErrors);
+          LPayload.OpenErrors := TStringList.Create;
+          LPayload.OpenErrors.Assign(LOpenErrors);
+          LPayload.SchemaOnlyFields := TStringList.Create;
+          LPayload.SchemaOnlyFields.Assign(LSchemaOnlyFields);
+          LPayload.SchemaOnlyErrors := TStringList.Create;
+          LPayload.SchemaOnlyErrors.Assign(LSchemaOnlyErrors);
       except
         on E: Exception do
           LPayload.ErrorMessage := E.Message;
@@ -3337,7 +3372,9 @@ begin
       PostDesignContextPayload(LPayload);
       LPayload := nil;
     finally
-      LPrintDriver.Free;
+        LSchemaOnlyErrors.Free;
+        LSchemaOnlyFields.Free;
+        LOpenErrors.Free;
       LPayload.Free;
     end;
    end);
@@ -3493,7 +3530,12 @@ end;
       LErrorMessage := LPayload.ErrorMessage
     else
     begin
-      FDesignChatContextJson := BuildDesignExpressionContextJson(report, RpAlias1, LErrorMessage);
+      FDesignChatContextJson := BuildDesignExpressionContextJson(report,
+        RpAlias1,
+        LPayload.OpenErrors,
+        LPayload.SchemaOnlyFields,
+        LPayload.SchemaOnlyErrors,
+        LErrorMessage);
       FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
     end;
 

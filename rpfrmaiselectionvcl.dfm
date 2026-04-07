@@ -118,16 +118,10 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
               end>
             TabOrder = 0
             object ComboAIProvider: TComboBox
-              AlignWithMargins = True
-              Left = 4
-              Top = 11
+              Left = 0
+              Top = 17
               Width = 241
-              Height = 28
-              Margins.Left = 4
-              Margins.Top = 11
-              Margins.Right = 4
-              Margins.Bottom = 11
-              Align = alClient
+              Height = 21
               Style = csDropDownList
               ItemIndex = 0
               TabOrder = 0
@@ -138,16 +132,10 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
                 'Precision')
             end
             object ComboAIMode: TComboBox
-              AlignWithMargins = True
-              Left = 253
-              Top = 11
+              Left = 249
+              Top = 17
               Width = 241
-              Height = 28
-              Margins.Left = 4
-              Margins.Top = 11
-              Margins.Right = 4
-              Margins.Bottom = 11
-              Align = alClient
+              Height = 21
               Style = csDropDownList
               ItemIndex = 0
               TabOrder = 1

@@ -391,11 +391,13 @@ type
    FName: string;
   FSQLExplanation: WideString;
   FSQLExplanationError: WideString;
+  FHubSchemaId: Int64;
    procedure SetDataUnions(Value:TStrings);
    procedure SetDatabaseAlias(Value:string);
    procedure SetAlias(Value:string);
    procedure SetDataSource(Value:string);
    procedure SetSQL(Value:widestring);
+  procedure SetHubSchemaId(const Value: Int64);
 {$IFDEF USEADO}
    procedure ADOQueryBeforeOpen(dataset: TDataSet);
 {$ENDIF}
@@ -434,6 +436,7 @@ type
    property Name: string read FName write FName;
   property SQLExplanation: WideString read FSQLExplanation write FSQLExplanation;
   property SQLExplanationError: WideString read FSQLExplanationError write FSQLExplanationError;
+  property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
   published
    property Alias:string read FAlias write SetAlias;
    property DatabaseAlias:string read FDatabaseAlias write SetDatabaseAlias;
@@ -1105,6 +1108,14 @@ begin
  Changed(False);
 end;
 
+procedure TRpDataInfoItem.SetHubSchemaId(const Value: Int64);
+begin
+ if FHubSchemaId=Value then
+  Exit;
+ FHubSchemaId:=Value;
+ Changed(False);
+end;
+
 { TRpDataInfoItem - IInterface }
 
 function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
@@ -1147,6 +1158,11 @@ begin
  if SameText(propName, 'SQL') then
  begin
   SetSQL(value);
+  exit;
+ end;
+ if SameText(propName, 'HubSchemaId') then
+ begin
+  SetHubSchemaId(value);
   exit;
  end;
  if SameText(propName, 'DataSource') then
@@ -1204,6 +1220,11 @@ begin
   Result := FSQLExplanationError;
   exit;
  end;
+ if SameText(propName, 'HubSchemaId') then
+ begin
+  Result := FHubSchemaId;
+  exit;
+ end;
  if SameText(propName, 'DataSource') then
  begin
   Result := FDataSource;
@@ -1238,6 +1259,7 @@ begin
   FSQL:=TRpDataInfoItem(Source).FSQL;
   FSQLExplanation:=TRpDataInfoItem(Source).FSQLExplanation;
   FSQLExplanationError:=TRpDataInfoItem(Source).FSQLExplanationError;
+  FHubSchemaId:=TRpDataInfoItem(Source).FHubSchemaId;
   FMyBaseFilename:=TRpDataInfoItem(Source).FMyBaseFilename;
   FMyBaseFields:=TRpDataInfoItem(Source).FMyBaseFields;
   FMyBaseIndexFields:=TRpDataInfoItem(Source).FMyBaseIndexFields;

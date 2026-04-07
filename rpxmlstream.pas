@@ -124,6 +124,7 @@ begin
  WritePropertyW('SQL',dinfo.SQL,Stream);
  WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
  WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
+ WritePropertyI('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
  WritePropertyS('DATASOURCE',dinfo.DataSource,Stream);
  WritePropertyS('MYBASEFILENAME',dinfo.MyBaseFileName,Stream);
  WritePropertyS('MYBASEFIELDS',dinfo.MyBaseFields,Stream);
@@ -1177,6 +1178,9 @@ begin
    else
    if propname='SQLEXPLANATIONERROR' then
     ditem.SQLExplanationError:=RpStringToWString(propvalue)
+  else
+  if propname='HUBSCHEMAID' then
+   ditem.HubSchemaId:=StrToInt64Def(propvalue,0)
  else
  if propname='DATASOURCE' then
   ditem.DataSource:=RpStringToString(propvalue)

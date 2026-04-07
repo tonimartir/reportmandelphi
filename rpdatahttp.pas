@@ -70,6 +70,7 @@ type
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function GetTableSchema(const ASql: string): TJSONObject;
     function ModifyReport(ARequest: TRpApiModifyReportRequest;
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
@@ -622,6 +623,32 @@ begin
       LResponseStream.Free;
     end;
 {$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.GetTableSchema(const ASql: string): TJSONObject;
+var
+  LRequest: TJSONObject;
+  LResponseStream: TStringStream;
+begin
+  Result := nil;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('sql', ASql);
+    if FHubDatabaseId <> 0 then
+      LRequest.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('api/agent/gettableschema', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        Result := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
   finally
     LRequest.Free;
   end;

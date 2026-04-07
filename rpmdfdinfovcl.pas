@@ -279,6 +279,7 @@ begin
   op.AddProperty('alias',ptString,origDS.Alias,Null);
   op.AddProperty('databaseAlias',ptString,origDS.DatabaseAlias,Null);
   op.AddProperty('sql',ptString,origDS.SQL,Null);
+  op.AddProperty('hubSchemaId',ptInteger,origDS.HubSchemaId,Null);
   op.AddProperty('dataSource',ptString,origDS.DataSource,Null);
   op.AddProperty('groupUnion',ptBoolean,origDS.GroupUnion,Null);
   op.AddProperty('openOnStart',ptBoolean,origDS.OpenOnStart,Null);
@@ -298,6 +299,7 @@ begin
   op.AddProperty('alias',ptString,Null,newDS.Alias);
   op.AddProperty('databaseAlias',ptString,Null,newDS.DatabaseAlias);
   op.AddProperty('sql',ptString,Null,newDS.SQL);
+  op.AddProperty('hubSchemaId',ptInteger,Null,newDS.HubSchemaId);
   op.AddProperty('dataSource',ptString,Null,newDS.DataSource);
   op.AddProperty('groupUnion',ptBoolean,Null,newDS.GroupUnion);
   op.AddProperty('openOnStart',ptBoolean,Null,newDS.OpenOnStart);
@@ -320,6 +322,8 @@ begin
     op.AddProperty('databaseAlias',ptString,origDS.DatabaseAlias,newDS.DatabaseAlias);
    if origDS.SQL<>newDS.SQL then
     op.AddProperty('sql',ptString,origDS.SQL,newDS.SQL);
+  if origDS.HubSchemaId<>newDS.HubSchemaId then
+   op.AddProperty('hubSchemaId',ptInteger,origDS.HubSchemaId,newDS.HubSchemaId);
    if origDS.DataSource<>newDS.DataSource then
     op.AddProperty('dataSource',ptString,origDS.DataSource,newDS.DataSource);
    if origDS.GroupUnion<>newDS.GroupUnion then

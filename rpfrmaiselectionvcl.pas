@@ -62,6 +62,7 @@ type
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
     procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
       AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
+    procedure LayoutNonInferenceControls;
     procedure LayoutGaugeControls;
     procedure SetGaugeValue(const Value: Double);
     procedure UpdateSpinnerState;
@@ -75,6 +76,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure Resize; override;
+    procedure RefreshLayout;
     procedure RefreshStatusInBackground;
     procedure RefreshState;
     procedure UpdateFromUserProfile(AProfile: TJSONObject);
@@ -126,8 +128,73 @@ end;
 procedure TFRpAISelectionVCL.Resize;
 begin
   inherited;
+  RefreshLayout;
+end;
+
+procedure TFRpAISelectionVCL.RefreshLayout;
+begin
+  if PAI <> nil then
+    PAI.SetBounds(0, 0, ClientWidth, ClientHeight);
+  if PNonInference <> nil then
+    PNonInference.SetBounds(0, 0, PAI.ClientWidth, PAI.ClientHeight);
+  if PInferenceProgress <> nil then
+    PInferenceProgress.SetBounds(0, 0, PAI.ClientWidth, PAI.ClientHeight);
+  if GridAI <> nil then
+  begin
+    GridAI.SetBounds(0, 0, PNonInference.ClientWidth, PNonInference.ClientHeight);
+    GridAI.Realign;
+  end;
+  if GridCombos <> nil then
+  begin
+    GridCombos.SetBounds(0, 0, PActionHost.ClientWidth, PActionHost.ClientHeight);
+    GridCombos.Realign;
+  end;
+  if GridInference <> nil then
+  begin
+    GridInference.SetBounds(0, 0, PInferenceProgress.ClientWidth, PInferenceProgress.ClientHeight);
+    GridInference.Realign;
+  end;
+  LayoutNonInferenceControls;
   LayoutGaugeControls;
   UpdateDropDownWidths;
+  Realign;
+  Invalidate;
+end;
+
+procedure TFRpAISelectionVCL.LayoutNonInferenceControls;
+const
+  ComboGap = 8;
+  MinComboWidth = 96;
+var
+  LAvailableWidth: Integer;
+  LComboWidth: Integer;
+  LComboHeight: Integer;
+  LTop: Integer;
+begin
+  if (GridCombos = nil) or (ComboAIProvider = nil) or (ComboAIMode = nil) then
+    Exit;
+
+  LAvailableWidth := GridCombos.ClientWidth;
+  if LAvailableWidth <= 0 then
+    Exit;
+
+  LComboWidth := (LAvailableWidth - ComboGap) div 2;
+  if LComboWidth < MinComboWidth then
+    LComboWidth := MinComboWidth;
+
+  LComboHeight := ComboAIProvider.Height;
+  if ComboAIMode.Height > LComboHeight then
+    LComboHeight := ComboAIMode.Height;
+  if LComboHeight <= 0 then
+    LComboHeight := 21;
+
+  LTop := (GridCombos.ClientHeight - LComboHeight) div 2;
+  if LTop < 0 then
+    LTop := 0;
+
+  ComboAIProvider.SetBounds(0, LTop, LComboWidth, LComboHeight);
+  ComboAIMode.SetBounds(LComboWidth + ComboGap, LTop,
+    LAvailableWidth - LComboWidth - ComboGap, LComboHeight);
 end;
 
 procedure TFRpAISelectionVCL.LayoutGaugeControls;
@@ -396,6 +463,9 @@ begin
   end;
 
   SendMessage(ComboAIProvider.Handle, CB_SETDROPPEDWIDTH, LMaxWidth, 0);
+
+  if ComboAIMode.HandleAllocated then
+    SendMessage(ComboAIMode.Handle, CB_SETDROPPEDWIDTH, ComboAIMode.Width, 0);
 end;
 
 function TFRpAISelectionVCL.GetAITier: string;
