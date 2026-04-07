@@ -1800,6 +1800,7 @@ begin
  Result.ReportFormat := rdfXml;
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
+ Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
  Result.ApiKey := FChat.GetSchemaApiKey;
  Result.Config.HubDatabaseId := FChat.GetHubDatabaseId;
  Result.Config.HubSchemaId := FChat.GetHubSchemaId;
@@ -1846,6 +1847,7 @@ end;
       Result := TRpApiPreprocessSqlContextRequest.Create;
       Result.AITier := RpAITierTypeFromString(FChat.GetAITier);
       Result.Mode := RpReportDesignerModeFromString(FChat.GetAIMode);
+      Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
       Result.ApiKey := FChat.GetSchemaApiKey;
       Result.Config.HubDatabaseId := FChat.GetHubDatabaseId;
       Result.Config.HubSchemaId := FChat.GetHubSchemaId;

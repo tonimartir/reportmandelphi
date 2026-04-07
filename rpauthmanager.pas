@@ -78,6 +78,7 @@ type
     FTiers: TArray<TRpTier>;
     FIsLoggedIn: Boolean;
     FAIEnabled: Boolean;
+    FAILanguage: string;
     FOnLog: TRpAuthLog;
     FAuthListeners: TList<TRpAuthEvent>;
     FDispatchHandle: HWND;
@@ -95,6 +96,7 @@ type
     function GenerateInstallId: string;
     procedure SetIsLoggedIn(Value: Boolean);
     procedure SetAIEnabled(Value: Boolean);
+    procedure SetAILanguage(const Value: string);
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
@@ -109,10 +111,14 @@ type
     procedure SaveConfig;
     procedure LoadConfig;
     procedure ClearConfig;
+    class function ResolveDefaultAILanguage: string; static;
+    class function NormalizeAILanguageValue(const AValue: string): string; static;
 
   public
     class function Instance: TRpAuthManager;
     destructor Destroy; override;
+    class function GetSupportedAILanguages: TArray<string>; static;
+    class function GetAILanguageDisplayName(const AValue: string): string; static;
 
 {$IFDEF FIREDAC}
     procedure ConfigureDebugHttpClient(AHttpClient: TNetHTTPClient);
@@ -147,6 +153,7 @@ type
     property Tiers: TArray<TRpTier> read FTiers;
     property IsLoggedIn: Boolean read FIsLoggedIn;
     property AIEnabled: Boolean read FAIEnabled write SetAIEnabled;
+    property AILanguage: string read FAILanguage write SetAILanguage;
     property OnLog: TRpAuthLog read FOnLog write FOnLog;
   end;
 
@@ -164,6 +171,7 @@ begin
   inherited Create;
   FIsLoggedIn := False;
   FAIEnabled := True;
+  FAILanguage := ResolveDefaultAILanguage;
   FAuthListeners := TList<TRpAuthEvent>.Create;
   FDispatchHandle := AllocateHWnd(DispatchWndProc);
   FInstallId := GenerateInstallId;
@@ -689,6 +697,77 @@ begin
   SaveConfig;
 end;
 
+procedure TRpAuthManager.SetAILanguage(const Value: string);
+var
+  LNormalized: string;
+begin
+  LNormalized := NormalizeAILanguageValue(Value);
+  if SameText(FAILanguage, LNormalized) then
+    Exit;
+
+  FAILanguage := LNormalized;
+  SaveConfig;
+end;
+
+class function TRpAuthManager.GetSupportedAILanguages: TArray<string>;
+begin
+  Result := TArray<string>.Create(
+    'English',
+    'Spanish',
+    'Italian',
+    'French',
+    'German',
+    'Portuguese',
+    'Chinese',
+    'Catalan');
+end;
+
+class function TRpAuthManager.GetAILanguageDisplayName(const AValue: string): string;
+begin
+  Result := NormalizeAILanguageValue(AValue);
+end;
+
+class function TRpAuthManager.ResolveDefaultAILanguage: string;
+var
+  LBuffer: array[0..15] of Char;
+  LCode: string;
+begin
+  LCode := '';
+  if GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, LBuffer,
+    Length(LBuffer)) > 0 then
+    LCode := LowerCase(string(LBuffer));
+
+  Result := NormalizeAILanguageValue(LCode);
+end;
+
+class function TRpAuthManager.NormalizeAILanguageValue(const AValue: string): string;
+var
+  LValue: string;
+begin
+  LValue := Trim(AValue);
+  if LValue = '' then
+    Exit('English');
+
+  if SameText(LValue, 'English') or SameText(LValue, 'en') or SameText(LValue, 'en-US') or SameText(LValue, 'en-GB') then
+    Exit('English');
+  if SameText(LValue, 'Spanish') or SameText(LValue, 'es') or SameText(LValue, 'es-ES') then
+    Exit('Spanish');
+  if SameText(LValue, 'Italian') or SameText(LValue, 'it') or SameText(LValue, 'it-IT') then
+    Exit('Italian');
+  if SameText(LValue, 'French') or SameText(LValue, 'fr') or SameText(LValue, 'fr-FR') then
+    Exit('French');
+  if SameText(LValue, 'German') or SameText(LValue, 'de') or SameText(LValue, 'de-DE') then
+    Exit('German');
+  if SameText(LValue, 'Portuguese') or SameText(LValue, 'pt') or SameText(LValue, 'pt-PT') or SameText(LValue, 'pt-BR') then
+    Exit('Portuguese');
+  if SameText(LValue, 'Chinese') or SameText(LValue, 'zh') or SameText(LValue, 'zh-CN') or SameText(LValue, 'zh-TW') then
+    Exit('Chinese');
+  if SameText(LValue, 'Catalan') or SameText(LValue, 'ca') or SameText(LValue, 'ca-ES') then
+    Exit('Catalan');
+
+  Result := 'English';
+end;
+
 procedure TRpAuthManager.RegisterAuthListener(AListener: TRpAuthEvent);
 begin
   if FAuthListeners.IndexOf(AListener) < 0 then
@@ -1205,6 +1284,7 @@ begin
     LIni.WriteString('Profile', 'FreeRemaining', IntToStr(FProfile.FreeRemaining));
     LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
     LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
+    LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
     LIni.UpdateFile;
   finally
     LIni.Free;
@@ -1233,6 +1313,8 @@ begin
     FProfile.FreeRemaining := StrToInt64Def(LIni.ReadString('Profile', 'FreeRemaining', '0'), 0);
     FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
     FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
+    FAILanguage := NormalizeAILanguageValue(
+      LIni.ReadString('Preferences', 'AILanguage', FAILanguage));
     
     FIsLoggedIn := FToken <> '';
 
@@ -1254,6 +1336,7 @@ begin
     LIni.EraseSection('Auth');
     LIni.EraseSection('Profile');
     LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
+    LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
     LIni.UpdateFile;
   finally
     LIni.Free;

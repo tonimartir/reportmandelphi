@@ -33,7 +33,7 @@ uses
   rptypes,rpdatainfo,rpreport,rpfparamsvcl,rpmdfsampledatavcl, ActnList,
   rpdbbrowservcl,rpparams, System.Actions, System.ImageList,
   Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
-  rpfrmmonacoeditorvcl;
+  rpfrmmonacoeditorvcl, rpauthmanager;
 
 type
   TFRpDatasetsVCL = class(TFrame)
@@ -168,7 +168,7 @@ type
 
 implementation
 
-uses System.JSON, rpauthmanager, rpmdfdatatextvcl, rpxmlstream, rpbasereport;
+uses System.JSON, rpmdfdatatextvcl, rpxmlstream, rpbasereport;
 
 {$R *.DFM}
 
@@ -629,15 +629,8 @@ begin
 end;
 
 function TFRpDatasetsVCL.GetUserLanguageCode: string;
-var
-  LBuffer: array[0..15] of Char;
 begin
-  Result := '';
-  if GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, LBuffer,
-    Length(LBuffer)) > 0 then
-    Result := LowerCase(string(LBuffer));
-  if Result = '' then
-    Result := 'en';
+  Result := TRpAuthManager.Instance.AILanguage;
 end;
 
 procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AStage,

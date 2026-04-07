@@ -3124,6 +3124,7 @@ begin
  Result.ExistingContextJson := FDesignChatContextJson;
  Result.ReturnModifiedDocument := True;
  Result.SimplifiedPrompt := False;
+ Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
  Result.ApiKey := fchatframe.GetSchemaApiKey;
  Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
  Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
@@ -3170,6 +3171,7 @@ end;
       Result := TRpApiPreprocessSqlContextRequest.Create;
       Result.AITier := RpAITierTypeFromString(fchatframe.GetAITier);
       Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
+      Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
       Result.ApiKey := fchatframe.GetSchemaApiKey;
       Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
       Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;

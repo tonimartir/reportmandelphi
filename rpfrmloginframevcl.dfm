@@ -124,10 +124,6 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
   object PopupUser: TPopupMenu
     Left = 144
     Top = 8
-    object MenuItemProfile: TMenuItem
-      Caption = 'Profile Info'
-      OnClick = MenuItemProfileClick
-    end
     object N1: TMenuItem
       Caption = '-'
     end

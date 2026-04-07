@@ -24,18 +24,24 @@ type
     LabelArrow: TLabel;
     BtnLogin: TButton;
     PopupUser: TPopupMenu;
-    MenuItemProfile: TMenuItem;
     MenuItemLogout: TMenuItem;
     N1: TMenuItem;
     procedure BtnLoginClick(Sender: TObject);
+    procedure MenuItemLoginClick(Sender: TObject);
     procedure MenuItemLogoutClick(Sender: TObject);
-    procedure MenuItemProfileClick(Sender: TObject);
+    procedure MenuItemLanguageClick(Sender: TObject);
     procedure ImageAvatarClick(Sender: TObject);
   private
     FAvatarRequestVersion: Integer;
     FOnAuthChanged: TNotifyEvent;
+    FMenuItemLogin: TMenuItem;
+    FMenuItemLanguage: TMenuItem;
+    FMenuItemLogoutSeparator: TMenuItem;
     procedure WMApplyAvatar(var Message: TMessage); message WM_USER + 203;
     procedure UpdateUI;
+    procedure BuildPopupMenu;
+    procedure BuildLanguageMenu;
+    procedure UpdateLanguageMenu;
     procedure AuthChanged(ASuccess: Boolean);
     procedure DownloadAvatarAsync(const AUrl: string);
   protected
@@ -56,6 +62,7 @@ constructor TFRpLoginFrameVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FAvatarRequestVersion := 0;
+  BuildPopupMenu;
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
 end;
 
@@ -63,6 +70,52 @@ procedure TFRpLoginFrameVCL.AfterConstruction;
 begin
   inherited;
   UpdateUI;
+end;
+
+procedure TFRpLoginFrameVCL.BuildPopupMenu;
+begin
+  FMenuItemLogin := TMenuItem.Create(PopupUser);
+  FMenuItemLogin.Caption := 'Login';
+  FMenuItemLogin.OnClick := MenuItemLoginClick;
+
+  FMenuItemLanguage := TMenuItem.Create(PopupUser);
+  FMenuItemLanguage.Caption := 'Language';
+  BuildLanguageMenu;
+
+  FMenuItemLogoutSeparator := TMenuItem.Create(PopupUser);
+  FMenuItemLogoutSeparator.Caption := '-';
+
+  PopupUser.Items.Insert(0, FMenuItemLogin);
+  PopupUser.Items.Insert(1, FMenuItemLanguage);
+  PopupUser.Items.Insert(3, FMenuItemLogoutSeparator);
+end;
+
+procedure TFRpLoginFrameVCL.BuildLanguageMenu;
+var
+  LItem: TMenuItem;
+  LLanguage: string;
+begin
+  FMenuItemLanguage.Clear;
+  for LLanguage in TRpAuthManager.GetSupportedAILanguages do
+  begin
+    LItem := TMenuItem.Create(FMenuItemLanguage);
+    LItem.Caption := TRpAuthManager.GetAILanguageDisplayName(LLanguage);
+    LItem.Hint := LLanguage;
+    LItem.RadioItem := True;
+    LItem.OnClick := MenuItemLanguageClick;
+    FMenuItemLanguage.Add(LItem);
+  end;
+end;
+
+procedure TFRpLoginFrameVCL.UpdateLanguageMenu;
+var
+  I: Integer;
+  LCurrentLanguage: string;
+begin
+  LCurrentLanguage := TRpAuthManager.Instance.AILanguage;
+  FMenuItemLanguage.Caption := 'Language: ' + TRpAuthManager.GetAILanguageDisplayName(LCurrentLanguage);
+  for I := 0 to FMenuItemLanguage.Count - 1 do
+    FMenuItemLanguage.Items[I].Checked := SameText(FMenuItemLanguage.Items[I].Hint, LCurrentLanguage);
 end;
 
 procedure TFRpLoginFrameVCL.Resize;
@@ -102,6 +155,7 @@ const
   TierGap = 6;
   AvatarGap = 6;
   UserGap = 8;
+  GuestLeft = 8;
   ArrowRightMargin = 8;
 var
   LProfile: TRpProfile;
@@ -109,9 +163,15 @@ var
   LUserLeft: Integer;
   LUserWidth: Integer;
 begin
+  UpdateLanguageMenu;
   if TRpAuthManager.Instance.IsLoggedIn then
   begin
     BtnLogin.Visible := False;
+    FMenuItemLogin.Visible := False;
+    FMenuItemLanguage.Visible := True;
+    N1.Visible := True;
+    FMenuItemLogoutSeparator.Visible := True;
+    MenuItemLogout.Visible := True;
     LabelTier.Visible := True;
     ImageAvatar.Visible := True;
     LabelUser.Visible := True;
@@ -181,11 +241,26 @@ begin
   end
   else
   begin
-    BtnLogin.Visible := True;
+    BtnLogin.Visible := False;
+    FMenuItemLogin.Visible := True;
+    FMenuItemLanguage.Visible := True;
+    N1.Visible := False;
+    FMenuItemLogoutSeparator.Visible := False;
+    MenuItemLogout.Visible := False;
     LabelTier.Visible := False;
     ImageAvatar.Visible := False;
-    LabelUser.Visible := False;
-    LabelArrow.Visible := False;
+    LabelUser.Visible := True;
+    LabelArrow.Visible := True;
+    LabelUser.Caption := 'Guest (Login available)';
+    LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
+    LUserLeft := GuestLeft;
+    LUserWidth := LabelArrow.Left - LUserLeft - UserGap;
+    if LUserWidth < 0 then
+      LUserWidth := 0;
+    LabelUser.Left := LUserLeft;
+    LabelUser.Width := LUserWidth;
+    LabelUser.Top := (PContainer.Height - LabelUser.Height) div 2;
+    LabelArrow.Top := (PContainer.Height - LabelArrow.Height) div 2;
   end;
 end;
 
@@ -280,23 +355,32 @@ begin
   ShowLoginDialog(Self);
 end;
 
+procedure TFRpLoginFrameVCL.MenuItemLoginClick(Sender: TObject);
+begin
+  ShowLoginDialog(Self);
+end;
+
 procedure TFRpLoginFrameVCL.ImageAvatarClick(Sender: TObject);
 var
   LPoint: TPoint;
 begin
-  LPoint := PContainer.ClientToScreen(Point(ImageAvatar.Left, ImageAvatar.Top + ImageAvatar.Height));
+  UpdateLanguageMenu;
+  LPoint := PContainer.ClientToScreen(Point(PContainer.ClientWidth, PContainer.ClientHeight));
   PopupUser.Popup(LPoint.X, LPoint.Y);
+end;
+
+procedure TFRpLoginFrameVCL.MenuItemLanguageClick(Sender: TObject);
+begin
+  if Sender is TMenuItem then
+  begin
+    TRpAuthManager.Instance.AILanguage := TMenuItem(Sender).Hint;
+    UpdateUI;
+  end;
 end;
 
 procedure TFRpLoginFrameVCL.MenuItemLogoutClick(Sender: TObject);
 begin
   TRpAuthManager.Instance.Logout;
-end;
-
-procedure TFRpLoginFrameVCL.MenuItemProfileClick(Sender: TObject);
-begin
-  // Could show another dialog or just open portal
-  TRpAuthManager.Instance.OpenUrl(TRpAuthManager.Instance.GetPortalUrl);
 end;
 
 end.
