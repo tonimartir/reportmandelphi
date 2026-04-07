@@ -46,7 +46,11 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         ColumnCollection = <
           item
             SizeStyle = ssPercent
-            Value = 100.000000000000000000
+            Value = 50.000000000000000000
+          end
+          item
+            SizeStyle = ssPercent
+            Value = 50.000000000000000000
           end
           item
             SizeStyle = ssAuto
@@ -55,11 +59,16 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         ControlCollection = <
           item
             Column = 0
-            Control = PActionHost
+            Control = PProviderHost
             Row = 0
           end
           item
             Column = 1
+            Control = PModeHost
+            Row = 0
+          end
+          item
+            Column = 2
             Control = PGaugeHost
             Row = 0
           end>
@@ -70,81 +79,62 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
             Value = 100.000000000000000000
           end>
         TabOrder = 0
-        object PActionHost: TPanel
+        object PProviderHost: TPanel
           AlignWithMargins = True
           Left = 0
           Top = 0
-          Width = 495
+          Width = 241
           Height = 63
           Margins.Left = 0
           Margins.Top = 0
-          Margins.Right = 0
+          Margins.Right = 4
           Margins.Bottom = 0
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
-          object GridCombos: TGridPanel
+          object ComboAIProvider: TComboBox
             Left = 0
-            Top = 0
-            Width = 495
-            Height = 63
-            Align = alClient
-            BevelOuter = bvNone
-            ColumnCollection = <
-              item
-                SizeStyle = ssPercent
-                Value = 50.000000000000000000
-              end
-              item
-                SizeStyle = ssPercent
-                Value = 50.000000000000000000
-              end>
-            ControlCollection = <
-              item
-                Column = 0
-                Control = ComboAIProvider
-                Row = 0
-              end
-              item
-                Column = 1
-                Control = ComboAIMode
-                Row = 0
-              end>
-            ParentBackground = False
-            RowCollection = <
-              item
-                SizeStyle = ssPercent
-                Value = 100.000000000000000000
-              end>
+            Top = 17
+            Width = 241
+            Height = 21
+            Align = alTop
+            Style = csDropDownList
+            ItemIndex = 0
             TabOrder = 0
-            object ComboAIProvider: TComboBox
-              Left = 0
-              Top = 17
-              Width = 241
-              Height = 21
-              Style = csDropDownList
-              ItemIndex = 0
-              TabOrder = 0
-              Text = 'Standard'
-              OnChange = ComboAIProviderChange
-              Items.Strings = (
-                'Standard'
-                'Precision')
-            end
-            object ComboAIMode: TComboBox
-              Left = 249
-              Top = 17
-              Width = 241
-              Height = 21
-              Style = csDropDownList
-              ItemIndex = 0
-              TabOrder = 1
-              Text = 'Fast'
-              OnChange = ComboAIModeChange
-              Items.Strings = (
-                'Fast'
-                'Reasoning')
-            end
+            Text = 'Standard'
+            OnChange = ComboAIProviderChange
+            Items.Strings = (
+              'Standard'
+              'Precision')
+          end
+        end
+        object PModeHost: TPanel
+          AlignWithMargins = True
+          Left = 245
+          Top = 0
+          Width = 240
+          Height = 63
+          Margins.Left = 4
+          Margins.Top = 0
+          Margins.Right = 4
+          Margins.Bottom = 0
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 1
+          object ComboAIMode: TComboBox
+            Left = 0
+            Top = 17
+            Width = 240
+            Height = 21
+            Align = alTop
+            Style = csDropDownList
+            ItemIndex = 0
+            TabOrder = 0
+            Text = 'Fast'
+            OnChange = ComboAIModeChange
+            Items.Strings = (
+              'Fast'
+              'Reasoning')
           end
         end
         object PGaugeHost: TPanel

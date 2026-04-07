@@ -71,12 +71,16 @@ object FRpLoginFrameVCL: TFRpLoginFrameVCL
       Top = 12
       Width = 73
       Height = 20
+      Anchors = [akLeft, akTop, akRight]
+      AutoSize = False
       Cursor = crHandPoint
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
       Margins.Bottom = 4
       Caption = 'User Name'
+      Layout = tlCenter
+      Transparent = True
       Visible = False
       OnClick = ImageAvatarClick
     end

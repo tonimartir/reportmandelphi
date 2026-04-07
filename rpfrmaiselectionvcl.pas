@@ -34,8 +34,8 @@ type
     PAI: TPanel;
     PNonInference: TPanel;
     GridAI: TGridPanel;
-    PActionHost: TPanel;
-    GridCombos: TGridPanel;
+    PProviderHost: TPanel;
+    PModeHost: TPanel;
     ComboAIProvider: TComboBox;
     ComboAIMode: TComboBox;
     PInferenceProgress: TPanel;
@@ -104,6 +104,8 @@ begin
   inherited Create(AOwner);
   FGaugeValue := 0.0;
   FSpinnerAngle := 270;
+  ComboAIProvider.Align := alTop;
+  ComboAIMode.Align := alTop;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
   SpinnerTimer.Enabled := False;
@@ -144,11 +146,6 @@ begin
     GridAI.SetBounds(0, 0, PNonInference.ClientWidth, PNonInference.ClientHeight);
     GridAI.Realign;
   end;
-  if GridCombos <> nil then
-  begin
-    GridCombos.SetBounds(0, 0, PActionHost.ClientWidth, PActionHost.ClientHeight);
-    GridCombos.Realign;
-  end;
   if GridInference <> nil then
   begin
     GridInference.SetBounds(0, 0, PInferenceProgress.ClientWidth, PInferenceProgress.ClientHeight);
@@ -157,30 +154,23 @@ begin
   LayoutNonInferenceControls;
   LayoutGaugeControls;
   UpdateDropDownWidths;
-  Realign;
   Invalidate;
 end;
 
 procedure TFRpAISelectionVCL.LayoutNonInferenceControls;
 const
-  ComboGap = 8;
-  MinComboWidth = 96;
+  ComboHorizontalPadding = 2;
 var
-  LAvailableWidth: Integer;
-  LComboWidth: Integer;
   LComboHeight: Integer;
-  LTop: Integer;
+  LProviderTop: Integer;
+  LModeTop: Integer;
 begin
-  if (GridCombos = nil) or (ComboAIProvider = nil) or (ComboAIMode = nil) then
+  if (PProviderHost = nil) or (PModeHost = nil) or (ComboAIProvider = nil) or
+    (ComboAIMode = nil) then
     Exit;
 
-  LAvailableWidth := GridCombos.ClientWidth;
-  if LAvailableWidth <= 0 then
+  if (PProviderHost.ClientWidth <= 0) or (PModeHost.ClientWidth <= 0) then
     Exit;
-
-  LComboWidth := (LAvailableWidth - ComboGap) div 2;
-  if LComboWidth < MinComboWidth then
-    LComboWidth := MinComboWidth;
 
   LComboHeight := ComboAIProvider.Height;
   if ComboAIMode.Height > LComboHeight then
@@ -188,13 +178,32 @@ begin
   if LComboHeight <= 0 then
     LComboHeight := 21;
 
-  LTop := (GridCombos.ClientHeight - LComboHeight) div 2;
-  if LTop < 0 then
-    LTop := 0;
+  LProviderTop := (PProviderHost.ClientHeight - LComboHeight) div 2;
+  if LProviderTop < 0 then
+    LProviderTop := 0;
 
-  ComboAIProvider.SetBounds(0, LTop, LComboWidth, LComboHeight);
-  ComboAIMode.SetBounds(LComboWidth + ComboGap, LTop,
-    LAvailableWidth - LComboWidth - ComboGap, LComboHeight);
+  LModeTop := (PModeHost.ClientHeight - LComboHeight) div 2;
+  if LModeTop < 0 then
+    LModeTop := 0;
+
+  PProviderHost.Padding.Left := ComboHorizontalPadding;
+  PProviderHost.Padding.Right := ComboHorizontalPadding;
+  PProviderHost.Padding.Top := LProviderTop;
+  PProviderHost.Padding.Bottom := PProviderHost.ClientHeight - LProviderTop - LComboHeight;
+  if PProviderHost.Padding.Bottom < 0 then
+    PProviderHost.Padding.Bottom := 0;
+
+  PModeHost.Padding.Left := ComboHorizontalPadding;
+  PModeHost.Padding.Right := ComboHorizontalPadding;
+  PModeHost.Padding.Top := LModeTop;
+  PModeHost.Padding.Bottom := PModeHost.ClientHeight - LModeTop - LComboHeight;
+  if PModeHost.Padding.Bottom < 0 then
+    PModeHost.Padding.Bottom := 0;
+
+  ComboAIProvider.Height := LComboHeight;
+  ComboAIMode.Height := LComboHeight;
+  PProviderHost.Realign;
+  PModeHost.Realign;
 end;
 
 procedure TFRpAISelectionVCL.LayoutGaugeControls;

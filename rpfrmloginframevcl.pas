@@ -97,9 +97,17 @@ begin
 end;
 
 procedure TFRpLoginFrameVCL.UpdateUI;
+const
+  TierLeft = 6;
+  TierGap = 6;
+  AvatarGap = 6;
+  UserGap = 8;
+  ArrowRightMargin = 8;
 var
   LProfile: TRpProfile;
   LName: string;
+  LUserLeft: Integer;
+  LUserWidth: Integer;
 begin
   if TRpAuthManager.Instance.IsLoggedIn then
   begin
@@ -154,7 +162,17 @@ begin
       DownloadAvatarAsync(LProfile.AvatarUrl)
     else
       ImageAvatar.Picture := nil;
-      
+
+    LabelTier.Left := TierLeft;
+    ImageAvatar.Left := LabelTier.Left + LabelTier.Width + TierGap;
+    LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
+    LUserLeft := ImageAvatar.Left + ImageAvatar.Width + UserGap;
+    LUserWidth := LabelArrow.Left - LUserLeft - AvatarGap;
+    if LUserWidth < 0 then
+      LUserWidth := 0;
+    LabelUser.Left := LUserLeft;
+    LabelUser.Width := LUserWidth;
+
     // Vertically center labels
     LabelUser.Top := (PContainer.Height - LabelUser.Height) div 2;
     LabelArrow.Top := (PContainer.Height - LabelArrow.Height) div 2;
