@@ -3,11 +3,16 @@ unit rpfrmchatvcl;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, System.JSON,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons, System.JSON,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
   rpreportdesignercontracts, rpfrmaireportvcl;
 
 type
+  TConfigIconButton = class(TSpeedButton)
+  protected
+    procedure Paint; override;
+  end;
+
   TSchemaComboItem = class(TObject)
   public
     ApiKey: string;
@@ -52,6 +57,7 @@ type
     PAISelectionHost: TPanel;
     PSchemaHost: TPanel;
     LSchema: TLabel;
+    PSchemaConfigHost: TPanel;
     BRefreshSchemas: TButton;
     ComboSchema: TComboBox;
     PControl: TPageControl;
@@ -102,6 +108,8 @@ type
     FStreamingText: string;
     FOnlineInitializationQueued: Boolean;
     FLastAssistantMessage: string;
+    FShowSchemaSelector: Boolean;
+    FSchemaConfigButton: TConfigIconButton;
     FUserAgentsReloadVersion: Integer;
     FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
@@ -124,6 +132,7 @@ type
     procedure LoadUserAgents;
     function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure PostDesignChatPayload(APayload: TObject);
+    procedure SchemaConfigClick(Sender: TObject);
     procedure DesignStreamProgress(Sender: TObject; const AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     function DesignStreamCancelRequested(Sender: TObject): Boolean;
@@ -150,6 +159,7 @@ type
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
+    procedure SetShowSchemaSelector(AValue: Boolean);
     procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
       const ASchemaApiKey: string = '');
     procedure SetSuggestedContent(const AContent, AMessage,
@@ -189,6 +199,63 @@ implementation
 
 uses
   rpdatainfo;
+
+procedure TConfigIconButton.Paint;
+var
+  R: TRect;
+  CX, CY: Integer;
+  OuterRadius, InnerRadius, CenterRadius: Integer;
+  FontColor: TColor;
+
+  procedure DrawSpoke(const DX1, DY1, DX2, DY2: Integer);
+  begin
+    Canvas.MoveTo(CX + DX1, CY + DY1);
+    Canvas.LineTo(CX + DX2, CY + DY2);
+  end;
+begin
+  R := ClientRect;
+
+  if not Enabled then
+    FontColor := clGrayText
+  else
+    FontColor := clBtnText;
+
+  Canvas.Brush.Color := clBtnFace;
+  Canvas.FillRect(R);
+  DrawEdge(Canvas.Handle, R, BDR_RAISEDINNER, BF_RECT);
+
+  CX := (R.Left + R.Right) div 2;
+  CY := (R.Top + R.Bottom) div 2;
+  if Width < Height then
+    OuterRadius := Width div 4
+  else
+    OuterRadius := Height div 4;
+  if OuterRadius < 6 then
+    OuterRadius := 6;
+  InnerRadius := OuterRadius - 3;
+  if InnerRadius < 3 then
+    InnerRadius := 3;
+  CenterRadius := InnerRadius - 3;
+  if CenterRadius < 2 then
+    CenterRadius := 2;
+
+  Canvas.Pen.Color := FontColor;
+  Canvas.Pen.Width := 2;
+  DrawSpoke(0, -OuterRadius, 0, -InnerRadius);
+  DrawSpoke(0, InnerRadius, 0, OuterRadius);
+  DrawSpoke(-OuterRadius, 0, -InnerRadius, 0);
+  DrawSpoke(InnerRadius, 0, OuterRadius, 0);
+  DrawSpoke(-OuterRadius + 2, -OuterRadius + 2, -InnerRadius, -InnerRadius);
+  DrawSpoke(OuterRadius - 2, -OuterRadius + 2, InnerRadius, -InnerRadius);
+  DrawSpoke(-OuterRadius + 2, OuterRadius - 2, -InnerRadius, InnerRadius);
+  DrawSpoke(OuterRadius - 2, OuterRadius - 2, InnerRadius, InnerRadius);
+
+  Canvas.Brush.Style := bsClear;
+  Canvas.Ellipse(CX - InnerRadius, CY - InnerRadius, CX + InnerRadius, CY + InnerRadius);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := FontColor;
+  Canvas.Ellipse(CX - CenterRadius, CY - CenterRadius, CX + CenterRadius, CY + CenterRadius);
+end;
 
 type
   TRpQueuedSchemasPayload = class(TObject)
@@ -275,6 +342,7 @@ begin
   FHubDatabaseId := 0;
   FHubSchemaId := 0;
   FSchemaApiKey := '';
+  FShowSchemaSelector := True;
   FLoadingSchemas := False;
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
@@ -299,7 +367,16 @@ begin
   FUserSchemasReloadVersion := 0;
   FUseRefreshAction := False;
   FDesignRequestVersion := 0;
+  MemoPrompt.WantReturns := True;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
+  FSchemaConfigButton := TConfigIconButton.Create(Self);
+  FSchemaConfigButton.Parent := PSchemaConfigHost;
+  FSchemaConfigButton.Align := alClient;
+  FSchemaConfigButton.Flat := False;
+  FSchemaConfigButton.Hint := 'Open schema configuration on the web';
+  FSchemaConfigButton.ShowHint := True;
+  FSchemaConfigButton.Cursor := crHandPoint;
+  FSchemaConfigButton.OnClick := SchemaConfigClick;
   Initialize('', '');
   RefreshTopLayout;
 end;
@@ -319,9 +396,37 @@ begin
 end;
 
 procedure TFRpChatFrame.RefreshTopLayout;
+var
+  LSchemaHeight: Integer;
 begin
   DisableAlign;
   try
+  if FShowSchemaSelector then
+    LSchemaHeight := PSchemaHost.Height
+  else
+    LSchemaHeight := 0;
+  if GridTop <> nil then
+  begin
+    if GridTop.RowCollection.Count > 0 then
+    begin
+      GridTop.RowCollection[0].SizeStyle := ssAbsolute;
+      GridTop.RowCollection[0].Value := PLoginHost.Height;
+    end;
+    if GridTop.RowCollection.Count > 1 then
+    begin
+      GridTop.RowCollection[1].SizeStyle := ssAbsolute;
+      GridTop.RowCollection[1].Value := PAISelectionHost.Height;
+    end;
+    if GridTop.RowCollection.Count > 2 then
+    begin
+      GridTop.RowCollection[2].SizeStyle := ssAbsolute;
+      GridTop.RowCollection[2].Value := LSchemaHeight;
+    end;
+  end;
+  if PSchemaHost <> nil then
+    PSchemaHost.Visible := FShowSchemaSelector;
+  if PTop <> nil then
+    PTop.Height := PLoginHost.Height + PAISelectionHost.Height + LSchemaHeight;
   if PTop <> nil then
     PTop.SetBounds(0, 0, PRoot.ClientWidth, PTop.Height);
   if GridTop <> nil then
@@ -370,7 +475,13 @@ begin
     FAISelection.RefreshState;
     LoadUserAgents;
   end;
-  LoadSchemas;
+  if FShowSchemaSelector then
+    LoadSchemas;
+end;
+
+procedure TFRpChatFrame.SchemaConfigClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
 end;
 
 procedure TFRpChatFrame.AppendMessage(const ATitle, AText: string);
@@ -1247,7 +1358,7 @@ var
   LNeedsSchemas: Boolean;
   LNeedsAgents: Boolean;
 begin
-  LNeedsSchemas := ComboSchema.Items.Count = 0;
+  LNeedsSchemas := FShowSchemaSelector and (ComboSchema.Items.Count = 0);
   LNeedsAgents := (FAISelection <> nil) and (FAISelection.AgentEndpointCount = 0);
 
   if FOnlineInitializationQueued and not (LNeedsSchemas or LNeedsAgents) then
@@ -1291,6 +1402,21 @@ procedure TFRpChatFrame.SetInferenceProgress(AValue: Boolean);
 begin
   if FAISelection <> nil then
     FAISelection.SetInferenceProgress(AValue);
+end;
+
+procedure TFRpChatFrame.SetShowSchemaSelector(AValue: Boolean);
+begin
+  if FShowSchemaSelector = AValue then
+    Exit;
+  FShowSchemaSelector := AValue;
+  if not FShowSchemaSelector then
+  begin
+    FHubDatabaseId := 0;
+    FHubSchemaId := 0;
+    FSchemaApiKey := '';
+    ClearSchemaItems;
+  end;
+  RefreshLayout;
 end;
 
 procedure TFRpChatFrame.SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;

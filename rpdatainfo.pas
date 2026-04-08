@@ -3434,8 +3434,17 @@ begin
  begin
 {$IFDEF USERPDATASET}
   if Assigned(FCachedDataset) then
+  begin
+   FCachedDataset.AfterOpen:=nil;
+   FCachedDataset.AfterClose:=nil;
    FCachedDataset.DoClose;
+  end;
 {$ENDIF}
+  if Assigned(FSQLInternalQuery) then
+  begin
+   FSQLInternalQuery.AfterOpen:=nil;
+   FSQLInternalQuery.AfterClose:=nil;
+  end;
   if FDataset=FSQLInternalQuery then
    FDataset.Active:=false;
  end;

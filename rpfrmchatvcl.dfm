@@ -114,22 +114,46 @@ object FRpChatFrame: TFRpChatFrame
             Layout = tlCenter
           end
           object ComboSchema: TComboBox
-            Left = 44
-            Top = 0
-            Width = 216
-            Height = 21
+            AlignWithMargins = True
+            Left = 48
+            Top = 4
+            Width = 176
+            Height = 22
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
             Align = alClient
             Style = csDropDownList
             TabOrder = 0
           end
+          object PSchemaConfigHost: TPanel
+            AlignWithMargins = True
+            Left = 228
+            Top = 4
+            Width = 28
+            Height = 22
+            Margins.Left = 0
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Align = alRight
+            BevelOuter = bvNone
+            TabOrder = 1
+          end
           object BRefreshSchemas: TButton
+            AlignWithMargins = True
             Left = 260
-            Top = 0
+            Top = 3
             Width = 60
-            Height = 30
+            Height = 24
+            Margins.Left = 0
+            Margins.Top = 3
+            Margins.Right = 0
+            Margins.Bottom = 3
             Align = alRight
             Caption = 'Refresh'
-            TabOrder = 1
+            TabOrder = 2
             OnClick = BRefreshSchemasClick
           end
         end

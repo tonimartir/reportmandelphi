@@ -1111,6 +1111,12 @@ begin
  end;
 
 
+ for i:=0 to DataInfo.Count-1 do
+ begin
+  DataInfo.Items[i].OnConnect:=nil;
+  DataInfo.Items[i].OnDisConnect:=nil;
+ end;
+
  FDataAlias.List.Clear;
  for i:=0 to DataInfo.Count-1 do
  begin

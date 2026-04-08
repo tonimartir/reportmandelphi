@@ -836,6 +836,7 @@ begin
  FChat := TFRpChatFrame.Create(Self);
  FChat.Parent := PChatHost;
  FChat.Align := alClient;
+ FChat.SetShowSchemaSelector(False);
  FChat.OnSendPrompt := ChatSendPrompt;
  FChat.OnApplySuggestion := ChatApplySuggestion;
  FChat.OnStopRequest := StopExpressionRequest;
@@ -1343,6 +1344,7 @@ begin
  begin
   if FChat <> nil then
   begin
+     FChat.SetShowSchemaSelector(FChatMode = rcmDesign);
    if FChatMode = rcmDesign then
    begin
     FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
@@ -1367,6 +1369,7 @@ begin
   validate := False;
  if FChat <> nil then
  begin
+  FChat.SetShowSchemaSelector(FChatMode = rcmDesign);
   if FChatMode = rcmDesign then
   begin
    FChat.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
