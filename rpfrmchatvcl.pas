@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, System.JSON,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
-  rpreportdesignercontracts;
+  rpreportdesignercontracts, rpfrmaireportvcl;
 
 type
   TSchemaComboItem = class(TObject)
@@ -60,6 +60,7 @@ type
     TabLog: TTabSheet;
     PLogTop: TPanel;
     BClearLog: TButton;
+    BReportAI: TButton;
     MemoLog: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
@@ -70,6 +71,7 @@ type
     procedure BApplyClick(Sender: TObject);
     procedure BClearClick(Sender: TObject);
     procedure BClearLogClick(Sender: TObject);
+    procedure BReportAIClick(Sender: TObject);
     procedure BRefreshSchemasClick(Sender: TObject);
     procedure BSendClick(Sender: TObject);
     procedure MemoPromptChange(Sender: TObject);
@@ -99,6 +101,7 @@ type
     FStreamingPrefillPercent: Integer;
     FStreamingText: string;
     FOnlineInitializationQueued: Boolean;
+    FLastAssistantMessage: string;
     FUserAgentsReloadVersion: Integer;
     FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
@@ -286,6 +289,7 @@ begin
     MemoLog.Clear;
   end;
   FBusy := False;
+  FLastAssistantMessage := '';
   FSuggestedExpression := '';
   FStreamingActive := False;
   FStreamingPrefillPercent := 0;
@@ -902,7 +906,9 @@ end;
 
 procedure TFRpChatFrame.AddAssistantMessage(const AText: string);
 begin
+  FLastAssistantMessage := Trim(AText);
   AppendMessage('Assistant', AText);
+  UpdateButtons;
 end;
 
 procedure TFRpChatFrame.AddUserMessage(const AText: string);
@@ -1005,6 +1011,7 @@ end;
 procedure TFRpChatFrame.ClearConversation;
 begin
   FConversationBlocks.Clear;
+  FLastAssistantMessage := '';
   MemoPrompt.Clear;
   MemoLog.Clear;
   FSuggestedExpression := '';
@@ -1029,6 +1036,7 @@ procedure TFRpChatFrame.Initialize(const ACurrentExpression,
 begin
   FCurrentExpression := ACurrentExpression;
   FConversationBlocks.Clear;
+  FLastAssistantMessage := '';
   MemoPrompt.Clear;
   MemoConversation.Clear;
   MemoLog.Clear;
@@ -1354,6 +1362,8 @@ begin
     BApply.Enabled := (not FBusy) and Assigned(FOnRefreshContext)
   else
     BApply.Enabled := (not FBusy) and (Trim(FSuggestedExpression) <> '');
+  if BReportAI <> nil then
+    BReportAI.Enabled := (not FBusy) and (Trim(FLastAssistantMessage) <> '');
   BRefreshSchemas.Enabled := not FLoadingSchemas;
   if FLoadingSchemas then
     BRefreshSchemas.Caption := '...'
@@ -1601,6 +1611,20 @@ procedure TFRpChatFrame.BClearLogClick(Sender: TObject);
 begin
   if MemoLog <> nil then
     MemoLog.Clear;
+end;
+
+procedure TFRpChatFrame.BReportAIClick(Sender: TObject);
+begin
+  if FBusy or (Trim(FLastAssistantMessage) = '') then
+  begin
+    UpdateButtons;
+    Exit;
+  end;
+
+  ExecuteAIReportDialog(GetParentForm(Self), FLastAssistantMessage,
+    TRpAuthManager.Instance.Token, TRpAuthManager.Instance.InstallId,
+    GetSchemaApiKey);
+  UpdateButtons;
 end;
 
 end.

@@ -28,7 +28,8 @@ uses
 {$IFDEF USERPDATASET}
   DBClient,
 {$ENDIF}
-  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts;
+  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpaireportcontracts;
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer) of object;
@@ -84,6 +85,7 @@ type
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiPreprocessSqlContextResult;
+    function SubmitAIReport(AReport: TRpAIReport): Boolean;
     function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
       ACursorPosition: Integer; const AMode: string; AFix: Boolean;
       const ASemanticContextJson: string; Sender: TObject;
@@ -888,6 +890,28 @@ begin
       LResponseStream.Free;
     end;
 {$ENDIF}
+  finally
+    LRequestJson.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.SubmitAIReport(AReport: TRpAIReport): Boolean;
+var
+  LRequestJson: TJSONObject;
+  LResponseStream: TStringStream;
+begin
+  Result := False;
+  if AReport = nil then
+    raise Exception.Create('AI report not assigned');
+
+  LRequestJson := AReport.ToJsonObject;
+  try
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      Result := InternalRequest('api/aireport', LRequestJson, LResponseStream);
+    finally
+      LResponseStream.Free;
+    end;
   finally
     LRequestJson.Free;
   end;

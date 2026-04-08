@@ -182,6 +182,25 @@ object FRpChatFrame: TFRpChatFrame
             TabOrder = 0
             OnClick = BClearLogClick
           end
+          object PLogButtonSpacer: TPanel
+            Left = 81
+            Top = 4
+            Width = 8
+            Height = 25
+            Align = alLeft
+            BevelOuter = bvNone
+            TabOrder = 1
+          end
+          object BReportAI: TButton
+            Left = 89
+            Top = 4
+            Width = 110
+            Height = 25
+            Align = alLeft
+            Caption = 'Report content'
+            TabOrder = 2
+            OnClick = BReportAIClick
+          end
         end
         object MemoLog: TMemo
           Left = 0
