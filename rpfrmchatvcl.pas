@@ -20,6 +20,7 @@ type
   TChatApplyEvent = procedure(Sender: TObject; const AExpression: string) of object;
   TChatStopEvent = procedure(Sender: TObject) of object;
   TChatRefreshEvent = procedure(Sender: TObject) of object;
+  TChatSchemaChangedEvent = procedure(Sender: TObject) of object;
   TBuildDesignRequestEvent = function(Sender: TObject;
     const APrompt: string): TRpApiModifyReportRequest of object;
   TBuildPreprocessSqlContextRequestEvent = function(Sender: TObject):
@@ -89,6 +90,7 @@ type
     FOnBuildDesignRequest: TBuildDesignRequestEvent;
     FOnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent;
     FOnRefreshContext: TChatRefreshEvent;
+    FOnSchemaChanged: TChatSchemaChangedEvent;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
     FSchemaApiKey: string;
@@ -145,6 +147,13 @@ type
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetInferenceProgress(AValue: Boolean);
+    procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
+      const ASchemaApiKey: string = '');
+    procedure SetSuggestedContent(const AContent, AMessage,
+      ACaptionLabel: string);
+    procedure AppendLogLine(const AText: string);
+    procedure AppendLogChunk(const AChunk: string;
+      AAppendLineBreak: Boolean = False);
     procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
     procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
@@ -164,6 +173,7 @@ type
     property OnBuildDesignRequest: TBuildDesignRequestEvent read FOnBuildDesignRequest write FOnBuildDesignRequest;
     property OnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent read FOnBuildPreprocessSqlContextRequest write FOnBuildPreprocessSqlContextRequest;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
+    property OnSchemaChanged: TChatSchemaChangedEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
     property OnStopRequest: TChatStopEvent read FOnStopRequest write FOnStopRequest;
   end;
@@ -885,6 +895,9 @@ begin
     FSchemaApiKey := '';
     TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=0 HubDatabaseId=0 HubSchemaId=0 ApiKey=');
   end;
+
+  if Assigned(FOnSchemaChanged) then
+    FOnSchemaChanged(Self);
 end;
 
 procedure TFRpChatFrame.AddAssistantMessage(const AText: string);
@@ -1272,10 +1285,51 @@ begin
     FAISelection.SetInferenceProgress(AValue);
 end;
 
+procedure TFRpChatFrame.SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
+  const ASchemaApiKey: string);
+begin
+  FHubDatabaseId := AHubDatabaseId;
+  FHubSchemaId := AHubSchemaId;
+  FSchemaApiKey := ASchemaApiKey;
+  SelectCurrentSchema;
+end;
+
+procedure TFRpChatFrame.AppendLogLine(const AText: string);
+begin
+  if MemoLog = nil then
+    Exit;
+  MemoLog.Lines.Add(AText);
+end;
+
+procedure TFRpChatFrame.AppendLogChunk(const AChunk: string;
+  AAppendLineBreak: Boolean);
+begin
+  if (MemoLog = nil) or (AChunk = '') then
+    Exit;
+
+  MemoLog.HandleNeeded;
+  SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
+  SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(AChunk)));
+  if AAppendLineBreak then
+    MemoLog.Lines.Add('');
+end;
+
 procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
 begin
   if FAISelection <> nil then
     FAISelection.UpdateTokens(AInTokens, AOutTokens);
+end;
+
+procedure TFRpChatFrame.SetSuggestedContent(const AContent, AMessage,
+  ACaptionLabel: string);
+begin
+  FinishStreamingResponse;
+  FSuggestedExpression := AContent;
+  if AMessage <> '' then
+    AddAssistantMessage(AMessage + sLineBreak + sLineBreak + ACaptionLabel + ':' + sLineBreak + AContent)
+  else
+    AddAssistantMessage(ACaptionLabel + ':' + sLineBreak + AContent);
+  UpdateButtons;
 end;
 
 procedure TFRpChatFrame.SetRefreshAction(AValue: Boolean);
@@ -1290,13 +1344,7 @@ end;
 
 procedure TFRpChatFrame.SetSuggestedExpression(const AExpression, AMessage: string);
 begin
-  FinishStreamingResponse;
-  FSuggestedExpression := AExpression;
-  if AMessage <> '' then
-    AddAssistantMessage(AMessage + sLineBreak + sLineBreak + 'Suggested expression:' + sLineBreak + AExpression)
-  else
-    AddAssistantMessage('Suggested expression:' + sLineBreak + AExpression);
-  UpdateButtons;
+  SetSuggestedContent(AExpression, AMessage, 'Suggested expression');
 end;
 
 procedure TFRpChatFrame.UpdateButtons;

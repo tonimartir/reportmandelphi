@@ -452,6 +452,9 @@ type
     procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure StopDesignChatRequest(Sender: TObject);
     procedure RefreshDesignChatContext(Sender: TObject);
+    procedure InitializeDesignChatSchemaSelection;
+    procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
+      AHubSchemaId: Int64; out ASchemaApiKey: string);
     procedure PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
     procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
     procedure ResetDesignChatContextCache;
@@ -873,6 +876,7 @@ begin
  fchatframe.SetRefreshAction(True);
  fchatframe.Initialize('',
   'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
+ InitializeDesignChatSchemaSelection;
 
  if FDesignContextProgress = nil then
  begin
@@ -913,6 +917,57 @@ begin
     fchatframe.RefreshLayout;
    end;
   end);
+end;
+
+procedure TFRpMainFVCL.ResolveInitialDesignChatSchemaContext(
+  out AHubDatabaseId, AHubSchemaId: Int64; out ASchemaApiKey: string);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LConnectionParams: TStringList;
+begin
+  AHubDatabaseId := 0;
+  AHubSchemaId := 0;
+  ASchemaApiKey := '';
+
+  if (not Assigned(report)) or (report.DataInfo.Count = 0) then
+    Exit;
+
+  LDataInfo := report.DataInfo.Items[0];
+  if LDataInfo = nil then
+    Exit;
+
+  if LDataInfo.HubSchemaId <= 0 then
+    Exit;
+
+  AHubSchemaId := LDataInfo.HubSchemaId;
+  LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+  if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+  begin
+    LConnectionParams := TStringList.Create;
+    try
+      LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+      AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+      ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+    finally
+      LConnectionParams.Free;
+    end;
+  end;
+end;
+
+procedure TFRpMainFVCL.InitializeDesignChatSchemaSelection;
+var
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LSchemaApiKey: string;
+begin
+  if not Assigned(fchatframe) then
+    Exit;
+
+  ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId,
+    LSchemaApiKey);
+  fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  fchatframe.StartOnlineInitialization;
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);

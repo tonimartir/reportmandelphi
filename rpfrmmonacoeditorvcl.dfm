@@ -39,10 +39,6 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         end
         item
           SizeStyle = ssAuto
-          Value = 200.000000000000000000
-        end
-        item
-          SizeStyle = ssAuto
           Value = 52.000000000000000000
         end
         item
@@ -61,16 +57,11 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         end
         item
           Column = 2
-          Control = PLoginControl
-          Row = 0
-        end
-        item
-          Column = 3
           Control = PAIButtonHost
           Row = 0
         end
         item
-          Column = 4
+          Column = 3
           Control = PAISelectionHost
           Row = 0
         end>
@@ -109,24 +100,9 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         TabOrder = 2
         ExplicitLeft = 166
       end
-      object PLoginControl: TPanel
-        AlignWithMargins = True
-        Left = 204
-        Top = 5
-        Width = 200
-        Height = 40
-        Margins.Left = 8
-        Margins.Top = 5
-        Margins.Right = 8
-        Margins.Bottom = 5
-        Align = alClient
-        BevelOuter = bvNone
-        TabOrder = 1
-        ExplicitLeft = 212
-      end
       object PAIButtonHost: TPanel
         AlignWithMargins = True
-        Left = 420
+        Left = 204
         Top = 8
         Width = 52
         Height = 34
@@ -137,13 +113,13 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 3
-        ExplicitLeft = 428
+        ExplicitLeft = 212
       end
       object PAISelectionHost: TPanel
         AlignWithMargins = True
-        Left = 488
+        Left = 272
         Top = 0
-        Width = 262
+        Width = 478
         Height = 63
         Margins.Left = 8
         Margins.Top = 0
@@ -152,8 +128,8 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 4
-        ExplicitLeft = 496
-        ExplicitWidth = 254
+        ExplicitLeft = 280
+        ExplicitWidth = 470
       end
     end
   end
@@ -213,44 +189,6 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         ScrollBars = ssVertical
         TabOrder = 1
         WordWrap = True
-      end
-    end
-    object TabLog: TTabSheet
-      Caption = 'Log'
-      ImageIndex = 2
-      object PLogTop: TPanel
-        Left = 0
-        Top = 0
-        Width = 742
-        Height = 33
-        Align = alTop
-        BevelOuter = bvNone
-        Padding.Left = 6
-        Padding.Top = 4
-        Padding.Right = 6
-        Padding.Bottom = 4
-        TabOrder = 0
-        object BClearLog: TButton
-          Left = 6
-          Top = 4
-          Width = 75
-          Height = 25
-          Align = alLeft
-          Caption = 'Clear'
-          TabOrder = 0
-          OnClick = BClearLogClick
-        end
-      end
-      object MemoLog: TMemo
-        Left = 0
-        Top = 33
-        Width = 742
-        Height = 389
-        Align = alClient
-        ReadOnly = True
-        ScrollBars = ssBoth
-        TabOrder = 1
-        WordWrap = False
       end
     end
   end

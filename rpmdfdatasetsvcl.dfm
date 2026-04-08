@@ -301,55 +301,44 @@ object FRpDatasetsVCL: TFRpDatasetsVCL
         Margins.Bottom = 4
         Caption = 'SQL'
         object Splitter2: TSplitter
-          Left = 236
+          Left = 731
           Top = 0
           Width = 10
           Height = 476
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Align = alRight
           Beveled = True
         end
-        object MSQL: TMemo
-          Left = 246
+        object PChatHost: TPanel
+          Left = 741
           Top = 0
-          Width = 847
+          Width = 352
           Height = 476
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Align = alClient
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-          OnChange = MSQLChange
-        end
-        object PBrowser: TPanel
-          Left = 0
-          Top = 0
-          Width = 236
-          Height = 476
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Align = alLeft
+          Align = alRight
           BevelOuter = bvNone
           TabOrder = 1
-          object PLBrowser: TPanel
+        end
+        object PMonacoHost: TPanel
+          Left = 0
+          Top = 0
+          Width = 731
+          Height = 476
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
+          object MSQL: TMemo
             Left = 0
             Top = 0
-            Width = 236
-            Height = 26
+            Width = 731
+            Height = 476
             Margins.Left = 4
             Margins.Top = 4
             Margins.Right = 4
             Margins.Bottom = 4
-            Align = alTop
-            Caption = 'Database Browser'
+            Align = alClient
+            ScrollBars = ssBoth
             TabOrder = 0
+            WordWrap = False
+            OnChange = MSQLChange
           end
         end
       end

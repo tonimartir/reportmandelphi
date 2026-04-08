@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls, ComCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
-  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, rpfrmloginframevcl, System.JSON, rpdatahttp,
+  rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, System.JSON, rpdatahttp,
   System.Zip, System.IOUtils, System.Threading;
 
 type
@@ -27,6 +27,8 @@ type
   end;
 
   TAuditSqlEvent = procedure(Sender: TObject) of object;
+  TInferenceLogEvent = procedure(Sender: TObject; const ASource,
+    AText: string; AAppendLineBreak: Boolean) of object;
 
   TAIToggleButton = class(TSpeedButton)
   protected
@@ -49,7 +51,6 @@ type
     PTop: TPanel;
     ComboSchema: TComboBox;
     Edge: TEdgeBrowser;
-    PLoginControl: TPanel;
     GridTopHeader: TGridPanel;
     PSchemaConfigHost: TPanel;
     PAIButtonHost: TPanel;
@@ -60,10 +61,6 @@ type
     PAuditTop: TPanel;
     BAuditSQL: TButton;
     MemoAudit: TMemo;
-    TabLog: TTabSheet;
-    PLogTop: TPanel;
-    BClearLog: TButton;
-    MemoLog: TMemo;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -72,13 +69,11 @@ type
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
     procedure BAuditSQLClick(Sender: TObject);
-    procedure BClearLogClick(Sender: TObject);
     procedure AuthChanged(ASuccess: Boolean);
   private
     FAISelection: TFRpAISelectionVCL;
     FAIButton: TAIToggleButton;
     FSchemaConfigButton: TConfigIconButton;
-    FLoginFrame: TFRpLoginFrameVCL;
     FSQL: string;
     FSchema: string;
     FAuditText: string;
@@ -102,6 +97,7 @@ type
     FAuthUIUpdateVersion: Integer;
     FGuard: IEditorGuard;
     FOnAuditSql: TAuditSqlEvent;
+    FOnInferenceLog: TInferenceLogEvent;
     procedure AIToggleClick(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
@@ -121,6 +117,8 @@ type
     procedure HandleAICompletionRequest(const ARequest: TJSONObject);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
     function SuggestSqlStreamCancelRequested(Sender: TObject): Boolean;
+    procedure EmitInferenceLog(const ASource, AText: string;
+      AAppendLineBreak: Boolean);
     procedure SuggestSqlStreamProgress(Sender: TObject; const AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure StartPendingInference;
@@ -133,6 +131,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure LoadSQL(const ASQL: string);
+    procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64);
     procedure SetSchema(const ASchema: string);
     procedure ClearLog;
     procedure AppendLog(const AText: string);
@@ -154,6 +153,7 @@ type
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
     property OnSchemaChanged: TNotifyEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnAuditSql: TAuditSqlEvent read FOnAuditSql write FOnAuditSql;
+    property OnInferenceLog: TInferenceLogEvent read FOnInferenceLog write FOnInferenceLog;
   end;
 
 implementation
@@ -391,11 +391,7 @@ begin
   FAISelection.Align := alClient;
   FAISelection.Constraints.MinHeight := 63;
   FAISelection.Constraints.MaxHeight := 63;
-
-  // Create Login Frame
-  FLoginFrame := TFRpLoginFrameVCL.Create(Self);
-  FLoginFrame.Parent := PLoginControl;
-  FLoginFrame.Align := alClient;
+  FAISelection.ShowGauge := False;
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
   UpdateAuthUI;
@@ -404,9 +400,6 @@ begin
   FDebounceTimer.Interval := 1000;
   FDebounceTimer.Enabled := False;
   FDebounceTimer.OnTimer := OnDebounceTimer;
-
-  MemoLog.WordWrap := True;
-  MemoLog.ScrollBars := ssVertical;
   MemoAudit.ReadOnly := True;
   MemoAudit.WordWrap := True;
   MemoAudit.ScrollBars := ssVertical;
@@ -417,11 +410,6 @@ begin
   ActivateAuditTab;
   if Assigned(FOnAuditSql) then
     FOnAuditSql(Self);
-end;
-
-procedure TFRpMonacoEditorVCL.BClearLogClick(Sender: TObject);
-begin
-  ClearLog;
 end;
 
 destructor TFRpMonacoEditorVCL.Destroy;
@@ -525,15 +513,18 @@ end;
 
 procedure TFRpMonacoEditorVCL.ClearLog;
 begin
-  if MemoLog <> nil then
-    MemoLog.Clear;
 end;
 
 procedure TFRpMonacoEditorVCL.AppendLog(const AText: string);
 begin
-  if MemoLog = nil then
-    Exit;
-  MemoLog.Lines.Add(AText);
+  EmitInferenceLog('Audit', AText, True);
+end;
+
+procedure TFRpMonacoEditorVCL.EmitInferenceLog(const ASource, AText: string;
+  AAppendLineBreak: Boolean);
+begin
+  if Assigned(FOnInferenceLog) then
+    FOnInferenceLog(Self, ASource, AText, AAppendLineBreak);
 end;
 
 procedure TFRpMonacoEditorVCL.ActivateAuditTab;
@@ -726,15 +717,33 @@ begin
     ComboSchema.ItemIndex := LIndex;
 end;
 
+procedure TFRpMonacoEditorVCL.SetHubContext(AHubDatabaseId,
+  AHubSchemaId: Int64);
+begin
+  FBaseHubDatabaseId := AHubDatabaseId;
+  FHubDatabaseId := AHubDatabaseId;
+  FHubSchemaId := AHubSchemaId;
+  if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
+    UpdateAuthUI
+  else
+    SelectCurrentSchema;
+end;
+
 procedure TFRpMonacoEditorVCL.SetHubDatabaseId(const Value: Int64);
 begin
   FBaseHubDatabaseId := Value;
   if FHubDatabaseId = Value then
+  begin
+    if ComboSchema.Items.Count > 0 then
+      SelectCurrentSchema;
     Exit;
+  end;
 
   FHubDatabaseId := Value;
   if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
     UpdateAuthUI;
+  if ComboSchema.Items.Count > 0 then
+    SelectCurrentSchema;
 end;
 
 procedure TFRpMonacoEditorVCL.SetHubSchemaId(const Value: Int64);
@@ -768,6 +777,7 @@ begin
   end;
 
   ComboSchema.ItemIndex := 0;
+  FSchema := '';
   for I := 1 to ComboSchema.Items.Count - 1 do
   begin
     LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
@@ -1084,9 +1094,7 @@ begin
           if (LGuard <> nil) and (not LGuard.IsCancelled) then
           begin
             FAISelection.SetInferenceProgress(True);
-            if MemoLog.Lines.Count > 0 then
-              MemoLog.Lines.Add('');
-            MemoLog.Lines.Add('Actor: Assistant');
+            EmitInferenceLog('Autocomplete', 'Actor: Assistant', True);
           end;
         end;
       TThread.Queue(nil, LInnerQueueProc);
@@ -1233,9 +1241,9 @@ begin
 
               FAISelection.UpdateTokens(LInT, LOutT);
               if LInT > 0 then
-                MemoLog.Lines.Add('Autocomplete inference complete. Input Tokens: ' + IntToStr(LInT) + ' Output Tokens: ' + IntToStr(LOutT))
+                EmitInferenceLog('Autocomplete', 'Inference complete. Input Tokens: ' + IntToStr(LInT) + ' Output Tokens: ' + IntToStr(LOutT), True)
               else
-                MemoLog.Lines.Add('Autocomplete inference complete.');
+                EmitInferenceLog('Autocomplete', 'Inference complete.', True);
 
               SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
               FAISelection.SetInferenceProgress(False);
@@ -1298,11 +1306,7 @@ begin
         Exit;
       if LChunk = '' then
         Exit;
-      MemoLog.HandleNeeded;
-      SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
-      SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(LChunk)));
-      if SameText(LChunkType, 'End') then
-        MemoLog.Lines.Add('');
+      EmitInferenceLog('', LChunk, SameText(LChunkType, 'End'));
     end);
 end;
 

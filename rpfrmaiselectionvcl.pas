@@ -59,12 +59,15 @@ type
     FSpinnerAngle: Integer;
     FAgentEndpoints: array of TAgentEndpointInfo;
     FOnStopRequest: TNotifyEvent;
+    FShowGauge: Boolean;
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
     procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
       AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
     procedure LayoutNonInferenceControls;
     procedure LayoutGaugeControls;
+    procedure UpdateGaugeVisibility;
     procedure SetGaugeValue(const Value: Double);
+    procedure SetShowGauge(const Value: Boolean);
     procedure UpdateSpinnerState;
     procedure UpdateDropDownWidths;
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
@@ -87,6 +90,7 @@ type
     procedure SetInferenceProgress(AActive: Boolean);
     procedure UpdateTokens(AInTokens, AOutTokens: Integer);
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
+    property ShowGauge: Boolean read FShowGauge write SetShowGauge;
     property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
     // Properties for the HTTP driver
     property AITier: string read GetAITier;
@@ -104,11 +108,13 @@ begin
   inherited Create(AOwner);
   FGaugeValue := 0.0;
   FSpinnerAngle := 270;
+  FShowGauge := True;
   ComboAIProvider.Align := alTop;
   ComboAIMode.Align := alTop;
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
   SpinnerTimer.Enabled := False;
+  UpdateGaugeVisibility;
   LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
@@ -151,6 +157,7 @@ begin
     GridInference.SetBounds(0, 0, PInferenceProgress.ClientWidth, PInferenceProgress.ClientHeight);
     GridInference.Realign;
   end;
+  UpdateGaugeVisibility;
   LayoutNonInferenceControls;
   LayoutGaugeControls;
   UpdateDropDownWidths;
@@ -213,7 +220,7 @@ var
   LLeft: Integer;
   LTop: Integer;
 begin
-  if PGaugeHost <> nil then
+  if (PGaugeHost <> nil) and PGaugeHost.Visible then
   begin
     LLeft := (PGaugeHost.ClientWidth - GaugeSize) div 2;
     LTop := (PGaugeHost.ClientHeight - GaugeSize) div 2;
@@ -233,6 +240,31 @@ begin
       LTop := 0;
     PaintBoxProgress.SetBounds(LLeft, LTop, GaugeSize, GaugeSize);
   end;
+end;
+
+procedure TFRpAISelectionVCL.UpdateGaugeVisibility;
+var
+  LShowGauge: Boolean;
+begin
+  LShowGauge := FShowGauge and (ComboAIProvider.ItemIndex < 2);
+
+  if GridAI <> nil then
+  begin
+    if GridAI.ColumnCollection.Count >= 3 then
+    begin
+      GridAI.ColumnCollection[2].SizeStyle := ssAbsolute;
+      if LShowGauge then
+        GridAI.ColumnCollection[2].Value := 32
+      else
+        GridAI.ColumnCollection[2].Value := 0;
+    end;
+    GridAI.Realign;
+  end;
+
+  if PGaugeHost <> nil then
+    PGaugeHost.Visible := LShowGauge;
+  if PaintBoxGauge <> nil then
+    PaintBoxGauge.Visible := LShowGauge;
 end;
 
 procedure TFRpAISelectionVCL.RefreshState;
@@ -293,7 +325,18 @@ end;
 procedure TFRpAISelectionVCL.SetGaugeValue(const Value: Double);
 begin
   FGaugeValue := Value;
-  PaintBoxGauge.Invalidate;
+  if PaintBoxGauge <> nil then
+    PaintBoxGauge.Invalidate;
+end;
+
+procedure TFRpAISelectionVCL.SetShowGauge(const Value: Boolean);
+begin
+  if FShowGauge = Value then
+    Exit;
+  FShowGauge := Value;
+  UpdateGaugeVisibility;
+  LayoutGaugeControls;
+  Invalidate;
 end;
 
 procedure TFRpAISelectionVCL.DrawCircularArc(ACanvas: TCanvas;
@@ -435,15 +478,7 @@ end;
 
 procedure TFRpAISelectionVCL.ComboAIProviderChange(Sender: TObject);
 begin
-  // Provider changed: hide gauge for Agent tier (no cloud credits)
-  if ComboAIProvider.ItemIndex >= 2 then
-  begin
-    PaintBoxGauge.Visible := False;
-  end
-  else
-  begin
-    PaintBoxGauge.Visible := True;
-  end;
+  UpdateGaugeVisibility;
   LayoutGaugeControls;
 end;
 

@@ -66,6 +66,11 @@ type
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function TranslateToSql(const AUserPrompt, ASqlToRefine, AMode,
+      AUserLanguage: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
     function ExplainSql(const ASql: string; const AMode, AUserLanguage: string;
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
@@ -111,6 +116,49 @@ implementation
 
 const
   MODIFY_REPORT_TIMEOUT_MS = 10 * 60 * 1000;
+
+function NormalizeUserLanguage(const AUserLanguage: string): string;
+var
+  LValue: string;
+begin
+  LValue := Trim(AUserLanguage);
+  if LValue = '' then
+    Exit('English');
+
+  if SameText(LValue, 'English') or SameText(LValue, 'en') or
+    SameText(LValue, 'en-US') or SameText(LValue, 'en-GB') then
+    Exit('English');
+  if SameText(LValue, 'Spanish') or SameText(LValue, 'es') or
+    SameText(LValue, 'es-ES') then
+    Exit('Spanish');
+  if SameText(LValue, 'Italian') or SameText(LValue, 'it') or
+    SameText(LValue, 'it-IT') then
+    Exit('Italian');
+  if SameText(LValue, 'French') or SameText(LValue, 'fr') or
+    SameText(LValue, 'fr-FR') then
+    Exit('French');
+  if SameText(LValue, 'German') or SameText(LValue, 'de') or
+    SameText(LValue, 'de-DE') then
+    Exit('German');
+  if SameText(LValue, 'Portuguese') or SameText(LValue, 'pt') or
+    SameText(LValue, 'pt-PT') or SameText(LValue, 'pt-BR') then
+    Exit('Portuguese');
+  if SameText(LValue, 'Chinese') or SameText(LValue, 'zh') or
+    SameText(LValue, 'zh-CN') or SameText(LValue, 'zh-TW') then
+    Exit('Chinese');
+  if SameText(LValue, 'Catalan') or SameText(LValue, 'ca') or
+    SameText(LValue, 'ca-ES') then
+    Exit('Catalan');
+
+  Result := 'English';
+end;
+
+function ResolveTranscribeLanguage(const AUserLanguage: string): string;
+begin
+  Result := NormalizeUserLanguage(AUserLanguage);
+  if Trim(Result) = '' then
+    Result := 'Auto';
+end;
 
 type
   TRpExpressionStreamContext = class
@@ -573,6 +621,65 @@ begin
   end;
 end;
 
+function TRpDatabaseHttp.TranslateToSql(const AUserPrompt, ASqlToRefine,
+  AMode, AUserLanguage: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest, LConfig: TJSONObject;
+  LQueries: TJSONArray;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+{$ENDIF}
+begin
+  Result := nil;
+  LRequest := TJSONObject.Create;
+  try
+    LQueries := TJSONArray.Create;
+    LQueries.Add(AUserPrompt);
+    LRequest.AddPair('userQuery', LQueries);
+    LRequest.AddPair('sqlToRefine', ASqlToRefine);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('complex', TJSONBool.Create(False));
+    LRequest.AddPair('transcribeLanguage',
+      ResolveTranscribeLanguage(AUserLanguage));
+    LRequest.AddPair('aiTier', FAITier);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+
+    LConfig := TJSONObject.Create;
+    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/TranslateToSQLStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/TranslateToSQL', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          Result := LResponseJson;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
 function TRpDatabaseHttp.ExplainSql(const ASql: string; const AMode,
   AUserLanguage: string; Sender: TObject;
   AOnProgress: TRpExpressionStreamProgressEvent;
@@ -590,9 +697,11 @@ begin
     LRequest.AddPair('sqlToExplain', ASql);
     LRequest.AddPair('mode', AMode);
     LRequest.AddPair('aiTier', FAITier);
-    LRequest.AddPair('transcribeLanguage', 'Auto');
+    LRequest.AddPair('transcribeLanguage',
+      ResolveTranscribeLanguage(AUserLanguage));
     if Trim(AUserLanguage) <> '' then
-      LRequest.AddPair('userLanguage', AUserLanguage);
+      LRequest.AddPair('userLanguage',
+        NormalizeUserLanguage(AUserLanguage));
     if FAgentSecret <> '' then
       LRequest.AddPair('agentSecret', FAgentSecret);
     if FAgentAiId <> 0 then
