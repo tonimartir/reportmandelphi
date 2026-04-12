@@ -5260,8 +5260,8 @@ begin
   for i:=1 to Length(Result) do
   begin
    // The Euro symbol
-   if Source[i]=chr(128) then
-    Result[i]:=chr($D5);
+   if Source[i]=AnsiChar(chr(128)) then
+    Result[i]:=AnsiChar(chr($D5));
   end;
  finally
   FreeMem(abuf);

@@ -96,11 +96,11 @@ uses Classes,SysUtils,
   FireDAC.Phys.IB,
  {$IFDEF MSWINDOWS}
   FireDAC.Phys.MSAcc,
-  FireDAC.Phys.DS,
  {$ENDIF}
 {$ENDIF}
 
 {$IFDEF DELPHIENTERPRISEDBSTATIC}
+  FireDAC.Phys.DS,
   FireDAC.Phys.MSSQL,
   FireDAC.Phys.ASA,FireDAC.Phys.DB2,  FireDAC.Phys.Infx,
   FireDAC.Phys.TData,
