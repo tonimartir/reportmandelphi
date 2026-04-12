@@ -850,11 +850,49 @@ procedure TFRpChatFrame.SelectCurrentSchema;
 var
   I: Integer;
   LItem: TSchemaComboItem;
+  LFound: Boolean;
 begin
   if ComboSchema.Items.Count = 0 then
     Exit;
 
-  if FHubSchemaId = 0 then
+  LFound := False;
+  // If we have a specific HubSchemaId, search for it first
+  if FHubSchemaId <> 0 then
+  begin
+    for I := 1 to ComboSchema.Items.Count - 1 do
+    begin
+      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+      if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) then
+      begin
+        ComboSchema.ItemIndex := I;
+        FHubDatabaseId := LItem.HubDatabaseId;
+        FHubSchemaId := LItem.HubSchemaId;
+        FSchemaApiKey := LItem.ApiKey;
+        LFound := True;
+        Break;
+      end;
+    end;
+  end;
+
+  // If no schema found yet but we have a connection ID, pick the first schema for that connection
+  if (not LFound) and (FHubDatabaseId <> 0) then
+  begin
+    for I := 1 to ComboSchema.Items.Count - 1 do
+    begin
+      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+      if (LItem <> nil) and (LItem.HubDatabaseId = FHubDatabaseId) then
+      begin
+        ComboSchema.ItemIndex := I;
+        FHubSchemaId := LItem.HubSchemaId;
+        FSchemaApiKey := LItem.ApiKey;
+        LFound := True;
+        Break;
+      end;
+    end;
+  end;
+
+  // Final fallback: pick the very first available schema if nothing else found
+  if not LFound then
   begin
     if ComboSchema.Items.Count > 1 then
     begin
@@ -865,12 +903,6 @@ begin
         FHubDatabaseId := LItem.HubDatabaseId;
         FHubSchemaId := LItem.HubSchemaId;
         FSchemaApiKey := LItem.ApiKey;
-      end
-      else
-      begin
-        FHubDatabaseId := 0;
-        FHubSchemaId := 0;
-        FSchemaApiKey := '';
       end;
     end
     else
@@ -879,34 +911,6 @@ begin
       FHubDatabaseId := 0;
       FHubSchemaId := 0;
       FSchemaApiKey := '';
-    end;
-    Exit;
-  end;
-
-  ComboSchema.ItemIndex := 0;
-  for I := 1 to ComboSchema.Items.Count - 1 do
-  begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) and
-      ((FHubDatabaseId = 0) or (LItem.HubDatabaseId = FHubDatabaseId)) then
-    begin
-      ComboSchema.ItemIndex := I;
-      FHubDatabaseId := LItem.HubDatabaseId;
-      FHubSchemaId := LItem.HubSchemaId;
-      FSchemaApiKey := LItem.ApiKey;
-      Break;
-    end;
-  end;
-
-  if (ComboSchema.ItemIndex = 0) and (ComboSchema.Items.Count > 1) then
-  begin
-    ComboSchema.ItemIndex := 1;
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[1]);
-    if LItem <> nil then
-    begin
-      FHubDatabaseId := LItem.HubDatabaseId;
-      FHubSchemaId := LItem.HubSchemaId;
-      FSchemaApiKey := LItem.ApiKey;
     end;
   end;
 end;

@@ -925,32 +925,59 @@ var
   LDataInfo: TRpDataInfoItem;
   LDatabaseInfo: TRpDatabaseInfoItem;
   LConnectionParams: TStringList;
+  I: Integer;
 begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   ASchemaApiKey := '';
 
-  if (not Assigned(report)) or (report.DataInfo.Count = 0) then
+  if not Assigned(report) then
     Exit;
 
-  LDataInfo := report.DataInfo.Items[0];
-  if LDataInfo = nil then
-    Exit;
-
-  if LDataInfo.HubSchemaId <= 0 then
-    Exit;
-
-  AHubSchemaId := LDataInfo.HubSchemaId;
-  LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
-  if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+  // Try to find context from the first DataInfo if it has a schema
+  if report.DataInfo.Count > 0 then
   begin
-    LConnectionParams := TStringList.Create;
-    try
-      LDatabaseInfo.LoadConnectionParams(LConnectionParams);
-      AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
-      ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
-    finally
-      LConnectionParams.Free;
+    LDataInfo := report.DataInfo.Items[0];
+    if (LDataInfo <> nil) and (LDataInfo.HubSchemaId > 0) then
+    begin
+      AHubSchemaId := LDataInfo.HubSchemaId;
+      LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+      begin
+        LConnectionParams := TStringList.Create;
+        try
+          LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+          AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+          ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+        finally
+          LConnectionParams.Free;
+        end;
+        if AHubDatabaseId > 0 then
+          Exit;
+      end;
+    end;
+  end;
+
+  // If no context found from datasets, try to find the first "Reportman Agent" connection
+  for I := 0 to report.DatabaseInfo.Count - 1 do
+  begin
+    LDatabaseInfo := report.DatabaseInfo.Items[I];
+    if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+    begin
+      LConnectionParams := TStringList.Create;
+      try
+        LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+        AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+        ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+      finally
+        LConnectionParams.Free;
+      end;
+
+      if AHubDatabaseId > 0 then
+      begin
+        AHubSchemaId := 0; // Let the UI pick the first schema
+        Exit;
+      end;
     end;
   end;
 end;
