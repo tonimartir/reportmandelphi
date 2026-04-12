@@ -1247,8 +1247,21 @@ begin
   exit;
  aitem:=datainfo.Add(aliasname);
  EnsureDataInfoItemName(TRpBaseReport(report), aitem);
- if databaseinfo.Count>0 then
-  aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
+  if databaseinfo.Count>0 then
+    aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
+  if aitem.DatabaseAlias <> '' then
+  begin
+    for index := 0 to datainfo.Count - 1 do
+    begin
+      if (datainfo.Items[index] <> aitem) and
+         SameText(datainfo.Items[index].DatabaseAlias, aitem.DatabaseAlias) and
+         (datainfo.Items[index].HubSchemaId > 0) then
+      begin
+        aitem.HubSchemaId := datainfo.Items[index].HubSchemaId;
+        Break;
+      end;
+    end;
+  end;
  FillDatasets;
  index:=LDatasets.items.indexof(AnsiUppercase(aliasname));
  if index>=0 then
