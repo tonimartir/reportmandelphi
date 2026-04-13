@@ -403,6 +403,7 @@ type
     FDesignChatContextJson: string;
     FDesignChatContextInitialized: Boolean;
     FDesignChatPendingPrompt: string;
+    FDesignChatValidatedPrompt: string;
     FDesignContextRefreshRunning: Boolean;
     FDesignContextProgress: TProgressBar;
     procedure FreeInterface;
@@ -465,6 +466,10 @@ type
     procedure DesignChatStreamProgress(Sender: TObject; const AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
+    function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+      const AErrorMessage: string): string;
+    function ConfirmDesignPromptWithDatasetErrors(
+      const ADatasetErrorMessage: string): Boolean;
     procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
     function SaveReportAsXml: string;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1086,6 +1091,7 @@ begin
  FDesignChatContextJson := '';
  FDesignChatContextInitialized := False;
  FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
  FDesignContextRefreshVersion := 0;
  FDesignContextRefreshRunning := False;
  FDesignContextProgress := nil;
@@ -3101,6 +3107,7 @@ begin
  Inc(FDesignContextRefreshVersion);
  FDesignContextRefreshRunning := False;
  FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
  UpdateDesignContextProgress(False, '');
 end;
 
@@ -3350,14 +3357,57 @@ end;
    if LPrompt = '' then
     Exit;
 
-   if not FDesignChatContextInitialized then
+   if SameText(FDesignChatValidatedPrompt, LPrompt) then
    begin
-    BeginDesignChatContextRefresh(LPrompt, False);
+    Result := BuildDesignChatRequest(LPrompt);
     Exit;
    end;
 
-   Result := BuildDesignChatRequest(LPrompt);
+   if not FDesignContextRefreshRunning then
+   begin
+    BeginDesignChatContextRefresh(LPrompt, False);
+   end;
   end;
+
+function TFRpMainFVCL.BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+  const AErrorMessage: string): string;
+var
+ I: Integer;
+ LName: string;
+ LValue: string;
+begin
+ Result := Trim(AErrorMessage);
+ if (AOpenErrors = nil) or (AOpenErrors.Count = 0) then
+  Exit;
+
+ if Result <> '' then
+  Result := Result + sLineBreak + sLineBreak;
+ Result := Result + 'Some datasets could not be opened:';
+ for I := 0 to AOpenErrors.Count - 1 do
+ begin
+  LName := Trim(AOpenErrors.Names[I]);
+  LValue := Trim(AOpenErrors.ValueFromIndex[I]);
+  if LName <> '' then
+   Result := Result + sLineBreak + '- ' + LName + ': ' + LValue
+  else
+   Result := Result + sLineBreak + '- ' + LValue;
+ end;
+end;
+
+function TFRpMainFVCL.ConfirmDesignPromptWithDatasetErrors(
+  const ADatasetErrorMessage: string): Boolean;
+var
+ LMessage: string;
+begin
+ LMessage := Trim(ADatasetErrorMessage);
+ if LMessage = '' then
+  Exit(True);
+
+ LMessage := 'Opening datasets failed.' + sLineBreak + sLineBreak +
+  LMessage + sLineBreak + sLineBreak +
+  'Do you want to send the design request to the assistant anyway?';
+ Result := MessageDlg(LMessage, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
 
   function TFRpMainFVCL.BuildPreprocessSqlContextRequestForFrame(
     Sender: TObject): TRpApiPreprocessSqlContextRequest;
@@ -3382,6 +3432,7 @@ begin
  FDesignChatContextJson := '';
  FDesignChatContextInitialized := False;
  FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
 end;
 
 procedure TFRpMainFVCL.UpdateDesignContextProgress(AActive: Boolean;
@@ -3389,6 +3440,19 @@ procedure TFRpMainFVCL.UpdateDesignContextProgress(AActive: Boolean;
 begin
  if Assigned(BStatus) and (BStatus.Panels.Count > 0) then
   BStatus.Panels.Items[0].Text := AStatus;
+
+ if Assigned(fchatframe) then
+ begin
+  if AActive then
+  begin
+   if not FDesignContextRefreshRunning then
+    fchatframe.BeginProgress('System', AStatus)
+   else
+    fchatframe.UpdateProgress(AStatus);
+  end
+  else
+   fchatframe.FinishProgress;
+ end;
 
  if FDesignContextProgress = nil then
   Exit;
@@ -3407,6 +3471,7 @@ var
  LWorker: TThread;
  LRequestVersion: Integer;
  LReport: TRpReport;
+ LStatusMessage: string;
 begin
  if (not Assigned(fchatframe)) or (not Assigned(report)) then
   Exit;
@@ -3420,10 +3485,13 @@ begin
  LRequestVersion := FDesignContextRefreshVersion;
  LReport := report;
  FDesignContextRefreshRunning := True;
- if ANotifyOnSuccess then
-  UpdateDesignContextProgress(True, 'Refreshing design context...')
+ if Trim(APendingPrompt) <> '' then
+  LStatusMessage := 'Opening datasets...'
+ else if ANotifyOnSuccess then
+  LStatusMessage := 'Refreshing design context...'
  else
-  UpdateDesignContextProgress(True, 'Initializing design context...');
+  LStatusMessage := 'Initializing design context...';
+ UpdateDesignContextProgress(True, LStatusMessage);
 
  LWorker := TThread.CreateAnonymousThread(
    procedure
@@ -3531,6 +3599,7 @@ begin
         end;
       rpqdcAddAssistantMessage:
         begin
+          FDesignChatValidatedPrompt := '';
           fchatframe.FinishStreamingResponse;
           fchatframe.SetBusy(False);
           fchatframe.AddAssistantMessage(LPayload.Text1);
@@ -3539,6 +3608,7 @@ begin
     end;
   end;
 
+  FDesignChatValidatedPrompt := '';
   if Assigned(fchatframe) then
   begin
     if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
@@ -3601,6 +3671,7 @@ end;
    LPayload: TRpQueuedDesignContextPayload;
    LErrorMessage: string;
    LPendingPrompt: string;
+    LDatasetErrorMessage: string;
   begin
    LPayload := TRpQueuedDesignContextPayload(Message.WParam);
    try
@@ -3611,7 +3682,11 @@ end;
 
     FDesignContextRefreshRunning := False;
     if Trim(LPayload.ErrorMessage) <> '' then
+    begin
+      FDesignChatContextJson := '';
+      FDesignChatContextInitialized := False;
       LErrorMessage := LPayload.ErrorMessage
+    end
     else
     begin
       FDesignChatContextJson := BuildDesignExpressionContextJson(report,
@@ -3627,24 +3702,41 @@ end;
     if Assigned(fchatframe) then
       fchatframe.SetBusy(False);
 
-    if Trim(LErrorMessage) <> '' then
-    begin
-      if Assigned(fchatframe) then
-        fchatframe.AddAssistantMessage('Context refresh failed: ' + LErrorMessage);
-      FDesignChatPendingPrompt := '';
-      Exit;
-    end;
-
     LPendingPrompt := Trim(FDesignChatPendingPrompt);
     FDesignChatPendingPrompt := '';
+    LDatasetErrorMessage := BuildDesignDatasetErrorMessage(LPayload.OpenErrors,
+      LErrorMessage);
+
     if LPendingPrompt <> '' then
     begin
+      if not ConfirmDesignPromptWithDatasetErrors(LDatasetErrorMessage) then
+      begin
+        FDesignChatValidatedPrompt := '';
+        if Assigned(fchatframe) then
+          fchatframe.AddAssistantMessage('Design request canceled after dataset validation.');
+        Exit;
+      end;
+
+      FDesignChatValidatedPrompt := LPendingPrompt;
       fchatframe.StartDesignPrompt(LPendingPrompt);
       Exit;
     end;
 
+    if Trim(LErrorMessage) <> '' then
+    begin
+      if Assigned(fchatframe) then
+        fchatframe.AddAssistantMessage('Context refresh failed: ' + LErrorMessage);
+      Exit;
+    end;
+
     if Assigned(fchatframe) then
-      fchatframe.AddAssistantMessage('Context refreshed.');
+    begin
+      if Trim(LDatasetErrorMessage) <> '' then
+        fchatframe.AddAssistantMessage('Context refreshed with dataset errors.' +
+          sLineBreak + LDatasetErrorMessage)
+      else
+        fchatframe.AddAssistantMessage('Context refreshed.');
+    end;
    finally
     LPayload.Free;
    end;

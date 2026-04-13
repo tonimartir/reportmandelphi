@@ -106,6 +106,9 @@ type
     FStreamingActive: Boolean;
     FStreamingPrefillPercent: Integer;
     FStreamingText: string;
+    FProgressActive: Boolean;
+    FProgressTitle: string;
+    FProgressText: string;
     FOnlineInitializationQueued: Boolean;
     FLastAssistantMessage: string;
     FShowSchemaSelector: Boolean;
@@ -168,6 +171,9 @@ type
     procedure AppendLogChunk(const AChunk: string;
       AAppendLineBreak: Boolean = False);
     procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
+    procedure BeginProgress(const ATitle, AText: string);
+    procedure UpdateProgress(const AText: string);
+    procedure FinishProgress;
     procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
     procedure UpdateStreamingResponse(const AChunk: string; APrefillPercent: Integer);
@@ -362,6 +368,9 @@ begin
   FStreamingActive := False;
   FStreamingPrefillPercent := 0;
   FStreamingText := '';
+  FProgressActive := False;
+  FProgressTitle := '';
+  FProgressText := '';
   FOnlineInitializationQueued := False;
   FUserAgentsReloadVersion := 0;
   FUserSchemasReloadVersion := 0;
@@ -510,6 +519,13 @@ begin
     LText := LText + 'Assistant' + sLineBreak +
       'Prefill ' + IntToStr(FStreamingPrefillPercent) + '%' + sLineBreak +
       FStreamingText;
+  end;
+
+  if FProgressActive then
+  begin
+    if LText <> '' then
+      LText := LText + sLineBreak + sLineBreak;
+    LText := LText + FProgressTitle + sLineBreak + FProgressText;
   end;
 
   MemoConversation.Lines.Text := LText;
@@ -1114,6 +1130,9 @@ begin
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
   FStreamingActive := True;
+  FProgressActive := False;
+  FProgressTitle := '';
+  FProgressText := '';
   
   if MemoLog.Lines.Count > 0 then
     MemoLog.Lines.Add('');
@@ -1133,6 +1152,9 @@ begin
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
   FStreamingActive := False;
+  FProgressActive := False;
+  FProgressTitle := '';
+  FProgressText := '';
   UpdateButtons;
   RebuildConversation;
 end;
@@ -1159,6 +1181,9 @@ begin
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
   FStreamingActive := False;
+  FProgressActive := False;
+  FProgressTitle := '';
+  FProgressText := '';
   SetBusy(False);
   RebuildConversation;
   if AInitialAssistantMessage <> '' then
@@ -1456,6 +1481,38 @@ procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
 begin
   if FAISelection <> nil then
     FAISelection.UpdateTokens(AInTokens, AOutTokens);
+end;
+
+procedure TFRpChatFrame.BeginProgress(const ATitle, AText: string);
+begin
+  FProgressActive := True;
+  if Trim(ATitle) <> '' then
+    FProgressTitle := ATitle
+  else
+    FProgressTitle := 'System';
+  FProgressText := AText;
+  SetBusy(True);
+  RebuildConversation;
+end;
+
+procedure TFRpChatFrame.UpdateProgress(const AText: string);
+begin
+  if not FProgressActive then
+    BeginProgress('System', AText)
+  else
+  begin
+    FProgressText := AText;
+    RebuildConversation;
+  end;
+end;
+
+procedure TFRpChatFrame.FinishProgress;
+begin
+  FProgressActive := False;
+  FProgressTitle := '';
+  FProgressText := '';
+  SetBusy(False);
+  RebuildConversation;
 end;
 
 procedure TFRpChatFrame.SetSuggestedContent(const AContent, AMessage,
