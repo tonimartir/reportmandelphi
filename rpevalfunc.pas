@@ -712,7 +712,7 @@ begin
  IdenName:='HourMinSec';
  Help:=SRpHourMinSec;
  AIHelp:='Converts a timespan expressed in hours (h) into a string concatenatint: HH+idenH+mm+idenM+ss+idenS';
- Model:='function '+'HourMinSec'+'(h:Double;idenH:string;idenM:string;idenS:string):string';
+ Model:='function '+'HourMinSec'+'(h:Double, idenH:string, idenM:string, idenS:string):string';
  AParams:=SRpPHourMinSec;
 end;
 
@@ -1445,7 +1445,7 @@ begin
  FParamcount:=6;
  IdenName:='GraphicNewXY';
  Help:=SRpGraphicNew;
- model:='function '+'GraphicNewXY'+'(Gr:string, X:Double;Y:Double, C:Boolean,Etiq:string,Caption:string):Boolean';
+ model:='function '+'GraphicNewXY'+'(Gr:string, X:Double, Y:Double, C:Boolean, Etiq:string, Caption:string):Boolean';
  aParams:=SRPPgraphicnew;
 end;
 
@@ -1642,7 +1642,7 @@ begin
  FParamcount:=2;
  IdenName:='GetValueFromSQL';
  Help:=SRpGetValueFromSQL;
- model:='function '+'GetValueFromSQL'+'(connectionname:String;sql:String):Variant';
+ model:='function '+'GetValueFromSQL'+'(connectionname:String, sql:String):Variant';
  aParams:=SRpGetValueFromSQLP;
 end;
 
@@ -1670,7 +1670,7 @@ begin
  FParamcount:=8;
  IdenName:='GraphicBounds';
  Help:=SRpGraphicBounds;
- model:='function '+'GraphicBounds'+'(Gr:string; autol,autoh:boolean; low,high:double;log:boolean; logbase:double; inverted:boolean):Boolean';
+ model:='function '+'GraphicBounds'+'(Gr:string, autol,autoh:boolean, low,high:double, log:boolean, logbase:double, inverted:boolean):Boolean';
  aParams:=SRPPgraphicBounds;
 end;
 
@@ -2217,7 +2217,7 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='FormatStr';
- AIHelp:='Formats any value (datetime, numbers, boolean) using the provided formatting string, for numbers prefer FormatNum';
+ AIHelp:='Formats any value (datetime, numbers, boolean) using the provided formatting string, the format pattern is the usual for dates and numbers, prefer the displayformat if the property is TRpExpression->Expression when possible';
  Help:=SRpFormatStr;
  model:='function '+'Formatstr'+'(format:string,v:variant):string';
  aParams:=SRpPFormatStr;
@@ -2277,10 +2277,10 @@ begin
  inherited Create(AOwner);
  FParamcount:=2;
  IdenName:='FormatNum';
- AIHelp:='Formats any number given a mask';
+ // AIHelp:='Formats any number given a mask';
  Help:=SRpFormatNum;
- AIHelp:='Formats any value using the provided formatting string. The pattern uses # 0 . for decimal and , for thousand separator';
- model:='function '+'FormatNum'+'(mask:string;number:double):string';
+ //AIHelp:='Formats any value using the provided formatting string. The pattern uses # 0 . for decimal and the comma for thousand separator, but place it in the correct place (after third integer in the mask)';
+ model:='function '+'FormatNum'+'(mask:string,number:double):string';
  aParams:=SRpPFormatNum;
 end;
 
@@ -2431,7 +2431,7 @@ begin
  IdenName:='ReplaceStr';
  AIHelp:='Replaces all occurrences of a string with a new string.';
  Help:=SRpReplaceStr;
- model:='function '+'ReplaceStr'+'(const S, OldPattern, NewPattern:string;): string;';
+ model:='function '+'ReplaceStr'+'(const S, OldPattern, NewPattern:string): string';
  aParams:=SRpPReplaceStr;
 end;
 
@@ -2468,9 +2468,9 @@ begin
  FParamcount:=10;
  IdenName:='GraphicOp';
  Help:='';
- model:='function '+'GraphicOp'+'(Top,Left,Width,Height:integer;'+#10+
-    'DrawStyle:integer;BrushStyle:integer;BrushColor:integer;'+#10+
-    'PenStyle:integer;PenWidth:integer; PenColor:integer):Boolean';
+ model:='function '+'GraphicOp'+'(Top,Left,Width,Height:integer,'+#10+
+   'DrawStyle:integer, BrushStyle:integer, BrushColor:integer,'+#10+
+   'PenStyle:integer, PenWidth:integer, PenColor:integer):Boolean';
  aParams:='';
 end;
 
@@ -2505,8 +2505,8 @@ begin
  FParamcount:=8;
  IdenName:='ImageOp';
  Help:='';
- model:='function '+'ImageOp'+'(Top,Left,Width,Height:integer;'+#10+
-    'DrawStyle,PixelsPerinch:integer;PreviewOnly:Boolean;Image:String):Boolean';
+ model:='function '+'ImageOp'+'(Top,Left,Width,Height:integer,'+#10+
+   'DrawStyle,PixelsPerinch:integer, PreviewOnly:Boolean, Image:String):Boolean';
  aParams:='';
 end;
 
@@ -2578,11 +2578,11 @@ begin
  FParamcount:=19;
  IdenName:='TextOp';
  Help:='';
- model:='function TextOp(Top,Left,Width,Height:integer;'+#10+
-  'Text,LFontName,WFontName:WideString;'+#10+
-  'FontSize,FontRotation,FontStyle,FontColor,Type1Font:integer;'+#10+
-  'CutText:boolean;Alignment:integer;WordWrap,RightToLeft:Boolean;'+#10+
-  'PrintStep,BackColor:integer;transparent:boolean)';
+ model:='function TextOp(Top,Left,Width,Height:integer,'+#10+
+  'Text,LFontName,WFontName:WideString,'+#10+
+  'FontSize,FontRotation,FontStyle,FontColor,Type1Font:integer,'+#10+
+  'CutText:boolean, Alignment:integer, WordWrap,RightToLeft:Boolean,'+#10+
+  'PrintStep,BackColor:integer, transparent:boolean)';
  aParams:='';
 end;
 
@@ -2624,8 +2624,8 @@ begin
  FParamcount:=8;
  IdenName:='TextHeight';
  Help:='';
- model:='function OnTextheight(Text,LFontName,WFontName:WideString;'+#10+
-     'RectWidth,FontSize,FontStyle,Type1Font:integer;'+#10+
+ model:='function OnTextheight(Text,LFontName,WFontName:WideString,'+#10+
+   'RectWidth,FontSize,FontStyle,Type1Font:integer,'+#10+
      'PrintStep:integer):integer';
  aParams:='';
 end;
@@ -2661,9 +2661,9 @@ begin
  FParamcount:=12;
  IdenName:='BarcodeOp';
  Help:='';
- model:='function '+'BarcodeOp'+'(Top,Left,Width,Height:integer; '+#10+
-    'Expression,DisplayFormat:WideString; BarType,Modul:Integer; Ratio,Rotation:Currency;'+
-    #10+'CalcChecksum:Boolean; BColor:Integer):Boolean';
+ model:='function '+'BarcodeOp'+'(Top,Left,Width,Height:integer, '+#10+
+   'Expression,DisplayFormat:WideString, BarType,Modul:Integer, Ratio,Rotation:Currency,'+
+   #10+'CalcChecksum:Boolean, BColor:Integer):Boolean';
  aParams:='';
 end;
 
@@ -2748,9 +2748,9 @@ begin
   Duplex:integer;
  end;
 }
- model:='function '+'SetPageSource'+'(QtIndex:integer;'+#10+
-  'Custom:Boolean;CustomWidth,CustomHeight,PaperSource:integer;'+#10+
-  'ForcePaperName:String;Duplex:integer):Boolean';
+ model:='function '+'SetPageSource'+'(QtIndex:integer,'+#10+
+  'Custom:Boolean, CustomWidth,CustomHeight,PaperSource:integer,'+#10+
+  'ForcePaperName:String, Duplex:integer):Boolean';
  aParams:='';
 end;
 
@@ -2787,7 +2787,7 @@ begin
  FParamcount:=2;
  IdenName:='ParamList';
  Help:='';
- model:='function ParamInfo(paramname:String;index:integer)';
+ model:='function ParamInfo(paramname:String, index:integer)';
  aParams:='';
 end;
 
