@@ -493,7 +493,10 @@ begin
   fevaluator:=TRpBaseReport(GetReport).Evaluator;
   fevaluator.Expression:=SerieCaption;
   fevaluator.Evaluate;
-  Result:=WideString(fevaluator.EvalResult);
+  if (fevaluator.EvalResult = Null) then
+   Result:=''
+  else
+   Result:=WideString(fevaluator.EvalResult);
  except
   on E:Exception do
   begin

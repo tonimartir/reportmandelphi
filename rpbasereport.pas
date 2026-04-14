@@ -589,6 +589,7 @@ begin
  // Pagenum
  FIdenPagenum:=TIdenReportVar.Create(nil);
  Fidenpagenum.FReport:=self;
+ Fidenpagenum.model:='M.PAGE';
  Fidenpagenum.AIHelp:='Global page number';
  FidenPagenum.varname:='PAGE';
  FIdenLanguage:=TIdenReportVar.Create(nil);
@@ -596,6 +597,7 @@ begin
  FIdenLanguage.varname:='LANGUAGE';
  FIdenPagenumgroup:=TIdenReportVar.Create(nil);
  Fidenpagenumgroup.FReport:=self;
+ Fidenpagenum.model:='M.PAGENUM';
  Fidenpagenumgroup.AIHelp:='Page number of the current group';
  FidenPagenumgroup.varname:='PAGENUM';
  FIdenfreespace:=TIdenReportVar.Create(nil);

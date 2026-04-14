@@ -237,6 +237,7 @@ begin
  FValue:=True;
  RType:=RTypeIdenConstant;
  help:=SRpTrueHelp;
+ Model:='True';
  AIHelp:='Literal identifier for true boolean value';
  Idenname:='True';
 end;
@@ -247,6 +248,7 @@ begin
  inherited Create(AOwner);
  FValue:=False;
  help:=SRpFalseHelp;
+ Model:='False';
  AIHelp:='Literal identifier for false boolean value';
  Idenname:='False';
 end;
