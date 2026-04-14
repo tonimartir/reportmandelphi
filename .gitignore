@@ -210,3 +210,6 @@ getit/Reportman.zip
 repman/bin32/icudt69.dll
 Reportman.Reporting/obj/
 Reportman.Reporting/bin/
+*.oca
+*.vbw
+tests/vb_activex_ai_test/MSSCCPRJ.SCC
