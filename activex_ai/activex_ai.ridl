@@ -1,0 +1,76 @@
+[
+  uuid(5E388645-51A0-4C40-8E7B-3A774F3D85F1),
+  version(1.0),
+  helpstring("Reportman AI ActiveX Library"),
+  control
+]
+library activex_ai
+{
+  importlib("stdole2.tlb");
+
+  interface IReportmanAIActiveX;
+  dispinterface IReportmanAIActiveXEvents;
+  coclass ReportmanAIActiveX;
+
+  [
+    uuid(7D58AF9D-2482-4BD8-B2AA-6B063E35B464),
+    version(1.0),
+    helpstring("Dispatch interface for Reportman AI ActiveX Control"),
+    dual,
+    oleautomation
+  ]
+  interface IReportmanAIActiveX: IDispatch
+  {
+    [propget, id(1)]
+    HRESULT Url([out, retval] BSTR* Value);
+    [propput, id(1)]
+    HRESULT Url([in] BSTR Value);
+    [propget, id(2)]
+    HRESULT CanGoBack([out, retval] VARIANT_BOOL* Value);
+    [propget, id(3)]
+    HRESULT CanGoForward([out, retval] VARIANT_BOOL* Value);
+    [propget, id(4)]
+    HRESULT Version([out, retval] BSTR* Value);
+    [id(5)]
+    HRESULT Navigate([in] BSTR url);
+    [id(6)]
+    HRESULT Reload(void);
+    [id(7)]
+    HRESULT GoBack(void);
+    [id(8)]
+    HRESULT GoForward(void);
+    [id(9)]
+    HRESULT ExecuteScript([in] BSTR script);
+    [id(10)]
+    HRESULT RetryInitialize(void);
+    [propget, id(11)]
+    HRESULT ProfileName([out, retval] BSTR* Value);
+    [propput, id(11)]
+    HRESULT ProfileName([in] BSTR Value);
+  };
+
+  [
+    uuid(03F5FB43-6AC3-4D42-9A33-17F70C1103FA),
+    version(1.0),
+    helpstring("Events for Reportman AI ActiveX Control")
+  ]
+  dispinterface IReportmanAIActiveXEvents
+  {
+    properties:
+    methods:
+      [id(1)] void NavigationStarting([in] BSTR url);
+      [id(2)] void NavigationCompleted([in] BSTR url);
+      [id(3)] void MessageReceived([in] BSTR message);
+      [id(4)] void HostError([in] BSTR message);
+  };
+
+  [
+    uuid(79E31982-C4C7-4E66-A64B-D4AF59BD4E88),
+    helpstring("Reportman AI ActiveX Control")
+  ]
+  coclass ReportmanAIActiveX
+  {
+    [default] interface IReportmanAIActiveX;
+    [default, source] dispinterface IReportmanAIActiveXEvents;
+  };
+};
