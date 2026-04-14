@@ -43,6 +43,7 @@
     <DCCReference Include="rpaiactivexcontrol.pas" />
     <DCCReference Include="rpaxaiimp.pas" />
     <RidlCompile Include="activex_ai.ridl" />
+    <RcCompile Include="activex_ai_loader.rc" />
   </ItemGroup>
   <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" />
 </Project>

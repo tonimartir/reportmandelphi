@@ -16,6 +16,7 @@ exports
 
 {$R *.TLB}
 {$R *.RES}
+{$R activex_ai_loader.res}
 
 begin
 end.

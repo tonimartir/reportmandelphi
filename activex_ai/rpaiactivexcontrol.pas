@@ -56,11 +56,14 @@ type
     function GetVersion: string;
     function GetAppDataRoot: string;
     function GetArchitectureFolder: string;
+    function GetEmbeddedLoaderOutputPath: string;
+    function GetEmbeddedLoaderResourceName: string;
     function GetEffectiveProfileName: string;
     function GetHostExecutableProfileName: string;
     function GetModuleDirectory: string;
     function GetUserDataFolder: string;
     function HasUsableParentWindow: Boolean;
+    function EnsureEmbeddedWebView2LoaderExtracted: Boolean;
     procedure QueueInitializeBrowser;
     procedure EnsureBrowserCreated;
     function SanitizeProfileName(const Value: string): string;
@@ -566,6 +569,25 @@ begin
     Result := 'x86';
 end;
 
+function TRpAIActiveXControl.GetEmbeddedLoaderOutputPath: string;
+var
+  LLocalAppData: string;
+begin
+  LLocalAppData := GetEnvironmentVariable('LOCALAPPDATA');
+  if LLocalAppData = '' then
+    LLocalAppData := TPath.GetTempPath;
+  Result := TPath.Combine(LLocalAppData,
+    'Reportman.AI\Runtime\WebView2\' + GetArchitectureFolder + '\WebView2Loader.dll');
+end;
+
+function TRpAIActiveXControl.GetEmbeddedLoaderResourceName: string;
+begin
+  if SizeOf(Pointer) = 8 then
+    Result := 'WEBVIEW2LOADER_X64'
+  else
+    Result := 'WEBVIEW2LOADER_X86';
+end;
+
 function TRpAIActiveXControl.GetHostExecutableProfileName: string;
 begin
   Result := ChangeFileExt(ExtractFileName(ParamStr(0)), '');
@@ -610,12 +632,13 @@ begin
   Result := False;
   LLocalAppData := GetEnvironmentVariable('LOCALAPPDATA');
 
+  EnsureEmbeddedWebView2LoaderExtracted;
+
   LCandidates[0] := TPath.Combine(GetModuleDirectory, GetArchitectureFolder + '\WebView2Loader.dll');
   LCandidates[1] := TPath.Combine(GetModuleDirectory, 'WebView2Loader.dll');
   LCandidates[2] := TPath.Combine(LLocalAppData,
     'Reportman\Monaco\MonacoEditor\' + GetArchitectureFolder + '\WebView2Loader.dll');
-  LCandidates[3] := TPath.Combine(LLocalAppData,
-    'Reportman.AI\Runtime\WebView2\' + GetArchitectureFolder + '\WebView2Loader.dll');
+  LCandidates[3] := GetEmbeddedLoaderOutputPath;
 
   for I := Low(LCandidates) to High(LCandidates) do
   begin
@@ -634,6 +657,37 @@ begin
   end;
 
   AppendLog('No candidate WebView2Loader.dll could be preloaded.');
+end;
+
+function TRpAIActiveXControl.EnsureEmbeddedWebView2LoaderExtracted: Boolean;
+var
+  LOutputPath: string;
+  LResourceStream: TResourceStream;
+begin
+  Result := False;
+  LOutputPath := GetEmbeddedLoaderOutputPath;
+
+  if TFile.Exists(LOutputPath) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  ForceDirectories(ExtractFilePath(LOutputPath));
+
+  try
+    LResourceStream := TResourceStream.Create(HInstance, GetEmbeddedLoaderResourceName, RT_RCDATA);
+    try
+      LResourceStream.SaveToFile(LOutputPath);
+      AppendLog('Extracted embedded WebView2Loader.dll to: ' + LOutputPath);
+      Result := True;
+    finally
+      LResourceStream.Free;
+    end;
+  except
+    on E: Exception do
+      AppendLog('Embedded WebView2Loader extraction failed: ' + E.Message);
+  end;
 end;
 
 function TRpAIActiveXControl.SanitizeProfileName(const Value: string): string;

@@ -17,6 +17,7 @@ Begin VB.Form Form1
       Top             =   120
       Width           =   10935
       Url             =   "https://app.reportman.es"
+      ProfileName     =   ""
    End
 End
 Attribute VB_Name = "Form1"
@@ -24,3 +25,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+Private Sub Form_Resize()
+    ' MiControlActiveX es el nombre que le diste al objeto en el diseño
+
+    ' Move Left, Top, Width, Height
+
+ ReportmanAIActiveX1.Move 0, 0, Me.ScaleWidth, Me.ScaleHeight
+End Sub
