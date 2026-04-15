@@ -159,7 +159,7 @@ type
 
 implementation
 
-uses Winapi.WinSock, Forms, IniFiles, IOUtils;
+uses Winapi.WinSock, IniFiles, IOUtils;
 
 const
   WM_RP_AUTH_DISPATCH = WM_USER + 210;
@@ -813,8 +813,6 @@ begin
     LStartTime := Now;
     while (not FOAuthGotCallback) and ((Now - LStartTime) < (5 / 24 / 60)) do
     begin
-      Application.ProcessMessages;
-
       FD_ZERO(LFDSet);
       FD_SET(LListenSocket, LFDSet);
       LTimeout.tv_sec := 0;

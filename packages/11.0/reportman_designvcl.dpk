@@ -58,7 +58,8 @@ requires
   adortl,
   reportman_rtl,
   reportman_vcl,
-  designide;
+  designide,
+  vcledge;
 
 contains
   rpmregdesignvcl in '..\..\rpmregdesignvcl.pas',

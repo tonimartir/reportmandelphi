@@ -388,7 +388,7 @@ procedure TFRpConnectionVCL.BConfigClick(Sender: TObject);
 var
  i:integer;
 begin
- ShowDBXConfig(TRpDbDriver(GDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase,rpdbHttp]);
+ ShowDBXConfig;
  conadmin.free;
  conadmin:=TRPCOnnAdmin.Create;
  conadmin.GetConnectionNames(ComboAvailable.Items,'');

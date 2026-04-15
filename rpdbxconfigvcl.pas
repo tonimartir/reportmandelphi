@@ -101,7 +101,6 @@ type
     DriversFile:string;
     params:TStringList;
     connectionname:string;
-    onlyibx:boolean;
 {$IFDEF USESQLEXPRESS}
     SQLConnection1: TSQLConnection;
 {$ENDIF}
@@ -111,28 +110,25 @@ type
     procedure Edit1Change(Sender:TObject);
     procedure BSelectHubConnectionClick(Sender: TObject);
     procedure HubConnectionMenuItemClick(Sender: TObject);
-    procedure UpdateIBX;
   public
     { Public declarations }
     ConnectionsFile:string;
   end;
 
-procedure ShowDBXConfig(onlyibx:boolean;ConnectionsFile:string='');
+procedure ShowDBXConfig(ConnectionsFile:string='');
 
 implementation
 
 {$R *.dfm}
 
 
-procedure ShowDBXConfig(onlyibx:boolean;ConnectionsFile:string);
+procedure ShowDBXConfig(ConnectionsFile:string);
 var
  dia:TFRpDBXCOnfigVCL;
 begin
  dia:=TFRpDBXConfigVCL.Create(Application);
  try
-  dia.onlyibx:=onlyibx;
   dia.ConnectionsFile:=Trim(ConnectionsFile);
-  dia.UpdateIBX;
   dia.showmodal;
  finally
   dia.free;
@@ -560,19 +556,6 @@ end;
 procedure TFRpDBXConfigVCL.BCloseClick(Sender: TObject);
 begin
  Close;
-end;
-
-procedure TFRpDBXConfigVCL.UpdateIBX;
-begin
- if OnlyIBX then
- begin
-  ComboDrivers.ItemIndex:=ComboDrivers.Items.IndexOf('Interbase');
-  if ComboDrivers.ItemIndex>=0 then
-   ComboDrivers.Enabled:=False;
- end;
- if ComboDrivers.ItemIndex<0 then
-  ComboDrivers.ItemIndex:=0;
- ComboDriversClick(Self);
 end;
 
 procedure TFRpDBXConfigVCL.BSelectHubConnectionClick(Sender: TObject);
