@@ -213,3 +213,5 @@ Reportman.Reporting/bin/
 *.oca
 *.vbw
 tests/vb_activex_ai_test/MSSCCPRJ.SCC
+repman/bin32/freetype6.dll
+repman/bin32/testplug.dll

@@ -82,6 +82,7 @@ type
     FOnContentChanged: TNotifyEvent;
     FOnSchemaChanged: TNotifyEvent;
     FAppDataPath: string;
+    FAssetRootPath: string;
     FEditorReady: Boolean;
     FUpdatingFromBrowser: Boolean;
     FHubDatabaseId: Int64;
@@ -124,6 +125,8 @@ type
     procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
+    function ResolveMonacoAssetRoot(const ABasePath: string): string;
+    function EnsureMonacoAssetsExtracted: string;
   protected
     procedure CreateWnd; override;
     procedure Resize; override;
@@ -320,7 +323,6 @@ constructor TFRpMonacoEditorVCL.Create(AOwner: TComponent);
 var
   LResStream: TResourceStream;
   LZip: TZipFile;
-  LDestPath: string;
   LDllPath: string;
 begin
   inherited Create(AOwner);
@@ -331,31 +333,13 @@ begin
   // 1. Determine safe extraction path in %LOCALAPPDATA%
   FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
   if FAppDataPath = '' then FAppDataPath := TPath.GetTempPath;
-  LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
-
-  // 2. Extract assets from resource if missing or if folder doesn't exist
-  if not TDirectory.Exists(LDestPath) then
-  begin
-    TDirectory.CreateDirectory(LDestPath);
-    LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
-    try
-      LZip := TZipFile.Create;
-      try
-        LZip.Open(LResStream, zmRead);
-        LZip.ExtractAll(LDestPath);
-      finally
-        LZip.Free;
-      end;
-    finally
-      LResStream.Free;
-    end;
-  end;
+  FAssetRootPath := EnsureMonacoAssetsExtracted;
 
   // 3. Preload WebView2Loader.dll based on architecture
   if SizeOf(Pointer) = 8 then
-    LDllPath := TPath.Combine(LDestPath, 'x64\WebView2Loader.dll')
+    LDllPath := TPath.Combine(FAssetRootPath, 'x64\WebView2Loader.dll')
   else
-    LDllPath := TPath.Combine(LDestPath, 'x86\WebView2Loader.dll');
+    LDllPath := TPath.Combine(FAssetRootPath, 'x86\WebView2Loader.dll');
 
   if TFile.Exists(LDllPath) then
     LoadLibrary(PChar(LDllPath));
@@ -446,10 +430,52 @@ begin
   LayoutTopControls;
 end;
 
+function TFRpMonacoEditorVCL.ResolveMonacoAssetRoot(
+  const ABasePath: string): string;
+var
+  LNestedPath: string;
+begin
+  Result := ABasePath;
+  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
+    Exit;
+
+  LNestedPath := TPath.Combine(ABasePath, 'MonacoEditor');
+  if TFile.Exists(TPath.Combine(LNestedPath, 'index.html')) then
+    Result := LNestedPath;
+end;
+
+function TFRpMonacoEditorVCL.EnsureMonacoAssetsExtracted: string;
+var
+  LBasePath: string;
+  LResStream: TResourceStream;
+  LZip: TZipFile;
+begin
+  LBasePath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
+  Result := ResolveMonacoAssetRoot(LBasePath);
+  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
+    Exit;
+
+  TDirectory.CreateDirectory(LBasePath);
+  LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
+  try
+    LZip := TZipFile.Create;
+    try
+      LZip.Open(LResStream, zmRead);
+      LZip.ExtractAll(LBasePath);
+    finally
+      LZip.Free;
+    end;
+  finally
+    LResStream.Free;
+  end;
+
+  Result := ResolveMonacoAssetRoot(LBasePath);
+end;
+
 procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(
   Sender: TCustomEdgeBrowser; AResult: HRESULT);
 var
-  LDestPath, LURL: string;
+  LURL: string;
 begin
   if Succeeded(AResult) then
   begin
@@ -457,9 +483,10 @@ begin
     Edge.OnWebMessageReceived := EdgeWebMessageReceived;
     Edge.OnNavigationCompleted := EdgeNavigationCompleted;
 
-    LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
+    if FAssetRootPath = '' then
+      FAssetRootPath := EnsureMonacoAssetsExtracted;
 
-    LURL := 'file:///' + LDestPath.Replace('\', '/');
+    LURL := 'file:///' + FAssetRootPath.Replace('\', '/');
     if not LURL.EndsWith('/') then
       LURL := LURL + '/';
     LURL := LURL + 'index.html';
@@ -764,31 +791,66 @@ procedure TFRpMonacoEditorVCL.SelectCurrentSchema;
 var
   I: Integer;
   LItem: TSchemaComboItem;
+  LFound: Boolean;
 begin
   if ComboSchema.Items.Count = 0 then
     Exit;
 
-  if FHubSchemaId = 0 then
-  begin
-    ComboSchema.ItemIndex := 0;
-    FSchema := '';
-    FHubDatabaseId := FBaseHubDatabaseId;
-    Exit;
-  end;
-
   ComboSchema.ItemIndex := 0;
   FSchema := '';
-  for I := 1 to ComboSchema.Items.Count - 1 do
+  LFound := False;
+
+  if FHubSchemaId <> 0 then
   begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-    if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) and
-      ((FHubDatabaseId = 0) or (LItem.HubDatabaseId = FHubDatabaseId)) then
+    for I := 1 to ComboSchema.Items.Count - 1 do
     begin
-      ComboSchema.ItemIndex := I;
-      FSchema := ComboSchema.Items[I];
-      FHubDatabaseId := LItem.HubDatabaseId;
-      Break;
+      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+      if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) then
+      begin
+        ComboSchema.ItemIndex := I;
+        FSchema := ComboSchema.Items[I];
+        FHubDatabaseId := LItem.HubDatabaseId;
+        LFound := True;
+        Break;
+      end;
     end;
+  end;
+
+  if (not LFound) and (FBaseHubDatabaseId <> 0) then
+  begin
+    for I := 1 to ComboSchema.Items.Count - 1 do
+    begin
+      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+      if (LItem <> nil) and (LItem.HubDatabaseId = FBaseHubDatabaseId) then
+      begin
+        ComboSchema.ItemIndex := I;
+        FSchema := ComboSchema.Items[I];
+        FHubDatabaseId := LItem.HubDatabaseId;
+        FHubSchemaId := LItem.HubSchemaId;
+        LFound := True;
+        Break;
+      end;
+    end;
+  end;
+
+  if (not LFound) and (ComboSchema.Items.Count > 1) then
+  begin
+    ComboSchema.ItemIndex := 1;
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[1]);
+    FSchema := ComboSchema.Items[1];
+    if LItem <> nil then
+    begin
+      FHubDatabaseId := LItem.HubDatabaseId;
+      FHubSchemaId := LItem.HubSchemaId;
+    end;
+    LFound := True;
+  end;
+
+  if not LFound then
+  begin
+    FSchema := '';
+    FHubDatabaseId := FBaseHubDatabaseId;
+    FHubSchemaId := 0;
   end;
 end;
 

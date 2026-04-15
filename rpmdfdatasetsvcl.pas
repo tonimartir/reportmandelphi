@@ -166,6 +166,7 @@ type
     function GetDataInfo:TRpDataInfoList;
 //    function FindDatabaseInfoItem:TRpDatabaseInfoItem;
     function FindDataInfoItem:TRpDataInfoItem;
+    function FindSiblingHubSchemaId(const ADataInfo: TRpDataInfoItem): Int64;
     function GetChatPrefillPercent(const AStage, AChunkType: string): Integer;
     function GetUserLanguageCode: string;
     procedure MonacoInferenceLog(Sender: TObject; const ASource,
@@ -203,6 +204,26 @@ end;
 function TFRpDatasetsVCL.GetParams:TRpParamList;
 begin
  result:=report.params;
+end;
+
+function TFRpDatasetsVCL.FindSiblingHubSchemaId(
+  const ADataInfo: TRpDataInfoItem): Int64;
+var
+  I: Integer;
+  LItem: TRpDataInfoItem;
+begin
+  Result := 0;
+  if (ADataInfo = nil) or (ADataInfo.DatabaseAlias = '') then
+    Exit;
+
+  for I := 0 to datainfo.Count - 1 do
+  begin
+    LItem := datainfo.Items[I];
+    if (LItem <> nil) and (LItem <> ADataInfo) and
+      SameText(LItem.DatabaseAlias, ADataInfo.DatabaseAlias) and
+      (LItem.HubSchemaId > 0) then
+      Exit(LItem.HubSchemaId);
+  end;
 end;
 
 procedure TFRpDatasetsVCL.SetParams(Value:TRpParamList);
@@ -521,8 +542,9 @@ begin
  begin
   LPreviousDatabaseAlias:=dinfo.DatabaseAlias;
   dinfo.DatabaseAlias:=COmboConnection.Text;
-  if not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias) then
-   dinfo.HubSchemaId:=0;
+  if (dinfo.HubSchemaId = 0) and
+    (not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias)) then
+    dinfo.HubSchemaId:=FindSiblingHubSchemaId(dinfo);
   // Finds the driver
   index:=databaseinfo.IndexOf(dinfo.DatabaseAlias);
   if index<0 then
@@ -1240,7 +1262,7 @@ procedure TFRpDatasetsVCL.ANewExecute(Sender: TObject);
 var
  aliasname:string;
  aitem:TRpDataInfoItem;
- index:integer;
+ index: Integer;
 begin
  aliasname:=Trim(RpInputBox(SrpNewDataset,SRpAliasName,''));
  if Length(aliasname)<1 then
@@ -1249,19 +1271,8 @@ begin
  EnsureDataInfoItemName(TRpBaseReport(report), aitem);
   if databaseinfo.Count>0 then
     aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
-  if aitem.DatabaseAlias <> '' then
-  begin
-    for index := 0 to datainfo.Count - 1 do
-    begin
-      if (datainfo.Items[index] <> aitem) and
-         SameText(datainfo.Items[index].DatabaseAlias, aitem.DatabaseAlias) and
-         (datainfo.Items[index].HubSchemaId > 0) then
-      begin
-        aitem.HubSchemaId := datainfo.Items[index].HubSchemaId;
-        Break;
-      end;
-    end;
-  end;
+  if aitem.HubSchemaId = 0 then
+    aitem.HubSchemaId := FindSiblingHubSchemaId(aitem);
  FillDatasets;
  index:=LDatasets.items.indexof(AnsiUppercase(aliasname));
  if index>=0 then

@@ -931,10 +931,12 @@ var
   LDatabaseInfo: TRpDatabaseInfoItem;
   LConnectionParams: TStringList;
   I: Integer;
+  LHasPersistedSchema: Boolean;
 begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   ASchemaApiKey := '';
+  LHasPersistedSchema := False;
 
   if not Assigned(report) then
     Exit;
@@ -945,6 +947,7 @@ begin
     LDataInfo := report.DataInfo.Items[0];
     if (LDataInfo <> nil) and (LDataInfo.HubSchemaId > 0) then
     begin
+      LHasPersistedSchema := True;
       AHubSchemaId := LDataInfo.HubSchemaId;
       LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
@@ -980,7 +983,8 @@ begin
 
       if AHubDatabaseId > 0 then
       begin
-        AHubSchemaId := 0; // Let the UI pick the first schema
+        if not LHasPersistedSchema then
+          AHubSchemaId := 0; // Let the UI pick the first schema only when none is saved
         Exit;
       end;
     end;
