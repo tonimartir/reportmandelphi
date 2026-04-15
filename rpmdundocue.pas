@@ -811,6 +811,7 @@ procedure TUndoCue.ApplySwapOperation(const className: string; down: Boolean;
 var
   increment: Integer;
   subreport: TRpSubReport;
+  section: TRpSection;
   temp: TCollectionItem;
 begin
   if down then
@@ -828,6 +829,15 @@ begin
       raise Exception.Create('Parent name required for TRPSECTION swap.');
     subreport := TRpSubReport(GetComponentByName(aParentName));
     subreport.Sections.Items[aOldIndex].Index := aOldIndex + increment;
+  end
+  else if (className = 'TRPLABEL') or (className = 'TRPEXPRESSION') or
+          (className = 'TRPSHAPE') or (className = 'TRPIMAGE') or
+          (className = 'TRPBARCODE') or (className = 'TRPCHART') then
+  begin
+    if aParentName = '' then
+      raise Exception.Create('Parent name required for component swap.');
+    section := TRpSection(GetComponentByName(aParentName));
+    section.Components.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if className = 'TRPPARAM' then
   begin
