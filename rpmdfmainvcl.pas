@@ -432,6 +432,9 @@ type
     procedure UpdateFonts;
     function GetScale:double;
     procedure menuthemeClick(Sender: TObject);
+    function GetShortcutFocusedControl: TWinControl;
+    function IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+    function ShouldHandleDesignerUndoShortcut: Boolean;
     procedure EnsureUndoCue;
     procedure DoUndo;
     procedure DoRedo;
@@ -2856,6 +2859,36 @@ begin
   report.UndoCue := TUndoCue.Create(report);
 end;
 
+function TFRpMainFVCL.GetShortcutFocusedControl: TWinControl;
+begin
+ Result:=nil;
+ if Assigned(Screen.ActiveCustomForm) then
+  Result:=Screen.ActiveCustomForm.ActiveControl;
+ if (Result=nil) and Assigned(Screen.ActiveForm) then
+  Result:=Screen.ActiveForm.ActiveControl;
+ if Result=nil then
+  Result:=ActiveControl;
+end;
+
+function TFRpMainFVCL.IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+begin
+ Result:=False;
+ if not Assigned(AControl) then
+  Exit;
+ if AControl is TCustomEdit then
+ begin
+  Result:=not TCustomEdit(AControl).ReadOnly;
+  Exit;
+ end;
+ if AControl is TComboBox then
+  Result:=TComboBox(AControl).Style<>csDropDownList;
+end;
+
+function TFRpMainFVCL.ShouldHandleDesignerUndoShortcut: Boolean;
+begin
+ Result:=not IsEditableTextShortcutTarget(GetShortcutFocusedControl);
+end;
+
 procedure TFRpMainFVCL.DoUndo;
 var
  cue: TUndoCue;
@@ -3748,12 +3781,12 @@ end;
 
 procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
- if (Shift = [ssCtrl]) and (Key = Ord('Z')) then
+ if (Shift = [ssCtrl]) and (Key = Ord('Z')) and ShouldHandleDesignerUndoShortcut then
  begin
   Key := 0;
   DoUndo;
  end
- else if (Shift = [ssCtrl]) and (Key = Ord('Y')) then
+ else if (Shift = [ssCtrl]) and (Key = Ord('Y')) and ShouldHandleDesignerUndoShortcut then
  begin
   Key := 0;
   DoRedo;
