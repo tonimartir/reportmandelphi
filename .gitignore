@@ -205,3 +205,7 @@ getit/Reportman_PDF/Source/Examples/CreatePDF/Android64/
 getit/Source/Examples/CreatePDF/Android64/
 getit/Reportman.zip
 repman/bin32/icudt69.dll
+activex_ai/activex_ai.oca
+tests/collatetest/MSSCCPRJ.SCC
+tests/vb_activex_ai_test/MSSCCPRJ.SCC
+tests/vb_activex_ai_test/Proyecto1.vbw
