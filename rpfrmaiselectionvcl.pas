@@ -19,7 +19,11 @@ uses
   Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON,
   rpauthmanager;
 
+  const
+    CRpStartupNetworkDelayMs = 0;
+
 type
+
   // Mirrors Desktop NLToSQLProvider: Standard, Precision, Agent
   TRpAITierType = (rpaitStandard, rpaitPrecision, rpaitAgent);
 
@@ -80,7 +84,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure Resize; override;
     procedure RefreshLayout;
-    procedure RefreshStatusInBackground;
+    procedure RefreshStatusInBackground(ADelayBeforeRequestMs: Cardinal = 0);
     procedure RefreshState;
     procedure UpdateFromUserProfile(AProfile: TJSONObject);
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
@@ -120,13 +124,21 @@ begin
   RefreshState;
 end;
 
-procedure TFRpAISelectionVCL.RefreshStatusInBackground;
+procedure TFRpAISelectionVCL.RefreshStatusInBackground(
+  ADelayBeforeRequestMs: Cardinal = 0);
 var
   LWorker: TThread;
 begin
   LWorker := TThread.CreateAnonymousThread(
     procedure
     begin
+      if ADelayBeforeRequestMs > 0 then
+      begin
+        TRpAuthManager.Instance.Log(
+          'RefreshStatusInBackground: delaying startup auth status request by ' +
+          IntToStr(ADelayBeforeRequestMs) + ' ms for testing.');
+        Sleep(ADelayBeforeRequestMs);
+      end;
       TRpAuthManager.Instance.CheckStatus;
     end);
   LWorker.FreeOnTerminate := True;

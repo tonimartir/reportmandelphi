@@ -7,7 +7,11 @@ uses
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
   rpreportdesignercontracts, rpfrmaireportvcl;
 
+  const
+    CRpStartupNetworkDelayMs = 0;
+
 type
+
   TConfigIconButton = class(TSpeedButton)
   protected
     procedure Paint; override;
@@ -130,9 +134,9 @@ type
     procedure ClearSchemaItems;
     procedure ComboSchemaChange(Sender: TObject);
     function LoadConfiguredApiKeySchemas(AList: TStrings): Boolean;
-    procedure LoadSchemas;
+    procedure LoadSchemas(ADelayBeforeRequestMs: Cardinal = 0);
     function LoadUserSchemas(AList: TStrings): Boolean;
-    procedure LoadUserAgents;
+    procedure LoadUserAgents(ADelayBeforeRequestMs: Cardinal = 0);
     function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure PostDesignChatPayload(APayload: TObject);
     procedure SchemaConfigClick(Sender: TObject);
@@ -540,7 +544,7 @@ begin
   MemoConversation.Perform(WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
-procedure TFRpChatFrame.LoadUserAgents;
+procedure TFRpChatFrame.LoadUserAgents(ADelayBeforeRequestMs: Cardinal = 0);
 var
   LInstallId: string;
   LPayload: TRpQueuedAgentsPayload;
@@ -578,6 +582,13 @@ begin
         try
           LHttp := TRpDatabaseHttp.Create;
           try
+            if ADelayBeforeRequestMs > 0 then
+            begin
+              TRpAuthManager.Instance.Log(
+                'LoadUserAgents: delaying startup agent request by ' +
+                IntToStr(ADelayBeforeRequestMs) + ' ms for testing.');
+              Sleep(ADelayBeforeRequestMs);
+            end;
             LHttp.Token := LToken;
             LHttp.InstallId := LInstallId;
             if not LHttp.GetUserAgents(LAgents) then
@@ -703,7 +714,7 @@ begin
   end;
 end;
 
-procedure TFRpChatFrame.LoadSchemas;
+procedure TFRpChatFrame.LoadSchemas(ADelayBeforeRequestMs: Cardinal = 0);
 var
   LReloadVersion: Integer;
   LWorker: TThread;
@@ -732,6 +743,13 @@ begin
       try
         LSeenSchemaKeys.Sorted := True;
         LSeenSchemaKeys.Duplicates := dupIgnore;
+        if ADelayBeforeRequestMs > 0 then
+        begin
+          TRpAuthManager.Instance.Log(
+            'LoadSchemas: delaying startup schema request by ' +
+            IntToStr(ADelayBeforeRequestMs) + ' ms for testing.');
+          Sleep(ADelayBeforeRequestMs);
+        end;
         try
           LoadUserSchemas(LUserSchemas);
         except
@@ -1395,11 +1413,11 @@ begin
 
   FOnlineInitializationQueued := True;
   if LNeedsSchemas then
-    LoadSchemas;
+    LoadSchemas(CRpStartupNetworkDelayMs);
   if LNeedsAgents then
-    LoadUserAgents;
+    LoadUserAgents(CRpStartupNetworkDelayMs);
   if FAISelection <> nil then
-    FAISelection.RefreshStatusInBackground;
+    FAISelection.RefreshStatusInBackground(CRpStartupNetworkDelayMs);
 end;
 
 procedure TFRpChatFrame.SetCurrentExpression(const AExpression: string);

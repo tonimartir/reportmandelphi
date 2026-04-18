@@ -9,13 +9,6 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
   Margins.Bottom = 4
   TabOrder = 0
   PixelsPerInch = 120
-  object SpinnerTimer: TTimer
-    Enabled = False
-    Interval = 90
-    OnTimer = SpinnerTimerTimer
-    Left = 24
-    Top = 24
-  end
   object PAI: TPanel
     Left = 0
     Top = 0
@@ -45,11 +38,9 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         BevelOuter = bvNone
         ColumnCollection = <
           item
-            SizeStyle = ssPercent
             Value = 50.000000000000000000
           end
           item
-            SizeStyle = ssPercent
             Value = 50.000000000000000000
           end
           item
@@ -75,7 +66,6 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         ParentBackground = False
         RowCollection = <
           item
-            SizeStyle = ssPercent
             Value = 100.000000000000000000
           end>
         TabOrder = 0
@@ -83,7 +73,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           AlignWithMargins = True
           Left = 0
           Top = 0
-          Width = 241
+          Width = 238
           Height = 63
           Margins.Left = 0
           Margins.Top = 0
@@ -92,11 +82,12 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
+          ExplicitWidth = 241
           object ComboAIProvider: TComboBox
             Left = 0
-            Top = 17
-            Width = 241
-            Height = 21
+            Top = 0
+            Width = 238
+            Height = 28
             Align = alTop
             Style = csDropDownList
             ItemIndex = 0
@@ -106,13 +97,16 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
             Items.Strings = (
               'Standard'
               'Precision')
+            ExplicitTop = 17
+            ExplicitWidth = 241
+            ExplicitHeight = 21
           end
         end
         object PModeHost: TPanel
           AlignWithMargins = True
-          Left = 245
+          Left = 246
           Top = 0
-          Width = 240
+          Width = 235
           Height = 63
           Margins.Left = 4
           Margins.Top = 0
@@ -120,12 +114,14 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Margins.Bottom = 0
           Align = alClient
           BevelOuter = bvNone
-          TabOrder = 1
+          TabOrder = 2
+          ExplicitLeft = 245
+          ExplicitWidth = 240
           object ComboAIMode: TComboBox
             Left = 0
-            Top = 17
-            Width = 240
-            Height = 21
+            Top = 0
+            Width = 235
+            Height = 28
             Align = alTop
             Style = csDropDownList
             ItemIndex = 0
@@ -135,11 +131,14 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
             Items.Strings = (
               'Fast'
               'Reasoning')
+            ExplicitTop = 17
+            ExplicitWidth = 240
+            ExplicitHeight = 21
           end
         end
         object PGaugeHost: TPanel
           AlignWithMargins = True
-          Left = 493
+          Left = 489
           Top = 0
           Width = 32
           Height = 63
@@ -152,6 +151,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           ParentShowHint = False
           ShowHint = True
           TabOrder = 1
+          ExplicitLeft = 493
           object PaintBoxGauge: TPaintBox
             Left = 1
             Top = 16
@@ -187,7 +187,6 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
             Value = 60.000000000000000000
           end
           item
-            SizeStyle = ssPercent
             Value = 100.000000000000000000
           end
           item
@@ -213,7 +212,6 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         ParentBackground = False
         RowCollection = <
           item
-            SizeStyle = ssPercent
             Value = 100.000000000000000000
           end>
         TabOrder = 0
@@ -248,8 +246,8 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           object LTokensInfo: TLabel
             Left = 0
             Top = 0
-            Width = 362
-            Height = 63
+            Width = 138
+            Height = 20
             Align = alClient
             Alignment = taCenter
             Caption = 'Tokens (In/Out): 0 / 0'
@@ -281,6 +279,11 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       end
     end
   end
-end
+  object SpinnerTimer: TTimer
+    Enabled = False
+    Interval = 90
+    OnTimer = SpinnerTimerTimer
+    Left = 24
+    Top = 24
   end
 end
