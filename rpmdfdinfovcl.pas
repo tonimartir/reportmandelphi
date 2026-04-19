@@ -47,6 +47,7 @@ type
     origDatabaseInfo:TRpDatabaseInfoList;
     origDataInfo:TRpDataInfoList;
     origParams:TRpParamList;
+    procedure EnsureDatasetsFrame;
     procedure SetReport(value:TRpReport);
     procedure RecordUndoChanges;
   public
@@ -77,6 +78,23 @@ end;
 
 {$R *.dfm}
 
+procedure TFRpDInfoVCL.EnsureDatasetsFrame;
+begin
+ if fdatasets=nil then
+ begin
+  fdatasets:=TFRpDatasetsVCL.Create(Self);
+  fdatasets.Parent:=TabDatasets;
+  fdatasets.Align := alClient;
+ end;
+
+ if Assigned(freport) then
+ begin
+  fdatasets.Datainfo:=freport.DataInfo;
+  fdatasets.Databaseinfo:=freport.DatabaseInfo;
+  fdatasets.Params:=freport.Params;
+ end;
+end;
+
 procedure TFRpDInfoVCL.SetReport(value:TRpReport);
 begin
  freport:=value;
@@ -98,20 +116,13 @@ begin
   fconnections.Parent:=TabConnections;
   fconnections.Align := alClient;
  end;
- if fdatasets=nil then
- begin
-  fdatasets:=TFRpDatasetsVCL.Create(Self);
-  fdatasets.Parent:=TabDatasets;
-  fdatasets.Align := alClient;
- end;
-
- fdatasets.Datainfo:=report.DataInfo;
- fdatasets.Databaseinfo:=report.DatabaseInfo;
  fconnections.Databaseinfo:=report.DatabaseInfo;
  fconnections.Params:=report.Params;
- fdatasets.params:=report.params;
  if report.DatabaseInfo.Count>0 then
+   begin
+    EnsureDatasetsFrame;
   PControl.ActivePage:=TabDatasets
+   end
  else
   PControl.ActivePage:=TabConnections;
 end;
@@ -137,8 +148,12 @@ end;
 
 procedure TFRpDInfoVCL.PControlChange(Sender: TObject);
 begin
- fdatasets.Databaseinfo:=fconnections.DatabaseInfo;
- fconnections.Params:=fdatasets.Params;
+ if PControl.ActivePage = TabDatasets then
+ begin
+  EnsureDatasetsFrame;
+  fdatasets.Databaseinfo:=fconnections.DatabaseInfo;
+  fconnections.Params:=fdatasets.Params;
+ end;
 end;
 
 procedure TFRpDInfoVCL.RecordUndoChanges;
@@ -150,6 +165,7 @@ var
  origDS,newDS:TRpDataInfoItem;
  newDBInfo:TRpDatabaseInfoList;
  newDataInfo:TRpDataInfoList;
+ newParams:TRpParamList;
  op:TChangeObjectOperation;
   function FindDatabaseInfoByComponentName(infoList: TRpDatabaseInfoList;
     const componentName: string): TRpDatabaseInfoItem;
@@ -189,7 +205,16 @@ begin
  undoCue:=TUndoCue(freport.UndoCue);
  groupId:=undoCue.GetGroupId;
  newDBInfo:=fconnections.DatabaseInfo;
- newDataInfo:=fdatasets.DataInfo;
+ if fdatasets<>nil then
+ begin
+  newDataInfo:=fdatasets.DataInfo;
+  newParams:=fdatasets.Params;
+ end
+ else
+ begin
+  newDataInfo:=freport.DataInfo;
+  newParams:=freport.Params;
+ end;
  // DatabaseInfo changes
  for i:=0 to origDatabaseInfo.Count-1 do
  begin
@@ -338,17 +363,20 @@ begin
     op.Free;
   end;
  end;
-   RecordParamUndoChanges(origParams,fdatasets.Params,freport,groupId);
+   RecordParamUndoChanges(origParams,newParams,freport,groupId);
 end;
 
 procedure TFRpDInfoVCL.BOkClick(Sender: TObject);
 begin
- fdatasets.Databaseinfo:=fconnections.Databaseinfo;
  EnsureReportItemNames(freport);
  RecordUndoChanges;
- freport.DatabaseInfo.Assign(fdatasets.Databaseinfo);
- freport.DataInfo.Assign(fdatasets.Datainfo);
- freport.Params.Assign(fdatasets.Params);
+ freport.DatabaseInfo.Assign(fconnections.Databaseinfo);
+ if fdatasets<>nil then
+ begin
+  fdatasets.Databaseinfo:=fconnections.Databaseinfo;
+  freport.DataInfo.Assign(fdatasets.Datainfo);
+  freport.Params.Assign(fdatasets.Params);
+ end;
  Close;
 end;
 

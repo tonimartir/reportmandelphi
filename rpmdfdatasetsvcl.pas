@@ -146,6 +146,8 @@ type
     FMonaco: TFRpMonacoEditorVCL;
     FSyncingSchemaContext: Boolean;
     Report:TRpReport;
+    procedure EnsureAdvancedEditors;
+    procedure DatasetPageChanged(Sender: TObject);
     procedure ApplyActiveDataInfoContext(ASyncSqlFromDataInfo: Boolean = True;
       const ASchemaApiKeyOverride: string = '');
     procedure SyncActiveSchemaContext(AHubDatabaseId, AHubSchemaId: Int64;
@@ -285,24 +287,42 @@ begin
 
  PBottom.Height:=250;
   MSQL.Visible := False;
+  PControl.OnChange := DatasetPageChanged;
+end;
 
-  FMonaco := TFRpMonacoEditorVCL.Create(Self);
-  FMonaco.Parent := PMonacoHost;
-  FMonaco.Align := alClient;
-  FMonaco.OnContentChanged := MSQLChange;
-  FMonaco.OnSchemaChanged := MonacoSchemaChange;
-  FMonaco.OnInferenceLog := MonacoInferenceLog;
-  FMonaco.OnAuditSql := MonacoAuditSql;
+procedure TFRpDatasetsVCL.EnsureAdvancedEditors;
+begin
+  if FMonaco = nil then
+  begin
+    FMonaco := TFRpMonacoEditorVCL.Create(Self);
+    FMonaco.Parent := PMonacoHost;
+    FMonaco.Align := alClient;
+    FMonaco.OnContentChanged := MSQLChange;
+    FMonaco.OnSchemaChanged := MonacoSchemaChange;
+    FMonaco.OnInferenceLog := MonacoInferenceLog;
+    FMonaco.OnAuditSql := MonacoAuditSql;
+  end;
 
-  FChat := TFRpChatFrame.Create(Self);
-  FChat.Parent := PChatHost;
-  FChat.Align := alClient;
-  FChat.Initialize('', 'Describe the SQL you want for the active dataset and apply the generated SQL when it looks correct.');
-  FChat.OnApplySuggestion := ChatApplySuggestion;
-  FChat.OnSchemaChanged := ChatSchemaChange;
-  FChat.OnSendPrompt := ChatSendPrompt;
-  FChat.OnStopRequest := ChatStopRequest;
-  FChat.StartOnlineInitialization;
+  if FChat = nil then
+  begin
+    FChat := TFRpChatFrame.Create(Self);
+    FChat.Parent := PChatHost;
+    FChat.Align := alClient;
+    FChat.Initialize('', 'Describe the SQL you want for the active dataset and apply the generated SQL when it looks correct.');
+    FChat.OnApplySuggestion := ChatApplySuggestion;
+    FChat.OnSchemaChanged := ChatSchemaChange;
+    FChat.OnSendPrompt := ChatSendPrompt;
+    FChat.OnStopRequest := ChatStopRequest;
+    FChat.StartOnlineInitialization;
+  end;
+
+  ApplyActiveDataInfoContext(True);
+end;
+
+procedure TFRpDatasetsVCL.DatasetPageChanged(Sender: TObject);
+begin
+  if PControl.ActivePage = TabSQL then
+    EnsureAdvancedEditors;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -349,11 +369,14 @@ begin
   if ASchemaApiKeyOverride <> '' then
     LSchemaApiKey := ASchemaApiKeyOverride;
 
-  FMonaco.SetHubContext(LHubDatabaseId, LDataInfo.HubSchemaId);
-  if ASyncSqlFromDataInfo then
+  if FMonaco <> nil then
   begin
-    FMonaco.SQL := WideStringToDOS(LDataInfo.SQL);
-    FMonaco.AuditText := WideStringToDOS(LDataInfo.SQLExplanation);
+    FMonaco.SetHubContext(LHubDatabaseId, LDataInfo.HubSchemaId);
+    if ASyncSqlFromDataInfo then
+    begin
+      FMonaco.SQL := WideStringToDOS(LDataInfo.SQL);
+      FMonaco.AuditText := WideStringToDOS(LDataInfo.SQLExplanation);
+    end;
   end;
 
   if FChat <> nil then
@@ -421,6 +444,8 @@ begin
   CheckOpen.Checked := dinfo.OpenOnStart;
   PControl.Visible := True;
   PanelBasic.Visible := True;
+  if PControl.ActivePage = TabSQL then
+    EnsureAdvancedEditors;
   ApplyActiveDataInfoContext(True);
 
   EMyBase.Text := dinfo.MyBaseFilename;
@@ -553,10 +578,13 @@ begin
    TabBDETable.TabVisible:=false;
    TabMyBase.TabVisible:=false;
    TabBDEType.TabVisible:=false;
-   FMonaco.HubDatabaseId:=0;
-   FMonaco.HubSchemaId:=0;
-  if FChat <> nil then
-    FChat.SetHubContext(0, 0);
+   if FMonaco <> nil then
+   begin
+    FMonaco.HubDatabaseId:=0;
+    FMonaco.HubSchemaId:=0;
+   end;
+   if FChat <> nil then
+     FChat.SetHubContext(0, 0);
    exit;
   end;
   ApplyActiveDataInfoContext(False);
@@ -801,6 +829,7 @@ end;
 procedure TFRpDatasetsVCL.ChatApplySuggestion(Sender: TObject;
   const AExpression: string);
 begin
+  EnsureAdvancedEditors;
   FMonaco.SQL := AExpression;
   MSQLChange(FMonaco);
   if FChat <> nil then
@@ -825,6 +854,9 @@ var
 begin
   if FChat = nil then
     Exit;
+
+  if FMonaco = nil then
+    EnsureAdvancedEditors;
 
   LPrompt := Trim(APrompt);
   if LPrompt = '' then
@@ -971,9 +1003,14 @@ procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AStage,
 var
   LQueueProc: TThreadProcedure;
 begin
+  if FMonaco = nil then
+    Exit;
+
   LQueueProc :=
     procedure
     begin
+      if FMonaco = nil then
+        Exit;
       FMonaco.UpdateAITokens(AInputTokens, AOutputTokens);
       if SameText(AStage, 'ReceivingResponse') and (AChunk <> '') then
         FMonaco.AppendLog(AChunk)
@@ -996,6 +1033,9 @@ var
   LAgentAiId: Int64;
   LLanguage: string;
 begin
+  if FMonaco = nil then
+    Exit;
+
   LDataInfo := FindDataInfoItem;
   if LDataInfo = nil then
     Exit;
