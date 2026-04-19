@@ -74,6 +74,7 @@ uses
 const
   // File name in menu width
   C_FILENAME_WIDTH=40;
+  C_DISABLE_DESIGNER_CHAT_FOR_PERF_TEST = False;
 type
   TRpQueuedDesignChatPayloadKind = (
     rpqdcUpdateStreamingResponse,
@@ -864,27 +865,33 @@ begin
  fcuepages.Align:=alClient;
  fcuepages.Parent:=fcuepanel;
 
- fchattab:=TTabSheet.Create(fcuepages);
- fchattab.PageControl:=fcuepages;
- fchattab.Caption:='Chat';
+ if not C_DISABLE_DESIGNER_CHAT_FOR_PERF_TEST then
+ begin
+  fchattab:=TTabSheet.Create(fcuepages);
+  fchattab.PageControl:=fcuepages;
+  fchattab.Caption:='Chat';
+ end;
 
  fhistorytab:=TTabSheet.Create(fcuepages);
  fhistorytab.PageControl:=fcuepages;
  fhistorytab.Caption:='Historial';
 
- fchatframe:=TFRpChatFrame.Create(fchattab);
- fchatframe.Align:=alClient;
- fchatframe.Parent:=fchattab;
- fchatframe.OnBuildDesignRequest:=BuildDesignChatRequestForFrame;
- fchatframe.OnBuildPreprocessSqlContextRequest:=BuildPreprocessSqlContextRequestForFrame;
- fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
- fchatframe.OnApplyPreprocessSqlContextResult:=ApplyPreprocessSqlContextResultFromFrame;
- fchatframe.OnStopRequest:=StopDesignChatRequest;
- fchatframe.OnRefreshContext:=RefreshDesignChatContext;
- fchatframe.SetRefreshAction(True);
- fchatframe.Initialize('',
-  'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
- InitializeDesignChatSchemaSelection;
+ if Assigned(fchattab) then
+ begin
+  fchatframe:=TFRpChatFrame.Create(fchattab);
+  fchatframe.Align:=alClient;
+  fchatframe.Parent:=fchattab;
+  fchatframe.OnBuildDesignRequest:=BuildDesignChatRequestForFrame;
+  fchatframe.OnBuildPreprocessSqlContextRequest:=BuildPreprocessSqlContextRequestForFrame;
+  fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
+  fchatframe.OnApplyPreprocessSqlContextResult:=ApplyPreprocessSqlContextResultFromFrame;
+  fchatframe.OnStopRequest:=StopDesignChatRequest;
+  fchatframe.OnRefreshContext:=RefreshDesignChatContext;
+  fchatframe.SetRefreshAction(True);
+  fchatframe.Initialize('',
+   'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
+  InitializeDesignChatSchemaSelection;
+ end;
 
  if FDesignContextProgress = nil then
  begin
@@ -908,21 +915,26 @@ begin
  fcueview.LTitle.Left:=42;
  fcueview.LTitle.Caption:='Historial';
 
- fcuepages.ActivePage:=fchattab;
+ if Assigned(fchattab) then
+  fcuepages.ActivePage:=fchattab
+ else
+  fcuepages.ActivePage:=fhistorytab;
  UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
  TThread.Queue(nil,
   procedure
   begin
-   if (fchatframe <> nil) and (fcuepanel <> nil) and (fchattab <> nil) and mainscrollbox.Visible then
+   if (fcuepanel <> nil) and Assigned(fcuepages) and mainscrollbox.Visible then
    begin
     MainScrollBox.Realign;
     frightpanel.Realign;
     fcuepanel.Realign;
     fcuepages.Realign;
-    fchattab.Realign;
-    fchatframe.RefreshLayout;
+    if Assigned(fchattab) then
+     fchattab.Realign;
+    if Assigned(fchatframe) then
+     fchatframe.RefreshLayout;
    end;
   end);
 end;

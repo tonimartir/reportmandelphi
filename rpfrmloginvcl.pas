@@ -57,10 +57,10 @@ var
 begin
   LForm := TFRpLoginVCL.Create(AOwner);
   try
-    TRpAuthManager.Instance.OnLog := LForm.AuthLog;
+    TRpAuthManager.Instance.RegisterLogListener(LForm.AuthLog);
     Result := LForm.ShowModal = mrOk;
   finally
-    TRpAuthManager.Instance.OnLog := nil;
+    TRpAuthManager.Instance.UnregisterLogListener(LForm.AuthLog);
     LForm.Free;
   end;
 end;

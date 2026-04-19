@@ -9,6 +9,11 @@ uses
 
   const
     CRpStartupNetworkDelayMs = 0;
+    CRpChatEnableLoginFrame = True;
+    CRpChatEnableAISelection = True;
+    CRpChatEnableSchemaSelector = True;
+    CRpChatEnableOnlineInitialization = True;
+    CRpChatEnableAuthListener = True;
 
 type
 
@@ -51,6 +56,11 @@ type
     ReloadVersion: Integer;
     constructor Create;
     destructor Destroy; override;
+  end;
+
+  TRpQueuedLogPayload = class(TObject)
+  public
+    Text: string;
   end;
 
   TFRpChatFrame = class(TFrame)
@@ -121,14 +131,18 @@ type
     FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
     FDesignRequestVersion: Integer;
+    FAuthListenerRegistered: Boolean;
+    FLogListenerRegistered: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
     procedure WMApplyLoadedSchemas(var Message: TMessage); message WM_USER + 203;
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 208;
+    procedure WMAppendAuthLog(var Message: TMessage); message WM_USER + 211;
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
       AReloadVersion: Integer);
     procedure ApplyLoadedSchemas(ALoadedSchemas: TStringList;
       AReloadVersion: Integer);
+    procedure AuthLog(const AMsg: string);
     procedure AuthChanged(ASuccess: Boolean);
     procedure AppendMessage(const ATitle, AText: string);
     procedure ClearSchemaItems;
@@ -336,26 +350,54 @@ constructor TFRpChatFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FConversationBlocks := TStringList.Create;
-  FLoginFrame := TFRpLoginFrameVCL.Create(Self);
-  FLoginFrame.Parent := PLoginHost;
-  FLoginFrame.Align := alClient;
+  FLogListenerRegistered := False;
+  if CRpChatEnableLoginFrame then
+  begin
+    FLoginFrame := TFRpLoginFrameVCL.Create(Self);
+    FLoginFrame.Parent := PLoginHost;
+    FLoginFrame.Align := alClient;
+  end
+  else
+  begin
+    PLoginHost.Visible := False;
+    PLoginHost.Height := 0;
+  end;
 
-  FAISelection := TFRpAISelectionVCL.Create(Self);
-  FAISelection.Parent := PAISelectionHost;
-  FAISelection.Align := alClient;
-  FAISelection.Constraints.MinHeight := 63;
-  FAISelection.Constraints.MaxHeight := 63;
-  FAISelection.OnStopRequest := AISelectionStopRequest;
+  if CRpChatEnableAISelection then
+  begin
+    FAISelection := TFRpAISelectionVCL.Create(Self);
+    FAISelection.Parent := PAISelectionHost;
+    FAISelection.Align := alClient;
+    FAISelection.Constraints.MinHeight := 63;
+    FAISelection.Constraints.MaxHeight := 63;
+    FAISelection.OnStopRequest := AISelectionStopRequest;
+  end
+  else
+  begin
+    PAISelectionHost.Visible := False;
+    PAISelectionHost.Height := 0;
+  end;
 
   ComboSchema.Style := csDropDownList;
   ComboSchema.OnChange := ComboSchemaChange;
   FHubDatabaseId := 0;
   FHubSchemaId := 0;
   FSchemaApiKey := '';
-  FShowSchemaSelector := True;
+  FShowSchemaSelector := CRpChatEnableSchemaSelector;
   FLoadingSchemas := False;
 
-  TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
+  if not CRpChatEnableSchemaSelector then
+  begin
+    PSchemaHost.Visible := False;
+    PSchemaHost.Height := 0;
+  end;
+
+  FAuthListenerRegistered := False;
+  if CRpChatEnableAuthListener then
+  begin
+    TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
+    FAuthListenerRegistered := True;
+  end;
 
   MemoConversation.Clear;
   MemoPrompt.Clear;
@@ -366,6 +408,8 @@ begin
     MemoLog.ScrollBars := ssVertical;
     MemoLog.Clear;
   end;
+  TRpAuthManager.Instance.RegisterLogListener(AuthLog);
+  FLogListenerRegistered := True;
   FBusy := False;
   FLastAssistantMessage := '';
   FSuggestedExpression := '';
@@ -398,7 +442,10 @@ destructor TFRpChatFrame.Destroy;
 begin
   ClearSchemaItems;
   FConversationBlocks.Free;
-  TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
+  if FLogListenerRegistered then
+    TRpAuthManager.Instance.UnregisterLogListener(AuthLog);
+  if FAuthListenerRegistered then
+    TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited Destroy;
 end;
 
@@ -483,6 +530,8 @@ end;
 
 procedure TFRpChatFrame.AuthChanged(ASuccess: Boolean);
 begin
+  if not FAuthListenerRegistered then
+    Exit;
   if FAISelection <> nil then
   begin
     FAISelection.RefreshState;
@@ -1405,6 +1454,9 @@ var
   LNeedsSchemas: Boolean;
   LNeedsAgents: Boolean;
 begin
+  if not CRpChatEnableOnlineInitialization then
+    Exit;
+
   LNeedsSchemas := FShowSchemaSelector and (ComboSchema.Items.Count = 0);
   LNeedsAgents := (FAISelection <> nil) and (FAISelection.AgentEndpointCount = 0);
 
@@ -1412,6 +1464,14 @@ begin
     Exit;
 
   FOnlineInitializationQueued := True;
+  if (FAISelection <> nil) and (Trim(TRpAuthManager.Instance.Token) <> '') then
+  begin
+    TRpAuthManager.Instance.Log(
+      'StartOnlineInitialization: validating token with CheckStatus before loading agents/schemas.');
+    FAISelection.RefreshStatusInBackground(CRpStartupNetworkDelayMs);
+    Exit;
+  end;
+
   if LNeedsSchemas then
     LoadSchemas(CRpStartupNetworkDelayMs);
   if LNeedsAgents then
@@ -1480,6 +1540,39 @@ begin
   if MemoLog = nil then
     Exit;
   MemoLog.Lines.Add(AText);
+end;
+
+procedure TFRpChatFrame.AuthLog(const AMsg: string);
+var
+  LPayload: TRpQueuedLogPayload;
+begin
+  if GetCurrentThreadId = MainThreadID then
+  begin
+    AppendLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + AMsg);
+    Exit;
+  end;
+
+  if not HandleAllocated then
+    Exit;
+
+  LPayload := TRpQueuedLogPayload.Create;
+  LPayload.Text := AMsg;
+  if not PostMessage(Handle, WM_USER + 211, WPARAM(LPayload), 0) then
+    LPayload.Free;
+end;
+
+procedure TFRpChatFrame.WMAppendAuthLog(var Message: TMessage);
+var
+  LPayload: TRpQueuedLogPayload;
+begin
+  LPayload := TRpQueuedLogPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    AppendLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + LPayload.Text);
+  finally
+    LPayload.Free;
+  end;
 end;
 
 procedure TFRpChatFrame.AppendLogChunk(const AChunk: string;
@@ -1683,22 +1776,34 @@ end;
 
 function TFRpChatFrame.GetAITier: string;
 begin
-  Result := FAISelection.AITier;
+  if FAISelection <> nil then
+    Result := FAISelection.AITier
+  else
+    Result := 'standard';
 end;
 
 function TFRpChatFrame.GetAIMode: string;
 begin
-  Result := FAISelection.AIMode;
+  if FAISelection <> nil then
+    Result := FAISelection.AIMode
+  else
+    Result := 'fast';
 end;
 
 function TFRpChatFrame.GetAgentSecret: string;
 begin
-  Result := FAISelection.AgentSecret;
+  if FAISelection <> nil then
+    Result := FAISelection.AgentSecret
+  else
+    Result := '';
 end;
 
 function TFRpChatFrame.GetAgentAiId: Int64;
 begin
-  Result := FAISelection.AgentAiId;
+  if FAISelection <> nil then
+    Result := FAISelection.AgentAiId
+  else
+    Result := 0;
 end;
 
 function TFRpChatFrame.GetHubDatabaseId: Int64;

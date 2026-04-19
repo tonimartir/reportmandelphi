@@ -8,8 +8,13 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls,
   Vcl.Menus, rpauthmanager, rpfrmloginvcl, System.Net.HttpClient, System.Net.HttpClientComponent,
   Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg;
+const
+  CRpLoginFrameEnableAuthState = True;
+    CRpLoginFrameEnableAvatarDownload = False;
+
 
 type
+
   TRpQueuedAvatarPayload = class(TObject)
   public
     RequestVersion: Integer;
@@ -33,6 +38,7 @@ type
     procedure ImageAvatarClick(Sender: TObject);
   private
     FAvatarRequestVersion: Integer;
+    FAuthListenerRegistered: Boolean;
     FOnAuthChanged: TNotifyEvent;
     FMenuItemLogin: TMenuItem;
     FMenuItemLanguage: TMenuItem;
@@ -62,8 +68,13 @@ constructor TFRpLoginFrameVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FAvatarRequestVersion := 0;
+  FAuthListenerRegistered := False;
   BuildPopupMenu;
-  TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
+  if CRpLoginFrameEnableAuthState then
+  begin
+    TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
+    FAuthListenerRegistered := True;
+  end;
 end;
 
 procedure TFRpLoginFrameVCL.AfterConstruction;
@@ -112,6 +123,14 @@ var
   I: Integer;
   LCurrentLanguage: string;
 begin
+  if not CRpLoginFrameEnableAuthState then
+  begin
+    FMenuItemLanguage.Caption := 'Language';
+    for I := 0 to FMenuItemLanguage.Count - 1 do
+      FMenuItemLanguage.Items[I].Checked := False;
+    Exit;
+  end;
+
   LCurrentLanguage := TRpAuthManager.Instance.AILanguage;
   FMenuItemLanguage.Caption := 'Language: ' + TRpAuthManager.GetAILanguageDisplayName(LCurrentLanguage);
   for I := 0 to FMenuItemLanguage.Count - 1 do
@@ -138,12 +157,15 @@ end;
 
 destructor TFRpLoginFrameVCL.Destroy;
 begin
-  TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
+  if FAuthListenerRegistered then
+    TRpAuthManager.Instance.UnregisterAuthListener(AuthChanged);
   inherited;
 end;
 
 procedure TFRpLoginFrameVCL.AuthChanged(ASuccess: Boolean);
 begin
+  if not FAuthListenerRegistered then
+    Exit;
   UpdateUI;
   if Assigned(FOnAuthChanged) then
     FOnAuthChanged(Self);
@@ -164,6 +186,31 @@ var
   LUserWidth: Integer;
 begin
   UpdateLanguageMenu;
+  if not CRpLoginFrameEnableAuthState then
+  begin
+    BtnLogin.Visible := False;
+    FMenuItemLogin.Visible := True;
+    FMenuItemLanguage.Visible := True;
+    N1.Visible := False;
+    FMenuItemLogoutSeparator.Visible := False;
+    MenuItemLogout.Visible := False;
+    LabelTier.Visible := False;
+    ImageAvatar.Visible := False;
+    LabelUser.Visible := True;
+    LabelArrow.Visible := True;
+    LabelUser.Caption := 'Guest (Login available)';
+    LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
+    LUserLeft := GuestLeft;
+    LUserWidth := LabelArrow.Left - LUserLeft - UserGap;
+    if LUserWidth < 0 then
+      LUserWidth := 0;
+    LabelUser.Left := LUserLeft;
+    LabelUser.Width := LUserWidth;
+    LabelUser.Top := (PContainer.Height - LabelUser.Height) div 2;
+    LabelArrow.Top := (PContainer.Height - LabelArrow.Height) div 2;
+    Exit;
+  end;
+
   if TRpAuthManager.Instance.IsLoggedIn then
   begin
     BtnLogin.Visible := False;
@@ -218,7 +265,7 @@ begin
       LabelTier.Font.Color := $4F4536;
     end;
 
-    if LProfile.AvatarUrl <> '' then
+    if CRpLoginFrameEnableAvatarDownload and (LProfile.AvatarUrl <> '') then
       DownloadAvatarAsync(LProfile.AvatarUrl)
     else
       ImageAvatar.Picture := nil;

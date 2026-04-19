@@ -80,6 +80,7 @@ type
     FAIEnabled: Boolean;
     FAILanguage: string;
     FOnLog: TRpAuthLog;
+    FLogListeners: TList<TRpAuthLog>;
     FAuthListeners: TList<TRpAuthEvent>;
     FDispatchHandle: HWND;
     FOAuthCode: string;
@@ -145,6 +146,8 @@ type
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
+    procedure RegisterLogListener(AListener: TRpAuthLog);
+    procedure UnregisterLogListener(AListener: TRpAuthLog);
     procedure Log(const AMsg: string);
 
     property Token: string read FToken;
@@ -172,6 +175,7 @@ begin
   FIsLoggedIn := False;
   FAIEnabled := True;
   FAILanguage := ResolveDefaultAILanguage;
+  FLogListeners := TList<TRpAuthLog>.Create;
   FAuthListeners := TList<TRpAuthEvent>.Create;
   FDispatchHandle := AllocateHWnd(DispatchWndProc);
   FInstallId := GenerateInstallId;
@@ -220,6 +224,7 @@ destructor TRpAuthManager.Destroy;
 begin
   if FDispatchHandle <> 0 then
     DeallocateHWnd(FDispatchHandle);
+  FLogListeners.Free;
   FAuthListeners.Free;
   inherited Destroy;
 end;
@@ -243,10 +248,14 @@ begin
 end;
 
 procedure TRpAuthManager.Log(const AMsg: string);
+var
+  LListener: TRpAuthLog;
 begin
   OutputDebugString(PChar('RpAuth: ' + AMsg));
   if Assigned(FOnLog) then
     FOnLog(AMsg);
+  for LListener in FLogListeners do
+    LListener(AMsg);
 end;
 
 class function TRpAuthManager.Instance: TRpAuthManager;
@@ -395,6 +404,8 @@ var
   LRoot: TJSONObject;
   LPicture: TStream;
   LValue: TJSONValue;
+  LRequestStartedAt: TDateTime;
+  LAvatarStartedAt: TDateTime;
 begin
   if FInstallId = '' then Exit;
 
@@ -407,8 +418,10 @@ begin
       LClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
     try
       // Use lowercase URL and cast nil to TStream to avoid ambiguous overload
+      LRequestStartedAt := Now;
       LResponse := LClient.Post(HUB_API_URL + '/api/userprofile/status', TStream(nil), TStream(nil));
-      Log('CheckStatus: Response Status ' + IntToStr(LResponse.StatusCode));
+      Log('CheckStatus: Response Status ' + IntToStr(LResponse.StatusCode) +
+        ' (' + IntToStr(MilliSecondsBetween(Now, LRequestStartedAt)) + ' ms)');
 
       if (LResponse.StatusCode = 200) then
       begin
@@ -433,7 +446,10 @@ begin
           begin
              LPicture := TMemoryStream.Create;
              try
+               LAvatarStartedAt := Now;
                LResponse := LClient.Get(FProfile.AvatarUrl);
+               Log('CheckStatus Avatar GET: Response Status ' + IntToStr(LResponse.StatusCode) +
+                 ' (' + IntToStr(MilliSecondsBetween(Now, LAvatarStartedAt)) + ' ms)');
                if LResponse.StatusCode = 200 then
                begin
                  LPicture.CopyFrom(LResponse.ContentStream, 0);
@@ -462,7 +478,9 @@ begin
         Log('CheckStatus: Unexpected status ' + IntToStr(LResponse.StatusCode) + ': ' + LResponse.ContentAsString);
       end;
     except
-      on E: Exception do Log('CheckStatus Error: ' + E.Message);
+      on E: Exception do
+        Log('CheckStatus Error after ' + IntToStr(MilliSecondsBetween(Now, LRequestStartedAt)) +
+          ' ms: ' + E.Message);
     end;
   finally
     LClient.Free;
@@ -777,6 +795,17 @@ end;
 procedure TRpAuthManager.UnregisterAuthListener(AListener: TRpAuthEvent);
 begin
   FAuthListeners.Remove(AListener);
+end;
+
+procedure TRpAuthManager.RegisterLogListener(AListener: TRpAuthLog);
+begin
+  if FLogListeners.IndexOf(AListener) < 0 then
+    FLogListeners.Add(AListener);
+end;
+
+procedure TRpAuthManager.UnregisterLogListener(AListener: TRpAuthLog);
+begin
+  FLogListeners.Remove(AListener);
 end;
 
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;

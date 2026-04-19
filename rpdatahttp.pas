@@ -458,6 +458,7 @@ var
   LResponse: IHTTPResponse;
   LResponseStream: TMemoryStream;
   LUrl: string;
+  LStartedAt: TDateTime;
 begin
   Result := nil;
   LHttpClient := TNetHTTPClient.Create(nil);
@@ -495,11 +496,13 @@ begin
       TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
 
       LHttpClient.OnReceiveData := LContext.HandleReceiveData;
+      LStartedAt := Now;
       LResponse := LHttpClient.Post(LUrl, LRequestStream, LResponseStream);
       LContext.ReadNewBytes;
 
       TRpAuthManager.Instance.Log('HTTP Response Status: ' +
-        IntToStr(LResponse.StatusCode));
+        IntToStr(LResponse.StatusCode) + ' (' +
+        IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
 
       if LContext.Cancelled then
         Exit(nil);
@@ -1089,6 +1092,7 @@ var
   LSourceStream: TStringStream;
   LErrorStream: TStringStream;
   LUrl: string;
+  LStartedAt: TDateTime;
 begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
@@ -1119,8 +1123,10 @@ begin
       if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
       LUrl := LUrl + AAction;
       TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+      LStartedAt := Now;
       LResponse := LHttpClient.Post(LUrl, LSourceStream, ResponseStream);
-      TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode));
+      TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode) +
+        ' (' + IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
       
       if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
          Result := True
@@ -1458,6 +1464,7 @@ var
   LHttpClient: TNetHTTPClient;
   LResponse: IHTTPResponse;
   LUrl: string;
+  LStartedAt: TDateTime;
 begin
   Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
@@ -1473,7 +1480,11 @@ begin
     LUrl := HUB_API_URL;
     if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
     LUrl := LUrl + AAction;
+    TRpAuthManager.Instance.Log('HTTP Request: GET ' + LUrl);
+    LStartedAt := Now;
     LResponse := LHttpClient.Get(LUrl, ResponseStream);
+    TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode) +
+      ' (' + IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
     Result := (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300);
   finally
     LHttpClient.Free;
