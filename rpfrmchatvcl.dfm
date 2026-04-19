@@ -219,7 +219,7 @@ object FRpChatFrame: TFRpChatFrame
         Margins.Top = 4
         Margins.Right = 4
         Margins.Bottom = 4
-        Caption = 'Log'
+        Caption = 'AI Log'
         ImageIndex = 1
         object PLogTop: TPanel
           Left = 0
@@ -280,6 +280,59 @@ object FRpChatFrame: TFRpChatFrame
           end
         end
         object MemoLog: TMemo
+          Left = 0
+          Top = 41
+          Width = 390
+          Height = 362
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Align = alClient
+          ReadOnly = True
+          ScrollBars = ssBoth
+          TabOrder = 1
+          WordWrap = False
+        end
+      end
+      object TabNetLog: TTabSheet
+        Margins.Left = 4
+        Margins.Top = 4
+        Margins.Right = 4
+        Margins.Bottom = 4
+        Caption = 'Net Log'
+        object PNetLogTop: TPanel
+          Left = 0
+          Top = 0
+          Width = 390
+          Height = 41
+          Margins.Left = 4
+          Margins.Top = 4
+          Margins.Right = 4
+          Margins.Bottom = 4
+          Align = alTop
+          BevelOuter = bvNone
+          Padding.Left = 8
+          Padding.Top = 5
+          Padding.Right = 8
+          Padding.Bottom = 5
+          TabOrder = 0
+          object BClearNetLog: TButton
+            Left = 8
+            Top = 5
+            Width = 93
+            Height = 31
+            Margins.Left = 4
+            Margins.Top = 4
+            Margins.Right = 4
+            Margins.Bottom = 4
+            Align = alLeft
+            Caption = 'Clear'
+            TabOrder = 0
+            OnClick = BClearNetLogClick
+          end
+        end
+        object MemoNetLog: TMemo
           Left = 0
           Top = 41
           Width = 390

@@ -23,7 +23,8 @@ interface
 
 {$I rpconf.inc}
 
-uses SysUtils, Classes, Types,
+uses Winapi.Windows, Winapi.Messages,
+  SysUtils, Classes, Types,
   Graphics, Forms,ComCtrls, ImgList,
   Buttons, ExtCtrls, Controls, StdCtrls,Dialogs,
   rpgraphutilsvcl,rpdatainfo,
@@ -60,6 +61,17 @@ const
  CONTROL_WIDTHX=200;
  LABEL_INCY=4;
 type
+  TRpQueuedHubDiscoveryPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    PopupPoint: TPoint;
+    TriggerControl: TControl;
+    Databases: TStringList;
+    ErrorMessage: string;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TFRpDBXConfigVCL = class(TForm)
     Panel1: TPanel;
     LDriversFile: TLabel;
@@ -101,10 +113,12 @@ type
     DriversFile:string;
     params:TStringList;
     connectionname:string;
+    FHubDiscoveryRequestVersion: Integer;
 {$IFDEF USESQLEXPRESS}
     SQLConnection1: TSQLConnection;
 {$ENDIF}
     conadmin:TRpConnAdmin;
+    procedure WMHubDiscoveryComplete(var Message: TMessage); message WM_USER + 220;
     procedure FreeParamsControls;
     procedure CreateParamsControls;
     procedure Edit1Change(Sender:TObject);
@@ -120,6 +134,18 @@ procedure ShowDBXConfig(ConnectionsFile:string='');
 implementation
 
 {$R *.dfm}
+
+constructor TRpQueuedHubDiscoveryPayload.Create;
+begin
+  inherited Create;
+  Databases := TStringList.Create;
+end;
+
+destructor TRpQueuedHubDiscoveryPayload.Destroy;
+begin
+  Databases.Free;
+  inherited Destroy;
+end;
 
 
 procedure ShowDBXConfig(ConnectionsFile:string);
@@ -561,11 +587,11 @@ end;
 procedure TFRpDBXConfigVCL.BSelectHubConnectionClick(Sender: TObject);
 var
   LApiKey: string;
-  LDiscoveryList: TStringList;
-  LPopupMenu: TPopupMenu;
-  LMenuItem: TMenuItem;
+  LButton: TSpeedButton;
+  LPopupPoint: TPoint;
+  LRequestVersion: Integer;
+  LWorker: TThread;
   i: Integer;
-  LPoint: TPoint;
 begin
   LApiKey := '';
   // Find ApiKey value in other edits
@@ -585,33 +611,95 @@ begin
     Exit;
   end;
 
-  LDiscoveryList := TStringList.Create;
-  try
-    if TRpDatabaseHttp.GetHubDatabases(LApiKey, LDiscoveryList) then
-    begin
-      if LDiscoveryList.Count = 0 then
-      begin
-        RpShowMessage('No databases found for this API Key.');
-        Exit;
-      end;
+  if not (Sender is TSpeedButton) then
+    Exit;
 
-      LPopupMenu := TPopupMenu.Create(Self);
-      for i := 0 to LDiscoveryList.Count - 1 do
-      begin
-        LMenuItem := TMenuItem.Create(LPopupMenu);
-        LMenuItem.Caption := LDiscoveryList.Names[i];
-        LMenuItem.Hint := LDiscoveryList.ValueFromIndex[i];
-        LMenuItem.Tag := StrToIntDef(LDiscoveryList.ValueFromIndex[i], 0);
-        LMenuItem.OnClick := HubConnectionMenuItemClick;
-        LPopupMenu.Items.Add(LMenuItem);
+  LButton := TSpeedButton(Sender);
+  LPopupPoint := LButton.ClientToScreen(Point(0, LButton.Height));
+  Inc(FHubDiscoveryRequestVersion);
+  LRequestVersion := FHubDiscoveryRequestVersion;
+
+  LButton.Enabled := False;
+  LButton.Caption := 'Loading...';
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LPayload: TRpQueuedHubDiscoveryPayload;
+    begin
+      LPayload := TRpQueuedHubDiscoveryPayload.Create;
+      try
+        LPayload.RequestVersion := LRequestVersion;
+        LPayload.PopupPoint := LPopupPoint;
+        LPayload.TriggerControl := LButton;
+        try
+          if not TRpDatabaseHttp.GetHubDatabases(LApiKey, LPayload.Databases) then
+            LPayload.ErrorMessage := 'Failed to connect to Hub for discovery. Check your API Key and internet connection.';
+        except
+          on E: Exception do
+            LPayload.ErrorMessage := E.Message;
+        end;
+
+        if HandleAllocated then
+        begin
+          if not PostMessage(Handle, WM_USER + 220, WPARAM(LPayload), 0) then
+            LPayload.Free;
+        end
+        else
+          LPayload.Free;
+      except
+        LPayload.Free;
       end;
-      LPoint := TControl(Sender).ClientToScreen(Point(0, TControl(Sender).Height));
-      LPopupMenu.Popup(LPoint.X, LPoint.Y);
-    end
-    else
-      RpShowMessage('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+procedure TFRpDBXConfigVCL.WMHubDiscoveryComplete(var Message: TMessage);
+var
+  LPayload: TRpQueuedHubDiscoveryPayload;
+  LPopupMenu: TPopupMenu;
+  LMenuItem: TMenuItem;
+  I: Integer;
+begin
+  LPayload := TRpQueuedHubDiscoveryPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FHubDiscoveryRequestVersion then
+      Exit;
+
+    if Assigned(LPayload.TriggerControl) and (LPayload.TriggerControl is TSpeedButton) then
+    begin
+      TSpeedButton(LPayload.TriggerControl).Enabled := True;
+      TSpeedButton(LPayload.TriggerControl).Caption := 'Select Connection...';
+    end;
+
+    if LPayload.ErrorMessage <> '' then
+    begin
+      RpShowMessage(LPayload.ErrorMessage);
+      Exit;
+    end;
+
+    if LPayload.Databases.Count = 0 then
+    begin
+      RpShowMessage('No databases found for this API Key.');
+      Exit;
+    end;
+
+    LPopupMenu := TPopupMenu.Create(Self);
+    for I := 0 to LPayload.Databases.Count - 1 do
+    begin
+      LMenuItem := TMenuItem.Create(LPopupMenu);
+      LMenuItem.Caption := LPayload.Databases.Names[I];
+      LMenuItem.Hint := LPayload.Databases.ValueFromIndex[I];
+      LMenuItem.Tag := StrToIntDef(LPayload.Databases.ValueFromIndex[I], 0);
+      LMenuItem.OnClick := HubConnectionMenuItemClick;
+      LPopupMenu.Items.Add(LMenuItem);
+    end;
+    LPopupMenu.Popup(LPayload.PopupPoint.X, LPayload.PopupPoint.Y);
   finally
-    LDiscoveryList.Free;
+    LPayload.Free;
   end;
 end;
 

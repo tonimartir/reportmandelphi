@@ -82,6 +82,10 @@ type
     BClearLog: TButton;
     BReportAI: TButton;
     MemoLog: TMemo;
+    TabNetLog: TTabSheet;
+    PNetLogTop: TPanel;
+    BClearNetLog: TButton;
+    MemoNetLog: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
     PButtons: TPanel;
@@ -91,6 +95,7 @@ type
     procedure BApplyClick(Sender: TObject);
     procedure BClearClick(Sender: TObject);
     procedure BClearLogClick(Sender: TObject);
+    procedure BClearNetLogClick(Sender: TObject);
     procedure BReportAIClick(Sender: TObject);
     procedure BRefreshSchemasClick(Sender: TObject);
     procedure BSendClick(Sender: TObject);
@@ -163,6 +168,7 @@ type
     procedure ScrollConversationToEnd;
     procedure StopDesignPrompt;
     procedure UpdateButtons;
+    procedure AppendNetLogLine(const AText: string);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -407,6 +413,13 @@ begin
     MemoLog.WordWrap := True;
     MemoLog.ScrollBars := ssVertical;
     MemoLog.Clear;
+  end;
+  if MemoNetLog <> nil then
+  begin
+    MemoNetLog.HandleNeeded;
+    MemoNetLog.WordWrap := False;
+    MemoNetLog.ScrollBars := ssBoth;
+    MemoNetLog.Clear;
   end;
   TRpAuthManager.Instance.RegisterLogListener(AuthLog);
   FLogListenerRegistered := True;
@@ -1244,6 +1257,8 @@ begin
   MemoPrompt.Clear;
   MemoConversation.Clear;
   MemoLog.Clear;
+  if MemoNetLog <> nil then
+    MemoNetLog.Clear;
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
@@ -1542,13 +1557,20 @@ begin
   MemoLog.Lines.Add(AText);
 end;
 
+procedure TFRpChatFrame.AppendNetLogLine(const AText: string);
+begin
+  if MemoNetLog = nil then
+    Exit;
+  MemoNetLog.Lines.Add(AText);
+end;
+
 procedure TFRpChatFrame.AuthLog(const AMsg: string);
 var
   LPayload: TRpQueuedLogPayload;
 begin
   if GetCurrentThreadId = MainThreadID then
   begin
-    AppendLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + AMsg);
+    AppendNetLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + AMsg);
     Exit;
   end;
 
@@ -1569,7 +1591,7 @@ begin
   try
     if LPayload = nil then
       Exit;
-    AppendLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + LPayload.Text);
+    AppendNetLogLine(FormatDateTime('hh:nn:ss.zzz', Now) + ' - ' + LPayload.Text);
   finally
     LPayload.Free;
   end;
@@ -1921,6 +1943,12 @@ procedure TFRpChatFrame.BClearLogClick(Sender: TObject);
 begin
   if MemoLog <> nil then
     MemoLog.Clear;
+end;
+
+procedure TFRpChatFrame.BClearNetLogClick(Sender: TObject);
+begin
+  if MemoNetLog <> nil then
+    MemoNetLog.Clear;
 end;
 
 procedure TFRpChatFrame.BReportAIClick(Sender: TObject);
