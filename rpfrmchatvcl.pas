@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons, System.JSON,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
-  rpreportdesignercontracts, rpfrmaireportvcl;
+  rpreportdesignercontracts, rpfrmaireportvcl, rpwebmarkdownvcl;
 
   const
     CRpStartupNetworkDelayMs = 0;
@@ -76,16 +76,13 @@ type
     ComboSchema: TComboBox;
     PControl: TPageControl;
     TabChat: TTabSheet;
-    MemoConversation: TMemo;
     TabLog: TTabSheet;
     PLogTop: TPanel;
     BClearLog: TButton;
     BReportAI: TButton;
-    MemoLog: TMemo;
     TabNetLog: TTabSheet;
     PNetLogTop: TPanel;
     BClearNetLog: TButton;
-    MemoNetLog: TMemo;
     PBottom: TPanel;
     MemoPrompt: TMemo;
     PButtons: TPanel;
@@ -138,6 +135,9 @@ type
     FDesignRequestVersion: Integer;
     FAuthListenerRegistered: Boolean;
     FLogListenerRegistered: Boolean;
+    FWebChat: TRpWebMarkdownView;
+    FWebLog: TRpWebMarkdownView;
+    FWebNetLog: TRpWebMarkdownView;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
     procedure WMApplyLoadedSchemas(var Message: TMessage); message WM_USER + 203;
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 208;
@@ -405,22 +405,20 @@ begin
     FAuthListenerRegistered := True;
   end;
 
-  MemoConversation.Clear;
+  // Create WebMarkdown views for each tab
+  FWebChat := TRpWebMarkdownView.Create(Self);
+  FWebChat.Parent := TabChat;
+  FWebChat.Align := alClient;
+
+  FWebLog := TRpWebMarkdownView.Create(Self);
+  FWebLog.Parent := TabLog;
+  FWebLog.Align := alClient;
+
+  FWebNetLog := TRpWebMarkdownView.Create(Self);
+  FWebNetLog.Parent := TabNetLog;
+  FWebNetLog.Align := alClient;
+
   MemoPrompt.Clear;
-  if MemoLog <> nil then
-  begin
-    MemoLog.HandleNeeded;
-    MemoLog.WordWrap := True;
-    MemoLog.ScrollBars := ssVertical;
-    MemoLog.Clear;
-  end;
-  if MemoNetLog <> nil then
-  begin
-    MemoNetLog.HandleNeeded;
-    MemoNetLog.WordWrap := False;
-    MemoNetLog.ScrollBars := ssBoth;
-    MemoNetLog.Clear;
-  end;
   TRpAuthManager.Instance.RegisterLogListener(AuthLog);
   FLogListenerRegistered := True;
   FBusy := False;
@@ -568,42 +566,55 @@ end;
 procedure TFRpChatFrame.RebuildConversation;
 var
   I: Integer;
-  LText: string;
+  LBlock: string;
+  LTitle: string;
+  LBody: string;
+  LRole: string;
+  LPos: Integer;
 begin
-  LText := '';
+  if FWebChat = nil then
+    Exit;
+
+  FWebChat.ClearAll;
+
   for I := 0 to FConversationBlocks.Count - 1 do
   begin
-    if LText <> '' then
-      LText := LText + sLineBreak + sLineBreak;
-    LText := LText + FConversationBlocks[I];
+    LBlock := FConversationBlocks[I];
+    LPos := Pos(sLineBreak, LBlock);
+    if LPos > 0 then
+    begin
+      LTitle := Copy(LBlock, 1, LPos - 1);
+      LBody := Copy(LBlock, LPos + Length(sLineBreak), MaxInt);
+    end
+    else
+    begin
+      LTitle := LBlock;
+      LBody := '';
+    end;
+
+    if SameText(Trim(LTitle), 'You') then
+      LRole := 'user'
+    else if SameText(Trim(LTitle), 'Assistant') then
+      LRole := 'assistant'
+    else
+      LRole := 'system';
+
+    FWebChat.AppendMessage(LRole, LBody);
   end;
 
   if FStreamingActive then
-  begin
-    if LText <> '' then
-      LText := LText + sLineBreak + sLineBreak;
-    LText := LText + 'Assistant' + sLineBreak +
-      'Prefill ' + IntToStr(FStreamingPrefillPercent) + '%' + sLineBreak +
-      FStreamingText;
-  end;
+    FWebChat.AppendStreamingChunk('assistant', FStreamingText, FStreamingPrefillPercent);
 
   if FProgressActive then
-  begin
-    if LText <> '' then
-      LText := LText + sLineBreak + sLineBreak;
-    LText := LText + FProgressTitle + sLineBreak + FProgressText;
-  end;
+    FWebChat.AppendMessage('system', '**' + FProgressTitle + '**' + sLineBreak + FProgressText);
 
-  MemoConversation.Lines.Text := LText;
-  ScrollConversationToEnd;
+  FWebChat.ScrollToEnd;
 end;
 
 procedure TFRpChatFrame.ScrollConversationToEnd;
 begin
-  MemoConversation.SelLength := 0;
-  MemoConversation.SelStart := Length(MemoConversation.Text);
-  MemoConversation.Perform(EM_SCROLLCARET, 0, 0);
-  MemoConversation.Perform(WM_VSCROLL, SB_BOTTOM, 0);
+  if FWebChat <> nil then
+    FWebChat.ScrollToEnd;
 end;
 
 procedure TFRpChatFrame.LoadUserAgents(ADelayBeforeRequestMs: Cardinal = 0);
@@ -1214,9 +1225,8 @@ begin
   FProgressTitle := '';
   FProgressText := '';
   
-  if MemoLog.Lines.Count > 0 then
-    MemoLog.Lines.Add('');
-  MemoLog.Lines.Add('actor: Assistant');
+  if FWebLog <> nil then
+    FWebLog.AppendLogLine('actor: Assistant');
   
   SetBusy(True);
   RebuildConversation;
@@ -1227,7 +1237,10 @@ begin
   FConversationBlocks.Clear;
   FLastAssistantMessage := '';
   MemoPrompt.Clear;
-  MemoLog.Clear;
+  if FWebLog <> nil then
+    FWebLog.ClearAll;
+  if FWebChat <> nil then
+    FWebChat.ClearAll;
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
@@ -1255,10 +1268,12 @@ begin
   FConversationBlocks.Clear;
   FLastAssistantMessage := '';
   MemoPrompt.Clear;
-  MemoConversation.Clear;
-  MemoLog.Clear;
-  if MemoNetLog <> nil then
-    MemoNetLog.Clear;
+  if FWebChat <> nil then
+    FWebChat.ClearAll;
+  if FWebLog <> nil then
+    FWebLog.ClearAll;
+  if FWebNetLog <> nil then
+    FWebNetLog.ClearAll;
   FSuggestedExpression := '';
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
@@ -1552,16 +1567,16 @@ end;
 
 procedure TFRpChatFrame.AppendLogLine(const AText: string);
 begin
-  if MemoLog = nil then
+  if FWebLog = nil then
     Exit;
-  MemoLog.Lines.Add(AText);
+  FWebLog.AppendLogLine(AText);
 end;
 
 procedure TFRpChatFrame.AppendNetLogLine(const AText: string);
 begin
-  if MemoNetLog = nil then
+  if FWebNetLog = nil then
     Exit;
-  MemoNetLog.Lines.Add(AText);
+  FWebNetLog.AppendLogLine(AText);
 end;
 
 procedure TFRpChatFrame.AuthLog(const AMsg: string);
@@ -1600,14 +1615,12 @@ end;
 procedure TFRpChatFrame.AppendLogChunk(const AChunk: string;
   AAppendLineBreak: Boolean);
 begin
-  if (MemoLog = nil) or (AChunk = '') then
+  if (FWebLog = nil) or (AChunk = '') then
     Exit;
 
-  MemoLog.HandleNeeded;
-  SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
-  SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(AChunk)));
+  FWebLog.AppendLogChunk(AChunk);
   if AAppendLineBreak then
-    MemoLog.Lines.Add('');
+    FWebLog.EndLogChunk;
 end;
 
 procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
@@ -1701,12 +1714,8 @@ begin
   if AChunk <> '' then
   begin
     FStreamingText := FStreamingText + AChunk;
-    if MemoLog <> nil then
-    begin
-      MemoLog.HandleNeeded;
-      SendMessage(MemoLog.Handle, EM_SETSEL, WPARAM(MAXINT), LPARAM(MAXINT));
-      SendMessage(MemoLog.Handle, EM_REPLACESEL, 0, NativeInt(PChar(AChunk)));
-    end;
+    if FWebLog <> nil then
+      FWebLog.AppendLogChunk(AChunk);
   end;
   RebuildConversation;
 end;
@@ -1941,14 +1950,14 @@ end;
 
 procedure TFRpChatFrame.BClearLogClick(Sender: TObject);
 begin
-  if MemoLog <> nil then
-    MemoLog.Clear;
+  if FWebLog <> nil then
+    FWebLog.ClearAll;
 end;
 
 procedure TFRpChatFrame.BClearNetLogClick(Sender: TObject);
 begin
-  if MemoNetLog <> nil then
-    MemoNetLog.Clear;
+  if FWebNetLog <> nil then
+    FWebNetLog.ClearAll;
 end;
 
 procedure TFRpChatFrame.BReportAIClick(Sender: TObject);

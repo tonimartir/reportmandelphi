@@ -199,20 +199,6 @@ object FRpChatFrame: TFRpChatFrame
         Margins.Right = 4
         Margins.Bottom = 4
         Caption = 'Chat'
-        object MemoConversation: TMemo
-          Left = 0
-          Top = 0
-          Width = 390
-          Height = 403
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Align = alClient
-          ReadOnly = True
-          ScrollBars = ssVertical
-          TabOrder = 0
-        end
       end
       object TabLog: TTabSheet
         Margins.Left = 4
@@ -279,21 +265,7 @@ object FRpChatFrame: TFRpChatFrame
             OnClick = BReportAIClick
           end
         end
-        object MemoLog: TMemo
-          Left = 0
-          Top = 41
-          Width = 390
-          Height = 362
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Align = alClient
-          ReadOnly = True
-          ScrollBars = ssBoth
-          TabOrder = 1
-          WordWrap = False
-        end
+
       end
       object TabNetLog: TTabSheet
         Margins.Left = 4
@@ -332,21 +304,7 @@ object FRpChatFrame: TFRpChatFrame
             OnClick = BClearNetLogClick
           end
         end
-        object MemoNetLog: TMemo
-          Left = 0
-          Top = 41
-          Width = 390
-          Height = 362
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
-          Align = alClient
-          ReadOnly = True
-          ScrollBars = ssBoth
-          TabOrder = 1
-          WordWrap = False
-        end
+
       end
     end
     object PBottom: TPanel

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <style>
+        /* === Base Reset === */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', 'Cascadia Code', 'Consolas', sans-serif;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #messages {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* === Message Blocks === */
+        .msg {
+            border-radius: 8px;
+            padding: 10px 14px;
+            position: relative;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .msg-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .msg-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .msg-body {
+            font-size: 13px;
+        }
+
+        /* User messages */
+        .msg-user {
+            background: #313244;
+            border-left: 3px solid #89b4fa;
+        }
+        .msg-user .msg-header { color: #89b4fa; }
+
+        /* Assistant messages */
+        .msg-assistant {
+            background: #1e1e2e;
+            border-left: 3px solid #a6e3a1;
+            border: 1px solid #313244;
+        }
+        .msg-assistant .msg-header { color: #a6e3a1; }
+
+        /* System / progress */
+        .msg-system {
+            background: #181825;
+            border-left: 3px solid #fab387;
+            opacity: 0.9;
+        }
+        .msg-system .msg-header { color: #fab387; }
+
+        /* Log entries (AI log / Net log) */
+        .msg-log {
+            background: transparent;
+            padding: 1px 8px;
+            font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #a6adc8;
+            border-radius: 0;
+        }
+
+        .msg-log-chunk {
+            display: inline;
+        }
+
+        /* === Streaming indicator === */
+        .msg-streaming::after {
+            content: '▋';
+            animation: blink 0.8s step-end infinite;
+            color: #a6e3a1;
+            margin-left: 2px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* === Markdown Content Styling === */
+        .msg-body h1, .msg-body h2, .msg-body h3 {
+            color: #cba6f7;
+            margin: 10px 0 6px 0;
+            font-weight: 600;
+        }
+        .msg-body h1 { font-size: 18px; }
+        .msg-body h2 { font-size: 16px; }
+        .msg-body h3 { font-size: 14px; }
+
+        .msg-body p { margin: 4px 0; }
+
+        .msg-body a {
+            color: #89b4fa;
+            text-decoration: underline;
+        }
+
+        .msg-body strong { color: #f5e0dc; }
+
+        .msg-body em { color: #f2cdcd; font-style: italic; }
+
+        .msg-body ul, .msg-body ol {
+            margin: 4px 0 4px 20px;
+        }
+
+        .msg-body li { margin: 2px 0; }
+
+        /* Inline code */
+        .msg-body code {
+            background: #313244;
+            color: #f38ba8;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 12px;
+        }
+
+        /* Code blocks */
+        .msg-body pre {
+            background: #11111b;
+            border: 1px solid #313244;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .msg-body pre code {
+            background: transparent;
+            color: #cdd6f4;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* Tables */
+        .msg-body table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: 100%;
+        }
+        .msg-body th {
+            background: #313244;
+            color: #cba6f7;
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #45475a;
+        }
+        .msg-body td {
+            padding: 5px 10px;
+            border: 1px solid #45475a;
+        }
+        .msg-body tr:nth-child(even) { background: #1e1e2e; }
+        .msg-body tr:nth-child(odd) { background: #181825; }
+
+        /* Blockquote */
+        .msg-body blockquote {
+            border-left: 3px solid #89b4fa;
+            padding: 4px 12px;
+            margin: 6px 0;
+            color: #bac2de;
+            background: #181825;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Horizontal rule */
+        .msg-body hr {
+            border: none;
+            border-top: 1px solid #45475a;
+            margin: 10px 0;
+        }
+
+        /* === Think Blocks (Collapsible) === */
+        .think-block {
+            margin: 8px 0;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            background: #181825;
+            overflow: hidden;
+        }
+
+        .think-block summary {
+            cursor: pointer;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #f9e2af;
+            background: #1e1e2e;
+            user-select: none;
+            font-weight: 500;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .think-block summary::before {
+            content: '▶';
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .think-block[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .think-block summary:hover {
+            background: #313244;
+        }
+
+        .think-block .think-content {
+            padding: 8px 12px;
+            color: #a6adc8;
+            font-size: 12px;
+            line-height: 1.5;
+            border-top: 1px solid #45475a;
+        }
+
+        /* Prefill progress */
+        .msg-prefill {
+            font-size: 11px;
+            color: #6c7086;
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e2e; }
+        ::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #585b70; }
+    </style>
+</head>
+<body>
+    <div id="messages"></div>
+
+    <script src="./markdown-it.min.js"></script>
+    <script>
+        // Initialize markdown-it with HTML enabled (for think blocks)
+        var md = window.markdownit({
+            html: true,
+            breaks: true,
+            linkify: true,
+            typographer: false
+        });
+
+        var messagesEl = document.getElementById('messages');
+
+        // ============================================================
+        // Think Block Preprocessor
+        // Converts <think>...</think> to collapsible <details> blocks
+        // ============================================================
+        function preprocessThinkBlocks(text) {
+            if (!text) return text;
+
+            // Handle paired <think>...</think>
+            var result = text.replace(/<think>([\s\S]*?)<\/think>/gi, function(match, content) {
+                var trimmed = content.trim();
+                if (!trimmed) return '';
+                return '<details class="think-block"><summary>\u{1F914} Thinking...</summary>' +
+                       '<div class="think-content">' + md.render(trimmed) + '</div></details>';
+            });
+
+            // Handle unclosed <think> (streaming in progress)
+            result = result.replace(/<think>([\s\S]*)$/gi, function(match, content) {
+                var trimmed = content.trim();
+                return '<details class="think-block" open><summary>\u{1F914} Thinking...</summary>' +
+                       '<div class="think-content">' + (trimmed ? md.render(trimmed) : '<em>...</em>') + '</div></details>';
+            });
+
+            return result;
+        }
+
+        // ============================================================
+        // Render markdown with think block support
+        // ============================================================
+        function renderMarkdown(text) {
+            if (!text) return '';
+
+            // Check if text contains think blocks
+            if (text.indexOf('<think>') >= 0) {
+                return preprocessThinkBlocks(text);
+            }
+
+            // Standard markdown rendering
+            return md.render(text);
+        }
+
+        // ============================================================
+        // Escape string for safe inclusion in HTML attributes
+        // ============================================================
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        // ============================================================
+        // PUBLIC API — called from Delphi via ExecuteScript
+        // ============================================================
+
+        // Append a chat-style message with role icon
+        window.appendMessage = function(role, markdownText) {
+            var el = document.createElement('div');
+            var icon, label, cssClass;
+
+            switch ((role || '').toLowerCase()) {
+                case 'user':
+                    icon = '\u{1F464}'; label = 'You'; cssClass = 'msg-user';
+                    break;
+                case 'assistant':
+                    icon = '\u{1F916}'; label = 'Assistant'; cssClass = 'msg-assistant';
+                    break;
+                case 'system':
+                    icon = '\u{2699}\u{FE0F}'; label = 'System'; cssClass = 'msg-system';
+                    break;
+                default:
+                    icon = '\u{1F4AC}'; label = role || 'Message'; cssClass = 'msg-system';
+            }
+
+            el.className = 'msg ' + cssClass;
+            el.innerHTML =
+                '<div class="msg-header">' +
+                    '<span class="msg-icon">' + icon + '</span>' +
+                    '<span>' + escapeHtml(label) + '</span>' +
+                '</div>' +
+                '<div class="msg-body">' + renderMarkdown(markdownText) + '</div>';
+
+            messagesEl.appendChild(el);
+            window.scrollToEnd();
+        };
+
+        // Append a streaming message (creates or updates the last streaming block)
+        window.appendStreamingChunk = function(role, chunk, prefillPercent) {
+            var last = messagesEl.lastElementChild;
+
+            if (!last || !last.classList.contains('msg-streaming')) {
+                // Create new streaming message
+                var el = document.createElement('div');
+                var icon = role === 'user' ? '\u{1F464}' : '\u{1F916}';
+                var label = role === 'user' ? 'You' : 'Assistant';
+                var cssClass = role === 'user' ? 'msg-user' : 'msg-assistant';
+
+                el.className = 'msg ' + cssClass + ' msg-streaming';
+                el.setAttribute('data-raw', '');
+                el.innerHTML =
+                    '<div class="msg-header">' +
+                        '<span class="msg-icon">' + icon + '</span>' +
+                        '<span>' + escapeHtml(label) + '</span>' +
+                    '</div>' +
+                    '<div class="msg-prefill"></div>' +
+                    '<div class="msg-body"></div>';
+
+                messagesEl.appendChild(el);
+                last = el;
+            }
+
+            // Accumulate raw text
+            var raw = (last.getAttribute('data-raw') || '') + chunk;
+            last.setAttribute('data-raw', raw);
+
+            // Update prefill
+            if (prefillPercent > 0) {
+                var prefillEl = last.querySelector('.msg-prefill');
+                if (prefillEl) prefillEl.textContent = 'Prefill ' + prefillPercent + '%';
+            }
+
+            // Re-render markdown from accumulated text
+            var bodyEl = last.querySelector('.msg-body');
+            if (bodyEl) bodyEl.innerHTML = renderMarkdown(raw);
+
+            window.scrollToEnd();
+        };
+
+        // Finish streaming (remove cursor animation)
+        window.finishStreaming = function() {
+            var last = messagesEl.lastElementChild;
+            if (last && last.classList.contains('msg-streaming')) {
+                last.classList.remove('msg-streaming');
+                var prefillEl = last.querySelector('.msg-prefill');
+                if (prefillEl) prefillEl.remove();
+            }
+        };
+
+        // Append a log line (timestamp + text, for AI/Net log tabs)
+        window.appendLogLine = function(text) {
+            var el = document.createElement('div');
+            el.className = 'msg-log';
+            el.innerHTML = renderMarkdown(text);
+            messagesEl.appendChild(el);
+            window.scrollToEnd();
+        };
+
+        // Append a raw log chunk (streaming, no newline)
+        window.appendLogChunk = function(chunk) {
+            var last = messagesEl.lastElementChild;
+
+            if (last && last.classList.contains('msg-log-chunk-container')) {
+                // Append to existing chunk container
+                var raw = (last.getAttribute('data-raw') || '') + chunk;
+                last.setAttribute('data-raw', raw);
+                last.innerHTML = renderMarkdown(raw);
+            } else {
+                // Create new chunk container
+                var el = document.createElement('div');
+                el.className = 'msg-log msg-log-chunk-container';
+                el.setAttribute('data-raw', chunk);
+                el.innerHTML = renderMarkdown(chunk);
+                messagesEl.appendChild(el);
+            }
+
+            window.scrollToEnd();
+        };
+
+        // End a log chunk (next appendLogChunk starts a new block)
+        window.endLogChunk = function() {
+            var last = messagesEl.lastElementChild;
+            if (last && last.classList.contains('msg-log-chunk-container')) {
+                last.classList.remove('msg-log-chunk-container');
+            }
+        };
+
+        // Clear all messages
+        window.clearAll = function() {
+            messagesEl.innerHTML = '';
+        };
+
+        // Scroll to bottom
+        window.scrollToEnd = function() {
+            window.scrollTo(0, document.body.scrollHeight);
+        };
+
+        // Notify Delphi that we are ready
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({ type: 'WEBMARKDOWN_READY' }));
+        }
+    </script>
+</body>
+</html>

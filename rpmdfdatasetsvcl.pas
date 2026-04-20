@@ -287,6 +287,7 @@ begin
 
  PBottom.Height:=250;
   MSQL.Visible := False;
+  PControl.ActivePage := TabSQL;
   PControl.OnChange := DatasetPageChanged;
 end;
 
@@ -622,6 +623,7 @@ begin
     TabBDETable.TabVisible:=false;
     TabMyBase.TabVisible:=False;
     TabBDEType.TabVisible:=false;
+      PControl.ActivePage:=TabSQL;
    end;
   end;
  end
