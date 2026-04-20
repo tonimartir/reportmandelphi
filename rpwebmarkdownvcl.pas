@@ -27,7 +27,6 @@ type
     FReady: Boolean;
     FWebViewFailed: Boolean;
     FPendingCalls: TStringList;
-    FAppDataPath: string;
     FAssetRootPath: string;
     FUseFallback: Boolean;
 
@@ -111,9 +110,7 @@ begin
   FPendingCalls := TStringList.Create;
 
   // 1. Determine safe extraction path in %LOCALAPPDATA% using rpmdshfolder
-  FAssetRootPath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', 'WebMarkdown');
-  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAssetRootPath));
-  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAppDataPath));
+  FAssetRootPath := EnsureAssetsExtracted;
 
   // Try to preload WebView2Loader.dll (shared with MonacoEditor)
   TryPreloadWebView2Loader;

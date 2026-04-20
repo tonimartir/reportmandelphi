@@ -81,7 +81,6 @@ type
     FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
     FOnSchemaChanged: TNotifyEvent;
-    FAppDataPath: string;
     FAssetRootPath: string;
     FEditorReady: Boolean;
     FUpdatingFromBrowser: Boolean;
@@ -330,9 +329,7 @@ begin
   FAuthUIUpdateVersion := 0;
 
   // 1. Determine safe extraction path in %LOCALAPPDATA% using rpmdshfolder
-  FAssetRootPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
-  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAssetRootPath));
-  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAppDataPath));
+  FAssetRootPath := EnsureMonacoAssetsExtracted;
 
   // 3. Preload WebView2Loader.dll based on architecture
   if SizeOf(Pointer) = 8 then

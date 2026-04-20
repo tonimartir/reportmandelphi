@@ -156,35 +156,26 @@
             text-decoration: underline;
         }
 
-        .msg-body strong { color: #f5e0dc; }
-
-        .msg-body em { color: #f2cdcd; font-style: italic; }
-
         .msg-body ul, .msg-body ol {
-            margin: 4px 0 4px 20px;
+            margin: 8px 0 8px 20px;
         }
 
-        .msg-body li { margin: 2px 0; }
-
-        /* Inline code */
         .msg-body code {
             background: #313244;
-            color: #f38ba8;
-            padding: 1px 5px;
-            border-radius: 3px;
+            color: #f9e2af;
+            padding: 2px 4px;
+            border-radius: 4px;
             font-family: 'Cascadia Code', 'Consolas', monospace;
             font-size: 12px;
         }
 
-        /* Code blocks */
         .msg-body pre {
-            background: #11111b;
-            border: 1px solid #313244;
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin: 8px 0;
+            background: #181825;
+            padding: 12px;
+            border-radius: 8px;
             overflow-x: auto;
-            position: relative;
+            margin: 8px 0;
+            border: 1px solid #313244;
         }
 
         .msg-body pre code {
@@ -210,23 +201,18 @@
             border: 1px solid #45475a;
         }
         .msg-body td {
-            padding: 5px 10px;
+            padding: 6px 10px;
             border: 1px solid #45475a;
         }
-        .msg-body tr:nth-child(even) { background: #1e1e2e; }
-        .msg-body tr:nth-child(odd) { background: #181825; }
 
-        /* Blockquote */
         .msg-body blockquote {
-            border-left: 3px solid #89b4fa;
-            padding: 4px 12px;
-            margin: 6px 0;
-            color: #bac2de;
-            background: #181825;
-            border-radius: 0 4px 4px 0;
+            border-left: 3px solid #585b70;
+            padding-left: 12px;
+            color: #a6adc8;
+            margin: 8px 0;
+            font-style: italic;
         }
 
-        /* Horizontal rule */
         .msg-body hr {
             border: none;
             border-top: 1px solid #45475a;
@@ -337,7 +323,7 @@
 </head>
 <body>
     <button id="copy-btn" class="copy-btn" onclick="copyLogToClipboard()">
-        <span>\u{1F4CB}</span> Copy All
+        <span>📋</span> Copy All
     </button>
     <div id="scroll-container">
         <div id="messages"></div>
@@ -366,14 +352,14 @@
             var result = text.replace(/<think>([\s\S]*?)<\/think>/gi, function(match, content) {
                 var trimmed = content.trim();
                 if (!trimmed) return '';
-                return '<details class="think-block"><summary>\u{1F914} Thinking...</summary>' +
+                return '<details class="think-block"><summary>🤔 Thinking...</summary>' +
                        '<div class="think-content">' + md.render(trimmed) + '</div></details>';
             });
 
             // Handle unclosed <think> (streaming in progress)
             result = result.replace(/<think>([\s\S]*)$/gi, function(match, content) {
                 var trimmed = content.trim();
-                return '<details class="think-block" open><summary>\u{1F914} Thinking...</summary>' +
+                return '<details class="think-block" open><summary>🤔 Thinking...</summary>' +
                        '<div class="think-content">' + (trimmed ? md.render(trimmed) : '<em>...</em>') + '</div></details>';
             });
 
@@ -395,67 +381,47 @@
             return md.render(text);
         }
 
-        // ============================================================
-        // Escape string for safe inclusion in HTML attributes
-        // ============================================================
-        function escapeHtml(str) {
+        function escapeHtml(text) {
             var div = document.createElement('div');
-            div.appendChild(document.createTextNode(str));
+            div.textContent = text;
             return div.innerHTML;
         }
 
-        // ============================================================
-        // PUBLIC API — called from Delphi via ExecuteScript
-        // ============================================================
-
-        // Append a chat-style message with role icon
-        window.appendMessage = function(role, markdownText) {
+        // Add a message (for Chat)
+        window.appendMessage = function(role, text) {
             var el = document.createElement('div');
-            var icon, label, cssClass;
+            el.className = 'msg msg-' + role;
+            
+            var icon = role === 'user' ? '👤' : '🤖';
+            var header = role === 'user' ? 'You' : 'Assistant';
 
-            switch ((role || '').toLowerCase()) {
-                case 'user':
-                    icon = '\u{1F464}'; label = 'You'; cssClass = 'msg-user';
-                    break;
-                case 'assistant':
-                    icon = '\u{1F916}'; label = 'Assistant'; cssClass = 'msg-assistant';
-                    break;
-                case 'system':
-                    icon = '\u{2699}\u{FE0F}'; label = 'System'; cssClass = 'msg-system';
-                    break;
-                default:
-                    icon = '\u{1F4AC}'; label = role || 'Message'; cssClass = 'msg-system';
-            }
-
-            el.className = 'msg ' + cssClass;
-            el.innerHTML =
+            el.innerHTML = 
                 '<div class="msg-header">' +
-                    '<span class="msg-icon">' + icon + '</span>' +
-                    '<span>' + escapeHtml(label) + '</span>' +
+                '<span class="msg-icon">' + icon + '</span>' +
+                '<span>' + header + '</span>' +
                 '</div>' +
-                '<div class="msg-body">' + renderMarkdown(markdownText) + '</div>';
+                '<div class="msg-body">' + renderMarkdown(text) + '</div>';
 
             messagesEl.appendChild(el);
-            window.scrollToEnd();
+            window.scrollToEnd(true);
         };
 
-        // Append a streaming message (creates or updates the last streaming block)
-        window.appendStreamingChunk = function(role, chunk, prefillPercent) {
+        // Append a message chunk (streaming, for Chat)
+        window.appendMessageChunk = function(role, chunk, prefillPercent) {
             var last = messagesEl.lastElementChild;
+            var isNew = !last || !last.classList.contains('msg-streaming') || !last.classList.contains('msg-' + role);
 
-            if (!last || !last.classList.contains('msg-streaming')) {
-                // Create new streaming message
+            if (isNew) {
                 var el = document.createElement('div');
-                var icon = role === 'user' ? '\u{1F464}' : '\u{1F916}';
-                var label = role === 'user' ? 'You' : 'Assistant';
-                var cssClass = role === 'user' ? 'msg-user' : 'msg-assistant';
+                el.className = 'msg msg-streaming msg-' + role;
+                
+                var icon = role === 'user' ? '👤' : '🤖';
+                var header = role === 'user' ? 'You' : 'Assistant';
 
-                el.className = 'msg ' + cssClass + ' msg-streaming';
-                el.setAttribute('data-raw', '');
-                el.innerHTML =
+                el.innerHTML = 
                     '<div class="msg-header">' +
-                        '<span class="msg-icon">' + icon + '</span>' +
-                        '<span>' + escapeHtml(label) + '</span>' +
+                    '<span class="msg-icon">' + icon + '</span>' +
+                    '<span>' + header + '</span>' +
                     '</div>' +
                     '<div class="msg-prefill"></div>' +
                     '<div class="msg-body"></div>';
@@ -478,7 +444,7 @@
             var bodyEl = last.querySelector('.msg-body');
             if (bodyEl) bodyEl.innerHTML = renderMarkdown(raw);
 
-            window.scrollToEnd();
+            window.scrollToEnd(true);
         };
 
         // Finish streaming (remove cursor animation)
@@ -498,15 +464,15 @@
             if (text.indexOf('actor: ') === 0) {
                 var actorName = text.substring(7).trim();
                 var lowerName = actorName.toLowerCase();
-                var icon = '\u{2699}\u{FE0F}'; // Default System
+                var icon = '⚙️'; // Default System
                 var badgeClass = 'actor-badge-system';
 
                 if (lowerName === 'ai' || lowerName === 'assistant') {
-                    icon = '\u{1F916}';
+                    icon = '🤖';
                     badgeClass = 'actor-badge-ai';
                     actorName = 'AI';
                 } else if (lowerName === 'user' || lowerName === 'none') {
-                    icon = lowerName === 'user' ? '\u{1F464}' : '\u{2699}\u{FE0F}';
+                    icon = lowerName === 'user' ? '👤' : '⚙️';
                     badgeClass = 'actor-badge-none';
                     if (lowerName === 'none') actorName = 'Process';
                 }
@@ -519,7 +485,7 @@
             }
             
             messagesEl.appendChild(el);
-            // window.scrollToEnd() is now handled by MutationObserver
+            window.scrollToEnd(true);
         };
 
         // Append a raw log chunk (streaming, no newline)
@@ -540,7 +506,7 @@
                 messagesEl.appendChild(el);
             }
 
-            window.scrollToEnd();
+            window.scrollToEnd(true);
         };
 
         // End a log chunk (next appendLogChunk starts a new block)
@@ -562,7 +528,7 @@
             var threshold = 100;
             var isAtBottom = (containerEl.scrollHeight - containerEl.scrollTop - containerEl.clientHeight) < threshold;
             
-            if (force || isAtBottom) {
+            if (force === true || isAtBottom) {
                 window.requestAnimationFrame(function() {
                     containerEl.scrollTop = containerEl.scrollHeight;
                 });
@@ -580,14 +546,10 @@
             var btn = document.getElementById('copy-btn');
             var text = messagesEl.innerText;
             
-            // Clean up text if needed (optional)
-            // text = text.replace(/\n\n+/g, '\n\n'); 
-
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function() {
                     showCopySuccess(btn);
                 }).catch(function() {
-                    // Fallback for older WebView2 or restricted environments
                     fallbackCopyText(text, btn);
                 });
             } else {
@@ -600,7 +562,7 @@
             var originalIcon = span.textContent;
             var originalText = btn.lastChild.textContent;
             
-            span.textContent = '\u{2705}';
+            span.textContent = '✅';
             btn.lastChild.textContent = ' Copied!';
             btn.classList.add('copy-success');
             
