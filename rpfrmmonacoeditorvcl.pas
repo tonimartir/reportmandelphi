@@ -18,7 +18,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls, ComCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, System.JSON, rpdatahttp,
-  System.Zip, System.IOUtils, System.Threading;
+  System.Zip, System.IOUtils, System.Threading, rpmdshfolder;
 
 type
   IEditorGuard = interface
@@ -125,7 +125,6 @@ type
     procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
-    function ResolveMonacoAssetRoot(const ABasePath: string): string;
     function EnsureMonacoAssetsExtracted: string;
   protected
     procedure CreateWnd; override;
@@ -330,10 +329,10 @@ begin
   FEditorReady := False;
   FAuthUIUpdateVersion := 0;
 
-  // 1. Determine safe extraction path in %LOCALAPPDATA%
-  FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
-  if FAppDataPath = '' then FAppDataPath := TPath.GetTempPath;
-  FAssetRootPath := EnsureMonacoAssetsExtracted;
+  // 1. Determine safe extraction path in %LOCALAPPDATA% using rpmdshfolder
+  FAssetRootPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
+  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAssetRootPath));
+  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAppDataPath));
 
   // 3. Preload WebView2Loader.dll based on architecture
   if SizeOf(Pointer) = 8 then
@@ -417,7 +416,7 @@ begin
   begin
     Edge.HandleNeeded;
 
-    LDestPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco');
+    LDestPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', '');
     Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
 
     Edge.CreateWebView;
@@ -430,30 +429,18 @@ begin
   LayoutTopControls;
 end;
 
-function TFRpMonacoEditorVCL.ResolveMonacoAssetRoot(
-  const ABasePath: string): string;
-var
-  LNestedPath: string;
-begin
-  Result := ABasePath;
-  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
-    Exit;
-
-  LNestedPath := TPath.Combine(ABasePath, 'MonacoEditor');
-  if TFile.Exists(TPath.Combine(LNestedPath, 'index.html')) then
-    Result := LNestedPath;
-end;
-
 function TFRpMonacoEditorVCL.EnsureMonacoAssetsExtracted: string;
 var
   LBasePath: string;
   LResStream: TResourceStream;
   LZip: TZipFile;
 begin
-  LBasePath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
-  Result := ResolveMonacoAssetRoot(LBasePath);
-  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
+  LBasePath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
+  if TFile.Exists(TPath.Combine(LBasePath, 'index.html')) then
+  begin
+    Result := LBasePath;
     Exit;
+  end;
 
   TDirectory.CreateDirectory(LBasePath);
   LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
@@ -469,7 +456,7 @@ begin
     LResStream.Free;
   end;
 
-  Result := ResolveMonacoAssetRoot(LBasePath);
+  Result := LBasePath;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(

@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
   Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
-  System.Zip, System.IOUtils, System.JSON;
+  System.Zip, System.IOUtils, System.JSON, rpmdshfolder;
 
 type
   TRpWebMarkdownView = class(TPanel)
@@ -38,7 +38,6 @@ type
       Args: TWebMessageReceivedEventArgs);
 
     function EnsureAssetsExtracted: string;
-    function ResolveAssetRoot(const ABasePath: string): string;
     procedure TryPreloadWebView2Loader;
     procedure ExecuteOrQueue(const AScript: string);
     procedure FlushPendingCalls;
@@ -111,12 +110,10 @@ begin
   FUseFallback := False;
   FPendingCalls := TStringList.Create;
 
-  FAppDataPath := GetEnvironmentVariable('LOCALAPPDATA');
-  if FAppDataPath = '' then
-    FAppDataPath := TPath.GetTempPath;
-
-  // Extract web assets
-  FAssetRootPath := EnsureAssetsExtracted;
+  // 1. Determine safe extraction path in %LOCALAPPDATA% using rpmdshfolder
+  FAssetRootPath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', 'WebMarkdown');
+  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAssetRootPath));
+  FAppDataPath := ExtractFilePath(ExcludeTrailingPathDelimiter(FAppDataPath));
 
   // Try to preload WebView2Loader.dll (shared with MonacoEditor)
   TryPreloadWebView2Loader;
@@ -165,7 +162,7 @@ var
   LMonacoPath: string;
 begin
   // Try MonacoEditor's already-extracted DLL first
-  LMonacoPath := TPath.Combine(FAppDataPath, 'Reportman\Monaco\MonacoEditor');
+  LMonacoPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
   if SizeOf(Pointer) = 8 then
   begin
     LCandidates[0] := TPath.Combine(LMonacoPath, 'x64\WebView2Loader.dll');
@@ -202,8 +199,8 @@ begin
     try
       FEdge.HandleNeeded;
 
-      LDestPath := TPath.Combine(FAppDataPath, 'Reportman\WebMarkdown');
-      FEdge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+    LDestPath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', '');
+    FEdge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
 
       FEdge.CreateWebView;
     except
@@ -212,29 +209,18 @@ begin
   end;
 end;
 
-function TRpWebMarkdownView.ResolveAssetRoot(const ABasePath: string): string;
-var
-  LNestedPath: string;
-begin
-  Result := ABasePath;
-  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
-    Exit;
-
-  LNestedPath := TPath.Combine(ABasePath, 'WebMarkdown');
-  if TFile.Exists(TPath.Combine(LNestedPath, 'index.html')) then
-    Result := LNestedPath;
-end;
-
 function TRpWebMarkdownView.EnsureAssetsExtracted: string;
 var
   LBasePath: string;
   LResStream: TResourceStream;
   LZip: TZipFile;
 begin
-  LBasePath := TPath.Combine(FAppDataPath, 'Reportman\WebMarkdown\WebMarkdown');
-  Result := ResolveAssetRoot(LBasePath);
-  if TFile.Exists(TPath.Combine(Result, 'index.html')) then
+  LBasePath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', 'WebMarkdown');
+  if TFile.Exists(TPath.Combine(LBasePath, 'index.html')) then
+  begin
+    Result := LBasePath;
     Exit;
+  end;
 
   TDirectory.CreateDirectory(LBasePath);
   LResStream := TResourceStream.Create(HInstance, 'WEBMARKDOWN_ZIP', RT_RCDATA);
@@ -250,7 +236,7 @@ begin
     LResStream.Free;
   end;
 
-  Result := ResolveAssetRoot(LBasePath);
+  Result := LBasePath;
 end;
 
 procedure TRpWebMarkdownView.EdgeCreateWebViewCompleted(

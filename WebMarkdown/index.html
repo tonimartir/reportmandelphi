@@ -59,6 +59,9 @@
 
         .msg-body {
             font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         /* User messages */
@@ -93,6 +96,9 @@
             color: #a6adc8;
             border-radius: 0;
             margin-bottom: 2px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .msg-log-chunk {
@@ -285,9 +291,54 @@
         ::-webkit-scrollbar-track { background: #1e1e2e; }
         ::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #585b70; }
+
+        /* Copy Button Styles */
+        .copy-btn {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 2000;
+            background: rgba(49, 50, 68, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(203, 166, 247, 0.4);
+            color: #cdd6f4;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+            opacity: 0.4;
+        }
+        .copy-btn:hover {
+            background: #45475a;
+            border-color: #cba6f7;
+            transform: translateY(-1px);
+            opacity: 1;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+        .copy-success {
+            border-color: #a6e3a1 !important;
+            color: #a6e3a1 !important;
+            opacity: 1 !important;
+        }
     </style>
 </head>
 <body>
+    <button id="copy-btn" class="copy-btn" onclick="copyLogToClipboard()">
+        <span>\u{1F4CB}</span> Copy All
+    </button>
     <div id="scroll-container">
         <div id="messages"></div>
     </div>
@@ -523,6 +574,60 @@
             window.scrollToEnd(false);
         });
         observer.observe(messagesEl, { childList: true, subtree: true, characterData: true });
+
+        // Copy Log content to clipboard
+        window.copyLogToClipboard = function() {
+            var btn = document.getElementById('copy-btn');
+            var text = messagesEl.innerText;
+            
+            // Clean up text if needed (optional)
+            // text = text.replace(/\n\n+/g, '\n\n'); 
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopySuccess(btn);
+                }).catch(function() {
+                    // Fallback for older WebView2 or restricted environments
+                    fallbackCopyText(text, btn);
+                });
+            } else {
+                fallbackCopyText(text, btn);
+            }
+        };
+
+        function showCopySuccess(btn) {
+            var span = btn.querySelector('span');
+            var originalIcon = span.textContent;
+            var originalText = btn.lastChild.textContent;
+            
+            span.textContent = '\u{2705}';
+            btn.lastChild.textContent = ' Copied!';
+            btn.classList.add('copy-success');
+            
+            setTimeout(function() {
+                span.textContent = originalIcon;
+                btn.lastChild.textContent = originalText;
+                btn.classList.remove('copy-success');
+            }, 2000);
+        }
+
+        function fallbackCopyText(text, btn) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(btn);
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
 
         // Notify Delphi that we are ready
         if (window.chrome && window.chrome.webview) {
