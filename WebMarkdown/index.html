@@ -38,7 +38,8 @@
             padding: 10px 14px;
             position: relative;
             word-wrap: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
+            min-width: 0;
         }
 
         .msg-header {
@@ -59,9 +60,9 @@
 
         .msg-body {
             font-size: 13px;
-            white-space: pre-wrap;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            min-width: 0;
         }
 
         /* User messages */
@@ -96,9 +97,13 @@
             color: #a6adc8;
             border-radius: 0;
             margin-bottom: 2px;
-            white-space: pre-wrap;
             word-wrap: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
         }
 
         .msg-log-chunk {
@@ -118,8 +123,8 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-top: 14px;
-            margin-bottom: 8px;
+            margin-top: 8px;
+            margin-bottom: 4px;
             border-left: 3px solid #cba6f7;
             width: fit-content;
         }
@@ -140,24 +145,41 @@
         @keyframes blink { 50% { opacity: 0; } }
 
         /* === Markdown Content Styling === */
-        .msg-body h1, .msg-body h2, .msg-body h3 {
+        .msg-body h1, .msg-body h2, .msg-body h3,
+        .msg-log h1, .msg-log h2, .msg-log h3 {
             color: #cba6f7;
             margin: 10px 0 6px 0;
             font-weight: 600;
         }
-        .msg-body h1 { font-size: 18px; }
-        .msg-body h2 { font-size: 16px; }
-        .msg-body h3 { font-size: 14px; }
+        .msg-body h1, .msg-log h1 { font-size: 18px; }
+        .msg-body h2, .msg-log h2 { font-size: 16px; }
+        .msg-body h3, .msg-log h3 { font-size: 14px; }
 
-        .msg-body p { margin: 4px 0; }
+        .msg-body p, .msg-log p { margin: 4px 0; }
 
-        .msg-body a {
+        .msg-body a, .msg-log a {
             color: #89b4fa;
             text-decoration: underline;
         }
 
         .msg-body ul, .msg-body ol {
-            margin: 8px 0 8px 20px;
+            margin: 4px 0 4px 8px;
+            padding-left: 14px;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .msg-log ul, .msg-log ol {
+            margin: 2px 0 2px 0;
+            padding-left: 10px;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .msg-body li, .msg-log li {
+            margin-bottom: 2px;
         }
 
         .msg-body code {
@@ -167,15 +189,44 @@
             border-radius: 4px;
             font-family: 'Cascadia Code', 'Consolas', monospace;
             font-size: 12px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .msg-log code {
+            background: transparent;
+            color: #f9e2af;
+            padding: 0;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
         }
 
         .msg-body pre {
             background: #181825;
-            padding: 12px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 8px 0;
+            padding: 8px 10px;
+            border-radius: 6px;
+            overflow-x: hidden;
+            margin: 4px 0;
             border: 1px solid #313244;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .msg-log pre {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            overflow-x: hidden;
+            margin: 2px 0 2px 8px;
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .msg-body pre code {
@@ -184,15 +235,31 @@
             padding: 0;
             font-size: 12px;
             line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .msg-log pre code {
+            background: transparent;
+            color: #cdd6f4;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         /* Tables */
-        .msg-body table {
+        .msg-body table, .msg-log table {
             border-collapse: collapse;
             margin: 8px 0;
             width: 100%;
         }
-        .msg-body th {
+        .msg-body th, .msg-log th {
             background: #313244;
             color: #cba6f7;
             padding: 6px 10px;
@@ -200,12 +267,12 @@
             font-weight: 600;
             border: 1px solid #45475a;
         }
-        .msg-body td {
+        .msg-body td, .msg-log td {
             padding: 6px 10px;
             border: 1px solid #45475a;
         }
 
-        .msg-body blockquote {
+        .msg-body blockquote, .msg-log blockquote {
             border-left: 3px solid #585b70;
             padding-left: 12px;
             color: #a6adc8;
@@ -213,7 +280,7 @@
             font-style: italic;
         }
 
-        .msg-body hr {
+        .msg-body hr, .msg-log hr {
             border: none;
             border-top: 1px solid #45475a;
             margin: 10px 0;
@@ -221,7 +288,10 @@
 
         /* === Think Blocks (Collapsible) === */
         .think-block {
-            margin: 8px 0;
+            margin: 2px 0;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
             border: 1px solid #45475a;
             border-radius: 6px;
             background: #181825;
@@ -257,7 +327,7 @@
         }
 
         .think-block .think-content {
-            padding: 8px 12px;
+            padding: 8px 4px;
             color: #a6adc8;
             font-size: 12px;
             line-height: 1.5;
