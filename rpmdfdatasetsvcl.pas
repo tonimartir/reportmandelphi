@@ -158,7 +158,7 @@ type
       AExpression: string);
     procedure ChatStopRequest(Sender: TObject);
     function ChatTranslateCancelRequested(Sender: TObject): Boolean;
-    procedure ChatTranslateProgress(Sender: TObject; const AStage,
+    procedure ChatTranslateProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure SetDataInfo(Value:TRpDataInfoList);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -173,7 +173,7 @@ type
     function GetUserLanguageCode: string;
     procedure MonacoInferenceLog(Sender: TObject; const ASource,
       AText: string; AAppendLineBreak: Boolean);
-    procedure MonacoAuditProgress(Sender: TObject; const AStage,
+    procedure MonacoAuditProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure MonacoSchemaChange(Sender: TObject);
     procedure  Removedependences(oldalias:string);
@@ -776,9 +776,10 @@ begin
     Result := 100;
 end;
 
-procedure TFRpDatasetsVCL.ChatTranslateProgress(Sender: TObject; const AStage,
+procedure TFRpDatasetsVCL.ChatTranslateProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 var
+  LActor: string;
   LStage: string;
   LChunkType: string;
   LChunk: string;
@@ -786,6 +787,7 @@ var
   LOutputTokens: Integer;
   LQueueProc: TThreadProcedure;
 begin
+  LActor := AActor;
   LStage := AStage;
   LChunkType := AChunkType;
   LChunk := AChunk;
@@ -802,7 +804,7 @@ begin
       if SameText(LStage, 'ReceivingResponse') then
       begin
         if LChunk <> '' then
-          FChat.UpdateStreamingResponse(LChunk,
+          FChat.UpdateStreamingResponse(LActor, LChunkType, LChunk,
             GetChatPrefillPercent(LStage, LChunkType));
       end
       else if LChunk <> '' then
@@ -1000,24 +1002,33 @@ begin
   Result := TRpAuthManager.Instance.AILanguage;
 end;
 
-procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AStage,
+procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 var
+  LActor, LAStage, LAChunkType, LAChunk: string;
+  LInputTokens, LOutputTokens: Integer;
   LQueueProc: TThreadProcedure;
 begin
   if FMonaco = nil then
     Exit;
+
+  LActor := AActor;
+  LAStage := AStage;
+  LAChunkType := AChunkType;
+  LAChunk := AChunk;
+  LInputTokens := AInputTokens;
+  LOutputTokens := AOutputTokens;
 
   LQueueProc :=
     procedure
     begin
       if FMonaco = nil then
         Exit;
-      FMonaco.UpdateAITokens(AInputTokens, AOutputTokens);
-      if SameText(AStage, 'ReceivingResponse') and (AChunk <> '') then
-        FMonaco.AppendLog(AChunk)
-      else if AChunk <> '' then
-        FMonaco.AppendLog('[' + AStage + '] ' + AChunk);
+      FMonaco.UpdateAITokens(LInputTokens, LOutputTokens);
+      if SameText(LAStage, 'ReceivingResponse') and (LAChunk <> '') then
+        FMonaco.AppendLog(LAChunk)
+      else if LAChunk <> '' then
+        FMonaco.AppendLog('[' + LAStage + '] ' + LAChunk);
     end;
   TThread.Queue(nil, LQueueProc);
 end;

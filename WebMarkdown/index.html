@@ -14,8 +14,15 @@
             font-family: 'Segoe UI', 'Cascadia Code', 'Consolas', sans-serif;
             font-size: 13px;
             line-height: 1.6;
+            overflow: hidden; /* WebView host sometimes struggles with window scroll, so we fix the window... */
+        }
+        
+        #scroll-container {
+            height: 100%;
+            width: 100%;
             overflow-y: auto;
             overflow-x: hidden;
+            scroll-behavior: auto;
         }
 
         #messages {
@@ -80,16 +87,42 @@
         /* Log entries (AI log / Net log) */
         .msg-log {
             background: transparent;
-            padding: 1px 8px;
+            padding: 1px 12px;
             font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
             font-size: 12px;
             color: #a6adc8;
             border-radius: 0;
+            margin-bottom: 2px;
         }
 
         .msg-log-chunk {
             display: inline;
         }
+
+        /* Log Actor Vignettes */
+        .msg-log-actor {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #313244;
+            color: #cdd6f4;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            border-left: 3px solid #cba6f7;
+            width: fit-content;
+        }
+
+        .actor-badge-system { border-left-color: #fab387; color: #fab387; }
+        .actor-badge-ai { border-left-color: #a6e3a1; color: #a6e3a1; }
+        .actor-badge-none { border-left-color: #6c7086; color: #9399b2; }
+
+        .msg-log-actor i { font-style: normal; }
 
         /* === Streaming indicator === */
         .msg-streaming::after {
@@ -255,11 +288,12 @@
     </style>
 </head>
 <body>
-    <div id="messages"></div>
+    <div id="scroll-container">
+        <div id="messages"></div>
+    </div>
 
     <script src="./markdown-it.min.js"></script>
     <script>
-        // Initialize markdown-it with HTML enabled (for think blocks)
         var md = window.markdownit({
             html: true,
             breaks: true,
@@ -268,6 +302,7 @@
         });
 
         var messagesEl = document.getElementById('messages');
+        var containerEl = document.getElementById('scroll-container');
 
         // ============================================================
         // Think Block Preprocessor
@@ -408,10 +443,32 @@
         // Append a log line (timestamp + text, for AI/Net log tabs)
         window.appendLogLine = function(text) {
             var el = document.createElement('div');
-            el.className = 'msg-log';
-            el.innerHTML = renderMarkdown(text);
+            
+            if (text.indexOf('actor: ') === 0) {
+                var actorName = text.substring(7).trim();
+                var lowerName = actorName.toLowerCase();
+                var icon = '\u{2699}\u{FE0F}'; // Default System
+                var badgeClass = 'actor-badge-system';
+
+                if (lowerName === 'ai' || lowerName === 'assistant') {
+                    icon = '\u{1F916}';
+                    badgeClass = 'actor-badge-ai';
+                    actorName = 'AI';
+                } else if (lowerName === 'user' || lowerName === 'none') {
+                    icon = lowerName === 'user' ? '\u{1F464}' : '\u{2699}\u{FE0F}';
+                    badgeClass = 'actor-badge-none';
+                    if (lowerName === 'none') actorName = 'Process';
+                }
+
+                el.className = 'msg-log-actor ' + badgeClass;
+                el.innerHTML = '<i>' + icon + '</i> ' + escapeHtml(actorName);
+            } else {
+                el.className = 'msg-log';
+                el.innerHTML = renderMarkdown(text);
+            }
+            
             messagesEl.appendChild(el);
-            window.scrollToEnd();
+            // window.scrollToEnd() is now handled by MutationObserver
         };
 
         // Append a raw log chunk (streaming, no newline)
@@ -449,9 +506,23 @@
         };
 
         // Scroll to bottom
-        window.scrollToEnd = function() {
-            window.scrollTo(0, document.body.scrollHeight);
+        window.scrollToEnd = function(force) {
+            // If user is scrolled up more than 100px, don't auto-scroll unless forced
+            var threshold = 100;
+            var isAtBottom = (containerEl.scrollHeight - containerEl.scrollTop - containerEl.clientHeight) < threshold;
+            
+            if (force || isAtBottom) {
+                window.requestAnimationFrame(function() {
+                    containerEl.scrollTop = containerEl.scrollHeight;
+                });
+            }
         };
+
+        // MutationObserver to handle automatic scrolling on content change
+        var observer = new MutationObserver(function() {
+            window.scrollToEnd(false);
+        });
+        observer.observe(messagesEl, { childList: true, subtree: true, characterData: true });
 
         // Notify Delphi that we are ready
         if (window.chrome && window.chrome.webview) {

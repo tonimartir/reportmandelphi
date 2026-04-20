@@ -86,6 +86,8 @@ type
   public
     Kind: TRpQueuedDesignChatPayloadKind;
     RequestVersion: Integer;
+    Actor1: string;
+    ChunkType1: string;
     Text1: string;
     Text2: string;
     PrefillPercent: Integer;
@@ -467,7 +469,7 @@ type
       ANotifyOnSuccess: Boolean);
     procedure ExecuteDesignChatPrompt(const APrompt: string);
     function GetDesignChatPrefillPercent(const AStage, AChunkType: string): Integer;
-    procedure DesignChatStreamProgress(Sender: TObject; const AStage,
+    procedure DesignChatStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
     function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
@@ -3180,31 +3182,25 @@ begin
   Result := 100;
 end;
 
-procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject;
-  const AStage, AChunkType, AChunk: string; AInputTokens,
-  AOutputTokens: Integer);
+procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject; const AActor,
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 var
- LPayload: TRpQueuedDesignChatPayload;
- LChunk: string;
+  LPayload: TRpQueuedDesignChatPayload;
+  LChunk: string;
 begin
- LChunk := '';
- if Trim(AChunk) <> '' then
- begin
-  if SameText(AStage, 'ReceivingResponse') then
-   LChunk := AChunk
-  else
-   LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
- end;
+  LChunk := AChunk;
 
- LPayload := TRpQueuedDesignChatPayload.Create;
- LPayload.Kind := rpqdcUpdateStreamingResponse;
- if Sender is TRpDesignChatStreamContext then
-  LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
- LPayload.Text1 := LChunk;
- LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
- LPayload.InputTokens := AInputTokens;
- LPayload.OutputTokens := AOutputTokens;
- PostDesignChatPayload(LPayload);
+  LPayload := TRpQueuedDesignChatPayload.Create;
+  LPayload.Kind := rpqdcUpdateStreamingResponse;
+  if Sender is TRpDesignChatStreamContext then
+    LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
+  LPayload.Actor1 := AActor;
+  LPayload.ChunkType1 := AChunkType;
+  LPayload.Text1 := LChunk;
+  LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
+  LPayload.InputTokens := AInputTokens;
+  LPayload.OutputTokens := AOutputTokens;
+  PostDesignChatPayload(LPayload);
 end;
 
 function TFRpMainFVCL.DesignChatStreamCancelRequested(Sender: TObject): Boolean;
@@ -3642,7 +3638,7 @@ begin
     case LPayload.Kind of
       rpqdcUpdateStreamingResponse:
         begin
-          fchatframe.UpdateStreamingResponse(LPayload.Text1, LPayload.PrefillPercent);
+          fchatframe.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent);
           fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
           Exit;
         end;

@@ -120,7 +120,7 @@ type
     function SuggestSqlStreamCancelRequested(Sender: TObject): Boolean;
     procedure EmitInferenceLog(const ASource, AText: string;
       AAppendLineBreak: Boolean);
-    procedure SuggestSqlStreamProgress(Sender: TObject; const AStage,
+    procedure SuggestSqlStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure StartPendingInference;
     procedure LayoutTopControls;
@@ -1343,15 +1343,17 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.SuggestSqlStreamProgress(Sender: TObject;
-  const AStage, AChunkType, AChunk: string; AInputTokens,
+  const AActor, AStage, AChunkType, AChunk: string; AInputTokens,
   AOutputTokens: Integer);
 var
+  LAActor: string;
   LStage: string;
   LChunk: string;
   LChunkType: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
 begin
+  LAActor := AActor;
   LStage := AStage;
   LChunk := AChunk;
   LChunkType := AChunkType;
@@ -1368,7 +1370,7 @@ begin
         Exit;
       if LChunk = '' then
         Exit;
-      EmitInferenceLog('', LChunk, SameText(LChunkType, 'End'));
+      Self.EmitInferenceLog(LAActor, LChunk, SameText(LChunkType, 'End'));
     end);
 end;
 

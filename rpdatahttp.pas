@@ -31,7 +31,7 @@ uses
   rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
   rpaireportcontracts;
 type
-  TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AStage,
+  TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer) of object;
   TRpExpressionStreamResultEvent = procedure(Sender: TObject;
     AResultJson: TJSONObject; const AErrorMessage: string) of object;
@@ -201,7 +201,7 @@ type
       AOnCancel: TRpExpressionStreamCancelEvent);
     destructor Destroy; override;
     function HandleCancel(Sender: TObject): Boolean;
-    procedure HandleProgress(Sender: TObject; const AStage, AChunkType,
+    procedure HandleProgress(Sender: TObject; const AActor, AStage, AChunkType,
       AChunk: string; AInputTokens, AOutputTokens: Integer);
     procedure HandleResult(Sender: TObject; AResultJson: TJSONObject;
       const AErrorMessage: string);
@@ -248,6 +248,7 @@ end;
 procedure TRpExpressionStreamContext.DispatchJson(const AJsonText: string);
 var
   LJson: TJSONObject;
+  LActor: string;
   LStage: string;
   LChunkType: string;
   LChunk: string;
@@ -269,6 +270,7 @@ begin
         begin
           if Assigned(FOnProgress) then
           begin
+            LActor := LJson.Values['actor'].Value;
             LStage := LJson.Values['stage'].Value;
             if LJson.Values['chunkType'] <> nil then
               LChunkType := LJson.Values['chunkType'].Value
@@ -303,7 +305,7 @@ begin
             else
               LOutputTokens := 0;
               
-            FOnProgress(FSender, LStage, LChunkType, LChunk, LInputTokens, LOutputTokens);
+            FOnProgress(FSender, LActor, LStage, LChunkType, LChunk, LInputTokens, LOutputTokens);
           end;
         end
         else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
@@ -419,11 +421,11 @@ begin
   Result := Assigned(FForwardCancel) and FForwardCancel(FSender);
 end;
 
-procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AStage,
+procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 begin
   if Assigned(FForwardProgress) then
-    FForwardProgress(FSender, AStage, AChunkType, AChunk, AInputTokens,
+    FForwardProgress(FSender, AActor, AStage, AChunkType, AChunk, AInputTokens,
       AOutputTokens);
 end;
 

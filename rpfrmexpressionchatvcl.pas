@@ -83,7 +83,7 @@ type
     procedure SetCurrentExpression(const AExpression: string);
     procedure SetBusy(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
-    procedure UpdateStreamingResponse(const AChunk: string; APrefillPercent: Integer);
+    procedure UpdateStreamingResponse(const AActor, AChunkType, AChunk: string; APrefillPercent: Integer);
     procedure UpdateUserProfile(AProfile: TJSONObject);
     function GetAITier: string;
     function GetAIMode: string;
@@ -444,7 +444,7 @@ begin
   BApply.Enabled := (not FBusy) and (Trim(FSuggestedExpression) <> '');
 end;
 
-procedure TFRpChatFrame.UpdateStreamingResponse(const AChunk: string;
+procedure TFRpChatFrame.UpdateStreamingResponse(const AActor, AChunkType, AChunk: string;
   APrefillPercent: Integer);
 begin
   if not FStreamingActive then
