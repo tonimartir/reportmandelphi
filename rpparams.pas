@@ -1028,7 +1028,7 @@ begin
  Filer.DefineProperty('Search',ReadSearch,WriteSearch,True);
  Filer.DefineProperty('ErrorMessage',ReadErrorMessage,WriteErrorMessage,True);
  Filer.DefineProperty('Validation',ReadValidation,WriteValidation,True);
- Filer.DefineProperty('IntName',ReadIntName,WriteIntName,FIntName<>'');
+ //Filer.DefineProperty('IntName',ReadIntName,WriteIntName,FIntName<>'');
 end;
 
 function TRpParam.GetAsString:WideString;

@@ -5759,21 +5759,21 @@ procedure TRpDatabaseInfoItem.DefineProperties(Filer:TFiler);
 begin
  inherited;
 
- Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,True);
- Filer.DefineProperty('Name',
-   ReadNewName, WriteNewName,
-  FName <> ''
-  );
+ Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,ADOConnectionString<>'');
+ //Filer.DefineProperty('Name',
+ //  ReadNewName, WriteNewName,
+ // FName <> ''
+ // );
 end;
 
 procedure TRpDataInfoItem.DefineProperties(Filer:TFiler);
 begin
  inherited;
 
- Filer.DefineProperty('Name',
-   ReadNewName, WriteNewName,
-  FName <> ''
-  );
+ //Filer.DefineProperty('Name',
+ //  ReadNewName, WriteNewName,
+ // FName <> ''
+ // );
 end;
 
 
