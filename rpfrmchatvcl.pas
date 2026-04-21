@@ -5,7 +5,8 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons, System.JSON,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
-  rpreportdesignercontracts, rpfrmaireportvcl, rpwebmarkdownvcl;
+  rpreportdesignercontracts, rpfrmaireportvcl, rpwebmarkdownvcl,
+  rpchatmodernstyle;
 
   const
     CRpStartupNetworkDelayMs = 0;
@@ -139,10 +140,14 @@ type
     FWebLog: TRpWebMarkdownView;
     FWebNetLog: TRpWebMarkdownView;
     FLastLogActor: string;
+    FHoveredTabIndex: Integer;
+    FInitialLayoutDone: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
     procedure WMApplyLoadedSchemas(var Message: TMessage); message WM_USER + 203;
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 208;
     procedure WMAppendAuthLog(var Message: TMessage); message WM_USER + 211;
+    procedure WMDeferredLayout(var Message: TMessage); message WM_USER + 212;
+    procedure CMShowingChanged(var Message: TMessage); message CM_SHOWINGCHANGED;
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
       AReloadVersion: Integer);
@@ -170,6 +175,12 @@ type
     procedure StopDesignPrompt;
     procedure UpdateButtons;
     procedure AppendNetLogLine(const AText: string);
+    procedure PControlDrawTab(Control: TCustomTabControl; TabIndex: Integer;
+      const Rect: TRect; Active: Boolean);
+    procedure PControlMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure PControlMouseLeave(Sender: TObject);
+    procedure PControlChange(Sender: TObject);
+    procedure ApplyModernStyling;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -234,58 +245,9 @@ uses
 procedure TConfigIconButton.Paint;
 var
   R: TRect;
-  CX, CY: Integer;
-  OuterRadius, InnerRadius, CenterRadius: Integer;
-  FontColor: TColor;
-
-  procedure DrawSpoke(const DX1, DY1, DX2, DY2: Integer);
-  begin
-    Canvas.MoveTo(CX + DX1, CY + DY1);
-    Canvas.LineTo(CX + DX2, CY + DY2);
-  end;
 begin
   R := ClientRect;
-
-  if not Enabled then
-    FontColor := clGrayText
-  else
-    FontColor := clBtnText;
-
-  Canvas.Brush.Color := clBtnFace;
-  Canvas.FillRect(R);
-  DrawEdge(Canvas.Handle, R, BDR_RAISEDINNER, BF_RECT);
-
-  CX := (R.Left + R.Right) div 2;
-  CY := (R.Top + R.Bottom) div 2;
-  if Width < Height then
-    OuterRadius := Width div 4
-  else
-    OuterRadius := Height div 4;
-  if OuterRadius < 6 then
-    OuterRadius := 6;
-  InnerRadius := OuterRadius - 3;
-  if InnerRadius < 3 then
-    InnerRadius := 3;
-  CenterRadius := InnerRadius - 3;
-  if CenterRadius < 2 then
-    CenterRadius := 2;
-
-  Canvas.Pen.Color := FontColor;
-  Canvas.Pen.Width := 2;
-  DrawSpoke(0, -OuterRadius, 0, -InnerRadius);
-  DrawSpoke(0, InnerRadius, 0, OuterRadius);
-  DrawSpoke(-OuterRadius, 0, -InnerRadius, 0);
-  DrawSpoke(InnerRadius, 0, OuterRadius, 0);
-  DrawSpoke(-OuterRadius + 2, -OuterRadius + 2, -InnerRadius, -InnerRadius);
-  DrawSpoke(OuterRadius - 2, -OuterRadius + 2, InnerRadius, -InnerRadius);
-  DrawSpoke(-OuterRadius + 2, OuterRadius - 2, -InnerRadius, InnerRadius);
-  DrawSpoke(OuterRadius - 2, OuterRadius - 2, InnerRadius, InnerRadius);
-
-  Canvas.Brush.Style := bsClear;
-  Canvas.Ellipse(CX - InnerRadius, CY - InnerRadius, CX + InnerRadius, CY + InnerRadius);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := FontColor;
-  Canvas.Ellipse(CX - CenterRadius, CY - CenterRadius, CX + CenterRadius, CY + CenterRadius);
+  TRpChatStyle.DrawIconButton(Canvas, R, rpikCog, Enabled, False, Down);
 end;
 
 type
@@ -374,11 +336,12 @@ begin
 
   if CRpChatEnableAISelection then
   begin
+    PAISelectionHost.Height := 72;
     FAISelection := TFRpAISelectionVCL.Create(Self);
     FAISelection.Parent := PAISelectionHost;
     FAISelection.Align := alClient;
-    FAISelection.Constraints.MinHeight := 63;
-    FAISelection.Constraints.MaxHeight := 63;
+    FAISelection.Constraints.MinHeight := 72;
+    FAISelection.Constraints.MaxHeight := 72;
     FAISelection.OnStopRequest := AISelectionStopRequest;
   end
   else
@@ -448,6 +411,8 @@ begin
   FSchemaConfigButton.ShowHint := True;
   FSchemaConfigButton.Cursor := crHandPoint;
   FSchemaConfigButton.OnClick := SchemaConfigClick;
+  FHoveredTabIndex := -1;
+  ApplyModernStyling;
   Initialize('', '');
   RefreshTopLayout;
 end;
@@ -540,6 +505,29 @@ procedure TFRpChatFrame.RefreshLayout;
 begin
   RefreshTopLayout;
   UpdateButtons;
+end;
+
+procedure TFRpChatFrame.CMShowingChanged(var Message: TMessage);
+begin
+  inherited;
+  if Showing and (not FInitialLayoutDone) and HandleAllocated then
+  begin
+    // Defer until parent has finished aligning so child sub-frames pick up
+    // the real ClientWidth (otherwise inner combos / login card / schema row
+    // stay sized to their DFM design width until the user moves a splitter).
+    PostMessage(Handle, WM_USER + 212, 0, 0);
+  end;
+end;
+
+procedure TFRpChatFrame.WMDeferredLayout(var Message: TMessage);
+begin
+  if FInitialLayoutDone then Exit;
+  FInitialLayoutDone := True;
+  RefreshTopLayout;
+  if FAISelection <> nil then
+    FAISelection.RefreshLayout;
+  if FLoginFrame <> nil then
+    FLoginFrame.RefreshLayout;
 end;
 
 procedure TFRpChatFrame.AuthChanged(ASuccess: Boolean);
@@ -1574,6 +1562,169 @@ begin
   if FWebNetLog = nil then
     Exit;
   FWebNetLog.AppendLogLine(AText);
+end;
+
+procedure TFRpChatFrame.ApplyModernStyling;
+var
+  I: Integer;
+begin
+  // Roots use light bg
+  TRpChatStyle.StylePanelBg(PRoot);
+  TRpChatStyle.StylePanelBg(PTop);
+  TRpChatStyle.StylePanelBg(PBottom);
+  TRpChatStyle.StylePanelBg(PLoginHost);
+  TRpChatStyle.StylePanelBg(PAISelectionHost);
+  TRpChatStyle.StylePanelBg(PSchemaHost);
+  TRpChatStyle.StylePanelBg(PSchemaConfigHost);
+  TRpChatStyle.StylePanelBg(PLogTop);
+  TRpChatStyle.StylePanelBg(PNetLogTop);
+  TRpChatStyle.StylePanelBg(PButtons);
+
+  // Page control owner-draw modern tabs
+  if PControl <> nil then
+  begin
+    PControl.OwnerDraw := True;
+    PControl.Style := tsTabs;
+    PControl.TabHeight := 32;
+    PControl.TabWidth := 0;
+    PControl.DoubleBuffered := True;
+    TRpChatStyle.SetupFont(PControl.Font, FontSizeUi, False, ClrSubText);
+    PControl.OnDrawTab := PControlDrawTab;
+    PControl.OnMouseMove := PControlMouseMove;
+    PControl.OnMouseLeave := PControlMouseLeave;
+    PControl.OnChange := PControlChange;
+  end;
+
+  // Schema label uppercase micro
+  if LSchema <> nil then
+  begin
+    LSchema.Caption := 'SCHEMA';
+    LSchema.Font.Name := FontNameUi;
+    LSchema.Font.Size := FontSizeMicro;
+    LSchema.Font.Style := [fsBold];
+    LSchema.Font.Color := ClrSubText;
+    LSchema.AutoSize := False;
+    LSchema.Align := alTop;
+    LSchema.Height := 16;
+    LSchema.Layout := tlBottom;
+    LSchema.Alignment := taLeftJustify;
+  end;
+
+  if ComboSchema <> nil then
+  begin
+    ComboSchema.Font.Name := FontNameUi;
+    ComboSchema.Font.Size := FontSizeUi;
+    ComboSchema.Font.Color := ClrText;
+    ComboSchema.Align := alClient;
+    ComboSchema.AlignWithMargins := True;
+    ComboSchema.Margins.Left := 0;
+    ComboSchema.Margins.Top := 2;
+    ComboSchema.Margins.Right := 4;
+    ComboSchema.Margins.Bottom := 4;
+  end;
+
+  // Schema refresh button: hide text, make it an icon-like button via SpeedButton swap not needed;
+  // keep TButton but change caption to a single refresh glyph via Segoe MDL2.
+  if BRefreshSchemas <> nil then
+  begin
+    BRefreshSchemas.Caption := #$E72C; // Segoe MDL2 refresh glyph
+    BRefreshSchemas.Font.Name := 'Segoe MDL2 Assets';
+    BRefreshSchemas.Font.Size := 10;
+    BRefreshSchemas.Font.Color := ClrText;
+    BRefreshSchemas.Width := 30;
+    BRefreshSchemas.Hint := 'Refresh schemas';
+    BRefreshSchemas.ShowHint := True;
+    BRefreshSchemas.Align := alRight;
+    BRefreshSchemas.Margins.Left := 4;
+    BRefreshSchemas.Margins.Top := 2;
+    BRefreshSchemas.Margins.Right := 0;
+    BRefreshSchemas.Margins.Bottom := 4;
+  end;
+
+  if PSchemaConfigHost <> nil then
+  begin
+    PSchemaConfigHost.Width := 30;
+    PSchemaConfigHost.AlignWithMargins := True;
+    PSchemaConfigHost.Margins.Left := 0;
+    PSchemaConfigHost.Margins.Top := 2;
+    PSchemaConfigHost.Margins.Right := 4;
+    PSchemaConfigHost.Margins.Bottom := 4;
+  end;
+
+  // Log toolbar buttons: compact flat look via fonts
+  for I := 0 to ComponentCount - 1 do
+  begin
+    if Components[I] is TButton then
+    begin
+      TButton(Components[I]).Font.Name := FontNameUi;
+      TButton(Components[I]).Font.Size := FontSizeUi;
+    end;
+  end;
+
+  // Memo prompt
+  if MemoPrompt <> nil then
+  begin
+    MemoPrompt.Font.Name := FontNameUi;
+    MemoPrompt.Font.Size := FontSizeUi;
+    MemoPrompt.Font.Color := ClrText;
+    MemoPrompt.Color := ClrSurface;
+    MemoPrompt.BorderStyle := bsSingle;
+  end;
+
+  // Schema row height
+  if PSchemaHost <> nil then
+    PSchemaHost.Height := 54;
+  if PLoginHost <> nil then
+    PLoginHost.Height := 48;
+end;
+
+type
+  TPageControlAccess = class(TPageControl);
+
+procedure TFRpChatFrame.PControlDrawTab(Control: TCustomTabControl;
+  TabIndex: Integer; const Rect: TRect; Active: Boolean);
+var
+  LCaption: string;
+  LHover: Boolean;
+  LPage: TPageControl;
+begin
+  if (Control = nil) or not (Control is TPageControl) then Exit;
+  LPage := TPageControl(Control);
+  if (TabIndex < 0) or (TabIndex >= LPage.PageCount) then Exit;
+  LCaption := LPage.Pages[TabIndex].Caption;
+  LHover := (FHoveredTabIndex = TabIndex) and not Active;
+  TRpChatStyle.DrawUnderlineTab(TPageControlAccess(LPage).Canvas, Rect,
+    LCaption, Active, LHover);
+end;
+
+procedure TFRpChatFrame.PControlMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
+var
+  LIdx: Integer;
+begin
+  if PControl = nil then Exit;
+  LIdx := PControl.IndexOfTabAt(X, Y);
+  if LIdx <> FHoveredTabIndex then
+  begin
+    FHoveredTabIndex := LIdx;
+    PControl.Invalidate;
+  end;
+end;
+
+procedure TFRpChatFrame.PControlMouseLeave(Sender: TObject);
+begin
+  if FHoveredTabIndex <> -1 then
+  begin
+    FHoveredTabIndex := -1;
+    if PControl <> nil then
+      PControl.Invalidate;
+  end;
+end;
+
+procedure TFRpChatFrame.PControlChange(Sender: TObject);
+begin
+  if PControl <> nil then
+    PControl.Invalidate;
 end;
 
 procedure TFRpChatFrame.AuthLog(const AMsg: string);

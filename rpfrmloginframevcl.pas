@@ -7,7 +7,8 @@ uses
   System.Types,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls,
   Vcl.Menus, rpauthmanager, rpfrmloginvcl, System.Net.HttpClient, System.Net.HttpClientComponent,
-  Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg;
+  Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg,
+  rpchatmodernstyle;
 const
   CRpLoginFrameEnableAuthState = True;
     CRpLoginFrameEnableAvatarDownload = False;
@@ -43,6 +44,8 @@ type
     FMenuItemLogin: TMenuItem;
     FMenuItemLanguage: TMenuItem;
     FMenuItemLogoutSeparator: TMenuItem;
+    FHover: Boolean;
+    FOrigContainerWndProc: TWndMethod;
     procedure WMApplyAvatar(var Message: TMessage); message WM_USER + 203;
     procedure UpdateUI;
     procedure BuildPopupMenu;
@@ -50,6 +53,11 @@ type
     procedure UpdateLanguageMenu;
     procedure AuthChanged(ASuccess: Boolean);
     procedure DownloadAvatarAsync(const AUrl: string);
+    procedure ContainerWndProc(var Message: TMessage);
+    procedure PaintContainerBackground(ADC: HDC = 0);
+    procedure ContainerMouseEnter(Sender: TObject);
+    procedure ContainerMouseLeave(Sender: TObject);
+    procedure ApplyModernStyling;
   protected
   public
     constructor Create(AOwner: TComponent); override;
@@ -69,11 +77,169 @@ begin
   inherited Create(AOwner);
   FAvatarRequestVersion := 0;
   FAuthListenerRegistered := False;
+  FHover := False;
   BuildPopupMenu;
+  ApplyModernStyling;
   if CRpLoginFrameEnableAuthState then
   begin
     TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
     FAuthListenerRegistered := True;
+  end;
+end;
+
+procedure TFRpLoginFrameVCL.ApplyModernStyling;
+var
+  I: Integer;
+  LCtl: TControl;
+begin
+  if PContainer <> nil then
+  begin
+    PContainer.BevelOuter := bvNone;
+    PContainer.BorderStyle := bsNone;
+    PContainer.ParentBackground := False;
+    PContainer.ParentColor := False;
+    PContainer.Color := ClrBg;
+    PContainer.DoubleBuffered := True;
+    PContainer.Cursor := crHandPoint;
+    FOrigContainerWndProc := PContainer.WindowProc;
+    PContainer.WindowProc := ContainerWndProc;
+    // Propagate hand cursor to children so the whole card feels clickable
+    for I := 0 to PContainer.ControlCount - 1 do
+    begin
+      LCtl := PContainer.Controls[I];
+      if LCtl <> BtnLogin then
+        LCtl.Cursor := crHandPoint;
+    end;
+  end;
+
+  if LabelUser <> nil then
+  begin
+    LabelUser.ParentFont := False;
+    LabelUser.Font.Name := FontNameUi;
+    LabelUser.Font.Size := FontSizeUi;
+    LabelUser.Font.Style := [fsBold];
+    LabelUser.Font.Color := ClrText;
+    LabelUser.Transparent := True;
+  end;
+
+  if LabelTier <> nil then
+  begin
+    LabelTier.ParentFont := False;
+    LabelTier.Font.Name := FontNameUi;
+    LabelTier.Font.Size := FontSizeMicro;
+    LabelTier.Font.Style := [fsBold];
+    LabelTier.Transparent := False;
+  end;
+
+  if LabelArrow <> nil then
+  begin
+    LabelArrow.ParentFont := False;
+    LabelArrow.Font.Name := 'Marlett';
+    LabelArrow.Font.Size := 9;
+    LabelArrow.Font.Style := [fsBold];
+    LabelArrow.Font.Color := ClrAccent;
+    LabelArrow.Transparent := True;
+  end;
+
+  if BtnLogin <> nil then
+  begin
+    BtnLogin.ParentFont := False;
+    BtnLogin.Font.Name := FontNameUi;
+    BtnLogin.Font.Size := FontSizeUi;
+    BtnLogin.Font.Style := [fsBold];
+    BtnLogin.Caption := 'Sign in with AI';
+    BtnLogin.Cursor := crHandPoint;
+  end;
+end;
+
+procedure TFRpLoginFrameVCL.ContainerWndProc(var Message: TMessage);
+begin
+  if Message.Msg = WM_ERASEBKGND then
+  begin
+    PaintContainerBackground(HDC(Message.WParam));
+    Message.Result := 1;
+    Exit;
+  end;
+  if Message.Msg = CM_MOUSEENTER then
+  begin
+    if not FHover then
+    begin
+      FHover := True;
+      if PContainer <> nil then
+        PContainer.Invalidate;
+    end;
+  end
+  else if Message.Msg = CM_MOUSELEAVE then
+  begin
+    if FHover then
+    begin
+      FHover := False;
+      if PContainer <> nil then
+        PContainer.Invalidate;
+    end;
+  end;
+  if Assigned(FOrigContainerWndProc) then
+    FOrigContainerWndProc(Message);
+end;
+
+procedure TFRpLoginFrameVCL.PaintContainerBackground(ADC: HDC);
+var
+  DC: HDC;
+  Canv: TCanvas;
+  R: TRect;
+  BgColor, BorderColor: TColor;
+  OwnDC: Boolean;
+begin
+  if (PContainer = nil) or (not PContainer.HandleAllocated) then
+    Exit;
+  R := PContainer.ClientRect;
+  if FHover then
+  begin
+    BgColor := ClrAccentSoft;
+    BorderColor := ClrAccent;
+  end
+  else
+  begin
+    BgColor := ClrSurface;
+    BorderColor := ClrAccent;
+  end;
+  OwnDC := ADC = 0;
+  if OwnDC then
+    DC := GetDC(PContainer.Handle)
+  else
+    DC := ADC;
+  if DC = 0 then Exit;
+  Canv := TCanvas.Create;
+  try
+    Canv.Handle := DC;
+    // Fill with parent color first to avoid white corners outside the round rect
+    Canv.Brush.Color := ClrBg;
+    Canv.Brush.Style := bsSolid;
+    Canv.FillRect(R);
+    TRpChatStyle.DrawRoundRectFlat(Canv, R, 6, BgColor, BorderColor);
+  finally
+    Canv.Handle := 0;
+    Canv.Free;
+    if OwnDC then
+      ReleaseDC(PContainer.Handle, DC);
+  end;
+end;
+
+procedure TFRpLoginFrameVCL.ContainerMouseEnter(Sender: TObject);
+begin
+  if not FHover then
+  begin
+    FHover := True;
+    PContainer.Invalidate;
+  end;
+end;
+
+procedure TFRpLoginFrameVCL.ContainerMouseLeave(Sender: TObject);
+begin
+  if FHover then
+  begin
+    FHover := False;
+    PContainer.Invalidate;
   end;
 end;
 

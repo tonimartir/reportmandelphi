@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON,
-  rpauthmanager;
+  rpauthmanager, rpchatmodernstyle;
 
   const
     CRpStartupNetworkDelayMs = 0;
@@ -64,6 +64,8 @@ type
     FAgentEndpoints: array of TAgentEndpointInfo;
     FOnStopRequest: TNotifyEvent;
     FShowGauge: Boolean;
+    FLblProvider: TLabel;
+    FLblMode: TLabel;
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
     procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
       AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
@@ -74,6 +76,7 @@ type
     procedure SetShowGauge(const Value: Boolean);
     procedure UpdateSpinnerState;
     procedure UpdateDropDownWidths;
+    procedure ApplyModernStyling;
     function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
     function GetAITier: string;
     function GetAIMode: string;
@@ -118,10 +121,86 @@ begin
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
   SpinnerTimer.Enabled := False;
+  ApplyModernStyling;
   UpdateGaugeVisibility;
   LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
+end;
+
+procedure TFRpAISelectionVCL.ApplyModernStyling;
+begin
+  TRpChatStyle.StylePanelBg(PAI);
+  TRpChatStyle.StylePanelBg(PNonInference);
+  TRpChatStyle.StylePanelBg(PInferenceProgress);
+  TRpChatStyle.StylePanelBg(PProviderHost);
+  TRpChatStyle.StylePanelBg(PModeHost);
+  TRpChatStyle.StylePanelBg(PGaugeHost);
+  TRpChatStyle.StylePanelBg(PTokensHost);
+  TRpChatStyle.StylePanelBg(PProgressHost);
+
+  // Micro labels above combos
+  if FLblProvider = nil then
+  begin
+    FLblProvider := TLabel.Create(Self);
+    FLblProvider.Parent := PProviderHost;
+    FLblProvider.Caption := 'PROVIDER';
+    FLblProvider.Align := alTop;
+    FLblProvider.Height := 16;
+    FLblProvider.Alignment := taLeftJustify;
+    FLblProvider.Layout := tlBottom;
+    FLblProvider.ParentFont := False;
+    FLblProvider.Font.Name := FontNameUi;
+    FLblProvider.Font.Size := FontSizeMicro;
+    FLblProvider.Font.Style := [fsBold];
+    FLblProvider.Font.Color := ClrSubText;
+    FLblProvider.Transparent := True;
+  end;
+
+  if FLblMode = nil then
+  begin
+    FLblMode := TLabel.Create(Self);
+    FLblMode.Parent := PModeHost;
+    FLblMode.Caption := 'MODE';
+    FLblMode.Align := alTop;
+    FLblMode.Height := 16;
+    FLblMode.Alignment := taLeftJustify;
+    FLblMode.Layout := tlBottom;
+    FLblMode.ParentFont := False;
+    FLblMode.Font.Name := FontNameUi;
+    FLblMode.Font.Size := FontSizeMicro;
+    FLblMode.Font.Style := [fsBold];
+    FLblMode.Font.Color := ClrSubText;
+    FLblMode.Transparent := True;
+  end;
+
+  // Combos: Segoe UI
+  ComboAIProvider.Font.Name := FontNameUi;
+  ComboAIProvider.Font.Size := FontSizeUi;
+  ComboAIProvider.Font.Color := ClrText;
+  ComboAIMode.Font.Name := FontNameUi;
+  ComboAIMode.Font.Size := FontSizeUi;
+  ComboAIMode.Font.Color := ClrText;
+
+  // Stop button
+  if BStopInference <> nil then
+  begin
+    BStopInference.ParentFont := False;
+    BStopInference.Font.Name := FontNameUi;
+    BStopInference.Font.Size := FontSizeUi;
+    BStopInference.Font.Style := [fsBold];
+    BStopInference.Font.Color := ClrDanger;
+  end;
+
+  // Tokens label
+  if LTokensInfo <> nil then
+  begin
+    LTokensInfo.ParentFont := False;
+    LTokensInfo.Font.Name := FontNameUi;
+    LTokensInfo.Font.Size := FontSizeUi;
+    LTokensInfo.Font.Color := ClrSubText;
+    LTokensInfo.Transparent := True;
+  end;
 end;
 
 procedure TFRpAISelectionVCL.RefreshStatusInBackground(
@@ -178,51 +257,41 @@ end;
 
 procedure TFRpAISelectionVCL.LayoutNonInferenceControls;
 const
-  ComboHorizontalPadding = 2;
+  LabelH = 16;
+  SpacingV = 2;
 var
   LComboHeight: Integer;
-  LProviderTop: Integer;
-  LModeTop: Integer;
+  LComboTop: Integer;
+  LHost: TPanel;
+
+  procedure PositionPair(AHost: TPanel; ALabel: TLabel; ACombo: TComboBox);
+  begin
+    if (AHost = nil) or (ACombo = nil) then Exit;
+    if AHost.ClientWidth <= 0 then Exit;
+    if ALabel <> nil then
+    begin
+      ALabel.Align := alNone;
+      ALabel.SetBounds(0, 0, AHost.ClientWidth, LabelH);
+    end;
+    ACombo.Align := alNone;
+    LComboTop := LabelH + SpacingV;
+    if (AHost.ClientHeight - LComboTop) < LComboHeight then
+      LComboTop := AHost.ClientHeight - LComboHeight;
+    if LComboTop < 0 then LComboTop := 0;
+    ACombo.SetBounds(0, LComboTop, AHost.ClientWidth, LComboHeight);
+  end;
+
 begin
-  if (PProviderHost = nil) or (PModeHost = nil) or (ComboAIProvider = nil) or
-    (ComboAIMode = nil) then
-    Exit;
-
-  if (PProviderHost.ClientWidth <= 0) or (PModeHost.ClientWidth <= 0) then
-    Exit;
-
+  LHost := PProviderHost;
+  if LHost = nil then Exit;
   LComboHeight := ComboAIProvider.Height;
   if ComboAIMode.Height > LComboHeight then
     LComboHeight := ComboAIMode.Height;
   if LComboHeight <= 0 then
-    LComboHeight := 21;
+    LComboHeight := 22;
 
-  LProviderTop := (PProviderHost.ClientHeight - LComboHeight) div 2;
-  if LProviderTop < 0 then
-    LProviderTop := 0;
-
-  LModeTop := (PModeHost.ClientHeight - LComboHeight) div 2;
-  if LModeTop < 0 then
-    LModeTop := 0;
-
-  PProviderHost.Padding.Left := ComboHorizontalPadding;
-  PProviderHost.Padding.Right := ComboHorizontalPadding;
-  PProviderHost.Padding.Top := LProviderTop;
-  PProviderHost.Padding.Bottom := PProviderHost.ClientHeight - LProviderTop - LComboHeight;
-  if PProviderHost.Padding.Bottom < 0 then
-    PProviderHost.Padding.Bottom := 0;
-
-  PModeHost.Padding.Left := ComboHorizontalPadding;
-  PModeHost.Padding.Right := ComboHorizontalPadding;
-  PModeHost.Padding.Top := LModeTop;
-  PModeHost.Padding.Bottom := PModeHost.ClientHeight - LModeTop - LComboHeight;
-  if PModeHost.Padding.Bottom < 0 then
-    PModeHost.Padding.Bottom := 0;
-
-  ComboAIProvider.Height := LComboHeight;
-  ComboAIMode.Height := LComboHeight;
-  PProviderHost.Realign;
-  PModeHost.Realign;
+  PositionPair(PProviderHost, FLblProvider, ComboAIProvider);
+  PositionPair(PModeHost, FLblMode, ComboAIMode);
 end;
 
 procedure TFRpAISelectionVCL.LayoutGaugeControls;
@@ -266,7 +335,7 @@ begin
     begin
       GridAI.ColumnCollection[2].SizeStyle := ssAbsolute;
       if LShowGauge then
-        GridAI.ColumnCollection[2].Value := 32
+        GridAI.ColumnCollection[2].Value := 44
       else
         GridAI.ColumnCollection[2].Value := 0;
     end;
@@ -394,93 +463,57 @@ end;
 
 procedure TFRpAISelectionVCL.PaintBoxGaugePaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Rect: TRect;
-  IndicatorColor: TColor;
+  R: TRect;
+  IndicatorColor, TextColor: TColor;
   DisplayValue: Double;
   PercentageValue: Integer;
   PercentageText: string;
-  AngleStep: Double;
-  AngleValue: Double;
-  PointCount: Integer;
-  PointIndex: Integer;
-  GaugePoints: array of TPoint;
-  TextRect: TRect;
 begin
-  Canvas := PaintBoxGauge.Canvas;
-  Rect := PaintBoxGauge.ClientRect;
-  InflateRect(Rect, -3, -3);
+  R := PaintBoxGauge.ClientRect;
+  // Clear background
+  PaintBoxGauge.Canvas.Brush.Color := ClrBg;
+  PaintBoxGauge.Canvas.Brush.Style := bsSolid;
+  PaintBoxGauge.Canvas.FillRect(R);
+
   DisplayValue := FGaugeValue;
+  if DisplayValue < 0 then DisplayValue := 0;
+  if DisplayValue > 1 then DisplayValue := 1;
 
-  // Background circle (track)
-  Canvas.Pen.Width := 4;
-  Canvas.Pen.Color := $00C0C0C0;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Ellipse(Rect);
-
-  // Indicator color based on usage ratio (matching C# CircularGauge)
-  if DisplayValue < 0.5 then IndicatorColor := RGB(76, 175, 80)
-  else if DisplayValue < 0.75 then IndicatorColor := RGB(255, 193, 7)
-  else if DisplayValue < 0.9 then IndicatorColor := RGB(255, 152, 0)
-  else IndicatorColor := RGB(244, 67, 54);
+  if DisplayValue < 0.5 then IndicatorColor := ClrSuccess
+  else if DisplayValue < 0.75 then IndicatorColor := RGB(7, 193, 255) // amber-ish BGR
+  else if DisplayValue < 0.9 then IndicatorColor := RGB(0, 152, 255)  // orange BGR
+  else IndicatorColor := ClrDanger;
 
   if DisplayValue > 0 then
-  begin
-    Canvas.Pen.Color := IndicatorColor;
-    if DisplayValue >= 0.999 then
-      Canvas.Ellipse(Rect)
-    else
-    begin
-      PointCount := Round(DisplayValue * 72) + 1;
-      if PointCount < 2 then
-        PointCount := 2;
-      SetLength(GaugePoints, PointCount);
-      AngleStep := (DisplayValue * 360) / (PointCount - 1);
-      AngleValue := 270;
-      for PointIndex := 0 to PointCount - 1 do
-      begin
-        GaugePoints[PointIndex] := GetPointOnCircle(Rect, AngleValue);
-        AngleValue := AngleValue - AngleStep;
-      end;
-      Canvas.Polyline(GaugePoints);
-    end;
-  end;
+    TextColor := IndicatorColor
+  else
+    TextColor := ClrSubText;
 
   PercentageValue := Round(DisplayValue * 100);
   if PercentageValue < 0 then
     PercentageValue := 0
   else if PercentageValue > 100 then
     PercentageValue := 100;
-  PercentageText := IntToStr(PercentageValue) + '%';
+  PercentageText := IntToStr(PercentageValue);
 
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Name := 'Segoe UI';
-  Canvas.Font.Style := [];
-  Canvas.Font.Height := -7;
-  if DisplayValue > 0 then
-    Canvas.Font.Color := IndicatorColor
-  else
-    Canvas.Font.Color := $00707070;
-  TextRect := Rect;
-  DrawText(Canvas.Handle, PChar(PercentageText), Length(PercentageText), TextRect,
-    DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  TRpChatStyle.DrawCircularGauge(PaintBoxGauge.Canvas, R, DisplayValue,
+    PercentageText, ClrBorder, IndicatorColor, TextColor);
 end;
 
 procedure TFRpAISelectionVCL.PaintBoxProgressPaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Rect: TRect;
+  R: TRect;
 begin
-  Canvas := PaintBoxProgress.Canvas;
-  Rect := PaintBoxProgress.ClientRect;
-  InflateRect(Rect, -3, -3);
+  R := PaintBoxProgress.ClientRect;
+  PaintBoxProgress.Canvas.Brush.Color := ClrBg;
+  PaintBoxProgress.Canvas.Brush.Style := bsSolid;
+  PaintBoxProgress.Canvas.FillRect(R);
+  InflateRect(R, -3, -3);
 
-  Canvas.Pen.Width := 3;
-  Canvas.Pen.Color := $00D8D8D8;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Ellipse(Rect);
-
-  DrawCircularArc(Canvas, Rect, FSpinnerAngle, -110, RGB(0, 122, 204), 4);
+  // Track
+  TRpChatStyle.DrawAntialiasedArc(PaintBoxProgress.Canvas, R, 0, 360, ClrBorder, 3);
+  // Spinner arc
+  TRpChatStyle.DrawAntialiasedArc(PaintBoxProgress.Canvas, R, FSpinnerAngle, -110, ClrAccent, 3);
 end;
 
 procedure TFRpAISelectionVCL.ComboAIModeChange(Sender: TObject);
