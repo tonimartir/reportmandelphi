@@ -36,6 +36,8 @@ type
     procedure MenuItemLoginClick(Sender: TObject);
     procedure MenuItemLogoutClick(Sender: TObject);
     procedure MenuItemLanguageClick(Sender: TObject);
+    procedure MenuItemPricePlansClick(Sender: TObject);
+    procedure MenuItemDbAiAgentClick(Sender: TObject);
     procedure ImageAvatarClick(Sender: TObject);
   private
     FAvatarRequestVersion: Integer;
@@ -43,6 +45,8 @@ type
     FOnAuthChanged: TNotifyEvent;
     FMenuItemLogin: TMenuItem;
     FMenuItemLanguage: TMenuItem;
+    FMenuItemPricePlans: TMenuItem;
+    FMenuItemDbAiAgent: TMenuItem;
     FMenuItemLogoutSeparator: TMenuItem;
     FHover: Boolean;
     FOrigContainerWndProc: TWndMethod;
@@ -259,12 +263,22 @@ begin
   FMenuItemLanguage.Caption := 'Language';
   BuildLanguageMenu;
 
+  FMenuItemPricePlans := TMenuItem.Create(PopupUser);
+  FMenuItemPricePlans.Caption := 'AI price plans';
+  FMenuItemPricePlans.OnClick := MenuItemPricePlansClick;
+
+  FMenuItemDbAiAgent := TMenuItem.Create(PopupUser);
+  FMenuItemDbAiAgent.Caption := 'DB & AI Agent';
+  FMenuItemDbAiAgent.OnClick := MenuItemDbAiAgentClick;
+
   FMenuItemLogoutSeparator := TMenuItem.Create(PopupUser);
   FMenuItemLogoutSeparator.Caption := '-';
 
   PopupUser.Items.Insert(0, FMenuItemLogin);
   PopupUser.Items.Insert(1, FMenuItemLanguage);
-  PopupUser.Items.Insert(3, FMenuItemLogoutSeparator);
+  PopupUser.Items.Insert(2, FMenuItemPricePlans);
+  PopupUser.Items.Insert(3, FMenuItemDbAiAgent);
+  PopupUser.Items.Insert(5, FMenuItemLogoutSeparator);
 end;
 
 procedure TFRpLoginFrameVCL.BuildLanguageMenu;
@@ -589,6 +603,16 @@ begin
     TRpAuthManager.Instance.AILanguage := TMenuItem(Sender).Hint;
     UpdateUI;
   end;
+end;
+
+procedure TFRpLoginFrameVCL.MenuItemPricePlansClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/subscription');
+end;
+
+procedure TFRpLoginFrameVCL.MenuItemDbAiAgentClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://ai.reportman.es/es/download');
 end;
 
 procedure TFRpLoginFrameVCL.MenuItemLogoutClick(Sender: TObject);

@@ -458,6 +458,16 @@ object FRpMainFVCL: TFRpMainFVCL
       Margins.Bottom = 4
       Action = AAlignVert
     end
+    object ToolButton27: TToolButton
+      Left = 549
+      Top = 46
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Action = AChatIA
+      Style = tbsCheck
+    end
   end
   object mainscrollbox: TPanel
     Left = 0
@@ -943,6 +953,15 @@ object FRpMainFVCL: TFRpMainFVCL
       Caption = 'APrintDialog'
       OnExecute = APrintDialogExecute
     end
+    object AChatIA: TAction
+      AutoCheck = True
+      Caption = 'AI chat'
+      Checked = True
+      Hint = 'Show or hide the AI chat panel'
+      ImageIndex = 35
+      ImageName = 'chatia32'
+      OnExecute = AChatIAExecute
+    end
   end
   object Lastusedfiles: TRpLastUsedStrings
     HistoryCount = 7
@@ -1404,6 +1423,11 @@ object FRpMainFVCL: TFRpMainFVCL
         CollectionIndex = 34
         CollectionName = 'undo32'
         Name = 'undo32'
+      end
+      item
+        CollectionIndex = 35
+        CollectionName = 'chatia32'
+        Name = 'chatia32'
       end>
     ImageCollection = ImageCollection1
     Width = 26
@@ -1982,6 +2006,31 @@ object FRpMainFVCL: TFRpMainFVCL
               19B87D965D86C3E129F727E2A50D27C26AB5B267CF9E89582C06AFD78B929212
               5AB870A1DAD2D2F2EF0C7F1BF00F5929279B16D0F7F00000000049454E44AE42
               6082}
+          end>
+      end
+      item
+        Name = 'chatia32'
+        SourceImages = <
+          item
+            Image.Data = {
+              89504E470D0A1A0A0000000D4948445200000019000000190806000000C4E985
+              63000000017352474200AECE1CE90000000467414D410000B18F0BFC61050000
+              00097048597300000EC300000EC301C76FA8640000001974455874536F667477
+              617265005061696E742E4E455420352E312E31318A0816CE000000B865584966
+              49492A000800000005001A010500010000004A0000001B010500010000005200
+              000028010300010000000200000031010200110000005A000000698704000100
+              00006C00000000000000600000000100000060000000010000005061696E742E
+              4E455420352E312E31310000030000900700040000003032333001A003000100
+              00000100000005A0040001000000960000000000000002000100020004000000
+              52393800020007000400000030313030000000000635D473B28F723B000000E4
+              49444154484BD5954B02C420084309F73FB3CCA2EA20C6AA63BB98B7AA8112B0
+              1F45FE110016B537E84CE0AE6B1080987D73812BCDCCEA75C1CCAAA0AA965202
+              00F3BA481EF1704C8B13E47A4DA727069E52A7A9A77EF100C80DB75B95599A64
+              71E261CE3050D1CB60D1A86179BB764AD346A8E820F1B88EF47152E402620272
+              838888A8E52D6471A671B1109B886B028D53D1530A2F18C8A81E150325679A1B
+              1B597EBB661FDA94E87CC3511E150FE8B72BFFBE9F32EAEAD0F3A490CF15F60C
+              BA5C5595945259B27BC690E765CCE48E9DB7CB1B6E753A3571C7F04F063B9C1E
+              CFEFF30106EF57283F96B2BA0000000049454E44AE426082}
           end>
       end>
     Left = 612

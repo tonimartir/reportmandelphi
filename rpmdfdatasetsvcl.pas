@@ -309,7 +309,7 @@ begin
     FChat := TFRpChatFrame.Create(Self);
     FChat.Parent := PChatHost;
     FChat.Align := alClient;
-    FChat.Initialize('', 'Describe the SQL you want for the active dataset and apply the generated SQL when it looks correct.');
+    FChat.Initialize('', 'Write your query in natural language. A new SQL query will be generated based on the current SQL and the selected schema. Click ''Apply'' to use the generated SQL.');
     FChat.OnApplySuggestion := ChatApplySuggestion;
     FChat.OnSchemaChanged := ChatSchemaChange;
     FChat.OnSendPrompt := ChatSendPrompt;

@@ -42,8 +42,8 @@ uses
 
 const
  FMaxlisthelp=5;
- SExpressionChatInitialMessage='Ask for help rewriting, simplifying or validating the current expression.';
- SDesignChatInitialMessage='Describe report design changes here. The current report will be sent to the API and the returned XML will be applied.';
+ SExpressionChatInitialMessage='Ask for help rewriting, simplifying or validating the current expression. Click ''Apply'' to replace the expression.';
+ SDesignChatInitialMessage='Describe the required changes or ask how the current report works. The selected schema will be used as a reference.';
 type
   TRpChatMode = (rcmExpression, rcmDesign);
 

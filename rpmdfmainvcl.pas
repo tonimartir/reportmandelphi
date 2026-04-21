@@ -69,7 +69,8 @@ uses
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
   Vcl.VirtualImageList,
   rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections,
-  rpdatahttp, rpauthmanager, rpreportdesignercontracts, rpxmlstream;
+  rpdatahttp, rpauthmanager, rpreportdesignercontracts, rpxmlstream,
+  rpchatmodernstyle;
 
 const
   // File name in menu width
@@ -267,6 +268,7 @@ type
     ToolButton23: TToolButton;
     ToolButton24: TToolButton;
     ToolButton25: TToolButton;
+    ToolButton27: TToolButton;
     BBarcode: TToolButton;
     BStatus: TStatusBar;
     AStatusBar: TAction;
@@ -299,6 +301,7 @@ type
     menutheme: TMenuItem;
     VirtualImageList1: TVirtualImageList;
     ImageCollection1: TImageCollection;
+    AChatIA: TAction;
     procedure ANewExecute(Sender: TObject);
     procedure AExitExecute(Sender: TObject);
     procedure AOpenExecute(Sender: TObject);
@@ -371,6 +374,7 @@ type
     procedure BRedoToolbarClick(Sender: TObject);
     procedure AUndoExecute(Sender: TObject);
     procedure ARedoExecute(Sender: TObject);
+    procedure AChatIAExecute(Sender: TObject);
   private
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
@@ -401,6 +405,8 @@ type
     fhistorytab:TTabSheet;
     fchatframe:TFRpChatFrame;
     frightpanel:TPanel;
+    FHoveredCueTabIndex: Integer;
+    FCuePanelWidth: Integer;
     FDesignChatRequestVersion: Integer;
     FDesignContextRefreshVersion: Integer;
     FDesignChatContextJson: string;
@@ -443,6 +449,13 @@ type
     procedure DoRedo;
     procedure OnUndoRedo(Sender: TObject);
     procedure UpdateUndoToolbarButtons;
+    procedure ApplyChatPanelVisibility;
+    procedure CuePagesDrawTab(Control: TCustomTabControl; TabIndex: Integer;
+      const Rect: TRect; Active: Boolean);
+    procedure CuePagesMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure CuePagesMouseLeave(Sender: TObject);
+    procedure CuePagesChange(Sender: TObject);
     function BuildDesignChatRequestForFrame(Sender: TObject;
       const APrompt: string): TRpApiModifyReportRequest;
     function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
@@ -866,6 +879,17 @@ begin
  fcuepages:=TPageControl.Create(fcuepanel);
  fcuepages.Align:=alClient;
  fcuepages.Parent:=fcuepanel;
+  fcuepages.OwnerDraw := True;
+  fcuepages.Style := tsTabs;
+  fcuepages.TabHeight := 32;
+  fcuepages.TabWidth := 0;
+  fcuepages.DoubleBuffered := True;
+  TRpChatStyle.SetupFont(fcuepages.Font, FontSizeUi, False, ClrSubText);
+  fcuepages.OnDrawTab := CuePagesDrawTab;
+  fcuepages.OnMouseMove := CuePagesMouseMove;
+  fcuepages.OnMouseLeave := CuePagesMouseLeave;
+  fcuepages.OnChange := CuePagesChange;
+  FHoveredCueTabIndex := -1;
 
  if not C_DISABLE_DESIGNER_CHAT_FOR_PERF_TEST then
  begin
@@ -876,7 +900,7 @@ begin
 
  fhistorytab:=TTabSheet.Create(fcuepages);
  fhistorytab.PageControl:=fcuepages;
- fhistorytab.Caption:='Historial';
+ fhistorytab.Caption:='Undo cue';
 
  if Assigned(fchattab) then
  begin
@@ -915,12 +939,13 @@ begin
  fcueview.BRedo.Visible:=False;
  fcueview.BClear.Left:=0;
  fcueview.LTitle.Left:=42;
- fcueview.LTitle.Caption:='Historial';
+ fcueview.LTitle.Caption:='Undo cue';
 
  if Assigned(fchattab) then
   fcuepages.ActivePage:=fchattab
  else
   fcuepages.ActivePage:=fhistorytab;
+ ApplyChatPanelVisibility;
  UpdateUndoToolbarButtons;
 
  mainscrollbox.Visible:=true;
@@ -939,6 +964,90 @@ begin
      fchatframe.RefreshLayout;
    end;
   end);
+end;
+
+procedure TFRpMainFVCL.ApplyChatPanelVisibility;
+begin
+ if not AChatIA.Checked then
+ begin
+  if (fcuepanel <> nil) and fcuepanel.Visible and (fcuepanel.Width > 0) then
+   FCuePanelWidth := fcuepanel.Width;
+ end;
+
+ if fcuepanel <> nil then
+ begin
+  if AChatIA.Checked and (FCuePanelWidth > 0) then
+   fcuepanel.Width := FCuePanelWidth;
+  fcuepanel.Visible := AChatIA.Checked;
+ end;
+
+ if fcuesplitter <> nil then
+  fcuesplitter.Visible := AChatIA.Checked;
+
+ if MainScrollBox <> nil then
+  MainScrollBox.Realign;
+ if frightpanel <> nil then
+  frightpanel.Realign;
+
+ if AChatIA.Checked and (fchatframe <> nil) then
+  fchatframe.RefreshLayout;
+end;
+
+procedure TFRpMainFVCL.AChatIAExecute(Sender: TObject);
+begin
+ ApplyChatPanelVisibility;
+end;
+
+type
+  TPageControlAccess = class(TPageControl);
+
+procedure TFRpMainFVCL.CuePagesDrawTab(Control: TCustomTabControl;
+  TabIndex: Integer; const Rect: TRect; Active: Boolean);
+var
+  LCaption: string;
+  LHover: Boolean;
+  LPage: TPageControl;
+begin
+  if (Control = nil) or not (Control is TPageControl) then
+    Exit;
+  LPage := TPageControl(Control);
+  if (TabIndex < 0) or (TabIndex >= LPage.PageCount) then
+    Exit;
+  LCaption := LPage.Pages[TabIndex].Caption;
+  LHover := (FHoveredCueTabIndex = TabIndex) and not Active;
+  TRpChatStyle.DrawUnderlineTab(TPageControlAccess(LPage).Canvas, Rect,
+    LCaption, Active, LHover);
+end;
+
+procedure TFRpMainFVCL.CuePagesMouseMove(Sender: TObject;
+  Shift: TShiftState; X, Y: Integer);
+var
+  LIdx: Integer;
+begin
+  if fcuepages = nil then
+    Exit;
+  LIdx := fcuepages.IndexOfTabAt(X, Y);
+  if LIdx <> FHoveredCueTabIndex then
+  begin
+    FHoveredCueTabIndex := LIdx;
+    fcuepages.Invalidate;
+  end;
+end;
+
+procedure TFRpMainFVCL.CuePagesMouseLeave(Sender: TObject);
+begin
+  if FHoveredCueTabIndex >= 0 then
+  begin
+    FHoveredCueTabIndex := -1;
+    if fcuepages <> nil then
+      fcuepages.Invalidate;
+  end;
+end;
+
+procedure TFRpMainFVCL.CuePagesChange(Sender: TObject);
+begin
+  if fcuepages <> nil then
+    fcuepages.Invalidate;
 end;
 
 procedure TFRpMainFVCL.ResolveInitialDesignChatSchemaContext(
@@ -1085,6 +1194,13 @@ end;
 procedure TFRpMainFVCL.FormCreate(Sender: TObject);
 begin
  // ScaleToolBar(ToolBar1);
+ FCuePanelWidth := 280;
+ AChatIA.AutoCheck := True;
+ AChatIA.Checked := True;
+ if AChatIA.Caption = '' then
+  AChatIA.Caption := 'AI chat';
+ if AChatIA.Hint = '' then
+  AChatIA.Hint := 'Show or hide the AI chat panel';
  ComboScale.ItemIndex:=ComboScale.Items.IndexOf('100%');
  Application.UpdateFormatSettings:=false;
  // Inits Bools Arrays
