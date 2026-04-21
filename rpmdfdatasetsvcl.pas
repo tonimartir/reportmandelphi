@@ -150,6 +150,8 @@ type
     procedure DatasetPageChanged(Sender: TObject);
     procedure ApplyActiveDataInfoContext(ASyncSqlFromDataInfo: Boolean = True;
       const ASchemaApiKeyOverride: string = '');
+    procedure UpdateConnectionDependentUi(ADataInfo: TRpDataInfoItem;
+      AConnectionIndex: Integer);
     procedure SyncActiveSchemaContext(AHubDatabaseId, AHubSchemaId: Int64;
       const ASchemaApiKey: string = '');
     procedure ChatApplySuggestion(Sender: TObject; const AExpression: string);
@@ -344,7 +346,9 @@ var
   LDataInfo: TRpDataInfoItem;
   LDatabaseInfo: TRpDatabaseInfoItem;
   LParams: TStringList;
+  LDatabaseIndex: Integer;
   LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
   LSchemaApiKey: string;
 begin
   LDataInfo := FindDataInfoItem;
@@ -352,10 +356,19 @@ begin
     Exit;
 
   LHubDatabaseId := 0;
+  LHubSchemaId := 0;
   LSchemaApiKey := '';
-  LDatabaseInfo := Report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+  LDatabaseInfo := nil;
+  if Trim(LDataInfo.DatabaseAlias) <> '' then
+  begin
+    LDatabaseIndex := Report.DatabaseInfo.IndexOf(LDataInfo.DatabaseAlias);
+    if LDatabaseIndex >= 0 then
+      LDatabaseInfo := Report.DatabaseInfo.Items[LDatabaseIndex];
+  end;
+
   if LDatabaseInfo <> nil then
   begin
+    LHubSchemaId := LDataInfo.HubSchemaId;
     LParams := TStringList.Create;
     try
       LDatabaseInfo.UpdateConAdmin;
@@ -372,7 +385,7 @@ begin
 
   if FMonaco <> nil then
   begin
-    FMonaco.SetHubContext(LHubDatabaseId, LDataInfo.HubSchemaId);
+    FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId);
     if ASyncSqlFromDataInfo then
     begin
       FMonaco.SQL := WideStringToDOS(LDataInfo.SQL);
@@ -383,7 +396,65 @@ begin
   if FChat <> nil then
   begin
     FChat.SetCurrentExpression(WideStringToDOS(LDataInfo.SQL));
-    FChat.SetHubContext(LHubDatabaseId, LDataInfo.HubSchemaId, LSchemaApiKey);
+    FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  end;
+end;
+
+procedure TFRpDatasetsVCL.UpdateConnectionDependentUi(
+  ADataInfo: TRpDataInfoItem; AConnectionIndex: Integer);
+begin
+  BShowData.Enabled := AConnectionIndex >= 0;
+
+  if AConnectionIndex < 0 then
+  begin
+    TabSQL.TabVisible := True;
+    TabBDETable.TabVisible := False;
+    TabMyBase.TabVisible := False;
+    TabBDEType.TabVisible := False;
+    PControl.ActivePage := TabSQL;
+    if FMonaco <> nil then
+      FMonaco.SetHubContext(0, 0);
+    if FChat <> nil then
+      FChat.SetHubContext(0, 0);
+    Exit;
+  end;
+
+  if databaseinfo.items[AConnectionIndex].Driver = rpdatamybase then
+  begin
+    TabSQL.TabVisible := False;
+    TabBDETable.TabVisible := False;
+    TabMyBase.TabVisible := True;
+    TabBDEType.TabVisible := False;
+    PControl.ActivePage := TabMyBase;
+  end
+  else
+  begin
+    if databaseinfo.items[AConnectionIndex].Driver = rpdatabde then
+    begin
+      TabBDEType.TabVisible := True;
+      if (ADataInfo <> nil) and (ADataInfo.BDEType = rpdtable) then
+      begin
+        TabSQL.TabVisible := False;
+        TabBDETable.TabVisible := True;
+        TabMyBase.TabVisible := False;
+        PControl.ActivePage := TabBDETable;
+      end
+      else
+      begin
+        TabSQL.TabVisible := True;
+        TabBDETable.TabVisible := False;
+        TabMyBase.TabVisible := False;
+        PControl.ActivePage := TabSQL;
+      end;
+    end
+    else
+    begin
+      TabSQL.TabVisible := True;
+      TabBDETable.TabVisible := False;
+      TabMyBase.TabVisible := False;
+      TabBDEType.TabVisible := False;
+      PControl.ActivePage := TabSQL;
+    end;
   end;
 end;
 
@@ -404,11 +475,11 @@ begin
  if LDatasets.items.Count>0 then
   LDatasets.ItemIndex:=0;
  ComboConnection.Clear;
+ ComboConnection.Items.Add('');
  for i:=0 to databaseinfo.Count-1 do
  begin
   ComboConnection.Items.Add(databaseinfo.items[i].Alias);
  end;
- ComboConnection.Items.Add(' ');
  LDatasetsClick(Self);
 end;
 
@@ -438,6 +509,7 @@ begin
   dinfo := FindDataInfoItem;
   if dinfo = nil then
   begin
+    BShowData.Enabled := False;
     PControl.Visible := False;
     PanelBasic.Visible := False;
     Exit;
@@ -466,7 +538,10 @@ begin
   RBDEType.ItemIndex := Integer(dinfo.BDEType);
   index := ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
   if index < 0 then
+  begin
     dinfo.DatabaseAlias := '';
+    index := 0;
+  end;
   ComboConnection.ItemIndex := index;
 
   ComboDataSource.Items.Assign(LDatasets.Items);
@@ -479,8 +554,10 @@ begin
   begin
     dinfo.DataSource := '';
   end;
-  ComboDataSource.Items.Insert(0, ' ');
-  Inc(index);
+  ComboDataSource.Items.Insert(0, '');
+  index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+  if index < 0 then
+    index := 0;
   ComboDataSource.ItemIndex := index;
   ComboUnions.Items.Assign(LDatasets.Items);
   ComboUnions.Items.Delete(LDatasets.ItemIndex);
@@ -488,7 +565,7 @@ begin
     ComboUnions.ItemIndex := -1
   else
     ComboUnions.ItemIndex := 0;
-  MSQLChange(ComboConnection);
+  UpdateConnectionDependentUi(dinfo, databaseinfo.IndexOf(dinfo.DatabaseAlias));
 end;
 
 procedure TFRpDatasetsVCL.LRangeClick(Sender: TObject);
@@ -512,15 +589,13 @@ end;
 }
 
 function TFRpDatasetsVCL.FindDataInfoItem:TRpDataInfoItem;
-var
- index:integer;
 begin
  Result:=nil;
  if LDatasets.ItemIndex<0 then
   exit;
- index:=datainfo.IndexOf(LDatasets.Items.Strings[LDatasets.itemindex]);
- if index>=0 then
-  Result:=datainfo.items[index];
+ if LDatasets.ItemIndex>=datainfo.Count then
+  exit;
+ Result:=datainfo.items[LDatasets.ItemIndex];
 end;
 
 
@@ -567,70 +642,22 @@ begin
  if Sender=ComboConnection then
  begin
   LPreviousDatabaseAlias:=dinfo.DatabaseAlias;
-  dinfo.DatabaseAlias:=COmboConnection.Text;
+  dinfo.DatabaseAlias:=Trim(COmboConnection.Text);
   if (dinfo.HubSchemaId = 0) and
     (not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias)) then
     dinfo.HubSchemaId:=FindSiblingHubSchemaId(dinfo);
   // Finds the driver
   index:=databaseinfo.IndexOf(dinfo.DatabaseAlias);
+  UpdateConnectionDependentUi(dinfo, index);
   if index<0 then
-  begin
-   TabSQL.TabVisible:=false;
-   TabBDETable.TabVisible:=false;
-   TabMyBase.TabVisible:=false;
-   TabBDEType.TabVisible:=false;
-   if FMonaco <> nil then
-   begin
-    FMonaco.HubDatabaseId:=0;
-    FMonaco.HubSchemaId:=0;
-   end;
-   if FChat <> nil then
-     FChat.SetHubContext(0, 0);
    exit;
-  end;
+
   ApplyActiveDataInfoContext(False);
-  if databaseinfo.items[index].Driver=rpdatamybase then
-  begin
-   TabSQL.TabVisible:=false;
-   TabBDETable.TabVisible:=false;
-   TabMyBase.TabVisible:=True;
-   TabBDEType.TabVisible:=false;
-   PControl.ActivePage:=TabMyBase;
-  end
-  else
-  begin
-   if databaseinfo.items[index].Driver=rpdatabde then
-   begin
-    TabBDEType.TabVisible:=True;
-    if (dinfo.BDEType=rpdtable) then
-    begin
-     TabSQL.TabVisible:=False;
-     TabBDETable.TabVisible:=True;
-     TabMyBase.TabVisible:=False;
-     PControl.ActivePage:=TabBDETable;
-    end
-    else
-    begin
-     TabSQL.TabVisible:=True;
-     TabBDETable.TabVisible:=False;
-     TabMyBase.TabVisible:=False;
-     PControl.ActivePage:=TabSQL;
-    end;
-   end
-   else
-   begin
-    TabSQL.TabVisible:=True;
-    TabBDETable.TabVisible:=false;
-    TabMyBase.TabVisible:=False;
-    TabBDEType.TabVisible:=false;
-      PControl.ActivePage:=TabSQL;
-   end;
-  end;
  end
  else
  if Sender=ComboDataSource then
  begin
-  dinfo.DataSource:=ComboDataSource.Text;
+  dinfo.DataSource:=Trim(ComboDataSource.Text);
  end
  else
  if Sender=EMyBase then
@@ -1227,6 +1254,8 @@ begin
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
   exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
+  exit;
  // See if is dot net
  i:=report.DatabaseInfo.IndexOf(dinfo.DatabaseAlias);
  if i>=0 then
@@ -1466,6 +1495,8 @@ begin
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
   exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
+  exit;
  // Fills with tablenames, without extensions,
  // no system tables
  try
@@ -1488,6 +1519,8 @@ begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
+  exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
   exit;
  atable:=TTable.Create(Self);
  try
@@ -1533,6 +1566,8 @@ begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
+  exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
   exit;
  atable:=TTable.Create(Self);
  try
