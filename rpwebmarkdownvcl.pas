@@ -19,6 +19,8 @@ uses
   Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   System.Zip, System.IOUtils, System.JSON, rpmdshfolder;
 
+    const AssetsVersion = '2';
+
 type
   TRpWebMarkdownView = class(TPanel)
   private
@@ -209,16 +211,22 @@ end;
 function TRpWebMarkdownView.EnsureAssetsExtracted: string;
 var
   LBasePath: string;
+  LVersionPath: string;
   LResStream: TResourceStream;
   LZip: TZipFile;
 begin
   LBasePath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', 'WebMarkdown');
-  if TFile.Exists(TPath.Combine(LBasePath, 'index.html')) then
+  LVersionPath := TPath.Combine(LBasePath, 'assets.version');
+  if TFile.Exists(TPath.Combine(LBasePath, 'index.html')) and
+    TFile.Exists(LVersionPath) and
+    SameText(Trim(TFile.ReadAllText(LVersionPath, TEncoding.UTF8)), AssetsVersion) then
   begin
     Result := LBasePath;
     Exit;
   end;
 
+  if TDirectory.Exists(LBasePath) then
+    TDirectory.Delete(LBasePath, True);
   TDirectory.CreateDirectory(LBasePath);
   LResStream := TResourceStream.Create(HInstance, 'WEBMARKDOWN_ZIP', RT_RCDATA);
   try
@@ -232,6 +240,8 @@ begin
   finally
     LResStream.Free;
   end;
+
+  TFile.WriteAllText(LVersionPath, AssetsVersion, TEncoding.UTF8);
 
   Result := LBasePath;
 end;

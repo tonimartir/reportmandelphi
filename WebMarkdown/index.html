@@ -412,28 +412,47 @@
         var containerEl = document.getElementById('scroll-container');
 
         // ============================================================
-        // Think Block Preprocessor
-        // Converts <think>...</think> to collapsible <details> blocks
+        // Think Block Renderer
+        // Renders markdown outside <think> blocks and wraps think content
+        // into collapsible <details> sections without losing following markdown.
         // ============================================================
-        function preprocessThinkBlocks(text) {
-            if (!text) return text;
+        function renderThinkSegment(content, isOpen) {
+            var trimmed = (content || '').trim();
+            if (!trimmed && !isOpen) return '';
+            return '<details class="think-block"' + (isOpen ? ' open' : '') + '><summary>🤔 Thinking...</summary>' +
+                   '<div class="think-content">' + (trimmed ? md.render(trimmed) : '<em>...</em>') + '</div></details>';
+        }
 
-            // Handle paired <think>...</think>
-            var result = text.replace(/<think>([\s\S]*?)<\/think>/gi, function(match, content) {
-                var trimmed = content.trim();
-                if (!trimmed) return '';
-                return '<details class="think-block"><summary>🤔 Thinking...</summary>' +
-                       '<div class="think-content">' + md.render(trimmed) + '</div></details>';
-            });
+        function renderWithThinkBlocks(text) {
+            var result = '';
+            var lastIndex = 0;
+            var regex = /<think>([\s\S]*?)<\/think>/gi;
+            var match;
 
-            // Handle unclosed <think> (streaming in progress)
-            result = result.replace(/<think>([\s\S]*)$/gi, function(match, content) {
-                var trimmed = content.trim();
-                return '<details class="think-block" open><summary>🤔 Thinking...</summary>' +
-                       '<div class="think-content">' + (trimmed ? md.render(trimmed) : '<em>...</em>') + '</div></details>';
-            });
+            while ((match = regex.exec(text)) !== null) {
+                if (match.index > lastIndex) {
+                    result += md.render(text.slice(lastIndex, match.index));
+                }
+                result += renderThinkSegment(match[1], false);
+                lastIndex = regex.lastIndex;
+            }
 
-            return result;
+            var tail = text.slice(lastIndex);
+            if (!tail) {
+                return result;
+            }
+
+            var lowerTail = tail.toLowerCase();
+            var thinkIndex = lowerTail.indexOf('<think>');
+            if (thinkIndex < 0) {
+                return result + md.render(tail);
+            }
+
+            if (thinkIndex > 0) {
+                result += md.render(tail.slice(0, thinkIndex));
+            }
+
+            return result + renderThinkSegment(tail.slice(thinkIndex + 7), true);
         }
 
         // ============================================================
@@ -444,7 +463,7 @@
 
             // Check if text contains think blocks
             if (text.indexOf('<think>') >= 0) {
-                return preprocessThinkBlocks(text);
+                return renderWithThinkBlocks(text);
             }
 
             // Standard markdown rendering
