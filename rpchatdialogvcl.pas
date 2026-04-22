@@ -541,7 +541,6 @@ var
   LRoot: TJSONObject;
   LExpressionContext: TJSONObject;
   LRuntimeDataSources: TJSONArray;
-  LExpressionFields: TJSONArray;
   LTargetAlias: TRpAlias;
   LOwnAlias: Boolean;
   I: Integer;
@@ -551,9 +550,6 @@ var
   LRuntimeSchema: TJSONObject;
   LRuntimeFields: TJSONArray;
   LIssues: TJSONArray;
-  LFieldValue: TJSONValue;
-  LFieldObject: TJSONObject;
-  LFieldDataset: string;
   LDataSourceName: string;
   LDataSourceError: string;
   LRuntimeSourceName: string;
@@ -588,41 +584,58 @@ var
     Result.AddPair('runtimeSchema', LRuntimeSchema);
   end;
 
-  function CloneJsonValue(AValue: TJSONValue): TJSONValue;
+  function BuildRuntimeFieldObject(const ADatasetAlias, AFieldName,
+    AFieldType: string; ASize: Integer = 0): TJSONObject;
   begin
-    if AValue = nil then
-      Result := TJSONNull.Create
-    else
-      Result := TJSONObject.ParseJSONValue(AValue.ToJSON);
+    Result := TJSONObject.Create;
+    Result.AddPair('name', ADatasetAlias + '.' + AFieldName);
+    Result.AddPair('dataset', ADatasetAlias);
+    Result.AddPair('field', AFieldName);
+    Result.AddPair('dataType', AFieldType);
+    if SameText(AFieldType, 'string') and (ASize > 0) then
+      Result.AddPair('size', TJSONNumber.Create(ASize));
   end;
 
-  function ExtractDatasetFromFieldObject(AFieldObject: TJSONObject): string;
+  procedure AddLiveRuntimeFields(AFields: TJSONArray; const ADatasetAlias: string;
+    ADataset: TDataSet);
   var
-    LModelValue: string;
-    LDotPos: Integer;
-    LColonPos: Integer;
+    K: Integer;
+    LCurrentField: TField;
   begin
-    Result := '';
-    if (AFieldObject <> nil) and (AFieldObject.Values['dataset'] <> nil) then
+    if ADataset = nil then
+      Exit;
+
+    for K := 0 to ADataset.FieldCount - 1 do
     begin
-      Result := Trim(AFieldObject.Values['dataset'].Value);
-      if Result <> '' then
-        Exit;
+      LCurrentField := ADataset.Fields[K];
+      AFields.AddElement(BuildRuntimeFieldObject(ADatasetAlias,
+        LCurrentField.FieldName,
+        GetSemanticFieldDataType(LCurrentField.DataType),
+        LCurrentField.Size));
     end;
+  end;
 
-    if (AFieldObject = nil) or (AFieldObject.Values['model'] = nil) then
+  procedure AddSchemaOnlyRuntimeFields(AFields: TJSONArray;
+    const ADatasetAlias: string; ASchemaOnlyEntries: TStrings);
+  var
+    K: Integer;
+    LEntry: string;
+  begin
+    if ASchemaOnlyEntries = nil then
       Exit;
 
-    LModelValue := Trim(AFieldObject.Values['model'].Value);
-    LDotPos := Pos('.', LModelValue);
-    if LDotPos <= 1 then
-      Exit;
+    for K := 0 to ASchemaOnlyEntries.Count - 1 do
+    begin
+      LEntry := Trim(ASchemaOnlyEntries[K]);
+      if LEntry = '' then
+        Continue;
+      if not SameText(Trim(SchemaFieldEntryAlias(LEntry)), Trim(ADatasetAlias)) then
+        Continue;
 
-    LColonPos := Pos(':', LModelValue);
-    if (LColonPos > 0) and (LColonPos < LDotPos) then
-      Exit;
-
-    Result := Copy(LModelValue, 1, LDotPos - 1);
+      AFields.AddElement(BuildRuntimeFieldObject(ADatasetAlias,
+        SchemaFieldEntryFieldName(LEntry),
+        SchemaFieldEntryDataType(LEntry)));
+    end;
   end;
 
 begin
@@ -671,11 +684,6 @@ begin
     LRoot.AddPair('expressionContext', LExpressionContext);
     LRoot.AddPair('runtimeDataSources', LRuntimeDataSources);
 
-    if LExpressionContext <> nil then
-      LExpressionFields := LExpressionContext.Values['fields'] as TJSONArray
-    else
-      LExpressionFields := nil;
-
     for I := 0 to AReport.DataInfo.Count - 1 do
     begin
       LDataInfo := AReport.DataInfo.Items[I];
@@ -695,22 +703,12 @@ begin
 
       if AErrorMessage = '' then
       begin
-        if LExpressionFields <> nil then
-        begin
-          for J := 0 to LExpressionFields.Count - 1 do
-          begin
-            LFieldValue := LExpressionFields.Items[J];
-            if not (LFieldValue is TJSONObject) then
-              Continue;
-
-            LFieldObject := TJSONObject(LFieldValue);
-            LFieldDataset := ExtractDatasetFromFieldObject(LFieldObject);
-            if not SameText(Trim(LFieldDataset), Trim(LDataInfo.Alias)) then
-              Continue;
-
-            LRuntimeFields.AddElement(CloneJsonValue(LFieldObject));
-          end;
-        end;
+        if LRuntimeSourceName = 'agent_schema_only' then
+          AddSchemaOnlyRuntimeFields(LRuntimeFields, LDataInfo.Alias,
+            ASchemaOnlyFields)
+        else
+          AddLiveRuntimeFields(LRuntimeFields, LDataInfo.Alias,
+            LDataInfo.Dataset);
 
         if Trim(LDataSourceError) <> '' then
         begin
@@ -1979,10 +1977,11 @@ var
  LParam: TRpParam;
  LField: TField;
  LRoot: TJSONObject;
- LFields: TJSONArray;
+ LDatasetColumnsBlocks: TJSONArray;
  LFunctions: TJSONArray;
- LParameters: TJSONArray;
  LConstants: TJSONArray;
+ LDatasetColumnsMap: TStringList;
+ LMemoryVariables: TStringList;
  I: Integer;
  J: Integer;
  LIdentifier: TRpIdentifier;
@@ -2045,47 +2044,6 @@ var
     Result := CreateCatalogEntry(AIdentifier.Model, LAIHelp);
   end;
 
-  function CreateFieldObject(const ADatasetAlias: string;
-    AField: TField): TJSONObject;
-  begin
-    Result := CreateCatalogEntry(
-      ADatasetAlias + '.' + AField.FieldName + ':' + GetSemanticFieldDataType(AField.DataType),
-      'Field from dataset ' + ADatasetAlias);
-  end;
-
-  function CreateSchemaFieldObject(const AEntry: string): TJSONObject;
-  var
-    LDatasetAlias: string;
-    LFieldName: string;
-    LFieldType: string;
-  begin
-    LDatasetAlias := SchemaFieldEntryAlias(AEntry);
-    LFieldName := SchemaFieldEntryFieldName(AEntry);
-    LFieldType := SchemaFieldEntryDataType(AEntry);
-    Result := CreateCatalogEntry(
-      LDatasetAlias + '.' + LFieldName + ':' + LFieldType,
-      'Field from dataset ' + LDatasetAlias);
-  end;
-
-  function HasFieldModel(const AModel: string): Boolean;
-  var
-    K: Integer;
-    LExisting: TJSONObject;
-  begin
-    Result := False;
-    for K := 0 to LFields.Count - 1 do
-    begin
-      if not (LFields.Items[K] is TJSONObject) then
-        Continue;
-      LExisting := TJSONObject(LFields.Items[K]);
-      if (LExisting.Values['model'] <> nil) and SameText(LExisting.Values['model'].Value, AModel) then
-      begin
-        Result := True;
-        Exit;
-      end;
-    end;
-  end;
-
   function CreateParameterObject(AParam: TRpParam): TJSONObject;
   var
     LDatasets: TJSONArray;
@@ -2112,6 +2070,73 @@ var
       Result.AddPair('help', LHelp);
   end;
 
+  function EnsureDatasetColumnList(const ADatasetAlias: string): TStringList;
+  var
+    LIndex: Integer;
+  begin
+    LIndex := LDatasetColumnsMap.IndexOf(ADatasetAlias);
+    if LIndex >= 0 then
+      Result := TStringList(LDatasetColumnsMap.Objects[LIndex])
+    else
+    begin
+      Result := TStringList.Create;
+      Result.CaseSensitive := False;
+      Result.Duplicates := dupIgnore;
+      LDatasetColumnsMap.AddObject(ADatasetAlias, Result);
+    end;
+  end;
+
+  procedure AddDatasetColumn(const ADatasetAlias, AFieldName, AFieldType: string);
+  var
+    LColumns: TStringList;
+    LEntry: string;
+  begin
+    if Trim(ADatasetAlias) = '' then
+      Exit;
+    if Trim(AFieldName) = '' then
+      Exit;
+    LColumns := EnsureDatasetColumnList(ADatasetAlias);
+    LEntry := AFieldName + ':' + AFieldType;
+    if LColumns.IndexOf(LEntry) < 0 then
+      LColumns.Add(LEntry);
+  end;
+
+  function BuildDatasetColumnsBlock(const ADatasetAlias: string;
+    AColumns: TStrings): string;
+  var
+    K: Integer;
+    LBuilder: TStringBuilder;
+  begin
+    LBuilder := TStringBuilder.Create;
+    try
+      LBuilder.Append('[DATASET_COLUMNS ').Append(ADatasetAlias)
+        .AppendLine(' columns]');
+      for K := 0 to AColumns.Count - 1 do
+        LBuilder.AppendLine(AColumns[K]);
+      LBuilder.Append('[/DATASET_COLUMNS]');
+      Result := LBuilder.ToString;
+    finally
+      LBuilder.Free;
+    end;
+  end;
+
+  function BuildMemoryVariablesBlock(AVariables: TStrings): string;
+  var
+    K: Integer;
+    LBuilder: TStringBuilder;
+  begin
+    LBuilder := TStringBuilder.Create;
+    try
+      LBuilder.AppendLine('[MEMORY_VARIABLES]');
+      for K := 0 to AVariables.Count - 1 do
+        LBuilder.AppendLine(AVariables[K]);
+      LBuilder.Append('[/MEMORY_VARIABLES]');
+      Result := LBuilder.ToString;
+    finally
+      LBuilder.Free;
+    end;
+  end;
+
   procedure AddIdentifierToCategories(AIdentifier: TRpIdentifier);
   begin
     if AIdentifier is TIdenRpExpression then
@@ -2135,14 +2160,14 @@ begin
  end;
 
  LRoot := TJSONObject.Create;
+ LDatasetColumnsMap := TStringList.Create;
+ LMemoryVariables := TStringList.Create;
  try
-  LFields := TJSONArray.Create;
+  LDatasetColumnsBlocks := TJSONArray.Create;
   LFunctions := TJSONArray.Create;
-  LParameters := TJSONArray.Create;
   LConstants := TJSONArray.Create;
-  LRoot.AddPair('fields', LFields);
+  LRoot.AddPair('datasetColumnsBlocks', LDatasetColumnsBlocks);
   LRoot.AddPair('functions', LFunctions);
-  LRoot.AddPair('parameters', LParameters);
   LRoot.AddPair('constants', LConstants);
 
   if (evaluator <> nil) and (evaluator.Rpalias <> nil) then
@@ -2160,7 +2185,8 @@ begin
       for J := 0 to LDataset.FieldCount - 1 do
       begin
         LField := LDataset.Fields[J];
-        LFields.AddElement(CreateFieldObject(LAlias, LField));
+        AddDatasetColumn(LAlias, LField.FieldName,
+          GetSemanticFieldDataType(LField.DataType));
       end;
     end;
   end;
@@ -2171,11 +2197,9 @@ begin
     begin
       if Trim(FSchemaOnlyFields[I]) = '' then
         Continue;
-      if HasFieldModel(SchemaFieldEntryAlias(FSchemaOnlyFields[I]) + '.' +
-        SchemaFieldEntryFieldName(FSchemaOnlyFields[I]) + ':' +
-        SchemaFieldEntryDataType(FSchemaOnlyFields[I])) then
-        Continue;
-      LFields.AddElement(CreateSchemaFieldObject(FSchemaOnlyFields[I]));
+      AddDatasetColumn(SchemaFieldEntryAlias(FSchemaOnlyFields[I]),
+        SchemaFieldEntryFieldName(FSchemaOnlyFields[I]),
+        SchemaFieldEntryDataType(FSchemaOnlyFields[I]));
     end;
   end;
 
@@ -2186,9 +2210,18 @@ begin
       LParam := FRefreshReport.Params[I];
       if LParam = nil then
         Continue;
-      LParameters.AddElement(CreateParameterObject(LParam));
+      LMemoryVariables.Add('M.' + LParam.Name + ':' +
+        GetSemanticParamType(LParam.ParamType));
     end;
   end;
+
+  for I := 0 to LDatasetColumnsMap.Count - 1 do
+    LDatasetColumnsBlocks.Add(BuildDatasetColumnsBlock(
+      LDatasetColumnsMap[I], TStringList(LDatasetColumnsMap.Objects[I])));
+
+  if LMemoryVariables.Count > 0 then
+    LRoot.AddPair('memoryVariablesBlock',
+      BuildMemoryVariablesBlock(LMemoryVariables));
 
   if evaluator <> nil then
   begin
@@ -2212,6 +2245,10 @@ begin
 
   Result := LRoot.ToJSON;
  finally
+  for I := 0 to LDatasetColumnsMap.Count - 1 do
+    LDatasetColumnsMap.Objects[I].Free;
+  LDatasetColumnsMap.Free;
+  LMemoryVariables.Free;
   LRoot.Free;
  end;
 end;
