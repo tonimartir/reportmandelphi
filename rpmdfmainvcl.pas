@@ -3304,7 +3304,14 @@ var
   LPayload: TRpQueuedDesignChatPayload;
   LChunk: string;
 begin
-  LChunk := AChunk;
+  LChunk := '';
+  if Trim(AChunk) <> '' then
+  begin
+    if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+      LChunk := AChunk
+    else if not SameText(AStage, 'ReceivingResponse') then
+      LChunk := AChunk;
+  end;
 
   LPayload := TRpQueuedDesignChatPayload.Create;
   LPayload.Kind := rpqdcUpdateStreamingResponse;

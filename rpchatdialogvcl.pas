@@ -548,7 +548,7 @@ var
   LDataInfo: TRpDataInfoItem;
   LRuntimeSource: TJSONObject;
   LRuntimeSchema: TJSONObject;
-  LRuntimeFields: TJSONArray;
+  LRuntimeDatasetColumns: TStringList;
   LIssues: TJSONArray;
   LDataSourceName: string;
   LDataSourceError: string;
@@ -568,7 +568,8 @@ var
   end;
 
   function BuildRuntimeSource(const AName, AAlias, AStatus, ASource: string;
-    ARefreshRequired: Boolean; AFields, AIssues: TJSONArray): TJSONObject;
+    ARefreshRequired: Boolean; const ADatasetColumnsBlock: string;
+    AIssues: TJSONArray): TJSONObject;
   begin
     Result := TJSONObject.Create;
     Result.AddPair('name', AName);
@@ -579,24 +580,13 @@ var
     LRuntimeSchema.AddPair('status', AStatus);
     LRuntimeSchema.AddPair('source', ASource);
     LRuntimeSchema.AddPair('refreshRequired', TJSONBool.Create(ARefreshRequired));
-    LRuntimeSchema.AddPair('fields', AFields);
+    if Trim(ADatasetColumnsBlock) <> '' then
+      LRuntimeSchema.AddPair('datasetColumnsBlock', ADatasetColumnsBlock);
     LRuntimeSchema.AddPair('issues', AIssues);
     Result.AddPair('runtimeSchema', LRuntimeSchema);
   end;
 
-  function BuildRuntimeFieldObject(const ADatasetAlias, AFieldName,
-    AFieldType: string; ASize: Integer = 0): TJSONObject;
-  begin
-    Result := TJSONObject.Create;
-    Result.AddPair('name', ADatasetAlias + '.' + AFieldName);
-    Result.AddPair('dataset', ADatasetAlias);
-    Result.AddPair('field', AFieldName);
-    Result.AddPair('dataType', AFieldType);
-    if SameText(AFieldType, 'string') and (ASize > 0) then
-      Result.AddPair('size', TJSONNumber.Create(ASize));
-  end;
-
-  procedure AddLiveRuntimeFields(AFields: TJSONArray; const ADatasetAlias: string;
+  procedure AddLiveRuntimeColumns(AColumns: TStrings; const ADatasetAlias: string;
     ADataset: TDataSet);
   var
     K: Integer;
@@ -608,14 +598,12 @@ var
     for K := 0 to ADataset.FieldCount - 1 do
     begin
       LCurrentField := ADataset.Fields[K];
-      AFields.AddElement(BuildRuntimeFieldObject(ADatasetAlias,
-        LCurrentField.FieldName,
-        GetSemanticFieldDataType(LCurrentField.DataType),
-        LCurrentField.Size));
+      AColumns.Add(LCurrentField.FieldName + ':' +
+        GetSemanticFieldDataType(LCurrentField.DataType));
     end;
   end;
 
-  procedure AddSchemaOnlyRuntimeFields(AFields: TJSONArray;
+  procedure AddSchemaOnlyRuntimeColumns(AColumns: TStrings;
     const ADatasetAlias: string; ASchemaOnlyEntries: TStrings);
   var
     K: Integer;
@@ -632,9 +620,33 @@ var
       if not SameText(Trim(SchemaFieldEntryAlias(LEntry)), Trim(ADatasetAlias)) then
         Continue;
 
-      AFields.AddElement(BuildRuntimeFieldObject(ADatasetAlias,
-        SchemaFieldEntryFieldName(LEntry),
-        SchemaFieldEntryDataType(LEntry)));
+      AColumns.Add(SchemaFieldEntryFieldName(LEntry) + ':' +
+        SchemaFieldEntryDataType(LEntry));
+    end;
+  end;
+
+  function BuildRuntimeDatasetColumnsBlock(const ADatasetAlias: string;
+    AColumns: TStrings): string;
+  var
+    K: Integer;
+    LBuilder: TStringBuilder;
+  begin
+    if (AColumns = nil) or (AColumns.Count = 0) then
+    begin
+      Result := '';
+      Exit;
+    end;
+
+    LBuilder := TStringBuilder.Create;
+    try
+      LBuilder.Append('[DATASET_COLUMNS ').Append(ADatasetAlias)
+        .AppendLine(' columns]');
+      for K := 0 to AColumns.Count - 1 do
+        LBuilder.AppendLine(AColumns[K]);
+      LBuilder.Append('[/DATASET_COLUMNS]');
+      Result := LBuilder.ToString;
+    finally
+      LBuilder.Free;
     end;
   end;
 
@@ -690,7 +702,9 @@ begin
       LDataSourceName := Trim(LDataInfo.Name);
       if LDataSourceName = '' then
         LDataSourceName := Trim(LDataInfo.Alias);
-      LRuntimeFields := TJSONArray.Create;
+      LRuntimeDatasetColumns := TStringList.Create;
+      LRuntimeDatasetColumns.Duplicates := dupIgnore;
+      LRuntimeDatasetColumns.CaseSensitive := False;
       LIssues := TJSONArray.Create;
       LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
@@ -704,10 +718,10 @@ begin
       if AErrorMessage = '' then
       begin
         if LRuntimeSourceName = 'agent_schema_only' then
-          AddSchemaOnlyRuntimeFields(LRuntimeFields, LDataInfo.Alias,
+          AddSchemaOnlyRuntimeColumns(LRuntimeDatasetColumns, LDataInfo.Alias,
             ASchemaOnlyFields)
         else
-          AddLiveRuntimeFields(LRuntimeFields, LDataInfo.Alias,
+          AddLiveRuntimeColumns(LRuntimeDatasetColumns, LDataInfo.Alias,
             LDataInfo.Dataset);
 
         if Trim(LDataSourceError) <> '' then
@@ -723,12 +737,12 @@ begin
             'refresh_failed',
             LRuntimeSourceName,
             True,
-            LRuntimeFields,
+            BuildRuntimeDatasetColumnsBlock(LDataInfo.Alias, LRuntimeDatasetColumns),
             LIssues);
         end
         else
         begin
-          if LRuntimeFields.Count = 0 then
+          if LRuntimeDatasetColumns.Count = 0 then
           AddIssue(LIssues, 'info', 'no_live_fields',
             'No live fields were returned by the Delphi evaluator for this datasource.');
 
@@ -738,7 +752,7 @@ begin
             'live_context',
             LRuntimeSourceName,
             False,
-            LRuntimeFields,
+            BuildRuntimeDatasetColumnsBlock(LDataInfo.Alias, LRuntimeDatasetColumns),
             LIssues);
         end;
       end
@@ -751,11 +765,12 @@ begin
           'refresh_failed',
           LRuntimeSourceName,
           True,
-          LRuntimeFields,
+          BuildRuntimeDatasetColumnsBlock(LDataInfo.Alias, LRuntimeDatasetColumns),
           LIssues);
       end;
 
       LRuntimeDataSources.AddElement(LRuntimeSource);
+      LRuntimeDatasetColumns.Free;
     end;
 
     Result := LRoot.ToJSON;
@@ -1630,7 +1645,7 @@ begin
   LChunk := '';
   if Trim(AChunk) <> '' then
   begin
-    if SameText(AStage, 'ReceivingResponse') then
+    if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
       LChunk := AChunk
     else
       LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
