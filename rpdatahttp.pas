@@ -181,6 +181,8 @@ type
     FCancelled: Boolean;
     FLastReadPos: Int64;
     FPendingBytes: TBytes;
+    FHasChunkedAIResponse: Boolean;
+    FChunkedAIResponseId: string;
     FResponseStream: TMemoryStream;
     FSender: TObject;
     FOnCancel: TRpExpressionStreamCancelEvent;
@@ -237,6 +239,8 @@ begin
   FOnCancel := AOnCancel;
   FCancelled := False;
   FLastReadPos := 0;
+  FHasChunkedAIResponse := False;
+  FChunkedAIResponseId := '';
   SetLength(FPendingBytes, 0);
 end;
 
@@ -265,6 +269,7 @@ var
   LStage: string;
   LChunkType: string;
   LChunk: string;
+  LProgressId: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
   LVal: TJSONValue;
@@ -289,10 +294,31 @@ begin
               LChunkType := LJson.Values['chunkType'].Value
             else
               LChunkType := '';
+            if LJson.Values['id'] <> nil then
+              LProgressId := LJson.Values['id'].Value
+            else
+              LProgressId := '';
             if LJson.Values['chunk'] <> nil then
               LChunk := LJson.Values['chunk'].Value
             else
               LChunk := '';
+
+            if SameText(LActor, 'AI') and SameText(LStage, 'ReceivingResponse') then
+            begin
+              if SameText(LChunkType, 'Start') or SameText(LChunkType, 'Partial') or
+                SameText(LChunkType, 'End') then
+              begin
+                FHasChunkedAIResponse := True;
+                if LProgressId <> '' then
+                  FChunkedAIResponseId := LProgressId;
+              end
+              else if SameText(LChunkType, 'Full') and FHasChunkedAIResponse then
+              begin
+                if (FChunkedAIResponseId = '') or (LProgressId = '') or
+                  SameText(FChunkedAIResponseId, LProgressId) then
+                  Exit;
+              end;
+            end;
               
             LVal := LJson.Values['inputTokens'];
             if (LVal <> nil) and not (LVal is TJSONNull) then

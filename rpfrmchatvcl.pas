@@ -212,7 +212,7 @@ type
     procedure FinishProgress;
     procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
-    procedure UpdateStreamingResponse(const AActor, AChunkType, AChunk: string; APrefillPercent: Integer);
+      procedure UpdateStreamingResponse(const AActor, AChunkType, AChunk: string; APrefillPercent: Integer; const ALogChunk: string = '');
     procedure UpdateUserProfile(AProfile: TJSONObject);
     function GetAITier: string;
     function GetAIMode: string;
@@ -272,6 +272,7 @@ type
     Actor1: string;
     ChunkType1: string;
     Text1: string;
+    LogText1: string;
     Text2: string;
     PrefillPercent: Integer;
     InputTokens: Integer;
@@ -1160,14 +1161,20 @@ procedure TFRpChatFrame.DesignStreamProgress(Sender: TObject; const AActor, ASta
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
 var
   LPayload: TRpQueuedDesignChatPayload;
+  LChunk: string;
 begin
+  LChunk := '';
+  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+    LChunk := AChunk;
+
   LPayload := TRpQueuedDesignChatPayload.Create;
   LPayload.Kind := rpqdcUpdateStreamingResponse;
   if Sender is TRpDesignChatStreamContext then
     LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
   LPayload.Actor1 := AActor;
   LPayload.ChunkType1 := AChunkType;
-  LPayload.Text1 := AChunk;
+  LPayload.Text1 := LChunk;
+  LPayload.LogText1 := AChunk;
   LPayload.PrefillPercent := GetDesignPrefillPercent(AStage, AChunkType);
   LPayload.InputTokens := AInputTokens;
   LPayload.OutputTokens := AOutputTokens;
@@ -1853,12 +1860,18 @@ begin
 end;
 
 procedure TFRpChatFrame.UpdateStreamingResponse(const AActor, AChunkType, AChunk: string;
-  APrefillPercent: Integer);
+  APrefillPercent: Integer; const ALogChunk: string = '');
+var
+  LLogChunk: string;
 begin
   if not FStreamingActive then
     BeginStreamingResponse;
   if APrefillPercent > FStreamingPrefillPercent then
     FStreamingPrefillPercent := APrefillPercent;
+
+  LLogChunk := ALogChunk;
+  if LLogChunk = '' then
+    LLogChunk := AChunk;
 
   if FWebLog <> nil then
   begin
@@ -1870,11 +1883,10 @@ begin
   end;
 
   if AChunk <> '' then
-  begin
     FStreamingText := FStreamingText + AChunk;
-    if FWebLog <> nil then
-      FWebLog.AppendLogChunk(AChunk);
-  end;
+
+  if (FWebLog <> nil) and (LLogChunk <> '') then
+    FWebLog.AppendLogChunk(LLogChunk);
 end;
 
 procedure TFRpChatFrame.UpdateUserProfile(AProfile: TJSONObject);
@@ -1899,7 +1911,7 @@ begin
     case LPayload.Kind of
       rpqdcUpdateStreamingResponse:
         begin
-          UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent);
+          UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
           UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
           Exit;
         end;

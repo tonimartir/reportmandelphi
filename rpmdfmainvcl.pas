@@ -90,6 +90,7 @@ type
     Actor1: string;
     ChunkType1: string;
     Text1: string;
+    LogText1: string;
     Text2: string;
     PrefillPercent: Integer;
     InputTokens: Integer;
@@ -3305,13 +3306,8 @@ var
   LChunk: string;
 begin
   LChunk := '';
-  if Trim(AChunk) <> '' then
-  begin
-    if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
-      LChunk := AChunk
-    else if not SameText(AStage, 'ReceivingResponse') then
-      LChunk := AChunk;
-  end;
+  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+    LChunk := AChunk;
 
   LPayload := TRpQueuedDesignChatPayload.Create;
   LPayload.Kind := rpqdcUpdateStreamingResponse;
@@ -3320,6 +3316,7 @@ begin
   LPayload.Actor1 := AActor;
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
+  LPayload.LogText1 := AChunk;
   LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
   LPayload.InputTokens := AInputTokens;
   LPayload.OutputTokens := AOutputTokens;
@@ -3761,7 +3758,7 @@ begin
     case LPayload.Kind of
       rpqdcUpdateStreamingResponse:
         begin
-          fchatframe.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent);
+          fchatframe.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
           fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
           Exit;
         end;

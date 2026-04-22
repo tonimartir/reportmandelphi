@@ -64,6 +64,7 @@ type
     Actor1: string;
     ChunkType1: string;
     Text1: string;
+    LogText1: string;
     Text2: string;
     PrefillPercent: Integer;
     InputTokens: Integer;
@@ -1268,7 +1269,7 @@ begin
     case LPayload.Kind of
       rpqecUpdateStreamingResponse:
         begin
-          FChat.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent);
+          FChat.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
           FChat.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
         end;
       rpqecBeginRetry:
@@ -1643,19 +1644,21 @@ var
   LPrefill: Integer;
 begin
   LChunk := '';
-  if Trim(AChunk) <> '' then
-  begin
-    if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
-      LChunk := AChunk
-    else
-      LChunk := '[' + AStage + '] ' + AChunk + sLineBreak;
-  end;
+  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+    LChunk := AChunk;
   LPrefill := GetDesignPrefillPercent(AStage, AChunkType);
   LPayload := TRpQueuedExpressionChatPayload.Create;
   LPayload.Kind := rpqecUpdateStreamingResponse;
   LPayload.Actor1 := AActor;
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
+  if Trim(AChunk) <> '' then
+  begin
+    if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+      LPayload.LogText1 := AChunk
+    else
+      LPayload.LogText1 := '[' + AStage + '] ' + AChunk + sLineBreak;
+  end;
   LPayload.PrefillPercent := LPrefill;
   LPayload.InputTokens := AInputTokens;
   LPayload.OutputTokens := AOutputTokens;
