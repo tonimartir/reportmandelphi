@@ -3079,10 +3079,9 @@ begin
         if not Assigned(baseinfo.FHttpDatabase) then
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
            
-        with TRpDatasetHttp.Create(baseinfo.FHttpDatabase, TClientDataSet(FSQLInternalQuery)) do
+        with TRpDatasetHttp.Create(baseinfo.FHttpDatabase, TClientDataSet(FSQLInternalQuery), params) do
         try
           Sql := SQLsentence;
-          // TODO: Bind parameters from TRpParams to the HTTP request
           Open;
           FSQLInternalQuery := Dataset;
           FDataset := FSQLInternalQuery;

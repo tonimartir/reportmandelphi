@@ -15,7 +15,7 @@ interface
 
 
 uses
-  SysUtils, Classes, DB, StrUtils, System.IOUtils,
+  SysUtils, Classes, DB, StrUtils, Variants, System.IOUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
@@ -28,8 +28,19 @@ uses
 {$IFDEF USERPDATASET}
   DBClient,
 {$ENDIF}
+  rpparams,
   rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
   rpaireportcontracts;
+
+const
+  DBTYPE_BOOLEAN = 3;
+  DBTYPE_CURRENCY = 4;
+  DBTYPE_DATE = 5;
+  DBTYPE_DATETIME = 6;
+  DBTYPE_DOUBLE = 8;
+  DBTYPE_INT32 = 11;
+  DBTYPE_STRING = 16;
+  DBTYPE_TIME = 17;
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer) of object;
@@ -104,8 +115,10 @@ type
     FDatabase: TRpDatabaseHttp;
     FSql: string;
     FDataset: TClientDataSet;
+    FParams: TRpParamList;
+    function CreateParameterObject(AParam: TRpParam): TJSONObject;
   public
-    constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet);
+    constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet; AParams: TRpParamList = nil);
     destructor Destroy; override;
     procedure Open;
     property Sql: string read FSql write FSql;
@@ -1213,12 +1226,68 @@ begin
 end;
 {$ENDIF}
 { TRpDatasetHttp }
-constructor TRpDatasetHttp.Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet);
+constructor TRpDatasetHttp.Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet; AParams: TRpParamList = nil);
 begin
   inherited Create;
   FDatabase := ADatabase;
   FDataset := ADataset;
+  FParams := AParams;
 end;
+
+function TRpDatasetHttp.CreateParameterObject(AParam: TRpParam): TJSONObject;
+var
+  LValue: Variant;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', '@' + AParam.Name);
+  case AParam.ParamType of
+    rpParamBool:
+      begin
+        Result.AddPair('value', TJSONBool.Create(AParam.Value));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_BOOLEAN));
+      end;
+    rpParamInteger:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Int64(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_INT32));
+      end;
+    rpParamDouble:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Double(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DOUBLE));
+      end;
+    rpParamCurrency:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Currency(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_CURRENCY));
+      end;
+    rpParamDate:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('yyyy-mm-dd', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DATE));
+      end;
+    rpParamTime:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('hh:nn:ss', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_TIME));
+      end;
+    rpParamDateTime:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DATETIME));
+      end;
+  else
+    Result.AddPair('value', VarToStr(AParam.Value));
+    Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_STRING));
+  end;
+end;
+
 destructor TRpDatasetHttp.Destroy;
 begin
   inherited Destroy;
@@ -1232,6 +1301,7 @@ var
   Val: TJSONValue;
   Buffer: TBytes;
   RequestBody: TJSONObject;
+  Parameters: TJSONArray;
   ResponseStream: TMemoryStream;
   ResponseJson: TJSONObject;
   Columns, Rows: TJSONArray;
@@ -1253,8 +1323,16 @@ begin
   try
     RequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(FDatabase.HubDatabaseId));
     RequestBody.AddPair('sql', FSql);
-    // Parameters support
-    RequestBody.AddPair('parameters', TJSONArray.Create); 
+    Parameters := TJSONArray.Create;
+    if Assigned(FParams) then
+    begin
+      for I := 0 to FParams.Count - 1 do
+      begin
+        if (FParams[I] <> nil) and (Trim(FParams[I].Name) <> '') then
+          Parameters.AddElement(CreateParameterObject(FParams[I]));
+      end;
+    end;
+    RequestBody.AddPair('parameters', Parameters);
     ResponseStream := TMemoryStream.Create;
     try
       if FDatabase.InternalRequest('api/agent/execute', RequestBody, ResponseStream) then

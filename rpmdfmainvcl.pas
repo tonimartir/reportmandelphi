@@ -865,7 +865,7 @@ begin
 
  // Create right panel with chat and history tabs
  fcuepanel:=TPanel.Create(Self);
- fcuepanel.Width:=280;
+ fcuepanel.Width:=420;
  fcuepanel.Align:=alRight;
  fcuepanel.BevelOuter:=bvNone;
  fcuepanel.Parent:=frightpanel;
@@ -1194,7 +1194,7 @@ end;
 procedure TFRpMainFVCL.FormCreate(Sender: TObject);
 begin
  // ScaleToolBar(ToolBar1);
- FCuePanelWidth := 280;
+ FCuePanelWidth := 420;
  AChatIA.AutoCheck := True;
  AChatIA.Checked := True;
  if AChatIA.Caption = '' then
