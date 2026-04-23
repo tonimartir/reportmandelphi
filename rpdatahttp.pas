@@ -56,6 +56,7 @@ type
     FInstallId: string;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
+    FRuntimeDb: string;
     FAITier: string;
     FAgentSecret: string;
     FAgentAiId: Int64;
@@ -70,6 +71,7 @@ type
     property InstallId: string read FInstallId write FInstallId;
     property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
     property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
+    property RuntimeDb: string read FRuntimeDb write FRuntimeDb;
     property AITier: string read FAITier write FAITier;
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
@@ -173,6 +175,12 @@ begin
   Result := NormalizeUserLanguage(AUserLanguage);
   if Trim(Result) = '' then
     Result := 'Auto';
+end;
+
+procedure AddOptionalRuntime(ARequest: TJSONObject; const ARuntimeDb: string);
+begin
+  if (ARequest <> nil) and (Trim(ARuntimeDb) <> '') then
+    ARequest.AddPair('runtime', ARuntimeDb);
 end;
 
 type
@@ -637,6 +645,7 @@ begin
       LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
     if FApiKey <> '' then
       LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
     
     // Config sub-object
     LConfig := TJSONObject.Create;
@@ -697,6 +706,7 @@ begin
       LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
     if FApiKey <> '' then
       LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
 
     LConfig := TJSONObject.Create;
     LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
@@ -743,6 +753,7 @@ begin
     LRequest.AddPair('sqlToExplain', ASql);
     LRequest.AddPair('mode', AMode);
     LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('tecnicalExplanation', TJSONBool.Create(True));
     LRequest.AddPair('transcribeLanguage',
       ResolveTranscribeLanguage(AUserLanguage));
     if Trim(AUserLanguage) <> '' then
@@ -754,6 +765,7 @@ begin
       LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
     if FApiKey <> '' then
       LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
 
     LConfig := TJSONObject.Create;
     LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));

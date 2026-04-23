@@ -147,6 +147,7 @@ type
   TRpApiModifyReportResult = class(TPersistent)
   private
     FCreditsConsumed: Integer;
+    FDebugDetails: string;
     FErrorMessage: string;
     FHasCreditsConsumed: Boolean;
     FResult: TRpModifyReportResult;
@@ -160,6 +161,7 @@ type
     procedure FromJsonObject(AObject: TJSONObject);
     function ToJsonObject: TJSONObject;
     property CreditsConsumed: Integer read FCreditsConsumed write FCreditsConsumed;
+    property DebugDetails: string read FDebugDetails write FDebugDetails;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
     property HasCreditsConsumed: Boolean read FHasCreditsConsumed write FHasCreditsConsumed;
     property ResultData: TRpModifyReportResult read FResult;
@@ -231,6 +233,7 @@ type
   private
     FCreditsConsumed: Integer;
     FDataSources: TObjectList;
+    FDebugDetails: string;
     FErrorMessage: string;
     FHasCreditsConsumed: Boolean;
     FSteps: TObjectList;
@@ -245,6 +248,7 @@ type
     function ToJsonObject: TJSONObject;
     property CreditsConsumed: Integer read FCreditsConsumed write FCreditsConsumed;
     property DataSources: TObjectList read FDataSources;
+    property DebugDetails: string read FDebugDetails write FDebugDetails;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
     property HasCreditsConsumed: Boolean read FHasCreditsConsumed write FHasCreditsConsumed;
     property Steps: TObjectList read FSteps;
@@ -257,6 +261,7 @@ function RpReportDocumentFormatToString(AFormat: TRpReportDocumentFormat): strin
 function RpReportDocumentFormatFromString(const AValue: string): TRpReportDocumentFormat;
 function RpAITierTypeToString(ATier: TRpAITierType): string;
 function RpAITierTypeFromString(const AValue: string): TRpAITierType;
+function RpComposeApiErrorMessage(const AErrorMessage, ADebugDetails: string): string;
 
 implementation
 
@@ -406,6 +411,18 @@ begin
     Result := ratLocalAgent
   else
     Result := ratStandard;
+end;
+
+function RpComposeApiErrorMessage(const AErrorMessage, ADebugDetails: string): string;
+begin
+  Result := Trim(AErrorMessage);
+  if Trim(ADebugDetails) = '' then
+    Exit;
+
+  if Result <> '' then
+    Result := Result + sLineBreak + sLineBreak + Trim(ADebugDetails)
+  else
+    Result := Trim(ADebugDetails);
 end;
 
 procedure TRpTokenUsage.Assign(Source: TPersistent);
@@ -703,6 +720,7 @@ begin
   begin
     LSource := TRpApiModifyReportResult(Source);
     FCreditsConsumed := LSource.CreditsConsumed;
+    FDebugDetails := LSource.DebugDetails;
     FErrorMessage := LSource.ErrorMessage;
     FHasCreditsConsumed := LSource.HasCreditsConsumed;
     FUserProfileJson := LSource.UserProfileJson;
@@ -752,6 +770,7 @@ begin
   end;
   FHasCreditsConsumed := AObject.Values['creditsConsumed'] <> nil;
   FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
+  FDebugDetails := JsonValueToString(AObject.Values['debugDetails'], '');
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   LUserProfile := AObject.Values['userProfile'];
   if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
@@ -774,6 +793,7 @@ begin
   Result.AddPair('steps', LArray);
   if FHasCreditsConsumed then
     Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
+  Result.AddPair('debugDetails', FDebugDetails);
   Result.AddPair('errorMessage', FErrorMessage);
   if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
   begin
@@ -996,6 +1016,7 @@ begin
   begin
     LSource := TRpApiPreprocessSqlContextResult(Source);
     FCreditsConsumed := LSource.CreditsConsumed;
+    FDebugDetails := LSource.DebugDetails;
     FErrorMessage := LSource.ErrorMessage;
     FHasCreditsConsumed := LSource.HasCreditsConsumed;
     FUserProfileJson := LSource.UserProfileJson;
@@ -1077,6 +1098,7 @@ begin
   end;
   FHasCreditsConsumed := AObject.Values['creditsConsumed'] <> nil;
   FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
+  FDebugDetails := JsonValueToString(AObject.Values['debugDetails'], '');
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   LUserProfile := AObject.Values['userProfile'];
   if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
@@ -1106,6 +1128,7 @@ begin
   Result.AddPair('steps', LArray);
   if FHasCreditsConsumed then
     Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
+  Result.AddPair('debugDetails', FDebugDetails);
   Result.AddPair('errorMessage', FErrorMessage);
   if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
   begin

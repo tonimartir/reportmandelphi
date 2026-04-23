@@ -631,9 +631,12 @@
         observer.observe(messagesEl, { childList: true, subtree: true, characterData: true });
 
         // Copy Log content to clipboard
+        // Uses data-raw when available (preserves collapsed think blocks),
+        // otherwise falls back to extracting think-block content from the DOM
+        // before reading innerText so collapsed <details> are not omitted.
         window.copyLogToClipboard = function() {
             var btn = document.getElementById('copy-btn');
-            var text = messagesEl.innerText;
+            var text = buildFullLogText();
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function() {
@@ -645,6 +648,36 @@
                 fallbackCopyText(text, btn);
             }
         };
+
+        function buildFullLogText() {
+            var parts = [];
+            var nodes = messagesEl.children;
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                // Prefer the original raw text stored during streaming/rendering
+                var raw = node.getAttribute('data-raw');
+                if (raw) {
+                    parts.push(raw);
+                } else {
+                    // For nodes without data-raw, temporarily open all collapsed
+                    // think-block <details> so innerText captures their content.
+                    var thinkBlocks = node.querySelectorAll('details.think-block:not([open])');
+                    for (var j = 0; j < thinkBlocks.length; j++) {
+                        thinkBlocks[j].setAttribute('open', '');
+                        thinkBlocks[j].setAttribute('data-was-closed', '1');
+                    }
+                    parts.push(node.innerText);
+                    // Restore collapsed state
+                    for (var j = 0; j < thinkBlocks.length; j++) {
+                        if (thinkBlocks[j].getAttribute('data-was-closed')) {
+                            thinkBlocks[j].removeAttribute('open');
+                            thinkBlocks[j].removeAttribute('data-was-closed');
+                        }
+                    }
+                }
+            }
+            return parts.join('\n');
+        }
 
         function showCopySuccess(btn) {
             var span = btn.querySelector('span');

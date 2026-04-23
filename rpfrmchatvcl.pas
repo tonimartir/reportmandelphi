@@ -1355,7 +1355,9 @@ begin
 
             if (LPreprocessResponse <> nil) and
               (Trim(LPreprocessResponse.ErrorMessage) <> '') then
-              raise Exception.Create(LPreprocessResponse.ErrorMessage);
+              raise Exception.Create(RpComposeApiErrorMessage(
+                LPreprocessResponse.ErrorMessage,
+                LPreprocessResponse.DebugDetails));
 
             TThread.Synchronize(nil,
               procedure
@@ -1394,7 +1396,8 @@ begin
             LPayload := TRpQueuedDesignChatPayload.Create;
             LPayload.Kind := rpqdcAddAssistantMessage;
             LPayload.RequestVersion := LRequestVersion;
-            LPayload.Text1 := LResponse.ErrorMessage;
+            LPayload.Text1 := RpComposeApiErrorMessage(LResponse.ErrorMessage,
+              LResponse.DebugDetails);
             PostDesignChatPayload(LPayload);
             Exit;
           end;

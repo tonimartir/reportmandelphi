@@ -2618,7 +2618,9 @@ begin
           end;
 
           if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.ErrorMessage) <> '') then
-            raise Exception.Create(LPreprocessResponse.ErrorMessage);
+            raise Exception.Create(RpComposeApiErrorMessage(
+              LPreprocessResponse.ErrorMessage,
+              LPreprocessResponse.DebugDetails));
 
           TThread.Synchronize(nil,
             procedure
@@ -2652,7 +2654,8 @@ begin
           LChatPayload := TRpQueuedExpressionChatPayload.Create;
           LChatPayload.Kind := rpqecAddAssistantMessage;
           LChatPayload.RequestVersion := LRequestVersion;
-          LChatPayload.Text1 := LResponse.ErrorMessage;
+          LChatPayload.Text1 := RpComposeApiErrorMessage(LResponse.ErrorMessage,
+            LResponse.DebugDetails);
           PostExpressionChatPayload(LChatPayload);
           Exit;
         end;

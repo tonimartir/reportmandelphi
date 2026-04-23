@@ -86,6 +86,7 @@ type
     FUpdatingFromBrowser: Boolean;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
+    FRuntimeDb: string;
     FDebounceTimer: TTimer;
     FPendingRequestId, FPendingSql: string;
     FPendingPos: Integer;
@@ -147,6 +148,7 @@ type
     property AuditText: string read FAuditText write SetAuditText;
     property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
     property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
+    property RuntimeDb: string read FRuntimeDb write FRuntimeDb;
     property AITier: string read GetAITier;
     property AIMode: string read GetAIMode;
     property AgentSecret: string read GetAgentSecret;
@@ -1151,6 +1153,7 @@ begin
         LHttp.InstallId := TRpAuthManager.Instance.InstallId;
         LHttp.HubDatabaseId := FHubDatabaseId;
         LHttp.HubSchemaId := FHubSchemaId;
+        LHttp.RuntimeDb := FRuntimeDb;
         LHttp.AITier := FAISelection.AITier;
         LHttp.AgentSecret := FAISelection.AgentSecret;
         LHttp.AgentAiId := FAISelection.AgentAiId;

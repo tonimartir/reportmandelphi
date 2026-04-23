@@ -171,6 +171,7 @@ type
 //    function FindDatabaseInfoItem:TRpDatabaseInfoItem;
     function FindDataInfoItem:TRpDataInfoItem;
     function FindSiblingHubSchemaId(const ADataInfo: TRpDataInfoItem): Int64;
+    function ResolveNlToSqlRuntime(const ADataInfo: TRpDataInfoItem): string;
     function GetChatPrefillPercent(const AStage, AChunkType: string): Integer;
     function GetUserLanguageCode: string;
     procedure MonacoInferenceLog(Sender: TObject; const ASource,
@@ -228,6 +229,43 @@ begin
       (LItem.HubSchemaId > 0) then
       Exit(LItem.HubSchemaId);
   end;
+
+end;
+
+function TFRpDatasetsVCL.ResolveNlToSqlRuntime(
+  const ADataInfo: TRpDataInfoItem): string;
+var
+  LDatabaseIndex: Integer;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LParams: TStringList;
+  LHubDatabaseId: Int64;
+begin
+  Result := '';
+  if (ADataInfo = nil) or (Report = nil) or (Trim(ADataInfo.DatabaseAlias) = '') then
+    Exit;
+
+  LDatabaseIndex := Report.DatabaseInfo.IndexOf(ADataInfo.DatabaseAlias);
+  if LDatabaseIndex < 0 then
+    Exit;
+
+  LDatabaseInfo := Report.DatabaseInfo.Items[LDatabaseIndex];
+  if LDatabaseInfo.Driver in [rpdatadriver, rpdotnet2driver] then
+    Exit('ADO_Net');
+
+  LHubDatabaseId := 0;
+  LParams := TStringList.Create;
+  try
+    LDatabaseInfo.UpdateConAdmin;
+    LDatabaseInfo.ConAdmin.GetConnectionParams(LDatabaseInfo.Alias, LParams);
+    LHubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
+  finally
+    LParams.Free;
+  end;
+
+  if LHubDatabaseId > 0 then
+    Result := 'ADO_Net'
+  else
+    Result := 'Delphi';
 end;
 
 procedure TFRpDatasetsVCL.SetParams(Value:TRpParamList);
@@ -350,6 +388,7 @@ var
   LHubDatabaseId: Int64;
   LHubSchemaId: Int64;
   LSchemaApiKey: string;
+  LRuntimeDb: string;
 begin
   LDataInfo := FindDataInfoItem;
   if LDataInfo = nil then
@@ -358,6 +397,7 @@ begin
   LHubDatabaseId := 0;
   LHubSchemaId := 0;
   LSchemaApiKey := '';
+  LRuntimeDb := ResolveNlToSqlRuntime(LDataInfo);
   LDatabaseInfo := nil;
   if Trim(LDataInfo.DatabaseAlias) <> '' then
   begin
@@ -386,6 +426,7 @@ begin
   if FMonaco <> nil then
   begin
     FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId);
+    FMonaco.RuntimeDb := LRuntimeDb;
     if ASyncSqlFromDataInfo then
     begin
       FMonaco.SQL := WideStringToDOS(LDataInfo.SQL);
@@ -880,6 +921,7 @@ var
   LAgentAiId: Int64;
   LSchemaApiKey: string;
   LSqlToRefine: string;
+  LRuntimeDb: string;
   LUserLanguage: string;
   LWorker: TThread;
 begin
@@ -903,6 +945,7 @@ begin
   LAgentAiId := FChat.GetAgentAiId;
   LSchemaApiKey := FChat.GetSchemaApiKey;
   LUserLanguage := GetUserLanguageCode;
+  LRuntimeDb := ResolveNlToSqlRuntime(FindDataInfoItem);
   LSqlToRefine := Trim(AExpression);
   if LSqlToRefine = '' then
     LSqlToRefine := Trim(FMonaco.SQL);
@@ -941,6 +984,7 @@ begin
           LHttp.InstallId := TRpAuthManager.Instance.InstallId;
           LHttp.HubDatabaseId := LHubDatabaseId;
           LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.RuntimeDb := LRuntimeDb;
           LHttp.AITier := LAITier;
           LHttp.AgentSecret := LAgentSecret;
           LHttp.AgentAiId := LAgentAiId;
@@ -1072,6 +1116,7 @@ var
   LAgentSecret: string;
   LAgentAiId: Int64;
   LLanguage: string;
+  LRuntimeDb: string;
 begin
   if FMonaco = nil then
     Exit;
@@ -1095,6 +1140,7 @@ begin
   LAgentSecret := FMonaco.AgentSecret;
   LAgentAiId := FMonaco.AgentAiId;
   LLanguage := GetUserLanguageCode;
+  LRuntimeDb := ResolveNlToSqlRuntime(LDataInfo);
 
   FMonaco.ActivateAuditTab;
   FMonaco.SetAuditBusy(True);
@@ -1130,6 +1176,7 @@ begin
           LHttp.InstallId := TRpAuthManager.Instance.InstallId;
           LHttp.HubDatabaseId := LHubDatabaseId;
           LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.RuntimeDb := LRuntimeDb;
           LHttp.AITier := LAITier;
           LHttp.AgentSecret := LAgentSecret;
           LHttp.AgentAiId := LAgentAiId;

@@ -3189,7 +3189,9 @@ begin
               LStreamContext, DesignChatStreamProgress, DesignChatStreamCancelRequested);
 
             if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.ErrorMessage) <> '') then
-              raise Exception.Create(LPreprocessResponse.ErrorMessage);
+              raise Exception.Create(RpComposeApiErrorMessage(
+                LPreprocessResponse.ErrorMessage,
+                LPreprocessResponse.DebugDetails));
 
             TThread.Synchronize(nil,
               procedure
@@ -3224,7 +3226,9 @@ begin
           end;
           if LResponse <> nil then
           begin
-            LPayload.ErrorMessage := LResponse.ErrorMessage;
+            LPayload.ErrorMessage := RpComposeApiErrorMessage(
+              LResponse.ErrorMessage,
+              LResponse.DebugDetails);
             if Trim(LPayload.ErrorMessage) = '' then
               LPayload.ErrorMessage := LResponse.ResultData.ErrorMessage;
             LPayload.Text2 := LResponse.ResultData.Explanation;
