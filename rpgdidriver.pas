@@ -2334,17 +2334,9 @@ begin
         begin
           if collate then
           begin
-            if PrinterSupportsCollation then
-            begin
-              SetPrinterCopies(copies);
-              SetPrinterCollation(true);
-            end
-            else
-            begin
-              SetPrinterCopies(1);
-              SetPrinterCollation(false);
-              reportcopies := copies;
-            end;
+            SetPrinterCopies(1);
+            SetPrinterCollation(false);
+            reportcopies := copies;
           end
           else
           begin

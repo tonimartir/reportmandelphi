@@ -1872,7 +1872,7 @@ var
  maxcopies:integer;
 begin
  maxcopies:=PrinterMaxCopiesSupport;
- Result:=maxcopies>copies;
+ Result:=maxcopies>=copies;
 end;
 
 
