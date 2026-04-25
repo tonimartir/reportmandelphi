@@ -37,6 +37,7 @@ type
     procedure MenuItemLogoutClick(Sender: TObject);
     procedure MenuItemLanguageClick(Sender: TObject);
     procedure MenuItemPricePlansClick(Sender: TObject);
+    procedure MenuItemConfigureDbSchemasClick(Sender: TObject);
     procedure MenuItemDbAiAgentClick(Sender: TObject);
     procedure ImageAvatarClick(Sender: TObject);
   private
@@ -46,6 +47,7 @@ type
     FMenuItemLogin: TMenuItem;
     FMenuItemLanguage: TMenuItem;
     FMenuItemPricePlans: TMenuItem;
+    FMenuItemConfigureDbSchemas: TMenuItem;
     FMenuItemDbAiAgent: TMenuItem;
     FMenuItemLogoutSeparator: TMenuItem;
     FHover: Boolean;
@@ -267,6 +269,10 @@ begin
   FMenuItemPricePlans.Caption := 'AI price plans';
   FMenuItemPricePlans.OnClick := MenuItemPricePlansClick;
 
+  FMenuItemConfigureDbSchemas := TMenuItem.Create(PopupUser);
+  FMenuItemConfigureDbSchemas.Caption := 'Configure DB Schemas';
+  FMenuItemConfigureDbSchemas.OnClick := MenuItemConfigureDbSchemasClick;
+
   FMenuItemDbAiAgent := TMenuItem.Create(PopupUser);
   FMenuItemDbAiAgent.Caption := 'DB & AI Agent';
   FMenuItemDbAiAgent.OnClick := MenuItemDbAiAgentClick;
@@ -277,7 +283,8 @@ begin
   PopupUser.Items.Insert(0, FMenuItemLogin);
   PopupUser.Items.Insert(1, FMenuItemLanguage);
   PopupUser.Items.Insert(2, FMenuItemPricePlans);
-  PopupUser.Items.Insert(3, FMenuItemDbAiAgent);
+  PopupUser.Items.Insert(3, FMenuItemConfigureDbSchemas);
+  PopupUser.Items.Insert(4, FMenuItemDbAiAgent);
   PopupUser.Items.Insert(5, FMenuItemLogoutSeparator);
 end;
 
@@ -608,6 +615,11 @@ end;
 procedure TFRpLoginFrameVCL.MenuItemPricePlansClick(Sender: TObject);
 begin
   TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/subscription');
+end;
+
+procedure TFRpLoginFrameVCL.MenuItemConfigureDbSchemasClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
 end;
 
 procedure TFRpLoginFrameVCL.MenuItemDbAiAgentClick(Sender: TObject);

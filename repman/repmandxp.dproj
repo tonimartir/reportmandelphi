@@ -1077,8 +1077,8 @@
                 <ProjectRoot Platform="OSX64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Android64" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Android" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="iOSDevice64" Name="$(PROJECTNAME).app"/>
@@ -1125,13 +1125,23 @@
         <DCCReference Include="..\rpchatdialogvcl.pas">
             <Form>FRpExpredialogVCL</Form>
         </DCCReference>
+        <DCCReference Include="..\rpfrmchatvcl.pas">
+            <Form>TFRpChatFrame</Form>
+        </DCCReference>
         <DCCReference Include="..\rprfvparams.pas">
             <Form>FRpRTParams</Form>
         </DCCReference>
         <DCCReference Include="..\rpmdfsearchvcl.pas">
             <Form>TFRpSearchParamVCL</Form>
         </DCCReference>
+        <DCCReference Include="..\rpfrmloginframevcl.pas">
+            <Form>TFRpLoginFrameVCL</Form>
+        </DCCReference>
         <DCCReference Include="..\rpmdfsectionintvcl.pas"/>
+        <DCCReference Include="..\rpfrmaiselectionvcl.pas">
+            <Form>TFRpAISelectionVCL</Form>
+        </DCCReference>
+        <DCCReference Include="..\rpwebmarkdownvcl.pas"/>
         <DCCReference Include="..\rptextdriver.pas"/>
         <DCCReference Include="..\rpdatahttp.pas"/>
         <DCCReference Include="..\rpxmlstream.pas"/>
@@ -1202,6 +1212,7 @@
         <DCCReference Include="..\rpprintitem.pas"/>
         <DCCReference Include="..\rpregvcl.pas"/>
         <DCCReference Include="..\rpreport.pas"/>
+        <DCCReference Include="..\rpreportdesignercontracts.pas"/>
         <DCCReference Include="..\rpbasereport.pas"/>
         <DCCReference Include="..\rprulervcl.pas"/>
         <DCCReference Include="..\rpsection.pas"/>
