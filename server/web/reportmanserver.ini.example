@@ -1,0 +1,85 @@
+; Example runtime configuration for the CGI/ISAPI Reportman web server.
+; The real runtime file is resolved as reportmanserver.ini/reportmanserver
+; by Obtainininamecommonconfig(..., 'reportmanserver').
+
+[CONFIG]
+; Optional directory containing custom HTML templates:
+; rplogin.html, rpindex.html, rpalias.html, rpparams.html, rperror.html
+PAGESDIR=C:\inetpub\wwwroot\reportmanserver\pages\
+
+; Optional TCP port used by related server tooling. The CGI/ISAPI flow reads it
+; but HTTP requests are still handled by IIS/Apache.
+TCPPORT=3060
+
+; Optional log file written by the web server process.
+LOGFILE=C:\Logs\reportmanweb.log
+
+[SECURITY]
+; Both access modes are enabled by default in code when omitted.
+; Set to 1/0, TRUE/FALSE, YES/NO or ON/OFF.
+USER_ACCESS=1
+API_KEY_ACCESS=1
+; When enabled, unauthorized requests still render the HTML error page.
+; When disabled, unauthorized requests return HTTP 401 with plain text.
+SHOWUNAUTHORIZEDPAGE=1
+; If enabled, all endpoints except /version require the request to already
+; arrive as HTTPS according to the web server/proxy CGI variables or headers.
+; The CGI/ISAPI process can detect HTTPS/TLS metadata, but certificate trust is
+; normally validated by IIS/Apache/reverse proxy, not by Reportman itself.
+REQUIRE_HTTPS=0
+
+[USERS]
+; USERNAME=password
+ADMIN=
+REPORT_USER=report_password
+BACKOFFICE=backoffice_password
+INTEGRATIONBOT=integration_password
+
+[GROUPS]
+; Group names are logical labels. The value is informational and can be blank.
+FINANCE=
+SALES=
+INTEGRATIONS=
+
+[ALIASES]
+; ALIAS=directory
+; If the value starts with ':' it is treated as a Reportman connection alias.
+FINANCE=C:\Reports\Finance
+SALES=C:\Reports\Sales
+ERP=:ERP_REPORTS
+
+[SERVERAPIKEYS]
+; API key logical name = secret sent in header X-ReportmanServer-ApiKey
+BACKOFFICE_SERVICE=change_this_to_a_long_random_secret_1
+CI_CD_AGENT=change_this_to_a_long_random_secret_2
+
+[SERVERAPIKEYUSERS]
+; API key logical name = existing internal username from [USERS]
+BACKOFFICE_SERVICE=BACKOFFICE
+CI_CD_AGENT=INTEGRATIONBOT
+
+[USERGROUPSREPORT_USER]
+FINANCE=
+SALES=
+
+[USERGROUPSBACKOFFICE]
+FINANCE=
+
+[USERGROUPSINTEGRATIONBOT]
+INTEGRATIONS=
+
+[GROUPALLOWFINANCE]
+FINANCE=
+
+[GROUPALLOWSALES]
+SALES=
+
+[GROUPALLOWERP]
+INTEGRATIONS=
+
+; Notes:
+; - ADMIN is always accepted and bypasses alias restrictions.
+; - If a user has no groups, current behavior remains permissive.
+; - If an alias has no allowed groups, current behavior remains permissive.
+; - The CGI/ISAPI process account still needs read access to report folders and
+;   write access to LOGFILE if logging is enabled.

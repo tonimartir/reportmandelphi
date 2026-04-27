@@ -34,9 +34,8 @@ requires
   reportman_rtl,
   vclimg,
   vcl,
-  vclFireDAC;
-
-{$I rpconf.inc}
+  vclFireDAC,
+  vcledge;
 
 contains
   rpgdidriver in '..\..\rpgdidriver.pas',
@@ -44,12 +43,6 @@ contains
   rpgdifonts in '..\..\rpgdifonts.pas',
   rpgraphutilsvcl in '..\..\rpgraphutilsvcl.pas' {FRpMessageDlgVCL},
   rpvgraphutils in '..\..\rpvgraphutils.pas',
-{$IFDEF EXTENDEDGRAPHICS}
-  rpgraphicex in '..\..\rpgraphicex.pas',
-  rpgraphiccompression in '..\..\rpgraphiccompression.pas',
-  rpgraphicStrings in '..\..\rpgraphicStrings.pas',
-  rpgraphiccolor in '..\..\rpgraphiccolor.pas',
-{$ENDIF}
   rpregvcl in '..\..\rpregvcl.pas',
   rpvclreport in '..\..\rpvclreport.pas',
   rprfvparams in '..\..\rprfvparams.pas' {FRpRTParams},

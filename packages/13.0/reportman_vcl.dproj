@@ -2,7 +2,7 @@
     <PropertyGroup>
         <ProjectGuid>{564E3285-97CE-4164-B0F6-BAF4E195386D}</ProjectGuid>
         <MainSource>reportman_vcl.dpk</MainSource>
-        <ProjectVersion>20.3</ProjectVersion>
+        <ProjectVersion>20.4</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
@@ -68,13 +68,14 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>rtl;dbrtl;DbxCommonDriver;IndySystem;IndyProtocols;IndyCore;dsnap;dbexpress;DBXMySQLDriver;DBXInterBaseDriver;FireDAC;FireDACSqliteDriver;FireDACCommonDriver;FireDACCommon;FireDACPgDriver;FireDACMSAccDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMySQLDriver;FireDACADSDriver;ibxpress;reportman_frm103;vclimg;vcl;vclFireDAC;Tee;reportman_rtl103;reportman_rtl;Tee926;Tee927;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>rtl;dbrtl;DbxCommonDriver;IndySystem;IndyProtocols;IndyCore;dsnap;dbexpress;DBXMySQLDriver;DBXInterBaseDriver;FireDAC;FireDACSqliteDriver;FireDACCommonDriver;FireDACCommon;FireDACPgDriver;FireDACMSAccDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMySQLDriver;FireDACADSDriver;ibxpress;reportman_frm103;vclimg;vcl;vclFireDAC;Tee;reportman_rtl103;reportman_rtl;Tee926;Tee927;vcledge;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <DCC_UsePackage>vcledge;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -82,6 +83,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
+        <DCC_UsePackage>vcledge;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -113,6 +115,7 @@
         <DCCReference Include="vclimg.dcp"/>
         <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="vclFireDAC.dcp"/>
+        <DCCReference Include="vcledge.dcp"/>
         <DCCReference Include="..\..\rpgdidriver.pas"/>
         <DCCReference Include="..\..\rpmaskedit.pas"/>
         <DCCReference Include="..\..\rpgdifonts.pas"/>
@@ -189,7 +192,7 @@
             </Delphi.Personality>
             <Deployment Version="5">
                 <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\21.0\Bpl\reportman_vcl.bpl" Configuration="Debug" Class="ProjectOutput"/>
-                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\reportman_vcl.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\37.0\Bpl\reportman_vcl.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>reportman_vcl.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
@@ -785,6 +788,9 @@
                     <Platform Name="Win64x">
                         <Operation>1</Operation>
                     </Platform>
+                    <Platform Name="WinARM64EC">
+                        <Operation>1</Operation>
+                    </Platform>
                 </DeployClass>
                 <DeployClass Name="ProjectiOSDeviceDebug">
                     <Platform Name="iOSDevice32">
@@ -823,6 +829,10 @@
                         <RemoteDir>Assets</RemoteDir>
                         <Operation>1</Operation>
                     </Platform>
+                    <Platform Name="WinARM64EC">
+                        <RemoteDir>Assets</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
                 </DeployClass>
                 <DeployClass Name="UWP_DelphiLogo44">
                     <Platform Name="Win32">
@@ -830,6 +840,10 @@
                         <Operation>1</Operation>
                     </Platform>
                     <Platform Name="Win64">
+                        <RemoteDir>Assets</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
+                    <Platform Name="WinARM64EC">
                         <RemoteDir>Assets</RemoteDir>
                         <Operation>1</Operation>
                     </Platform>
@@ -1047,6 +1061,7 @@
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64x" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="WinARM64EC" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
                 <Platform value="Win32">True</Platform>

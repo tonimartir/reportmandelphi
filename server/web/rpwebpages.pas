@@ -41,6 +41,17 @@ const
 type
  TRpWebPage=(rpwLogin,rpwIndex,rpwVersion,rpwShowParams,rpwShowAlias);
 
+ EHttpError=class(Exception)
+  private
+   FStatusCode:Integer;
+   FShowErrorPage:Boolean;
+  public
+   constructor CreateHttp(AStatusCode: Integer; const AMessage: string;
+    AShowErrorPage: Boolean);
+   property StatusCode:Integer read FStatusCode;
+   property ShowErrorPage:Boolean read FShowErrorPage;
+ end;
+
  TRpWebPageLoader=class(TObject)
   private
    Owner:TComponent;
@@ -48,6 +59,8 @@ type
    fport:integer;
    laliases:TStringList;
    lusers,lgroups,LUserGroups,LAliasGroups:TStringList;
+    LServerApiKeys:TStringList;
+    LServerApiKeyUsers:TStringList;
    aresult:TStringList;
    FPagesDirectory:String;
    initreaded:boolean;
@@ -59,6 +72,10 @@ type
    showerrorpage:string;
    paramspage:string;
    isadmin:boolean;
+  FAllowUserAccess:Boolean;
+  FAllowApiKeyAccess:Boolean;
+  FRequireHttps:Boolean;
+  FShowUnauthorizedPage:Boolean;
    FRpAliasLibs:TRpAlias;
 {$IFDEF USEBDE}
    ASession:TSession;
@@ -76,6 +93,21 @@ type
    function LoadAliasPage(Request: TWebRequest):string;
    function LoadParamsPage(Request: TWebRequest):string;
    function CheckPrivileges(username,aliasname:String):Boolean;
+  function GetRequestValue(Request: TWebRequest; const AName: string): string;
+  function GetRequestHeader(Request: TWebRequest; const AName: string): string;
+  function GetFirstRequestValue(Request: TWebRequest;
+   const ANames: array of string): string;
+  function IsSecureConnection(Request: TWebRequest): Boolean;
+  function GetConnectionType(Request: TWebRequest): string;
+  function GetCertificateValidityText(Request: TWebRequest): string;
+  procedure CheckRequireHttps(Request: TWebRequest);
+  function HasServerApiKey(Request: TWebRequest): Boolean;
+  function TryAuthenticateServerApiKey(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean): Boolean;
+  function TryAuthenticateUserPassword(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean): Boolean;
+  procedure ResolveAuthenticatedUser(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean);
    procedure ClearLists;
    procedure LoadReport(pdfreport:TRpReport;aliasname,reportname:String);
   public
@@ -89,6 +121,70 @@ type
 
 
 implementation
+
+constructor EHttpError.CreateHttp(AStatusCode: Integer; const AMessage: string;
+ AShowErrorPage: Boolean);
+begin
+ inherited Create(AMessage);
+ FStatusCode:=AStatusCode;
+ FShowErrorPage:=AShowErrorPage;
+end;
+
+function ReadConfigBool(inif: TMemInifile; const Section, Ident: string;
+  Default: Boolean): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=Trim(inif.ReadString(Section,Ident,''));
+ if Length(LValue)<1 then
+ begin
+  Result:=Default;
+  exit;
+ end;
+ if SameText(LValue,'1') or SameText(LValue,'TRUE') or SameText(LValue,'YES')
+  or SameText(LValue,'ON') then
+ begin
+  Result:=True;
+  exit;
+ end;
+ if SameText(LValue,'0') or SameText(LValue,'FALSE') or SameText(LValue,'NO')
+  or SameText(LValue,'OFF') then
+ begin
+  Result:=False;
+  exit;
+ end;
+ Result:=Default;
+end;
+
+function FirstToken(const AValue: string): string;
+var
+ SepPos:Integer;
+begin
+ Result:=Trim(AValue);
+ SepPos:=Pos(',',Result);
+ if SepPos>0 then
+  Result:=Trim(Copy(Result,1,SepPos-1));
+end;
+
+function IsTruthyValue(const AValue: string): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=UpperCase(Trim(AValue));
+ Result:=(LValue='1') or (LValue='TRUE') or (LValue='YES') or
+  (LValue='ON') or (LValue='HTTPS') or (LValue='SUCCESS') or
+  (LValue='OK') or (LValue='VALID');
+end;
+
+function IsFalsyValue(const AValue: string): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=UpperCase(Trim(AValue));
+ Result:=(LValue='0') or (LValue='FALSE') or (LValue='NO') or
+  (LValue='OFF') or (LValue='HTTP') or (LValue='NONE') or
+  (LValue='FAIL') or (LValue='FAILED') or (LValue='INVALID');
+end;
 
 
 procedure TRpWebPageLoader.ClearLists;
@@ -108,6 +204,260 @@ begin
   TStringList(LAliasGroups.Objects[i]).Free;
  end;
  LAliasGroups.Clear;
+ LServerApiKeys.Clear;
+ LServerApiKeyUsers.Clear;
+end;
+
+function TRpWebPageLoader.GetRequestHeader(Request: TWebRequest;
+  const AName: string): string;
+var
+ CgiHeaderName:String;
+begin
+ Result:=Trim(Request.GetFieldByName(AName));
+ if Length(Result)>0 then
+  exit;
+ CgiHeaderName:='HTTP_'+StringReplace(UpperCase(AName),'-','_',[rfReplaceAll]);
+ Result:=Trim(Request.GetFieldByName(CgiHeaderName));
+end;
+
+function TRpWebPageLoader.GetRequestValue(Request: TWebRequest;
+  const AName: string): string;
+begin
+ Result:=Trim(Request.GetFieldByName(AName));
+end;
+
+function TRpWebPageLoader.GetFirstRequestValue(Request: TWebRequest;
+  const ANames: array of string): string;
+var
+ i:Integer;
+begin
+ Result:='';
+ for i:=Low(ANames) to High(ANames) do
+ begin
+  Result:=GetRequestValue(Request,ANames[i]);
+  if Length(Result)>0 then
+   exit;
+ end;
+end;
+
+function TRpWebPageLoader.IsSecureConnection(Request: TWebRequest): Boolean;
+var
+ LValue:string;
+begin
+ Result:=False;
+ LValue:=GetFirstRequestValue(Request,['HTTPS','SERVER_PORT_SECURE']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+ if IsFalsyValue(LValue) then
+  exit;
+
+ LValue:=GetFirstRequestValue(Request,['REQUEST_SCHEME','URL_SCHEME']);
+ if SameText(Trim(LValue),'HTTPS') then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=FirstToken(GetRequestHeader(Request,'X-Forwarded-Proto'));
+ if SameText(LValue,'HTTPS') then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=GetRequestHeader(Request,'X-Forwarded-Ssl');
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=GetRequestHeader(Request,'Front-End-Https');
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+end;
+
+function TRpWebPageLoader.GetConnectionType(Request: TWebRequest): string;
+var
+ LValue:string;
+begin
+ LValue:=GetFirstRequestValue(Request,['HTTPS']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+ if IsFalsyValue(LValue) then
+ begin
+  Result:='HTTP';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['SERVER_PORT_SECURE']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['REQUEST_SCHEME','URL_SCHEME']);
+ if SameText(Trim(LValue),'HTTPS') then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+ if SameText(Trim(LValue),'HTTP') then
+ begin
+  Result:='HTTP';
+  exit;
+ end;
+
+ LValue:=FirstToken(GetRequestHeader(Request,'X-Forwarded-Proto'));
+ if SameText(LValue,'HTTPS') then
+ begin
+  Result:='HTTPS (forwarded)';
+  exit;
+ end;
+ if SameText(LValue,'HTTP') then
+ begin
+  Result:='HTTP (forwarded)';
+  exit;
+ end;
+
+ if IsTruthyValue(GetRequestHeader(Request,'X-Forwarded-Ssl')) or
+   IsTruthyValue(GetRequestHeader(Request,'Front-End-Https')) then
+ begin
+  Result:='HTTPS (forwarded)';
+  exit;
+ end;
+
+ Result:='Unknown';
+end;
+
+function TRpWebPageLoader.GetCertificateValidityText(Request: TWebRequest): string;
+var
+ LValue:string;
+begin
+ if not IsSecureConnection(Request) then
+ begin
+  Result:='No';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['SSL_SERVER_VERIFY','CERT_SERVER_VERIFY',
+  'SSL_VERIFY_RESULT','CERT_VERIFY_RESULT']);
+ if Length(LValue)>0 then
+ begin
+  if IsTruthyValue(LValue) or (Trim(LValue)='0') then
+   Result:='Yes'
+  else
+   Result:='No ('+LValue+')';
+  exit;
+ end;
+
+ Result:='Unknown';
+end;
+
+procedure TRpWebPageLoader.CheckRequireHttps(Request: TWebRequest);
+begin
+ if not FRequireHttps then
+  exit;
+ if IsSecureConnection(Request) then
+  exit;
+ Raise EHttpError.CreateHttp(403,'HTTPS required',True);
+end;
+
+function TRpWebPageLoader.HasServerApiKey(Request: TWebRequest): Boolean;
+begin
+ Result:=Length(GetRequestHeader(Request,'X-ReportmanServer-ApiKey'))>0;
+end;
+
+function TRpWebPageLoader.TryAuthenticateServerApiKey(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean): Boolean;
+var
+ LApiKey:String;
+ LApiKeyName:String;
+ LMappedUser:String;
+ i:Integer;
+begin
+ Result:=False;
+ AUserName:='';
+ AIsAdmin:=False;
+ if not FAllowApiKeyAccess then
+  exit;
+ LApiKey:=GetRequestHeader(Request,'X-ReportmanServer-ApiKey');
+ if Length(LApiKey)<1 then
+  exit;
+ for i:=0 to LServerApiKeys.Count-1 do
+ begin
+  LApiKeyName:=Trim(LServerApiKeys.Names[i]);
+  if Length(LApiKeyName)<1 then
+   continue;
+  if LServerApiKeys.ValueFromIndex[i]=LApiKey then
+  begin
+   LMappedUser:=UpperCase(Trim(LServerApiKeyUsers.Values[LApiKeyName]));
+   if Length(LMappedUser)<1 then
+    Raise EHttpError.CreateHttp(401,
+     TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+   if LUsers.IndexOfName(LMappedUser)<0 then
+    Raise EHttpError.CreateHttp(401,
+     TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+   AUserName:=LMappedUser;
+   AIsAdmin:=AUserName='ADMIN';
+   Result:=True;
+   exit;
+  end;
+ end;
+ Raise EHttpError.CreateHttp(401,
+  TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+end;
+
+function TRpWebPageLoader.TryAuthenticateUserPassword(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean): Boolean;
+var
+ password:string;
+ index:integer;
+begin
+ Result:=False;
+ AUserName:='';
+ AIsAdmin:=False;
+ if not FAllowUserAccess then
+  exit;
+ AUserName:=UpperCase(Request.QueryFields.Values['username']);
+ password:=Request.QueryFields.Values['password'];
+ if Length(AUserName)<1 then
+  exit;
+ index:=LUsers.IndexOfName(AUserName);
+ if index>=0 then
+ begin
+  if LUsers.Values[AUserName]=password then
+  begin
+   AIsAdmin:=AUserName='ADMIN';
+   Result:=True;
+  end;
+ end;
+end;
+
+procedure TRpWebPageLoader.ResolveAuthenticatedUser(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean);
+begin
+ AUserName:='';
+ AIsAdmin:=False;
+ if HasServerApiKey(Request) then
+ begin
+  if TryAuthenticateServerApiKey(Request,AUserName,AIsAdmin) then
+   exit;
+ end;
+ if TryAuthenticateUserPassword(Request,AUserName,AIsAdmin) then
+  exit;
+ Raise EHttpError.CreateHttp(401,
+  TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
 end;
 
 function TRpWebPageLoader.CheckPrivileges(username,aliasname:String):Boolean;
@@ -143,29 +493,14 @@ end;
 
 procedure TRpWebPageLoader.CheckLogin(Request:TWebRequest);
 var
- username,password:string;
+ username:string;
  aliasname:String;
- index:integer;
- logincorrect:boolean;
+ aisadmin:Boolean;
 begin
- logincorrect:=false;
- username:=UpperCase(Request.QueryFields.Values['username']);
- password:=Request.QueryFields.Values['password'];
+ CheckRequireHttps(Request);
+ ResolveAuthenticatedUser(Request,username,aisadmin);
+ isadmin:=aisadmin;
  aliasname:=Request.QueryFields.Values['aliasname'];
- index:=LUsers.IndexOfName(username);
- if index>=0 then
- begin
-  if LUsers.Values[username]=password then
-  begin
-   logincorrect:=true;
-   isadmin:=username='ADMIN';
-  end;
- end;
- if Not LoginCorrect then
- begin
-  Raise Exception.Create(TranslateStr(848,'Incorrect user name or password'));
-//   ' User: '+username+' Password: '+password+' Index: '+IntToStr(index));
- end;
  if Length(aliasname)>0 then
  begin
   if not CheckPrivileges(username,aliasname) then
@@ -186,6 +521,12 @@ function TRpWebPageLoader.LoadLoginPage(Request: TWebRequest):string;
 var
  astring:String;
 begin
+ if not FAllowUserAccess then
+ begin
+  Result:='<html><body><h3>'+HtmlEncode(TranslateStr(838,'Report Manager Login'))+
+   '</h3><p>User/password access disabled. Use X-ReportmanServer-ApiKey header.</p></body></html>';
+  exit;
+ end;
  if Length(FPagesDirectory)<1 then
  begin
   astring:=loginpage;
@@ -213,8 +554,9 @@ var
  astring,username:String;
  aliasesstring:String;
  i:integer;
+ LisAdmin:Boolean;
 begin
- username:=UpperCase(Request.QueryFields.Values['username']);
+ ResolveAuthenticatedUser(Request,username,LisAdmin);
  if Length(FPagesDirectory)<1 then
  begin
   astring:=indexpage;
@@ -273,6 +615,8 @@ var
 begin
  try
   CheckInitReaded;
+  if apage<>rpwVersion then
+   CheckRequireHttps(Request);
   if Not (apage in [rpwVersion,rpwLogin]) then
    CheckLogin(Request);
   case apage of
@@ -290,6 +634,41 @@ begin
      end;
      // Configuration
      astring:=astring+'<p>[CONFIG]PAGESDIR='+HtmlEncode(FPagesDirectory)+'</p>';
+    astring:=astring+'<p>[SECURITY]USER_ACCESS='+HtmlEncode(BoolToStr(FAllowUserAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]API_KEY_ACCESS='+HtmlEncode(BoolToStr(FAllowApiKeyAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]REQUIRE_HTTPS='+HtmlEncode(BoolToStr(FRequireHttps,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]SHOWUNAUTHORIZEDPAGE='+HtmlEncode(BoolToStr(FShowUnauthorizedPage,True))+'</p>';
+    astring:=astring+'<p>Connection type='+HtmlEncode(GetConnectionType(Request))+'</p>';
+    astring:=astring+'<p>Connection secure='+HtmlEncode(BoolToStr(IsSecureConnection(Request),True))+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_PROTOCOL','HTTPS_PROTOCOL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS protocol='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_CIPHER','HTTPS_CIPHER']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS cipher='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_CIPHER_USEKEYSIZE','HTTPS_KEYSIZE']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS key size='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_S_DN','CERT_SUBJECT']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate subject='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_I_DN','CERT_ISSUER']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate issuer='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['CERT_SERIALNUMBER','SSL_SERVER_M_SERIAL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate serial='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_START','CERT_VALIDFROM']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate valid from='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_END','CERT_VALIDUNTIL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate valid until='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_VERIFY','CERT_SERVER_VERIFY',
+     'SSL_VERIFY_RESULT','CERT_VERIFY_RESULT']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate verify raw='+HtmlEncode(atemp)+'</p>';
+    astring:=astring+'<p>Certificate valid='+HtmlEncode(GetCertificateValidityText(Request))+'</p>';
      astring:=astring+'<p>Configured libs:<br/>';
      // Configured libs
      for i:=0 to FRpAliasLibs.Connections.Count-1 do
@@ -382,6 +761,11 @@ begin
     end;
   end;
  except
+    On E:EHttpError do
+    begin
+     Response.StatusCode:=E.StatusCode;
+     Response.Content:=GenerateError(E);
+    end;
   On E:Exception do
   begin
    Response.Content:=GenerateError(E);
@@ -393,7 +777,17 @@ function TRpWebPageLoader.GenerateError(e: Exception):string;
 var
  astring:String;
  errmessage:String;
+ ahttpError:EHttpError;
 begin
+ if e is EHttpError then
+ begin
+  ahttpError:=EHttpError(e);
+  if not ahttpError.ShowErrorPage then
+  begin
+   Result:=ahttpError.Message;
+   exit;
+  end;
+ end;
  errmessage := 'Error: '  + e.Message;
  if Length(e.StackTrace)>0 then
  begin
@@ -421,12 +815,18 @@ begin
  Owner:=AOwner;
  initreaded:=false;
  FRpAliasLibs:=TRpAlias.Create(nil);
+ FAllowUserAccess:=True;
+ FAllowApiKeyAccess:=True;
+ FRequireHttps:=False;
+ FShowUnauthorizedPage:=True;
 
  lusers:=TStringList.Create;
  lgroups:=TStringList.Create;
  lusergroups:=TStringList.Create;
  laliasgroups:=TStringList.Create;
  laliases:=TStringList.Create;
+ LServerApiKeys:=TStringList.Create;
+ LServerApiKeyUsers:=TStringList.Create;
  aresult:=TStringList.Create;
 
  aresult.clear;
@@ -534,6 +934,8 @@ begin
  LUserGroups.free;
  LAliasGroups.free;
  laliases.Free;
+ LServerApiKeys.Free;
+ LServerApiKeyUsers.Free;
  aresult.free;
 
  inherited Destroy;
@@ -583,9 +985,16 @@ begin
 {$ENDIF}
    FPagesDirectory:=Trim(inif.Readstring('CONFIG','PAGESDIR',''));
    fport:=inif.ReadInteger('CONFIG','TCPPORT',3060);
+  FAllowUserAccess:=ReadConfigBool(inif,'SECURITY','USER_ACCESS',True);
+  FAllowApiKeyAccess:=ReadConfigBool(inif,'SECURITY','API_KEY_ACCESS',True);
+  FRequireHttps:=ReadConfigBool(inif,'SECURITY','REQUIRE_HTTPS',False);
+  FShowUnauthorizedPage:=ReadConfigBool(inif,'SECURITY',
+   'SHOWUNAUTHORIZEDPAGE',True);
    inif.ReadSectionValues('USERS',lusers);
    inif.ReadSectionValues('GROUPS',lgroups);
    inif.ReadSectionValues('ALIASES',laliases);
+  inif.ReadSectionValues('SERVERAPIKEYS',LServerApiKeys);
+  inif.ReadSectionValues('SERVERAPIKEYUSERS',LServerApiKeyUsers);
    i:=0;
    while i<lusers.count do
    begin
@@ -826,10 +1235,13 @@ begin
     'value="'+Request.QueryFields.Values['reportname']+'">';
     inputstring:=inputstring+'<input type="hidden" name="aliasname" '+
     'value="'+Request.QueryFields.Values['aliasname']+'">';
-    inputstring:=inputstring+'<input type="hidden" name="username" '+
-    'value="'+Request.QueryFields.Values['username']+'">';
-    inputstring:=inputstring+'<input type="hidden" name="password" '+
-    'value="'+Request.QueryFields.Values['password']+'">';
+    if not HasServerApiKey(Request) then
+    begin
+     inputstring:=inputstring+'<input type="hidden" name="username" '+
+     'value="'+Request.QueryFields.Values['username']+'">';
+     inputstring:=inputstring+'<input type="hidden" name="password" '+
+     'value="'+Request.QueryFields.Values['password']+'">';
+    end;
     astring:=StringReplace(astring,REPMAN_HIDDEN,
      inputstring,[rfReplaceAll]);
 
@@ -1035,6 +1447,7 @@ var
  checkparamname,checkamessage:string;
  doexit:boolean;
  separator,textdriver:string;
+ LisAdmin:Boolean;
 begin
  CheckLogin(Request);
  dometafile:=false;
@@ -1042,7 +1455,7 @@ begin
  dosvg:=false;
  dotxt:=false;
  doexit:=false;
- username:=UpperCase(Request.QueryFields.Values['username']);
+ ResolveAuthenticatedUser(Request,username,LisAdmin);
  reportname:='';
  try
   aliasname:=Request.QueryFields.Values['aliasname'];
