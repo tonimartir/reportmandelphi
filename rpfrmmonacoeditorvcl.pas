@@ -167,6 +167,9 @@ implementation
 uses
   rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ToolWin, Vcl.ActnList;
 
+const
+  MonacoAssetsVersion = '2'; // bump to force re-extraction when asset layout changes
+
 type
   TEditorGuard = class(TInterfacedObject, IEditorGuard)
   private
@@ -428,20 +431,48 @@ begin
   LayoutTopControls;
 end;
 
+// Detect the folder that actually contains index.html after extraction.
+// Supports two ZIP layouts:
+//   flat: files at root (index.html, x64\…, x86\…)
+//   nested: files inside a MonacoEditor\ sub-folder (legacy build artefact)
+function FindMonacoActualRoot(const ABasePath: string): string;
+begin
+  if TFile.Exists(TPath.Combine(ABasePath, 'index.html')) or
+     TFile.Exists(TPath.Combine(ABasePath, 'Index.html')) then
+    Result := ABasePath
+  else if TFile.Exists(TPath.Combine(ABasePath, 'MonacoEditor\index.html')) or
+          TFile.Exists(TPath.Combine(ABasePath, 'MonacoEditor\Index.html')) then
+    Result := TPath.Combine(ABasePath, 'MonacoEditor')
+  else
+    Result := '';
+end;
+
 function TFRpMonacoEditorVCL.EnsureMonacoAssetsExtracted: string;
 var
   LBasePath: string;
+  LVersionPath: string;
+  LActualRoot: string;
   LResStream: TResourceStream;
   LZip: TZipFile;
 begin
   LBasePath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
-  if TFile.Exists(TPath.Combine(LBasePath, 'index.html')) then
+  LVersionPath := TPath.Combine(LBasePath, 'assets.version');
+
+  // Return cached assets only when both index.html and a matching version marker exist
+  LActualRoot := FindMonacoActualRoot(LBasePath);
+  if (LActualRoot <> '') and
+     TFile.Exists(LVersionPath) and
+     SameText(Trim(TFile.ReadAllText(LVersionPath, TEncoding.UTF8)), MonacoAssetsVersion) then
   begin
-    Result := LBasePath;
+    Result := LActualRoot;
     Exit;
   end;
 
+  // Wipe stale/missing extraction and re-extract
+  if TDirectory.Exists(LBasePath) then
+    TDirectory.Delete(LBasePath, True);
   TDirectory.CreateDirectory(LBasePath);
+
   LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
   try
     LZip := TZipFile.Create;
@@ -455,7 +486,14 @@ begin
     LResStream.Free;
   end;
 
-  Result := LBasePath;
+  // Resolve actual root after fresh extraction
+  LActualRoot := FindMonacoActualRoot(LBasePath);
+  if LActualRoot = '' then
+    LActualRoot := LBasePath; // fallback: unknown layout, use base
+
+  TFile.WriteAllText(LVersionPath, MonacoAssetsVersion, TEncoding.UTF8);
+
+  Result := LActualRoot;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(
@@ -486,8 +524,7 @@ procedure TFRpMonacoEditorVCL.EdgeNavigationCompleted(Sender: TCustomEdgeBrowser
 begin
   if IsSuccess then
   begin
-    if FSQL <> '' then
-      SetSQL(FSQL);
+    SetSQL(FSQL);
   end;
 end;
 
