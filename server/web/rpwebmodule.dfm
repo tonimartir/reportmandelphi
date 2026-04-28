@@ -37,6 +37,106 @@ object repwebmod: Trepwebmod
       Name = 'aexecute2'
       PathInfo = '/execute'
       OnAction = repwebmodaexecute2Action
+    end
+    item
+      Name = 'aadmin'
+      PathInfo = '/admin'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminbootstrap'
+      PathInfo = '/admin/bootstrap'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminlogin'
+      PathInfo = '/admin/login'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminserverconfig'
+      PathInfo = '/admin/server-config'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminusers'
+      PathInfo = '/admin/users'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminusersnew'
+      PathInfo = '/admin/users/new'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminusersedit'
+      PathInfo = '/admin/users/edit'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminusersdelete'
+      PathInfo = '/admin/users/delete'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadmingroups'
+      PathInfo = '/admin/groups'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadmingroupsnew'
+      PathInfo = '/admin/groups/new'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadmingroupsedit'
+      PathInfo = '/admin/groups/edit'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadmingroupsdelete'
+      PathInfo = '/admin/groups/delete'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminaliases'
+      PathInfo = '/admin/aliases'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminaliasesnew'
+      PathInfo = '/admin/aliases/new'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminaliasesedit'
+      PathInfo = '/admin/aliases/edit'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminaliasesdelete'
+      PathInfo = '/admin/aliases/delete'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminapikeys'
+      PathInfo = '/admin/apikeys'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminapikeysnew'
+      PathInfo = '/admin/apikeys/new'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminapikeysdelete'
+      PathInfo = '/admin/apikeys/delete'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadmindiagnostics'
+      PathInfo = '/admin/diagnostics'
+      OnAction = repwebmodaadminAction
     end>
   Left = 200
   Top = 154

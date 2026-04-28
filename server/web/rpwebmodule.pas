@@ -29,6 +29,8 @@ type
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure repwebmodaexecute2Action(Sender: TObject;
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+    procedure repwebmodaadminAction(Sender: TObject; Request: TWebRequest;
+      Response: TWebResponse; var Handled: Boolean);
   private
     { Private declarations }
     pageloader:TRpWebPageLoader;
@@ -101,6 +103,12 @@ procedure Trepwebmod.repwebmodaexecute2Action(Sender: TObject;
   Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
 begin
  pageloader.ExecuteReport(Request,Response);
+end;
+
+procedure Trepwebmod.repwebmodaadminAction(Sender: TObject;
+  Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+begin
+ pageloader.HandleAdminRequest(Request,Response);
 end;
 
 end.

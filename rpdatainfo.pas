@@ -100,7 +100,10 @@ uses Classes,SysUtils,
 {$ENDIF}
 
 {$IFDEF DELPHIENTERPRISEDBSTATIC}
+ {$IFDEF MSWINDOWS}
   FireDAC.Phys.DS,
+ {$ENDIF}
+  FireDAC.Phys.ODBC,
   FireDAC.Phys.MSSQL,
   FireDAC.Phys.ASA,FireDAC.Phys.DB2,  FireDAC.Phys.Infx,
   FireDAC.Phys.TData,
@@ -110,7 +113,6 @@ uses Classes,SysUtils,
  {$ENDIF}
   FireDAC.Phys.Oracle,
   FireDAC.Phys.ODBCDef,
-  FireDAC.Phys.ODBC,
 {$ENDIF}
 {$IFDEF USEBDE}
   dbtables,
@@ -5775,11 +5777,48 @@ begin
  // );
 end;
 
+procedure ForceLoadDrivers;
+begin
+  // Drivers Genéricos y de Conectividad
+  TFDPhysODBCDriverLink.Create(nil);
+
+  // SQL Server (vía ODBC en Linux)
+  TFDPhysMSSQLDriverLink.Create(nil);
+
+  // MySQL / MariaDB
+  TFDPhysMySQLDriverLink.Create(nil);
+
+  // PostgreSQL
+  TFDPhysPGDriverLink.Create(nil);
+
+  // SQLite
+  TFDPhysSQLiteDriverLink.Create(nil);
+
+  // Interbase / Firebird
+  TFDPhysIBDriverLink.Create(nil);
+  TFDPhysFBDriverLink.Create(nil);
+
+  {$IFDEF MSWINDOWS}
+  // Microsoft Access (Solo Windows)
+    TFDPhysMSAccessDriverLink.Create(nil);
+  // Advantage Database Server
+   TFDPhysADSDriverLink.Create(nil);
+  {$ENDIF}
+
+  // Otros Drivers que mencionaste (asegúrate de tener las unidades en el uses)
+  TFDPhysASADriverLink.Create(nil);   // Sybase ASA
+  TFDPhysDB2DriverLink.Create(nil);   // IBM DB2
+  TFDPhysInfxDriverLink.Create(nil);  // Informix
+  TFDPhysTDataDriverLink.Create(nil); // Teradata
+end;
 
 initialization
 {$IFDEF MSWINDOWS}
   @SHGetKnownFolderPath := GetProcAddress(GetModuleHandle('shell32.dll'),
 'SHGetKnownFolderPath');
 {$ENDIF}
+
+
+ForceLoadDrivers;
 
 end.

@@ -11,8 +11,11 @@ PAGESDIR=C:\inetpub\wwwroot\reportmanserver\pages\
 ; but HTTP requests are still handled by IIS/Apache.
 TCPPORT=3060
 
-; Optional log file written by the web server process.
-LOGFILE=C:\Logs\reportmanweb.log
+; Optional CSV log file written by the web server process.
+LOGFILE=C:\Logs\reportmanweb.csv
+; Enabled by default in code. When enabled, a second append-only JSON Lines
+; file is written next to LOGFILE using the same name and .jsonl extension.
+LOG_JSON=1
 
 [SECURITY]
 ; Both access modes are enabled by default in code when omitted.
@@ -27,6 +30,10 @@ SHOWUNAUTHORIZEDPAGE=1
 ; The CGI/ISAPI process can detect HTTPS/TLS metadata, but certificate trust is
 ; normally validated by IIS/Apache/reverse proxy, not by Reportman itself.
 REQUIRE_HTTPS=0
+; Disabled by default: current pages use POST to pass credentials and report
+; parameters. Enable only for legacy clients/templates that still require query
+; string parameters and the *_get.html templates.
+URLGETPARAMS=0
 
 [USERS]
 ; USERNAME=password

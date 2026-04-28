@@ -263,7 +263,7 @@ procedure Base64StringToStream(const value: string; stream: TMemoryStream);
 var
   bytes: TBytes;
 begin
-  stream.SetSize(0);
+  stream.SetSize(Int64(0));
   if value = '' then
   begin
     stream.Position := 0;

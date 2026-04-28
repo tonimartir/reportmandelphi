@@ -17,14 +17,19 @@ interface
 {$I rpconf.inc}
 
 uses
+{$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Messages,
+{$ENDIF}
   SysUtils, Classes, System.JSON, System.NetEncoding, System.DateUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
   IdHTTP,
 {$ENDIF}
-  ShellAPI, rptypes, System.Generics.Collections;
+{$IFDEF MSWINDOWS}
+  ShellAPI,
+{$ENDIF}
+  rptypes, System.Generics.Collections;
 
 type
   { TRpTier }
@@ -82,12 +87,16 @@ type
     FOnLog: TRpAuthLog;
     FLogListeners: TList<TRpAuthLog>;
     FAuthListeners: TList<TRpAuthEvent>;
+  {$IFDEF MSWINDOWS}
     FDispatchHandle: HWND;
+  {$ENDIF}
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+  {$IFDEF MSWINDOWS}
     procedure DispatchWndProc(var Msg: TMessage);
+  {$ENDIF}
 
     class var FInstance: TRpAuthManager;
     constructor Create;
@@ -162,10 +171,16 @@ type
 
 implementation
 
-uses Winapi.WinSock, IniFiles, IOUtils;
+uses
+{$IFDEF MSWINDOWS}
+  Winapi.WinSock,
+{$ENDIF}
+  IniFiles, IOUtils;
 
+{$IFDEF MSWINDOWS}
 const
   WM_RP_AUTH_DISPATCH = WM_USER + 210;
+{$ENDIF}
 
 { TRpAuthManager }
 
@@ -177,12 +192,15 @@ begin
   FAILanguage := ResolveDefaultAILanguage;
   FLogListeners := TList<TRpAuthLog>.Create;
   FAuthListeners := TList<TRpAuthEvent>.Create;
+{$IFDEF MSWINDOWS}
   FDispatchHandle := AllocateHWnd(DispatchWndProc);
+{$ENDIF}
   FInstallId := GenerateInstallId;
   LoadConfig;
 end;
 
 function TRpAuthManager.GenerateInstallId: string;
+{$IFDEF MSWINDOWS}
 var
   VolumeSerialNumber: DWORD;
   MaximumComponentLength, FileSystemFlags: DWORD;
@@ -199,6 +217,41 @@ begin
   Result := 'repman-' + IntToHex(VolumeSerialNumber, 8) + '-' +
     LowerCase(string(ComputerName));
 end;
+{$ELSE}
+{$IFDEF LINUX}
+var
+  LMachineId: string;
+  LLines: TStringList;
+begin
+  LMachineId := '';
+  LLines := TStringList.Create;
+  try
+    if FileExists('/etc/machine-id') then
+      LLines.LoadFromFile('/etc/machine-id')
+    else if FileExists('/var/lib/dbus/machine-id') then
+      LLines.LoadFromFile('/var/lib/dbus/machine-id');
+    if LLines.Count>0 then
+      LMachineId := Trim(LLines.Strings[0]);
+  finally
+    LLines.Free;
+  end;
+  if LMachineId='' then
+    LMachineId := Trim(GetEnvironmentVariable('HOSTNAME'));
+  if LMachineId='' then
+    LMachineId := Trim(GetEnvironmentVariable('USER'));
+  if LMachineId='' then
+    LMachineId := 'unknown';
+  Result := 'repman-linux-' + LowerCase(LMachineId);
+end;
+{$ENDIF}
+{$IFNDEF LINUX}
+begin
+  Result := 'repman-' + LowerCase(Trim(GetEnvironmentVariable('USER')));
+  if Result='repman-' then
+    Result := 'repman-unknown';
+end;
+{$ENDIF}
+{$ENDIF}
 
 {$IFDEF FIREDAC}
 procedure TRpAuthManager.AcceptAnyServerCertificate(const Sender: TObject;
@@ -222,13 +275,16 @@ end;
 
 destructor TRpAuthManager.Destroy;
 begin
+{$IFDEF MSWINDOWS}
   if FDispatchHandle <> 0 then
     DeallocateHWnd(FDispatchHandle);
+{$ENDIF}
   FLogListeners.Free;
   FAuthListeners.Free;
   inherited Destroy;
 end;
 
+{$IFDEF MSWINDOWS}
 procedure TRpAuthManager.DispatchWndProc(var Msg: TMessage);
 var
   LPayload: TRpQueuedAuthListenerPayload;
@@ -246,12 +302,15 @@ begin
   else
     Msg.Result := DefWindowProc(FDispatchHandle, Msg.Msg, Msg.WParam, Msg.LParam);
 end;
+{$ENDIF}
 
 procedure TRpAuthManager.Log(const AMsg: string);
 var
   LListener: TRpAuthLog;
 begin
+{$IFDEF MSWINDOWS}
   OutputDebugString(PChar('RpAuth: ' + AMsg));
+{$ENDIF}
   if Assigned(FOnLog) then
     FOnLog(AMsg);
   for LListener in FLogListeners do
@@ -498,9 +557,12 @@ begin
 end;
 
 procedure TRpAuthManager.DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+{$IFDEF MSWINDOWS}
 var
   LPayload: TRpQueuedAuthListenerPayload;
+{$ENDIF}
 begin
+{$IFDEF MSWINDOWS}
   if GetCurrentThreadId = MainThreadID then
     AListener(ASuccess)
   else
@@ -511,6 +573,9 @@ begin
     if not PostMessage(FDispatchHandle, WM_RP_AUTH_DISPATCH, WPARAM(LPayload), 0) then
       LPayload.Free;
   end;
+{$ELSE}
+  AListener(ASuccess);
+{$ENDIF}
 end;
 
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
@@ -747,13 +812,24 @@ end;
 
 class function TRpAuthManager.ResolveDefaultAILanguage: string;
 var
+{$IFDEF MSWINDOWS}
   LBuffer: array[0..15] of Char;
+{$ENDIF}
   LCode: string;
+  LPos: Integer;
 begin
   LCode := '';
+{$IFDEF MSWINDOWS}
   if GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, LBuffer,
     Length(LBuffer)) > 0 then
     LCode := LowerCase(string(LBuffer));
+{$ELSE}
+  LCode := LowerCase(Trim(GetEnvironmentVariable('LANG')));
+  LPos := Pos('.', LCode);
+  if LPos > 0 then
+    LCode := Copy(LCode, 1, LPos - 1);
+  LCode := StringReplace(LCode, '_', '-', [rfReplaceAll]);
+{$ENDIF}
 
   Result := NormalizeAILanguageValue(LCode);
 end;
@@ -809,6 +885,7 @@ begin
 end;
 
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
+{$IFDEF MSWINDOWS}
 var
   LListenSocket, LClientSocket: TSocket;
   LAddr: sockaddr_in;
@@ -919,6 +996,12 @@ begin
     closesocket(LListenSocket);
   end;
 end;
+{$ELSE}
+begin
+  Result := False;
+  Log('OAuth loopback callback is not supported on this platform.');
+end;
+{$ENDIF}
 
 function TRpAuthManager.ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
 {$IFDEF FIREDAC}
@@ -1111,6 +1194,7 @@ end;
 {$ENDIF}
 
 function TRpAuthManager.LoginGoogle: Boolean;
+{$IFDEF MSWINDOWS}
 const
   GOOGLE_CLIENT_ID = '446365228848-pn415lkvsetqa7v7fi7ftg96m61ccl5p.apps.googleusercontent.com';
 var
@@ -1132,8 +1216,15 @@ begin
     WSACleanup;
   end;
 end;
+{$ELSE}
+begin
+  Result := False;
+  Log('Google OAuth login is not supported on this platform.');
+end;
+{$ENDIF}
 
 function TRpAuthManager.LoginMicrosoft: Boolean;
+{$IFDEF MSWINDOWS}
 const
   MS_CLIENT_ID = 'bc88d289-ded3-4389-a62b-2f12ad635dac';
 var
@@ -1155,6 +1246,12 @@ begin
     WSACleanup;
   end;
 end;
+{$ELSE}
+begin
+  Result := False;
+  Log('Microsoft OAuth login is not supported on this platform.');
+end;
+{$ENDIF}
 
 function TRpAuthManager.RefreshTiers: Boolean;
 {$IFDEF FIREDAC}
@@ -1274,7 +1371,12 @@ end;
 
 procedure TRpAuthManager.OpenUrl(const AUrl: string);
 begin
+{$IFDEF MSWINDOWS}
   if AUrl <> '' then ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+{$ELSE}
+  if AUrl <> '' then
+    Log('OpenUrl is not supported on this platform: '+AUrl);
+{$ENDIF}
 end;
 
 function TRpAuthManager.GetConfigFileName: string;
