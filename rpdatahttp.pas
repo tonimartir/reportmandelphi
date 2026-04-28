@@ -108,7 +108,9 @@ type
     function GetSchemas(AList: TStrings): Boolean;
     function GetUserSchemas(AList: TStrings): Boolean;
     function GetUserAgents(AList: TStrings): Boolean;
-    function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean;
+    function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
+    function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
+      ResponseStream: TStream; ATimeoutMs: Integer): Boolean; overload;
     function InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean;
   end;
   { TRpDatasetHttp }
@@ -1182,6 +1184,13 @@ begin
   end;
 end;
 function TRpDatabaseHttp.InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean;
+begin
+  Result := InternalRequest(AAction, RequestBody, ResponseStream, 0);
+end;
+
+function TRpDatabaseHttp.InternalRequest(const AAction: string;
+  const RequestBody: TJSONObject; ResponseStream: TStream;
+  ATimeoutMs: Integer): Boolean;
 {$IFDEF FIREDAC}
 var
   LHttpClient: TNetHTTPClient;
@@ -1195,7 +1204,12 @@ begin
   LHttpClient := TNetHTTPClient.Create(nil);
   try
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
-    if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    if ATimeoutMs > 0 then
+    begin
+      LHttpClient.ConnectionTimeout := ATimeoutMs;
+      LHttpClient.ResponseTimeout := ATimeoutMs;
+    end
+    else if SameText(AAction, 'ReportDesigner/ModifyReport') then
     begin
       LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
       LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
@@ -1263,7 +1277,12 @@ begin
   Result := False;
   LIdHttp := TIdHTTP.Create(nil);
   try
-    if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    if ATimeoutMs > 0 then
+    begin
+      LIdHttp.ConnectTimeout := ATimeoutMs;
+      LIdHttp.ReadTimeout := ATimeoutMs;
+    end
+    else if SameText(AAction, 'ReportDesigner/ModifyReport') then
     begin
       LIdHttp.ConnectTimeout := MODIFY_REPORT_TIMEOUT_MS;
       LIdHttp.ReadTimeout := MODIFY_REPORT_TIMEOUT_MS;

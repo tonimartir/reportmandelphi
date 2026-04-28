@@ -5,7 +5,7 @@ interface
 
 uses
   SysUtils, Classes, HTTPApp,rptypes,rpmdconsts,inifiles,
-{$IFDEF USEADO}
+{$IFDEF MSWINDOWS}
   ActiveX,
 {$ENDIF}
   rpmdshfolder,
@@ -34,6 +34,9 @@ type
   private
     { Private declarations }
     pageloader:TRpWebPageLoader;
+{$IFDEF MSWINDOWS}
+    FCoInitResult: HRESULT;
+{$ENDIF}
   public
     { Public declarations }
   end;
@@ -55,8 +58,8 @@ end;
 procedure Trepwebmod.WebModuleCreate(Sender: TObject);
 begin
  pageloader:=TRpWebPageLoader.Create(Self);
-{$IFDEF USEADO}
- Coinitialize(nil);
+{$IFDEF MSWINDOWS}
+ FCoInitResult:=CoInitialize(nil);
 {$ENDIF}
 end;
 
@@ -65,6 +68,10 @@ end;
 
 procedure Trepwebmod.WebModuleDestroy(Sender: TObject);
 begin
+{$IFDEF MSWINDOWS}
+ if Succeeded(FCoInitResult) then
+  CoUninitialize;
+{$ENDIF}
  pageloader.free;
 end;
 

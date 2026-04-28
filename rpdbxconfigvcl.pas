@@ -135,7 +135,10 @@ implementation
 
 {$R *.dfm}
 
-uses rpreport;
+uses System.JSON, rpreport, rpdatahttp, rpauthmanager;
+
+const
+  HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
 
 function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
 begin
@@ -149,6 +152,37 @@ begin
   Result:=rpdbHttp
  else
   Result:=rpdatadbexpress;
+end;
+
+function ExecuteHttpConnectionTest(AParams: TStrings): Boolean;
+var
+ LDatabase: TRpDatabaseHttp;
+ LRequestBody: TJSONObject;
+ LResponseStream: TMemoryStream;
+begin
+ Result:=False;
+ LDatabase:=TRpDatabaseHttp.Create;
+ try
+  LDatabase.ApiKey:=AParams.Values['ApiKey'];
+  LDatabase.HubDatabaseId:=StrToInt64Def(AParams.Values['HubDatabaseId'],0);
+  if (LDatabase.ApiKey='') and (TRpAuthManager.Instance.Token<>'') then
+   LDatabase.Token:=TRpAuthManager.Instance.Token;
+  LRequestBody:=TJSONObject.Create;
+  try
+   LRequestBody.AddPair('hubDatabaseId',TJSONNumber.Create(LDatabase.HubDatabaseId));
+   LResponseStream:=TMemoryStream.Create;
+   try
+    Result:=LDatabase.InternalRequest('api/agent/testconnection',
+      LRequestBody,LResponseStream,HTTP_TEST_CONNECTION_TIMEOUT_MS);
+   finally
+    LResponseStream.Free;
+   end;
+  finally
+   LRequestBody.Free;
+  end;
+ finally
+  LDatabase.Free;
+ end;
 end;
 
 constructor TRpQueuedHubDiscoveryPayload.Create;
@@ -466,6 +500,12 @@ begin
  try
   ConAdmin.GetConnectionParams(conname,alist);
   drivername:=Trim(alist.Values['DriverName']);
+    if SameText(drivername,'Reportman AI Agent') then
+    begin
+     if ExecuteHttpConnectionTest(alist) then
+      RpShowMessage(SRpConnectionOk);
+     exit;
+    end;
  finally
   alist.Free;
  end;
@@ -479,7 +519,7 @@ begin
   dbinfo:=report.DatabaseInfo.Add(conname);
   dbinfo.Driver:=ResolveDbxConnectionDriver(drivername);
   dbinfo.LoginPrompt:=False;
-  dbinfo.Connect(nil);
+    dbinfo.Connect(nil);
   try
    RpShowMessage(SRpConnectionOk);
   finally

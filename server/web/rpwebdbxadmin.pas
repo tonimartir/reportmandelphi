@@ -126,7 +126,10 @@ type
 implementation
 
 uses
-  rpreport;
+  System.JSON, rpreport, rpdatahttp, rpauthmanager;
+
+const
+  HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
 
 function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
 begin
@@ -140,6 +143,37 @@ begin
     Result := rpdbHttp
   else
     Result := rpdatadbexpress;
+end;
+
+function ExecuteHttpConnectionTest(AParams: TStrings): Boolean;
+var
+  LDatabase: TRpDatabaseHttp;
+  LRequestBody: TJSONObject;
+  LResponseStream: TMemoryStream;
+begin
+  Result := False;
+  LDatabase := TRpDatabaseHttp.Create;
+  try
+    LDatabase.ApiKey := AParams.Values['ApiKey'];
+    LDatabase.HubDatabaseId := StrToInt64Def(AParams.Values['HubDatabaseId'], 0);
+    if (LDatabase.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
+      LDatabase.Token := TRpAuthManager.Instance.Token;
+    LRequestBody := TJSONObject.Create;
+    try
+      LRequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(LDatabase.HubDatabaseId));
+      LResponseStream := TMemoryStream.Create;
+      try
+        Result := LDatabase.InternalRequest('api/agent/testconnection',
+          LRequestBody, LResponseStream, HTTP_TEST_CONNECTION_TIMEOUT_MS);
+      finally
+        LResponseStream.Free;
+      end;
+    finally
+      LRequestBody.Free;
+    end;
+  finally
+    LDatabase.Free;
+  end;
 end;
 
 class function TRpWebConnectionParam.Create: TRpWebConnectionParam;
@@ -272,6 +306,14 @@ begin
   Result.DriverName := LDriverName;
   AddSafeDetails(AConnectionName, AParams, Result.SafeDetails);
   try
+    if SameText(LDriverName, 'Reportman AI Agent') then
+    begin
+      Result.Success := ExecuteHttpConnectionTest(AParams);
+      if Result.Success then
+        Result.MessageText := SRpConnectionOk;
+      Exit;
+    end;
+
     LReport := TRpReport.Create(nil);
     try
       if Length(Trim(FConnectionsOverride)) > 0 then

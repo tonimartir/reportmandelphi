@@ -2535,6 +2535,7 @@ ndataset:TClientDataset;
 {$IFDEF FIREDAC}
  fetchItems: TFDFetchItems;
 {$ENDIF}
+ LHttpDataset: TRpDatasetHttp;
 begin
  if connecting then
   Raise Exception.Create(SRpCircularDatalink+' - '+alias);
@@ -3160,15 +3161,16 @@ begin
         // Use the new HTTP driver to fill the ClientDataSet
         if not Assigned(baseinfo.FHttpDatabase) then
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
-           
-        with TRpDatasetHttp.Create(baseinfo.FHttpDatabase, TClientDataSet(FSQLInternalQuery), params) do
+
+        LHttpDataset := TRpDatasetHttp.Create(baseinfo.FHttpDatabase,
+          TClientDataSet(FSQLInternalQuery), params);
         try
-          Sql := SQLsentence;
-          Open;
-          FSQLInternalQuery := Dataset;
+          LHttpDataset.Sql := SQLsentence;
+          LHttpDataset.Open;
+          FSQLInternalQuery := LHttpDataset.Dataset;
           FDataset := FSQLInternalQuery;
         finally
-          Free;
+          LHttpDataset.Free;
         end;
       end;
     end;
