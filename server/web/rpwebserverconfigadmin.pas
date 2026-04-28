@@ -7,6 +7,9 @@ interface
 uses
   Classes, SysUtils, IniFiles, Generics.Collections, rpmdshfolder;
 
+function ResolveReportmanServerConfigFileName(
+  const AConfigOverride: string = ''): string;
+
 type
   TRpWebServerConfigFormData = record
     PagesDir: string;
@@ -16,7 +19,6 @@ type
     UserAccess: Boolean;
     ApiKeyAccess: Boolean;
     ShowUnauthorizedPage: Boolean;
-    RequireHttps: Boolean;
     UrlGetParams: Boolean;
   end;
 
@@ -166,6 +168,106 @@ type
   end;
 
 implementation
+
+procedure CopyFileSimple(const ASourceFileName, ADestFileName: string);
+var
+  LSource: TFileStream;
+  LDest: TFileStream;
+begin
+  LSource := TFileStream.Create(ASourceFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    ForceDirectories(ExtractFilePath(ADestFileName));
+    LDest := TFileStream.Create(ADestFileName, fmCreate);
+    try
+      LDest.CopyFrom(LSource, 0);
+    finally
+      LDest.Free;
+    end;
+  finally
+    LSource.Free;
+  end;
+end;
+
+function CanWriteToPath(const AFileName: string): Boolean;
+var
+  LDir: string;
+  LProbeFileName: string;
+  LStream: TFileStream;
+  LExisting: Boolean;
+  LGuid: TGUID;
+begin
+  Result := False;
+  LExisting := FileExists(AFileName);
+  if LExisting then
+  begin
+    try
+      LStream := TFileStream.Create(AFileName, fmOpenReadWrite or fmShareDenyNone);
+      try
+        Result := True;
+      finally
+        LStream.Free;
+      end;
+    except
+      Result := False;
+    end;
+    Exit;
+  end;
+
+  LDir := ExtractFilePath(AFileName);
+  if Length(Trim(LDir)) = 0 then
+    LDir := '.' + PathDelim;
+  try
+    ForceDirectories(LDir);
+    if CreateGUID(LGuid) <> 0 then
+      raise Exception.Create('Could not create temporary file name');
+    LProbeFileName := IncludeTrailingPathDelimiter(LDir) +
+      '.rpweb-write-test-' + GUIDToString(LGuid) + '.tmp';
+    LStream := TFileStream.Create(LProbeFileName, fmCreate);
+    try
+      Result := True;
+    finally
+      LStream.Free;
+      DeleteFile(LProbeFileName);
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+function ResolveReportmanServerConfigFileName(
+  const AConfigOverride: string): string;
+var
+  LCommonFileName: string;
+  LLocalFileName: string;
+begin
+  if Length(Trim(AConfigOverride)) > 0 then
+    Exit(Trim(AConfigOverride));
+
+  LCommonFileName := Obtainininamecommonconfig('', '', 'reportmanserver');
+  LLocalFileName := Obtainininamelocalconfig('', '', 'reportmanserver');
+
+{$IFDEF LINUX}
+  if FileExists(LLocalFileName) then
+    Exit(LLocalFileName);
+
+  if FileExists(LCommonFileName) then
+  begin
+    CopyFileSimple(LCommonFileName, LLocalFileName);
+    Exit(LLocalFileName);
+  end;
+
+  ForceDirectories(ExtractFilePath(LLocalFileName));
+  Exit(LLocalFileName);
+{$ENDIF}
+
+  if CanWriteToPath(LCommonFileName) then
+    Exit(LCommonFileName);
+
+  if FileExists(LLocalFileName) or CanWriteToPath(LLocalFileName) then
+    Exit(LLocalFileName);
+
+  Result := LCommonFileName;
+end;
 
 function NormalizeSectionKeyValues(AIni: TMemIniFile; const ASection: string): TStringList;
 begin
@@ -369,10 +471,7 @@ end;
 
 function TRpWebServerConfigAdminService.GetConfigFileName: string;
 begin
-  if Length(Trim(FConfigOverride)) > 0 then
-    Result := FConfigOverride
-  else
-    Result := Obtainininamecommonconfig('', '', 'reportmanserver');
+  Result := ResolveReportmanServerConfigFileName(FConfigOverride);
 end;
 
 function TRpWebServerConfigAdminService.GetConfigInfo: TRpWebServerConfigInfo;
@@ -455,7 +554,6 @@ begin
     Result.UserAccess := Trim(LIni.ReadString('SECURITY', 'USER_ACCESS', '1')) <> '0';
     Result.ApiKeyAccess := Trim(LIni.ReadString('SECURITY', 'API_KEY_ACCESS', '1')) <> '0';
     Result.ShowUnauthorizedPage := Trim(LIni.ReadString('SECURITY', 'SHOWUNAUTHORIZEDPAGE', '1')) <> '0';
-    Result.RequireHttps := Trim(LIni.ReadString('SECURITY', 'REQUIRE_HTTPS', '0')) <> '0';
     Result.UrlGetParams := Trim(LIni.ReadString('SECURITY', 'URLGETPARAMS', '0')) <> '0';
   finally
     LIni.Free;
@@ -478,7 +576,7 @@ begin
     LIni.WriteString('SECURITY', 'USER_ACCESS', BoolToIni(AData.UserAccess));
     LIni.WriteString('SECURITY', 'API_KEY_ACCESS', BoolToIni(AData.ApiKeyAccess));
     LIni.WriteString('SECURITY', 'SHOWUNAUTHORIZEDPAGE', BoolToIni(AData.ShowUnauthorizedPage));
-    LIni.WriteString('SECURITY', 'REQUIRE_HTTPS', BoolToIni(AData.RequireHttps));
+    LIni.DeleteKey('SECURITY', 'REQUIRE_HTTPS');
     LIni.WriteString('SECURITY', 'URLGETPARAMS', BoolToIni(AData.UrlGetParams));
     LIni.UpdateFile;
   finally

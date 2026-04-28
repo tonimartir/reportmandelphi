@@ -10,7 +10,7 @@ uses SysUtils,Classes,HTTPApp,rpmdconsts,Inifiles,rpalias,System.NetEncoding,
  Windows,FileCtrl,asptlb,
 {$ENDIF}
  rpmdshfolder,rptypes,rpreport,rppdfdriver,rpparams,rptextdriver,rpsvgdriver,
- rpcsvdriver,rpdatainfo,rpwebserverconfigadmin,rpwebadminauth,
+ rpcsvdriver,rpdatainfo,rpwebserverconfigadmin,rpwebdbxadmin,rpwebadminauth,
  rpwebadminpages,
 {$IFDEF USEVARIANTS}
  Variants,
@@ -76,7 +76,6 @@ type
    isadmin:boolean;
   FAllowUserAccess:Boolean;
   FAllowApiKeyAccess:Boolean;
-  FRequireHttps:Boolean;
   FShowUnauthorizedPage:Boolean;
   FUrlGetParams:Boolean;
   FLogJson:Boolean;
@@ -114,7 +113,6 @@ type
   function IsSecureConnection(Request: TWebRequest): Boolean;
   function GetConnectionType(Request: TWebRequest): string;
   function GetCertificateValidityText(Request: TWebRequest): string;
-  procedure CheckRequireHttps(Request: TWebRequest);
   function HasServerApiKey(Request: TWebRequest): Boolean;
   function GetServerApiKeyName(Request: TWebRequest): string;
   function ReportParamsToJson(AReport: TRpReport): string;
@@ -134,6 +132,7 @@ type
    const AName: string): Boolean; static;
   procedure CollectAdminPrefixedValues(Request: TWebRequest;
    const APrefix: string; AValues: TStrings);
+  procedure CollectConnectionParamValues(Request: TWebRequest; AValues: TStrings);
   procedure LoadAllGroupNames(AGroupNames: TStrings);
   procedure LoadAllUserNames(AUserNames: TStrings);
   function LoadAdminBootstrapPage(Request: TWebRequest): string;
@@ -169,6 +168,19 @@ type
    const AMessageText: string=''): string;
   function ExecuteAdminApiKeyCreate(Request: TWebRequest): string;
   function ExecuteAdminApiKeyDelete(Request: TWebRequest): string;
+  function LoadAdminConnectionsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminConnectionNewPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminConnectionEditPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminConnectionsRawPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminConnectionCreate(Request: TWebRequest): string;
+  function ExecuteAdminConnectionSave(Request: TWebRequest): string;
+  function ExecuteAdminConnectionDelete(Request: TWebRequest): string;
+  function ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
+  function ExecuteAdminConnectionTest(Request: TWebRequest): string;
   function LoadAdminDiagnosticsPage(Request: TWebRequest;
    const AMessageText: string=''): string;
   procedure WriteStructuredLog(const AEvent,AUser,AApiKey,ARemoteAddr,
@@ -445,6 +457,27 @@ begin
  end;
 end;
 
+procedure TRpWebPageLoader.CollectConnectionParamValues(Request: TWebRequest;
+  AValues: TStrings);
+var
+ LParams:TStringList;
+ i:Integer;
+ LName:string;
+begin
+ AValues.Clear;
+ LParams:=CreateAdminParamList(Request);
+ try
+  for i:=0 to LParams.Count-1 do
+  begin
+   LName:=LParams.Names[i];
+   if Pos('connparam_',LowerCase(LName))=1 then
+    AValues.Values[Copy(LName,11,Length(LName))]:=LParams.ValueFromIndex[i];
+  end;
+ finally
+  LParams.Free;
+ end;
+end;
+
 function TRpWebPageLoader.GetRequestHeader(Request: TWebRequest;
   const AName: string): string;
 var
@@ -609,15 +642,6 @@ begin
  end;
 
  Result:='Unknown';
-end;
-
-procedure TRpWebPageLoader.CheckRequireHttps(Request: TWebRequest);
-begin
- if not FRequireHttps then
-  exit;
- if IsSecureConnection(Request) then
-  exit;
- Raise EHttpError.CreateHttp(403,'HTTPS required',True);
 end;
 
 function TRpWebPageLoader.HasServerApiKey(Request: TWebRequest): Boolean;
@@ -872,7 +896,6 @@ var
  aliasname:String;
  aisadmin:Boolean;
 begin
- CheckRequireHttps(Request);
  ResolveAuthenticatedUser(Request,username,aisadmin);
  isadmin:=aisadmin;
  aliasname:=GetRequestParam(Request,'aliasname');
@@ -1098,7 +1121,6 @@ begin
   LData.ApiKeyAccess:=RequestCheckboxChecked(Request,'cfg_api_key_access');
   LData.ShowUnauthorizedPage:=RequestCheckboxChecked(Request,
    'cfg_show_unauthorized');
-  LData.RequireHttps:=RequestCheckboxChecked(Request,'cfg_require_https');
   LData.UrlGetParams:=RequestCheckboxChecked(Request,'cfg_url_get_params');
   try
    LService.SaveServerConfigFormData(LData);
@@ -1584,6 +1606,213 @@ begin
  end;
 end;
 
+function TRpWebPageLoader.LoadAdminConnectionsPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LItems:TList<TRpWebConnectionItem>;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ LItems:=TList<TRpWebConnectionItem>.Create;
+ try
+  LService.ListConnections(LItems);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionsList(LItems,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LItems.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionNewPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LDrivers:TStringList;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ LDrivers:=TStringList.Create;
+ try
+  LService.ListDrivers(LDrivers);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionNew(LDrivers,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LDrivers.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionEditPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LParams:TList<TRpWebConnectionParam>;
+ LConnectionName:string;
+ LUserName:string;
+ LIsAdmin:Boolean;
+ i:Integer;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LConnectionName:=GetAdminParam(Request,'name');
+ if Length(Trim(LConnectionName))=0 then
+  LConnectionName:=GetAdminParam(Request,'connection_name');
+ if Length(Trim(LConnectionName))=0 then
+  raise Exception.Create('Connection name is required');
+ LService:=TRpWebDbxAdminService.Create;
+ LParams:=TList<TRpWebConnectionParam>.Create;
+ try
+  LService.GetConnectionParams(LConnectionName,LParams);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionEdit(LConnectionName,
+   LParams,HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  for i:=0 to LParams.Count-1 do
+   LParams[i].Clear;
+  LParams.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionsRawPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebRawConfigResult;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  LResult:=LService.LoadRawDbxConnections;
+  Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(LResult.ConfigText,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LService.CreateConnection(GetAdminParam(Request,'connection_name'),
+    GetAdminParam(Request,'driver_name'));
+   Result:=LoadAdminConnectionEditPage(Request,'Connection created');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionNewPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionSave(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LValues:TStringList;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  try
+   LService.UpdateConnectionParams(GetAdminParam(Request,'connection_name'),
+    LValues);
+   Result:=LoadAdminConnectionEditPage(Request,'Connection saved');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionEditPage(Request,E.Message);
+  end;
+ finally
+  LValues.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LService.DeleteConnection(GetAdminParam(Request,'connection_name'));
+   Result:=LoadAdminConnectionsPage(Request,'Connection deleted');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionsPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebRawConfigResult;
+ LMessage:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LResult:=LService.SaveRawDbxConnections(
+    GetAdminParam(Request,'raw_config_text'),
+    RequestCheckboxChecked(Request,'create_backup'));
+   LMessage:=LResult.MessageText;
+   if Length(Trim(LResult.BackupFileName))>0 then
+    LMessage:=LMessage+' Backup: '+LResult.BackupFileName;
+   Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(LResult.ConfigText,
+    HiddenAdminAuthInputs(Request),LMessage);
+  except
+   on E:Exception do
+    Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(
+     GetAdminParam(Request,'raw_config_text'),HiddenAdminAuthInputs(Request),
+     E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionTest(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebConnectionTestResult;
+ LValues:TStringList;
+ LConnectionName:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ try
+  LConnectionName:=GetAdminParam(Request,'connection_name');
+  CollectConnectionParamValues(Request,LValues);
+  if LValues.Count>0 then
+   LResult:=LService.TestConnectionValues(LConnectionName,LValues)
+  else
+   LResult:=LService.TestConnection(LConnectionName);
+  try
+   Result:=TRpWebAdminPageRenderer.RenderConnectionTest(LConnectionName,
+    LResult,HiddenAdminAuthInputs(Request));
+  finally
+   LResult.Clear;
+  end;
+ finally
+  LValues.Free;
+  LService.Free;
+ end;
+end;
+
 function TRpWebPageLoader.LoadAdminDiagnosticsPage(Request: TWebRequest;
   const AMessageText: string): string;
 var
@@ -1631,8 +1860,6 @@ var
 begin
  try
   CheckInitReaded;
-  if apage<>rpwVersion then
-   CheckRequireHttps(Request);
   if Not (apage in [rpwVersion,rpwLogin]) then
    CheckLogin(Request);
   case apage of
@@ -1662,7 +1889,6 @@ begin
      astring:=astring+'<p>[CONFIG]PAGESDIR='+HtmlEncode(FPagesDirectory)+'</p>';
     astring:=astring+'<p>[SECURITY]USER_ACCESS='+HtmlEncode(BoolToStr(FAllowUserAccess,True))+'</p>';
     astring:=astring+'<p>[SECURITY]API_KEY_ACCESS='+HtmlEncode(BoolToStr(FAllowApiKeyAccess,True))+'</p>';
-    astring:=astring+'<p>[SECURITY]REQUIRE_HTTPS='+HtmlEncode(BoolToStr(FRequireHttps,True))+'</p>';
     astring:=astring+'<p>[SECURITY]SHOWUNAUTHORIZEDPAGE='+HtmlEncode(BoolToStr(FShowUnauthorizedPage,True))+'</p>';
     astring:=astring+'<p>[SECURITY]URLGETPARAMS='+HtmlEncode(BoolToStr(FUrlGetParams,True))+'</p>';
     astring:=astring+'<p>Connection type='+HtmlEncode(GetConnectionType(Request))+'</p>';
@@ -1807,7 +2033,6 @@ var
 begin
  try
   CheckInitReaded;
-  CheckRequireHttps(Request);
   LPath:=LowerCase(Request.PathInfo);
   if LPath='/admin' then
    Response.Content:=LoadAdminHomePage(Request)
@@ -1834,6 +2059,33 @@ begin
    else
     Response.Content:=LoadAdminServerConfigPage(Request);
   end
+  else if LPath='/admin/connections' then
+   Response.Content:=LoadAdminConnectionsPage(Request)
+  else if LPath='/admin/connections/new' then
+  begin
+   if RequestHasParam(Request,'connection_action_create') then
+    Response.Content:=ExecuteAdminConnectionCreate(Request)
+   else
+    Response.Content:=LoadAdminConnectionNewPage(Request);
+  end
+  else if LPath='/admin/connections/edit' then
+  begin
+   if RequestHasParam(Request,'connection_action_save') then
+    Response.Content:=ExecuteAdminConnectionSave(Request)
+   else
+    Response.Content:=LoadAdminConnectionEditPage(Request);
+  end
+  else if LPath='/admin/connections/delete' then
+   Response.Content:=ExecuteAdminConnectionDelete(Request)
+  else if LPath='/admin/connections/raw' then
+  begin
+   if RequestHasParam(Request,'raw_action_save') then
+    Response.Content:=ExecuteAdminConnectionsRawSave(Request)
+   else
+    Response.Content:=LoadAdminConnectionsRawPage(Request);
+  end
+  else if LPath='/admin/connections/test' then
+   Response.Content:=ExecuteAdminConnectionTest(Request)
   else if LPath='/admin/users' then
    Response.Content:=LoadAdminUsersPage(Request)
   else if LPath='/admin/users/new' then
@@ -1926,7 +2178,6 @@ begin
  FRpAliasLibs:=TRpAlias.Create(nil);
  FAllowUserAccess:=True;
  FAllowApiKeyAccess:=True;
- FRequireHttps:=False;
  FShowUnauthorizedPage:=True;
  FUrlGetParams:=False;
  FLogJson:=True;
@@ -2115,7 +2366,7 @@ var
 begin
  Ffilenameconfig:='';
  try
-  Ffilenameconfig:=Obtainininamecommonconfig('','','reportmanserver');
+  Ffilenameconfig:=ResolveReportmanServerConfigFileName;
   ForceDirectories(ExtractFilePath(ffilenameconfig));
   inif:=TMemInifile.Create(ffilenameconfig);
   try
@@ -2127,7 +2378,6 @@ begin
    fport:=inif.ReadInteger('CONFIG','TCPPORT',3060);
   FAllowUserAccess:=ReadConfigBool(inif,'SECURITY','USER_ACCESS',True);
   FAllowApiKeyAccess:=ReadConfigBool(inif,'SECURITY','API_KEY_ACCESS',True);
-  FRequireHttps:=ReadConfigBool(inif,'SECURITY','REQUIRE_HTTPS',False);
   FShowUnauthorizedPage:=ReadConfigBool(inif,'SECURITY',
    'SHOWUNAUTHORIZEDPAGE',True);
   FUrlGetParams:=ReadConfigBool(inif,'SECURITY','URLGETPARAMS',False);

@@ -283,7 +283,6 @@ Debe incluir:
 - `USER_ACCESS`
 - `API_KEY_ACCESS`
 - `SHOWUNAUTHORIZEDPAGE`
-- `REQUIRE_HTTPS`
 - `URLGETPARAMS`
 
 Formulario concreto propuesto:
@@ -297,7 +296,6 @@ Formulario concreto propuesto:
 - checkbox `USER_ACCESS`
 - checkbox `API_KEY_ACCESS`
 - checkbox `SHOWUNAUTHORIZEDPAGE`
-- checkbox `REQUIRE_HTTPS`
 - checkbox `URLGETPARAMS`
 - boton `Guardar`
 - boton `Cancelar`
@@ -635,7 +633,6 @@ type
 		UserAccess: Boolean;
 		ApiKeyAccess: Boolean;
 		ShowUnauthorizedPage: Boolean;
-		RequireHttps: Boolean;
 		UrlGetParams: Boolean;
 	end;
 
@@ -674,7 +671,6 @@ type
 		UserAccess: Boolean;
 		ApiKeyAccess: Boolean;
 		ShowUnauthorizedPage: Boolean;
-		RequireHttps: Boolean;
 		UrlGetParams: Boolean;
 	end;
 
@@ -1533,6 +1529,221 @@ Servicios:
 Renderer:
 
 - `RenderDiagnostics`
+
+##### Mapeo exacto Fase 1B: ruta -> handler -> servicio -> renderer
+
+La segunda entrega del area admin debe seguir este mapa operativo para `dbxconnections.ini`.
+
+###### 1. Listado de conexiones
+
+Ruta:
+
+- `GET /admin/connections`
+
+Handler:
+
+- `LoadAdminConnectionsPage`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebDbxAdminService.ListConnections`
+- `TRpWebDbxAdminService.GetEffectiveConfigInfo`
+
+Renderer:
+
+- `RenderConnectionsList`
+
+Notas de salida:
+
+- la pagina debe mostrar nombre de conexion, driver, resumen no sensible de parametros y acciones `Editar`, `Probar`, `Borrar`
+- la pagina debe incluir enlace visible a `Nueva conexion`, `Editar dbxconnections.ini manualmente` y `Volver a Admin`
+
+###### 2. Alta de conexion
+
+Ruta:
+
+- `GET /admin/connections/new`
+
+Handler:
+
+- `LoadAdminConnectionNewPage`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebDbxAdminService.ListDrivers`
+
+Renderer:
+
+- `RenderConnectionNew`
+
+Ruta:
+
+- `POST /admin/connections/new`
+
+Handler:
+
+- `ExecuteAdminConnectionCreate`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `connection_name`
+- `TRpWebRequestHelper.RequireParam` para `driver_name`
+- `TRpWebDbxAdminService.CreateConnection`
+
+Renderer o salida:
+
+- en error: `RenderConnectionNew`
+- en exito: redireccion funcional a `LoadAdminConnectionEditPage` de la conexion creada
+
+###### 3. Edicion asistida de conexion
+
+Ruta:
+
+- `GET /admin/connections/edit?name=...`
+
+Handler:
+
+- `LoadAdminConnectionEditPage`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `name`
+- `TRpWebDbxAdminService.GetConnectionParams`
+
+Renderer:
+
+- `RenderConnectionEdit`
+
+Ruta:
+
+- `POST /admin/connections/edit`
+
+Handler:
+
+- `ExecuteAdminConnectionSave`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `connection_name`
+- `TRpWebRequestHelper.CollectConnectionParamValues`
+- `TRpWebDbxAdminService.UpdateConnectionParams`
+- `TRpWebDbxAdminService.GetConnectionParams` para recargar estado confirmado
+
+Renderer o salida:
+
+- en error: `RenderConnectionEdit`
+- en exito: `RenderConnectionEdit` con mensaje o redireccion al mismo `GET`
+
+Regla local:
+
+- el handler no debe decidir manualmente que claves son editables; esa decision pertenece a `TRpWebDbxAdminService`
+
+###### 4. Prueba de conexion
+
+Ruta:
+
+- `POST /admin/connections/test`
+
+Handler:
+
+- `ExecuteAdminConnectionTest`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `connection_name`
+- `TRpWebRequestHelper.CollectConnectionParamValues` cuando se permita probar cambios no guardados
+- `TRpWebDbxAdminService.TestConnection` para modo minimo viable
+- `TRpWebDbxAdminService.TestConnectionValues` para modo deseable con overrides temporales
+
+Renderer o salida:
+
+- `RenderConnectionTest`
+
+Decision funcional inicial:
+
+1. si el formulario de prueba no trae overrides, usar `TestConnection`
+2. si el formulario trae pares editados, usar `TestConnectionValues`
+3. en la primera implementacion se puede dejar `TestConnectionValues` como opcion prevista y ejecutar solo `TestConnection`
+
+###### 5. Borrado de conexion
+
+Ruta:
+
+- `POST /admin/connections/delete`
+
+Handler:
+
+- `ExecuteAdminConnectionDelete`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `connection_name`
+- `TRpWebDbxAdminService.DeleteConnection`
+- `TRpWebDbxAdminService.ListConnections`
+
+Renderer o salida:
+
+- en error: `RenderConnectionsList`
+- en exito: redireccion funcional a `LoadAdminConnectionsPage`
+
+###### 6. Edicion manual completa de dbxconnections.ini
+
+Ruta:
+
+- `GET /admin/connections/raw`
+
+Handler:
+
+- `LoadAdminConnectionsRawPage`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebDbxAdminService.LoadRawDbxConnections`
+- `TRpWebDbxAdminService.GetEffectiveConfigInfo`
+
+Renderer:
+
+- `RenderConnectionRaw`
+
+Ruta:
+
+- `POST /admin/connections/raw`
+
+Handler:
+
+- `ExecuteAdminConnectionsRawSave`
+
+Servicios:
+
+- `CheckAdminLogin`
+- `TRpWebRequestHelper.RequireParam` para `raw_config_text`
+- `TRpWebRequestHelper.OptionalCheckbox` para `create_backup`
+- `TRpWebDbxAdminService.SaveRawDbxConnections`
+- `TRpWebDbxAdminService.LoadRawDbxConnections` para releer el estado persistido
+
+Renderer o salida:
+
+- en error: `RenderConnectionRaw`
+- en exito: `RenderConnectionRaw` con mensaje de confirmacion y ruta efectiva
+
+###### 7. Regla transversal de Fase 1B
+
+Todos los handlers de Fase 1B deben seguir esta estructura comun:
+
+1. validar login admin con `CheckAdminLogin`
+2. parsear request con `TRpWebRequestHelper`
+3. delegar la logica de negocio a `TRpWebDbxAdminService`
+4. renderizar con `TRpWebAdminPageRenderer`
+5. no leer ni escribir `dbxconnections.ini` directamente desde `rpwebpages.pas`
+6. no decidir en el handler que parametros son sensibles, ocultables o de solo lectura
 
 ###### Regla transversal de Fase 1A
 

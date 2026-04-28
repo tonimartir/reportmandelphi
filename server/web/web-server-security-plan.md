@@ -13,13 +13,11 @@ Este plan documenta el estado actual y el trabajo pendiente del servidor web CGI
 3. Añadir las secciones `[SERVERAPIKEYS]` y `[SERVERAPIKEYUSERS]` al modelo de configuración para mapear una API key lógica a un usuario interno existente.
 4. Mantener el modelo actual de privilegios por usuario, grupos y alias sin endurecer `CheckPrivileges`. Si no hay grupos en usuario o alias, el comportamiento sigue siendo permisivo como hasta ahora.
 5. Adaptar el flujo HTML para que, cuando la autenticación llega por API key header, no se propaguen `username/password` en campos ocultos del formulario de parámetros.
-6. Añadir `REQUIRE_HTTPS` en `[SECURITY]`, desactivado por defecto. Cuando se activa, el servidor exige conexión segura para todos los endpoints salvo `/version`.
-7. Mejorar `/version` para mostrar diagnóstico de seguridad: `USER_ACCESS`, `API_KEY_ACCESS`, `REQUIRE_HTTPS`, tipo de conexión detectado, si se considera segura, y metadatos básicos de TLS/certificado cuando el frontend HTTP los expone.
-8. Añadir `SHOWUNAUTHORIZEDPAGE` en `[SECURITY]`, activado por defecto. Si está a `0`, las respuestas de autenticación fallida devuelven `401` con texto simple; si está a `1`, mantienen la página HTML de error pero con código `401`.
-9. Hacer que `REQUIRE_HTTPS` devuelva `403` cuando la petición no se considere segura.
-10. Añadir un ejemplo runtime completo en `reportmanserver.ini.example` con todas las secciones realmente consumidas por el servidor web.
-11. Añadir `URLGETPARAMS` en `[SECURITY]`, desactivado por defecto. El servidor lee `POST/ContentFields` primero y solo acepta fallback por URL/query string cuando `URLGETPARAMS=1`.
-12. Duplicar las plantillas legacy `GET` como `rplogin_get.html`, `rpindex_get.html`, `rpalias_get.html` y `rpparams_get.html`.
+6. Mejorar `/version` para mostrar diagnóstico de seguridad: `USER_ACCESS`, `API_KEY_ACCESS`, tipo de conexión detectado, si se considera segura, y metadatos básicos de TLS/certificado cuando el frontend HTTP los expone.
+7. Añadir `SHOWUNAUTHORIZEDPAGE` en `[SECURITY]`, activado por defecto. Si está a `0`, las respuestas de autenticación fallida devuelven `401` con texto simple; si está a `1`, mantienen la página HTML de error pero con código `401`.
+8. Añadir un ejemplo runtime completo en `reportmanserver.ini.example` con todas las secciones realmente consumidas por el servidor web.
+9. Añadir `URLGETPARAMS` en `[SECURITY]`, desactivado por defecto. El servidor lee `POST/ContentFields` primero y solo acepta fallback por URL/query string cuando `URLGETPARAMS=1`.
+10. Duplicar las plantillas legacy `GET` como `rplogin_get.html`, `rpindex_get.html`, `rpalias_get.html` y `rpparams_get.html`.
 13. Convertir las plantillas actuales `rplogin.html` y `rpparams.html` a formularios `POST`.
 14. Cambiar la generación dinámica de navegación de aliases y reportes para usar formularios `POST` por defecto, conservando enlaces con query string solo cuando `URLGETPARAMS=1`.
 15. Añadir al log de ejecución de reportes el usuario, nombre lógico de API key, fecha/hora, informe ejecutado, parámetros finales serializados en JSON, `REMOTE_ADDR` y `X-Forwarded-For`.
@@ -28,7 +26,7 @@ Este plan documenta el estado actual y el trabajo pendiente del servidor web CGI
 **Current behavior after implemented changes**
 1. Prioridad de autenticación actual:
    `X-ReportmanServer-ApiKey` header -> usuario/contraseña por query string.
-2. `/version` sigue abierto incluso con `REQUIRE_HTTPS=1` para permitir diagnóstico de despliegue.
+2. `/version` sigue abierto para permitir diagnóstico de despliegue.
 3. La validación de certificado depende del servidor web o proxy frontal. Reportman solo puede reflejar la información publicada en variables CGI/headers; no revalida por sí mismo la cadena de confianza TLS.
 4. La autenticación clásica sigue dependiendo de `QueryFields` y del flujo HTML legacy. No existe aún sesión/cookie ni autenticación por `X-ReportmanServer-User` / `X-ReportmanServer-Password`.
 5. El paso de parámetros y credenciales del flujo HTML legacy soporta `POST` por defecto y conserva `GET` como compatibilidad opcional mediante `URLGETPARAMS=1` y plantillas `_get`.
@@ -53,13 +51,13 @@ Este plan documenta el estado actual y el trabajo pendiente del servidor web CGI
 **Pending work: audit log, IP log and error log**
 1. Mantener `LOGFILE` como ruta base del log CSV y, cuando `LOG_JSON=1`, generar junto a él un segundo fichero JSON Lines con la misma base y extensión `.jsonl`.
 2. Añadir una línea de auditoría por petición relevante con formato consistente y parseable en columnas CSV. Campos mínimos:
-   fecha/hora, resultado, tipo de autenticación, usuario efectivo, alias, reporte, IP efectiva, endpoint, formato de salida, `REQUIRE_HTTPS` activo, `error_message` y `stack_trace`.
+   fecha/hora, resultado, tipo de autenticación, usuario efectivo, alias, reporte, IP efectiva, endpoint, formato de salida, `error_message` y `stack_trace`.
 3. Cuando `LOG_JSON=1`, escribir además un fichero JSON Lines append-only. Cada registro es un objeto JSON independiente en una línea, para poder añadir registros sin reescribir un array JSON completo.
 4. Resolver la IP efectiva de cliente con reglas claras y verificables. Mínimo previsto:
    registrar siempre `REMOTE_ADDR` y `X-Forwarded-For`. `REMOTE_ADDR` es la conexión vista por el servidor web; `X-Forwarded-For` queda como dato diagnóstico y solo debe tratarse como origen real cuando el despliegue detrás de proxy esté expresamente documentado.
 5. Incluir información de error en todos los errores capturables del flujo web, no solo en ejecución de reportes. Deben registrarse como dos columnas separadas:
    `error_message` con `E.Message` y `stack_trace` con `E.StackTrace` cuando exista.
-6. Añadir logging explícito de fallos de autenticación, rechazo por `REQUIRE_HTTPS`, errores cargando configuración, errores cargando reportes, errores asignando parámetros, errores de validación de parámetros y errores generando la respuesta.
+6. Añadir logging explícito de fallos de autenticación, errores cargando configuración, errores cargando reportes, errores asignando parámetros, errores de validación de parámetros y errores generando la respuesta.
 7. Decidir si los parámetros del reporte se registran completos o filtrados. Si hay riesgo de exponer datos sensibles, registrar nombres de parámetros y ocultar o truncar valores.
 8. Centralizar la generación del texto de auditoría para evitar que unas rutas escriban más contexto que otras.
 9. Hacer que el log siga siendo utilizable aunque `SHOWUNAUTHORIZEDPAGE=0`; el usuario puede recibir texto simple pero el servidor debe conservar el detalle del error internamente.
@@ -94,18 +92,15 @@ Este plan documenta el estado actual y el trabajo pendiente del servidor web CGI
    registrar usuario, nombre lógico de API key si aplica, `REMOTE_ADDR`, `X-Forwarded-For`, alias, reporte, parámetros finales en JSON, formato de salida y duración si es barata de medir.
 4. Error funcional o técnico:
    registrar usuario si se llegó a resolver, alias/reporte si estaban presentes, IP efectiva, `error_message` y `stack_trace` en columnas separadas.
-5. Rechazo por `REQUIRE_HTTPS`:
-   registrar IP efectiva, tipo de conexión detectada, `error_message`, `stack_trace` y raw hints relevantes (`HTTPS`, `SERVER_PORT_SECURE`, `X-Forwarded-Proto`) si ayudan al diagnóstico.
-6. Errores antes de resolver usuario:
+5. Errores antes de resolver usuario:
    registrar IP efectiva, endpoint, `error_message` y `stack_trace`; dejar usuario, alias y reporte vacíos si todavía no son conocidos.
 
 **Verification**
 1. Validar que `USER_ACCESS` y `API_KEY_ACCESS` funcionan por separado y combinados.
 2. Validar que `SHOWUNAUTHORIZEDPAGE=1` devuelve HTML con código `401` y `SHOWUNAUTHORIZEDPAGE=0` devuelve texto simple con `401`.
-3. Validar que `REQUIRE_HTTPS=1` devuelve `403` en HTTP y permite la llamada cuando el frontend marca la petición como HTTPS.
-4. Validar que con `URLGETPARAMS=0` el flujo completo web funciona por `POST` sin que usuario, password ni parámetros aparezcan en la URL.
-5. Validar que con `URLGETPARAMS=1` se usan las páginas `_get` y siguen funcionando los clientes y enlaces legacy basados en query string.
-6. Validar que `/version` refleja correctamente el estado de seguridad y la información TLS que realmente publica el servidor web frontal, incluyendo `URLGETPARAMS` cuando se implemente.
+3. Validar que con `URLGETPARAMS=0` el flujo completo web funciona por `POST` sin que usuario, password ni parámetros aparezcan en la URL.
+4. Validar que con `URLGETPARAMS=1` se usan las páginas `_get` y siguen funcionando los clientes y enlaces legacy basados en query string.
+5. Validar que `/version` refleja correctamente el estado de seguridad y la información TLS que realmente publica el servidor web frontal, incluyendo `URLGETPARAMS` cuando se implemente.
 7. Validar que `/version` refleja `LOG_JSON`, la ruta CSV de `LOGFILE` y la ruta efectiva del fichero JSON Lines.
 8. Cuando se implemente el logging ampliado, validar que se registran tanto éxitos como fallos y que todos los errores capturables incluyen columnas `error_message` y `stack_trace`.
 9. Validar en Windows que el stack trace aparece cuando JCLDebug esté activo para el target web.

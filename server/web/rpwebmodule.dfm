@@ -59,6 +59,36 @@ object repwebmod: Trepwebmod
       OnAction = repwebmodaadminAction
     end
     item
+      Name = 'aadminconnections'
+      PathInfo = '/admin/connections'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminconnectionsnew'
+      PathInfo = '/admin/connections/new'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminconnectionsedit'
+      PathInfo = '/admin/connections/edit'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminconnectionsdelete'
+      PathInfo = '/admin/connections/delete'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminconnectionsraw'
+      PathInfo = '/admin/connections/raw'
+      OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'aadminconnectionstest'
+      PathInfo = '/admin/connections/test'
+      OnAction = repwebmodaadminAction
+    end
+    item
       Name = 'aadminusers'
       PathInfo = '/admin/users'
       OnAction = repwebmodaadminAction

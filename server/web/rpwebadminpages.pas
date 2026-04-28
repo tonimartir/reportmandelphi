@@ -5,7 +5,8 @@ unit rpwebadminpages;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections, rptypes, rpwebserverconfigadmin;
+  Classes, SysUtils, Generics.Collections, rptypes, rpwebserverconfigadmin,
+  rpwebdbxadmin;
 
 type
   TRpWebAdminPageRenderer = class
@@ -22,6 +23,17 @@ type
       const AAuthInputs: string): string; static;
     class function RenderServerConfig(const AData: TRpWebServerConfigFormData;
       const AAuthInputs, AMessageText: string): string; static;
+    class function RenderConnectionsList(const AItems: TList<TRpWebConnectionItem>;
+      const AAuthInputs, AMessageText: string): string; static;
+    class function RenderConnectionEdit(const AConnectionName: string;
+      const AParams: TList<TRpWebConnectionParam>;
+      const AAuthInputs, AMessageText: string): string; static;
+    class function RenderConnectionNew(ADrivers: TStrings;
+      const AAuthInputs, AMessageText: string): string; static;
+    class function RenderConnectionRaw(const AConfigText: string;
+      const AAuthInputs, AMessageText: string): string; static;
+    class function RenderConnectionTest(const AConnectionName: string;
+      const AResult: TRpWebConnectionTestResult; const AAuthInputs: string): string; static;
     class function RenderUsersList(const AUsers: TList<TRpWebServerUser>;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderUserEdit(const ARequest: TRpWebUserEditRequest;
@@ -98,6 +110,7 @@ begin
     '<table border="0"><tr>' +
     '<td><form method="post" action="/admin">' + AAuthInputs + '<input type="submit" value="Admin"></form></td>' +
     '<td><form method="post" action="/admin/server-config">' + AAuthInputs + '<input type="submit" value="Server config"></form></td>' +
+    '<td><form method="post" action="/admin/connections">' + AAuthInputs + '<input type="submit" value="Connections"></form></td>' +
     '<td><form method="post" action="/admin/users">' + AAuthInputs + '<input type="submit" value="Users"></form></td>' +
     '<td><form method="post" action="/admin/groups">' + AAuthInputs + '<input type="submit" value="Groups"></form></td>' +
     '<td><form method="post" action="/admin/aliases">' + AAuthInputs + '<input type="submit" value="Aliases"></form></td>' +
@@ -158,9 +171,135 @@ begin
     '<p><label><input type="checkbox" name="cfg_user_access" value="1"' + BoolChecked(AData.UserAccess) + '> USER_ACCESS</label></p>' +
     '<p><label><input type="checkbox" name="cfg_api_key_access" value="1"' + BoolChecked(AData.ApiKeyAccess) + '> API_KEY_ACCESS</label></p>' +
     '<p><label><input type="checkbox" name="cfg_show_unauthorized" value="1"' + BoolChecked(AData.ShowUnauthorizedPage) + '> SHOWUNAUTHORIZEDPAGE</label></p>' +
-    '<p><label><input type="checkbox" name="cfg_require_https" value="1"' + BoolChecked(AData.RequireHttps) + '> REQUIRE_HTTPS</label></p>' +
     '<p><label><input type="checkbox" name="cfg_url_get_params" value="1"' + BoolChecked(AData.UrlGetParams) + '> URLGETPARAMS</label></p>' +
     '<p><input type="submit" value="Save"></p></form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderConnectionsList(
+  const AItems: TList<TRpWebConnectionItem>; const AAuthInputs,
+  AMessageText: string): string;
+var
+  I: Integer;
+begin
+  Result := AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<form method="post" action="/admin/connections/new">' + AAuthInputs +
+    '<p><input type="submit" value="New connection"></p></form>' +
+    '<form method="post" action="/admin/connections/raw">' + AAuthInputs +
+    '<p><input type="submit" value="Edit dbxconnections.ini manually"></p></form>' +
+    '<table border="1"><tr><th>Name</th><th>Driver</th><th>Actions</th></tr>';
+  for I := 0 to AItems.Count - 1 do
+  begin
+    Result := Result + '<tr><td>' + RpHtmlEncode(AItems[I].Name) + '</td><td>' +
+      RpHtmlEncode(AItems[I].DisplayDriverName) + '</td><td>' +
+      '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
+      '<input type="hidden" name="name" value="' + RpHtmlEncode(AItems[I].Name) + '"><input type="submit" value="Edit"></form>' +
+      '<form method="post" action="/admin/connections/test">' + AAuthInputs +
+      '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AItems[I].Name) + '"><input type="submit" value="Test"></form>' +
+      '<form method="post" action="/admin/connections/delete">' + AAuthInputs +
+      '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AItems[I].Name) + '"><input type="submit" value="Delete"></form>' +
+      '</td></tr>';
+  end;
+  Result := BuildPage('Connections', Result + '</table>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderConnectionNew(ADrivers: TStrings;
+  const AAuthInputs, AMessageText: string): string;
+var
+  I: Integer;
+  LOptions: string;
+begin
+  LOptions := '';
+  for I := 0 to ADrivers.Count - 1 do
+    LOptions := LOptions + '<option value="' + RpHtmlEncode(ADrivers[I]) + '">' +
+      RpHtmlEncode(ADrivers[I]) + '</option>';
+  Result := BuildPage('New Connection',
+    AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<form method="post" action="/admin/connections/new">' + AAuthInputs +
+    '<p>Name: <input type="text" name="connection_name"></p>' +
+    '<p>Driver: <select name="driver_name">' + LOptions + '</select></p>' +
+    '<p><input type="submit" name="connection_action_create" value="Create"></p></form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderConnectionEdit(
+  const AConnectionName: string; const AParams: TList<TRpWebConnectionParam>;
+  const AAuthInputs, AMessageText: string): string;
+var
+  I, J: Integer;
+  LParam: TRpWebConnectionParam;
+  LFieldHtml: string;
+begin
+  Result := AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
+    '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AConnectionName) + '">';
+  for I := 0 to AParams.Count - 1 do
+  begin
+    LParam := AParams[I];
+    case LParam.EditorKind of
+      weReadOnly:
+        LFieldHtml := RpHtmlEncode(LParam.Value) +
+          '<input type="hidden" name="connparam_' + RpHtmlEncode(LParam.Name) +
+          '" value="' + RpHtmlEncode(LParam.Value) + '">';
+      wePassword:
+        LFieldHtml := '<input type="password" name="connparam_' + RpHtmlEncode(LParam.Name) +
+          '" value="' + RpHtmlEncode(LParam.Value) + '" size="80">';
+      weCombo:
+        begin
+          LFieldHtml := '<select name="connparam_' + RpHtmlEncode(LParam.Name) + '">';
+          for J := 0 to LParam.Options.Count - 1 do
+          begin
+            LFieldHtml := LFieldHtml + '<option value="' + RpHtmlEncode(LParam.Options[J]) + '"';
+            if SameText(LParam.Options[J], LParam.Value) then
+              LFieldHtml := LFieldHtml + ' selected';
+            LFieldHtml := LFieldHtml + '>' + RpHtmlEncode(LParam.Options[J]) + '</option>';
+          end;
+          LFieldHtml := LFieldHtml + '</select>';
+        end;
+      weTextArea:
+        LFieldHtml := '<textarea name="connparam_' + RpHtmlEncode(LParam.Name) +
+          '" cols="100" rows="4">' + RpHtmlEncode(LParam.Value) + '</textarea>';
+    else
+      LFieldHtml := '<input type="text" name="connparam_' + RpHtmlEncode(LParam.Name) +
+        '" value="' + RpHtmlEncode(LParam.Value) + '" size="100">';
+    end;
+    Result := Result + '<p>' + RpHtmlEncode(LParam.Name) + ': ' + LFieldHtml + '</p>';
+  end;
+  Result := BuildPage('Edit Connection', Result +
+    '<p><input type="submit" name="connection_action_save" value="Save"></p></form>' +
+    '<form method="post" action="/admin/connections/test">' + AAuthInputs +
+    '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AConnectionName) + '">' +
+    '<p><input type="submit" value="Test connection"></p></form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderConnectionRaw(
+  const AConfigText, AAuthInputs, AMessageText: string): string;
+begin
+  Result := BuildPage('Edit dbxconnections.ini',
+    AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<form method="post" action="/admin/connections/raw">' + AAuthInputs +
+    '<p><label><input type="checkbox" name="create_backup" value="1" checked> Create backup</label></p>' +
+    '<p><textarea name="raw_config_text" cols="120" rows="30">' + RpHtmlEncode(AConfigText) + '</textarea></p>' +
+    '<p><input type="submit" name="raw_action_save" value="Save raw dbxconnections.ini"></p></form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderConnectionTest(
+  const AConnectionName: string; const AResult: TRpWebConnectionTestResult;
+  const AAuthInputs: string): string;
+var
+  I: Integer;
+  LDetails: string;
+begin
+  LDetails := '';
+  for I := 0 to AResult.SafeDetails.Count - 1 do
+    LDetails := LDetails + '<li>' + RpHtmlEncode(AResult.SafeDetails[I]) + '</li>';
+  Result := BuildPage('Connection Test',
+    AdminNav(AAuthInputs) +
+    '<p>Connection: ' + RpHtmlEncode(AConnectionName) + '</p>' +
+    '<p>Success: ' + RpHtmlEncode(BoolToStr(AResult.Success, True)) + '</p>' +
+    '<p>Message: ' + RpHtmlEncode(AResult.MessageText) + '</p>' +
+    '<p>Driver: ' + RpHtmlEncode(AResult.DriverName) + '</p>' +
+    '<ul>' + LDetails + '</ul>' +
+    '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
+    '<input type="hidden" name="name" value="' + RpHtmlEncode(AConnectionName) + '"><input type="submit" value="Back to edit"></form>');
 end;
 
 class function TRpWebAdminPageRenderer.RenderUsersList(

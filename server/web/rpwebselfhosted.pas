@@ -10,7 +10,7 @@ implementation
 
 uses
   SysUtils, Classes, IniFiles, WebReq, IdHTTPWebBrokerBridge, IdSocketHandle,
-  rpmdshfolder, rpwebmodule;
+  rpmdshfolder, rpwebmodule, rpwebserverconfigadmin;
 
 function TryGetCmdLineValue(const ASwitchName: string; out AValue: string): Boolean;
 var
@@ -42,35 +42,9 @@ begin
   end;
 end;
 
-function ReadConfigBool(inif: TMemInifile; const Section, Ident: string;
-  Default: Boolean): Boolean;
-var
-  LValue: string;
-begin
-  LValue := Trim(inif.ReadString(Section, Ident, ''));
-  if Length(LValue) < 1 then
-  begin
-    Result := Default;
-    Exit;
-  end;
-  if SameText(LValue, '1') or SameText(LValue, 'TRUE') or SameText(LValue, 'YES')
-    or SameText(LValue, 'ON') then
-  begin
-    Result := True;
-    Exit;
-  end;
-  if SameText(LValue, '0') or SameText(LValue, 'FALSE') or SameText(LValue, 'NO')
-    or SameText(LValue, 'OFF') then
-  begin
-    Result := False;
-    Exit;
-  end;
-  Result := Default;
-end;
-
 function ResolveSelfHostedConfigFileName: string;
 begin
-  Result := Obtainininamecommonconfig('', '', 'reportmanserver');
+  Result := ResolveReportmanServerConfigFileName;
 end;
 
 function ResolveSelfHostedPort: Integer;
@@ -105,18 +79,6 @@ begin
     Result := Trim(LValue);
 end;
 
-function ResolveRequireHttpsState: Boolean;
-var
-  LIni: TMemIniFile;
-begin
-  LIni := TMemIniFile.Create(ResolveSelfHostedConfigFileName);
-  try
-    Result := ReadConfigBool(LIni, 'SECURITY', 'REQUIRE_HTTPS', False);
-  finally
-    LIni.Free;
-  end;
-end;
-
 procedure WriteSelfHostedBanner(const APort: Integer; const ABindAddress: string);
 begin
   WriteLn('Reportman selfhosted mode enabled');
@@ -128,9 +90,7 @@ begin
   WriteLn('Port: ' + IntToStr(APort));
   WriteLn('Config: ' + ResolveSelfHostedConfigFileName);
   WriteLn('Port precedence: command line -port overrides CONFIG/TCPPORT.');
-  if ResolveRequireHttpsState then
-    WriteLn('Warning: REQUIRE_HTTPS=1 may reject plain HTTP requests in selfhosted mode.');
-  WriteLn('Press Enter to stop the server.');
+  WriteLn('Press Ctrl+C or terminate the process to stop the server.');
 end;
 
 procedure RunSelfHosted;
@@ -157,7 +117,8 @@ begin
     end;
     LServer.Active := True;
     WriteSelfHostedBanner(LPort, LBindAddress);
-    ReadLn;
+    while True do
+      Sleep(250);
   finally
     LServer.Active := False;
     LServer.Free;
