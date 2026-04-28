@@ -978,6 +978,16 @@ begin
   TranslateStr(846,'Report Manager Index'),[rfReplaceAll]);
 
  aliasesstring:=TranslateStr(847,'Available Report Groups');
+ if LisAdmin then
+ begin
+  if FUrlGetParams then
+   aliasesstring:='<p><a href="./admin?'+Request.Query+'">Admin Panel</a></p>'+
+    aliasesstring
+  else
+   aliasesstring:='<form method="post" action="./admin">'+
+    HiddenAuthInputs(Request)+'<input type="submit" value="Admin Panel">'+
+    '</form>'+aliasesstring;
+ end;
  for i:=0 to laliases.Count-1 do
  begin
   if CheckPrivileges(username,laliases.Names[i]) then
