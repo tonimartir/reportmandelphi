@@ -135,6 +135,22 @@ implementation
 
 {$R *.dfm}
 
+uses rpreport;
+
+function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
+begin
+ if SameText(ADriverName, 'FireDac') then
+  Result:=rpfiredac
+ else if SameText(ADriverName, 'ZeosLib') then
+  Result:=rpdatazeos
+ else if SameText(ADriverName, 'Interbase') or SameText(ADriverName, 'Firebird') then
+  Result:=rpdataibx
+ else if SameText(ADriverName, 'Reportman AI Agent') then
+  Result:=rpdbHttp
+ else
+  Result:=rpdatadbexpress;
+end;
+
 constructor TRpQueuedHubDiscoveryPayload.Create;
 begin
   inherited Create;
@@ -167,9 +183,6 @@ begin
  ConAdmin:=TRpConnAdmin.Create;
 {$IFDEF USESQLEXPRESS}
  SQLConnection1:=TSQLConnection.Create(Self);
-{$ENDIF}
-{$IFNDEF USESQLEXPRESS}
- BConnect.Enabled:=false;
 {$ENDIF}
  LDriversFile.Caption:=TranslateStr(169,LDriversFile.Caption);
  LConnsFile.Caption:=TranslateStr(170,LConnsFile.Caption);
@@ -425,6 +438,7 @@ begin
     FDConnEditor.Execute(FDConnection1,SRpSParamList);
   finally
     FDConnEditor.Free;
+    FDConnection1.Free;
   end;
 {$ENDIF}
  end
@@ -437,131 +451,43 @@ end;
 
 procedure TFRpDBXConfigVCL.BConnectClick(Sender: TObject);
 var
-{$IFDEF USESQLEXPRESS}
  conname:string;
- funcname,drivername,vendorlib,libraryname:string;
+ drivername:string;
  alist:TStringList;
-{$IFDEF USEZEOS}
- FZConnection:TZConnection;
- transiso:String;
-{$ENDIF}
-{$ENDIF}
-{$IFDEF USEIBX}
-  FIBDatabase:TIBDatabase;
-{$ENDIF}
-{$IFDEF FIREDAC}
- FDConnection:TFDConnection;
-{$ENDIF}
- databasename:string;
- indexDriver:integer;
+ report:TRpReport;
+ dbinfo:TRpDatabaseInfoItem;
 begin
-{$IFDEF USESQLEXPRESS}
  if Not Assigned(ConAdmin) then
   exit;
  if LConnections.ItemIndex<0 then
   Raise Exception.Create(SRpSelectConnectionFirst);
  conname:=LConnections.Items.strings[Lconnections.itemindex];
- // Assigns properties to SQLCOn.
- SQLConnection1.ConnectionName:=conname;
  alist:=TStringList.Create;
  try
   ConAdmin.GetConnectionParams(conname,alist);
-  SQLConnection1.params.Assign(alist);
+  drivername:=Trim(alist.Values['DriverName']);
  finally
-  alist.free;
+  alist.Free;
  end;
- drivername:=SQLConnection1.params.Values['DriverName'];
-{$IFDEF FIREDAC}
- if (drivername='FireDac') then
- begin
-   FDConnection:=TFDConnection.Create(nil);
-   try
-    FDConnection.Params.Assign(SQLConnection1.Params);
-    ConvertParamsFromDBXToFDac(FDConnection);
-    FDConnection.Connected:=True;
-    RpShowMessage(SRpConnectionOk);
-    FDConnection.Connected:=False;
-   finally
-    FDConnection.Free;
-   end;
- end
- else
-{$ENDIF}
-{$IFDEF USEZEOS}
- if drivername='ZeosLib' then
- begin
-  FZConnection:=TZConnection.Create(nil);
-  try
-   FZConnection.LoginPrompt:=False;
-   FZConnection.HostName:=SQLConnection1.params.Values['HostName'];
-   FZConnection.Protocol:=SQLConnection1.params.Values['Database Protocol'];
-   FZConnection.Database:=SQLConnection1.params.Values['Database'];
-   FZConnection.User:=SQLConnection1.params.Values['User_Name'];
-   FZConnection.Password:=SQLConnection1.params.Values['Password'];
-   if Length(Trim(SQLConnection1.params.Values['Port']))>0 then
-    FZConnection.Port:=StrToInt(SQLConnection1.params.Values['Port']);
-   transiso:=SQLConnection1.params.Values['Zeos TransIsolation'];
-   if (transiso='ReadCommited') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiReadCommitted
-   else
-   if (transiso='ReadUnCommited') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiReadUnCommitted
-   else
-   if (transiso='RepeatableRead') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiRepeatableRead
-   else
-   if (transiso='Serializable') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiSerializable
-   else
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiNone;
-   FZConnection.Connected:=True;
-   RpShowMessage(SRpConnectionOk);
-   FZConnection.Connected:=False;
-  finally
-   FZConnection.free;
-  end;
- end
- else
-{$ENDIF}
- begin
-{$IFDEF USEIBX}
- if (drivername = 'Interbase') then
- begin
-   FIBDatabase:=TIBDatabase.Create(nil);
-   try
-    FIBDatabase.Params.Assign(SQLConnection1.Params);
-    ConvertParamsFromDBXToIBX(FIBDatabase);
-    FIBDatabase.Connected:=True;
-    RpShowMessage(SRpConnectionOk);
-    FIBDatabase.Connected:=False;
-   finally
-    FIBDatabase.Free;
-   end;
- end
- else
-{$ENDIF}
-  begin
 
-  //funcname:=ConAdmin.Drivers.ReadString(drivername,'GetDriverFunc','');
-  //ConAdmin.GetDriverLibNames(drivername,LibraryName,VendorLib);
-  if UpperCase(drivername)='SQLITE' then
-  begin
-    drivername:='Sqlite';
-    indexDriver:=SQlConnection1.Params.IndexOfName('DriverName');
-    if (indexDriver>=0) then
-      SQlConnection1.Params.Delete(indexDriver);
-    SQLConnection1.LoginPrompt := false;
-  end;
-  SQLConnection1.DriverName:=drivername;
-  //SQLConnection1.VendorLib:=vendorlib;
-  //SQLConnection1.LibraryName:=libraryname;
-  //SQLConnection1.GetDriverFunc:=funcname;
-   SQLConnection1.Connected:=true;
+ report:=TRpReport.Create(nil);
+ try
+  if Length(Trim(ConnectionsFile))>0 then
+   report.Params.Add('DBXCONNECTIONS').AsString:=Trim(ConnectionsFile);
+  if Length(Trim(DriversFile))>0 then
+   report.Params.Add('DBXDRIVERS').AsString:=Trim(DriversFile);
+  dbinfo:=report.DatabaseInfo.Add(conname);
+  dbinfo.Driver:=ResolveDbxConnectionDriver(drivername);
+  dbinfo.LoginPrompt:=False;
+  dbinfo.Connect(nil);
+  try
    RpShowMessage(SRpConnectionOk);
-   SQLConnection1.Connected:=false;
+  finally
+   dbinfo.DisConnect;
   end;
+ finally
+  report.Free;
  end;
-{$ENDIF}
 end;
 
 procedure TFRpDBXConfigVCL.FormClose(Sender: TObject; var Action: TCloseAction);

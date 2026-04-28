@@ -5,7 +5,28 @@ unit rpwebdbxadmin;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Generics.Collections, rpdatainfo;
+  Classes, SysUtils, IniFiles, Generics.Collections, rpdatainfo,
+{$IFDEF USESQLEXPRESS}
+  SQLExpr,
+{$IFNDEF DELPHI2009UP}
+  DBXpress,
+{$ENDIF}
+{$ENDIF}
+{$IFDEF USEZEOS}
+  ZDbcIntfs, ZConnection,
+{$ENDIF}
+{$IFDEF USEIBX}
+{$IFDEF DELPHIXE2UP}
+  IBX.IBDatabase,
+{$ENDIF}
+{$IFNDEF DELPHIXE2UP}
+  IBDatabase,
+{$ENDIF}
+{$ENDIF}
+{$IFDEF FIREDAC}
+  FireDAC.Comp.Client,
+{$ENDIF}
+  rpmdconsts;
 
 type
   TRpWebEditorKind = (
@@ -71,6 +92,11 @@ type
     procedure ValidateConnectionName(const AName: string);
     procedure ReloadAfterWrite;
     procedure CopyFileSimple(const ASourceFileName, ADestFileName: string);
+    procedure MergeConnectionValues(ABaseValues, AOverrideValues: TStrings);
+    procedure AddSafeDetails(const AConnectionName: string; AParams,
+      ASafeDetails: TStrings);
+    function ExecuteConnectionTest(const AConnectionName: string;
+      AParams: TStrings): TRpWebConnectionTestResult;
   public
     constructor Create(const AConnectionsOverride: string = '';
       const ADriversOverride: string = '');
@@ -98,6 +124,23 @@ type
   end;
 
 implementation
+
+uses
+  rpreport;
+
+function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
+begin
+  if SameText(ADriverName, 'FireDac') then
+    Result := rpfiredac
+  else if SameText(ADriverName, 'ZeosLib') then
+    Result := rpdatazeos
+  else if SameText(ADriverName, 'Interbase') or SameText(ADriverName, 'Firebird') then
+    Result := rpdataibx
+  else if SameText(ADriverName, 'Reportman AI Agent') then
+    Result := rpdbHttp
+  else
+    Result := rpdatadbexpress;
+end;
 
 class function TRpWebConnectionParam.Create: TRpWebConnectionParam;
 begin
@@ -175,6 +218,94 @@ begin
     end;
   finally
     LSource.Free;
+  end;
+end;
+
+procedure TRpWebDbxAdminService.MergeConnectionValues(ABaseValues,
+  AOverrideValues: TStrings);
+var
+  I: Integer;
+  LName: string;
+begin
+  if (ABaseValues = nil) or (AOverrideValues = nil) then
+    Exit;
+  for I := 0 to AOverrideValues.Count - 1 do
+  begin
+    LName := Trim(AOverrideValues.Names[I]);
+    if Length(LName) = 0 then
+      Continue;
+    ABaseValues.Values[LName] := AOverrideValues.ValueFromIndex[I];
+  end;
+end;
+
+procedure TRpWebDbxAdminService.AddSafeDetails(const AConnectionName: string;
+  AParams, ASafeDetails: TStrings);
+var
+  I: Integer;
+  LName: string;
+begin
+  if ASafeDetails = nil then
+    Exit;
+  ASafeDetails.Add('Connection=' + AConnectionName);
+  for I := 0 to AParams.Count - 1 do
+  begin
+    LName := Trim(AParams.Names[I]);
+    if Length(LName) = 0 then
+      Continue;
+    if IsSensitiveParam(LName) then
+      Continue;
+    ASafeDetails.Add(LName + '=' + AParams.ValueFromIndex[I]);
+  end;
+end;
+
+function TRpWebDbxAdminService.ExecuteConnectionTest(
+  const AConnectionName: string; AParams: TStrings): TRpWebConnectionTestResult;
+var
+  LDriverName: string;
+  LReport: TRpReport;
+  LDbInfo: TRpDatabaseInfoItem;
+  I: Integer;
+  LName: string;
+begin
+  Result := TRpWebConnectionTestResult.Create;
+  LDriverName := Trim(AParams.Values['DriverName']);
+  Result.DriverName := LDriverName;
+  AddSafeDetails(AConnectionName, AParams, Result.SafeDetails);
+  try
+    LReport := TRpReport.Create(nil);
+    try
+      if Length(Trim(FConnectionsOverride)) > 0 then
+        LReport.Params.Add('DBXCONNECTIONS').AsString := Trim(FConnectionsOverride);
+      if Length(Trim(FDriversOverride)) > 0 then
+        LReport.Params.Add('DBXDRIVERS').AsString := Trim(FDriversOverride);
+
+      for I := 0 to AParams.Count - 1 do
+      begin
+        LName := Trim(AParams.Names[I]);
+        if Length(LName) = 0 then
+          Continue;
+        LReport.Params.Add('DBPARAM_' + LName).AsString := AParams.ValueFromIndex[I];
+      end;
+
+      LDbInfo := LReport.DatabaseInfo.Add(AConnectionName);
+      LDbInfo.Driver := ResolveDbxConnectionDriver(LDriverName);
+      LDbInfo.LoginPrompt := False;
+      LDbInfo.Connect(LReport.Params);
+      try
+        Result.Success := True;
+        Result.MessageText := SRpConnectionOk;
+      finally
+        LDbInfo.DisConnect;
+      end;
+    finally
+      LReport.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      Result.Success := False;
+      Result.MessageText := E.Message;
+    end;
   end;
 end;
 
@@ -467,27 +598,37 @@ function TRpWebDbxAdminService.TestConnection(
   const AConnectionName: string): TRpWebConnectionTestResult;
 var
   LConnAdmin: TRpConnAdmin;
+  LParams: TStringList;
 begin
-  Result := TRpWebConnectionTestResult.Create;
   LConnAdmin := CreateConnAdmin;
+  LParams := TStringList.Create;
   try
-    Result.DriverName := LConnAdmin.config.ReadString(AConnectionName, 'DriverName', '');
-    Result.MessageText := 'Connection test is not implemented in this first Fase 1B slice';
-    Result.SafeDetails.Add('Connection=' + AConnectionName);
-    if Length(Result.DriverName) > 0 then
-      Result.SafeDetails.Add('Driver=' + Result.DriverName);
+    ValidateConnectionName(AConnectionName);
+    LConnAdmin.GetConnectionParams(AConnectionName, LParams);
+    Result := ExecuteConnectionTest(AConnectionName, LParams);
   finally
+    LParams.Free;
     LConnAdmin.Free;
   end;
 end;
 
 function TRpWebDbxAdminService.TestConnectionValues(const AConnectionName: string;
   AValues: TStrings): TRpWebConnectionTestResult;
+var
+  LConnAdmin: TRpConnAdmin;
+  LParams: TStringList;
 begin
-  Result := TRpWebConnectionTestResult.Create;
-  Result.MessageText := 'Connection test with temporary values is not implemented in this first Fase 1B slice';
-  Result.SafeDetails.Add('Connection=' + AConnectionName);
-  Result.SafeDetails.Add('Overrides=' + IntToStr(AValues.Count));
+  LConnAdmin := CreateConnAdmin;
+  LParams := TStringList.Create;
+  try
+    ValidateConnectionName(AConnectionName);
+    LConnAdmin.GetConnectionParams(AConnectionName, LParams);
+    MergeConnectionValues(LParams, AValues);
+    Result := ExecuteConnectionTest(AConnectionName, LParams);
+  finally
+    LParams.Free;
+    LConnAdmin.Free;
+  end;
 end;
 
 end.

@@ -134,6 +134,50 @@ implementation
 const
   MODIFY_REPORT_TIMEOUT_MS = 10 * 60 * 1000;
 
+{$IFNDEF FIREDAC}
+type
+  TRpHttpCertificateValidator = class(TComponent)
+  public
+    function VerifyPeer(Certificate: TIdX509; AOk: Boolean; ADepth,
+      AError: Integer): Boolean;
+  end;
+
+function TRpHttpCertificateValidator.VerifyPeer(Certificate: TIdX509;
+  AOk: Boolean; ADepth, AError: Integer): Boolean;
+begin
+{$IFDEF DEBUG}
+  Result := True;
+{$ELSE}
+  Result := AOk;
+{$ENDIF}
+end;
+
+procedure ConfigureIdHttpClientForUrl(AIdHttp: TIdHTTP; const AUrl: string);
+var
+  LTrimmedUrl: string;
+  LSslHandler: TIdSSLIOHandlerSocketOpenSSL;
+  LValidator: TRpHttpCertificateValidator;
+begin
+  if AIdHttp = nil then
+    Exit;
+  LTrimmedUrl := Trim(AUrl);
+  if not StartsText('https://', LTrimmedUrl) then
+    Exit;
+  if Assigned(AIdHttp.IOHandler) then
+    Exit;
+
+  LSslHandler := TIdSSLIOHandlerSocketOpenSSL.Create(AIdHttp);
+  LSslHandler.SSLOptions.Mode := sslmClient;
+  LSslHandler.SSLOptions.Method := sslvSSLv23;
+  LSslHandler.SSLOptions.VerifyMode := [sslvrfPeer];
+  LSslHandler.SSLOptions.VerifyDepth := 3;
+
+  LValidator := TRpHttpCertificateValidator.Create(AIdHttp);
+  LSslHandler.OnVerifyPeer := LValidator.VerifyPeer;
+  AIdHttp.IOHandler := LSslHandler;
+end;
+{$ENDIF}
+
 function NormalizeUserLanguage(const AUserLanguage: string): string;
 var
   LValue: string;
@@ -1240,6 +1284,7 @@ begin
       LUrl := HUB_API_URL;
       if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
       LUrl := LUrl + AAction;
+      ConfigureIdHttpClientForUrl(LIdHttp, LUrl);
       LIdHttp.Post(LUrl, LSourceStream, ResponseStream);
       
       if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
@@ -1578,6 +1623,7 @@ begin
   end;
 end;
 function TRpDatabaseHttp.InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean;
+{$IFDEF FIREDAC}
 var
   LHttpClient: TNetHTTPClient;
   LResponse: IHTTPResponse;
@@ -1608,6 +1654,50 @@ begin
     LHttpClient.Free;
   end;
 end;
+{$ELSE}
+var
+  LIdHttp: TIdHTTP;
+  LErrorStream: TStringStream;
+  LUrl: string;
+begin
+  Result := False;
+  LIdHttp := TIdHTTP.Create(nil);
+  try
+    LIdHttp.Request.ContentType := 'application/json';
+    if FApiKey <> '' then
+      LIdHttp.Request.CustomHeaders.Values['X-Reportman-ApiKey'] := FApiKey;
+    if FToken <> '' then
+      LIdHttp.Request.CustomHeaders.Values['Authorization'] := 'Bearer ' + FToken;
+    if FInstallId <> '' then
+      LIdHttp.Request.CustomHeaders.Values['X-Reportman-WebInstallId'] := FInstallId;
+    LUrl := HUB_API_URL;
+    if not LUrl.EndsWith('/') then
+      LUrl := LUrl + '/';
+    LUrl := LUrl + AAction;
+    ConfigureIdHttpClientForUrl(LIdHttp, LUrl);
+    TRpAuthManager.Instance.Log('HTTP Request: GET ' + LUrl);
+    LIdHttp.Get(LUrl, ResponseStream);
+    TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LIdHttp.ResponseCode));
+    if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
+      Result := True
+    else
+    begin
+      LErrorStream := TStringStream.Create;
+      try
+        ResponseStream.Position := 0;
+        LErrorStream.CopyFrom(ResponseStream, 0);
+        raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s',
+          [LIdHttp.ResponseCode, LIdHttp.ResponseText, LErrorStream.DataString]);
+      finally
+        LErrorStream.Free;
+      end;
+    end;
+  finally
+    LIdHttp.Free;
+  end;
+end;
+{$ENDIF}
+
 function TRpDatabaseHttp.GetUserSchemas(AList: TStrings): Boolean;
 var
   LResponseStream: TStringStream;

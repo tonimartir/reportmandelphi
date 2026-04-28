@@ -24,9 +24,7 @@ interface
 
 {$I rpconf.inc}
 
-{$IFDEF MSWINDOWS}
 {$R dbxdrivers.res}
-{$ENDIF}
 
 
 uses Classes,SysUtils,
@@ -559,6 +557,88 @@ var
 
 
 const FOLDERID_Public: TGUID = '{DFDF76A2-C82A-4D63-906A-5644AC457385}';
+
+function LoadDbxDriversResourceIni(const ATargetFileName: string): TMemIniFile;
+var
+  ResStream: TResourceStream;
+  ResName: string;
+  HFind: HRSRC;
+  IniStrings: TStringList;
+  MemStream: TMemoryStream;
+begin
+  Result := nil;
+  ResName := 'DBXDRIVERSFILE';
+  HFind := FindResource(HInstance, PChar(ResName), RT_RCDATA);
+  if HFind = 0 then
+    Exit;
+
+  ResStream := TResourceStream.Create(HInstance, ResName, RT_RCDATA);
+  try
+    if ResStream.Size <= 0 then
+      Exit;
+    MemStream := TMemoryStream.Create;
+    try
+      MemStream.CopyFrom(ResStream, ResStream.Size);
+      if Length(ATargetFileName) > 0 then
+      begin
+        ForceDirectories(ExtractFileDir(ATargetFileName));
+        MemStream.SaveToFile(ATargetFileName);
+        Result := TMemIniFile.Create(ATargetFileName);
+      end
+      else
+      begin
+        IniStrings := TStringList.Create;
+        try
+          Result := TMemIniFile.Create('');
+          MemStream.Seek(0, soBeginning);
+          IniStrings.LoadFromStream(MemStream);
+          Result.SetStrings(IniStrings);
+        finally
+          IniStrings.Free;
+        end;
+      end;
+    finally
+      MemStream.Free;
+    end;
+  finally
+    ResStream.Free;
+  end;
+end;
+
+procedure MergeMissingIniValues(ATargetIni, ADefaultsIni: TMemIniFile);
+var
+  Sections: TStringList;
+  Values: TStringList;
+  I: Integer;
+  J: Integer;
+  SectionName: string;
+  EntryName: string;
+begin
+  if (ATargetIni = nil) or (ADefaultsIni = nil) then
+    Exit;
+  Sections := TStringList.Create;
+  Values := TStringList.Create;
+  try
+    ADefaultsIni.ReadSections(Sections);
+    for I := 0 to Sections.Count - 1 do
+    begin
+      SectionName := Sections[I];
+      Values.Clear;
+      ADefaultsIni.ReadSectionValues(SectionName, Values);
+      for J := 0 to Values.Count - 1 do
+      begin
+        EntryName := Values.Names[J];
+        if Length(EntryName) = 0 then
+          Continue;
+        if not ATargetIni.ValueExists(SectionName, EntryName) then
+          ATargetIni.WriteString(SectionName, EntryName, Values.ValueFromIndex[J]);
+      end;
+    end;
+  finally
+    Values.Free;
+    Sections.Free;
+  end;
+end;
 
 
 {$IFDEF MSWINDOWS}
@@ -3644,15 +3724,10 @@ end;
 procedure TRpConnAdmin.LoadConfig;
 var
  dbxconpath,dbxdrivpath:String;
-{$IFDEF MSWINDOWS}
  nconfigfilename:string;
- resstream:TResourceStream;
  fromresource:boolean;
- resname:string;
- hfind:HRSRC;
- nstrings:TStringList;
- memstream:TMemoryStream;
-{$ELSE}
+ defaultdrivers:TMemIniFile;
+{$IFNDEF MSWINDOWS}
  configdir:string;
 {$ENDIF}
 
@@ -3716,70 +3791,61 @@ begin
  if FileExists(driverfilename) then
  begin
   drivers:=TMemInifile.Create(driverfilename);
+    defaultdrivers:=LoadDbxDriversResourceIni('');
+    try
+     if Assigned(defaultdrivers) then
+     begin
+      MergeMissingIniValues(drivers,defaultdrivers);
+      drivers.UpdateFile;
+     end;
+    finally
+     defaultdrivers.Free;
+    end;
  end
  else
  begin
-{$IFDEF MSWINDOWS}
-  driverfilename:=GetPublicPathSlash+'dbxdrivers.ini';
-  configfilename:=GetPublicPathSlash+'dbxconnections.ini';
-   // Load the dbxdrivers file from the resource
-   resname:='DBXDRIVERSFILE';
-   hFind := FindResource(HInstance, PChar(resname),RT_RCDATA);
-   if (hFind<>0) then
-   begin
-    resstream:=TResourceStream.Create(hinstance,resname,RT_RCDATA);
-    try
-     if (resstream.Size>0) then
-     begin
-      fromresource:=true;
-      memstream:=TMemoryStream.Create;
-      try
-        memstream.CopyFrom(resstream,resstream.size);
-        nstrings:=TStringList.Create;
-        try
-          drivers:=TMemIniFile.Create('');
-          memstream.Seek(0,soBeginning);
-          nstrings.LoadFromStream(memstream);
-          drivers.SetStrings(nstrings);
-          driverfilename:='';
-        finally
-          nstrings.Free;
-        end;
-      finally
-       memstream.Free;
-      end;
-     end;
-    finally
-     resstream.free;
-    end;
-   end
-   else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+driverfilename);
-{$ELSE}
-  // Check if exists in the current dir
-  if FileExists(DBXDRIVERFILENAME) then
-  begin
-   drivers:=TMemIniFile.Create(DBXDRIVERFILENAME);
-   if configdir<>'/usr/local/etc' then
-   begin
-    CopyFileTo(DBXDRIVERFILENAME,driverfilename);
-   end;
-  end
-  else
-  begin
-   // Check int /usr/local/etc
-   if FileExists('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf') then
-   begin
-    if configdir<>'/usr/local/etc' then
+  {$IFDEF MSWINDOWS}
+    driverfilename:=GetPublicPathSlash+'dbxdrivers.ini';
+    configfilename:=GetPublicPathSlash+'dbxconnections.ini';
+  {$ENDIF}
+      fromresource:=false;
+      if (Length(driverfilename)>0) and (not FileExists(driverfilename)) then
+        drivers:=LoadDbxDriversResourceIni(driverfilename)
+      else
+        drivers:=LoadDbxDriversResourceIni('');
+      fromresource:=Assigned(drivers);
+      if fromresource and (Length(driverfilename)=0) then
+        driverfilename:='';
+    if not fromresource then
     begin
-     CopyFileTo('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf',driverfilename);
+  {$IFNDEF MSWINDOWS}
+     // Check if exists in the current dir
+     if FileExists(DBXDRIVERFILENAME) then
+     begin
+      drivers:=TMemIniFile.Create(DBXDRIVERFILENAME);
+      if configdir<>'/usr/local/etc' then
+      begin
+       CopyFileTo(DBXDRIVERFILENAME,driverfilename);
+      end;
+     end
+     else
+     begin
+      // Check int /usr/local/etc
+      if FileExists('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf') then
+      begin
+       if configdir<>'/usr/local/etc' then
+       begin
+        CopyFileTo('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf',driverfilename);
+       end;
+       drivers:=TMemIniFile.Create(driverfilename);
+      end
+      else
+       Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXDRIVERFILENAME);
+     end;
+  {$ELSE}
+     Raise Exception.Create(SRpConfigFileNotExists+' - '+driverfilename);
+  {$ENDIF}
     end;
-    drivers:=TMemIniFile.Create(driverfilename);
-   end
-   else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXDRIVERFILENAME);
-  end;
-{$ENDIF}
  end;
  if FileExists(configfilename) then
  begin
@@ -5779,10 +5845,10 @@ end;
 
 procedure ForceLoadDrivers;
 begin
-  // Drivers Genéricos y de Conectividad
+  // Drivers Genï¿½ricos y de Conectividad
   TFDPhysODBCDriverLink.Create(nil);
 
-  // SQL Server (vía ODBC en Linux)
+  // SQL Server (vï¿½a ODBC en Linux)
   TFDPhysMSSQLDriverLink.Create(nil);
 
   // MySQL / MariaDB
@@ -5805,7 +5871,7 @@ begin
    TFDPhysADSDriverLink.Create(nil);
   {$ENDIF}
 
-  // Otros Drivers que mencionaste (asegúrate de tener las unidades en el uses)
+  // Otros Drivers que mencionaste (asegï¿½rate de tener las unidades en el uses)
   TFDPhysASADriverLink.Create(nil);   // Sybase ASA
   TFDPhysDB2DriverLink.Create(nil);   // IBM DB2
   TFDPhysInfxDriverLink.Create(nil);  // Informix
