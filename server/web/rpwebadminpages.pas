@@ -27,7 +27,8 @@ type
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderConnectionEdit(const AConnectionName: string;
       const AParams: TList<TRpWebConnectionParam>;
-      const AAuthInputs, AMessageText: string): string; static;
+      const AAuthInputs, AMessageText: string;
+      AHubConnections: TStrings = nil): string; static;
     class function RenderConnectionNew(ADrivers: TStrings;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderConnectionRaw(const AConfigText: string;
@@ -222,12 +223,24 @@ end;
 
 class function TRpWebAdminPageRenderer.RenderConnectionEdit(
   const AConnectionName: string; const AParams: TList<TRpWebConnectionParam>;
-  const AAuthInputs, AMessageText: string): string;
+  const AAuthInputs, AMessageText: string; AHubConnections: TStrings = nil): string;
 var
   I, J: Integer;
   LParam: TRpWebConnectionParam;
   LFieldHtml: string;
+  LDriverName: string;
+  LCurrentHubDatabaseId: string;
 begin
+  LDriverName := '';
+  LCurrentHubDatabaseId := '';
+  for I := 0 to AParams.Count - 1 do
+  begin
+    if SameText(AParams[I].Name, 'DriverName') then
+      LDriverName := Trim(AParams[I].Value)
+    else if SameText(AParams[I].Name, 'HubDatabaseId') then
+      LCurrentHubDatabaseId := Trim(AParams[I].Value);
+  end;
+
   Result := AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
     '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
     '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AConnectionName) + '">';
@@ -260,6 +273,24 @@ begin
     else
       LFieldHtml := '<input type="text" name="connparam_' + RpHtmlEncode(LParam.Name) +
         '" value="' + RpHtmlEncode(LParam.Value) + '" size="100">';
+    end;
+    if SameText(LDriverName, 'Reportman AI Agent') and SameText(LParam.Name, 'HubDatabaseId') then
+    begin
+      LFieldHtml := LFieldHtml +
+        ' <button type="submit" name="connection_action_select_hub">Select Connection...</button>';
+      if Assigned(AHubConnections) and (AHubConnections.Count > 0) then
+      begin
+        LFieldHtml := LFieldHtml + '<br><select name="hub_connection_selector" onchange="this.form.elements[''connparam_HubDatabaseId''].value=this.value;">' +
+          '<option value="">Select a connection...</option>';
+        for J := 0 to AHubConnections.Count - 1 do
+        begin
+          LFieldHtml := LFieldHtml + '<option value="' + RpHtmlEncode(AHubConnections.ValueFromIndex[J]) + '"';
+          if SameText(AHubConnections.ValueFromIndex[J], LCurrentHubDatabaseId) then
+            LFieldHtml := LFieldHtml + ' selected';
+          LFieldHtml := LFieldHtml + '>' + RpHtmlEncode(AHubConnections.Names[J]) + '</option>';
+        end;
+        LFieldHtml := LFieldHtml + '</select>';
+      end;
     end;
     Result := Result + '<p>' + RpHtmlEncode(LParam.Name) + ': ' + LFieldHtml + '</p>';
   end;

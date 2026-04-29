@@ -1208,8 +1208,6 @@ begin
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     if ATimeoutMs > 0 then
     begin
-      LHttpClient.ProtocolVersion := THTTPProtocolVersion.HTTP_1_1;
-      LHttpClient.SecureProtocols := [THTTPSecureProtocol.TLS12];
       LHttpClient.ConnectionTimeout := ATimeoutMs;
       LHttpClient.SendTimeout := ATimeoutMs;
       LHttpClient.ResponseTimeout := ATimeoutMs;

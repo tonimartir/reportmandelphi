@@ -113,6 +113,7 @@ type
     procedure UpdateConnectionParams(const AConnectionName: string;
       AValues: TStrings);
     procedure DeleteConnection(const AConnectionName: string);
+    procedure DiscoverHubConnections(const AApiKey: string; AConnections: TStrings);
 
     function LoadRawDbxConnections: TRpWebRawConfigResult;
     function SaveRawDbxConnections(const AConfigText: string;
@@ -514,6 +515,18 @@ begin
     LConnAdmin.Free;
   end;
   ReloadAfterWrite;
+end;
+
+procedure TRpWebDbxAdminService.DiscoverHubConnections(const AApiKey: string;
+  AConnections: TStrings);
+begin
+  if AConnections = nil then
+    Exit;
+  AConnections.Clear;
+  if Length(Trim(AApiKey)) = 0 then
+    Exit;
+  if not TRpDatabaseHttp.GetHubDatabases(Trim(AApiKey), AConnections) then
+    raise Exception.Create('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
 end;
 
 procedure TRpWebDbxAdminService.UpdateConnectionParams(const AConnectionName: string;

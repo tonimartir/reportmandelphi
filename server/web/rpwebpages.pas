@@ -133,6 +133,8 @@ type
   procedure CollectAdminPrefixedValues(Request: TWebRequest;
    const APrefix: string; AValues: TStrings);
   procedure CollectConnectionParamValues(Request: TWebRequest; AValues: TStrings);
+  procedure ApplyConnectionParamValues(AParams: TList<TRpWebConnectionParam>;
+   AValues: TStrings);
   procedure LoadAllGroupNames(AGroupNames: TStrings);
   procedure LoadAllUserNames(AUserNames: TStrings);
   function LoadAdminBootstrapPage(Request: TWebRequest): string;
@@ -173,12 +175,14 @@ type
   function LoadAdminConnectionNewPage(Request: TWebRequest;
    const AMessageText: string=''): string;
   function LoadAdminConnectionEditPage(Request: TWebRequest;
-   const AMessageText: string=''): string;
+    const AMessageText: string=''; AOverrideValues: TStrings = nil;
+    AHubConnections: TStrings = nil): string;
   function LoadAdminConnectionsRawPage(Request: TWebRequest;
    const AMessageText: string=''): string;
   function ExecuteAdminConnectionCreate(Request: TWebRequest): string;
   function ExecuteAdminConnectionSave(Request: TWebRequest): string;
   function ExecuteAdminConnectionDelete(Request: TWebRequest): string;
+    function ExecuteAdminConnectionDiscoverHub(Request: TWebRequest): string;
   function ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
   function ExecuteAdminConnectionTest(Request: TWebRequest): string;
   function LoadAdminDiagnosticsPage(Request: TWebRequest;
@@ -477,6 +481,27 @@ begin
   LParams.Free;
  end;
 end;
+
+  procedure TRpWebPageLoader.ApplyConnectionParamValues(
+    AParams: TList<TRpWebConnectionParam>; AValues: TStrings);
+  var
+   I: Integer;
+   LIndex: Integer;
+     LParam: TRpWebConnectionParam;
+  begin
+   if (AParams = nil) or (AValues = nil) then
+    Exit;
+   for I := 0 to AParams.Count - 1 do
+   begin
+    LIndex := AValues.IndexOfName(AParams[I].Name);
+    if LIndex >= 0 then
+      begin
+       LParam := AParams[I];
+       LParam.Value := AValues.ValueFromIndex[LIndex];
+       AParams[I] := LParam;
+      end;
+   end;
+  end;
 
 function TRpWebPageLoader.GetRequestHeader(Request: TWebRequest;
   const AName: string): string;
@@ -1659,7 +1684,8 @@ begin
 end;
 
 function TRpWebPageLoader.LoadAdminConnectionEditPage(Request: TWebRequest;
-  const AMessageText: string): string;
+  const AMessageText: string; AOverrideValues: TStrings;
+  AHubConnections: TStrings): string;
 var
  LService:TRpWebDbxAdminService;
  LParams:TList<TRpWebConnectionParam>;
@@ -1678,12 +1704,54 @@ begin
  LParams:=TList<TRpWebConnectionParam>.Create;
  try
   LService.GetConnectionParams(LConnectionName,LParams);
+  ApplyConnectionParamValues(LParams,AOverrideValues);
   Result:=TRpWebAdminPageRenderer.RenderConnectionEdit(LConnectionName,
-   LParams,HiddenAdminAuthInputs(Request),AMessageText);
+   LParams,HiddenAdminAuthInputs(Request),AMessageText,AHubConnections);
  finally
   for i:=0 to LParams.Count-1 do
    LParams[i].Clear;
   LParams.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionDiscoverHub(
+  Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LValues:TStringList;
+ LHubConnections:TStringList;
+ LApiKey:string;
+ LMessage:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ LHubConnections:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  LApiKey:=Trim(LValues.Values['ApiKey']);
+  if Length(LApiKey)<5 then
+   LMessage:='Please enter a valid API Key first.'
+  else
+  begin
+   try
+    LService.DiscoverHubConnections(LApiKey,LHubConnections);
+    if LHubConnections.Count=0 then
+     LMessage:='No databases found for this API Key.'
+    else
+     LMessage:='Select a connection to assign its HubDatabaseId.';
+   except
+    on E:Exception do
+    begin
+     LMessage:=E.Message;
+     LHubConnections.Clear;
+    end;
+   end;
+  end;
+  Result:=LoadAdminConnectionEditPage(Request,LMessage,LValues,LHubConnections);
+ finally
+  LHubConnections.Free;
+  LValues.Free;
   LService.Free;
  end;
 end;
@@ -2080,7 +2148,9 @@ begin
   end
   else if LPath='/admin/connections/edit' then
   begin
-   if RequestHasParam(Request,'connection_action_save') then
+   if RequestHasParam(Request,'connection_action_select_hub') then
+    Response.Content:=ExecuteAdminConnectionDiscoverHub(Request)
+   else if RequestHasParam(Request,'connection_action_save') then
     Response.Content:=ExecuteAdminConnectionSave(Request)
    else
     Response.Content:=LoadAdminConnectionEditPage(Request);
