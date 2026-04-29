@@ -133,8 +133,6 @@ type
   procedure CollectAdminPrefixedValues(Request: TWebRequest;
    const APrefix: string; AValues: TStrings);
   procedure CollectConnectionParamValues(Request: TWebRequest; AValues: TStrings);
-  procedure ApplyConnectionParamValues(AParams: TList<TRpWebConnectionParam>;
-   AValues: TStrings);
   procedure LoadAllGroupNames(AGroupNames: TStrings);
   procedure LoadAllUserNames(AUserNames: TStrings);
   function LoadAdminBootstrapPage(Request: TWebRequest): string;
@@ -182,7 +180,9 @@ type
   function ExecuteAdminConnectionCreate(Request: TWebRequest): string;
   function ExecuteAdminConnectionSave(Request: TWebRequest): string;
   function ExecuteAdminConnectionDelete(Request: TWebRequest): string;
-    function ExecuteAdminConnectionDiscoverHub(Request: TWebRequest): string;
+  function ExecuteAdminConnectionChangeDriver(Request: TWebRequest): string;
+  function ExecuteAdminConnectionChangeDriverClear(Request: TWebRequest): string;
+  function ExecuteAdminConnectionDiscoverHub(Request: TWebRequest): string;
   function ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
   function ExecuteAdminConnectionTest(Request: TWebRequest): string;
   function LoadAdminDiagnosticsPage(Request: TWebRequest;
@@ -463,6 +463,62 @@ end;
 
 procedure TRpWebPageLoader.CollectConnectionParamValues(Request: TWebRequest;
   AValues: TStrings);
+  procedure SetValuePreserveEmpty(const AName, AValue: string);
+  var
+   LIndex: Integer;
+  begin
+   LIndex:=AValues.IndexOfName(AName);
+   if LIndex>=0 then
+    AValues.ValueFromIndex[LIndex]:=AValue
+   else
+    AValues.Add(AName+'='+AValue);
+  end;
+
+  procedure AppendSerializedState(const ASerializedState: string);
+  var
+   LStart: Integer;
+   LAmpPos: Integer;
+   LEqualPos: Integer;
+   LPair: string;
+   LEncodedName: string;
+   LEncodedValue: string;
+   LDecodedName: string;
+   LDecodedValue: string;
+  begin
+   LStart:=1;
+   while LStart<=Length(ASerializedState) do
+   begin
+    LAmpPos:=Pos('&',Copy(ASerializedState,LStart,Length(ASerializedState)-LStart+1));
+    if LAmpPos>0 then
+    begin
+     LPair:=Copy(ASerializedState,LStart,LAmpPos-1);
+     Inc(LStart,LAmpPos);
+    end
+    else
+    begin
+     LPair:=Copy(ASerializedState,LStart,Length(ASerializedState)-LStart+1);
+     LStart:=Length(ASerializedState)+1;
+    end;
+    if Length(LPair)=0 then
+     continue;
+    LEqualPos:=Pos('=',LPair);
+    if LEqualPos>0 then
+    begin
+     LEncodedName:=Copy(LPair,1,LEqualPos-1);
+     LEncodedValue:=Copy(LPair,LEqualPos+1,Length(LPair)-LEqualPos);
+    end
+    else
+    begin
+     LEncodedName:=LPair;
+     LEncodedValue:='';
+    end;
+    LDecodedName:=TNetEncoding.URL.Decode(StringReplace(LEncodedName,'+',' ',[rfReplaceAll]));
+    if Pos('connparam_',LowerCase(LDecodedName))<>1 then
+     continue;
+    LDecodedValue:=TNetEncoding.URL.Decode(StringReplace(LEncodedValue,'+',' ',[rfReplaceAll]));
+    SetValuePreserveEmpty(Copy(LDecodedName,11,Length(LDecodedName)),LDecodedValue);
+   end;
+  end;
 var
  LParams:TStringList;
  i:Integer;
@@ -475,33 +531,13 @@ begin
   begin
    LName:=LParams.Names[i];
    if Pos('connparam_',LowerCase(LName))=1 then
-    AValues.Values[Copy(LName,11,Length(LName))]:=LParams.ValueFromIndex[i];
+    SetValuePreserveEmpty(Copy(LName,11,Length(LName)),LParams.ValueFromIndex[i]);
   end;
+  AppendSerializedState(LParams.Values['connection_form_state']);
  finally
   LParams.Free;
  end;
 end;
-
-  procedure TRpWebPageLoader.ApplyConnectionParamValues(
-    AParams: TList<TRpWebConnectionParam>; AValues: TStrings);
-  var
-   I: Integer;
-   LIndex: Integer;
-     LParam: TRpWebConnectionParam;
-  begin
-   if (AParams = nil) or (AValues = nil) then
-    Exit;
-   for I := 0 to AParams.Count - 1 do
-   begin
-    LIndex := AValues.IndexOfName(AParams[I].Name);
-    if LIndex >= 0 then
-      begin
-       LParam := AParams[I];
-       LParam.Value := AValues.ValueFromIndex[LIndex];
-       AParams[I] := LParam;
-      end;
-   end;
-  end;
 
 function TRpWebPageLoader.GetRequestHeader(Request: TWebRequest;
   const AName: string): string;
@@ -1667,17 +1703,22 @@ function TRpWebPageLoader.LoadAdminConnectionNewPage(Request: TWebRequest;
 var
  LService:TRpWebDbxAdminService;
  LDrivers:TStringList;
+ LDbExpressDrivers:TStringList;
  LUserName:string;
  LIsAdmin:Boolean;
 begin
  CheckAdminLogin(Request,LUserName,LIsAdmin);
  LService:=TRpWebDbxAdminService.Create;
  LDrivers:=TStringList.Create;
+ LDbExpressDrivers:=TStringList.Create;
  try
-  LService.ListDrivers(LDrivers);
+  LService.ListConnectionTypes(LDrivers);
+  LService.ListDbExpressDrivers(LDbExpressDrivers);
   Result:=TRpWebAdminPageRenderer.RenderConnectionNew(LDrivers,
+   LDbExpressDrivers,
    HiddenAdminAuthInputs(Request),AMessageText);
  finally
+  LDbExpressDrivers.Free;
   LDrivers.Free;
   LService.Free;
  end;
@@ -1703,8 +1744,7 @@ begin
  LService:=TRpWebDbxAdminService.Create;
  LParams:=TList<TRpWebConnectionParam>.Create;
  try
-  LService.GetConnectionParams(LConnectionName,LParams);
-  ApplyConnectionParamValues(LParams,AOverrideValues);
+  LService.GetConnectionParams(LConnectionName,LParams,AOverrideValues);
   Result:=TRpWebAdminPageRenderer.RenderConnectionEdit(LConnectionName,
    LParams,HiddenAdminAuthInputs(Request),AMessageText,AHubConnections);
  finally
@@ -1783,7 +1823,8 @@ begin
  try
   try
    LService.CreateConnection(GetAdminParam(Request,'connection_name'),
-    GetAdminParam(Request,'driver_name'));
+    GetAdminParam(Request,'driver_name'),
+    GetAdminParam(Request,'dbexpress_driver_name'));
    Result:=LoadAdminConnectionEditPage(Request,'Connection created');
   except
    on E:Exception do
@@ -1809,11 +1850,50 @@ begin
    Result:=LoadAdminConnectionEditPage(Request,'Connection saved');
   except
    on E:Exception do
-    Result:=LoadAdminConnectionEditPage(Request,E.Message);
+    Result:=LoadAdminConnectionEditPage(Request,E.Message,LValues);
   end;
  finally
   LValues.Free;
   LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionChangeDriver(
+  Request: TWebRequest): string;
+var
+ LValues:TStringList;
+begin
+ LValues:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  Result:=LoadAdminConnectionEditPage(Request,
+   'Driver parameters reloaded',LValues);
+ finally
+  LValues.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionChangeDriverClear(
+  Request: TWebRequest): string;
+var
+ LValues:TStringList;
+
+ procedure CopyIfPresent(const AName: string);
+ begin
+  if RequestHasParam(Request,'connparam_'+AName) then
+   LValues.Values[AName]:=GetAdminParam(Request,'connparam_'+AName);
+ end;
+begin
+ LValues:=TStringList.Create;
+ try
+  CopyIfPresent('DriverName');
+  CopyIfPresent('DriverID');
+  CopyIfPresent('DBXDriverName');
+  LValues.Values['__clear_driver_defaults__']:='1';
+  Result:=LoadAdminConnectionEditPage(Request,
+   'Driver parameters reloaded from defaults',LValues);
+ finally
+  LValues.Free;
  end;
 end;
 
@@ -1881,7 +1961,7 @@ begin
    LResult:=LService.TestConnection(LConnectionName);
   try
    Result:=TRpWebAdminPageRenderer.RenderConnectionTest(LConnectionName,
-    LResult,HiddenAdminAuthInputs(Request));
+    LResult,HiddenAdminAuthInputs(Request),LValues);
   finally
    LResult.Clear;
   end;
@@ -2108,6 +2188,7 @@ procedure TRpWebPageLoader.HandleAdminRequest(Request: TWebRequest;
  Response:TWebResponse);
 var
  LPath:string;
+ LStrList:TStringList;
 begin
  try
   CheckInitReaded;
@@ -2150,10 +2231,27 @@ begin
   begin
    if RequestHasParam(Request,'connection_action_select_hub') then
     Response.Content:=ExecuteAdminConnectionDiscoverHub(Request)
+   else if RequestHasParam(Request,'connection_action_change_driver_clear') then
+    Response.Content:=ExecuteAdminConnectionChangeDriverClear(Request)
+   else if RequestHasParam(Request,'connection_action_change_driver') then
+    Response.Content:=ExecuteAdminConnectionChangeDriver(Request)
+   else if RequestHasParam(Request,'connection_action_test') then
+    Response.Content:=ExecuteAdminConnectionTest(Request)
    else if RequestHasParam(Request,'connection_action_save') then
     Response.Content:=ExecuteAdminConnectionSave(Request)
    else
-    Response.Content:=LoadAdminConnectionEditPage(Request);
+   begin
+    LStrList:=TStringList.Create;
+    try
+     CollectConnectionParamValues(Request,LStrList);
+     if LStrList.Count>0 then
+      Response.Content:=LoadAdminConnectionEditPage(Request,'',LStrList)
+     else
+      Response.Content:=LoadAdminConnectionEditPage(Request);
+    finally
+     LStrList.Free;
+    end;
+   end;
   end
   else if LPath='/admin/connections/delete' then
    Response.Content:=ExecuteAdminConnectionDelete(Request)

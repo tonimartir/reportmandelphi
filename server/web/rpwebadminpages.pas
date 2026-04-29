@@ -29,12 +29,13 @@ type
       const AParams: TList<TRpWebConnectionParam>;
       const AAuthInputs, AMessageText: string;
       AHubConnections: TStrings = nil): string; static;
-    class function RenderConnectionNew(ADrivers: TStrings;
+    class function RenderConnectionNew(ADrivers, ADbExpressDrivers: TStrings;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderConnectionRaw(const AConfigText: string;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderConnectionTest(const AConnectionName: string;
-      const AResult: TRpWebConnectionTestResult; const AAuthInputs: string): string; static;
+      const AResult: TRpWebConnectionTestResult; const AAuthInputs: string;
+      ACurrentValues: TStrings = nil): string; static;
     class function RenderUsersList(const AUsers: TList<TRpWebServerUser>;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderUserEdit(const ARequest: TRpWebUserEditRequest;
@@ -203,21 +204,29 @@ begin
   Result := BuildPage('Connections', Result + '</table>');
 end;
 
-class function TRpWebAdminPageRenderer.RenderConnectionNew(ADrivers: TStrings;
-  const AAuthInputs, AMessageText: string): string;
+class function TRpWebAdminPageRenderer.RenderConnectionNew(ADrivers,
+  ADbExpressDrivers: TStrings; const AAuthInputs, AMessageText: string): string;
 var
   I: Integer;
   LOptions: string;
+  LDbxOptions: string;
 begin
   LOptions := '';
   for I := 0 to ADrivers.Count - 1 do
     LOptions := LOptions + '<option value="' + RpHtmlEncode(ADrivers[I]) + '">' +
       RpHtmlEncode(ADrivers[I]) + '</option>';
+  LDbxOptions := '<option value="">Select DBExpress driver...</option>';
+  for I := 0 to ADbExpressDrivers.Count - 1 do
+    LDbxOptions := LDbxOptions + '<option value="' +
+      RpHtmlEncode(ADbExpressDrivers[I]) + '">' +
+      RpHtmlEncode(ADbExpressDrivers[I]) + '</option>';
   Result := BuildPage('New Connection',
     AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
     '<form method="post" action="/admin/connections/new">' + AAuthInputs +
     '<p>Name: <input type="text" name="connection_name"></p>' +
     '<p>Driver: <select name="driver_name">' + LOptions + '</select></p>' +
+    '<p>DBExpress driver: <select name="dbexpress_driver_name">' +
+    LDbxOptions + '</select> Use only when Driver = DBExpress.</p>' +
     '<p><input type="submit" name="connection_action_create" value="Create"></p></form>');
 end;
 
@@ -228,6 +237,7 @@ var
   I, J: Integer;
   LParam: TRpWebConnectionParam;
   LFieldHtml: string;
+  LListId: string;
   LDriverName: string;
   LCurrentHubDatabaseId: string;
 begin
@@ -242,7 +252,23 @@ begin
   end;
 
   Result := AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
-    '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
+    '<script>' +
+    'function rpCaptureConnectionFormState(form){' +
+    'var pairs=[],formData,entry,name,stateField;' +
+    'stateField=form.elements["connection_form_state"];' +
+    'if(!stateField)return true;' +
+    'formData=new FormData(form);' +
+    'for(entry of formData.entries()){' +
+    'name=entry[0]||"";' +
+    'if(name.indexOf("connparam_")!==0)continue;' +
+    'pairs.push(encodeURIComponent(name)+"="+encodeURIComponent(entry[1]||""));' +
+    '}' +
+    'stateField.value=pairs.join("&");' +
+    'return true;' +
+    '}' +
+    '</script>' +
+    '<form method="post" action="/admin/connections/edit" onsubmit="return rpCaptureConnectionFormState(this);">' + AAuthInputs +
+    '<input type="hidden" name="connection_form_state" value="">' +
     '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AConnectionName) + '">';
   for I := 0 to AParams.Count - 1 do
   begin
@@ -266,6 +292,26 @@ begin
             LFieldHtml := LFieldHtml + '>' + RpHtmlEncode(LParam.Options[J]) + '</option>';
           end;
           LFieldHtml := LFieldHtml + '</select>';
+          if SameText(LParam.Name, 'DriverName') or
+            SameText(LParam.Name, 'DriverID') or
+            SameText(LParam.Name, 'DBXDriverName') then
+          begin
+            LFieldHtml := LFieldHtml +
+              ' <button type="submit" name="connection_action_change_driver">Apply driver</button>';
+            if SameText(LDriverName, 'FireDac') and SameText(LParam.Name, 'DriverID') then
+              LFieldHtml := LFieldHtml +
+                ' <button type="submit" name="connection_action_change_driver_clear">Apply driver (clear)</button>';
+          end;
+        end;
+      weComboEditable:
+        begin
+          LListId := 'connparam_list_' + IntToStr(I);
+          LFieldHtml := '<input type="text" name="connparam_' + RpHtmlEncode(LParam.Name) +
+            '" value="' + RpHtmlEncode(LParam.Value) + '" size="100" list="' +
+            RpHtmlEncode(LListId) + '"><datalist id="' + RpHtmlEncode(LListId) + '">';
+          for J := 0 to LParam.Options.Count - 1 do
+            LFieldHtml := LFieldHtml + '<option value="' + RpHtmlEncode(LParam.Options[J]) + '">';
+          LFieldHtml := LFieldHtml + '</datalist>';
         end;
       weTextArea:
         LFieldHtml := '<textarea name="connparam_' + RpHtmlEncode(LParam.Name) +
@@ -295,10 +341,8 @@ begin
     Result := Result + '<p>' + RpHtmlEncode(LParam.Name) + ': ' + LFieldHtml + '</p>';
   end;
   Result := BuildPage('Edit Connection', Result +
-    '<p><input type="submit" name="connection_action_save" value="Save"></p></form>' +
-    '<form method="post" action="/admin/connections/test">' + AAuthInputs +
-    '<input type="hidden" name="connection_name" value="' + RpHtmlEncode(AConnectionName) + '">' +
-    '<p><input type="submit" value="Test connection"></p></form>');
+    '<p><input type="submit" name="connection_action_save" value="Save"></p>' +
+    '<p><button type="submit" name="connection_action_test">Test connection</button></p></form>');
 end;
 
 class function TRpWebAdminPageRenderer.RenderConnectionRaw(
@@ -314,14 +358,27 @@ end;
 
 class function TRpWebAdminPageRenderer.RenderConnectionTest(
   const AConnectionName: string; const AResult: TRpWebConnectionTestResult;
-  const AAuthInputs: string): string;
+  const AAuthInputs: string; ACurrentValues: TStrings): string;
 var
   I: Integer;
   LDetails: string;
+  LHiddenValues: string;
+  LName: string;
 begin
   LDetails := '';
+  LHiddenValues := '';
   for I := 0 to AResult.SafeDetails.Count - 1 do
     LDetails := LDetails + '<li>' + RpHtmlEncode(AResult.SafeDetails[I]) + '</li>';
+  if ACurrentValues <> nil then
+    for I := 0 to ACurrentValues.Count - 1 do
+    begin
+      LName := Trim(ACurrentValues.Names[I]);
+      if Length(LName) = 0 then
+        Continue;
+      LHiddenValues := LHiddenValues + '<input type="hidden" name="connparam_' +
+        RpHtmlEncode(LName) + '" value="' +
+        RpHtmlEncode(ACurrentValues.ValueFromIndex[I]) + '">';
+    end;
   Result := BuildPage('Connection Test',
     AdminNav(AAuthInputs) +
     '<p>Connection: ' + RpHtmlEncode(AConnectionName) + '</p>' +
@@ -330,7 +387,8 @@ begin
     '<p>Driver: ' + RpHtmlEncode(AResult.DriverName) + '</p>' +
     '<ul>' + LDetails + '</ul>' +
     '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
-    '<input type="hidden" name="name" value="' + RpHtmlEncode(AConnectionName) + '"><input type="submit" value="Back to edit"></form>');
+    '<input type="hidden" name="name" value="' + RpHtmlEncode(AConnectionName) + '">' +
+    LHiddenValues + '<input type="submit" value="Back to edit"></form>');
 end;
 
 class function TRpWebAdminPageRenderer.RenderUsersList(

@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -81,7 +81,7 @@ uses Classes,SysUtils,
 {$ENDIF}
 {$IFDEF FIREDAC}
   FireDAC.Phys, FireDAC.Stan.Intf, FireDAC.Comp.Client,FireDAC.Stan.Def,FireDAC.DApt,FireDAC.Stan.Option,
-  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,
+  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,FireDAC.Moni.FlatFile,
  {$IFDEF ANDROID}
  {$ELSE}
   FireDAC.Phys.ADS,  FireDAC.Phys.ODBCBase,FireDAC.Phys.ODBCWrapper,
@@ -608,34 +608,38 @@ end;
 procedure MergeMissingIniValues(ATargetIni, ADefaultsIni: TMemIniFile);
 var
   Sections: TStringList;
-  Values: TStringList;
+  Entries: TStringList;
   I: Integer;
   J: Integer;
   SectionName: string;
   EntryName: string;
+  EntryValue: string;
 begin
   if (ATargetIni = nil) or (ADefaultsIni = nil) then
     Exit;
   Sections := TStringList.Create;
-  Values := TStringList.Create;
+  Entries := TStringList.Create;
   try
     ADefaultsIni.ReadSections(Sections);
     for I := 0 to Sections.Count - 1 do
     begin
       SectionName := Sections[I];
-      Values.Clear;
-      ADefaultsIni.ReadSectionValues(SectionName, Values);
-      for J := 0 to Values.Count - 1 do
+      Entries.Clear;
+      ADefaultsIni.ReadSection(SectionName, Entries);
+      for J := 0 to Entries.Count - 1 do
       begin
-        EntryName := Values.Names[J];
+        EntryName := Trim(Entries[J]);
         if Length(EntryName) = 0 then
           Continue;
         if not ATargetIni.ValueExists(SectionName, EntryName) then
-          ATargetIni.WriteString(SectionName, EntryName, Values.ValueFromIndex[J]);
+        begin
+          EntryValue := ADefaultsIni.ReadString(SectionName, EntryName, '');
+          ATargetIni.WriteString(SectionName, EntryName, EntryValue);
+        end;
       end;
     end;
   finally
-    Values.Free;
+    Entries.Free;
     Sections.Free;
   end;
 end;
@@ -5878,6 +5882,10 @@ begin
   TFDPhysDB2DriverLink.Create(nil);   // IBM DB2
   TFDPhysInfxDriverLink.Create(nil);  // Informix
   TFDPhysTDataDriverLink.Create(nil); // Teradata
+
+
+  TFDMoniFlatFileClientLink.Create(nil);
+
 end;
 
 initialization
