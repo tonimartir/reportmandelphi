@@ -122,6 +122,8 @@ type
     FParams: TRpParamList;
     function CreateParameterObject(AParam: TRpParam): TJSONObject;
   public
+    class function CreateForQuery(ADatabase: TRpDatabaseHttp;
+      ADataset: TClientDataSet; AParams: TRpParamList = nil): TRpDatasetHttp; static;
     constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet; AParams: TRpParamList = nil);
     destructor Destroy; override;
     procedure Open;
@@ -1206,7 +1208,10 @@ begin
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     if ATimeoutMs > 0 then
     begin
+      LHttpClient.ProtocolVersion := THTTPProtocolVersion.HTTP_1_1;
+      LHttpClient.SecureProtocols := [THTTPSecureProtocol.TLS12];
       LHttpClient.ConnectionTimeout := ATimeoutMs;
+      LHttpClient.SendTimeout := ATimeoutMs;
       LHttpClient.ResponseTimeout := ATimeoutMs;
     end
     else if SameText(AAction, 'ReportDesigner/ModifyReport') then
@@ -1334,6 +1339,12 @@ begin
   FDatabase := ADatabase;
   FDataset := ADataset;
   FParams := AParams;
+end;
+
+class function TRpDatasetHttp.CreateForQuery(ADatabase: TRpDatabaseHttp;
+  ADataset: TClientDataSet; AParams: TRpParamList = nil): TRpDatasetHttp;
+begin
+  Result := TRpDatasetHttp.Create(ADatabase, ADataset, AParams);
 end;
 
 function TRpDatasetHttp.CreateParameterObject(AParam: TRpParam): TJSONObject;

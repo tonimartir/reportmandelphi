@@ -268,6 +268,7 @@ begin
   if AHttpClient = nil then
     Exit;
 {$IFDEF DEBUG}
+  AHttpClient.SynchronizeEvents := False;
   AHttpClient.OnValidateServerCertificate := Self.AcceptAnyServerCertificate;
 {$ENDIF}
 end;

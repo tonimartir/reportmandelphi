@@ -3162,7 +3162,7 @@ begin
         if not Assigned(baseinfo.FHttpDatabase) then
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
 
-        LHttpDataset := TRpDatasetHttp.Create(baseinfo.FHttpDatabase,
+        LHttpDataset := TRpDatasetHttp.CreateForQuery(baseinfo.FHttpDatabase,
           TClientDataSet(FSQLInternalQuery), params);
         try
           LHttpDataset.Sql := SQLsentence;

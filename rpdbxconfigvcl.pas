@@ -135,7 +135,7 @@ implementation
 
 {$R *.dfm}
 
-uses System.JSON, rpreport, rpdatahttp, rpauthmanager;
+uses System.JSON, rpreport,  rpauthmanager;
 
 const
   HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
