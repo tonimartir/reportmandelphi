@@ -19,7 +19,7 @@ uses
   Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   System.Zip, System.IOUtils, System.JSON, rpmdshfolder;
 
-    const AssetsVersion = '2';
+    const AssetsVersion = '3';
 
 type
   TRpWebMarkdownView = class(TPanel)
@@ -42,7 +42,7 @@ type
     procedure TryPreloadWebView2Loader;
     procedure ExecuteOrQueue(const AScript: string);
     procedure FlushPendingCalls;
-    procedure ActivateFallback;
+    procedure ActivateFallback(const AReason: string = '');
     procedure FallbackAppend(const AText: string);
   protected
     procedure CreateWnd; override;
@@ -101,8 +101,6 @@ begin
 end;
 
 constructor TRpWebMarkdownView.Create(AOwner: TComponent);
-var
-  LDllPath: string;
 begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
@@ -160,6 +158,8 @@ var
   I: Integer;
   LMonacoPath: string;
 begin
+
+
   // Try MonacoEditor's already-extracted DLL first
   LMonacoPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
   if SizeOf(Pointer) = 8 then
@@ -198,12 +198,13 @@ begin
     try
       FEdge.HandleNeeded;
 
-    LDestPath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', '');
-    FEdge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+      LDestPath := ObtainFolderLocalUserConfig('Reportman', 'WebMarkdown', '');
+      FEdge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
 
       FEdge.CreateWebView;
     except
-      ActivateFallback;
+      on E: Exception do
+        ActivateFallback('CreateWebView exception: ' + E.Message);
     end;
   end;
 end;
@@ -264,7 +265,9 @@ begin
     FEdge.Navigate(LURL);
   end
   else
-    ActivateFallback;
+  begin
+    ActivateFallback('CreateWebViewCompleted HRESULT: ' + IntToHex(AResult, 8));
+  end;
 end;
 
 procedure TRpWebMarkdownView.EdgeNavigationCompleted(
@@ -276,7 +279,7 @@ begin
     FlushPendingCalls;
   end
   else
-    ActivateFallback;
+    ActivateFallback('NavigationCompleted IsSuccess=False. WebErrorStatus: ' + IntToStr(Integer(WebErrorStatus)));
 end;
 
 procedure TRpWebMarkdownView.EdgeWebMessageReceived(
@@ -301,7 +304,7 @@ begin
   end;
 end;
 
-procedure TRpWebMarkdownView.ActivateFallback;
+procedure TRpWebMarkdownView.ActivateFallback(const AReason: string = '');
 begin
   FWebViewFailed := True;
   FUseFallback := True;
@@ -310,7 +313,11 @@ begin
   if FEdge <> nil then
     FEdge.Visible := False;
   if FMemoFallback <> nil then
+  begin
     FMemoFallback.Visible := True;
+    if AReason <> '' then
+      FallbackAppend('[System] Fallback activated due to WebView failure: ' + AReason);
+  end;
 
   // Flush pending calls as fallback text
   FlushPendingCalls;

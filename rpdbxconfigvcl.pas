@@ -154,13 +154,50 @@ begin
   Result:=rpdatadbexpress;
 end;
 
-function ExecuteHttpConnectionTest(AParams: TStrings): Boolean;
+function ExtractHttpConnectionTestMessage(const AResponseText: string): string;
+var
+ LResponseJson: TJSONObject;
+ LDataJson: TJSONObject;
+ LValue: TJSONValue;
+begin
+ Result := '';
+ if Length(Trim(AResponseText)) = 0 then
+  Exit;
+ LResponseJson := TJSONObject.ParseJSONValue(AResponseText) as TJSONObject;
+ try
+  if not Assigned(LResponseJson) then
+   Exit;
+  LDataJson := LResponseJson.Values['data'] as TJSONObject;
+  if Assigned(LDataJson) then
+  begin
+   LValue := LDataJson.Values['message'];
+   if Assigned(LValue) then
+    Exit(LValue.Value);
+  end;
+  LValue := LResponseJson.Values['message'];
+  if Assigned(LValue) then
+   Result := LValue.Value;
+ finally
+  LResponseJson.Free;
+ end;
+end;
+
+function BuildHttpConnectionFailureMessage(const AErrorText: string): string;
+begin
+ Result := 'Agent Connection: Fail' + sLineBreak +
+  'Database Connection: Fail';
+ if Length(Trim(AErrorText)) > 0 then
+  Result := Result + sLineBreak + 'Error: ' + Trim(AErrorText);
+end;
+
+function ExecuteHttpConnectionTest(AParams: TStrings; out AMessageText: string): Boolean;
 var
  LDatabase: TRpDatabaseHttp;
  LRequestBody: TJSONObject;
- LResponseStream: TMemoryStream;
+ LResponseStream: TStringStream;
 begin
  Result:=False;
+ AMessageText := '';
  LDatabase:=TRpDatabaseHttp.Create;
  try
   LDatabase.ApiKey:=AParams.Values['ApiKey'];
@@ -170,10 +207,25 @@ begin
   LRequestBody:=TJSONObject.Create;
   try
    LRequestBody.AddPair('hubDatabaseId',TJSONNumber.Create(LDatabase.HubDatabaseId));
-   LResponseStream:=TMemoryStream.Create;
+   LResponseStream:=TStringStream.Create('', TEncoding.UTF8);
    try
-    Result:=LDatabase.InternalRequest('api/agent/testconnection',
-      LRequestBody,LResponseStream,HTTP_TEST_CONNECTION_TIMEOUT_MS);
+    try
+     Result:=LDatabase.InternalRequest('api/agent/testconnection',
+       LRequestBody,LResponseStream,HTTP_TEST_CONNECTION_TIMEOUT_MS);
+     if Result then
+     begin
+      AMessageText := ExtractHttpConnectionTestMessage(LResponseStream.DataString);
+      if Length(Trim(AMessageText)) = 0 then
+       AMessageText := 'Agent Connection: Success' + sLineBreak +
+        'Database Connection: Success';
+     end;
+    except
+     on E: Exception do
+     begin
+      Result := False;
+      AMessageText := BuildHttpConnectionFailureMessage(E.Message);
+     end;
+    end;
    finally
     LResponseStream.Free;
    end;
@@ -490,6 +542,7 @@ var
  alist:TStringList;
  report:TRpReport;
  dbinfo:TRpDatabaseInfoItem;
+ LMessageText: string;
 begin
  if Not Assigned(ConAdmin) then
   exit;
@@ -502,8 +555,10 @@ begin
   drivername:=Trim(alist.Values['DriverName']);
     if SameText(drivername,'Reportman AI Agent') then
     begin
-     if ExecuteHttpConnectionTest(alist) then
-      RpShowMessage(SRpConnectionOk);
+     ExecuteHttpConnectionTest(alist, LMessageText);
+     if Length(Trim(LMessageText)) = 0 then
+      LMessageText := SRpConnectionOk;
+     RpShowMessage(LMessageText);
      exit;
     end;
  finally

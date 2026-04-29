@@ -383,7 +383,7 @@ begin
     AdminNav(AAuthInputs) +
     '<p>Connection: ' + RpHtmlEncode(AConnectionName) + '</p>' +
     '<p>Success: ' + RpHtmlEncode(BoolToStr(AResult.Success, True)) + '</p>' +
-    '<p>Message: ' + RpHtmlEncode(AResult.MessageText) + '</p>' +
+    '<p>Message: ' + StringReplace(RpHtmlEncode(AResult.MessageText), sLineBreak, '<br>', [rfReplaceAll]) + '</p>' +
     '<p>Driver: ' + RpHtmlEncode(AResult.DriverName) + '</p>' +
     '<ul>' + LDetails + '</ul>' +
     '<form method="post" action="/admin/connections/edit">' + AAuthInputs +
