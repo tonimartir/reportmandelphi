@@ -53,7 +53,7 @@ var
   LIni: TMemIniFile;
   LPortText: string;
 begin
-  Result := 3060;
+  Result := 3080;
   if TryGetCmdLineValue('port', LPortText) then
   begin
     Result := StrToIntDef(Trim(LPortText), Result);

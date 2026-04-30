@@ -557,7 +557,7 @@ begin
   LIni := LoadIni;
   try
     Result.PagesDir := Trim(LIni.ReadString('CONFIG', 'PAGESDIR', ''));
-    Result.TcpPort := Trim(LIni.ReadString('CONFIG', 'TCPPORT', '3060'));
+    Result.TcpPort := Trim(LIni.ReadString('CONFIG', 'TCPPORT', '3080'));
     Result.LogFile := Trim(LIni.ReadString('CONFIG', 'LOGFILE', ''));
     Result.LogJson := Trim(LIni.ReadString('CONFIG', 'LOG_JSON', '1')) <> '0';
     Result.UserAccess := Trim(LIni.ReadString('SECURITY', 'USER_ACCESS', '1')) <> '0';

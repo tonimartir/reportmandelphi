@@ -172,6 +172,11 @@ object repwebmod: Trepwebmod
       Name = 'aadmindiagnostics'
       PathInfo = '/admin/diagnostics'
       OnAction = repwebmodaadminAction
+    end
+    item
+      Name = 'admintesting'
+      PathInfo = '/admin/testing'
+      OnAction = repwebmodaadminAction
     end>
   Left = 200
   Top = 154

@@ -5,15 +5,37 @@ unit rpwebadminpages;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections, rptypes, rpwebserverconfigadmin,
+  Classes, SysUtils, Generics.Collections, System.NetEncoding, rptypes, rpwebserverconfigadmin,
   rpwebdbxadmin;
 
 type
+  TRpWebTestingReportOption = record
+    AliasName: string;
+    ReportName: string;
+    DisplayName: string;
+  end;
+
+  TRpWebTestingSetup = record
+    HostName: string;
+    PortText: string;
+    AuthType: string;
+    CallType: string;
+    UserName: string;
+    Password: string;
+    ApiKey: string;
+    AliasName: string;
+    ReportName: string;
+  end;
+
   TRpWebAdminPageRenderer = class
   private
     class function BuildPage(const ATitle, ABody: string): string; static;
     class function MessageBlock(const AMessageText: string): string; static;
     class function BoolChecked(const AValue: Boolean): string; static;
+    class function SelectedAttr(const ACurrentValue,
+      AOptionValue: string): string; static;
+    class function EncodeTestingReportValue(const AAliasName,
+      AReportName: string): string; static;
     class function GroupCheckboxes(AAllGroups, ASelectedGroups: TStrings): string; static;
     class function AdminNav(const AAuthInputs: string): string; static;
   public
@@ -54,6 +76,16 @@ type
       AUsers: TStrings; const AAuthInputs, AMessageText: string): string; static;
     class function RenderApiKeyCreated(
       const AResult: TRpWebGeneratedApiKeyResult; const AAuthInputs: string): string; static;
+    class function RenderTestingSetup(const AData: TRpWebTestingSetup;
+      const AReports: TList<TRpWebTestingReportOption>;
+      const AAuthInputs, AMessageText: string): string; static;
+    class function RenderTestingParams(const AData: TRpWebTestingSetup;
+      const AReportDisplayName, AParamsHtml, AAuthInputs,
+      AMessageText: string): string; static;
+    class function RenderTestingRequestPreview(const AData: TRpWebTestingSetup;
+      const AReportDisplayName, AUrl, ACallType, AHeadersText,
+      ABodyText, AHiddenInputs, AAuthInputs, AMessageText,
+      AResultHtml: string; AShowDownload: Boolean): string; static;
     class function RenderDiagnostics(const AServerInfo: TRpWebServerConfigInfo;
       const AAuthInputs, AMessageText: string): string; static;
     class function RenderError(const ATitle, AMessageText: string): string; static;
@@ -86,6 +118,22 @@ begin
     Result := '';
 end;
 
+class function TRpWebAdminPageRenderer.SelectedAttr(const ACurrentValue,
+  AOptionValue: string): string;
+begin
+  if SameText(Trim(ACurrentValue), Trim(AOptionValue)) then
+    Result := ' selected'
+  else
+    Result := '';
+end;
+
+class function TRpWebAdminPageRenderer.EncodeTestingReportValue(
+  const AAliasName, AReportName: string): string;
+begin
+  Result := TNetEncoding.URL.Encode(AAliasName) + '|' +
+    TNetEncoding.URL.Encode(AReportName);
+end;
+
 class function TRpWebAdminPageRenderer.GroupCheckboxes(AAllGroups,
   ASelectedGroups: TStrings): string;
 var
@@ -113,6 +161,7 @@ begin
     '<td><form method="post" action="/admin">' + AAuthInputs + '<input type="submit" value="Admin"></form></td>' +
     '<td><form method="post" action="/admin/server-config">' + AAuthInputs + '<input type="submit" value="Server config"></form></td>' +
     '<td><form method="post" action="/admin/connections">' + AAuthInputs + '<input type="submit" value="Connections"></form></td>' +
+    '<td><form method="post" action="/admin/testing">' + AAuthInputs + '<input type="submit" value="Testing"></form></td>' +
     '<td><form method="post" action="/admin/users">' + AAuthInputs + '<input type="submit" value="Users"></form></td>' +
     '<td><form method="post" action="/admin/groups">' + AAuthInputs + '<input type="submit" value="Groups"></form></td>' +
     '<td><form method="post" action="/admin/aliases">' + AAuthInputs + '<input type="submit" value="Aliases"></form></td>' +
@@ -566,6 +615,112 @@ begin
     '<p>Key name: ' + RpHtmlEncode(AResult.KeyName) + '</p>' +
     '<p>User: ' + RpHtmlEncode(AResult.UserName) + '</p>' +
     '<p>Secret: <b>' + RpHtmlEncode(AResult.SecretPlainText) + '</b></p>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderTestingSetup(
+  const AData: TRpWebTestingSetup;
+  const AReports: TList<TRpWebTestingReportOption>; const AAuthInputs,
+  AMessageText: string): string;
+var
+  I: Integer;
+  LReportOptions: string;
+  LCurrentReportKey: string;
+begin
+  LCurrentReportKey := EncodeTestingReportValue(AData.AliasName,
+    AData.ReportName);
+  LReportOptions := '';
+  for I := 0 to AReports.Count - 1 do
+  begin
+    LReportOptions := LReportOptions + '<option value="' +
+      RpHtmlEncode(EncodeTestingReportValue(AReports[I].AliasName,
+        AReports[I].ReportName)) + '"' +
+      SelectedAttr(LCurrentReportKey,
+        EncodeTestingReportValue(AReports[I].AliasName,
+        AReports[I].ReportName)) + '>' +
+      RpHtmlEncode(AReports[I].DisplayName) + '</option>';
+  end;
+
+  Result := BuildPage('Testing',
+    AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<form method="post" action="/admin/testing">' + AAuthInputs +
+    '<p>Host: <input type="text" name="testing_host" size="40" value="' +
+      RpHtmlEncode(AData.HostName) + '"></p>' +
+    '<p>Port: <input type="text" name="testing_port" value="' +
+      RpHtmlEncode(AData.PortText) + '"></p>' +
+    '<p>Authentication type: <select name="testing_auth_type">' +
+      '<option value="user"' + SelectedAttr(AData.AuthType, 'user') + '>User/password</option>' +
+      '<option value="api"' + SelectedAttr(AData.AuthType, 'api') + '>API key</option>' +
+      '</select></p>' +
+    '<p>Call type: <select name="testing_call_type">' +
+      '<option value="GET"' + SelectedAttr(AData.CallType, 'GET') + '>GET</option>' +
+      '<option value="POST"' + SelectedAttr(AData.CallType, 'POST') + '>POST</option>' +
+      '</select></p>' +
+    '<p>User: <input type="text" name="testing_user" value="' +
+      RpHtmlEncode(AData.UserName) + '"></p>' +
+    '<p>Password: <input type="password" name="testing_password" value="' +
+      RpHtmlEncode(AData.Password) + '"></p>' +
+    '<p>API key: <input type="text" name="testing_api_key" size="80" value="' +
+      RpHtmlEncode(AData.ApiKey) + '"></p>' +
+    '<p>Reports:</p>' +
+    '<p><select name="testing_report" size="20" style="min-width: 720px;">' +
+      LReportOptions + '</select></p>' +
+    '<p>Total reports: ' + IntToStr(AReports.Count) + '</p>' +
+    '<p><input type="submit" name="testing_action_begin" value="Continue to parameters"></p>' +
+    '</form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderTestingParams(
+  const AData: TRpWebTestingSetup; const AReportDisplayName, AParamsHtml,
+  AAuthInputs, AMessageText: string): string;
+begin
+  Result := BuildPage('Testing - Parameters',
+    AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<p>Host: ' + RpHtmlEncode(AData.HostName) + '</p>' +
+    '<p>Port: ' + RpHtmlEncode(AData.PortText) + '</p>' +
+    '<p>Authentication type: ' + RpHtmlEncode(AData.AuthType) + '</p>' +
+    '<p>Call type: ' + RpHtmlEncode(AData.CallType) + '</p>' +
+    '<p>Report: <b>' + RpHtmlEncode(AReportDisplayName) + '</b></p>' +
+    '<form method="post" action="/admin/testing">' + AAuthInputs +
+    '<input type="hidden" name="testing_host" value="' + RpHtmlEncode(AData.HostName) + '">' +
+    '<input type="hidden" name="testing_port" value="' + RpHtmlEncode(AData.PortText) + '">' +
+    '<input type="hidden" name="testing_auth_type" value="' + RpHtmlEncode(AData.AuthType) + '">' +
+    '<input type="hidden" name="testing_call_type" value="' + RpHtmlEncode(AData.CallType) + '">' +
+    '<input type="hidden" name="testing_user" value="' + RpHtmlEncode(AData.UserName) + '">' +
+    '<input type="hidden" name="testing_password" value="' + RpHtmlEncode(AData.Password) + '">' +
+    '<input type="hidden" name="testing_api_key" value="' + RpHtmlEncode(AData.ApiKey) + '">' +
+    '<input type="hidden" name="testing_report" value="' + RpHtmlEncode(EncodeTestingReportValue(AData.AliasName, AData.ReportName)) + '">' +
+    AParamsHtml +
+    '<p><input type="submit" name="testing_action_begin" value="Back to report selection"> ' +
+    '<input type="submit" name="testing_action_build_request" value="Build Request"></p>' +
+    '</form>');
+end;
+
+class function TRpWebAdminPageRenderer.RenderTestingRequestPreview(
+  const AData: TRpWebTestingSetup; const AReportDisplayName, AUrl, ACallType,
+  AHeadersText, ABodyText, AHiddenInputs, AAuthInputs, AMessageText,
+  AResultHtml: string; AShowDownload: Boolean): string;
+var
+  LDownloadButton: string;
+begin
+  if AShowDownload then
+    LDownloadButton := '<input type="submit" name="testing_action_download" value="Download"> '
+  else
+    LDownloadButton := '';
+  Result := BuildPage('Testing - Request Preview',
+    AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
+    '<p>Report: <b>' + RpHtmlEncode(AReportDisplayName) + '</b></p>' +
+    '<p>URL</p><pre>' + RpHtmlEncode(AUrl) + '</pre>' +
+    '<p>Call type</p><pre>' + RpHtmlEncode(ACallType) + '</pre>' +
+    '<p>Request headers</p><pre>' + RpHtmlEncode(AHeadersText) + '</pre>' +
+    '<p>Body</p><pre>' + RpHtmlEncode(ABodyText) + '</pre>' +
+    AResultHtml +
+    '<form method="post" action="/admin/testing">' + AAuthInputs +
+    AHiddenInputs +
+    '<p><input type="submit" name="testing_action_back_to_params" value="Back to parameters"> ' +
+    '<input type="submit" name="testing_action_test_request" value="Test Request"> ' +
+    LDownloadButton +
+    '<input type="submit" name="testing_action_build_request_done" value="Continue"></p>' +
+    '</form>');
 end;
 
 class function TRpWebAdminPageRenderer.RenderDiagnostics(

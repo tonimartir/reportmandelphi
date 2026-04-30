@@ -5,6 +5,7 @@ unit rpwebpages;
 interface
 
 uses SysUtils,Classes,HTTPApp,rpmdconsts,Inifiles,rpalias,System.NetEncoding,
+ System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
  Generics.Collections,
 {$IFNDEF USEVARIANTS}
  Windows,FileCtrl,asptlb,
@@ -79,6 +80,8 @@ type
   FShowUnauthorizedPage:Boolean;
   FUrlGetParams:Boolean;
   FLogJson:Boolean;
+  FTestingLastPdf: TMemoryStream;
+  FTestingLastPdfFileName: string;
    FRpAliasLibs:TRpAlias;
 {$IFDEF USEBDE}
    ASession:TSession;
@@ -104,6 +107,13 @@ type
   function HiddenInput(const AName, AValue: string): string;
   function HiddenAuthInputs(Request: TWebRequest): string;
   function HiddenAdminAuthInputs(Request: TWebRequest): string;
+  function LoadAdminTestingRequest(Request: TWebRequest): TRpWebTestingSetup;
+  procedure LoadAllTestingReports(
+   AReports: TList<TRpWebTestingReportOption>);
+  function GetCurrentRequestPortText(Request: TWebRequest): string;
+  function BuildTestingHiddenInputs(Request: TWebRequest): string;
+  function BuildTestingFormPayload(Request: TWebRequest): TStringList;
+  function GetTestingPdfDownloadFileName(const AReportName: string): string;
   function GetRequestValue(Request: TWebRequest; const AName: string): string;
   function GetRequestHeader(Request: TWebRequest; const AName: string): string;
   function GetFirstRequestValue(Request: TWebRequest;
@@ -168,6 +178,14 @@ type
    const AMessageText: string=''): string;
   function ExecuteAdminApiKeyCreate(Request: TWebRequest): string;
   function ExecuteAdminApiKeyDelete(Request: TWebRequest): string;
+  function LoadAdminTestingPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminTestingParamsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminTestingRequestPreviewPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminTestingRequest(Request: TWebRequest): string;
+  procedure ExecuteAdminTestingDownload(Response: TWebResponse);
   function LoadAdminConnectionsPage(Request: TWebRequest;
    const AMessageText: string=''): string;
   function LoadAdminConnectionNewPage(Request: TWebRequest;
@@ -424,6 +442,226 @@ function TRpWebPageLoader.HiddenAdminAuthInputs(Request: TWebRequest): string;
 begin
  Result:=HiddenInput('username',GetAdminParam(Request,'username'))+
   HiddenInput('password',GetAdminParam(Request,'password'));
+end;
+
+function TRpWebPageLoader.LoadAdminTestingRequest(
+  Request: TWebRequest): TRpWebTestingSetup;
+var
+  LCurrentPortText: string;
+  LReportValue: string;
+  LLegacyValue: string;
+  LSeparatorPos: Integer;
+begin
+  Result.HostName := Trim(GetAdminParam(Request, 'testing_host'));
+  if Length(Result.HostName) = 0 then
+    Result.HostName := 'localhost';
+
+  Result.PortText := Trim(GetAdminParam(Request, 'testing_port'));
+  if Length(Result.PortText) = 0 then
+  begin
+    LCurrentPortText := GetCurrentRequestPortText(Request);
+    if Length(LCurrentPortText) > 0 then
+      Result.PortText := LCurrentPortText
+    else
+      Result.PortText := IntToStr(fport);
+  end;
+
+  Result.AuthType := LowerCase(Trim(GetAdminParam(Request, 'testing_auth_type')));
+  if not SameText(Result.AuthType, 'api') then
+    Result.AuthType := 'user';
+
+  Result.CallType := UpperCase(Trim(GetAdminParam(Request, 'testing_call_type')));
+  if not SameText(Result.CallType, 'GET') then
+    Result.CallType := 'POST';
+
+  Result.UserName := GetAdminParam(Request, 'testing_user');
+  Result.Password := GetAdminParam(Request, 'testing_password');
+  Result.ApiKey := GetAdminParam(Request, 'testing_api_key');
+  Result.AliasName := '';
+  Result.ReportName := '';
+
+  LReportValue := GetAdminParam(Request, 'testing_report');
+  LSeparatorPos := Pos('|', LReportValue);
+  if LSeparatorPos > 0 then
+  begin
+    Result.AliasName := TNetEncoding.URL.Decode(Copy(LReportValue, 1,
+      LSeparatorPos - 1));
+    Result.ReportName := TNetEncoding.URL.Decode(Copy(LReportValue,
+      LSeparatorPos + 1, Length(LReportValue)));
+    Exit;
+  end;
+
+  // Backward compatibility with the old newline-based serialization.
+  LLegacyValue := StringReplace(LReportValue, #13, '', [rfReplaceAll]);
+  LSeparatorPos := Pos(#10, LLegacyValue);
+  if LSeparatorPos > 0 then
+  begin
+    Result.AliasName := Trim(Copy(LLegacyValue, 1, LSeparatorPos - 1));
+    Result.ReportName := Trim(Copy(LLegacyValue, LSeparatorPos + 1,
+      Length(LLegacyValue)));
+  end;
+end;
+
+function TRpWebPageLoader.GetCurrentRequestPortText(
+  Request: TWebRequest): string;
+var
+  LHostHeader: string;
+  LPortText: string;
+  LColonPos: Integer;
+  LCloseBracketPos: Integer;
+begin
+  Result := '';
+
+  LPortText := Trim(GetRequestHeader(Request, 'X-Forwarded-Port'));
+  if Length(LPortText) > 0 then
+  begin
+    Result := LPortText;
+    Exit;
+  end;
+
+  LPortText := Trim(GetFirstRequestValue(Request, ['SERVER_PORT']));
+  if Length(LPortText) > 0 then
+  begin
+    Result := LPortText;
+    Exit;
+  end;
+
+  LHostHeader := Trim(GetRequestHeader(Request, 'Host'));
+  if Length(LHostHeader) = 0 then
+    Exit;
+
+  if LHostHeader[1] = '[' then
+  begin
+    LCloseBracketPos := Pos(']', LHostHeader);
+    if (LCloseBracketPos > 0) and (LCloseBracketPos < Length(LHostHeader)) and
+      (LHostHeader[LCloseBracketPos + 1] = ':') then
+      Result := Copy(LHostHeader, LCloseBracketPos + 2, Length(LHostHeader));
+    Exit;
+  end;
+
+  LColonPos := LastDelimiter(':', LHostHeader);
+  if LColonPos > 0 then
+    Result := Copy(LHostHeader, LColonPos + 1, Length(LHostHeader));
+end;
+
+function TRpWebPageLoader.BuildTestingHiddenInputs(
+  Request: TWebRequest): string;
+var
+  LParams: TStringList;
+  I: Integer;
+  LName: string;
+begin
+  Result := '';
+  LParams := CreateAdminParamList(Request);
+  try
+    for I := 0 to LParams.Count - 1 do
+    begin
+      LName := LParams.Names[I];
+      if SameText(LName, 'username') or SameText(LName, 'password') then
+        Continue;
+      if (Pos('testing_', LowerCase(LName)) = 1) or
+        (Pos('param', LowerCase(LName)) = 1) or
+        (Pos('nullparam', LowerCase(LName)) = 1) then
+        Result := Result + HiddenInput(LName, LParams.ValueFromIndex[I]);
+    end;
+  finally
+    LParams.Free;
+  end;
+end;
+
+function TRpWebPageLoader.BuildTestingFormPayload(
+  Request: TWebRequest): TStringList;
+var
+  LParams: TStringList;
+  I: Integer;
+  LName: string;
+  LData: TRpWebTestingSetup;
+begin
+  Result := TStringList.Create;
+  LData := LoadAdminTestingRequest(Request);
+  Result.Add('aliasname=' + LData.AliasName);
+  Result.Add('reportname=' + LData.ReportName);
+  if SameText(LData.AuthType, 'user') then
+  begin
+    Result.Add('username=' + LData.UserName);
+    Result.Add('password=' + LData.Password);
+  end;
+
+  LParams := CreateAdminParamList(Request);
+  try
+    for I := 0 to LParams.Count - 1 do
+    begin
+      LName := LParams.Names[I];
+      if (Pos('Param', LName) = 1) or (Pos('NULLParam', LName) = 1) then
+        Result.Add(LName + '=' + LParams.ValueFromIndex[I]);
+    end;
+  finally
+    LParams.Free;
+  end;
+end;
+
+function TRpWebPageLoader.GetTestingPdfDownloadFileName(
+  const AReportName: string): string;
+var
+  LBaseName: string;
+begin
+  LBaseName := ExtractFileName(AReportName);
+  if Length(LBaseName) = 0 then
+    LBaseName := 'report';
+  Result := ChangeFileExt(LBaseName, '.pdf');
+end;
+
+procedure TRpWebPageLoader.LoadAllTestingReports(
+  AReports: TList<TRpWebTestingReportOption>);
+var
+  I, J: Integer;
+  LAliasName: string;
+  LDirPath: string;
+  LReportList: TStringList;
+  LDisplayReportName: string;
+  LOption: TRpWebTestingReportOption;
+begin
+  AReports.Clear;
+  LReportList := TStringList.Create;
+  try
+    for I := 0 to laliases.Count - 1 do
+    begin
+      LAliasName := Trim(laliases.Names[I]);
+      if Length(LAliasName) = 0 then
+        Continue;
+
+      LDirPath := laliases.Values[LAliasName];
+      if Length(LDirPath) = 0 then
+        Continue;
+
+      LReportList.Clear;
+      if LDirPath[1] = ':' then
+        FRpAliasLibs.Connections.FillTreeDir(Copy(LDirPath, 2, Length(LDirPath)),
+          LReportList)
+      else
+      begin
+        if not DirectoryExists(LDirPath) then
+          raise Exception.Create(SrpDirectoryNotExists + ' - ' + LDirPath);
+        FillTreeDir(LDirPath, LReportList);
+      end;
+
+      for J := 0 to LReportList.Count - 1 do
+      begin
+        if Length(LReportList[J]) = 0 then
+          Continue;
+        LDisplayReportName := LReportList[J];
+        if LDisplayReportName[1] = C_DIRSEPARATOR then
+          LDisplayReportName := Copy(LDisplayReportName, 2,
+            Length(LDisplayReportName));
+        LOption.AliasName := LAliasName;
+        LOption.ReportName := LReportList[J];
+        LOption.DisplayName := LAliasName + ' / ' + LDisplayReportName;
+        AReports.Add(LOption);
+      end;
+    end;
+  finally
+    LReportList.Free;
+  end;
 end;
 
 class function TRpWebPageLoader.RequestHasParam(Request: TWebRequest;
@@ -1639,6 +1877,218 @@ begin
  end;
 end;
 
+function TRpWebPageLoader.LoadAdminTestingPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LUserName,LMessage:string;
+ LData:TRpWebTestingSetup;
+ LReports:TList<TRpWebTestingReportOption>;
+begin
+ if not TryAdminLogin(Request,LUserName,LMessage) then
+ begin
+  Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+  exit;
+ end;
+
+ LData:=LoadAdminTestingRequest(Request);
+ LReports:=TList<TRpWebTestingReportOption>.Create;
+ try
+  LoadAllTestingReports(LReports);
+  if (Length(LData.AliasName)=0) and (LReports.Count>0) then
+  begin
+   LData.AliasName:=LReports[0].AliasName;
+   LData.ReportName:=LReports[0].ReportName;
+  end;
+  Result:=TRpWebAdminPageRenderer.RenderTestingSetup(LData,LReports,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LReports.Free;
+ end;
+end;
+
+  function TRpWebPageLoader.LoadAdminTestingParamsPage(Request: TWebRequest;
+    const AMessageText: string): string;
+  var
+   LData:TRpWebTestingSetup;
+   LUserName,LMessage:string;
+   pdfreport:TRpReport;
+   aparam:TRpParam;
+   AParamsHtml:string;
+   PrevValue:string;
+   VisibleParam:Boolean;
+   ReportDisplayName:string;
+   i,k,selectedindex,multisize:Integer;
+  begin
+   if not TryAdminLogin(Request,LUserName,LMessage) then
+   begin
+    Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    exit;
+   end;
+
+   LData:=LoadAdminTestingRequest(Request);
+   if (Length(LData.AliasName)=0) or (Length(LData.ReportName)=0) then
+   begin
+    Result:=LoadAdminTestingPage(Request,'Select a report first');
+    exit;
+   end;
+
+   pdfreport:=TRpReport.Create(Owner);
+   try
+    LoadReport(pdfreport,LData.AliasName,LData.ReportName);
+    pdfreport.Params.UpdateLookup;
+    VisibleParam:=False;
+    for i:=0 to pdfreport.Params.Count-1 do
+    begin
+     if pdfreport.Params.Items[i].Visible and
+      (not pdfreport.Params.Items[i].NeverVisible) then
+     begin
+      VisibleParam:=True;
+      break;
+     end;
+    end;
+
+    ReportDisplayName:=LData.ReportName;
+    if (Length(ReportDisplayName)>0) and (ReportDisplayName[1]=C_DIRSEPARATOR) then
+     ReportDisplayName:=Copy(ReportDisplayName,2,Length(ReportDisplayName));
+
+    if not VisibleParam then
+    begin
+     Result:=TRpWebAdminPageRenderer.RenderTestingParams(LData,
+      LData.AliasName+' / '+ReportDisplayName,
+      '<p>This report has no visible parameters.</p>',
+      HiddenAdminAuthInputs(Request),AMessageText);
+     exit;
+    end;
+
+    AParamsHtml:='<table width="90%" border="1">'+#10;
+    for i:=0 to pdfreport.Params.Count-1 do
+    begin
+     aparam:=pdfreport.Params.Items[i];
+     if aparam.Visible and (not aparam.NeverVisible) then
+     begin
+      PrevValue:=GetAdminParam(Request,'Param'+aparam.Name);
+      AParamsHtml:=AParamsHtml+'<tr>'+#10+
+        '<td>'+HtmlEncode(aparam.Description)+'</td>'+#10+
+        '<td>'+#10;
+      case aparam.ParamType of
+        rpParamBool:
+         begin
+          AParamsHtml:=AParamsHtml+
+           '<select name="Param'+aparam.Name+'" id="Param'+aparam.Name+'" ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          AParamsHtml:=AParamsHtml+'>'+#10;
+          AParamsHtml:=AParamsHtml+'<option value="'+BoolToStr(False,True)+'" ';
+          if Length(PrevValue)>0 then
+          begin
+           if SameText(PrevValue,BoolToStr(False,True)) then
+            AParamsHtml:=AParamsHtml+' selected ';
+          end
+          else if (not VarIsNull(aparam.Value)) and (not aparam.Value) then
+           AParamsHtml:=AParamsHtml+' selected ';
+          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpNo)+'</option>'+#10;
+          AParamsHtml:=AParamsHtml+'<option value="'+BoolToStr(True,True)+'" ';
+          if Length(PrevValue)>0 then
+          begin
+           if SameText(PrevValue,BoolToStr(True,True)) then
+            AParamsHtml:=AParamsHtml+' selected ';
+          end
+          else if (not VarIsNull(aparam.Value)) and aparam.Value then
+           AParamsHtml:=AParamsHtml+' selected ';
+          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpYes)+'</option>'+#10+
+           '</select>'+#10;
+         end;
+        rpParamMultiple:
+         begin
+          AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
+           '" id="Param'+aparam.Name+'" multiple ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          multisize:=10;
+          if aparam.Items.Count<10 then
+           multisize:=aparam.Items.Count;
+          AParamsHtml:=AParamsHtml+' size="'+IntToStr(multisize)+'">'+#10;
+          for k:=0 to aparam.Items.Count-1 do
+          begin
+           AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
+           if aparam.Selected.IndexOf(IntToStr(k))>=0 then
+            AParamsHtml:=AParamsHtml+' selected ';
+           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+            '</option>'+#10;
+          end;
+          AParamsHtml:=AParamsHtml+'</select>'+#10;
+         end;
+        rpParamList:
+         begin
+          AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
+           '" id="Param'+aparam.Name+'" ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          AParamsHtml:=AParamsHtml+'>'+#10;
+          if Length(PrevValue)>0 then
+           selectedindex:=StrToIntDef(PrevValue,-1)
+          else if not VarIsNull(aparam.Value) then
+          begin
+           if VarType(aparam.Value)=varInteger then
+            selectedindex:=aparam.Value
+           else
+            selectedindex:=aparam.Values.IndexOf(String(aparam.Value));
+          end
+          else
+           selectedindex:=-1;
+          for k:=0 to aparam.Items.Count-1 do
+          begin
+           AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
+           if k=selectedindex then
+            AParamsHtml:=AParamsHtml+' selected ';
+           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+            '</option>'+#10;
+          end;
+          AParamsHtml:=AParamsHtml+'</select>'+#10;
+         end;
+      else
+        begin
+         if Length(PrevValue)=0 then
+          PrevValue:=aparam.AsString;
+         AParamsHtml:=AParamsHtml+'<input type="text" name="Param'+
+          aparam.Name+'" id="Param'+aparam.Name+'" ';
+         if Length(aparam.Hint)>0 then
+          AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+         if aparam.IsReadOnly then
+          AParamsHtml:=AParamsHtml+' readonly ';
+         AParamsHtml:=AParamsHtml+' value="'+HtmlEncode(PrevValue)+'">';
+        end;
+      end;
+      AParamsHtml:=AParamsHtml+'</td>'+#10;
+      if aparam.AllowNulls then
+      begin
+       AParamsHtml:=AParamsHtml+'<td>'+#10+
+        '<input type="checkbox" name="NULLParam'+aparam.Name+'" value="NULL"';
+       if RequestHasParam(Request,'NULLParam'+aparam.Name) then
+        AParamsHtml:=AParamsHtml+' checked '
+       else if VarIsNull(aparam.Value) then
+        AParamsHtml:=AParamsHtml+' checked ';
+       AParamsHtml:=AParamsHtml+'>'+TranslateStr(196,'Null value')+'</td>'+#10;
+      end;
+      AParamsHtml:=AParamsHtml+'</tr>'+#10;
+     end;
+    end;
+    AParamsHtml:=AParamsHtml+'</table>'+#10;
+
+    Result:=TRpWebAdminPageRenderer.RenderTestingParams(LData,
+     LData.AliasName+' / '+ReportDisplayName,AParamsHtml,
+     HiddenAdminAuthInputs(Request),AMessageText);
+   finally
+    pdfreport.Free;
+   end;
+  end;
+
 function TRpWebPageLoader.ExecuteAdminApiKeyCreate(Request: TWebRequest): string;
 var
  LService:TRpWebServerConfigAdminService;
@@ -2189,6 +2639,7 @@ procedure TRpWebPageLoader.HandleAdminRequest(Request: TWebRequest;
 var
  LPath:string;
  LStrList:TStringList;
+ LUserName,LMessage:string;
 begin
  try
   CheckInitReaded;
@@ -2294,6 +2745,34 @@ begin
    Response.Content:=ExecuteAdminApiKeyCreate(Request)
   else if LPath='/admin/apikeys/delete' then
    Response.Content:=ExecuteAdminApiKeyDelete(Request)
+  else if LPath='/admin/testing' then
+  begin
+   if RequestHasParam(Request,'testing_action_download') then
+   begin
+    if TryAdminLogin(Request,LUserName,LMessage) then
+     ExecuteAdminTestingDownload(Response)
+    else
+     Response.Content:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+   end
+   else if RequestHasParam(Request,'testing_action_test_request') then
+    Response.Content:=ExecuteAdminTestingRequest(Request)
+   else if RequestHasParam(Request,'testing_action_build_request_done') then
+    Response.Content:=LoadAdminTestingRequestPreviewPage(Request,
+     'Next phase will execute the request.')
+   else if RequestHasParam(Request,'testing_action_back_to_params') then
+    Response.Content:=LoadAdminTestingParamsPage(Request)
+   else if RequestHasParam(Request,'testing_action_build_request') then
+    Response.Content:=LoadAdminTestingRequestPreviewPage(Request,
+     'Request preview generated.')
+   else if RequestHasParam(Request,'testing_action_params_done') then
+    Response.Content:=LoadAdminTestingParamsPage(Request,
+     'Next phase will build and visualize the request.')
+   else if RequestHasParam(Request,'testing_action_begin') then
+    Response.Content:=LoadAdminTestingParamsPage(Request,
+     'Report selected. Parameters loaded.')
+   else
+    Response.Content:=LoadAdminTestingPage(Request);
+  end
   else if LPath='/admin/diagnostics' then
    Response.Content:=LoadAdminDiagnosticsPage(Request)
   else
@@ -2359,6 +2838,8 @@ begin
  FShowUnauthorizedPage:=True;
  FUrlGetParams:=True;
  FLogJson:=True;
+ FTestingLastPdf:=TMemoryStream.Create;
+ FTestingLastPdfFileName:='';
 
  lusers:=TStringList.Create;
  lgroups:=TStringList.Create;
@@ -2477,6 +2958,7 @@ begin
  LServerApiKeys.Free;
  LServerApiKeyUsers.Free;
  aresult.free;
+ FTestingLastPdf.Free;
 
  inherited Destroy;
 end;
@@ -2553,7 +3035,7 @@ begin
    inif.CaseSensitive:=false;
 {$ENDIF}
    FPagesDirectory:=Trim(inif.Readstring('CONFIG','PAGESDIR',''));
-   fport:=inif.ReadInteger('CONFIG','TCPPORT',3060);
+  fport:=inif.ReadInteger('CONFIG','TCPPORT',3080);
   FAllowUserAccess:=ReadConfigBool(inif,'SECURITY','USER_ACCESS',True);
   FAllowApiKeyAccess:=ReadConfigBool(inif,'SECURITY','API_KEY_ACCESS',True);
   FShowUnauthorizedPage:=ReadConfigBool(inif,'SECURITY',
@@ -3030,6 +3512,269 @@ begin
  finally
   pdfreport.Free;
  end;
+end;
+
+function TRpWebPageLoader.LoadAdminTestingRequestPreviewPage(
+  Request: TWebRequest; const AMessageText: string): string;
+var
+  LData: TRpWebTestingSetup;
+  LUserName, LMessage: string;
+  LPayload: TStringList;
+  LUrl, LBodyText, LHeadersText, LScheme, LBasePath: string;
+  I: Integer;
+  LPair, LEncodedPair: string;
+  LReportDisplayName: string;
+begin
+  if not TryAdminLogin(Request, LUserName, LMessage) then
+  begin
+    Result := TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    Exit;
+  end;
+
+  LData := LoadAdminTestingRequest(Request);
+  if (Length(LData.AliasName) = 0) or (Length(LData.ReportName) = 0) then
+  begin
+    Result := LoadAdminTestingPage(Request, 'Select a report first');
+    Exit;
+  end;
+
+  LPayload := BuildTestingFormPayload(Request);
+  try
+    if IsSecureConnection(Request) then
+      LScheme := 'https://'
+    else
+      LScheme := 'http://';
+
+    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LReportDisplayName := LData.ReportName;
+    if (Length(LReportDisplayName) > 0) and
+      (LReportDisplayName[1] = C_DIRSEPARATOR) then
+      LReportDisplayName := Copy(LReportDisplayName, 2,
+        Length(LReportDisplayName));
+
+    LBodyText := '';
+    for I := 0 to LPayload.Count - 1 do
+    begin
+      LPair := LPayload[I];
+      LEncodedPair := TNetEncoding.URL.Encode(LPayload.Names[I]) + '=' +
+        TNetEncoding.URL.Encode(LPayload.ValueFromIndex[I]);
+      if SameText(LData.CallType, 'GET') then
+      begin
+        if I = 0 then
+          LBodyText := LEncodedPair
+        else
+          LBodyText := LBodyText + '&' + LEncodedPair;
+      end
+      else
+      begin
+        if I = 0 then
+          LBodyText := LEncodedPair
+        else
+          LBodyText := LBodyText + '&' + LEncodedPair;
+      end;
+    end;
+
+    if SameText(LData.CallType, 'GET') and (Length(LBodyText) > 0) then
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath +
+        '?' + LBodyText
+    else
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath;
+
+    LHeadersText := 'Host: ' + LData.HostName + ':' + LData.PortText;
+    if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+      LHeadersText := LHeadersText + sLineBreak +
+        'X-ReportmanServer-ApiKey: ' + LData.ApiKey;
+    if SameText(LData.CallType, 'POST') then
+      LHeadersText := LHeadersText + sLineBreak +
+        'Content-Type: application/x-www-form-urlencoded';
+
+    if SameText(LData.CallType, 'GET') then
+      LBodyText := '';
+
+    Result := TRpWebAdminPageRenderer.RenderTestingRequestPreview(LData,
+      LData.AliasName + ' / ' + LReportDisplayName, LUrl, LData.CallType,
+      LHeadersText, LBodyText, BuildTestingHiddenInputs(Request),
+      HiddenAdminAuthInputs(Request), AMessageText, '', False);
+  finally
+    LPayload.Free;
+  end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminTestingRequest(
+  Request: TWebRequest): string;
+var
+  LData: TRpWebTestingSetup;
+  LUserName, LMessage: string;
+  LPayload: TStringList;
+  LUrl, LBodyText, LHeadersText, LScheme, LBasePath: string;
+  LReportDisplayName: string;
+  I: Integer;
+  LEncodedPayload: string;
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LResponseStream: TMemoryStream;
+  LRequestBody: TStringStream;
+  LResponseContentType: string;
+  LResponseBodyText: string;
+  LResultHtml: string;
+  LHasDownload: Boolean;
+begin
+  if not TryAdminLogin(Request, LUserName, LMessage) then
+  begin
+    Result := TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    Exit;
+  end;
+
+  LData := LoadAdminTestingRequest(Request);
+  if (Length(LData.AliasName) = 0) or (Length(LData.ReportName) = 0) then
+  begin
+    Result := LoadAdminTestingPage(Request, 'Select a report first');
+    Exit;
+  end;
+
+  if FTestingLastPdf <> nil then
+    FTestingLastPdf.Clear;
+  FTestingLastPdfFileName := '';
+
+  LPayload := BuildTestingFormPayload(Request);
+  try
+    if IsSecureConnection(Request) then
+      LScheme := 'https://'
+    else
+      LScheme := 'http://';
+
+    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LReportDisplayName := LData.ReportName;
+    if (Length(LReportDisplayName) > 0) and
+      (LReportDisplayName[1] = C_DIRSEPARATOR) then
+      LReportDisplayName := Copy(LReportDisplayName, 2,
+        Length(LReportDisplayName));
+
+    LEncodedPayload := '';
+    for I := 0 to LPayload.Count - 1 do
+    begin
+      if I > 0 then
+        LEncodedPayload := LEncodedPayload + '&';
+      LEncodedPayload := LEncodedPayload +
+        TNetEncoding.URL.Encode(LPayload.Names[I]) + '=' +
+        TNetEncoding.URL.Encode(LPayload.ValueFromIndex[I]);
+    end;
+
+    if SameText(LData.CallType, 'GET') and (Length(LEncodedPayload) > 0) then
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath +
+        '?' + LEncodedPayload
+    else
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath;
+
+    LHeadersText := 'Host: ' + LData.HostName + ':' + LData.PortText;
+    if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+      LHeadersText := LHeadersText + sLineBreak +
+        'X-ReportmanServer-ApiKey: ' + LData.ApiKey;
+    if SameText(LData.CallType, 'POST') then
+      LHeadersText := LHeadersText + sLineBreak +
+        'Content-Type: application/x-www-form-urlencoded';
+
+    if SameText(LData.CallType, 'GET') then
+      LBodyText := ''
+    else
+      LBodyText := LEncodedPayload;
+
+    LClient := TNetHTTPClient.Create(nil);
+    try
+      if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+        LClient.CustomHeaders['X-ReportmanServer-ApiKey'] := LData.ApiKey;
+
+      try
+        LResponseStream := TMemoryStream.Create;
+        try
+          if SameText(LData.CallType, 'POST') then
+          begin
+            LRequestBody := TStringStream.Create(LEncodedPayload, TEncoding.UTF8);
+            try
+              LRequestBody.Position := 0;
+              LResponse := LClient.Post(LUrl, LRequestBody, LResponseStream);
+            finally
+              LRequestBody.Free;
+            end;
+          end
+          else
+            LResponse := LClient.Get(LUrl, LResponseStream);
+
+          LResponseContentType := Trim(LResponse.MimeType);
+          if Length(LResponseContentType) = 0 then
+            LResponseContentType := 'application/octet-stream';
+
+          LHasDownload := SameText(LResponseContentType, 'application/pdf') and
+            (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300);
+          if LHasDownload and (FTestingLastPdf <> nil) then
+          begin
+            LResponseStream.Position := 0;
+            FTestingLastPdf.CopyFrom(LResponseStream, 0);
+            FTestingLastPdf.Position := 0;
+            FTestingLastPdfFileName :=
+              GetTestingPdfDownloadFileName(LData.ReportName);
+          end;
+
+          if LHasDownload then
+            LResponseBodyText := 'Binary PDF response stored in memory. Use Download to fetch the generated file.'
+          else
+            LResponseBodyText := LResponse.ContentAsString;
+
+          LResultHtml :=
+            '<h3>Response</h3>' +
+            '<p>Status</p><pre>' + HtmlEncode(IntToStr(LResponse.StatusCode) + ' ' +
+              LResponse.StatusText) + '</pre>' +
+            '<p>Response headers</p><pre>' + HtmlEncode('Content-Type: ' +
+              LResponseContentType + sLineBreak + 'Content-Length: ' +
+              IntToStr(LResponseStream.Size)) + '</pre>' +
+            '<p>Response body</p><pre>' + HtmlEncode(LResponseBodyText) + '</pre>';
+
+          if LHasDownload then
+            LMessage := 'PDF response ready for download.'
+          else
+            LMessage := 'Request executed.';
+        finally
+          LResponseStream.Free;
+        end;
+      except
+        on E: Exception do
+        begin
+          LHasDownload := False;
+          LResultHtml :=
+            '<h3>Response</h3>' +
+            '<p>Status</p><pre>Request failed</pre>' +
+            '<p>Response body</p><pre>' + HtmlEncode(E.Message) + '</pre>';
+          LMessage := 'Request execution failed.';
+        end;
+      end;
+    finally
+      LClient.Free;
+    end;
+
+    Result := TRpWebAdminPageRenderer.RenderTestingRequestPreview(LData,
+      LData.AliasName + ' / ' + LReportDisplayName, LUrl, LData.CallType,
+      LHeadersText, LBodyText, BuildTestingHiddenInputs(Request),
+      HiddenAdminAuthInputs(Request), LMessage, LResultHtml, LHasDownload);
+  finally
+    LPayload.Free;
+  end;
+end;
+
+procedure TRpWebPageLoader.ExecuteAdminTestingDownload(Response: TWebResponse);
+var
+  LStream: TMemoryStream;
+begin
+  if (FTestingLastPdf = nil) or (FTestingLastPdf.Size = 0) then
+    raise Exception.Create('No generated PDF available to download');
+
+  LStream := TMemoryStream.Create;
+  FTestingLastPdf.Position := 0;
+  LStream.CopyFrom(FTestingLastPdf, 0);
+  LStream.Position := 0;
+  Response.ContentType := 'application/pdf';
+  Response.ContentStream := LStream;
+  Response.SetCustomHeader('Content-Disposition',
+    'attachment; filename="' + FTestingLastPdfFileName + '"');
 end;
 
 procedure TRpWebPageLoader.ExecuteReport(Request: TWebRequest;Response:TWebResponse);
