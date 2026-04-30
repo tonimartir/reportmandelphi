@@ -13,6 +13,8 @@ uses
 
 type
   Trepwebmod = class(TWebModule)
+    procedure repwebmodarootAction(Sender: TObject;
+      Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure repwebmodaversionAction(Sender: TObject;
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure WebModuleCreate(Sender: TObject);
@@ -47,6 +49,13 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure Trepwebmod.repwebmodarootAction(Sender: TObject;
+  Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+begin
+  Response.SendRedirect(Request.InternalScriptName + '/login');
+  Handled := True;
+end;
 
 procedure Trepwebmod.repwebmodaversionAction(Sender: TObject;
   Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);

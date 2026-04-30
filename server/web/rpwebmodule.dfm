@@ -4,6 +4,11 @@ object repwebmod: Trepwebmod
   OnDestroy = WebModuleDestroy
   Actions = <
     item
+      Name = 'aroot'
+      PathInfo = '/'
+      OnAction = repwebmodarootAction
+    end
+    item
       Name = 'aversion'
       PathInfo = '/version'
       OnAction = repwebmodaversionAction

@@ -152,6 +152,7 @@ begin
   Result := BuildPage('Reportman Admin',
     AdminNav(AAuthInputs) +
     '<p>Config file: ' + RpHtmlEncode(AServerInfo.ConfigFileName) + '</p>' +
+    '<p>DBXConnections file: ' + RpHtmlEncode(AServerInfo.DBXConnectionsFileName) + '</p>' +
     '<p>Users: ' + IntToStr(AServerInfo.UsersCount) + '</p>' +
     '<p>Groups: ' + IntToStr(AServerInfo.GroupsCount) + '</p>' +
     '<p>Aliases: ' + IntToStr(AServerInfo.AliasesCount) + '</p>' +
@@ -549,7 +550,9 @@ begin
   begin
     Result := Result + '<tr><td>' + RpHtmlEncode(AKeys[I].KeyName) + '</td><td>' + RpHtmlEncode(AKeys[I].UserName) + '</td><td>' +
       RpHtmlEncode(AKeys[I].SecretMasked) + '</td><td>' +
-      '<form method="post" action="/admin/apikeys/delete">' + AAuthInputs + '<input type="hidden" name="name" value="' + RpHtmlEncode(AKeys[I].KeyName) + '"><input type="submit" value="Delete"></form>' +
+      '<a href="#" data-secret="' + RpHtmlEncode(AKeys[I].SecretPlainText) +
+      '" onclick="if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(this.getAttribute(''data-secret'')); } else { prompt(''Copy API key:'', this.getAttribute(''data-secret'')); } return false;">Copy</a> ' +
+      '<form method="post" action="/admin/apikeys/delete" style="display:inline;">' + AAuthInputs + '<input type="hidden" name="name" value="' + RpHtmlEncode(AKeys[I].KeyName) + '"><input type="submit" value="Delete"></form>' +
       '</td></tr>';
   end;
   Result := BuildPage('API Keys', Result + '</table>');
@@ -572,6 +575,7 @@ begin
   Result := BuildPage('Diagnostics',
     AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
     '<p>Config file: ' + RpHtmlEncode(AServerInfo.ConfigFileName) + '</p>' +
+    '<p>DBXConnections file: ' + RpHtmlEncode(AServerInfo.DBXConnectionsFileName) + '</p>' +
     '<p>Users: ' + IntToStr(AServerInfo.UsersCount) + '</p>' +
     '<p>Groups: ' + IntToStr(AServerInfo.GroupsCount) + '</p>' +
     '<p>Aliases: ' + IntToStr(AServerInfo.AliasesCount) + '</p>' +

@@ -575,6 +575,7 @@ procedure TRpWebDbxAdminService.BuildFireDacParamValues(ASeedValues,
   AEditableOptionNames: TStrings);
 var
   LDriverID: string;
+  LClearDriverDefaults: Boolean;
   LBaseKeys: TStringList;
   LOrderedParams: TStringList;
   LManagerMeta: IFDPhysManagerMetadata;
@@ -643,11 +644,21 @@ var
     SetDefaultIfSeedEmpty('Database', '');
   end;
 
+  procedure ApplyFireDacCommonOverrides;
+  begin
+    if AValues.IndexOfName('OSAuthent') >= 0 then
+    begin
+      if LClearDriverDefaults then
+        SetNameValuePreserveEmpty(AValues, 'OSAuthent', 'No')
+      else
+        SetDefaultIfSeedEmpty('OSAuthent', 'No');
+    end;
+  end;
+
   procedure ApplyFirebirdOverrides;
   begin
     if not SameText(LDriverID, 'FB') then
       Exit;
-    SetDefaultIfSeedEmpty('OSAuthent', 'No');
     SetDefaultIfSeedEmpty('Protocol', 'TCPIP');
     SetDefaultIfSeedEmpty('OpenMode', 'Open');
   end;
@@ -702,6 +713,8 @@ var
   end;
 begin
   LDriverID := Trim(ASeedValues.Values['DriverID']);
+  LClearDriverDefaults := SameText(Trim(ASeedValues.Values[
+    RP_WEB_CLEAR_DRIVER_DEFAULTS]), '1');
   if Length(LDriverID) = 0 then
     LDriverID := 'FB';
 
@@ -724,6 +737,7 @@ begin
 
     ReadFireDacParams(AValues);
     ApplyDatabaseOverride;
+    ApplyFireDacCommonOverrides;
     ApplyFirebirdOverrides;
 
     for I := LOrderedParams.Count - 1 downto 0 do

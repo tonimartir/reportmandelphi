@@ -5,7 +5,7 @@ unit rpwebserverconfigadmin;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Generics.Collections, rpmdshfolder;
+  Classes, SysUtils, IniFiles, Generics.Collections, rpmdshfolder, rpdatainfo;
 
 function ResolveReportmanServerConfigFileName(
   const AConfigOverride: string = ''): string;
@@ -48,11 +48,13 @@ type
   TRpWebServerApiKey = record
     KeyName: string;
     SecretMasked: string;
+    SecretPlainText: string;
     UserName: string;
   end;
 
   TRpWebServerConfigInfo = record
     ConfigFileName: string;
+    DBXConnectionsFileName: string;
     BootstrapRequired: Boolean;
     HasAdminUser: Boolean;
     UsersCount: Integer;
@@ -477,9 +479,16 @@ end;
 function TRpWebServerConfigAdminService.GetConfigInfo: TRpWebServerConfigInfo;
 var
   LIni: TMemIniFile;
+  LConnAdmin: TRpConnAdmin;
   LUsers, LGroups, LAliases, LApiKeys: TStringList;
 begin
   Result.ConfigFileName := GetConfigFileName;
+  LConnAdmin := TRpConnAdmin.Create;
+  try
+    Result.DBXConnectionsFileName := LConnAdmin.configfilename;
+  finally
+    LConnAdmin.Free;
+  end;
   Result.BootstrapRequired := BootstrapRequired;
   Result.HasAdminUser := not Result.BootstrapRequired;
   LIni := LoadIni;
@@ -1119,6 +1128,7 @@ begin
           Continue;
         LKey.KeyName := NormalizeName(LValues.Names[I]);
         LKey.SecretMasked := MaskSecret(LValues.ValueFromIndex[I]);
+        LKey.SecretPlainText := LValues.ValueFromIndex[I];
         LKey.UserName := NormalizeName(LUsers.Values[LKey.KeyName]);
         AKeys.Add(LKey);
       end;

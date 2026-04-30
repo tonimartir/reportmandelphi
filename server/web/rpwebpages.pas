@@ -2357,7 +2357,7 @@ begin
  FAllowUserAccess:=True;
  FAllowApiKeyAccess:=True;
  FShowUnauthorizedPage:=True;
- FUrlGetParams:=False;
+ FUrlGetParams:=True;
  FLogJson:=True;
 
  lusers:=TStringList.Create;
@@ -2558,7 +2558,7 @@ begin
   FAllowApiKeyAccess:=ReadConfigBool(inif,'SECURITY','API_KEY_ACCESS',True);
   FShowUnauthorizedPage:=ReadConfigBool(inif,'SECURITY',
    'SHOWUNAUTHORIZEDPAGE',True);
-  FUrlGetParams:=ReadConfigBool(inif,'SECURITY','URLGETPARAMS',False);
+  FUrlGetParams:=ReadConfigBool(inif,'SECURITY','URLGETPARAMS',True);
   FLogJson:=ReadConfigBool(inif,'CONFIG','LOG_JSON',True);
    inif.ReadSectionValues('USERS',lusers);
    inif.ReadSectionValues('GROUPS',lgroups);

@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Crear una solucion Docker autocontenida para `repwebexe` en Linux, con frontend web, configuracion persistente de `dbxconnections.ini` y un asistente web de administracion integrado en el propio servidor.
+Crear una solucion Docker autocontenida para `repwebexe` en Linux, ejecutandolo en modo `selfhosted`, con configuracion persistente de `dbxconnections.ini` y un asistente web de administracion integrado en el propio servidor.
 
 La administracion web no debe limitarse a `dbxconnections.ini`. Debe cubrir tambien la administracion funcional de `reportmanserver.ini`, ya que ese fichero contiene la seguridad del servidor, los usuarios, grupos, API keys y los aliases que apuntan a carpetas de informes o a aliases de conexion.
 
@@ -23,7 +23,8 @@ Tambien debe existir administracion asistida y, cuando proceda, modo manual cont
 
 - El asistente web se integra en `repwebexe`, no en un servicio separado.
 - La prueba de conexion debe usar la misma logica Delphi que usara el servidor real.
-- El contenedor debe ser autonomo: binario, servidor web, dependencias y configuracion controlada dentro de la imagen o mediante volumenes explicitos.
+- El contenedor debe ser autonomo: binario, dependencias y configuracion controlada dentro de la imagen o mediante volumenes explicitos.
+- El modo preferente de despliegue Docker es `repwebexe -selfhosted -port=<PORT>`; no hace falta un Apache/nginx delante salvo una necesidad posterior muy concreta.
 - La administracion debe abarcar `dbxconnections.ini` y `reportmanserver.ini`.
 - Debe existir modo asistido para configuracion funcional y modo manual al menos para `dbxconnections.ini`.
 - La seguridad del area admin debe estar gobernada por `reportmanserver.ini` una vez exista al menos un administrador.
@@ -606,7 +607,7 @@ implementation
 
 Notas sobre esta firma:
 
-- `CreateConnAdmin` debe crear una instancia fresca por operacion, para evitar estado compartido entre requests CGI.
+- `CreateConnAdmin` debe crear una instancia fresca por operacion, para evitar estado compartido entre requests HTTP.
 - `TestConnectionValues` queda prevista para el modo avanzado de probar cambios aun no guardados.
 - `TStrings` se usa en actualizacion y pruebas temporales para reducir friccion con `TRpConnAdmin`.
 
@@ -2165,7 +2166,7 @@ Hito E:
 
 - duplicar la logica de prueba en web y VCL, generando comportamientos divergentes
 - exponer contrasenas al re-renderizar formularios
-- mantener estado mutable compartido entre peticiones CGI
+- mantener estado mutable compartido entre peticiones HTTP
 - no recargar correctamente el fichero despues de escritura manual
 - romper compatibilidad con configuraciones antiguas si el parser se vuelve demasiado estricto
 
@@ -2182,28 +2183,27 @@ La fase 1 no debe darse por cerrada solo porque la UI exista. Debe cumplirse que
 
 ### Objetivo funcional
 
-Disponer de un contenedor Linux autocontenido para `repwebexe`, con servidor web delante, configuracion persistente y soporte para drivers necesarios.
+Disponer de un contenedor Linux autocontenido para `repwebexe`, ejecutado en modo `selfhosted`, con configuracion persistente y soporte para drivers necesarios.
 
 ### Estructura inicial prevista
 
 - `server/docker/web/Dockerfile`
 - `server/docker/web/docker-compose.yml`
-- `server/docker/web/nginx/` o alternativa equivalente
-- `server/docker/web/cgi-bin/`
 - `server/docker/web/config/`
 - `server/docker/web/scripts/`
 - `server/docker/web/README.md`
 
 ### Decision de hosting web
 
-`repwebexe` es CGI. Por tanto, el contenedor necesita un frontend web que pueda ejecutarlo correctamente.
+`repwebexe` ya dispone de modo selfhosted y puede abrir directamente el puerto HTTP del contenedor.
 
-Opciones:
+Consecuencia operativa:
 
-1. Apache con CGI: opcion mas directa y natural para CGI clasico.
-2. nginx con capa adicional para CGI/FastCGI: posible, pero mas delicado.
+1. El contenedor puede ser de proceso unico: `repwebexe -selfhosted -port=<PORT>`.
+2. El `Dockerfile` puede exponer directamente ese puerto sin capa CGI intermedia.
+3. Un reverse proxy externo solo seria opcional para TLS, routing o politicas corporativas, no un requisito de la imagen base.
 
-Si se mantiene el requisito de `nginx con CGI`, hay que asumir un adaptador intermedio y documentarlo bien. Si el objetivo es simplicidad operativa, Apache es mejor punto de partida.
+Esto simplifica mucho la imagen y elimina la necesidad de Apache/nginx en la primera version Docker.
 
 ### Dependencias del contenedor
 
@@ -2211,7 +2211,7 @@ La imagen debe incluir:
 
 - `repwebexe` Linux
 - runtime necesario
-- servidor web frontal
+- soporte del modo `selfhosted`
 - `dbxdrivers` preconfigurado
 - soporte de drivers decidido para la primera version
 - si aplica, `unixODBC` y sus drivers concretos
@@ -2254,14 +2254,15 @@ Esto es un requisito funcional explicito del proyecto.
 El entrypoint o script de inicio debe verificar:
 
 - existencia del binario `repwebexe`
-- existencia del servidor web configurado
+- presencia del modo `-selfhosted` operativo
 - disponibilidad de rutas de configuracion
 - presencia de librerias criticas
 - permisos de escritura solo donde proceda
+- puerto final resuelto desde `-port` o `CONFIG/TCPPORT`
 
 ### Resultado esperado de la fase 2
 
-Un Docker autocontenido que pueda arrancar por si solo, aceptar configuracion heredada de conexiones y administrar esa configuracion desde el propio panel web.
+Un Docker autocontenido que pueda arrancar por si solo, aceptar configuracion heredada de conexiones y administrar esa configuracion desde el propio panel web, sin servidor web frontal embebido en la imagen.
 
 ## Orden de implementacion recomendado
 
@@ -2290,11 +2291,12 @@ Un Docker autocontenido que pueda arrancar por si solo, aceptar configuracion he
 - `dbxconnections.ini` persiste en un volumen
 - se puede montar una configuracion antigua y usarla directamente
 - el panel admin funciona dentro del contenedor
+- `repwebexe` escucha directamente en el puerto publicado del contenedor
 - no se escribe fuera de las rutas previstas
 
 ## Riesgos a vigilar
 
-- complejidad adicional si se impone `nginx` para CGI clasico
+- diferencias entre comportamiento CGI legado y selfhosted en cabeceras, URLs base o despliegues antiguos
 - diferencias de librerias nativas entre host de build y runtime Linux
 - errores por concurrencia si coinciden modo manual y modo asistido
 - exposicion de secretos si el panel admin no filtra adecuadamente los campos sensibles
@@ -2315,4 +2317,4 @@ Convertir este plan en una especificacion tecnica de implementacion con:
 - endpoints concretos
 - plantillas HTML necesarias
 - ruta exacta de persistencia para `dbxconnections.ini`
-- eleccion definitiva entre Apache o nginx con adaptador CGI
+- contrato exacto de arranque Docker: `-selfhosted`, `-port`, `-bind` y volumenes persistentes
