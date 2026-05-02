@@ -107,6 +107,7 @@ uses
   rphtmldriver in '..\rphtmldriver.pas',
   rpmdfconnectionvcl in '..\rpmdfconnectionvcl.pas' {FRpConnectionVCL: TFrame},
   rpmdfwizardvcl in '..\rpmdfwizardvcl.pas' {FRpWizardVCL},
+  rpmdfnewreportwizardvcl in '..\rpmdfnewreportwizardvcl.pas' {FRpNewReportWizardVCL},
   rpmdfextsecvcl in '..\rpmdfextsecvcl.pas' {FRpExtSectionVCL},
   rpmdfdatasetsvcl in '..\rpmdfdatasetsvcl.pas' {FRpDatasetsVCL: TFrame},
   rpfmetaviewvcl in '..\rpfmetaviewvcl.pas' {FRpMetaVCL},

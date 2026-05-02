@@ -65,7 +65,7 @@ uses
   System.JSON,
   rpmdsysinfo,rppdfdriver,
   rpsection,rpprintitem,rpmdfopenlibvcl,rpeditconnvcl,
-  DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl, rpalias, System.Actions,
+  DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl,rpmdfnewreportwizardvcl, rpalias, System.Actions,
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
   Vcl.VirtualImageList,
   rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections,
@@ -618,6 +618,10 @@ begin
 end;
 
 procedure TFRpMainFVCL.ANewExecute(Sender: TObject);
+var
+  LPendingPrompt: string;
+  LHubDatabaseId, LHubSchemaId: Int64;
+  LHubApiKey: string;
 begin
  if Not checksave then
   exit;
@@ -628,8 +632,13 @@ begin
  report.IsDesignTime:=true;
  report.OnReadError:=OnReadError;
  report.FailIfLoadExternalError:=false;
-// if Not NewReportWizard(report,false) then
-  report.CreateNew;
+ if not NewModernReportWizard(report, LPendingPrompt,
+      LHubDatabaseId, LHubSchemaId, LHubApiKey) then
+ begin
+  report.Free;
+  report := nil;
+  Exit;
+ end;
  filename:='';
  alibrary:='';
  areportname:='';
@@ -637,6 +646,13 @@ begin
 
  DoEnable;
  FormResize(Self);
+ if Assigned(fchatframe) then
+ begin
+  fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
+  fchatframe.StartOnlineInitialization;
+ end;
+ if Trim(LPendingPrompt) <> '' then
+   BeginDesignChatContextRefresh(LPendingPrompt, False);
 end;
 
 procedure TFRpMainFVCL.DoEnable;
