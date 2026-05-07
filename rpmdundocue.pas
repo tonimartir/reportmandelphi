@@ -717,6 +717,8 @@ begin
     if isPosComp and (op.parentName = '') then
       raise Exception.Create('UndoCue: La sección del componente no tiene nombre');
   end;
+  if Assigned(FReport) then
+    FReport.Modified := True;
   UndoOperations.Add(op);
   // se pierde el redo al hacer una nueva operación
   RedoOperations.Clear;
@@ -758,6 +760,9 @@ begin
       Break;
     newGroupId := UndoOperations.Last.groupId;
   end;
+
+  if Assigned(FReport) and (Result.Count > 0) then
+    FReport.Modified := True;
 end;
 
 function TUndoCue.Redo: TObjectList<TChangeObjectOperation>;
@@ -789,6 +794,9 @@ begin
       Break;
     newGroupId := RedoOperations.Last.groupId;
   end;
+
+  if Assigned(FReport) and (Result.Count > 0) then
+    FReport.Modified := True;
 end;
 
 function TUndoCue.GetComponentByName(const name: string): TObject;

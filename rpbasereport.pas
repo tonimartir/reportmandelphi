@@ -183,6 +183,7 @@ type
    fintpageindex:integer;
    FOnWorkAsyncError:TWorkAsyncError;
    FOnWorkProgress:TMetaFileWorkProgress;
+  FModified:Boolean;
    procedure FInternalOnReadError(Reader: TReader; const Message: string;
     var Handled: Boolean);
    procedure SetSubReports(Value:TRpSubReportList);
@@ -364,6 +365,7 @@ type
    function RequestPage(pageindex:integer):boolean;
    function CheckParameters(paramlist:TRpParamList;var paramname,amessage:string):Boolean;
    function FindReporItemByName(itemName: string):TObject;
+  property Modified:Boolean read FModified write FModified;
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;

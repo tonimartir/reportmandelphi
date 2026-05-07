@@ -380,7 +380,6 @@ type
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
     fobjinsp:TFRpObjInspVCL;
-    lastsaved:TMemoryStream;
     configfile,configfilelib:string;
     oldonException:TExceptionEvent;
     oldonhint:TNotifyEvent;
@@ -530,11 +529,6 @@ end;
 
 destructor TFRpMainFVCL.Destroy;
 begin
- if Assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
  inherited Destroy;
 end;
 
@@ -665,14 +659,7 @@ end;
 
 procedure TFRpMainFVCL.DoEnable;
 begin
- // Save the report for seeing after if it's modified
- if Assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
- lastsaved:=TMemorystream.create;
- report.SaveToStream(lastsaved);
+ report.Modified:=False;
 
  EnsureUndoCue;
  CreateInterface;
@@ -683,12 +670,6 @@ begin
  FreeInterface;
  report.free;
  report:=nil;
- // Save the report for seeing after if it's modified
- if Assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
 end;
 
 procedure TFRpMainFVCL.AExitExecute(Sender: TObject);
@@ -1186,25 +1167,9 @@ begin
 end;
 
 
-// A report is known is modified by comparing the saving of
-// the current report with the last saved report (lastsaved)
 function TFRpMainFVCL.checkmodified:boolean;
-var
- newsave:TMemoryStream;
 begin
- Result:=true;
- if report=nil then
-  exit;
- if Not Assigned(lastsaved) then
-  exit;
- newsave:=TMemoryStream.create;
- try
-  report.SaveToStream(newsave);
-  if streamcompare(lastsaved,newsave) then
-   result:=false;
- finally
-  newsave.free;
- end;
+ Result:=Assigned(report) and report.Modified;
 end;
 
 procedure TFRpMainFVCL.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -2825,14 +2790,7 @@ begin
   LastUsedFiles.UseString(alibrary+'->'+areportname);
  end;
 
- // After saving update the lastsaved stream
- if assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
- lastsaved:=TMemorystream.create;
- report.SaveToStream(lastsaved);
+ report.Modified:=False;
 
  UpdateFileMenu;
 end;
@@ -3750,6 +3708,7 @@ begin
   report.IsDesignTime := True;
   report.OnReadError := OnReadError;
   report.FailIfLoadExternalError := False;
+    report.Modified := True;
   EnsureUndoCue;
 
   if Assigned(freportstructure) then

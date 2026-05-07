@@ -621,20 +621,22 @@ end;
 
 function RpStringToString(rpstring:Ansistring):AnsiString;
 var
- anumber:Ansistring;
- i:integer;
+ anumber:Integer;
+ i,outindex,rplen:integer;
 begin
- Result:='';
+ rplen:=Length(rpstring);
+ SetLength(Result,rplen);
  i:=1;
- while (i<=Length(rpstring)) do
+ outindex:=0;
+ while (i<=rplen) do
  begin
   if ((RpIsAlpha(rpstring[i])) or (rpstring[i]='#')) then
   begin
     if rpstring[i]='#' then
     begin
-     anumber:='0';
+     anumber:=0;
      inc(i);
-     while (i<=Length(rpstring)) do
+     while (i<=rplen) do
      begin
       if rpstring[i]='#' then
       begin
@@ -643,39 +645,44 @@ begin
       end
       else
       begin
-       anumber:=anumber+rpstring[i];
+       anumber:=(anumber*10)+(Ord(rpstring[i])-Ord('0'));
        inc(i);
       end;
      end;
-     Result:=Result+Chr(StrToInt(anumber) mod 256);
+     inc(outindex);
+     Result[outindex]:=AnsiChar(Chr(anumber mod 256));
     end
     else
     begin
-     Result:=Result+rpstring[i];
+     inc(outindex);
+     Result[outindex]:=rpstring[i];
      inc(i);
     end;
   end
   else
    inc(i);
  end;
+ SetLength(Result,outindex);
 end;
 
 function RpStringToWString(rpstring:Ansistring):WideString;
 var
- anumber:Ansistring;
- i:integer;
+ anumber:Integer;
+ i,outindex,rplen:integer;
 begin
- Result:='';
+ rplen:=Length(rpstring);
+ SetLength(Result,rplen);
  i:=1;
- while (i<=Length(rpstring)) do
+ outindex:=0;
+ while (i<=rplen) do
  begin
   if ((RpIsAlpha(rpstring[i])) or (rpstring[i]='#')) then
   begin
     if rpstring[i]='#' then
     begin
-     anumber:='0';
+     anumber:=0;
      inc(i);
-     while (i<=Length(rpstring)) do
+     while (i<=rplen) do
      begin
       if rpstring[i]='#' then
       begin
@@ -684,21 +691,24 @@ begin
       end
       else
       begin
-       anumber:=anumber+rpstring[i];
+       anumber:=(anumber*10)+(Ord(rpstring[i])-Ord('0'));
        inc(i);
       end;
      end;
-     Result:=Result+WideChar(StrToInt(anumber) mod 65535);
+     inc(outindex);
+     Result[outindex]:=WideChar(anumber mod 65535);
     end
     else
     begin
-     Result:=Result+WideChar(rpstring[i]);
+     inc(outindex);
+     Result[outindex]:=WideChar(rpstring[i]);
      inc(i);
     end;
   end
   else
    inc(i);
  end;
+ SetLength(Result,outindex);
 end;
 
 procedure WritePropertyI(propname:Ansistring;propvalue:integer;stream:TStream);

@@ -534,6 +534,7 @@ var
  i:integer;
  compo:TRpCommonPosComponent;
  newposx,newposy:integer;
+ newextent:TPoint;
  intPartialPrint:Boolean;
  dummypartial:Boolean;
  DoPartialPrint:BOolean;
@@ -625,6 +626,9 @@ begin
     end;
   end;
 
+  newextent:=MaxExtent;
+  newextent.Y:=newextent.Y-compo.PosY;
+
   if DoPartialPrint then
   begin
    compoprinted:=false;
@@ -633,7 +637,7 @@ begin
     begin
      IntPartialPrint:=false;
      compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,IntPartialPrint);
+      newwidth,newheight,metafile,newextent,IntPartialPrint);
      if IntPartialPrint then
       PartialPrint:=True;
      compoprinted:=true;
@@ -642,7 +646,7 @@ begin
    begin
     compo.PartialFlag:=false;
     compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,IntPartialPrint);
+      newwidth,newheight,metafile,newextent,IntPartialPrint);
    end;
    // For all other elements if alignment is allclient print again
    if ((not (compo is TRpExpression)) AND ((compo.Align=rpaltopbottom)
@@ -650,7 +654,7 @@ begin
    begin
     dummypartial:=false;
     compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,dummypartial);
+      newwidth,newheight,metafile,newextent,dummypartial);
    end;
   end
   else
@@ -666,7 +670,7 @@ begin
     begin
      compo.Print(adriver,newposx,newposy,
       newwidth,newheight,metafile,
-      MaxExtent,IntPartialPrint);
+      newextent,IntPartialPrint);
     end;
     if IntPartialPrint then
      PartialPrint:=True;
