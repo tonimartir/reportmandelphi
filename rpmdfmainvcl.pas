@@ -503,6 +503,7 @@ type
     browsecommandline:boolean;
     procedure RefreshInterface(Sender: TObject);
     procedure RefreshCueView;
+    procedure SyncActiveDesignSelection;
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
     function GetExpressionText:string;
@@ -604,6 +605,7 @@ begin
   exit;
  if report<>nil then
  begin
+  SyncActiveDesignSelection;
   if Not CheckModified then
    exit;
   res:=RpMessageBox(SRpReportChanged,SRpWarning,[smbYes,smbNo,smbCancel],
@@ -653,6 +655,12 @@ begin
  end;
  if Trim(LPendingPrompt) <> '' then
    BeginDesignChatContextRefresh(LPendingPrompt, False);
+end;
+
+procedure TFRpMainFVCL.SyncActiveDesignSelection;
+begin
+ if Assigned(fdesignframe) then
+  fdesignframe.UpdateSelection(True);
 end;
 
 procedure TFRpMainFVCL.DoEnable;
@@ -2792,6 +2800,8 @@ var
  astream:TStream;
 begin
  Assert(report<>nil,'Called DoSave without a report assigned');
+
+ SyncActiveDesignSelection;
 
  if Length(filename)>0 then
  begin

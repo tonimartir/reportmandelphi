@@ -1629,6 +1629,13 @@ begin
  LPayload.Actor1 := AActor;
  LPayload.ChunkType1 := AChunkType;
  LPayload.Text1 := LChunk;
+ if Trim(AChunk) <> '' then
+ begin
+  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
+   LPayload.LogText1 := AChunk
+  else
+   LPayload.LogText1 := '[' + AStage + '] ' + AChunk + sLineBreak;
+ end;
  LPayload.PrefillPercent := LPrefill;
  LPayload.InputTokens := AInputTokens;
  LPayload.OutputTokens := AOutputTokens;
