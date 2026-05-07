@@ -218,6 +218,7 @@ type
     function GetPageSize(var PageSizeQt: integer): TPoint; override;
     function SetPagesize(PageSizeQt: TPageSizeQt): TPoint; override;
     procedure TextExtent(atext: TRpTextObject; var extent: TPoint); override;
+    function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
     procedure TextRectJustify(Canvas: TCanvas; ARect: TRect; Text: Widestring;
       Alignment: integer; Clipping: boolean; Wordbreak: boolean;
       Rotation: integer; RightToLeft: boolean; drawbackground: boolean;
@@ -871,6 +872,18 @@ begin
       extent.Y := maxextent.Y;
   end;
 
+end;
+
+function TRpGDIDriver.TextExtentLineInfo(atext: TRpTextObject; var extent: TPoint): TRpLineInfoArray;
+begin
+  if not assigned(npdfdriver) then
+  begin
+    npdfdriver := TRpPDFDriver.Create;
+    if assigned(FReport) then
+      npdfdriver.PDFConformance := FReport.PDFConformance;
+  end;
+  atext.Type1Font := integer(poLinked);
+  Result := npdfdriver.TextExtentLineInfo(atext, extent);
 end;
 
 procedure TRpGDIDriver.PrintObject(Canvas: TCanvas; page: TRpMetafilePage;

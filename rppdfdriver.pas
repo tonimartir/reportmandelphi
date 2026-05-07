@@ -74,6 +74,7 @@ type
    function GetPageSize(var PageSizeQt:Integer):TPoint;override;
    function SetPagesize(PagesizeQt:TPageSizeQt):TPoint;override;
    procedure TextExtent(atext:TRpTextObject;var extent:TPoint);override;
+  function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
    procedure SetOrientation(Orientation:TRpOrientation);override;
    function GetOrientation:TRpOrientation;override;
@@ -260,6 +261,46 @@ begin
  Rect.Bottom:=0;
  Rect.Right:=extent.X;
  FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft,atext.IsHtml);
+ extent.X:=Rect.Right;
+ extent.Y:=Rect.Bottom;
+ if (atext.CutText) then
+ begin
+  if maxextent.Y<extent.Y then
+   extent.Y:=maxextent.Y;
+ end;
+end;
+
+function TRpPDFDriver.TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;
+var
+ singleline:boolean;
+ rect:TRect;
+ maxextent:TPoint;
+ rightToLeft:boolean;
+begin
+ if atext.FontRotation<>0 then
+ begin
+  SetLength(Result,0);
+  exit;
+ end;
+ if atext.CutText then
+ begin
+  maxextent:=extent;
+ end;
+ singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
+ rightToLeft:=atext.RightToLeft;
+ FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
+ FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
+ FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
+ FPDFFile.Canvas.Font.Size:=atext.FontSize;
+ FPDFFile.Canvas.Font.Bold:=(atext.Fontstyle and 1)>0;
+ FPDFFile.Canvas.Font.Italic:=(atext.Fontstyle and (1 shl 1))>0;
+ FPDFFile.Canvas.Font.Underline:=(atext.Fontstyle and (1 shl 2))>0;
+ FPDFFile.Canvas.Font.StrikeOut:=(atext.Fontstyle and (1 shl 3))>0;
+ Rect.Left:=0;
+ Rect.Top:=0;
+ Rect.Bottom:=0;
+ Rect.Right:=extent.X;
+ Result:=FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft,atext.IsHtml);
  extent.X:=Rect.Right;
  extent.Y:=Rect.Bottom;
  if (atext.CutText) then
