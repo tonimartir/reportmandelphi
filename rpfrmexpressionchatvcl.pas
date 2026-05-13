@@ -114,6 +114,8 @@ begin
 end;
 
 constructor TFRpChatFrame.Create(AOwner: TComponent);
+var
+  LAISelectionHeight: Integer;
 begin
   inherited Create(AOwner);
   FConversationBlocks := TStringList.Create;
@@ -122,10 +124,10 @@ begin
   FLoginFrame.Align := alClient;
 
   FAISelection := TFRpAISelectionVCL.Create(Self);
+  LAISelectionHeight := FAISelection.PreferredHeight;
+  PAISelectionHost.Height := LAISelectionHeight;
   FAISelection.Parent := PAISelectionHost;
-  FAISelection.Align := alClient;
-  FAISelection.Constraints.MinHeight := 50;
-  FAISelection.Constraints.MaxHeight := 50;
+  FAISelection.Align := alTop;
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
 
@@ -157,6 +159,8 @@ begin
 end;
 
 procedure TFRpChatFrame.RefreshTopLayout;
+var
+  LAISelectionHeight: Integer;
 begin
   if GridTop <> nil then
     GridTop.Realign;
@@ -166,8 +170,10 @@ begin
     PAISelectionHost.Realign;
   if FAISelection <> nil then
   begin
+    LAISelectionHeight := FAISelection.PreferredHeight;
+    PAISelectionHost.Height := LAISelectionHeight;
     FAISelection.SetBounds(0, 0, PAISelectionHost.ClientWidth,
-      PAISelectionHost.ClientHeight);
+      LAISelectionHeight);
     FAISelection.Realign;
     FAISelection.Resize;
   end;

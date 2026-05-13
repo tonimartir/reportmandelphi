@@ -77,7 +77,8 @@ constructor TFRpAISchemaSelectorVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Width := 400;
-  Height := 110;
+  Height := 0;
+  AutoSize := True;
   FHubDatabaseId := 0;
   FHubSchemaId := 0;
   FPreferredHubDatabaseId := 0;
@@ -87,23 +88,27 @@ begin
 
   PRoot := TPanel.Create(Self);
   PRoot.Parent := Self;
-  PRoot.Align := alClient;
+  PRoot.Align := alTop;
+  PRoot.AutoSize := True;
   PRoot.BevelOuter := bvNone;
   PRoot.ParentBackground := False;
+  PRoot.Padding.Top := 8;
+  PRoot.Padding.Bottom := 8;
 
   PLoginHost := TPanel.Create(Self);
   PLoginHost.Parent := PRoot;
   PLoginHost.Align := alTop;
-  PLoginHost.Height := 48;
+  PLoginHost.AutoSize := True;
   PLoginHost.BevelOuter := bvNone;
   PLoginHost.ParentBackground := False;
 
   PSchemaHost := TPanel.Create(Self);
   PSchemaHost.Parent := PRoot;
   PSchemaHost.Align := alTop;
-  PSchemaHost.Height := 54;
+  PSchemaHost.AutoSize := True;
   PSchemaHost.BevelOuter := bvNone;
   PSchemaHost.ParentBackground := False;
+  PSchemaHost.Padding.Top := 4;
 
   LSchema := TLabel.Create(Self);
   LSchema.Parent := PSchemaHost;
@@ -114,7 +119,8 @@ begin
 
   PSchemaRow := TPanel.Create(Self);
   PSchemaRow.Parent := PSchemaHost;
-  PSchemaRow.Align := alClient;
+  PSchemaRow.Align := alTop;
+  PSchemaRow.Height := 30;
   PSchemaRow.BevelOuter := bvNone;
   PSchemaRow.ParentBackground := False;
 
@@ -133,7 +139,7 @@ begin
 
   FLoginFrame := TFRpLoginFrameVCL.Create(Self);
   FLoginFrame.Parent := PLoginHost;
-  FLoginFrame.Align := alClient;
+  FLoginFrame.Align := alTop;
   FLoginFrame.OnAuthChanged := LoginAuthChanged;
 
   ApplyModernStyling;

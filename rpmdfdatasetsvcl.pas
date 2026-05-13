@@ -1373,6 +1373,9 @@ var
 begin
  // Up
  dinfo:=FindDataInfoItem;
+ if not Assigned(dinfo) then
+  exit;
+
  alias:=dinfo.Alias;
  index:=datainfo.IndexOf(Alias);
  if index<0 then
@@ -1435,6 +1438,8 @@ var
  index:integer;
 begin
  dinfo:=FindDataInfoItem;
+ if not Assigned(dinfo) then
+  exit;
  aliasname:=Trim(RpInputBox(SrpRenameDataset,SRpAliasName,dinfo.Alias));
  index:=datainfo.IndexOf(aliasname);
  if index>=0 then
@@ -1455,6 +1460,11 @@ var
 begin
  // Up
  dinfo:=FindDataInfoItem;
+ if not assigned(dinfo) then
+ begin
+  exit;
+ end;
+
  alias:=dinfo.Alias;
  index:=datainfo.IndexOf(dinfo.Alias);
  if index<0 then

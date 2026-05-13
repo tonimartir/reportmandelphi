@@ -86,6 +86,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure Resize; override;
+    function PreferredHeight: Integer;
     procedure RefreshLayout;
     procedure RefreshStatusInBackground(ADelayBeforeRequestMs: Cardinal = 0);
     procedure RefreshState;
@@ -110,12 +111,19 @@ implementation
 
 {$R *.dfm}
 
+const
+  CAISelectionLabelHeight = 16;
+  CAISelectionSpacingV = 2;
+  CAISelectionVerticalPadding = 6;
+  CAISelectionGaugeSize = 30;
+
 constructor TFRpAISelectionVCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FGaugeValue := 0.0;
   FSpinnerAngle := 270;
   FShowGauge := True;
+  Height := PreferredHeight;
   ComboAIProvider.Align := alTop;
   ComboAIMode.Align := alTop;
   ComboAIProvider.ItemIndex := 0; // Standard
@@ -231,7 +239,12 @@ begin
 end;
 
 procedure TFRpAISelectionVCL.RefreshLayout;
+var
+  LPreferredHeight: Integer;
 begin
+  LPreferredHeight := PreferredHeight;
+  if Height <> LPreferredHeight then
+    Height := LPreferredHeight;
   if PAI <> nil then
     PAI.SetBounds(0, 0, ClientWidth, ClientHeight);
   if PNonInference <> nil then
@@ -255,10 +268,30 @@ begin
   Invalidate;
 end;
 
+function TFRpAISelectionVCL.PreferredHeight: Integer;
+var
+  LComboHeight: Integer;
+  LContentHeight: Integer;
+begin
+  LComboHeight := 0;
+  if ComboAIProvider <> nil then
+    LComboHeight := ComboAIProvider.Height;
+  if (ComboAIMode <> nil) and (ComboAIMode.Height > LComboHeight) then
+    LComboHeight := ComboAIMode.Height;
+  if LComboHeight <= 0 then
+    LComboHeight := 22;
+
+  LContentHeight := CAISelectionLabelHeight + CAISelectionSpacingV + LComboHeight;
+  if CAISelectionGaugeSize > LContentHeight then
+    LContentHeight := CAISelectionGaugeSize;
+
+  Result := LContentHeight + (CAISelectionVerticalPadding * 2);
+end;
+
 procedure TFRpAISelectionVCL.LayoutNonInferenceControls;
 const
-  LabelH = 16;
-  SpacingV = 2;
+  LabelH = CAISelectionLabelHeight;
+  SpacingV = CAISelectionSpacingV;
 var
   LComboHeight: Integer;
   LComboTop: Integer;
@@ -296,7 +329,7 @@ end;
 
 procedure TFRpAISelectionVCL.LayoutGaugeControls;
 const
-  GaugeSize = 30;
+  GaugeSize = CAISelectionGaugeSize;
 var
   LLeft: Integer;
   LTop: Integer;

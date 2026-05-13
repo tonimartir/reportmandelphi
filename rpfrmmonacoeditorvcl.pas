@@ -372,10 +372,10 @@ begin
 
   // Create AI Selection Frame
   FAISelection := TFRpAISelectionVCL.Create(Self);
+  PAISelectionHost.Height := FAISelection.PreferredHeight;
+  PTop.Height := FAISelection.PreferredHeight;
   FAISelection.Parent := PAISelectionHost;
-  FAISelection.Align := alClient;
-  FAISelection.Constraints.MinHeight := 63;
-  FAISelection.Constraints.MaxHeight := 63;
+  FAISelection.Align := alTop;
   FAISelection.ShowGauge := False;
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);

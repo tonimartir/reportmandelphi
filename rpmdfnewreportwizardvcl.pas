@@ -22,7 +22,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, ComCtrls, Generics.Collections,
   rptypes, rpreport, rpdatainfo, rpmdconsts, rpgraphutilsvcl,
-  rpwebdbxadmin, rpfrmaischemaselectorvcl
+  rpwebdbxadmin, rpfrmaischemaselectorvcl, rpauthmanager
 {$IFDEF USEBDE}
   , dbtables
 {$ENDIF}
@@ -32,7 +32,7 @@ uses
   ;
 
 type
-  TRpWizardRoute = (wrUndefined, wrAgent, wrDirect);
+  TRpWizardRoute = (wrUndefined, wrAgent, wrDirect, wrNoConnection);
   TRpWizardDriverFamily = (
     dfUndefined,
     dfFireDac,
@@ -103,7 +103,7 @@ type
     // dynamic controls per page
     FCurrentPanel: TPanel;
     // route page
-    FRbAgent, FRbDirect: TRadioButton;
+    FRbAgent, FRbDirect, FRbNoConnection: TRadioButton;
     // agent / direct schema pages
     FEdHubApiKey: TEdit;
     FBtnHubLogin: TButton;
@@ -188,6 +188,13 @@ type
     procedure CommitConnectionToReport;
     function CreateLabel(AOwner: TWinControl; const ACaption: string;
       ALeft, ATop: Integer): TLabel;
+    function CreateHyperlinkLabel(AOwner: TWinControl; const ACaption: string;
+      ALeft, ATop: Integer; AClick: TNotifyEvent): TLabel;
+    procedure OpenSchemasLink(Sender: TObject);
+    procedure OpenAgentDownloadLink(Sender: TObject);
+    procedure DoRouteChange(Sender: TObject);
+    function IsImmediateFinishRouteSelected: Boolean;
+    procedure FinishWizard;
   public
     property PendingPrompt: string read FPendingPrompt;
     property State: TRpWizardState read FState;
@@ -335,7 +342,15 @@ begin
     if FCurrentPage <> wpFinish then
       Exit;
   end;
-  FPendingPrompt := Trim(FMemoFinishPrompt.Lines.Text);
+  FinishWizard;
+end;
+
+procedure TFRpNewReportWizardVCL.FinishWizard;
+begin
+  if FCurrentPage = wpFinish then
+    FPendingPrompt := Trim(FMemoFinishPrompt.Lines.Text)
+  else
+    FPendingPrompt := '';
   if (FPendingPrompt <> '') and not HasReportmanAiSchema then
   begin
     if RpMessageBox(
@@ -356,7 +371,7 @@ begin
   for i := PContent.ControlCount - 1 downto 0 do
     PContent.Controls[i].Free;
   FCurrentPanel := nil;
-  FRbAgent := nil; FRbDirect := nil;
+  FRbAgent := nil; FRbDirect := nil; FRbNoConnection := nil;
   FEdHubApiKey := nil; FBtnHubLogin := nil;
   FCbHubDatabase := nil; FCbHubSchema := nil;
   FRbHasSchema := nil; FRbNoSchema := nil;
@@ -440,6 +455,15 @@ begin
   BFinish.Default := FCurrentPage = wpFinish;
   BNext.Visible := FCurrentPage <> wpFinish;
   BNext.Default := FCurrentPage <> wpFinish;
+  if FCurrentPage = wpRoute then
+  begin
+    if IsImmediateFinishRouteSelected then
+      BNext.Caption := 'Finish'
+    else
+      BNext.Caption := 'Next';
+  end
+  else if BNext.Caption = 'Finish' then
+    BNext.Caption := 'Next';
 end;
 
 function TFRpNewReportWizardVCL.NextPageFor(APage: TRpWizardPage): TRpWizardPage;
@@ -447,7 +471,8 @@ begin
   case APage of
     wpRoute:
       if FState.Route = wrAgent then Result := wpConnName
-      else                           Result := wpDirectSchemaQuestion;
+      else if FState.Route = wrDirect then Result := wpDirectSchemaQuestion
+      else Result := wpFinish;
     wpAgentLogin:                    Result := wpAgentSchema;
     wpAgentSchema:                   Result := wpFinish;
     wpDirectSchemaQuestion:
@@ -500,10 +525,17 @@ begin
       begin
         if Assigned(FRbAgent) and FRbAgent.Checked then FState.Route := wrAgent
         else if Assigned(FRbDirect) and FRbDirect.Checked then FState.Route := wrDirect
+        else if Assigned(FRbNoConnection) and FRbNoConnection.Checked then FState.Route := wrNoConnection
         else
         begin
           RpMessageBox('Please choose a connection route.', 'New Report',
             [smbOK], smsInformation, smbOK, smbOK);
+          Exit;
+        end;
+        if FState.Route = wrNoConnection then
+        begin
+          FinishWizard;
+          Result := True;
           Exit;
         end;
       end;
@@ -876,6 +908,28 @@ begin
   Result.Caption := ACaption;
 end;
 
+function TFRpNewReportWizardVCL.CreateHyperlinkLabel(AOwner: TWinControl;
+  const ACaption: string; ALeft, ATop: Integer; AClick: TNotifyEvent): TLabel;
+begin
+  Result := CreateLabel(AOwner, ACaption, ALeft, ATop);
+  Result.Cursor := crHandPoint;
+  Result.Font.Color := clBlue;
+  Result.Font.Style := [fsUnderline];
+  Result.ParentFont := False;
+  Result.Transparent := True;
+  Result.OnClick := AClick;
+end;
+
+procedure TFRpNewReportWizardVCL.OpenSchemasLink(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
+end;
+
+procedure TFRpNewReportWizardVCL.OpenAgentDownloadLink(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl('https://ai.reportman.es/download');
+end;
+
 procedure TFRpNewReportWizardVCL.BuildPageRoute;
 var
   L: TLabel;
@@ -886,6 +940,7 @@ begin
   FRbAgent.Width := 660; FRbAgent.Height := 22;
   FRbAgent.Caption := 'Reportman AI / DB Agent (distributed connection)';
   FRbAgent.Checked := FState.Route = wrAgent;
+  FRbAgent.OnClick := DoRouteChange;
 
   L := CreateLabel(PContent,
     'Use a Reportman AI database connection. Recommended when the database is reachable through Reportman AI Web.',
@@ -898,11 +953,38 @@ begin
   FRbDirect.Width := 660; FRbDirect.Height := 22;
   FRbDirect.Caption := 'Direct database connection';
   FRbDirect.Checked := FState.Route = wrDirect;
+  FRbDirect.OnClick := DoRouteChange;
 
   L := CreateLabel(PContent,
     'Connect directly using a local driver (FireDAC, Zeos, DBExpress, BDE or Microsoft DAO).',
     48, 136);
   L.Width := 620; L.WordWrap := True;
+
+  FRbNoConnection := TRadioButton.Create(PContent);
+  FRbNoConnection.Parent := PContent;
+  FRbNoConnection.Left := 24; FRbNoConnection.Top := 196;
+  FRbNoConnection.Width := 660; FRbNoConnection.Height := 22;
+  FRbNoConnection.Caption := 'Continue with no connection';
+  FRbNoConnection.Checked := FState.Route = wrNoConnection;
+  FRbNoConnection.OnClick := DoRouteChange;
+
+  L := CreateLabel(PContent,
+    'Create a blank report and finish the wizard without selecting or creating any data connection.',
+    48, 222);
+  L.Width := 620; L.WordWrap := True;
+
+  UpdateNavButtons;
+end;
+
+procedure TFRpNewReportWizardVCL.DoRouteChange(Sender: TObject);
+begin
+  UpdateNavButtons;
+end;
+
+function TFRpNewReportWizardVCL.IsImmediateFinishRouteSelected: Boolean;
+begin
+  Result := (FCurrentPage = wpRoute) and Assigned(FRbNoConnection) and
+    FRbNoConnection.Checked;
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageAgentLogin;
@@ -1018,6 +1100,7 @@ end;
 procedure TFRpNewReportWizardVCL.BuildPageSharedSchemaSelector;
 var
   LInfo: TLabel;
+  LLinkTop: Integer;
 begin
   if (FState.Route = wrAgent) and (Trim(FState.ConnName) <> '') then
   begin
@@ -1030,16 +1113,23 @@ begin
 
   FAISchemaSelector := TFRpAISchemaSelectorVCL.Create(PContent);
   FAISchemaSelector.Parent := PContent;
-  FAISchemaSelector.Align := alClient;
+  FAISchemaSelector.Align := alTop;
   FAISchemaSelector.AlignWithMargins := True;
   FAISchemaSelector.Margins.Left := 0;
   FAISchemaSelector.Margins.Top := 36;
   FAISchemaSelector.Margins.Right := 0;
-  FAISchemaSelector.Margins.Bottom := 0;
+  FAISchemaSelector.Margins.Bottom := 24;
   FAISchemaSelector.SetPreferredConnection(FState.HubDatabaseId, FState.HubApiKey);
   FAISchemaSelector.SetHubContext(FState.HubDatabaseId, FState.HubSchemaId,
     FState.HubApiKey);
   FAISchemaSelector.LoadSchemas;
+
+  LLinkTop := FAISchemaSelector.Top + FAISchemaSelector.Height + 8;
+  CreateHyperlinkLabel(PContent, 'Define schemas', 24, LLinkTop,
+    OpenSchemasLink);
+  CreateHyperlinkLabel(PContent,
+    'Install Reportman AI Agent to create new connections', 24, LLinkTop + 22,
+    OpenAgentDownloadLink);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageDriver;
@@ -1735,7 +1825,9 @@ begin
   while FDestReport.DatabaseInfo.Count > 0 do
     FDestReport.DatabaseInfo.Delete(0);
 
-  if FState.Route = wrAgent then
+  if FState.Route = wrNoConnection then
+    Exit
+  else if FState.Route = wrAgent then
   begin
     connectionAlias := Trim(FState.ConnName);
     if connectionAlias = '' then

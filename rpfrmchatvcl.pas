@@ -319,6 +319,8 @@ begin
 end;
 
 constructor TFRpChatFrame.Create(AOwner: TComponent);
+var
+  LAISelectionHeight: Integer;
 begin
   inherited Create(AOwner);
   FConversationBlocks := TStringList.Create;
@@ -337,12 +339,11 @@ begin
 
   if CRpChatEnableAISelection then
   begin
-    PAISelectionHost.Height := 72;
     FAISelection := TFRpAISelectionVCL.Create(Self);
+    LAISelectionHeight := FAISelection.PreferredHeight;
+    PAISelectionHost.Height := LAISelectionHeight;
     FAISelection.Parent := PAISelectionHost;
-    FAISelection.Align := alClient;
-    FAISelection.Constraints.MinHeight := 72;
-    FAISelection.Constraints.MaxHeight := 72;
+    FAISelection.Align := alTop;
     FAISelection.OnStopRequest := AISelectionStopRequest;
   end
   else
@@ -437,10 +438,17 @@ end;
 
 procedure TFRpChatFrame.RefreshTopLayout;
 var
+  LAISelectionHeight: Integer;
   LSchemaHeight: Integer;
 begin
   DisableAlign;
   try
+  LAISelectionHeight := 0;
+  if FAISelection <> nil then
+  begin
+    LAISelectionHeight := FAISelection.PreferredHeight;
+    PAISelectionHost.Height := LAISelectionHeight;
+  end;
   if FShowSchemaSelector then
     LSchemaHeight := PSchemaHost.Height
   else
@@ -489,7 +497,7 @@ begin
   if FAISelection <> nil then
   begin
     FAISelection.SetBounds(0, 0, PAISelectionHost.ClientWidth,
-      PAISelectionHost.ClientHeight);
+      LAISelectionHeight);
     FAISelection.RefreshLayout;
   end;
   if PSchemaHost <> nil then

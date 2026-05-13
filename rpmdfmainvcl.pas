@@ -921,7 +921,7 @@ begin
   fchatframe.OnRefreshContext:=RefreshDesignChatContext;
   fchatframe.SetRefreshAction(True);
   fchatframe.Initialize('',
-   'Describe report design changes here. The current report will be sent as XML and the returned design changes will be applied here.');
+    'Describe report changes here or ask for assistance. Any change can be undone.');
   InitializeDesignChatSchemaSelection;
  end;
 
