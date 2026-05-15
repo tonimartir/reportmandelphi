@@ -62,6 +62,7 @@ type
     Kind: TRpQueuedExpressionChatPayloadKind;
     RequestVersion: Integer;
     Actor1: string;
+    ProgressId1: string;
     ChunkType1: string;
     Text1: string;
     LogText1: string;
@@ -192,7 +193,8 @@ type
     function BuildExpressionSemanticContextJson: string;
     function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
     procedure ExpressionStreamProgress(Sender: TObject; const AActor, AStage,
-        AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     procedure ExpressionStreamResult(Sender: TObject; AResultJson: TJSONObject;
       const AErrorMessage: string);
     function ExtractExpressionFromApiResult(AResultJson: TJSONObject;
@@ -200,7 +202,8 @@ type
     function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     function GetExpressionPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure DesignStreamProgress(Sender: TObject; const AActor, AStage,
-      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     procedure ResetExpressionStreamState;
     procedure StopExpressionRequest(Sender: TObject);
     function BuildDesignChatRequestForFrame(Sender: TObject;
@@ -1269,8 +1272,11 @@ begin
     case LPayload.Kind of
       rpqecUpdateStreamingResponse:
         begin
-          FChat.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
-          FChat.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+          FChat.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1,
+            LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1,
+            LPayload.ProgressId1);
+          FChat.UpdateStreamingTokens(LPayload.InputTokens,
+            LPayload.OutputTokens, LPayload.ProgressId1);
         end;
       rpqecBeginRetry:
         begin
@@ -1306,7 +1312,8 @@ begin
             Exit;
 
           if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
-            FChat.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+            FChat.UpdateStreamingTokens(LPayload.InputTokens,
+              LPayload.OutputTokens, LPayload.ProgressId1);
 
           FChat.FinishStreamingResponse;
           if LPayload.UserProfile <> nil then
@@ -1614,7 +1621,8 @@ end;
   end;
 
 procedure TFRpExpredialogVCL.ExpressionStreamProgress(Sender: TObject; const AActor,
-  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string);
 var
  LChunk: string;
  LPayload: TRpQueuedExpressionChatPayload;
@@ -1627,6 +1635,7 @@ begin
  LPayload := TRpQueuedExpressionChatPayload.Create;
  LPayload.Kind := rpqecUpdateStreamingResponse;
  LPayload.Actor1 := AActor;
+ LPayload.ProgressId1 := AProgressId;
  LPayload.ChunkType1 := AChunkType;
  LPayload.Text1 := LChunk;
  if Trim(AChunk) <> '' then
@@ -1644,7 +1653,7 @@ end;
 
 procedure TFRpExpredialogVCL.DesignStreamProgress(Sender: TObject; const AActor,
   AStage, AChunkType, AChunk: string; AInputTokens,
-  AOutputTokens: Integer);
+  AOutputTokens: Integer; const AProgressId: string);
 var
   LChunk: string;
   LPayload: TRpQueuedExpressionChatPayload;
@@ -1657,6 +1666,7 @@ begin
   LPayload := TRpQueuedExpressionChatPayload.Create;
   LPayload.Kind := rpqecUpdateStreamingResponse;
   LPayload.Actor1 := AActor;
+  LPayload.ProgressId1 := AProgressId;
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
   if Trim(AChunk) <> '' then

@@ -24,6 +24,13 @@ uses
 
 type
 
+  TRpProgressTokenEntry = class(TObject)
+  public
+    ProgressId: string;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+  end;
+
   // Mirrors Desktop NLToSQLProvider: Standard, Precision, Agent
   TRpAITierType = (rpaitStandard, rpaitPrecision, rpaitAgent);
 
@@ -62,13 +69,18 @@ type
     FGaugeValue: Double; // 0.0 to 1.0
     FSpinnerAngle: Integer;
     FAgentEndpoints: array of TAgentEndpointInfo;
+    FProgressTokens: TStringList;
     FOnStopRequest: TNotifyEvent;
     FShowGauge: Boolean;
     FLblProvider: TLabel;
     FLblMode: TLabel;
+    procedure ClearProgressTokens;
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
     procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
       AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
+    function EnsureProgressTokenEntry(const AProgressId: string): TRpProgressTokenEntry;
+    function GetProgressTokenKey(const AProgressId: string): string;
+    procedure RefreshTokensCaption;
     procedure LayoutNonInferenceControls;
     procedure LayoutGaugeControls;
     procedure UpdateGaugeVisibility;
@@ -85,6 +97,7 @@ type
     procedure UpdateGaugeDisplay;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure Resize; override;
     function PreferredHeight: Integer;
     procedure RefreshLayout;
@@ -96,7 +109,8 @@ type
     procedure RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
     function AgentEndpointCount: Integer;
     procedure SetInferenceProgress(AActive: Boolean);
-    procedure UpdateTokens(AInTokens, AOutTokens: Integer);
+    procedure UpdateTokens(AInTokens, AOutTokens: Integer;
+      const AProgressId: string = '');
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
     property ShowGauge: Boolean read FShowGauge write SetShowGauge;
     property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
@@ -116,6 +130,8 @@ const
   CAISelectionSpacingV = 2;
   CAISelectionVerticalPadding = 6;
   CAISelectionGaugeSize = 30;
+  CAISelectionMinHeight = 58;
+  CAISelectionInferenceLineHeight = 18;
 
 constructor TFRpAISelectionVCL.Create(AOwner: TComponent);
 begin
@@ -123,6 +139,7 @@ begin
   FGaugeValue := 0.0;
   FSpinnerAngle := 270;
   FShowGauge := True;
+  FProgressTokens := TStringList.Create;
   Height := PreferredHeight;
   ComboAIProvider.Align := alTop;
   ComboAIMode.Align := alTop;
@@ -134,6 +151,13 @@ begin
   LayoutGaugeControls;
   UpdateDropDownWidths;
   RefreshState;
+end;
+
+destructor TFRpAISelectionVCL.Destroy;
+begin
+  ClearProgressTokens;
+  FProgressTokens.Free;
+  inherited Destroy;
 end;
 
 procedure TFRpAISelectionVCL.ApplyModernStyling;
@@ -207,7 +231,11 @@ begin
     LTokensInfo.Font.Name := FontNameUi;
     LTokensInfo.Font.Size := FontSizeUi;
     LTokensInfo.Font.Color := ClrSubText;
+    LTokensInfo.AutoSize := False;
+    LTokensInfo.Alignment := taLeftJustify;
+    LTokensInfo.Layout := tlTop;
     LTokensInfo.Transparent := True;
+    LTokensInfo.WordWrap := True;
   end;
 end;
 
@@ -272,7 +300,22 @@ function TFRpAISelectionVCL.PreferredHeight: Integer;
 var
   LComboHeight: Integer;
   LContentHeight: Integer;
+  LLineCount: Integer;
 begin
+  if (PInferenceProgress <> nil) and PInferenceProgress.Visible then
+  begin
+    LLineCount := FProgressTokens.Count;
+    if LLineCount <= 0 then
+      LLineCount := 1;
+    LContentHeight := LLineCount * CAISelectionInferenceLineHeight;
+    if CAISelectionGaugeSize > LContentHeight then
+      LContentHeight := CAISelectionGaugeSize;
+    Result := LContentHeight + (CAISelectionVerticalPadding * 2);
+    if Result < CAISelectionMinHeight then
+      Result := CAISelectionMinHeight;
+    Exit;
+  end;
+
   LComboHeight := 0;
   if ComboAIProvider <> nil then
     LComboHeight := ComboAIProvider.Height;
@@ -286,6 +329,8 @@ begin
     LContentHeight := CAISelectionGaugeSize;
 
   Result := LContentHeight + (CAISelectionVerticalPadding * 2);
+  if Result < CAISelectionMinHeight then
+    Result := CAISelectionMinHeight;
 end;
 
 procedure TFRpAISelectionVCL.LayoutNonInferenceControls;
@@ -441,6 +486,71 @@ begin
   FGaugeValue := Value;
   if PaintBoxGauge <> nil then
     PaintBoxGauge.Invalidate;
+end;
+
+procedure TFRpAISelectionVCL.ClearProgressTokens;
+var
+  I: Integer;
+begin
+  if FProgressTokens = nil then
+    Exit;
+  for I := 0 to FProgressTokens.Count - 1 do
+    FProgressTokens.Objects[I].Free;
+  FProgressTokens.Clear;
+end;
+
+function TFRpAISelectionVCL.GetProgressTokenKey(const AProgressId: string): string;
+begin
+  Result := Trim(AProgressId);
+  if Result = '' then
+    Result := '__default__';
+end;
+
+function TFRpAISelectionVCL.EnsureProgressTokenEntry(
+  const AProgressId: string): TRpProgressTokenEntry;
+var
+  LIndex: Integer;
+  LKey: string;
+begin
+  LKey := GetProgressTokenKey(AProgressId);
+  LIndex := FProgressTokens.IndexOf(LKey);
+  if LIndex >= 0 then
+    Exit(TRpProgressTokenEntry(FProgressTokens.Objects[LIndex]));
+
+  Result := TRpProgressTokenEntry.Create;
+  Result.ProgressId := LKey;
+  FProgressTokens.AddObject(LKey, Result);
+end;
+
+procedure TFRpAISelectionVCL.RefreshTokensCaption;
+var
+  I: Integer;
+  LEntry: TRpProgressTokenEntry;
+  LCaption: TStringList;
+begin
+  LCaption := TStringList.Create;
+  try
+    if FProgressTokens.Count = 0 then
+      LCaption.Add('Waiting for inference progress...')
+    else
+    begin
+      for I := 0 to FProgressTokens.Count - 1 do
+      begin
+        LEntry := TRpProgressTokenEntry(FProgressTokens.Objects[I]);
+        if LEntry = nil then
+          Continue;
+        LCaption.Add('Input/Output: ' + IntToStr(LEntry.InputTokens) +
+          ' / ' + IntToStr(LEntry.OutputTokens));
+      end;
+    end;
+
+    LTokensInfo.Caption := LCaption.Text;
+  finally
+    LCaption.Free;
+  end;
+
+  if PInferenceProgress.Visible then
+    RefreshLayout;
 end;
 
 procedure TFRpAISelectionVCL.SetShowGauge(const Value: Boolean);
@@ -685,8 +795,8 @@ procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);
 begin
   PNonInference.Visible := not AActive;
   PInferenceProgress.Visible := AActive;
-  if AActive then
-    LTokensInfo.Caption := 'Tokens (In/Out): 0 / 0';
+  ClearProgressTokens;
+  RefreshTokensCaption;
   if PProgressHost <> nil then
     PProgressHost.Constraints.MinWidth := 30;
   if PInferenceProgress <> nil then
@@ -695,11 +805,15 @@ begin
   LayoutGaugeControls;
 end;
 
-procedure TFRpAISelectionVCL.UpdateTokens(AInTokens, AOutTokens: Integer);
+procedure TFRpAISelectionVCL.UpdateTokens(AInTokens, AOutTokens: Integer;
+  const AProgressId: string);
+var
+  LEntry: TRpProgressTokenEntry;
 begin
-  LTokensInfo.Caption := 'Tokens (In/Out): ' + IntToStr(AInTokens) + ' / ' + IntToStr(AOutTokens);
-  if PInferenceProgress.Visible then
-    PInferenceProgress.Realign;
+  LEntry := EnsureProgressTokenEntry(AProgressId);
+  LEntry.InputTokens := AInTokens;
+  LEntry.OutputTokens := AOutTokens;
+  RefreshTokensCaption;
 end;
 
 procedure TFRpAISelectionVCL.BStopInferenceClick(Sender: TObject);

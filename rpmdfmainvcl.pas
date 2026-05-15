@@ -88,6 +88,7 @@ type
     Kind: TRpQueuedDesignChatPayloadKind;
     RequestVersion: Integer;
     Actor1: string;
+    ProgressId1: string;
     ChunkType1: string;
     Text1: string;
     LogText1: string;
@@ -483,7 +484,8 @@ type
     procedure ExecuteDesignChatPrompt(const APrompt: string);
     function GetDesignChatPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure DesignChatStreamProgress(Sender: TObject; const AActor, AStage,
-      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
     function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
       const AErrorMessage: string): string;
@@ -599,7 +601,11 @@ begin
   exit;
  if report<>nil then
  begin
+  try
   SyncActiveDesignSelection;
+  except
+
+  end;
   if Not CheckModified then
    exit;
   res:=RpMessageBox(SRpReportChanged,SRpWarning,[smbYes,smbNo,smbCancel],
@@ -3288,7 +3294,8 @@ begin
 end;
 
 procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject; const AActor,
-  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string);
 var
   LPayload: TRpQueuedDesignChatPayload;
   LChunk: string;
@@ -3302,6 +3309,7 @@ begin
   if Sender is TRpDesignChatStreamContext then
     LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
   LPayload.Actor1 := AActor;
+  LPayload.ProgressId1 := AProgressId;
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
   LPayload.LogText1 := AChunk;
@@ -3747,8 +3755,11 @@ begin
     case LPayload.Kind of
       rpqdcUpdateStreamingResponse:
         begin
-          fchatframe.UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
-          fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+          fchatframe.UpdateStreamingResponse(LPayload.Actor1,
+            LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent,
+            LPayload.LogText1, LPayload.ProgressId1);
+          fchatframe.UpdateStreamingTokens(LPayload.InputTokens,
+            LPayload.OutputTokens, LPayload.ProgressId1);
           Exit;
         end;
       rpqdcAddAssistantMessage:

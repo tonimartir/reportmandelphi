@@ -43,7 +43,8 @@ const
   DBTYPE_TIME = 17;
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
-    AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer) of object;
+    AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+    const AProgressId: string) of object;
   TRpExpressionStreamResultEvent = procedure(Sender: TObject;
     AResultJson: TJSONObject; const AErrorMessage: string) of object;
   TRpExpressionStreamCancelEvent = function(Sender: TObject): Boolean of object;
@@ -273,7 +274,8 @@ type
     destructor Destroy; override;
     function HandleCancel(Sender: TObject): Boolean;
     procedure HandleProgress(Sender: TObject; const AActor, AStage, AChunkType,
-      AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     procedure HandleResult(Sender: TObject; AResultJson: TJSONObject;
       const AErrorMessage: string);
     function TakeResultJson: TJSONObject;
@@ -400,7 +402,8 @@ begin
             else
               LOutputTokens := 0;
               
-            FOnProgress(FSender, LActor, LStage, LChunkType, LChunk, LInputTokens, LOutputTokens);
+            FOnProgress(FSender, LActor, LStage, LChunkType, LChunk,
+              LInputTokens, LOutputTokens, LProgressId);
           end;
         end
         else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
@@ -517,11 +520,12 @@ begin
 end;
 
 procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AActor, AStage,
-  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string);
 begin
   if Assigned(FForwardProgress) then
     FForwardProgress(FSender, AActor, AStage, AChunkType, AChunk, AInputTokens,
-      AOutputTokens);
+      AOutputTokens, AProgressId);
 end;
 
 procedure TRpApiStreamCapture.HandleResult(Sender: TObject;

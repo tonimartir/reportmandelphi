@@ -121,7 +121,8 @@ type
     procedure EmitInferenceLog(const ASource, AText: string;
       AAppendLineBreak: Boolean);
     procedure SuggestSqlStreamProgress(Sender: TObject; const AActor, AStage,
-      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
@@ -139,7 +140,8 @@ type
     procedure AppendLog(const AText: string);
     procedure ActivateAuditTab;
     procedure SetAuditBusy(AValue: Boolean);
-    procedure UpdateAITokens(AInTokens, AOutTokens: Integer);
+    procedure UpdateAITokens(AInTokens, AOutTokens: Integer;
+      const AProgressId: string = '');
     function GetAITier: string;
     function GetAIMode: string;
     function GetAgentSecret: string;
@@ -591,10 +593,11 @@ begin
     FAISelection.SetInferenceProgress(AValue);
 end;
 
-procedure TFRpMonacoEditorVCL.UpdateAITokens(AInTokens, AOutTokens: Integer);
+procedure TFRpMonacoEditorVCL.UpdateAITokens(AInTokens, AOutTokens: Integer;
+  const AProgressId: string = '');
 begin
   if FAISelection <> nil then
-    FAISelection.UpdateTokens(AInTokens, AOutTokens);
+    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId);
 end;
 
 function TFRpMonacoEditorVCL.GetAITier: string;
@@ -1368,12 +1371,13 @@ end;
 
 procedure TFRpMonacoEditorVCL.SuggestSqlStreamProgress(Sender: TObject;
   const AActor, AStage, AChunkType, AChunk: string; AInputTokens,
-  AOutputTokens: Integer);
+  AOutputTokens: Integer; const AProgressId: string);
 var
   LAActor: string;
   LStage: string;
   LChunk: string;
   LChunkType: string;
+  LProgressId: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
 begin
@@ -1381,13 +1385,14 @@ begin
   LStage := AStage;
   LChunk := AChunk;
   LChunkType := AChunkType;
+  LProgressId := AProgressId;
   LInputTokens := AInputTokens;
   LOutputTokens := AOutputTokens;
   TThread.Queue(nil,
     procedure
     begin
       if FAISelection <> nil then
-        FAISelection.UpdateTokens(LInputTokens, LOutputTokens);
+        FAISelection.UpdateTokens(LInputTokens, LOutputTokens, LProgressId);
       if not SameText(FActiveInferenceRequestId, FPendingRequestId) then
         Exit;
       if not SameText(LStage, 'ReceivingResponse') then

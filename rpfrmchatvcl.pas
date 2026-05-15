@@ -140,6 +140,7 @@ type
     FWebLog: TRpWebMarkdownView;
     FWebNetLog: TRpWebMarkdownView;
     FLastLogActor: string;
+    FLastProgressId: string;
     FHoveredTabIndex: Integer;
     FInitialLayoutDone: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
@@ -166,7 +167,8 @@ type
     procedure PostDesignChatPayload(APayload: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure DesignStreamProgress(Sender: TObject; const AActor, AStage,
-      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string);
     function DesignStreamCancelRequested(Sender: TObject): Boolean;
     procedure RefreshTopLayout;
     procedure RebuildConversation;
@@ -206,13 +208,16 @@ type
     procedure AppendLogLine(const AText: string);
     procedure AppendLogChunk(const AChunk: string;
       AAppendLineBreak: Boolean = False);
-    procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
+    procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer;
+      const AProgressId: string = '');
     procedure BeginProgress(const ATitle, AText: string);
     procedure UpdateProgress(const AText: string);
     procedure FinishProgress;
     procedure SetRefreshAction(AValue: Boolean);
     procedure SetSuggestedExpression(const AExpression, AMessage: string);
-      procedure UpdateStreamingResponse(const AActor, AChunkType, AChunk: string; APrefillPercent: Integer; const ALogChunk: string = '');
+    procedure UpdateStreamingResponse(const AActor, AChunkType, AChunk: string;
+      APrefillPercent: Integer; const ALogChunk: string = '';
+      const AProgressId: string = '');
     procedure UpdateUserProfile(AProfile: TJSONObject);
     function GetAITier: string;
     function GetAIMode: string;
@@ -270,6 +275,7 @@ type
     Kind: TRpQueuedDesignChatPayloadKind;
     RequestVersion: Integer;
     Actor1: string;
+    ProgressId1: string;
     ChunkType1: string;
     Text1: string;
     LogText1: string;
@@ -1166,7 +1172,8 @@ begin
 end;
 
 procedure TFRpChatFrame.DesignStreamProgress(Sender: TObject; const AActor, AStage,
-  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer);
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string);
 var
   LPayload: TRpQueuedDesignChatPayload;
   LChunk: string;
@@ -1180,6 +1187,7 @@ begin
   if Sender is TRpDesignChatStreamContext then
     LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
   LPayload.Actor1 := AActor;
+  LPayload.ProgressId1 := AProgressId;
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
   LPayload.LogText1 := AChunk;
@@ -1223,6 +1231,7 @@ begin
   if FWebLog <> nil then
   begin
     FLastLogActor := '';
+    FLastProgressId := '';
     FWebLog.AppendLogLine('');
   end;
   
@@ -1789,10 +1798,11 @@ begin
     FWebLog.EndLogChunk;
 end;
 
-procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer);
+procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer;
+  const AProgressId: string = '');
 begin
   if FAISelection <> nil then
-    FAISelection.UpdateTokens(AInTokens, AOutTokens);
+    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId);
 end;
 
 procedure TFRpChatFrame.BeginProgress(const ATitle, AText: string);
@@ -1870,10 +1880,12 @@ begin
     BRefreshSchemas.Caption := 'Refresh';
 end;
 
-procedure TFRpChatFrame.UpdateStreamingResponse(const AActor, AChunkType, AChunk: string;
-  APrefillPercent: Integer; const ALogChunk: string = '');
+procedure TFRpChatFrame.UpdateStreamingResponse(const AActor, AChunkType,
+  AChunk: string; APrefillPercent: Integer; const ALogChunk: string = '';
+  const AProgressId: string = '');
 var
   LLogChunk: string;
+  LLogKey: string;
 begin
   if not FStreamingActive then
     BeginStreamingResponse;
@@ -1883,21 +1895,16 @@ begin
   LLogChunk := ALogChunk;
   if LLogChunk = '' then
     LLogChunk := AChunk;
-
-  if FWebLog <> nil then
-  begin
-    if (AActor <> '') and (not SameText(AActor, FLastLogActor)) then
-    begin
-      FWebLog.AppendLogLine('actor: ' + AActor);
-      FLastLogActor := AActor;
-    end;
-  end;
+  LLogKey := Trim(AProgressId);
 
   if AChunk <> '' then
     FStreamingText := FStreamingText + AChunk;
 
   if (FWebLog <> nil) and (LLogChunk <> '') then
-    FWebLog.AppendLogChunk(LLogChunk);
+    FWebLog.AppendLogChunkKey(LLogKey, LLogChunk);
+
+  if (FWebLog <> nil) and SameText(AChunkType, 'End') then
+    FWebLog.EndLogChunkKey(LLogKey);
 end;
 
 procedure TFRpChatFrame.UpdateUserProfile(AProfile: TJSONObject);
@@ -1922,8 +1929,11 @@ begin
     case LPayload.Kind of
       rpqdcUpdateStreamingResponse:
         begin
-          UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1);
-          UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+          UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1,
+            LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1,
+            LPayload.ProgressId1);
+          UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens,
+            LPayload.ProgressId1);
           Exit;
         end;
       rpqdcAddAssistantMessage:

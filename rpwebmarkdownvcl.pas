@@ -19,7 +19,7 @@ uses
   Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   System.Zip, System.IOUtils, System.JSON, rpmdshfolder;
 
-    const AssetsVersion = '4';
+    const AssetsVersion = '5';
 
 type
   TRpWebMarkdownView = class(TPanel)
@@ -60,8 +60,12 @@ type
     procedure AppendLogLine(const AText: string);
     /// <summary>Append a raw chunk (streaming append without newline)</summary>
     procedure AppendLogChunk(const AChunk: string);
+    /// <summary>Append a raw chunk to a keyed log block (one block per progress id)</summary>
+    procedure AppendLogChunkKey(const AKey, AChunk: string);
     /// <summary>End the current log chunk block</summary>
     procedure EndLogChunk;
+    /// <summary>End a keyed log chunk block</summary>
+    procedure EndLogChunkKey(const AKey: string);
     /// <summary>Clear all messages</summary>
     procedure ClearAll;
     /// <summary>Scroll to bottom</summary>
@@ -422,6 +426,11 @@ begin
 end;
 
 procedure TRpWebMarkdownView.AppendLogChunk(const AChunk: string);
+begin
+  AppendLogChunkKey('', AChunk);
+end;
+
+procedure TRpWebMarkdownView.AppendLogChunkKey(const AKey, AChunk: string);
 var
   LScript: string;
 begin
@@ -436,11 +445,17 @@ begin
     Exit;
   end;
 
-  LScript := 'window.appendLogChunk(''' + EscapeJSString(AChunk) + ''');';
+  LScript := 'window.appendLogChunkForKey(''' + EscapeJSString(AKey) + ''', ''' +
+    EscapeJSString(AChunk) + ''');';
   ExecuteOrQueue(LScript);
 end;
 
 procedure TRpWebMarkdownView.EndLogChunk;
+begin
+  EndLogChunkKey('');
+end;
+
+procedure TRpWebMarkdownView.EndLogChunkKey(const AKey: string);
 begin
   if FUseFallback then
   begin
@@ -448,7 +463,7 @@ begin
     Exit;
   end;
 
-  ExecuteOrQueue('window.endLogChunk();');
+  ExecuteOrQueue('window.endLogChunkForKey(''' + EscapeJSString(AKey) + ''');');
 end;
 
 procedure TRpWebMarkdownView.ClearAll;

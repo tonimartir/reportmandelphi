@@ -107,6 +107,7 @@ type
     // agent / direct schema pages
     FEdHubApiKey: TEdit;
     FBtnHubLogin: TButton;
+    FBtnHubRefresh: TButton;
     FCbHubDatabase: TComboBox;
     FCbHubSchema: TComboBox;
     // schema question
@@ -160,6 +161,7 @@ type
 
     // helpers
     procedure DoHubLogin(Sender: TObject);
+    procedure DoHubRefresh(Sender: TObject);
     procedure DoTestExistingConn(Sender: TObject);
     procedure DoFamilyChange(Sender: TObject);
     procedure DoConnNameModeChange(Sender: TObject);
@@ -373,6 +375,7 @@ begin
   FCurrentPanel := nil;
   FRbAgent := nil; FRbDirect := nil; FRbNoConnection := nil;
   FEdHubApiKey := nil; FBtnHubLogin := nil;
+  FBtnHubRefresh := nil;
   FCbHubDatabase := nil; FCbHubSchema := nil;
   FRbHasSchema := nil; FRbNoSchema := nil;
   FCbFamily := nil; FCbConcrete := nil; FLblConcrete := nil;
@@ -487,7 +490,10 @@ begin
       begin
         if FState.Route = wrAgent then
         begin
-          Result := wpAgentSchema;
+          if FState.ConnMode = cnNew then
+            Result := wpAgentLogin
+          else
+            Result := wpAgentSchema;
         end
         else if FState.DriverFamily = dfBde then
           Result := wpFinish
@@ -518,6 +524,7 @@ var
   hubSchemaId: Int64;
   schemaApiKey: string;
   i: Integer;
+  testResult: TRpWebConnectionTestResult;
 begin
   Result := False;
   case FCurrentPage of
@@ -573,6 +580,14 @@ begin
             values.Values['ApiKey'] := FState.HubApiKey;
             values.Values['HubDatabaseId'] := IntToStr(FState.HubDatabaseId);
             FAdminService.UpdateConnectionParams(FState.ConnName, values);
+            testResult := FAdminService.TestConnection(FState.ConnName);
+            if not testResult.Success then
+            begin
+              RpMessageBox('Could not validate the new Reportman AI connection: ' +
+                testResult.MessageText, 'New Report', [smbOK], smsCritical,
+                smbOK, smbOK);
+              Exit;
+            end;
           except
             on E: Exception do
             begin
@@ -1041,8 +1056,18 @@ begin
   FCbHubDatabase := TComboBox.Create(PContent);
   FCbHubDatabase.Parent := PContent;
   FCbHubDatabase.Left := 24; FCbHubDatabase.Top := 112;
-  FCbHubDatabase.Width := 620;
+  FCbHubDatabase.Width := 480;
   FCbHubDatabase.Style := csDropDownList;
+
+  FBtnHubRefresh := TButton.Create(PContent);
+  FBtnHubRefresh.Parent := PContent;
+  FBtnHubRefresh.Left := 514; FBtnHubRefresh.Top := 110;
+  FBtnHubRefresh.Width := 130; FBtnHubRefresh.Height := 28;
+  FBtnHubRefresh.Caption := 'Refresh';
+  FBtnHubRefresh.OnClick := DoHubRefresh;
+
+  if FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '') then
+    LoadHubDatabases;
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageAgentSchema;
@@ -1709,8 +1734,6 @@ begin
 end;
 
 procedure TFRpNewReportWizardVCL.DoHubLogin(Sender: TObject);
-var
-  list: TStringList;
 begin
   FState.HubApiKey := Trim(FEdHubApiKey.Text);
   if FState.HubApiKey = '' then
@@ -1719,6 +1742,18 @@ begin
       [smbOK], smsInformation, smbOK, smbOK);
     Exit;
   end;
+  LoadHubDatabases;
+end;
+
+procedure TFRpNewReportWizardVCL.DoHubRefresh(Sender: TObject);
+begin
+  DoHubLogin(Sender);
+end;
+
+procedure TFRpNewReportWizardVCL.LoadHubDatabases;
+var
+  list: TStringList;
+begin
   list := TStringList.Create;
   try
     Screen.Cursor := crHourGlass;
@@ -1744,11 +1779,6 @@ begin
   finally
     list.Free;
   end;
-end;
-
-procedure TFRpNewReportWizardVCL.LoadHubDatabases;
-begin
-  // Reserved for future refresh; populated in DoHubLogin.
 end;
 
 procedure TFRpNewReportWizardVCL.LoadUserSchemas;

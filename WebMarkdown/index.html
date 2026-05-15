@@ -410,6 +410,7 @@
 
         var messagesEl = document.getElementById('messages');
         var containerEl = document.getElementById('scroll-container');
+        var activeLogChunksByKey = Object.create(null);
 
         // ============================================================
         // Think Block Renderer
@@ -577,37 +578,52 @@
             window.scrollToEnd(true);
         };
 
+        function normalizeLogKey(key) {
+            return key && key.length ? key : '__default__';
+        }
+
         // Append a raw log chunk (streaming, no newline)
         window.appendLogChunk = function(chunk) {
-            var last = messagesEl.lastElementChild;
+            window.appendLogChunkForKey('', chunk);
+        };
 
-            if (last && last.classList.contains('msg-log-chunk-container')) {
-                // Append to existing chunk container
-                var raw = (last.getAttribute('data-raw') || '') + chunk;
-                last.setAttribute('data-raw', raw);
-                last.innerHTML = renderMarkdown(raw);
-            } else {
-                // Create new chunk container
-                var el = document.createElement('div');
-                el.className = 'msg-log msg-log-chunk-container';
-                el.setAttribute('data-raw', chunk);
-                el.innerHTML = renderMarkdown(chunk);
-                messagesEl.appendChild(el);
+        window.appendLogChunkForKey = function(key, chunk) {
+            var normalizedKey = normalizeLogKey(key);
+            var target = activeLogChunksByKey[normalizedKey];
+
+            if (!target || !target.isConnected) {
+                target = document.createElement('div');
+                target.className = 'msg-log msg-log-chunk-container';
+                target.setAttribute('data-log-key', normalizedKey);
+                target.setAttribute('data-raw', '');
+                messagesEl.appendChild(target);
+                activeLogChunksByKey[normalizedKey] = target;
             }
+
+            var raw = (target.getAttribute('data-raw') || '') + chunk;
+            target.setAttribute('data-raw', raw);
+            target.innerHTML = renderMarkdown(raw);
 
             window.scrollToEnd(true);
         };
 
         // End a log chunk (next appendLogChunk starts a new block)
         window.endLogChunk = function() {
-            var last = messagesEl.lastElementChild;
-            if (last && last.classList.contains('msg-log-chunk-container')) {
-                last.classList.remove('msg-log-chunk-container');
+            window.endLogChunkForKey('');
+        };
+
+        window.endLogChunkForKey = function(key) {
+            var normalizedKey = normalizeLogKey(key);
+            var target = activeLogChunksByKey[normalizedKey];
+            if (target && target.isConnected) {
+                target.classList.remove('msg-log-chunk-container');
             }
+            delete activeLogChunksByKey[normalizedKey];
         };
 
         // Clear all messages
         window.clearAll = function() {
+            activeLogChunksByKey = Object.create(null);
             messagesEl.innerHTML = '';
         };
 
