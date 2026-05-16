@@ -141,6 +141,7 @@ type
     FWebNetLog: TRpWebMarkdownView;
     FLastLogActor: string;
     FLastProgressId: string;
+    FLoginPreferredHeight: Integer;
     FHoveredTabIndex: Integer;
     FInitialLayoutDone: Boolean;
     procedure WMApplyLoadedUserAgents(var Message: TMessage); message WM_USER + 202;
@@ -168,8 +169,13 @@ type
     procedure SchemaConfigClick(Sender: TObject);
     procedure DesignStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     function DesignStreamCancelRequested(Sender: TObject): Boolean;
+    procedure EnsureTopStackLayout;
+    function GetLoginHostPreferredHeight: Integer;
+    procedure EnsureAISelectionAutoHeight;
+    function GetSchemaHostPreferredHeight: Integer;
+    procedure LayoutSchemaControls;
     procedure RefreshTopLayout;
     procedure RebuildConversation;
     procedure SelectCurrentSchema;
@@ -209,7 +215,9 @@ type
     procedure AppendLogChunk(const AChunk: string;
       AAppendLineBreak: Boolean = False);
     procedure UpdateStreamingTokens(AInTokens, AOutTokens: Integer;
-      const AProgressId: string = '');
+      const AProgressId: string = ''; APrefillPercent: Integer = 0);
+    procedure CompleteStreamingProgress(const AActor, AChunkType,
+      AProgressId: string);
     procedure BeginProgress(const ATitle, AText: string);
     procedure UpdateProgress(const AText: string);
     procedure FinishProgress;
@@ -331,9 +339,11 @@ begin
   inherited Create(AOwner);
   FConversationBlocks := TStringList.Create;
   FLogListenerRegistered := False;
+  FLoginPreferredHeight := 40;
   if CRpChatEnableLoginFrame then
   begin
     FLoginFrame := TFRpLoginFrameVCL.Create(Self);
+    FLoginPreferredHeight := FLoginFrame.Height;
     FLoginFrame.Parent := PLoginHost;
     FLoginFrame.Align := alClient;
   end
@@ -442,59 +452,226 @@ begin
   RefreshTopLayout;
 end;
 
+procedure TFRpChatFrame.EnsureAISelectionAutoHeight;
+var
+  LPreferredHeight: Integer;
+begin
+  if (FAISelection = nil) or (PAISelectionHost = nil) then
+    Exit;
+
+  LPreferredHeight := FAISelection.PreferredHeight;
+  if PAISelectionHost.Height <> LPreferredHeight then
+    RefreshTopLayout;
+end;
+
+procedure TFRpChatFrame.EnsureTopStackLayout;
+begin
+  if PTop = nil then
+    Exit;
+
+  if (GridTop <> nil) and (GridTop.Parent = PTop) then
+  begin
+    GridTop.Visible := False;
+    GridTop.Align := alNone;
+    GridTop.SetBounds(0, 0, 0, 0);
+  end;
+
+  if (PLoginHost <> nil) and (PLoginHost.Parent <> PTop) then
+    PLoginHost.Parent := PTop;
+  if PLoginHost <> nil then
+    PLoginHost.Align := alNone;
+
+  if (PAISelectionHost <> nil) and (PAISelectionHost.Parent <> PTop) then
+    PAISelectionHost.Parent := PTop;
+  if PAISelectionHost <> nil then
+    PAISelectionHost.Align := alNone;
+
+  if (PSchemaHost <> nil) and (PSchemaHost.Parent <> PTop) then
+    PSchemaHost.Parent := PTop;
+  if PSchemaHost <> nil then
+    PSchemaHost.Align := alNone;
+end;
+
+function TFRpChatFrame.GetSchemaHostPreferredHeight: Integer;
+
+  function ControlOuterHeight(AControl: TControl): Integer;
+  begin
+    if (AControl = nil) or not AControl.Visible then
+      Exit(0);
+    Result := AControl.Height + AControl.Margins.Top + AControl.Margins.Bottom;
+  end;
+
+var
+  LLabelHeight: Integer;
+  LControlsHeight: Integer;
+  LCurrentHeight: Integer;
+begin
+  LLabelHeight := 0;
+  if (LSchema <> nil) and LSchema.Visible then
+    LLabelHeight := LSchema.Height;
+
+  LControlsHeight := ControlOuterHeight(ComboSchema);
+
+  LCurrentHeight := ControlOuterHeight(PSchemaConfigHost);
+  if LCurrentHeight > LControlsHeight then
+    LControlsHeight := LCurrentHeight;
+
+  LCurrentHeight := ControlOuterHeight(BRefreshSchemas);
+  if LCurrentHeight > LControlsHeight then
+    LControlsHeight := LCurrentHeight;
+
+  if LControlsHeight <= 0 then
+    LControlsHeight := 32;
+
+  Result := LLabelHeight + LControlsHeight;
+end;
+
+function TFRpChatFrame.GetLoginHostPreferredHeight: Integer;
+begin
+  Result := FLoginPreferredHeight;
+  if Result <= 0 then
+    Result := 40;
+end;
+
+procedure TFRpChatFrame.LayoutSchemaControls;
+const
+  RowGap = 4;
+var
+  LClientWidth: Integer;
+  LConfigLeft: Integer;
+  LLabelHeight: Integer;
+  LRefreshLeft: Integer;
+  LRefreshWidth: Integer;
+  LRowHeight: Integer;
+  LRowTop: Integer;
+  LSchemaWidth: Integer;
+begin
+  if PSchemaHost = nil then
+    Exit;
+
+  LClientWidth := PSchemaHost.ClientWidth;
+  if LClientWidth <= 0 then
+    Exit;
+
+  LLabelHeight := 0;
+  if (LSchema <> nil) and LSchema.Visible then
+  begin
+    LLabelHeight := LSchema.Height;
+    LSchema.SetBounds(0, 0, LClientWidth, LLabelHeight);
+  end;
+
+  LRowTop := LLabelHeight;
+  LRowHeight := 0;
+  if ComboSchema <> nil then
+    LRowHeight := ComboSchema.Height;
+  if (PSchemaConfigHost <> nil) and (PSchemaConfigHost.Height > LRowHeight) then
+    LRowHeight := PSchemaConfigHost.Height;
+  if (BRefreshSchemas <> nil) and (BRefreshSchemas.Height > LRowHeight) then
+    LRowHeight := BRefreshSchemas.Height;
+  if LRowHeight <= 0 then
+    LRowHeight := 24;
+
+  LRefreshWidth := 0;
+  if (BRefreshSchemas <> nil) and BRefreshSchemas.Visible then
+  begin
+    LRefreshWidth := BRefreshSchemas.Width;
+    LRefreshLeft := LClientWidth - LRefreshWidth;
+    if LRefreshLeft < 0 then
+      LRefreshLeft := 0;
+    BRefreshSchemas.SetBounds(LRefreshLeft, LRowTop, LRefreshWidth, LRowHeight);
+  end
+  else
+    LRefreshLeft := LClientWidth;
+
+  LConfigLeft := LRefreshLeft;
+  if (PSchemaConfigHost <> nil) and PSchemaConfigHost.Visible then
+  begin
+    LConfigLeft := LRefreshLeft - RowGap - PSchemaConfigHost.Width;
+    if LConfigLeft < 0 then
+      LConfigLeft := 0;
+    PSchemaConfigHost.SetBounds(LConfigLeft, LRowTop, PSchemaConfigHost.Width,
+      LRowHeight);
+  end;
+
+  if ComboSchema <> nil then
+  begin
+    LSchemaWidth := LConfigLeft - RowGap;
+    if LSchemaWidth < 0 then
+      LSchemaWidth := 0;
+    ComboSchema.SetBounds(0, LRowTop, LSchemaWidth, LRowHeight);
+  end;
+end;
+
 procedure TFRpChatFrame.RefreshTopLayout;
 var
+  LLoginHeight: Integer;
   LAISelectionHeight: Integer;
   LSchemaHeight: Integer;
+  LTop: Integer;
 begin
   DisableAlign;
   try
+  EnsureTopStackLayout;
+
+  LLoginHeight := 0;
+  if (PLoginHost <> nil) and PLoginHost.Visible then
+    LLoginHeight := GetLoginHostPreferredHeight;
+
   LAISelectionHeight := 0;
-  if FAISelection <> nil then
+  if (FAISelection <> nil) and (PAISelectionHost <> nil) and PAISelectionHost.Visible then
   begin
     LAISelectionHeight := FAISelection.PreferredHeight;
     PAISelectionHost.Height := LAISelectionHeight;
   end;
+
   if FShowSchemaSelector then
-    LSchemaHeight := PSchemaHost.Height
-  else
-    LSchemaHeight := 0;
-  if GridTop <> nil then
   begin
-    if GridTop.RowCollection.Count > 0 then
-    begin
-      GridTop.RowCollection[0].SizeStyle := ssAbsolute;
-      GridTop.RowCollection[0].Value := PLoginHost.Height;
-    end;
-    if GridTop.RowCollection.Count > 1 then
-    begin
-      GridTop.RowCollection[1].SizeStyle := ssAbsolute;
-      GridTop.RowCollection[1].Value := PAISelectionHost.Height;
-    end;
-    if GridTop.RowCollection.Count > 2 then
-    begin
-      GridTop.RowCollection[2].SizeStyle := ssAbsolute;
-      GridTop.RowCollection[2].Value := LSchemaHeight;
-    end;
+    LSchemaHeight := GetSchemaHostPreferredHeight;
+    PSchemaHost.Height := LSchemaHeight;
+  end
+  else
+  begin
+    LSchemaHeight := 0;
+    if PSchemaHost <> nil then
+      PSchemaHost.Height := 0;
   end;
+
   if PSchemaHost <> nil then
     PSchemaHost.Visible := FShowSchemaSelector;
+
   if PTop <> nil then
-    PTop.Height := PLoginHost.Height + PAISelectionHost.Height + LSchemaHeight;
-  if PTop <> nil then
-    PTop.SetBounds(0, 0, PRoot.ClientWidth, PTop.Height);
-  if GridTop <> nil then
-    GridTop.SetBounds(0, 0, PTop.ClientWidth, PTop.ClientHeight);
-  if GridTop <> nil then
-    GridTop.Realign;
-  if PTop <> nil then
+  begin
+    LTop := 0;
+
+    if PLoginHost <> nil then
+    begin
+      PLoginHost.Visible := LLoginHeight > 0;
+      PLoginHost.SetBounds(0, LTop, PTop.ClientWidth, LLoginHeight);
+      if PLoginHost.Visible then
+        Inc(LTop, LLoginHeight);
+    end;
+
+    if PAISelectionHost <> nil then
+    begin
+      PAISelectionHost.Visible := LAISelectionHeight > 0;
+      PAISelectionHost.SetBounds(0, LTop, PTop.ClientWidth, LAISelectionHeight);
+      if PAISelectionHost.Visible then
+        Inc(LTop, LAISelectionHeight);
+    end;
+
+    if PSchemaHost <> nil then
+    begin
+      PSchemaHost.SetBounds(0, LTop, PTop.ClientWidth, LSchemaHeight);
+      LayoutSchemaControls;
+      if PSchemaHost.Visible then
+        Inc(LTop, LSchemaHeight);
+    end;
+
+    PTop.Height := LTop;
+    PTop.SetBounds(0, 0, PRoot.ClientWidth, LTop);
     PTop.Realign;
-  if PLoginHost <> nil then
-    PLoginHost.Realign;
-  if PAISelectionHost <> nil then
-    PAISelectionHost.Realign;
-  if PSchemaHost <> nil then
-    PSchemaHost.Realign;
+  end;
+
   if FLoginFrame <> nil then
   begin
     FLoginFrame.SetBounds(0, 0, PLoginHost.ClientWidth, PLoginHost.ClientHeight);
@@ -506,8 +683,6 @@ begin
       LAISelectionHeight);
     FAISelection.RefreshLayout;
   end;
-  if PSchemaHost <> nil then
-    PSchemaHost.Realign;
   finally
     EnableAlign;
   end;
@@ -1173,7 +1348,7 @@ end;
 
 procedure TFRpChatFrame.DesignStreamProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string);
+  const AProgressId: string; APrefillPercent: Integer);
 var
   LPayload: TRpQueuedDesignChatPayload;
   LChunk: string;
@@ -1191,7 +1366,12 @@ begin
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
   LPayload.LogText1 := AChunk;
-  LPayload.PrefillPercent := GetDesignPrefillPercent(AStage, AChunkType);
+  if APrefillPercent > 0 then
+    LPayload.PrefillPercent := APrefillPercent
+  else if SameText(AActor, 'AI') and (Trim(AProgressId) <> '') then
+    LPayload.PrefillPercent := 0
+  else
+    LPayload.PrefillPercent := GetDesignPrefillPercent(AStage, AChunkType);
   LPayload.InputTokens := AInputTokens;
   LPayload.OutputTokens := AOutputTokens;
   PostDesignChatPayload(LPayload);
@@ -1236,6 +1416,7 @@ begin
   end;
   
   SetBusy(True);
+  EnsureAISelectionAutoHeight;
   PControl.ActivePage := TabLog;
   RebuildConversation;
 end;
@@ -1256,6 +1437,7 @@ begin
   FProgressActive := False;
   FProgressTitle := '';
   FProgressText := '';
+  EnsureAISelectionAutoHeight;
   UpdateButtons;
   RebuildConversation;
 end;
@@ -1265,6 +1447,7 @@ begin
   FStreamingActive := False;
   FStreamingText := '';
   FStreamingPrefillPercent := 0;
+  EnsureAISelectionAutoHeight;
   SetBusy(False);
   PControl.ActivePage := TabChat;
   RebuildConversation;
@@ -1540,6 +1723,7 @@ begin
   FBusy := AValue;
   if FAISelection <> nil then
     FAISelection.SetInferenceProgress(AValue);
+  EnsureAISelectionAutoHeight;
   if FBusy then
     BClear.Caption := 'Stop'
   else
@@ -1551,6 +1735,7 @@ procedure TFRpChatFrame.SetInferenceProgress(AValue: Boolean);
 begin
   if FAISelection <> nil then
     FAISelection.SetInferenceProgress(AValue);
+  EnsureAISelectionAutoHeight;
 end;
 
 procedure TFRpChatFrame.SetShowSchemaSelector(AValue: Boolean);
@@ -1642,40 +1827,30 @@ begin
     ComboSchema.Font.Name := FontNameUi;
     ComboSchema.Font.Size := FontSizeUi;
     ComboSchema.Font.Color := ClrText;
-    ComboSchema.Align := alClient;
-    ComboSchema.AlignWithMargins := True;
-    ComboSchema.Margins.Left := 0;
-    ComboSchema.Margins.Top := 2;
-    ComboSchema.Margins.Right := 4;
-    ComboSchema.Margins.Bottom := 4;
+    ComboSchema.Align := alNone;
+    ComboSchema.AlignWithMargins := False;
   end;
 
-  // Schema refresh button: hide text, make it an icon-like button via SpeedButton swap not needed;
-  // keep TButton but change caption to a single refresh glyph via Segoe MDL2.
   if BRefreshSchemas <> nil then
   begin
-    BRefreshSchemas.Caption := #$E72C; // Segoe MDL2 refresh glyph
-    BRefreshSchemas.Font.Name := 'Segoe MDL2 Assets';
-    BRefreshSchemas.Font.Size := 10;
+    BRefreshSchemas.Caption := 'Refresh';
+    BRefreshSchemas.Font.Name := FontNameUi;
+    BRefreshSchemas.Font.Size := FontSizeUi;
     BRefreshSchemas.Font.Color := ClrText;
-    BRefreshSchemas.Width := 30;
+    BRefreshSchemas.Width := 75;
+    BRefreshSchemas.Height := 29;
     BRefreshSchemas.Hint := 'Refresh schemas';
     BRefreshSchemas.ShowHint := True;
-    BRefreshSchemas.Align := alRight;
-    BRefreshSchemas.Margins.Left := 4;
-    BRefreshSchemas.Margins.Top := 2;
-    BRefreshSchemas.Margins.Right := 0;
-    BRefreshSchemas.Margins.Bottom := 4;
+    BRefreshSchemas.Align := alNone;
+    BRefreshSchemas.AlignWithMargins := False;
   end;
 
   if PSchemaConfigHost <> nil then
   begin
-    PSchemaConfigHost.Width := 30;
-    PSchemaConfigHost.AlignWithMargins := True;
-    PSchemaConfigHost.Margins.Left := 0;
-    PSchemaConfigHost.Margins.Top := 2;
-    PSchemaConfigHost.Margins.Right := 4;
-    PSchemaConfigHost.Margins.Bottom := 4;
+    PSchemaConfigHost.Width := 35;
+    PSchemaConfigHost.Height := 29;
+    PSchemaConfigHost.Align := alNone;
+    PSchemaConfigHost.AlignWithMargins := False;
   end;
 
   // Log toolbar buttons: compact flat look via fonts
@@ -1700,9 +1875,11 @@ begin
 
   // Schema row height
   if PSchemaHost <> nil then
-    PSchemaHost.Height := 54;
+    PSchemaHost.Height := GetSchemaHostPreferredHeight;
   if PLoginHost <> nil then
-    PLoginHost.Height := 48;
+    PLoginHost.Height := GetLoginHostPreferredHeight;
+
+  LayoutSchemaControls;
 end;
 
 type
@@ -1799,10 +1976,21 @@ begin
 end;
 
 procedure TFRpChatFrame.UpdateStreamingTokens(AInTokens, AOutTokens: Integer;
-  const AProgressId: string = '');
+  const AProgressId: string = ''; APrefillPercent: Integer = 0);
 begin
   if FAISelection <> nil then
-    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId);
+    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId,
+      APrefillPercent);
+  EnsureAISelectionAutoHeight;
+end;
+
+procedure TFRpChatFrame.CompleteStreamingProgress(const AActor, AChunkType,
+  AProgressId: string);
+begin
+  if (FAISelection <> nil) and SameText(AActor, 'AI') and
+    (SameText(AChunkType, 'End') or SameText(AChunkType, 'Full')) then
+    FAISelection.FinishProgressToken(AProgressId);
+  EnsureAISelectionAutoHeight;
 end;
 
 procedure TFRpChatFrame.BeginProgress(const ATitle, AText: string);
@@ -1892,6 +2080,13 @@ begin
   if APrefillPercent > FStreamingPrefillPercent then
     FStreamingPrefillPercent := APrefillPercent;
 
+  if (FAISelection <> nil) and SameText(AActor, 'AI') and
+    (Trim(AProgressId) <> '') then
+  begin
+    FAISelection.TouchProgressToken(AProgressId);
+    EnsureAISelectionAutoHeight;
+  end;
+
   LLogChunk := ALogChunk;
   if LLogChunk = '' then
     LLogChunk := AChunk;
@@ -1900,11 +2095,23 @@ begin
   if AChunk <> '' then
     FStreamingText := FStreamingText + AChunk;
 
-  if (FWebLog <> nil) and (LLogChunk <> '') then
-    FWebLog.AppendLogChunkKey(LLogKey, LLogChunk);
-
-  if (FWebLog <> nil) and SameText(AChunkType, 'End') then
-    FWebLog.EndLogChunkKey(LLogKey);
+  if FWebLog <> nil then
+  begin
+    if SameText(AChunkType, 'Full') then
+    begin
+      if LLogChunk <> '' then
+        FWebLog.AppendLogChunkKey(LLogKey, LLogChunk);
+      FWebLog.EndLogChunkKey(LLogKey);
+    end
+    else if SameText(AChunkType, 'End') then
+    begin
+      if LLogChunk <> '' then
+        FWebLog.AppendLogChunkKey(LLogKey, LLogChunk);
+      FWebLog.EndLogChunkKey(LLogKey);
+    end
+    else if LLogChunk <> '' then
+      FWebLog.AppendLogChunkKey(LLogKey, LLogChunk);
+  end;
 end;
 
 procedure TFRpChatFrame.UpdateUserProfile(AProfile: TJSONObject);
@@ -1932,7 +2139,10 @@ begin
           UpdateStreamingResponse(LPayload.Actor1, LPayload.ChunkType1,
             LPayload.Text1, LPayload.PrefillPercent, LPayload.LogText1,
             LPayload.ProgressId1);
-          UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens,
+          if SameText(LPayload.Actor1, 'AI') then
+            UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens,
+              LPayload.ProgressId1, LPayload.PrefillPercent);
+          CompleteStreamingProgress(LPayload.Actor1, LPayload.ChunkType1,
             LPayload.ProgressId1);
           Exit;
         end;

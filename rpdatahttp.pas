@@ -44,7 +44,7 @@ const
 type
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-    const AProgressId: string) of object;
+    const AProgressId: string; APrefillPercent: Integer) of object;
   TRpExpressionStreamResultEvent = procedure(Sender: TObject;
     AResultJson: TJSONObject; const AErrorMessage: string) of object;
   TRpExpressionStreamCancelEvent = function(Sender: TObject): Boolean of object;
@@ -238,8 +238,7 @@ type
     FCancelled: Boolean;
     FLastReadPos: Int64;
     FPendingBytes: TBytes;
-    FHasChunkedAIResponse: Boolean;
-    FChunkedAIResponseId: string;
+    FChunkedAIResponseIds: TStringList;
     FResponseStream: TMemoryStream;
     FSender: TObject;
     FOnCancel: TRpExpressionStreamCancelEvent;
@@ -254,6 +253,7 @@ type
       AOnProgress: TRpExpressionStreamProgressEvent;
       AOnResult: TRpExpressionStreamResultEvent;
       AOnCancel: TRpExpressionStreamCancelEvent);
+    destructor Destroy; override;
     procedure HandleReceiveData(const SenderHttp: TObject; AContentLength,
       AReadCount: Int64; var Abort: Boolean);
     procedure ReadNewBytes;
@@ -275,7 +275,7 @@ type
     function HandleCancel(Sender: TObject): Boolean;
     procedure HandleProgress(Sender: TObject; const AActor, AStage, AChunkType,
       AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     procedure HandleResult(Sender: TObject; AResultJson: TJSONObject;
       const AErrorMessage: string);
     function TakeResultJson: TJSONObject;
@@ -297,9 +297,16 @@ begin
   FOnCancel := AOnCancel;
   FCancelled := False;
   FLastReadPos := 0;
-  FHasChunkedAIResponse := False;
-  FChunkedAIResponseId := '';
+  FChunkedAIResponseIds := TStringList.Create;
+  FChunkedAIResponseIds.Sorted := True;
+  FChunkedAIResponseIds.Duplicates := dupIgnore;
   SetLength(FPendingBytes, 0);
+end;
+
+destructor TRpExpressionStreamContext.Destroy;
+begin
+  FChunkedAIResponseIds.Free;
+  inherited;
 end;
 
 procedure TRpExpressionStreamContext.AppendBytes(const ASource: TBytes;
@@ -330,6 +337,7 @@ var
   LProgressId: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
+  LPrefillPercent: Integer;
   LVal: TJSONValue;
 begin
   try
@@ -366,14 +374,12 @@ begin
               if SameText(LChunkType, 'Start') or SameText(LChunkType, 'Partial') or
                 SameText(LChunkType, 'End') then
               begin
-                FHasChunkedAIResponse := True;
                 if LProgressId <> '' then
-                  FChunkedAIResponseId := LProgressId;
+                  FChunkedAIResponseIds.Add(LProgressId);
               end
-              else if SameText(LChunkType, 'Full') and FHasChunkedAIResponse then
+              else if SameText(LChunkType, 'Full') and (LProgressId <> '') then
               begin
-                if (FChunkedAIResponseId = '') or (LProgressId = '') or
-                  SameText(FChunkedAIResponseId, LProgressId) then
+                if FChunkedAIResponseIds.IndexOf(LProgressId) >= 0 then
                   Exit;
               end;
             end;
@@ -401,9 +407,29 @@ begin
             end
             else
               LOutputTokens := 0;
+
+            LVal := LJson.Values['prefillPercentage'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                if LVal is TJSONNumber then
+                  LPrefillPercent := Round(TJSONNumber(LVal).AsDouble * 100)
+                else
+                  LPrefillPercent := StrToIntDef(LVal.Value, 0);
+              except
+                LPrefillPercent := 0;
+              end;
+            end
+            else
+              LPrefillPercent := 0;
+
+            if LPrefillPercent < 0 then
+              LPrefillPercent := 0
+            else if LPrefillPercent > 100 then
+              LPrefillPercent := 100;
               
             FOnProgress(FSender, LActor, LStage, LChunkType, LChunk,
-              LInputTokens, LOutputTokens, LProgressId);
+              LInputTokens, LOutputTokens, LProgressId, LPrefillPercent);
           end;
         end
         else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
@@ -521,11 +547,11 @@ end;
 
 procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string);
+  const AProgressId: string; APrefillPercent: Integer);
 begin
   if Assigned(FForwardProgress) then
     FForwardProgress(FSender, AActor, AStage, AChunkType, AChunk, AInputTokens,
-      AOutputTokens, AProgressId);
+      AOutputTokens, AProgressId, APrefillPercent);
 end;
 
 procedure TRpApiStreamCapture.HandleResult(Sender: TObject;

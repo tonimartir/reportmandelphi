@@ -122,7 +122,7 @@ type
       AAppendLineBreak: Boolean);
     procedure SuggestSqlStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     procedure StartPendingInference;
     procedure LayoutTopControls;
     procedure UpdateAuthUI;
@@ -141,7 +141,7 @@ type
     procedure ActivateAuditTab;
     procedure SetAuditBusy(AValue: Boolean);
     procedure UpdateAITokens(AInTokens, AOutTokens: Integer;
-      const AProgressId: string = '');
+      const AProgressId: string = ''; APrefillPercent: Integer = 0);
     function GetAITier: string;
     function GetAIMode: string;
     function GetAgentSecret: string;
@@ -594,10 +594,11 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAITokens(AInTokens, AOutTokens: Integer;
-  const AProgressId: string = '');
+  const AProgressId: string = ''; APrefillPercent: Integer = 0);
 begin
   if FAISelection <> nil then
-    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId);
+    FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId,
+      APrefillPercent);
 end;
 
 function TFRpMonacoEditorVCL.GetAITier: string;
@@ -1328,7 +1329,7 @@ begin
                 Exit;
               end;
 
-              FAISelection.UpdateTokens(LInT, LOutT);
+              FAISelection.UpdateTokens(LInT, LOutT, LRequestId);
               if LInT > 0 then
                 EmitInferenceLog('Autocomplete', 'Inference complete. Input Tokens: ' + IntToStr(LInT) + ' Output Tokens: ' + IntToStr(LOutT), True)
               else
@@ -1371,7 +1372,7 @@ end;
 
 procedure TFRpMonacoEditorVCL.SuggestSqlStreamProgress(Sender: TObject;
   const AActor, AStage, AChunkType, AChunk: string; AInputTokens,
-  AOutputTokens: Integer; const AProgressId: string);
+  AOutputTokens: Integer; const AProgressId: string; APrefillPercent: Integer);
 var
   LAActor: string;
   LStage: string;
@@ -1380,6 +1381,8 @@ var
   LProgressId: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
+  LPrefillPercent: Integer;
+  LQueueProc: TThreadProcedure;
 begin
   LAActor := AActor;
   LStage := AStage;
@@ -1388,11 +1391,18 @@ begin
   LProgressId := AProgressId;
   LInputTokens := AInputTokens;
   LOutputTokens := AOutputTokens;
-  TThread.Queue(nil,
-    procedure
+  LPrefillPercent := APrefillPercent;
+  LQueueProc := procedure
     begin
-      if FAISelection <> nil then
-        FAISelection.UpdateTokens(LInputTokens, LOutputTokens, LProgressId);
+      if (FAISelection <> nil) and SameText(LAActor, 'AI') and
+        (Trim(LProgressId) <> '') then
+        FAISelection.TouchProgressToken(LProgressId);
+      if (FAISelection <> nil) and SameText(LAActor, 'AI') then
+        FAISelection.UpdateTokens(LInputTokens, LOutputTokens, LProgressId,
+          LPrefillPercent);
+      if (FAISelection <> nil) and SameText(LAActor, 'AI') and
+        (SameText(LChunkType, 'End') or SameText(LChunkType, 'Full')) then
+        FAISelection.FinishProgressToken(LProgressId);
       if not SameText(FActiveInferenceRequestId, FPendingRequestId) then
         Exit;
       if not SameText(LStage, 'ReceivingResponse') then
@@ -1400,7 +1410,8 @@ begin
       if LChunk = '' then
         Exit;
       Self.EmitInferenceLog(LAActor, LChunk, SameText(LChunkType, 'End'));
-    end);
+    end;
+  TThread.Queue(nil, LQueueProc);
 end;
 
 procedure TFRpMonacoEditorVCL.SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);

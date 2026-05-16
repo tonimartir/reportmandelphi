@@ -2,7 +2,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
   Left = 0
   Top = 0
   Width = 525
-  Height = 58
+  Height = 63
   Margins.Left = 4
   Margins.Top = 4
   Margins.Right = 4
@@ -13,7 +13,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
     Left = 0
     Top = 0
     Width = 525
-    Height = 58
+    Height = 63
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
@@ -25,7 +25,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       Left = 0
       Top = 0
       Width = 525
-      Height = 58
+      Height = 63
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 0
@@ -33,7 +33,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         Left = 0
         Top = 0
         Width = 525
-        Height = 58
+        Height = 63
         Align = alClient
         BevelOuter = bvNone
         ColumnCollection = <
@@ -74,7 +74,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Left = 0
           Top = 0
           Width = 238
-          Height = 58
+          Height = 63
           Margins.Left = 0
           Margins.Top = 0
           Margins.Right = 4
@@ -107,7 +107,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Left = 246
           Top = 0
           Width = 235
-          Height = 58
+          Height = 63
           Margins.Left = 4
           Margins.Top = 0
           Margins.Right = 4
@@ -141,7 +141,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Left = 489
           Top = 0
           Width = 32
-          Height = 58
+          Height = 63
           Margins.Left = 4
           Margins.Top = 0
           Margins.Right = 4
@@ -154,7 +154,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           ExplicitLeft = 493
           object PaintBoxGauge: TPaintBox
             Left = 1
-            Top = 14
+            Top = 16
             Width = 30
             Height = 30
             Hint = 'Credits'
@@ -169,7 +169,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
       Left = 0
       Top = 0
       Width = 525
-      Height = 58
+      Height = 63
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 1
@@ -178,7 +178,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
         Left = 0
         Top = 0
         Width = 525
-        Height = 58
+        Height = 63
         Align = alClient
         BevelOuter = bvNone
         ColumnCollection = <
@@ -235,7 +235,7 @@ object FRpAISelectionVCL: TFRpAISelectionVCL
           Left = 67
           Top = 0
           Width = 362
-          Height = 58
+          Height = 63
           Margins.Left = 8
           Margins.Top = 0
           Margins.Right = 8

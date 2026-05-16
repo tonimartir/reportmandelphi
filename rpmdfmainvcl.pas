@@ -485,7 +485,7 @@ type
     function GetDesignChatPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure DesignChatStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
     function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
       const AErrorMessage: string): string;
@@ -3295,7 +3295,7 @@ end;
 
 procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject; const AActor,
   AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string);
+  const AProgressId: string; APrefillPercent: Integer);
 var
   LPayload: TRpQueuedDesignChatPayload;
   LChunk: string;
@@ -3313,7 +3313,10 @@ begin
   LPayload.ChunkType1 := AChunkType;
   LPayload.Text1 := LChunk;
   LPayload.LogText1 := AChunk;
-  LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
+  if APrefillPercent > 0 then
+    LPayload.PrefillPercent := APrefillPercent
+  else
+    LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
   LPayload.InputTokens := AInputTokens;
   LPayload.OutputTokens := AOutputTokens;
   PostDesignChatPayload(LPayload);
@@ -3759,7 +3762,10 @@ begin
             LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent,
             LPayload.LogText1, LPayload.ProgressId1);
           fchatframe.UpdateStreamingTokens(LPayload.InputTokens,
-            LPayload.OutputTokens, LPayload.ProgressId1);
+            LPayload.OutputTokens, LPayload.ProgressId1,
+            LPayload.PrefillPercent);
+          fchatframe.CompleteStreamingProgress(LPayload.Actor1,
+            LPayload.ChunkType1, LPayload.ProgressId1);
           Exit;
         end;
       rpqdcAddAssistantMessage:

@@ -162,7 +162,7 @@ type
     function ChatTranslateCancelRequested(Sender: TObject): Boolean;
     procedure ChatTranslateProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     procedure SetDataInfo(Value:TRpDataInfoList);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
     procedure SetParams(Value:TRpParamList);
@@ -179,7 +179,7 @@ type
       AText: string; AAppendLineBreak: Boolean);
     procedure MonacoAuditProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string);
+      const AProgressId: string; APrefillPercent: Integer);
     procedure MonacoSchemaChange(Sender: TObject);
     procedure  Removedependences(oldalias:string);
   public
@@ -848,7 +848,7 @@ end;
 
 procedure TFRpDatasetsVCL.ChatTranslateProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string);
+  const AProgressId: string; APrefillPercent: Integer);
 var
   LActor: string;
   LStage: string;
@@ -857,6 +857,7 @@ var
   LProgressId: string;
   LInputTokens: Integer;
   LOutputTokens: Integer;
+  LPrefillPercent: Integer;
   LQueueProc: TThreadProcedure;
 begin
   LActor := AActor;
@@ -866,6 +867,9 @@ begin
   LProgressId := AProgressId;
   LInputTokens := AInputTokens;
   LOutputTokens := AOutputTokens;
+  LPrefillPercent := APrefillPercent;
+  if LPrefillPercent <= 0 then
+    LPrefillPercent := GetChatPrefillPercent(LStage, LChunkType);
 
   LQueueProc :=
     procedure
@@ -873,12 +877,14 @@ begin
       if FChat = nil then
         Exit;
 
-      FChat.UpdateStreamingTokens(LInputTokens, LOutputTokens, LProgressId);
       if SameText(LStage, 'ReceivingResponse') then
       begin
-        if LChunk <> '' then
+        if (LChunk <> '') or (LPrefillPercent > 0) then
           FChat.UpdateStreamingResponse(LActor, LChunkType, LChunk,
-            GetChatPrefillPercent(LStage, LChunkType), '', LProgressId);
+            LPrefillPercent, '', LProgressId);
+        FChat.UpdateStreamingTokens(LInputTokens, LOutputTokens, LProgressId,
+          LPrefillPercent);
+        FChat.CompleteStreamingProgress(LActor, LChunkType, LProgressId);
       end
       else if LChunk <> '' then
         FChat.AppendLogLine('[' + LStage + '] ' + LChunk);
@@ -1080,11 +1086,12 @@ end;
 
 procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AActor, AStage,
   AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string);
+  const AProgressId: string; APrefillPercent: Integer);
 var
   LActor, LAStage, LAChunkType, LAChunk: string;
   LProgressId: string;
   LInputTokens, LOutputTokens: Integer;
+  LPrefillPercent: Integer;
   LQueueProc: TThreadProcedure;
 begin
   if FMonaco = nil then
@@ -1097,13 +1104,15 @@ begin
   LProgressId := AProgressId;
   LInputTokens := AInputTokens;
   LOutputTokens := AOutputTokens;
+  LPrefillPercent := APrefillPercent;
 
   LQueueProc :=
     procedure
     begin
       if FMonaco = nil then
         Exit;
-      FMonaco.UpdateAITokens(LInputTokens, LOutputTokens, LProgressId);
+      FMonaco.UpdateAITokens(LInputTokens, LOutputTokens, LProgressId,
+        LPrefillPercent);
       if SameText(LAStage, 'ReceivingResponse') and (LAChunk <> '') then
         FMonaco.AppendLog(LAChunk)
       else if LAChunk <> '' then
