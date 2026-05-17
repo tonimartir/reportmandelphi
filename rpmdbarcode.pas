@@ -189,6 +189,8 @@ type
    constructor Create(Owner:TComponent); override;
 //   procedure DrawText(Canvas:TCanvas);
    property Expression:widestring read FExpression write FExpression;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
     // Width of the smallest line in a Barcode
    property Modul:integer read FModul  write SetModul;
@@ -3166,5 +3168,157 @@ begin
   end;
 end;
 
+
+{ TRpBarcode - IPropertiesItem }
+
+procedure TRpBarcode.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  FExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
+ begin
+  SetModul(value);
+  exit;
+ end;
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
+ begin
+  FRatio := Double(value);
+  exit;
+ end;
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
+ begin
+  FTyp := TRpBarcodeType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
+ begin
+  FCheckSum := value;
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  FDisplayFormat := value;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'BColor') then
+ begin
+  FBColor := value;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  FBackColor := value;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  FTransparent := value;
+  exit;
+ end;
+ if SameText(propName, 'NumColumns') then
+ begin
+  FNumColumns := value;
+  exit;
+ end;
+ if SameText(propName, 'NumRows') then
+ begin
+  FNumRows := value;
+  exit;
+ end;
+ if SameText(propName, 'ECCLevel') then
+ begin
+  SetECCLevel(value);
+  exit;
+ end;
+ if SameText(propName, 'Truncated') then
+ begin
+  FTruncated := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpBarcode.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
+ begin
+  Result := FModul;
+  exit;
+ end;
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
+ begin
+  Result := FRatio;
+  exit;
+ end;
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
+ begin
+  Result := Integer(FTyp);
+  exit;
+ end;
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
+ begin
+  Result := FCheckSum;
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  Result := FDisplayFormat;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if SameText(propName, 'BColor') then
+ begin
+  Result := FBColor;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  Result := FBackColor;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  Result := FTransparent;
+  exit;
+ end;
+ if SameText(propName, 'NumColumns') then
+ begin
+  Result := FNumColumns;
+  exit;
+ end;
+ if SameText(propName, 'NumRows') then
+ begin
+  Result := FNumRows;
+  exit;
+ end;
+ if SameText(propName, 'ECCLevel') then
+ begin
+  Result := FECCLevel;
+  exit;
+ end;
+ if SameText(propName, 'Truncated') then
+ begin
+  Result := FTruncated;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
 
 end.

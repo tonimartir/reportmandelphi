@@ -28,7 +28,7 @@ uses Classes,sysutils,rptypes,rpreport,rpdatainfo,rpsubreport,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
- rpdrawitem,rpmdconsts,rpmdcharttypes;
+ rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue,rpbasereport;
 
 
 const
@@ -54,6 +54,14 @@ procedure WritePropertyB(propname:Ansistring;propvalue:TStream;stream:TStream);
 procedure WriteReportXML(areport:TComponent;Stream:TStream);
 procedure ReadReportXML(areport:TComponent;Stream:TStream);
 procedure ReadSectionXML(areport:TComponent;Stream:TStream);
+function GetUniqueReportItemName(report: TRpBaseReport; currentItem: TObject;
+  const preferredName, basePrefix: string): string;
+procedure EnsureDatabaseInfoItemName(report: TRpBaseReport;
+  dbitem: TRpDatabaseInfoItem);
+procedure EnsureDataInfoItemName(report: TRpBaseReport;
+  ditem: TRpDataInfoItem);
+procedure EnsureParamName(report: TRpBaseReport; param: TRpParam);
+procedure EnsureReportItemNames(report: TRpBaseReport);
 
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
 procedure WriteDataInfoXML(dinfo:TRpDataInfoItem;Stream:TStream);
@@ -62,6 +70,7 @@ procedure WriteParamXML(aparam:TRpParam;Stream:TStream);
 procedure WriteSubreportXML(subrep:TRpSubReport;Stream:TStream);
 procedure WriteSectionXML(section:TRpSection;Stream:TStream);
 procedure WriteComponentXML(comp:TRpCommonPosComponent;Stream:TStream);
+
 
 function RpIsAlpha(achar:Ansichar):Boolean;
 function RpIsAlphaW(achar:Widechar):Boolean;
@@ -91,6 +100,7 @@ end;
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
 begin
  WritePropertyS('ALIAS',dbinfo.Alias,Stream);
+ WritePropertyS('NAME',dbinfo.Name,Stream);
  WritePropertyS('CONFIGFILE',dbinfo.Configfile,Stream);
  WritePropertyBool('LOADPARAMS',dbinfo.LoadParams,Stream);
  WritePropertyBool('LOADDRIVERPARAMS',dbinfo.LoadDriverParams,Stream);
@@ -109,8 +119,12 @@ end;
 procedure WriteDataInfoXML(dinfo:TRpDataInfoItem;Stream:TStream);
 begin
  WritePropertyS('ALIAS',dinfo.Alias,Stream);
+ WritePropertyS('NAME',dinfo.Name,Stream);
  WritePropertyS('DATABASEALIAS',dinfo.DatabaseAlias,Stream);
  WritePropertyW('SQL',dinfo.SQL,Stream);
+ WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
+ WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
+ WritePropertyI('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
  WritePropertyS('DATASOURCE',dinfo.DataSource,Stream);
  WritePropertyS('MYBASEFILENAME',dinfo.MyBaseFileName,Stream);
  WritePropertyS('MYBASEFIELDS',dinfo.MyBaseFields,Stream);
@@ -131,7 +145,28 @@ begin
 end;
 
 procedure WriteReportPropsXML(report:TRpReport;Stream:TStream);
+var
+ undocue:TUndoCue;
+ memstream:TMemoryStream;
+ jsonBytes:TBytes;
 begin
+ // Write UndoCue if present (only for XML format)
+ if Assigned(report.UndoCue) then
+ begin
+  undocue:=TUndoCue(report.UndoCue);
+  if (undocue.UndoOperations.Count > 0) or (undocue.RedoOperations.Count > 0) then
+  begin
+   memstream:=TMemoryStream.Create;
+   try
+    jsonBytes:=TEncoding.UTF8.GetBytes(undocue.ToJSON);
+    memstream.Write(jsonBytes[0], Length(jsonBytes));
+    memstream.Position:=0;
+    WritePropertyB('BINCUE',memstream,Stream);
+   finally
+    memstream.Free;
+   end;
+  end;
+ end;
  WritePropertyW('WFONTNAME',report.WFontName,Stream);
  WritePropertyW('LFONTNAME',report.LFontName,Stream);
  WritePropertyBool('GRIDVISIBLE',report.GridVisible,Stream);
@@ -178,7 +213,6 @@ begin
  WritePropertyI('VALIGNMENT',report.VAlignment,Stream);
  WritePropertyBool('WORDWRAP',report.WordWrap,Stream);
  WritePropertyBool('SINGLELINE',report.SingleLine,Stream);
- WritePropertyS('BIDIMODES',report.BidiModes.Text,Stream);
  WritePropertyBool('MULTIPAGE',report.MultiPage,Stream);
  WritePropertyI('PRINTSTEP',Integer(report.PrintStep),Stream);
  WritePropertyI('PAPERSOURCE',report.PaperSource,Stream);
@@ -202,6 +236,7 @@ end;
 procedure WriteParamXML(aparam:TRpParam;Stream:TStream);
 begin
  WritePropertyS('NAME',aparam.Name,Stream);
+ WritePropertyS('INTNAME',aparam.IntName,Stream);
  WritePropertyW('DESCRIPTION',aparam.Descriptions,Stream);
  WritePropertyW('HINT',aparam.Hints,Stream);
  WritePropertyW('ERRORMESSAGE',aparam.ErrorMessage,Stream);
@@ -363,7 +398,10 @@ begin
   compt:=TRpGenTextComponent(comp);
   WritePropertyW('WFONTNAME',compt.WFontName,Stream);
   WritePropertyW('LFONTNAME',compt.LFontName,Stream);
-  WritePropertyI('BIDIMODE',Integer(compt.BidiMode),Stream);
+  if compt.RightToLeft then
+   WritePropertyI('BIDIMODE',Integer(rpBidiPartial),Stream)
+  else
+   WritePropertyI('BIDIMODE',Integer(rpBidiNo),Stream);
   WritePropertyI('TYPE1FONT',Integer(compt.Type1Font),Stream);
   WritePropertyI('FONTSIZE',compt.FontSize,Stream);
   WritePropertyI('FONTROTATION',compt.FontRotation,Stream);
@@ -378,7 +416,6 @@ begin
   WritePropertyBool('WORDWRAP',compt.WordWrap,Stream);
   WritePropertyBool('WORDBREAK',compt.WordBreak,Stream);
   WritePropertyBool('SINGLELINE',compt.SingleLine,Stream);
-  WritePropertyS('BIDIMODES',compt.BidiModes.Text,Stream);
   WritePropertyBool('MULTIPAGE',compt.Multipage,Stream);
   WritePropertyI('PRINTSTEP',Integer(compt.PrintStep),Stream);
   if compt.IsHtml then
@@ -584,20 +621,22 @@ end;
 
 function RpStringToString(rpstring:Ansistring):AnsiString;
 var
- anumber:Ansistring;
- i:integer;
+ anumber:Integer;
+ i,outindex,rplen:integer;
 begin
- Result:='';
+ rplen:=Length(rpstring);
+ SetLength(Result,rplen);
  i:=1;
- while (i<=Length(rpstring)) do
+ outindex:=0;
+ while (i<=rplen) do
  begin
   if ((RpIsAlpha(rpstring[i])) or (rpstring[i]='#')) then
   begin
     if rpstring[i]='#' then
     begin
-     anumber:='0';
+     anumber:=0;
      inc(i);
-     while (i<=Length(rpstring)) do
+     while (i<=rplen) do
      begin
       if rpstring[i]='#' then
       begin
@@ -606,39 +645,44 @@ begin
       end
       else
       begin
-       anumber:=anumber+rpstring[i];
+       anumber:=(anumber*10)+(Ord(rpstring[i])-Ord('0'));
        inc(i);
       end;
      end;
-     Result:=Result+Chr(StrToInt(anumber) mod 256);
+     inc(outindex);
+     Result[outindex]:=AnsiChar(Chr(anumber mod 256));
     end
     else
     begin
-     Result:=Result+rpstring[i];
+     inc(outindex);
+     Result[outindex]:=rpstring[i];
      inc(i);
     end;
   end
   else
    inc(i);
  end;
+ SetLength(Result,outindex);
 end;
 
 function RpStringToWString(rpstring:Ansistring):WideString;
 var
- anumber:Ansistring;
- i:integer;
+ anumber:Integer;
+ i,outindex,rplen:integer;
 begin
- Result:='';
+ rplen:=Length(rpstring);
+ SetLength(Result,rplen);
  i:=1;
- while (i<=Length(rpstring)) do
+ outindex:=0;
+ while (i<=rplen) do
  begin
   if ((RpIsAlpha(rpstring[i])) or (rpstring[i]='#')) then
   begin
     if rpstring[i]='#' then
     begin
-     anumber:='0';
+     anumber:=0;
      inc(i);
-     while (i<=Length(rpstring)) do
+     while (i<=rplen) do
      begin
       if rpstring[i]='#' then
       begin
@@ -647,21 +691,24 @@ begin
       end
       else
       begin
-       anumber:=anumber+rpstring[i];
+       anumber:=(anumber*10)+(Ord(rpstring[i])-Ord('0'));
        inc(i);
       end;
      end;
-     Result:=Result+WideChar(StrToInt(anumber) mod 65535);
+     inc(outindex);
+     Result[outindex]:=WideChar(anumber mod 65535);
     end
     else
     begin
-     Result:=Result+WideChar(rpstring[i]);
+     inc(outindex);
+     Result[outindex]:=WideChar(rpstring[i]);
      inc(i);
     end;
   end
   else
    inc(i);
  end;
+ SetLength(Result,outindex);
 end;
 
 procedure WritePropertyI(propname:Ansistring;propvalue:integer;stream:TStream);
@@ -923,6 +970,9 @@ end;
 procedure ReadPropDBInfo(dbitem:TRpDatabaseInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='NAME' then
+  dbitem.Name:=RpStringToString(propvalue)
+ else
  if propname='CONFIGFILE' then
   dbitem.Configfile:=RpStringToString(propvalue)
  else
@@ -1124,11 +1174,23 @@ end;
 procedure ReadPropDataInfo(ditem:TRpDataInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='NAME' then
+  ditem.Name:=RpStringToString(propvalue)
+ else
  if propname='DATABASEALIAS' then
   ditem.DataBaseAlias:=RpStringToString(propvalue)
  else
  if propname='SQL' then
   ditem.SQL:=RpStringToWString(propvalue)
+   else
+   if propname='SQLEXPLANATION' then
+    ditem.SQLExplanation:=RpStringToWString(propvalue)
+   else
+   if propname='SQLEXPLANATIONERROR' then
+    ditem.SQLExplanationError:=RpStringToWString(propvalue)
+  else
+  if propname='HUBSCHEMAID' then
+   ditem.HubSchemaId:=StrToInt64Def(propvalue,0)
  else
  if propname='DATASOURCE' then
   ditem.DataSource:=RpStringToString(propvalue)
@@ -1188,6 +1250,9 @@ end;
 procedure ReadPropParam(aparam:TRpParam;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
+ if propname='INTNAME' then
+  aparam.IntName:=RpStringToString(propvalue)
+ else
  if propname='DESCRIPTION' then
   aparam.Descriptions:=RpStringToWString(propvalue)
  else
@@ -1467,7 +1532,30 @@ begin
   report.DocKeywords:=RpStringToString(propValue)
  else
  if propname='DOCXMPCONTENT' then
-  report.DocXMPContent:=RpStringToString(propValue);
+  report.DocXMPContent:=RpStringToString(propValue)
+ else
+ if propname='BINCUE' then
+ begin
+  // Read undo cue from binary JSON
+  if not Assigned(report.UndoCue) then
+   report.UndoCue:=TUndoCue.Create(TRpReport(report));
+  begin
+   var memstream:=TMemoryStream.Create;
+   try
+    BinToStream(memstream,RpStringToString(propvalue),propsize);
+    memstream.Position:=0;
+    var jsonBytes:TBytes;
+    SetLength(jsonBytes, memstream.Size);
+    if memstream.Size > 0 then
+    begin
+     memstream.Read(jsonBytes[0], memstream.Size);
+     TUndoCue(report.UndoCue).FromJSON(TEncoding.UTF8.GetString(jsonBytes));
+    end;
+   finally
+    memstream.Free;
+   end;
+  end;
+ end;
 
  report.ReportAction:=actions;
 end;
@@ -2162,6 +2250,116 @@ begin
    end;
   end;
  end;
+ EnsureReportItemNames(report);
+end;
+
+function GetUniqueReportItemName(report: TRpBaseReport; currentItem: TObject;
+  const preferredName, basePrefix: string): string;
+var
+  n: Integer;
+  candidate: string;
+  existing: TObject;
+begin
+  if not Assigned(report) then
+    Exit(preferredName);
+
+  candidate := Trim(preferredName);
+  if candidate <> '' then
+  begin
+    existing := report.FindReporItemByName(candidate);
+    if (existing = nil) or (existing = currentItem) then
+      Exit(candidate);
+
+    n := 1;
+    repeat
+      candidate := Trim(preferredName) + IntToStr(n);
+      Inc(n);
+      existing := report.FindReporItemByName(candidate);
+    until (existing = nil) or (existing = currentItem);
+    Exit(candidate);
+  end;
+
+  n := 1;
+  repeat
+    candidate := basePrefix + IntToStr(n);
+    Inc(n);
+    existing := report.FindReporItemByName(candidate);
+  until (existing = nil) or (existing = currentItem);
+  Result := candidate;
+end;
+
+procedure EnsureDatabaseInfoItemName(report: TRpBaseReport;
+  dbitem: TRpDatabaseInfoItem);
+begin
+  if not Assigned(report) or not Assigned(dbitem) then
+    Exit;
+  if Trim(dbitem.Name) = '' then
+    dbitem.Name := GetUniqueReportItemName(report, dbitem,
+      '', 'TRPDATABASEINFOITEM');
+end;
+
+procedure EnsureDataInfoItemName(report: TRpBaseReport;
+  ditem: TRpDataInfoItem);
+begin
+  if not Assigned(report) or not Assigned(ditem) then
+    Exit;
+  if Trim(ditem.Name) = '' then
+    ditem.Name := GetUniqueReportItemName(report, ditem,
+      '', 'TRPDATAINFOITEM');
+end;
+
+procedure EnsureParamName(report: TRpBaseReport; param: TRpParam);
+begin
+  if not Assigned(report) or not Assigned(param) then
+    Exit;
+  if Trim(param.IntName) = '' then
+    param.IntName := GetUniqueReportItemName(report, param, '', 'TRPPARAM');
+end;
+
+procedure EnsureReportItemNames(report: TRpBaseReport);
+var
+  i, j, k: Integer;
+  subrep: TRpSubReport;
+  sec: TRpSection;
+  dbitem: TRpDatabaseInfoItem;
+  ditem: TRpDataInfoItem;
+  param: TRpParam;
+  comp: TRpCommonComponent;
+begin
+  for i := 0 to report.DatabaseInfo.Count - 1 do
+  begin
+    dbitem := report.DatabaseInfo.Items[i];
+    EnsureDatabaseInfoItemName(report, dbitem);
+  end;
+  for i := 0 to report.DataInfo.Count - 1 do
+  begin
+    ditem := report.DataInfo.Items[i];
+    EnsureDataInfoItemName(report, ditem);
+  end;
+  for i := 0 to report.Params.Count - 1 do
+  begin
+    param := report.Params.Items[i];
+    EnsureParamName(report, param);
+  end;
+  for i := 0 to report.SubReports.Count - 1 do
+  begin
+    subrep := report.SubReports.Items[i].SubReport;
+    if subrep.Name = '' then
+      Generatenewname(subrep);
+    for j := 0 to subrep.Sections.Count - 1 do
+    begin
+      sec := subrep.Sections.Items[j].Section;
+      if sec.Name = '' then
+        Generatenewname(sec);
+      // Components already have names from XML, but ensure just in case
+      for k := 0 to sec.ReportComponents.Count - 1 do
+      begin
+        comp := sec.ReportComponents.Items[k].Component;
+        if comp.Name = '' then
+          Generatenewname(comp);
+      end;
+    end;
+  end;
 end;
 
 end.

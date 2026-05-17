@@ -119,6 +119,7 @@ var
  astring:String;
  alist:TStringList;
  i:integer;
+ ConAdmin:TRpConnAdmin;
 begin
  Writeln(AnsiString(SRpPrintPDFRep1+' '+RM_VERSION));
  Writeln(AnsiString(SRpPrintPDFRep2));
@@ -155,6 +156,28 @@ begin
   end;
  finally
   alist.free;
+ end;
+ Writeln('');
+ Writeln('Effective configuration paths:');
+ try
+  ConAdmin:=TRpConnAdmin.Create;
+  try
+   Writeln('  DBXConnections='+ConAdmin.configfilename);
+   if FileExists(ConAdmin.configfilename) then
+    Writeln('  DBXConnections exists=Yes')
+   else
+    Writeln('  DBXConnections exists=No');
+   Writeln('  DBXDrivers='+ConAdmin.driverfilename);
+   if FileExists(ConAdmin.driverfilename) then
+    Writeln('  DBXDrivers exists=Yes')
+   else
+    Writeln('  DBXDrivers exists=No');
+  finally
+   ConAdmin.Free;
+  end;
+ except
+  on E:Exception do
+   Writeln('  Config resolution error: '+E.Message);
  end;
 end;
 

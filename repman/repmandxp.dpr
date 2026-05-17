@@ -48,11 +48,16 @@ uses
   rppagesetupvcl in '..\rppagesetupvcl.pas' {FRpPageSetupVCL},
   rpfparamsvcl in '..\rpfparamsvcl.pas' {FRpParamsVCL},
   rpgraphutilsvcl in '..\rpgraphutilsvcl.pas' {FRpMessageDlgVCL},
-  rpexpredlgvcl in '..\rpexpredlgvcl.pas' {FRpExpredialogVCL},
+  rpchatdialogvcl in '..\rpchatdialogvcl.pas' {FRpExpredialogVCL},
+  rpfrmchatvcl in '..\rpfrmchatvcl.pas' {TFRpChatFrame},
   rprfvparams in '..\rprfvparams.pas' {FRpRTParams},
   rpmdfsearchvcl in '..\rpmdfsearchvcl.pas' {TFRpSearchParamVCL},
+  rpfrmloginframevcl in '..\rpfrmloginframevcl.pas' {TFRpLoginFrameVCL},
   rpmdfsectionintvcl in '..\rpmdfsectionintvcl.pas',
+  rpfrmaiselectionvcl in '..\rpfrmaiselectionvcl.pas' {TFRpAISelectionVCL},
+  rpwebmarkdownvcl in '..\rpwebmarkdownvcl.pas',
   rptextdriver in '..\rptextdriver.pas',
+  rpdatahttp in '..\rpdatahttp.pas',
   rpxmlstream in '..\rpxmlstream.pas',
   rpcolumnar in '..\rpcolumnar.pas',
   rpstringhash in '..\rpstringhash.pas',
@@ -103,6 +108,7 @@ uses
   rpprintitem in '..\rpprintitem.pas',
   rpregvcl in '..\rpregvcl.pas',
   rpreport in '..\rpreport.pas',
+  rpreportdesignercontracts in '..\rpreportdesignercontracts.pas',
   rpbasereport in '..\rpbasereport.pas',
   rprulervcl in '..\rprulervcl.pas',
   rpsection in '..\rpsection.pas',
@@ -118,6 +124,8 @@ uses
   rphtmldriver in '..\rphtmldriver.pas',
   rpmdfconnectionvcl in '..\rpmdfconnectionvcl.pas' {FRpConnectionVCL: TFrame},
   rpmdfwizardvcl in '..\rpmdfwizardvcl.pas' {FRpWizardVCL},
+  rpwebdbxadmin in '..\server\web\rpwebdbxadmin.pas',
+  rpmdfnewreportwizardvcl in '..\rpmdfnewreportwizardvcl.pas' {FRpNewReportWizardVCL},
   rpmdfextsecvcl in '..\rpmdfextsecvcl.pas' {FRpExtSectionVCL},
   rpmdfdatasetsvcl in '..\rpmdfdatasetsvcl.pas' {FRpDatasetsVCL: TFrame},
   rpfmetaviewvcl in '..\rpfmetaviewvcl.pas' {FRpMetaVCL},
@@ -137,7 +145,9 @@ uses
   FireDAC.Phys.ODBCMeta in 'FireDAC.Phys.ODBCMeta.pas',
   rpmdfembeddedfile in '..\rpmdfembeddedfile.pas' {FRpEmbeddedFile},
   rptruetype in '..\rptruetype.pas',
+  rpfrmmonacoeditorvcl in '..\rpfrmmonacoeditorvcl.pas' {FRpMonacoEditorVCL},
   rpmdundocue in '..\rpmdundocue.pas';
+
 
 {$R *.res}
 

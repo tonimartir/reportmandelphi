@@ -24,16 +24,11 @@ interface
 
 uses
   SysUtils,rptypes,
-{$IFDEF USEVARIANTS}
   Types,Variants,
-{$ENDIF}
-{$IFDEF USETNTUNICODE}
-  TntStdCtrls,
-{$ENDIF}
   Classes,rppdfdriver, Dialogs, ExtDlgs, Menus, rpalias,
   Windows,Graphics, Controls, Forms,ExtCtrls,StdCtrls,
   rpmdobinsintvcl,rpmdconsts,rpprintitem,comctrls,
-  rpgraphutilsvcl,rpsection,rpmunits, rpexpredlgvcl,rpmdfextsecvcl,
+  rpgraphutilsvcl,rpsection,rpmunits, rpchatdialogvcl,rpmdfextsecvcl,
  jpeg,
 {$IFDEF XE3UP}
   System.UITypes,
@@ -161,7 +156,7 @@ implementation
 
 {$R *.dfm}
 
-uses rpmdfdesignvcl,rpmdfsectionintvcl, rpmdfmainvcl;
+uses rpmdfdesignvcl,rpmdfsectionintvcl, rpmdfmainvcl, rpmdundocue;
 
 
 
@@ -536,11 +531,16 @@ var
  aitem:TRpSizePosInterface;
  index:integer;
  i:integer;
+ FRpMainf:TFRpMainFVCL;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
 begin
  if FSelectedItems.Count<1 then
   exit;
  if (Not (FSelectedItems.Objects[0] is TRpSizePosInterface)) then
   exit;
+ FRpMainf:=TFRpMainFVCL(Owner.Owner);
  for i:=0 to FSelectedItems.Count-1 do
  begin
   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
@@ -561,6 +561,22 @@ begin
   item:=section.ReportComponents.Insert(0);
   item.Component:=pitem;
  end;
+ // Record undo for send to back
+ if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+ begin
+  cue:=TUndoCue(FRpMainf.report.UndoCue);
+  gid:=cue.GetGroupId;
+  for i:=0 to FSelectedItems.Count-1 do
+  begin
+   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
+   op:=TChangeObjectOperation.Create(otSwapDown, gid);
+   op.componentName:=aitem.printitem.Name;
+   op.componentClass:=UpperCase(aitem.printitem.ClassName);
+   op.parentName:=TRpSection(aitem.SectionInt.printitem).Name;
+   cue.AddOperation(op);
+  end;
+  FRpMainf.RefreshCueView;
+ end;
  if assigned(TFRpObjInspVCL(Owner).fchangesize) then
   TFRpObjInspVCL(Owner).fchangesize.UpdatePos;
 end;
@@ -573,11 +589,16 @@ var
  index:integer;
  aitem:TRpSizePosInterface;
  i:integer;
+ FRpMainf:TFRpMainFVCL;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
 begin
  if FSelectedItems.Count<1 then
   exit;
  if (Not (FSelectedItems.Objects[0] is TRpSizePosInterface)) then
   exit;
+ FRpMainf:=TFRpMainFVCL(Owner.Owner);
  for i:=0 to FSelectedItems.Count-1 do
  begin
   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
@@ -597,6 +618,22 @@ begin
   item:=section.ReportComponents.Add;
   item.Component:=pitem;
  end;
+ // Record undo for bring to front
+ if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+ begin
+  cue:=TUndoCue(FRpMainf.report.UndoCue);
+  gid:=cue.GetGroupId;
+  for i:=0 to FSelectedItems.Count-1 do
+  begin
+   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
+   op:=TChangeObjectOperation.Create(otSwapUp, gid);
+   op.componentName:=aitem.printitem.Name;
+   op.componentClass:=UpperCase(aitem.printitem.ClassName);
+   op.parentName:=TRpSection(aitem.SectionInt.printitem).Name;
+   cue.AddOperation(op);
+  end;
+  FRpMainf.RefreshCueView;
+ end;
  if assigned(TFRpObjInspVCL(Owner).fchangesize) then
   TFRpObjInspVCL(Owner).fchangesize.UpdatePos;
 end;
@@ -606,36 +643,17 @@ end;
 procedure TRpPanelObj.ExpressionClick(Sender:TObject);
 var
  report:TRpReport;
- i:integer;
- item:TRpAliaslistItem;
  FRpMainF:TFRpMainFVCL;
  expredia:TRpExpreDialogVCL;
 begin
  FRpMainF:=TFRpMainFVCL(Owner.Owner);
  report:=FRpMainf.report;
- try
-  fpdfdriver.PDFConformance:=report.PDFConformance;
-  report.BeginPrint(fpdfdriver);
- except
-  on E:Exception do
-  begin
-   RpShowMessage(E.Message);
-  end;
- end;
-
- TFRpObjInspVCL(Owner).RpAlias1.List.Clear;
- for i:=0 to report.DataInfo.Count-1 do
- begin
-  item:=TFRpObjInspVCL(Owner).RpAlias1.List.Add;
-  item.Alias:=report.DataInfo.Items[i].Alias;
-  item.Dataset:=report.DataInfo.Items[i].Dataset;
- end;
  expredia:=TRpExpreDialogVCL.Create(Application);
  try
   expredia.Rpalias:=TFRpObjInspVCL(Owner).RpAlias1;
-  report.InitEvaluator;
-  report.AddReportItemsToEvaluator(report.evaluator);
-  expredia.evaluator:=report.Evaluator;
+  expredia.Report := report;
+  fpdfdriver.PDFConformance:=report.PDFConformance;
+  expredia.PrintDriver := fpdfdriver;
   expredia.Expresion.Text:=TRpMaskEdit(LControls.Objects[TButton(Sender).Tag]).Text;
   if expredia.Execute then
   begin
@@ -786,18 +804,57 @@ end;
 procedure TRpPanelObj.ComboAliasChange(Sender:TObject);
 var
   FRpMainf:TFRpMainFVCL;
+  cue:TUndoCue;
+  op:TChangeObjectOperation;
+  oldValue:string;
 begin
- subrep.Alias:=TComboBox(Sender).Text;
- FRpMainf:=TFRpMainFVCL(Owner.Owner);
- FRpMainf.freportstructure.RView.Selected.Text:=TRpSubReport(FRpMainf.freportstructure.RView.Selected.Data).GetDisplayName(true);
+  // Capture old value before change
+  oldValue:=subrep.Alias;
+  subrep.Alias:=TComboBox(Sender).Text;
+  
+  // Record undo operation
+  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=subrep.Name;
+   op.componentClass:='TRPSUBREPORT';
+   op.AddProperty('alias', ptString, oldValue, subrep.Alias);
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
+  end;
+  
+  FRpMainf.freportstructure.RView.Selected.Text:=TRpSubReport(FRpMainf.freportstructure.RView.Selected.Data).GetDisplayName(true);
 end;
 
 procedure TRpPanelObj.ComboPrintOnlyChange(Sender:TObject);
+var
+  FRpMainf:TFRpMainFVCL;
+  cue:TUndoCue;
+  op:TChangeObjectOperation;
+  oldValue:Boolean;
 begin
- if ComboPrintOnly.ItemIndex=0 then
-  subrep.PrintOnlyIfDataAvailable:=false
- else
-  subrep.PrintOnlyIfDataAvailable:=true;
+  // Capture old value before change
+  oldValue:=subrep.PrintOnlyIfDataAvailable;
+  
+  if ComboPrintOnly.ItemIndex=0 then
+   subrep.PrintOnlyIfDataAvailable:=false
+  else
+   subrep.PrintOnlyIfDataAvailable:=true;
+   
+  // Record undo operation
+  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=subrep.Name;
+   op.componentClass:='TRPSUBREPORT';
+   op.AddProperty('printOnlyIfDataAvailable', ptBoolean, oldValue, subrep.PrintOnlyIfDataAvailable);
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
+  end;
 end;
 
 procedure TFRpObjInspVCL.RecreateChangeSize;
@@ -2307,12 +2364,18 @@ var
  index:integer;
  aname:string;
  FRpMainf:TFRpMainFVCL;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ oldValue:WideString;
 begin
  DupValue(TControl(Sender));
  index:=TControl(Sender).tag;
  aname:=Lnames.strings[index];
+ FRpMainf:=TFRpMainFVCL(Owner.Owner);
  if FSelectedItems.Count<2 then
  begin
+  // Capture old value before change
+  oldValue:=FCompItem.GetProperty(aname);
 {$IFDEF USETNTUNICODE}
   if Sender is TTntEdit then
   begin
@@ -2328,6 +2391,17 @@ begin
   begin
    if (Sender is TComboBox) then
      FCompItem.SetProperty(aname,TComboBox(Sender).Text);
+  end;
+  // Record undo operation
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=FCompItem.printitem.Name;
+   op.componentClass:=UpperCase(FCompItem.printitem.ClassName);
+   op.AddProperty(aname,ptString,oldValue,FCompItem.GetProperty(aname));
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
   end;
   if (FCompItem is TRpSectionInterface) then
   begin
@@ -2383,14 +2457,33 @@ procedure TRpPanelObj.ShapeMouseUp(Sender: TObject; Button: TMouseButton;
      Shift: TShiftState; X, Y: Integer);
 var
  AShape:TShape;
+ FRpMainf:TFRpMainFVCL;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ propname:string;
+ oldValue:string;
 begin
  AShape:=TShape(Sender);
  TFRpObjInspVCL(Owner).ColorDialog1.COlor:=StrToInt(LValues.Strings[AShape.Tag]);
  if TFRpObjInspVCL(Owner).ColorDialog1.Execute then
  begin
+  propname:=Lnames.strings[AShape.Tag];
+  oldValue:=LValues.Strings[AShape.Tag];
   AShape.Brush.Color:=TFRpObjInspVCL(Owner).ColorDialog1.Color;
-  SetPropertyFull(Lnames.strings[AShape.Tag],IntToStr(TFRpObjInspVCL(Owner).ColorDialog1.Color));
+  SetPropertyFull(propname,IntToStr(TFRpObjInspVCL(Owner).ColorDialog1.Color));
   DupValue(TControl(Sender));
+  // Record undo
+  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) and Assigned(FCompItem) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+   op.componentName:=FCompItem.printitem.Name;
+   op.componentClass:=UpperCase(FCompItem.printitem.ClassName);
+   op.AddProperty(propname,ptInteger,StrToIntDef(oldValue,0),TFRpObjInspVCL(Owner).ColorDialog1.Color);
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
+  end;
  end;
 end;
 
@@ -2398,6 +2491,11 @@ procedure TRpPanelObj.FontClick(Sender:TObject);
 var
  index:integer;
  aitem:TRpSizeInterface;
+ oldFontColor,oldFontStyle:WideString;
+ FRpMainf:TFRpMainFVCL;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
 begin
  if FSelectedItems.Count<2 then
  begin
@@ -2407,6 +2505,10 @@ begin
  begin
   aitem:=TRpSizeInterface(FSelectedItems.Objects[0]);
  end;
+ FRpMainf:=TFRpMainFVCL(Owner.Owner);
+ // Capture old values before dialog
+ oldFontColor:=aitem.GetProperty(SRpSFontColor);
+ oldFontStyle:=aitem.GetProperty(SRpSFontStyle);
  TFRpObjInspVCL(Owner).FontDialog1.Font.Name:=aitem.GetProperty(SRpSWFontName);
  TFRpObjInspVCL(Owner).FontDialog1.Font.Size:= StrToInt(aitem.GetProperty(SRpSFontSize));
  TFRpObjInspVCL(Owner).FontDialog1.Font.Color:= StrToInt(aitem.GetProperty(SRpSFontColor));
@@ -2438,6 +2540,19 @@ begin
    TRpMaskEdit(LControls.Objects[index]).Text:=IntegerFontStyleToString(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style));
    TRpMaskEdit(LControls2.Objects[index]).Text:=IntegerFontStyleToString(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style));
    SetPropertyFull(SRpSFontStyle,IntToStr(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style)));
+  end;
+  // Record undo for font color and style (name/size are handled via EditChange)
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   cue:=TUndoCue(FRpMainf.report.UndoCue);
+   gid:=cue.GetGroupId;
+   op:=TChangeObjectOperation.Create(otModify, gid);
+   op.componentName:=aitem.printitem.Name;
+   op.componentClass:=UpperCase(aitem.printitem.ClassName);
+   op.AddProperty(SRpSFontColor,ptString,oldFontColor,aitem.GetProperty(SRpSFontColor));
+   op.AddProperty(SRpSFontStyle,ptString,oldFontStyle,aitem.GetProperty(SRpSFontStyle));
+   cue.AddOperation(op);
+   FRpMainf.RefreshCueView;
   end;
  end;
 end;

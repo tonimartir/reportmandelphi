@@ -3,21 +3,24 @@ object FRpAboutBoxVCL: TFRpAboutBoxVCL
   Top = 268
   BorderStyle = bsDialog
   Caption = 'About Report Manager'
-  ClientHeight = 370
-  ClientWidth = 482
+  ClientHeight = 463
+  ClientWidth = 603
   Color = clBtnFace
   ParentFont = True
-  OldCreateOrder = True
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
-  PixelsPerInch = 96
-  TextHeight = 13
+  PixelsPerInch = 120
+  TextHeight = 20
   object Memo1: TMemo
     Left = 0
-    Top = 202
-    Width = 482
-    Height = 128
+    Top = 253
+    Width = 603
+    Height = 160
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alClient
     Color = clBtnFace
     Lines.Strings = (
@@ -36,17 +39,25 @@ object FRpAboutBoxVCL: TFRpAboutBoxVCL
   end
   object Panel1: TPanel
     Left = 0
-    Top = 330
-    Width = 482
-    Height = 40
+    Top = 413
+    Width = 603
+    Height = 50
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alBottom
     BevelOuter = bvNone
     TabOrder = 1
     object BOK: TButton
-      Left = 188
-      Top = 8
-      Width = 89
-      Height = 25
+      Left = 235
+      Top = 10
+      Width = 111
+      Height = 31
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'OK'
       Default = True
       ModalResult = 1
@@ -56,16 +67,24 @@ object FRpAboutBoxVCL: TFRpAboutBoxVCL
   object Panel2: TPanel
     Left = 0
     Top = 0
-    Width = 482
-    Height = 202
+    Width = 603
+    Height = 253
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 2
     object Image2: TImage
-      Left = 8
-      Top = 4
+      Left = 10
+      Top = 5
       Width = 49
       Height = 64
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       AutoSize = True
       Picture.Data = {
         07544269746D617036250000424D362500000000000036000000280000003100
@@ -369,75 +388,115 @@ object FRpAboutBoxVCL: TFRpAboutBoxVCL
         8400}
     end
     object LReport: TLabel
-      Left = 110
-      Top = 8
-      Width = 78
-      Height = 13
+      Left = 138
+      Top = 10
+      Width = 135
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Report manager'
     end
     object LAuthor: TLabel
-      Left = 110
-      Top = 75
-      Width = 33
-      Height = 13
+      Left = 138
+      Top = 94
+      Width = 56
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Author'
     end
     object LName: TLabel
-      Left = 189
-      Top = 75
-      Width = 51
-      Height = 13
+      Left = 236
+      Top = 94
+      Width = 90
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Toni Martir'
     end
     object Label2: TLabel
-      Left = 110
-      Top = 94
-      Width = 28
-      Height = 13
+      Left = 138
+      Top = 118
+      Width = 53
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'E-mail'
     end
     object LEmail: TLabel
-      Left = 189
-      Top = 94
-      Width = 93
-      Height = 13
+      Left = 236
+      Top = 118
+      Width = 159
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'toni@reportman.es'
     end
     object Label3: TLabel
-      Left = 110
-      Top = 113
-      Width = 68
-      Height = 13
+      Left = 138
+      Top = 141
+      Width = 113
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Girona, SPAIN'
     end
     object LVersion: TLabel
-      Left = 110
-      Top = 43
-      Width = 27
-      Height = 13
+      Left = 138
+      Top = 54
+      Width = 51
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'VNum'
     end
     object LProject: TLabel
-      Left = 8
-      Top = 166
-      Width = 65
-      Height = 13
+      Left = 10
+      Top = 208
+      Width = 109
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Project page:'
     end
     object Label5: TLabel
-      Left = 110
-      Top = 166
-      Width = 164
-      Height = 13
+      Left = 138
+      Top = 208
+      Width = 129
+      Height = 20
       Cursor = crHandPoint
-      Caption = 'http://reportman.sourceforge.net'
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
+      Caption = 'http://reportman.es'
       OnMouseDown = Label5MouseDown
     end
     object LContributors: TLabel
-      Left = 8
-      Top = 185
-      Width = 60
-      Height = 13
+      Left = 10
+      Top = 231
+      Width = 103
+      Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'Contributors'
     end
   end

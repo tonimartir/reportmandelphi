@@ -324,15 +324,8 @@ begin
  begin
   if collate then
   begin
-   if Driver.SupportsCopies(copies) then
-   begin
-    if Driver.SupportsCollation then
-    begin
-     hardwarecopies:=copies;
-     hardwarecollate:=true;
-     collate:=false;
-    end;
-   end;
+   hardwarecopies:=1;
+   hardwarecollate:=false;
   end
   else
   begin
@@ -1110,6 +1103,12 @@ begin
   end;
  end;
 
+
+ for i:=0 to DataInfo.Count-1 do
+ begin
+  DataInfo.Items[i].OnConnect:=nil;
+  DataInfo.Items[i].OnDisConnect:=nil;
+ end;
 
  FDataAlias.List.Clear;
  for i:=0 to DataInfo.Count-1 do

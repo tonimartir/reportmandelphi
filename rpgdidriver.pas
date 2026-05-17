@@ -218,6 +218,7 @@ type
     function GetPageSize(var PageSizeQt: integer): TPoint; override;
     function SetPagesize(PageSizeQt: TPageSizeQt): TPoint; override;
     procedure TextExtent(atext: TRpTextObject; var extent: TPoint); override;
+    function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
     procedure TextRectJustify(Canvas: TCanvas; ARect: TRect; Text: Widestring;
       Alignment: integer; Clipping: boolean; Wordbreak: boolean;
       Rotation: integer; RightToLeft: boolean; drawbackground: boolean;
@@ -871,6 +872,18 @@ begin
       extent.Y := maxextent.Y;
   end;
 
+end;
+
+function TRpGDIDriver.TextExtentLineInfo(atext: TRpTextObject; var extent: TPoint): TRpLineInfoArray;
+begin
+  if not assigned(npdfdriver) then
+  begin
+    npdfdriver := TRpPDFDriver.Create;
+    if assigned(FReport) then
+      npdfdriver.PDFConformance := FReport.PDFConformance;
+  end;
+  atext.Type1Font := integer(poLinked);
+  Result := npdfdriver.TextExtentLineInfo(atext, extent);
 end;
 
 procedure TRpGDIDriver.PrintObject(Canvas: TCanvas; page: TRpMetafilePage;
@@ -2334,17 +2347,9 @@ begin
         begin
           if collate then
           begin
-            if PrinterSupportsCollation then
-            begin
-              SetPrinterCopies(copies);
-              SetPrinterCollation(true);
-            end
-            else
-            begin
-              SetPrinterCopies(1);
-              SetPrinterCollation(false);
-              reportcopies := copies;
-            end;
+            SetPrinterCopies(1);
+            SetPrinterCollation(false);
+            reportcopies := copies;
           end
           else
           begin
@@ -2451,6 +2456,17 @@ begin
   // Send Especial operations
   if assigned(aform) then
     aform.close;
+end;
+
+procedure PreparePrinterCopies(copies: integer; collate: boolean);
+begin
+  if copies < 1 then
+    copies := 1;
+  if ((copies > 1) and (not collate) and PrinterSupportsCopies(copies)) then
+    SetPrinterCopies(copies)
+  else
+    SetPrinterCopies(1);
+  SetPrinterCollation(false);
 end;
 
 function PrintMetafile(metafile: TRpMetafileReport; tittle: string;
@@ -3231,6 +3247,8 @@ begin
       forcecalculation := true;
     if forcecalculation then
     begin
+      if not istextonly then
+        PreparePrinterCopies(copies, collate);
       if progress then
       begin
         try

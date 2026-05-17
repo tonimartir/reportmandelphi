@@ -4,5 +4,6 @@
     <File Path="rpwebmodule.pas"/>
     <File Path="rpwebmodule.dfm"/>
     <File Path="rpwebpages.pas"/>
+    <File Path="rpwebselfhosted.pas"/>
   </ProjectSortOrder>
 </BorlandProject>

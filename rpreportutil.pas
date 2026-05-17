@@ -70,6 +70,8 @@ begin
   subrep.Sections[2].Section.height:=0;
   dbinfo:=areport.DatabaseInfo.Add('DATABASE');
   dinfo:=areport.DataInfo.Add('DATASET');
+  EnsureDatabaseInfoItemName(areport, dbinfo);
+  EnsureDataInfoItemName(areport, dinfo);
   dinfo.DatabaseAlias:='DATABASE';
   subrep.Alias:='DATASET';
   apos:=0;

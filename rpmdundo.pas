@@ -4,11 +4,10 @@ interface
 
 uses
   System.SysUtils, System.Generics.Collections, System.DateUtils, rpreport,
-  rpsection;
+  rpsection, rptypes;
 
 type
   TPropertyType = (ptInteger, ptNumber, ptString, ptDate, ptBinary);
-  TOperationType = (otAdd, otModify, otRemove);
 
 type
   TChangeOperationItem = class

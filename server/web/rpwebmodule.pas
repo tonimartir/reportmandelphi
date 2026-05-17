@@ -5,7 +5,7 @@ interface
 
 uses
   SysUtils, Classes, HTTPApp,rptypes,rpmdconsts,inifiles,
-{$IFDEF USEADO}
+{$IFDEF MSWINDOWS}
   ActiveX,
 {$ENDIF}
   rpmdshfolder,
@@ -13,6 +13,8 @@ uses
 
 type
   Trepwebmod = class(TWebModule)
+    procedure repwebmodarootAction(Sender: TObject;
+      Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure repwebmodaversionAction(Sender: TObject;
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure WebModuleCreate(Sender: TObject);
@@ -29,9 +31,14 @@ type
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
     procedure repwebmodaexecute2Action(Sender: TObject;
       Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+    procedure repwebmodaadminAction(Sender: TObject; Request: TWebRequest;
+      Response: TWebResponse; var Handled: Boolean);
   private
     { Private declarations }
     pageloader:TRpWebPageLoader;
+{$IFDEF MSWINDOWS}
+    FCoInitResult: HRESULT;
+{$ENDIF}
   public
     { Public declarations }
   end;
@@ -43,6 +50,13 @@ implementation
 
 {$R *.dfm}
 
+procedure Trepwebmod.repwebmodarootAction(Sender: TObject;
+  Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+begin
+  Response.SendRedirect(Request.InternalScriptName + '/login');
+  Handled := True;
+end;
+
 procedure Trepwebmod.repwebmodaversionAction(Sender: TObject;
   Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
 begin
@@ -53,8 +67,8 @@ end;
 procedure Trepwebmod.WebModuleCreate(Sender: TObject);
 begin
  pageloader:=TRpWebPageLoader.Create(Self);
-{$IFDEF USEADO}
- Coinitialize(nil);
+{$IFDEF MSWINDOWS}
+ FCoInitResult:=CoInitialize(nil);
 {$ENDIF}
 end;
 
@@ -63,6 +77,10 @@ end;
 
 procedure Trepwebmod.WebModuleDestroy(Sender: TObject);
 begin
+{$IFDEF MSWINDOWS}
+ if Succeeded(FCoInitResult) then
+  CoUninitialize;
+{$ENDIF}
  pageloader.free;
 end;
 
@@ -101,6 +119,12 @@ procedure Trepwebmod.repwebmodaexecute2Action(Sender: TObject;
   Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
 begin
  pageloader.ExecuteReport(Request,Response);
+end;
+
+procedure Trepwebmod.repwebmodaadminAction(Sender: TObject;
+  Request: TWebRequest; Response: TWebResponse; var Handled: Boolean);
+begin
+ pageloader.HandleAdminRequest(Request,Response);
 end;
 
 end.

@@ -2,7 +2,7 @@
     <PropertyGroup>
         <ProjectGuid>{FF924D11-231E-40EF-96B8-704755D895CB}</ProjectGuid>
         <MainSource>reportman_designvcl.dpk</MainSource>
-        <ProjectVersion>19.3</ProjectVersion>
+        <ProjectVersion>19.4</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
@@ -59,7 +59,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_UsePackage>vclimg;vcl;rtl;vclx;dbrtl;DbxCommonDriver;IndySystem;IndyProtocols;IndyCore;vcldb;dsnap;dbexpress;DBXMySQLDriver;DBXInterBaseDriver;vclFireDAC;FireDAC;FireDACSqliteDriver;FireDACCommonDriver;FireDACCommon;FireDACPgDriver;FireDACMSAccDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMySQLDriver;FireDACADSDriver;adortl;ibxpress;Tee;reportman_rtl;reportman_vcl;vclactnband;bindcomp;AbbreviaVCLD;AsyncProDR;Tee926;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_UsePackage>vclimg;vcl;rtl;vclx;dbrtl;DbxCommonDriver;IndySystem;IndyProtocols;IndyCore;vcldb;dsnap;dbexpress;DBXMySQLDriver;DBXInterBaseDriver;vclFireDAC;FireDAC;FireDACSqliteDriver;FireDACCommonDriver;FireDACCommon;FireDACPgDriver;FireDACMSAccDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMySQLDriver;FireDACADSDriver;adortl;ibxpress;Tee;reportman_rtl;reportman_vcl;vclactnband;bindcomp;AbbreviaVCLD;AsyncProDR;Tee926;vcledge;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -67,6 +67,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <DCC_UsePackage>vcledge;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -122,6 +123,7 @@
         <DCCReference Include="reportman_rtl.dcp"/>
         <DCCReference Include="reportman_vcl.dcp"/>
         <DCCReference Include="designide.dcp"/>
+        <DCCReference Include="vcledge.dcp"/>
         <DCCReference Include="..\..\rpmregdesignvcl.pas"/>
         <DCCReference Include="..\..\rpmdesignervcl.pas"/>
         <DCCReference Include="..\..\rprulervcl.pas"/>
@@ -245,7 +247,7 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="3">
-                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl\reportman_designvcl.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\..\..\Public\Documents\Embarcadero\Studio\22.0\Bpl\reportman_designvcl.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>reportman_designvcl.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
@@ -1274,17 +1276,17 @@
                         <Operation>1</Operation>
                     </Platform>
                 </DeployClass>
-                <ProjectRoot Platform="OSX32" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="OSX64" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="Android64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Android" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
-                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="Android64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="iOSDevice64" Name="$(PROJECTNAME).app"/>
-                <ProjectRoot Platform="Linux64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSSimulator" Name="$(PROJECTNAME).app"/>
+                <ProjectRoot Platform="Linux64" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="OSX32" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="OSX64" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="OSXARM64" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
                 <Platform value="Win32">True</Platform>

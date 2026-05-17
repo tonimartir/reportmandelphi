@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -66,11 +66,25 @@ uses
 {$ENDIF}
  rpmdconsts,rpmdshfolder;
 
+type
+ IPropertiesItem = interface
+  ['{F8A7B6C5-D4E3-42F1-A0B9-C8D7E6F5A4B3}']
+  procedure SetItemProperty(const propName: string; const value: Variant);
+  function GetItemProperty(const propName: string): Variant;
+ end;
 
 const
  REP_C_WHEELINC=5;
  REP_C_WHEELSCALE=4;
  LINE_FEED=#13+#10;
+
+ HUB_API_URL_DEBUG = 'https://api.reportman.es:7006';
+ HUB_API_URL_RELEASE = 'https://api.reportman.es:44568';
+{$IFDEF DEBUG}
+ HUB_API_URL = HUB_API_URL_DEBUG;
+{$ELSE}
+ HUB_API_URL = HUB_API_URL_RELEASE;
+{$ENDIF}
 
 
  {$IFNDEF USEVARIANTS}
@@ -172,6 +186,15 @@ type
  TRpOrientation=(rpOrientationDefault,rpOrientationPortrait,rpOrientationLandscape);
 
  TRpStreamFormat=(rpStreamzlib,rpStreamText,rpStreambinary,rpStreamXML,rpStreamXMLZlib);
+
+ TOperationType = (
+  otAdd,
+  otModify,
+  otRemove,
+  otSwapDown,
+  otSwapUp,
+  otRename
+ );
 
  TRpBidiMode=(rpBidiNo,rpBidiPartial,rpBidiFull);
 
@@ -5237,8 +5260,8 @@ begin
   for i:=1 to Length(Result) do
   begin
    // The Euro symbol
-   if Source[i]=chr(128) then
-    Result[i]:=chr($D5);
+   if Source[i]=AnsiChar(chr(128)) then
+    Result[i]:=AnsiChar(chr($D5));
   end;
  finally
   FreeMem(abuf);

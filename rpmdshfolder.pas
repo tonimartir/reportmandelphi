@@ -72,6 +72,7 @@ const
 
   function Obtainininameuserconfig (company, product, filename:string):string;
   function Obtainininamelocaluserconfig(company,product,filename:string):string;
+  function ObtainFolderLocalUserConfig(company, product, folder: string): string;
   function Obtainininamelocalconfig (company, product, filename:string):string;
   function Obtainininamecommonconfig (company, product, filename:string):string;overload;
   function Obtainininamecommonconfig(company,product,filename:string;create:boolean):string;overload;
@@ -89,6 +90,70 @@ implementation
 
 uses rptypes;
 
+
+function ObtainFolderLocalUserConfig(company, product, folder: string): string;
+var
+  wcompany: Widestring;
+  wproduct: WideString;
+  wfolder: WideString;
+{$IFDEF MSWINDOWS}
+  szAppDataW: array [0..MAX_PATH] of WideChar;
+  nresult: THandle;
+{$ELSE}
+  ap: PChar;
+  szAppDataA: array [0..MAX_PATH] of AnsiChar;
+{$ENDIF}
+begin
+{$IFDEF MSWINDOWS}
+  nresult := SHGetFolderPathW(0, CSIDL_LOCAL_APPDATA or CSIDL_FLAG_CREATE, 0, 0, szAppDataW);
+  wcompany := company;
+  wproduct := product;
+  wfolder := folder;
+  if length(wcompany) > 0 then
+    if not PathAppendW(szAppDataW, PWidechar(wcompany)) then
+      RaiseLastOSError;
+  if Length(wproduct) > 0 then
+    if not PathAppendW(szAppDataW, PWidechar(wproduct)) then
+      RaiseLastOSError;
+  if Length(wfolder) > 0 then
+    if not PathAppendW(szAppDataW, PWidechar(wfolder)) then
+      RaiseLastOSError;
+
+  Result := WideCharToString(szAppDataW);
+  if (S_OK <> nresult) then
+    Exit;
+
+  if not DirectoryExists(Result) then
+  begin
+    try
+      if not ForceDirectories(Result) then
+        Result := '';
+    except
+      Result := '';
+    end;
+  end;
+{$ELSE}
+{$IFDEF FPC}
+  ap := PChar(Sysutils.GetEnvironmentVariable('HOME'));
+{$ELSE}
+  ap := Pchar(System.SysUtils.GetEnvironmentVariable('HOME'));
+{$ENDIF}
+  if assigned(ap) then
+  begin
+    StrPCopy(szAppDataA, ap);
+    Result := StrPas(szAppDataA) + '/.';
+  end
+  else
+    Result := './.';
+  if length(company) > 0 then
+    Result := Result + company + '.';
+  if length(product) > 0 then
+    Result := Result + product + '.';
+  Result := Result + folder;
+  if not DirectoryExists(Result) then
+    ForceDirectories(Result);
+{$ENDIF}
+end;
 
 function Obtainininamelocaluserconfig(company,product,filename:string):string;
 var

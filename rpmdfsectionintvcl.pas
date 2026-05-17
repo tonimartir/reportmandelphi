@@ -24,12 +24,9 @@ interface
 {$I rpconf.inc}
 
 uses SysUtils, Classes,
-{$IFDEF USEVARIANTS}
   Types,
-{$ENDIF}
-{$IFNDEF DOTNETD}
+  Variants,
   jpeg,
-{$ENDIF}
   Messages,Windows,Comctrls,
   Graphics, Forms,rpdatainfo,rpgdidriver,
   Buttons, ExtCtrls, Controls, StdCtrls,
@@ -122,7 +119,7 @@ procedure FreeGridBitmap;
 
 implementation
 
-uses rpmdfmainvcl, rpmdfdesignvcl, Math;
+uses rpmdfmainvcl, rpmdfdesignvcl, Math, rpmdundocue;
 
 
 const
@@ -1373,6 +1370,20 @@ begin
   TFRpObjInspVCL(fobjinsp).AddCompItem(asizeposint,true);
   if (Not (SSShift in Shift)) then
    FRpMainf.BArrow.Down:=true;
+  // Record undo add operation
+  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  begin
+   begin
+    var cue:=TUndoCue(FRpMainf.report.UndoCue);
+    var undoop:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+    undoop.componentName:=asizepos.Name;
+    undoop.componentClass:=UpperCase(asizepos.ClassName);
+    undoop.parentName:=TRpSection(printitem).Name;
+      cue.AddAllComponentProperties(asizepos, undoop);
+    cue.AddOperation(undoop);
+   end;
+   FRpMainf.RefreshCueView;
+  end;
  end;
 
 

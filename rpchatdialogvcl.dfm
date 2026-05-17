@@ -1,0 +1,285 @@
+object FRpExpredialogVCL: TFRpExpredialogVCL
+  Left = 320
+  Top = 101
+  Caption = 'Dialog'
+  ClientHeight = 558
+  ClientWidth = 1059
+  Color = clBtnFace
+  ParentFont = True
+  Position = poScreenCenter
+  ShowHint = True
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  PixelsPerInch = 120
+  TextHeight = 20
+  object SplitterChat: TSplitter
+    Left = 733
+    Top = 0
+    Width = 6
+    Height = 558
+    Align = alRight
+    ResizeStyle = rsUpdate
+  end
+  object PChatHost: TPanel
+    Left = 739
+    Top = 0
+    Width = 320
+    Height = 558
+    Align = alRight
+    BevelOuter = bvNone
+    TabOrder = 0
+  end
+  object PLeftHost: TPanel
+    Left = 0
+    Top = 0
+    Width = 733
+    Height = 558
+    Align = alClient
+    BevelOuter = bvNone
+    TabOrder = 1
+    object PBottom: TPanel
+      Left = 0
+      Top = 175
+      Width = 733
+      Height = 383
+      Margins.Left = 5
+      Margins.Top = 5
+      Margins.Right = 5
+      Margins.Bottom = 5
+      Align = alBottom
+      BevelOuter = bvNone
+      TabOrder = 0
+      DesignSize = (
+        733
+        383)
+      object LabelCategory: TLabel
+        Left = 6
+        Top = 6
+        Width = 60
+        Height = 20
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = 'Category'
+      end
+      object LOperation: TLabel
+        Left = 188
+        Top = 6
+        Width = 67
+        Height = 20
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = 'Operation'
+      end
+      object LModel: TLabel
+        Left = 6
+        Top = 220
+        Width = 695
+        Height = 45
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Anchors = [akLeft, akTop, akRight]
+        AutoSize = False
+        Caption = 'LModel'
+        WordWrap = True
+      end
+      object LHelp: TLabel
+        Left = 6
+        Top = 181
+        Width = 32
+        Height = 20
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = 'Help'
+      end
+      object LParams: TLabel
+        Left = 6
+        Top = 267
+        Width = 702
+        Height = 55
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Anchors = [akLeft, akTop, akRight]
+        AutoSize = False
+        Caption = 'Params'
+        WordWrap = True
+      end
+      object LItems: TListBox
+        Left = 188
+        Top = 31
+        Width = 520
+        Height = 139
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Anchors = [akLeft, akTop, akRight]
+        ItemHeight = 20
+        TabOrder = 0
+        OnClick = LItemsClick
+        OnDblClick = LItemsDblClick
+      end
+      object BCancel: TButton
+        Left = 180
+        Top = 332
+        Width = 133
+        Height = 39
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = '&Cancel'
+        ModalResult = 2
+        TabOrder = 1
+      end
+      object BOK: TButton
+        Left = 6
+        Top = 332
+        Width = 133
+        Height = 39
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Caption = '&OK'
+        Default = True
+        TabOrder = 2
+        OnClick = BOKClick
+      end
+      object LCategory: TListBox
+        Left = 6
+        Top = 31
+        Width = 170
+        Height = 139
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        ItemHeight = 20
+        Items.Strings = (
+          'Database fields'
+          'Functions'
+          'Variables'
+          'Constants'
+          'Operators')
+        TabOrder = 3
+        OnClick = LCategoryClick
+      end
+    end
+    object PAlClient: TPanel
+      Left = 0
+      Top = 0
+      Width = 733
+      Height = 175
+      Margins.Left = 5
+      Margins.Top = 5
+      Margins.Right = 5
+      Margins.Bottom = 5
+      Align = alClient
+      BevelOuter = bvNone
+      TabOrder = 1
+      object PExpressionHost: TPanel
+        Left = 0
+        Top = 0
+        Width = 733
+        Height = 175
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 0
+        object MemoExpre: TMemo
+          Left = 0
+          Top = 0
+          Width = 733
+          Height = 124
+          Margins.Left = 5
+          Margins.Top = 5
+          Margins.Right = 5
+          Margins.Bottom = 5
+          Align = alClient
+          Lines.Strings = (
+            'MemoExpre')
+          ScrollBars = ssBoth
+          TabOrder = 0
+          WordWrap = False
+        end
+        object Panel1: TPanel
+          Left = 0
+          Top = 124
+          Width = 733
+          Height = 51
+          Margins.Left = 5
+          Margins.Top = 5
+          Margins.Right = 5
+          Margins.Bottom = 5
+          Align = alBottom
+          TabOrder = 1
+          object BRefresh: TButton
+            Left = 6
+            Top = 6
+            Width = 150
+            Height = 39
+            Hint = 'Reopen datasets and refresh fields'
+            Margins.Left = 5
+            Margins.Top = 5
+            Margins.Right = 5
+            Margins.Bottom = 5
+            Caption = 'Refresh'
+            TabOrder = 0
+            OnClick = BRefreshClick
+          end
+          object BShowResult: TButton
+            Left = 533
+            Top = 6
+            Width = 187
+            Height = 39
+            Hint = 'Evaluates the expresion and shows the result'
+            Margins.Left = 5
+            Margins.Top = 5
+            Margins.Right = 5
+            Margins.Bottom = 5
+            Caption = 'Show Result'
+            TabOrder = 3
+            OnClick = BShowResultClick
+          end
+          object BCheckSyn: TButton
+            Left = 360
+            Top = 6
+            Width = 167
+            Height = 39
+            Hint = 'Syntax check the expresion'
+            Margins.Left = 5
+            Margins.Top = 5
+            Margins.Right = 5
+            Margins.Bottom = 5
+            Caption = 'Syntax check'
+            TabOrder = 2
+            OnClick = BCheckSynClick
+          end
+          object BAdd: TButton
+            Left = 162
+            Top = 6
+            Width = 192
+            Height = 39
+            Margins.Left = 5
+            Margins.Top = 5
+            Margins.Right = 5
+            Margins.Bottom = 5
+            Caption = 'Add selection'
+            TabOrder = 1
+            OnClick = BitBtn1Click
+          end
+        end
+      end
+    end
+  end
+end

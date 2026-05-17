@@ -99,9 +99,9 @@ type
    FPageGroupCountList:TList;
    cachedpos:Int64;
    FCachedImage:TRpCachedImage;
-   FName: string;
-   procedure SetReportComponents(Value:TRpCommonList);
-   procedure SetGroupName(Value:string);
+  procedure SetReportComponents(Value:TRpCommonList);
+  procedure SetGroupNameInt(Value:string; CheckGroupExists:Boolean);
+  procedure SetGroupName(Value:string);
    procedure SetChangeExpression(Value:widestring);
    procedure OnReadError(Reader: TReader; const Message: string; var Handled: Boolean);
    procedure SetChildSubReport(Value:TComponent);
@@ -125,8 +125,6 @@ type
    procedure WriteStream(AStream:TStream);
    procedure AddPageGroupCountItem(apageindex,aobjectindex:integer;
     adisplayformat:widestring);
-   procedure ReadNewName(Reader: TReader);
-   procedure WriteNewName(Writer: TWriter);
   protected
    procedure DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);override;
@@ -177,7 +175,8 @@ type
    property IsExternal:Boolean read GetIsExternal;
    property BackExpression:WideString read FBackExpression write FBackExpression;
    property Stream:TMemoryStream read FStream write SetStream;
-   property Name: string read FName write FName;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property SubReport:TComponent read FSubReport write FSubReport;
    property GroupName:String read FGroupName write SetGroupName;
@@ -238,7 +237,44 @@ procedure GetSkipTypePossibleValues(alist:TRpWideStrings);
 
 implementation
 
-uses rpsubreport,rpbasereport, Math,rpxmlstream;
+uses rpsubreport,rpbasereport, Math,rpxmlstream, System.NetEncoding;
+
+function StreamToBase64String(stream: TMemoryStream): string;
+var
+  bytes: TBytes;
+  oldPosition: Int64;
+begin
+  Result := '';
+  if (stream = nil) or (stream.Size = 0) then
+    Exit;
+
+  SetLength(bytes, stream.Size);
+  oldPosition := stream.Position;
+  try
+    stream.Position := 0;
+    stream.ReadBuffer(bytes[0], Length(bytes));
+  finally
+    stream.Position := oldPosition;
+  end;
+  Result := System.NetEncoding.TNetEncoding.Base64.EncodeBytesToString(bytes);
+end;
+
+procedure Base64StringToStream(const value: string; stream: TMemoryStream);
+var
+  bytes: TBytes;
+begin
+  stream.SetSize(Int64(0));
+  if value = '' then
+  begin
+    stream.Position := 0;
+    Exit;
+  end;
+
+  bytes := System.NetEncoding.TNetEncoding.Base64.DecodeStringToBytes(value);
+  if Length(bytes) > 0 then
+    stream.WriteBuffer(bytes[0], Length(bytes));
+  stream.Position := 0;
+end;
 
 type
   TGraphicHeader = record
@@ -442,7 +478,7 @@ begin
 end;
 
 
-procedure TRpSection.SetGroupName(Value:string);
+procedure TRpSection.SetGroupNameInt(Value:string; CheckGroupExists:Boolean);
 var
  subrep:TRpSubreport;
  i:integer;
@@ -463,7 +499,8 @@ begin
   exit;
  end;
  subrep:=TRpSubreport(FSubReport);
- subrep.CheckGroupExists(Value);
+ if CheckGroupExists then
+  subrep.CheckGroupExists(Value);
  if Length(FGroupName)>0 then
  begin
   for i:=0 to Owner.ComponentCount-1 do
@@ -486,12 +523,18 @@ begin
  end;
 end;
 
+procedure TRpSection.SetGroupName(Value:string);
+begin
+ SetGroupNameInt(Value,True);
+end;
+
 procedure TRpSection.DoPrint(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);
 var
  i:integer;
  compo:TRpCommonPosComponent;
  newposx,newposy:integer;
+ newextent:TPoint;
  intPartialPrint:Boolean;
  dummypartial:Boolean;
  DoPartialPrint:BOolean;
@@ -583,6 +626,9 @@ begin
     end;
   end;
 
+  newextent:=MaxExtent;
+  newextent.Y:=newextent.Y-compo.PosY;
+
   if DoPartialPrint then
   begin
    compoprinted:=false;
@@ -591,7 +637,7 @@ begin
     begin
      IntPartialPrint:=false;
      compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,IntPartialPrint);
+      newwidth,newheight,metafile,newextent,IntPartialPrint);
      if IntPartialPrint then
       PartialPrint:=True;
      compoprinted:=true;
@@ -600,7 +646,7 @@ begin
    begin
     compo.PartialFlag:=false;
     compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,IntPartialPrint);
+      newwidth,newheight,metafile,newextent,IntPartialPrint);
    end;
    // For all other elements if alignment is allclient print again
    if ((not (compo is TRpExpression)) AND ((compo.Align=rpaltopbottom)
@@ -608,7 +654,7 @@ begin
    begin
     dummypartial:=false;
     compo.Print(adriver,newposx,newposy,
-      newwidth,newheight,metafile,MaxExtent,dummypartial);
+      newwidth,newheight,metafile,newextent,dummypartial);
    end;
   end
   else
@@ -624,7 +670,7 @@ begin
     begin
      compo.Print(adriver,newposx,newposy,
       newwidth,newheight,metafile,
-      MaxExtent,IntPartialPrint);
+      newextent,IntPartialPrint);
     end;
     if IntPartialPrint then
      PartialPrint:=True;
@@ -1405,16 +1451,6 @@ begin
  Filer.DefineProperty('SkipToPageExpre',ReadSkipToPageExpre,WriteSkipToPageExpre,True);
  Filer.DefineProperty('BackExpression',ReadBackExpression,WriteBackExpression,True);
  Filer.DefineBinaryProperty('Stream', ReadStream, WriteStream, true);
- Filer.DefineProperty('Name',ReadNewName, WriteNewName,FName <> '');
-end;
-procedure TRpSection.ReadNewName(Reader: TReader);
-begin
-  FName := Reader.ReadString;
-end;
-
-procedure TRpSection.WriteNewName(Writer: TWriter);
-begin
-    Writer.WriteString(FName);
 end;
 
 function TRpSection.GetExternalDataDescription:String;
@@ -1705,6 +1741,458 @@ begin
   if (not areport.TwoPass) then
    raise Exception.Create(SRpSTwoPassReportNeeded+'-'+TranslateStr(50,'Page setup'));
  ametafile.UpdateTotalPagesPCount(FPageGroupCountList,ametafile.CurrentPageCount-FirstPage);
+end;
+
+{ TRpSection - IPropertiesItem }
+
+procedure TRpSection.SetItemProperty(const propName: string; const value: Variant);
+var
+ tempStream: TMemoryStream;
+ rep: TRpBaseReport;
+ i: Integer;
+ requestedChildSubReportName: string;
+begin
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
+ begin
+  SetGroupNameInt(value, False);
+  exit;
+ end;
+ if SameText(propName, 'ChildSubReportName') then
+ begin
+  requestedChildSubReportName := Trim(VarToStr(value));
+  rep := TRpBaseReport(SubReport.Owner);
+  ChildSubReport := nil;
+  for i := 0 to rep.Subreports.Count - 1 do
+  begin
+   if rep.Subreports.Items[i].SubReport.ParentSection = Self then
+   begin
+    rep.Subreports.Items[i].SubReport.ParentSection := nil;
+    rep.Subreports.Items[i].SubReport.ParentSubReport := nil;
+   end;
+  if SameText(rep.Subreports.Items[i].SubReport.Name, requestedChildSubReportName) then
+   begin
+    rep.Subreports.Items[i].SubReport.ParentSection := Self;
+    rep.Subreports.Items[i].SubReport.ParentSubReport := TRpSubReport(SubReport);
+    ChildSubReport := rep.Subreports.Items[i].SubReport;
+   end;
+  end;
+  exit;
+ end;
+ if SameText(propName, 'SubReportName') then
+ begin
+  SubReportName := Trim(VarToStr(value));
+  if Assigned(Owner) and (Owner is TRpBaseReport) then
+  begin
+   rep := TRpBaseReport(Owner);
+   SubReport := nil;
+   for i := 0 to rep.Subreports.Count - 1 do
+   begin
+    if SameText(rep.Subreports.Items[i].SubReport.Name, SubReportName) then
+    begin
+     SubReport := rep.Subreports.Items[i].SubReport;
+     break;
+    end;
+   end;
+  end;
+  exit;
+ end;
+ if SameText(propName, 'ChangeExpression') then
+ begin
+  SetChangeExpression(value);
+  exit;
+ end;
+ if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
+ begin
+  FChangeBool := value;
+  exit;
+ end;
+ if SameText(propName, 'PageRepeat') or SameText(propName, SRpSPageRepeat) then
+ begin
+  SetPageRepeat(value);
+  exit;
+ end;
+ if SameText(propName, 'SkipPage') then
+ begin
+  FSkipPage := value;
+  exit;
+ end;
+ if SameText(propName, 'AlignBottom') or SameText(propName, SRpAlignBottom) then
+ begin
+  FAlignBottom := value;
+  exit;
+ end;
+ if SameText(propName, 'SectionType') then
+ begin
+  FSectionType := TRpSectionType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'BackExpression') then
+ begin
+  FBackExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'BeginPageExpression') then
+ begin
+  FBeginPageExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
+ begin
+  FAutoExpand := value;
+  exit;
+ end;
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
+ begin
+  FAutoContract := value;
+  exit;
+ end;
+ if SameText(propName, 'HorzDesp') then
+ begin
+  FHorzDesp := value;
+  exit;
+ end;
+ if SameText(propName, 'VertDesp') then
+ begin
+  FVertDesp := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalFilename') then
+ begin
+  FExternalFilename := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalConnection') then
+ begin
+  FExternalConnection := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalTable') then
+ begin
+  FExternalTable := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalField') then
+ begin
+  FExternalField := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalSearchField') then
+ begin
+  FExternalSearchField := value;
+  exit;
+ end;
+ if SameText(propName, 'ExternalSearchValue') then
+ begin
+  FExternalSearchValue := value;
+  exit;
+ end;
+ if SameText(propName, 'StreamFormat') then
+ begin
+  FStreamFormat := TRpStreamFormat(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreH') then
+ begin
+  FSkipExpreH := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreV') then
+ begin
+  FSkipExpreV := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipToPageExpre') then
+ begin
+  FSkipToPageExpre := value;
+  exit;
+ end;
+ if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
+ begin
+  FBeginPage := value;
+  exit;
+ end;
+ if SameText(propName, 'ForcePrint') then
+ begin
+  FFooterAtReportEnd := value;
+  exit;
+ end;
+ if SameText(propName, 'FooterAtReportEnd') then
+ begin
+  FFooterAtReportEnd := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipRelativeH') then
+ begin
+  FSkipRelativeH := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipRelativeV') then
+ begin
+  FSkipRelativeV := value;
+  exit;
+ end;
+ if SameText(propName, 'SkipType') or SameText(propName, SRpSSkipType) then
+ begin
+  FSkipType := TRpSkipType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'IniNumPage') then
+ begin
+  SetIniNumPage(value);
+  exit;
+ end;
+ if SameText(propName, 'Global') then
+ begin
+  FGlobal := value;
+  exit;
+ end;
+ if SameText(propName, 'dpires') then
+ begin
+  Fdpires := value;
+  exit;
+ end;
+ if SameText(propName, 'BackStyle') then
+ begin
+  FBackStyle := TRpBackStyle(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'DrawStyle') then
+ begin
+  FDrawStyle := TRpImageDrawStyle(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'CachedImage') then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  tempStream := TMemoryStream.Create;
+  try
+    if not VarIsNull(value) and not VarIsEmpty(value) then
+      Base64StringToStream(VarToStr(value), tempStream);
+    SetStream(tempStream);
+  finally
+    tempStream.Free;
+  end;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpSection.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
+ begin
+  Result := FGroupName;
+  exit;
+ end;
+ if SameText(propName, 'ChildSubReportName') then
+ begin
+  if Assigned(ChildSubReport) then
+   Result := ChildSubReport.Name
+  else
+   Result := '';
+  exit;
+ end;
+ if SameText(propName, 'SubReportName') then
+ begin
+  if Assigned(SubReport) then
+   Result := SubReport.Name
+  else
+   Result := '';
+  exit;
+ end;
+ if SameText(propName, 'ChangeExpression') then
+ begin
+  Result := FChangeExpression;
+  exit;
+ end;
+ if SameText(propName, 'ChangeBool') or SameText(propName, SRpSChangeBool) then
+ begin
+  Result := FChangeBool;
+  exit;
+ end;
+ if SameText(propName, 'PageRepeat') or SameText(propName, SRpSPageRepeat) then
+ begin
+  Result := FPageRepeat;
+  exit;
+ end;
+ if SameText(propName, 'SkipPage') then
+ begin
+  Result := FSkipPage;
+  exit;
+ end;
+ if SameText(propName, 'AlignBottom') or SameText(propName, SRpAlignBottom) then
+ begin
+  Result := FAlignBottom;
+  exit;
+ end;
+ if SameText(propName, 'SectionType') then
+ begin
+  Result := Integer(FSectionType);
+  exit;
+ end;
+ if SameText(propName, 'BackExpression') then
+ begin
+  Result := FBackExpression;
+  exit;
+ end;
+ if SameText(propName, 'BeginPageExpression') then
+ begin
+  Result := FBeginPageExpression;
+  exit;
+ end;
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
+ begin
+  Result := FAutoExpand;
+  exit;
+ end;
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
+ begin
+  Result := FAutoContract;
+  exit;
+ end;
+ if SameText(propName, 'HorzDesp') then
+ begin
+  Result := FHorzDesp;
+  exit;
+ end;
+ if SameText(propName, 'VertDesp') then
+ begin
+  Result := FVertDesp;
+  exit;
+ end;
+ if SameText(propName, 'ExternalFilename') then
+ begin
+  Result := FExternalFilename;
+  exit;
+ end;
+ if SameText(propName, 'ExternalConnection') then
+ begin
+  Result := FExternalConnection;
+  exit;
+ end;
+ if SameText(propName, 'ExternalTable') then
+ begin
+  Result := FExternalTable;
+  exit;
+ end;
+ if SameText(propName, 'ExternalField') then
+ begin
+  Result := FExternalField;
+  exit;
+ end;
+ if SameText(propName, 'ExternalSearchField') then
+ begin
+  Result := FExternalSearchField;
+  exit;
+ end;
+ if SameText(propName, 'ExternalSearchValue') then
+ begin
+  Result := FExternalSearchValue;
+  exit;
+ end;
+ if SameText(propName, 'StreamFormat') then
+ begin
+  Result := Integer(FStreamFormat);
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreH') then
+ begin
+  Result := FSkipExpreH;
+  exit;
+ end;
+ if SameText(propName, 'SkipExpreV') then
+ begin
+  Result := FSkipExpreV;
+  exit;
+ end;
+ if SameText(propName, 'SkipToPageExpre') then
+ begin
+  Result := FSkipToPageExpre;
+  exit;
+ end;
+ if SameText(propName, 'BeginPage') or SameText(propName, SRpSBeginPage) then
+ begin
+  Result := FBeginPage;
+  exit;
+ end;
+ if SameText(propName, 'ForcePrint') then
+ begin
+  Result := FFooterAtReportEnd;
+  exit;
+ end;
+ if SameText(propName, 'FooterAtReportEnd') then
+ begin
+  Result := FFooterAtReportEnd;
+  exit;
+ end;
+ if SameText(propName, 'SkipRelativeH') then
+ begin
+  Result := FSkipRelativeH;
+  exit;
+ end;
+ if SameText(propName, 'SkipRelativeV') then
+ begin
+  Result := FSkipRelativeV;
+  exit;
+ end;
+ if SameText(propName, 'SkipType') or SameText(propName, SRpSSkipType) then
+ begin
+  Result := Integer(FSkipType);
+  exit;
+ end;
+ if SameText(propName, 'IniNumPage') then
+ begin
+  Result := FIniNumPage;
+  exit;
+ end;
+ if SameText(propName, 'Global') then
+ begin
+  Result := FGlobal;
+  exit;
+ end;
+ if SameText(propName, 'dpires') then
+ begin
+  Result := Fdpires;
+  exit;
+ end;
+ if SameText(propName, 'BackStyle') then
+ begin
+  Result := Integer(FBackStyle);
+  exit;
+ end;
+ if SameText(propName, 'DrawStyle') then
+ begin
+  Result := Integer(FDrawStyle);
+  exit;
+ end;
+ if SameText(propName, 'CachedImage') then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  if FStream.Size = 0 then
+    Result := Unassigned
+  else
+    Result := StreamToBase64String(FStream);
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 

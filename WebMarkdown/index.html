@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <style>
+        /* === Base Reset === */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', 'Cascadia Code', 'Consolas', sans-serif;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow: hidden; /* WebView host sometimes struggles with window scroll, so we fix the window... */
+        }
+        
+        #scroll-container {
+            height: 100%;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: auto;
+        }
+
+        #messages {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* === Message Blocks === */
+        .msg {
+            border-radius: 8px;
+            padding: 10px 14px;
+            position: relative;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            min-width: 0;
+        }
+
+        .msg-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .msg-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .msg-body {
+            font-size: 13px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            min-width: 0;
+        }
+
+        /* User messages */
+        .msg-user {
+            background: #313244;
+            border-left: 3px solid #89b4fa;
+        }
+        .msg-user .msg-header { color: #89b4fa; }
+
+        /* Assistant messages */
+        .msg-assistant {
+            background: #1e1e2e;
+            border-left: 3px solid #a6e3a1;
+            border: 1px solid #313244;
+        }
+        .msg-assistant .msg-header { color: #a6e3a1; }
+
+        /* System / progress */
+        .msg-system {
+            background: #181825;
+            border-left: 3px solid #fab387;
+            opacity: 0.9;
+        }
+        .msg-system .msg-header { color: #fab387; }
+
+        /* Log entries (AI log / Net log) */
+        .msg-log {
+            background: transparent;
+            padding: 1px 12px;
+            font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #a6adc8;
+            border-radius: 0;
+            margin-bottom: 2px;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        .msg-log-chunk {
+            display: inline;
+        }
+
+        /* Log Actor Vignettes */
+        .msg-log-actor {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #313244;
+            color: #cdd6f4;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+            margin-bottom: 4px;
+            border-left: 3px solid #cba6f7;
+            width: fit-content;
+        }
+
+        .actor-badge-system { border-left-color: #fab387; color: #fab387; }
+        .actor-badge-ai { border-left-color: #a6e3a1; color: #a6e3a1; }
+        .actor-badge-none { border-left-color: #6c7086; color: #9399b2; }
+
+        .msg-log-actor i { font-style: normal; }
+
+        /* === Streaming indicator === */
+        .msg-streaming::after {
+            content: '▋';
+            animation: blink 0.8s step-end infinite;
+            color: #a6e3a1;
+            margin-left: 2px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* === Markdown Content Styling === */
+        .msg-body h1, .msg-body h2, .msg-body h3,
+        .msg-log h1, .msg-log h2, .msg-log h3 {
+            color: #cba6f7;
+            margin: 10px 0 6px 0;
+            font-weight: 600;
+        }
+        .msg-body h1, .msg-log h1 { font-size: 18px; }
+        .msg-body h2, .msg-log h2 { font-size: 16px; }
+        .msg-body h3, .msg-log h3 { font-size: 14px; }
+
+        .msg-body p, .msg-log p { margin: 4px 0; }
+
+        .msg-body a, .msg-log a {
+            color: #89b4fa;
+            text-decoration: underline;
+        }
+
+        .msg-body ul, .msg-body ol {
+            margin: 4px 0 4px 8px;
+            padding-left: 14px;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .msg-log ul, .msg-log ol {
+            margin: 2px 0 2px 0;
+            padding-left: 10px;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .msg-body li, .msg-log li {
+            margin-bottom: 2px;
+        }
+
+        .msg-body code {
+            background: #313244;
+            color: #f9e2af;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .msg-log code {
+            background: transparent;
+            color: #f9e2af;
+            padding: 0;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .msg-body pre {
+            background: #181825;
+            padding: 8px 10px;
+            border-radius: 6px;
+            overflow-x: hidden;
+            margin: 4px 0;
+            border: 1px solid #313244;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .msg-log pre {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            overflow-x: hidden;
+            margin: 2px 0 2px 8px;
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .msg-body pre code {
+            background: transparent;
+            color: #cdd6f4;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .msg-log pre code {
+            background: transparent;
+            color: #cdd6f4;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        /* Tables */
+        .msg-body table, .msg-log table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: 100%;
+        }
+        .msg-body th, .msg-log th {
+            background: #313244;
+            color: #cba6f7;
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #45475a;
+        }
+        .msg-body td, .msg-log td {
+            padding: 6px 10px;
+            border: 1px solid #45475a;
+        }
+
+        .msg-body blockquote, .msg-log blockquote {
+            border-left: 3px solid #585b70;
+            padding-left: 12px;
+            color: #a6adc8;
+            margin: 8px 0;
+            font-style: italic;
+        }
+
+        .msg-body hr, .msg-log hr {
+            border: none;
+            border-top: 1px solid #45475a;
+            margin: 10px 0;
+        }
+
+        /* === Think Blocks (Collapsible) === */
+        .think-block {
+            margin: 2px 0;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            background: #181825;
+            overflow: hidden;
+        }
+
+        .think-block summary {
+            cursor: pointer;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #f9e2af;
+            background: #1e1e2e;
+            user-select: none;
+            font-weight: 500;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .think-block summary::before {
+            content: '▶';
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .think-block[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .think-block summary:hover {
+            background: #313244;
+        }
+
+        .think-block .think-content {
+            padding: 8px 4px;
+            color: #a6adc8;
+            font-size: 12px;
+            line-height: 1.5;
+            border-top: 1px solid #45475a;
+        }
+
+        /* Prefill progress */
+        .msg-prefill {
+            font-size: 11px;
+            color: #6c7086;
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e2e; }
+        ::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #585b70; }
+
+        /* Copy Button Styles */
+        .copy-btn {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 2000;
+            background: rgba(49, 50, 68, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(203, 166, 247, 0.4);
+            color: #cdd6f4;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+            opacity: 0.4;
+        }
+        .copy-btn:hover {
+            background: #45475a;
+            border-color: #cba6f7;
+            transform: translateY(-1px);
+            opacity: 1;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+        .copy-success {
+            border-color: #a6e3a1 !important;
+            color: #a6e3a1 !important;
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body>
+    <button id="copy-btn" class="copy-btn" onclick="copyLogToClipboard()">
+        <span>📋</span> Copy All
+    </button>
+    <div id="scroll-container">
+        <div id="messages"></div>
+    </div>
+
+    <script src="./markdown-it.min.js"></script>
+    <script>
+        var md = window.markdownit({
+            html: true,
+            breaks: true,
+            linkify: true,
+            typographer: false
+        });
+
+        var messagesEl = document.getElementById('messages');
+        var containerEl = document.getElementById('scroll-container');
+        var activeLogChunksByKey = Object.create(null);
+
+        // ============================================================
+        // Think Block Renderer
+        // Renders markdown outside <think> blocks and wraps think content
+        // into collapsible <details> sections without losing following markdown.
+        // ============================================================
+        function renderThinkSegment(content, isOpen) {
+            var trimmed = (content || '').trim();
+            if (!trimmed && !isOpen) return '';
+            return '<details class="think-block"' + (isOpen ? ' open' : '') + '><summary>🤔 Thinking...</summary>' +
+                   '<div class="think-content">' + (trimmed ? md.render(trimmed) : '<em>...</em>') + '</div></details>';
+        }
+
+        function renderWithThinkBlocks(text) {
+            var result = '';
+            var lastIndex = 0;
+            var regex = /<think>([\s\S]*?)<\/think>/gi;
+            var match;
+
+            while ((match = regex.exec(text)) !== null) {
+                if (match.index > lastIndex) {
+                    result += md.render(text.slice(lastIndex, match.index));
+                }
+                result += renderThinkSegment(match[1], false);
+                lastIndex = regex.lastIndex;
+            }
+
+            var tail = text.slice(lastIndex);
+            if (!tail) {
+                return result;
+            }
+
+            var lowerTail = tail.toLowerCase();
+            var thinkIndex = lowerTail.indexOf('<think>');
+            if (thinkIndex < 0) {
+                return result + md.render(tail);
+            }
+
+            if (thinkIndex > 0) {
+                result += md.render(tail.slice(0, thinkIndex));
+            }
+
+            return result + renderThinkSegment(tail.slice(thinkIndex + 7), true);
+        }
+
+        // ============================================================
+        // Render markdown with think block support
+        // ============================================================
+        function renderMarkdown(text) {
+            if (!text) return '';
+
+            // Check if text contains think blocks
+            if (text.indexOf('<think>') >= 0) {
+                return renderWithThinkBlocks(text);
+            }
+
+            // Standard markdown rendering
+            return md.render(text);
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add a message (for Chat)
+        window.appendMessage = function(role, text) {
+            var el = document.createElement('div');
+            el.className = 'msg msg-' + role;
+            
+            var icon = role === 'user' ? '👤' : '🤖';
+            var header = role === 'user' ? 'You' : 'Assistant';
+
+            el.innerHTML = 
+                '<div class="msg-header">' +
+                '<span class="msg-icon">' + icon + '</span>' +
+                '<span>' + header + '</span>' +
+                '</div>' +
+                '<div class="msg-body">' + renderMarkdown(text) + '</div>';
+
+            messagesEl.appendChild(el);
+            window.scrollToEnd(true);
+        };
+
+        // Append a message chunk (streaming, for Chat)
+        window.appendMessageChunk = function(role, chunk, prefillPercent) {
+            var last = messagesEl.lastElementChild;
+            var isNew = !last || !last.classList.contains('msg-streaming') || !last.classList.contains('msg-' + role);
+
+            if (isNew) {
+                var el = document.createElement('div');
+                el.className = 'msg msg-streaming msg-' + role;
+                
+                var icon = role === 'user' ? '👤' : '🤖';
+                var header = role === 'user' ? 'You' : 'Assistant';
+
+                el.innerHTML = 
+                    '<div class="msg-header">' +
+                    '<span class="msg-icon">' + icon + '</span>' +
+                    '<span>' + header + '</span>' +
+                    '</div>' +
+                    '<div class="msg-prefill"></div>' +
+                    '<div class="msg-body"></div>';
+
+                messagesEl.appendChild(el);
+                last = el;
+            }
+
+            // Accumulate raw text
+            var raw = (last.getAttribute('data-raw') || '') + chunk;
+            last.setAttribute('data-raw', raw);
+
+            // Update prefill
+            if (prefillPercent > 0) {
+                var prefillEl = last.querySelector('.msg-prefill');
+                if (prefillEl) prefillEl.textContent = 'Prefill ' + prefillPercent + '%';
+            }
+
+            // Re-render markdown from accumulated text
+            var bodyEl = last.querySelector('.msg-body');
+            if (bodyEl) bodyEl.innerHTML = renderMarkdown(raw);
+
+            window.scrollToEnd(true);
+        };
+
+        // Finish streaming (remove cursor animation)
+        window.finishStreaming = function() {
+            var last = messagesEl.lastElementChild;
+            if (last && last.classList.contains('msg-streaming')) {
+                last.classList.remove('msg-streaming');
+                var prefillEl = last.querySelector('.msg-prefill');
+                if (prefillEl) prefillEl.remove();
+            }
+        };
+
+        // Append a log line (timestamp + text, for AI/Net log tabs)
+        window.appendLogLine = function(text) {
+            var el = document.createElement('div');
+            
+            if (text.indexOf('actor: ') === 0) {
+                var actorName = text.substring(7).trim();
+                var lowerName = actorName.toLowerCase();
+                var icon = '⚙️'; // Default System
+                var badgeClass = 'actor-badge-system';
+
+                if (lowerName === 'ai' || lowerName === 'assistant') {
+                    icon = '🤖';
+                    badgeClass = 'actor-badge-ai';
+                    actorName = 'AI';
+                } else if (lowerName === 'user' || lowerName === 'none') {
+                    icon = lowerName === 'user' ? '👤' : '⚙️';
+                    badgeClass = 'actor-badge-none';
+                    if (lowerName === 'none') actorName = 'Process';
+                }
+
+                el.className = 'msg-log-actor ' + badgeClass;
+                el.innerHTML = '<i>' + icon + '</i> ' + escapeHtml(actorName);
+            } else {
+                el.className = 'msg-log';
+                el.innerHTML = renderMarkdown(text);
+            }
+            
+            messagesEl.appendChild(el);
+            window.scrollToEnd(true);
+        };
+
+        function normalizeLogKey(key) {
+            return key && key.length ? key : '__default__';
+        }
+
+        // Append a raw log chunk (streaming, no newline)
+        window.appendLogChunk = function(chunk) {
+            window.appendLogChunkForKey('', chunk);
+        };
+
+        window.appendLogChunkForKey = function(key, chunk) {
+            var normalizedKey = normalizeLogKey(key);
+            var target = activeLogChunksByKey[normalizedKey];
+
+            if (!target || !target.isConnected) {
+                target = document.createElement('div');
+                target.className = 'msg-log msg-log-chunk-container';
+                target.setAttribute('data-log-key', normalizedKey);
+                target.setAttribute('data-raw', '');
+                messagesEl.appendChild(target);
+                activeLogChunksByKey[normalizedKey] = target;
+            }
+
+            var raw = (target.getAttribute('data-raw') || '') + chunk;
+            target.setAttribute('data-raw', raw);
+            target.innerHTML = renderMarkdown(raw);
+
+            window.scrollToEnd(true);
+        };
+
+        // End a log chunk (next appendLogChunk starts a new block)
+        window.endLogChunk = function() {
+            window.endLogChunkForKey('');
+        };
+
+        window.endLogChunkForKey = function(key) {
+            var normalizedKey = normalizeLogKey(key);
+            var target = activeLogChunksByKey[normalizedKey];
+            if (target && target.isConnected) {
+                target.classList.remove('msg-log-chunk-container');
+            }
+            delete activeLogChunksByKey[normalizedKey];
+        };
+
+        // Clear all messages
+        window.clearAll = function() {
+            activeLogChunksByKey = Object.create(null);
+            messagesEl.innerHTML = '';
+        };
+
+        // Scroll to bottom
+        window.scrollToEnd = function(force) {
+            // If user is scrolled up more than 100px, don't auto-scroll unless forced
+            var threshold = 100;
+            var isAtBottom = (containerEl.scrollHeight - containerEl.scrollTop - containerEl.clientHeight) < threshold;
+            
+            if (force === true || isAtBottom) {
+                window.requestAnimationFrame(function() {
+                    containerEl.scrollTop = containerEl.scrollHeight;
+                });
+            }
+        };
+
+        // MutationObserver to handle automatic scrolling on content change
+        var observer = new MutationObserver(function() {
+            window.scrollToEnd(false);
+        });
+        observer.observe(messagesEl, { childList: true, subtree: true, characterData: true });
+
+        // Copy Log content to clipboard
+        // Uses data-raw when available (preserves collapsed think blocks),
+        // otherwise falls back to extracting think-block content from the DOM
+        // before reading innerText so collapsed <details> are not omitted.
+        window.copyLogToClipboard = function() {
+            var btn = document.getElementById('copy-btn');
+            var text = buildFullLogText();
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopySuccess(btn);
+                }).catch(function() {
+                    fallbackCopyText(text, btn);
+                });
+            } else {
+                fallbackCopyText(text, btn);
+            }
+        };
+
+        function buildFullLogText() {
+            var parts = [];
+            var nodes = messagesEl.children;
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                // Prefer the original raw text stored during streaming/rendering
+                var raw = node.getAttribute('data-raw');
+                if (raw) {
+                    parts.push(raw);
+                } else {
+                    // For nodes without data-raw, temporarily open all collapsed
+                    // think-block <details> so innerText captures their content.
+                    var thinkBlocks = node.querySelectorAll('details.think-block:not([open])');
+                    for (var j = 0; j < thinkBlocks.length; j++) {
+                        thinkBlocks[j].setAttribute('open', '');
+                        thinkBlocks[j].setAttribute('data-was-closed', '1');
+                    }
+                    parts.push(node.innerText);
+                    // Restore collapsed state
+                    for (var j = 0; j < thinkBlocks.length; j++) {
+                        if (thinkBlocks[j].getAttribute('data-was-closed')) {
+                            thinkBlocks[j].removeAttribute('open');
+                            thinkBlocks[j].removeAttribute('data-was-closed');
+                        }
+                    }
+                }
+            }
+            return parts.join('\n');
+        }
+
+        function showCopySuccess(btn) {
+            var span = btn.querySelector('span');
+            var originalIcon = span.textContent;
+            var originalText = btn.lastChild.textContent;
+            
+            span.textContent = '✅';
+            btn.lastChild.textContent = ' Copied!';
+            btn.classList.add('copy-success');
+            
+            setTimeout(function() {
+                span.textContent = originalIcon;
+                btn.lastChild.textContent = originalText;
+                btn.classList.remove('copy-success');
+            }, 2000);
+        }
+
+        function fallbackCopyText(text, btn) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(btn);
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Notify Delphi that we are ready
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({ type: 'WEBMARKDOWN_READY' }));
+        }
+    </script>
+</body>
+</html>

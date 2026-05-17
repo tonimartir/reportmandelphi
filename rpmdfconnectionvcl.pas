@@ -116,6 +116,8 @@ type
 
 implementation
 
+uses rpxmlstream, rpbasereport;
+
 {$R *.dfm}
 
 constructor TFRpConnectionVCL.Create(AOwner:TComponent);
@@ -275,6 +277,9 @@ begin
    MHelp.Lines.Text:=SRpDriverDotNetDesc;
   9:
    MHelp.Lines.Text:=SRpFireDacDesc;
+  10:
+   MHelp.Lines.Text:='Executes SQL remotely via Reportman AI Agent bridge. ' +
+    'Supports secure, non-interactive queries with API Keys.';
  end;
  // Loads the alias config
  case TrpDbDriver(index) of
@@ -334,6 +339,12 @@ begin
     BBuild.Visible:=false;
     ComboAvailable.Items.Clear;
    end;
+  rpdbHttp:
+   begin
+    BConfig.Visible:=true;
+    BBuild.Visible:=false;
+    ComboAvailable.Items.Clear;
+   end;
  end;
 end;
 
@@ -362,6 +373,7 @@ begin
  if Length(conname)<1 then
   exit;
  item:=Fdatabaseinfo.Add(conname);
+ EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=TRpDbDriver(GDriver.ItemIndex);
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);
@@ -376,7 +388,7 @@ procedure TFRpConnectionVCL.BConfigClick(Sender: TObject);
 var
  i:integer;
 begin
- ShowDBXConfig(TRpDbDriver(GDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase]);
+ ShowDBXConfig;
  conadmin.free;
  conadmin:=TRPCOnnAdmin.Create;
  conadmin.GetConnectionNames(ComboAvailable.Items,'');
@@ -557,6 +569,7 @@ begin
  if Length(conname)<1 then
   exit;
  item:=Fdatabaseinfo.Add(conname);
+ EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=TRpDbDriver(GDriver.ItemIndex);
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);

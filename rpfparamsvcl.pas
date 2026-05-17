@@ -27,9 +27,10 @@ uses SysUtils, Classes,
   Buttons, ExtCtrls, Controls, StdCtrls,Mask,
   rpdatainfo,rpreport,
   Variants,
-  DB,rpmdconsts,rpparams,
+  DB,rpmdconsts,rpparams,rpmdundocue,
   rpgraphutilsvcl, ToolWin,rptypes, rpmaskedit, CheckLst, Vcl.VirtualImageList,
-  Vcl.BaseImageCollection, Vcl.ImageCollection, System.Actions, System.ImageList;
+  Vcl.BaseImageCollection, Vcl.ImageCollection, System.Actions, System.ImageList,
+  rpxmlstream, rpbasereport;
 
 type
   TFRpParamsVCL = class(TForm)
@@ -122,13 +123,177 @@ type
   end;
 
 
-procedure ShowParamDef(params:TRpParamList;datainfo:TRpDatainfoList;report:TRpReport);
+procedure RecordParamUndoChanges(origParams,newParams:TRpParamList;report:TRpReport;
+  groupId:integer=-1);
+procedure ShowParamDef(params:TRpParamList;datainfo:TRpDatainfoList;report:TRpReport;
+  deferUndoUntilAccept:boolean=False);
 
 implementation
 
 {$R *.dfm}
 
-procedure ShowParamDef(params:TRpParamList;datainfo:TRpDatainfoList;report:TRpReport);
+function ParamStringListToVariant(strings: TStrings): Variant;
+var
+ index: Integer;
+begin
+ if strings.Count=0 then
+ begin
+  Result:=VarArrayCreate([0,-1],varVariant);
+  Exit;
+ end;
+ Result:=VarArrayCreate([0,strings.Count-1],varVariant);
+ for index:=0 to strings.Count-1 do
+  Result[index]:=strings[index];
+end;
+
+function SameStringLists(list1,list2:TStrings):Boolean;
+begin
+ Result:=list1.Text=list2.Text;
+end;
+
+function GetParamOperationName(param: TRpParam): string;
+begin
+ if not Assigned(param) then
+  raise Exception.Create('GetParamOperationName: parameter is nil');
+ if Trim(param.IntName)='' then
+  raise Exception.Create('GetParamOperationName: parameter '+param.Name+' has empty IntName');
+ Result:=param.IntName;
+end;
+
+procedure RecordParamUndoChanges(origParams,newParams:TRpParamList;report:TRpReport;
+  groupId:integer=-1);
+var
+ undoCue:TUndoCue;
+ i:integer;
+ origParam,newParam:TRpParam;
+ op:TChangeObjectOperation;
+begin
+ if not Assigned(report) then
+  Exit;
+ if not Assigned(report.UndoCue) then
+  report.UndoCue:=TUndoCue.Create(report);
+ undoCue:=TUndoCue(report.UndoCue);
+ if groupId<0 then
+  groupId:=undoCue.GetGroupId;
+ // Detect removed params (in original but not in new list)
+ for i:=0 to origParams.Count-1 do
+ begin
+  origParam:=origParams.Items[i];
+    if newParams.FindParamByIntName(GetParamOperationName(origParam))=nil then
+  begin
+   op:=TChangeObjectOperation.Create(otRemove,groupId);
+     op.componentName:=GetParamOperationName(origParam);
+   op.componentClass:='TRPPARAM';
+   op.oldItemIndex:=i;
+     op.AddProperty('alias',ptString,origParam.Name,Null);
+   op.AddProperty('description',ptString,origParam.Description,Null);
+   op.AddProperty('hint',ptString,origParam.Hint,Null);
+   op.AddProperty('validation',ptString,origParam.Validation,Null);
+   op.AddProperty('errorMessage',ptString,origParam.ErrorMessage,Null);
+   op.AddProperty('visible',ptBoolean,origParam.Visible,Null);
+   op.AddProperty('neverVisible',ptBoolean,origParam.NeverVisible,Null);
+   op.AddProperty('isReadOnly',ptBoolean,origParam.IsReadOnly,Null);
+   op.AddProperty('allowNulls',ptBoolean,origParam.AllowNulls,Null);
+   op.AddProperty('paramType',ptInteger,Integer(origParam.ParamType),Null);
+   op.AddProperty('lookupDataset',ptString,origParam.LookupDataset,Null);
+   op.AddProperty('searchDataset',ptString,origParam.SearchDataset,Null);
+   op.AddProperty('searchParam',ptString,origParam.SearchParam,Null);
+   op.AddProperty('value',ptVariant,origParam.Value,Null);
+   op.AddProperty('datasets',ptStringArray,ParamStringListToVariant(origParam.Datasets),Null);
+   op.AddProperty('items',ptStringArray,ParamStringListToVariant(origParam.Items),Null);
+   op.AddProperty('values',ptStringArray,ParamStringListToVariant(origParam.Values),Null);
+   op.AddProperty('selected',ptStringArray,ParamStringListToVariant(origParam.Selected),Null);
+   undoCue.AddOperation(op);
+  end;
+ end;
+ // Detect added params (in new list but not in original)
+ for i:=0 to newParams.Count-1 do
+ begin
+  newParam:=newParams.Items[i];
+    if origParams.FindParamByIntName(GetParamOperationName(newParam))=nil then
+  begin
+   op:=TChangeObjectOperation.Create(otAdd,groupId);
+     op.componentName:=GetParamOperationName(newParam);
+   op.componentClass:='TRPPARAM';
+   op.oldItemIndex:=i;
+     op.AddProperty('alias',ptString,Null,newParam.Name);
+   op.AddProperty('description',ptString,Null,newParam.Description);
+   op.AddProperty('hint',ptString,Null,newParam.Hint);
+   op.AddProperty('validation',ptString,Null,newParam.Validation);
+   op.AddProperty('errorMessage',ptString,Null,newParam.ErrorMessage);
+   op.AddProperty('visible',ptBoolean,Null,newParam.Visible);
+   op.AddProperty('neverVisible',ptBoolean,Null,newParam.NeverVisible);
+   op.AddProperty('isReadOnly',ptBoolean,Null,newParam.IsReadOnly);
+   op.AddProperty('allowNulls',ptBoolean,Null,newParam.AllowNulls);
+   op.AddProperty('paramType',ptInteger,Null,Integer(newParam.ParamType));
+   op.AddProperty('lookupDataset',ptString,Null,newParam.LookupDataset);
+   op.AddProperty('searchDataset',ptString,Null,newParam.SearchDataset);
+   op.AddProperty('searchParam',ptString,Null,newParam.SearchParam);
+   op.AddProperty('value',ptVariant,Null,newParam.Value);
+   op.AddProperty('datasets',ptStringArray,Null,ParamStringListToVariant(newParam.Datasets));
+   op.AddProperty('items',ptStringArray,Null,ParamStringListToVariant(newParam.Items));
+   op.AddProperty('values',ptStringArray,Null,ParamStringListToVariant(newParam.Values));
+   op.AddProperty('selected',ptStringArray,Null,ParamStringListToVariant(newParam.Selected));
+   undoCue.AddOperation(op);
+  end;
+ end;
+ // Detect modified params
+ for i:=0 to newParams.Count-1 do
+ begin
+  newParam:=newParams.Items[i];
+    origParam:=origParams.FindParamByIntName(GetParamOperationName(newParam));
+  if Assigned(origParam) then
+  begin
+   op:=TChangeObjectOperation.Create(otModify,groupId);
+     op.componentName:=GetParamOperationName(newParam);
+   op.componentClass:='TRPPARAM';
+     if origParam.Name<>newParam.Name then
+      op.AddProperty('alias',ptString,origParam.Name,newParam.Name);
+   if origParam.Description<>newParam.Description then
+    op.AddProperty('description',ptString,origParam.Description,newParam.Description);
+   if origParam.Hint<>newParam.Hint then
+    op.AddProperty('hint',ptString,origParam.Hint,newParam.Hint);
+   if origParam.Validation<>newParam.Validation then
+    op.AddProperty('validation',ptString,origParam.Validation,newParam.Validation);
+   if origParam.ErrorMessage<>newParam.ErrorMessage then
+    op.AddProperty('errorMessage',ptString,origParam.ErrorMessage,newParam.ErrorMessage);
+   if origParam.Visible<>newParam.Visible then
+    op.AddProperty('visible',ptBoolean,origParam.Visible,newParam.Visible);
+   if origParam.NeverVisible<>newParam.NeverVisible then
+    op.AddProperty('neverVisible',ptBoolean,origParam.NeverVisible,newParam.NeverVisible);
+   if origParam.IsReadOnly<>newParam.IsReadOnly then
+    op.AddProperty('isReadOnly',ptBoolean,origParam.IsReadOnly,newParam.IsReadOnly);
+   if origParam.AllowNulls<>newParam.AllowNulls then
+    op.AddProperty('allowNulls',ptBoolean,origParam.AllowNulls,newParam.AllowNulls);
+  if Integer(origParam.ParamType)<>Integer(newParam.ParamType) then
+    op.AddProperty('paramType',ptInteger,Integer(origParam.ParamType),Integer(newParam.ParamType));
+   if origParam.LookupDataset<>newParam.LookupDataset then
+    op.AddProperty('lookupDataset',ptString,origParam.LookupDataset,newParam.LookupDataset);
+   if origParam.SearchDataset<>newParam.SearchDataset then
+    op.AddProperty('searchDataset',ptString,origParam.SearchDataset,newParam.SearchDataset);
+   if origParam.SearchParam<>newParam.SearchParam then
+    op.AddProperty('searchParam',ptString,origParam.SearchParam,newParam.SearchParam);
+   if (Integer(origParam.ParamType)<>Integer(newParam.ParamType)) or
+     (not VarSameValue(origParam.Value,newParam.Value)) then
+    op.AddProperty('value',ptVariant,origParam.Value,newParam.Value);
+   if not SameStringLists(origParam.Datasets,newParam.Datasets) then
+    op.AddProperty('datasets',ptStringArray,ParamStringListToVariant(origParam.Datasets),ParamStringListToVariant(newParam.Datasets));
+   if not SameStringLists(origParam.Items,newParam.Items) then
+    op.AddProperty('items',ptStringArray,ParamStringListToVariant(origParam.Items),ParamStringListToVariant(newParam.Items));
+   if not SameStringLists(origParam.Values,newParam.Values) then
+    op.AddProperty('values',ptStringArray,ParamStringListToVariant(origParam.Values),ParamStringListToVariant(newParam.Values));
+   if not SameStringLists(origParam.Selected,newParam.Selected) then
+    op.AddProperty('selected',ptStringArray,ParamStringListToVariant(origParam.Selected),ParamStringListToVariant(newParam.Selected));
+   if op.properties.Count>0 then
+    undoCue.AddOperation(op)
+   else
+    op.Free;
+  end;
+ end;
+end;
+
+procedure ShowParamDef(params:TRpParamList;datainfo:TRpDatainfoList;report:TRpReport;
+  deferUndoUntilAccept:boolean=False);
 var
  dia:TFRpParamsVCL;
 begin
@@ -140,7 +305,11 @@ begin
   dia.datainfo:=datainfo;
   dia.ShowModal;
   if dia.dook then
+  begin
+   if not deferUndoUntilAccept then
+    RecordParamUndoChanges(params,dia.params,report);
    params.assign(dia.params);
+  end;
  finally
   dia.free;
  end;
@@ -578,6 +747,8 @@ begin
 
  // Adds a param
  aparam:=params.Add(paramname);
+ if Assigned(report) then
+  EnsureParamName(TRpBaseReport(report), aparam);
  aparam.AllowNulls:=false;
  aparam.Value:='';
 

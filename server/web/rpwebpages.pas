@@ -5,11 +5,14 @@ unit rpwebpages;
 interface
 
 uses SysUtils,Classes,HTTPApp,rpmdconsts,Inifiles,rpalias,System.NetEncoding,
+ System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
+ Generics.Collections,
 {$IFNDEF USEVARIANTS}
  Windows,FileCtrl,asptlb,
 {$ENDIF}
  rpmdshfolder,rptypes,rpreport,rppdfdriver,rpparams,rptextdriver,rpsvgdriver,
- rpcsvdriver,rpdatainfo,
+ rpcsvdriver,rpdatainfo,rpwebserverconfigadmin,rpwebdbxadmin,rpwebadminauth,
+ rpwebadminpages,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
@@ -41,6 +44,17 @@ const
 type
  TRpWebPage=(rpwLogin,rpwIndex,rpwVersion,rpwShowParams,rpwShowAlias);
 
+ EHttpError=class(Exception)
+  private
+   FStatusCode:Integer;
+   FShowErrorPage:Boolean;
+  public
+   constructor CreateHttp(AStatusCode: Integer; const AMessage: string;
+    AShowErrorPage: Boolean);
+   property StatusCode:Integer read FStatusCode;
+   property ShowErrorPage:Boolean read FShowErrorPage;
+ end;
+
  TRpWebPageLoader=class(TObject)
   private
    Owner:TComponent;
@@ -48,6 +62,8 @@ type
    fport:integer;
    laliases:TStringList;
    lusers,lgroups,LUserGroups,LAliasGroups:TStringList;
+    LServerApiKeys:TStringList;
+    LServerApiKeyUsers:TStringList;
    aresult:TStringList;
    FPagesDirectory:String;
    initreaded:boolean;
@@ -59,6 +75,13 @@ type
    showerrorpage:string;
    paramspage:string;
    isadmin:boolean;
+  FAllowUserAccess:Boolean;
+  FAllowApiKeyAccess:Boolean;
+  FShowUnauthorizedPage:Boolean;
+  FUrlGetParams:Boolean;
+  FLogJson:Boolean;
+  FTestingLastPdf: TMemoryStream;
+  FTestingLastPdfFileName: string;
    FRpAliasLibs:TRpAlias;
 {$IFDEF USEBDE}
    ASession:TSession;
@@ -67,6 +90,7 @@ type
 {$ENDIF}
    logfileerror:boolean;
    FLogFilename:String;
+  FJsonLogFilename:String;
    function CreateReport:TRpReport;
    procedure InitConfig;
    procedure CheckInitReaded;
@@ -76,6 +100,115 @@ type
    function LoadAliasPage(Request: TWebRequest):string;
    function LoadParamsPage(Request: TWebRequest):string;
    function CheckPrivileges(username,aliasname:String):Boolean;
+  function GetRequestParam(Request: TWebRequest; const AName: string): string;
+  function GetAdminParam(Request: TWebRequest; const AName: string): string;
+  function CreateRequestParamList(Request: TWebRequest): TStringList;
+  function CreateAdminParamList(Request: TWebRequest): TStringList;
+  function HiddenInput(const AName, AValue: string): string;
+  function HiddenAuthInputs(Request: TWebRequest): string;
+  function HiddenAdminAuthInputs(Request: TWebRequest): string;
+  function LoadAdminTestingRequest(Request: TWebRequest): TRpWebTestingSetup;
+  procedure LoadAllTestingReports(
+   AReports: TList<TRpWebTestingReportOption>);
+  function GetCurrentRequestPortText(Request: TWebRequest): string;
+  function BuildTestingHiddenInputs(Request: TWebRequest): string;
+  function BuildTestingFormPayload(Request: TWebRequest): TStringList;
+  function GetTestingPdfDownloadFileName(const AReportName: string): string;
+  function GetRequestValue(Request: TWebRequest; const AName: string): string;
+  function GetRequestHeader(Request: TWebRequest; const AName: string): string;
+  function GetFirstRequestValue(Request: TWebRequest;
+   const ANames: array of string): string;
+  function GetRemoteAddr(Request: TWebRequest): string;
+  function GetForwardedFor(Request: TWebRequest): string;
+  function IsSecureConnection(Request: TWebRequest): Boolean;
+  function GetConnectionType(Request: TWebRequest): string;
+  function GetCertificateValidityText(Request: TWebRequest): string;
+  function HasServerApiKey(Request: TWebRequest): Boolean;
+  function GetServerApiKeyName(Request: TWebRequest): string;
+  function ReportParamsToJson(AReport: TRpReport): string;
+  function TryAuthenticateServerApiKey(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean): Boolean;
+  function TryAuthenticateUserPassword(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean): Boolean;
+  procedure ResolveAuthenticatedUser(Request: TWebRequest;
+   out AUserName: string; out AIsAdmin: Boolean);
+  function TryAdminLogin(Request: TWebRequest; out AUserName,
+   AMessageText: string): Boolean;
+  procedure CheckAdminLogin(Request: TWebRequest; out AUserName: string;
+   out AIsAdmin: Boolean);
+  class function RequestHasParam(Request: TWebRequest;
+   const AName: string): Boolean; static;
+  class function RequestCheckboxChecked(Request: TWebRequest;
+   const AName: string): Boolean; static;
+  procedure CollectAdminPrefixedValues(Request: TWebRequest;
+   const APrefix: string; AValues: TStrings);
+  procedure CollectConnectionParamValues(Request: TWebRequest; AValues: TStrings);
+  procedure LoadAllGroupNames(AGroupNames: TStrings);
+  procedure LoadAllUserNames(AUserNames: TStrings);
+  function LoadAdminBootstrapPage(Request: TWebRequest): string;
+  function ExecuteAdminBootstrap(Request: TWebRequest): string;
+  function LoadAdminLoginPage(Request: TWebRequest): string;
+  function ExecuteAdminLogin(Request: TWebRequest): string;
+  function LoadAdminHomePage(Request: TWebRequest): string;
+  function LoadAdminServerConfigPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminServerConfigSave(Request: TWebRequest): string;
+  function LoadAdminUsersPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminUserEditPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminUserCreate(Request: TWebRequest): string;
+  function ExecuteAdminUserSave(Request: TWebRequest): string;
+  function ExecuteAdminUserDelete(Request: TWebRequest): string;
+  function LoadAdminGroupsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminGroupEditPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminGroupCreate(Request: TWebRequest): string;
+  function ExecuteAdminGroupSave(Request: TWebRequest): string;
+  function ExecuteAdminGroupDelete(Request: TWebRequest): string;
+  function LoadAdminAliasesPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminAliasEditPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminAliasCreate(Request: TWebRequest): string;
+  function ExecuteAdminAliasSave(Request: TWebRequest): string;
+  function ExecuteAdminAliasDelete(Request: TWebRequest): string;
+  function LoadAdminApiKeysPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminApiKeyCreate(Request: TWebRequest): string;
+  function ExecuteAdminApiKeyDelete(Request: TWebRequest): string;
+  function LoadAdminTestingPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminTestingParamsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminTestingRequestPreviewPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminTestingRequest(Request: TWebRequest): string;
+  procedure ExecuteAdminTestingDownload(Response: TWebResponse);
+  function LoadAdminConnectionsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminConnectionNewPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function LoadAdminConnectionEditPage(Request: TWebRequest;
+    const AMessageText: string=''; AOverrideValues: TStrings = nil;
+    AHubConnections: TStrings = nil): string;
+  function LoadAdminConnectionsRawPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  function ExecuteAdminConnectionCreate(Request: TWebRequest): string;
+  function ExecuteAdminConnectionSave(Request: TWebRequest): string;
+  function ExecuteAdminConnectionDelete(Request: TWebRequest): string;
+  function ExecuteAdminConnectionChangeDriver(Request: TWebRequest): string;
+  function ExecuteAdminConnectionChangeDriverClear(Request: TWebRequest): string;
+  function ExecuteAdminConnectionDiscoverHub(Request: TWebRequest): string;
+  function ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
+  function ExecuteAdminConnectionTest(Request: TWebRequest): string;
+  function LoadAdminDiagnosticsPage(Request: TWebRequest;
+   const AMessageText: string=''): string;
+  procedure WriteStructuredLog(const AEvent,AUser,AApiKey,ARemoteAddr,
+   AForwardedFor,AReport,AParamsJson,AMessage: string);
+  procedure WriteExecuteReportLog(const AUser,AApiKey,ARemoteAddr,
+   AForwardedFor,AReport,AParamsJson: string);
    procedure ClearLists;
    procedure LoadReport(pdfreport:TRpReport;aliasname,reportname:String);
   public
@@ -83,12 +216,129 @@ type
    procedure ExecuteReport(Request: TWebRequest;Response:TWebResponse);
    procedure CheckLogin(Request:TWebRequest);
    procedure GetWebPage(Request: TWebRequest;apage:TRpWebPage;Response:TWebResponse);
+  procedure HandleAdminRequest(Request: TWebRequest; Response:TWebResponse);
    constructor Create(AOwner:TComponent);
    destructor Destroy;override;
   end;
 
 
 implementation
+
+constructor EHttpError.CreateHttp(AStatusCode: Integer; const AMessage: string;
+ AShowErrorPage: Boolean);
+begin
+ inherited Create(AMessage);
+ FStatusCode:=AStatusCode;
+ FShowErrorPage:=AShowErrorPage;
+end;
+
+function ReadConfigBool(inif: TMemInifile; const Section, Ident: string;
+  Default: Boolean): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=Trim(inif.ReadString(Section,Ident,''));
+ if Length(LValue)<1 then
+ begin
+  Result:=Default;
+  exit;
+ end;
+ if SameText(LValue,'1') or SameText(LValue,'TRUE') or SameText(LValue,'YES')
+  or SameText(LValue,'ON') then
+ begin
+  Result:=True;
+  exit;
+ end;
+ if SameText(LValue,'0') or SameText(LValue,'FALSE') or SameText(LValue,'NO')
+  or SameText(LValue,'OFF') then
+ begin
+  Result:=False;
+  exit;
+ end;
+ Result:=Default;
+end;
+
+function FirstToken(const AValue: string): string;
+var
+ SepPos:Integer;
+begin
+ Result:=Trim(AValue);
+ SepPos:=Pos(',',Result);
+ if SepPos>0 then
+  Result:=Trim(Copy(Result,1,SepPos-1));
+end;
+
+function IsTruthyValue(const AValue: string): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=UpperCase(Trim(AValue));
+ Result:=(LValue='1') or (LValue='TRUE') or (LValue='YES') or
+  (LValue='ON') or (LValue='HTTPS') or (LValue='SUCCESS') or
+  (LValue='OK') or (LValue='VALID');
+end;
+
+function IsFalsyValue(const AValue: string): Boolean;
+var
+ LValue:string;
+begin
+ LValue:=UpperCase(Trim(AValue));
+ Result:=(LValue='0') or (LValue='FALSE') or (LValue='NO') or
+  (LValue='OFF') or (LValue='HTTP') or (LValue='NONE') or
+  (LValue='FAIL') or (LValue='FAILED') or (LValue='INVALID');
+end;
+
+function JsonString(const AValue: string): string;
+var
+ i:Integer;
+ ch:Char;
+begin
+ Result:='"';
+ for i:=1 to Length(AValue) do
+ begin
+  ch:=AValue[i];
+  case ch of
+   '"':Result:=Result+'\"';
+   '\':Result:=Result+'\\';
+   '/':Result:=Result+'\/';
+   #8:Result:=Result+'\b';
+   #9:Result:=Result+'\t';
+   #10:Result:=Result+'\n';
+   #12:Result:=Result+'\f';
+   #13:Result:=Result+'\r';
+   else
+    if Ord(ch)<32 then
+     Result:=Result+'\u'+IntToHex(Ord(ch),4)
+    else
+     Result:=Result+ch;
+  end;
+ end;
+ Result:=Result+'"';
+end;
+
+function LogString(const AValue: string): string;
+begin
+ Result:=StringReplace(AValue,'\','\\',[rfReplaceAll]);
+ Result:=StringReplace(Result,'"','\"',[rfReplaceAll]);
+ Result:=StringReplace(Result,#13,'\r',[rfReplaceAll]);
+ Result:=StringReplace(Result,#10,'\n',[rfReplaceAll]);
+end;
+
+function CsvString(const AValue: string): string;
+begin
+ Result:=StringReplace(AValue,'"','""',[rfReplaceAll]);
+ Result:='"'+Result+'"';
+end;
+
+function LogLineBreak: string;
+begin
+{$IFDEF MSWINDOWS}
+ Result:=#13#10;
+{$ENDIF}
+{$IFDEF LINUX}
+ Result:=#10;
+{$ENDIF}
+end;
 
 
 procedure TRpWebPageLoader.ClearLists;
@@ -108,6 +358,804 @@ begin
   TStringList(LAliasGroups.Objects[i]).Free;
  end;
  LAliasGroups.Clear;
+ LServerApiKeys.Clear;
+ LServerApiKeyUsers.Clear;
+end;
+
+function TRpWebPageLoader.GetRequestParam(Request: TWebRequest;
+  const AName: string): string;
+begin
+ if Request.ContentFields.IndexOfName(AName)>=0 then
+ begin
+  Result:=Request.ContentFields.Values[AName];
+  exit;
+ end;
+ if FUrlGetParams and (Request.QueryFields.IndexOfName(AName)>=0) then
+ begin
+  Result:=Request.QueryFields.Values[AName];
+  exit;
+ end;
+ Result:='';
+end;
+
+function TRpWebPageLoader.GetAdminParam(Request: TWebRequest;
+  const AName: string): string;
+begin
+ if Request.ContentFields.IndexOfName(AName)>=0 then
+ begin
+  Result:=Request.ContentFields.Values[AName];
+  exit;
+ end;
+ if Request.QueryFields.IndexOfName(AName)>=0 then
+ begin
+  Result:=Request.QueryFields.Values[AName];
+  exit;
+ end;
+ Result:='';
+end;
+
+function TRpWebPageLoader.CreateRequestParamList(Request: TWebRequest): TStringList;
+var
+ i:Integer;
+begin
+ Result:=TStringList.Create;
+ Result.AddStrings(Request.ContentFields);
+ if FUrlGetParams then
+ begin
+  for i:=0 to Request.QueryFields.Count-1 do
+  begin
+   if Request.ContentFields.IndexOfName(Request.QueryFields.Names[i])<0 then
+    Result.Add(Request.QueryFields.Strings[i]);
+  end;
+ end;
+end;
+
+function TRpWebPageLoader.CreateAdminParamList(Request: TWebRequest): TStringList;
+var
+ i:Integer;
+begin
+ Result:=TStringList.Create;
+ Result.AddStrings(Request.ContentFields);
+ for i:=0 to Request.QueryFields.Count-1 do
+ begin
+  if Result.IndexOfName(Request.QueryFields.Names[i])<0 then
+   Result.Add(Request.QueryFields.Strings[i]);
+ end;
+end;
+
+function TRpWebPageLoader.HiddenInput(const AName, AValue: string): string;
+begin
+ Result:='<input type="hidden" name="'+HtmlEncode(AName)+'" value="'+
+  HtmlEncode(AValue)+'">';
+end;
+
+function TRpWebPageLoader.HiddenAuthInputs(Request: TWebRequest): string;
+begin
+ Result:='';
+ if HasServerApiKey(Request) then
+  exit;
+ Result:=HiddenInput('username',GetRequestParam(Request,'username'))+
+  HiddenInput('password',GetRequestParam(Request,'password'));
+end;
+
+function TRpWebPageLoader.HiddenAdminAuthInputs(Request: TWebRequest): string;
+begin
+ Result:=HiddenInput('username',GetAdminParam(Request,'username'))+
+  HiddenInput('password',GetAdminParam(Request,'password'));
+end;
+
+function TRpWebPageLoader.LoadAdminTestingRequest(
+  Request: TWebRequest): TRpWebTestingSetup;
+var
+  LCurrentPortText: string;
+  LReportValue: string;
+  LLegacyValue: string;
+  LSeparatorPos: Integer;
+begin
+  Result.HostName := Trim(GetAdminParam(Request, 'testing_host'));
+  if Length(Result.HostName) = 0 then
+    Result.HostName := 'localhost';
+
+  Result.PortText := Trim(GetAdminParam(Request, 'testing_port'));
+  if Length(Result.PortText) = 0 then
+  begin
+    LCurrentPortText := GetCurrentRequestPortText(Request);
+    if Length(LCurrentPortText) > 0 then
+      Result.PortText := LCurrentPortText
+    else
+      Result.PortText := IntToStr(fport);
+  end;
+
+  Result.AuthType := LowerCase(Trim(GetAdminParam(Request, 'testing_auth_type')));
+  if not SameText(Result.AuthType, 'api') then
+    Result.AuthType := 'user';
+
+  Result.CallType := UpperCase(Trim(GetAdminParam(Request, 'testing_call_type')));
+  if not SameText(Result.CallType, 'GET') then
+    Result.CallType := 'POST';
+
+  Result.UserName := GetAdminParam(Request, 'testing_user');
+  Result.Password := GetAdminParam(Request, 'testing_password');
+  Result.ApiKey := GetAdminParam(Request, 'testing_api_key');
+  Result.AliasName := '';
+  Result.ReportName := '';
+
+  LReportValue := GetAdminParam(Request, 'testing_report');
+  LSeparatorPos := Pos('|', LReportValue);
+  if LSeparatorPos > 0 then
+  begin
+    Result.AliasName := TNetEncoding.URL.Decode(Copy(LReportValue, 1,
+      LSeparatorPos - 1));
+    Result.ReportName := TNetEncoding.URL.Decode(Copy(LReportValue,
+      LSeparatorPos + 1, Length(LReportValue)));
+    Exit;
+  end;
+
+  // Backward compatibility with the old newline-based serialization.
+  LLegacyValue := StringReplace(LReportValue, #13, '', [rfReplaceAll]);
+  LSeparatorPos := Pos(#10, LLegacyValue);
+  if LSeparatorPos > 0 then
+  begin
+    Result.AliasName := Trim(Copy(LLegacyValue, 1, LSeparatorPos - 1));
+    Result.ReportName := Trim(Copy(LLegacyValue, LSeparatorPos + 1,
+      Length(LLegacyValue)));
+  end;
+end;
+
+function TRpWebPageLoader.GetCurrentRequestPortText(
+  Request: TWebRequest): string;
+var
+  LHostHeader: string;
+  LPortText: string;
+  LColonPos: Integer;
+  LCloseBracketPos: Integer;
+begin
+  Result := '';
+
+  LPortText := Trim(GetRequestHeader(Request, 'X-Forwarded-Port'));
+  if Length(LPortText) > 0 then
+  begin
+    Result := LPortText;
+    Exit;
+  end;
+
+  LPortText := Trim(GetFirstRequestValue(Request, ['SERVER_PORT']));
+  if Length(LPortText) > 0 then
+  begin
+    Result := LPortText;
+    Exit;
+  end;
+
+  LHostHeader := Trim(GetRequestHeader(Request, 'Host'));
+  if Length(LHostHeader) = 0 then
+    Exit;
+
+  if LHostHeader[1] = '[' then
+  begin
+    LCloseBracketPos := Pos(']', LHostHeader);
+    if (LCloseBracketPos > 0) and (LCloseBracketPos < Length(LHostHeader)) and
+      (LHostHeader[LCloseBracketPos + 1] = ':') then
+      Result := Copy(LHostHeader, LCloseBracketPos + 2, Length(LHostHeader));
+    Exit;
+  end;
+
+  LColonPos := LastDelimiter(':', LHostHeader);
+  if LColonPos > 0 then
+    Result := Copy(LHostHeader, LColonPos + 1, Length(LHostHeader));
+end;
+
+function TRpWebPageLoader.BuildTestingHiddenInputs(
+  Request: TWebRequest): string;
+var
+  LParams: TStringList;
+  I: Integer;
+  LName: string;
+begin
+  Result := '';
+  LParams := CreateAdminParamList(Request);
+  try
+    for I := 0 to LParams.Count - 1 do
+    begin
+      LName := LParams.Names[I];
+      if SameText(LName, 'username') or SameText(LName, 'password') then
+        Continue;
+      if (Pos('testing_', LowerCase(LName)) = 1) or
+        (Pos('param', LowerCase(LName)) = 1) or
+        (Pos('nullparam', LowerCase(LName)) = 1) then
+        Result := Result + HiddenInput(LName, LParams.ValueFromIndex[I]);
+    end;
+  finally
+    LParams.Free;
+  end;
+end;
+
+function TRpWebPageLoader.BuildTestingFormPayload(
+  Request: TWebRequest): TStringList;
+var
+  LParams: TStringList;
+  I: Integer;
+  LName: string;
+  LData: TRpWebTestingSetup;
+begin
+  Result := TStringList.Create;
+  LData := LoadAdminTestingRequest(Request);
+  Result.Add('aliasname=' + LData.AliasName);
+  Result.Add('reportname=' + LData.ReportName);
+  if SameText(LData.AuthType, 'user') then
+  begin
+    Result.Add('username=' + LData.UserName);
+    Result.Add('password=' + LData.Password);
+  end;
+
+  LParams := CreateAdminParamList(Request);
+  try
+    for I := 0 to LParams.Count - 1 do
+    begin
+      LName := LParams.Names[I];
+      if (Pos('Param', LName) = 1) or (Pos('NULLParam', LName) = 1) then
+        Result.Add(LName + '=' + LParams.ValueFromIndex[I]);
+    end;
+  finally
+    LParams.Free;
+  end;
+end;
+
+function TRpWebPageLoader.GetTestingPdfDownloadFileName(
+  const AReportName: string): string;
+var
+  LBaseName: string;
+begin
+  LBaseName := ExtractFileName(AReportName);
+  if Length(LBaseName) = 0 then
+    LBaseName := 'report';
+  Result := ChangeFileExt(LBaseName, '.pdf');
+end;
+
+procedure TRpWebPageLoader.LoadAllTestingReports(
+  AReports: TList<TRpWebTestingReportOption>);
+var
+  I, J: Integer;
+  LAliasName: string;
+  LDirPath: string;
+  LReportList: TStringList;
+  LDisplayReportName: string;
+  LOption: TRpWebTestingReportOption;
+begin
+  AReports.Clear;
+  LReportList := TStringList.Create;
+  try
+    for I := 0 to laliases.Count - 1 do
+    begin
+      LAliasName := Trim(laliases.Names[I]);
+      if Length(LAliasName) = 0 then
+        Continue;
+
+      LDirPath := laliases.Values[LAliasName];
+      if Length(LDirPath) = 0 then
+        Continue;
+
+      LReportList.Clear;
+      if LDirPath[1] = ':' then
+        FRpAliasLibs.Connections.FillTreeDir(Copy(LDirPath, 2, Length(LDirPath)),
+          LReportList)
+      else
+      begin
+        if not DirectoryExists(LDirPath) then
+          raise Exception.Create(SrpDirectoryNotExists + ' - ' + LDirPath);
+        FillTreeDir(LDirPath, LReportList);
+      end;
+
+      for J := 0 to LReportList.Count - 1 do
+      begin
+        if Length(LReportList[J]) = 0 then
+          Continue;
+        LDisplayReportName := LReportList[J];
+        if LDisplayReportName[1] = C_DIRSEPARATOR then
+          LDisplayReportName := Copy(LDisplayReportName, 2,
+            Length(LDisplayReportName));
+        LOption.AliasName := LAliasName;
+        LOption.ReportName := LReportList[J];
+        LOption.DisplayName := LAliasName + ' / ' + LDisplayReportName;
+        AReports.Add(LOption);
+      end;
+    end;
+  finally
+    LReportList.Free;
+  end;
+end;
+
+class function TRpWebPageLoader.RequestHasParam(Request: TWebRequest;
+  const AName: string): Boolean;
+begin
+ Result:=(Request.ContentFields.IndexOfName(AName)>=0) or
+  (Request.QueryFields.IndexOfName(AName)>=0);
+end;
+
+class function TRpWebPageLoader.RequestCheckboxChecked(Request: TWebRequest;
+  const AName: string): Boolean;
+begin
+ Result:=RequestHasParam(Request,AName) and
+  (Trim(Request.ContentFields.Values[AName]+Request.QueryFields.Values[AName])<>'');
+end;
+
+procedure TRpWebPageLoader.CollectAdminPrefixedValues(Request: TWebRequest;
+  const APrefix: string; AValues: TStrings);
+var
+ LParams:TStringList;
+ i:Integer;
+ LName:string;
+begin
+ AValues.Clear;
+ LParams:=CreateAdminParamList(Request);
+ try
+  for i:=0 to LParams.Count-1 do
+  begin
+   LName:=LParams.Names[i];
+   if Pos(APrefix,LName)=1 then
+    AValues.Add(Copy(LName,Length(APrefix)+1,Length(LName))+'=');
+  end;
+ finally
+  LParams.Free;
+ end;
+end;
+
+procedure TRpWebPageLoader.CollectConnectionParamValues(Request: TWebRequest;
+  AValues: TStrings);
+  procedure SetValuePreserveEmpty(const AName, AValue: string);
+  var
+   LIndex: Integer;
+  begin
+   LIndex:=AValues.IndexOfName(AName);
+   if LIndex>=0 then
+    AValues.ValueFromIndex[LIndex]:=AValue
+   else
+    AValues.Add(AName+'='+AValue);
+  end;
+
+  procedure AppendSerializedState(const ASerializedState: string);
+  var
+   LStart: Integer;
+   LAmpPos: Integer;
+   LEqualPos: Integer;
+   LPair: string;
+   LEncodedName: string;
+   LEncodedValue: string;
+   LDecodedName: string;
+   LDecodedValue: string;
+  begin
+   LStart:=1;
+   while LStart<=Length(ASerializedState) do
+   begin
+    LAmpPos:=Pos('&',Copy(ASerializedState,LStart,Length(ASerializedState)-LStart+1));
+    if LAmpPos>0 then
+    begin
+     LPair:=Copy(ASerializedState,LStart,LAmpPos-1);
+     Inc(LStart,LAmpPos);
+    end
+    else
+    begin
+     LPair:=Copy(ASerializedState,LStart,Length(ASerializedState)-LStart+1);
+     LStart:=Length(ASerializedState)+1;
+    end;
+    if Length(LPair)=0 then
+     continue;
+    LEqualPos:=Pos('=',LPair);
+    if LEqualPos>0 then
+    begin
+     LEncodedName:=Copy(LPair,1,LEqualPos-1);
+     LEncodedValue:=Copy(LPair,LEqualPos+1,Length(LPair)-LEqualPos);
+    end
+    else
+    begin
+     LEncodedName:=LPair;
+     LEncodedValue:='';
+    end;
+    LDecodedName:=TNetEncoding.URL.Decode(StringReplace(LEncodedName,'+',' ',[rfReplaceAll]));
+    if Pos('connparam_',LowerCase(LDecodedName))<>1 then
+     continue;
+    LDecodedValue:=TNetEncoding.URL.Decode(StringReplace(LEncodedValue,'+',' ',[rfReplaceAll]));
+    SetValuePreserveEmpty(Copy(LDecodedName,11,Length(LDecodedName)),LDecodedValue);
+   end;
+  end;
+var
+ LParams:TStringList;
+ i:Integer;
+ LName:string;
+begin
+ AValues.Clear;
+ LParams:=CreateAdminParamList(Request);
+ try
+  for i:=0 to LParams.Count-1 do
+  begin
+   LName:=LParams.Names[i];
+   if Pos('connparam_',LowerCase(LName))=1 then
+    SetValuePreserveEmpty(Copy(LName,11,Length(LName)),LParams.ValueFromIndex[i]);
+  end;
+  AppendSerializedState(LParams.Values['connection_form_state']);
+ finally
+  LParams.Free;
+ end;
+end;
+
+function TRpWebPageLoader.GetRequestHeader(Request: TWebRequest;
+  const AName: string): string;
+var
+ CgiHeaderName:String;
+begin
+ Result:=Trim(Request.GetFieldByName(AName));
+ if Length(Result)>0 then
+  exit;
+ CgiHeaderName:='HTTP_'+StringReplace(UpperCase(AName),'-','_',[rfReplaceAll]);
+ Result:=Trim(Request.GetFieldByName(CgiHeaderName));
+end;
+
+function TRpWebPageLoader.GetRequestValue(Request: TWebRequest;
+  const AName: string): string;
+begin
+ Result:=Trim(Request.GetFieldByName(AName));
+end;
+
+function TRpWebPageLoader.GetFirstRequestValue(Request: TWebRequest;
+  const ANames: array of string): string;
+var
+ i:Integer;
+begin
+ Result:='';
+ for i:=Low(ANames) to High(ANames) do
+ begin
+  Result:=GetRequestValue(Request,ANames[i]);
+  if Length(Result)>0 then
+   exit;
+ end;
+end;
+
+function TRpWebPageLoader.GetRemoteAddr(Request: TWebRequest): string;
+begin
+ Result:=GetFirstRequestValue(Request,['REMOTE_ADDR','REMOTE_HOST','CLIENT_IP']);
+end;
+
+function TRpWebPageLoader.GetForwardedFor(Request: TWebRequest): string;
+begin
+ Result:=GetRequestHeader(Request,'X-Forwarded-For');
+end;
+
+function TRpWebPageLoader.IsSecureConnection(Request: TWebRequest): Boolean;
+var
+ LValue:string;
+begin
+ Result:=False;
+ LValue:=GetFirstRequestValue(Request,['HTTPS','SERVER_PORT_SECURE']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+ if IsFalsyValue(LValue) then
+  exit;
+
+ LValue:=GetFirstRequestValue(Request,['REQUEST_SCHEME','URL_SCHEME']);
+ if SameText(Trim(LValue),'HTTPS') then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=FirstToken(GetRequestHeader(Request,'X-Forwarded-Proto'));
+ if SameText(LValue,'HTTPS') then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=GetRequestHeader(Request,'X-Forwarded-Ssl');
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+
+ LValue:=GetRequestHeader(Request,'Front-End-Https');
+ if IsTruthyValue(LValue) then
+ begin
+  Result:=True;
+  exit;
+ end;
+end;
+
+function TRpWebPageLoader.GetConnectionType(Request: TWebRequest): string;
+var
+ LValue:string;
+begin
+ LValue:=GetFirstRequestValue(Request,['HTTPS']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+ if IsFalsyValue(LValue) then
+ begin
+  Result:='HTTP';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['SERVER_PORT_SECURE']);
+ if IsTruthyValue(LValue) then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['REQUEST_SCHEME','URL_SCHEME']);
+ if SameText(Trim(LValue),'HTTPS') then
+ begin
+  Result:='HTTPS';
+  exit;
+ end;
+ if SameText(Trim(LValue),'HTTP') then
+ begin
+  Result:='HTTP';
+  exit;
+ end;
+
+ LValue:=FirstToken(GetRequestHeader(Request,'X-Forwarded-Proto'));
+ if SameText(LValue,'HTTPS') then
+ begin
+  Result:='HTTPS (forwarded)';
+  exit;
+ end;
+ if SameText(LValue,'HTTP') then
+ begin
+  Result:='HTTP (forwarded)';
+  exit;
+ end;
+
+ if IsTruthyValue(GetRequestHeader(Request,'X-Forwarded-Ssl')) or
+   IsTruthyValue(GetRequestHeader(Request,'Front-End-Https')) then
+ begin
+  Result:='HTTPS (forwarded)';
+  exit;
+ end;
+
+ Result:='Unknown';
+end;
+
+function TRpWebPageLoader.GetCertificateValidityText(Request: TWebRequest): string;
+var
+ LValue:string;
+begin
+ if not IsSecureConnection(Request) then
+ begin
+  Result:='No';
+  exit;
+ end;
+
+ LValue:=GetFirstRequestValue(Request,['SSL_SERVER_VERIFY','CERT_SERVER_VERIFY',
+  'SSL_VERIFY_RESULT','CERT_VERIFY_RESULT']);
+ if Length(LValue)>0 then
+ begin
+  if IsTruthyValue(LValue) or (Trim(LValue)='0') then
+   Result:='Yes'
+  else
+   Result:='No ('+LValue+')';
+  exit;
+ end;
+
+ Result:='Unknown';
+end;
+
+function TRpWebPageLoader.HasServerApiKey(Request: TWebRequest): Boolean;
+begin
+ Result:=Length(GetRequestHeader(Request,'X-ReportmanServer-ApiKey'))>0;
+end;
+
+function TRpWebPageLoader.GetServerApiKeyName(Request: TWebRequest): string;
+var
+ LApiKey:String;
+ i:Integer;
+begin
+ Result:='';
+ LApiKey:=GetRequestHeader(Request,'X-ReportmanServer-ApiKey');
+ if Length(LApiKey)<1 then
+  exit;
+ for i:=0 to LServerApiKeys.Count-1 do
+ begin
+  if LServerApiKeys.ValueFromIndex[i]=LApiKey then
+  begin
+   Result:=Trim(LServerApiKeys.Names[i]);
+   exit;
+  end;
+ end;
+end;
+
+function TRpWebPageLoader.ReportParamsToJson(AReport: TRpReport): string;
+var
+ i,k,LIndex:Integer;
+ LParam:TRpParam;
+ LValue:String;
+begin
+ Result:='{';
+ for i:=0 to AReport.Params.Count-1 do
+ begin
+  if i>0 then
+   Result:=Result+',';
+  LParam:=AReport.Params.Items[i];
+  Result:=Result+JsonString(LParam.Name)+':';
+  if VarIsNull(LParam.Value) then
+  begin
+   Result:=Result+'null';
+   continue;
+  end;
+  if LParam.ParamType=rpParamMultiple then
+  begin
+   Result:=Result+'[';
+   for k:=0 to LParam.Selected.Count-1 do
+   begin
+    if k>0 then
+     Result:=Result+',';
+    LIndex:=StrToIntDef(LParam.Selected.Strings[k],-1);
+    if (LIndex>=0) and (LIndex<LParam.Values.Count) then
+     LValue:=LParam.Values.Strings[LIndex]
+    else
+     LValue:=LParam.Selected.Strings[k];
+    Result:=Result+JsonString(LValue);
+   end;
+   Result:=Result+']';
+  end
+  else
+   Result:=Result+JsonString(LParam.AsString);
+ end;
+ Result:=Result+'}';
+end;
+
+function TRpWebPageLoader.TryAuthenticateServerApiKey(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean): Boolean;
+var
+ LApiKey:String;
+ LApiKeyName:String;
+ LMappedUser:String;
+ i:Integer;
+begin
+ Result:=False;
+ AUserName:='';
+ AIsAdmin:=False;
+ if not FAllowApiKeyAccess then
+  exit;
+ LApiKey:=GetRequestHeader(Request,'X-ReportmanServer-ApiKey');
+ if Length(LApiKey)<1 then
+  exit;
+ for i:=0 to LServerApiKeys.Count-1 do
+ begin
+  LApiKeyName:=Trim(LServerApiKeys.Names[i]);
+  if Length(LApiKeyName)<1 then
+   continue;
+  if LServerApiKeys.ValueFromIndex[i]=LApiKey then
+  begin
+   LMappedUser:=UpperCase(Trim(LServerApiKeyUsers.Values[LApiKeyName]));
+   if Length(LMappedUser)<1 then
+    Raise EHttpError.CreateHttp(401,
+     TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+   if LUsers.IndexOfName(LMappedUser)<0 then
+    Raise EHttpError.CreateHttp(401,
+     TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+   AUserName:=LMappedUser;
+   AIsAdmin:=AUserName='ADMIN';
+   Result:=True;
+   exit;
+  end;
+ end;
+ Raise EHttpError.CreateHttp(401,
+  TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+end;
+
+function TRpWebPageLoader.TryAuthenticateUserPassword(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean): Boolean;
+var
+ password:string;
+ index:integer;
+begin
+ Result:=False;
+ AUserName:='';
+ AIsAdmin:=False;
+ if not FAllowUserAccess then
+  exit;
+ AUserName:=UpperCase(GetRequestParam(Request,'username'));
+ password:=GetRequestParam(Request,'password');
+ if Length(AUserName)<1 then
+  exit;
+ index:=LUsers.IndexOfName(AUserName);
+ if index>=0 then
+ begin
+  if LUsers.Values[AUserName]=password then
+  begin
+   AIsAdmin:=AUserName='ADMIN';
+   Result:=True;
+  end;
+ end;
+end;
+
+procedure TRpWebPageLoader.ResolveAuthenticatedUser(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean);
+begin
+ AUserName:='';
+ AIsAdmin:=False;
+ if HasServerApiKey(Request) then
+ begin
+  if TryAuthenticateServerApiKey(Request,AUserName,AIsAdmin) then
+   exit;
+ end;
+ if TryAuthenticateUserPassword(Request,AUserName,AIsAdmin) then
+  exit;
+ Raise EHttpError.CreateHttp(401,
+  TranslateStr(848,'Incorrect user name or password'),FShowUnauthorizedPage);
+end;
+
+function TRpWebPageLoader.TryAdminLogin(Request: TWebRequest; out AUserName,
+  AMessageText: string): Boolean;
+var
+ LAuthResult:TRpWebAdminAuthResult;
+begin
+ LAuthResult:=TRpWebAdminAuthService.TryLogin(GetAdminParam(Request,'username'),
+  GetAdminParam(Request,'password'));
+ Result:=LAuthResult.Success;
+ AUserName:=LAuthResult.UserName;
+ AMessageText:=LAuthResult.MessageText;
+end;
+
+procedure TRpWebPageLoader.CheckAdminLogin(Request: TWebRequest;
+  out AUserName: string; out AIsAdmin: Boolean);
+var
+ LMessage:string;
+begin
+ if not TryAdminLogin(Request,AUserName,LMessage) then
+  Raise EHttpError.CreateHttp(401,LMessage,FShowUnauthorizedPage);
+ AIsAdmin:=True;
+end;
+
+procedure TRpWebPageLoader.LoadAllGroupNames(AGroupNames: TStrings);
+var
+ LService:TRpWebServerConfigAdminService;
+ LGroups:TList<TRpWebServerGroup>;
+ i:Integer;
+begin
+ AGroupNames.Clear;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LGroups:=TList<TRpWebServerGroup>.Create;
+  try
+   LService.ListGroups(LGroups);
+   for i:=0 to LGroups.Count-1 do
+    AGroupNames.Add(LGroups[i].GroupName+'='+LGroups[i].Description);
+  finally
+   LGroups.Free;
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+procedure TRpWebPageLoader.LoadAllUserNames(AUserNames: TStrings);
+var
+ LService:TRpWebServerConfigAdminService;
+ LUsers:TList<TRpWebServerUser>;
+ i:Integer;
+begin
+ AUserNames.Clear;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LUsers:=TList<TRpWebServerUser>.Create;
+  try
+   LService.ListUsers(LUsers);
+   for i:=0 to LUsers.Count-1 do
+   begin
+    AUserNames.Add(LUsers[i].UserName+'=');
+    LUsers[i].Clear;
+   end;
+  finally
+   LUsers.Free;
+  end;
+ finally
+  LService.Free;
+ end;
 end;
 
 function TRpWebPageLoader.CheckPrivileges(username,aliasname:String):Boolean;
@@ -143,29 +1191,13 @@ end;
 
 procedure TRpWebPageLoader.CheckLogin(Request:TWebRequest);
 var
- username,password:string;
+ username:string;
  aliasname:String;
- index:integer;
- logincorrect:boolean;
+ aisadmin:Boolean;
 begin
- logincorrect:=false;
- username:=UpperCase(Request.QueryFields.Values['username']);
- password:=Request.QueryFields.Values['password'];
- aliasname:=Request.QueryFields.Values['aliasname'];
- index:=LUsers.IndexOfName(username);
- if index>=0 then
- begin
-  if LUsers.Values[username]=password then
-  begin
-   logincorrect:=true;
-   isadmin:=username='ADMIN';
-  end;
- end;
- if Not LoginCorrect then
- begin
-  Raise Exception.Create(TranslateStr(848,'Incorrect user name or password'));
-//   ' User: '+username+' Password: '+password+' Index: '+IntToStr(index));
- end;
+ ResolveAuthenticatedUser(Request,username,aisadmin);
+ isadmin:=aisadmin;
+ aliasname:=GetRequestParam(Request,'aliasname');
  if Length(aliasname)>0 then
  begin
   if not CheckPrivileges(username,aliasname) then
@@ -186,13 +1218,24 @@ function TRpWebPageLoader.LoadLoginPage(Request: TWebRequest):string;
 var
  astring:String;
 begin
+ if not FAllowUserAccess then
+ begin
+  Result:='<html><body><h3>'+HtmlEncode(TranslateStr(838,'Report Manager Login'))+
+   '</h3><p>User/password access disabled. Use X-ReportmanServer-ApiKey header.</p></body></html>';
+  exit;
+ end;
  if Length(FPagesDirectory)<1 then
  begin
   astring:=loginpage;
+  if FUrlGetParams then
+   astring:=StringReplace(astring,'method="post"','method="get"',[rfReplaceAll]);
  end
  else
  begin
-  aresult.LoadFromFile(FPagesDirectory+'rplogin.html');
+  if FUrlGetParams then
+   aresult.LoadFromFile(FPagesDirectory+'rplogin_get.html')
+  else
+   aresult.LoadFromFile(FPagesDirectory+'rplogin.html');
   astring:=aresult.Text;
  end;
  // Substitute translations
@@ -213,15 +1256,19 @@ var
  astring,username:String;
  aliasesstring:String;
  i:integer;
+ LisAdmin:Boolean;
 begin
- username:=UpperCase(Request.QueryFields.Values['username']);
+ ResolveAuthenticatedUser(Request,username,LisAdmin);
  if Length(FPagesDirectory)<1 then
  begin
   astring:=indexpage;
  end
  else
  begin
-  aresult.LoadFromFile(FPagesDirectory+'rpindex.html');
+  if FUrlGetParams then
+   aresult.LoadFromFile(FPagesDirectory+'rpindex_get.html')
+  else
+   aresult.LoadFromFile(FPagesDirectory+'rpindex.html');
   astring:=aresult.Text;
  end;
  astring:=StringReplace(astring,REPMAN_WEBSERVER,
@@ -230,17 +1277,1165 @@ begin
   TranslateStr(846,'Report Manager Index'),[rfReplaceAll]);
 
  aliasesstring:=TranslateStr(847,'Available Report Groups');
+ if LisAdmin then
+ begin
+  if FUrlGetParams then
+   aliasesstring:='<p><a href="./admin?'+Request.Query+'">Admin Panel</a></p>'+
+    aliasesstring
+  else
+   aliasesstring:='<form method="post" action="./admin">'+
+    HiddenAuthInputs(Request)+'<input type="submit" value="Admin Panel">'+
+    '</form>'+aliasesstring;
+ end;
  for i:=0 to laliases.Count-1 do
  begin
   if CheckPrivileges(username,laliases.Names[i]) then
-   aliasesstring:=aliasesstring+#10+'<p><a href="./showalias?aliasname='+
-    laliases.Names[i]+'&'+Request.Query+'">'+laliases.Names[i]+'</a></p>';
+    begin
+     if FUrlGetParams then
+      aliasesstring:=aliasesstring+#10+'<p><a href="./showalias?aliasname='+
+       laliases.Names[i]+'&'+Request.Query+'">'+laliases.Names[i]+'</a></p>'
+     else
+      aliasesstring:=aliasesstring+#10+'<form method="post" action="./showalias">'+
+       HiddenInput('aliasname',laliases.Names[i])+HiddenAuthInputs(Request)+
+       '<input type="submit" value="'+HtmlEncode(laliases.Names[i])+'">'+
+       '</form>';
+    end;
  end;
 
  astring:=StringReplace(astring,REPMAN_AVAILABLE_ALIASES,
   aliasesstring,[rfReplaceAll]);
 
  Result:=astring;
+end;
+
+function TRpWebPageLoader.LoadAdminBootstrapPage(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  if not LService.BootstrapRequired then
+   Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(
+    'Bootstrap is no longer required')
+  else
+   Result:=TRpWebAdminPageRenderer.RenderBootstrapPage('');
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminBootstrap(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LBootstrap:TRpWebBootstrapRequest;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LBootstrap.UserName:=GetAdminParam(Request,'bootstrap_user');
+  LBootstrap.Password:=GetAdminParam(Request,'bootstrap_password');
+  LBootstrap.ConfirmPassword:=GetAdminParam(Request,'bootstrap_password_confirm');
+  try
+   LService.BootstrapFirstAdmin(LBootstrap);
+   InitConfig;
+   Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(
+    'ADMIN bootstrap completed. Log in now.');
+  except
+   on E:Exception do
+    Result:=TRpWebAdminPageRenderer.RenderBootstrapPage(E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminLoginPage(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  if LService.BootstrapRequired then
+   Result:=TRpWebAdminPageRenderer.RenderBootstrapPage('')
+  else
+   Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage('');
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminLogin(Request: TWebRequest): string;
+var
+ LUserName,LMessage:string;
+begin
+ if TryAdminLogin(Request,LUserName,LMessage) then
+  Result:=LoadAdminHomePage(Request)
+ else
+  Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+end;
+
+function TRpWebPageLoader.LoadAdminHomePage(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LUserName,LMessage:string;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  if LService.BootstrapRequired then
+  begin
+   Result:=TRpWebAdminPageRenderer.RenderBootstrapPage('');
+   exit;
+  end;
+  if not TryAdminLogin(Request,LUserName,LMessage) then
+  begin
+   Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+   exit;
+  end;
+  Result:=TRpWebAdminPageRenderer.RenderAdminHome(LService.GetConfigInfo,
+   HiddenAdminAuthInputs(Request));
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminServerConfigPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  Result:=TRpWebAdminPageRenderer.RenderServerConfig(
+   LService.LoadServerConfigFormData,HiddenAdminAuthInputs(Request),
+   AMessageText);
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminServerConfigSave(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LData:TRpWebServerConfigFormData;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LData.PagesDir:=GetAdminParam(Request,'cfg_pagesdir');
+  LData.TcpPort:=GetAdminParam(Request,'cfg_tcpport');
+  LData.LogFile:=GetAdminParam(Request,'cfg_logfile');
+  LData.LogJson:=RequestCheckboxChecked(Request,'cfg_log_json');
+  LData.UserAccess:=RequestCheckboxChecked(Request,'cfg_user_access');
+  LData.ApiKeyAccess:=RequestCheckboxChecked(Request,'cfg_api_key_access');
+  LData.ShowUnauthorizedPage:=RequestCheckboxChecked(Request,
+   'cfg_show_unauthorized');
+  LData.UrlGetParams:=RequestCheckboxChecked(Request,'cfg_url_get_params');
+  try
+   LService.SaveServerConfigFormData(LData);
+   InitConfig;
+   Result:=LoadAdminServerConfigPage(Request,'Server config saved');
+  except
+   on E:Exception do
+    Result:=TRpWebAdminPageRenderer.RenderServerConfig(LData,
+     HiddenAdminAuthInputs(Request),E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminUsersPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LUsers:TList<TRpWebServerUser>;
+ LUserName:string;
+ LIsAdmin:Boolean;
+ i:Integer;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LUsers:=TList<TRpWebServerUser>.Create;
+ try
+  LService.ListUsers(LUsers);
+  Result:=TRpWebAdminPageRenderer.RenderUsersList(LUsers,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  for i:=0 to LUsers.Count-1 do
+   LUsers[i].Clear;
+  LUsers.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminUserEditPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebUserEditRequest;
+ LGroupNames:TStringList;
+ LName,LUserName:string;
+ LIsAdmin,IsNew:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LGroupNames:=TStringList.Create;
+ try
+  LName:=GetAdminParam(Request,'name');
+  IsNew:=Length(Trim(LName))=0;
+  if IsNew then
+   LRequest:=TRpWebUserEditRequest.Create
+  else
+   LRequest:=LService.LoadUserEditRequest(LName);
+  try
+   LoadAllGroupNames(LGroupNames);
+   Result:=TRpWebAdminPageRenderer.RenderUserEdit(LRequest,LGroupNames,IsNew,
+    HiddenAdminAuthInputs(Request),AMessageText);
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LGroupNames.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminUserCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebUserEditRequest;
+begin
+ if not RequestHasParam(Request,'user_name') then
+ begin
+  Result:=LoadAdminUserEditPage(Request);
+  exit;
+ end;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest:=TRpWebUserEditRequest.Create;
+  try
+   LRequest.UserName:=GetAdminParam(Request,'user_name');
+   LRequest.Password:=GetAdminParam(Request,'user_password');
+   LRequest.ConfirmPassword:=GetAdminParam(Request,'user_password_confirm');
+   LRequest.ChangePassword:=True;
+   LRequest.IsAdmin:=RequestCheckboxChecked(Request,'is_admin');
+   CollectAdminPrefixedValues(Request,'group_',LRequest.Groups);
+   try
+    LService.SaveUserEditRequest(LRequest,True);
+    InitConfig;
+    Result:=LoadAdminUsersPage(Request,'User created');
+   except
+    on E:Exception do
+     Result:=LoadAdminUserEditPage(Request,E.Message);
+   end;
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminUserSave(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebUserEditRequest;
+begin
+ if not RequestHasParam(Request,'user_name') then
+ begin
+  Result:=LoadAdminUserEditPage(Request);
+  exit;
+ end;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest:=TRpWebUserEditRequest.Create;
+  try
+   LRequest.OriginalUserName:=GetAdminParam(Request,'original_user_name');
+   LRequest.UserName:=GetAdminParam(Request,'user_name');
+   LRequest.Password:=GetAdminParam(Request,'user_password');
+   LRequest.ConfirmPassword:=GetAdminParam(Request,'user_password_confirm');
+   LRequest.ChangePassword:=RequestCheckboxChecked(Request,'change_password');
+   LRequest.IsAdmin:=RequestCheckboxChecked(Request,'is_admin');
+   CollectAdminPrefixedValues(Request,'group_',LRequest.Groups);
+   try
+    LService.SaveUserEditRequest(LRequest,False);
+    InitConfig;
+    Result:=LoadAdminUsersPage(Request,'User saved');
+   except
+    on E:Exception do
+     Result:=LoadAdminUserEditPage(Request,E.Message);
+   end;
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminUserDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LReason:string;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  if not LService.CanDeleteUser(GetAdminParam(Request,'name'),LReason) then
+   Result:=LoadAdminUsersPage(Request,LReason)
+  else
+  begin
+   LService.DeleteUser(GetAdminParam(Request,'name'));
+   InitConfig;
+   Result:=LoadAdminUsersPage(Request,'User deleted');
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminGroupsPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LGroups:TList<TRpWebServerGroup>;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LGroups:=TList<TRpWebServerGroup>.Create;
+ try
+  LService.ListGroups(LGroups);
+  Result:=TRpWebAdminPageRenderer.RenderGroupsList(LGroups,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LGroups.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminGroupEditPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LRequest:TRpWebGroupEditRequest;
+ LService:TRpWebServerConfigAdminService;
+ LName,LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LName:=GetAdminParam(Request,'name');
+  if Length(Trim(LName))>0 then
+   LRequest:=LService.LoadGroupEditRequest(LName)
+  else
+  begin
+   LRequest.OriginalGroupName:='';
+   LRequest.GroupName:='';
+   LRequest.Description:='';
+  end;
+  Result:=TRpWebAdminPageRenderer.RenderGroupEdit(LRequest,
+   Length(Trim(LName))=0,HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminGroupCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebGroupEditRequest;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest.OriginalGroupName:='';
+  LRequest.GroupName:=GetAdminParam(Request,'group_name');
+  LRequest.Description:=GetAdminParam(Request,'group_description');
+  try
+   LService.SaveGroupEditRequest(LRequest,True);
+   InitConfig;
+   Result:=LoadAdminGroupsPage(Request,'Group created');
+  except
+   on E:Exception do
+    Result:=LoadAdminGroupsPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminGroupSave(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebGroupEditRequest;
+begin
+ if not RequestHasParam(Request,'group_name') then
+ begin
+  Result:=LoadAdminGroupEditPage(Request);
+  exit;
+ end;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest.OriginalGroupName:=GetAdminParam(Request,'original_group_name');
+  LRequest.GroupName:=GetAdminParam(Request,'group_name');
+  LRequest.Description:=GetAdminParam(Request,'group_description');
+  try
+   LService.SaveGroupEditRequest(LRequest,False);
+   InitConfig;
+   Result:=LoadAdminGroupsPage(Request,'Group saved');
+  except
+   on E:Exception do
+    Result:=LoadAdminGroupEditPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminGroupDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LService.DeleteGroup(GetAdminParam(Request,'name'));
+  InitConfig;
+  Result:=LoadAdminGroupsPage(Request,'Group deleted');
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminAliasesPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LAliases:TList<TRpWebServerAlias>;
+ LUserName:string;
+ LIsAdmin:Boolean;
+ i:Integer;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LAliases:=TList<TRpWebServerAlias>.Create;
+ try
+  LService.ListAliases(LAliases);
+  Result:=TRpWebAdminPageRenderer.RenderAliasesList(LAliases,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  for i:=0 to LAliases.Count-1 do
+   LAliases[i].Clear;
+  LAliases.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminAliasEditPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebAliasEditRequest;
+ LGroupNames:TStringList;
+ LName,LUserName:string;
+ LIsAdmin,IsNew:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LGroupNames:=TStringList.Create;
+ try
+  LName:=GetAdminParam(Request,'name');
+  IsNew:=Length(Trim(LName))=0;
+  if IsNew then
+   LRequest:=TRpWebAliasEditRequest.Create
+  else
+   LRequest:=LService.LoadAliasEditRequest(LName);
+  try
+   LoadAllGroupNames(LGroupNames);
+   Result:=TRpWebAdminPageRenderer.RenderAliasEdit(LRequest,LGroupNames,IsNew,
+    HiddenAdminAuthInputs(Request),AMessageText);
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LGroupNames.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminAliasCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebAliasEditRequest;
+begin
+ if not RequestHasParam(Request,'alias_name') then
+ begin
+  Result:=LoadAdminAliasEditPage(Request);
+  exit;
+ end;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest:=TRpWebAliasEditRequest.Create;
+  try
+   LRequest.AliasName:=GetAdminParam(Request,'alias_name');
+   if SameText(GetAdminParam(Request,'alias_type'),'connection') then
+    LRequest.AliasType:=watConnection
+   else
+    LRequest.AliasType:=watFolder;
+   LRequest.TargetValue:=GetAdminParam(Request,'alias_target');
+   CollectAdminPrefixedValues(Request,'group_',LRequest.AllowedGroups);
+   try
+    LService.SaveAliasEditRequest(LRequest,True);
+    InitConfig;
+    Result:=LoadAdminAliasesPage(Request,'Alias created');
+   except
+    on E:Exception do
+     Result:=LoadAdminAliasEditPage(Request,E.Message);
+   end;
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminAliasSave(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebAliasEditRequest;
+begin
+ if not RequestHasParam(Request,'alias_name') then
+ begin
+  Result:=LoadAdminAliasEditPage(Request);
+  exit;
+ end;
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest:=TRpWebAliasEditRequest.Create;
+  try
+   LRequest.OriginalAliasName:=GetAdminParam(Request,'original_alias_name');
+   LRequest.AliasName:=GetAdminParam(Request,'alias_name');
+   if SameText(GetAdminParam(Request,'alias_type'),'connection') then
+    LRequest.AliasType:=watConnection
+   else
+    LRequest.AliasType:=watFolder;
+   LRequest.TargetValue:=GetAdminParam(Request,'alias_target');
+   CollectAdminPrefixedValues(Request,'group_',LRequest.AllowedGroups);
+   try
+    LService.SaveAliasEditRequest(LRequest,False);
+    InitConfig;
+    Result:=LoadAdminAliasesPage(Request,'Alias saved');
+   except
+    on E:Exception do
+     Result:=LoadAdminAliasEditPage(Request,E.Message);
+   end;
+  finally
+   LRequest.Clear;
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminAliasDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LService.DeleteAlias(GetAdminParam(Request,'name'));
+  InitConfig;
+  Result:=LoadAdminAliasesPage(Request,'Alias deleted');
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminApiKeysPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LKeys:TList<TRpWebServerApiKey>;
+ LUsers:TStringList;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ LKeys:=TList<TRpWebServerApiKey>.Create;
+ LUsers:=TStringList.Create;
+ try
+  LService.ListApiKeys(LKeys);
+  LoadAllUserNames(LUsers);
+  Result:=TRpWebAdminPageRenderer.RenderApiKeysList(LKeys,LUsers,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LUsers.Free;
+  LKeys.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminTestingPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LUserName,LMessage:string;
+ LData:TRpWebTestingSetup;
+ LReports:TList<TRpWebTestingReportOption>;
+begin
+ if not TryAdminLogin(Request,LUserName,LMessage) then
+ begin
+  Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+  exit;
+ end;
+
+ LData:=LoadAdminTestingRequest(Request);
+ LReports:=TList<TRpWebTestingReportOption>.Create;
+ try
+  LoadAllTestingReports(LReports);
+  if (Length(LData.AliasName)=0) and (LReports.Count>0) then
+  begin
+   LData.AliasName:=LReports[0].AliasName;
+   LData.ReportName:=LReports[0].ReportName;
+  end;
+  Result:=TRpWebAdminPageRenderer.RenderTestingSetup(LData,LReports,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LReports.Free;
+ end;
+end;
+
+  function TRpWebPageLoader.LoadAdminTestingParamsPage(Request: TWebRequest;
+    const AMessageText: string): string;
+  var
+   LData:TRpWebTestingSetup;
+   LUserName,LMessage:string;
+   pdfreport:TRpReport;
+   aparam:TRpParam;
+   AParamsHtml:string;
+   PrevValue:string;
+   VisibleParam:Boolean;
+   ReportDisplayName:string;
+   i,k,selectedindex,multisize:Integer;
+  begin
+   if not TryAdminLogin(Request,LUserName,LMessage) then
+   begin
+    Result:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    exit;
+   end;
+
+   LData:=LoadAdminTestingRequest(Request);
+   if (Length(LData.AliasName)=0) or (Length(LData.ReportName)=0) then
+   begin
+    Result:=LoadAdminTestingPage(Request,'Select a report first');
+    exit;
+   end;
+
+   pdfreport:=TRpReport.Create(Owner);
+   try
+    LoadReport(pdfreport,LData.AliasName,LData.ReportName);
+    pdfreport.Params.UpdateLookup;
+    VisibleParam:=False;
+    for i:=0 to pdfreport.Params.Count-1 do
+    begin
+     if pdfreport.Params.Items[i].Visible and
+      (not pdfreport.Params.Items[i].NeverVisible) then
+     begin
+      VisibleParam:=True;
+      break;
+     end;
+    end;
+
+    ReportDisplayName:=LData.ReportName;
+    if (Length(ReportDisplayName)>0) and (ReportDisplayName[1]=C_DIRSEPARATOR) then
+     ReportDisplayName:=Copy(ReportDisplayName,2,Length(ReportDisplayName));
+
+    if not VisibleParam then
+    begin
+     Result:=TRpWebAdminPageRenderer.RenderTestingParams(LData,
+      LData.AliasName+' / '+ReportDisplayName,
+      '<p>This report has no visible parameters.</p>',
+      HiddenAdminAuthInputs(Request),AMessageText);
+     exit;
+    end;
+
+    AParamsHtml:='<table width="90%" border="1">'+#10;
+    for i:=0 to pdfreport.Params.Count-1 do
+    begin
+     aparam:=pdfreport.Params.Items[i];
+     if aparam.Visible and (not aparam.NeverVisible) then
+     begin
+      PrevValue:=GetAdminParam(Request,'Param'+aparam.Name);
+      AParamsHtml:=AParamsHtml+'<tr>'+#10+
+        '<td>'+HtmlEncode(aparam.Description)+'</td>'+#10+
+        '<td>'+#10;
+      case aparam.ParamType of
+        rpParamBool:
+         begin
+          AParamsHtml:=AParamsHtml+
+           '<select name="Param'+aparam.Name+'" id="Param'+aparam.Name+'" ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          AParamsHtml:=AParamsHtml+'>'+#10;
+          AParamsHtml:=AParamsHtml+'<option value="'+BoolToStr(False,True)+'" ';
+          if Length(PrevValue)>0 then
+          begin
+           if SameText(PrevValue,BoolToStr(False,True)) then
+            AParamsHtml:=AParamsHtml+' selected ';
+          end
+          else if (not VarIsNull(aparam.Value)) and (not aparam.Value) then
+           AParamsHtml:=AParamsHtml+' selected ';
+          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpNo)+'</option>'+#10;
+          AParamsHtml:=AParamsHtml+'<option value="'+BoolToStr(True,True)+'" ';
+          if Length(PrevValue)>0 then
+          begin
+           if SameText(PrevValue,BoolToStr(True,True)) then
+            AParamsHtml:=AParamsHtml+' selected ';
+          end
+          else if (not VarIsNull(aparam.Value)) and aparam.Value then
+           AParamsHtml:=AParamsHtml+' selected ';
+          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpYes)+'</option>'+#10+
+           '</select>'+#10;
+         end;
+        rpParamMultiple:
+         begin
+          AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
+           '" id="Param'+aparam.Name+'" multiple ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          multisize:=10;
+          if aparam.Items.Count<10 then
+           multisize:=aparam.Items.Count;
+          AParamsHtml:=AParamsHtml+' size="'+IntToStr(multisize)+'">'+#10;
+          for k:=0 to aparam.Items.Count-1 do
+          begin
+           AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
+           if aparam.Selected.IndexOf(IntToStr(k))>=0 then
+            AParamsHtml:=AParamsHtml+' selected ';
+           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+            '</option>'+#10;
+          end;
+          AParamsHtml:=AParamsHtml+'</select>'+#10;
+         end;
+        rpParamList:
+         begin
+          AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
+           '" id="Param'+aparam.Name+'" ';
+          if Length(aparam.Hint)>0 then
+           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          if aparam.IsReadOnly then
+           AParamsHtml:=AParamsHtml+' readonly ';
+          AParamsHtml:=AParamsHtml+'>'+#10;
+          if Length(PrevValue)>0 then
+           selectedindex:=StrToIntDef(PrevValue,-1)
+          else if not VarIsNull(aparam.Value) then
+          begin
+           if VarType(aparam.Value)=varInteger then
+            selectedindex:=aparam.Value
+           else
+            selectedindex:=aparam.Values.IndexOf(String(aparam.Value));
+          end
+          else
+           selectedindex:=-1;
+          for k:=0 to aparam.Items.Count-1 do
+          begin
+           AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
+           if k=selectedindex then
+            AParamsHtml:=AParamsHtml+' selected ';
+           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+            '</option>'+#10;
+          end;
+          AParamsHtml:=AParamsHtml+'</select>'+#10;
+         end;
+      else
+        begin
+         if Length(PrevValue)=0 then
+          PrevValue:=aparam.AsString;
+         AParamsHtml:=AParamsHtml+'<input type="text" name="Param'+
+          aparam.Name+'" id="Param'+aparam.Name+'" ';
+         if Length(aparam.Hint)>0 then
+          AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+         if aparam.IsReadOnly then
+          AParamsHtml:=AParamsHtml+' readonly ';
+         AParamsHtml:=AParamsHtml+' value="'+HtmlEncode(PrevValue)+'">';
+        end;
+      end;
+      AParamsHtml:=AParamsHtml+'</td>'+#10;
+      if aparam.AllowNulls then
+      begin
+       AParamsHtml:=AParamsHtml+'<td>'+#10+
+        '<input type="checkbox" name="NULLParam'+aparam.Name+'" value="NULL"';
+       if RequestHasParam(Request,'NULLParam'+aparam.Name) then
+        AParamsHtml:=AParamsHtml+' checked '
+       else if VarIsNull(aparam.Value) then
+        AParamsHtml:=AParamsHtml+' checked ';
+       AParamsHtml:=AParamsHtml+'>'+TranslateStr(196,'Null value')+'</td>'+#10;
+      end;
+      AParamsHtml:=AParamsHtml+'</tr>'+#10;
+     end;
+    end;
+    AParamsHtml:=AParamsHtml+'</table>'+#10;
+
+    Result:=TRpWebAdminPageRenderer.RenderTestingParams(LData,
+     LData.AliasName+' / '+ReportDisplayName,AParamsHtml,
+     HiddenAdminAuthInputs(Request),AMessageText);
+   finally
+    pdfreport.Free;
+   end;
+  end;
+
+function TRpWebPageLoader.ExecuteAdminApiKeyCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LRequest:TRpWebApiKeyCreateRequest;
+ LResult:TRpWebGeneratedApiKeyResult;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LRequest.KeyName:=GetAdminParam(Request,'api_key_name');
+  LRequest.UserName:=GetAdminParam(Request,'api_key_user');
+  try
+   LResult:=LService.SaveApiKeyCreateRequest(LRequest);
+   InitConfig;
+   Result:=TRpWebAdminPageRenderer.RenderApiKeyCreated(LResult,
+    HiddenAdminAuthInputs(Request));
+  except
+   on E:Exception do
+    Result:=LoadAdminApiKeysPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminApiKeyDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebServerConfigAdminService;
+begin
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  LService.DeleteApiKey(GetAdminParam(Request,'name'));
+  InitConfig;
+  Result:=LoadAdminApiKeysPage(Request,'API key deleted');
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionsPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LItems:TList<TRpWebConnectionItem>;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ LItems:=TList<TRpWebConnectionItem>.Create;
+ try
+  LService.ListConnections(LItems);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionsList(LItems,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LItems.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionNewPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LDrivers:TStringList;
+ LDbExpressDrivers:TStringList;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ LDrivers:=TStringList.Create;
+ LDbExpressDrivers:=TStringList.Create;
+ try
+  LService.ListConnectionTypes(LDrivers);
+  LService.ListDbExpressDrivers(LDbExpressDrivers);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionNew(LDrivers,
+   LDbExpressDrivers,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LDbExpressDrivers.Free;
+  LDrivers.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionEditPage(Request: TWebRequest;
+  const AMessageText: string; AOverrideValues: TStrings;
+  AHubConnections: TStrings): string;
+var
+ LService:TRpWebDbxAdminService;
+ LParams:TList<TRpWebConnectionParam>;
+ LConnectionName:string;
+ LUserName:string;
+ LIsAdmin:Boolean;
+ i:Integer;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LConnectionName:=GetAdminParam(Request,'name');
+ if Length(Trim(LConnectionName))=0 then
+  LConnectionName:=GetAdminParam(Request,'connection_name');
+ if Length(Trim(LConnectionName))=0 then
+  raise Exception.Create('Connection name is required');
+ LService:=TRpWebDbxAdminService.Create;
+ LParams:=TList<TRpWebConnectionParam>.Create;
+ try
+  LService.GetConnectionParams(LConnectionName,LParams,AOverrideValues);
+  Result:=TRpWebAdminPageRenderer.RenderConnectionEdit(LConnectionName,
+   LParams,HiddenAdminAuthInputs(Request),AMessageText,AHubConnections);
+ finally
+  for i:=0 to LParams.Count-1 do
+   LParams[i].Clear;
+  LParams.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionDiscoverHub(
+  Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LValues:TStringList;
+ LHubConnections:TStringList;
+ LApiKey:string;
+ LMessage:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ LHubConnections:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  LApiKey:=Trim(LValues.Values['ApiKey']);
+  if Length(LApiKey)<5 then
+   LMessage:='Please enter a valid API Key first.'
+  else
+  begin
+   try
+    LService.DiscoverHubConnections(LApiKey,LHubConnections);
+    if LHubConnections.Count=0 then
+     LMessage:='No databases found for this API Key.'
+    else
+     LMessage:='Select a connection to assign its HubDatabaseId.';
+   except
+    on E:Exception do
+    begin
+     LMessage:=E.Message;
+     LHubConnections.Clear;
+    end;
+   end;
+  end;
+  Result:=LoadAdminConnectionEditPage(Request,LMessage,LValues,LHubConnections);
+ finally
+  LHubConnections.Free;
+  LValues.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminConnectionsRawPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebRawConfigResult;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  LResult:=LService.LoadRawDbxConnections;
+  Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(LResult.ConfigText,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionCreate(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LService.CreateConnection(GetAdminParam(Request,'connection_name'),
+    GetAdminParam(Request,'driver_name'),
+    GetAdminParam(Request,'dbexpress_driver_name'));
+   Result:=LoadAdminConnectionEditPage(Request,'Connection created');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionNewPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionSave(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LValues:TStringList;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  try
+   LService.UpdateConnectionParams(GetAdminParam(Request,'connection_name'),
+    LValues);
+   Result:=LoadAdminConnectionEditPage(Request,'Connection saved');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionEditPage(Request,E.Message,LValues);
+  end;
+ finally
+  LValues.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionChangeDriver(
+  Request: TWebRequest): string;
+var
+ LValues:TStringList;
+begin
+ LValues:=TStringList.Create;
+ try
+  CollectConnectionParamValues(Request,LValues);
+  Result:=LoadAdminConnectionEditPage(Request,
+   'Driver parameters reloaded',LValues);
+ finally
+  LValues.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionChangeDriverClear(
+  Request: TWebRequest): string;
+var
+ LValues:TStringList;
+
+ procedure CopyIfPresent(const AName: string);
+ begin
+  if RequestHasParam(Request,'connparam_'+AName) then
+   LValues.Values[AName]:=GetAdminParam(Request,'connparam_'+AName);
+ end;
+begin
+ LValues:=TStringList.Create;
+ try
+  CopyIfPresent('DriverName');
+  CopyIfPresent('DriverID');
+  CopyIfPresent('DBXDriverName');
+  LValues.Values['__clear_driver_defaults__']:='1';
+  Result:=LoadAdminConnectionEditPage(Request,
+   'Driver parameters reloaded from defaults',LValues);
+ finally
+  LValues.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionDelete(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LService.DeleteConnection(GetAdminParam(Request,'connection_name'));
+   Result:=LoadAdminConnectionsPage(Request,'Connection deleted');
+  except
+   on E:Exception do
+    Result:=LoadAdminConnectionsPage(Request,E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionsRawSave(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebRawConfigResult;
+ LMessage:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ try
+  try
+   LResult:=LService.SaveRawDbxConnections(
+    GetAdminParam(Request,'raw_config_text'),
+    RequestCheckboxChecked(Request,'create_backup'));
+   LMessage:=LResult.MessageText;
+   if Length(Trim(LResult.BackupFileName))>0 then
+    LMessage:=LMessage+' Backup: '+LResult.BackupFileName;
+   Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(LResult.ConfigText,
+    HiddenAdminAuthInputs(Request),LMessage);
+  except
+   on E:Exception do
+    Result:=TRpWebAdminPageRenderer.RenderConnectionRaw(
+     GetAdminParam(Request,'raw_config_text'),HiddenAdminAuthInputs(Request),
+     E.Message);
+  end;
+ finally
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminConnectionTest(Request: TWebRequest): string;
+var
+ LService:TRpWebDbxAdminService;
+ LResult:TRpWebConnectionTestResult;
+ LValues:TStringList;
+ LConnectionName:string;
+begin
+ LService:=TRpWebDbxAdminService.Create;
+ LValues:=TStringList.Create;
+ try
+  LConnectionName:=GetAdminParam(Request,'connection_name');
+  CollectConnectionParamValues(Request,LValues);
+  if LValues.Count>0 then
+   LResult:=LService.TestConnectionValues(LConnectionName,LValues)
+  else
+   LResult:=LService.TestConnection(LConnectionName);
+  try
+   Result:=TRpWebAdminPageRenderer.RenderConnectionTest(LConnectionName,
+    LResult,HiddenAdminAuthInputs(Request),LValues);
+  finally
+   LResult.Clear;
+  end;
+ finally
+  LValues.Free;
+  LService.Free;
+ end;
+end;
+
+function TRpWebPageLoader.LoadAdminDiagnosticsPage(Request: TWebRequest;
+  const AMessageText: string): string;
+var
+ LService:TRpWebServerConfigAdminService;
+ LUserName:string;
+ LIsAdmin:Boolean;
+begin
+ CheckAdminLogin(Request,LUserName,LIsAdmin);
+ LService:=TRpWebServerConfigAdminService.Create;
+ try
+  Result:=TRpWebAdminPageRenderer.RenderDiagnostics(LService.GetConfigInfo,
+   HiddenAdminAuthInputs(Request),AMessageText);
+ finally
+  LService.Free;
+ end;
 end;
 
 {$IFDEF MSWINDOWS}
@@ -282,7 +2477,17 @@ begin
       '<p></p>'+TranslateStr(91,'Version')+' '+RM_VERSION+#10+'<p></p>'+
       TranslateStr(743,'Configuration File')+': '+HtmlEncode(Ffilenameconfig);
      if Length(FLogFileName)>0 then
-      astring:=astring+'<p>Log File:'+HtmlEncode(FLogFileName)+'</p>';
+      astring:=astring+'<p>[CONFIG]LOGFILE='+
+       HtmlEncode(ExpandFileName(FLogFileName))+'</p>'
+     else
+      astring:=astring+'<p>[CONFIG]LOGFILE=</p>';
+     astring:=astring+'<p>[CONFIG]LOG_JSON='+
+      HtmlEncode(BoolToStr(FLogJson,True))+'</p>';
+     if Length(FJsonLogFilename)>0 then
+      astring:=astring+'<p>JSON Log File='+
+       HtmlEncode(ExpandFileName(FJsonLogFilename))+'</p>'
+     else
+      astring:=astring+'<p>JSON Log File=</p>';
 
      if Length(LogFileErrorMessage)>0 then
      begin
@@ -290,6 +2495,41 @@ begin
      end;
      // Configuration
      astring:=astring+'<p>[CONFIG]PAGESDIR='+HtmlEncode(FPagesDirectory)+'</p>';
+    astring:=astring+'<p>[SECURITY]USER_ACCESS='+HtmlEncode(BoolToStr(FAllowUserAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]API_KEY_ACCESS='+HtmlEncode(BoolToStr(FAllowApiKeyAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]SHOWUNAUTHORIZEDPAGE='+HtmlEncode(BoolToStr(FShowUnauthorizedPage,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]URLGETPARAMS='+HtmlEncode(BoolToStr(FUrlGetParams,True))+'</p>';
+    astring:=astring+'<p>Connection type='+HtmlEncode(GetConnectionType(Request))+'</p>';
+    astring:=astring+'<p>Connection secure='+HtmlEncode(BoolToStr(IsSecureConnection(Request),True))+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_PROTOCOL','HTTPS_PROTOCOL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS protocol='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_CIPHER','HTTPS_CIPHER']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS cipher='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_CIPHER_USEKEYSIZE','HTTPS_KEYSIZE']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>TLS key size='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_S_DN','CERT_SUBJECT']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate subject='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_I_DN','CERT_ISSUER']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate issuer='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['CERT_SERIALNUMBER','SSL_SERVER_M_SERIAL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate serial='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_START','CERT_VALIDFROM']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate valid from='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_END','CERT_VALIDUNTIL']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate valid until='+HtmlEncode(atemp)+'</p>';
+    atemp:=GetFirstRequestValue(Request,['SSL_SERVER_VERIFY','CERT_SERVER_VERIFY',
+     'SSL_VERIFY_RESULT','CERT_VERIFY_RESULT']);
+    if Length(atemp)>0 then
+     astring:=astring+'<p>Certificate verify raw='+HtmlEncode(atemp)+'</p>';
+    astring:=astring+'<p>Certificate valid='+HtmlEncode(GetCertificateValidityText(Request))+'</p>';
      astring:=astring+'<p>Configured libs:<br/>';
      // Configured libs
      for i:=0 to FRpAliasLibs.Connections.Count-1 do
@@ -382,6 +2622,11 @@ begin
     end;
   end;
  except
+    On E:EHttpError do
+    begin
+     Response.StatusCode:=E.StatusCode;
+     Response.Content:=GenerateError(E);
+    end;
   On E:Exception do
   begin
    Response.Content:=GenerateError(E);
@@ -389,11 +2634,178 @@ begin
  end;
 end;
 
+procedure TRpWebPageLoader.HandleAdminRequest(Request: TWebRequest;
+ Response:TWebResponse);
+var
+ LPath:string;
+ LStrList:TStringList;
+ LUserName,LMessage:string;
+begin
+ try
+  CheckInitReaded;
+  LPath:=LowerCase(Request.PathInfo);
+  if LPath='/admin' then
+   Response.Content:=LoadAdminHomePage(Request)
+  else if LPath='/admin/bootstrap' then
+  begin
+   if Request.MethodType=mtPost then
+    Response.Content:=ExecuteAdminBootstrap(Request)
+   else
+    Response.Content:=LoadAdminBootstrapPage(Request);
+  end
+  else if LPath='/admin/login' then
+  begin
+   if Request.MethodType=mtPost then
+    Response.Content:=ExecuteAdminLogin(Request)
+   else
+    Response.Content:=LoadAdminLoginPage(Request);
+  end
+  else if LPath='/admin/server-config' then
+  begin
+   if RequestHasParam(Request,'cfg_tcpport') or
+    RequestHasParam(Request,'cfg_pagesdir') or
+    RequestHasParam(Request,'cfg_logfile') then
+    Response.Content:=ExecuteAdminServerConfigSave(Request)
+   else
+    Response.Content:=LoadAdminServerConfigPage(Request);
+  end
+  else if LPath='/admin/connections' then
+   Response.Content:=LoadAdminConnectionsPage(Request)
+  else if LPath='/admin/connections/new' then
+  begin
+   if RequestHasParam(Request,'connection_action_create') then
+    Response.Content:=ExecuteAdminConnectionCreate(Request)
+   else
+    Response.Content:=LoadAdminConnectionNewPage(Request);
+  end
+  else if LPath='/admin/connections/edit' then
+  begin
+   if RequestHasParam(Request,'connection_action_select_hub') then
+    Response.Content:=ExecuteAdminConnectionDiscoverHub(Request)
+   else if RequestHasParam(Request,'connection_action_change_driver_clear') then
+    Response.Content:=ExecuteAdminConnectionChangeDriverClear(Request)
+   else if RequestHasParam(Request,'connection_action_change_driver') then
+    Response.Content:=ExecuteAdminConnectionChangeDriver(Request)
+   else if RequestHasParam(Request,'connection_action_test') then
+    Response.Content:=ExecuteAdminConnectionTest(Request)
+   else if RequestHasParam(Request,'connection_action_save') then
+    Response.Content:=ExecuteAdminConnectionSave(Request)
+   else
+   begin
+    LStrList:=TStringList.Create;
+    try
+     CollectConnectionParamValues(Request,LStrList);
+     if LStrList.Count>0 then
+      Response.Content:=LoadAdminConnectionEditPage(Request,'',LStrList)
+     else
+      Response.Content:=LoadAdminConnectionEditPage(Request);
+    finally
+     LStrList.Free;
+    end;
+   end;
+  end
+  else if LPath='/admin/connections/delete' then
+   Response.Content:=ExecuteAdminConnectionDelete(Request)
+  else if LPath='/admin/connections/raw' then
+  begin
+   if RequestHasParam(Request,'raw_action_save') then
+    Response.Content:=ExecuteAdminConnectionsRawSave(Request)
+   else
+    Response.Content:=LoadAdminConnectionsRawPage(Request);
+  end
+  else if LPath='/admin/connections/test' then
+   Response.Content:=ExecuteAdminConnectionTest(Request)
+  else if LPath='/admin/users' then
+   Response.Content:=LoadAdminUsersPage(Request)
+  else if LPath='/admin/users/new' then
+   Response.Content:=ExecuteAdminUserCreate(Request)
+  else if LPath='/admin/users/edit' then
+   Response.Content:=ExecuteAdminUserSave(Request)
+  else if LPath='/admin/users/delete' then
+   Response.Content:=ExecuteAdminUserDelete(Request)
+  else if LPath='/admin/groups' then
+   Response.Content:=LoadAdminGroupsPage(Request)
+  else if LPath='/admin/groups/new' then
+   Response.Content:=ExecuteAdminGroupCreate(Request)
+  else if LPath='/admin/groups/edit' then
+   Response.Content:=ExecuteAdminGroupSave(Request)
+  else if LPath='/admin/groups/delete' then
+   Response.Content:=ExecuteAdminGroupDelete(Request)
+  else if LPath='/admin/aliases' then
+   Response.Content:=LoadAdminAliasesPage(Request)
+  else if LPath='/admin/aliases/new' then
+   Response.Content:=ExecuteAdminAliasCreate(Request)
+  else if LPath='/admin/aliases/edit' then
+   Response.Content:=ExecuteAdminAliasSave(Request)
+  else if LPath='/admin/aliases/delete' then
+   Response.Content:=ExecuteAdminAliasDelete(Request)
+  else if LPath='/admin/apikeys' then
+   Response.Content:=LoadAdminApiKeysPage(Request)
+  else if LPath='/admin/apikeys/new' then
+   Response.Content:=ExecuteAdminApiKeyCreate(Request)
+  else if LPath='/admin/apikeys/delete' then
+   Response.Content:=ExecuteAdminApiKeyDelete(Request)
+  else if LPath='/admin/testing' then
+  begin
+   if RequestHasParam(Request,'testing_action_download') then
+   begin
+    if TryAdminLogin(Request,LUserName,LMessage) then
+     ExecuteAdminTestingDownload(Response)
+    else
+     Response.Content:=TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+   end
+   else if RequestHasParam(Request,'testing_action_test_request') then
+    Response.Content:=ExecuteAdminTestingRequest(Request)
+   else if RequestHasParam(Request,'testing_action_build_request_done') then
+    Response.Content:=LoadAdminTestingRequestPreviewPage(Request,
+     'Next phase will execute the request.')
+   else if RequestHasParam(Request,'testing_action_back_to_params') then
+    Response.Content:=LoadAdminTestingParamsPage(Request)
+   else if RequestHasParam(Request,'testing_action_build_request') then
+    Response.Content:=LoadAdminTestingRequestPreviewPage(Request,
+     'Request preview generated.')
+   else if RequestHasParam(Request,'testing_action_params_done') then
+    Response.Content:=LoadAdminTestingParamsPage(Request,
+     'Next phase will build and visualize the request.')
+   else if RequestHasParam(Request,'testing_action_begin') then
+    Response.Content:=LoadAdminTestingParamsPage(Request,
+     'Report selected. Parameters loaded.')
+   else
+    Response.Content:=LoadAdminTestingPage(Request);
+  end
+  else if LPath='/admin/diagnostics' then
+   Response.Content:=LoadAdminDiagnosticsPage(Request)
+  else
+   Raise EHttpError.CreateHttp(404,'Admin route not found',True);
+ except
+  on E:EHttpError do
+  begin
+   Response.StatusCode:=E.StatusCode;
+   if E.StatusCode=401 then
+    Response.Content:=TRpWebAdminPageRenderer.RenderAdminLoginPage(E.Message)
+   else
+    Response.Content:=GenerateError(E);
+  end;
+  on E:Exception do
+   Response.Content:=GenerateError(E);
+ end;
+end;
+
 function TRpWebPageLoader.GenerateError(e: Exception):string;
 var
  astring:String;
  errmessage:String;
+ ahttpError:EHttpError;
 begin
+ if e is EHttpError then
+ begin
+  ahttpError:=EHttpError(e);
+  if not ahttpError.ShowErrorPage then
+  begin
+   Result:=ahttpError.Message;
+   exit;
+  end;
+ end;
  errmessage := 'Error: '  + e.Message;
  if Length(e.StackTrace)>0 then
  begin
@@ -421,12 +2833,21 @@ begin
  Owner:=AOwner;
  initreaded:=false;
  FRpAliasLibs:=TRpAlias.Create(nil);
+ FAllowUserAccess:=True;
+ FAllowApiKeyAccess:=True;
+ FShowUnauthorizedPage:=True;
+ FUrlGetParams:=True;
+ FLogJson:=True;
+ FTestingLastPdf:=TMemoryStream.Create;
+ FTestingLastPdfFileName:='';
 
  lusers:=TStringList.Create;
  lgroups:=TStringList.Create;
  lusergroups:=TStringList.Create;
  laliasgroups:=TStringList.Create;
  laliases:=TStringList.Create;
+ LServerApiKeys:=TStringList.Create;
+ LServerApiKeyUsers:=TStringList.Create;
  aresult:=TStringList.Create;
 
  aresult.clear;
@@ -438,7 +2859,7 @@ begin
 
  aresult.Add('<body bgcolor="#FFFFFF">');
  aresult.Add('<h3 align="center">ReportManagerLoginLabel</h3>');
- aresult.Add('<form method="get" action="./index">');
+ aresult.Add('<form method="post" action="./index">');
  aresult.Add('<table width="90%" border="1">');
  aresult.Add('<tr>');
  aresult.Add('<td>UserNameLabel</td>');
@@ -510,7 +2931,7 @@ begin
  aresult.Add('<body bgcolor="#FFFFFF">');
  aresult.Add('<h2>ReportTitleLocation<h2>');
  aresult.Add('<p><h3 align="center">ReportManagerParamsLabel</h3></p>');
- aresult.Add('<form method="get" name="fparams" id="fparams" action="./execute.pdf">');
+ aresult.Add('<form method="post" name="fparams" id="fparams" action="./execute.pdf">');
  aresult.Add('ReportHiddenLocation');
  aresult.Add('<p>ReportsParamsTableLocation</p>');
  aresult.Add('<p>');
@@ -534,34 +2955,66 @@ begin
  LUserGroups.free;
  LAliasGroups.free;
  laliases.Free;
+ LServerApiKeys.Free;
+ LServerApiKeyUsers.Free;
  aresult.free;
+ FTestingLastPdf.Free;
 
  inherited Destroy;
 end;
 
 procedure TRpWebPageLoader.WriteLog(aMessage:String);
+begin
+ WriteStructuredLog('LOG','','','','','','{}',aMessage);
+end;
+
+procedure WriteTextToFile(const AFilename,AContent: string);
 var
- messa:String;
  FLogFile:TFileStream;
+begin
+ FLogFile:=TFileStream.Create(AFilename,fmOpenReadWrite or fmShareDenyNone);
+ try
+  FLogFile.Seek(0,soFromEnd);
+  FLogFile.Write(AContent[1],Length(AContent));
+ finally
+  FLogFile.Free;
+ end;
+end;
+
+procedure TRpWebPageLoader.WriteStructuredLog(const AEvent,AUser,AApiKey,
+ ARemoteAddr,AForwardedFor,AReport,AParamsJson,AMessage: string);
+var
+ LTimestamp:String;
+ LCsvLine:String;
+ LJsonLine:String;
 begin
  if logfileerror then
   exit;
  if Length(FLogFileName)<1 then
   exit;
- messa:=FormatDateTime('dd/mm/yyyy hh:nn:ss - ',Now)+aMessage;
-{$IFDEF MSWINDOWS}
- messa:=messa+#10+#13;
-{$ENDIF}
-{$IFDEF LINUX}
- messa:=messa+#10;
-{$ENDIF}
- FLogFile:=TFileStream.Create(FLogFilename,fmOpenReadWrite or fmShareDenyNone);
- try
-  FLogFile.Seek(0,soFromEnd);
-  FLogFile.Write(messa[1],Length(messa));
- finally
-  FLogFile.Free;
+ LTimestamp:=FormatDateTime('yyyy-mm-dd hh:nn:ss',Now);
+ LCsvLine:=CsvString(LTimestamp)+','+CsvString(AEvent)+','+
+  CsvString(AUser)+','+CsvString(AApiKey)+','+CsvString(ARemoteAddr)+','+
+  CsvString(AForwardedFor)+','+CsvString(AReport)+','+
+  CsvString(AParamsJson)+','+CsvString(AMessage)+LogLineBreak;
+ WriteTextToFile(FLogFilename,LCsvLine);
+ if FLogJson and (Length(FJsonLogFilename)>0) then
+ begin
+  LJsonLine:='{"timestamp":"'+LogString(LTimestamp)+'","event":"'+
+   LogString(AEvent)+'","user":"'+LogString(AUser)+'","api_key":"'+
+   LogString(AApiKey)+'","remote_addr":"'+LogString(ARemoteAddr)+
+   '","x_forwarded_for":"'+LogString(AForwardedFor)+'","report":"'+
+   LogString(AReport)+'","params_json":'+AParamsJson+',"message":"'+
+   LogString(AMessage)+'"}'+LogLineBreak;
+  WriteTextToFile(FJsonLogFilename,LJsonLine);
  end;
+end;
+
+procedure TRpWebPageLoader.WriteExecuteReportLog(const AUser,AApiKey,
+ ARemoteAddr,AForwardedFor,AReport,AParamsJson: string);
+begin
+ WriteStructuredLog('EXECUTE_REPORT',AUser,AApiKey,ARemoteAddr,AForwardedFor,
+  AReport,AParamsJson,'');
 end;
 
 procedure TRpWebPageLoader.InitConfig;
@@ -573,7 +3026,7 @@ var
 begin
  Ffilenameconfig:='';
  try
-  Ffilenameconfig:=Obtainininamecommonconfig('','','reportmanserver');
+  Ffilenameconfig:=ResolveReportmanServerConfigFileName;
   ForceDirectories(ExtractFilePath(ffilenameconfig));
   inif:=TMemInifile.Create(ffilenameconfig);
   try
@@ -582,10 +3035,18 @@ begin
    inif.CaseSensitive:=false;
 {$ENDIF}
    FPagesDirectory:=Trim(inif.Readstring('CONFIG','PAGESDIR',''));
-   fport:=inif.ReadInteger('CONFIG','TCPPORT',3060);
+  fport:=inif.ReadInteger('CONFIG','TCPPORT',3080);
+  FAllowUserAccess:=ReadConfigBool(inif,'SECURITY','USER_ACCESS',True);
+  FAllowApiKeyAccess:=ReadConfigBool(inif,'SECURITY','API_KEY_ACCESS',True);
+  FShowUnauthorizedPage:=ReadConfigBool(inif,'SECURITY',
+   'SHOWUNAUTHORIZEDPAGE',True);
+  FUrlGetParams:=ReadConfigBool(inif,'SECURITY','URLGETPARAMS',True);
+  FLogJson:=ReadConfigBool(inif,'CONFIG','LOG_JSON',True);
    inif.ReadSectionValues('USERS',lusers);
    inif.ReadSectionValues('GROUPS',lgroups);
    inif.ReadSectionValues('ALIASES',laliases);
+  inif.ReadSectionValues('SERVERAPIKEYS',LServerApiKeys);
+  inif.ReadSectionValues('SERVERAPIKEYUSERS',LServerApiKeyUsers);
    i:=0;
    while i<lusers.count do
    begin
@@ -643,12 +3104,30 @@ begin
    logfileerror:=false;
    LogFileErrorMessage:='';
    FLogFilename:=inif.Readstring('CONFIG','LOGFILE','');
+   FJsonLogFilename:='';
    if Length(FLogFilename)>0 then
    begin
+    if FLogJson then
+     FJsonLogFilename:=ChangeFileExt(FLogFilename,'.jsonl');
     if Not (FileExists(FLogFileName)) then
     begin
      try
       FLogFile:=TFileStream.Create(FLogFilename,fmOpenReadWrite or fmCreate);
+      FLogFile.Free;
+      WriteTextToFile(FLogFilename,'timestamp,event,user,api_key,remote_addr,'+
+       'x_forwarded_for,report,params_json,message'+LogLineBreak);
+     except
+      On E:Exception do
+      begin
+       logfileerror:=true;
+      LogFileErrorMessage:=E.Message;
+      end;
+     end;
+    end;
+    if FLogJson and (not logfileerror) and (not FileExists(FJsonLogFilename)) then
+    begin
+     try
+      FLogFile:=TFileStream.Create(FJsonLogFilename,fmOpenReadWrite or fmCreate);
       FLogFile.Free;
      except
       On E:Exception do
@@ -688,7 +3167,10 @@ begin
  end
  else
  begin
-  aresult.LoadFromFile(FPagesDirectory+'rpalias.html');
+    if FUrlGetParams then
+     aresult.LoadFromFile(FPagesDirectory+'rpalias_get.html')
+    else
+     aresult.LoadFromFile(FPagesDirectory+'rpalias.html');
   astring:=aresult.Text;
  end;
  astring:=StringReplace(astring,REPMAN_WEBSERVER,
@@ -696,7 +3178,7 @@ begin
  astring:=StringReplace(astring,REPMAN_REPORTS_LABEL,
   TranslateStr(837,'Reports'),[rfReplaceAll]);
  reportlist:='';
- aliasname:=Request.QueryFields.Values['aliasname'];
+ aliasname:=GetRequestParam(Request,'aliasname');
  if Length(aliasname)>0 then
  begin
   dirpath:=laliases.Values[aliasname];
@@ -719,8 +3201,14 @@ begin
     begin
      if reportname[1]=C_DIRSEPARATOR then
       reportname:=Copy(reportname,2,Length(reportname));
-     reportlist:=reportlist+#10+'<p><a href="./showparams?reportname='+
-      alist.Strings[i]+'&'+Request.Query+'">'+reportname+'</a></p>';
+     if FUrlGetParams then
+      reportlist:=reportlist+#10+'<p><a href="./showparams?reportname='+
+       alist.Strings[i]+'&'+Request.Query+'">'+reportname+'</a></p>'
+     else
+      reportlist:=reportlist+#10+'<form method="post" action="./showparams">'+
+       HiddenInput('reportname',alist.Strings[i])+HiddenInput('aliasname',aliasname)+
+       HiddenAuthInputs(Request)+'<input type="submit" value="'+
+       HtmlEncode(reportname)+'">'+'</form>';
     end;
    end;
   finally
@@ -771,8 +3259,8 @@ var
  multisize:integer;
  prevvalue,tofocus:string;
 begin
- aliasname:=Request.QueryFields.Values['aliasname'];
- reportname:=Request.QueryFields.Values['reportname'];
+ aliasname:=GetRequestParam(Request,'aliasname');
+ reportname:=GetRequestParam(Request,'reportname');
  Result:='';
  // Load the report
  pdfreport:=TRpReport.Create(Owner);
@@ -781,8 +3269,8 @@ begin
   begin
    LoadReport(pdfreport,aliasname,reportname);
    // Assign language
-   if Length(Request.QueryFields.Values['LANGUAGE'])>0 then
-    pdfreport.Language:=StrToInt(Request.QueryFields.Values['LANGUAGE']);
+  if Length(GetRequestParam(Request,'LANGUAGE'))>0 then
+   pdfreport.Language:=StrToInt(GetRequestParam(Request,'LANGUAGE'));
    pdfreport.Params.UpdateLookup;
    // Count visible parameters
    visibleparam:=false;
@@ -801,9 +3289,14 @@ begin
     if Length(FPagesDirectory)<1 then
     begin
      astring:=paramspage;
+     if FUrlGetParams then
+      astring:=StringReplace(astring,'method="post"','method="get"',[rfReplaceAll]);
     end
     else
     begin
+    if FUrlGetParams then
+     aresult.LoadFromFile(FPagesDirectory+'rpparams_get.html')
+    else
      aresult.LoadFromFile(FPagesDirectory+'rpparams.html');
      astring:=aresult.Text;
     end;
@@ -813,7 +3306,7 @@ begin
      TranslateStr(135,'Parameter values'),[rfReplaceAll]);
     astring:=StringReplace(astring,REPMAN_EXECUTELABEL,
      TranslateStr(779,'Execute'),[rfReplaceAll]);
-    areportname:=Request.QueryFields.Values['reportname'];
+    areportname:=GetRequestParam(Request,'reportname');
     if Length(areportname)>0 then
     begin
      if areportname[1]=C_DIRSEPARATOR then
@@ -823,13 +3316,16 @@ begin
      areportname,[rfReplaceAll]);
 
     inputstring:='<input type="hidden" name="reportname" '+
-    'value="'+Request.QueryFields.Values['reportname']+'">';
+    'value="'+HtmlEncode(GetRequestParam(Request,'reportname'))+'">';
     inputstring:=inputstring+'<input type="hidden" name="aliasname" '+
-    'value="'+Request.QueryFields.Values['aliasname']+'">';
-    inputstring:=inputstring+'<input type="hidden" name="username" '+
-    'value="'+Request.QueryFields.Values['username']+'">';
-    inputstring:=inputstring+'<input type="hidden" name="password" '+
-    'value="'+Request.QueryFields.Values['password']+'">';
+    'value="'+HtmlEncode(GetRequestParam(Request,'aliasname'))+'">';
+    if not HasServerApiKey(Request) then
+    begin
+     inputstring:=inputstring+'<input type="hidden" name="username" '+
+     'value="'+HtmlEncode(GetRequestParam(Request,'username'))+'">';
+     inputstring:=inputstring+'<input type="hidden" name="password" '+
+     'value="'+HtmlEncode(GetRequestParam(Request,'password'))+'">';
+    end;
     astring:=StringReplace(astring,REPMAN_HIDDEN,
      inputstring,[rfReplaceAll]);
 
@@ -841,7 +3337,7 @@ begin
      if ((aparam.Visible) and (not aparam.NeverVisible))  then
      begin
       prevvalue:=Request.ContentFields.Values['Param'+aparam.Name];
-      if Length(prevvalue)<1 then
+      if (Length(prevvalue)<1) and FUrlGetParams then
        prevvalue:=Request.QueryFields.Values['Param'+aparam.Name];
       aparamstring:=aparamstring+'<tr>'+#10+
        '<td>'+HtmlEncode(aparam.Description)+'</td>'+#10+
@@ -987,13 +3483,13 @@ begin
     </tr>
 }    end;
     end;
-    if Length(Request.QueryFields.Values['ERROR_MESSAGE'])>0 then
+    if Length(GetRequestParam(Request,'ERROR_MESSAGE'))>0 then
     begin
      aparamstring:=aparamstring+'<tr>'+
-      '<td  colspan="2"><b>'+HtmlEncode(Request.QueryFields.Values['ERROR_MESSAGE'])
+      '<td  colspan="2"><b>'+HtmlEncode(GetRequestParam(Request,'ERROR_MESSAGE'))
       +'</b></td><tr>';
     end;
-    tofocus:=Request.QueryFields.Values['ERROR_PARAM'];
+    tofocus:=GetRequestParam(Request,'ERROR_PARAM');
     if Length(tofocus)>0 then
     begin
       aparamstring:=aparamstring+
@@ -1018,6 +3514,269 @@ begin
  end;
 end;
 
+function TRpWebPageLoader.LoadAdminTestingRequestPreviewPage(
+  Request: TWebRequest; const AMessageText: string): string;
+var
+  LData: TRpWebTestingSetup;
+  LUserName, LMessage: string;
+  LPayload: TStringList;
+  LUrl, LBodyText, LHeadersText, LScheme, LBasePath: string;
+  I: Integer;
+  LPair, LEncodedPair: string;
+  LReportDisplayName: string;
+begin
+  if not TryAdminLogin(Request, LUserName, LMessage) then
+  begin
+    Result := TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    Exit;
+  end;
+
+  LData := LoadAdminTestingRequest(Request);
+  if (Length(LData.AliasName) = 0) or (Length(LData.ReportName) = 0) then
+  begin
+    Result := LoadAdminTestingPage(Request, 'Select a report first');
+    Exit;
+  end;
+
+  LPayload := BuildTestingFormPayload(Request);
+  try
+    if IsSecureConnection(Request) then
+      LScheme := 'https://'
+    else
+      LScheme := 'http://';
+
+    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LReportDisplayName := LData.ReportName;
+    if (Length(LReportDisplayName) > 0) and
+      (LReportDisplayName[1] = C_DIRSEPARATOR) then
+      LReportDisplayName := Copy(LReportDisplayName, 2,
+        Length(LReportDisplayName));
+
+    LBodyText := '';
+    for I := 0 to LPayload.Count - 1 do
+    begin
+      LPair := LPayload[I];
+      LEncodedPair := TNetEncoding.URL.Encode(LPayload.Names[I]) + '=' +
+        TNetEncoding.URL.Encode(LPayload.ValueFromIndex[I]);
+      if SameText(LData.CallType, 'GET') then
+      begin
+        if I = 0 then
+          LBodyText := LEncodedPair
+        else
+          LBodyText := LBodyText + '&' + LEncodedPair;
+      end
+      else
+      begin
+        if I = 0 then
+          LBodyText := LEncodedPair
+        else
+          LBodyText := LBodyText + '&' + LEncodedPair;
+      end;
+    end;
+
+    if SameText(LData.CallType, 'GET') and (Length(LBodyText) > 0) then
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath +
+        '?' + LBodyText
+    else
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath;
+
+    LHeadersText := 'Host: ' + LData.HostName + ':' + LData.PortText;
+    if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+      LHeadersText := LHeadersText + sLineBreak +
+        'X-ReportmanServer-ApiKey: ' + LData.ApiKey;
+    if SameText(LData.CallType, 'POST') then
+      LHeadersText := LHeadersText + sLineBreak +
+        'Content-Type: application/x-www-form-urlencoded';
+
+    if SameText(LData.CallType, 'GET') then
+      LBodyText := '';
+
+    Result := TRpWebAdminPageRenderer.RenderTestingRequestPreview(LData,
+      LData.AliasName + ' / ' + LReportDisplayName, LUrl, LData.CallType,
+      LHeadersText, LBodyText, BuildTestingHiddenInputs(Request),
+      HiddenAdminAuthInputs(Request), AMessageText, '', False);
+  finally
+    LPayload.Free;
+  end;
+end;
+
+function TRpWebPageLoader.ExecuteAdminTestingRequest(
+  Request: TWebRequest): string;
+var
+  LData: TRpWebTestingSetup;
+  LUserName, LMessage: string;
+  LPayload: TStringList;
+  LUrl, LBodyText, LHeadersText, LScheme, LBasePath: string;
+  LReportDisplayName: string;
+  I: Integer;
+  LEncodedPayload: string;
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LResponseStream: TMemoryStream;
+  LRequestBody: TStringStream;
+  LResponseContentType: string;
+  LResponseBodyText: string;
+  LResultHtml: string;
+  LHasDownload: Boolean;
+begin
+  if not TryAdminLogin(Request, LUserName, LMessage) then
+  begin
+    Result := TRpWebAdminPageRenderer.RenderAdminLoginPage(LMessage);
+    Exit;
+  end;
+
+  LData := LoadAdminTestingRequest(Request);
+  if (Length(LData.AliasName) = 0) or (Length(LData.ReportName) = 0) then
+  begin
+    Result := LoadAdminTestingPage(Request, 'Select a report first');
+    Exit;
+  end;
+
+  if FTestingLastPdf <> nil then
+    FTestingLastPdf.Clear;
+  FTestingLastPdfFileName := '';
+
+  LPayload := BuildTestingFormPayload(Request);
+  try
+    if IsSecureConnection(Request) then
+      LScheme := 'https://'
+    else
+      LScheme := 'http://';
+
+    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LReportDisplayName := LData.ReportName;
+    if (Length(LReportDisplayName) > 0) and
+      (LReportDisplayName[1] = C_DIRSEPARATOR) then
+      LReportDisplayName := Copy(LReportDisplayName, 2,
+        Length(LReportDisplayName));
+
+    LEncodedPayload := '';
+    for I := 0 to LPayload.Count - 1 do
+    begin
+      if I > 0 then
+        LEncodedPayload := LEncodedPayload + '&';
+      LEncodedPayload := LEncodedPayload +
+        TNetEncoding.URL.Encode(LPayload.Names[I]) + '=' +
+        TNetEncoding.URL.Encode(LPayload.ValueFromIndex[I]);
+    end;
+
+    if SameText(LData.CallType, 'GET') and (Length(LEncodedPayload) > 0) then
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath +
+        '?' + LEncodedPayload
+    else
+      LUrl := LScheme + LData.HostName + ':' + LData.PortText + LBasePath;
+
+    LHeadersText := 'Host: ' + LData.HostName + ':' + LData.PortText;
+    if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+      LHeadersText := LHeadersText + sLineBreak +
+        'X-ReportmanServer-ApiKey: ' + LData.ApiKey;
+    if SameText(LData.CallType, 'POST') then
+      LHeadersText := LHeadersText + sLineBreak +
+        'Content-Type: application/x-www-form-urlencoded';
+
+    if SameText(LData.CallType, 'GET') then
+      LBodyText := ''
+    else
+      LBodyText := LEncodedPayload;
+
+    LClient := TNetHTTPClient.Create(nil);
+    try
+      if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
+        LClient.CustomHeaders['X-ReportmanServer-ApiKey'] := LData.ApiKey;
+
+      try
+        LResponseStream := TMemoryStream.Create;
+        try
+          if SameText(LData.CallType, 'POST') then
+          begin
+            LRequestBody := TStringStream.Create(LEncodedPayload, TEncoding.UTF8);
+            try
+              LRequestBody.Position := 0;
+              LResponse := LClient.Post(LUrl, LRequestBody, LResponseStream);
+            finally
+              LRequestBody.Free;
+            end;
+          end
+          else
+            LResponse := LClient.Get(LUrl, LResponseStream);
+
+          LResponseContentType := Trim(LResponse.MimeType);
+          if Length(LResponseContentType) = 0 then
+            LResponseContentType := 'application/octet-stream';
+
+          LHasDownload := SameText(LResponseContentType, 'application/pdf') and
+            (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300);
+          if LHasDownload and (FTestingLastPdf <> nil) then
+          begin
+            LResponseStream.Position := 0;
+            FTestingLastPdf.CopyFrom(LResponseStream, 0);
+            FTestingLastPdf.Position := 0;
+            FTestingLastPdfFileName :=
+              GetTestingPdfDownloadFileName(LData.ReportName);
+          end;
+
+          if LHasDownload then
+            LResponseBodyText := 'Binary PDF response stored in memory. Use Download to fetch the generated file.'
+          else
+            LResponseBodyText := LResponse.ContentAsString;
+
+          LResultHtml :=
+            '<h3>Response</h3>' +
+            '<p>Status</p><pre>' + HtmlEncode(IntToStr(LResponse.StatusCode) + ' ' +
+              LResponse.StatusText) + '</pre>' +
+            '<p>Response headers</p><pre>' + HtmlEncode('Content-Type: ' +
+              LResponseContentType + sLineBreak + 'Content-Length: ' +
+              IntToStr(LResponseStream.Size)) + '</pre>' +
+            '<p>Response body</p><pre>' + HtmlEncode(LResponseBodyText) + '</pre>';
+
+          if LHasDownload then
+            LMessage := 'PDF response ready for download.'
+          else
+            LMessage := 'Request executed.';
+        finally
+          LResponseStream.Free;
+        end;
+      except
+        on E: Exception do
+        begin
+          LHasDownload := False;
+          LResultHtml :=
+            '<h3>Response</h3>' +
+            '<p>Status</p><pre>Request failed</pre>' +
+            '<p>Response body</p><pre>' + HtmlEncode(E.Message) + '</pre>';
+          LMessage := 'Request execution failed.';
+        end;
+      end;
+    finally
+      LClient.Free;
+    end;
+
+    Result := TRpWebAdminPageRenderer.RenderTestingRequestPreview(LData,
+      LData.AliasName + ' / ' + LReportDisplayName, LUrl, LData.CallType,
+      LHeadersText, LBodyText, BuildTestingHiddenInputs(Request),
+      HiddenAdminAuthInputs(Request), LMessage, LResultHtml, LHasDownload);
+  finally
+    LPayload.Free;
+  end;
+end;
+
+procedure TRpWebPageLoader.ExecuteAdminTestingDownload(Response: TWebResponse);
+var
+  LStream: TMemoryStream;
+begin
+  if (FTestingLastPdf = nil) or (FTestingLastPdf.Size = 0) then
+    raise Exception.Create('No generated PDF available to download');
+
+  LStream := TMemoryStream.Create;
+  FTestingLastPdf.Position := 0;
+  LStream.CopyFrom(FTestingLastPdf, 0);
+  LStream.Position := 0;
+  Response.ContentType := 'application/pdf';
+  Response.ContentStream := LStream;
+  Response.SetCustomHeader('Content-Disposition',
+    'attachment; filename="' + FTestingLastPdfFileName + '"');
+end;
+
 procedure TRpWebPageLoader.ExecuteReport(Request: TWebRequest;Response:TWebResponse);
 var
  pdfreport:TRpReport;
@@ -1035,6 +3794,9 @@ var
  checkparamname,checkamessage:string;
  doexit:boolean;
  separator,textdriver:string;
+ LisAdmin:Boolean;
+ requestfields:TStringList;
+ apiKeyName,paramsJson,remoteAddr,forwardedFor:string;
 begin
  CheckLogin(Request);
  dometafile:=false;
@@ -1042,18 +3804,22 @@ begin
  dosvg:=false;
  dotxt:=false;
  doexit:=false;
- username:=UpperCase(Request.QueryFields.Values['username']);
+ ResolveAuthenticatedUser(Request,username,LisAdmin);
+ apiKeyName:=GetServerApiKeyName(Request);
+ remoteAddr:=GetRemoteAddr(Request);
+ forwardedFor:=GetForwardedFor(Request);
+ paramsJson:='{}';
  reportname:='';
  try
-  aliasname:=Request.QueryFields.Values['aliasname'];
-  reportname:=Request.QueryFields.Values['reportname'];
+  aliasname:=GetRequestParam(Request,'aliasname');
+  reportname:=GetRequestParam(Request,'reportname');
   pdfreport:=CreateReport;
   try
    WriteLog('Loading report: '+aliasname+':'+reportname+' into memory');
    LoadReport(pdfreport,aliasname,reportname);
    WriteLog('Report Loaded');
-   if Length(Request.QueryFields.Values['LANGUAGE'])>0 then
-    pdfreport.Language:=StrToInt(Request.QueryFields.Values['LANGUAGE']);
+  if Length(GetRequestParam(Request,'LANGUAGE'))>0 then
+   pdfreport.Language:=StrToInt(GetRequestParam(Request,'LANGUAGE'));
    pdfreport.Params.UpdateLookup;
    WriteLog('Assigning parameters to the report');
    // Clear multiple selection parameters
@@ -1066,31 +3832,33 @@ begin
     end;
    end;
    // Assigns parameters to the report
-   for i:=0 to Request.QueryFields.Count-1 do
+   requestfields:=CreateRequestParamList(Request);
+  try
+   for i:=0 to requestfields.Count-1 do
    begin
-    if Pos('Param',Request.QueryFields.Names[i])=1 then
+    if Pos('Param',requestfields.Names[i])=1 then
     begin
-     paramname:=Copy(Request.QueryFields.Names[i],6,Length(Request.QueryFields.Names[i]));
-     paramvalue:=Request.QueryFields.Values[Request.QueryFields.Names[i]];
+     paramname:=Copy(requestfields.Names[i],6,Length(requestfields.Names[i]));
+     paramvalue:=requestfields.Values[requestfields.Names[i]];
      paramisnull:=false;
      // Check for error assigning parameters
      try
-      index:=Request.QueryFields.IndexOfName('NULLParam'+paramname);
+      index:=requestfields.IndexOfName('NULLParam'+paramname);
       if index>=0 then
       begin
-       if Request.QueryFields.Values[Request.QueryFields.Names[index]]='NULL' then
+       if requestfields.Values[requestfields.Names[index]]='NULL' then
         paramisnull:=True;
       end;
       param:=pdfreport.Params.ParamByName(paramname);
       if param.ParamType=rpParamMultiple then
       begin
        param.Selected.Clear;
-       for k:=0 to Request.QueryFields.Count-1 do
+       for k:=0 to requestfields.Count-1 do
        begin
-        if Request.QueryFields.Names[k]='Param'+paramname then
+        if requestfields.Names[k]='Param'+paramname then
         begin
-         aname:=Request.QueryFields.Names[k];
-         index:=StrToInt(Request.QueryFields.ValueFromIndex[k]);
+         aname:=requestfields.Names[k];
+         index:=StrToInt(requestfields.ValueFromIndex[k]);
          if index<param.Values.Count then
           param.Selected.Add(IntToStr(Index));
         end;
@@ -1115,21 +3883,24 @@ begin
      except
       On E:Exception do
       begin
-       Request.QueryFields.Values['ERROR_MESSAGE']:=E.Message;
-       Request.QueryFields.Values['ERROR_PARAM']:='Param'+paramname;
+      Request.ContentFields.Values['ERROR_MESSAGE']:=E.Message;
+      Request.ContentFields.Values['ERROR_PARAM']:='Param'+paramname;
        Response.Content:=LoadParamsPage(Request);
        doexit:=true;
        break;;
       end;
      end;
     end;
-    if Uppercase(Request.QueryFields.Names[i])='METAFILE' then
+    if Uppercase(requestfields.Names[i])='METAFILE' then
     begin
-     dometafile:=Request.QueryFields.Values['METAFILE']='1';
-     docsv:=Request.QueryFields.Values['METAFILE']='2';
-     dotxt:=Request.QueryFields.Values['METAFILE']='3';
-     dosvg:=Request.QueryFields.Values['METAFILE']='4';
+     dometafile:=requestfields.Values['METAFILE']='1';
+     docsv:=requestfields.Values['METAFILE']='2';
+     dotxt:=requestfields.Values['METAFILE']='3';
+     dosvg:=requestfields.Values['METAFILE']='4';
     end;
+   end;
+   finally
+    requestfields.Free;
    end;
    if doexit then
     exit;
@@ -1141,11 +3912,14 @@ begin
    // Parameters page
    if not pdfreport.CheckParameters(pdfreport.Params,checkparamname,checkamessage) then
    begin
-    Request.QueryFields.Values['ERROR_MESSAGE']:=checkamessage;
-    Request.QueryFields.Values['ERROR_PARAM']:='Param'+checkparamname;
+    Request.ContentFields.Values['ERROR_MESSAGE']:=checkamessage;
+    Request.ContentFields.Values['ERROR_PARAM']:='Param'+checkparamname;
     Response.Content:=LoadParamsPage(Request);
     exit;
    end;
+    paramsJson:=ReportParamsToJson(pdfreport);
+    WriteExecuteReportLog(username,apiKeyName,remoteAddr,forwardedFor,
+     aliasname+':'+reportname,paramsJson);
    WriteLog('Creating memory stream');
    astream:=TMemoryStream.Create;
    try
@@ -1170,7 +3944,6 @@ begin
  {$ENDIF}
 {$ENDIF}
      WriteLog('Writing response (application/rpmf)');
-     Response.Content:='Executed, size:'+IntToStr(astream.size);
      Response.ContentType := 'application/rpmf';
      astream.Seek(0,soFromBeginning);
      Response.ContentStream:=astream;
@@ -1181,12 +3954,11 @@ begin
     begin
      WriteLog('Calculating report, PLAIN');
      textdriver:='PLAIN';
-     if Length(Request.QueryFields.Values['TEXTDRIVER'])>0 then
-      textdriver:=Request.QueryFields.Values['TEXTDRIVER'];
+    if Length(GetRequestParam(Request,'TEXTDRIVER'))>0 then
+     textdriver:=GetRequestParam(Request,'TEXTDRIVER');
      rptextdriver.PrintReportToStream(pdfreport,'',false,true,1,9999,1,
-      astream,true,Request.QueryFields.Values['OEMCONVERT']='1',textdriver);
+     astream,true,GetRequestParam(Request,'OEMCONVERT')='1',textdriver);
      WriteLog('Writing response, PLAIN');
-     Response.Content:='Executed, size:'+IntToStr(astream.size);
      Response.ContentType := 'text/plain';
      astream.Seek(0,soFromBeginning);
      Response.ContentStream:=astream;
@@ -1197,15 +3969,14 @@ begin
     begin
      WriteLog('Calculating report, CSV');
      separator:=',';
-     if Length(Request.QueryFields.Values['SEPARATOR'])>0 then
-      separator:=Request.QueryFields.Values['SEPARATOR'];
+    if Length(GetRequestParam(Request,'SEPARATOR'))>0 then
+     separator:=GetRequestParam(Request,'SEPARATOR');
      adriver:=TRpPdfDriver.Create;
      pdfreport.TwoPass:=true;
      pdfreport.PrintAll(adriver);
      rpcsvdriver.ExportMetafileToCSVStream(pdfreport.metafile,
       astream,false,true,1,MAX_PAGECOUNT,separator);
      WriteLog('Writing response, CSV');
-     Response.Content:='Executed, size:'+IntToStr(astream.size);
      Response.ContentType := 'text/plain';
      astream.Seek(0,soFromBeginning);
      Response.ContentStream:=astream;
@@ -1218,13 +3989,12 @@ begin
      adriver:=TRpPdfDriver.Create;
      pdfreport.TwoPass:=true;
      pdfreport.PrintAll(adriver);
-     if Request.QueryFields.Values['PAGEINDEX']='' then
+    if GetRequestParam(Request,'PAGEINDEX')='' then
       pageindex:=1
      else
-      pageindex:=StrToInt(Request.QueryFields.Values['PAGEINDEX']);
+     pageindex:=StrToInt(GetRequestParam(Request,'PAGEINDEX'));
      rpsvgdriver.MetafilePageToSVG(pdfreport.metafile,pageindex,astream,'','');
      WriteLog('Writing response, SVG');
-     Response.Content:='Executed, size:'+IntToStr(astream.size);
      Response.ContentType := 'application/svg';
      astream.Seek(0,soFromBeginning);
      Response.ContentStream:=astream;
@@ -1249,8 +4019,10 @@ begin
  {$ENDIF}
 {$ENDIF}
      astream.Seek(0,soFromBeginning);
+     // Testing to pdf file
+     // astream.SaveToFile('c:\datos\prueba.pdf');
+     astream.Seek(0,soFromBeginning);
      WriteLog('Writing response, PDF');
-     Response.Content:='Executed, size:'+IntToStr(astream.size);
      Response.ContentType := 'application/pdf';
      Response.ContentStream:=astream;
      WriteLog(reportname+' Executed PDF');

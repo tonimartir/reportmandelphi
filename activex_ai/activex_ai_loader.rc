@@ -1,0 +1,2 @@
+WEBVIEW2LOADER_X86 RCDATA "resources\\x86\\WebView2Loader.dll"
+WEBVIEW2LOADER_X64 RCDATA "resources\\x64\\WebView2Loader.dll"

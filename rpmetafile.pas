@@ -286,6 +286,7 @@ type
   procedure DrawChart(Series:TRpSeries;ametafile:TRpMetaFileReport;posx,posy:integer;achart:TObject);virtual;abstract;
   procedure FilterImage(memstream:TMemoryStream);virtual;
   procedure TextExtent(atext:TRpTextObject;var extent:TPoint);virtual;abstract;
+  function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;virtual;
   procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);virtual;abstract;
   procedure DrawPage(apage:TRpMetaFilePage);virtual;abstract;
   function SupportsCopies(maxcopies:integer):boolean;virtual;abstract;
@@ -2425,6 +2426,12 @@ end;
 procedure TRpPrintDriver.FilterImage(memstream:TMemoryStream);
 begin
 
+end;
+
+function TRpPrintDriver.TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;
+begin
+ SetLength(Result,0);
+ TextExtent(atext,extent);
 end;
 
 

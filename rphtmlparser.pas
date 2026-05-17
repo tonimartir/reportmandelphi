@@ -107,20 +107,27 @@ end;
 { Extract color from style attribute: color: #RRGGBB or color: #RGB or color: name }
 function ExtractColor(const Attrs: string; out AColor: Integer): Boolean;
 var
-  p, p2: Integer;
+  p, p2, pdelim: Integer;
   val: string;
   r, g, b: Integer;
+  lowerAttrs: string;
 begin
   Result := False;
   AColor := 0;
-  p := Pos('color', LowerCase(Attrs));
+  lowerAttrs := LowerCase(Attrs);
+  p := Pos('color', lowerAttrs);
   if p = 0 then Exit;
   // Ensure it's not 'background-color'
   if (p > 1) and (Attrs[p-1] <> ';') and (Attrs[p-1] <> ' ') and (Attrs[p-1] <> '"') then Exit;
-  p := PosEx(':', Attrs, p);
-  if p = 0 then Exit;
+  pdelim := PosEx(':', Attrs, p);
+  if pdelim = 0 then
+    pdelim := PosEx('=', Attrs, p);
+  if pdelim = 0 then Exit;
+  p := pdelim;
   Inc(p);
   while (p <= Length(Attrs)) and (Attrs[p] = ' ') do Inc(p);
+  if (p <= Length(Attrs)) and (Attrs[p] in ['"', '''']) then
+    Inc(p);
   p2 := p;
   while (p2 <= Length(Attrs)) and (Attrs[p2] <> ';') and (Attrs[p2] <> '''') and (Attrs[p2] <> '"') do
     Inc(p2);
@@ -309,6 +316,16 @@ var
     Result.Add(THtmlSegment.Create(Text, CurrentStyles, CurrentFontFamily, CurrentFontSize, CurrentHasFontSize, CurrentColor, CurrentHasColor));
   end;
 
+  procedure AddLineBreak;
+  begin
+    AddSegment(#13#10);
+  end;
+
+  procedure AddCellSeparator;
+  begin
+    AddSegment(' ');
+  end;
+
 begin
   Result := THtmlSegmentList.Create(True); // Owns objects
   CurrentStyles := [];
@@ -387,7 +404,22 @@ begin
         else if (TagName = 'br') then
         begin
            // <br> is treated as a newline character in the text
-           AddSegment(#13#10);
+           AddLineBreak;
+        end
+        else if (TagName = 'p') or (TagName = 'div') then
+        begin
+          if IsClosing then
+            AddLineBreak;
+        end
+        else if (TagName = 'tr') then
+        begin
+          if IsClosing then
+            AddLineBreak;
+        end
+        else if (TagName = 'td') or (TagName = 'th') then
+        begin
+          if IsClosing then
+            AddCellSeparator;
         end
         else if (TagName = 'span') then
         begin

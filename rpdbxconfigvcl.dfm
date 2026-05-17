@@ -11,8 +11,7 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
-  TextHeight = 20
+  TextHeight = 15
   object Panel1: TPanel
     Left = 0
     Top = 0
@@ -26,15 +25,15 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
     object LDriversFile: TLabel
       Left = 8
       Top = 8
-      Width = 74
-      Height = 20
+      Width = 58
+      Height = 15
       Caption = 'Driver'#39's file'
     end
     object LConnsFile: TLabel
       Left = 8
       Top = 31
-      Width = 101
-      Height = 20
+      Width = 82
+      Height = 15
       Caption = 'Conection'#39's file'
     end
     object EDriversFile: TEdit
@@ -85,8 +84,6 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
         ItemHeight = 20
         TabOrder = 0
         OnClick = LConnectionsClick
-        ExplicitTop = 78
-        ExplicitHeight = 335
       end
       object ToolBar1: TToolBar
         Left = 0
@@ -193,8 +190,8 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
         object LShowDriver: TLabel
           Left = 4
           Top = 2
-          Width = 161
-          Height = 20
+          Width = 130
+          Height = 15
           Caption = 'Show driver connections'
         end
         object ComboDrivers: TComboBox

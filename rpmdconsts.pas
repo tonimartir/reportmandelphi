@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -44,7 +44,7 @@ const
 
 
 const
- RM_VERSION='3.10.5';
+ RM_VERSION='4.0.2';
  REPMAN_WEBSITE='https://reportman.es';
  MAX_PAGECOUNT=999999;
 type
@@ -600,6 +600,7 @@ var
   SRpDatabaseAliasNull:WideString='A database alias cannot be null';
   SRpDatabasenotassined:WideString='There is not database to connect/disconnect in alias';
   SRpConnectionsuccesfull:WideString='Connection Test OK';
+  SRpConnectionFailed:WideString='Connection Test Failed';
   SRpNewaliasDef:WideString='New table/query';
   SRpAliasName:WideString='Alias Name';
   SRpTableAliasExists:WideString='The Alias Name already exists';

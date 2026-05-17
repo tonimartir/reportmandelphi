@@ -26,9 +26,7 @@ interface
 {$I rpconf.inc}
 
 uses
-{$IFDEF USEVARIANTS}
  Types,Variants,
-{$ENDIF}
   Graphics,Forms,Controls,Dialogs,ComCtrls,Menus,Windows,Messages,
  rpmdconsts,classes,sysutils,rpmunits,rpdbbrowservcl,
  rpprintitem,rpvgraphutils,rpgraphutilsvcl,rpsection,
@@ -189,7 +187,7 @@ type
 
 implementation
 
-uses rpmdobjinspvcl,rpmdfsectionintvcl,rpmdfmainvcl;
+uses rpmdobjinspvcl,rpmdfsectionintvcl,rpmdfmainvcl, rpmdundocue;
 
 
 const
@@ -800,6 +798,12 @@ var
  afitem:TRpSizePosInterface;
  secint:TRpSectionIntf;
  p1:Tpoint;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ mainf:TFRpMainFVCL;
+ oldPosXArr,oldPosYArr:array of integer;
+ oldPosXSingle,oldPosYSingle:integer;
 begin
  inherited MouseUp(Button,Shift,X,Y);
 
@@ -858,6 +862,18 @@ begin
     insp:=TFRpObjInspVCL(fobjinsp);
     difx:=TRpCOmmonPosComponent(printitem).PosX-pixelstotwips(NewLeft,Scale);
     dify:=TRpCOmmonPosComponent(printitem).PosY-pixelstotwips(NewTop,Scale);
+    // Capture old positions for undo
+    oldPosXArr:=nil;
+    oldPosYArr:=nil;
+    SetLength(oldPosXArr, insp.SelectedItems.Count);
+    SetLength(oldPosYArr, insp.SelectedItems.Count);
+    for i:=0 to insp.SelectedItems.Count-1 do
+    begin
+     afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
+     aitem:=TRpCommonPosComponent(afitem.printitem);
+     oldPosXArr[i]:=aitem.PosX;
+     oldPosYArr[i]:=aitem.PosY;
+    end;
     for i:=0 to insp.SelectedItems.Count-1 do
     begin
      afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
@@ -872,17 +888,52 @@ begin
      aitem.PosY:=NewTop;
      afitem.UpdatePos;
     end;
+    // Record undo for multi-select move
+    if Assigned(TRpReport(printitem.Report).UndoCue) then
+    begin
+     cue:=TUndoCue(TRpReport(printitem.Report).UndoCue);
+     gid:=cue.GetGroupId;
+     for i:=0 to insp.SelectedItems.Count-1 do
+     begin
+      afitem:=TRpSizePosInterface(insp.SelectedItems.Objects[i]);
+      aitem:=TRpCommonPosComponent(afitem.printitem);
+      op:=TChangeObjectOperation.Create(otModify, gid);
+      op.componentName:=aitem.Name;
+      op.componentClass:=UpperCase(aitem.ClassName);
+      op.AddProperty('posX',ptInteger,oldPosXArr[i],aitem.PosX);
+      op.AddProperty('posY',ptInteger,oldPosYArr[i],aitem.PosY);
+      cue.AddOperation(op);
+     end;
+     mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+     mainf.RefreshCueView;
+    end;
     if (ssShift in Shift) then
      TFRpObjInspVCL(fobjinsp).AddCompItem(Self,Not (ssShift in Shift));
    end;
   end
   else
   begin
+   // Capture old position for undo (single item)
+   oldPosXSingle:=TRpCOmmonPosComponent(printitem).PosX;
+   oldPosYSingle:=TRpCOmmonPosComponent(printitem).PosY;
    if Not FBlocked then
    begin
     TRpCOmmonPosComponent(printitem).PosX:=pixelstotwips(NewLeft,Scale);
     TRpCOmmonPosComponent(printitem).PosY:=pixelstotwips(NewTop,Scale);
     UpdatePos;
+    // Record undo for single item move
+    if Assigned(TRpReport(printitem.Report).UndoCue) then
+    begin
+     cue:=TUndoCue(TRpReport(printitem.Report).UndoCue);
+     op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+     op.componentName:=printitem.Name;
+     op.componentClass:=UpperCase(printitem.ClassName);
+    op.AddProperty('posX',ptInteger,oldPosXSingle,TRpCOmmonPosComponent(printitem).PosX);
+    op.AddProperty('posY',ptInteger,oldPosYSingle,TRpCOmmonPosComponent(printitem).PosY);
+     cue.AddOperation(op);
+     mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+     mainf.RefreshCueView;
+    end;
    end;
    if Assigned(fobjinsp) then
     TFRpObjInspVCL(fobjinsp).AddCompItem(Self,Not (ssShift in Shift));
@@ -1702,8 +1753,90 @@ begin
 end;
 
 procedure TRpGenTextInterface.SetFontDefaultClick(Sender:TObject);
+var
+ rep:TRpReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ mainf:TFRpMainFVCL;
+ oldWFontName,oldLFontName,oldType1Font:Variant;
+ oldFontSize,oldFontRotation,oldFontStyle,oldFontColor:Variant;
+ oldBackColor,oldTransparent,oldCutText:Variant;
+ oldAlignment,oldVAlignment,oldWordWrap,oldSingleLine:Variant;
+ oldMultiPage,oldPrintStep:Variant;
 begin
- TrpReport(printitem.Report).GetDefaultFontFrom(TRpGenTextComponent(printitem));
+ rep:=TRpReport(printitem.Report);
+ if Assigned(rep.UndoCue) then
+ begin
+  oldWFontName:=rep.GetItemProperty('wFontName');
+  oldLFontName:=rep.GetItemProperty('lFontName');
+  oldType1Font:=rep.GetItemProperty('type1Font');
+  oldFontSize:=rep.GetItemProperty('fontSize');
+  oldFontRotation:=rep.GetItemProperty('fontRotation');
+  oldFontStyle:=rep.GetItemProperty('fontStyle');
+  oldFontColor:=rep.GetItemProperty('fontColor');
+  oldBackColor:=rep.GetItemProperty('backColor');
+  oldTransparent:=rep.GetItemProperty('transparent');
+  oldCutText:=rep.GetItemProperty('cutText');
+  oldAlignment:=rep.GetItemProperty('alignment');
+  oldVAlignment:=rep.GetItemProperty('vAlignment');
+  oldWordWrap:=rep.GetItemProperty('wordWrap');
+  oldSingleLine:=rep.GetItemProperty('singleLine');
+  oldMultiPage:=rep.GetItemProperty('multiPage');
+  oldPrintStep:=rep.GetItemProperty('printStep');
+ end;
+
+ rep.GetDefaultFontFrom(TRpGenTextComponent(printitem));
+
+ if Assigned(rep.UndoCue) then
+ begin
+  cue:=TUndoCue(rep.UndoCue);
+  gid:=cue.GetGroupId;
+  op:=TChangeObjectOperation.Create(otModify, gid);
+  op.componentName:='REPORT';
+  op.componentClass:='TRPREPORT';
+  op.parentName:='';
+  if oldWFontName<>rep.GetItemProperty('wFontName') then
+   op.AddProperty('wFontName', ptString, oldWFontName, rep.GetItemProperty('wFontName'));
+  if oldLFontName<>rep.GetItemProperty('lFontName') then
+   op.AddProperty('lFontName', ptString, oldLFontName, rep.GetItemProperty('lFontName'));
+  if oldType1Font<>rep.GetItemProperty('type1Font') then
+   op.AddProperty('type1Font', ptInteger, oldType1Font, rep.GetItemProperty('type1Font'));
+  if oldFontSize<>rep.GetItemProperty('fontSize') then
+   op.AddProperty('fontSize', ptInteger, oldFontSize, rep.GetItemProperty('fontSize'));
+  if oldFontRotation<>rep.GetItemProperty('fontRotation') then
+   op.AddProperty('fontRotation', ptInteger, oldFontRotation, rep.GetItemProperty('fontRotation'));
+  if oldFontStyle<>rep.GetItemProperty('fontStyle') then
+   op.AddProperty('fontStyle', ptInteger, oldFontStyle, rep.GetItemProperty('fontStyle'));
+  if oldFontColor<>rep.GetItemProperty('fontColor') then
+   op.AddProperty('fontColor', ptInteger, oldFontColor, rep.GetItemProperty('fontColor'));
+  if oldBackColor<>rep.GetItemProperty('backColor') then
+   op.AddProperty('backColor', ptInteger, oldBackColor, rep.GetItemProperty('backColor'));
+  if oldTransparent<>rep.GetItemProperty('transparent') then
+   op.AddProperty('transparent', ptBoolean, oldTransparent, rep.GetItemProperty('transparent'));
+  if oldCutText<>rep.GetItemProperty('cutText') then
+   op.AddProperty('cutText', ptBoolean, oldCutText, rep.GetItemProperty('cutText'));
+  if oldAlignment<>rep.GetItemProperty('alignment') then
+   op.AddProperty('alignment', ptInteger, oldAlignment, rep.GetItemProperty('alignment'));
+  if oldVAlignment<>rep.GetItemProperty('vAlignment') then
+   op.AddProperty('vAlignment', ptInteger, oldVAlignment, rep.GetItemProperty('vAlignment'));
+  if oldWordWrap<>rep.GetItemProperty('wordWrap') then
+   op.AddProperty('wordWrap', ptBoolean, oldWordWrap, rep.GetItemProperty('wordWrap'));
+  if oldSingleLine<>rep.GetItemProperty('singleLine') then
+   op.AddProperty('singleLine', ptBoolean, oldSingleLine, rep.GetItemProperty('singleLine'));
+  if oldMultiPage<>rep.GetItemProperty('multiPage') then
+   op.AddProperty('multiPage', ptBoolean, oldMultiPage, rep.GetItemProperty('multiPage'));
+  if oldPrintStep<>rep.GetItemProperty('printStep') then
+   op.AddProperty('printStep', ptInteger, oldPrintStep, rep.GetItemProperty('printStep'));
+  if op.properties.Count>0 then
+  begin
+   cue.AddOperation(op);
+   mainf:=TFRpMainFVCL(TRpSectionIntf(Parent).Owner.Owner.Owner);
+   mainf.RefreshCueView;
+  end
+  else
+   op.Free;
+ end;
 end;
 
 initialization
