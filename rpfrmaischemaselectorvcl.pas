@@ -113,21 +113,21 @@ begin
   LSchema := TLabel.Create(Self);
   LSchema.Parent := PSchemaHost;
   LSchema.Align := alTop;
-  LSchema.Height := 16;
+  LSchema.AutoSize := True;
   LSchema.Caption := 'SCHEMA';
   LSchema.Layout := tlBottom;
 
   PSchemaRow := TPanel.Create(Self);
   PSchemaRow.Parent := PSchemaHost;
   PSchemaRow.Align := alTop;
-  PSchemaRow.Height := 30;
+  PSchemaRow.AutoSize := True;
   PSchemaRow.BevelOuter := bvNone;
   PSchemaRow.ParentBackground := False;
 
   BRefreshSchemas := TButton.Create(Self);
   BRefreshSchemas.Parent := PSchemaRow;
   BRefreshSchemas.Align := alRight;
-  BRefreshSchemas.Width := 78;
+  BRefreshSchemas.Width := Scale(60);
   BRefreshSchemas.Caption := 'Refresh';
   BRefreshSchemas.OnClick := RefreshSchemasClick;
 
@@ -136,6 +136,9 @@ begin
   ComboSchema.Align := alClient;
   ComboSchema.Style := csDropDownList;
   ComboSchema.OnChange := ComboSchemaChange;
+  // Match row height to combo's font-driven natural height
+  PSchemaRow.Height := ComboSchema.Height;
+  BRefreshSchemas.Height := ComboSchema.Height;
 
   FLoginFrame := TFRpLoginFrameVCL.Create(Self);
   FLoginFrame.Parent := PLoginHost;
@@ -157,21 +160,8 @@ begin
   TRpChatStyle.StylePanelBg(PLoginHost);
   TRpChatStyle.StylePanelBg(PSchemaHost);
   TRpChatStyle.StylePanelBg(PSchemaRow);
-
-  LSchema.ParentFont := False;
-  LSchema.Font.Name := FontNameUi;
-  LSchema.Font.Size := FontSizeMicro;
-  LSchema.Font.Style := [fsBold];
-  LSchema.Font.Color := ClrSubText;
-
-  ComboSchema.ParentFont := False;
-  ComboSchema.Font.Name := FontNameUi;
-  ComboSchema.Font.Size := FontSizeUi;
-  ComboSchema.Font.Color := ClrText;
-
-  BRefreshSchemas.ParentFont := False;
-  BRefreshSchemas.Font.Name := FontNameUi;
-  BRefreshSchemas.Font.Size := FontSizeUi;
+  TRpChatStyle.StyleInputControl(ComboSchema);
+  TRpChatStyle.StyleInputControl(BRefreshSchemas);
 end;
 
 procedure TFRpAISchemaSelectorVCL.UpdateButtons;

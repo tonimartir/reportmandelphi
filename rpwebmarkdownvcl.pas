@@ -31,8 +31,12 @@ type
     FPendingCalls: TStringList;
     FAssetRootPath: string;
     FUseFallback: Boolean;
+    FLastNavUrl: string;
+    FNavRetryCount: Integer;
+    FRetryTimer: TTimer;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser; AResult: HRESULT);
+    procedure RetryTimerTick(Sender: TObject);
     procedure EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
       IsSuccess: Boolean; WebErrorStatus: TOleEnum);
     procedure EdgeWebMessageReceived(Sender: TCustomEdgeBrowser;
@@ -266,6 +270,8 @@ begin
       LURL := LURL + '/';
     LURL := LURL + 'index.html';
 
+    FLastNavUrl := LURL;
+    FNavRetryCount := 0;
     FEdge.Navigate(LURL);
   end
   else
@@ -274,16 +280,60 @@ begin
   end;
 end;
 
+procedure TRpWebMarkdownView.RetryTimerTick(Sender: TObject);
+begin
+  if FRetryTimer <> nil then
+    FRetryTimer.Enabled := False;
+  if FUseFallback or FWebViewFailed then
+    Exit;
+  if (FEdge <> nil) and FEdge.WebViewCreated and (FLastNavUrl <> '') then
+  begin
+    try
+      FEdge.Navigate(FLastNavUrl);
+    except
+      on E: Exception do
+        ActivateFallback('Retry Navigate exception: ' + E.Message);
+    end;
+  end;
+end;
+
 procedure TRpWebMarkdownView.EdgeNavigationCompleted(
   Sender: TCustomEdgeBrowser; IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+const
+  // COREWEBVIEW2_WEB_ERROR_STATUS transient values:
+  //   0 = Unknown, 9 = ConnectionAborted, 14 = OperationCanceled.
+  // These happen when navigation is interrupted, e.g. when the IDE
+  // theme changes and the parent HWND is recreated/disposed while the
+  // WebView is still loading. They are not real failures.
+  MaxRetries = 3;
+var
+  LStatus: Integer;
 begin
   if IsSuccess then
   begin
     FReady := True;
+    FNavRetryCount := 0;
     FlushPendingCalls;
-  end
-  else
-    ActivateFallback('NavigationCompleted IsSuccess=False. WebErrorStatus: ' + IntToStr(Integer(WebErrorStatus)));
+    Exit;
+  end;
+
+  LStatus := Integer(WebErrorStatus);
+  if ((LStatus = 0) or (LStatus = 9) or (LStatus = 14)) and
+     (FNavRetryCount < MaxRetries) and (FLastNavUrl <> '') then
+  begin
+    Inc(FNavRetryCount);
+    if FRetryTimer = nil then
+    begin
+      FRetryTimer := TTimer.Create(Self);
+      FRetryTimer.OnTimer := RetryTimerTick;
+    end;
+    FRetryTimer.Enabled := False;
+    FRetryTimer.Interval := 200 * FNavRetryCount;
+    FRetryTimer.Enabled := True;
+    Exit;
+  end;
+
+  ActivateFallback('NavigationCompleted IsSuccess=False. WebErrorStatus: ' + IntToStr(LStatus));
 end;
 
 procedure TRpWebMarkdownView.EdgeWebMessageReceived(

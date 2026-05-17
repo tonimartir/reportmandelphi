@@ -175,10 +175,8 @@ end;
 
 procedure TFRpAISelectionVCL.ApplyModernStyling;
 begin
-  ParentFont := False;
-  Font.Name := FontNameUi;
-  Font.Size := FontSizeUi;
-  Font.Color := ClrText;
+  // Inherit font from parent (ParentFont stays True). Only background/colors
+  // and label styles are tweaked so size/name match the rest of the chat UI.
 
   TRpChatStyle.StylePanelBg(PAI);
   TRpChatStyle.StylePanelBg(PNonInference);
@@ -196,14 +194,9 @@ begin
     FLblProvider.Parent := PProviderHost;
     FLblProvider.Caption := 'PROVIDER';
     FLblProvider.Align := alTop;
-    FLblProvider.Height := Scale(CAISelectionLabelHeight);
+    FLblProvider.AutoSize := True;
     FLblProvider.Alignment := taLeftJustify;
     FLblProvider.Layout := tlBottom;
-    FLblProvider.ParentFont := False;
-    FLblProvider.Font.Name := FontNameUi;
-    FLblProvider.Font.Size := FontSizeMicro;
-    FLblProvider.Font.Style := [fsBold];
-    FLblProvider.Font.Color := ClrSubText;
     FLblProvider.Transparent := True;
   end;
 
@@ -213,44 +206,19 @@ begin
     FLblMode.Parent := PModeHost;
     FLblMode.Caption := 'MODE';
     FLblMode.Align := alTop;
-    FLblMode.Height := Scale(CAISelectionLabelHeight);
+    FLblMode.AutoSize := True;
     FLblMode.Alignment := taLeftJustify;
     FLblMode.Layout := tlBottom;
-    FLblMode.ParentFont := False;
-    FLblMode.Font.Name := FontNameUi;
-    FLblMode.Font.Size := FontSizeMicro;
-    FLblMode.Font.Style := [fsBold];
-    FLblMode.Font.Color := ClrSubText;
     FLblMode.Transparent := True;
   end;
 
-  // Combos: Segoe UI
-  ComboAIProvider.ParentFont := False;
-  ComboAIProvider.Font.Name := FontNameUi;
-  ComboAIProvider.Font.Size := FontSizeUi;
-  ComboAIProvider.Font.Color := ClrText;
-  ComboAIMode.ParentFont := False;
-  ComboAIMode.Font.Name := FontNameUi;
-  ComboAIMode.Font.Size := FontSizeUi;
-  ComboAIMode.Font.Color := ClrText;
-
-  // Stop button
-  if BStopInference <> nil then
-  begin
-    BStopInference.ParentFont := False;
-    BStopInference.Font.Name := FontNameUi;
-    BStopInference.Font.Size := FontSizeUi;
-    BStopInference.Font.Style := [fsBold];
-    BStopInference.Font.Color := ClrDanger;
-  end;
+  // Defeat IDE Vcl style washout on combos (keeps ParentFont intact).
+  TRpChatStyle.StyleInputControl(ComboAIProvider);
+  TRpChatStyle.StyleInputControl(ComboAIMode);
 
   // Tokens label
   if LTokensInfo <> nil then
   begin
-    LTokensInfo.ParentFont := False;
-    LTokensInfo.Font.Name := FontNameUi;
-    LTokensInfo.Font.Size := FontSizeUi;
-    LTokensInfo.Font.Color := ClrSubText;
     LTokensInfo.AutoSize := False;
     LTokensInfo.Alignment := taLeftJustify;
     LTokensInfo.Layout := tlTop;
@@ -553,10 +521,6 @@ begin
   Result.ProgressId := LKey;
   Result.RowLabel := TLabel.Create(Self);
   Result.RowLabel.Parent := PTokensHost;
-  Result.RowLabel.ParentFont := False;
-  Result.RowLabel.Font.Name := FontNameUi;
-  Result.RowLabel.Font.Size := FontSizeUi;
-  Result.RowLabel.Font.Color := ClrSubText;
   Result.RowLabel.AutoSize := False;
   Result.RowLabel.Alignment := taLeftJustify;
   Result.RowLabel.Layout := tlCenter;

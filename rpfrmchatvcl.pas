@@ -560,20 +560,26 @@ begin
     LSchema.SetBounds(0, 0, LClientWidth, LLabelHeight);
   end;
 
-  LRowTop := LLabelHeight;
+  // Use the combo's natural (font-driven) height as the row height,
+  // and propagate it to the refresh button and config host so everything
+  // stays aligned without hard-coded pixel sizes.
   LRowHeight := 0;
   if ComboSchema <> nil then
     LRowHeight := ComboSchema.Height;
-  if (PSchemaConfigHost <> nil) and (PSchemaConfigHost.Height > LRowHeight) then
-    LRowHeight := PSchemaConfigHost.Height;
-  if (BRefreshSchemas <> nil) and (BRefreshSchemas.Height > LRowHeight) then
-    LRowHeight := BRefreshSchemas.Height;
   if LRowHeight <= 0 then
-    LRowHeight := 24;
+    LRowHeight := Scale(24);
+  if BRefreshSchemas <> nil then
+    BRefreshSchemas.Height := LRowHeight;
+  if PSchemaConfigHost <> nil then
+    PSchemaConfigHost.Height := LRowHeight;
+
+  LRowTop := LLabelHeight;
 
   LRefreshWidth := 0;
   if (BRefreshSchemas <> nil) and BRefreshSchemas.Visible then
   begin
+    if BRefreshSchemas.Width <= 0 then
+      BRefreshSchemas.Width := Scale(60);
     LRefreshWidth := BRefreshSchemas.Width;
     LRefreshLeft := LClientWidth - LRefreshWidth;
     if LRefreshLeft < 0 then
@@ -586,6 +592,8 @@ begin
   LConfigLeft := LRefreshLeft;
   if (PSchemaConfigHost <> nil) and PSchemaConfigHost.Visible then
   begin
+    if PSchemaConfigHost.Width <= 0 then
+      PSchemaConfigHost.Width := Scale(28);
     LConfigLeft := LRefreshLeft - RowGap - PSchemaConfigHost.Width;
     if LConfigLeft < 0 then
       LConfigLeft := 0;
@@ -1780,6 +1788,9 @@ procedure TFRpChatFrame.ApplyModernStyling;
 var
   I: Integer;
 begin
+  // Do NOT touch fonts: every control keeps ParentFont=True and inherits
+  // from the host form. Assigning Font here would break that chain.
+
   // Roots use light bg
   TRpChatStyle.StylePanelBg(PRoot);
   TRpChatStyle.StylePanelBg(PTop);
@@ -1792,88 +1803,69 @@ begin
   TRpChatStyle.StylePanelBg(PNetLogTop);
   TRpChatStyle.StylePanelBg(PButtons);
 
-  // Page control owner-draw modern tabs
+  // Page control owner-draw modern tabs (inherits font from parent)
   if PControl <> nil then
   begin
     PControl.OwnerDraw := True;
     PControl.Style := tsTabs;
-    PControl.TabHeight := 32;
+    PControl.TabHeight := Scale(28);
     PControl.TabWidth := 0;
     PControl.DoubleBuffered := True;
-    TRpChatStyle.SetupFont(PControl.Font, FontSizeUi, False, ClrSubText);
     PControl.OnDrawTab := PControlDrawTab;
     PControl.OnMouseMove := PControlMouseMove;
     PControl.OnMouseLeave := PControlMouseLeave;
     PControl.OnChange := PControlChange;
   end;
 
-  // Schema label uppercase micro
+  // Schema label: keep ParentFont so it matches PROVIDER/MODE labels.
   if LSchema <> nil then
   begin
     LSchema.Caption := 'SCHEMA';
-    LSchema.Font.Name := FontNameUi;
-    LSchema.Font.Size := FontSizeMicro;
-    LSchema.Font.Style := [fsBold];
-    LSchema.Font.Color := ClrSubText;
-    LSchema.AutoSize := False;
+    LSchema.AutoSize := True;
     LSchema.Align := alTop;
-    LSchema.Height := 16;
     LSchema.Layout := tlBottom;
     LSchema.Alignment := taLeftJustify;
   end;
 
   if ComboSchema <> nil then
   begin
-    ComboSchema.Font.Name := FontNameUi;
-    ComboSchema.Font.Size := FontSizeUi;
-    ComboSchema.Font.Color := ClrText;
     ComboSchema.Align := alNone;
     ComboSchema.AlignWithMargins := False;
+    TRpChatStyle.StyleInputControl(ComboSchema);
   end;
 
   if BRefreshSchemas <> nil then
   begin
     BRefreshSchemas.Caption := 'Refresh';
-    BRefreshSchemas.Font.Name := FontNameUi;
-    BRefreshSchemas.Font.Size := FontSizeUi;
-    BRefreshSchemas.Font.Color := ClrText;
-    BRefreshSchemas.Width := 75;
-    BRefreshSchemas.Height := 29;
     BRefreshSchemas.Hint := 'Refresh schemas';
     BRefreshSchemas.ShowHint := True;
     BRefreshSchemas.Align := alNone;
     BRefreshSchemas.AlignWithMargins := False;
+    TRpChatStyle.StyleInputControl(BRefreshSchemas);
   end;
 
   if PSchemaConfigHost <> nil then
   begin
-    PSchemaConfigHost.Width := 35;
-    PSchemaConfigHost.Height := 29;
     PSchemaConfigHost.Align := alNone;
     PSchemaConfigHost.AlignWithMargins := False;
   end;
 
-  // Log toolbar buttons: compact flat look via fonts
+  // Memo prompt: keep surface color and force readable text against IDE styles
+  if MemoPrompt <> nil then
+  begin
+    MemoPrompt.Color := ClrSurface;
+    MemoPrompt.BorderStyle := bsSingle;
+    TRpChatStyle.StyleInputControl(MemoPrompt);
+  end;
+
+  // Unify all child buttons (Send/Apply/Clear, log toolbar...) to the same font
   for I := 0 to ComponentCount - 1 do
   begin
     if Components[I] is TButton then
-    begin
-      TButton(Components[I]).Font.Name := FontNameUi;
-      TButton(Components[I]).Font.Size := FontSizeUi;
-    end;
+      TRpChatStyle.StyleInputControl(TButton(Components[I]));
   end;
 
-  // Memo prompt
-  if MemoPrompt <> nil then
-  begin
-    MemoPrompt.Font.Name := FontNameUi;
-    MemoPrompt.Font.Size := FontSizeUi;
-    MemoPrompt.Font.Color := ClrText;
-    MemoPrompt.Color := ClrSurface;
-    MemoPrompt.BorderStyle := bsSingle;
-  end;
-
-  // Schema row height
+  // Schema/login row heights auto-sized from current font metrics
   if PSchemaHost <> nil then
     PSchemaHost.Height := GetSchemaHostPreferredHeight;
   if PLoginHost <> nil then

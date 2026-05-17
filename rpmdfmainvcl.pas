@@ -896,7 +896,9 @@ begin
   fcuepages.TabHeight := 32;
   fcuepages.TabWidth := 0;
   fcuepages.DoubleBuffered := True;
-  TRpChatStyle.SetupFont(fcuepages.Font, FontSizeUi, False, ClrSubText);
+  // Do NOT touch fcuepages.Font: ParentFont propagates to every child of the
+  // page control (chat frame, combos, memos...). Tab text color is handled
+  // directly on the canvas in CuePagesDrawTab / DrawUnderlineTab.
   fcuepages.OnDrawTab := CuePagesDrawTab;
   fcuepages.OnMouseMove := CuePagesMouseMove;
   fcuepages.OnMouseLeave := CuePagesMouseLeave;

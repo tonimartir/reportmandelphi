@@ -52,6 +52,7 @@ type
   public
     class procedure SetupFont(AFont: TFont; APointSize: Integer = FontSizeUi;
       ABold: Boolean = False; AColor: TColor = clNone); static;
+    class procedure StyleInputControl(AControl: TWinControl); static;
     class procedure StylePanelSurface(APanel: TPanel); static;
     class procedure StylePanelBg(APanel: TPanel); static;
 
@@ -106,6 +107,31 @@ begin
     AFont.Style := AFont.Style - [fsBold];
   if AColor <> clNone then
     AFont.Color := AColor;
+end;
+
+class procedure TRpChatStyle.StyleInputControl(AControl: TWinControl);
+var
+  LBmp: TBitmap;
+  LH: Integer;
+begin
+  if AControl = nil then Exit;
+  // Defeat IDE Vcl visual style on this control (it would override colors
+  // making text look "disabled" in dark themes). ParentFont stays True.
+  AControl.StyleElements := [];
+  // For combos, derive height from the *inherited* font metrics so it
+  // scales correctly under any DPI.
+  if AControl is TComboBox then
+  begin
+    LBmp := TBitmap.Create;
+    try
+      LBmp.Canvas.Font.Assign(TComboBox(AControl).Font);
+      LH := LBmp.Canvas.TextHeight('Mg') + 10;
+    finally
+      LBmp.Free;
+    end;
+    TComboBox(AControl).ItemHeight := LH - 6;
+    TComboBox(AControl).Height := LH;
+  end;
 end;
 
 class procedure TRpChatStyle.StylePanelSurface(APanel: TPanel);
