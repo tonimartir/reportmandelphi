@@ -48,7 +48,6 @@ object FRpMainFVCL: TFRpMainFVCL
     Images = VirtualImageList1
     ParentColor = False
     TabOrder = 1
-    ExplicitWidth = 801
     object ToolButton1: TToolButton
       Left = 0
       Top = 0

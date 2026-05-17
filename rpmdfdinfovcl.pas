@@ -48,8 +48,10 @@ type
     origDataInfo:TRpDataInfoList;
     origParams:TRpParamList;
     procedure EnsureDatasetsFrame;
+    procedure SetFrameBlockChangesSource(AReport:TRpReport);
     procedure SetReport(value:TRpReport);
     procedure RecordUndoChanges;
+    function HasPendingChanges:Boolean;
   public
     { Public declarations }
     property report:TRpReport read FReport write SetReport;
@@ -66,6 +68,177 @@ uses rpdbxconfigvcl, rpbasereport, rpxmlstream, rpfparamsvcl;
 
 var
  GDataConfigDialog: TFRpDInfoVCL = nil;
+
+function SameStringLists(AList,BList:TStrings):Boolean;
+var
+ i:Integer;
+begin
+ Result:=AList=BList;
+ if Result then
+  Exit;
+ if (AList=nil) or (BList=nil) then
+ begin
+  Result:=False;
+  Exit;
+ end;
+ if AList.Count<>BList.Count then
+ begin
+  Result:=False;
+  Exit;
+ end;
+ for i:=0 to AList.Count-1 do
+ begin
+  if AList.Strings[i]<>BList.Strings[i] then
+  begin
+   Result:=False;
+   Exit;
+  end;
+ end;
+ Result:=True;
+end;
+
+function SameVariantValue(const AValue,BValue:Variant):Boolean;
+begin
+ if VarIsEmpty(AValue) or VarIsNull(AValue) then
+ begin
+  Result:=VarIsEmpty(BValue) or VarIsNull(BValue);
+  Exit;
+ end;
+ if VarIsEmpty(BValue) or VarIsNull(BValue) then
+ begin
+  Result:=False;
+  Exit;
+ end;
+ try
+  Result:=AValue=BValue;
+ except
+  Result:=VarToStr(AValue)=VarToStr(BValue);
+ end;
+end;
+
+function SameDatabaseInfoItem(AItem,BItem:TRpDatabaseInfoItem):Boolean;
+begin
+ Result:=Assigned(AItem) and Assigned(BItem) and
+  (AItem.Name=BItem.Name) and
+  (AItem.Alias=BItem.Alias) and
+  (Integer(AItem.Driver)=Integer(BItem.Driver)) and
+  (AItem.ConfigFile=BItem.ConfigFile) and
+  (AItem.LoginPrompt=BItem.LoginPrompt) and
+  (AItem.LoadParams=BItem.LoadParams) and
+  (AItem.LoadDriverParams=BItem.LoadDriverParams) and
+  (AItem.ADOConnectionString=BItem.ADOConnectionString) and
+  (AItem.ProviderFactory=BItem.ProviderFactory) and
+  (AItem.DotNetDriver=BItem.DotNetDriver) and
+  (AItem.ReportTable=BItem.ReportTable) and
+  (AItem.ReportField=BItem.ReportField) and
+  (AItem.ReportSearchField=BItem.ReportSearchField) and
+  (AItem.ReportGroupsTable=BItem.ReportGroupsTable);
+end;
+
+function SameDatabaseInfoList(AList,BList:TRpDatabaseInfoList):Boolean;
+var
+ i:Integer;
+begin
+ Result:=Assigned(AList) and Assigned(BList) and (AList.Count=BList.Count);
+ if not Result then
+  Exit;
+ for i:=0 to AList.Count-1 do
+ begin
+  if not SameDatabaseInfoItem(AList.Items[i],BList.Items[i]) then
+  begin
+   Result:=False;
+   Exit;
+  end;
+ end;
+end;
+
+function SameDataInfoItem(AItem,BItem:TRpDataInfoItem):Boolean;
+begin
+ Result:=Assigned(AItem) and Assigned(BItem) and
+  (AItem.Name=BItem.Name) and
+  (AItem.Alias=BItem.Alias) and
+  (AItem.DatabaseAlias=BItem.DatabaseAlias) and
+  (AItem.DataSource=BItem.DataSource) and
+  (AItem.SQL=BItem.SQL) and
+  (AItem.SQLExplanation=BItem.SQLExplanation) and
+  (AItem.SQLExplanationError=BItem.SQLExplanationError) and
+  (AItem.HubSchemaId=BItem.HubSchemaId) and
+  (AItem.MyBaseFilename=BItem.MyBaseFilename) and
+  (AItem.MyBaseFields=BItem.MyBaseFields) and
+  (AItem.MyBaseIndexFields=BItem.MyBaseIndexFields) and
+  (AItem.MyBaseMasterFields=BItem.MyBaseMasterFields) and
+  (AItem.BDEIndexFields=BItem.BDEIndexFields) and
+  (AItem.BDEIndexName=BItem.BDEIndexName) and
+  (AItem.BDETable=BItem.BDETable) and
+  (Integer(AItem.BDEType)=Integer(BItem.BDEType)) and
+  (AItem.BDEFilter=BItem.BDEFilter) and
+  (AItem.BDEMasterFields=BItem.BDEMasterFields) and
+  (AItem.BDEFirstRange=BItem.BDEFirstRange) and
+  (AItem.BDELastRange=BItem.BDELastRange) and
+  (AItem.GroupUnion=BItem.GroupUnion) and
+  (AItem.OpenOnStart=BItem.OpenOnStart) and
+  (AItem.ParallelUnion=BItem.ParallelUnion) and
+  SameStringLists(AItem.DataUnions,BItem.DataUnions);
+end;
+
+function SameDataInfoList(AList,BList:TRpDataInfoList):Boolean;
+var
+ i:Integer;
+begin
+ Result:=Assigned(AList) and Assigned(BList) and (AList.Count=BList.Count);
+ if not Result then
+  Exit;
+ for i:=0 to AList.Count-1 do
+ begin
+  if not SameDataInfoItem(AList.Items[i],BList.Items[i]) then
+  begin
+   Result:=False;
+   Exit;
+  end;
+ end;
+end;
+
+function SameParamItem(AItem,BItem:TRpParam):Boolean;
+begin
+ Result:=Assigned(AItem) and Assigned(BItem) and
+  (AItem.Name=BItem.Name) and
+  (AItem.IntName=BItem.IntName) and
+  (AItem.Visible=BItem.Visible) and
+  (AItem.NeverVisible=BItem.NeverVisible) and
+  (AItem.IsReadOnly=BItem.IsReadOnly) and
+  (AItem.AllowNulls=BItem.AllowNulls) and
+  (Integer(AItem.ParamType)=Integer(BItem.ParamType)) and
+  (AItem.Descriptions=BItem.Descriptions) and
+  (AItem.Hints=BItem.Hints) and
+  (AItem.Validation=BItem.Validation) and
+  (AItem.ErrorMessages=BItem.ErrorMessages) and
+  (AItem.Search=BItem.Search) and
+  (AItem.LookupDataset=BItem.LookupDataset) and
+  (AItem.SearchDataset=BItem.SearchDataset) and
+  (AItem.SearchParam=BItem.SearchParam) and
+  SameVariantValue(AItem.Value,BItem.Value) and
+  SameStringLists(AItem.Datasets,BItem.Datasets) and
+  SameStringLists(AItem.Items,BItem.Items) and
+  SameStringLists(AItem.Values,BItem.Values) and
+  SameStringLists(AItem.Selected,BItem.Selected);
+end;
+
+function SameParamList(AList,BList:TRpParamList):Boolean;
+var
+ i:Integer;
+begin
+ Result:=Assigned(AList) and Assigned(BList) and (AList.Count=BList.Count);
+ if not Result then
+  Exit;
+ for i:=0 to AList.Count-1 do
+ begin
+  if not SameParamItem(AList.Items[i],BList.Items[i]) then
+  begin
+   Result:=False;
+   Exit;
+  end;
+ end;
+end;
 
 procedure ShowDataConfig(report:TRpReport);
 begin
@@ -89,10 +262,23 @@ begin
 
  if Assigned(freport) then
  begin
-  fdatasets.Datainfo:=freport.DataInfo;
-  fdatasets.Databaseinfo:=freport.DatabaseInfo;
-  fdatasets.Params:=freport.Params;
+  fdatasets.SetBlockChangesSource(nil);
+  try
+   fdatasets.Datainfo:=freport.DataInfo;
+   fdatasets.Databaseinfo:=freport.DatabaseInfo;
+   fdatasets.Params:=freport.Params;
+  finally
+   fdatasets.SetBlockChangesSource(freport);
+  end;
  end;
+end;
+
+procedure TFRpDInfoVCL.SetFrameBlockChangesSource(AReport:TRpReport);
+begin
+ if Assigned(fconnections) then
+  fconnections.SetBlockChangesSource(AReport);
+ if Assigned(fdatasets) then
+  fdatasets.SetBlockChangesSource(AReport);
 end;
 
 procedure TFRpDInfoVCL.SetReport(value:TRpReport);
@@ -116,8 +302,13 @@ begin
   fconnections.Parent:=TabConnections;
   fconnections.Align := alClient;
  end;
- fconnections.Databaseinfo:=report.DatabaseInfo;
- fconnections.Params:=report.Params;
+   fconnections.SetBlockChangesSource(nil);
+   try
+    fconnections.Databaseinfo:=report.DatabaseInfo;
+    fconnections.Params:=report.Params;
+   finally
+    SetFrameBlockChangesSource(report);
+   end;
  if report.DatabaseInfo.Count>0 then
    begin
     EnsureDatasetsFrame;
@@ -151,8 +342,13 @@ begin
  if PControl.ActivePage = TabDatasets then
  begin
   EnsureDatasetsFrame;
-  fdatasets.Databaseinfo:=fconnections.DatabaseInfo;
-  fconnections.Params:=fdatasets.Params;
+  SetFrameBlockChangesSource(nil);
+  try
+   fdatasets.Databaseinfo:=fconnections.DatabaseInfo;
+   fconnections.Params:=fdatasets.Params;
+  finally
+   SetFrameBlockChangesSource(freport);
+  end;
  end;
 end;
 
@@ -366,8 +562,45 @@ begin
    RecordParamUndoChanges(origParams,newParams,freport,groupId);
 end;
 
+function TFRpDInfoVCL.HasPendingChanges:Boolean;
+begin
+ Result:=False;
+ if not Assigned(fconnections) then
+  Exit;
+ if not SameDatabaseInfoList(origDatabaseInfo,fconnections.DatabaseInfo) then
+ begin
+  Result:=True;
+  Exit;
+ end;
+ if Assigned(fdatasets) then
+ begin
+  if not SameDataInfoList(origDataInfo,fdatasets.DataInfo) then
+  begin
+   Result:=True;
+   Exit;
+  end;
+  if not SameParamList(origParams,fdatasets.Params) then
+  begin
+   Result:=True;
+   Exit;
+  end;
+ end;
+end;
+
 procedure TFRpDInfoVCL.BOkClick(Sender: TObject);
 begin
+ if not Assigned(freport) then
+ begin
+  Close;
+  Exit;
+ end;
+ if not HasPendingChanges then
+ begin
+  Close;
+  Exit;
+ end;
+ if not freport.CanModify('Database configuration') then
+  Exit;
  EnsureReportItemNames(freport);
  RecordUndoChanges;
  freport.DatabaseInfo.Assign(fconnections.Databaseinfo);

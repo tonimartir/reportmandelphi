@@ -58,6 +58,7 @@ type
   protected
    procedure DefineProperties(Filer:TFiler);override;
    function GetReport:TComponent;
+    procedure AssertCanModify(const AReason:string);
    procedure DoPrint(adriver:TRpPrintDriver;
     aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);virtual;
@@ -90,6 +91,10 @@ type
    FPosX:TRpTwips;
    FAlign:TRpPosAlign;
    FAnnotationExpression: string;
+  procedure SetPosX(Value:TRpTwips);
+  procedure SetPosY(Value:TRpTwips);
+  procedure SetAlign(Value:TRpPosAlign);
+  procedure SetAnnotationExpression(const Value:string);
   public
    PartialFlag:boolean;
    function GetParent:TRpCommonComponent;
@@ -97,11 +102,11 @@ type
    procedure SetItemProperty(const propName: string; const value: Variant); override;
    function GetItemProperty(const propName: string): Variant; override;
   published
-   property PosX:TRpTwips read FPosX write FPosX;
-   property PosY:TRpTwips read FPosY write FPosY;
-   property Align:TRpPosAlign read FAlign write FAlign
+  property PosX:TRpTwips read FPosX write SetPosX;
+  property PosY:TRpTwips read FPosY write SetPosY;
+  property Align:TRpPosAlign read FAlign write SetAlign
     default rpalnone;
-   property AnnotationExpression: string read FAnnotationExpression write FAnnotationExpression;
+  property AnnotationExpression: string read FAnnotationExpression write SetAnnotationExpression;
   end;
 
  TRpCommonPosClass=class of TRpCommonPosComponent;
@@ -122,6 +127,7 @@ type
    FSection:TComponent;
    function GetItem(Index:Integer):TRpCommonListItem;
    procedure SetItem(index:integer;Value:TRpCommonListItem);
+  procedure AssertCanModify(const AReason:string);
   public
    function Add:TRpCommonListItem;
    function Insert(index:integer):TRpCommonListItem;
@@ -259,8 +265,18 @@ begin
  FDoAfterPrint:=ReadWideString(Reader);
 end;
 
+procedure TRpCommonComponent.AssertCanModify(const AReason:string);
+var
+ LReport:TComponent;
+begin
+ LReport:=GetReport;
+ if LReport is TRpBaseReport then
+  TRpBaseReport(LReport).AssertCanModify(AReason);
+end;
+
 procedure TRpCommonComponent.SetWidth(Value:TRpTwips);
 begin
+ AssertCanModify(ClassName+'.Width');
  if Value>MAX_ELEMENT_WIDTH then
   Value:=MAX_ELEMENT_WIDTH;
  if Value<0 then
@@ -270,6 +286,7 @@ end;
 
 procedure TRpCommonComponent.SetHeight(Value:TRpTwips);
 begin
+ AssertCanModify(ClassName+'.Height');
  if Value>MAX_ELEMENT_HEIGHT then
   Value:=MAX_ELEMENT_HEIGHT;
  if Value<0 then
@@ -354,6 +371,30 @@ begin
  end;
 end;
 
+procedure TRpCommonPosComponent.SetPosX(Value:TRpTwips);
+begin
+ AssertCanModify(ClassName+'.PosX');
+ FPosX:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetPosY(Value:TRpTwips);
+begin
+ AssertCanModify(ClassName+'.PosY');
+ FPosY:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetAlign(Value:TRpPosAlign);
+begin
+ AssertCanModify(ClassName+'.Align');
+ FAlign:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetAnnotationExpression(const Value:string);
+begin
+ AssertCanModify(ClassName+'.AnnotationExpression');
+ FAnnotationExpression:=Value;
+end;
+
 
 function TRpCommonPosComponent.GetParent:TRpCommonComponent;
 var
@@ -435,6 +476,8 @@ end;
 
 procedure TRpCommonListItem.SetComponent(Value:TRpCommonComponent);
 begin
+ if Collection is TRpCommonList then
+  TRpCommonList(Collection).AssertCanModify('section component');
  FComponent:=Value;
  Changed(False);
 end;
@@ -446,7 +489,14 @@ end;
 
 procedure TRpCommonList.SetItem(index:integer;Value:TRpCommonListItem);
 begin
+ AssertCanModify('section component list');
  inherited SetItem(Index,Value);
+end;
+
+procedure TRpCommonList.AssertCanModify(const AReason:string);
+begin
+ if Assigned(FSection) and Assigned(FSection.Owner) and (FSection.Owner is TRpBaseReport) then
+  TRpBaseReport(FSection.Owner).AssertCanModify(AReason);
 end;
 
 
@@ -462,11 +512,13 @@ end;
 
 function TRpCommonList.Add:TRpCommonListItem;
 begin
+ AssertCanModify('section component add');
  Result:=TRpCommonListItem(inherited Add);
 end;
 
 function TRpCommonList.Insert(index:integer):TRpCommonListItem;
 begin
+ AssertCanModify('section component insert');
  Result:=TRpCommonListItem(inherited Insert(index));
 end;
 
@@ -639,6 +691,7 @@ end;
 
 procedure TRpCommonComponent.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Width') or SameText(propName, SRpSWidth) then
  begin
   Width := value;
@@ -713,22 +766,22 @@ procedure TRpCommonPosComponent.SetItemProperty(const propName: string; const va
 begin
  if SameText(propName, 'PosX') or SameText(propName, SRpSLeft) then
  begin
-  FPosX := value;
+  SetPosX(value);
   exit;
  end;
  if SameText(propName, 'PosY') or SameText(propName, SRpSTop) then
  begin
-  FPosY := value;
+  SetPosY(value);
   exit;
  end;
  if SameText(propName, 'Align') or SameText(propName, SRPAlign) then
  begin
-  FAlign := TRpPosAlign(Integer(value));
+  SetAlign(TRpPosAlign(Integer(value)));
   exit;
  end;
  if SameText(propName, 'AnnotationExpression') or SameText(propName, SRpSAnnotation) then
  begin
-  FAnnotationExpression := value;
+  SetAnnotationExpression(value);
   exit;
  end;
  inherited;

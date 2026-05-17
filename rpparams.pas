@@ -55,6 +55,7 @@ type
     FSearchParam:String;
     FValidation:WideString;
     FErrorMessage:WideString;
+    procedure AssertCanModify(const AReason:string);
     procedure SetVisible(AVisible:boolean);
     procedure SetIsReadOnly(AReadOnly:boolean);
     procedure SetNeverVisible(ANeverVisible:boolean);
@@ -148,6 +149,7 @@ type
    private
     FReport:TComponent;
     FLanguage:integer;
+    procedure AssertCanModify(const AReason:string);
    public
     function GetItem(Index:Integer):TRpParam;
     procedure SetItem(index:integer;Value:TRpParam);
@@ -204,6 +206,20 @@ implementation
 uses rpeval,rpbasereport,rpreport,rpdatainfo;
 {$ENDIF}
 
+procedure TRpParamList.AssertCanModify(const AReason:string);
+begin
+{$IFNDEF FORWEBAX}
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+{$ENDIF}
+end;
+
+procedure TRpParam.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpParamList then
+  TRpParamList(Collection).AssertCanModify(AReason);
+end;
+
 procedure TRpParamComp.SetParams(avalue:TRpParamList);
 begin
  fparams.Assign(avalue);
@@ -240,12 +256,14 @@ end;
 
 procedure TRpParam.SetDescription(ADescription:WideString);
 begin
+ AssertCanModify(ClassName+'.Description');
  FDescription:=AddLineLangByIndex(FDescription,ADescription,TRpParamList(Collection).Language);
  Changed(false);
 end;
 
 procedure TRpParam.SetHint(AHint:widestring);
 begin
+ AssertCanModify(ClassName+'.Hint');
  FHint:=AddLineLangByIndex(FHint,AHint,TRpParamList(Collection).Language);
  Changed(false);
 end;
@@ -257,12 +275,14 @@ end;
 
 procedure TRpParam.SetErrorMessage(AMessage:widestring);
 begin
+ AssertCanModify(ClassName+'.ErrorMessage');
  FErrorMessage:=AddLineLangByIndex(FErrorMessage,AMessage,TRpParamList(Collection).Language);
  Changed(false);
 end;
 
 procedure TRpParam.SetValidation(AValidation:widestring);
 begin
+ AssertCanModify(ClassName+'.Validation');
  FValidation:=AValidation;
  Changed(false);
 end;
@@ -291,6 +311,7 @@ end;
 
 procedure TRpParam.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Name') then
  begin
   SetName(value);
@@ -500,48 +521,56 @@ end;
 
 procedure TRpParam.SetIsReadOnly(AReadOnly:boolean);
 begin
+ AssertCanModify(ClassName+'.IsReadOnly');
  FIsReadOnly:=AReadOnly;
  Changed(false);
 end;
 
 procedure TRpParam.SetNeverVisible(ANeverVisible:boolean);
 begin
+ AssertCanModify(ClassName+'.NeverVisible');
  FNeverVisible:=ANeverVisible;
  Changed(false);
 end;
 
 procedure TRpParam.SetVisible(AVisible:boolean);
 begin
+ AssertCanModify(ClassName+'.Visible');
  FVisible:=AVisible;
  Changed(false);
 end;
 
 procedure TRpParam.SetAllowNulls(AAllowNulls:boolean);
 begin
+ AssertCanModify(ClassName+'.AllowNulls');
  FAllowNulls:=AAllowNulls;
  Changed(false);
 end;
 
 procedure TRpParam.SetDatasets(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Datasets');
  FDatasets.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetItems(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Items');
  FItems.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetValues(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Values');
  FValues.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetSelected(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Selected');
  FSelected.Assign(Alist);
  Changed(False);
 end;
@@ -698,18 +727,21 @@ end;
 
 procedure TRpParam.SetName(AName:String);
 begin
+ AssertCanModify(ClassName+'.Name');
  FName:=AnsiUpperCase(AName);
  Changed(false);
 end;
 
 procedure TRpParam.SetIntName(AIntName:String);
 begin
+ AssertCanModify(ClassName+'.IntName');
  FIntName:=AnsiUpperCase(AIntName);
  Changed(false);
 end;
 
 procedure TRpParam.SetParamType(AParamType:TRpParamType);
 begin
+ AssertCanModify(ClassName+'.ParamType');
  FParamType:=AParamType;
  Changed(False);
 end;
@@ -718,12 +750,14 @@ end;
 
 procedure TRpParam.SetSearch(ASearch:wideString);
 begin
+ AssertCanModify(ClassName+'.Search');
  FSearch:=ASearch;
  Changed(false);
 end;
 
 procedure TRpParam.SetValue(AValue:Variant);
 begin
+ AssertCanModify(ClassName+'.Value');
  if VarType(AValue)=varString then
  begin
   FValue:=WideString(AValue);
@@ -750,6 +784,7 @@ end;
 
 procedure TRpParamList.SetItem(index:integer;Value:TRpParam);
 begin
+ AssertCanModify('Params.SetItem');
  inherited SetItem(Index,Value);
 end;
 
@@ -761,6 +796,7 @@ end;
 
 function TRpParamList.Add(AName:String):TRpParam;
 begin
+ AssertCanModify('Params.Add');
  // Checks if it exists
  if IndexOf(AName)>=0 then
   Raise Exception.Create(SRpParameterExists+ ':'+AName);

@@ -116,6 +116,7 @@ type
    function Code_EAN13: AnsiString;
    procedure MakeModules;
    procedure SetModul(v:integer);
+  procedure SetExpression(const Value:WideString);
    procedure Evaluate;
    procedure WriteExpression(Writer:TWriter);
    procedure ReadExpression(Reader:TReader);
@@ -188,7 +189,7 @@ type
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup: String='');override;
    constructor Create(Owner:TComponent); override;
 //   procedure DrawText(Canvas:TCanvas);
-   property Expression:widestring read FExpression write FExpression;
+  property Expression:widestring read FExpression write SetExpression;
    procedure SetItemProperty(const propName: string; const value: Variant); override;
    function GetItemProperty(const propName: string): Variant; override;
   published
@@ -373,9 +374,16 @@ end;
 // set Modul Width
 procedure TRpBarcode.SetModul(v:integer);
 begin
+ AssertCanModify(ClassName+'.Modul');
  if (v<1) then
   v:=1;
  FModul := v;
+end;
+
+procedure TRpBarcode.SetExpression(const Value:WideString);
+begin
+ AssertCanModify(ClassName+'.Expression');
+ FExpression:=Value;
 end;
 
 ////////////////////////////// EAN /////////////////////////////////////////
@@ -3173,9 +3181,10 @@ end;
 
 procedure TRpBarcode.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
-  FExpression := value;
+  SetExpression(value);
   exit;
  end;
  if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then

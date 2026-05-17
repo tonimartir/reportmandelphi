@@ -64,6 +64,8 @@ type
     procedure ApplyPropertiesToObject(operation: TChangeObjectOperation;
       target: TObject; isUndo: Boolean);
     function GetComponentByName(const name: string): TObject;
+    procedure AssertReportCanModify(const AReason: string);
+    procedure AssertReportNotBlocked(const AReason: string);
   public
     UndoOperations: TObjectList<TChangeObjectOperation>;
     RedoOperations: TObjectList<TChangeObjectOperation>;
@@ -691,8 +693,21 @@ begin
   inherited;
 end;
 
+procedure TUndoCue.AssertReportCanModify(const AReason: string);
+begin
+  if Assigned(FReport) then
+    FReport.AssertCanModify('UndoCue.' + AReason);
+end;
+
+procedure TUndoCue.AssertReportNotBlocked(const AReason: string);
+begin
+  if Assigned(FReport) and FReport.BlockChanges then
+    raise Exception.Create('UndoCue reached while report changes are blocked: ' + AReason);
+end;
+
 function TUndoCue.GetGroupId: Integer;
 begin
+  AssertReportCanModify('GetGroupId');
   if (UndoOperations.Count > 0) or ((RedoOperations.Count > 0) and (FGroupId = 0)) then
   begin
     if UndoOperations.Count > 0 then
@@ -709,6 +724,7 @@ procedure TUndoCue.AddOperation(op: TChangeObjectOperation);
 var
   isPosComp: Boolean;
 begin
+  AssertReportNotBlocked('AddOperation');
   if (op.operation = otAdd) or (op.operation = otRemove) then
   begin
     isPosComp := (op.componentClass = 'TRPLABEL') or (op.componentClass = 'TRPEXPRESSION') or
@@ -735,6 +751,7 @@ var
   op: TChangeObjectOperation;
   gId, newGroupId: Integer;
 begin
+  AssertReportNotBlocked('Undo');
   if UndoOperations.Count = 0 then
     Exit(nil);
 
@@ -770,6 +787,7 @@ var
   op: TChangeObjectOperation;
   gId, newGroupId: Integer;
 begin
+  AssertReportNotBlocked('Redo');
   if RedoOperations.Count = 0 then
     Exit(nil);
 

@@ -4,6 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons, System.JSON,
+  System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
+  Vcl.VirtualImageList,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginframevcl, rpdatahttp,
   rpreportdesignercontracts, rpfrmaireportvcl, rpwebmarkdownvcl,
   rpchatmodernstyle;
@@ -18,11 +20,6 @@ uses
 
 type
 
-  TConfigIconButton = class(TSpeedButton)
-  protected
-    procedure Paint; override;
-  end;
-
   TSchemaComboItem = class(TObject)
   public
     ApiKey: string;
@@ -36,6 +33,7 @@ type
   TChatStopEvent = procedure(Sender: TObject) of object;
   TChatRefreshEvent = procedure(Sender: TObject) of object;
   TChatSchemaChangedEvent = procedure(Sender: TObject) of object;
+  TDesignInferenceEvent = procedure(Sender: TObject) of object;
   TBuildDesignRequestEvent = function(Sender: TObject;
     const APrompt: string): TRpApiModifyReportRequest of object;
   TBuildPreprocessSqlContextRequestEvent = function(Sender: TObject):
@@ -90,6 +88,8 @@ type
     BSend: TButton;
     BApply: TButton;
     BClear: TButton;
+    SchemaConfigImageCollection: TImageCollection;
+    SchemaConfigImages: TVirtualImageList;
     procedure BApplyClick(Sender: TObject);
     procedure BClearClick(Sender: TObject);
     procedure BClearLogClick(Sender: TObject);
@@ -114,6 +114,8 @@ type
     FOnApplySuggestion: TChatApplyEvent;
     FOnBuildDesignRequest: TBuildDesignRequestEvent;
     FOnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent;
+    FOnDesignInferenceBegin: TDesignInferenceEvent;
+    FOnDesignInferenceEnd: TDesignInferenceEvent;
     FOnRefreshContext: TChatRefreshEvent;
     FOnSchemaChanged: TChatSchemaChangedEvent;
     FOnSendPrompt: TChatSendEvent;
@@ -129,7 +131,7 @@ type
     FOnlineInitializationQueued: Boolean;
     FLastAssistantMessage: string;
     FShowSchemaSelector: Boolean;
-    FSchemaConfigButton: TConfigIconButton;
+    FSchemaConfigButton: TButton;
     FUserAgentsReloadVersion: Integer;
     FUserSchemasReloadVersion: Integer;
     FUseRefreshAction: Boolean;
@@ -240,6 +242,8 @@ type
     property OnApplySuggestion: TChatApplyEvent read FOnApplySuggestion write FOnApplySuggestion;
     property OnBuildDesignRequest: TBuildDesignRequestEvent read FOnBuildDesignRequest write FOnBuildDesignRequest;
     property OnBuildPreprocessSqlContextRequest: TBuildPreprocessSqlContextRequestEvent read FOnBuildPreprocessSqlContextRequest write FOnBuildPreprocessSqlContextRequest;
+    property OnDesignInferenceBegin: TDesignInferenceEvent read FOnDesignInferenceBegin write FOnDesignInferenceBegin;
+    property OnDesignInferenceEnd: TDesignInferenceEvent read FOnDesignInferenceEnd write FOnDesignInferenceEnd;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
     property OnSchemaChanged: TChatSchemaChangedEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
@@ -254,14 +258,6 @@ implementation
 
 uses
   rpdatainfo;
-
-procedure TConfigIconButton.Paint;
-var
-  R: TRect;
-begin
-  R := ClientRect;
-  TRpChatStyle.DrawIconButton(Canvas, R, rpikCog, Enabled, False, Down);
-end;
 
 type
   TRpQueuedSchemasPayload = class(TObject)
@@ -421,10 +417,12 @@ begin
   FDesignRequestVersion := 0;
   MemoPrompt.WantReturns := True;
   MemoPrompt.OnKeyDown := MemoPromptKeyDown;
-  FSchemaConfigButton := TConfigIconButton.Create(Self);
+  FSchemaConfigButton := TButton.Create(Self);
   FSchemaConfigButton.Parent := PSchemaConfigHost;
   FSchemaConfigButton.Align := alClient;
-  FSchemaConfigButton.Flat := False;
+  FSchemaConfigButton.Caption := '';
+  FSchemaConfigButton.Images := SchemaConfigImages;
+  FSchemaConfigButton.ImageIndex := 0;
   FSchemaConfigButton.Hint := 'Open schema configuration on the web';
   FSchemaConfigButton.ShowHint := True;
   FSchemaConfigButton.Cursor := crHandPoint;
@@ -504,6 +502,7 @@ function TFRpChatFrame.GetSchemaHostPreferredHeight: Integer;
 var
   LLabelHeight: Integer;
   LControlsHeight: Integer;
+  LConfigButtonSize: Integer;
   LCurrentHeight: Integer;
 begin
   LLabelHeight := 0;
@@ -512,7 +511,13 @@ begin
 
   LControlsHeight := ControlOuterHeight(ComboSchema);
 
+  LConfigButtonSize := 0;
+  if (ComboSchema <> nil) and ComboSchema.Visible then
+    LConfigButtonSize := MulDiv(ComboSchema.Height, 110, 100);
+
   LCurrentHeight := ControlOuterHeight(PSchemaConfigHost);
+  if LConfigButtonSize > LCurrentHeight then
+    LCurrentHeight := LConfigButtonSize;
   if LCurrentHeight > LControlsHeight then
     LControlsHeight := LCurrentHeight;
 
@@ -538,7 +543,12 @@ const
   RowGap = 4;
 var
   LClientWidth: Integer;
+  LConfigButtonSize: Integer;
   LConfigLeft: Integer;
+  LConfigTop: Integer;
+  LControlsHeight: Integer;
+  LImageSize: Integer;
+  LRefreshTop: Integer;
   LLabelHeight: Integer;
   LRefreshLeft: Integer;
   LRefreshWidth: Integer;
@@ -568,12 +578,34 @@ begin
     LRowHeight := ComboSchema.Height;
   if LRowHeight <= 0 then
     LRowHeight := Scale(24);
+
+  LConfigButtonSize := MulDiv(LRowHeight, 110, 100);
+  if LConfigButtonSize <= 0 then
+    LConfigButtonSize := LRowHeight;
+  LControlsHeight := LRowHeight;
+  if LConfigButtonSize > LControlsHeight then
+    LControlsHeight := LConfigButtonSize;
+
+  if SchemaConfigImages <> nil then
+  begin
+    LImageSize := MulDiv(LConfigButtonSize, 90, 100);
+    if LImageSize < 1 then
+      LImageSize := 1;
+    SchemaConfigImages.Width := LImageSize;
+    SchemaConfigImages.Height := LImageSize;
+  end;
+
   if BRefreshSchemas <> nil then
     BRefreshSchemas.Height := LRowHeight;
   if PSchemaConfigHost <> nil then
-    PSchemaConfigHost.Height := LRowHeight;
+  begin
+    PSchemaConfigHost.Width := LConfigButtonSize;
+    PSchemaConfigHost.Height := LConfigButtonSize;
+  end;
 
   LRowTop := LLabelHeight;
+  LRefreshTop := LRowTop + ((LControlsHeight - LRowHeight) div 2);
+  LConfigTop := LRowTop + ((LControlsHeight - LConfigButtonSize) div 2);
 
   LRefreshWidth := 0;
   if (BRefreshSchemas <> nil) and BRefreshSchemas.Visible then
@@ -584,7 +616,7 @@ begin
     LRefreshLeft := LClientWidth - LRefreshWidth;
     if LRefreshLeft < 0 then
       LRefreshLeft := 0;
-    BRefreshSchemas.SetBounds(LRefreshLeft, LRowTop, LRefreshWidth, LRowHeight);
+    BRefreshSchemas.SetBounds(LRefreshLeft, LRefreshTop, LRefreshWidth, LRowHeight);
   end
   else
     LRefreshLeft := LClientWidth;
@@ -592,13 +624,11 @@ begin
   LConfigLeft := LRefreshLeft;
   if (PSchemaConfigHost <> nil) and PSchemaConfigHost.Visible then
   begin
-    if PSchemaConfigHost.Width <= 0 then
-      PSchemaConfigHost.Width := Scale(28);
-    LConfigLeft := LRefreshLeft - RowGap - PSchemaConfigHost.Width;
+    LConfigLeft := LRefreshLeft - RowGap - LConfigButtonSize;
     if LConfigLeft < 0 then
       LConfigLeft := 0;
-    PSchemaConfigHost.SetBounds(LConfigLeft, LRowTop, PSchemaConfigHost.Width,
-      LRowHeight);
+    PSchemaConfigHost.SetBounds(LConfigLeft, LConfigTop, LConfigButtonSize,
+      LConfigButtonSize);
   end;
 
   if ComboSchema <> nil then
@@ -606,7 +636,7 @@ begin
     LSchemaWidth := LConfigLeft - RowGap;
     if LSchemaWidth < 0 then
       LSchemaWidth := 0;
-    ComboSchema.SetBounds(0, LRowTop, LSchemaWidth, LRowHeight);
+    ComboSchema.SetBounds(0, LRefreshTop, LSchemaWidth, LRowHeight);
   end;
 end;
 
@@ -1534,12 +1564,14 @@ begin
       LPreprocessResponse: TRpApiPreprocessSqlContextResult;
       LPreprocessUserProfileJson: string;
       LResponse: TRpApiModifyReportResult;
+      LDesignInferenceActive: Boolean;
       LStreamContext: TRpDesignChatStreamContext;
     begin
       LHttp := TRpDatabaseHttp.Create;
       LPreprocessResponse := nil;
       LPreprocessUserProfileJson := '';
       LResponse := nil;
+      LDesignInferenceActive := False;
       LStreamContext := TRpDesignChatStreamContext.Create;
       LStreamContext.RequestVersion := LRequestVersion;
       try
@@ -1593,8 +1625,32 @@ begin
             LPreprocessUserProfileJson := LPreprocessResponse.UserProfileJson;
           end;
 
-          LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
-            DesignStreamProgress, DesignStreamCancelRequested);
+          if Assigned(FOnDesignInferenceBegin) or Assigned(FOnDesignInferenceEnd) then
+          begin
+            TThread.Synchronize(nil,
+              procedure
+              begin
+                if Assigned(FOnDesignInferenceBegin) then
+                  FOnDesignInferenceBegin(Self);
+              end);
+            LDesignInferenceActive := True;
+          end;
+
+          try
+            LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
+              DesignStreamProgress, DesignStreamCancelRequested);
+          finally
+            if LDesignInferenceActive then
+            begin
+              TThread.Synchronize(nil,
+                procedure
+                begin
+                  if Assigned(FOnDesignInferenceEnd) then
+                    FOnDesignInferenceEnd(Self);
+                end);
+              LDesignInferenceActive := False;
+            end;
+          end;
 
           if LRequestVersion <> FDesignRequestVersion then
             Exit;

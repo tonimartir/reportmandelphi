@@ -244,6 +244,7 @@ type
    FDriver:TRpDbDriver;
    procedure SetAlias(Value:string);
    procedure SetConfigFile(Value:string);
+  procedure AssertCanModify(const AReason:string);
    procedure SetLoadParams(Value:boolean);
    procedure SetLoadDriverParams(Value:boolean);
    procedure SetLoginPrompt(Value:boolean);
@@ -330,6 +331,7 @@ type
 {$ENDIF}
    function GetItem(Index:Integer):TRpDatabaseInfoItem;
    procedure SetItem(index:integer;Value:TRpDatabaseInfoItem);
+  procedure AssertCanModify(const AReason:string);
   public
 {$IFDEF USEBDE}
    property BDESession:TSession read FBDESession write FBDESession;
@@ -393,6 +395,7 @@ type
   FSQLExplanationError: WideString;
   FHubSchemaId: Int64;
    procedure SetDataUnions(Value:TStrings);
+  procedure AssertCanModify(const AReason:string);
    procedure SetDatabaseAlias(Value:string);
    procedure SetAlias(Value:string);
    procedure SetDataSource(Value:string);
@@ -466,6 +469,7 @@ type
    FReport:TComponent;
    function GetItem(Index:Integer):TRpDataInfoItem;
    procedure SetItem(index:integer;Value:TRpDataInfoItem);
+  procedure AssertCanModify(const AReason:string);
    procedure IntEnableLink(alist:TStringList;i:integer);
    procedure IntDisableLink(alist:TStringList;i:integer);
   public
@@ -557,6 +561,30 @@ var
 
 
 const FOLDERID_Public: TGUID = '{DFDF76A2-C82A-4D63-906A-5644AC457385}';
+
+procedure TRpDataInfoList.AssertCanModify(const AReason:string);
+begin
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+end;
+
+procedure TRpDataInfoItem.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpDataInfoList then
+  TRpDataInfoList(Collection).AssertCanModify(AReason);
+end;
+
+procedure TRpDatabaseInfoList.AssertCanModify(const AReason:string);
+begin
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+end;
+
+procedure TRpDatabaseInfoItem.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpDatabaseInfoList then
+  TRpDatabaseInfoList(Collection).AssertCanModify(AReason);
+end;
 
 function LoadDbxDriversResourceIni(const ATargetFileName: string): TMemIniFile;
 var
@@ -1158,6 +1186,7 @@ end;
 
 procedure TRpDataInfoItem.SetDataUnions(Value:TStrings);
 begin
+ AssertCanModify(ClassName+'.DataUnions');
  FDataUnions.Assign(Value);
  Changed(False);
 end;
@@ -1165,12 +1194,14 @@ end;
 
 procedure TRpDataInfoItem.SetDatabaseAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.DatabaseAlias');
  FDatabaseAlias:=AnsiUpperCase(Value);
  Changed(False);
 end;
 
 procedure TRpDataInfoItem.SetAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.Alias');
  Value:=AnsiUpperCase(Value);
  FAlias:=AnsiUpperCase(Value);
  Changed(False);
@@ -1178,6 +1209,7 @@ end;
 
 procedure TRpDataInfoItem.SetDataSource(Value:string);
 begin
+ AssertCanModify(ClassName+'.DataSource');
  Value:=TRim(AnsiUpperCase(Value));
  FDataSource:=AnsiUpperCase(Value);
  Changed(False);
@@ -1185,6 +1217,7 @@ end;
 
 procedure TRpDataInfoItem.SetSQL(Value:widestring);
 begin
+ AssertCanModify(ClassName+'.SQL');
  if FSQL<>Value then
  begin
   FSQLExplanation:='';
@@ -1196,6 +1229,7 @@ end;
 
 procedure TRpDataInfoItem.SetHubSchemaId(const Value: Int64);
 begin
+ AssertCanModify(ClassName+'.HubSchemaId');
  if FHubSchemaId=Value then
   Exit;
  FHubSchemaId:=Value;
@@ -1226,6 +1260,7 @@ end;
 
 procedure TRpDataInfoItem.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Name') then
  begin
   FName := value;
@@ -1381,11 +1416,13 @@ end;
 
 procedure TRpDataInfoList.SetItem(index:integer;Value:TRpDataInfoItem);
 begin
+ AssertCanModify('DataInfo.SetItem');
  inherited SetItem(Index,Value);
 end;
 
 function TRpDataInfoList.Add(alias:string):TRpDataInfoItem;
 begin
+ AssertCanModify('DataInfo.Add');
  // Then function is defined by the class TCollectionItem
  alias:=AnsiUpperCase(alias);
  if Indexof(alias)>=0 then
@@ -1400,6 +1437,7 @@ var
  item2: TRpDataInfoItem;
  newItem: TRpDataInfoItem;
 begin
+ AssertCanModify('DataInfo.Swap');
  newItem := TRpDataInfoItem(inherited Add);
  newItem.Assign(GetItem(index1));
  SetItem(index1, GetItem(index2));
@@ -1431,6 +1469,7 @@ end;
 
 procedure TRpDatabaseInfoItem.SetAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.Alias');
  Value:=AnsiUpperCase(Value);
  FAlias:=AnsiUpperCase(Value);
  Changed(False);
@@ -1502,18 +1541,21 @@ end;
 
 procedure TRpDatabaseInfoItem.SetLoadParams(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoadParams');
  FLoadParams:=Value;
  Changed(False);
 end;
 
 procedure TRpDatabaseInfoItem.SetLoadDriverParams(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoadDriverParams');
  FLoadDriverParams:=Value;
  Changed(False);
 end;
 
 procedure TRpDatabaseInfoItem.SetLoginPrompt(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoginPrompt');
  FLoginPrompt:=Value;
  Changed(False);
 end;
@@ -1521,6 +1563,7 @@ end;
 
 procedure TRpDatabaseInfoItem.SetConfigFile(Value:string);
 begin
+ AssertCanModify(ClassName+'.ConfigFile');
  FConfigFile:=Value;
  Changed(False);
 end;
@@ -1549,6 +1592,7 @@ end;
 
 procedure TRpDatabaseInfoItem.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Name') then
  begin
   FName := value;
@@ -1693,11 +1737,13 @@ end;
 
 procedure TRpDatabaseInfoList.SetItem(index:integer;Value:TRpDatabaseInfoItem);
 begin
+ AssertCanModify('DatabaseInfo.SetItem');
  inherited SetItem(Index,Value);
 end;
 
 function TRpDatabaseInfoList.Add(alias:string):TRpDatabaseInfoItem;
 begin
+ AssertCanModify('DatabaseInfo.Add');
  // Then function is defined by teh class TCollectionItem
  alias:=AnsiUpperCase(alias);
  if Indexof(alias)>=0 then

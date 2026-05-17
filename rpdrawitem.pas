@@ -83,6 +83,7 @@ type
    procedure ReadStream(AStream:TStream);
    procedure WriteStream(AStream:TStream);
    function GetStream:TMemoryStream;
+  procedure SetExpression(const Value:WideString);
    procedure WriteExpression(Writer:TWriter);
    procedure ReadExpression(Reader:TReader);
   public
@@ -98,7 +99,7 @@ type
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');override;
    function GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;override;
    property Stream:TMemoryStream read FStream write SetStream;
-   property Expression:WideString read FExpression write FExpression;
+  property Expression:WideString read FExpression write SetExpression;
    procedure SetItemProperty(const propName: string; const value: Variant); override;
    function GetItemProperty(const propName: string): Variant; override;
   published
@@ -210,6 +211,7 @@ end;
 
 procedure TRpImage.SetStream(Value:TMemoryStream);
 begin
+ AssertCanModify(ClassName+'.Stream');
  if IsCompressed(Value) then
  begin
   FStream.LoadFromStream(Value);
@@ -223,6 +225,12 @@ begin
   else
    FStream.LoadFromStream(Value);
  end;
+end;
+
+procedure TRpImage.SetExpression(const Value:WideString);
+begin
+ AssertCanModify(ClassName+'.Expression');
+ FExpression:=Value;
 end;
 
 procedure TRpImage.WriteExpression(Writer:TWriter);
@@ -429,6 +437,7 @@ end;
 
 procedure TRpShape.SetItemProperty(const propName: string; const value: Variant);
 begin
+  AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'BrushStyle') or SameText(propName, SRpSBrushStyle) then
  begin
   FBrushStyle := value;
@@ -503,9 +512,10 @@ procedure TRpImage.SetItemProperty(const propName: string; const value: Variant)
 var
  tempStream: TMemoryStream;
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
-  FExpression := value;
+  SetExpression(value);
   exit;
  end;
  if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then

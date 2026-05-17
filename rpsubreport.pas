@@ -39,6 +39,7 @@ type
    FParentSection:TRpSection;
    FPrintOnlyIfDataAvailable,FReOpenOnPrint:Boolean;
    // Methots for writing internal indexes
+   procedure AssertCanModify(const AReason:string);
    procedure SetSections(Value:TRpSectionList);
    function GetDetailCount:integer;
    function GetFirstDetail:integer;
@@ -106,6 +107,12 @@ implementation
 
 uses rpbasereport;
 
+procedure TRpSubReport.AssertCanModify(const AReason:string);
+begin
+ if Owner is TRpBaseReport then
+  TRpBaseReport(Owner).AssertCanModify(AReason);
+end;
+
 
 procedure TRpSubReport.Notification(AComponent: TComponent;
  Operation: TOperation);
@@ -121,8 +128,7 @@ begin
   begin
    if AComponent=FParentSubReport then
     removeparent:=true;
-  end
-  else
+  end;
   if (AComponent is TRpSection) then
   begin
    if AComponent=FParentSection then
@@ -138,6 +144,7 @@ end;
 
 procedure TRpSubReport.SetAlias(Value:String);
 begin
+ AssertCanModify(ClassName+'.Alias');
  FAlias:=Trim(Value);
 end;
 
@@ -147,6 +154,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddPageHeader');
  // Search the index to insert the page header
  index:=0;
  // Move all sections one down
@@ -184,6 +192,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddDetail');
  // Search the index to insert the page footer
  index:=0;
  while ((Sections.Items[index].Section.SectionType in [rpsecpheader..rpsecdetail])
@@ -214,6 +223,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddPageFooter');
  // Search the index to insert the page footer
  index:=0;
  while ((Sections.Items[index].Section.SectionType in [rpsecpheader..rpsecgfooter])
@@ -259,6 +269,7 @@ var
  sec:TRpSection;
  sec1:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddGroup');
  // Checks not exisss
  groupname:=UpperCase(groupname);
  if Length(groupname)<1 then
@@ -314,6 +325,7 @@ end;
 
 procedure TRpSubReport.SetSections(Value:TRpSectionList);
 begin
+ AssertCanModify(ClassName+'.Sections');
  FSections.Assign(Value);
 end;
 
@@ -339,6 +351,7 @@ begin
  // If is destroying left the component free sections
  if (csDestroying in Owner.ComponentState) then
   exit;
+ AssertCanModify(ClassName+'.FreeSections');
  for i:=0 to FSections.Count-1 do
  begin
   FSections.Items[i].Section.FreeComponents;
@@ -352,6 +365,7 @@ procedure TRpSubReport.CreateNew;
 var
  it:TRpSectionListItem;
 begin
+ AssertCanModify(ClassName+'.CreateNew');
  // Free the current sections
  FreeSections;
  // Create a new section, the owner is the report
@@ -370,6 +384,7 @@ var
  detailcount:integer;
  groupname:string;
 begin
+ AssertCanModify(ClassName+'.FreeSection');
  // If it's a detail looks if there is two details
  if sec.SectionType=rpsecdetail then
  begin
@@ -842,6 +857,7 @@ end;
 
 procedure TRpSubReport.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Name') then
  begin
   Name := Value;

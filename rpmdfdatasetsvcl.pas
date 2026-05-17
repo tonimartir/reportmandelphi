@@ -144,8 +144,10 @@ type
     FChat: TFRpChatFrame;
     FChatRequestVersion: Integer;
     FMonaco: TFRpMonacoEditorVCL;
+    FLoadingControls: Boolean;
     FSyncingSchemaContext: Boolean;
     Report:TRpReport;
+    procedure AssertCanModify(const AReason:string);
     procedure EnsureAdvancedEditors;
     procedure DatasetPageChanged(Sender: TObject);
     procedure ApplyActiveDataInfoContext(ASyncSqlFromDataInfo: Boolean = True;
@@ -186,6 +188,7 @@ type
     { Public declarations }
     constructor Create(AOwner:TComponent);override;
     destructor Destroy; override;
+    procedure SetBlockChangesSource(AReport:TRpReport);
     procedure FillDatasets;
     property Datainfo:TRpDataInfoList read GetDatainfo
      write SetDataInfo;
@@ -275,6 +278,17 @@ begin
  report.params.assign(value);
 end;
 
+procedure TFRpDatasetsVCL.SetBlockChangesSource(AReport:TRpReport);
+begin
+ Report.BlockChangesSource:=AReport;
+end;
+
+procedure TFRpDatasetsVCL.AssertCanModify(const AReason:string);
+begin
+ if Assigned(Report) then
+  Report.AssertCanModify(AReason);
+end;
+
 constructor TFRpDatasetsVCL.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
@@ -282,6 +296,7 @@ begin
  //ScaleToolBar(toolbar1);
   //Align := AlClient;
  Report:=TRpReport.Create(Self);
+ FLoadingControls:=False;
  report.CreateNew;
  Report.InitEvaluator;
  BParams.Caption:=TranslateStr(152,BParams.Caption);
@@ -375,8 +390,13 @@ begin
  ComboConnection.Anchors:=[akLeft,akTop,akRight];
  ComboDataSource.Anchors:=[akLeft,akTop,akRight];
 
- report.DatabaseInfo.Assign(Value);
- FillDatasets;
+ FLoadingControls:=True;
+ try
+  report.DatabaseInfo.Assign(Value);
+  FillDatasets;
+ finally
+  FLoadingControls:=False;
+ end;
 
 end;
 
@@ -503,7 +523,12 @@ end;
 
 procedure TFRpDatasetsVCL.SetDataInfo(Value:TRpDataInfoList);
 begin
- report.DataInfo.Assign(Value);
+ FLoadingControls:=True;
+ try
+  report.DataInfo.Assign(Value);
+ finally
+  FLoadingControls:=False;
+ end;
 end;
 
 procedure TFRpDatasetsVCL.FillDatasets;
@@ -538,6 +563,7 @@ end;
 
 procedure TFRpDatasetsVCL.BParamsClick(Sender: TObject);
 begin
+ AssertCanModify('Report parameters');
  ShowParamDef(report.params,report.datainfo,report,True);
 end;
 
@@ -547,6 +573,7 @@ var
   dbinfo: TRpDatabaseInfoItem;
   LParams: TStringList;
   index: Integer;
+  oldloading:Boolean;
 begin
   // Fils the info of the current dataset
   dinfo := FindDataInfoItem;
@@ -557,58 +584,64 @@ begin
     PanelBasic.Visible := False;
     Exit;
   end;
-  CheckOpen.Checked := dinfo.OpenOnStart;
-  PControl.Visible := True;
-  PanelBasic.Visible := True;
-  if PControl.ActivePage = TabSQL then
-    EnsureAdvancedEditors;
-  ApplyActiveDataInfoContext(True);
+  oldloading:=FLoadingControls;
+  FLoadingControls:=True;
+  try
+   CheckOpen.Checked := dinfo.OpenOnStart;
+   PControl.Visible := True;
+   PanelBasic.Visible := True;
+   if PControl.ActivePage = TabSQL then
+     EnsureAdvancedEditors;
+   ApplyActiveDataInfoContext(True);
 
-  EMyBase.Text := dinfo.MyBaseFilename;
-  EMyBaseDefs.Text := dinfo.MyBaseFields;
-  EIndexFields.Text := dinfo.MyBaseIndexFields;
-  LUnions.Items.Assign(dinfo.DataUnions);
-  CheckGroupUnion.Checked := dinfo.GroupUnion;
-  CheckParallelUnion.Checked := dinfo.ParallelUnion;
-  EBDEIndexFields.Text := dinfo.BDEIndexFields;
-  MBDEFilter.Text := dinfo.BDEFilter;
-  EBDEIndexName.Text := dinfo.BDEIndexName;
-  EBDEFirstRange.Text := dinfo.BDEFirstRange;
-  EBDELastRange.Text := dinfo.BDELastRange;
-  EBDETable.Text := dinfo.BDETable;
-  EBDEMasterFields.Text := dinfo.BDEMasterFields;
-  EMasterFields.Text := dinfo.MyBaseMasterFields;
-  RBDEType.ItemIndex := Integer(dinfo.BDEType);
-  index := ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
-  if index < 0 then
-  begin
-    dinfo.DatabaseAlias := '';
-    index := 0;
+   EMyBase.Text := dinfo.MyBaseFilename;
+   EMyBaseDefs.Text := dinfo.MyBaseFields;
+   EIndexFields.Text := dinfo.MyBaseIndexFields;
+   LUnions.Items.Assign(dinfo.DataUnions);
+   CheckGroupUnion.Checked := dinfo.GroupUnion;
+   CheckParallelUnion.Checked := dinfo.ParallelUnion;
+   EBDEIndexFields.Text := dinfo.BDEIndexFields;
+   MBDEFilter.Text := dinfo.BDEFilter;
+   EBDEIndexName.Text := dinfo.BDEIndexName;
+   EBDEFirstRange.Text := dinfo.BDEFirstRange;
+   EBDELastRange.Text := dinfo.BDELastRange;
+   EBDETable.Text := dinfo.BDETable;
+   EBDEMasterFields.Text := dinfo.BDEMasterFields;
+   EMasterFields.Text := dinfo.MyBaseMasterFields;
+   RBDEType.ItemIndex := Integer(dinfo.BDEType);
+   index := ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
+   if index < 0 then
+   begin
+     dinfo.DatabaseAlias := '';
+     index := 0;
+   end;
+   ComboConnection.ItemIndex := index;
+
+   ComboDataSource.Items.Assign(LDatasets.Items);
+   index := ComboDataSource.Items.IndexOf(dinfo.alias);
+   if index >= 0 then
+     ComboDataSource.Items.Delete(index);
+
+   index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+   if index < 0 then
+   begin
+     dinfo.DataSource := '';
+   end;
+   ComboDataSource.Items.Insert(0, '');
+   index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+   if index < 0 then
+     index := 0;
+   ComboDataSource.ItemIndex := index;
+   ComboUnions.Items.Assign(LDatasets.Items);
+   ComboUnions.Items.Delete(LDatasets.ItemIndex);
+   if ComboUnions.Items.Count < 1 then
+     ComboUnions.ItemIndex := -1
+   else
+     ComboUnions.ItemIndex := 0;
+   UpdateConnectionDependentUi(dinfo, databaseinfo.IndexOf(dinfo.DatabaseAlias));
+  finally
+   FLoadingControls:=oldloading;
   end;
-  ComboConnection.ItemIndex := index;
-
-  ComboDataSource.Items.Assign(LDatasets.Items);
-  index := ComboDataSource.Items.IndexOf(dinfo.alias);
-  if index >= 0 then
-    ComboDataSource.Items.Delete(index);
-
-  index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
-  if index < 0 then
-  begin
-    dinfo.DataSource := '';
-  end;
-  ComboDataSource.Items.Insert(0, '');
-  index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
-  if index < 0 then
-    index := 0;
-  ComboDataSource.ItemIndex := index;
-  ComboUnions.Items.Assign(LDatasets.Items);
-  ComboUnions.Items.Delete(LDatasets.ItemIndex);
-  if ComboUnions.Items.Count < 1 then
-    ComboUnions.ItemIndex := -1
-  else
-    ComboUnions.ItemIndex := 0;
-  UpdateConnectionDependentUi(dinfo, databaseinfo.IndexOf(dinfo.DatabaseAlias));
 end;
 
 procedure TFRpDatasetsVCL.LRangeClick(Sender: TObject);
@@ -665,6 +698,8 @@ begin
   TabBDEType.TabVisible:=false;
   exit;
  end;
+ if not FLoadingControls then
+  AssertCanModify('Dataset configuration');
  if Sender=BAddUnions then
   dinfo.DataUnions:=LUnions.Items
  else
@@ -912,6 +947,7 @@ end;
 procedure TFRpDatasetsVCL.ChatApplySuggestion(Sender: TObject;
   const AExpression: string);
 begin
+  AssertCanModify('Dataset SQL');
   EnsureAdvancedEditors;
   FMonaco.SQL := AExpression;
   MSQLChange(FMonaco);
@@ -1401,6 +1437,7 @@ begin
  begin
    exit;
  end;
+ AssertCanModify('Dataset configuration');
  datainfo.Swap(index, index + 1);
  FillDatasets;
  LDataSets.Selected[index+1]:=true;
@@ -1416,6 +1453,7 @@ begin
  aliasname:=Trim(RpInputBox(SrpNewDataset,SRpAliasName,''));
  if Length(aliasname)<1 then
   exit;
+ AssertCanModify('Dataset configuration');
  aitem:=datainfo.Add(aliasname);
  EnsureDataInfoItemName(TRpBaseReport(report), aitem);
   if databaseinfo.Count>0 then
@@ -1441,6 +1479,7 @@ begin
  index:=datainfo.IndexOf(LDatasets.Items.strings[Ldatasets.itemindex]);
  if index>=0 then
  begin
+  AssertCanModify('Dataset configuration');
   oldalias:=datainfo.items[index].Alias;
   datainfo.Delete(index);
   Removedependences(oldalias);
@@ -1465,6 +1504,7 @@ begin
   exit;
  if Not Assigned(dinfo) then
   exit;
+ AssertCanModify('Dataset configuration');
  dinfo.Alias:=aliasname;
  FillDatasets;
 end;
@@ -1490,6 +1530,7 @@ begin
  begin
    exit;
  end;
+ AssertCanModify('Dataset configuration');
  datainfo.Swap(index, index - 1);
  FillDatasets;
  LDataSets.Selected[index-1]:=true;
@@ -1500,6 +1541,7 @@ procedure  TFRpDatasetsVCL.Removedependences(oldalias:string);
 var
  i:integer;
 begin
+ AssertCanModify('Dataset configuration');
  for i:=0 to datainfo.count-1 do
  begin
   if AnsiUpperCase(oldalias)=AnsiUpperCase(datainfo.items[i].datasource) then
@@ -1519,6 +1561,7 @@ begin
   exit;
  if ComboUnions.ItemIndex<0 then
   exit;
+ AssertCanModify('Dataset configuration');
  alist:=TStringList.Create;
  try
   for i:=0 to LUnions.Items.Count-1 do
@@ -1554,6 +1597,7 @@ begin
   exit;
  if LUnions.ItemIndex<0 then
   exit;
+ AssertCanModify('Dataset configuration');
  LUnions.Items.Delete(LUnions.ItemIndex);
  MSQLChange(BAddUnions);
 end;

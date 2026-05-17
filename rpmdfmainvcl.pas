@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager Designer                         }
 {                                                       }
@@ -445,6 +445,10 @@ type
     function GetShortcutFocusedControl: TWinControl;
     function IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
     function ShouldHandleDesignerUndoShortcut: Boolean;
+    procedure ConfigureReportChangeBlocking;
+    function ReportBlockChanges(Sender: TRpBaseReport; const AReason: string): Boolean;
+    procedure DesignInferenceBegin(Sender: TObject);
+    procedure DesignInferenceEnd(Sender: TObject);
     procedure EnsureUndoCue;
     procedure DoUndo;
     procedure DoRedo;
@@ -667,6 +671,7 @@ procedure TFRpMainFVCL.DoEnable;
 begin
  report.Modified:=False;
 
+ ConfigureReportChangeBlocking;
  EnsureUndoCue;
  CreateInterface;
 end;
@@ -674,8 +679,12 @@ end;
 procedure TFRpMainFVCL.DoDisable;
 begin
  FreeInterface;
- report.free;
- report:=nil;
+ if Assigned(report) then
+ begin
+  report.BlockChanges:=False;
+  report.free;
+  report:=nil;
+ end;
 end;
 
 procedure TFRpMainFVCL.AExitExecute(Sender: TObject);
@@ -925,6 +934,8 @@ begin
   fchatframe.OnBuildPreprocessSqlContextRequest:=BuildPreprocessSqlContextRequestForFrame;
   fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
   fchatframe.OnApplyPreprocessSqlContextResult:=ApplyPreprocessSqlContextResultFromFrame;
+  fchatframe.OnDesignInferenceBegin:=DesignInferenceBegin;
+  fchatframe.OnDesignInferenceEnd:=DesignInferenceEnd;
   fchatframe.OnStopRequest:=StopDesignChatRequest;
   fchatframe.OnRefreshContext:=RefreshDesignChatContext;
   fchatframe.SetRefreshAction(True);
@@ -2806,9 +2817,6 @@ end;
 procedure TFRpMainFVCL.DoOpenStream(astream:TStream);
 begin
  // Creates a new report
- FreeInterface;
- report.free;
- report:=nil;
  DoDisable;
  report:=TRpReport.Create(Self);
  try
@@ -2982,6 +2990,39 @@ begin
   report.UndoCue := TUndoCue.Create(report);
 end;
 
+procedure TFRpMainFVCL.ConfigureReportChangeBlocking;
+begin
+ if not Assigned(report) then
+  Exit;
+ report.OnBlockChanges:=ReportBlockChanges;
+end;
+
+procedure TFRpMainFVCL.DesignInferenceBegin(Sender: TObject);
+begin
+ if Assigned(report) then
+  report.BeginBlockChanges;
+end;
+
+procedure TFRpMainFVCL.DesignInferenceEnd(Sender: TObject);
+begin
+ if Assigned(report) then
+  report.EndBlockChanges;
+end;
+
+function TFRpMainFVCL.ReportBlockChanges(Sender: TRpBaseReport;
+ const AReason: string): Boolean;
+begin
+ Result:=False;
+ if MessageDlg('Hay una inferencia de IA en curso. Para modificar el informe ahora se cancelara la inferencia. ¿Desea cancelarla y aplicar el cambio?',
+  mtConfirmation,[mbYes,mbNo],0)=mrYes then
+ begin
+  if Assigned(fchatframe) then
+   fchatframe.AISelectionStopRequest(Self);
+  Sender.BlockChanges:=False;
+  Result:=True;
+ end;
+end;
+
 function TFRpMainFVCL.GetShortcutFocusedControl: TWinControl;
 begin
  Result:=nil;
@@ -3019,6 +3060,7 @@ var
 begin
  if not Assigned(report) then
   Exit;
+ report.AssertCanModify('Undo');
  EnsureUndoCue;
  cue := TUndoCue(report.UndoCue);
  if cue.UndoOperations.Count = 0 then
@@ -3039,6 +3081,7 @@ var
 begin
  if not Assigned(report) then
   Exit;
+ report.AssertCanModify('Redo');
  EnsureUndoCue;
  cue := TUndoCue(report.UndoCue);
  if cue.RedoOperations.Count = 0 then
@@ -3272,6 +3315,8 @@ begin
  FDesignContextRefreshRunning := False;
  FDesignChatPendingPrompt := '';
  FDesignChatValidatedPrompt := '';
+ if Assigned(report) then
+  report.BlockChanges:=False;
  UpdateDesignContextProgress(False, '');
 end;
 
@@ -3713,6 +3758,7 @@ begin
  if (not Assigned(report)) or (Trim(AModifiedReportDocument) = '') then
   Exit;
 
+ report.BlockChanges:=False;
  LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
  try
   report.Clear();
@@ -3721,7 +3767,8 @@ begin
   report.IsDesignTime := True;
   report.OnReadError := OnReadError;
   report.FailIfLoadExternalError := False;
-    report.Modified := True;
+  report.Modified := True;
+  ConfigureReportChangeBlocking;
   EnsureUndoCue;
 
   if Assigned(freportstructure) then

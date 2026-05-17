@@ -75,6 +75,8 @@ const
 
 type
  TRpBaseReport=class;
+ TRpReportBlockChangesEvent=function(Sender:TRpBaseReport;const AReason:string):Boolean of object;
+ ERpReportChangesBlocked=class(EAbort);
  TRpSubReportListItem=class;
  TRpProgressEvent=procedure (Sender:TRpBaseReport;var docancel:boolean) of object;
  TRpSubReportList=class(TCollection)
@@ -158,6 +160,9 @@ type
    FReportAction:TRpReportActions;
    FPreviewAbout:Boolean;
    FUndoCue:TObject;
+    FBlockChangesCount:Integer;
+    FBlockChangesSource:TRpBaseReport;
+    FOnBlockChanges:TRpReportBlockChangesEvent;
    // Default font properties
    FWFontName:widestring;
    FLFontName:widestring;
@@ -192,6 +197,8 @@ type
    procedure SetParams(Value:TRpParamList);
    procedure SetGridWidth(Value:TRpTwips);
    procedure SetGridHeight(Value:TRpTwips);
+  function GetBlockChanges:Boolean;
+  procedure SetBlockChanges(Value:Boolean);
    procedure ReadWFontName(Reader:TReader);
    procedure WriteWFontName(Writer:TWriter);
    procedure ReadLFontName(Reader:TReader);
@@ -311,6 +318,10 @@ type
    TouchEnabled:Boolean;
    EmbeddedFiles: array of TEmbeddedFile;
    procedure Clear;
+  procedure BeginBlockChanges;
+  procedure EndBlockChanges;
+  function CanModify(const AReason:string=''):Boolean;
+  procedure AssertCanModify(const AReason:string='');
    procedure LoadExternals;virtual;
    procedure AddReportItemsToEvaluator(eval:TRpEvaluator);
    procedure InitEvaluator;
@@ -366,6 +377,9 @@ type
    function CheckParameters(paramlist:TRpParamList;var paramname,amessage:string):Boolean;
    function FindReporItemByName(itemName: string):TObject;
   property Modified:Boolean read FModified write FModified;
+    property BlockChanges:Boolean read GetBlockChanges write SetBlockChanges;
+  property BlockChangesSource:TRpBaseReport read FBlockChangesSource write FBlockChangesSource;
+    property OnBlockChanges:TRpReportBlockChangesEvent read FOnBlockChanges write FOnBlockChanges;
    // Default Font properties
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
@@ -649,8 +663,64 @@ begin
  FCutText:=false;
  FBidiModes:=TStringList.Create;
  FUndoCue:=nil;
+ FBlockChangesCount:=0;
+ FBlockChangesSource:=nil;
+ FOnBlockChanges:=nil;
  //
  InitEvaluator;
+end;
+
+function TRpBaseReport.GetBlockChanges:Boolean;
+begin
+ Result:=FBlockChangesCount>0;
+ if (not Result) and Assigned(FBlockChangesSource) and (FBlockChangesSource<>Self) then
+  Result:=FBlockChangesSource.BlockChanges;
+end;
+
+procedure TRpBaseReport.SetBlockChanges(Value:Boolean);
+begin
+ if Value then
+  BeginBlockChanges
+ else
+  FBlockChangesCount:=0;
+end;
+
+procedure TRpBaseReport.BeginBlockChanges;
+begin
+ Inc(FBlockChangesCount);
+end;
+
+procedure TRpBaseReport.EndBlockChanges;
+begin
+ if FBlockChangesCount>0 then
+  Dec(FBlockChangesCount);
+end;
+
+function TRpBaseReport.CanModify(const AReason:string):Boolean;
+begin
+ Result:=True;
+ if FBlockChangesCount>0 then
+ begin
+  if Assigned(FOnBlockChanges) then
+   Result:=FOnBlockChanges(Self,AReason)
+  else
+   Result:=False;
+  Exit;
+ end;
+ if Assigned(FBlockChangesSource) and (FBlockChangesSource<>Self) then
+  Result:=FBlockChangesSource.CanModify(AReason);
+end;
+
+procedure TRpBaseReport.AssertCanModify(const AReason:string);
+var
+ LMessage:string;
+begin
+ if CanModify(AReason) then
+  Exit;
+ LMessage:='Report changes are blocked';
+ if AReason<>'' then
+  LMessage:=LMessage+': '+AReason;
+ raise ERpReportChangesBlocked.Create(LMessage);
 end;
 
 procedure  TRpBaseReport.FillGlobalHeaders;
@@ -682,6 +752,7 @@ end;
 
 procedure TRpBaseReport.SetGridWidth(Value:TRpTwips);
 begin
+ AssertCanModify('GridWidth');
  if Value<CONS_MIN_GRID_WIDTH then
   Value:=CONS_MIN_GRID_WIDTH;
  FGridWidth:=Value;
@@ -689,6 +760,7 @@ end;
 
 procedure TRpBaseReport.SetGridHeight(Value:TRpTwips);
 begin
+ AssertCanModify('GridHeight');
  if Value<CONS_MIN_GRID_WIDTH then
   Value:=CONS_MIN_GRID_WIDTH;
  FGridHeight:=Value;
@@ -902,6 +974,7 @@ function TRpBaseReport.AddSubReport:TRpSubReport;
 var
  it:TRpSubReportListItem;
 begin
+ AssertCanModify('AddSubReport');
  it:=SubReports.Add;
  it.FSubReport:=TRpSubreport.Create(Self);
  Generatenewname(it.FSubReport);
@@ -911,6 +984,7 @@ end;
 
 procedure TRpBaseReport.CreateNew;
 begin
+ AssertCanModify('CreateNew');
  // Creates a new default report
  FreeSubreports;
  AddSubReport;
@@ -943,6 +1017,7 @@ end;
 
 procedure TRpBaseReport.Clear();
 begin
+ AssertCanModify('Clear');
  DeActivateDatasets;
  FreeSubreports;
  DataInfo.Clear;
@@ -967,6 +1042,7 @@ var
  firstchar:char;
  first:boolean;
 begin
+ AssertCanModify('LoadFromStream');
  // FreeSubrepots
  FreeSubreports;
  MemStream:=TMemoryStream.Create;
@@ -1095,16 +1171,19 @@ end;
 
 procedure TRpBaseReport.SetSubReports(Value:TRpSubReportList);
 begin
+ AssertCanModify('SubReports');
  FSubReports.Assign(Value);
 end;
 
 procedure TRpBaseReport.SetDataInfo(Value:TRpDataInfoList);
 begin
+ AssertCanModify('DataInfo');
  FDataInfo.Assign(Value);
 end;
 
 procedure TRpBaseReport.SetDatabaseInfo(Value:TRpDatabaseInfoList);
 begin
+ AssertCanModify('DatabaseInfo');
  FDatabaseInfo.Assign(Value);
 end;
 
@@ -1169,6 +1248,7 @@ procedure TRpBaseReport.DeleteSubReport(subr:TRpSubReport);
 var
  i:integer;
 begin
+ AssertCanModify('DeleteSubReport');
  if FSubReports.Count<2 then
   Raise Exception.Create(SRpAtLeastOneSubreport);
  i:=0;
@@ -1186,6 +1266,7 @@ end;
 
 procedure TRpBaseReport.SetParams(Value:TRpParamList);
 begin
+ AssertCanModify('Params');
  FParams.Assign(Value);
 end;
 
@@ -1919,6 +2000,7 @@ end;
 
 procedure TRpBaseReport.SetBidiModes(Value:TStrings);
 begin
+ AssertCanModify('BidiModes');
  FBidiModes.Assign(Value);
 end;
 
@@ -2489,6 +2571,7 @@ end;
 
 procedure TRpBaseReport.SetLanguage(index:integer);
 begin
+ AssertCanModify('Language');
  FLanguage:=index;
  Params.Language:=index;
  if Assigned(FEvaluator) then
@@ -2692,6 +2775,7 @@ end;
 
 procedure TRpBaseReport.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify('report.'+propName);
  // Web-compatible report aliases
  if propName = 'gridVisible' then begin FGridVisible := value; exit; end;
  if propName = 'gridLines' then begin FGridLines := value; exit; end;

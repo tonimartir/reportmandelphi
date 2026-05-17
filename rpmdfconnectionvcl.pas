@@ -100,6 +100,8 @@ type
     FDatabaseInfo:TRpDatabaseInfoList;
     report:TRpReport;
     FParams:TRpParamList;
+    FLoadingControls:Boolean;
+    procedure AssertCanModify(const AReason:string);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
     procedure SetParams(Value:TRpParamList);
     procedure MenuAddClick(Sender:TObject);
@@ -110,6 +112,7 @@ type
     { Public declarations }
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
+    procedure SetBlockChangesSource(AReport:TRpReport);
     property Databaseinfo:TRpDatabaseInfoList read FDatabaseinfo
      write SetDatabaseInfo;
     property Params:TRpParamList read FParams write
@@ -154,6 +157,7 @@ begin
  ConAdmin:=TRpConnAdmin.Create;
 
  report:=TRPReport.Create(Self);
+ FLoadingControls:=False;
  FDatabaseInfo:=report.databaseinfo;
  FParams:=report.Params;
 
@@ -172,6 +176,17 @@ begin
  FParams.Assign(Value);
 end;
 
+procedure TFRpConnectionVCL.SetBlockChangesSource(AReport:TRpReport);
+begin
+ report.BlockChangesSource:=AReport;
+end;
+
+procedure TFRpConnectionVCL.AssertCanModify(const AReason:string);
+begin
+ if Assigned(report) then
+  report.AssertCanModify(AReason);
+end;
+
 procedure TFRpConnectionVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
 var
  i:integer;
@@ -185,23 +200,29 @@ begin
  ComboAvailable.Anchors:=[akLeft,akTop,akRight];
  EConnectionString.Anchors:=[akLeft,akTop,akRight];
 
- if Value<>FDatabaseInfo then
-  FDatabaseInfo.Assign(Value);
- LConnections.Clear;
- for i:=0 to FDatabaseinfo.Count-1 do
- begin
-  LConnections.Items.Add(FDatabaseinfo.Items[i].Alias);
+ FLoadingControls:=True;
+ try
+  if Value<>FDatabaseInfo then
+   FDatabaseInfo.Assign(Value);
+  LConnections.Clear;
+  for i:=0 to FDatabaseinfo.Count-1 do
+  begin
+   LConnections.Items.Add(FDatabaseinfo.Items[i].Alias);
+  end;
+  if LConnections.Items.Count>0 then
+   LConnections.ItemIndex:=0;
+  LConnectionsClick(Self);
+  GDriverClick(Self);
+ finally
+  FLoadingControls:=False;
  end;
- if LConnections.Items.Count>0 then
-  LConnections.ItemIndex:=0;
- LConnectionsClick(Self);
- GDriverClick(Self);
 end;
 
 procedure TFRpConnectionVCL.LConnectionsClick(Sender: TObject);
 var
  dbinfo:TRpDatabaseInfoItem;
  index:integer;
+ oldloading:Boolean;
 begin
  if Not Assigned(FDatabaseInfo) then
   exit;
@@ -236,19 +257,25 @@ begin
  LDriver.Visible:=true;
  // Get information about the dabaseinfo
  dbinfo:=FDatabaseinfo.Items[index];
- ComboDriver.ItemIndex:=Integer(dbinfo.Driver);
- ComboDriverClick(Self);
- CheckLoginPrompt.Checked:=dbinfo.LoginPrompt;
- if (dbinfo.Driver=rpdataDriver) then
-  ComboNetDriver.ItemIndex:=dbinfo.DotNetDriver
- else
- if (dbinfo.Driver=rpdotnet2Driver) then
-  ComboNetDriver.Text:=dbinfo.ProviderFactory;
- CheckLoadParams.Checked:=dbinfo.LoadParams;
- CheckLoadDriverParams.Checked:=dbinfo.LoadDriverParams;
- EConnectionString.OnChange:=nil;
- EConnectionString.Text:=EnCodeADOPassword(dbinfo.ADOConnectionString);
- EConnectionString.OnChange:=EConnectionStringChange;
+ oldloading:=FLoadingControls;
+ FLoadingControls:=True;
+ try
+  ComboDriver.ItemIndex:=Integer(dbinfo.Driver);
+  ComboDriverClick(Self);
+  CheckLoginPrompt.Checked:=dbinfo.LoginPrompt;
+  if (dbinfo.Driver=rpdataDriver) then
+   ComboNetDriver.ItemIndex:=dbinfo.DotNetDriver
+  else
+  if (dbinfo.Driver=rpdotnet2Driver) then
+   ComboNetDriver.Text:=dbinfo.ProviderFactory;
+  CheckLoadParams.Checked:=dbinfo.LoadParams;
+  CheckLoadDriverParams.Checked:=dbinfo.LoadDriverParams;
+  EConnectionString.OnChange:=nil;
+  EConnectionString.Text:=EnCodeADOPassword(dbinfo.ADOConnectionString);
+  EConnectionString.OnChange:=EConnectionStringChange;
+ finally
+  FLoadingControls:=oldloading;
+ end;
 end;
 
 procedure TFRpConnectionVCL.GDriverClick(Sender: TObject);
@@ -374,6 +401,7 @@ begin
  conname:=UpperCase(Trim(RpInputBox(SRpNewConnection,SRpConnectionName,'')));
  if Length(conname)<1 then
   exit;
+ AssertCanModify('Database connection');
  item:=Fdatabaseinfo.Add(conname);
  EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=TRpDbDriver(GDriver.ItemIndex);
@@ -411,6 +439,7 @@ begin
  dinfoitem:=FindDatabaseInfoItem;
   if LConnections.ItemIndex<0 then
    Raise Exception.Create(SRpSelectAddConnection);
+ AssertCanModify('Database connection');
  EConnectionString.OnChange:=nil;
  newstring:=PromptDataSource(0,dinfoitem.ADOConnectionString);
  EConnectionString.Text:=EncodeADOPassword(newstring);
@@ -458,6 +487,7 @@ begin
  index:=databaseinfo.IndexOf(LConnections.items.strings[LConnections.Itemindex]);
  if index>=0 then
  begin
+  AssertCanModify('Database connection');
   databaseinfo.Delete(index);
   SetDatabaseInfo(databaseinfo);
   LConnectionsClick(Self);
@@ -556,6 +586,9 @@ begin
  index:=FDatabaseInfo.Indexof(LConnections.Items.Strings[LConnections.ItemIndex]);
  if index<0 then
   exit;
+ if FLoadingControls then
+  exit;
+ AssertCanModify('Database connection');
  FDatabaseInfo.Items[index].Driver:=TRpDbDriver(ComboDriver.ItemIndex);
 end;
 
@@ -570,6 +603,7 @@ begin
  conname:=UpperCase(Trim(TMenuItem(Sender).Caption));
  if Length(conname)<1 then
   exit;
+ AssertCanModify('Database connection');
  item:=Fdatabaseinfo.Add(conname);
  EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=ResolveAvailableConnectionDriver(conname,TRpDbDriver(GDriver.ItemIndex));
@@ -693,9 +727,12 @@ procedure TFRpConnectionVCL.CheckLoginPromptClick(Sender: TObject);
 var
  dinfoitem:TRpDatabaseinfoitem;
 begin
+ if FLoadingControls then
+  Exit;
  dinfoitem:=FindDatabaseInfoItem;
  if Not Assigned(dinfoitem) then
   exit;
+ AssertCanModify('Database connection');
  if Sender=CheckLoginPrompt then
  begin
   dinfoitem.LoginPrompt:=CheckLoginPrompt.Checked;
@@ -723,9 +760,12 @@ procedure TFRpConnectionVCL.EConnectionStringChange(Sender: TObject);
 var
  dinfoitem:TRpDatabaseinfoitem;
 begin
+ if FLoadingControls then
+  Exit;
  dinfoitem:=FindDatabaseInfoItem;
  if Not Assigned(dinfoitem) then
   exit;
+ AssertCanModify('Database connection');
  dinfoitem.ADOConnectionString:=EConnectionString.Text;
 end;
 

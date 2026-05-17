@@ -17,6 +17,8 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls, ComCtrls, Buttons, Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
+  System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
+  Vcl.VirtualImageList,
   rpauthmanager, rpfrmaiselectionvcl, rpfrmloginvcl, System.JSON, rpdatahttp,
   System.Zip, System.IOUtils, System.Threading, rpmdshfolder;
 
@@ -31,11 +33,6 @@ type
     AText: string; AAppendLineBreak: Boolean) of object;
 
   TAIToggleButton = class(TSpeedButton)
-  protected
-    procedure Paint; override;
-  end;
-
-  TConfigIconButton = class(TSpeedButton)
   protected
     procedure Paint; override;
   end;
@@ -61,6 +58,8 @@ type
     PAuditTop: TPanel;
     BAuditSQL: TButton;
     MemoAudit: TMemo;
+    SchemaConfigImageCollection: TImageCollection;
+    SchemaConfigImages: TVirtualImageList;
 
     procedure EdgeCreateWebViewCompleted(Sender: TCustomEdgeBrowser;
       AResult: HRESULT);
@@ -73,7 +72,7 @@ type
   private
     FAISelection: TFRpAISelectionVCL;
     FAIButton: TAIToggleButton;
-    FSchemaConfigButton: TConfigIconButton;
+    FSchemaConfigButton: TButton;
     FSQL: string;
     FSchema: string;
     FAuditText: string;
@@ -267,56 +266,6 @@ begin
   DrawText(Canvas.Handle, PChar(Caption), Length(Caption), R, Flags);
 end;
 
-procedure TConfigIconButton.Paint;
-var
-  R: TRect;
-  CX, CY: Integer;
-  OuterRadius, InnerRadius, CenterRadius: Integer;
-  FontColor: TColor;
-
-  procedure DrawSpoke(const DX1, DY1, DX2, DY2: Integer);
-  begin
-    Canvas.MoveTo(CX + DX1, CY + DY1);
-    Canvas.LineTo(CX + DX2, CY + DY2);
-  end;
-begin
-  R := ClientRect;
-
-  if not Enabled then
-    FontColor := clGrayText
-  else
-    FontColor := clBtnText;
-
-  Canvas.Brush.Color := clBtnFace;
-  Canvas.FillRect(R);
-  DrawEdge(Canvas.Handle, R, BDR_RAISEDINNER, BF_RECT);
-
-  CX := (R.Left + R.Right) div 2;
-  CY := (R.Top + R.Bottom) div 2;
-  if Width < Height then
-    OuterRadius := Width div 4
-  else
-    OuterRadius := Height div 4;
-  InnerRadius := OuterRadius - 3;
-  CenterRadius := OuterRadius div 2;
-
-  Canvas.Pen.Color := FontColor;
-  Canvas.Pen.Width := 2;
-  Canvas.Brush.Style := bsClear;
-
-  DrawSpoke(0, -OuterRadius - 2, 0, -InnerRadius);
-  DrawSpoke(0, InnerRadius, 0, OuterRadius + 2);
-  DrawSpoke(-OuterRadius - 2, 0, -InnerRadius, 0);
-  DrawSpoke(InnerRadius, 0, OuterRadius + 2, 0);
-  DrawSpoke(-OuterRadius + 1, -OuterRadius + 1, -InnerRadius + 1, -InnerRadius + 1);
-  DrawSpoke(InnerRadius - 1, InnerRadius - 1, OuterRadius - 1, OuterRadius - 1);
-  DrawSpoke(OuterRadius - 1, -OuterRadius + 1, InnerRadius - 1, -InnerRadius + 1);
-  DrawSpoke(-OuterRadius + 1, OuterRadius - 1, -InnerRadius + 1, InnerRadius - 1);
-
-  Canvas.Ellipse(CX - OuterRadius, CY - OuterRadius, CX + OuterRadius, CY + OuterRadius);
-  Canvas.Ellipse(CX - CenterRadius, CY - CenterRadius, CX + CenterRadius, CY + CenterRadius);
-end;
-
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64);
 begin
   inherited Create;
@@ -361,10 +310,12 @@ begin
   FAIButton.Cursor := crHandPoint;
   FAIButton.OnClick := AIToggleClick;
 
-  FSchemaConfigButton := TConfigIconButton.Create(Self);
+  FSchemaConfigButton := TButton.Create(Self);
   FSchemaConfigButton.Parent := PSchemaConfigHost;
   FSchemaConfigButton.Align := alClient;
-  FSchemaConfigButton.Flat := False;
+  FSchemaConfigButton.Caption := '';
+  FSchemaConfigButton.Images := SchemaConfigImages;
+  FSchemaConfigButton.ImageIndex := 0;
   FSchemaConfigButton.Hint := 'Open schema configuration on the web';
   FSchemaConfigButton.ShowHint := True;
   FSchemaConfigButton.Cursor := crHandPoint;
@@ -1438,11 +1389,61 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.LayoutTopControls;
+var
+  LButtonSize: Integer;
+  LColumnWidth: Integer;
+  LComboHeight: Integer;
+  LHeaderHeight: Integer;
+  LTopMargin: Integer;
 begin
+  if GridTopHeader <> nil then
+  begin
+    LHeaderHeight := GridTopHeader.ClientHeight;
+    if (LHeaderHeight <= 0) and (PTop <> nil) then
+      LHeaderHeight := PTop.ClientHeight;
+
+    if (ComboSchema <> nil) and (LHeaderHeight > 0) then
+    begin
+      LComboHeight := ComboSchema.Height;
+      if LComboHeight <= 0 then
+        LComboHeight := 28;
+      LTopMargin := (LHeaderHeight - LComboHeight) div 2;
+      if LTopMargin < 0 then
+        LTopMargin := 0;
+      ComboSchema.Margins.Top := LTopMargin;
+      ComboSchema.Margins.Bottom := LHeaderHeight - LComboHeight - LTopMargin;
+      if ComboSchema.Margins.Bottom < 0 then
+        ComboSchema.Margins.Bottom := 0;
+    end;
+
+    if (PSchemaConfigHost <> nil) and (LHeaderHeight > 0) then
+    begin
+      if (ComboSchema <> nil) and (ComboSchema.Height > 0) then
+        LButtonSize := MulDiv(ComboSchema.Height, 120, 100)
+      else
+        LButtonSize := 34;
+      if LButtonSize < 1 then
+        LButtonSize := 1;
+      LTopMargin := (LHeaderHeight - LButtonSize) div 2;
+      if LTopMargin < 0 then
+        LTopMargin := 0;
+      PSchemaConfigHost.Margins.Top := LTopMargin;
+      PSchemaConfigHost.Margins.Bottom := LHeaderHeight - LButtonSize - LTopMargin;
+      if PSchemaConfigHost.Margins.Bottom < 0 then
+        PSchemaConfigHost.Margins.Bottom := 0;
+      LColumnWidth := LButtonSize + PSchemaConfigHost.Margins.Left +
+        PSchemaConfigHost.Margins.Right + 4;
+      if GridTopHeader.ColumnCollection.Count > 1 then
+        GridTopHeader.ColumnCollection[1].Value := LColumnWidth;
+    end;
+  end;
+
   if FAIButton <> nil then
     FAIButton.Invalidate;
   if FSchemaConfigButton <> nil then
     FSchemaConfigButton.Invalidate;
+  if GridTopHeader <> nil then
+    GridTopHeader.Realign;
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;

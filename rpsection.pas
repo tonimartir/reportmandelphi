@@ -308,6 +308,7 @@ end;
 
 procedure TRpSection.SetReportComponents(Value:TRpCommonList);
 begin
+ AssertCanModify(ClassName+'.Components');
  FReportComponents.Assign(Value);
 end;
 
@@ -397,6 +398,7 @@ procedure TRpSection.FreeComponents;
 var
  i:integer;
 begin
+ AssertCanModify(ClassName+'.FreeComponents');
  for i:=0 to FReportComponents.Count-1 do
  begin
   FReportComponents.Items[i].Component.free;
@@ -408,6 +410,7 @@ procedure TRpSection.DeleteComponent(com:TRpCommonComponent);
 var
  i:integer;
 begin
+ AssertCanModify(ClassName+'.DeleteComponent');
  i:=0;
  while i<FReportComponents.Count do
  begin
@@ -427,6 +430,7 @@ var
  subrep:TRpSubreport;
  i:integer;
 begin
+ AssertCanModify(ClassName+'.ChangeExpression');
  if (csLoading in ComponentState) then
  begin
   FChangeExpression:=Value;
@@ -456,6 +460,7 @@ var
  i:integer;
  AGroupName:String;
 begin
+ AssertCanModify(ClassName+'.IniNumPage');
  if (csLoading in ComponentState) then
  begin
   FIniNumPage:=Value;
@@ -525,6 +530,7 @@ end;
 
 procedure TRpSection.SetGroupName(Value:string);
 begin
+ AssertCanModify(ClassName+'.GroupName');
  SetGroupNameInt(Value,True);
 end;
 
@@ -1302,6 +1308,7 @@ var
  rep:TRpBaseReport;
  i:integer;
 begin
+ AssertCanModify(ClassName+'.ChildSubReportName');
  rep:=TRpBaseReport(Subreport.Owner);
  ChildSubReport:=nil;
  for i:=0 to rep.Subreports.count-1 do
@@ -1325,6 +1332,7 @@ var
  i:integer;
  rep:TRpSubReport;
 begin
+ AssertCanModify(ClassName+'.ChildSubReport');
  if (csReading in ComponentState) then
  begin
   FChildSubReport:=Value;
@@ -1539,6 +1547,7 @@ end;
 
 function TRpSection.AddComponent(componentclass:TRpCommonPosClass):TRpCommonPosComponent;
 begin
+ AssertCanModify(ClassName+'.AddComponent');
  Result:=componentclass.Create(Owner);
  GenerateNewName(Result);
  Components.Add.Component:=Result;
@@ -1571,6 +1580,7 @@ end;
 
 procedure TRpSection.SetStream(Value:TMemoryStream);
 begin
+ AssertCanModify(ClassName+'.Stream');
  if IsCompressed(Value) then
  begin
   FStream.LoadFromStream(Value);
@@ -1752,6 +1762,7 @@ var
  i: Integer;
  requestedChildSubReportName: string;
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
  begin
   SetGroupNameInt(value, False);

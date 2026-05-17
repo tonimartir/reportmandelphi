@@ -392,6 +392,7 @@ var
  langindex:integer;
  acopy:WideString;
 begin
+ AssertCanModify(ClassName+'.Text');
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
   langindex:=0;
@@ -1295,6 +1296,7 @@ end;
 
 procedure TRpExpression.SetExpression(avalue:WideString);
 begin
+ AssertCanModify(ClassName+'.Expression');
  FExpression:=avalue;
  UpdateIsPageCount;
 end;
@@ -1309,6 +1311,7 @@ end;
 
 procedure TRpLabel.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Text') or SameText(propName, SRpSText) then
  begin
   FWideText := value;
@@ -1332,6 +1335,7 @@ end;
 
 procedure TRpExpression.SetItemProperty(const propName: string; const value: Variant);
 begin
+ AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
   FExpression := value;
