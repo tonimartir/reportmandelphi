@@ -2182,10 +2182,8 @@ begin
  if printer.Printers.count<1 then
   exit;
  if not printer.Printing then
- begin
-  printer.copies:=copies;
-  exit;
- end;
+  printer.copies:=copies
+ else
  if printer.copies=copies then
   exit;
  // Printer selected not valid error
@@ -2215,7 +2213,7 @@ begin
   PDevMode := GlobalLock(DeviceMode);
  end;
  try
-  PDevMode.dmFields:=PDevMode.dmFields or dm_copies or dm_collate;
+  PDevMode.dmFields:=PDevMode.dmFields or dm_copies;
   PDevMode.dmCopies  := copies;
  finally
   GlobalUnLock(DeviceMode);
@@ -2271,8 +2269,7 @@ begin
   PDevMode := GlobalLock(DeviceMode);
  end;
  try
-  PDevMode.dmFields:=PDevMode.dmFields or dm_copies or dm_collate;
-  PDevMode.dmCopies  := printer.copies;
+  PDevMode.dmFields:=PDevMode.dmFields or dm_collate;
   if collation then
   PDevMode.dmCollate:=DMCOLLATE_TRUE
    else

@@ -2458,6 +2458,17 @@ begin
     aform.close;
 end;
 
+procedure PreparePrinterCopies(copies: integer; collate: boolean);
+begin
+  if copies < 1 then
+    copies := 1;
+  if ((copies > 1) and (not collate) and PrinterSupportsCopies(copies)) then
+    SetPrinterCopies(copies)
+  else
+    SetPrinterCopies(1);
+  SetPrinterCollation(false);
+end;
+
 function PrintMetafile(metafile: TRpMetafileReport; tittle: string;
   showprogress, allpages: boolean; frompage, topage, copies: integer;
   collate: boolean; devicefonts: boolean;
@@ -3236,6 +3247,8 @@ begin
       forcecalculation := true;
     if forcecalculation then
     begin
+      if not istextonly then
+        PreparePrinterCopies(copies, collate);
       if progress then
       begin
         try
