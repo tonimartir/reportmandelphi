@@ -22,7 +22,7 @@ interface
 {$I rpconf.inc}
 
 uses Windows, Messages,SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
-  Buttons, ExtCtrls,Printers,rpmdconsts,WinSpool,Dialogs,rptypes,
+  Buttons, ExtCtrls,Printers,rpmdconsts,WinSpool,Dialogs,rptypes,rpgraphutilsvcl,
   rpmunits;
 
 type
@@ -375,7 +375,7 @@ begin
        except
         on E:Exception do
         begin
-         ShowMessage(E.Message);
+         RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK, smbOK);
         end;
 
        end;

@@ -15,7 +15,7 @@ uses
   {$IFDEF BDE}
   dbtables,
   {$ENDIF}
-  StdCtrls, ComCtrls,registry,rpmdconsts;
+  StdCtrls, ComCtrls,registry,rpmdconsts,rpgraphutilsvcl;
 
 type
   TFRpExpDBF = class(TForm)
@@ -221,14 +221,14 @@ begin
    lang:=reg.ReadString('LANGDRIVER');
    if version<>IntToStr(level)+'.0' then
    begin
-    if ID_YES=MessageDlg(SrpChangeLevel+' - Level '
-     +IntToStr(level),mtWarning,[mbYes,mbNo],0) then
+    if smbYes=RpMessageBox(SrpChangeLevel+' - Level '
+     +IntToStr(level),SRpWarning,[smbYes,smbNo],smsWarning,smbYes,smbNo) then
     begin
      reg.CloseKey;
      if reg.OpenKey(akey,false) then
      begin
       reg.WriteString('VERSION',IntToStr(level)+'.0');
-      ShowMessage(SrpReboot);
+      RpMessageBox(SrpReboot,SRpInformation,[smbOK],smsInformation,smbOK,smbOK);
       reg.CloseKey;
       if reg.OpenKey(akey2,false) then
       begin

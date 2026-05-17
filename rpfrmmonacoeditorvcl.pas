@@ -166,10 +166,14 @@ implementation
 {$R MonacoEditorAssets.res}
 
 uses
-  rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ToolWin, Vcl.ActnList;
+  rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ToolWin, Vcl.ActnList,
+  rpchatmodernstyle;
 
 const
   MonacoAssetsVersion = '2'; // bump to force re-extraction when asset layout changes
+  CMonacoAISelectionWidth = 384;
+  CMonacoAIButtonColumnWidth = 54;
+  CMonacoAISelectionRightPadding = 6;
 
 type
   TEditorGuard = class(TInterfacedObject, IEditorGuard)
@@ -886,7 +890,8 @@ begin
       TThread.ForceQueue(nil,
         procedure
         begin
-          ShowMessage('Error in Monaco messaging: '+E.Message);
+          RpMessageBox('Error in Monaco messaging: '+E.Message, '',
+            [smbOK], smsCritical, smbOK, smbOK);
         end);
   end;
 end;
@@ -1390,7 +1395,10 @@ end;
 
 procedure TFRpMonacoEditorVCL.LayoutTopControls;
 var
+  LAISelectionWidth: Integer;
+  LBottomMargin: Integer;
   LButtonSize: Integer;
+  LChildWidth: Integer;
   LColumnWidth: Integer;
   LComboHeight: Integer;
   LHeaderHeight: Integer;
@@ -1398,6 +1406,31 @@ var
 begin
   if GridTopHeader <> nil then
   begin
+    if GridTopHeader.ColumnCollection.Count > 0 then
+    begin
+      GridTopHeader.ColumnCollection[0].SizeStyle := ssPercent;
+      GridTopHeader.ColumnCollection[0].Value := 100;
+    end;
+
+    if GridTopHeader.ColumnCollection.Count > 2 then
+    begin
+      GridTopHeader.ColumnCollection[2].SizeStyle := ssAbsolute;
+      GridTopHeader.ColumnCollection[2].Value := Scale(CMonacoAIButtonColumnWidth);
+    end;
+
+    if GridTopHeader.ColumnCollection.Count > 3 then
+    begin
+      LAISelectionWidth := Scale(CMonacoAISelectionWidth);
+      GridTopHeader.ColumnCollection[3].SizeStyle := ssAbsolute;
+      GridTopHeader.ColumnCollection[3].Value := LAISelectionWidth;
+      if PAISelectionHost <> nil then
+      begin
+        PAISelectionHost.Margins.Right := 0;
+        PAISelectionHost.Padding.Right := Scale(CMonacoAISelectionRightPadding);
+        PAISelectionHost.Width := LAISelectionWidth;
+      end;
+    end;
+
     LHeaderHeight := GridTopHeader.ClientHeight;
     if (LHeaderHeight <= 0) and (PTop <> nil) then
       LHeaderHeight := PTop.ClientHeight;
@@ -1410,31 +1443,36 @@ begin
       LTopMargin := (LHeaderHeight - LComboHeight) div 2;
       if LTopMargin < 0 then
         LTopMargin := 0;
+      LBottomMargin := LHeaderHeight - LComboHeight - LTopMargin;
+      if LBottomMargin < 0 then
+        LBottomMargin := 0;
       ComboSchema.Margins.Top := LTopMargin;
-      ComboSchema.Margins.Bottom := LHeaderHeight - LComboHeight - LTopMargin;
-      if ComboSchema.Margins.Bottom < 0 then
-        ComboSchema.Margins.Bottom := 0;
+      ComboSchema.Margins.Bottom := LBottomMargin;
     end;
 
     if (PSchemaConfigHost <> nil) and (LHeaderHeight > 0) then
     begin
       if (ComboSchema <> nil) and (ComboSchema.Height > 0) then
-        LButtonSize := MulDiv(ComboSchema.Height, 120, 100)
+        LButtonSize := MulDiv(ComboSchema.Height, 132, 100)
       else
-        LButtonSize := 34;
+        LButtonSize := 37;
       if LButtonSize < 1 then
         LButtonSize := 1;
       LTopMargin := (LHeaderHeight - LButtonSize) div 2;
       if LTopMargin < 0 then
         LTopMargin := 0;
+      LBottomMargin := LHeaderHeight - LButtonSize - LTopMargin;
+      if LBottomMargin < 0 then
+        LBottomMargin := 0;
       PSchemaConfigHost.Margins.Top := LTopMargin;
-      PSchemaConfigHost.Margins.Bottom := LHeaderHeight - LButtonSize - LTopMargin;
-      if PSchemaConfigHost.Margins.Bottom < 0 then
-        PSchemaConfigHost.Margins.Bottom := 0;
+      PSchemaConfigHost.Margins.Bottom := LBottomMargin;
       LColumnWidth := LButtonSize + PSchemaConfigHost.Margins.Left +
         PSchemaConfigHost.Margins.Right + 4;
       if GridTopHeader.ColumnCollection.Count > 1 then
+      begin
+        GridTopHeader.ColumnCollection[1].SizeStyle := ssAbsolute;
         GridTopHeader.ColumnCollection[1].Value := LColumnWidth;
+      end;
     end;
   end;
 
@@ -1444,6 +1482,15 @@ begin
     FSchemaConfigButton.Invalidate;
   if GridTopHeader <> nil then
     GridTopHeader.Realign;
+  if (PAISelectionHost <> nil) and (FAISelection <> nil) then
+  begin
+    LChildWidth := PAISelectionHost.ClientWidth - PAISelectionHost.Padding.Right;
+    if LChildWidth < 0 then
+      LChildWidth := 0;
+    FAISelection.Align := alNone;
+    FAISelection.SetBounds(0, 0, LChildWidth, PAISelectionHost.ClientHeight);
+    FAISelection.RefreshLayout;
+  end;
 end;
 
 procedure TFRpMonacoEditorVCL.UpdateAuthUI;

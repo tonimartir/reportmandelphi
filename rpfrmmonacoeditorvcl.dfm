@@ -30,19 +30,19 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       BevelOuter = bvNone
       ColumnCollection = <
         item
-          SizeStyle = ssAuto
-          Value = 150.000000000000000000
-        end
-        item
-          SizeStyle = ssAuto
-          Value = 46.000000000000000000
-        end
-        item
-          SizeStyle = ssAuto
-          Value = 52.000000000000000000
-        end
-        item
           Value = 100.000000000000000000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 50.000000000000000000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 68.000000000000000000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 480.000000000000000000
         end>
       ControlCollection = <
         item
@@ -88,13 +88,13 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
       object PSchemaConfigHost: TPanel
         AlignWithMargins = True
         Left = 158
-        Top = 8
-        Width = 34
-        Height = 34
+        Top = 13
+        Width = 37
+        Height = 37
         Margins.Left = 0
-        Margins.Top = 8
+        Margins.Top = 13
         Margins.Right = 8
-        Margins.Bottom = 8
+        Margins.Bottom = 13
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 2
@@ -119,7 +119,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         AlignWithMargins = True
         Left = 272
         Top = 0
-        Width = 478
+        Width = 480
         Height = 63
         Margins.Left = 8
         Margins.Top = 0
@@ -127,6 +127,7 @@ object FRpMonacoEditorVCL: TFRpMonacoEditorVCL
         Margins.Bottom = 0
         Align = alClient
         BevelOuter = bvNone
+        Padding.Right = 8
         TabOrder = 4
         ExplicitLeft = 280
         ExplicitWidth = 470

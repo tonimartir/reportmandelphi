@@ -24,7 +24,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections,
   Vcl.Controls, Vcl.Forms, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Buttons, Vcl.Dialogs, Vcl.Graphics,
-  rpreport, rptypes, rpmdundocue, Variants;
+  rpreport, rptypes, rpmdundocue, Variants, rpgraphutilsvcl;
 
 type
   TOnUndoRedoEvent = procedure(Sender: TObject) of object;
@@ -209,8 +209,8 @@ procedure TFRpCueViewVCL.BClearClick(Sender: TObject);
 var
   cue: TUndoCue;
 begin
-  if MessageDlg('Limpiar toda la cola de deshacer?',
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if RpMessageBox('Limpiar toda la cola de deshacer?', '',
+    [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
     Exit;
   cue := GetUndoCue;
   if cue = nil then
@@ -246,7 +246,8 @@ begin
         ': ' + VarToStr(prop.oldValue) + ' -> ' + VarToStr(prop.newValue) + #13#10;
     end;
   end;
-  ShowMessage(msg);
+  RpMessageBox(msg, '', [smbOK], smsInformation, smbOK, smbOK,
+    True);
 end;
 
 end.

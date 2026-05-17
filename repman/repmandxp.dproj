@@ -227,7 +227,19 @@
             <Deployment Version="5">
                 <DeployFile LocalName="FireDAC.inc" Configuration="Debug" Class="ProjectFile"/>
                 <DeployFile LocalName="Profiling\AQtimeModule1.aqt" Configuration="Debug" Class="ProjectFile"/>
+                <DeployFile LocalName="Profiling\AQtimeModule1.aqt" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="bin32\repmandxp.exe" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="bin32\repmandxp.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>repmandxp.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="bin64\repmandxp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="OSX32">
@@ -1279,7 +1291,6 @@
         <DCCReference Include="..\rppreviewcontrol.pas"/>
         <DCCReference Include="..\rppreviewmeta.pas"/>
         <DCCReference Include="..\rpDelphiZXIngQRCode.pas"/>
-        <DCCReference Include="FireDAC.Phys.ODBCMeta.pas"/>
         <DCCReference Include="..\rpmdfembeddedfile.pas">
             <Form>FRpEmbeddedFile</Form>
         </DCCReference>
@@ -1289,7 +1300,6 @@
         </DCCReference>
         <DCCReference Include="..\rpmdundocue.pas"/>
         <None Include="Profiling\AQtimeModule1.aqt"/>
-        <None Include="FireDAC.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -22,7 +22,7 @@ interface
 
 uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
   Buttons, ExtCtrls,rpmdconsts,rpmdftreevcl,DB,rpdatainfo,
-  rpvgraphutils, Dialogs,
+  rpvgraphutils, Dialogs, rpgraphutilsvcl,
   ComCtrls;
 
 type
@@ -82,7 +82,7 @@ begin
   except
    on E:Exception do
    begin
-    ShowMessage(E.Message);
+    RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK, smbOK);
    end
   end;
   dia.ShowModal;

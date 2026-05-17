@@ -3013,8 +3013,8 @@ function TFRpMainFVCL.ReportBlockChanges(Sender: TRpBaseReport;
  const AReason: string): Boolean;
 begin
  Result:=False;
- if MessageDlg('Hay una inferencia de IA en curso. Para modificar el informe ahora se cancelara la inferencia. ¿Desea cancelarla y aplicar el cambio?',
-  mtConfirmation,[mbYes,mbNo],0)=mrYes then
+ if RpMessageBox('Hay una inferencia de IA en curso. Para modificar el informe ahora se cancelara la inferencia. ¿Desea cancelarla y aplicar el cambio?',
+  SRpWarning,[smbYes,smbNo],smsWarning,smbYes,smbNo)=smbYes then
  begin
   if Assigned(fchatframe) then
    fchatframe.AISelectionStopRequest(Self);
@@ -3617,7 +3617,8 @@ begin
  LMessage := 'Opening datasets failed.' + sLineBreak + sLineBreak +
   LMessage + sLineBreak + sLineBreak +
   'Do you want to send the design request to the assistant anyway?';
- Result := MessageDlg(LMessage, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+ Result := RpMessageBox(LMessage, SRpWarning, [smbYes, smbNo], smsWarning,
+  smbYes, smbNo, True) = smbYes;
 end;
 
   function TFRpMainFVCL.BuildPreprocessSqlContextRequestForFrame(
