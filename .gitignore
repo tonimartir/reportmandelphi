@@ -6,6 +6,7 @@
 *.stat
 *.ocx
 activex/bin32/reportman.drc
+activex/bin32/reportman_ax_*.zip
 activex/bin32/reportman3_2.zip
 repman/bin32/repmandxp.drc
 repman/utils/rptranslator/bin32/rptranslate.drc
