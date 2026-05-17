@@ -130,6 +130,7 @@ type
   end;
 
 procedure ShowDBXConfig(ConnectionsFile:string='');
+function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
 
 implementation
 

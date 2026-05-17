@@ -103,6 +103,8 @@ type
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
     procedure SetParams(Value:TRpParamList);
     procedure MenuAddClick(Sender:TObject);
+    function ResolveAvailableConnectionDriver(const AConnectionName: string;
+     ADefaultDriver: TRpDbDriver): TRpDbDriver;
     function FindDatabaseInfoItem:TRpDatabaseInfoItem;
   public
     { Public declarations }
@@ -570,13 +572,33 @@ begin
   exit;
  item:=Fdatabaseinfo.Add(conname);
  EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
- item.Driver:=TRpDbDriver(GDriver.ItemIndex);
+ item.Driver:=ResolveAvailableConnectionDriver(conname,TRpDbDriver(GDriver.ItemIndex));
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);
  if index>=0 then
  begin
   LConnections.ItemIndex:=index;
   LConnectionsClick(Self);
+ end;
+end;
+
+function TFRpConnectionVCL.ResolveAvailableConnectionDriver(
+ const AConnectionName: string; ADefaultDriver: TRpDbDriver): TRpDbDriver;
+var
+ params:TStringList;
+ drivername:string;
+begin
+ Result:=ADefaultDriver;
+ if Not Assigned(ConAdmin) then
+  exit;
+ params:=TStringList.Create;
+ try
+  ConAdmin.GetConnectionParams(AConnectionName,params);
+  drivername:=Trim(params.Values['DriverName']);
+  if Length(drivername)>0 then
+   Result:=ResolveDbxConnectionDriver(drivername);
+ finally
+  params.Free;
  end;
 end;
 
