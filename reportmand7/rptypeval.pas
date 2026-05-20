@@ -178,6 +178,9 @@ function LogicalNOTTRpValue(Value1:TRpValue):TRpValue;
 function TRpValueToString(Value:TRpValue):string;
 function FormatTRpValue(sFormat:string;Value:TRpValue;Userdef:Boolean):string;
 
+// Empty string validation for equality operations
+procedure ValidateNumbers(var Value1,Value2:TRpValue);
+
 // Date operation validation
 procedure DatetimeValidation(var Value1,Value2:TRpValue);
 
@@ -604,6 +607,7 @@ end;
 
 function EqualTRpValue(Value1,Value2:TRpValue):TRpValue;
 begin
+ ValidateNumbers(Value1,Value2);
  DatetimeValidation(Value1,Value2);
  Result:=(Value1=Value2);
 end;
@@ -634,14 +638,30 @@ end;
 
 function DiferentTRpValue(Value1,Value2:TRpValue):TRpValue;
 begin
+ ValidateNumbers(Value1,Value2);
  DatetimeValidation(Value1,Value2);
  Result:=(Value1<>Value2);
 end;
 
 function EqualEqualTRpValue(Value1,Value2:TRpValue):TRpValue;
 begin
+ ValidateNumbers(Value1,Value2);
  DatetimeValidation(Value1,Value2);
  Result:=(Value1=Value2);
+end;
+
+procedure ValidateNumbers(var Value1,Value2:TRpValue);
+begin
+ if (not VarIsStr(Value1)) and VarIsStr(Value2) then
+ begin
+  if Value2='' then
+   Value2:=Null;
+ end;
+ if (not VarIsStr(Value2)) and VarIsStr(Value1) then
+ begin
+  if Value1='' then
+   Value1:=Null;
+ end;
 end;
 
 // Date time validation

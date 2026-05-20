@@ -1021,6 +1021,7 @@ end;
 procedure TFRpMainFVCL.AChatIAExecute(Sender: TObject);
 begin
  ApplyChatPanelVisibility;
+ SaveConfig;
 end;
 
 type
@@ -1205,7 +1206,6 @@ begin
  // ScaleToolBar(ToolBar1);
  FCuePanelWidth := 420;
  AChatIA.AutoCheck := True;
- AChatIA.Checked := True;
  if AChatIA.Caption = '' then
   AChatIA.Caption := 'AI chat';
  if AChatIA.Hint = '' then
@@ -2281,6 +2281,7 @@ begin
   AUnitCms.Checked:=inif.ReadBool('Preferences','UnitCms',true);
   ADriverPDF.Checked:=inif.ReadBool('Preferences','DriverPDF',false);
   APrintDialog.Checked:=inif.ReadBool('Preferences','ShowPrintDialog',true);
+  AChatIA.Checked:=inif.ReadBool('Preferences','ShowAIChat',True);
   ADriverQt.Checked:=False;
   ADriverGDI.Checked:=Not ADriverPDF.Checked;
   AsystemPrintDialog.Checked:=True;
@@ -2319,6 +2320,7 @@ begin
   inif.WriteBool('Preferences','DriverPDF',ADriverPDF.Checked);
   inif.WriteBool('Preferences','SystemPrintDialog',AsystemPrintDialog.Checked);
   inif.WriteBool('Preferences','StatusBar',BStatus.Visible);
+  inif.WriteBool('Preferences','ShowAIChat',AChatIA.Checked);
   inif.WriteBool('Preferences','KylixPrintBug',AKylixPrintBug.Checked);
   inif.WriteString('Preferences','ThemeName',ThemeName);
 

@@ -122,8 +122,10 @@ begin
  WritePropertyS('NAME',dinfo.Name,Stream);
  WritePropertyS('DATABASEALIAS',dinfo.DatabaseAlias,Stream);
  WritePropertyW('SQL',dinfo.SQL,Stream);
- WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
- WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
+ if Trim(dinfo.SQLExplanation)<>'' then
+  WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
+ if Trim(dinfo.SQLExplanationError)<>'' then
+  WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
  WritePropertyI('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
  WritePropertyS('DATASOURCE',dinfo.DataSource,Stream);
  WritePropertyS('MYBASEFILENAME',dinfo.MyBaseFileName,Stream);

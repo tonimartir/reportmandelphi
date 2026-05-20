@@ -394,6 +394,28 @@ begin
   Result := jValue.ToJSON;
 end;
 
+function NormalizeUndoPropertyValue(propType: TPropertyType;
+  const value: Variant): Variant;
+begin
+  if not VarIsNull(value) then
+    Exit(value);
+
+  case propType of
+    ptInteger, ptBinary:
+      Result := 0;
+    ptNumber:
+      Result := 0.0;
+    ptString, ptDate:
+      Result := '';
+    ptBoolean:
+      Result := False;
+    ptStringArray:
+      Result := VarArrayCreate([0, -1], varVariant);
+  else
+    Result := value;
+  end;
+end;
+
 function MapUndoPropertyName(target: TObject; const propName: string): string;
 begin
   Result := propName;
@@ -1318,6 +1340,7 @@ begin
       nvalue := prop.oldValue
     else
       nvalue := prop.newValue;
+    nvalue := NormalizeUndoPropertyValue(prop.propertyType, nvalue);
     mappedPropName := MapUndoPropertyName(target, prop.propertyName);
     if (prop.propertyType = ptStringArray) and ApplyStringArrayProperty(target, mappedPropName, nvalue) then
       Continue;

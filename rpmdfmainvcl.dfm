@@ -814,7 +814,7 @@ object FRpMainFVCL: TFRpMainFVCL
     object AChatIA: TAction
       AutoCheck = True
       Caption = 'AI chat'
-      Checked = True
+      Checked = False
       Hint = 'Show or hide the AI chat panel'
       ImageIndex = 35
       ImageName = 'chatia32'
