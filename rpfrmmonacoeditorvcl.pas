@@ -39,9 +39,11 @@ type
 
   TSchemaComboItem = class
   public
+    ApiKey: string;
     HubDatabaseId: Int64;
     HubSchemaId: Int64;
-    constructor Create(AHubDatabaseId, AHubSchemaId: Int64);
+    constructor Create(AHubDatabaseId, AHubSchemaId: Int64;
+      const AApiKey: string = '');
   end;
 
   TFRpMonacoEditorVCL = class(TFrame)
@@ -77,6 +79,7 @@ type
     FSchema: string;
     FAuditText: string;
     FBaseHubDatabaseId: Int64;
+    FBaseApiKey: string;
     FLoadingSchemas: Boolean;
     FOnContentChanged: TNotifyEvent;
     FOnSchemaChanged: TNotifyEvent;
@@ -85,6 +88,7 @@ type
     FUpdatingFromBrowser: Boolean;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
+    FSchemaApiKey: string;
     FRuntimeDb: string;
     FDebounceTimer: TTimer;
     FPendingRequestId, FPendingSql: string;
@@ -105,7 +109,10 @@ type
     procedure OnDebounceTimer(Sender: TObject);
     procedure ProcessWebMessage(const LMessage: string);
     function LoadUserSchemas(AList: TStrings): Boolean;
+    function LoadApiKeySchemas(const AApiKey: string; AList: TStrings): Boolean;
     function LoadUserAgents(AList: TStrings): Boolean;
+    procedure AddMergedSchemas(ASource, ADest, ASeenKeys: TStrings;
+      const ADefaultApiKey: string);
     procedure ApplyUserSchemas(AList: TStrings);
     procedure ApplyUserAgents(AList: TStrings; const ASelectedTier: string;
       ASelectedAgentAiId: Int64);
@@ -114,7 +121,7 @@ type
     procedure SetHubDatabaseId(const Value: Int64);
     procedure SetHubSchemaId(const Value: Int64);
     procedure SetAuditText(const Value: string);
-    procedure HandleAICompletionRequest(const ARequest: TJSONObject);
+    procedure HandleAICompletionRequest(const APayload: string);
     procedure SendAICompletions(const AInlineItems, ACompletionItems: TJSONArray; const ARequestId: string);
     function SuggestSqlStreamCancelRequested(Sender: TObject): Boolean;
     procedure EmitInferenceLog(const ASource, AText: string;
@@ -133,7 +140,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure LoadSQL(const ASQL: string);
-    procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64);
+    procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
+      const ASchemaApiKey: string = '');
     procedure SetSchema(const ASchema: string);
     procedure ClearLog;
     procedure AppendLog(const AText: string);
@@ -145,6 +153,7 @@ type
     function GetAIMode: string;
     function GetAgentSecret: string;
     function GetAgentAiId: Int64;
+    function GetSchemaApiKey: string;
     property SQL: string read FSQL write SetSQL;
     property AuditText: string read FAuditText write SetAuditText;
     property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
@@ -170,7 +179,7 @@ uses
   rpchatmodernstyle;
 
 const
-  MonacoAssetsVersion = '2'; // bump to force re-extraction when asset layout changes
+  MonacoAssetsVersion = '3'; // bump to force re-extraction when asset layout changes
   CMonacoAISelectionWidth = 384;
   CMonacoAIButtonColumnWidth = 54;
   CMonacoAISelectionRightPadding = 6;
@@ -270,9 +279,11 @@ begin
   DrawText(Canvas.Handle, PChar(Caption), Length(Caption), R, Flags);
 end;
 
-constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64);
+constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
+  const AApiKey: string);
 begin
   inherited Create;
+  ApiKey := Trim(AApiKey);
   HubDatabaseId := AHubDatabaseId;
   HubSchemaId := AHubSchemaId;
 end;
@@ -616,44 +627,94 @@ begin
   end;
 end;
 
+function TFRpMonacoEditorVCL.LoadApiKeySchemas(const AApiKey: string;
+  AList: TStrings): Boolean;
+var
+  LHttp: TRpDatabaseHttp;
+begin
+  Result := False;
+  AList.Clear;
+  if Trim(AApiKey) = '' then
+    Exit;
+
+  LHttp := TRpDatabaseHttp.Create;
+  try
+    LHttp.ApiKey := Trim(AApiKey);
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    Result := LHttp.GetUserSchemas(AList);
+  finally
+    LHttp.Free;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.AddMergedSchemas(ASource, ADest,
+  ASeenKeys: TStrings; const ADefaultApiKey: string);
+var
+  I: Integer;
+  LDisplayName: string;
+  LValue: string;
+  LSchemaKey: string;
+begin
+  for I := 0 to ASource.Count - 1 do
+  begin
+    LDisplayName := ASource.Names[I];
+    LValue := ASource.ValueFromIndex[I];
+    LSchemaKey := LValue;
+    if ASeenKeys.IndexOf(LSchemaKey) >= 0 then
+      Continue;
+    ASeenKeys.Add(LSchemaKey);
+    ADest.Add(LDisplayName + '=' + LValue + '|' + ADefaultApiKey);
+  end;
+end;
+
 procedure TFRpMonacoEditorVCL.ApplyUserSchemas(AList: TStrings);
 var
   I: Integer;
   LSchemaName: string;
   LSchemaValue: string;
-  LPosSep: Integer;
+  LParts: TStringList;
   LHubDatabaseId: Int64;
   LSchemaId: Int64;
+  LApiKey: string;
 begin
   if FLoadingSchemas then
     Exit;
 
   FLoadingSchemas := True;
   ComboSchema.Items.BeginUpdate;
+  LParts := TStringList.Create;
   try
+    LParts.Delimiter := '|';
+    LParts.StrictDelimiter := True;
     ClearSchemaItems;
     ComboSchema.Items.Add('');
     for I := 0 to AList.Count - 1 do
     begin
       LSchemaName := AList.Names[I];
       LSchemaValue := AList.ValueFromIndex[I];
-      LPosSep := Pos('|', LSchemaValue);
-      if LPosSep > 0 then
+      LParts.DelimitedText := LSchemaValue;
+      if LParts.Count >= 2 then
       begin
-        LHubDatabaseId := StrToInt64Def(Copy(LSchemaValue, 1, LPosSep - 1), 0);
-        LSchemaId := StrToInt64Def(Copy(LSchemaValue, LPosSep + 1, MaxInt), 0);
+        LHubDatabaseId := StrToInt64Def(LParts[0], 0);
+        LSchemaId := StrToInt64Def(LParts[1], 0);
       end
       else
       begin
         LHubDatabaseId := 0;
-        LSchemaId := StrToInt64Def(LSchemaValue, 0);
+        LSchemaId := 0;
       end;
+      if LParts.Count >= 3 then
+        LApiKey := LParts[2]
+      else
+        LApiKey := '';
       ComboSchema.Items.AddObject(LSchemaName,
-        TSchemaComboItem.Create(LHubDatabaseId, LSchemaId));
+        TSchemaComboItem.Create(LHubDatabaseId, LSchemaId, LApiKey));
     end;
 
     SelectCurrentSchema;
   finally
+    LParts.Free;
     ComboSchema.Items.EndUpdate;
     FLoadingSchemas := False;
   end;
@@ -727,12 +788,25 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.SetHubContext(AHubDatabaseId,
-  AHubSchemaId: Int64);
+  AHubSchemaId: Int64; const ASchemaApiKey: string);
+var
+  LBaseApiKey: string;
+  LNeedsSchemaReload: Boolean;
 begin
+  LBaseApiKey := Trim(ASchemaApiKey);
+  LNeedsSchemaReload := (FBaseHubDatabaseId <> AHubDatabaseId) or
+    (FBaseApiKey <> LBaseApiKey);
   FBaseHubDatabaseId := AHubDatabaseId;
+  FBaseApiKey := LBaseApiKey;
   FHubDatabaseId := AHubDatabaseId;
   FHubSchemaId := AHubSchemaId;
-  if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
+  FSchemaApiKey := LBaseApiKey;
+  if LNeedsSchemaReload and TRpAuthManager.Instance.IsLoggedIn then
+  begin
+    ClearSchemaItems;
+    UpdateAuthUI
+  end
+  else if (ComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
     UpdateAuthUI
   else
     SelectCurrentSchema;
@@ -765,7 +839,10 @@ begin
 
   FHubSchemaId := Value;
   if FHubSchemaId = 0 then
+  begin
     FHubDatabaseId := FBaseHubDatabaseId;
+    FSchemaApiKey := FBaseApiKey;
+  end;
   SelectCurrentSchema;
 end;
 
@@ -792,6 +869,7 @@ begin
         ComboSchema.ItemIndex := I;
         FSchema := ComboSchema.Items[I];
         FHubDatabaseId := LItem.HubDatabaseId;
+        FSchemaApiKey := LItem.ApiKey;
         LFound := True;
         Break;
       end;
@@ -809,6 +887,7 @@ begin
         FSchema := ComboSchema.Items[I];
         FHubDatabaseId := LItem.HubDatabaseId;
         FHubSchemaId := LItem.HubSchemaId;
+        FSchemaApiKey := LItem.ApiKey;
         LFound := True;
         Break;
       end;
@@ -824,6 +903,7 @@ begin
     begin
       FHubDatabaseId := LItem.HubDatabaseId;
       FHubSchemaId := LItem.HubSchemaId;
+      FSchemaApiKey := LItem.ApiKey;
     end;
     LFound := True;
   end;
@@ -833,6 +913,7 @@ begin
     FSchema := '';
     FHubDatabaseId := FBaseHubDatabaseId;
     FHubSchemaId := 0;
+    FSchemaApiKey := FBaseApiKey;
   end;
 end;
 
@@ -851,6 +932,7 @@ begin
     begin
       FHubDatabaseId := LItem.HubDatabaseId;
       FHubSchemaId := LItem.HubSchemaId;
+      FSchemaApiKey := LItem.ApiKey;
     end;
   end
   else
@@ -858,10 +940,24 @@ begin
     FSchema := '';
     FHubDatabaseId := FBaseHubDatabaseId;
     FHubSchemaId := 0;
+    FSchemaApiKey := FBaseApiKey;
   end;
 
   if Assigned(FOnSchemaChanged) then
     FOnSchemaChanged(Self);
+end;
+
+function TFRpMonacoEditorVCL.GetSchemaApiKey: string;
+var
+  LItem: TSchemaComboItem;
+begin
+  if ComboSchema.ItemIndex > 0 then
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
+    if LItem <> nil then
+      Exit(LItem.ApiKey);
+  end;
+  Result := FSchemaApiKey;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeWebMessageReceived(
@@ -898,68 +994,42 @@ end;
 
 procedure TFRpMonacoEditorVCL.ProcessWebMessage(const LMessage: string);
 var
-  LVal: TJSONValue;
-  LObj: TJSONObject;
-  LType: string;
   LNewSQL: string;
 begin
   OutputDebugString(PChar('MonacoWebMessage: ' + LMessage));
   if FUpdatingFromBrowser then 
     Exit;
 
-  LVal := TJSONObject.ParseJSONValue(LMessage);
-  try
-    LNewSQL := '';
-    if (LVal <> nil) and (LVal is TJSONObject) then
-    begin
-      LObj := TJSONObject(LVal);
-      if LObj.Values['type'] <> nil then
-      begin
-        LType := LObj.Values['type'].Value;
+  if Copy(LMessage, 1, 3) = '00:' then
+  begin
+    FEditorReady := True;
+    SetSQL(FSQL);
+    Exit;
+  end;
 
-        if LType = 'GET_AI_COMPLETIONS' then
-        begin
-          HandleAICompletionRequest(LObj);
-          Exit;
-        end
-        else if LType = 'EDITOR_READY' then
-        begin
-          FEditorReady := True;
-          SetSQL(FSQL);
-          Exit;
-        end;
-      end;
-      // If it's a JSON object but not a command, it's probably specialized SQL or data
-      LNewSQL := LMessage;
-    end
-    else if (LVal <> nil) and (LVal is TJSONString) then
-    begin
-      // Extract the unquoted string value
-      LNewSQL := TJSONString(LVal).Value;
-    end
-    else
-    begin
-      // Raw string
-      LNewSQL := LMessage;
+  if Copy(LMessage, 1, 3) = '02:' then
+  begin
+    HandleAICompletionRequest(Copy(LMessage, 4, MaxInt));
+    Exit;
+  end;
+
+  if Copy(LMessage, 1, 3) <> '01:' then
+    Exit;
+
+  LNewSQL := Copy(LMessage, 4, MaxInt);
+  // Normalizing line endings handles the difference between JS (\n) and Delphi (\r\n)
+  LNewSQL := LNewSQL.Replace(#13#10, #10).Replace(#13, #10).Replace(#10, #13#10);
+
+  if FSQL <> LNewSQL then
+  begin
+    FUpdatingFromBrowser := True;
+    try
+      FSQL := LNewSQL;
+      if Assigned(FOnContentChanged) then
+        FOnContentChanged(Self);
+    finally
+      FUpdatingFromBrowser := False;
     end;
-
-    // Normalizing line endings handles the difference between JS (\n) and Delphi (\r\n)
-    LNewSQL := LNewSQL.Replace(#13#10, #10).Replace(#13, #10).Replace(#10, #13#10);
-
-    if FSQL <> LNewSQL then
-    begin
-      FUpdatingFromBrowser := True;
-      try
-        FSQL := LNewSQL;
-        if Assigned(FOnContentChanged) then
-          FOnContentChanged(Self);
-      finally
-        FUpdatingFromBrowser := False;
-      end;
-    end;
-  finally
-    if LVal <> nil then
-      LVal.Free;
   end;
 end;
 
@@ -974,73 +1044,33 @@ begin
   TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
 end;
 
-function CalculateCursorPosition(const ACode: string; ALineNumber, AColumn: Integer): Integer;
+procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const APayload: string);
 var
-  LLines: TArray<string>;
-  I: Integer;
-begin
-  // Dividimos estrictamente por #10 igual que .Split('\n') en C#
-  LLines := ACode.Split([#10]);
-  Result := 0;
-
-  // C# equivalent: for (int i = 0; i < lineNumber - 1 && i < lines.Length; i++)
-  for I := 0 to ALineNumber - 2 do
-  begin
-    if I >= Length(LLines) then
-      Break;
-    Result := Result + Length(LLines[I]) + 1; // +1 al restituir el salto de línea eliminado
-  end;
-
-  Result := Result + AColumn - 1;
-  if Result < 0 then
-    Result := 0;
-end;
-
-procedure TFRpMonacoEditorVCL.HandleAICompletionRequest(const ARequest: TJSONObject);
-var
-  LVal, LValL, LValC: TJSONValue;
   LEmptyInlineItems, LEmptyCompletionItems: TJSONArray;
-  LLineNumber, LColumn: Integer;
+  LHeaderEnd, LOffsetSeparator: Integer;
+  LHeader: string;
 begin
   FDebounceTimer.Enabled := False;
   
   FPendingRequestId := '';
-  LVal := ARequest.GetValue('requestId');
-  if (LVal <> nil) and (not LVal.Null) then
-    FPendingRequestId := LVal.Value;
-
   FPendingSql := '';
-  LVal := ARequest.GetValue('code');
-  if (LVal <> nil) and (not LVal.Null) then
-    FPendingSql := LVal.Value;
-
   FPendingPos := 0;
-  LVal := ARequest.GetValue('position');
-  if (LVal <> nil) and (not LVal.Null) then
-  begin
-    if LVal is TJSONObject then
-    begin
-      // Recibimos un objeto { lineNumber: X, column: Y } tal cual esperas
-      LLineNumber := 1;
-      LColumn := 1;
-      
-      LValL := TJSONObject(LVal).GetValue('lineNumber');
-      if (LValL <> nil) and (not LValL.Null) then
-        LLineNumber := StrToIntDef(LValL.ToString.Replace('"', ''), 1);
 
-      LValC := TJSONObject(LVal).GetValue('column');
-      if (LValC <> nil) and (not LValC.Null) then
-        LColumn := StrToIntDef(LValC.ToString.Replace('"', ''), 1);
+  LHeaderEnd := Pos(#10, APayload);
+  if LHeaderEnd <= 0 then
+    Exit;
 
-      // Calculamos el cursor character offset como en tu C# code
-      FPendingPos := CalculateCursorPosition(FPendingSql, LLineNumber, LColumn);
-    end
-    else
-    begin
-      // Si llegara plano por algún motivo
-      FPendingPos := StrToIntDef(LVal.ToString.Replace('"', ''), 0);
-    end;
-  end;
+  LHeader := Copy(APayload, 1, LHeaderEnd - 1).Replace(#13, '');
+  LOffsetSeparator := LastDelimiter(':', LHeader);
+  if LOffsetSeparator <= 1 then
+    Exit;
+
+  FPendingRequestId := Copy(LHeader, 1, LOffsetSeparator - 1);
+  FPendingPos := StrToIntDef(Copy(LHeader, LOffsetSeparator + 1, MaxInt), 0);
+  FPendingSql := Copy(APayload, LHeaderEnd + 1, MaxInt);
+
+  if FPendingRequestId = '' then
+    Exit;
 
   // Restaurado a petición: cancela la inferencia devolviendo vacío si el texto no ha cambiado (ej: solo movimiento de cursor)
   if FPendingSql = FLastAutoCompleteSql then
@@ -1146,6 +1176,7 @@ begin
 
       LHttp := TRpDatabaseHttp.Create;
       try
+        LHttp.ApiKey := GetSchemaApiKey;
         LHttp.Token := TRpAuthManager.Instance.Token;
         LHttp.InstallId := TRpAuthManager.Instance.InstallId;
         LHttp.HubDatabaseId := FHubDatabaseId;
@@ -1499,6 +1530,7 @@ var
   LAIEnabled: Boolean;
   LSelectedTier: string;
   LSelectedAgentAiId: Int64;
+  LBaseApiKey: string;
   LRequestVersion: Integer;
   LNeedsSchemas: Boolean;
   LNeedsAgents: Boolean;
@@ -1512,6 +1544,7 @@ begin
   LRequestVersion := FAuthUIUpdateVersion;
   LLoggedIn := TRpAuthManager.Instance.IsLoggedIn;
   LAIEnabled := TRpAuthManager.Instance.AIEnabled;
+  LBaseApiKey := FBaseApiKey;
   if FAISelection <> nil then
   begin
     LSelectedTier := FAISelection.AITier;
@@ -1532,7 +1565,11 @@ begin
   ComboSchema.Enabled := LLoggedIn;
   if not LLoggedIn then
   begin
-    ComboSchema.Clear;
+    ClearSchemaItems;
+    FSchema := '';
+    FHubDatabaseId := 0;
+    FHubSchemaId := 0;
+    FSchemaApiKey := '';
     if FAISelection <> nil then
     begin
       FAISelection.ClearAgentEndpoints;
@@ -1570,15 +1607,37 @@ begin
     var
       LPayload: TMonacoAuthRefreshPayload;
       LHasQueued: Boolean;
+      LUserSchemas: TStringList;
+      LApiKeySchemas: TStringList;
+      LSeenSchemaKeys: TStringList;
     begin
       LPayload := TMonacoAuthRefreshPayload.Create;
       LHasQueued := False;
+      LUserSchemas := TStringList.Create;
+      LApiKeySchemas := TStringList.Create;
+      LSeenSchemaKeys := TStringList.Create;
       try
+        LSeenSchemaKeys.Sorted := True;
+        LSeenSchemaKeys.Duplicates := dupIgnore;
         LPayload.RequestVersion := LRequestVersion;
         LPayload.SelectedTier := LSelectedTier;
         LPayload.SelectedAgentAiId := LSelectedAgentAiId;
         if LNeedsSchemas then
-          LoadUserSchemas(LPayload.Schemas);
+        begin
+          try
+            LoadApiKeySchemas(LBaseApiKey, LApiKeySchemas);
+          except
+            LApiKeySchemas.Clear;
+          end;
+          try
+            LoadUserSchemas(LUserSchemas);
+          except
+            LUserSchemas.Clear;
+          end;
+          AddMergedSchemas(LApiKeySchemas, LPayload.Schemas, LSeenSchemaKeys,
+            LBaseApiKey);
+          AddMergedSchemas(LUserSchemas, LPayload.Schemas, LSeenSchemaKeys, '');
+        end;
         if LNeedsAgents then
           LoadUserAgents(LPayload.Agents);
 
@@ -1611,6 +1670,9 @@ begin
         TThread.Queue(nil, LQueueProc);
         LHasQueued := True;
       finally
+        LSeenSchemaKeys.Free;
+        LApiKeySchemas.Free;
+        LUserSchemas.Free;
         if not LHasQueued then
           LPayload.Free;
       end;

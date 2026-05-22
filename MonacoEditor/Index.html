@@ -56,7 +56,7 @@
             // Puente de vuelta al ViewModel
             window.editor.getModel().onDidChangeContent((event) => {
                 if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage(window.editor.getValue());
+                    window.chrome.webview.postMessage('01:' + window.editor.getValue());
                 }
             });
 
@@ -98,12 +98,7 @@
                     };
 
                     if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(JSON.stringify({
-                            type: 'GET_AI_COMPLETIONS',
-                            requestId: requestId,
-                            code: model.getValue(),
-                            position: model.getOffsetAt(position)
-                        }));
+                        window.chrome.webview.postMessage('02:' + requestId + ':' + model.getOffsetAt(position) + '\n' + model.getValue());
                     } else {
                         resolve({ inlineItems: [], completionItems: [] });
                     }
@@ -177,7 +172,7 @@
 
             // Notify Delphi that we are ready
             if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage(JSON.stringify({ type: 'EDITOR_READY' }));
+                window.chrome.webview.postMessage('00:');
             }
         });
     </script>

@@ -447,7 +447,7 @@ begin
 
   if FMonaco <> nil then
   begin
-    FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId);
+    FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
     FMonaco.RuntimeDb := LRuntimeDb;
     if ASyncSqlFromDataInfo then
     begin
@@ -822,7 +822,8 @@ procedure TFRpDatasetsVCL.MonacoSchemaChange(Sender: TObject);
 begin
  if FSyncingSchemaContext or (FMonaco = nil) then
   Exit;
- SyncActiveSchemaContext(FMonaco.HubDatabaseId, FMonaco.HubSchemaId);
+ SyncActiveSchemaContext(FMonaco.HubDatabaseId, FMonaco.HubSchemaId,
+   FMonaco.GetSchemaApiKey);
 end;
 
 procedure TFRpDatasetsVCL.ChatSchemaChange(Sender: TObject);
