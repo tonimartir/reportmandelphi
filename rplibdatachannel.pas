@@ -263,6 +263,26 @@ type
     maxMessageSize: Integer;         // <=0 = default
   end;
 
+  PrtcWsServerConfiguration = ^rtcWsServerConfiguration;
+  rtcWsServerConfiguration = record
+    port: Word;                       // 0 = automatic
+    enableTls: ByteBool;
+    certificatePemFile: PAnsiChar;    // nil for auto-generated
+    keyPemFile: PAnsiChar;            // nil for auto-generated
+    keyPemPass: PAnsiChar;            // nil if no pass
+    bindAddress: PAnsiChar;           // nil for any
+    connectionTimeoutMs: Integer;
+    maxMessageSize: Integer;
+  end;
+
+  // Called when a new WebSocket client connects to a server. `wsserver` is
+  // the server id and `ws` is the freshly-accepted client connection id.
+  rtcWebSocketClientCallbackFunc = procedure(
+    wsserver: Integer;
+    ws: Integer;
+    ptr: Pointer
+  ); cdecl;
+
   PrtcSctpSettings = ^rtcSctpSettings;
   rtcSctpSettings = record
     recvBufferSize: Integer;
@@ -499,6 +519,33 @@ var
     ws: Integer
   ): Integer; cdecl;
 
+  rtcGetWebSocketRemoteAddress: function(
+    ws: Integer;
+    buffer: PAnsiChar;
+    size: Integer
+  ): Integer; cdecl;
+
+  rtcGetWebSocketPath: function(
+    ws: Integer;
+    buffer: PAnsiChar;
+    size: Integer
+  ): Integer; cdecl;
+
+  // ---- WebSocket Server (used by the Mock-Hub test) ----
+
+  rtcCreateWebSocketServer: function(
+    const config: PrtcWsServerConfiguration;
+    cb: rtcWebSocketClientCallbackFunc
+  ): Integer; cdecl;
+
+  rtcDeleteWebSocketServer: function(
+    wsserver: Integer
+  ): Integer; cdecl;
+
+  rtcGetWebSocketServerPort: function(
+    wsserver: Integer
+  ): Integer; cdecl;
+
   // ---- Global ----
 
   rtcSetThreadPoolSize: function(
@@ -618,6 +665,11 @@ begin
   @rtcCreateWebSocket                  := GetProc('rtcCreateWebSocket');
   @rtcCreateWebSocketEx                := GetProc('rtcCreateWebSocketEx');
   @rtcDeleteWebSocket                  := GetProc('rtcDeleteWebSocket');
+  @rtcGetWebSocketRemoteAddress        := GetProc('rtcGetWebSocketRemoteAddress');
+  @rtcGetWebSocketPath                 := GetProc('rtcGetWebSocketPath');
+  @rtcCreateWebSocketServer            := GetProc('rtcCreateWebSocketServer');
+  @rtcDeleteWebSocketServer            := GetProc('rtcDeleteWebSocketServer');
+  @rtcGetWebSocketServerPort           := GetProc('rtcGetWebSocketServerPort');
 
   @rtcSetThreadPoolSize                := GetProc('rtcSetThreadPoolSize');
   @rtcSetSctpSettings                  := GetProc('rtcSetSctpSettings');
@@ -688,6 +740,11 @@ begin
   rtcCreateWebSocket                  := nil;
   rtcCreateWebSocketEx                := nil;
   rtcDeleteWebSocket                  := nil;
+  rtcGetWebSocketRemoteAddress        := nil;
+  rtcGetWebSocketPath                 := nil;
+  rtcCreateWebSocketServer            := nil;
+  rtcDeleteWebSocketServer            := nil;
+  rtcGetWebSocketServerPort           := nil;
   rtcSetThreadPoolSize                := nil;
   rtcSetSctpSettings                  := nil;
   rtcPreload                          := nil;
