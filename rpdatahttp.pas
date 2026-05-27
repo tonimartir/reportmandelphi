@@ -42,6 +42,19 @@ const
   DBTYPE_STRING = 16;
   DBTYPE_TIME = 17;
 type
+  // Generic try-direct hook. If installed (typically by
+  // rpdcintegration.EnableDirectChannel) it is called at the top of
+  // TRpDatasetHttp.Open. Returning True means the handler already
+  // populated ATarget and Open() should NOT continue to HTTP.
+  // Returning False (or any exception bubbling out) means the handler
+  // could not satisfy this query; Open() falls back to the standard
+  // HTTP path. Kept as a plain global so rpdatahttp does not have to
+  // depend on the (much heavier) WebRTC stack.
+  TRpDatasetDirectTryFunc = function(ADatabaseHttp: TObject;
+                                      const ASql: string;
+                                      AParams: TObject;
+                                      ATarget: TObject): Boolean;
+
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
     const AProgressId: string; APrefillPercent: Integer) of object;
@@ -130,7 +143,18 @@ type
     procedure Open;
     property Sql: string read FSql write FSql;
     property Dataset: TClientDataSet read FDataset;
+    // Exposed so the optional direct-channel hook can read the
+    // request shape (the hook is in another unit; it receives
+    // TObject and as-casts back to the concrete TRpDatasetHttp).
+    property Params: TRpParamList read FParams;
+    property Database: TRpDatabaseHttp read FDatabase;
   end;
+
+var
+  // Optional hook installed by rpdcintegration.EnableDirectChannel.
+  // When set, TRpDatasetHttp.Open tries it first and only falls back
+  // to HTTP if the hook returns False or raises.
+  RpDatasetDirectTry: TRpDatasetDirectTryFunc = nil;
 
 // HUB_API_URL constants moved to rptypes.pas
 
@@ -1459,6 +1483,25 @@ var
 begin
   if FDatabase = nil then
     raise Exception.Create('Database not assigned');
+
+  // Try the direct WebRTC DataChannel path if a handler has been
+  // installed (typically by rpdcintegration). The handler is
+  // responsible for populating FDataset; if it returns True we are
+  // done. Any False / exception transparently falls back to the HTTP
+  // path below. A handler exception is logged via AuthManager but
+  // never propagates - the user just sees the slower HTTP path.
+  if Assigned(RpDatasetDirectTry) then
+  begin
+    try
+      if RpDatasetDirectTry(FDatabase, FSql, FParams, FDataset) then
+        Exit;
+    except
+      on E: Exception do
+        TRpAuthManager.Instance.Log('Direct channel handler failed: ' +
+                                    E.ClassName + ': ' + E.Message);
+    end;
+  end;
+
   LInvariantFormatSettings := TFormatSettings.Invariant;
   RequestBody := TJSONObject.Create;
   try

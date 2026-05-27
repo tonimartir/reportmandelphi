@@ -988,6 +988,10 @@ begin
   end;
   if FSignalingWsId >= 0 then
   begin
+    if Assigned(rtcSetUserPointer) then
+      rtcSetUserPointer(FSignalingWsId, nil);
+    if Assigned(rtcClose) then
+      rtcClose(FSignalingWsId);
     if Assigned(rtcDeleteWebSocket) then
       rtcDeleteWebSocket(FSignalingWsId);
     FSignalingWsId := -1;
