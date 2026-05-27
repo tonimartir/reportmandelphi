@@ -217,3 +217,16 @@ Reportman.Reporting/bin/
 tests/vb_activex_ai_test/MSSCCPRJ.SCC
 repman/bin32/freetype6.dll
 repman/bin32/testplug.dll
+
+# Direct Channel test build outputs
+tests/libdatachannel_test/bin_x86/
+tests/libdatachannel_test/bin_x64/
+tests/fastserializer_test/bin_x86/
+tests/fastserializer_test/bin_x64/
+tests/fastserializer_test/fixture_gen/bin/
+tests/fastserializer_test/fixture_gen/obj/
+tests/fastserializer_test/inverse_check/bin/
+tests/fastserializer_test/inverse_check/obj/
+tests/fastserializer_test/fixtures/pascal_fixture.bin
+tests/datadirect_test/bin_x86/
+tests/datadirect_test/bin_x64/
