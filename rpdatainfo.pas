@@ -242,6 +242,7 @@ type
 {$ENDIF}
    FHttpDatabase: TRpDatabaseHttp;
    FDriver:TRpDbDriver;
+   function GetHttpHubDatabaseId: Int64;
    procedure SetAlias(Value:string);
    procedure SetConfigFile(Value:string);
   procedure AssertCanModify(const AReason:string);
@@ -310,6 +311,11 @@ type
    property ADOConnectionString:widestring read FADOConnectionString write FADOConnectionString;
    property Name: string read FName write FName;
    procedure DoCommit;
+   // Returns the live HubDatabaseId when Driver = rpdbHttp and the
+   // underlying TRpDatabaseHttp has been created, otherwise 0. Used
+   // by Designer UI to drive the transport-mode chip without
+   // exposing the FHttpDatabase field directly.
+   property HttpHubDatabaseId: Int64 read GetHttpHubDatabaseId;
   published
    property Alias:string read FAlias write SetAlias;
    property ConfigFile:string read FConfigFile write SetConfigFile;
@@ -1466,6 +1472,13 @@ end;
 
 // Database info
 
+function TRpDatabaseInfoItem.GetHttpHubDatabaseId: Int64;
+begin
+  if (FDriver = rpdbHttp) and Assigned(FHttpDatabase) then
+    Result := FHttpDatabase.HubDatabaseId
+  else
+    Result := 0;
+end;
 
 procedure TRpDatabaseInfoItem.SetAlias(Value:string);
 begin

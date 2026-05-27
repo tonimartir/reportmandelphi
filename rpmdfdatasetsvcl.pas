@@ -1412,7 +1412,14 @@ begin
  Report.PrepareParamsBeforeOpen;
  dinfo.Connect(databaseinfo,report.params);
  try
-  ShowDataset(dinfo.Dataset);
+  // Pass the live HubDatabaseId (0 for non-HTTP drivers) so the
+  // sample data form can paint the WebRTC transport chip in its
+  // toolbar.
+  i := databaseinfo.IndexOf(dinfo.DatabaseAlias);
+  if i >= 0 then
+   ShowDataset(dinfo.Dataset, databaseinfo.Items[i].HttpHubDatabaseId)
+  else
+   ShowDataset(dinfo.Dataset);
  finally
   // Left the dataset open for testing relations ...
 //  dinfo.Disconnect;

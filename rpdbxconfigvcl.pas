@@ -136,7 +136,11 @@ implementation
 
 {$R *.dfm}
 
-uses System.JSON, rpreport,  rpauthmanager;
+uses System.JSON, rpreport,  rpauthmanager
+{$IFDEF MSWINDOWS}
+  , rpdatadirect, rpdcintegration
+{$ENDIF}
+  ;
 
 const
   HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
@@ -196,6 +200,11 @@ var
  LDatabase: TRpDatabaseHttp;
  LRequestBody: TJSONObject;
  LResponseStream: TStringStream;
+{$IFDEF MSWINDOWS}
+ LMode: TRpDcConnectionMode;
+ LFallback: Boolean;
+ LHubDbId: Int64;
+{$ENDIF}
 begin
  Result:=False;
  AMessageText := '';
@@ -219,6 +228,28 @@ begin
       if Length(Trim(AMessageText)) = 0 then
        AMessageText := 'Agent Connection: Success' + sLineBreak +
         'Database Connection: Success';
+
+{$IFDEF MSWINDOWS}
+      // After a successful HTTP test, probe the Direct Channel so
+      // the user knows which transport they would actually get when
+      // they start using this database. The SetConnected(True)
+      // triggers rpdcintegration's hook which negotiates a session
+      // through the pool; PeekConnectionMode then reports the live
+      // ICE outcome.
+      LHubDbId := LDatabase.HubDatabaseId;
+      if LHubDbId > 0 then
+      try
+       LDatabase.Connected := True;
+       LMode := GetLastTransportForDatabase(LHubDbId);
+       LFallback := DidFallBackToApiForDatabase(LHubDbId);
+       AMessageText := AMessageText + sLineBreak +
+                        'Transport: ' + FormatTransportMode(LMode, LFallback);
+      except
+       on E: Exception do
+        AMessageText := AMessageText + sLineBreak +
+                         'Transport: API (probe failed: ' + E.Message + ')';
+      end;
+{$ENDIF}
      end;
     except
      on E: Exception do

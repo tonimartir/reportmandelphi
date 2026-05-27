@@ -107,6 +107,13 @@ type
     // Diagnostics.
     function Count: Integer;
     function StatusReport: string;
+
+    // Non-blocking peek of the session's ConnectionMode for this
+    // database. Returns rcmUnknown if no entry, the entry is dead,
+    // or the underlying ICE pair is undetermined. Does NOT mark the
+    // session busy and does NOT acquire a transient client - safe
+    // to call from UI threads.
+    function PeekConnectionMode(HubDatabaseId: Int64): TRpDcConnectionMode;
   end;
 
 implementation
@@ -296,6 +303,26 @@ begin
   FLock.Acquire;
   try
     Result := FEntries.Count;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TRpDcHubChannelPool.PeekConnectionMode(
+                              HubDatabaseId: Int64): TRpDcConnectionMode;
+var
+  e: TRpDcPoolEntry;
+begin
+  Result := rcmUnknown;
+  FLock.Acquire;
+  try
+    for e in FEntries do
+      if (e.HubDatabaseId = HubDatabaseId) and (not e.Dead) and
+         (e.Client <> nil) then
+      begin
+        Result := e.Client.ConnectionMode;
+        Exit;
+      end;
   finally
     FLock.Release;
   end;

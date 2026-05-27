@@ -83,12 +83,33 @@ function DirectChannelStatusReport: string;
 // has not been extracted yet (or extraction failed).
 function GetDataChannelDllPath: string;
 
+// Last transport observed for a given hubDatabaseId.
+//   rcmDirectP2P  - host candidates, no NAT involvement
+//   rcmHolePunch  - srflx/prflx pair (NAT/STUN)
+//   rcmRelay      - TURN
+//   rcmUnknown    - DC up but pair undetermined, OR no DC for this id yet
+// The function looks the database up in the live pool; if the entry
+// is missing the result is rcmUnknown.
+function GetLastTransportForDatabase(
+                              HubDatabaseId: Int64): TRpDcConnectionMode;
+
+// True iff the most recent TryDirectImpl call for this database
+// returned False (meaning the caller fell back to HTTP). Used by
+// the Designer UI to paint the chip as "API" instead of pretending
+// the channel is direct when it was not.
+function DidFallBackToApiForDatabase(HubDatabaseId: Int64): Boolean;
+
+// Human-readable formatting for the chip caption / log lines.
+function FormatTransportMode(AMode: TRpDcConnectionMode;
+                             AFallbackApi: Boolean): string;
+
 implementation
 
 {$R LibDataChannelAssets.res}
 
 uses
   System.Variants,
+  System.Generics.Collections,
   rptypes,
   rpauthmanager;
 
@@ -101,6 +122,11 @@ var
   GAcceptInvalidCerts: Boolean = False;
   GLibraryLoaded: Boolean = False;
   GDllPath: string = '';
+  // Per-database flag: True when the most recent TryDirectImpl had
+  // to fall back to HTTP. Read by the UI chip to display "API" when
+  // direct could not be used for that database. Set inside
+  // TryDirectImpl, cleared on successful direct executes.
+  GFallbackToApi: TDictionary<Int64, Boolean> = nil;
 
 // Mirrors the Monaco/Markdown extraction pattern:
 // - %LOCALAPPDATA%\Reportman\DataChannel\{x64|x86}\
@@ -225,20 +251,40 @@ begin
   if hubDatabaseId <= 0 then Exit;
 
   client := pool.Acquire(hubDatabaseId, 15);
-  if client = nil then Exit;
+  if client = nil then
+  begin
+    // Could not even open a session: mark this DB as fallback so the
+    // UI chip shows "API" rather than a stale Direct/HolePunch from
+    // a previous query on the same id.
+    GLock.Acquire;
+    try
+      GFallbackToApi.AddOrSetValue(hubDatabaseId, True);
+    finally
+      GLock.Release;
+    end;
+    Exit;
+  end;
   try
     hubParams := MakeHubParams(params);
     try
       client.Execute(ASql, hubParams, hubDatabaseId, target, 600);
       Result := True;
+      GLock.Acquire;
+      try
+        GFallbackToApi.AddOrSetValue(hubDatabaseId, False);
+      finally
+        GLock.Release;
+      end;
     except
       on E: Exception do
       begin
-        // Any transport-level failure here (channel died, peer
-        // closed, etc.) marks the session dead so the next Acquire
-        // negotiates a fresh one. The Open() caller still falls back
-        // to HTTP for this single query via Result=False.
         pool.MarkDead(client);
+        GLock.Acquire;
+        try
+          GFallbackToApi.AddOrSetValue(hubDatabaseId, True);
+        finally
+          GLock.Release;
+        end;
         raise;
       end;
     end;
@@ -251,6 +297,52 @@ procedure EnsureLock;
 begin
   if GLock = nil then
     GLock := TCriticalSection.Create;
+  if GFallbackToApi = nil then
+    GFallbackToApi := TDictionary<Int64, Boolean>.Create;
+end;
+
+function GetLastTransportForDatabase(
+                              HubDatabaseId: Int64): TRpDcConnectionMode;
+var
+  pool: TRpDcHubChannelPool;
+begin
+  Result := rcmUnknown;
+  EnsureLock;
+  GLock.Acquire;
+  try
+    pool := GPool;
+  finally
+    GLock.Release;
+  end;
+  if pool = nil then Exit;
+  Result := pool.PeekConnectionMode(HubDatabaseId);
+end;
+
+function DidFallBackToApiForDatabase(HubDatabaseId: Int64): Boolean;
+begin
+  Result := False;
+  EnsureLock;
+  GLock.Acquire;
+  try
+    if GFallbackToApi <> nil then
+      GFallbackToApi.TryGetValue(HubDatabaseId, Result);
+  finally
+    GLock.Release;
+  end;
+end;
+
+function FormatTransportMode(AMode: TRpDcConnectionMode;
+                             AFallbackApi: Boolean): string;
+begin
+  if AFallbackApi then
+    Exit('API (HTTP fallback)');
+  case AMode of
+    rcmDirectP2P: Result := 'Direct P2P (Host)';
+    rcmHolePunch: Result := 'Hole-Punch (NAT/STUN)';
+    rcmRelay:     Result := 'Relay (TURN)';
+  else
+    Result := 'Unknown';
+  end;
 end;
 
 procedure EnableDirectChannel(const AApiBaseUrl, ABearerToken: string;
@@ -454,6 +546,11 @@ finalization
   begin
     RpDcShutdown;
     GLibraryLoaded := False;
+  end;
+  if GFallbackToApi <> nil then
+  begin
+    GFallbackToApi.Free;
+    GFallbackToApi := nil;
   end;
   if GLock <> nil then
   begin
