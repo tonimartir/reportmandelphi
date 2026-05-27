@@ -31,8 +31,10 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.SyncObjs,
+  System.IOUtils, System.Zip,
   Data.DB, Datasnap.DBClient,
   rpparams,
+  rpmdshfolder,
   rpdatahttp,
   rplibdatachannel,
   rpfastserializer,
@@ -40,14 +42,31 @@ uses
   rpdchub,
   rpdcpool;
 
-// Spin up the global pool and install the TRpDatasetHttp hook. Idempotent:
-// calling twice with the same arguments is a no-op; calling with new
-// arguments (e.g., after the user logged in again) closes the old pool
-// and starts a new one.
+const
+  // Bumped whenever the embedded libdatachannel.dll set changes.
+  // Mirrors the AssetsVersion pattern of Monaco/Markdown - users get
+  // a transparent re-extract when they install a new OCX.
+  LibDataChannelAssetsVersion = '0.24.3-vcpkg-static-crt';
+
+// Spin up the global pool and install the TRpDatasetHttp hook. The
+// DLL is extracted from the embedded LIBDATACHANNEL_{X64,X86}_ZIP
+// resources on the first call (or whenever the version file in
+// LocalAppData no longer matches LibDataChannelAssetsVersion).
+// Idempotent on same arguments; calling with new arguments (e.g.,
+// after the user logged in again) closes the old pool and starts a
+// new one.
 procedure EnableDirectChannel(const AApiBaseUrl, ABearerToken: string;
                               const AInstallId: string;
-                              const ADllPath: string;
                               AcceptInvalidCerts: Boolean = False);
+
+// Same as EnableDirectChannel but never raises. Used from the data
+// driver (TRpDatabaseHttp.SetConnected) where any extraction failure
+// must be silent - the user simply continues with the HTTP path.
+// Returns True if the channel was enabled successfully.
+function EnableDirectChannelIfPossible(
+                              const AApiBaseUrl, ABearerToken: string;
+                              const AInstallId: string;
+                              AcceptInvalidCerts: Boolean = False): Boolean;
 
 // Close the pool and clear the hook. After this TRpDatasetHttp.Open
 // reverts to the HTTP path exclusively.
@@ -59,10 +78,19 @@ function IsDirectChannelEnabled: Boolean;
 // Pool diagnostics passthrough.
 function DirectChannelStatusReport: string;
 
+// Resolves to the absolute path of the extracted datachannel.dll
+// after a successful EnableDirectChannel. Empty string if the lib
+// has not been extracted yet (or extraction failed).
+function GetDataChannelDllPath: string;
+
 implementation
 
+{$R LibDataChannelAssets.res}
+
 uses
-  System.Variants;
+  System.Variants,
+  rptypes,
+  rpauthmanager;
 
 var
   GLock: TCriticalSection = nil;
@@ -72,6 +100,74 @@ var
   GInstallId: string = '';
   GAcceptInvalidCerts: Boolean = False;
   GLibraryLoaded: Boolean = False;
+  GDllPath: string = '';
+
+// Mirrors the Monaco/Markdown extraction pattern:
+// - %LOCALAPPDATA%\Reportman\DataChannel\{x64|x86}\
+// - File 'assets.version' marks the extracted set; bump
+//   LibDataChannelAssetsVersion when the zip changes.
+// - On version mismatch the folder is wiped and re-extracted from
+//   the RT_RCDATA resource bound into the host binary.
+// Returns the full path to datachannel.dll (empty if extraction
+// fails for any reason - caller falls back to HTTP).
+function EnsureDataChannelLibsExtracted: string;
+var
+  base, versionFile, dll: string;
+  resName: string;
+  res: TResourceStream;
+  zip: TZipFile;
+begin
+  Result := '';
+{$IFDEF WIN64}
+  base := ObtainFolderLocalUserConfig('Reportman', 'DataChannel', 'x64');
+  resName := 'LIBDATACHANNEL_X64_ZIP';
+{$ELSE}
+  base := ObtainFolderLocalUserConfig('Reportman', 'DataChannel', 'x86');
+  resName := 'LIBDATACHANNEL_X86_ZIP';
+{$ENDIF}
+  versionFile := TPath.Combine(base, 'assets.version');
+  dll := TPath.Combine(base, 'datachannel.dll');
+
+  if TFile.Exists(dll) and TFile.Exists(versionFile) and
+     SameText(Trim(TFile.ReadAllText(versionFile, TEncoding.UTF8)),
+              LibDataChannelAssetsVersion) then
+  begin
+    Result := dll;
+    Exit;
+  end;
+
+  // Wipe stale extraction, recreate, extract.
+  try
+    if TDirectory.Exists(base) then
+      TDirectory.Delete(base, True);
+    TDirectory.CreateDirectory(base);
+
+    res := TResourceStream.Create(HInstance, resName, RT_RCDATA);
+    try
+      zip := TZipFile.Create;
+      try
+        zip.Open(res, zmRead);
+        zip.ExtractAll(base);
+      finally
+        zip.Free;
+      end;
+    finally
+      res.Free;
+    end;
+
+    TFile.WriteAllText(versionFile, LibDataChannelAssetsVersion,
+                       TEncoding.UTF8);
+  except
+    // Any extraction failure means the host binary was built without
+    // the embedded RC (linker missed the .res), or the LocalAppData
+    // is read-only, etc. The caller treats an empty result as "no
+    // direct channel available".
+    Exit;
+  end;
+
+  if TFile.Exists(dll) then
+    Result := dll;
+end;
 
 function MakeHubParams(AParams: TRpParamList): TRpDcHubParams;
 var
@@ -159,10 +255,10 @@ end;
 
 procedure EnableDirectChannel(const AApiBaseUrl, ABearerToken: string;
                               const AInstallId: string;
-                              const ADllPath: string;
                               AcceptInvalidCerts: Boolean);
 var
   configChanged: Boolean;
+  dllPath: string;
 begin
   EnsureLock;
   GLock.Acquire;
@@ -184,11 +280,17 @@ begin
 
     if not GLibraryLoaded then
     begin
-      if not RpDcInitialize(ADllPath, RTC_LOG_WARNING) then
+      dllPath := EnsureDataChannelLibsExtracted;
+      if dllPath = '' then
+        raise Exception.Create(
+          'EnableDirectChannel: could not extract datachannel.dll ' +
+          '(missing RC resource or LocalAppData not writable)');
+      if not RpDcInitialize(dllPath, RTC_LOG_WARNING) then
         raise Exception.Create(
           'EnableDirectChannel: RpDcInitialize failed - ' +
           RpDcLastInitError);
       GLibraryLoaded := True;
+      GDllPath := dllPath;
     end;
 
     GApiBaseUrl := AApiBaseUrl;
@@ -257,6 +359,69 @@ begin
   end;
 end;
 
+function EnableDirectChannelIfPossible(
+                              const AApiBaseUrl, ABearerToken: string;
+                              const AInstallId: string;
+                              AcceptInvalidCerts: Boolean): Boolean;
+begin
+  Result := False;
+  try
+    EnableDirectChannel(AApiBaseUrl, ABearerToken, AInstallId,
+                        AcceptInvalidCerts);
+    Result := IsDirectChannelEnabled;
+  except
+    // Swallow - the caller (typically the data driver right after
+    // a successful HTTP connection test) prefers a silent fall-back
+    // to HTTP over a noisy popup. Log via AuthManager so the issue
+    // surfaces in the diagnostics window without blocking the user.
+    on E: Exception do
+      try
+        TRpAuthManager.Instance.Log(
+          'EnableDirectChannelIfPossible failed: ' +
+          E.ClassName + ': ' + E.Message);
+      except
+      end;
+  end;
+end;
+
+function GetDataChannelDllPath: string;
+begin
+  EnsureLock;
+  GLock.Acquire;
+  try
+    Result := GDllPath;
+  finally
+    GLock.Release;
+  end;
+end;
+
+// Hook registered into rpdatahttp.RpDcDatabaseConnectHook during this
+// unit's initialization. It reads the connection metadata off the
+// TRpDatabaseHttp and bootstraps the global pool with the current
+// token. Returns True iff EnableDirectChannelIfPossible succeeded.
+function DatabaseConnectHookImpl(ADatabaseHttp: TObject): Boolean;
+var
+  database: TRpDatabaseHttp;
+  apiBaseUrl: string;
+  acceptInvalidCerts: Boolean;
+begin
+  database := ADatabaseHttp as TRpDatabaseHttp;
+  apiBaseUrl := HUB_API_URL;
+  // Debug builds talk to a Kestrel/IIS dev API whose certificate may
+  // not chain to a public CA - accept it the same way the regular
+  // HTTP client does.
+{$IFDEF DEBUG}
+  acceptInvalidCerts := True;
+{$ELSE}
+  acceptInvalidCerts := False;
+{$ENDIF}
+  Result := EnableDirectChannelIfPossible(
+              apiBaseUrl,
+              database.Token,
+              database.InstallId,
+              acceptInvalidCerts);
+end;
+
 function DirectChannelStatusReport: string;
 var
   p: TRpDcHubChannelPool;
@@ -276,8 +441,14 @@ end;
 
 initialization
   EnsureLock;
+  // Register ourselves with rpdatahttp. From the user's point of
+  // view the only thing they need to do is add `rpdcintegration` to
+  // their project's uses clause - everything else is automatic
+  // (extraction on first use, hook installation, pool lifecycle).
+  rpdatahttp.RpDcDatabaseConnectHook := DatabaseConnectHookImpl;
 
 finalization
+  rpdatahttp.RpDcDatabaseConnectHook := nil;
   DisableDirectChannel;
   if GLibraryLoaded then
   begin

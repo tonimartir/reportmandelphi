@@ -2,3 +2,4 @@ BRCC32 DBXDRIVERS.RC
 BRCC32 REPORTMANRES.RC
 BRCC32 MonacoEditorAssets.RC
 BRCC32 WebMarkdownAssets.RC
+BRCC32 LibDataChannelAssets.RC

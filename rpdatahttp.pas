@@ -42,6 +42,13 @@ const
   DBTYPE_STRING = 16;
   DBTYPE_TIME = 17;
 type
+{$IFDEF MSWINDOWS}
+  // Direct WebRTC DataChannel is Windows-only for now (depends on
+  // libdatachannel.dll, libssl, libcrypto, plus the rpdcintegration
+  // resource bundle). On Linux / FPC builds (printreptopdf and any
+  // future cross-platform tool) the hook types are not declared so
+  // the binary cannot accidentally pull the WebRTC stack in.
+
   // Generic try-direct hook. If installed (typically by
   // rpdcintegration.EnableDirectChannel) it is called at the top of
   // TRpDatasetHttp.Open. Returning True means the handler already
@@ -54,6 +61,16 @@ type
                                       const ASql: string;
                                       AParams: TObject;
                                       ATarget: TObject): Boolean;
+
+  // Hook called after a successful TRpDatabaseHttp.SetConnected(True).
+  // rpdcintegration registers itself here (via initialization) and
+  // uses the callback to extract the embedded datachannel.dll, load
+  // the library and spin up the per-database session pool. The hook
+  // receives the TRpDatabaseHttp as TObject and as-casts back. A
+  // True return means the direct channel is up; False / exception
+  // means HTTP-only operation (no popup, silent log via AuthManager).
+  TRpDcDatabaseConnectFunc = function(ADatabaseHttp: TObject): Boolean;
+{$ENDIF}
 
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
@@ -150,11 +167,19 @@ type
     property Database: TRpDatabaseHttp read FDatabase;
   end;
 
+{$IFDEF MSWINDOWS}
 var
   // Optional hook installed by rpdcintegration.EnableDirectChannel.
   // When set, TRpDatasetHttp.Open tries it first and only falls back
   // to HTTP if the hook returns False or raises.
   RpDatasetDirectTry: TRpDatasetDirectTryFunc = nil;
+
+  // Optional hook called from TRpDatabaseHttp.SetConnected(True). If
+  // the host binary uses rpdcintegration, its initialization section
+  // installs this; otherwise SetConnected behaves exactly as before
+  // and Reportman runs in HTTP-only mode.
+  RpDcDatabaseConnectHook: TRpDcDatabaseConnectFunc = nil;
+{$ENDIF}
 
 // HUB_API_URL constants moved to rptypes.pas
 
@@ -690,6 +715,10 @@ begin
   FAITier := 'Standard';
 end;
 procedure TRpDatabaseHttp.SetConnected(Value: Boolean);
+{$IFDEF MSWINDOWS}
+var
+  LDirectEnabled: Boolean;
+{$ENDIF}
 begin
   if Value <> FConnected then
   begin
@@ -697,6 +726,27 @@ begin
     begin
       if not TestConnection then
          raise Exception.Create(SRpConnectionFailed);
+
+{$IFDEF MSWINDOWS}
+      // Bring up the WebRTC Direct Channel transparently when the
+      // host binary includes rpdcintegration. On Linux / FPC builds
+      // (printreptopdf and any other cross-platform tool) the whole
+      // block is compiled out: those binaries continue talking to
+      // the Agent over plain HTTP, which is already multiplatform.
+      if Assigned(RpDcDatabaseConnectHook) then
+      begin
+        try
+          LDirectEnabled := RpDcDatabaseConnectHook(Self);
+          if LDirectEnabled then
+            TRpAuthManager.Instance.Log(
+              'Direct Channel enabled for database ' + IntToStr(FHubDatabaseId));
+        except
+          on E: Exception do
+            TRpAuthManager.Instance.Log(
+              'Direct Channel setup error (HTTP fallback only): ' + E.Message);
+        end;
+      end;
+{$ENDIF}
     end;
     FConnected := Value;
   end;
@@ -1484,6 +1534,7 @@ begin
   if FDatabase = nil then
     raise Exception.Create('Database not assigned');
 
+{$IFDEF MSWINDOWS}
   // Try the direct WebRTC DataChannel path if a handler has been
   // installed (typically by rpdcintegration). The handler is
   // responsible for populating FDataset; if it returns True we are
@@ -1501,6 +1552,7 @@ begin
                                     E.ClassName + ': ' + E.Message);
     end;
   end;
+{$ENDIF}
 
   LInvariantFormatSettings := TFormatSettings.Invariant;
   RequestBody := TJSONObject.Create;
