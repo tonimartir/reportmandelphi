@@ -878,7 +878,7 @@ begin
   req := TJSONObject.Create;
   try
     req.AddPair('requestId', FCurrentRequestId);
-    req.AddPair('action', 'executeSql');
+    req.AddPair('action', 'execute_sql');
     dataObj := TJSONObject.Create;
     req.AddPair('data', dataObj);
     dataObj.AddPair('hubDatabaseId', TJSONNumber.Create(HubDatabaseId));
