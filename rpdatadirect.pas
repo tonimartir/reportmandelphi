@@ -49,6 +49,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
+  System.Generics.Collections,
   rplibdatachannel;
 
 type
@@ -73,6 +74,13 @@ type
   TRpDcErrorEvent            = procedure(Sender: TObject;
                                           const Msg: string) of object;
 
+  // A remote ICE candidate is (candidate, mid). Used both for the
+  // current applied set and for the trickle-before-answer queue.
+  TRpDcRemoteCandidate = record
+    Candidate: string;
+    Mid: string;
+  end;
+
   TRpDcSession = class
   private
     FPeerId: Integer;
@@ -84,6 +92,12 @@ type
     FStateLock: TCriticalSection;
     FLastError: string;
     FLabel: AnsiString;
+    // True once SetRemoteDescription has been accepted by libdc.
+    // AddRemoteCandidate calls received BEFORE that point are queued
+    // and replayed inside SetRemoteDescription - libdc rejects them
+    // with RTC_ERR_FAILURE (-2) otherwise.
+    FRemoteDescriptionSet: Boolean;
+    FPendingRemoteCandidates: TList<TRpDcRemoteCandidate>;
 
     FOnLocalDescription: TRpDcLocalDescriptionEvent;
     FOnLocalCandidate: TRpDcLocalCandidateEvent;
@@ -109,6 +123,11 @@ type
     procedure HandleDataChannelClosed;
     procedure HandleDataChannelError(const Msg: string);
     procedure HandleDataChannelMessage(const Data: TBytes; IsText: Boolean);
+    // Replays the candidates that arrived before SetRemoteDescription
+    // (libdc rejects them otherwise with RTC_ERR_FAILURE). Best-effort
+    // - per-candidate failures are swallowed; the ICE state machine
+    // surfaces real connectivity issues separately.
+    procedure FlushPendingRemoteCandidates;
   public
     // The constructor only allocates the Pascal-side object - the actual
     // PeerConnection is created in Open(). AInitiator=True for the side
@@ -459,11 +478,14 @@ begin
   FState := RTC_NEW;
   FIceState := RTC_ICE_NEW;
   FConnectionMode := rcmUnknown;
+  FRemoteDescriptionSet := False;
+  FPendingRemoteCandidates := TList<TRpDcRemoteCandidate>.Create;
 end;
 
 destructor TRpDcSession.Destroy;
 begin
   Close;
+  FreeAndNil(FPendingRemoteCandidates);
   FreeAndNil(FStateLock);
   inherited Destroy;
 end;
@@ -641,15 +663,78 @@ begin
   if ret < 0 then
     raise ERpDataDirect.CreateFmt(
       'rtcSetRemoteDescription failed: %d', [ret]);
+
+  // Mark the remote description as accepted and replay any trickle
+  // candidates that arrived before this point. libdatachannel
+  // rejects rtcAddRemoteCandidate with RTC_ERR_FAILURE (-2) until a
+  // remote description is set.
+  FStateLock.Acquire;
+  try
+    FRemoteDescriptionSet := True;
+  finally
+    FStateLock.Release;
+  end;
+  FlushPendingRemoteCandidates;
+end;
+
+procedure TRpDcSession.FlushPendingRemoteCandidates;
+var
+  pending: TArray<TRpDcRemoteCandidate>;
+  cand: TRpDcRemoteCandidate;
+  utf8Cand, utf8Mid: AnsiString;
+begin
+  FStateLock.Acquire;
+  try
+    if FPendingRemoteCandidates = nil then Exit;
+    if FPendingRemoteCandidates.Count = 0 then Exit;
+    pending := FPendingRemoteCandidates.ToArray;
+    FPendingRemoteCandidates.Clear;
+  finally
+    FStateLock.Release;
+  end;
+
+  for cand in pending do
+  begin
+    utf8Cand := AnsiString(cand.Candidate);
+    utf8Mid  := AnsiString(cand.Mid);
+    // Best-effort: a candidate that fails here (already expired,
+    // session torn down, etc.) is not fatal - the connection will
+    // still come up if any single candidate pair worked. The peer
+    // connection state machine surfaces real connectivity failures
+    // separately via OnStateChange.
+    rtcAddRemoteCandidate(FPeerId,
+                          PAnsiChar(utf8Cand),
+                          PAnsiChar(utf8Mid));
+  end;
 end;
 
 procedure TRpDcSession.AddRemoteCandidate(const Candidate, Mid: string);
 var
   utf8Cand, utf8Mid: AnsiString;
   ret: Integer;
+  pending: TRpDcRemoteCandidate;
+  queueIt: Boolean;
 begin
   if FPeerId < 0 then
     raise ERpDataDirect.Create('Session is not open');
+
+  // If SetRemoteDescription has not been processed yet, queue this
+  // trickle candidate. The flush will replay them after the
+  // remote description is accepted.
+  FStateLock.Acquire;
+  try
+    queueIt := not FRemoteDescriptionSet;
+    if queueIt then
+    begin
+      pending.Candidate := Candidate;
+      pending.Mid       := Mid;
+      FPendingRemoteCandidates.Add(pending);
+    end;
+  finally
+    FStateLock.Release;
+  end;
+  if queueIt then Exit;
+
   utf8Cand := AnsiString(Candidate);
   utf8Mid  := AnsiString(Mid);
   ret := rtcAddRemoteCandidate(FPeerId,
