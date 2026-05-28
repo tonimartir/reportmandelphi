@@ -142,7 +142,16 @@ uses Classes,SysUtils,
   Memds,
  {$ENDIF}
 {$ENDIF}
- rpdatahttp, rpauthmanager, rpdatatext;
+ rpdatahttp, rpauthmanager, rpdatatext
+{$IFDEF MSWINDOWS}
+ // Promotes Direct Channel from "plugin" to default Windows. Without
+ // this line each .dpr (activex, repwebexe, repmandxp...) would have
+ // to add `uses rpdcintegration` to install the hook. rpdcintegration
+ // is itself fully {$IFDEF MSWINDOWS}-wrapped so Linux/FPC builds get
+ // a no-op unit and keep the HTTP-only path.
+ , rpdcintegration
+{$ENDIF}
+ ;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}

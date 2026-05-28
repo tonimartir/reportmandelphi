@@ -79,12 +79,7 @@ uses
   rpfreetype2 in '..\..\..\rpfreetype2.pas',
   rptextdriver in '..\..\..\rptextdriver.pas',
   rplinuxexceptionhandler in '..\..\..\rplinuxexceptionhandler.pas',
-  rphtmldriver in '..\..\..\rphtmldriver.pas',
-  // rpdcintegration self-installs the WebRTC Direct Channel hook on
-  // Windows builds and is a compile-time no-op on Linux. Including it
-  // here unconditionally is safe because the unit's interface section
-  // is wrapped in {$IFDEF MSWINDOWS}.
-  rpdcintegration in '..\..\..\rpdcintegration.pas';
+  rphtmldriver in '..\..\..\rphtmldriver.pas';
 
 var
  separator:string;
