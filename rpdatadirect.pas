@@ -161,6 +161,15 @@ type
     property LastError: string read FLastError;
     property IsInitiator: Boolean read FIsInitiator;
 
+    // Public re-query of the selected ICE candidate pair. The
+    // automatic queries fire on ICE state change callbacks, but some
+    // libdc builds jump to COMPLETED without an explicit CONNECTED
+    // edge, and `rtcGetSelectedCandidatePair` sometimes returns empty
+    // candidate strings on the first call. The integration calls this
+    // after a successful Execute - by then a candidate pair MUST exist
+    // and the buffers will be populated.
+    procedure QueryConnectionMode;
+
     property OnLocalDescription: TRpDcLocalDescriptionEvent
       read FOnLocalDescription write FOnLocalDescription;
     property OnLocalCandidate: TRpDcLocalCandidateEvent
@@ -582,6 +591,12 @@ begin
   finally
     FStateLock.Release;
   end;
+  // Some libdc builds drive the peer to RTC_CONNECTED without
+  // emitting a separate ICE_CONNECTED edge (e.g., when ICE went
+  // straight to COMPLETED). Querying here too guarantees the chip
+  // gets a non-Unknown value as soon as the connection is up.
+  if state = RTC_CONNECTED then
+    InternalQueryConnectionMode;
   if (state = RTC_DISCONNECTED) or (state = RTC_FAILED) or (state = RTC_CLOSED) then
     if Assigned(FOnClosed) then FOnClosed(Self);
 end;
@@ -594,7 +609,10 @@ begin
   finally
     FStateLock.Release;
   end;
-  if state = RTC_ICE_CONNECTED then
+  // CONNECTED and COMPLETED both mean a candidate pair is selected;
+  // libdc may emit only one of them depending on whether trickle
+  // finished before the first DTLS handshake.
+  if (state = RTC_ICE_CONNECTED) or (state = RTC_ICE_COMPLETED) then
     InternalQueryConnectionMode;
 end;
 
@@ -627,7 +645,17 @@ end;
 
 procedure TRpDcSession.HandleDataChannelOpen;
 begin
+  // DC.open implies ICE up + DTLS handshaked; if FConnectionMode is
+  // still rcmUnknown here it just means the callbacks fired in an
+  // unlucky order. Final re-query before notifying the consumer.
+  if FConnectionMode = rcmUnknown then
+    InternalQueryConnectionMode;
   if Assigned(FOnOpen) then FOnOpen(Self);
+end;
+
+procedure TRpDcSession.QueryConnectionMode;
+begin
+  InternalQueryConnectionMode;
 end;
 
 procedure TRpDcSession.HandleDataChannelClosed;

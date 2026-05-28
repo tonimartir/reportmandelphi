@@ -149,6 +149,13 @@ var
   // each session can authenticate without a Bearer JWT (the Designer
   // never logs the user in - the apikey IS the credential).
   GApiKeyForDb: TDictionary<Int64, string> = nil;
+  // Per-database transport snapshot captured by TryDirectImpl right
+  // after a successful Execute. The pool's PeekConnectionMode can
+  // return rcmUnknown when the UI samples the chip in the brief
+  // window between Execute completing and libdc finalizing the
+  // candidate pair selection, so we cache the value we observed on
+  // the worker thread once we know it is stable.
+  GLastTransport: TDictionary<Int64, TRpDcConnectionMode> = nil;
 
 // Mirrors the Monaco/Markdown extraction pattern:
 // - %LOCALAPPDATA%\Reportman\DataChannel\{x64|x86}\
@@ -238,6 +245,54 @@ begin
   SetLength(Result, n);
 end;
 
+procedure EnsureLock;
+begin
+  if GLock = nil then
+    GLock := TCriticalSection.Create;
+  if GFallbackToApi = nil then
+    GFallbackToApi := TDictionary<Int64, Boolean>.Create;
+  if GApiKeyForDb = nil then
+    GApiKeyForDb := TDictionary<Int64, string>.Create;
+  if GLastTransport = nil then
+    GLastTransport := TDictionary<Int64, TRpDcConnectionMode>.Create;
+end;
+
+procedure SetLastTransport(HubDatabaseId: Int64;
+                            AMode: TRpDcConnectionMode);
+begin
+  EnsureLock;
+  GLock.Acquire;
+  try
+    GLastTransport.AddOrSetValue(HubDatabaseId, AMode);
+  finally
+    GLock.Release;
+  end;
+end;
+
+// Helper: trim SQL for log lines so a 5KB query doesn't flood the
+// auth log. Keeps the first 80 chars, single-line.
+function SqlHead(const ASql: string): string;
+var
+  i: Integer;
+begin
+  Result := ASql;
+  for i := 1 to Length(Result) do
+    if (Result[i] = #10) or (Result[i] = #13) or (Result[i] = #9) then
+      Result[i] := ' ';
+  if Length(Result) > 80 then
+    Result := Copy(Result, 1, 77) + '...';
+end;
+
+procedure SafeAuthLog(const AMsg: string);
+begin
+  try
+    TRpAuthManager.Instance.Log(AMsg);
+  except
+    // The auth log is best-effort - never let a logging failure
+    // propagate into the data driver.
+  end;
+end;
+
 // The handler installed into rpdatahttp.RpDatasetDirectTry. Returns
 // True only when the dataset was fully populated by the direct path.
 function TryDirectImpl(ADatabaseHttp: TObject;
@@ -252,6 +307,8 @@ var
   client: TRpDcHubClient;
   hubDatabaseId: Int64;
   hubParams: TRpDcHubParams;
+  mode: TRpDcConnectionMode;
+  rowCount: Integer;
 begin
   Result := False;
   GLock.Acquire;
@@ -272,6 +329,9 @@ begin
   hubDatabaseId := database.HubDatabaseId;
   if hubDatabaseId <= 0 then Exit;
 
+  SafeAuthLog(Format('DirectChannel: try db=%d sql="%s"',
+                     [hubDatabaseId, SqlHead(ASql)]));
+
   client := pool.Acquire(hubDatabaseId, 15);
   if client = nil then
   begin
@@ -284,6 +344,9 @@ begin
     finally
       GLock.Release;
     end;
+    SafeAuthLog(Format(
+      'DirectChannel: db=%d transport=API (HTTP fallback) reason=acquire_failed',
+      [hubDatabaseId]));
     Exit;
   end;
   try
@@ -291,12 +354,24 @@ begin
     try
       client.Execute(ASql, hubParams, hubDatabaseId, target, 600);
       Result := True;
+      // Force a re-query of the selected candidate pair now that we
+      // know data has flown end-to-end (ICE state callbacks may have
+      // raced earlier and left FConnectionMode at rcmUnknown).
+      mode := client.RefreshConnectionMode;
+      SetLastTransport(hubDatabaseId, mode);
       GLock.Acquire;
       try
         GFallbackToApi.AddOrSetValue(hubDatabaseId, False);
       finally
         GLock.Release;
       end;
+      if target <> nil then
+        rowCount := target.RecordCount
+      else
+        rowCount := -1;
+      SafeAuthLog(Format(
+        'DirectChannel: db=%d transport=%s rows=%d',
+        [hubDatabaseId, FormatTransportMode(mode, False), rowCount]));
     except
       on E: Exception do
       begin
@@ -307,22 +382,15 @@ begin
         finally
           GLock.Release;
         end;
+        SafeAuthLog(Format(
+          'DirectChannel: db=%d transport=API (HTTP fallback) error=%s: %s',
+          [hubDatabaseId, E.ClassName, E.Message]));
         raise;
       end;
     end;
   finally
     pool.Release(client);
   end;
-end;
-
-procedure EnsureLock;
-begin
-  if GLock = nil then
-    GLock := TCriticalSection.Create;
-  if GFallbackToApi = nil then
-    GFallbackToApi := TDictionary<Int64, Boolean>.Create;
-  if GApiKeyForDb = nil then
-    GApiKeyForDb := TDictionary<Int64, string>.Create;
 end;
 
 function GetApiKeyForDatabase(HubDatabaseId: Int64): string;
@@ -357,17 +425,29 @@ function GetLastTransportForDatabase(
                               HubDatabaseId: Int64): TRpDcConnectionMode;
 var
   pool: TRpDcHubChannelPool;
+  cached: TRpDcConnectionMode;
+  hasCached: Boolean;
 begin
   Result := rcmUnknown;
   EnsureLock;
   GLock.Acquire;
   try
+    hasCached := (GLastTransport <> nil) and
+                 GLastTransport.TryGetValue(HubDatabaseId, cached);
     pool := GPool;
   finally
     GLock.Release;
   end;
-  if pool = nil then Exit;
-  Result := pool.PeekConnectionMode(HubDatabaseId);
+  // Prefer the value we captured in TryDirectImpl: it was taken right
+  // after Execute on the worker thread, with libdc's candidate pair
+  // already stable. The pool's PeekConnectionMode is a fallback for
+  // sessions that opened but never ran an Execute (e.g. only Open()).
+  if hasCached and (cached <> rcmUnknown) then
+    Exit(cached);
+  if pool <> nil then
+    Result := pool.PeekConnectionMode(HubDatabaseId);
+  if (Result = rcmUnknown) and hasCached then
+    Result := cached;
 end;
 
 function DidFallBackToApiForDatabase(HubDatabaseId: Int64): Boolean;
@@ -617,6 +697,11 @@ finalization
   begin
     GApiKeyForDb.Free;
     GApiKeyForDb := nil;
+  end;
+  if GLastTransport <> nil then
+  begin
+    GLastTransport.Free;
+    GLastTransport := nil;
   end;
   if GLock <> nil then
   begin

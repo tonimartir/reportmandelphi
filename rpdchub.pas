@@ -186,6 +186,12 @@ type
 
     function GetConnectionMode: TRpDcConnectionMode;
 
+    // Force a re-query of the selected ICE candidate pair, then
+    // return the updated mode. Used by the integration right after
+    // a successful Execute so the chip + net log report the actual
+    // transport even when the state callbacks raced with negotiation.
+    function RefreshConnectionMode: TRpDcConnectionMode;
+
     property ConnectionMode: TRpDcConnectionMode read GetConnectionMode;
     property OnProgress: TRpDcHubProgressEvent
       read FOnProgress write FOnProgress;
@@ -1027,6 +1033,17 @@ function TRpDcHubClient.GetConnectionMode: TRpDcConnectionMode;
 begin
   if FSession <> nil then
     Result := FSession.ConnectionMode
+  else
+    Result := rcmUnknown;
+end;
+
+function TRpDcHubClient.RefreshConnectionMode: TRpDcConnectionMode;
+begin
+  if FSession <> nil then
+  begin
+    FSession.QueryConnectionMode;
+    Result := FSession.ConnectionMode;
+  end
   else
     Result := rcmUnknown;
 end;
