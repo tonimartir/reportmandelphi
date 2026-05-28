@@ -227,8 +227,6 @@
             <Deployment Version="5">
                 <DeployFile LocalName="FireDAC.inc" Configuration="Debug" Class="ProjectFile"/>
                 <DeployFile LocalName="Profiling\AQtimeModule1.aqt" Configuration="Debug" Class="ProjectFile"/>
-                <DeployFile LocalName="Profiling\AQtimeModule1.aqt" Configuration="Debug" Class="ProjectFile"/>
-                <DeployFile LocalName="bin32\repmandxp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="bin32\repmandxp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="bin64\repmandxp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployClass Name="AdditionalDebugSymbols">

@@ -10,9 +10,8 @@
         <Base>True</Base>
         <AppType>Console</AppType>
         <FrameworkType>VCL</FrameworkType>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Linux64</Platform>
         <TargetedPlatforms>131</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">printreptopdf</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -1182,6 +1181,7 @@
         <DCCReference Include="..\..\..\rptextdriver.pas"/>
         <DCCReference Include="..\..\..\rplinuxexceptionhandler.pas"/>
         <DCCReference Include="..\..\..\rphtmldriver.pas"/>
+        <DCCReference Include="..\..\..\rpdcintegration.pas"/>
         <None Include="..\..\..\rpconf.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
