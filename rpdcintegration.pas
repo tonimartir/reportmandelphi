@@ -29,10 +29,16 @@ interface
 
 {$I rpconf.inc}
 
-uses
+// The entire WebRTC Direct Channel integration is Windows-only - it
+// pulls libdatachannel.dll (Windows binary), the .RES bundle with
+// the embedded x86/x64 zips, and LoadLibrary-based dynamic loading.
+// On Linux / FPC builds (printreptopdf, repwebexe, ...) this unit
+// compiles as an empty no-op so the .dpr can `uses rpdcintegration`
+// without per-platform conditionals.
 {$IFDEF MSWINDOWS}
+
+uses
   Winapi.Windows,
-{$ENDIF}
   System.SysUtils, System.Classes, System.SyncObjs,
   System.IOUtils, System.Zip,
   Data.DB, Datasnap.DBClient,
@@ -106,8 +112,16 @@ function DidFallBackToApiForDatabase(HubDatabaseId: Int64): Boolean;
 function FormatTransportMode(AMode: TRpDcConnectionMode;
                              AFallbackApi: Boolean): string;
 
+{$ENDIF MSWINDOWS}
+
 implementation
 
+{$IFDEF MSWINDOWS}
+
+// Embedded x86/x64 zip bundles - the .RES is a Windows PE-format
+// resource file produced by brcc32 (LibDataChannelAssets.RC). On
+// Linux the entire implementation section is compiled out so the
+// resource directive never reaches the compiler.
 {$R LibDataChannelAssets.res}
 
 uses
@@ -609,5 +623,7 @@ finalization
     GLock.Free;
     GLock := nil;
   end;
+
+{$ENDIF MSWINDOWS}
 
 end.

@@ -1534,6 +1534,12 @@ begin
   if FDatabase = nil then
     raise Exception.Create('Database not assigned');
 
+  // The HTTP path below lazy-creates FDataset further down; the
+  // direct-channel hook needs it populated NOW, so create it up
+  // front. Both paths end up writing into the same TClientDataSet.
+  if not Assigned(FDataset) then
+    FDataset := TClientDataSet.Create(nil);
+
 {$IFDEF MSWINDOWS}
   // Try the direct WebRTC DataChannel path if a handler has been
   // installed (typically by rpdcintegration). The handler is
