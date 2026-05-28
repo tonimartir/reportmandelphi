@@ -130,6 +130,11 @@ var
   // direct could not be used for that database. Set inside
   // TryDirectImpl, cleared on successful direct executes.
   GFallbackToApi: TDictionary<Int64, Boolean> = nil;
+  // Per-database ApiKey, populated by DatabaseConnectHookImpl whenever
+  // a TRpDatabaseHttp connects. The opener callback reads from here so
+  // each session can authenticate without a Bearer JWT (the Designer
+  // never logs the user in - the apikey IS the credential).
+  GApiKeyForDb: TDictionary<Int64, string> = nil;
 
 // Mirrors the Monaco/Markdown extraction pattern:
 // - %LOCALAPPDATA%\Reportman\DataChannel\{x64|x86}\
@@ -302,6 +307,36 @@ begin
     GLock := TCriticalSection.Create;
   if GFallbackToApi = nil then
     GFallbackToApi := TDictionary<Int64, Boolean>.Create;
+  if GApiKeyForDb = nil then
+    GApiKeyForDb := TDictionary<Int64, string>.Create;
+end;
+
+function GetApiKeyForDatabase(HubDatabaseId: Int64): string;
+begin
+  Result := '';
+  EnsureLock;
+  GLock.Acquire;
+  try
+    if GApiKeyForDb <> nil then
+      GApiKeyForDb.TryGetValue(HubDatabaseId, Result);
+  finally
+    GLock.Release;
+  end;
+end;
+
+procedure RegisterApiKeyForDatabase(HubDatabaseId: Int64; const AApiKey: string);
+begin
+  if HubDatabaseId <= 0 then Exit;
+  EnsureLock;
+  GLock.Acquire;
+  try
+    if AApiKey = '' then
+      GApiKeyForDb.Remove(HubDatabaseId)
+    else
+      GApiKeyForDb.AddOrSetValue(HubDatabaseId, AApiKey);
+  finally
+    GLock.Release;
+  end;
 end;
 
 function GetLastTransportForDatabase(
@@ -397,14 +432,17 @@ begin
       function(HubDatabaseId: Int64; TimeoutSec: Integer): TRpDcHubClient
       var
         c: TRpDcHubClient;
+        apiKey: string;
       begin
+        // ApiKey path (Designer / printreptopdf / repwebexe):
+        // GetApiKeyForDatabase returns the key registered by
+        // DatabaseConnectHookImpl when the TRpDatabaseHttp connected.
+        // Empty string is fine for the Bearer path (token in GBearerToken).
+        apiKey := GetApiKeyForDatabase(HubDatabaseId);
         c := TRpDcHubClient.Create(GApiBaseUrl, GBearerToken,
                                    GInstallId, GAcceptInvalidCerts);
         try
-          // For the Bearer-authenticated path we leave AgentApiKey
-          // empty and pass the hub database id - the controller
-          // resolves the agentSecret server-side.
-          if c.Open('', HubDatabaseId, TimeoutSec) then
+          if c.Open(apiKey, HubDatabaseId, TimeoutSec) then
             Result := c
           else
           begin
@@ -502,6 +540,12 @@ var
 begin
   database := ADatabaseHttp as TRpDatabaseHttp;
   apiBaseUrl := HUB_API_URL;
+  // Remember the ApiKey for this database so the pool's opener can
+  // authenticate the /api/data-session/start request via header
+  // X-Reportman-ApiKey + JSON body agentApiKey. This is the only auth
+  // the Designer / printreptopdf / repwebexe have - no user JWT.
+  if database.HubDatabaseId > 0 then
+    RegisterApiKeyForDatabase(database.HubDatabaseId, database.ApiKey);
   // Debug builds talk to a Kestrel/IIS dev API whose certificate may
   // not chain to a public CA - accept it the same way the regular
   // HTTP client does.
@@ -554,6 +598,11 @@ finalization
   begin
     GFallbackToApi.Free;
     GFallbackToApi := nil;
+  end;
+  if GApiKeyForDb <> nil then
+  begin
+    GApiKeyForDb.Free;
+    GApiKeyForDb := nil;
   end;
   if GLock <> nil then
   begin

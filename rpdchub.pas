@@ -122,8 +122,13 @@ type
                              BytesSent: Int64 = 0;
                              BytesTotal: Int64 = 0);
 
-    // HTTP step
-    procedure StartHttpSession(const StartBody: TJSONObject);
+    // HTTP step. AgentApiKey (if not empty) is also forwarded as the
+    // X-Reportman-ApiKey header so the API can authenticate the
+    // request when there is no Bearer JWT (the typical Designer /
+    // printreptopdf flow - templates execute anywhere with just an
+    // ApiKey, no user session).
+    procedure StartHttpSession(const StartBody: TJSONObject;
+                                const AgentApiKey: string);
 
     // WebSocket signaling
     procedure OpenSignalingSocket;
@@ -322,7 +327,8 @@ end;
 // HTTP /start
 // ============================================================
 
-procedure TRpDcHubClient.StartHttpSession(const StartBody: TJSONObject);
+procedure TRpDcHubClient.StartHttpSession(const StartBody: TJSONObject;
+                                           const AgentApiKey: string);
 var
   url: string;
   bodyStream: TStringStream;
@@ -341,6 +347,13 @@ begin
       FHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FBearerToken;
     if FInstallId <> '' then
       FHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+    // Send the ApiKey as a header too so the server can authenticate
+    // the request when no Bearer JWT is available. The endpoint also
+    // reads agentApiKey from the JSON body, but having both is
+    // harmless and lets future Hub middleware that promotes ApiKey
+    // to user context (guest mode) light up automatically.
+    if AgentApiKey <> '' then
+      FHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AgentApiKey;
 
 {$IFDEF DEBUG}
     if FAcceptInvalidCerts then
@@ -779,7 +792,7 @@ begin
         startBody.AddPair('agentApiKey', AgentApiKey)
       else
         startBody.AddPair('hubDatabaseId', TJSONNumber.Create(HubDatabaseId));
-      StartHttpSession(startBody);
+      StartHttpSession(startBody, AgentApiKey);
     finally
       startBody.Free;
     end;
