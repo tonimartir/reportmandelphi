@@ -231,6 +231,71 @@ begin
     Result := rcmUnknown;
 end;
 
+// Pulls the connection address out of a candidate string. RFC 5245
+// canonical form is `candidate:<foundation> <component> <transport>
+// <priority> <connection-address> <port> typ <type> ...`, so the IP is
+// the 5th whitespace-separated token. Returns '' if it cannot be parsed.
+function ParseCandidateAddress(const Cand: string): string;
+var
+  i, partIdx, startPos: Integer;
+  ch: Char;
+begin
+  Result := '';
+  partIdx := 0;
+  startPos := 1;
+  for i := 1 to Length(Cand) do
+  begin
+    ch := Cand[i];
+    if (ch = ' ') or (i = Length(Cand)) then
+    begin
+      if partIdx = 4 then
+      begin
+        if i = Length(Cand) then
+          Result := Copy(Cand, startPos, i - startPos + 1)
+        else
+          Result := Copy(Cand, startPos, i - startPos);
+        Exit;
+      end;
+      Inc(partIdx);
+      startPos := i + 1;
+    end;
+  end;
+end;
+
+// Returns True for RFC1918 IPv4 (10/8, 172.16/12, 192.168/16), link-local
+// (169.254/16), loopback (127/8) and IPv6 ULA (fc00::/7) + link-local
+// (fe80::/10) + ::1. Empty string yields False — we cannot prove privacy.
+function IsPrivateIp(const Addr: string): Boolean;
+var
+  a, b: Integer;
+  parts: TArray<string>;
+  lower: string;
+begin
+  Result := False;
+  if Addr = '' then Exit;
+  lower := LowerCase(Addr);
+  if (lower = '::1') or (lower = '127.0.0.1') then Exit(True);
+  if Pos(':', lower) > 0 then
+  begin
+    // IPv6 prefix check on the first hextet.
+    if (Copy(lower, 1, 2) = 'fc') or (Copy(lower, 1, 2) = 'fd') then Exit(True);
+    if Copy(lower, 1, 3) = 'fe8' then Exit(True);
+    if Copy(lower, 1, 3) = 'fe9' then Exit(True);
+    if Copy(lower, 1, 3) = 'fea' then Exit(True);
+    if Copy(lower, 1, 3) = 'feb' then Exit(True);
+    Exit;
+  end;
+  parts := Addr.Split(['.']);
+  if Length(parts) <> 4 then Exit;
+  if not TryStrToInt(parts[0], a) then Exit;
+  if not TryStrToInt(parts[1], b) then Exit;
+  if a = 10 then Exit(True);
+  if (a = 172) and (b >= 16) and (b <= 31) then Exit(True);
+  if (a = 192) and (b = 168) then Exit(True);
+  if (a = 169) and (b = 254) then Exit(True);
+  if a = 127 then Exit(True);
+end;
+
 function CombinedConnectionMode(a, b: TRpDcConnectionMode): TRpDcConnectionMode;
 begin
   // Worst of the two ends wins: if either side relays, the pair is
@@ -620,7 +685,9 @@ procedure TRpDcSession.InternalQueryConnectionMode;
 var
   localBuf, remoteBuf: array[0..1023] of AnsiChar;
   ret: Integer;
+  localCand, remoteCand: string;
   localMode, remoteMode: TRpDcConnectionMode;
+  localAddr, remoteAddr: string;
 begin
   FillChar(localBuf, SizeOf(localBuf), 0);
   FillChar(remoteBuf, SizeOf(remoteBuf), 0);
@@ -632,9 +699,26 @@ begin
     FConnectionMode := rcmUnknown;
     Exit;
   end;
-  localMode  := ParseCandidateType(string(AnsiString(PAnsiChar(@localBuf[0]))));
-  remoteMode := ParseCandidateType(string(AnsiString(PAnsiChar(@remoteBuf[0]))));
+  localCand  := string(AnsiString(PAnsiChar(@localBuf[0])));
+  remoteCand := string(AnsiString(PAnsiChar(@remoteBuf[0])));
+  localMode  := ParseCandidateType(localCand);
+  remoteMode := ParseCandidateType(remoteCand);
   FConnectionMode := CombinedConnectionMode(localMode, remoteMode);
+  // Semantic correction: ICE labels every locally-discovered candidate
+  // "host" regardless of whether the IP is RFC1918 (client behind NAT)
+  // or publicly routable (server with public IP on its NIC). When the
+  // two ends of a host↔host pair sit on different network classes the
+  // packets must traverse at least one NAT, so it is really hole-punched.
+  // Relabel only the host↔host case; relay/srflx/prflx already reflect
+  // the truth at the ICE layer.
+  if FConnectionMode = rcmDirectP2P then
+  begin
+    localAddr  := ParseCandidateAddress(localCand);
+    remoteAddr := ParseCandidateAddress(remoteCand);
+    if (localAddr <> '') and (remoteAddr <> '') and
+       (IsPrivateIp(localAddr) <> IsPrivateIp(remoteAddr)) then
+      FConnectionMode := rcmHolePunch;
+  end;
 end;
 
 procedure TRpDcSession.HandleIncomingDataChannel(ADc: Integer);
