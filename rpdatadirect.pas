@@ -274,6 +274,11 @@ begin
   Result := False;
   if Addr = '' then Exit;
   lower := LowerCase(Addr);
+  // mDNS-obfuscated host candidates (Chrome 76+ privacy default):
+  // `<uuid>.local`. RFC 6762 .local names are link-local-only, so a
+  // peer using mDNS for its host candidate is by definition private.
+  if (Length(lower) > 6) and (Copy(lower, Length(lower) - 5, 6) = '.local') then
+    Exit(True);
   if (lower = '::1') or (lower = '127.0.0.1') then Exit(True);
   if Pos(':', lower) > 0 then
   begin
