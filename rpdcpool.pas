@@ -36,6 +36,7 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Generics.Collections,
+  rpdatadirect,
   rpdchub;
 
 type

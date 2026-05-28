@@ -30,6 +30,9 @@ interface
 {$I rpconf.inc}
 
 uses
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
+{$ENDIF}
   System.SysUtils, System.Classes, System.SyncObjs,
   System.IOUtils, System.Zip,
   Data.DB, Datasnap.DBClient,

@@ -191,6 +191,18 @@ implementation
 uses
   System.Variants;
 
+// Plain (non-method) callback used by Debug builds to accept any
+// server certificate. System.Net.URLClient.TValidateCertificateCallback
+// is a `procedure(...)` (not `of object`, not `reference to`), so we
+// can only assign a plain global procedure here.
+procedure DebugAcceptAnyServerCert(const Sender: TObject;
+                                    const ARequest: TURLRequest;
+                                    const Certificate: TCertificate;
+                                    var Accepted: Boolean);
+begin
+  Accepted := True;
+end;
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -332,12 +344,7 @@ begin
 
 {$IFDEF DEBUG}
     if FAcceptInvalidCerts then
-      FHttpClient.ValidateServerCertificateCallback :=
-        procedure(const Sender: TObject; const ARequest: TURLRequest;
-                  const Certificate: TCertificate; var Accepted: Boolean)
-        begin
-          Accepted := True;
-        end;
+      FHttpClient.ValidateServerCertificateCallback := DebugAcceptAnyServerCert;
 {$ENDIF}
 
     resp := FHttpClient.Post(url, bodyStream);
@@ -1010,5 +1017,6 @@ begin
   else
     Result := rcmUnknown;
 end;
+
 
 end.

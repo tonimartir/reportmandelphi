@@ -87,16 +87,15 @@ begin
   else            fillColor := ClrUnknownFill; textColor := ClrUnknownText;
   end;
 
-  AChip.BevelOuter        := bvNone;
-  AChip.BorderStyle       := bsNone;
-  AChip.ParentBackground  := False;
-  AChip.Color             := TColor(fillColor);
-  AChip.Font.Color        := TColor(textColor);
-  AChip.Font.Style        := [fsBold];
-  AChip.Font.Size         := 8;
-  AChip.Caption           := FormatTransportMode(AMode, AFallbackApi);
-  AChip.Hint              := AChip.Caption;
-  AChip.ShowHint          := True;
+  AChip.BevelOuter   := bvNone;
+  AChip.ParentColor  := False;
+  AChip.Color        := TColor(fillColor);
+  AChip.Font.Color   := TColor(textColor);
+  AChip.Font.Style   := [fsBold];
+  AChip.Font.Size    := 8;
+  AChip.Caption      := FormatTransportMode(AMode, AFallbackApi);
+  AChip.Hint         := AChip.Caption;
+  AChip.ShowHint     := True;
 end;
 
 procedure ApplyTransportChipForDatabase(AChip: TPanel;
