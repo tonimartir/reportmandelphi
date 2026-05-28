@@ -62,9 +62,14 @@ type
     procedure CreateTransportChip;
 {$ENDIF}
     procedure CreateControls;
+    procedure SetHubDatabaseId(const AValue: Int64);
   public
     { Public declarations }
-    property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
+    // Setter repaints the chip immediately - FormCreate has already
+    // fired by the time ShowDataset assigns the ID, so a bare field
+    // write would leave the chip stuck on the FormCreate value (0,
+    // which has no cached transport and reads as "Unknown").
+    property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
   end;
 
 // Original entry point - kept so non-HTTP datasets keep working.
@@ -190,5 +195,18 @@ begin
  FTransportChip.Caption := '';
 end;
 {$ENDIF}
+
+procedure TFRpShowSampledataVCL.SetHubDatabaseId(const AValue: Int64);
+begin
+ FHubDatabaseId := AValue;
+{$IFDEF MSWINDOWS}
+ // ShowDataset assigns HubDatabaseId AFTER Create(), so FormCreate
+ // has already painted the chip with FHubDatabaseId=0 (which has no
+ // cached transport and falls back to "Unknown"). Repaint now that
+ // we know the real id.
+ if FTransportChip <> nil then
+   ApplyTransportChipForDatabase(FTransportChip, FHubDatabaseId);
+{$ENDIF}
+end;
 
 end.
