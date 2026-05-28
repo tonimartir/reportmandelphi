@@ -89,6 +89,13 @@ type
     FState: rtcState;
     FIceState: rtcIceState;
     FConnectionMode: TRpDcConnectionMode;
+    // Sticky flag set when any local candidate of type srflx/prflx was
+    // gathered. Proof that STUN reflection happened — i.e., there is a
+    // NAT in front of us. Used by InternalQueryConnectionMode as a
+    // fallback when the selected pair appears host-host but the address
+    // mismatch heuristic can't decide (e.g., both sides report addresses
+    // we cannot classify, or one side is empty).
+    FAnyLocalSrflxGathered: Boolean;
     FStateLock: TCriticalSection;
     FLastError: string;
     FLabel: AnsiString;
@@ -557,6 +564,7 @@ begin
   FState := RTC_NEW;
   FIceState := RTC_ICE_NEW;
   FConnectionMode := rcmUnknown;
+  FAnyLocalSrflxGathered := False;
   FRemoteDescriptionSet := False;
   FPendingRemoteCandidates := TList<TRpDcRemoteCandidate>.Create;
 end;
@@ -648,7 +656,16 @@ begin
 end;
 
 procedure TRpDcSession.HandleLocalCandidate(const Candidate, Mid: string);
+var
+  candMode: TRpDcConnectionMode;
 begin
+  // Track whether libdatachannel ever told us about a srflx/prflx
+  // candidate on our side. This proves STUN reflection happened, which
+  // is the strongest evidence that we are behind NAT — useful when the
+  // selected ICE pair is host-host but really traversed a NAT.
+  candMode := ParseCandidateType(Candidate);
+  if candMode = rcmHolePunch then
+    FAnyLocalSrflxGathered := True;
   if Assigned(FOnLocalCandidate) then
     FOnLocalCandidate(Self, Candidate, Mid);
 end;
@@ -722,6 +739,13 @@ begin
     remoteAddr := ParseCandidateAddress(remoteCand);
     if (localAddr <> '') and (remoteAddr <> '') and
        (IsPrivateIp(localAddr) <> IsPrivateIp(remoteAddr)) then
+      FConnectionMode := rcmHolePunch
+    // Robust fallback for when the address-based check can't decide
+    // (e.g. one address is empty, or libdatachannel returned only the
+    // candidate type without the IP). The mere existence of a local
+    // srflx/prflx candidate during gathering proves we are behind NAT,
+    // so a "host-host" selection must have crossed it.
+    else if FAnyLocalSrflxGathered then
       FConnectionMode := rcmHolePunch;
   end;
 end;
