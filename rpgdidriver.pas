@@ -2225,6 +2225,8 @@ var
   mmfirst, mmlast: DWORD;
   difmilis: int64;
   totalcount: integer;
+  duplexactive: boolean;
+  pagespercopy: integer;
   pagemargins: TRect;
   offset: TPoint;
   istextonly: boolean;
@@ -2393,6 +2395,14 @@ begin
         dpix := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSX);
         dpiy := GetDeviceCaps(Printer.Canvas.handle, LOGPIXELSY);
         totalcount := 0;
+        // Collate + duplex: software collation emits every collated copy as
+        // pages inside a single document, so a duplex printer would pair the
+        // last page of a copy with the first page of the next copy on the same
+        // sheet. Detect whether duplex is active and how many pages each copy
+        // has, so we can flush odd-paged copies with a blank page below and
+        // keep each collated copy on its own sheet (a separate document).
+        duplexactive := GetCurrentPaper.duplex >= 2;
+        pagespercopy := (topage - frompage + 1) * pagecopies;
         for count1 := 0 to reportcopies - 1 do
         begin
           for i := frompage to topage do
@@ -2430,6 +2440,16 @@ begin
                   Raise Exception.Create(SRpOperationAborted);
               end;
             end;
+          end;
+          // Collate + duplex only: when this collated copy has an odd number
+          // of pages, emit a blank page so the next copy starts on the front
+          // of a new sheet instead of the back of the current one. Surgical:
+          // only for multiple collated copies on a duplex printer.
+          if collate and duplexactive and (reportcopies > 1) and
+            (count1 < reportcopies - 1) and Odd(pagespercopy) then
+          begin
+            gdidriver.NewPage(metafile.Pages[frompage]);
+            Inc(totalcount);
           end;
         end;
         Printer.EndDoc;        
@@ -3239,7 +3259,11 @@ begin
       devicefonts := false;
     Result := true;
     forcecalculation := false;
-    if ((report.copies > 1) and (collate)) then
+    // Use the actual number of copies being printed (which may arrive as the
+    // copies parameter, e.g. OCX PrintRange) and not only report.copies, so the
+    // collate path always goes through the metafile printing (DoPrintMetafile),
+    // which keeps each collated copy on its own sheet when printing duplex.
+    if (((copies > 1) or (report.copies > 1)) and (collate)) then
     begin
       forcecalculation := true;
     end;
