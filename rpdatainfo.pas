@@ -3741,6 +3741,9 @@ var
 //  GlobalFile: string;
 //{$ENDIF}
 begin
+  // Deprecated get the driver path from registry file
+  Result:='';
+(*
   {$IFDEF MSWINDOWS}
   Result := '';
   {$IFNDEF DELPHI2007UP}
@@ -3778,7 +3781,7 @@ begin
 //    end else
 //      DatabaseErrorFmt(SMissingConfFile, [GlobalFile]);
 //  end;
-//  {$ENDIF}
+//  {$ENDIF}     *)
 end;
 
 {$IFDEF MSWINDOWS}
@@ -3870,7 +3873,8 @@ begin
      if Assigned(defaultdrivers) then
      begin
       MergeMissingIniValues(drivers,defaultdrivers);
-      drivers.UpdateFile;
+      // Do not update de file when reading
+      //drivers.UpdateFile;
      end;
     finally
      defaultdrivers.Free;
