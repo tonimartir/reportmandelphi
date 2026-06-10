@@ -743,7 +743,6 @@ var
   localMode, remoteMode: TRpDcConnectionMode;
   localAddr, remoteAddr: string;
   sameMachine: Boolean;
-  logF: TextFile;
 begin
   FillChar(localBuf, SizeOf(localBuf), 0);
   FillChar(remoteBuf, SizeOf(remoteBuf), 0);
@@ -760,69 +759,59 @@ begin
   localMode  := ParseCandidateType(localCand);
   remoteMode := ParseCandidateType(remoteCand);
   FConnectionMode := CombinedConnectionMode(localMode, remoteMode);
-  sameMachine := False;
-  // Semantic correction for a host<->host (rcmDirectP2P) selection. ICE
-  // labels every locally-discovered candidate "host" regardless of whether
-  // its IP is RFC1918 or publicly routable, so a host<->host pair MIGHT
-  // still have crossed a NAT (the genuine remote-client case, where our
-  // private host reaches the agent's public host through our NAT). But a
-  // pair whose remote end is one of OUR OWN interface addresses is a
-  // same-machine / same-NAT loopback and is ALWAYS direct - this is the
-  // case on a server that hosts both the Designer and the Agent, whose
-  // NICs span private (192.168.x) and public IP classes and which always
-  // gathers a srflx candidate (it has internet), which used to be
-  // mislabelled as Hole-Punch.
-  if FConnectionMode = rcmDirectP2P then
+  localAddr  := ParseCandidateAddress(localCand);
+  remoteAddr := ParseCandidateAddress(remoteCand);
+
+  // ---- Same-machine / same-host detection (applies to ANY candidate
+  //      type, BEFORE the host<->host correction below) -------------------
+  // When the Designer and the Agent run on the same box the packets never
+  // leave the machine, so the path is direct no matter how ICE labelled the
+  // candidates. Two independent proofs:
+  //   (a) both ends of the selected pair carry the SAME IP address. On the
+  //       same host ICE frequently nominates a PEER-REFLEXIVE local
+  //       candidate whose address equals the remote host address (the OS
+  //       picked a SLAAC/secondary address as the packet source that was
+  //       never gathered as a host candidate), so localMode comes back as
+  //       prflx and CombinedConnectionMode would wrongly say Hole-Punch.
+  //   (b) the remote end's address is one of OUR OWN gathered host
+  //       addresses (covers a cross-interface same-machine pair, e.g.
+  //       192.168.x <-> public, where the two addresses differ).
+  // A genuine remote client (behind NAT, reaching the public Agent) matches
+  // neither: its selected local address is its srflx/private host, never
+  // equal to nor a member of the public Agent's address set - so it stays
+  // Hole-Punch, which is the correct label there.
+  sameMachine := (localAddr <> '') and (localAddr = remoteAddr);
+  if not sameMachine then
   begin
-    localAddr  := ParseCandidateAddress(localCand);
-    remoteAddr := ParseCandidateAddress(remoteCand);
-    if remoteAddr <> '' then
-    begin
-      FStateLock.Acquire;
-      try
-        sameMachine := (localAddr = remoteAddr) or
-                       (FLocalHostAddresses.IndexOf(remoteAddr) >= 0);
-      finally
-        FStateLock.Release;
-      end;
-    end;
-    if not sameMachine then
-    begin
-      if (localAddr <> '') and (remoteAddr <> '') then
-      begin
-        // Remote is genuinely another host. A private/public class
-        // mismatch means the selected pair crossed at least one NAT.
-        // Same class is a direct host-host pair: keep rcmDirectP2P even
-        // if a srflx candidate was ALSO gathered (reaching a STUN server
-        // only proves we have internet, not that the SELECTED path
-        // traversed a NAT).
-        if IsPrivateIp(localAddr) <> IsPrivateIp(remoteAddr) then
-          FConnectionMode := rcmHolePunch;
-      end
-      // Address-based check can't decide (libdatachannel returned a
-      // candidate without an IP). Only here does the sticky srflx evidence
-      // break the tie: a srflx/prflx gathered during ICE proves we sit
-      // behind a NAT, so a host-host selection we cannot otherwise classify
-      // must have crossed it.
-      else if FAnyLocalSrflxGathered then
-        FConnectionMode := rcmHolePunch;
+    FStateLock.Acquire;
+    try
+      sameMachine := (remoteAddr <> '') and
+                     (FLocalHostAddresses.IndexOf(remoteAddr) >= 0);
+    finally
+      FStateLock.Release;
     end;
   end;
-  // TEMP DIAGNOSTIC - remove after verification.
-  try
-    AssignFile(logF, 'C:\desarrollo\dc_mode_debug.log');
-    if FileExists('C:\desarrollo\dc_mode_debug.log') then
-      Append(logF)
-    else
-      Rewrite(logF);
-    try
-      Writeln(logF, Format('init=%d local=[%s] remote=[%s] srflx=%d sameMachine=%d mode=%d',
-        [Ord(FIsInitiator), localCand, remoteCand, Ord(FAnyLocalSrflxGathered),
-         Ord(sameMachine), Ord(FConnectionMode)]));
-    finally
-      CloseFile(logF);
-    end;
-  except
+
+  if sameMachine then
+    FConnectionMode := rcmDirectP2P
+  else if FConnectionMode = rcmDirectP2P then
+  begin
+    // Genuine host<->host pair with the remote on a different box. A
+    // private/public class mismatch means we are the NAT'd client reaching
+    // a public peer (or vice-versa), so it really crossed a NAT. Same class
+    // is a direct LAN host-host pair: keep rcmDirectP2P even if a srflx
+    // candidate was ALSO gathered (reaching a STUN server only proves we
+    // have internet, not that the SELECTED path traversed a NAT).
+    if (localAddr <> '') and (remoteAddr <> '') then
+    begin
+      if IsPrivateIp(localAddr) <> IsPrivateIp(remoteAddr) then
+        FConnectionMode := rcmHolePunch;
+    end
+    // Address-based check can't decide (libdatachannel returned a candidate
+    // without an IP). Only here does the sticky srflx evidence break the
+    // tie: a srflx/prflx gathered during ICE proves we sit behind a NAT.
+    else if FAnyLocalSrflxGathered then
+      FConnectionMode := rcmHolePunch;
   end;
 end;
 
