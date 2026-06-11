@@ -1995,7 +1995,7 @@ begin
  adriver.TextExtent(obj,newextent);
  while newextent.Y>maxextent.Y do
  begin
-  if (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
+  if (currentpos>=1) and (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
   begin
     Dec(currentpos);
   end
@@ -2004,10 +2004,12 @@ begin
    while currentpos>0 do
    begin
     Dec(currentpos);
-
-    if isadelimiter(obj.Text[currentpos]) then
-     break;
+    // Check the lower bound BEFORE indexing obj.Text: when a long token has no
+    // delimiter, currentpos walks down to 0 and obj.Text[0] is out of range
+    // (WideString is 1-based) -> ERangeError under {$R+}.
     if currentpos<1 then
+     break;
+    if isadelimiter(obj.Text[currentpos]) then
      break;
    end;
   end;

@@ -622,13 +622,26 @@ begin
     MemStream := TMemoryStream.Create;
     try
       MemStream.CopyFrom(ResStream, ResStream.Size);
+      // Try to persist the embedded defaults to disk as a convenience cache.
+      // This runs at initialization (TRpConnAdmin.Create -> LoadConfig); on a
+      // read-only install dir (e.g. Program Files\...\Bin) SaveToFile raises
+      // EFCreateError "Access denied". The on-disk copy is only a cache: the
+      // ini can be built entirely in memory, so a failure here must NOT break
+      // initialization. Swallow the write error and fall back to an in-memory
+      // ini. Explicit designer saves go through other code paths (config.UpdateFile
+      // / TRpDatabaseInfoList.SaveToFile) and must keep raising on failure.
       if Length(ATargetFileName) > 0 then
       begin
-        ForceDirectories(ExtractFileDir(ATargetFileName));
-        MemStream.SaveToFile(ATargetFileName);
-        Result := TMemIniFile.Create(ATargetFileName);
-      end
-      else
+        try
+          ForceDirectories(ExtractFileDir(ATargetFileName));
+          MemStream.SaveToFile(ATargetFileName);
+          Result := TMemIniFile.Create(ATargetFileName);
+        except
+          on E: Exception do
+            FreeAndNil(Result); // read-only target: fall back to in-memory below
+        end;
+      end;
+      if Result = nil then
       begin
         IniStrings := TStringList.Create;
         try

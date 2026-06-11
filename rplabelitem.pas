@@ -663,8 +663,11 @@ begin
   end;
   if FIsPartial then
   begin
-   // Skip one space if necessary
-   if ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
+   // Skip one space if necessary. Guard the index: if the evaluated text is
+   // shorter on a later pass (e.g. two-pass / total-pages substitution),
+   // FPartialPos may exceed Length(Result) -> ERangeError under {$R+}.
+   if (FPartialPos>=1) and (FPartialPos<=Length(Result)) and
+      ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
     FPartialPos:=FPartialPos+1;
    Result:=Copy(Result,FPartialPos,Length(Result));
   end;
@@ -727,8 +730,13 @@ begin
     FIsPartial:=true;
     PartialPrint:=true;
     FPartialPos:=FPartialPos+newposition;
-    // Next line partial skip one space o one line
-    if ((TextObj.Text[FPartialPos]=chr(10)) or (TextObj.Text[FPartialPos]=' ')) then
+    // Next page partial: skip one boundary space/newline so the continuation does
+    // not start with it. The boundary char must be tested in the CURRENT (remaining)
+    // text domain at newposition+1 -- NOT at FPartialPos, which indexes the full
+    // original string and overruns TextObj.Text (the remaining substring) on the
+    // 2nd and later continuation pages -> ERangeError under {$R+}.
+    if (newposition+1<=Length(TextObj.Text)) and
+       ((TextObj.Text[newposition+1]=chr(10)) or (TextObj.Text[newposition+1]=' ')) then
      Inc(FPartialpos);
     TextObj.Text:=Copy(TextObj.Text,1,newposition);
    end
