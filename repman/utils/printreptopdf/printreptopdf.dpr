@@ -145,6 +145,7 @@ begin
  Writeln(AnsiString(SRpPrintPDFRep11));
  Writeln(AnsiString(SRpPrintPDFRep12));
  Writeln(AnsiString(SRpPrintPDFRep13));
+ Writeln('         -dbxconnectionfile <file> Force the dbxconnections registry file');
  astring:=SRpTextDrivers+' ';
  alist:=TStringList.Create;
  try
@@ -263,6 +264,14 @@ begin
       Raise Exception.Create(SRpNumberexpected);
      errorfile:=ParamStr(indexparam);
      allpages:=false;
+    end
+    else
+    if ParamStr(indexparam)='-dbxconnectionfile' then
+    begin
+     inc(indexparam);
+     if indexparam>=Paramcount+1 then
+      Raise Exception.Create(SRpNumberexpected);
+     DBXConnectionsFileOverride:=ParamStr(indexparam);
     end
     else
      if ParamStr(indexparam)='-to' then

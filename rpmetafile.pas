@@ -77,13 +77,17 @@ const
  RpSignature2_4:string='RPMETAFILE09'+chr(0);
  RpSignature2_2:string='RPMETAFILE07'+chr(0);
  RpSignature3_0:string='RPMETAFILE30'+chr(0);
+ // Version 4.1: 3.0 header plus a PrinterFonts byte (same signature and byte
+ // position the C# engine uses), written only when PrinterFonts=rppfontsrecalculate
+ // so legacy files stay byte-identical.
+ RpSignature4_1:string='RPMETAFILE41'+chr(0);
 const
  FIRST_ALLOCATION_OBJECTS=50;
  FIRST_ALLOCATED_WIDESTRING=1000;
 type
  TMetaFileWorkProgress=procedure (Sender:TObject;records,pagecount:integer;var docancel:boolean) of object;
 
- TMetaFileVersion=(MetaVersion2_2,MetaVersion2_4,MetaVersion3_0);
+ TMetaFileVersion=(MetaVersion2_2,MetaVersion2_4,MetaVersion3_0,MetaVersion4_1);
  TStopWork=procedure of object;
  TWorkAsyncError=procedure (amessage:string) of object;
  TRequestPageEvent=function (pageindex:integer):boolean of object;
@@ -415,6 +419,10 @@ type
    PreviewWindow:TRpPreviewWindowStyle;
    OpenDrawerBefore:Boolean;
    OpenDrawerAfter:Boolean;
+   // Printer fonts option of the report that generated this metafile. Persisted
+   // (format 4.1) only when rppfontsrecalculate, so the print drivers can enable
+   // the glyph-exact pipeline when printing a stored metafile.
+   PrinterFonts:TRpPrinterFontsOption;
 {$IFNDEF FORWEBAX}
    OnDrawChart:TDoDrawChartEvent;
    OnFilterImage:TDoFilterImage;
@@ -932,7 +940,7 @@ begin
  end;
  SetLength(EmbeddedFiles,0);
 
-
+ PrinterFonts:=rppfontsdefault;
  FCurrentPage:=-1;
  FMemStream.SetSize(Int64(0));
 end;
@@ -1063,6 +1071,13 @@ begin
  fileCount:=Length(EmbeddedFiles);
  rpSignature:=RpSignature3_0;
  FVersion:=MetaVersion3_0;
+ // PrinterFonts=Recalculate must survive the round trip (the print client reads it
+ // to enable the glyph-exact pipeline) and only version 4.1 carries the field.
+ if PrinterFonts=rppfontsrecalculate then
+ begin
+  rpSignature:=RpSignature4_1;
+  FVersion:=MetaVersion4_1;
+ end;
  RequestPage(MAX_PAGECOUNT);
  WriteRawStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
@@ -1099,6 +1114,11 @@ begin
    Stream.Write(ssize,sizeof(ssize));
    efile.Stream.Position:=0;
    efile.Stream.SaveToStream(Stream);
+  end;
+  if FVersion>=MetaVersion4_1 then
+  begin
+   byteValue:=Byte(PrinterFonts);
+   Stream.Write(byteValue,1);
   end;
  // Report header
  Stream.Write(PageSize,sizeof(pagesize));
@@ -1240,7 +1260,10 @@ begin
    Result:=true
   else
    if (bufstring=rpSignature3_0) then
-    Result:=true;   
+    Result:=true
+   else
+    if (bufstring=rpSignature4_1) then
+     Result:=true;
  end
  else
   Result:=true;
@@ -1313,13 +1336,16 @@ begin
   if bufstring=RpSignature3_0 then
    FVersion:=MetaVersion3_0
   else
+  if bufstring=RpSignature4_1 then
+   FVersion:=MetaVersion4_1
+  else
     Raise Exception.Create(SRpBadSignature);
  end;
  if (sizeof(separator)<>Stream.Read(separator,sizeof(separator))) then
   Raise Exception.Create(SRpBadFileHeader);
  if (separator<>integer(rpFHeader)) then
   Raise Exception.Create(SRpBadFileHeader);
- if (FVersion = MetaVersion3_0) then
+ if (FVersion >= MetaVersion3_0) then
  begin
   // PDF Compressed
   Stream.Read(conformanceByte,1);
@@ -1359,6 +1385,11 @@ begin
    Stream.Read(efile.Stream.Memory^,ssize);
    SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
    EmbeddedFiles[Length(EmbeddedFiles)-1] := efile;
+  end;
+  if FVersion>=MetaVersion4_1 then
+  begin
+   Stream.Read(conformanceByte,1);
+   PrinterFonts:=TRpPrinterFontsOption(conformanceByte);
   end;
  end;
   
@@ -1593,7 +1624,7 @@ begin
  bytesread:=Stream.Read(FMark,sizeof(FMark));
  if (bytesread<>sizeof(FMark)) then
   Raise ERpBadFileFormat.CreatePos(SrpStreamErrorPage+' Mark',Stream.Position,0);
- if ((FVersion = MetaVersion2_4) or (FVersion = MetaVersion3_0)) then
+ if (FVersion >= MetaVersion2_4) then
  begin
   bytesread:=Stream.Read(separator,sizeof(separator));
   if (bytesread<>sizeof(separator)) then

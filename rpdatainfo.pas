@@ -185,6 +185,14 @@ type
    procedure DeleteConnection(conname:string);
  end;
 
+var
+ // Process-wide override for the dbxconnections registry file, settable from the
+ // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
+ // takes precedence when assigned.
+ DBXConnectionsFileOverride:string='';
+
+type
+
 
  IRpDatabaseDriver=interface
   ['{B3BA37D5-5401-4B9E-8804-698C214F8B0C}']
@@ -3860,6 +3868,8 @@ begin
 {$ENDIF}
 
  dbxconpath:=DBXConnectionsOverride;
+ if Length(dbxconpath)=0 then
+  dbxconpath:=DBXConnectionsFileOverride;
  dbxdrivpath:=DBXDriversOverride;
  // Override configuration if necessary
  if Length(dbxconpath)>0 then
@@ -3983,7 +3993,21 @@ begin
  {$ENDIF}
    end
    else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXCONFIGFILENAME);
+   begin
+    // No registry found anywhere: start with an empty one at the writable
+    // location (configfilename) instead of failing, so connections can be
+    // added through the admin tools. The effective path is reported by the
+    // diagnostics pages and the command line tools.
+    config:=TMemIniFile.Create(configfilename);
+ {$IFNDEF FPC}
+    config.CaseSensitive:=false;
+ {$ENDIF}
+    try
+     config.UpdateFile;
+    except
+     // Location not writable: keep the empty registry in memory anyway
+    end;
+   end;
   end
 {$ENDIF}
  end;

@@ -170,6 +170,7 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Linux64)'!=''">
         <DCC_Define>DELPHIENTERPRISEDBSTATIC;$(DCC_Define)</DCC_Define>
+        <DCC_DcuOutput>.\dcurlinux64</DCC_DcuOutput>
         <Debugger_Launcher>/usr/bin/gnome-terminal -- &quot;%debuggee%&quot;</Debugger_Launcher>
         <Manifest_File>(None)</Manifest_File>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
@@ -208,6 +209,7 @@
         <Manifest_File>(None)</Manifest_File>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
         <DCC_Define>DELPHIENTERPRISEDBSTATIC;$(DCC_Define)</DCC_Define>
+        <DCC_DcuOutput>.\dculinux64</DCC_DcuOutput>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <DCC_ExeOutput>.\bin32</DCC_ExeOutput>

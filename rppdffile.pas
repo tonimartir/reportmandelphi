@@ -157,6 +157,11 @@ type
    BrushColor:integer;
    BrushStyle:integer;
    PDFConformance: TPDFConformanceType;
+   // When true, TextExtent/TextOut shape plain (non-HTML, non-RTL) text through the
+   // shaper (DirectWrite/FreeType) and write per-glyph positions, so the GDI glyph
+   // rendering can match the PDF output exactly (PrinterFonts=rppfontsrecalculate or
+   // TRpGDIDriver.UsePdfFonts).
+   ForceComplexShaping: Boolean;
    procedure GetStdLineSpacing(var linespacing,leading,ascent:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToXPos(Value:double):double;
@@ -1939,6 +1944,9 @@ var
  aword:WideString;
  oldPenStyle:integer;
  lInfo:TRpLineInfoArray;
+ lwordinfos:TRpLineInfoArray;
+ winfos:TRpLineInfoArray;
+ forceSuspended:boolean;
 begin
  FFile.CheckPrinting;
 
@@ -1948,6 +1956,16 @@ begin
   GetTTFontData;
   if (RightToLeft) or (IsHtml) then
    Text:=InfoProvider.NFCNormalize(Text);
+ end;
+
+ // Rotated text keeps the legacy pipeline on both PDF and GDI (the GDI exact-metrics
+ // path excludes rotation), so forced shaping is suspended to keep measurement and
+ // drawing aligned. RTL/HTML rotated text is unaffected.
+ forceSuspended:=false;
+ if (Rotation<>0) and ForceComplexShaping then
+ begin
+  ForceComplexShaping:=false;
+  forceSuspended:=true;
  end;
 
  if (Clipping or (Rotation<>0)) then
@@ -1998,7 +2016,8 @@ begin
 
 
    astring:=Copy(Text,linfo[i].Position,lInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft)) then
+   var dojustifyline: Boolean := (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft));
+   if dojustifyline then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -2026,10 +2045,17 @@ begin
      alinesize:=0;
      lwidths:=TStringList.Create;
      try
+      // Keep each word's own shaped LineInfo: when TextOut emits per-glyph output it
+      // must receive the glyphs of the word being drawn, not those of the whole line.
+      SetLength(lwordinfos,lwords.Count);
       for index:=0 to lwords.Count-1 do
       begin
        arec:=ARect;
-       TextExtent(lwords.Strings[index],arec,false,true, RightToLeft, IsHtml);
+       winfos:=TextExtent(lwords.Strings[index],arec,false,true, RightToLeft, IsHtml);
+       if Length(winfos)>0 then
+        lwordinfos[index]:=winfos[0]
+       else
+        lwordinfos[index]:=lInfo[i];
        if RightToLeft then
         lwidths.Add(IntToStr(-(arec.Right-arec.Left)))
        else
@@ -2060,9 +2086,15 @@ begin
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
+        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lwordinfos[index],IsHtml);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
+      end
+      else
+      begin
+       // No space to share (overflowing line): fall back to drawing the line
+       // unjustified instead of dropping it, matching the GDI driver.
+       dojustifyline:=false;
       end;
      finally
       lwidths.Free;
@@ -2070,8 +2102,8 @@ begin
     finally
      lwords.free;
     end;
-   end
-   else
+   end;
+   if not dojustifyline then
    begin
     if (not Font.Transparent) then
     begin
@@ -2091,6 +2123,8 @@ begin
   begin
    RestoreGraph;
   end;
+  if forceSuspended then
+   ForceComplexShaping:=true;
  end;
 end;
 
@@ -2156,9 +2190,16 @@ var
  linespacing:integer;
  stringResult:string;
  ascent:integer;
+ shapedOutput:boolean;
+ nliney:integer;
 begin
  /// Add Font leading
  adata:=GetTTFontData;
+ // Per-glyph (shaped) output: mandatory for RTL/HTML, opt-in for plain text through
+ // ForceComplexShaping so the PDF and the glyph-indexed GDI redraw share advances.
+ // Rotated text keeps the legacy pipeline (the GDI exact path excludes rotation).
+ shapedOutput:=(RightToLeft) or (IsHtml) or
+  (ForceComplexShaping and (Rotation=0) and (Length(lInfo.Glyphs)>0));
  if assigned(adata) then
  begin
   ascent:=adata.Ascent;
@@ -2204,7 +2245,7 @@ begin
   SWriteLine(FFile.FsTempStream,'/F'+
   Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
    IntToStr(Font.Size)+ ' Tf');
-  if (RightToLeft) or (IsHtml) then
+  if shapedOutput then
   begin
    SWriteLine(FFile.FsTempStream,'/Span << /ActualText '+
     EncodePdfText(Text) + ' >> BDC');
@@ -2225,7 +2266,7 @@ begin
   end
   else
   begin
-   if (not RightToLeft) and (not IsHtml) then
+   if not shapedOutput then
     //SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
     SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextY(Y+ascent)+' Td');
   end;
@@ -2237,7 +2278,7 @@ begin
    if adata.havekerning then
     havekerning:=true;
   end;
-  if (RightToLeft) or (IsHtml) then
+  if shapedOutput then
   begin
    stringResult:=PDFCompatibleTextShaping(adata,Font,RightToLeft, X,Y,Font.Size,lInfo);
    SWriteLine(FFile.FsTempStream,stringResult);
@@ -2251,7 +2292,7 @@ begin
    else
     SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
   end;
-  if (RightToLeft) or (IsHtml) then
+  if shapedOutput then
   begin
    SWriteLine(FFile.FsTempStream,'EMC');
   end;
@@ -2357,7 +2398,13 @@ begin
    if Rotation=0 then
    begin
     Posline:=Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-    Line(X,Y+Posline,X+LineWidth,Y+Posline);
+    nliney:=Y+Posline;
+    // Shaped output receives Y as baseline (TopPos includes the ascent) while the
+    // underline constants are calibrated for Y = line top: compensate the font size
+    // offset, same correction the HTML decorators apply.
+    if shapedOutput then
+     nliney:=nliney-Round(Font.Size/CONS_PDFRES*FResolution);
+    Line(X,nliney,X+LineWidth,nliney);
    end
    else
    begin
@@ -2380,7 +2427,11 @@ begin
    if Rotation=0 then
    begin
     Posline:=Round(CONS_STRIKEOUTPOS*(Font.Size/CONS_PDFRES*FResolution));
-    Line(X,Y+Posline,X+LineWidth,Y+Posline);
+    nliney:=Y+Posline;
+    // Same baseline compensation as the underline above.
+    if shapedOutput then
+     nliney:=nliney-Round(Font.Size/CONS_PDFRES*FResolution);
+    Line(X,nliney,X+LineWidth,nliney);
    end
    else
    begin
@@ -2792,6 +2843,16 @@ begin
  if (rightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
+  GetTTFontData;
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml);
+ end
+ else if ForceComplexShaping then
+ begin
+  // Forced shaping for plain text: the shaper needs a TrueType font, promote
+  // standard Type1 fonts to linked, then measure with per-glyph advances so
+  // TextOut/ExtTextOutW can reproduce identical positions.
+  if not (Font.Name in [poLinked,poEmbedded]) then
+   Font.Name:=poLinked;
   GetTTFontData;
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml);
  end

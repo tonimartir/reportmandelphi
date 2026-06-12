@@ -163,6 +163,18 @@ type
       obj: TRpMetaObject; dpix, dpiy: integer; toprinter: boolean;
       pagemargins: TRect; devicefonts: boolean; offset: TPoint;
       selected: boolean);
+    // Effective switch for the glyph-exact pipeline: enabled explicitly through
+    // UsePdfFonts or implicitly when the metafile being drawn carries
+    // PrinterFonts=rppfontsrecalculate (stored metafiles, format 4.1).
+    function UseExactPdfText: boolean;
+    procedure ComputeGlyphPixPositions(const linfo: TRpLineInfo; Alignment: integer;
+      const ARect: TRect; aintdpix: integer; var allPixPos, allDx: TArray<Integer>);
+    procedure DrawGlyphRuns(Canvas: TCanvas; const linfo: TRpLineInfo;
+      const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpiy: integer;
+      BaseFontStyle: integer);
+    procedure TextRectJustifyGlyphs(Canvas: TCanvas; const ARect: TRect; Text: WideString;
+      const larray: TRpLineInfoArray; Alignment: integer; posy: integer;
+      aintdpix, aintdpiy: integer; RightToLeft: Boolean = False);
     procedure SendAfterPrintOperations;
     function DoNewPage(aorientation: TRpOrientation;
       apagesizeqt: TPageSizeQt): boolean;
@@ -184,6 +196,11 @@ type
     oldorientation: TPrinterOrientation;
     devicefonts: boolean;
     neverdevicefonts: boolean;
+    // When true, plain (non-HTML, non-justified, non-RTL, non-rotated) text is measured
+    // and drawn through the PDF font subsystem (shaper + glyph-indexed ExtTextOutW) so
+    // the GDI/printer output matches the PDF byte for byte. Set it directly by code or
+    // let the print helpers enable it when report.PrinterFonts=rppfontsrecalculate.
+    UsePdfFonts: boolean;
     bitmapwidth, bitmapheight: integer;
     PreviewStyle: TRpPreviewStyle;
     clientwidth, clientheight: integer;
@@ -226,7 +243,7 @@ type
     procedure TextRectHtml(Canvas: TCanvas; ARect: TRect; Text: Widestring;
       Alignment: integer; Clipping: boolean; Wordbreak: boolean;
       Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
-      BackColor: TColor);
+      BackColor: TColor; IsHtml: Boolean = True; RightToLeft: Boolean = False);
     procedure GraphicExtent(Stream: TMemoryStream; var extent: TPoint;
       dpi: integer); override;
     procedure SetOrientation(Orientation: TRpOrientation); override;
@@ -780,12 +797,16 @@ var
 begin
   if atext.FontRotation <> 0 then
     exit;
-  // Justified text use pdf driver, also PDF Conformance, TrueType, or IsHtml
-  if (  atext.IsHtml OR ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-     OR (atext.Type1Font >  Integer(poEmbedded)) and (not atext.RightToLeft)) then
+  // Justified text use pdf driver, also PDF Conformance, TrueType, or IsHtml.
+  // UsePdfFonts forces the same delegation (including RTL) so line metrics match
+  // the PDF byte for byte.
+  if (  atext.IsHtml OR UseExactPdfText OR ((atext.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
+     OR (atext.Type1Font >= Integer(poLinked)) and (not atext.RightToLeft)) then
   begin
     if not assigned(npdfdriver) then
       npdfdriver := TRpPDFDriver.Create;
+    // With UsePdfFonts force the shaper so measurement matches the glyph rendering
+    npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
     atext.Type1Font := integer(poLinked);
     npdfdriver.TextExtent(atext, extent);
     exit;
@@ -882,6 +903,9 @@ begin
     if assigned(FReport) then
       npdfdriver.PDFConformance := FReport.PDFConformance;
   end;
+  // With UsePdfFonts force the shaper so LineInfo.Glyphs is populated (required by
+  // TextRectHtml's glyph-indexed ExtTextOutW on plain text).
+  npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
   atext.Type1Font := integer(poLinked);
   Result := npdfdriver.TextExtentLineInfo(atext, extent);
 end;
@@ -994,8 +1018,39 @@ begin
                CLXColorToVCLColor(obj.BackColor));
           end
           else
+          if (UseExactPdfText and (obj.FontRotation = 0) and
+              ((obj.Alignment AND AlignmentFlags_AlignHJustify) = 0)) then
+          begin
+             // Glyph-exact plain text path (LTR and RTL): the same shaper + glyph-indexed
+             // ExtTextOutW rendering the PDF uses, so the printed output matches the PDF
+             // byte for byte. Justified and rotated text keep their own paths.
+             astring := page.GetText(obj);
+             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
+             rec.Top := Round(posy / dpiy * TWIPS_PER_INCHESS);
+             rec.Right := rec.Left + obj.Width;
+             rec.Bottom := rec.Top + obj.Height;
+             if ((obj.Transparent) and (not selected)) then
+             begin
+               SetBkMode(Canvas.handle, Transparent);
+               drawbackground := false;
+             end
+             else
+             begin
+               SetBkMode(Canvas.handle, OPAQUE);
+               drawbackground := true;
+             end;
+             if selected then
+             begin
+               Canvas.Brush.Color := clHighlight;
+               Canvas.Font.Color := clHighlightText;
+             end;
+             TextRectHtml(Canvas, rec, astring, obj.Alignment, obj.CutText,
+               obj.WordWrap, obj.FontRotation, obj.FontStyle, drawbackground,
+               CLXColorToVCLColor(obj.BackColor), false, obj.RightToLeft);
+          end
+          else
           if ( ( ((obj.Alignment AND AlignmentFlags_AlignHJustify)>0) OR (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)
-             OR (obj.Type1Font >  Integer(poEmbedded))) and  (not obj.RightToLeft)  ) then
+             OR (obj.Type1Font >= Integer(poLinked))) and  ((not obj.RightToLeft) or UseExactPdfText)  ) then
           begin
             astring := page.GetText(obj);
             rec.Left := Round(posx / dpix * TWIPS_PER_INCHESS);
@@ -1409,6 +1464,12 @@ begin
     npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.Underline := fsUnderline in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.StrikeOut := fsStrikeOut in Canvas.Font.Style;
+    // Stay coherent with the rest of the pipeline: with UsePdfFonts all measuring
+    // (line breaks and word widths below) goes through the same shaper.
+    npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
+    // RTL is measured and drawn from NFC-normalized text, like the PDF canvas does
+    if RightToLeft and UseExactPdfText then
+      Text := npdfdriver.PDFFile.Canvas.InfoProvider.NFCNormalize(Text);
 
     larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
      RightToLeft);
@@ -1421,6 +1482,16 @@ begin
     if (Alignment AND AlignmentFlags_AlignVCenter) > 0 then
     begin
       posy := ARect.Top + (((ARect.Bottom - ARect.Top) - recsize.Bottom) div 2);
+    end;
+
+    // Exact mode draws every word glyph by glyph with the same space-distribution
+    // arithmetic the PDF canvas uses, so justified output matches the PDF.
+    // Rotated text keeps the legacy path.
+    if UseExactPdfText and (Rotation = 0) then
+    begin
+      TextRectJustifyGlyphs(Canvas, ARect, Text, larray, Alignment, posy,
+        aintdpix, aintdpiy, RightToLeft);
+      exit;
     end;
 
     for i := 0 to Length(larray) - 1 do
@@ -1575,10 +1646,346 @@ begin
   end;
 end;
 
+function TRpGDIDriver.UseExactPdfText: boolean;
+begin
+  Result := UsePdfFonts;
+  if (not Result) and Assigned(FReport) then
+    Result := FReport.PrinterFonts = rppfontsrecalculate;
+end;
+
+// Glyph-exact justified drawing: word origins computed with the same integer space
+// distribution the PDF canvas uses (no last-word re-anchoring) and every word drawn
+// glyph by glyph through DrawGlyphRuns, so justified paragraphs print identical to
+// the PDF. Lines that cannot be justified (last line of the paragraph, or no space
+// to share) are drawn as a single shaped line at their aligned position.
+procedure TRpGDIDriver.TextRectJustifyGlyphs(Canvas: TCanvas; const ARect: TRect; Text: WideString;
+  const larray: TRpLineInfoArray; Alignment: integer; posy: integer;
+  aintdpix, aintdpiy: integer; RightToLeft: Boolean);
+var
+  i, index: integer;
+  posx, currpos, alinedif, alinesize: integer;
+  astring, aword: WideString;
+  lwords: TRpWideStrings;
+  lwidths: TStringList;
+  lwordinfos: array of TRpLineInfo;
+  winfos: TRpLineInfoArray;
+  arec, wordrect: TRect;
+  ascent, nposy: integer;
+  basestyle: integer;
+  allPixPos, allDx: TArray<Integer>;
+  dojustify: boolean;
+begin
+  basestyle := 0;
+  if fsBold in Canvas.Font.Style then
+    basestyle := basestyle or 1;
+  if fsItalic in Canvas.Font.Style then
+    basestyle := basestyle or 2;
+  if fsUnderline in Canvas.Font.Style then
+    basestyle := basestyle or 4;
+  if fsStrikeOut in Canvas.Font.Style then
+    basestyle := basestyle or 8;
+  ascent := 0;
+  for i := 0 to Length(larray) - 1 do
+  begin
+    if (i = 0) then
+      ascent := larray[0].TopPos;
+    if Length(larray[i].Glyphs) = 0 then
+      continue;
+    astring := Copy(Text, larray[i].Position, larray[i].Size);
+    nposy := posy + larray[i].TopPos - ascent;
+    // Line start with horizontal alignment, same expressions as the PDF canvas
+    posx := ARect.Left;
+    if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+      posx := ARect.Right - larray[i].Width;
+    if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+      posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
+    dojustify := ((Alignment AND AlignmentFlags_AlignHJustify) > 0) and
+      (not larray[i].LastLine);
+    if dojustify then
+    begin
+      // Word splitting, same criteria the PDF canvas uses (ASCII space)
+      lwords := TRpWideStrings.Create;
+      try
+        aword := '';
+        index := 1;
+        while index <= Length(astring) do
+        begin
+          if astring[index] <> ' ' then
+            aword := aword + astring[index]
+          else
+          begin
+            if Length(aword) > 0 then
+              lwords.Add(aword);
+            aword := '';
+          end;
+          Inc(index);
+        end;
+        if Length(aword) > 0 then
+          lwords.Add(aword);
+        // Measure every word with the shaper, keeping its glyphs
+        alinesize := 0;
+        lwidths := TStringList.Create;
+        try
+          SetLength(lwordinfos, lwords.Count);
+          for index := 0 to lwords.Count - 1 do
+          begin
+            arec := ARect;
+            winfos := npdfdriver.PDFFile.Canvas.TextExtent(lwords.Strings[index], arec,
+              false, true, RightToLeft);
+            if Length(winfos) > 0 then
+              lwordinfos[index] := winfos[0]
+            else
+              lwordinfos[index] := larray[i];
+            if RightToLeft then
+              lwidths.Add(IntToStr(-(arec.Right - arec.Left)))
+            else
+              lwidths.Add(IntToStr(arec.Right - arec.Left));
+            alinesize := alinesize + arec.Right - arec.Left;
+          end;
+          // Same integer space-distribution arithmetic as TRpPDFCanvas.TextRect
+          alinedif := ARect.Right - ARect.Left - alinesize;
+          if alinedif > 0 then
+          begin
+            if lwords.Count > 1 then
+              alinedif := alinedif div (lwords.Count - 1);
+            if RightToLeft then
+            begin
+              currpos := ARect.Right;
+              alinedif := -alinedif;
+            end
+            else
+              currpos := posx;
+            for index := 0 to lwords.Count - 1 do
+            begin
+              if Length(lwordinfos[index].Glyphs) > 0 then
+              begin
+                wordrect.Left := currpos;
+                wordrect.Top := 0;
+                wordrect.Right := currpos;
+                wordrect.Bottom := 0;
+                ComputeGlyphPixPositions(lwordinfos[index], 0, wordrect, aintdpix,
+                  allPixPos, allDx);
+                DrawGlyphRuns(Canvas, lwordinfos[index], allPixPos, allDx, nposy,
+                  aintdpiy, basestyle);
+              end;
+              currpos := currpos + StrToInt(lwidths.Strings[index]) + alinedif;
+            end;
+          end
+          else
+            dojustify := false;
+        finally
+          lwidths.Free;
+        end;
+      finally
+        lwords.Free;
+      end;
+    end;
+    if not dojustify then
+    begin
+      // Whole line at its aligned position (last paragraph line or lines where
+      // the space cannot be distributed)
+      ComputeGlyphPixPositions(larray[i], Alignment, ARect, aintdpix, allPixPos, allDx);
+      DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpiy, basestyle);
+    end;
+  end;
+end;
+
+// Computes the device pixel X position of every glyph of a shaped line, applying
+// horizontal alignment inside ARect (twips). Right alignment anchors at the right
+// edge so rounding error goes left; left/center anchor at the left.
+procedure TRpGDIDriver.ComputeGlyphPixPositions(const linfo: TRpLineInfo; Alignment: integer;
+  const ARect: TRect; aintdpix: integer; var allPixPos, allDx: TArray<Integer>);
+var
+  k: integer;
+  glyphCount: integer;
+begin
+  glyphCount := Length(linfo.Glyphs);
+  SetLength(allPixPos, glyphCount);
+  SetLength(allDx, glyphCount);
+  if glyphCount = 0 then
+    exit;
+  if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+  begin
+    // Right-anchored: iterate backwards from right edge
+    var pixRight: Integer := Round(ARect.Right * aintdpix / 1440);
+    var cumRight: Integer := 0; // cumulative twips from right
+    for k := glyphCount - 1 downto 0 do
+    begin
+      cumRight := cumRight + linfo.Glyphs[k].XAdvance;
+      allPixPos[k] := pixRight - Round(cumRight * aintdpix / 1440);
+    end;
+  end
+  else
+  begin
+    // Left-anchored (left or center alignment)
+    var pixLeft: Integer := Round(ARect.Left * aintdpix / 1440);
+    if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+    begin
+      var totalTwips: Integer := 0;
+      for k := 0 to glyphCount - 1 do
+        totalTwips := totalTwips + linfo.Glyphs[k].XAdvance;
+      var totalPix: Integer := Round(totalTwips * aintdpix / 1440);
+      var rectPix: Integer := Round(ARect.Right * aintdpix / 1440) - pixLeft;
+      pixLeft := pixLeft + ((rectPix - totalPix) div 2);
+    end;
+    var cumLeft: Integer := 0;
+    for k := 0 to glyphCount - 1 do
+    begin
+      allPixPos[k] := pixLeft + Round(cumLeft * aintdpix / 1440);
+      cumLeft := cumLeft + linfo.Glyphs[k].XAdvance;
+    end;
+  end;
+  // Compute dx values from consecutive pixel positions
+  for k := 0 to glyphCount - 2 do
+    allDx[k] := allPixPos[k + 1] - allPixPos[k];
+  // Last glyph dx (cell width, no next glyph to position)
+  allDx[glyphCount - 1] := Round(linfo.Glyphs[glyphCount - 1].XAdvance * aintdpix / 1440);
+end;
+
+// Draws the glyphs of a shaped line with ExtTextOutW (ETO_GLYPH_INDEX), batching
+// consecutive glyphs into runs while style/family/size/color stay constant.
+// nposy is the line top in twips; per-run ascent differences are compensated so all
+// runs share the same baseline. Restores Canvas.Font name/size/color on exit.
+procedure TRpGDIDriver.DrawGlyphRuns(Canvas: TCanvas; const linfo: TRpLineInfo;
+  const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpiy: integer;
+  BaseFontStyle: integer);
+var
+  k: integer;
+  glyphCount: integer;
+  runStyle, glyphStyle: Integer;
+  baseBold, baseItalic, baseUnderline, baseStrikeOut: Boolean;
+  runGlyphs: array of Word;
+  runDx: array of Integer;
+begin
+  glyphCount := Length(linfo.Glyphs);
+  if glyphCount = 0 then
+    exit;
+  baseBold := (BaseFontStyle and 1) > 0;
+  baseItalic := (BaseFontStyle and 2) > 0;
+  baseUnderline := (BaseFontStyle and 4) > 0;
+  baseStrikeOut := (BaseFontStyle and 8) > 0;
+
+  runStyle := linfo.Glyphs[0].Style;
+  var runFontFamily: string := linfo.Glyphs[0].FontFamily;
+  var runFontSize: Single := linfo.Glyphs[0].FontSize;
+  var runColor: Integer := linfo.Glyphs[0].Color;
+  var runHasColor: Boolean := linfo.Glyphs[0].HasColor;
+  var origFontName: string := Canvas.Font.Name;
+  var origFontSize: Integer := Canvas.Font.Size;
+  var origFontColor: TColor := Canvas.Font.Color;
+  if not linfo.Glyphs[0].HasFontSize then
+    runFontSize := origFontSize;
+
+  // Run tracking
+  var runFirstGlyph: Integer := 0;
+  SetLength(runGlyphs, 0);
+  SetLength(runDx, 0);
+
+  // Compute base font ascent for baseline alignment
+  var baseTM: TTextMetric;
+  Canvas.Font.Name := origFontName;
+  Canvas.Font.Size := origFontSize;
+  GetTextMetrics(Canvas.Handle, baseTM);
+  var baseAscent: Integer := baseTM.tmAscent;
+
+  for k := 0 to glyphCount - 1 do
+  begin
+    glyphStyle := linfo.Glyphs[k].Style;
+    var gFontFamily: string := linfo.Glyphs[k].FontFamily;
+    var gFontSize: Single := linfo.Glyphs[k].FontSize;
+    if not linfo.Glyphs[k].HasFontSize then
+      gFontSize := origFontSize;
+
+    var gColor: Integer := linfo.Glyphs[k].Color;
+    var gHasColor: Boolean := linfo.Glyphs[k].HasColor;
+
+    // If style, font, or color changed, flush the current run
+    if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
+        (gFontSize <> runFontSize) or (gColor <> runColor) or
+        (gHasColor <> runHasColor)) and (Length(runGlyphs) > 0) then
+    begin
+      Canvas.Font.Style := [];
+      if baseBold or ((runStyle and 1) > 0) then
+        Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+      if baseItalic or ((runStyle and 2) > 0) then
+        Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+      if baseUnderline or ((runStyle and 4) > 0) then
+        Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+      if baseStrikeOut or ((runStyle and 8) > 0) then
+        Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+      if runFontFamily <> '' then
+        Canvas.Font.Name := runFontFamily;
+      Canvas.Font.Size := Round(runFontSize);
+      if runHasColor then
+        Canvas.Font.Color := runColor
+      else
+        Canvas.Font.Color := origFontColor;
+
+      var runTM: TTextMetric;
+      GetTextMetrics(Canvas.Handle, runTM);
+      var baselineOffset: Integer := runTM.tmAscent - baseAscent;
+
+      // Draw run at pre-computed pixel position
+      var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
+      ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY, ETO_GLYPH_INDEX, nil,
+        PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
+
+      SetLength(runGlyphs, 0);
+      SetLength(runDx, 0);
+      runStyle := glyphStyle;
+      runFontFamily := gFontFamily;
+      runFontSize := gFontSize;
+      runColor := gColor;
+      runHasColor := gHasColor;
+      runFirstGlyph := k;
+    end;
+
+    // Accumulate glyph index and pre-computed dx
+    SetLength(runGlyphs, Length(runGlyphs) + 1);
+    runGlyphs[High(runGlyphs)] := Word(linfo.Glyphs[k].GlyphIndex);
+    SetLength(runDx, Length(runDx) + 1);
+    runDx[High(runDx)] := allDx[k];
+  end;
+
+  // Flush the last run
+  if Length(runGlyphs) > 0 then
+  begin
+    Canvas.Font.Style := [];
+    if baseBold or ((runStyle and 1) > 0) then
+      Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+    if baseItalic or ((runStyle and 2) > 0) then
+      Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+    if baseUnderline or ((runStyle and 4) > 0) then
+      Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+    if baseStrikeOut or ((runStyle and 8) > 0) then
+      Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
+    if runFontFamily <> '' then
+      Canvas.Font.Name := runFontFamily;
+    Canvas.Font.Size := Round(runFontSize);
+    if runHasColor then
+      Canvas.Font.Color := runColor
+    else
+      Canvas.Font.Color := origFontColor;
+
+    var runTM2: TTextMetric;
+    GetTextMetrics(Canvas.Handle, runTM2);
+    var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
+
+    var pixY2: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset2;
+    ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY2, ETO_GLYPH_INDEX, nil,
+      PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
+  end;
+
+  // Restore original font
+  Canvas.Font.Name := origFontName;
+  Canvas.Font.Size := origFontSize;
+  Canvas.Font.Color := origFontColor;
+end;
+
 procedure TRpGDIDriver.TextRectHtml(Canvas: TCanvas; ARect: TRect;
   Text: Widestring; Alignment: integer; Clipping: boolean; Wordbreak: boolean;
   Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
-  BackColor: TColor);
+  BackColor: TColor; IsHtml: Boolean; RightToLeft: Boolean);
 var
   recsize: TRect;
   i, k: integer;
@@ -1594,13 +2001,9 @@ var
   arec2: TRect;
   aalign: Cardinal;
   runText: WideString;
-  runStyle, glyphStyle: Integer;
   origFontStyle: TFontStyles;
-  baseBold, baseItalic, baseUnderline, baseStrikeOut: Boolean;
-  allPixPos: array of Integer;
-  allDx: array of Integer;
-  runGlyphs: array of Word;
-  runDx: array of Integer;
+  allPixPos: TArray<Integer>;
+  allDx: TArray<Integer>;
 begin
   try
     if drawbackground then
@@ -1652,15 +2055,17 @@ begin
     npdfdriver.PDFFile.Canvas.Font.Bold := fsBold in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.Underline := fsUnderline in Canvas.Font.Style;
     npdfdriver.PDFFile.Canvas.Font.StrikeOut := fsStrikeOut in Canvas.Font.Style;
+    // With UsePdfFonts plain text (IsHtml=false) must also go through the shaper so
+    // LineInfo.Glyphs populate for the glyph-indexed ExtTextOutW below.
+    npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
+    // RTL objects must measure like the PDF draws them: NFC-normalized and shaped
+    // with the paragraph direction (the canvas forces the embedded font itself).
+    if RightToLeft then
+      Text := npdfdriver.PDFFile.Canvas.InfoProvider.NFCNormalize(Text);
 
     larray := npdfdriver.PDFFile.Canvas.TextExtent(Text, recsize, Wordbreak, singleline,
-      false, true); // IsHtml=true
+      RightToLeft, IsHtml);
 
-    // Base font style from the element
-    baseBold := (BaseFontStyle and 1) > 0;
-    baseItalic := (BaseFontStyle and 2) > 0;
-    baseUnderline := (BaseFontStyle and 4) > 0;
-    baseStrikeOut := (BaseFontStyle and 8) > 0;
     origFontStyle := Canvas.Font.Style;
 
     // Apply vertical alignment
@@ -1687,170 +2092,9 @@ begin
       // This prevents GDI from re-applying bidi/shaping (which breaks Arabic)
       if Length(larray[i].Glyphs) > 0 then
       begin
-        var glyphCount: Integer := Length(larray[i].Glyphs);
-
-        // Pre-compute pixel X position for each glyph
-        // For right alignment: anchor from right edge so rounding error goes LEFT
-        // For left/center: anchor from left so rounding error goes RIGHT
-        SetLength(allPixPos, glyphCount);
-        SetLength(allDx, glyphCount);
-
-        if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
-        begin
-          // Right-anchored: iterate backwards from right edge
-          var pixRight: Integer := Round(ARect.Right * aintdpix / 1440);
-          var cumRight: Integer := 0; // cumulative twips from right
-          for k := glyphCount - 1 downto 0 do
-          begin
-            cumRight := cumRight + larray[i].Glyphs[k].XAdvance;
-            allPixPos[k] := pixRight - Round(cumRight * aintdpix / 1440);
-          end;
-        end
-        else
-        begin
-          // Left-anchored (left or center alignment)
-          var pixLeft: Integer := Round(ARect.Left * aintdpix / 1440);
-          if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
-          begin
-            var totalTwips: Integer := 0;
-            for k := 0 to glyphCount - 1 do
-              totalTwips := totalTwips + larray[i].Glyphs[k].XAdvance;
-            var totalPix: Integer := Round(totalTwips * aintdpix / 1440);
-            var rectPix: Integer := Round(ARect.Right * aintdpix / 1440) - pixLeft;
-            pixLeft := pixLeft + ((rectPix - totalPix) div 2);
-          end;
-          var cumLeft: Integer := 0;
-          for k := 0 to glyphCount - 1 do
-          begin
-            allPixPos[k] := pixLeft + Round(cumLeft * aintdpix / 1440);
-            cumLeft := cumLeft + larray[i].Glyphs[k].XAdvance;
-          end;
-        end;
-
-        // Compute dx values from consecutive pixel positions
-        for k := 0 to glyphCount - 2 do
-          allDx[k] := allPixPos[k + 1] - allPixPos[k];
-        // Last glyph dx (cell width, no next glyph to position)
-        allDx[glyphCount - 1] := Round(larray[i].Glyphs[glyphCount - 1].XAdvance * aintdpix / 1440);
-
-        nposx := posx;
+        ComputeGlyphPixPositions(larray[i], Alignment, ARect, aintdpix, allPixPos, allDx);
         nposy := posy + larray[i].TopPos - ascent;
-        runStyle := larray[i].Glyphs[0].Style;
-        var runFontFamily: string := larray[i].Glyphs[0].FontFamily;
-        var runFontSize: Single := larray[i].Glyphs[0].FontSize;
-        var runColor: Integer := larray[i].Glyphs[0].Color;
-        var runHasColor: Boolean := larray[i].Glyphs[0].HasColor;
-        var origFontName: string := Canvas.Font.Name;
-        var origFontSize: Integer := Canvas.Font.Size;
-        var origFontColor: TColor := Canvas.Font.Color;
-        if not larray[i].Glyphs[0].HasFontSize then
-          runFontSize := origFontSize;
-
-        // Run tracking
-        var runFirstGlyph: Integer := 0;
-        SetLength(runGlyphs, 0);
-        SetLength(runDx, 0);
-
-        // Compute base font ascent for baseline alignment
-        var baseTM: TTextMetric;
-        Canvas.Font.Name := origFontName;
-        Canvas.Font.Size := origFontSize;
-        GetTextMetrics(Canvas.Handle, baseTM);
-        var baseAscent: Integer := baseTM.tmAscent;
-
-        for k := 0 to glyphCount - 1 do
-        begin
-          glyphStyle := larray[i].Glyphs[k].Style;
-          var gFontFamily: string := larray[i].Glyphs[k].FontFamily;
-          var gFontSize: Single := larray[i].Glyphs[k].FontSize;
-          if not larray[i].Glyphs[k].HasFontSize then
-            gFontSize := origFontSize;
-
-          var gColor: Integer := larray[i].Glyphs[k].Color;
-          var gHasColor: Boolean := larray[i].Glyphs[k].HasColor;
-
-          // If style, font, or color changed, flush the current run
-          if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
-              (gFontSize <> runFontSize) or (gColor <> runColor) or
-              (gHasColor <> runHasColor)) and (Length(runGlyphs) > 0) then
-          begin
-            Canvas.Font.Style := [];
-            if baseBold or ((runStyle and 1) > 0) then
-              Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-            if baseItalic or ((runStyle and 2) > 0) then
-              Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
-            if baseUnderline or ((runStyle and 4) > 0) then
-              Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-            if baseStrikeOut or ((runStyle and 8) > 0) then
-              Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
-            if runFontFamily <> '' then
-              Canvas.Font.Name := runFontFamily;
-            Canvas.Font.Size := Round(runFontSize);
-            if runHasColor then
-              Canvas.Font.Color := runColor
-            else
-              Canvas.Font.Color := origFontColor;
-
-            var runTM: TTextMetric;
-            GetTextMetrics(Canvas.Handle, runTM);
-            var baselineOffset: Integer := runTM.tmAscent - baseAscent;
-
-            // Draw run at pre-computed pixel position
-            var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
-            ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY, ETO_GLYPH_INDEX, nil,
-              PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
-
-            SetLength(runGlyphs, 0);
-            SetLength(runDx, 0);
-            runStyle := glyphStyle;
-            runFontFamily := gFontFamily;
-            runFontSize := gFontSize;
-            runColor := gColor;
-            runHasColor := gHasColor;
-            runFirstGlyph := k;
-          end;
-
-          // Accumulate glyph index and pre-computed dx
-          SetLength(runGlyphs, Length(runGlyphs) + 1);
-          runGlyphs[High(runGlyphs)] := Word(larray[i].Glyphs[k].GlyphIndex);
-          SetLength(runDx, Length(runDx) + 1);
-          runDx[High(runDx)] := allDx[k];
-          nposx := nposx + larray[i].Glyphs[k].XAdvance;
-        end;
-
-        // Flush the last run
-        if Length(runGlyphs) > 0 then
-        begin
-          Canvas.Font.Style := [];
-          if baseBold or ((runStyle and 1) > 0) then
-            Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-          if baseItalic or ((runStyle and 2) > 0) then
-            Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
-          if baseUnderline or ((runStyle and 4) > 0) then
-            Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-          if baseStrikeOut or ((runStyle and 8) > 0) then
-            Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
-          if runFontFamily <> '' then
-            Canvas.Font.Name := runFontFamily;
-          Canvas.Font.Size := Round(runFontSize);
-          if runHasColor then
-            Canvas.Font.Color := runColor
-          else
-            Canvas.Font.Color := origFontColor;
-
-          var runTM2: TTextMetric;
-          GetTextMetrics(Canvas.Handle, runTM2);
-          var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
-
-          var pixY2: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset2;
-          ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY2, ETO_GLYPH_INDEX, nil,
-            PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
-        end;
-
-        // Restore original font
-        Canvas.Font.Name := origFontName;
-        Canvas.Font.Size := origFontSize;
-        Canvas.Font.Color := origFontColor;
+        DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpiy, BaseFontStyle);
       end
       else
       begin
@@ -2848,6 +3092,7 @@ begin
     try
       pdfdriver.filename := filename;
       pdfdriver.compressed := compressed;
+      pdfdriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
       if (PDFConformance <> SetPDFDefault) then
       begin
        pdfdriver.PDFConformance:=TPDFConformanceType(Integer(PDFConformance)-1);
@@ -2891,6 +3136,7 @@ begin
       if not metafile then
         pdfdriver.DestStream := Stream;
       pdfdriver.compressed := compressed;
+      pdfdriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
       if progress then
         report.OnPRogress := pdfdriver.RepProgress;
 {$IFDEF USETEECHART}
@@ -3001,6 +3247,7 @@ begin
       begin
         pdfdriver := TRpPDFDriver.Create;
         try
+          pdfdriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
           oldprogres := report.OnPRogress;
           try
             report.OnPRogress := RepProgress;
@@ -3025,6 +3272,7 @@ begin
           else
             gdidriver.devicefonts := false;
           gdidriver.neverdevicefonts := report.PrinterFonts = rppfontsnever;
+          gdidriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
           oldprogres := report.OnPRogress;
           try
             report.OnPRogress := RepProgress;
@@ -3116,6 +3364,7 @@ begin
       else
         gdidriver.devicefonts := false;
       gdidriver.neverdevicefonts := report.PrinterFonts = rppfontsnever;
+      gdidriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
       oldprogres := report.OnPRogress;
       try
         report.OnPRogress := RepProgress;
@@ -3207,6 +3456,7 @@ begin
 
       pdfdriver.filename := filename;
       pdfdriver.compressed := pdfcompressed;
+      pdfdriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
 {$IFDEF USETEECHART}
       report.metafile.OnDrawChart := gdidriver.DoDrawChart;
 {$ENDIF}
@@ -3311,6 +3561,7 @@ begin
                 gdidriver.devicefonts := false;
               gdidriver.toprinter := true;
               gdidriver.neverdevicefonts := report.PrinterFonts = rppfontsnever;
+              gdidriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
               gdidriver.noenddoc := true;
               report.PrintAll(gdidriver);
             finally
@@ -3383,6 +3634,7 @@ begin
           else
             gdidriver.devicefonts := false;
           gdidriver.neverdevicefonts := report.PrinterFonts = rppfontsnever;
+          gdidriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
           report.PrintRange(gdidriver, allpages, frompage, topage,
             copies, collate);
         finally
