@@ -10,7 +10,7 @@ implementation
 
 uses
   SysUtils, Classes, IniFiles, WebReq, IdHTTPWebBrokerBridge, IdSocketHandle,
-  rpmdshfolder, rpwebmodule, rpwebserverconfigadmin;
+  rpmdshfolder, rpdatainfo, rpwebmodule, rpwebserverconfigadmin, rpwebdbxadmin;
 
 function TryGetCmdLineValue(const ASwitchName: string; out AValue: string): Boolean;
 var
@@ -80,15 +80,27 @@ begin
 end;
 
 procedure WriteSelfHostedBanner(const APort: Integer; const ABindAddress: string);
+var
+  LConfigFileName: string;
+  LCommonFileName: string;
 begin
   WriteLn('Reportman selfhosted mode enabled');
-  WriteLn('Parameters: -selfhosted [-port=<port>] [-bind=<address>]');
+  WriteLn('Parameters: -selfhosted [-port=<port>] [-bind=<address>] [-configfile <file>] [-dbxconnectionfile <file>]');
   if Length(Trim(ABindAddress)) > 0 then
     WriteLn('Bind address: ' + ABindAddress)
   else
     WriteLn('Bind address: 0.0.0.0');
   WriteLn('Port: ' + IntToStr(APort));
-  WriteLn('Config: ' + ResolveSelfHostedConfigFileName);
+  LConfigFileName := ResolveSelfHostedConfigFileName;
+  WriteLn('Config: ' + LConfigFileName);
+{$IFDEF LINUX}
+  LCommonFileName := GetReportmanServerCommonConfigFileName;
+  if not SameText(LConfigFileName, LCommonFileName) then
+  begin
+    WriteLn('System config (used by CGI mode): ' + LCommonFileName);
+    WriteLn('Publishing is manual: copy the edited file over the system config when ready.');
+  end;
+{$ENDIF}
   WriteLn('Port precedence: command line -port overrides CONFIG/TCPPORT.');
   WriteLn('Press Ctrl+C or terminate the process to stop the server.');
 end;
@@ -99,7 +111,17 @@ var
   LPort: Integer;
   LBindAddress: string;
   LBinding: TIdSocketHandle;
+  LValue: string;
 begin
+  ReportmanWebSelfHosted := True;
+  // Forced configuration files from the command line
+  if TryGetCmdLineValue('configfile', LValue) then
+    ReportmanWebConfigFileOverride := Trim(LValue);
+  if TryGetCmdLineValue('dbxconnectionfile', LValue) then
+    DBXConnectionsFileOverride := Trim(LValue);
+  // The connections registry must exist so the web admin can configure a clean
+  // machine; create it empty when missing (at the forced path when given).
+  EnsureDbxConnectionsFileExists(DBXConnectionsFileOverride);
   LPort := ResolveSelfHostedPort;
   LBindAddress := ResolveSelfHostedBindAddress;
   if WebRequestHandler = nil then

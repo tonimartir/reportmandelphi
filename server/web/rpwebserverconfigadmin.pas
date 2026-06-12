@@ -7,8 +7,21 @@ interface
 uses
   Classes, SysUtils, IniFiles, Generics.Collections, rpmdshfolder, rpdatainfo;
 
+// True when running as a selfhosted server (repwebexe -selfhosted). In that mode
+// the configuration is edited through the web UI, so the per-user copy is used
+// (writable without privileges); publishing to /etc/reportmanserver is a manual
+// step. CGI mode always reads the standard system file when it exists.
+var
+  ReportmanWebSelfHosted: Boolean = False;
+  // Process-wide override for the reportmanserver configuration file, settable
+  // from the command line (-configfile). Wins over any automatic resolution.
+  ReportmanWebConfigFileOverride: string = '';
+
 function ResolveReportmanServerConfigFileName(
   const AConfigOverride: string = ''): string;
+
+// System config file location used by CGI mode (Linux: /etc/reportmanserver)
+function GetReportmanServerCommonConfigFileName: string;
 
 type
   TRpWebServerConfigFormData = record
@@ -236,6 +249,11 @@ begin
   end;
 end;
 
+function GetReportmanServerCommonConfigFileName: string;
+begin
+  Result := Obtainininamecommonconfig('', '', 'reportmanserver');
+end;
+
 function ResolveReportmanServerConfigFileName(
   const AConfigOverride: string): string;
 var
@@ -245,20 +263,44 @@ begin
   if Length(Trim(AConfigOverride)) > 0 then
     Exit(Trim(AConfigOverride));
 
-  LCommonFileName := Obtainininamecommonconfig('', '', 'reportmanserver');
+  if Length(Trim(ReportmanWebConfigFileOverride)) > 0 then
+    Exit(Trim(ReportmanWebConfigFileOverride));
+
+  LCommonFileName := GetReportmanServerCommonConfigFileName;
   LLocalFileName := Obtainininamelocalconfig('', '', 'reportmanserver');
 
 {$IFDEF LINUX}
-  if FileExists(LLocalFileName) then
-    Exit(LLocalFileName);
-
-  if FileExists(LCommonFileName) then
+  if ReportmanWebSelfHosted then
   begin
-    CopyFileSimple(LCommonFileName, LLocalFileName);
+    // Selfhosted: the configuration is edited through the web UI, so work on the
+    // per-user copy, writable without privileges. Seed it from the system file
+    // when present; publishing back to /etc/reportmanserver is a manual step.
+    if FileExists(LLocalFileName) then
+      Exit(LLocalFileName);
+
+    if FileExists(LCommonFileName) then
+    begin
+      CopyFileSimple(LCommonFileName, LLocalFileName);
+      Exit(LLocalFileName);
+    end;
+
+    ForceDirectories(ExtractFilePath(LLocalFileName));
     Exit(LLocalFileName);
   end;
 
-  ForceDirectories(ExtractFilePath(LLocalFileName));
+  // CGI mode: standard system location first. /etc/reportmanserver is where the
+  // file has always lived and where the web server user (often with an empty
+  // HOME) can reliably find it; the per-user path would degenerate to things
+  // like /.etc.reportmanserver under Apache.
+  if FileExists(LCommonFileName) then
+    Exit(LCommonFileName);
+
+  if FileExists(LLocalFileName) then
+    Exit(LLocalFileName);
+
+  if CanWriteToPath(LCommonFileName) then
+    Exit(LCommonFileName);
+
   Exit(LLocalFileName);
 {$ENDIF}
 

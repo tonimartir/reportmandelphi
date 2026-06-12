@@ -29,6 +29,11 @@ uses
 {$ENDIF}
   rpmdconsts;
 
+// Creates an empty dbxconnections registry at the default location resolved by
+// TRpConnAdmin when no file exists yet, so the web admin can configure a clean
+// machine instead of failing with "configuration file missing".
+procedure EnsureDbxConnectionsFileExists(const AOverridePath: string);
+
 type
   TRpWebEditorKind = (
     weText,
@@ -378,8 +383,51 @@ begin
 {$ENDIF}
 end;
 
+// TRpConnAdmin raises on Linux when no dbxconnections file exists anywhere, so
+// create an empty one at the same default location TRpConnAdmin resolves
+// ($HOME/.borland/dbxconnections, or /usr/local/etc/dbxconnections.conf when
+// HOME is not usable). The drivers file is not needed: it falls back to the
+// embedded resource.
+procedure EnsureDbxConnectionsFileExists(const AOverridePath: string);
+var
+  LFileName: string;
+  LStream: TFileStream;
+{$IFDEF LINUX}
+  LDir: string;
+{$ENDIF}
+begin
+  LFileName := Trim(AOverridePath);
+{$IFDEF LINUX}
+  if Length(LFileName) = 0 then
+  begin
+    LDir := GetEnvironmentVariable('HOME') + '/.borland';
+    if Length(LDir) > 12 then
+      LFileName := LDir + '/dbxconnections'
+    else
+    begin
+      LDir := '/usr/local/etc';
+      LFileName := LDir + '/dbxconnections.conf';
+    end;
+  end;
+{$ENDIF}
+  if Length(LFileName) = 0 then
+    Exit;
+  if FileExists(LFileName) then
+    Exit;
+  try
+    ForceDirectories(ExtractFilePath(LFileName));
+    LStream := TFileStream.Create(LFileName, fmCreate);
+    LStream.Free;
+  except
+    // Not writable here: leave it to TRpConnAdmin to report the real situation
+  end;
+end;
+
 function TRpWebDbxAdminService.CreateConnAdmin: TRpConnAdmin;
 begin
+  // Pre-create the connections registry so the admin can configure a clean
+  // machine instead of failing with "configuration file missing".
+  EnsureDbxConnectionsFileExists(Trim(FConnectionsOverride));
   Result := TRpConnAdmin.Create;
   if (Length(Trim(FConnectionsOverride)) > 0) or
     (Length(Trim(FDriversOverride)) > 0) then

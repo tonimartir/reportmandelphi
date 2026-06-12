@@ -56,6 +56,11 @@ type
    filename:string;
    Compressed:boolean;
    DestStream:TStream;
+   // When true the canvas shapes plain text and writes per-glyph positions, so the
+   // PDF matches the GDI glyph rendering exactly. Set it when the report uses
+   // PrinterFonts=rppfontsrecalculate. Survives NewDocument (which recreates the
+   // canvas and would lose a flag set directly on it).
+   UsePdfFonts:boolean;
    constructor Create;
    destructor Destroy;override;
 {$IFNDEF FORWEBAX}
@@ -203,6 +208,13 @@ begin
   FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.AFRelationShip,
     efile.Description,efile.CreationDate, efile.ModificationDate, efile.Stream);
  end;
+ // Stored metafiles (format 4.1) carry PrinterFonts=Recalculate: enable the
+ // exact-metrics pipeline automatically, mirroring the C# engine.
+ if report.PrinterFonts=rppfontsrecalculate then
+  UsePdfFonts:=true;
+ // Reapply the exact-metrics flag, the canvas was just recreated
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
  FPDFFile.BeginDoc;
 end;
 
@@ -247,6 +259,15 @@ begin
  // single line
  singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
  rightToLeft:=atext.RightToLeft;
+ // RTL is always measured shaped; normalize like the PDF drawing path does
+ // (TRpPDFCanvas.TextRect) so line breaks and glyph advances stay identical.
+ if rightToLeft then
+  atext.Text:=FPDFFile.Canvas.InfoProvider.NFCNormalize(atext.Text);
+ // The forced shaper needs a TrueType font: promote standard Type1 fonts to linked
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
+ if FPDFFile.Canvas.ForceComplexShaping and (TRpType1Font(atext.Type1Font)<>poEmbedded) then
+  atext.Type1Font:=Integer(poLinked);
  FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
  FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
  FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
@@ -288,6 +309,12 @@ begin
  end;
  singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
  rightToLeft:=atext.RightToLeft;
+ if rightToLeft then
+  atext.Text:=FPDFFile.Canvas.InfoProvider.NFCNormalize(atext.Text);
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
+ if FPDFFile.Canvas.ForceComplexShaping and (TRpType1Font(atext.Type1Font)<>poEmbedded) then
+  atext.Type1Font:=Integer(poLinked);
  FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
  FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
  FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
@@ -345,6 +372,11 @@ begin
       FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded
     else
       FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
+    // Exact-parity mode: promote standard Type1 fonts to linked TrueType so the
+    // PDF shares glyph metrics with the GDI glyph rendering
+    if FPDFFile.Canvas.ForceComplexShaping and
+       (not (FPDFFile.Canvas.Font.Name in [poLinked,poEmbedded])) then
+      FPDFFile.Canvas.Font.Name:=poLinked;
     FPDFFile.Canvas.Font.Size:=obj.FontSize;
     FPDFFile.Canvas.Font.Color:=obj.FontColor;
     FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
@@ -707,6 +739,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  if (pdfVersionA3) then
  begin
   pdfdriver.PDFConformance := PDF_A_3;
@@ -741,6 +774,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  astream:=TMemoryStream.Create;
  try
   pdfdriver.DestStream:=aStream;
@@ -810,6 +844,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=false;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  report.TwoPass:=true;
  // If report progress must print progress
  oldprogres:=report.OnProgress;
@@ -845,6 +880,7 @@ begin
  try
  pdfdriver.filename:=filename;
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
   if (pdfVersionA3) then
  begin
   pdfdriver.PDFConformance := PDF_A_3;

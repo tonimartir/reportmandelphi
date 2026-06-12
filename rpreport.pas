@@ -985,6 +985,9 @@ begin
   metafile.PreviewMargins:=PreviewMargins;
   metafile.LinesPerInch:=LinesPerInch;
   metafile.TouchEnabled:=TouchEnabled;
+  // The metafile carries PrinterFonts so stored metafiles (saved as format 4.1
+  // when Recalculate) keep the glyph-exact pipeline when printed later.
+  metafile.PrinterFonts:=PrinterFonts;
   ClearTotalPagesList;
   // Sets page orientation
   currentorientation:=PageOrientation;
