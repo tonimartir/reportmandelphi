@@ -86,6 +86,8 @@ type
     FAssetRootPath: string;
     FEditorReady: Boolean;
     FUpdatingFromBrowser: Boolean;
+    FMemoFallback: TMemo;
+    FUseFallback: Boolean;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
     FSchemaApiKey: string;
@@ -118,6 +120,8 @@ type
       ASelectedAgentAiId: Int64);
     procedure SelectCurrentSchema;
     procedure SetSQL(const Value: string);
+    procedure ActivateFallback(const AReason: string);
+    procedure MemoFallbackChange(Sender: TObject);
     procedure SetHubDatabaseId(const Value: Int64);
     procedure SetHubSchemaId(const Value: Int64);
     procedure SetAuditText(const Value: string);
@@ -183,6 +187,12 @@ const
   CMonacoAISelectionWidth = 384;
   CMonacoAIButtonColumnWidth = 54;
   CMonacoAISelectionRightPadding = 6;
+  SRpMonacoWebViewFallbackHint =
+    'El editor SQL avanzado requiere el runtime de Microsoft Edge WebView2, que no ' +
+    'se ha podido cargar (equipo antiguo o sin actualizar). Para recuperar el editor ' +
+    'completo instale el runtime desde ' +
+    'https://developer.microsoft.com/microsoft-edge/webview2/ . Mientras tanto puede ' +
+    'leer y editar el SQL en modo texto y aplicar las sugerencias del chat con normalidad.';
 
 type
   TEditorGuard = class(TInterfacedObject, IEditorGuard)
@@ -356,6 +366,21 @@ begin
   MemoAudit.ReadOnly := True;
   MemoAudit.WordWrap := True;
   MemoAudit.ScrollBars := ssVertical;
+
+  // Plain-text fallback for the SQL editor, used when WebView2 cannot be created
+  // (e.g. missing Edge runtime on old machines). Mirrors the proven
+  // TRpWebMarkdownView fallback but stays EDITABLE so the user can read/edit SQL
+  // and apply chat suggestions. Hidden until ActivateFallback.
+  FUseFallback := False;
+  FMemoFallback := TMemo.Create(Self);
+  FMemoFallback.Parent := TabSQL;
+  FMemoFallback.Align := alClient;
+  FMemoFallback.Visible := False;
+  FMemoFallback.ScrollBars := ssBoth;
+  FMemoFallback.WordWrap := False;
+  FMemoFallback.Font.Name := 'Consolas';
+  FMemoFallback.Font.Size := 10;
+  FMemoFallback.OnChange := MemoFallbackChange;
 end;
 
 procedure TFRpMonacoEditorVCL.BAuditSQLClick(Sender: TObject);
@@ -382,14 +407,30 @@ var
 begin
   inherited;
 
+  if FUseFallback then
+    Exit;
+
+  // Testing/support aid: force the plain-text fallback regardless of WebView2
+  // availability by setting the RPM_FORCE_WEBVIEW_FALLBACK environment variable.
+  if GetEnvironmentVariable('RPM_FORCE_WEBVIEW_FALLBACK') <> '' then
+  begin
+    ActivateFallback('Forced by RPM_FORCE_WEBVIEW_FALLBACK');
+    Exit;
+  end;
+
   if not Edge.WebViewCreated then
   begin
-    Edge.HandleNeeded;
+    try
+      Edge.HandleNeeded;
 
-    LDestPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', '');
-    Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+      LDestPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', '');
+      Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
 
-    Edge.CreateWebView;
+      Edge.CreateWebView;
+    except
+      on E: Exception do
+        ActivateFallback('CreateWebView exception: ' + E.Message);
+    end;
   end;
 end;
 
@@ -484,6 +525,12 @@ begin
     LURL := LURL + 'index.html';
 
     Edge.Navigate(LURL);
+  end
+  else
+  begin
+    // WebView2 could not be created (e.g. HRESULT 80070002 = runtime missing on
+    // old machines). Drop to the plain-text editor instead of a blank control.
+    ActivateFallback('CreateWebViewCompleted HRESULT: ' + IntToHex(AResult, 8));
   end;
 end;
 
@@ -505,6 +552,21 @@ begin
     Exit;
 
   FSQL := Value;
+
+  if FUseFallback then
+  begin
+    if FMemoFallback <> nil then
+    begin
+      FUpdatingFromBrowser := True;
+      try
+        FMemoFallback.Lines.Text := FSQL;
+      finally
+        FUpdatingFromBrowser := False;
+      end;
+    end;
+    Exit;
+  end;
+
   if Edge.WebViewCreated then
   begin
     LJSON := TJSONString.Create(FSQL);
@@ -513,6 +575,59 @@ begin
       Edge.ExecuteScript(LScript);
     finally
       LJSON.Free;
+    end;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.ActivateFallback(const AReason: string);
+begin
+  if FUseFallback then
+    Exit; // idempotent: never double-activate
+  FUseFallback := True;
+  FEditorReady := False;
+
+  if Edge <> nil then
+    Edge.Visible := False;
+  if FMemoFallback <> nil then
+  begin
+    FUpdatingFromBrowser := True;
+    try
+      FMemoFallback.Lines.Text := FSQL; // seed with the current SQL
+    finally
+      FUpdatingFromBrowser := False;
+    end;
+    FMemoFallback.Visible := True;
+    FMemoFallback.BringToFront;
+  end;
+
+  // Surface the failure and an actionable hint through the log channel (the chat /
+  // AI log already fall back to a plain memo) without polluting the SQL text.
+  EmitInferenceLog('System',
+    'Fallback activated due to WebView failure: ' + AReason, True);
+  EmitInferenceLog('System', SRpMonacoWebViewFallbackHint, True);
+end;
+
+procedure TFRpMonacoEditorVCL.MemoFallbackChange(Sender: TObject);
+var
+  LNewSQL: string;
+begin
+  if (not FUseFallback) or FUpdatingFromBrowser then
+    Exit;
+  if FMemoFallback = nil then
+    Exit;
+  LNewSQL := FMemoFallback.Lines.Text;
+  // Normalize line endings exactly like the WebView '01:' path so FSQL is the
+  // same regardless of which editor produced it.
+  LNewSQL := LNewSQL.Replace(#13#10, #10).Replace(#13, #10).Replace(#10, #13#10);
+  if FSQL <> LNewSQL then
+  begin
+    FUpdatingFromBrowser := True;
+    try
+      FSQL := LNewSQL;
+      if Assigned(FOnContentChanged) then
+        FOnContentChanged(Self);
+    finally
+      FUpdatingFromBrowser := False;
     end;
   end;
 end;
@@ -1050,6 +1165,8 @@ var
   LHeaderEnd, LOffsetSeparator: Integer;
   LHeader: string;
 begin
+  if FUseFallback then
+    Exit; // no AI autocomplete in plain-text fallback
   FDebounceTimer.Enabled := False;
   
   FPendingRequestId := '';
@@ -1120,6 +1237,8 @@ var
   LStartPos: Integer;
   LTaskProc: TProc;
 begin
+  if FUseFallback then
+    Exit; // no AI autocomplete in plain-text fallback
   if FInferenceRunning then
     Exit;
 
@@ -1407,6 +1526,13 @@ var
   LScript: string;
   LEscapedJson: string;
 begin
+  if FUseFallback then
+  begin
+    // No WebView to push completions to; free the inputs (this method owns them).
+    AInlineItems.Free;
+    ACompletionItems.Free;
+    Exit;
+  end;
   // Build { inlineItems: [...], completionItems: [...] }
   LResponse := TJSONObject.Create;
   try

@@ -176,6 +176,7 @@
         <DCC_DcpOutput>.\dcu32</DCC_DcpOutput>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_MapFile>3</DCC_MapFile>
+        <DCC_RangeChecking>true</DCC_RangeChecking>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <DCC_ExeOutput>.\bin64</DCC_ExeOutput>
@@ -1181,7 +1182,6 @@
         <DCCReference Include="..\..\..\rptextdriver.pas"/>
         <DCCReference Include="..\..\..\rplinuxexceptionhandler.pas"/>
         <DCCReference Include="..\..\..\rphtmldriver.pas"/>
-        <DCCReference Include="..\..\..\rpdcintegration.pas"/>
         <None Include="..\..\..\rpconf.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
