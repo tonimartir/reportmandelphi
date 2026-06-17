@@ -112,6 +112,12 @@ function DidFallBackToApiForDatabase(HubDatabaseId: Int64): Boolean;
 function FormatTransportMode(AMode: TRpDcConnectionMode;
                              AFallbackApi: Boolean): string;
 
+// Drops every warm Direct Channel session from the pool. Call after the
+// user edits connection configuration (ApiKey / HubDatabaseId) so a channel
+// authenticated with the previous credentials is not reused. Safe no-op when
+// the Direct Channel was never enabled.
+procedure ResetHubChannelPool;
+
 {$ENDIF MSWINDOWS}
 
 implementation
@@ -475,6 +481,23 @@ begin
   else
     Result := 'Unknown';
   end;
+end;
+
+procedure ResetHubChannelPool;
+var
+  pool: TRpDcHubChannelPool;
+begin
+  EnsureLock;
+  GLock.Acquire;
+  try
+    pool := GPool;
+  finally
+    GLock.Release;
+  end;
+  // CloseAll takes the pool's own lock; do it outside GLock to avoid
+  // holding two locks at once (mirrors GetLastTransportForDatabase).
+  if pool <> nil then
+    pool.CloseAll;
 end;
 
 procedure EnableDirectChannel(const AApiBaseUrl, ABearerToken: string;

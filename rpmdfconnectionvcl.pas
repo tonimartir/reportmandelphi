@@ -422,8 +422,12 @@ begin
  conadmin.free;
  conadmin:=TRPCOnnAdmin.Create;
  conadmin.GetConnectionNames(ComboAvailable.Items,'');
+ // The configuration (dbxconnections) may have been edited inside the dialog.
+ // Disconnect each live connection and reload its config so the next data
+ // fetch / report run picks up the new values without restarting the app.
  for i:=0 to report.DatabaseInfo.Count-1 do
  begin
+  report.DatabaseInfo[i].DisConnect;
   report.DatabaseInfo[i].UpdateConAdmin;
  end;
 end;

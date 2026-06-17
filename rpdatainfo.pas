@@ -2540,6 +2540,11 @@ begin
   FIBODatabase.Connected:=False;
  end;
 {$ENDIF}
+ // Reportman Agent (rpdbHttp) driver: drop the live connection so the next
+ // Connect re-reads ApiKey / HubDatabaseId from the (possibly changed)
+ // configuration instead of exiting early because FConnected is still True.
+ if Assigned(FHttpDatabase) then
+  FHttpDatabase.Connected:=False;
 end;
 
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);

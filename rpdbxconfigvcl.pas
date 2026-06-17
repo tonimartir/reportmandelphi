@@ -629,6 +629,17 @@ begin
    RpMessageBox(E.MEssage);
   end;
  end;
+{$IFDEF MSWINDOWS}
+ // The user may have changed connection settings (e.g. ApiKey or
+ // HubDatabaseId). Invalidate the cached Direct Channel sessions so the next
+ // data fetch / report run re-authenticates with the new values instead of
+ // reusing a stale pooled channel until the application is restarted.
+ try
+  ResetHubChannelPool;
+ except
+  on E:Exception do ; // never let cache cleanup block closing the dialog
+ end;
+{$ENDIF}
 end;
 
 
