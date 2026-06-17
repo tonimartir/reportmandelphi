@@ -1,0 +1,53 @@
+# Reportman Web base image + Progress DataDirect Connect for ODBC (Linux x64).
+#
+# DataDirect ODBC drivers are licensed. Download the Linux 64-bit package from
+# Progress (https://www.progress.com/datadirect-connectors) and place it in this
+# folder as datadirect-odbc.tar.gz.
+#   docker build -f Dockerfile.datadirect -t reportman-web-datadirect .
+#
+# The base image already ships the unixODBC driver manager, so the DataDirect
+# .so drivers only need to be unpacked, put on the dynamic loader path and
+# registered in /etc/odbcinst.ini. Reportman then connects through an ODBC
+# connection (Zeos "odbc" protocol or FireDAC ODBC) that references the
+# registered driver or a DSN.
+#
+# "DataDirect" is Progress's proprietary connectivity brand; the ODBC product is
+# "Progress DataDirect Connect for ODBC" (Connect64 for ODBC), Wire Protocol drivers.
+#
+# NOTE: the package layout, the unpack path and the driver .so name depend on the
+# DataDirect version you download. Adjust DD_HOME, the tar flags and the Driver=
+# line below to match your package. The driver libraries are in the install's lib/
+# folder; the file name is versioned and the prefix varies by release, e.g.
+# ivora28.so / DWora28.so / ARora27.so (Oracle), ivmsss28.so / DWmsss28.so
+# (SQL Server). The same family also provides the Progress OpenEdge Wire Protocol
+# driver to reach a Progress OpenEdge database itself.
+ARG BASE_IMAGE=tonimartir/reportman-web:latest
+FROM ${BASE_IMAGE}
+
+ARG DD_HOME=/opt/progress/datadirect
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tar gzip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY datadirect-odbc.tar.gz /tmp/datadirect.tar.gz
+RUN mkdir -p "${DD_HOME}" \
+    && tar -xzf /tmp/datadirect.tar.gz -C "${DD_HOME}" --strip-components=1 \
+    && rm /tmp/datadirect.tar.gz \
+    # put the DataDirect driver libraries on the dynamic loader path
+    && echo "${DD_HOME}/lib" > /etc/ld.so.conf.d/datadirect.conf \
+    && ldconfig \
+    # register the driver you need with the system unixODBC manager
+    && printf '%s\n' \
+       '[DataDirect Oracle Wire Protocol]' \
+       'Description=Progress DataDirect Oracle Wire Protocol' \
+       "Driver=${DD_HOME}/lib/ivora28.so" \
+       >> /etc/odbcinst.ini
+
+# DataDirect tools/drivers home and (optional) DSN file. odbc.ini lives in the
+# persistent /usr/local/etc volume so DSNs survive container restarts.
+ENV ODBCHOME=/opt/progress/datadirect \
+    ODBCINI=/usr/local/etc/odbc.ini
+
+USER reportman

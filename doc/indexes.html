@@ -1,136 +1,123 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Página oficial de Report Manager</title>
+  <meta name="description" content="Report Manager - motor de informes y disenador visual de codigo abierto para .NET, Delphi, C++Builder y Linux. Salida a PDF, SVG, HTML e impresion, con AI Copilot, servidor de informes web/TCP y agente de base de datos.">
+  <title>Report Manager - Motor de informes para .NET, Delphi y Linux</title>
   <link rel="stylesheet" href="responsive.css">
 </head>
-
 <body>
-  <div class="container">
 
-    <header class="header">
-      <div class="lang">
-        <a href="index.html">English</a> | <b>Español</b>
-        <span class="flags">
-          <a href="index.html"><img src="doc/images/english_flag.jpg" alt="English Flag"></a>
-          <b><img src="doc/images/spanish_flag.jpg" alt="Spanish Flag"></b>
-        </span>
-      </div>
-      <h1>Report Manager</h1>
-      <div class="promo-banner">
-        <div class="promo-image">
-          <a href="https://ai.reportman.es" target="_blank">
-            <img src="https://ai.reportman.es/images/image.webp" alt="Reportman.AI Screenshot">
-          </a>
-        </div>
-        <div class="promo-text">
-          <a href="https://ai.reportman.es" target="_blank">🚀 Reportman.AI The new way</a>
-          <span>Talk to your data to get insights.</span>
-        </div>
-        <div class="promo-image">
-          <a href="https://ai.reportman.es" target="_blank">
-            <img src="https://ai.reportman.es/images/developers.webp" alt="Reportman.AI Developers">
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <div class="content">
-      <nav class="sidebar">
-        <p><b>Descripción</b></p>
-        <ul>
-          <li><a href="contribes.html">Comprar</a></li>
-          <li><a href="webserveres.html">Servidor Web</a></li>
-          <li><a href="screenshotses.html">Pantallas</a></li>
-          <li><a href="downloades.html">Descarga</a></li>
-          <li><a href="docnet/index.html">Biblioteca punto net</a></li>
-          <li><a href="doc/index.html" target="_blank">Documentación (inglés)</a></li>
-          <li><a href="supportes.html">Soporte</a></li>
-          <li><a href="companyes.html">Empresa</a></li>
-          <li><a href="linkses.html">Otros enlaces</a></li>
-          <li><a href="http://sourceforge.net" target="_blank">
-              <img src="http://sourceforge.net/sflogo.php?group_id=51737&amp;type=1" alt="SourceForge Logo">
-            </a></li>
-          <li><a href="http://www.delphi-jedi.org" target="_blank">
-              <img src="doc/images/jedinow.gif" alt="JEDI Logo">
-            </a></li>
-        </ul>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="indexes.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="indexes.html" class="active">Inicio</a>
+        <a href="downloades.html">Descarga</a>
+        <a href="webserveres.html">Servidor Web</a>
+        <a href="screenshotses.html">Pantallas</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank">Docs</a>
+        <a href="supportes.html">Soporte</a>
       </nav>
-
-      <main class="main">
-        <h3>Descripción de la aplicación</h3>
-        <p>Report manager es una <b>aplicación de generación de informes</b> (Report Manager Designer) y <b>herramientas
-            de línea de comandos</b> un conjunto de <b>componentes</b> para .Net, .Net Core, Delphi y C++Builder,
-          también puede utilizarse desde otros entornos de desarrollo con el componente <b>ActiveX incluído</b> (Visual
-          Basic, Visual FoxPro, cualquier lenguaje de Visual Studio .Net...), se proporciona <b>una biblioteca dinámica
-            estándar</b> con funciones para su uso con cualquier lenguaje. <a href="doc/gnuc.html" target="_blank">como
-            GNU C</a>. Dispone de bibliotecas para <b>.Net y .Net Core</b> y de una versión para <b>Linux 64bits</b>
-          para generar archivos PDF.</p>
-
-        <div class="images-row">
-          <img src="doc/images/designerxpsmall2.jpg" alt="Designer XP">
-          <img src="doc/images/arrow.jpg" alt="Arrow">
-          <img src="doc/images/previewxpsmall2.jpg" alt="Preview XP">
-        </div>
-
-        <p><strong>Hay disponibles paquetes NuGet de Reportman, se ha creado un nuevo <a
-              href="https://github.com/tonimartir/reportman">repositorio</a> para desarrollo en .Net</strong></p>
-
-        <p>Incluye un <a href="doc/serverintro.html" target="_blank"><b>Servidor de informes TCP</b></a>, a través del
-          cual <a href="doc/serverclient.html" target="_blank">los clientes</a> obtienen informes procesados en el
-          servidor. También se incluye un completo <a href="webserveres.html"><b>servidor web de informes</b></a>,
-          <b>generando archivos Adobe PDF al vuelo</b>. Un potente servidor de informes de red <b>sin pago de licencias
-            y con soporte para máquinas multiprocesador</b>.
-        </p>
-
-        <p><strong><a href="doc/dotnetport.html" target="_blank">Nuevo: Soporte nativo para Microsoft .Net y
-              Mono.</a></strong></p>
-
-        <p><b><a href="doc/installwebreport.html" target="_blank">ActiveX plugin</a></b> permite incrustar <strong>la
-            impresión y la presentación preliminar en Microsoft Internet Explorer</strong>.</p>
-
-        <h3>Comprar</h3>
-        <p>Report Manager es código libre y gratuito, puede adquirir <a
-            href="http://reportman.es/contribes.html">soporte o servicios</a>.</p>
-
-        <h3>Licencia</h3>
-        <p>Report Manager es un producto <b>opensource</b> bajo <a href="doc/license.html" target="_blank">el modelo
-            MPL</a> (inglés), (se incluye permiso de uso en aplicaciones GPL), por lo que <b>puede usarlo en sus
-            aplicaciones comerciales, pero cualquier mejora introducida en el motor de impresión debe ser publicada bajo
-            esta licencia.</b></p>
-
-        <h3>Resumen de características</h3>
-        <p>Funciona en <b>Windows y Linux</b>. Puede <b>distribuir el diseñador de informes</b>, con esto consigue <b>la
-            modificación de informes sin modificar su aplicación</b>, el resultado puede ser guardado como un archivo
-          con formato <b>Adobe PDF</b>.</p>
-
-        <p>Report Manager dispone de múltiples <a href="doc/features.html" target="_blank">características</a> (inglés),
-          incluyendo algunas exclusivas, como bibliotecas de informes, metaarchivos, fuentes de impresora, secciones
-          externas y subinformes hijos.</p>
-
-        <p>Si utiliza Delphi/Kylix/Builder, puede incluir el motor de informes en sus ejecutables, incluye presentación
-          preliminar, diálogo de impresión, opciones del informe...</p>
-
-        <h3>Versión actual</h3>
-        <p><a href="doc/whatisnew.html" target="_blank">Pulse aquí</a> para información adicional sobre la versión
-          actual (inglés).</p>
-
-        <h3>Entornos de desarrollo</h3>
-        <p><a href="doc/interoperability.html" target="_blank">Pulse aquí</a> para un informe detallado de los entornos
-          de desarrollo soportados (inglés).</p>
-
-        <p>Para una descripción detallada diríjase a la <a href="doc/features.html" target="_blank">lista de
-            características</a> (inglés).</p>
-
-        <p>Visite también la <a href="doc/index.html" target="_blank">Documentación</a> (inglés) y preguntas más
-          frecuentes, <a href="doc/faq.html" target="_blank">F.A.Q.</a> (inglés)</p>
-      </main>
+      <div class="topbar-right">
+        <span class="lang-switch"><a href="index.html">EN</a><span class="current">ES</span></span>
+      </div>
     </div>
+  </header>
 
-  </div>
+  <main>
+
+    <section class="hero home">
+      <div class="hero-inner">
+        <h1>Report Manager</h1>
+        <p class="tagline">Motor de informes y disenador visual de codigo abierto para .NET, Delphi, C++Builder y Linux &mdash; salida a PDF, SVG, HTML e impresion.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="downloades.html">Descargar</a>
+          <a class="btn" href="https://ai.reportman.es" target="_blank">Descubre Reportman.AI</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="features-inner">
+        <div class="features-grid">
+          <div class="card">
+            <h3>Salida multiformato</h3>
+            <p>Genera el mismo informe en PDF, SVG, HTML, PNG, texto/CSV e impresion nativa.</p>
+          </div>
+          <div class="card">
+            <h3>Disenador visual de informes</h3>
+            <p>Distribuya el disenador para modificar informes sin tocar su aplicacion.</p>
+          </div>
+          <div class="card">
+            <h3>AI Copilot <span class="new">Nuevo</span></h3>
+            <p>Cree, edite y depure informes con IA: generacion por esquema, ayuda SQL y de expresiones.</p>
+          </div>
+          <div class="card">
+            <h3>Servidor de informes web y TCP</h3>
+            <p>Genera PDF al vuelo con un servidor multiprocesador &mdash; sin pago de licencias.</p>
+          </div>
+          <div class="card">
+            <h3>.NET y .NET Core</h3>
+            <p>Bibliotecas nativas y paquetes NuGet, componentes Delphi/C++Builder y ActiveX.</p>
+          </div>
+          <div class="card">
+            <h3>Reportman DB Agent</h3>
+            <p>Ejecute e imprima sus informes desde cualquier lugar mediante una conexion de agente segura.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <h2>Descripcion de la aplicacion</h2>
+      <p>Report Manager es una aplicacion de generacion de informes (Report Manager Designer) y un conjunto de bibliotecas y herramientas de linea de comandos para previsualizar, exportar o imprimir informes. Incluye componentes nativos para <a href="doc/dotnetport.html" target="_blank">.NET y .NET Core</a> y Delphi/C++Builder, un componente ActiveX, y una biblioteca dinamica estandar para su uso desde cualquier lenguaje <a href="doc/gnuc.html" target="_blank">como GNU C</a>. Tambien hay disponible una version para Linux 64 bits que genera archivos PDF.</p>
+
+      <figure class="shots">
+        <img src="doc/images/designerxpsmall2.jpg" alt="Disenador de Report Manager">
+        <img src="doc/images/previewxpsmall2.jpg" alt="Ventana de presentacion preliminar de Report Manager">
+        <figcaption>El disenador de Report Manager y la ventana de presentacion preliminar.</figcaption>
+      </figure>
+
+      <p>Hay disponibles paquetes NuGet de Report Manager; se ha creado un nuevo <a href="https://github.com/tonimartir/reportman" target="_blank">repositorio</a> para desarrollo en .NET.</p>
+
+      <p>El motor incluye un <a href="doc/serverintro.html" target="_blank">servidor de informes TCP</a> a traves del cual <a href="doc/serverclient.html">los clientes</a> obtienen informes procesados en el servidor. Tambien se incluye un completo <a href="webserveres.html">servidor web de informes</a> que genera archivos Adobe PDF al vuelo &mdash; un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador.</p>
+
+      <h2>Licencia</h2>
+      <p>Report Manager es codigo abierto bajo el <a href="doc/license.html" target="_blank">modelo de licencia MPL</a> (incluye permiso de uso en aplicaciones GPL), por lo que puede usarlo en sus aplicaciones comerciales, pero cualquier mejora del motor debe ser publicada.</p>
+
+      <h2>Comprar</h2>
+      <p>Report Manager es libre y gratuito; puede adquirir <a href="contribes.html">soporte u otros servicios</a>.</p>
+
+      <h2>Resumen de caracteristicas</h2>
+      <p>Funciona en Windows y Linux. Puede distribuir el disenador de informes, con lo que consigue modificar informes sin modificar su aplicacion, y el resultado puede guardarse como archivo Adobe PDF.</p>
+      <p>Report Manager dispone de multiples <a href="doc/features.html" target="_blank">caracteristicas</a> (en ingles), incluyendo algunas exclusivas como bibliotecas de informes, metaarchivos, fuentes de impresora, secciones externas y subinformes hijos. Si utiliza Delphi, C++Builder o FPC/Lazarus, puede incluir el motor de informes &mdash; presentacion preliminar, dialogo de impresion y opciones del informe &mdash; en sus propios ejecutables.</p>
+
+      <h2>Version actual</h2>
+      <p>Consulte las <a href="doc/whatisnew.html" target="_blank">novedades</a> de la version actual (en ingles), un <a href="doc/interoperability.html" target="_blank">resumen de los entornos de desarrollo soportados</a>, la <a href="doc/features.html" target="_blank">lista de caracteristicas</a>, la <a href="doc/index.html" target="_blank">documentacion</a> y las <a href="doc/faq.html" target="_blank">preguntas frecuentes (F.A.Q.)</a></p>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank">Licencia MPL</a>
+      <span class="sep">&middot;</span>
+      <a href="companyes.html">Empresa</a>
+      <span class="sep">&middot;</span>
+      <a href="linkses.html">Otros enlaces</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank">reportman.es</a>
+    </div>
+  </footer>
+
 </body>
-
 </html>

@@ -1,64 +1,88 @@
 <!DOCTYPE html>
-<html lang="es">
-
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Servidor Web de Report Manager</title>
+  <meta name="description" content="The Report Manager web report server generates Adobe PDF files on the fly over the web.">
+  <title>Report Manager - Web Report Server</title>
   <link rel="stylesheet" href="responsive.css">
 </head>
-
 <body>
-  <div class="container">
 
-    <header class="header">
-      <div class="lang">
-        <a href="webserver.html">English</a> | <b>Español</b>
-        <span class="flags">
-          <a href="webserver.html"><img src="doc/images/english_flag.jpg" alt="English Flag"></a>
-          <img src="doc/images/spanish_flag.jpg" alt="Spanish Flag">
-        </span>
-      </div>
-      <h1>Report Manager</h1>
-    </header>
-
-    <div class="content">
-      <nav class="sidebar">
-        <ul>
-          <li><a href="index.html">Descripción</a></li>
-          <li><a href="contribes.html">Comprar</a></li>
-          <li><b>Servidor Web</b></li>
-          <li><a href="screenshotses.html">Pantallas</a></li>
-          <li><a href="downloades.html">Descarga</a></li>
-          <li><a href="docnet/index.html">Biblioteca punto net</a></li>
-          <li><a href="doc/index.html" target="_blank">Documentación (inglés)</a></li>
-          <li><a href="supportes.html">Soporte</a></li>
-          <li><a href="companyes.html">Empresa</a></li>
-          <li><a href="linkses.html">Otros enlaces</a></li>
-          <li><a href="http://sourceforge.net" target="_blank">
-              <img src="http://sourceforge.net/sflogo.php?group_id=51737&amp;type=1" alt="SourceForge Logo">
-            </a></li>
-          <li><a href="http://www.delphi-jedi.org" target="_blank">
-              <img src="doc/images/jedinow.gif" alt="JEDI Logo">
-            </a></li>
-        </ul>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="download.html">Download</a>
+        <a href="webserver.html" class="active">Web Server</a>
+        <a href="screenshots.html">Screenshots</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank">Docs</a>
+        <a href="support.html">Support</a>
       </nav>
-
-      <main class="main">
-        <h2>Servidor Web de Reportes</h2>
-        <p>El servidor web de Report Manager genera archivos PDF al instante, solicitando al usuario el nombre del
-          informe y los parámetros, luego <b>ejecuta el informe y devuelve un archivo en formato Adobe PDF</b>. Si tiene
-          un plugin puede visualizarlo directamente en el navegador.</p>
-
-        <h3>Documentación del servidor de informes</h3>
-        <p>Consulte la <a href="doc/index.html" target="_blank">documentación</a> y seleccione los apartados bajo el
-          título "Web Report Server".</p>
-      </main>
-
-
+      <div class="topbar-right">
+        <span class="lang-switch"><span class="current">EN</span><a href="webserveres.html">ES</a></span>
+      </div>
     </div>
+  </header>
 
-  </div>
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Web Report Server</h1>
+        <p class="tagline">Generate Adobe PDF reports on the fly over the web.</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p>The Report Manager web server generates PDF files on the fly: it prompts the user for the report name and parameters, runs the report and returns an Adobe PDF file, which can be displayed directly in the browser.</p>
+      <p>It is a true network and web report server with no license fees and multiprocessor support, available for Windows and Linux (Apache), and ready to run self-hosted in Docker.</p>
+
+      <h2>Run it self-hosted with Docker</h2>
+      <p>The published image runs <code>repwebexe -selfhosted</code> and serves the web report server on port <code>8080</code>. Start the service directly with:</p>
+      <pre><code>docker run -d \
+  -p 8080:8080 \
+  -e REPORTMAN_HTTP_PORT=8080 \
+  -v repweb_etc:/usr/local/etc \
+  -v repweb_home:/var/lib/reportman \
+  -v repweb_logs:/var/log/reportman \
+  --name reportman-web \
+  --restart unless-stopped \
+  tonimartir/reportman-web:latest</code></pre>
+      <p>Docker pulls the image on the first run. The admin panel is then available at <a href="http://localhost:8080/admin/login" target="_blank">http://localhost:8080/admin/login</a>.</p>
+
+      <h3>Good to know</h3>
+      <ul>
+        <li><b>Port:</b> set with <code>REPORTMAN_HTTP_PORT</code> (default <code>8080</code>); publish the same port with <code>-p</code>.</li>
+        <li><b>Persistent data</b> (named volumes): <code>repweb_etc</code> &rarr; <code>/usr/local/etc</code> (<code>dbxdrivers.conf</code>, <code>dbxconnections.conf</code>), <code>repweb_home</code> &rarr; <code>/var/lib/reportman</code> (server configuration), <code>repweb_logs</code> &rarr; <code>/var/log/reportman</code>.</li>
+        <li><b>Database clients included:</b> PostgreSQL, MySQL/MariaDB, Firebird/Interbase, SQLite, MS SQL Server/Sybase (FreeTDS) and ODBC. Proprietary clients (Oracle, Db2) are added in a derived image.</li>
+        <li><b>TLS / authentication:</b> place a reverse proxy in front of the container.</li>
+      </ul>
+      <p>Image on Docker Hub: <a href="https://hub.docker.com/r/tonimartir/reportman-web" target="_blank">tonimartir/reportman-web</a>.</p>
+
+      <h2>Documentation</h2>
+      <p>See the <a href="doc/index.html" target="_blank">documentation</a> and choose the sections under <i>Web Report Server</i>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank">MPL License</a>
+      <span class="sep">&middot;</span>
+      <a href="company.html">Company</a>
+      <span class="sep">&middot;</span>
+      <a href="links.html">Related links</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank">reportman.es</a>
+    </div>
+  </footer>
+
 </body>
-
 </html>

@@ -26,6 +26,7 @@ anaden en una imagen derivada `FROM tonimartir/reportman-web`:
 | Microsoft ODBC 18 (SQL Server) | `Dockerfile.mssql` | repo de Microsoft, acepta EULA automaticamente |
 | Oracle Instant Client | `Dockerfile.oracle` | descarga el zip de Oracle (licencia) |
 | IBM Db2 CLI | `Dockerfile.db2` | descarga el paquete de IBM (licencia) |
+| Progress DataDirect (ODBC) | `Dockerfile.datadirect` | descarga el paquete Linux de Progress (licencia); registra el `.so` en `/etc/odbcinst.ini` (unixODBC) |
 
 FireDAC y Zeos comparten las mismas `.so` nativas: instalar el cliente del
 backend habilita ambos motores.
@@ -40,8 +41,10 @@ docker build -f server/docker/web/examples/Dockerfile.mssql \
   server/docker/web/examples
 ```
 
-Para Oracle/Db2, deja primero el paquete descargado en esta carpeta con el
-nombre que indica cada Dockerfile, y luego construye igual.
+Para Oracle/Db2/DataDirect, deja primero el paquete descargado en esta carpeta
+con el nombre que indica cada Dockerfile, y luego construye igual. DataDirect
+expone drivers ODBC: el `.so` se registra en `/etc/odbcinst.ini` y Reportman
+conecta por ODBC (protocolo Zeos `odbc` o FireDAC ODBC).
 
 Si tu imagen base tiene otro nombre/tag (p.ej. la local `reportman-web:latest`),
 pasalo con `--build-arg BASE_IMAGE=reportman-web:latest`.
