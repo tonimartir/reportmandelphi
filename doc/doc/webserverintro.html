@@ -257,10 +257,17 @@ FileUsage=1
   for that setup and for configuration details.</p>
 
 <h3>Designing reports for the web server</h3>
-<p>Reports for the web server must be thread safe: make sure the driver supports
-  multithreading and the connection string is thread safe. For Interbase/Firebird always
-  provide the hostname (for example localhost), because the local access method is not
-  thread safe. Reports should be independent entities that only need user parameters to
-  execute.</p>
+<p>Reports for the web server should be independent entities that only need user
+  parameters to execute, and each concurrent execution uses its own database connection.
+  Database clients are typically thread safe at the <b>connection level</b>: a single
+  connection should be used by one thread at a time, while different connections run in
+  parallel &mdash; which is exactly the per-request model the server uses.</p>
+<p>The old advice to always connect to Firebird/InterBase over the network
+  (hostname/localhost) because the local access method was not thread safe is now
+  <b>obsolete</b>: since Firebird 2.5 the client library (<tt>fbclient</tt>) and the
+  embedded engine are thread safe and allow multiple simultaneous connections, including
+  local and embedded access. A client/server (TCP) connection to a shared Firebird server
+  is still a valid choice if you want to centralize access, but it is no longer required
+  for thread safety.</p>
 </body>
 </html>

@@ -125,10 +125,16 @@ pre code { background:none; padding:0; font-size:.875rem; line-height:1.55; colo
 .page p,.page ul { max-width:74ch; }
 .page > img { display:block; margin:1.25rem 0; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
 
-/* ---- Capturas (pagina principal, lado a lado) ---- */
-figure.shots { margin:1.5rem 0; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; justify-content:center; }
-figure.shots img { border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
+/* ---- Capturas (pagina principal): el designer conserva su tamano nativo
+   (400x300) y el preview se ajusta a la MISMA altura con ancho automatico
+   (queda 300x489). Lado a lado en pantalla ancha; apilados (designer arriba,
+   preview abajo) en pantalla estrecha. ---- */
+figure.shots { margin:1.5rem auto; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; justify-content:center; }
+figure.shots img { flex:0 0 auto; height:300px; width:auto; max-width:none; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
 figure.shots figcaption { flex-basis:100%; text-align:center; color:var(--muted); font-size:.85rem; margin-top:.5rem; }
+@media screen and (max-width:560px) {
+  figure.shots img { height:auto; width:100%; }
+}
 
 /* ---- Pie de pagina ---- */
 .site-footer { border-top:1px solid var(--border); background:var(--surface); margin-top:48px; }
