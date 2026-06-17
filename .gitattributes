@@ -1,0 +1,5 @@
+# Shell scripts must keep LF line endings so they run correctly on Linux and
+# inside Docker containers, even when core.autocrlf=true rewrites other files on
+# Windows checkouts. Without this, docker-entrypoint.sh gets CRLF and the
+# container fails with: /usr/bin/env: 'sh\r': No such file or directory
+*.sh text eol=lf

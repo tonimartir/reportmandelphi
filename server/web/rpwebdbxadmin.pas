@@ -164,6 +164,7 @@ const
   RP_WEB_DRIVER_FAMILY_DBEXPRESS = 'DBExpress';
   RP_WEB_DRIVER_FAMILY_FIREDAC = 'FireDac';
   RP_WEB_DRIVER_FAMILY_AGENT = 'Reportman AI Agent';
+  RP_WEB_DRIVER_FAMILY_ZEOS = 'ZeosLib';
   RP_WEB_DBX_DRIVER_PARAM = 'DBXDriverName';
   RP_WEB_CLEAR_DRIVER_DEFAULTS = '__clear_driver_defaults__';
 
@@ -173,6 +174,8 @@ begin
     Result := RP_WEB_DRIVER_FAMILY_FIREDAC
   else if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_AGENT) then
     Result := RP_WEB_DRIVER_FAMILY_AGENT
+  else if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_ZEOS) then
+    Result := RP_WEB_DRIVER_FAMILY_ZEOS
   else
     Result := RP_WEB_DRIVER_FAMILY_DBEXPRESS;
 end;
@@ -189,6 +192,8 @@ begin
     Result := RP_WEB_DRIVER_FAMILY_FIREDAC
   else if SameText(LFamily, RP_WEB_DRIVER_FAMILY_AGENT) then
     Result := RP_WEB_DRIVER_FAMILY_AGENT
+  else if SameText(LFamily, RP_WEB_DRIVER_FAMILY_ZEOS) then
+    Result := RP_WEB_DRIVER_FAMILY_ZEOS
   else
     Result := Trim(LFamily);
 
@@ -202,6 +207,8 @@ begin
     Result := rpfiredac
   else if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_AGENT) then
     Result := rpdbHttp
+  else if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_ZEOS) then
+    Result := rpdatazeos
   else
     Result := rpdatadbexpress;
 end;
@@ -1030,6 +1037,9 @@ begin
 {$ENDIF}
 {$ENDIF}
   ADrivers.Add(RP_WEB_DRIVER_FAMILY_AGENT);
+{$IFDEF USEZEOS}
+  ADrivers.Add(RP_WEB_DRIVER_FAMILY_ZEOS);
+{$ENDIF}
 end;
 
 procedure TRpWebDbxAdminService.ListDbExpressDrivers(ADrivers: TStrings);

@@ -1,0 +1,58 @@
+# Keep the Docker build context small. Without this, the whole repository
+# (.git, build outputs, MonacoEditor, binaries...) is packed and sent to the
+# Docker daemon on every build, which is very slow.
+#
+# The web image only needs three files, none of which match the excludes below:
+#   server/docker/web/artifacts/linux64/repwebexe
+#   server/docker/web/scripts/docker-entrypoint.sh
+#   repman/dbxdrivers.ini
+
+.git
+.github
+build
+getit
+reportmand7
+MonacoEditor
+**/node_modules
+**/__history
+**/__recovery
+
+# Compiler / IDE output directories
+**/bin32
+**/bin64
+**/binr32
+**/binr64
+**/binl64
+**/binrl64
+**/dcu32
+**/dcu64
+**/dcur32
+**/dcur64
+**/dcurl64
+**/dculinux64
+**/dcurlinux64
+
+# Heavy / irrelevant file types for the image
+**/*.exe
+**/*.dll
+**/*.bpl
+**/*.dcp
+**/*.dcu
+**/*.o
+**/*.obj
+**/*.a
+**/*.lib
+**/*.zip
+**/*.7z
+**/*.rar
+**/*.tlb
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.ico
+
+# The large Linux self-hosted binary in server/web is NOT the one the image
+# uses (the image uses server/docker/web/artifacts/linux64/repwebexe).
+server/web/repwebexe

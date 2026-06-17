@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=3.9.20
+AppVersion=4.0.8
 DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
@@ -25,14 +25,15 @@ OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=3.9.20
-OutputBaseFilename=reportman_designer_3_9_20_x86
+VersionInfoProductVersion=4.0.8
+OutputBaseFilename=reportman_designer_4_0_8_x86
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\repmandxp.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\repsamples\sample4.rep"; DestDir: "{app}\Examples"
 Source: "c:\desarrollo\prog\toni\reportman\repman\biolife.cds"; DestDir: "{app}\Examples"
-Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\net2\*.*"; DestDir: "{app}\net2"
+; net2 (.NET designer + printreport) se instala aparte con el instalador independiente
+; "Report Manager .NET Designer": reportmanxe_net_64.iss / reportmanxe_net_x32.iss
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr32\printreptopdf.exe"; DestDir: "{app}"

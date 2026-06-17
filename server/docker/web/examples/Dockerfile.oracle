@@ -1,0 +1,18 @@
+# Reportman Web base image + Oracle Instant Client (Basic Lite).
+# 1) Download instantclient-basiclite-linux.x64-*.zip from Oracle (license
+#    required) and place it in this folder as instantclient.zip
+# 2) docker build -f Dockerfile.oracle -t reportman-web-oracle .
+ARG BASE_IMAGE=tonimartir/reportman-web:latest
+FROM ${BASE_IMAGE}
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libaio1 unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY instantclient.zip /tmp/instantclient.zip
+RUN mkdir -p /opt/oracle \
+    && unzip -q /tmp/instantclient.zip -d /opt/oracle \
+    && rm /tmp/instantclient.zip \
+    && sh -c 'echo /opt/oracle/instantclient* > /etc/ld.so.conf.d/oracle-instantclient.conf' \
+    && ldconfig
+USER reportman

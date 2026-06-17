@@ -95,6 +95,9 @@ type
    procedure InitConfig;
    procedure CheckInitReaded;
    function GenerateError(e: Exception):string;
+   // Diagnostic helper for /version: shows a config path and whether it exists.
+   // Pure read-only (FileExists), never writes to disk.
+   function VersionConfigPathLine(const ACaption,APath:string):string;
    function LoadLoginPage(Request: TWebRequest):string;
    function LoadIndexPage(Request: TWebRequest):string;
    function LoadAliasPage(Request: TWebRequest):string;
@@ -111,6 +114,7 @@ type
   procedure LoadAllTestingReports(
    AReports: TList<TRpWebTestingReportOption>);
   function GetCurrentRequestPortText(Request: TWebRequest): string;
+  function GetCurrentRequestHost(Request: TWebRequest): string;
   function BuildTestingHiddenInputs(Request: TWebRequest): string;
   function BuildTestingFormPayload(Request: TWebRequest): TStringList;
   function GetTestingPdfDownloadFileName(const AReportName: string): string;
@@ -185,6 +189,9 @@ type
   function LoadAdminTestingRequestPreviewPage(Request: TWebRequest;
    const AMessageText: string=''): string;
   function ExecuteAdminTestingRequest(Request: TWebRequest): string;
+  procedure TestingAcceptServerCertificate(const Sender: TObject;
+   const ARequest: TURLRequest; const Certificate: TCertificate;
+   var Accepted: Boolean);
   procedure ExecuteAdminTestingDownload(Response: TWebResponse);
   function LoadAdminConnectionsPage(Request: TWebRequest;
    const AMessageText: string=''): string;
@@ -454,7 +461,11 @@ var
 begin
   Result.HostName := Trim(GetAdminParam(Request, 'testing_host'));
   if Length(Result.HostName) = 0 then
-    Result.HostName := 'localhost';
+  begin
+    Result.HostName := GetCurrentRequestHost(Request);
+    if Length(Result.HostName) = 0 then
+      Result.HostName := 'localhost';
+  end;
 
   Result.PortText := Trim(GetAdminParam(Request, 'testing_port'));
   if Length(Result.PortText) = 0 then
@@ -465,6 +476,16 @@ begin
     else
       Result.PortText := IntToStr(fport);
   end;
+
+  // Base path defaults to the script mount the request came in on (the CGI need
+  // not run at the site root). Editable via testing_path; /execute.pdf is added
+  // when the URL is built, so strip any trailing slash here.
+  Result.BasePath := Trim(GetAdminParam(Request, 'testing_path'));
+  if Length(Result.BasePath) = 0 then
+    Result.BasePath := Request.InternalScriptName;
+  while (Length(Result.BasePath) > 0) and
+    (Result.BasePath[Length(Result.BasePath)] = '/') do
+    Delete(Result.BasePath, Length(Result.BasePath), 1);
 
   Result.AuthType := LowerCase(Trim(GetAdminParam(Request, 'testing_auth_type')));
   if not SameText(Result.AuthType, 'api') then
@@ -542,6 +563,44 @@ begin
   LColonPos := LastDelimiter(':', LHostHeader);
   if LColonPos > 0 then
     Result := Copy(LHostHeader, LColonPos + 1, Length(LHostHeader));
+end;
+
+function TRpWebPageLoader.GetCurrentRequestHost(Request: TWebRequest): string;
+var
+  LHostHeader: string;
+  LColonPos: Integer;
+  LCloseBracketPos: Integer;
+begin
+  Result := '';
+  // Prefer the host the client actually used: reverse-proxy header first, then
+  // the browser Host header, then the CGI SERVER_NAME. This is the public name
+  // (e.g. sicc.ngwt.com.sg) that matches the TLS certificate; localhost cannot.
+  LHostHeader := Trim(GetRequestHeader(Request, 'X-Forwarded-Host'));
+  if Length(LHostHeader) = 0 then
+    LHostHeader := Trim(GetRequestHeader(Request, 'Host'));
+  if Length(LHostHeader) = 0 then
+    LHostHeader := Trim(GetFirstRequestValue(Request, ['SERVER_NAME']));
+  if Length(LHostHeader) = 0 then
+    Exit;
+  // X-Forwarded-Host may be a comma-separated chain; keep the first hop.
+  LColonPos := Pos(',', LHostHeader);
+  if LColonPos > 0 then
+    LHostHeader := Trim(Copy(LHostHeader, 1, LColonPos - 1));
+  // Strip an optional :port, handling the IPv6 [::1]:port form.
+  if (Length(LHostHeader) > 0) and (LHostHeader[1] = '[') then
+  begin
+    LCloseBracketPos := Pos(']', LHostHeader);
+    if LCloseBracketPos > 0 then
+      Result := Copy(LHostHeader, 1, LCloseBracketPos)
+    else
+      Result := LHostHeader;
+    Exit;
+  end;
+  LColonPos := LastDelimiter(':', LHostHeader);
+  if LColonPos > 0 then
+    Result := Copy(LHostHeader, 1, LColonPos - 1)
+  else
+    Result := LHostHeader;
 end;
 
 function TRpWebPageLoader.BuildTestingHiddenInputs(
@@ -2457,6 +2516,19 @@ end;
 {$ENDIF}
 
 
+function TRpWebPageLoader.VersionConfigPathLine(const ACaption,APath:string):string;
+var
+ LStatus:string;
+begin
+ if Length(Trim(APath))=0 then
+  LStatus:='(not set)'
+ else if FileExists(APath) then
+  LStatus:='EXISTS'
+ else
+  LStatus:='MISSING';
+ Result:='<p>'+HtmlEncode(ACaption)+': '+HtmlEncode(APath)+' ['+LStatus+']</p>';
+end;
+
 procedure TRpWebPageLoader.GetWebPage(Request: TWebRequest;apage:TRpWebPage;
  Response:TWebResponse);
 var
@@ -2542,6 +2614,40 @@ begin
       try
        astring:=astring+'<p>[DBXCONNECTIONS]='+
         HtmlEncode(ConAdmin.configfilename)+'</p>';
+       // Configuration resolution diagnostic: make it explicit WHERE each file is
+       // searched and WHICH one is effective. CGI is read-only; selfhosted copies
+       // the files to the editable home path because it lacks permissions to
+       // modify the system files in place.
+       astring:=astring+'<p></p><p><b>Configuration resolution</b></p>';
+       if ReportmanWebSelfHosted then
+        astring:=astring+'<p>Server mode: selfhosted (read-write). Configuration '+
+         'and connections are copied to the home/editable path so they can be '+
+         'modified and tested without system permissions; publishing back to the '+
+         'system path is manual.</p>'
+       else
+        astring:=astring+'<p>Server mode: CGI (read-only). The system '+
+         'configuration and connections files are read as-is; the CGI does not '+
+         'write to disk.</p>';
+       astring:=astring+'<p><u>Server configuration file (reportmanserver)</u></p>';
+       astring:=astring+VersionConfigPathLine('System/common path',
+        GetReportmanServerCommonConfigFileName);
+       astring:=astring+VersionConfigPathLine('Home/editable copy',
+        Obtainininamelocalconfig('','','reportmanserver'));
+       if Length(Trim(ReportmanWebConfigFileOverride))>0 then
+        astring:=astring+VersionConfigPathLine('Command-line override (-configfile)',
+         ReportmanWebConfigFileOverride);
+       astring:=astring+VersionConfigPathLine('Effective file',Ffilenameconfig);
+       astring:=astring+'<p><u>Connections registry (dbxconnections)</u></p>';
+       astring:=astring+VersionConfigPathLine('System/common path',
+        Obtainininamecommonconfig('','','dbxconnections',false));
+       astring:=astring+VersionConfigPathLine('Home/editable copy',
+        Obtainininamelocalconfig('','','dbxconnections'));
+       astring:=astring+VersionConfigPathLine('User home registry',
+        Obtainininamelocaluserconfig('','','dbxconnections'));
+       if Length(Trim(DBXConnectionsFileOverride))>0 then
+        astring:=astring+VersionConfigPathLine('Command-line override (-dbxconnectionfile)',
+         DBXConnectionsFileOverride);
+       astring:=astring+VersionConfigPathLine('Effective file',ConAdmin.configfilename);
        try
         memstream:=TMemoryStream.Create;
         try
@@ -2640,6 +2746,7 @@ var
  LPath:string;
  LStrList:TStringList;
  LUserName,LMessage:string;
+ LScriptName:string;
 begin
  try
   CheckInitReaded;
@@ -2788,6 +2895,23 @@ begin
   end;
   on E:Exception do
    Response.Content:=GenerateError(E);
+ end;
+ // El area admin emite las URLs como rutas absolutas (action="/admin/...",
+ // href="/admin/..."). Publicado como CGI/ISAPI bajo una ruta de script
+ // (InternalScriptName no vacio) esas rutas pierden el prefijo del script y el
+ // navegador haria POST a la raiz del dominio -> 404 Not Found (p.ej. al crear
+ // el ADMIN en /admin/bootstrap). Aqui, unico punto de salida del area admin,
+ // anteponemos el script name. En selfhosted/raiz InternalScriptName esta vacio
+ // y esto es un no-op. Se omite cuando la respuesta es binaria (ContentStream,
+ // p.ej. la descarga de PDF de Testing).
+ LScriptName:=Request.InternalScriptName;
+ if (Length(LScriptName)>0) and (Response.ContentStream=nil)
+  and (Length(Response.Content)>0) then
+ begin
+  Response.Content:=StringReplace(Response.Content,'action="/admin',
+   'action="'+LScriptName+'/admin',[rfReplaceAll]);
+  Response.Content:=StringReplace(Response.Content,'href="/admin',
+   'href="'+LScriptName+'/admin',[rfReplaceAll]);
  end;
 end;
 
@@ -3545,7 +3669,7 @@ begin
     else
       LScheme := 'http://';
 
-    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LBasePath := LData.BasePath + '/execute.pdf';
     LReportDisplayName := LData.ReportName;
     if (Length(LReportDisplayName) > 0) and
       (LReportDisplayName[1] = C_DIRSEPARATOR) then
@@ -3600,6 +3724,18 @@ begin
   end;
 end;
 
+procedure TRpWebPageLoader.TestingAcceptServerCertificate(const Sender: TObject;
+  const ARequest: TURLRequest; const Certificate: TCertificate;
+  var Accepted: Boolean);
+begin
+  // Testing is a self-diagnostic that calls this same server, by default through
+  // https://localhost. The TLS certificate is issued for the public domain, so it
+  // does not match "localhost" and validation would otherwise fail with
+  // "Server Certificate Invalid or not present". Accept it here so the self-test
+  // can run; this only affects the admin Testing tool, never report execution.
+  Accepted := True;
+end;
+
 function TRpWebPageLoader.ExecuteAdminTestingRequest(
   Request: TWebRequest): string;
 var
@@ -3643,7 +3779,7 @@ begin
     else
       LScheme := 'http://';
 
-    LBasePath := Request.InternalScriptName + '/execute.pdf';
+    LBasePath := LData.BasePath + '/execute.pdf';
     LReportDisplayName := LData.ReportName;
     if (Length(LReportDisplayName) > 0) and
       (LReportDisplayName[1] = C_DIRSEPARATOR) then
@@ -3681,6 +3817,7 @@ begin
 
     LClient := TNetHTTPClient.Create(nil);
     try
+      LClient.OnValidateServerCertificate := TestingAcceptServerCertificate;
       if SameText(LData.AuthType, 'api') and (Length(Trim(LData.ApiKey)) > 0) then
         LClient.CustomHeaders['X-ReportmanServer-ApiKey'] := LData.ApiKey;
 

@@ -1,0 +1,18 @@
+# Reportman Web base image + Microsoft ODBC Driver 18 for SQL Server.
+# Build (context = this folder):
+#   docker build -f Dockerfile.mssql -t reportman-web-mssql .
+ARG BASE_IMAGE=tonimartir/reportman-web:latest
+FROM ${BASE_IMAGE}
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl gnupg ca-certificates \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+         | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list \
+         | sed 's#deb #deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] #' \
+         > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+USER reportman

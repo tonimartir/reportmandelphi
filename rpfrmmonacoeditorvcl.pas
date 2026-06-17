@@ -88,6 +88,15 @@ type
     FUpdatingFromBrowser: Boolean;
     FMemoFallback: TMemo;
     FUseFallback: Boolean;
+    // WebView2 creation resilience (mirrors TRpWebMarkdownView): tolerate the
+    // transient HWND churn of an Edge hosted on a TTabSheet instead of dropping
+    // to the plain-text Memo on the first hiccup.
+    FWebViewCreating: Boolean;
+    FUserDataFolderSet: Boolean;
+    FWebViewCreateRetries: Integer;
+    FNavRetryCount: Integer;
+    FLastNavUrl: string;
+    FRetryTimer: TTimer;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
     FSchemaApiKey: string;
@@ -121,6 +130,9 @@ type
     procedure SelectCurrentSchema;
     procedure SetSQL(const Value: string);
     procedure ActivateFallback(const AReason: string);
+    procedure TryCreateWebView;
+    procedure ScheduleCreateRetryOrFallback(const AReason: string);
+    procedure WebViewRetryTimerTick(Sender: TObject);
     procedure MemoFallbackChange(Sender: TObject);
     procedure SetHubDatabaseId(const Value: Int64);
     procedure SetHubSchemaId(const Value: Int64);
@@ -139,6 +151,7 @@ type
     function EnsureMonacoAssetsExtracted: string;
   protected
     procedure CreateWnd; override;
+    procedure DestroyWnd; override;
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -372,6 +385,10 @@ begin
   // TRpWebMarkdownView fallback but stays EDITABLE so the user can read/edit SQL
   // and apply chat suggestions. Hidden until ActivateFallback.
   FUseFallback := False;
+  FWebViewCreating := False;
+  FUserDataFolderSet := False;
+  FWebViewCreateRetries := 0;
+  FNavRetryCount := 0;
   FMemoFallback := TMemo.Create(Self);
   FMemoFallback.Parent := TabSQL;
   FMemoFallback.Align := alClient;
@@ -394,6 +411,8 @@ destructor TFRpMonacoEditorVCL.Destroy;
 begin
   if FGuard <> nil then
     FGuard.Invalidate;
+  if FRetryTimer <> nil then
+    FRetryTimer.Enabled := False;
   if Edge.WebViewCreated then
     Edge.CloseWebView;
   ClearSchemaItems;
@@ -402,8 +421,6 @@ begin
 end;
 
 procedure TFRpMonacoEditorVCL.CreateWnd;
-var
-  LDestPath: string;
 begin
   inherited;
 
@@ -418,18 +435,95 @@ begin
     Exit;
   end;
 
-  if not Edge.WebViewCreated then
-  begin
-    try
-      Edge.HandleNeeded;
+  TryCreateWebView;
+end;
 
+procedure TFRpMonacoEditorVCL.DestroyWnd;
+begin
+  // The Edge is hosted on a TTabSheet, whose HWND is destroyed/recreated on tab
+  // switches and theme/DPI changes. If that happens while a CreateWebView is in
+  // flight, clear the in-flight flag so the next CreateWnd can retry cleanly
+  // (otherwise we would stay "creating" forever and end up with a blank control).
+  if FWebViewCreating and (Edge <> nil) and (not Edge.WebViewCreated) then
+    FWebViewCreating := False;
+  inherited;
+end;
+
+// Create the WebView2, guarded against re-entrancy. Setting UserDataFolder or
+// calling CreateWebView twice (which happens when CreateWnd re-runs during the
+// async creation, e.g. tab/HWND churn) raises an exception; that exception was
+// the reason the plain-text Memo appeared even on machines where Edge loads fine.
+procedure TFRpMonacoEditorVCL.TryCreateWebView;
+var
+  LDestPath: string;
+begin
+  if FUseFallback or FWebViewCreating or Edge.WebViewCreated then
+    Exit;
+  try
+    Edge.HandleNeeded;
+    if Edge.WebViewCreated then
+      Exit;
+    // UserDataFolder can only be set once, before the environment exists; setting
+    // it again after a previous attempt raises. Do it exactly once.
+    if not FUserDataFolderSet then
+    begin
       LDestPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', '');
       Edge.UserDataFolder := TPath.Combine(LDestPath, 'EdgeData');
+      FUserDataFolderSet := True;
+    end;
+    FWebViewCreating := True;
+    Edge.CreateWebView;
+  except
+    on E: Exception do
+    begin
+      FWebViewCreating := False;
+      ScheduleCreateRetryOrFallback('CreateWebView exception: ' + E.Message);
+    end;
+  end;
+end;
 
-      Edge.CreateWebView;
+// Retry a failed/aborted WebView creation a few times before giving up, instead
+// of dropping to the Memo on the first transient failure. Mirrors the retry
+// philosophy of TRpWebMarkdownView.
+procedure TFRpMonacoEditorVCL.ScheduleCreateRetryOrFallback(const AReason: string);
+const
+  CMaxWebViewCreateRetries = 3;
+begin
+  if FUseFallback then
+    Exit;
+  OutputDebugString(PChar('Monaco WebView create issue: ' + AReason));
+  if FWebViewCreateRetries >= CMaxWebViewCreateRetries then
+  begin
+    ActivateFallback(AReason);
+    Exit;
+  end;
+  Inc(FWebViewCreateRetries);
+  if FRetryTimer = nil then
+  begin
+    FRetryTimer := TTimer.Create(Self);
+    FRetryTimer.OnTimer := WebViewRetryTimerTick;
+  end;
+  FRetryTimer.Enabled := False;
+  FRetryTimer.Interval := 300 * FWebViewCreateRetries;
+  FRetryTimer.Enabled := True;
+end;
+
+// Single retry tick shared by the create and navigation retry paths.
+procedure TFRpMonacoEditorVCL.WebViewRetryTimerTick(Sender: TObject);
+begin
+  if FRetryTimer <> nil then
+    FRetryTimer.Enabled := False;
+  if FUseFallback then
+    Exit;
+  if not Edge.WebViewCreated then
+    TryCreateWebView
+  else if FLastNavUrl <> '' then
+  begin
+    try
+      Edge.Navigate(FLastNavUrl);
     except
-      on E: Exception do
-        ActivateFallback('CreateWebView exception: ' + E.Message);
+      // best-effort navigation retry; a real failure surfaces on the next
+      // EdgeNavigationCompleted callback
     end;
   end;
 end;
@@ -510,8 +604,11 @@ procedure TFRpMonacoEditorVCL.EdgeCreateWebViewCompleted(
 var
   LURL: string;
 begin
+  FWebViewCreating := False;
   if Succeeded(AResult) then
   begin
+    FWebViewCreateRetries := 0;
+
     // Ensure Edge events are hooked up
     Edge.OnWebMessageReceived := EdgeWebMessageReceived;
     Edge.OnNavigationCompleted := EdgeNavigationCompleted;
@@ -524,23 +621,57 @@ begin
       LURL := LURL + '/';
     LURL := LURL + 'index.html';
 
+    FLastNavUrl := LURL;
+    FNavRetryCount := 0;
     Edge.Navigate(LURL);
   end
   else
   begin
-    // WebView2 could not be created (e.g. HRESULT 80070002 = runtime missing on
-    // old machines). Drop to the plain-text editor instead of a blank control.
-    ActivateFallback('CreateWebViewCompleted HRESULT: ' + IntToHex(AResult, 8));
+    // WebView2 could not be created. This is often transient when the host
+    // TTabSheet HWND churns during the async creation, so retry a few times
+    // before dropping to the plain-text editor. A genuinely missing runtime
+    // (e.g. HRESULT 80070002) simply exhausts the retries and then falls back.
+    ScheduleCreateRetryOrFallback('CreateWebViewCompleted HRESULT: ' + IntToHex(AResult, 8));
   end;
 end;
 
 procedure TFRpMonacoEditorVCL.EdgeNavigationCompleted(Sender: TCustomEdgeBrowser;
   IsSuccess: Boolean; WebErrorStatus: TOleEnum);
+const
+  // Transient COREWEBVIEW2_WEB_ERROR_STATUS values seen when navigation is
+  // interrupted (HWND recreated/disposed mid-load on tab/theme changes):
+  //   0 = Unknown, 9 = ConnectionAborted, 14 = OperationCanceled.
+  MaxNavRetries = 3;
+var
+  LStatus: Integer;
 begin
   if IsSuccess then
   begin
+    FNavRetryCount := 0;
     SetSQL(FSQL);
+    Exit;
   end;
+
+  // Retry transient navigation failures instead of leaving the editor blank,
+  // mirroring TRpWebMarkdownView. A genuine failure just stops here: the SQL is
+  // still safe in FSQL and reachable through the plain-text fallback if the
+  // WebView later fails to create.
+  LStatus := Integer(WebErrorStatus);
+  if ((LStatus = 0) or (LStatus = 9) or (LStatus = 14)) and
+     (FNavRetryCount < MaxNavRetries) and (FLastNavUrl <> '') then
+  begin
+    Inc(FNavRetryCount);
+    if FRetryTimer = nil then
+    begin
+      FRetryTimer := TTimer.Create(Self);
+      FRetryTimer.OnTimer := WebViewRetryTimerTick;
+    end;
+    FRetryTimer.Enabled := False;
+    FRetryTimer.Interval := 200 * FNavRetryCount;
+    FRetryTimer.Enabled := True;
+  end
+  else
+    OutputDebugString(PChar('Monaco navigation failed, status ' + IntToStr(LStatus)));
 end;
 
 procedure TFRpMonacoEditorVCL.SetSQL(const Value: string);
@@ -583,6 +714,9 @@ procedure TFRpMonacoEditorVCL.ActivateFallback(const AReason: string);
 begin
   if FUseFallback then
     Exit; // idempotent: never double-activate
+  // Always surface the reason on a reliable channel: the inference log routes to
+  // the chat, which may not exist yet when an early fallback fires.
+  OutputDebugString(PChar('Monaco fallback activated: ' + AReason));
   FUseFallback := True;
   FEditorReady := False;
 

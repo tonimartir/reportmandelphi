@@ -23,6 +23,33 @@ Si finalmente quieres otro nombre de repositorio en Docker Hub, solo cambia la p
 
 ---
 
+## Clientes de base de datos
+
+La imagen incluye las librerias cliente **libres** (apt), de modo que FireDAC y
+Zeos pueden conectar a estos backends sin pasos extra:
+
+| Base de datos | Protocolo Zeos (ej.) | Paquete incluido |
+|---|---|---|
+| PostgreSQL | postgresql | libpq5 |
+| MySQL / MariaDB | mysql / mariadb | libmariadb3 |
+| Firebird | firebird-3.0 | libfbclient2 |
+| Interbase | interbase | libfbclient2 |
+| SQLite | sqlite | libsqlite3-0 |
+| MS SQL Server (FreeTDS) | mssql | freetds-bin, libsybdb5, tdsodbc |
+| Sybase ASE | sybase | freetds-bin, libsybdb5 |
+| ODBC PostgreSQL / MySQL | odbc | odbc-postgresql, odbc-mariadb |
+
+`libfbclient2` (Firebird) es de licencia libre (IPL/MPL) y habilita tanto el
+driver FireDAC FB como el protocolo `firebird` de Zeos. FireDAC y Zeos comparten
+las mismas `.so` nativas: instalar el cliente del backend habilita ambos motores.
+
+Los clientes **propietarios** (Oracle, IBM Db2, Informix, ODBC oficial de
+Microsoft) **no** se incluyen: requieren descarga manual y/o aceptar su licencia.
+Se anaden en una **imagen derivada** `FROM tonimartir/reportman-web`. Tienes
+ejemplos listos en `server/docker/web/examples/` (MS ODBC 18, Oracle, Db2).
+
+---
+
 ## Requisitos previos
 
 ### 1. Docker en WSL2
@@ -220,6 +247,6 @@ docker run -d \
 ## Notas operativas
 
 - Si necesitas TLS, routing o autenticacion perimetral, pon un reverse proxy fuera del contenedor.
-- Si el binario Linux requiere librerias adicionales, ajusta la lista de `apt-get install` del `Dockerfile` segun la build real.
+- La imagen ya incluye los clientes de BD libres (PostgreSQL, MySQL/MariaDB, Firebird/Interbase, SQLite, MSSQL/Sybase via FreeTDS, ODBC). Para clientes propietarios (Oracle, Db2, Informix, MS ODBC) usa una imagen derivada: ver `server/docker/web/examples/`. Para otras librerias del sistema, ajusta el `apt-get install` del `Dockerfile`.
 - El puerto publicado por Docker y el puerto interno deben coincidir con `REPORTMAN_HTTP_PORT`.
 - Si quieres fijar version en producción, usa `tonimartir/reportman-web:<VERSION>` en lugar de `latest`.

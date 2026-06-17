@@ -18,6 +18,7 @@ type
   TRpWebTestingSetup = record
     HostName: string;
     PortText: string;
+    BasePath: string;
     AuthType: string;
     CallType: string;
     UserName: string;
@@ -643,10 +644,18 @@ begin
   Result := BuildPage('Testing',
     AdminNav(AAuthInputs) + MessageBlock(AMessageText) +
     '<form method="post" action="/admin/testing">' + AAuthInputs +
+    '<p><i>Host, Port and Path are pre-filled with the address you are using now '+
+      'and form the URL this self-test calls. Prefer your public host name so the '+
+      'HTTPS certificate matches; localhost works from the server itself but its '+
+      'certificate will not match (the test ignores it only for localhost). Path '+
+      'is the CGI script mount and need not be the site root; /execute.pdf is '+
+      'appended automatically.</i></p>' +
     '<p>Host: <input type="text" name="testing_host" size="40" value="' +
       RpHtmlEncode(AData.HostName) + '"></p>' +
     '<p>Port: <input type="text" name="testing_port" value="' +
       RpHtmlEncode(AData.PortText) + '"></p>' +
+    '<p>Path: <input type="text" name="testing_path" size="40" value="' +
+      RpHtmlEncode(AData.BasePath) + '"></p>' +
     '<p>Authentication type: <select name="testing_auth_type">' +
       '<option value="user"' + SelectedAttr(AData.AuthType, 'user') + '>User/password</option>' +
       '<option value="api"' + SelectedAttr(AData.AuthType, 'api') + '>API key</option>' +
