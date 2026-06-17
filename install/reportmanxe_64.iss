@@ -8,7 +8,7 @@
 
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=4.0.8
+AppVersion=4.0.10
 DefaultDirName={commonpf64}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
@@ -25,8 +25,8 @@ ArchitecturesInstallIn64BitMode=x64
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=4.0.8
-OutputBaseFilename=reportman_designer_4_0_8_x64
+VersionInfoProductVersion=4.0.10
+OutputBaseFilename=reportman_designer_4_0_10_x64
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\repmandxp.exe"; DestDir: "{app}"
