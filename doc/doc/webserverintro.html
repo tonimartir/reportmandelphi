@@ -6,49 +6,261 @@
 
 <body>
 <h2>Report Manager Web Server</h2>
-<h3>Introduction</h3>
-<p>Report Manager Web Server is a multithread application that works together 
-  with a web server application. It allows any number of HTML client machines 
-  to execute reports obtaining <b>ready to print Adobe PDF files</b>.</p>
-<p>The web report server will ask user name and password, then show any available 
-  report groups, and any <b>report in each group</b>, <b>allowing to change report 
-  parameters</b> before executing the report, all is done via HTML and <b>without 
-  the need of enabling Cookies in the client browser</b>.</p>
-<p></p>
-<p>The client machine only need a Html Browser, if the browser have an Adobe PDF 
-  file viewer plugin, the user will see the report in the screen, else the user 
-  can save the resulting file and proces it with any tool like <b>pdf2ps or with 
-  Adobe PDF Reader</b>.</p>
-<p>The web report server supports Linux (Apache) and Windows (apache 2-Microsoft 
-  IIS 5).</p>
-<p>See<a href="webserverinstall.html"> Installation instructions</a> for more 
-  information.</p>
-<p>The web report sever must have any database drivers required by available reports, 
-  optionally the web server can be also be the database server, but the database 
-  server can be any machine accesible by the report server machine, so you can 
-  distribute the work of generated reports, for example the report client can 
-  be a Internet enabled machine running any operating system, requesting a report 
-  from a far network, the server generates the report requesting process intensive 
-  querys to a high performance database server, after the calculation of the report 
-  is done, the server sends the result to the client machine.</p>
-<p>The web server is optimized to use very little bandwith.</p>
-<p><b>Configuration</b></p>
-<p>See<a href="webserverinstall.html"> Installation instructions</a> for configuration 
-  information.</p>
-<p></p>
-<p>See <a href="webserveroperations.html">web server operations</a> page for operation 
-  options, basically you can operate the web server passing parameters in the 
-  URL.</p>
-<p>By default there is only one user named Admin and without password, in the 
-  report web server Admin user can't do administration tasks.</p>
-<p><b>Other considerations</b></p>
-<p>When you design reports for use with web report server you must configure them 
-  to be thread safe, that is make sure your driver supports multithread (as far 
-  as I know all drivers supports this) and your database connection string is 
-  thread safe, for example to access Interbase/Firebird databases provide the 
-  always the hostname (or write localhost), so the access method to the database 
-  is thread safe (local access method is not thread safe).</p>
-<p>Also you should define parameters, and the report should be a separate independent 
-  entity that only requires user parameters to execute.</p>
+
+<h3>Docker (self-hosted)</h3>
+<p>The quickest way to run the Web Report Server is the published Docker image. The
+  container runs <b>repwebexe -selfhosted</b> and serves the report server on port
+  8080. Start the service directly with:</p>
+<pre>
+docker run -d \
+  -p 8080:8080 \
+  -e REPORTMAN_HTTP_PORT=8080 \
+  -v repweb_etc:/usr/local/etc \
+  -v repweb_home:/var/lib/reportman \
+  -v repweb_logs:/var/log/reportman \
+  --name reportman-web \
+  --restart unless-stopped \
+  tonimartir/reportman-web:latest
+</pre>
+<p>Docker pulls the image on the first run. Then open the administration panel at
+  <a href="http://localhost:8080/admin/login">http://localhost:8080/admin/login</a>.
+  On the first run use the bootstrap form to create the first administrator.</p>
+<p>Persistent named volumes keep your configuration and data between restarts:</p>
+<table width="100%" border="1">
+  <tr>
+    <td bgcolor="#FFFFCC"><b>Volume</b></td>
+    <td bgcolor="#FFFFCC"><b>Container path</b></td>
+    <td bgcolor="#FFFFCC"><b>Contents</b></td>
+  </tr>
+  <tr>
+    <td>repweb_etc</td>
+    <td>/usr/local/etc</td>
+    <td>dbxdrivers.conf and dbxconnections.conf (database drivers and connections)</td>
+  </tr>
+  <tr>
+    <td>repweb_home</td>
+    <td>/var/lib/reportman</td>
+    <td>server configuration in .etc.reportmanserver (users, groups, aliases, API keys)</td>
+  </tr>
+  <tr>
+    <td>repweb_logs</td>
+    <td>/var/log/reportman</td>
+    <td>audit logs (CSV and JSON Lines)</td>
+  </tr>
+</table>
+<p>The HTTP port is controlled by <b>REPORTMAN_HTTP_PORT</b> (default 8080); publish
+  the same port with <tt>-p</tt>. The image bundles the free database client libraries
+  (PostgreSQL, MySQL/MariaDB, Firebird/Interbase, SQLite, MS SQL Server/Sybase through
+  FreeTDS and ODBC); proprietary clients (Oracle, Db2) are added in a derived image.
+  Image: <a href="https://hub.docker.com/r/tonimartir/reportman-web">tonimartir/reportman-web</a>.</p>
+<p>For TLS, routing or perimeter authentication, place a reverse proxy in front of the
+  container.</p>
+
+<h3>What the web server does</h3>
+<p>The Report Manager Web Server is a multithreaded application that lets any number of
+  HTML client machines execute reports and obtain <b>ready to print Adobe PDF files</b>
+  &mdash; or CSV, plain text, SVG and native Report Manager metafiles. The client only
+  needs a web browser, and <b>no cookies are required</b>.</p>
+<p>The server holds the database connections and the report definitions, so the heavy
+  query and rendering work happens on the server and only the result travels to the
+  client. This lets you distribute the load: an Internet-facing report server can run
+  process-intensive queries against a high-performance database server on a separate
+  machine and then send only the finished report to the client. The server is optimized
+  to use very little bandwidth and runs on Windows, Linux (Apache) and Docker.</p>
+
+<h3>The administration panel</h3>
+<p>The self-hosted server includes a built-in administration panel at <b>/admin</b>.
+  Everything is managed through the browser, no file editing required:</p>
+<table width="100%" border="1">
+  <tr>
+    <td bgcolor="#FFFFCC"><b>Section</b></td>
+    <td bgcolor="#FFFFCC"><b>What it does</b></td>
+  </tr>
+  <tr><td>Server config</td><td>Runtime server options.</td></tr>
+  <tr><td>Connections</td><td>Create, edit, test and delete database connections.</td></tr>
+  <tr><td>Aliases</td><td>Report groups exposed to clients.</td></tr>
+  <tr><td>Users / Groups</td><td>Accounts and access groups, with per-alias privileges.</td></tr>
+  <tr><td>API keys</td><td>Create and revoke API keys and map them to a user.</td></tr>
+  <tr><td>Testing</td><td>Build and run API requests against the server itself.</td></tr>
+  <tr><td>Diagnostics</td><td>Deployment and security diagnostics (also available at /version).</td></tr>
+</table>
+
+<h3>Database connections</h3>
+<p>Open <b>Connections</b> in the admin panel (<tt>/admin/connections</tt>) to create and
+  administer the database connections used by your reports. You can add a <b>new</b>
+  connection, <b>edit</b> its parameters, run a connection <b>test</b>, <b>delete</b> it,
+  or edit the <b>raw</b> definition. Connections are stored in <tt>dbxconnections.conf</tt>
+  and use the FireDAC/Zeos drivers bundled in the image. A report references a connection
+  by its alias, so you can change the database without changing the report.</p>
+
+<h3>Adding proprietary database drivers</h3>
+<p>The Docker image bundles the <b>free</b> client libraries (PostgreSQL,
+  MySQL/MariaDB, Firebird/Interbase, SQLite, MS SQL Server/Sybase through FreeTDS and
+  ODBC), so those backends work out of the box. <b>Proprietary</b> clients are not
+  shipped because they require a manual download and/or accepting a license. You add
+  them in a <b>derived image</b> built <tt>FROM tonimartir/reportman-web</tt>: switch to
+  the <tt>root</tt> user, install the driver, then switch back to the <tt>reportman</tt>
+  user. FireDAC and Zeos share the same native <tt>.so</tt> libraries, so installing the
+  backend client enables both engines.</p>
+<p>Ready-made examples live in <tt>server/docker/web/examples/</tt> (Microsoft ODBC 18,
+  Oracle Instant Client, IBM Db2 CLI and Progress DataDirect). Build a derived image like
+  this &mdash; the build context is the examples folder, where you drop any downloaded
+  package:</p>
+<pre>
+# Pull the base image first if it is not local:
+#   docker pull tonimartir/reportman-web:latest
+docker build -f server/docker/web/examples/Dockerfile.oracle \
+  -t reportman-web-oracle:latest \
+  server/docker/web/examples
+</pre>
+<p>Run the derived image with the same ports, environment variables and volumes as the
+  base image. If your base image has another name/tag, pass it with
+  <tt>--build-arg BASE_IMAGE=reportman-web:latest</tt>.</p>
+
+<p><b>Oracle Instant Client.</b> Download
+  <tt>instantclient-basiclite-linux.x64-*.zip</tt> from Oracle (license required) and
+  place it in the examples folder as <tt>instantclient.zip</tt>:</p>
+<pre>
+ARG BASE_IMAGE=tonimartir/reportman-web:latest
+FROM ${BASE_IMAGE}
+USER root
+RUN apt-get update \
+    &amp;&amp; apt-get install -y --no-install-recommends libaio1 unzip \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+COPY instantclient.zip /tmp/instantclient.zip
+RUN mkdir -p /opt/oracle \
+    &amp;&amp; unzip -q /tmp/instantclient.zip -d /opt/oracle \
+    &amp;&amp; rm /tmp/instantclient.zip \
+    &amp;&amp; sh -c 'echo /opt/oracle/instantclient* &gt; /etc/ld.so.conf.d/oracle-instantclient.conf' \
+    &amp;&amp; ldconfig
+USER reportman
+</pre>
+<p>Then, in the <b>Connections</b> screen, create a connection with the Oracle driver
+  (FireDAC <tt>Ora</tt> or the Zeos <tt>oracle</tt> protocol). FireDAC and Zeos find the
+  Instant Client through the loader path configured above.</p>
+
+<p><b>Progress DataDirect Connect for ODBC.</b> "DataDirect" is Progress's brand for its
+  proprietary connectivity drivers (Progress acquired DataDirect Technologies in 2012);
+  the ODBC product is <i>Progress DataDirect Connect for ODBC</i> (a.k.a. <i>Connect64 for
+  ODBC</i>), a set of "Wire Protocol" drivers that need no database client libraries. It
+  is a licensed, manually downloaded Linux 64-bit package
+  (<a href="https://www.progress.com/odbc">progress.com/odbc</a>). The base image already
+  includes the <b>unixODBC</b> driver manager, so the DataDirect <tt>.so</tt> drivers only
+  need to be unpacked, put on the loader path and registered in <tt>/etc/odbcinst.ini</tt>.
+  Place the downloaded package in the examples folder as <tt>datadirect-odbc.tar.gz</tt>
+  and use:</p>
+<pre>
+ARG BASE_IMAGE=tonimartir/reportman-web:latest
+FROM ${BASE_IMAGE}
+ARG DD_HOME=/opt/progress/datadirect
+USER root
+RUN apt-get update \
+    &amp;&amp; apt-get install -y --no-install-recommends tar gzip \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+COPY datadirect-odbc.tar.gz /tmp/datadirect.tar.gz
+RUN mkdir -p "${DD_HOME}" \
+    &amp;&amp; tar -xzf /tmp/datadirect.tar.gz -C "${DD_HOME}" --strip-components=1 \
+    &amp;&amp; rm /tmp/datadirect.tar.gz \
+    # put the DataDirect driver libraries on the dynamic loader path
+    &amp;&amp; echo "${DD_HOME}/lib" &gt; /etc/ld.so.conf.d/datadirect.conf \
+    &amp;&amp; ldconfig \
+    # register the driver you need; the .so name depends on the backend, e.g.
+    # ivora28.so (Oracle), ivmsss28.so (SQL Server), ivsqls28.so, ivinf28.so ...
+    &amp;&amp; printf '%s\n' \
+       '[DataDirect Oracle Wire Protocol]' \
+       'Description=Progress DataDirect Oracle Wire Protocol' \
+       "Driver=${DD_HOME}/lib/ivora28.so" \
+       &gt;&gt; /etc/odbcinst.ini
+ENV ODBCHOME=/opt/progress/datadirect \
+    ODBCINI=/usr/local/etc/odbc.ini
+USER reportman
+</pre>
+<p>The package name, the unpack path and the driver <tt>.so</tt> depend on the DataDirect
+  version you download &mdash; adjust them to your package (the DataDirect package also
+  ships an installer and sample <tt>odbc.ini</tt> / <tt>odbcinst.ini</tt> files you can
+  reuse). The driver libraries live in the install's <tt>lib/</tt> folder and use a
+  versioned name &mdash; for Oracle, for example, <tt>ivora28.so</tt> or <tt>DWora28.so</tt>
+  depending on the release (the <tt>iv</tt>/<tt>DW</tt>/<tt>AR</tt> prefix and the version
+  number vary), so check that folder for the exact file. Once the image is built, create an
+  <b>ODBC</b> connection in the <b>Connections</b> screen: either reference the registered
+  driver in a DSN-less connection string, or define a DSN in the <tt>odbc.ini</tt> pointed
+  to by <tt>ODBCINI</tt> (the <tt>/usr/local/etc</tt> volume keeps it across restarts).
+  Reportman reaches ODBC through the Zeos <tt>odbc</tt> protocol or the FireDAC ODBC driver.
+  The same recipe covers any DataDirect Wire Protocol driver (SQL Server, Db2, Sybase,
+  Informix &mdash; and the Progress OpenEdge database itself) by registering the matching
+  <tt>.so</tt>.</p>
+
+<p><b>Progress OpenEdge database.</b> To connect to a Progress OpenEdge database, use its
+  SQL Client Access ODBC driver, which is the DataDirect "OpenEdge Wire Protocol" driver.
+  It ships with OpenEdge under <tt>$DLC/odbc/lib</tt> as <tt>pgoe&lt;NN&gt;.so</tt> (the
+  number tracks the release, e.g. <tt>pgoe27.so</tt> or <tt>pgoe1025.so</tt>) and is also
+  available as a standalone download
+  (<a href="https://www.progress.com/odbc/openedge">progress.com/odbc/openedge</a>). In a
+  derived image, copy the OpenEdge ODBC client files (from an OpenEdge install's
+  <tt>$DLC/odbc</tt> and <tt>$DLC/lib</tt>, or the standalone package), put their
+  <tt>lib</tt> folders on the loader path with <tt>ldconfig</tt>, and register the driver in
+  <tt>/etc/odbcinst.ini</tt>:</p>
+<pre>
+[Progress OpenEdge]
+Description=Progress OpenEdge Wire Protocol
+Driver=/opt/openedge/odbc/lib/pgoe27.so
+FileUsage=1
+</pre>
+<p>Then create an <b>ODBC</b> connection in the <b>Connections</b> screen that references
+  this driver (directly, or through a DSN in the <tt>odbc.ini</tt> pointed to by
+  <tt>ODBCINI</tt>), giving the OpenEdge host, the SQL broker port and the database name.
+  As with the other ODBC backends, Reportman connects through the Zeos <tt>odbc</tt>
+  protocol or the FireDAC ODBC driver.</p>
+
+<h3>API keys</h3>
+<p>Besides the classic user and password, the server accepts authentication with an
+  <b>API key</b> sent in the HTTP header <b>X-ReportmanServer-ApiKey</b>. This is the
+  recommended way to call the server from your own applications.</p>
+<p>Manage keys under <b>API keys</b> (<tt>/admin/apikeys</tt>): each key has a logical
+  name and is mapped to an existing internal user (configuration sections
+  <tt>[SERVERAPIKEYS]</tt> and <tt>[SERVERAPIKEYUSERS]</tt>), so the key inherits that
+  user's privileges over aliases and reports.</p>
+<p>Two switches in the <tt>[SECURITY]</tt> configuration control access, both enabled by
+  default: <b>USER_ACCESS</b> (classic user/password) and <b>API_KEY_ACCESS</b> (API key
+  header). When a request carries a valid <tt>X-ReportmanServer-ApiKey</tt> it takes
+  precedence over user/password. Because credentials and parameters can travel over HTTP,
+  run the server behind TLS (a reverse proxy) in production.</p>
+
+<h3>Built-in API testing</h3>
+<p>The admin panel includes a <b>Testing</b> screen (<tt>/admin/testing</tt>) that builds
+  and runs real HTTP calls to the server <b>from the web interface itself</b> &mdash; the
+  fastest way to learn exactly how to invoke a report from the outside. The wizard lets
+  you:</p>
+<ul>
+  <li>choose host, port, authentication (user/password or API key) and method (GET or POST);</li>
+  <li>pick an existing report and read its visible parameters;</li>
+  <li><b>Build Request</b>: see the exact URL, request headers and body the server expects;</li>
+  <li><b>Test Request</b>: execute it and see the status code, content type and response,
+    with a <b>Download</b> button when the result is a PDF.</li>
+</ul>
+<p>Because the wizard issues the same HTTP call the server accepts in production, you can
+  copy the generated URL, headers and body straight into your own client or scripts.</p>
+
+<h3>Executing reports from a URL</h3>
+<p>Clients log in, choose a report group (alias) and a report, optionally change the report
+  parameters, and execute it &mdash; all via HTML. See the
+  <a href="webserveroperations.html">web server operations</a> page for the full list of
+  request parameters (aliasname, reportname, metafile output format, language, and so on).
+  By default parameters travel by <b>POST</b>; URL/query-string operation is kept as optional
+  backwards compatibility, and when enabled the full execution URL can be bookmarked.</p>
+<p>Use the <b>/version</b> command to check the deployment and to find the location of the
+  configuration files.</p>
+
+<h3>Classic CGI/ISAPI installation</h3>
+<p>The server can also be deployed as a CGI/ISAPI module (repwebserver.dll / repwebexe)
+  behind Apache or IIS. See the <a href="webserverinstall.html">installation instructions</a>
+  for that setup and for configuration details.</p>
+
+<h3>Designing reports for the web server</h3>
+<p>Reports for the web server must be thread safe: make sure the driver supports
+  multithreading and the connection string is thread safe. For Interbase/Firebird always
+  provide the hostname (for example localhost), because the local access method is not
+  thread safe. Reports should be independent entities that only need user parameters to
+  execute.</p>
 </body>
 </html>

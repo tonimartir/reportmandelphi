@@ -1,70 +1,76 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Descarga de Report Manager</title>
+  <meta name="description" content="Descargue Report Manager - el disenador, componentes Delphi/C++Builder, control ActiveX y bibliotecas .NET.">
+  <title>Report Manager - Descarga</title>
   <link rel="stylesheet" href="responsive.css">
-  <script>
-    window.addEventListener("load", function () {
-      window.cookieconsent.initialise({
-        "palette": {
-          "popup": { "background": "#000" },
-          "button": { "background": "#f1d600" }
-        }
-      });
-    });
-  </script>
 </head>
-
 <body>
-  <div class="container">
 
-    <header class="header">
-      <div class="lang">
-        <a href="download.html">English</a> | <b>Español</b>
-        <span class="flags">
-          <a href="download.html"><img src="doc/images/english_flag.jpg" alt="English Flag"></a>
-          <img src="doc/images/spanish_flag.jpg" alt="Spanish Flag">
-        </span>
-      </div>
-      <h1>Report Manager</h1>
-    </header>
-
-    <div class="content">
-      <nav class="sidebar">
-        <ul>
-          <li><a href="indexes.html">Descripción</a></li>
-          <li><a href="contribes.html">Comprar</a> <img src="doc/images/newsmalles.jpg" alt="nuevo"></li>
-          <li><a href="webserveres.html">Servidor Web</a> <img src="doc/images/newsmalles.jpg" alt="nuevo"></li>
-          <li><a href="screenshotses.html">Pantallas</a></li>
-          <li><b>Descarga</b></li>
-          <li><a href="docnet/index.html">Biblioteca punto net</a> <img src="doc/images/newsmalles.jpg" alt="nuevo">
-          </li>
-          <li><a href="doc/index.html" target="_blank">Documentación (inglés)</a></li>
-          <li><a href="supportes.html">Soporte</a></li>
-          <li><a href="companyes.html">Empresa</a></li>
-          <li><a href="linkses.html">Otros enlaces</a></li>
-          <li><a href="http://sourceforge.net" target="_blank">
-              <img src="http://sourceforge.net/sflogo.php?group_id=51737&amp;type=1" alt="SourceForge Logo">
-            </a></li>
-          <li><a href="http://www.delphi-jedi.org" target="_blank">
-              <img src="doc/images/jedinow.gif" alt="JEDI Logo">
-            </a></li>
-        </ul>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="indexes.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="indexes.html">Inicio</a>
+        <a href="downloades.html" class="active">Descarga</a>
+        <a href="webserveres.html">Servidor Web</a>
+        <a href="screenshotses.html">Pantallas</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank">Docs</a>
+        <a href="supportes.html">Soporte</a>
       </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><a href="download.html">EN</a><span class="current">ES</span></span>
+      </div>
+    </div>
+  </header>
 
-      <main class="main">
-        <h3>Descarga</h3>
-        <p>Para la descarga de Report Manager diríjase a la página del <a
-            href="http://sourceforge.net/projects/reportman" target="_blank">proyecto en SourceForge</a>.</p>
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Descarga</h1>
+        <p class="tagline">Obtenga la ultima version de Report Manager y sus paquetes.</p>
+      </div>
+    </section>
 
-        <p>Allí encontrará <b>la última versión</b> de los siguientes paquetes:</p>
-        <ul>
-          <li>Diseñador de informes Report Manager (versiones para Windows y Linux)</li>
-          <li>Paquete de componentes Report Manager para Delphi / Builder / Kylix</li>
-          <li>Componente Report Manager ActiveX y complemento para Internet Explorer</li>
-          <li>Biblioteca .Net Report Manager</li>
-        </ul>
-        <
+    <section class="page">
+      <p>Report Manager esta alojado en SourceForge. Descargue la ultima version desde la <a href="https://sourceforge.net/projects/reportman" target="_blank">pagina del proyecto en SourceForge</a>.</p>
+
+      <p>La version incluye los siguientes paquetes:</p>
+      <ul>
+        <li>Disenador de informes Report Manager (Windows y Linux)</li>
+        <li>Paquetes de componentes para Delphi, C++Builder y FPC/Lazarus</li>
+        <li>Componente ActiveX de Report Manager</li>
+        <li>Biblioteca .NET y .NET Core</li>
+      </ul>
+      <p>Los paquetes del disenador tambien incluyen el control ActiveX (Windows) y el servidor web de informes (Windows y Linux).</p>
+
+      <p>Para desarrollo en .NET hay paquetes disponibles en NuGet y en un <a href="https://github.com/tonimartir/reportman" target="_blank">repositorio de GitHub</a> dedicado.</p>
+
+      <h2>Comprar</h2>
+      <p>Si Report Manager le resulta util, considere adquirir <a href="contribes.html">soporte o servicios</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank">Licencia MPL</a>
+      <span class="sep">&middot;</span>
+      <a href="companyes.html">Empresa</a>
+      <span class="sep">&middot;</span>
+      <a href="linkses.html">Otros enlaces</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>
