@@ -1,0 +1,489 @@
+{
+  "/doc/axtivexcomp.html": {
+    "desc": "Register Reportman.ocx with regsvr32 and drive reports from VB, VBScript, ASP and WSH, with the full ActiveX property, method and interface reference."
+  },
+  "/doc/barcodes.html": {
+    "desc": "Barcodes in Report Manager: supported types (2of5, Code39, Code128, Code93, MSI, PostNet, Codabar, EAN8/13) plus Ratio, Modul, checksum and rotation"
+  },
+  "/doc/bidi_behavior.html": {
+    "desc": "How the Bidi Mode property and horizontal alignment control right-to-left and complex-script text, using DirectWrite on Windows and ICU plus HarfBuzz on"
+  },
+  "/doc/buildercomp.html": {
+    "desc": "Build and install the Report Manager packages in C++Builder, from shared RAD Studio 10.3+ groups to legacy C++Builder 6 .bpk files, plus shlwapi.lib."
+  },
+  "/doc/building.html": {
+    "desc": "Steps to compile Report Manager Designer, tools and install packages from Delphi/Kylix or the command line, with required tools for Windows and Linux."
+  },
+  "/doc/childsubreports.html": {
+    "desc": "Use the Child Subreport section property in Report Manager to nest a linked subreport after a detail, printing many-to-many data with per-report subtotals."
+  },
+  "/doc/commandline.html": {
+    "desc": "Command line utilities reptotxt, txttorep, printrep, printreptopdf, metaprint and compilerep for converting, printing and exporting reports."
+  },
+  "/doc/compileropts.html": {
+    "desc": "Tune the Report Manager engine via rpconf.inc defines (USESQLEXPRESS, USEIBX, USEADO, USEBDE, USEIBO) to enable database drivers or shrink executable size."
+  },
+  "/doc/compsiterep.html": {
+    "desc": "Concatenate several fully processed reports into one output using the two-pass option and the Compose method, with VCL and ActiveX code examples."
+  },
+  "/doc/customoutput.html": {
+    "desc": "Generate custom text files from a report using per-expression Export Line, Position, Size and New Line properties to control field placement on each line."
+  },
+  "/doc/delphicomp.html": {
+    "desc": "Install the Report Manager rtl, vcl and designvcl packages in Delphi 4 through RAD Studio 13, with per-version package names and build/install order."
+  },
+  "/doc/delphinetcomp.html": {
+    "title": "Delphi for .NET (legacy)",
+    "desc": "Legacy notes on compiling and using Report Manager from Delphi for .NET; refer to the Visual Studio .NET installation page for current steps."
+  },
+  "/doc/deploy.html": {
+    "desc": "Files to ship when deploying Report Manager on Windows and Linux: designer and server executables, DBExpress drivers, native Delphi/CLX and ActiveX"
+  },
+  "/doc/devdriver.html": {
+    "desc": "How the driver-based engine renders a device-independent metafile through PDF, SVG, HTML, GDI, text, CSV and metafile drivers across Windows and Linux."
+  },
+  "/doc/devnotes.html": {
+    "desc": "Developer notes on Report Manager internals: NuGet packages, BiDi text via DirectWrite/ICU, TClientDataset buffering, and Delphi WideString and VCL bug"
+  },
+  "/doc/dotmatrix.html": {
+    "title": "Dot matrix and POS receipt printing",
+    "desc": "Configure page size, escape-code drivers (EPSON, IBM, HP-PCL) and cash-drawer codes to print to dot matrix and thermal POS receipt printers."
+  },
+  "/doc/dotnetport.html": {
+    "title": ".NET C# engine port and usage",
+    "desc": "The C# port of the Report Manager engine: design reports as XML, handle .NET date formats, ODBC params, missing features, and run reports via the library."
+  },
+  "/doc/drawfunctions.html": {
+    "title": "Draw functions reference",
+    "desc": "Reference for draw functions (TextOp, GraphicOp, ImageOp, OnBarcodeOp, page setup) that paint text, shapes, images and barcodes anywhere via report"
+  },
+  "/doc/droppingfields.html": {
+    "desc": "Drag dataset fields onto the detail section, add labels and rectangles, resize sections, preview, and export to PDF, text or report metafile."
+  },
+  "/doc/exevaluator.html": {
+    "desc": "Report Manager expression evaluator reference: Pascal-like syntax, data types, operators, IIF, and functions for dataset fields, dates, formatting and"
+  },
+  "/doc/externalsec.html": {
+    "title": "Sharing report sections across files",
+    "desc": "Share a common header across many reports using the section External Path property to load it from a file or database table and update all reports at once."
+  },
+  "/doc/faq.html": {
+    "desc": "Answers on main dataset setup, supported IDEs (Delphi, C++Builder, FPC, ActiveX), grouping order, thread safety and two-pass reports."
+  },
+  "/doc/features.html": {
+    "title": "Feature list",
+    "desc": "Full feature list: band-based designer, subreports, groups, expression evaluator, PDF/HTML/CSV export, barcodes, charts, images plus supported database"
+  },
+  "/doc/formfilling.html": {
+    "desc": "Fill preprinted forms by scanning or converting them to a section background image, then drag fields on top and adjust margins to align the output."
+  },
+  "/doc/gnuc.html": {
+    "desc": "Call the Report Manager engine from GNU C, C++ or Visual Basic via the rp_* DLL/shared-library API: open, execute to PDF, set parameters, preview, print."
+  },
+  "/doc/groupheader.html": {
+    "desc": "Group report data with a change expression, print group headers and footers, count records per group, and order datasets for correct grouping."
+  },
+  "/doc/howitwork.html": {
+    "desc": "How the Report Manager engine processes a report: datasets, parameters, subreports, sections (bands) and printable components, with print preview examples."
+  },
+  "/doc/htmlformat.html": {
+    "desc": "Enable the Is Html property to render inline HTML tags (bold, italic, font, color) and interpolate {{ }} expressions inside label and expression text."
+  },
+  "/doc/htmloutput.html": {
+    "title": "Export reports to HTML",
+    "desc": "Export a report to HTML files or a single HTML page, with font-sizing and section design tips to avoid overlapping lines in the browser."
+  },
+  "/doc/index.html": {
+    "title": "Report Manager overview",
+    "desc": "Overview of the Report Manager reporting suite: visual designer, command-line tools, PDF/SVG/HTML/CSV output, TCP and web report servers, plus Delphi,"
+  },
+  "/doc/inmemorydata.html": {
+    "desc": "Use the MyBase driver for in-memory datasets: sort, union, group and master-detail filter records, with a per-customer totals example to boost report"
+  },
+  "/doc/installlin.html": {
+    "title": "Install Report Manager Designer on Linux",
+    "desc": "Install the Report Manager Designer on Linux from RPM or tar.gz, set LD_LIBRARY_PATH, and configure database, printer and kprinter settings."
+  },
+  "/doc/installserver.html": {
+    "title": "Install the Report Manager server",
+    "desc": "Install the Report Manager report server on Windows as a service or app, on Linux standalone or at boot, plus multiprocessor printreptopdf setup."
+  },
+  "/doc/installwebreport.html": {
+    "title": "WebReportManX ActiveX IE plugin",
+    "desc": "Install and embed the WebReportManX ActiveX Internet Explorer plugin to preview or print server reports and metafiles, with full object parameter"
+  },
+  "/doc/installwin.html": {
+    "desc": "Step-by-step setup of the Report Manager Designer on Windows 10/11 and Server, with uninstall, dev packages, and DBExpress/printer config file paths."
+  },
+  "/doc/internatsupport.html": {
+    "desc": "Build multilanguage reports with per-language label text, Unicode and complex-script shaping, and Hebrew/Arabic bidirectional support in preview, print"
+  },
+  "/doc/interoperability.html": {
+    "desc": "How to use Report Manager from Delphi, C++Builder, .NET, ActiveX, shared libraries, command-line tools and web servers, with portable .rep and"
+  },
+  "/doc/javascript.html": {
+    "title": "Call Report Manager from JavaScript",
+    "desc": "JavaScript RMReport class that builds a repwebserver.dll/execute.pdf URL, adds report parameters and opens the PDF in a new browser window."
+  },
+  "/doc/knownissues.html": {
+    "desc": "Workarounds for Kylix/Qt printing bugs, custom page sizes, landscape orientation, linked-query crashes, Oracle 9i, MySQL ODBC and ASP output."
+  },
+  "/doc/kylixcomp.html": {
+    "title": "Compile in Kylix (legacy)",
+    "desc": "Compile Report Manager in Kylix 2/3 by installing the rppack, rppackv and rppackdesign packages in order, with C++ Builder bpk variants and tips."
+  },
+  "/doc/labels.html": {
+    "title": "Printing labels",
+    "desc": "Design label reports in Report Manager: measure label spacing, set margins and detail size, use Horz.Desp/Vert.Desp, blank records and copies for label"
+  },
+  "/doc/left2.html": {
+    "title": "Documentation contents index",
+    "desc": "Complete table of contents linking every Report Manager guide: installation, report servers, report design, component reference and developer topics."
+  },
+  "/doc/license.html": {
+    "title": "Mozilla Public License 1.1 full text",
+    "desc": "Full text of the Mozilla Public License 1.1 (dual-licensed with GPL) governing Report Manager, including definitions, distribution duties and disclaimers."
+  },
+  "/doc/licensequestions.html": {
+    "title": "MPL developer license FAQ",
+    "desc": "Answers to developer licensing questions about distributing Report Manager in commercial products, MPL larger-work boundaries, and 3rd-party libraries."
+  },
+  "/doc/linkedquerys.html": {
+    "title": "Linked queries",
+    "desc": "Link a dataset to a master dataset in Report Manager using the Master Dataset property and matching parameter names to drive parametrized detail queries."
+  },
+  "/doc/linuxcomp.html": {
+    "title": "Build printreptopdf for Linux",
+    "desc": "Compile the printreptopdf tool for Linux via the PAServer cross-compiler, installing freetype, harfbuzz, subset and libicu devel packages for font shaping."
+  },
+  "/doc/linuxprintreptopdf.html": {
+    "desc": "Run printreptopdf to render .rep reports to PDF on Linux, with FireDAC MySQL client setup, libmysqlclient links and a .dbxconnections example."
+  },
+  "/doc/mfeatures.html": {
+    "desc": "Planned to-do items: richer HTML/SVG export, RTF output, .NET data providers, drill-down, hyperlinks in preview, polylines and more chart types."
+  },
+  "/doc/openingdata.html": {
+    "desc": "Connect a report to data: create a DBExpress connection to Firebird/Interbase, add a dataset with a SQL query, and bind it to the subreport."
+  },
+  "/doc/openingdatatrouble.html": {
+    "title": "Database driver setup and troubleshooting",
+    "desc": "Troubleshoot Report Manager database connections across DBExpress, BDE, Zeos, ODBC, IBX and DAO, with library setup steps for PostgreSQL, MySQL, Firebird"
+  },
+  "/doc/otherlang.html": {
+    "title": "Use the engine from PHP, Python, C",
+    "desc": "Use the Report Manager engine from PHP, Python, JavaScript, GNU C and other languages that call functions exported by standard dynamic libraries."
+  },
+  "/doc/pageheader.html": {
+    "desc": "Add page header and footer sections that repeat on every page, apply print conditions, and print the current page number with the Page function."
+  },
+  "/doc/pagesetup.html": {
+    "desc": "Set page size, orientation, margins, language, printer fonts, two-pass paging, duplex, paper source, save format and printer selection."
+  },
+  "/doc/parallel.html": {
+    "title": "Parallel unions for columnar reports",
+    "desc": "Combine multiple datasets side by side with parallel unions to build columnar reports, joining tables on common fields with Q01_ prefixed column names."
+  },
+  "/doc/pdfoutput.html": {
+    "title": "PDF font embedding implementation",
+    "desc": "How native PDF output works: TrueType and Type1 font embedding, Unicode, compression, and FreeType-based font matching on Linux versus Windows."
+  },
+  "/doc/php.html": {
+    "title": "Call Report Manager from PHP",
+    "desc": "Launch Report Manager reports from a PHP page by building a repwebexe.bin/execute.pdf link that passes report name, alias and SQL search parameters."
+  },
+  "/doc/preferences.html": {
+    "desc": "Set designer units (cm/inches) and compare the GDI and legacy Qt/CLX print drivers across resolution, device fonts, positioning and platforms."
+  },
+  "/doc/python.html": {
+    "title": "Call Report Manager from Python",
+    "desc": "Drive Report Manager from Python: dispatch the ReportManX ActiveX control via win32com, or use the ctypes binding to the C library."
+  },
+  "/doc/python_bind.html": {
+    "title": "reportman.py Python binding reference",
+    "desc": "Reference for the reportman.py ctypes binding: ReportMan class plus rp_open, rp_execute, rp_preview, rp_print and set_param wrappers for the ActiveX API."
+  },
+  "/doc/refbarcode.html": {
+    "desc": "TRpBarcode properties: barcode types (2of5, Code39, Code128, EAN, MSI, PDF417, QR), checksum, module width, ratio, value expression and rotation."
+  },
+  "/doc/refchart.html": {
+    "desc": "TRpChart properties: data and series expressions, chart type, native vs TeeChart driver, 3D view, legend, Y-axis range and per-value color expressions."
+  },
+  "/doc/refcommon.html": {
+    "desc": "Properties shared by all report sections and items: Width, Height, position, alignment, PrintCondition, Before/After Print expressions and PDF annotations."
+  },
+  "/doc/refcommontext.html": {
+    "desc": "Text formatting shared by labels, expressions and charts: font, alignment, rotation, word wrap, plus IsHtml markup tags and {{expression}} substitution."
+  },
+  "/doc/refdatabaseinfo.html": {
+    "desc": "TRpDatabaseInfoItem connection properties: alias, database driver (MyBase, BDE, DBExpress, IBX, IBO, ADO, ZeosLib), parameter loading and login prompt."
+  },
+  "/doc/refdatainfo.html": {
+    "title": "Connection and dataset collections",
+    "desc": "The TRpDatabaseInfoList and TRpDataInfoList collections that hold a report's database connection and dataset definitions, edited in the data dialog."
+  },
+  "/doc/refdraw.html": {
+    "desc": "TRpShape properties: shape type (rectangle, ellipse, lines), pen style, color and width, plus brush style and fill color for drawing in reports."
+  },
+  "/doc/refexpression.html": {
+    "desc": "TRpExpression properties: expression, display format, data type, aggregates (sum, min, max, avg, std dev) by group, page or report, and multi-page output."
+  },
+  "/doc/refimage.html": {
+    "desc": "TRpImage properties: draw style (crop, stretch, full, tile), embedded or expression-loaded images, resolution, and supported formats per output driver."
+  },
+  "/doc/reflabel.html": {
+    "desc": "TRpLabel Text property: static text that can hold different translations per report language for multilingual labels."
+  },
+  "/doc/refparameters.html": {
+    "title": "Report parameters collection (TRpParamList)",
+    "desc": "The TRpParamList collection holding a report's parameters, exposed as Report.Params and accessible through the ActiveX interface."
+  },
+  "/doc/refreport.html": {
+    "title": "TRpReport report object reference",
+    "desc": "TRpReport top-level object: grid, printer and page size, margins, copies, two-pass printing, language, and the dataset, connection and parameter"
+  },
+  "/doc/refsection.html": {
+    "desc": "TRpSection properties: groups, auto expand/contract, page breaks, label displacement, child subreports, external sections and custom text export."
+  },
+  "/doc/refsubreport.html": {
+    "desc": "TRpSubReport properties: the main dataset alias used to iterate detail sections and PrintOnlyIfDataAvailable to skip empty datasets."
+  },
+  "/doc/replibraries.html": {
+    "desc": "Store reports centrally in database tables: create a report library from the designer or by hand, with PostgreSQL BLOB domain and table SQL."
+  },
+  "/doc/reportgrid.html": {
+    "title": "Aligning components with the design grid",
+    "desc": "Enable and customize the designer grid to align report components, switching between dots and lines and changing the grid color."
+  },
+  "/doc/reportheader.html": {
+    "title": "Subreport header and summary sections",
+    "desc": "Use a group's header and footer as subreport header and summary, and count records with an aggregate expression set to Sum."
+  },
+  "/doc/repparams.html": {
+    "title": "Report parameters",
+    "desc": "Define and use report parameters in Report Manager: value lists, multi-select, string substitution, lookup search datasets, validation and special DB"
+  },
+  "/doc/requirements.html": {
+    "title": "Hardware and software requirements",
+    "desc": "Hardware and software requirements to run and compile Report Manager on Windows 10/11, Windows Server and Linux, including DLL dependencies and X server"
+  },
+  "/doc/serverclient.html": {
+    "desc": "Connect the metaview client to a report server by host, user and password, browse alias report trees, set parameters, then print or save to PDF."
+  },
+  "/doc/serverclientcustom.html": {
+    "desc": "Build your own report-server client using Delphi TVCLReport/TPDFReport ExecuteRemote, the standard C API exports, or ActiveX methods."
+  },
+  "/doc/serverconfig.html": {
+    "desc": "Configure the report server on port 3060 with repserverconfig: manage Admin and users, user groups, alias privileges and report library aliases."
+  },
+  "/doc/serverintro.html": {
+    "title": "TCP Report Server overview",
+    "desc": "Overview of the multithreaded TCP/IP report server: client machines request reports, the server runs queries and returns print-ready metafiles."
+  },
+  "/doc/serverserver.html": {
+    "title": "Running the TCP report server",
+    "desc": "Run the report server as a service or visible reportserverapp, configure report libraries, and pair it with printreptopdf for multiprocessing."
+  },
+  "/doc/serversmp.html": {
+    "desc": "How the report server uses multiprocessor and hyperthreading: per-request threads via printreptopdf, expected speedups, and disabling SMP."
+  },
+  "/doc/success.html": {
+    "desc": "Real-world testimonials from companies using Report Manager: a veterinary practice, a cable TV provider and a medical laboratory system on Windows and"
+  },
+  "/doc/teechart.html": {
+    "desc": "Enable TeeChart in Report Manager via USETEECHART in rpconf.inc for rich charts, or use the fast dependency-free native line driver for console and web"
+  },
+  "/doc/translation.html": {
+    "title": "Localizing Report Manager with rptranslate",
+    "desc": "How to localize Report Manager: translate the reportmanres resourcestring file with rptranslate.exe so forms appear in the user's selected language."
+  },
+  "/doc/units.html": {
+    "title": "Engine source unit index",
+    "desc": "Index of the rp*.pas source units in the Report Manager engine, linking to per-unit reference pages for the non-visual and VCL packages."
+  },
+  "/doc/units/rpactivexreport.html": {
+    "desc": "TRpActiveXReport, the palette-installable TCustomControl base class behind Report Manager's TReportMan ActiveX control for hosting reports."
+  },
+  "/doc/units/rpalias.html": {
+    "desc": "TRpAlias component and TRpAliasList/TRpAliasItem classes that pass application-opened TDataset objects to a report or expression evaluator by alias."
+  },
+  "/doc/units/rpaxreportimp.html": {
+    "desc": "TReportManX, the legacy ActiveX control implementation (TActiveXControl, IReportManX) built on TRpActiveXReport for embedding Report Manager."
+  },
+  "/doc/units/rpclxreport.html": {
+    "desc": "TCLXReport, a cross-platform Windows/Linux report component using the GDI and PDF print drivers, selectable via its driver property."
+  },
+  "/doc/units/rpcompobase.html": {
+    "desc": "TCBaseReport, the driver-independent base class shared by the palette report components TVCLReport, TPDFReport and the legacy TCLXReport."
+  },
+  "/doc/units/rpdatainfo.html": {
+    "desc": "Central database and dataset access registry: TRpDatabaseInfoItem/List and TRpDataInfoItem/List, the single place to add or toggle DB drivers."
+  },
+  "/doc/units/rpdataset.html": {
+    "desc": "TRpDataset, a two-record-buffer dataset over TClientDataset that looks ahead one row so the engine can group on expression changes and print footers."
+  },
+  "/doc/units/rpdrawitem.html": {
+    "desc": "TRpShape and TRpImage print items: drawing shapes and lines, and rendering embedded, external-file, or database-field images in reports."
+  },
+  "/doc/units/rpeval.html": {
+    "desc": "TRpEvaluator and TRpCustomEvaluator, the expression evaluator that parses and computes report expressions and returns a Variant TRpValue."
+  },
+  "/doc/units/rpevalfunc.html": {
+    "desc": "Built-in expression evaluator functions for Report Manager: text, date, math and formatting (Upper, Trim, Round, Today, FormatStr, NumToText, etc.)."
+  },
+  "/doc/units/rpexpredlg.html": {
+    "desc": "TRpExpreDialog and the ChangeExpression helper: the legacy CLX expression-builder wizard dialog for composing report formulas."
+  },
+  "/doc/units/rpexpredlgvcl.html": {
+    "desc": "TRpExpreDialogVCL and the ChangeExpression helper: the VCL expression-builder wizard dialog for composing Report Manager formulas."
+  },
+  "/doc/units/rpgdidriver.html": {
+    "desc": "TRpGDIDriver, the Windows-only GDI render driver that prints reports or metafiles to printers and bitmaps, with PDF export and print-dialog helpers."
+  },
+  "/doc/units/rpgdifonts.html": {
+    "desc": "Windows device-font selection for fast dot-matrix printing: TPrinterFont, TFontStep CPI sizes and routines to match and rotate printer fonts."
+  },
+  "/doc/units/rpgraphutils.html": {
+    "desc": "Legacy CLX graphic helpers: locale-translated message and input boxes, grid drawing, twips/pixel and font-style conversions, and treeview filling."
+  },
+  "/doc/units/rpgraphutilsvcl.html": {
+    "desc": "VCL graphic helpers: locale-translated RpMessageBox/RpInputBox dialogs, grid drawing, twips/pixel and font-style conversions, treeview filling."
+  },
+  "/doc/units/rplabelitem.html": {
+    "title": "rplabelitem.pas",
+    "desc": "TRpLabel and TRpExpression text print items for rendering multilingual labels and evaluated expressions or database fields in a report."
+  },
+  "/doc/units/rplastsav.html": {
+    "desc": "rplastsav.pas defines TRpLastUsedStrings, a component that saves, loads and displays recently opened files as short names in Report Manager."
+  },
+  "/doc/units/rpmdbarcode.html": {
+    "desc": "rpmdbarcode.pas defines TRpBarcode, the barcode print component, and TRpBarcodeType covering Code 39, Code 128, EAN-8, EAN-13, MSI and more."
+  },
+  "/doc/units/rpmdchart.html": {
+    "desc": "rpmdchart.pas defines TRpChart with its series collections, chart types (line, bar, pie, gantt) and TeeChart or engine chart drivers."
+  },
+  "/doc/units/rpmdconsts.html": {
+    "desc": "rpmdconsts.pas provides resource string translation, including TranslateStr to resolve a string by id in the current user language."
+  },
+  "/doc/units/rpmdshfolder.html": {
+    "desc": "rpmdshfolder.pas resolves per-user, per-machine and system config file paths across Windows and Linux for Report Manager settings."
+  },
+  "/doc/units/rpmetafile.html": {
+    "desc": "rpmetafile.pas defines the IRpPrintDriver abstraction and the streamable TRpMetafileReport page format used to store and draw reports."
+  },
+  "/doc/units/rpmreg.html": {
+    "desc": "rpmreg.pas provides the Register procedure that registers the non-visual Report Manager components in the Delphi/Kylix package."
+  },
+  "/doc/units/rpmunits.html": {
+    "desc": "rpmunits.pas converts measurements between twips, centimeters and inches, with helpers to format and parse the current report unit."
+  },
+  "/doc/units/rppagesetup.html": {
+    "desc": "rppagesetup.pas provides the legacy CLX page setup and print options dialog, TFRpPageSetup, and the ExecutePageSetup function."
+  },
+  "/doc/units/rppagesetupvcl.html": {
+    "desc": "rppagesetupvcl.pas provides the VCL page setup and print options dialog, TFRpPageSetupVCL, and the ExecutePageSetup function."
+  },
+  "/doc/units/rpparams.html": {
+    "desc": "rpparams.pas defines report parameters (TRpParam, TRpParamList) that feed datasets and expressions, plus param type conversion helpers."
+  },
+  "/doc/units/rpparser.html": {
+    "desc": "rpparser.pas defines TRpParser, the expression tokenizer that splits expressions into strings, numbers, operators and identifiers."
+  },
+  "/doc/units/rppdfdriver.html": {
+    "desc": "rppdfdriver.pas defines TRpPdfDriver and SaveMetafileToPDF / PrintReportPDF functions to render report metafiles to Adobe PDF files or streams."
+  },
+  "/doc/units/rppdffile.html": {
+    "desc": "rppdffile.pas provides TRpPDFFile and TRpPDFCanvas, a canvas-like PDF writer with font handling and non-visual bitmap/JPEG info helpers."
+  },
+  "/doc/units/rppdfreport.html": {
+    "desc": "rppdfreport.pas defines TPDFReport, a drop-in component that renders reports to PDF on Windows and Linux without an X server."
+  },
+  "/doc/units/rppreview.html": {
+    "desc": "rppreview.pas provides the legacy CLX preview form TFRpPreview and the ShowPreview function, built on the TRpQtDriver component."
+  },
+  "/doc/units/rpprintitem.html": {
+    "desc": "Base classes for printable report components: TRpCommonComponent, positioned and text items, plus collections and section-alignment types."
+  },
+  "/doc/units/rpqtdriver.html": {
+    "desc": "Legacy Qt/CLX print driver (TRpQtDriver) for Windows and Linux, with routines to print, preview, set page size and export reports to PDF."
+  },
+  "/doc/units/rpreport.html": {
+    "desc": "The TRpReport document class: holds database and dataset info plus subreports and runs the print process through a metafile driver."
+  },
+  "/doc/units/rprfparams.html": {
+    "desc": "Legacy CLX runtime parameters dialog (TFRpRunTimeParams) that builds input controls per parameter type and prompts the user before printing."
+  },
+  "/doc/units/rprfvparams.html": {
+    "desc": "VCL runtime user-parameters dialog (TFRpRTParams) that builds input controls per parameter type and prompts the user before printing a report."
+  },
+  "/doc/units/rpruler.html": {
+    "desc": "Legacy CLX TRpRuler control that draws a horizontal or vertical ruler in centimeters or inches, with a PaintRuler bitmap function."
+  },
+  "/doc/units/rprulervcl.html": {
+    "desc": "VCL TRpRulerVCL control that draws a horizontal or vertical designer ruler in centimeters or inches, with a PaintRuler bitmap function."
+  },
+  "/doc/units/rpsection.html": {
+    "desc": "TRpSection, the band container for printable components: page/group headers, detail and footer section types within a subreport."
+  },
+  "/doc/units/rpsecutil.html": {
+    "desc": "Section collection classes TRpSectionListItem and TRpSectionList used to hold the ordered bands of a subreport."
+  },
+  "/doc/units/rpsubreport.html": {
+    "desc": "TRpSubReport, the container for TRpSection bands, with methods like AddGroup and AddDetail; a report can hold any number of subreports."
+  },
+  "/doc/units/rptranslator.html": {
+    "desc": "TRpTranslator localization component: loads reportmanres locale resource files by user locale to translate engine widestrings at runtime."
+  },
+  "/doc/units/rptypes.html": {
+    "desc": "Core engine base types and utilities: parameter, font, brush, shape, page and printer enums, twips unit, plus formatting and printer helpers."
+  },
+  "/doc/units/rptypeval.html": {
+    "desc": "Base expression-evaluator types and classes: tokens, TRpValue variant, identifiers, functions and arithmetic, comparison and logical operators."
+  },
+  "/doc/units/rpvclreport.html": {
+    "desc": "TVCLReport, the Windows-only palette component you drop on forms to print and export reports via the GDI and PDF drivers."
+  },
+  "/doc/units/rpvgraphutils.html": {
+    "desc": "Legacy CLX-to-GDI helpers: page size and color conversion, bitmap and mosaic drawing, JPEG decoding and raw printer control codes on Windows."
+  },
+  "/doc/units/rpvpreview.html": {
+    "desc": "VCL report preview form TFRpVPreview and the ShowPreview function, rendering on screen through the TRpGDIDriver component."
+  },
+  "/doc/units/rpwriter.html": {
+    "desc": "Functions to convert reports between the native binary stream format and editable plain text: FileReportToPlainText and PlainTextToFileReport."
+  },
+  "/doc/usingcompo.html": {
+    "desc": "Embed reports in Delphi/C++Builder/Kylix apps with TVCLReport, TRpPDFReport, TRpEvaluator and TRpAlias: key properties, methods and print steps."
+  },
+  "/doc/visualnetcomp.html": {
+    "title": ".NET assemblies and dependencies",
+    "desc": "Install the Report Manager .NET assemblies in Visual Studio and pick the right libraries: Drawing, Reporting, Forms, Designer and Web, by dependency."
+  },
+  "/doc/webserverinstall.html": {
+    "desc": "Step-by-step setup of the Report Manager web server on IIS (CGI/ISAPI) and Linux Apache, covering config files, permissions, logging and locales."
+  },
+  "/doc/webserverintro.html": {
+    "desc": "Run the Web Report Server via Docker to serve PDF, CSV, SVG reports over HTTP, with admin panel, database connections, API keys and URL execution."
+  },
+  "/doc/webserveroperations.html": {
+    "desc": "Run reports over HTTP using the web server's login and version commands and URL parameters like aliasname, reportname and PDF, CSV, SVG output."
+  },
+  "/doc/whatisnew.html": {
+    "title": "Release notes and version history",
+    "desc": "Version 4.0.10 release notes: AI Copilot, AI report generation, SQL autocomplete, DB Agent connections, undo/redo, plus the full version history."
+  },
+  "/tutorial/dropping.html": {
+    "title": "Tutorial: dropping labels and fields",
+    "desc": "Add labels and database fields to a report: click the label and expression buttons, drop items into the detail section and edit their text properties."
+  },
+  "/tutorial/index.html": {
+    "title": "Tutorial: defining data access",
+    "desc": "First tutorial step: create a new report in the Designer, configure data access, pick a database driver, add a dataset and assign it to the subreport."
+  },
+  "/tutorial/integrating.html": {
+    "title": "Tutorial: embedding reports in Delphi",
+    "desc": "Embed reports in a Delphi or C++Builder app: install packages, drop the VCL report component, bind datasets via AliasList, and call Execute or SaveToPdf."
+  },
+  "/tutorial/testing.html": {
+    "desc": "Preview a report to repeat the detail per record, then print it, save it as a metafile for metaview.exe, or export to compressed or plain Adobe PDF."
+  }
+}
