@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Build tooling (not part of the published site)
+Disallow: /_build/
+# Meta-refresh redirect stub
+Disallow: /redirect.html
+
+Sitemap: https://reportman.es/sitemap.xml

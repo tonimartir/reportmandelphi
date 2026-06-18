@@ -1,10 +1,163 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>TeeChart support</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeeChart support - Report Manager Docs</title>
+<meta name="description" content="Advanced report design TeeChart support The chart component of Report Manager engine has a Driver property, you can select the desired driver, the default">
+<link rel="canonical" href="https://reportman.es/doc/teechart.html">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/doc/docs.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://reportman.es/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://reportman.es/doc/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "TeeChart support",
+      "item": "https://reportman.es/doc/teechart.html"
+    }
+  ]
+}
+</script>
 </head>
-
-<body>
+<body class="doc">
+<header class="doc-top">
+<a class="doc-brand" href="/">Report Manager</a>
+<a class="doc-back" href="/">&larr; Back to site</a>
+</header>
+<div class="doc-layout">
+<div class="doc-nav-wrap">
+<input type="checkbox" id="docnav" class="doc-nav-cb">
+<label for="docnav" class="doc-nav-btn">Documentation menu</label>
+<nav class="doc-nav" aria-label="Documentation menu">
+<h4>Introduction</h4>
+<ul>
+<li><a href="/doc/index.html">Application description</a></li>
+<li><a href="/doc/requirements.html">Hardware and software requirements</a></li>
+<li><a href="/doc/features.html">Features</a></li>
+<li><a href="/docnet/index.html">.NET library</a></li>
+<li><a href="/doc/howitwork.html">Engine overview</a></li>
+<li><a href="/doc/interoperability.html">Interoperability and standards</a></li>
+<li><a href="/tutorial/index.html">Quick tutorial</a></li>
+<li><a href="/doc/success.html">Successful projects</a></li>
+</ul>
+<h4>Installation</h4>
+<ul>
+<li><a href="/doc/installwin.html">Microsoft Windows</a></li>
+<li><a href="/doc/installlin.html">Linux</a></li>
+<li><a href="/doc/compileropts.html">Compilation options</a></li>
+<li><a href="/doc/delphicomp.html">Delphi</a></li>
+<li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
+<li><a href="/doc/otherlang.html">Other languages</a></li>
+<li><a href="/doc/linuxcomp.html">Linux printreptopdf</a></li>
+<li><a href="/doc/visualnetcomp.html">Visual Studio .NET</a></li>
+<li><a href="/doc/delphinetcomp.html">Delphi for .NET (deprecated)</a></li>
+<li><a href="/doc/kylixcomp.html">Kylix (deprecated)</a></li>
+<li><a href="/doc/installwebreport.html">ActiveX IE plugin (deprecated)</a></li>
+<li><a href="/doc/deploy.html">Deploying Report Manager</a></li>
+<li><a href="/doc/installserver.html">Report Manager Server</a></li>
+<li><a href="/doc/dotnetport.html">.NET library setup</a></li>
+</ul>
+<h4>TCP Report Server</h4>
+<ul>
+<li><a href="/doc/serverintro.html">Introduction</a></li>
+<li><a href="/doc/serverserver.html">Report server</a></li>
+<li><a href="/doc/serverclient.html">Report client</a></li>
+<li><a href="/doc/serverconfig.html">Configuration</a></li>
+<li><a href="/doc/serversmp.html">Multiprocessor support</a></li>
+</ul>
+<h4>Web Report Server</h4>
+<ul>
+<li><a href="/doc/webserverintro.html">Introduction</a></li>
+<li><a href="/doc/webserverinstall.html">Installation</a></li>
+<li><a href="/doc/webserveroperations.html">Operations</a></li>
+</ul>
+<h4>Basic report design</h4>
+<ul>
+<li><a href="/doc/openingdata.html">Opening the dataset</a></li>
+<li><a href="/doc/droppingfields.html">Dropping fields</a></li>
+<li><a href="/doc/pageheader.html">Page header and footer</a></li>
+<li><a href="/doc/reportheader.html">Subreport header and summary</a></li>
+<li><a href="/doc/groupheader.html">Group header and footer</a></li>
+<li><a href="/doc/pagesetup.html">Page setup and print options</a></li>
+<li><a href="/doc/reportgrid.html">Report grid</a></li>
+<li><a href="/doc/preferences.html">Designer preferences</a></li>
+<li><a href="/doc/usingcompo.html">Components in Delphi/Kylix/Builder</a></li>
+<li><a href="/doc/commandline.html">Command line tools</a></li>
+<li><a href="/doc/replibraries.html">Report libraries</a></li>
+</ul>
+<h4>Advanced report design</h4>
+<ul>
+<li><a href="/doc/repparams.html">Using report parameters</a></li>
+<li><a href="/doc/linkedquerys.html">Linked queries</a></li>
+<li><a href="/doc/childsubreports.html">Child subreports</a></li>
+<li><a href="/doc/labels.html">Printing labels</a></li>
+<li><a href="/doc/externalsec.html">Report files sharing sections</a></li>
+<li><a href="/doc/exevaluator.html">Expression evaluator</a></li>
+<li><a href="/doc/barcodes.html">Barcode printing</a></li>
+<li><a href="/doc/teechart.html" class="current" aria-current="page">TeeChart support</a></li>
+<li><a href="/doc/internatsupport.html">International support</a></li>
+<li><a href="/doc/compsiterep.html">Composite reports</a></li>
+<li><a href="/doc/dotmatrix.html">Dot matrix and POS devices</a></li>
+<li><a href="/doc/openingdatatrouble.html">Database access information</a></li>
+<li><a href="/doc/formfilling.html">Form filling</a></li>
+<li><a href="/doc/customoutput.html">Custom text output</a></li>
+<li><a href="/doc/inmemorydata.html">In memory datasets</a></li>
+<li><a href="/doc/parallel.html">Parallel unions</a></li>
+</ul>
+<h4>Component reference</h4>
+<ul>
+<li><a href="/doc/refcommon.html">Common properties</a></li>
+<li><a href="/doc/refcommontext.html">Text components</a></li>
+<li><a href="/doc/refsubreport.html">TRpSubReport</a></li>
+<li><a href="/doc/refsection.html">TRpSection</a></li>
+<li><a href="/doc/reflabel.html">TRpLabel</a></li>
+<li><a href="/doc/refexpression.html">TRpExpression</a></li>
+<li><a href="/doc/refdraw.html">TRpShape</a></li>
+<li><a href="/doc/refimage.html">TRpImage</a></li>
+<li><a href="/doc/refchart.html">TRpChart</a></li>
+<li><a href="/doc/refbarcode.html">TRpBarcode</a></li>
+<li><a href="/doc/refdatabaseinfo.html">Database connections</a></li>
+</ul>
+<h4>Developer</h4>
+<ul>
+<li><a href="/doc/licensequestions.html">License questions</a></li>
+<li><a href="/doc/translation.html">Translating Report Manager</a></li>
+<li><a href="/doc/building.html">Building binaries and tools</a></li>
+<li><a href="/doc/devdriver.html">Driver architecture</a></li>
+<li><a href="/doc/pdfoutput.html">PDF output implementation</a></li>
+<li><a href="/doc/units.html">Source code units</a></li>
+<li><a href="/doc/devnotes.html">Developer notes</a></li>
+</ul>
+<h4>Release notes</h4>
+<ul>
+<li><a href="/doc/whatisnew.html">What is new</a></li>
+<li><a href="/doc/faq.html">F.A.Q.</a></li>
+<li><a href="/doc/knownissues.html">Known issues and workarounds</a></li>
+<li><a href="/doc/mfeatures.html">Missing features (to-do)</a></li>
+</ul>
+</nav>
+</div>
+<main class="doc-main">
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>TeeChart support</span></nav>
+<h1>TeeChart support</h1>
 <h2>Advanced report design</h2>
 <h3>TeeChart support</h3>
 
@@ -35,5 +188,8 @@
 <p>TeeChart is enabled in provided binaries, the exception are printreptopdf
   and repwebexe commmand line tools because they don't need a X-Server running,
   if you want to display <b>beautiful charts you need to enable TeeChart</b>.</p>
+</main>
+</div>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
 </body>
 </html>

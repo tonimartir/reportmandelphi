@@ -1,13 +1,91 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Official Report Manager Tutorial</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report Manager tutorial: defining data access - Report Manager Docs</title>
+<meta name="description" content="Step-by-step Report Manager Designer tutorial: define data access, drop fields, preview the report and integrate it into a Delphi or C++Builder application.">
+<link rel="canonical" href="https://reportman.es/tutorial/index.html">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/doc/docs.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://reportman.es/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://reportman.es/doc/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Quick tutorial",
+      "item": "https://reportman.es/tutorial/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Report Manager tutorial: defining data access",
+      "item": "https://reportman.es/tutorial/index.html"
+    }
+  ]
+}
+</script>
 </head>
-
-<frameset cols="155,415*" frameborder="NO" border="0" framespacing="0" rows="*"> 
-  <frame name="leftFrame" noresize src="left.html" frameborder="YES" bordercolor="#000000">
-  <frame name="mainFrame" src="right.html" frameborder="YES" bordercolor="#000000">
-</frameset>
-<noframes></noframes>
-
+<body class="doc">
+<header class="doc-top">
+<a class="doc-brand" href="/">Report Manager</a>
+<a class="doc-back" href="/">&larr; Back to site</a>
+</header>
+<div class="doc-layout">
+<div class="doc-nav-wrap">
+<input type="checkbox" id="docnav" class="doc-nav-cb">
+<label for="docnav" class="doc-nav-btn">Tutorial menu</label>
+<nav class="doc-nav" aria-label="Tutorial menu">
+<h4>Quick tutorial</h4>
+<ul>
+<li><a href="/tutorial/index.html" class="current" aria-current="page">Defining data access</a></li>
+<li><a href="/tutorial/dropping.html">Dropping fields</a></li>
+<li><a href="/tutorial/testing.html">Testing the report</a></li>
+<li><a href="/tutorial/integrating.html">Integrating into Delphi/C++Builder</a></li>
+</ul>
+</nav>
+</div>
+<main class="doc-main">
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <a href="/tutorial/index.html">Quick tutorial</a> &rsaquo; <span>Report Manager tutorial: defining data access</span></nav>
+<h1>Report Manager tutorial: defining data access</h1>
+<p>This tutorial guides you to the creation of a simple report. A image is shown 
+  to help you understand each step.</p>
+<p>Start Report Manager Designer and select New option in the File Menu. Select 
+  the detail section and you will see a printable clean area.</p>
+<p><img src="newrep.jpg" width="494" height="411" alt="Report Manager tutorial: defining data access (screenshot 1)"></p>
+<p>Now you must connect to a database and open a dataset, select Data Access Configuration 
+  in Report Menu. Then select a database driver and a database connection name. 
+  If you select the BDE driver the BDE alias is the connection name, if you select 
+  DBExpress you must select a DBExpress connection.</p>
+<p><img src="dataaccess1.jpg" width="548" height="487" alt="Report Manager tutorial: defining data access (screenshot 2)"></p>
+<p>After selecting the database driver you must add a dataset, usually you select 
+  an alias for the dataset and execute a query to select records:</p>
+<p><img src="dataaccess2.jpg" width="548" height="487" alt="Report Manager tutorial: defining data access (screenshot 3)"></p>
+<p>You can view the result of executing the query by clicking Show Data button.</p>
+<p><img src="dataaccess3.jpg" width="384" height="186" alt="Report Manager tutorial: defining data access (screenshot 4)"></p>
+<p>Now click Ok button. It's very important that you select the subreport and 
+  assign the dataset.</p>
+<p><img src="dataaccess4.jpg" width="382" height="343" alt="Report Manager tutorial: defining data access (screenshot 5)"></p>
+<p>Now it's a good moment to save the report to a file.</p>
+<p>Now you can go to <a href="dropping.html">dropping fields</a> turorial section.</p>
+</main>
+</div>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
+</body>
 </html>

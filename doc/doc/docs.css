@@ -1,0 +1,60 @@
+/* Report Manager - documentation layout (generated pages share this sheet).
+   Flat, no JavaScript. Sidebar + content; sidebar collapses on mobile. */
+
+:root{
+  --ink:#1f2328; --muted:#57606a; --border:#d0d7de; --surface:#f6f8fa;
+  --bg:#ffffff; --accent:#0969da; --accent-soft:#ddeaff; --radius:6px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+body.doc{margin:0;font-family:var(--font);font-size:16px;line-height:1.6;color:var(--ink);background:var(--bg)}
+
+.doc-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--border)}
+.doc-brand{font-weight:700;color:var(--ink);text-decoration:none;font-size:1.05rem;white-space:nowrap}
+.doc-back{color:var(--accent);text-decoration:none;font-size:.9rem;white-space:nowrap}
+.doc-back:hover{text-decoration:underline}
+
+.doc-layout{display:flex;align-items:flex-start;max-width:1200px;margin:0 auto}
+.doc-nav-wrap{flex:0 0 280px}
+.doc-nav-cb{display:none}
+.doc-nav-btn{display:none}
+.doc-nav{display:block;padding:18px 14px;font-size:.9rem;border-right:1px solid var(--border);position:sticky;top:53px;max-height:calc(100vh - 53px);overflow-y:auto}
+.doc-nav h4{margin:14px 8px 4px;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.doc-nav h4:first-child{margin-top:0}
+.doc-nav ul{list-style:none;margin:0;padding:0}
+.doc-nav a{display:block;padding:4px 10px;color:var(--ink);text-decoration:none;border-radius:var(--radius)}
+.doc-nav a:hover{background:var(--surface);text-decoration:none}
+.doc-nav a.current{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+.doc-main{flex:1;min-width:0;padding:22px 32px 60px;max-width:880px}
+.doc-crumb{font-size:.85rem;color:var(--muted);margin-bottom:10px}
+.doc-crumb a{color:var(--muted);text-decoration:none}
+.doc-crumb a:hover{color:var(--accent)}
+.doc-main h1{font-size:1.9rem;line-height:1.25;margin:.2rem 0 1rem}
+.doc-main h2{font-size:1.4rem;margin:1.8rem 0 .6rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)}
+.doc-main h3{font-size:1.15rem;margin:1.4rem 0 .5rem}
+.doc-main h4{font-size:1rem;margin:1.1rem 0 .4rem}
+.doc-main p{margin:.7rem 0;max-width:74ch}
+.doc-main ul,.doc-main ol{max-width:74ch}
+.doc-main img{max-width:100%;height:auto;border:1px solid var(--border);border-radius:var(--radius);margin:.5rem 0}
+.doc-main a{color:var(--accent);text-decoration:none}
+.doc-main a:hover{text-decoration:underline}
+.doc-main table{border-collapse:collapse;margin:1rem 0;max-width:100%}
+.doc-main td,.doc-main th{border:1px solid var(--border);padding:.4rem .6rem;vertical-align:top}
+.doc-main code{font-family:var(--mono);font-size:.9em;background:var(--surface);padding:.12em .35em;border-radius:4px}
+.doc-main pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;overflow:auto}
+.doc-main pre code{background:none;padding:0}
+
+.doc-foot{border-top:1px solid var(--border);background:var(--surface);padding:18px 20px;text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px}
+.doc-foot a{color:var(--muted)}
+.doc-foot a:hover{color:var(--accent)}
+
+@media (max-width:900px){
+  .doc-layout{flex-direction:column}
+  .doc-nav-wrap{flex:none;width:100%;border-bottom:1px solid var(--border)}
+  .doc-nav-btn{display:block;padding:12px 20px;cursor:pointer;font-weight:600;color:var(--accent)}
+  .doc-nav{display:none;border-right:none;position:static;max-height:none}
+  .doc-nav-cb:checked ~ .doc-nav{display:block}
+  .doc-main{padding:18px 20px 50px;max-width:none}
+}
