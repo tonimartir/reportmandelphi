@@ -82,7 +82,7 @@
         <a href="downloades.html">Descarga</a>
         <a href="webserveres.html">Servidor Web</a>
         <a href="docnet/index.html">.NET</a>
-        <a href="doc/index.html" target="_blank">Docs</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
         <a href="supportes.html">Soporte</a>
       </nav>
       <div class="topbar-right">
@@ -99,7 +99,7 @@
         <p class="tagline">Motor de informes y diseñador visual de código abierto para .NET, Delphi, C++Builder y Linux &mdash; salida a PDF, SVG, HTML e impresión.</p>
         <div class="cta">
           <a class="btn btn-primary" href="downloades.html">Descargar</a>
-          <a class="btn" href="https://ai.reportman.es" target="_blank">Descubre Reportman.AI</a>
+          <a class="btn" href="https://ai.reportman.es" target="_blank" rel="noopener">Descubre Reportman.AI</a>
         </div>
       </div>
     </section>
@@ -138,30 +138,33 @@
 
     <section class="page">
       <h2>Descripción de la aplicación</h2>
-      <p>Report Manager es una aplicación de generación de informes (Report Manager Designer) y un conjunto de bibliotecas y herramientas de línea de comandos para previsualizar, exportar o imprimir informes. Incluye componentes nativos para <a href="doc/dotnetport.html" target="_blank">.NET y .NET Core</a> y Delphi/C++Builder, un componente ActiveX, y una biblioteca dinámica estándar para su uso desde cualquier lenguaje <a href="doc/gnuc.html" target="_blank">como GNU C</a>. También hay disponible una versión para Linux 64 bits que genera archivos PDF.</p>
+      <p>Report Manager es una aplicación de generación de informes (Report Manager Designer) y un conjunto de bibliotecas y herramientas de línea de comandos para previsualizar, exportar o imprimir informes. Incluye componentes nativos para <a href="doc/dotnetport.html" target="_blank" rel="noopener">.NET y .NET Core</a> y Delphi/C++Builder, un componente ActiveX, y una biblioteca dinámica estándar para su uso desde cualquier lenguaje <a href="doc/gnuc.html" target="_blank" rel="noopener">como GNU C</a>. También hay disponible una versión para Linux 64 bits que genera archivos PDF.</p>
 
       <figure class="shots">
-        <img src="doc/images/designerxpsmall2.jpg" alt="Diseñador de Report Manager con el asistente de IA">
-        <img src="doc/images/preview.webp" alt="Vista previa de un informe de Report Manager">
+        <picture>
+          <source srcset="doc/images/designerxpsmall2.webp" type="image/webp">
+          <img src="doc/images/designerxpsmall2.jpg" width="400" height="300" loading="lazy" decoding="async" alt="Diseñador de Report Manager con el asistente de IA">
+        </picture>
+        <img src="doc/images/preview.webp" width="800" height="491" loading="lazy" decoding="async" alt="Vista previa de un informe de Report Manager">
         <figcaption>El diseñador de Report Manager con el asistente de IA, y una vista previa del informe.</figcaption>
       </figure>
 
-      <p>Hay disponibles paquetes NuGet de Report Manager; se ha creado un nuevo <a href="https://github.com/tonimartir/reportman" target="_blank">repositorio</a> para desarrollo en .NET.</p>
+      <p>Hay disponibles paquetes NuGet de Report Manager; se ha creado un nuevo <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">repositorio</a> para desarrollo en .NET.</p>
 
-      <p>El motor incluye un <a href="doc/serverintro.html" target="_blank">servidor de informes TCP</a> a través del cual <a href="doc/serverclient.html">los clientes</a> obtienen informes procesados en el servidor. También se incluye un completo <a href="webserveres.html">servidor web de informes</a> que genera archivos Adobe PDF al vuelo &mdash; un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador.</p>
+      <p>El motor incluye un <a href="doc/serverintro.html" target="_blank" rel="noopener">servidor de informes TCP</a> a través del cual <a href="doc/serverclient.html">los clientes</a> obtienen informes procesados en el servidor. También se incluye un completo <a href="webserveres.html">servidor web de informes</a> que genera archivos Adobe PDF al vuelo &mdash; un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador.</p>
 
       <h2>Licencia</h2>
-      <p>Report Manager es código abierto bajo el <a href="doc/license.html" target="_blank">modelo de licencia MPL</a> (incluye permiso de uso en aplicaciones GPL), por lo que puede usarlo en sus aplicaciones comerciales, pero cualquier mejora del motor debe ser publicada.</p>
+      <p>Report Manager es código abierto bajo el <a href="doc/license.html" target="_blank" rel="noopener">modelo de licencia MPL</a> (incluye permiso de uso en aplicaciones GPL), por lo que puede usarlo en sus aplicaciones comerciales, pero cualquier mejora del motor debe ser publicada.</p>
 
       <h2>Comprar</h2>
       <p>Report Manager es libre y gratuito; puede adquirir <a href="contribes.html">soporte u otros servicios</a>.</p>
 
       <h2>Resumen de características</h2>
       <p>Funciona en Windows y Linux. Puede distribuir el diseñador de informes, con lo que consigue modificar informes sin modificar su aplicación, y el resultado puede guardarse como archivo Adobe PDF.</p>
-      <p>Report Manager dispone de múltiples <a href="doc/features.html" target="_blank">características</a> (en inglés), incluyendo algunas exclusivas como bibliotecas de informes, metaarchivos, fuentes de impresora, secciones externas y subinformes hijos. Si utiliza Delphi, C++Builder o FPC/Lazarus, puede incluir el motor de informes &mdash; presentación preliminar, diálogo de impresión y opciones del informe &mdash; en sus propios ejecutables.</p>
+      <p>Report Manager dispone de múltiples <a href="doc/features.html" target="_blank" rel="noopener">características</a> (en inglés), incluyendo algunas exclusivas como bibliotecas de informes, metaarchivos, fuentes de impresora, secciones externas y subinformes hijos. Si utiliza Delphi, C++Builder o FPC/Lazarus, puede incluir el motor de informes &mdash; presentación preliminar, diálogo de impresión y opciones del informe &mdash; en sus propios ejecutables.</p>
 
       <h2>Versión actual</h2>
-      <p>Consulte las <a href="doc/whatisnew.html" target="_blank">novedades</a> de la versión actual (en inglés), un <a href="doc/interoperability.html" target="_blank">resumen de los entornos de desarrollo soportados</a>, la <a href="doc/features.html" target="_blank">lista de características</a>, la <a href="doc/index.html" target="_blank">documentación</a> y las <a href="doc/faq.html" target="_blank">preguntas frecuentes (F.A.Q.)</a></p>
+      <p>Consulte las <a href="doc/whatisnew.html" target="_blank" rel="noopener">novedades</a> de la versión actual (en inglés), un <a href="doc/interoperability.html" target="_blank" rel="noopener">resumen de los entornos de desarrollo soportados</a>, la <a href="doc/features.html" target="_blank" rel="noopener">lista de características</a>, la <a href="doc/index.html" target="_blank" rel="noopener">documentación</a> y las <a href="doc/faq.html" target="_blank" rel="noopener">preguntas frecuentes (F.A.Q.)</a></p>
     </section>
 
   </main>
@@ -170,17 +173,17 @@
     <div class="footer-inner">
       <span>&copy; 1994&ndash;2026 Toni Martir</span>
       <span class="sep">&middot;</span>
-      <a href="doc/license.html" target="_blank">Licencia MPL</a>
+      <a href="doc/license.html" target="_blank" rel="noopener">Licencia MPL</a>
       <span class="sep">&middot;</span>
       <a href="companyes.html">Empresa</a>
       <span class="sep">&middot;</span>
       <a href="linkses.html">Otros enlaces</a>
       <span class="sep">&middot;</span>
-      <a href="https://github.com/tonimartir/reportman" target="_blank">GitHub</a>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
       <span class="sep">&middot;</span>
-      <a href="https://sourceforge.net/projects/reportman/" target="_blank">SourceForge</a>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
       <span class="sep">&middot;</span>
-      <a href="https://reportman.es" target="_blank">reportman.es</a>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
     </div>
   </footer>
 
