@@ -21,12 +21,7 @@
       "correct": "title"
     }
   ],
-  "mojibakeHits": [
-    {
-      "path": "doc/doc/bidi_behavior.html",
-      "sample": "Ãƒ"
-    }
-  ],
+  "mojibakeHits": [],
   "deadHits": [
     {
       "path": "doc/doc/success.html",
