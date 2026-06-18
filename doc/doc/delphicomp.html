@@ -159,101 +159,56 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Compiling in Delphi</span></nav>
 <h1>Compiling in Delphi</h1>
 <h2>Installation</h2>
-<h3><b>Compiling Report Manager using Delphi</b></h3>
-<p>Download the components from sourceforge and unpack it to a directory:</p>
+<h3>Compiling Report Manager using Delphi</h3>
+<p>Download the components from SourceForge and unpack them to a directory:</p>
 <p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
+<p>Report Manager ships ready-to-build packages for every Delphi / RAD Studio release. Pick the packages for your version from the tables below, listed newest first.</p>
+
+<h3>RAD Studio 10.3 Rio and later (recommended)</h3>
+<p>Modern releases use one project group per version, under the <code>packages</code> folder. Each group contains three packages:</p>
+<ul>
+  <li><b>reportman_rtl</b> &ndash; runtime, non-visual engine (reporting and PDF), with no IDE dependencies.</li>
+  <li><b>reportman_vcl</b> &ndash; runtime VCL components (requires reportman_rtl).</li>
+  <li><b>reportman_designvcl</b> &ndash; the design-time package you install into the IDE (requires reportman_rtl and reportman_vcl).</li>
+</ul>
+<p>Open the project group for your version, build it, then right-click <b>reportman_designvcl</b> and choose <b>Install</b>:</p>
 <table border="1">
-  <tr> 
-    <td bgcolor="#00FFFF"><b>Version</b></td>
-    <td bgcolor="#00FFFF"><b>Packages</b></td>
-    <td bgcolor="#00FFFF"><b>Description</b></td>
-  </tr>
-  <tr> 
-    <td bgcolor="#FFFFCC">Delphi 5</td>
-    <td>rppack_del5.dpk</td>
-    <td>Unique complete package (VCL only)</td>
-  </tr>
-  <tr> 
-    <td rowspan="6" bgcolor="#FFFFCC">Delphi 6/7</td>
-    <td>rppack_del.dpk</td>
-    <td>Base package, non-visual</td>
-  </tr>
-  <tr> 
-    <td>rppackvcl_del.dpk</td>
-    <td>VCL components</td>
-  </tr>
-  <tr> 
-    <td>rppackdesignvcl_del</td>
-    <td>Interface to Report Manager Designer (VCL)</td>
-  </tr>
-  <tr> 
-    <td>rppackdesigntime_del.dpk</td>
-    <td>Designtime package, design editors.</td>
-  </tr>
-  <tr> 
-    <td>rppackv_del.dpk</td>
-    <td>Visual CLX package, for cross platform development (legacy)</td>
-  </tr>
-  <tr> 
-    <td>rppackdesign_del.dpk</td>
-    <td>Visual CLX interface to Report Manager Designer (legacy)</td>
-  </tr>
-  <tr> 
-    <td rowspan="4" bgcolor="#FFFFCC">Delphi 2005</td>
-    <td>rppack_del2005.bsdproj</td>
-    <td>Base package, non-visual</td>
-  </tr>
-  <tr>
-    <td>rppackvcl_del2005.bsdproj</td>
-    <td>Interface to Report Manager Designer (VCL)</td>
-  </tr>
-  <tr> 
-    <td>rppackdesignvcl_del2005.bsdproj</td>
-    <td>Interface to Report Manager Designer (VCL)</td>
-  </tr>
-  <tr> 
-    <td>rppackdesigntime_del2005.bsdproj</td>
-    <td>Designtime package, design editors.</td>
-  </tr>
-  <tr>
-    <td bgcolor="#FFFFCC">Delphi 2007 </td>
-    <td>rppack_del2007.bsdproj</td>
-    <td>All in one </td>
-  </tr>
-  <tr>
-    <td bgcolor="#FFFFCC">Delphi 2009 </td>
-    <td>rppack_del2009.bsdproj</td>
-    <td>All in one </td>
-  </tr>
+  <tr><th>Version</th><th>Project group</th></tr>
+  <tr><td>RAD Studio 13</td><td>packages\13.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 12 Athens</td><td>packages\12.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 11.2 Alexandria</td><td>packages\11.2\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 11 Alexandria</td><td>packages\11.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 10.4 Sydney</td><td>packages\10.4\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 10.3 Rio</td><td>packages\10.3\reportman.groupproj</td></tr>
 </table>
-<p>You must install the packages in the correct order. CLX packages are optional. 
-  You should install rppackdesigntime_del in Delphi 6/7 to install integrated 
-  property editors into your IDE, so you can preview report without compiling 
-  your application. </p>
-<p>You must <a href="https://www.indyproject.org" target="_blank" rel="noopener">install Indy
-  components</a> in Delphi 5 before installing Report Manager components or disable 
-  Indy support in rpconf.inc file.</p>
-<p>For Delphi 7 (legacy), if you enable Indy (enabled by default) you must upgrade to the Indy 9 release that matched that IDE. </p>
-<p>After a Delphi update or a component library update to related packages (IBX,Indy for example), can be necessary to rebuild 
-  all the packages. Uninstall them and then install them in the same order.</p>
-<p>Before begin installation you must remove all packages of any previous version 
-  (it's not totally necessary but a few warning or error messages may appear).</p>
-<p>In Delphi IDE select Open option of file menu, then select .dpk package files, 
-  click the install button. A warning about dependencies can appear, click yes to
-  solve dependencies and install.</p>
-<p>If you alter rpconf.inc, you can remove the dependencies of the disabled options,
-  for example if you disable ADO support you can remove adortl dependence.</p>
-<p><img src="images/installpack.jpg" width="394" height="258" alt="Compiling in Delphi (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>To compile your projects must add the report manager components directory to
-  the library path.</p>
-<p>If you compile with runtime packages you must include the .bpl files generated 
-  with your application (just like any other Delphi runtime package)</p>
-<p>Report Manager is divided in packages because you can use it in different scenarios, 
-  for example for a console application you only need rppack_del.dpk, for VCL 
-  applications you need also rppackvcl_del.dpk, for CLX applications you need 
-  rppackv_del.dpk, if you want to include the designer linked into your application 
-  you need rppackdesign_del.dpk (CLX) or rppack_designvcl (VCL).</p>
-<p>If you have problems see <a href="compileropts.html">compiling options</a>.</p>
+
+<h3>Legacy Delphi versions</h3>
+<p>Older versions install from the individual package files in the components root directory. Install them in the order shown; for the XE family install the runtime package first and then its design-time package.</p>
+<table border="1">
+  <tr><th>Version</th><th>Packages (install in this order)</th></tr>
+  <tr><td>Delphi 10.2 Tokyo</td><td>rppack_delxe10_2.dpk, then rppack_delxe10_2designtime.dpk</td></tr>
+  <tr><td>Delphi 10 Seattle</td><td>rppack_delxe10.dpk, then rppack_delxe10_designtime.dpk</td></tr>
+  <tr><td>Delphi XE7</td><td>rppack_delxe7.dpk, then rppack_delxe7_designtime.dpk</td></tr>
+  <tr><td>Delphi XE4</td><td>rppack_delxe4.dpk, then rppack_delxe4_designtime.dpk</td></tr>
+  <tr><td>Delphi XE3</td><td>rppack_delxe3.dpk, then rppack_delxe3_designtime.dpk</td></tr>
+  <tr><td>Delphi XE2</td><td>rppack_delxe2.dpk, then rppack_delxe2_designtime.dpk</td></tr>
+  <tr><td>Delphi 2009</td><td>rppack_del2009.dpk (all in one)</td></tr>
+  <tr><td>Delphi 2007</td><td>rppack_del2007.dpk (all in one)</td></tr>
+  <tr><td>Delphi 2005</td><td>rppack_del2005.dpk (all in one)</td></tr>
+  <tr><td>Delphi 7 / 6</td><td>rppack_del.dpk (non-visual), rppackvcl_del.dpk (VCL), rppackdesigntime_del.dpk (design editors), rppackdesignvcl_del.dpk (designer). The CLX packages rppackv_del.dpk and rppackdesign_del.dpk are legacy and optional.</td></tr>
+  <tr><td>Delphi 5</td><td>rppack_del5.dpk (all in one, VCL only)</td></tr>
+  <tr><td>Delphi 4</td><td>rppack_del4.dpk (all in one)</td></tr>
+</table>
+<p>Versions not listed above (for example XE5, XE6, XE8 or 10.1 Berlin) can usually be compiled by opening the package of the nearest version and letting the IDE upgrade it.</p>
+
+<h3>General notes</h3>
+<p>Before installing, remove the packages of any previous Report Manager version to avoid warnings. After a Delphi update, or after updating a related library (FireDAC, IBX, Indy&hellip;), rebuild and reinstall the packages in the same order.</p>
+<p>In the IDE choose <b>File &gt; Open</b>, select the package (or the project group) files, click <b>Build</b> and then <b>Install</b> the design-time package, so you can preview reports without compiling your own application first.</p>
+<p>You only need the packages your scenario requires: a console application needs only the runtime engine package; VCL applications also need the VCL package; to embed the designer in your own application install the designer package as well.</p>
+<p>You can tailor the build through <a href="compileropts.html">rpconf.inc</a>: if you disable an option you can drop its dependency from the package <code>requires</code> clause (for example, remove the ADO dependency if you disable ADO support), or add support for another data layer such as Zeos.</p>
+<p>To compile your own projects, add the Report Manager components directory to the IDE library path. If you build with runtime packages, ship the generated .bpl files with your application.</p>
+<p><img src="images/installpack.jpg" width="394" height="258" alt="Installing the Report Manager packages in the Delphi IDE" loading="lazy" decoding="async"></p>
+<p>If you have problems, see the <a href="compileropts.html">compilation options</a>.</p>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
