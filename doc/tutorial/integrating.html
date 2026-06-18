@@ -1,17 +1,76 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Integrating into the application with delphi/kylix</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integrating into the application with delphi/kylix - Report Manager Docs</title>
+<meta name="description" content="Integrating the report in Delphi/Kylix To integrate the report in Delphi/Kylix you must install first the correct packages, refer to documentation in">
+<link rel="canonical" href="https://reportman.es/tutorial/integrating.html">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/doc/docs.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://reportman.es/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://reportman.es/doc/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Quick tutorial",
+      "item": "https://reportman.es/tutorial/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Integrating into the application with delphi/kylix",
+      "item": "https://reportman.es/tutorial/integrating.html"
+    }
+  ]
+}
+</script>
 </head>
-
-<body>
+<body class="doc">
+<header class="doc-top">
+<a class="doc-brand" href="/">Report Manager</a>
+<a class="doc-back" href="/">&larr; Back to site</a>
+</header>
+<div class="doc-layout">
+<div class="doc-nav-wrap">
+<input type="checkbox" id="docnav" class="doc-nav-cb">
+<label for="docnav" class="doc-nav-btn">Tutorial menu</label>
+<nav class="doc-nav" aria-label="Tutorial menu">
+<h4>Quick tutorial</h4>
+<ul>
+<li><a href="/tutorial/index.html">Defining data access</a></li>
+<li><a href="/tutorial/dropping.html">Dropping fields</a></li>
+<li><a href="/tutorial/testing.html">Testing the report</a></li>
+<li><a href="/tutorial/integrating.html" class="current" aria-current="page">Integrating into Delphi/C++Builder</a></li>
+</ul>
+</nav>
+</div>
+<main class="doc-main">
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <a href="/tutorial/index.html">Quick tutorial</a> &rsaquo; <span>Integrating into the application with delphi/kylix</span></nav>
+<h1>Integrating into the application with delphi/kylix</h1>
 <h3>Integrating the report in Delphi/Kylix</h3>
 <p>To integrate the report in Delphi/Kylix you must install first the correct 
   packages, refer to documentation in <a href="../doc/kylixcomp.html">Kylix</a> 
   and <a href="../doc/delphicomp.html">Delphi</a>.</p>
 <p>New components appear in the palette (reportman section) wherefrom most important 
   is the TCLXReport component.</p>
-<p><img src="integrating2.jpg" width="569" height="52"></p>
+<p><img src="integrating2.jpg" width="569" height="52" alt="Integrating into the application with delphi/kylix (screenshot 1)"></p>
 <p>To pass custom opened datasets (any dataaccess engine with a TDataset descendant 
   like Zeos, Direct Oracle Access...) to the reporting engine you can use the 
   AliasList property in TCLXReport and a TRpAlias component that establishes relations 
@@ -19,11 +78,14 @@
 <p>Drop the TNewCLXReport to a form and select a report by clicking the button 
   beside the Filename property. You can select also the preview property and the 
   tittle.</p>
-<p><img src="integrating3.jpg" width="175" height="253"> </p>
+<p><img src="integrating3.jpg" width="175" height="253" alt="Integrating into the application with delphi/kylix (screenshot 2)"> </p>
 <p>Place a button and call the execute methot at onclick event as this:</p>
-<p><img src="integrating4.jpg" width="469" height="282"></p>
+<p><img src="integrating4.jpg" width="469" height="282" alt="Integrating into the application with delphi/kylix (screenshot 3)"></p>
 <p>If you have problems compiling the application check the library path includes 
   the path to the directory where reportman packages are stored.</p>
 <p>You can call other methods like SaveToPdf, ShowParams...</p>
+</main>
+</div>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
 </body>
 </html>

@@ -3,9 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="El servidor web de informes de Report Manager genera archivos Adobe PDF al vuelo a traves de la web.">
+  <meta name="description" content="El servidor web de informes de Report Manager genera archivos Adobe PDF al vuelo a través de la web.">
   <title>Report Manager - Servidor Web de informes</title>
   <link rel="stylesheet" href="responsive.css">
+  <link rel="canonical" href="https://reportman.es/webserveres.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/webserver.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/webserveres.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/webserver.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0969da">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Servidor Web de informes">
+  <meta property="og:description" content="El servidor web de informes de Report Manager genera archivos Adobe PDF al vuelo a través de la web.">
+  <meta property="og:url" content="https://reportman.es/webserveres.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Diseñador de Report Manager con el panel de chat AI Copilot, diseñando un informe de ventas.">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Servidor Web de informes">
+  <meta name="twitter:description" content="El servidor web de informes de Report Manager genera archivos Adobe PDF al vuelo a través de la web.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
 </head>
 <body>
 
@@ -30,12 +54,12 @@
     <section class="hero">
       <div class="hero-inner">
         <h1>Servidor Web de informes</h1>
-        <p class="tagline">Genera informes en Adobe PDF al vuelo a traves de la web.</p>
+        <p class="tagline">Genera informes en Adobe PDF al vuelo a través de la web.</p>
       </div>
     </section>
 
     <section class="page">
-      <p>El servidor web de Report Manager genera archivos PDF al vuelo: pregunta al usuario el nombre del informe y los parametros, ejecuta el informe y devuelve un archivo con formato Adobe PDF, que puede visualizarse directamente en el navegador.</p>
+      <p>El servidor web de Report Manager genera archivos PDF al vuelo: pregunta al usuario el nombre del informe y los parámetros, ejecuta el informe y devuelve un archivo con formato Adobe PDF, que puede visualizarse directamente en el navegador.</p>
       <p>Es un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador, disponible para Windows y Linux (Apache), y listo para ejecutarse autoalojado en Docker.</p>
 
       <h2>Ejecutarlo autoalojado con Docker</h2>
@@ -49,19 +73,19 @@
   --name reportman-web \
   --restart unless-stopped \
   tonimartir/reportman-web:latest</code></pre>
-      <p>Docker descarga la imagen en la primera ejecucion. El panel de administracion queda disponible en <a href="http://localhost:8080/admin/login" target="_blank">http://localhost:8080/admin/login</a>.</p>
+      <p>Docker descarga la imagen en la primera ejecución. El panel de administración queda disponible en <a href="http://localhost:8080/admin/login" target="_blank">http://localhost:8080/admin/login</a>.</p>
 
       <h3>A tener en cuenta</h3>
       <ul>
         <li><b>Puerto:</b> se define con <code>REPORTMAN_HTTP_PORT</code> (por defecto <code>8080</code>); publique el mismo puerto con <code>-p</code>.</li>
-        <li><b>Datos persistentes</b> (volumenes con nombre): <code>repweb_etc</code> &rarr; <code>/usr/local/etc</code> (<code>dbxdrivers.conf</code>, <code>dbxconnections.conf</code>), <code>repweb_home</code> &rarr; <code>/var/lib/reportman</code> (configuracion del servidor), <code>repweb_logs</code> &rarr; <code>/var/log/reportman</code>.</li>
-        <li><b>Clientes de base de datos incluidos:</b> PostgreSQL, MySQL/MariaDB, Firebird/Interbase, SQLite, MS SQL Server/Sybase (FreeTDS) y ODBC. Los clientes propietarios (Oracle, Db2) se anaden en una imagen derivada.</li>
-        <li><b>TLS / autenticacion:</b> coloque un proxy inverso delante del contenedor.</li>
+        <li><b>Datos persistentes</b> (volúmenes con nombre): <code>repweb_etc</code> &rarr; <code>/usr/local/etc</code> (<code>dbxdrivers.conf</code>, <code>dbxconnections.conf</code>), <code>repweb_home</code> &rarr; <code>/var/lib/reportman</code> (configuración del servidor), <code>repweb_logs</code> &rarr; <code>/var/log/reportman</code>.</li>
+        <li><b>Clientes de base de datos incluidos:</b> PostgreSQL, MySQL/MariaDB, Firebird/Interbase, SQLite, MS SQL Server/Sybase (FreeTDS) y ODBC. Los clientes propietarios (Oracle, Db2) se añaden en una imagen derivada.</li>
+        <li><b>TLS / autenticación:</b> coloque un proxy inverso delante del contenedor.</li>
       </ul>
       <p>Imagen en Docker Hub: <a href="https://hub.docker.com/r/tonimartir/reportman-web" target="_blank">tonimartir/reportman-web</a>.</p>
 
-      <h2>Documentacion</h2>
-      <p>Dirijase a la <a href="doc/index.html" target="_blank">documentacion</a> (en ingles) y seleccione la seccion titulada <i>Web Report Server</i>.</p>
+      <h2>Documentación</h2>
+      <p>Diríjase a la <a href="doc/index.html" target="_blank">documentación</a> (en inglés) y seleccione la sección titulada <i>Web Report Server</i>.</p>
     </section>
   </main>
 
