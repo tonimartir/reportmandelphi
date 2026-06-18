@@ -177,11 +177,14 @@
   english, then switch to another language, and modify labels, before printing 
   you can switch language from the Report Manager Designer and Report Manager components
   in Delphi/C++Builder (and Kylix in older versions) using the language property.</p>
-<p><b>Printer Fonts property</b> allow Microsoft Windows platform the option to 
-  use printer fonts in dot matrix printers so the report will be printed in Native 
-  Printer fonts, with the best precision and speed. To do so you must install 
-  the correct driver for the selected printer, or the printer driver that the 
-  physical printer is emulating via Hardware. </p>
+<p><b>Printer Fonts property</b> controls how the engine measures text. It has four options:</p>
+<table border="1">
+  <tr><th>Option</th><th>Meaning</th></tr>
+  <tr><td>Default</td><td>Use the engine's default behaviour.</td></tr>
+  <tr><td>Always use printer fonts</td><td>On Microsoft Windows, use the native printer fonts (for example on dot-matrix printers) for the best precision and speed; the correct driver for the selected printer, or for the printer it emulates, must be installed.</td></tr>
+  <tr><td>Never use printer fonts</td><td>Never substitute printer fonts; always measure with the standard font metrics.</td></tr>
+  <tr><td>Recalculate report</td><td>Recompute the report layout using the target device font metrics (a glyph-exact pipeline). This makes the <b>printer and PDF output practically identical</b>; the report metafile is stored in format 4.1 so it keeps this fidelity when re-rendered later. See <a href="devdriver.html">driver architecture</a> for details.</td></tr>
+</table>
 <p>Note: To print in Linux in fast test mode you can install the ps2ascii as a
   filter in your printer spooler.</p>
 <p><b>Two Pass Report</b> property allow to know additional information about 
