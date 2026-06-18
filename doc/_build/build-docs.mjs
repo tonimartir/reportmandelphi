@@ -15,6 +15,14 @@ const WEBROOT = path.resolve(import.meta.dirname, '..'); // the served doc/ fold
 const DOCDIR = path.join(WEBROOT, 'doc');                // /doc/
 const UNITSDIR = path.join(DOCDIR, 'units');             // /doc/units/
 
+// Optional per-page title/description overrides, keyed by web path:
+//   { "/doc/features.html": { "title": "...", "desc": "..." }, ... }
+let META_OVERRIDES = {};
+try {
+  const mp = path.join(import.meta.dirname, 'page-meta.json');
+  if (fs.existsSync(mp)) META_OVERRIDES = JSON.parse(fs.readFileSync(mp, 'utf-8'));
+} catch (e) { console.log('! page-meta.json: ' + e.message); }
+
 const NAV = [
   ['Introduction', [
     ['Application description', '/doc/index.html'],
@@ -291,9 +299,11 @@ ${content}
 function buildPage(absFile, webPath, opts){
   const html = decode(fs.readFileSync(absFile));
   const base = path.basename(absFile, '.html');
-  const {title, content: raw} = parsePage(html, base);
+  const ov = META_OVERRIDES[webPath] || {};
+  const {title: rawTitle, content: raw} = parsePage(html, base);
+  const title = ov.title || rawTitle;
   const content = transformContent(raw, title);
-  const desc = makeDescription(extractDescription(html), content, title);
+  const desc = ov.desc || makeDescription(extractDescription(html), content, title);
   const extraLd = extractLdJson(html);
   const nav = navHtmlFrom(opts.sections, webPath, opts.menuLabel);
   const crumbs = opts.crumbs(title, webPath);
@@ -306,11 +316,14 @@ function buildPage(absFile, webPath, opts){
 function buildIndex(dirAbs, webPath, title, desc, opts){
   const idxAbs = path.join(dirAbs, 'index.html');
   const rightAbs = path.join(dirAbs, 'right.html');
+  const ov = META_OVERRIDES[webPath] || {};
+  const ftitle = ov.title || title;
+  const fdesc = ov.desc || desc;
   const src = decode(fs.readFileSync(fs.existsSync(rightAbs) ? rightAbs : idxAbs));
-  const content = transformContent(parsePage(src, title).content, title);
+  const content = transformContent(parsePage(src, ftitle).content, ftitle);
   const nav = navHtmlFrom(opts.sections, webPath, opts.menuLabel);
-  const crumbs = opts.crumbs(title, webPath);
-  fs.writeFileSync(idxAbs, render({title, desc, canonicalPath: webPath, nav, crumbs, content, extraLd: []}), 'utf-8');
+  const crumbs = opts.crumbs(ftitle, webPath);
+  fs.writeFileSync(idxAbs, render({title: ftitle, desc: fdesc, canonicalPath: webPath, nav, crumbs, content, extraLd: []}), 'utf-8');
   for (const dead of ['left.html','right.html']){
     const p = path.join(dirAbs, dead);
     if (fs.existsSync(p)) fs.unlinkSync(p);
