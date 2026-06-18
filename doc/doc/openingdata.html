@@ -167,14 +167,14 @@
   the engine will print the detail section (or sections) for each record in the 
   dataset. This happens for each subreport, you can have more than one subreport 
   or also child subreports.</p>
-<p>In the sample we will use DBExpress driver to connect througth Interbase/Firebird 
+<p>In the sample we will use the DBExpress driver (legacy) to connect through Interbase/Firebird
   to the <b>sample database employee.gdb</b>.</p>
 <p><img src="images/opendata.jpg" width="415" height="255" alt="Opening Data (screenshot 1)" loading="lazy" decoding="async"></p>
 <p>A report have database connections and datasets, you must create first the 
   connection then add a dataset and set the properties like the SQL sentence.</p>
-<p>We will add a <b>DBExpress </b> connection, you will have a list of available 
-  connections, if you are using Delphi/Kylix/Builder development enviroments you 
-  will see the same list you see in your development tool. See database access 
+<p>We will add a <b>DBExpress </b> connection, you will have a list of available
+  connections, if you are using Delphi or C++Builder (or Kylix in legacy setups) development environments you
+  will see the same list you see in your development tool. See database access
   troubleshooting for more information.</p>
 <p><img src="images/opendata2.jpg" alt="Opening Data (screenshot 2)" loading="lazy" decoding="async">&nbsp;</p>
 <p>You must configure connection parameters, click 'Configure' button:</p>
@@ -186,7 +186,7 @@
 <p>In top of database connection window you will see the location of DBExpress 
   configuration files, the most important parameters of this sample are <b>Database, 
   User_Name and Password</b>. If you use Interbase/Firebird you are safe to set 
-  TransIsolation level to Repeteable Read so the report will be database consistent, 
+  TransIsolation level to Repeatable Read so the report will be database consistent,
   else see documentation of your database engine to know the recommended transaction 
   isolation for reporting operations (read only, long in time transactions).</p>
 <p>You can test the connection and close the database connections configuration 
@@ -201,7 +201,7 @@
   you in the SQL sentence construction, to check and view the dataset click 'Show 
   data' button.</p>
 <p><img src="images/opendata5.jpg" width="376" height="315" alt="Opening Data (screenshot 5)" loading="lazy" decoding="async"> </p>
-<p>You can navigate (unidirectional) throught the dataset, close this windows 
+<p>You can navigate (unidirectional) through the dataset, close this windows
   and click 'Ok' button to save and go to the main report design window.</p>
 <p>Now you must assign the dataset to the subreport, click the subreport item 
   in the design tree and select it in the object inspector:</p>

@@ -159,12 +159,12 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Printing labels (horizontal movement)</span></nav>
 <h1>Printing labels (horizontal movement)</h1>
 <h2>Advanced report design</h2>
-<h3>Printing labels (horz.desplacement/vert.despacement)</h3>
+<h3>Printing labels (horz.displacement/vert.displacement)</h3>
 <p></p>
 <p>To print labels you must first:</p>
 <ul>
   <li>Measure the top-left label distance from physical page</li>
-  <li>Measure the label with and height including the space between labels</li>
+  <li>Measure the label width and height including the space between labels</li>
   <li>Examine printer limitations, that is printable area, if the printer limitations 
     invades label space then you must consider not use the first row (or column) 
     of labels to use all the space of the other labels or not use the this space 
@@ -175,7 +175,7 @@
   <li>Create a new report, and setup the main dataset, test it placing some labels 
     and fields</li>
   <li>Set page margins as the top-left label distance of the first label</li>
-  <li>Set the with and height of the detail as the with and height of the labels 
+  <li>Set the width and height of the detail as the width and height of the labels
     plus the label distance</li>
   <li>Set detail Horz.Desp. property to true for left to right labels, or Vert.Desp 
     to true for up to down labels.</li>
@@ -191,11 +191,11 @@
 <p><img src="images/label1c.jpg" alt="Printing labels (horizontal movement) (screenshot 2)" loading="lazy" decoding="async"></p>
 <p>And preview using Windows GDI Driver</p>
 <p><img src="images/label1b.jpg" alt="Printing labels (horizontal movement) (screenshot 3)" loading="lazy" decoding="async"></p>
-<p>You can view in this sample diferent labels of diferent employees, usually 
+<p>You can view in this sample different labels of different employees, usually
   you need to print several copies of the same label, to do that you must provide 
   a dataset with X copies of the same record.</p>
 <p>If you want to begin printing labels after 10 labels then you must provide 
-  10 empty records, so the space of this labels will be skiped.</p>
+  10 empty records, so the space of this labels will be skipped.</p>
 <p>The building of the dataset can be server side, if you use for example a SQL 
   database engine you can write a stored procedure with a parameter like number 
   of blank records, number of copies to print and return the built dataset.</p>

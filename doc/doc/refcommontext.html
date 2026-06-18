@@ -160,7 +160,7 @@
 <h1>Common properties for text components</h1>
 <h2>Component Reference</h2>
     <h3>Common properties for text components</h3>
-    <p><b>Sumary</b></p>
+    <p><b>Summary</b></p>
     <p>
       This properties applies to components with text properties like TRpLabel,
       TRpExpression and TRpChart
@@ -174,7 +174,7 @@
       </tr>
       <tr>
         <td>H.Alignment</td>
-        <td>Aligment</td>
+        <td>Alignment</td>
         <td>H.TextAlign</td>
         <td>
           Horizontal alignment for the text inside the box defined by the
@@ -200,7 +200,7 @@
         <td>
           Font name (Type face family name) for Microsoft Windows operating
           systems, this property will be used when the engine runs in this
-          operating system and the driver uses system fonts, usually GDI and Qt.
+          operating system and the driver uses system fonts, usually GDI (and Qt in legacy builds).
         </td>
       </tr>
       <tr>
@@ -228,7 +228,7 @@
         <td>Font size</td>
         <td>FontSize</td>
         <td>Integer</td>
-        <td>Font size in standard points unit, that is 72 points=1 inchess</td>
+        <td>Font size in standard points unit, that is 72 points=1 inches</td>
       </tr>
       <tr>
         <td>Font step</td>
@@ -272,7 +272,7 @@
             </tr>
             <tr>
               <td>Bidi No</td>
-              <td>No Bidi support enabled, no complex shaping will bi done</td>
+              <td>No Bidi support enabled, no complex shaping will be done</td>
             </tr>
             <tr>
               <td>Bidi Partial, complex text support enabled.</td>
@@ -285,8 +285,8 @@
           </table>
           <p>
             <a href="bidi_behavior.html">Bidi support</a> is fully implemented
-            in Windows but Qt library does not implement RightToLeft so in Linux
-            is partially supported, also in PDF export is only partially
+            in Windows but the legacy Qt library does not implement RightToLeft so in Linux
+            it was partially supported, also in PDF export is only partially
             supported.
           </p>
         </td>
@@ -314,7 +314,7 @@
         <td>Boolean</td>
         <td>
           If true, the text will be clipped to the defined box, else the text
-          will expand outside the box, if word wrap is true, the widh of the box
+          will expand outside the box, if word wrap is true, the width of the box
           will be preserved.
         </td>
       </tr>

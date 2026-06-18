@@ -159,16 +159,13 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Developer notes about Report Manager</span></nav>
 <h1>Developer notes about Report Manager</h1>
 <h2>Developer</h2>
-<h3>Devoloper notes about Report Manager</h3>
-<h4>New github repository and nuget pagckages</p>
-<p>Since version 3.9.15 nuget packages of Reportman are availble also 
+<h3>Developer notes about Report Manager</h3>
+<h4>New github repository and nuget packages</h4>
+<p>Since version 3.9.15 nuget packages of Reportman are available also
   a new <a href="https://github.com/tonimartir/reportman">repository</a> for .net development have been created</p>
-<h4>BiDi Support, complex languajes</p>
-<p>Bidi complex languages support is implemented sinc 3.9.15 version using DirectWrite in Windows and ICU-Harfbuzz
-  in Linux. Since version 3.9.15</p>
-<h4>BiDi Support, complex languajes</p>
-<p>Bidi complex languages support is implemented sinc 3.9.15 version using DirectWrite in Windows and ICU-Harfbuzz
-  in Linux. Since version 3.9.15</p>
+<h4>BiDi Support, complex languages</h4>
+<p>Bidi complex languages support is implemented since 3.9.15 version using DirectWrite in Windows and ICU-Harfbuzz
+  in Linux.</p>
 
 <h4>TClientDataset and BCD types, why Delphi 5 enterprise version at least need</h4>
 <p>TRpDataset (rpdataset.pas) is a TClientDataset to buffer all the datasets passed 
@@ -183,9 +180,9 @@
   fields[i].Assign(fielddefs[i]);</p>
 <p>It's a bit more complex because needs freeing memory (garbage old records)</p>
 <p>This worked fine inclusive passing opened datasets to the engine until I updated 
-  to Delphi 7, where blob fields assignements are broken, I added the function 
+  to Delphi 7, where blob fields assignments are broken, I added the function
   AssignField(Source,Destination), and a compiler define, active for Delphi 7 
-  (BLOBSTREAMBUG) so assignement for blobfields are patched in this function.</p>
+  (BLOBSTREAMBUG) so assignment for blobfields are patched in this function.</p>
 <p>If you find an assignment fails using a particular type (like BCD) you can 
   patch the assignment there, send me the bugfix so I will add a compiler define 
   for the bug and add to the main tree.</p>

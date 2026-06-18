@@ -198,13 +198,13 @@
 <p> if(empty($inSTARTDATE) == false &amp;&amp; verify_date($inSTARTDATE) == &quot;&quot;) 
   {<br>
   // Invalid Date<br>
-  $Msg = PrepareErrorMsg($Msg, &quot;&lt;B&gt;Start Date&lt;/B&gt; is invliad&quot;);<br>
+  $Msg = PrepareErrorMsg($Msg, &quot;&lt;B&gt;Start Date&lt;/B&gt; is invalid&quot;);<br>
   $ErrorFlag = 1;<br>
   }<br>
   if(empty($inENDDATE) == false &amp;&amp; verify_date($inENDDATE) == &quot;&quot;) 
   {<br>
   // Invalid Date<br>
-  $Msg = PrepareErrorMsg($Msg, &quot;&lt;B&gt;End Date&lt;/B&gt; is invliad&quot;);<br>
+  $Msg = PrepareErrorMsg($Msg, &quot;&lt;B&gt;End Date&lt;/B&gt; is invalid&quot;);<br>
   $ErrorFlag = 1;<br>
   }</p>
 <p> if($ErrorFlag == 0) {<br>

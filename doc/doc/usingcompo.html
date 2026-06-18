@@ -159,8 +159,8 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Using report components Delphi/Kylix/Builder</span></nav>
 <h1>Using report components Delphi/Kylix/Builder</h1>
 <h2>Basic report design</h2>
-<h3><b>Using report components in Delphi/Kylix/Builder</b></h3>
-<p>This is a brief guide about using Report Manager components in Delphi/Kylix/Builder.</p>
+<h3><b>Using report components in Delphi/Kylix/Builder (legacy)</b></h3>
+<p>This is a brief guide about using Report Manager components in Delphi/Kylix/Builder (older versions).</p>
 <p>You must install all the components before continuing, see Installation section 
   to do so.</p>
 <p>When you install the packages you see this component palette components:</p>
@@ -175,7 +175,7 @@
   </tr>
   <tr> 
     <td>TRpEvaluator</td>
-    <td>To process expresions at runtime, you can assign a TRpAlias component 
+    <td>To process expressions at runtime, you can assign a TRpAlias component
       to access database fields, dont' worry about it but can be useful for you 
       in some cases</td>
     <td>Yes</td>
@@ -215,7 +215,7 @@
   </tr>
   <tr> 
     <td><b>TCLXDriver</b></td>
-    <td>Report preview and printing for cross platform CLX applications</td>
+    <td>Report preview and printing for cross platform CLX applications (legacy)</td>
     <td>Yes</td>
     <td>Yes</td>
     <td>No</td>
@@ -229,15 +229,15 @@
   </tr>
   <tr> 
     <td><b>TRpDesigner</b></td>
-    <td>Component to call Report Manger Designer Interface allow to embed the 
+    <td>Component to call Report Manager Designer Interface allow to embed the
       report designer in your application</td>
     <td>Yes</td>
     <td>Yes</td>
     <td>No</td>
   </tr>
 </table>
-<p>TRpCLXDriver is the most common component, allow to preview/print reports using 
-  cross platform CLX library in Delphi 6/C++Builder 6 and Kylix 2.</p>
+<p>TRpCLXDriver (legacy) allowed preview/print of reports using
+  the cross platform CLX library in Delphi 6/C++Builder 6 and Kylix 2.</p>
 <p><b>Published properties</b></p>
 <p><img src="images/clxreportprops.jpg" width="223" height="319" alt="Using report components Delphi/Kylix/Builder (screenshot 2)" loading="lazy" decoding="async"></p>
 <table border="1">
@@ -252,8 +252,8 @@
   <tr> 
     <td>Filename</td>
     <td>The filename to load with a relative or absolute path. If you use absolute 
-      paths or subdiretories and want to develop cross plaform you must assign 
-      a correct plaform pats '\' directory separator in Windows and '/' in Linux</td>
+      paths or subdirectories and want to develop cross platform you must assign
+      a correct platform paths '\' directory separator in Windows and '/' in Linux</td>
   </tr>
   <tr> 
     <td>Preview</td>
@@ -270,12 +270,12 @@
       can be canceled</td>
   </tr>
   <tr> 
-    <td>Tittle</td>
-    <td>Print document tittle that shows print queue</td>
+    <td>Title</td>
+    <td>Print document title that shows print queue</td>
   </tr>
   <tr> 
     <td>UseSystemPrintDialog</td>
-    <td>If true, the system print dialog is show, else a custom reeport manager 
+    <td>If true, the system print dialog is show, else a custom report manager
       engine dialog is show</td>
   </tr>
 </table>

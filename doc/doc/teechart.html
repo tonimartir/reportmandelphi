@@ -169,24 +169,23 @@
   modify rpconf.inc file and enable it:</p>
 <p>{$DEFINE USETEECHART}</p>
 <p> TeeChart is a powerful component included in Delphi (Windows, TeeChart standard
-  edition) since early versions. Unfortunatelly, TeeChart is not provided in Kylix.</p>
-<p>You can purchase TeeChart Pro from <a href="http://www.steema.com" target="_blank" rel="noopener">Steema
-  corporation</a>, it's also available for Kylix.</p>
+  edition) since early versions. Unfortunately, TeeChart is not provided in Kylix (legacy).</p>
+<p>You can purchase TeeChart Pro from <a href="https://www.steema.com" target="_blank" rel="noopener">Steema
+  corporation</a>; it was also available for Kylix (legacy).</p>
 <h4>TeeChart limitations</h4>
-<p>When you enable TeeChart compilation, the engine uses VCL TeeChart version
-  in Windows (Delphi), and CLX version in Kylix. You must recompile all the packages
-  because TeeChart introduces new dependences to the base package, so after enabling
-  TeeChart, you can't use the Report Manager engine without an X Server running
-  in Linux.</p>
+<p>When you enable TeeChart compilation, the engine uses the VCL TeeChart version
+  in Windows (Delphi); the CLX version was used in Kylix (legacy). You must recompile all the packages
+  because TeeChart introduces new dependencies to the base package, so with the legacy CLX path
+  enabling TeeChart required an X Server running in Linux.</p>
 <p>Many of the properties of the chart component of the Report Manager engine
   are related only to TeeChart (perspective, rotation..), the native chart driver
-  only support lines, but it's very fast and don't have any CLX or VCL dependences
+  only support lines, but it's very fast and don't have any CLX or VCL dependencies
   (ideal for console or web applications). </p>
 <p>TeeChart generates bitmaps in a selected bitmap resolution, so they are stored as
   a bitmap inside the processed report (pdf or metafile), it's not vectorized,
   and the generated report can be bigger and slower to print.</p>
 <p>TeeChart is enabled in provided binaries, the exception are printreptopdf
-  and repwebexe commmand line tools because they don't need a X-Server running,
+  and repwebexe command line tools because they don't need a X-Server running,
   if you want to display <b>beautiful charts you need to enable TeeChart</b>.</p>
 </main>
 </div>

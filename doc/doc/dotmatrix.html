@@ -167,27 +167,27 @@
 <p>You can define margins to 0, because the page size will define the practical 
   print out of the printer, that is the printable area.</p>
 <p>For a page width of 80 columns at 10cpi the page width is calculated:</p>
-<p><strong>Page Width=80 characters</strong> with/ 10 characters per inches = 
-  <strong>8 inchess</strong> = 8*2.54 cms = <strong>20.32 cms</strong></p>
+<p><strong>Page Width=80 characters</strong> with/ 10 characters per inches =
+  <strong>8 inches</strong> = 8*2.54 cms = <strong>20.32 cms</strong></p>
 <p>For a page height of 66 lines:</p>
-<p><strong>Page Height=66 lines</strong> / 6 lines per inches = <strong>11 inchess</strong> 
+<p><strong>Page Height=66 lines</strong> / 6 lines per inches = <strong>11 inches</strong>
   = 11*2.54 cms = <strong>27.94 cms</strong> </p>
 <p>Select user defined paper size and enter the correct values.</p>
 <p>For <strong>thermal receipt printers</strong> usually the font A is 12cpi and 
-  font B is 17 cpi, so set a page with of 42 /12cpi=<strong>3,3 inchess=8..6cms.</strong> 
+  font B is 17 cpi, so set a page with of 42 /12cpi=<strong>3,3 inches=8..6cms.</strong>
   The characters for font B are 3.3*17=56 at this size. The physical real page 
   width can differ. </p>
 <p>For <strong>impact receipt printers</strong> usually the font A is 10cpi and 
-  font B is 12 cpi, so set a page with of 33/10cpi=<strong>3,3 inchess=8..6cms.</strong> 
+  font B is 12 cpi, so set a page with of 33/10cpi=<strong>3,3 inches=8..6cms.</strong>
   The characters for font B are 3.3*12=40 at this size. The physical real page 
   width can differ. </p>
-<p>For receipt printers you can establish a <strong>page length of 11 inchess=27.94 
+<p>For receipt printers you can establish a <strong>page length of 11 inches=27.94
   cms</strong>. If you don't use page headers-footers, or repeatable group headers, 
   will be just like there was not page breaks, the ticket printer driver does 
   not send form feeds.</p>
 <p><strong>Activate text out</strong></p>
 <p>To automatically activate a report to print as a text (without driver interaction 
-  or filtering) with escape code secuences you can go to page setup, select that 
+  or filtering) with escape code sequences you can go to page setup, select that
   the report will be output to <b>the character printer (default EPSON driver)</b> 
   or select the output to ticket printer (default EPSONTMU210 driver).</p>
 <p>If you have problems or want to enable better quality escape codes (bold,italic, 
@@ -198,7 +198,7 @@
   done to the selected printer.</p>
 <p>At <b>page setup you can force cash drawer open </b>(the engine will send the 
   escape command to the printer), before or after printing the report.</p>
-<p><b>Microsoft Windows additonal features</b></p>
+<p><b>Microsoft Windows additional features</b></p>
 <p>With Microsoft Windows and a good quality print driver installed you can still 
   use the driver to provide fast printing with printer native fonts. You must 
   select the blank text driver and <b>check the Device fonts option</b>.</p>
@@ -270,12 +270,12 @@
   in this way:</p>
 <p><b>Microsoft Windows</b></p>
 <p>A new print document is created with the Windows API, to disable the driver, 
-  the document is queued as a RAW type document, so the text go to the printer 
-  throught the selected port in printer configuration without processing in the 
+  the document is queued as a RAW type document, so the text go to the printer
+  through the selected port in printer configuration without processing in the
   printer driver. If oem option is checked then the text is processed first with 
   CharToOem API function.</p>
 <p><b>Linux</b></p>
-<p>The lines are saved to a temporary file, and using unix like interprocess comunication 
+<p>The lines are saved to a temporary file, and using unix like interprocess communication
   (pipes) the engine calls <b>lpr</b> command line tool, if oem option is checked 
   then the file is processed first by the <b>recode</b> command line tool.</p>
 <p>The recode command line tool is called with this parameters:</p>

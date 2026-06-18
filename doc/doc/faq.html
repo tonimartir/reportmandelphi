@@ -207,33 +207,29 @@
   you can open as many datasets as you want you must say the engine which is the 
   dataset for the subreport printing procedure.</p>
 <p><strong>Q. I have some problem, where can I find a user group for this tool?</strong></p>
-<p>You should use the reportman group at yahoo groups, there, you will find other 
-  Report Manager users. Do not e-mail directly to the author unless you want to 
-  contract paid support.</p>
+<p>You can find other Report Manager users in the community. Do not e-mail directly
+  to the author unless you want to contract paid support.</p>
 <p><strong>Q. Can I contribute to Report Manager project?</strong></p>
-<p>Enhacements and new modules for the engine are welcome, you can also report 
-  bugs, bufixes ideas etc, use reportman group at yahoo groups for this tasks. 
-  You can also contract the author services and pay for new features.</p>
-<p><b>Q. Wich development environments supports the engine?</b> </p>
+<p>Enhancements and new modules for the engine are welcome, you can also report
+  bugs, bugfixes ideas etc. You can also contract the author services and pay for
+  new features.</p>
+<p><b>Q. Which development environments supports the engine?</b> </p>
 <p>A.
-<p>a) <code>In <b>native mode</b> (linked inside the executable or as a Borland 
-  package):<br>
-  - Delphi 4,5 Enterprise. Delphi 6 Professional, Delphi 6 Enterprise. Delphi 
-  7 Desktop, Delphi 7 Enterprise, Delphi 7 Architech.<br>
-  - C++Builder 4,5 Enterprise. C++Builder 6 Professional, C++Builder6 Enterprise.<br>
-  - Kylix 1,2,3 Desktop and Enterprise. Kylix 1,2,3 Open Edition-FreeCLX.<br>
+<p>a) <code>In <b>native mode</b> (linked inside the executable or as a package):<br>
+  - Delphi and C++Builder (legacy versions 4 to 7 and later releases).<br>
+  - Kylix 1,2,3 Desktop and Enterprise, Kylix 1,2,3 Open Edition-FreeCLX (legacy).<br>
+  - FreePascal/Lazarus.<br>
   b) . In <b>ActiveX mode</b> (distribution of Reportman.ocx-Windows only needed):<br>
-  - Any Delphi/C++Builder version accepting ActiveX controls (Borland personal 
-  editions)<br>
-  - Any development environment accepting ActiveX controls, Visual C++, Visual 
+  - Any Delphi/C++Builder version accepting ActiveX controls<br>
+  - Any development environment accepting ActiveX controls, Visual C++, Visual
   Basic, Visual Foxpro...<br>
   c) In <b>command line tools mode</b> (executing command line tools):<br>
-  - Any language capable of executing command line tools, PHP, bourne shell, python..., 
+  - Any language capable of executing command line tools, PHP, bourne shell, python...,
   command line tools are available for Linux and Windows<br>
   d) In <b>shared library mode</b>:<br>
-  - Any compiler or development enviroment capable of using standard C shared 
-  library functions, that is GCC compiler, FreePascal compiler..., distribution 
-  of reportmanapiqt.so/reportmanapi.so (Linux) and Reportman.ocx needed.</code> 
+  - Any compiler or development environment capable of using standard C shared
+  library functions, that is GCC compiler, FreePascal compiler..., distribution
+  of reportmanapiqt.so/reportmanapi.so (Linux) and Reportman.ocx needed.</code>
 <p><b>Q. How can I set report parameters at runtime?</b> </p>
 <p>A. <code>CLXReport1.Report.Params.ParamByName('CUSTOMERINI').Value:=2;</code></p>
 <p><b>Q. How can I show the parameters before executing?</b></p>
@@ -241,7 +237,7 @@
 <p><b>Q. What about passing application opened datasets to the report?</b></p>
 <ul>
   <li>Place a TRpAlias component beside the TCLXReport</li>
-  <li>Assign AliasList property or CLXReport to RPAlias compoenent.</li>
+  <li>Assign AliasList property or CLXReport to RPAlias component.</li>
   <li>In RpAlias, List property add items as alias and TDataset component to assign 
     to the report. Note: In Delphi 5, in latest versions you can edit datasets 
     with a visual property editor.</li>
@@ -294,7 +290,7 @@ Note: When assigning text or expression properties declare the variables
   procedure) because grouping feature, but some datasets only support unidirectional 
   datasets, I use a patched version of TClientDataset (TRpDataset), that no eats 
   lots of memory like TClientDataset, it frees the records it does not need so 
-  the engine can print/proces millions of records without memory problems but 
+  the engine can print/process millions of records without memory problems but
   a bit slower if you print only a few thousand records.</p>
 <p>Because this, Delphi 5 Professional or lower can not be used as native components 
   but you can use the ActiveX control.</p>
@@ -310,7 +306,7 @@ Note: When assigning text or expression properties declare the variables
   to database, you must avoid this because it's not thread safe you must use net 
   access mode allways (localhost:c:\database.gdb)<br>
   - Not all VisualCLX components are thread safe so you need to modify this VisualCLX 
-  components in the main thread, so the designer package is (becasuse this issue) 
+  components in the main thread, so the designer package is (because this issue)
   not thread safe.</p>
 <p><b>Q. Can Report Manager print in dot matrix printers in Linux as fast as in 
   Windows?</b></p>
@@ -319,11 +315,11 @@ Note: When assigning text or expression properties declare the variables
   real hard work of printing, Report Manager only search for the best suited font 
   (a printer font) in Windows font list, select it and call Windows specific API 
   to draw the text (this is the behaviour for use device fonts option)</p>
-<p>For Linux, Report Manager uses the Kylix graphic engine that uses the Qt graphic 
-  engine, the Qt graphics engine writes output usually in postcript and then the 
-  printer filter transform it to a understandable language to the printer (usually 
-  this work is done by ghostcript).</p>
-<p>So you can use a printer filter to convert postcript to text or better is the 
+<p>For Linux, Report Manager uses the Kylix graphic engine that uses the Qt graphic
+  engine, the Qt graphics engine writes output usually in postscript and then the
+  printer filter transform it to a understandable language to the printer (usually
+  this work is done by ghostscript).</p>
+<p>So you can use a printer filter to convert postscript to text or better is the
   use of dot matrix and pos device feature, see documentation, the engine can 
   generate text output with printer escape codes in Windows and Linux. See documentation.</p>
 <p><b>Q. Why does my report using Group Headers give strange results?</b></p>
@@ -345,10 +341,10 @@ suppressed </li>
   running the ASP (privileges). </p>
 <p><b>Q. What is two pass report option? What is the use of this feature?</b></p>
 <p>The engine is capable of preview the first page before calculating all the 
-  pages (can be thousands), this is the default behaviour for speed and memory 
-  consumtion (when printing, pages printed are released from memory).</p>
+  pages (can be thousands), this is the default behaviour for speed and memory
+  consumption (when printing, pages printed are released from memory).</p>
 <p>The engine is also capable of printing the total pages in the first page,it's 
-  also capable of going back to the first page to process a new subreport (paralel 
+  also capable of going back to the first page to process a new subreport (parallel
   subreports), so you can print in the first page as many subreports as you want.</p>
 <p>The printing of total pages (PAGECOUNT) requires the previous calculation of 
   the report, then PAGECOUNT is replaced with the total number of pages, the page 

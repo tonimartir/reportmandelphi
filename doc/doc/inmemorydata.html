@@ -173,11 +173,11 @@
     you specify the fields separated by ; symbol (CUSTNO;ORDERNO for example).</li>
   <li>Get the records from any other already defined dataset. You use the UNIONS 
     list to specify which datasets will be used to fill the in memory dataset, 
-    if you select more than one dataset, the numer of fields and field types must 
+    if you select more than one dataset, the number of fields and field types must
     be the same.</li>
   <li>Group the union, by selecting union grouping, the in memory dataset will 
     by grouped by the fields specified in the Index Fields property.</li>
-  <li>Stablish master detail relationships, this is a filter based on fields of 
+  <li>Establish master detail relationships, this is a filter based on fields of
     another dataset. Use the <strong>Master Fields property combined with Index 
     Fields</strong> property to perform field relation equivalences.</li>
 </ul>
@@ -186,18 +186,18 @@
   subreport with a group, customer number, the trick is that at the group header 
   <strong>we want to print total by customer</strong>, so expression evaluator 
   sums will not work.</p>
-<p>You can solve the problem by using linked querys, but this linked query will 
-  be executed each time a CUSTNO changes in the main dataset, if there are 200 
-  customers, 201 querys will be executed (once for each custno and the main query).</p>
-<p>To enhace performance we will execute 2 querys one for the detail and another 
+<p>You can solve the problem by using linked queries, but this linked query will
+  be executed each time a CUSTNO changes in the main dataset, if there are 200
+  customers, 201 queries will be executed (once for each custno and the main query).</p>
+<p>To enhance performance we will execute 2 queries one for the detail and another
   for all totals by customer.</p>
 <p>1.Create a database connection.<br>
   2.Create a MyBase connection.</p>
 <p>DETAIL dataset with database connection with the sql:<br>
   SELECT CUSTNO,ARTNO,QTY,PRICE,AMOUNT FROM SALES ORDER BY CUSTNO</p>
-<p>TOTALS dataset with database connectoin with the sql<br>
+<p>TOTALS dataset with database connection with the sql<br>
   SELECT CUSTNO,SUM(AMOUNT) AS AMOUNT FROM SALES GROUP BY CUSTNO</p>
-<p>No datasource needed, both querys will be executed only once to enhace performanc 
+<p>No datasource needed, both queries will be executed only once to enhance performance
   and<br>
   net bandwith.</p>
 <p>Now to show the correct grand total (TOTALS.AMOUNT) for each customer at the 

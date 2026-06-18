@@ -163,24 +163,24 @@
 <td valign=bottom>&nbsp;<br>
 <font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>reportman</strong></big></big> (version 0.1.0.0)</font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C|/python23/lib/site-packages/reportman.py">c:\python23\lib\site-packages\reportman.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br>c:\python23\lib\site-packages\reportman.py</font></td></tr></table>
     <p><tt>This&nbsp;file&nbsp;is&nbsp;copyright&nbsp;2004&nbsp;by&nbsp;Shawn&nbsp;L.&nbsp;Church.&nbsp;&nbsp;Permission&nbsp;to&nbsp;copy,&nbsp;&nbsp;use,<br>
 and&nbsp;distribute&nbsp;this&nbsp;file&nbsp;is&nbsp;granted&nbsp;in&nbsp;accordance&nbsp;with&nbsp;the&nbsp;wxWidgets&nbsp;license&nbsp;<br>
-agreement&nbsp;found&nbsp;at&nbsp;<a href="http://wxwidgets.org/newlicen.htm">http://wxwidgets.org/newlicen.htm</a><br>
+agreement&nbsp;found&nbsp;at&nbsp;<a href="https://www.wxwidgets.org/about/licence/">https://www.wxwidgets.org/about/licence/</a><br>
 &nbsp;<br>
 This&nbsp;module&nbsp;implements&nbsp;python&nbsp;bindings&nbsp;to&nbsp;the&nbsp;<a href="#ReportMan">ReportMan</a>&nbsp;ActiveX&nbsp;control.<br>
 For&nbsp;more&nbsp;information&nbsp;on&nbsp;ReportManager&nbsp;see:&nbsp;<a href="/">http://reportman.es</a><br>
 &nbsp;<br>
-Requirements:&nbsp;ctypes&nbsp;module.&nbsp;&nbsp;To&nbsp;download&nbsp;see:&nbsp;<a href="http://starship.python.net/crew/theller/ctypes/index.html">http://starship.python.net/crew/theller/ctypes/index.html</a><br>
+Requirements:&nbsp;ctypes&nbsp;module.&nbsp;&nbsp;To&nbsp;download&nbsp;see:&nbsp;<a href="https://docs.python.org/3/library/ctypes.html">https://docs.python.org/3/library/ctypes.html</a><br>
 &nbsp;<br>
 Limitations:&nbsp;Currently&nbsp;implemented&nbsp;for&nbsp;Windows&nbsp;only&nbsp;although&nbsp;Linux&nbsp;should&nbsp;work&nbsp;with<br>
 a&nbsp;change&nbsp;to&nbsp;the&nbsp;_rp_lib=&nbsp;statement&nbsp;to&nbsp;reference&nbsp;the&nbsp;Linux&nbsp;shared&nbsp;library&nbsp;for&nbsp;Report&nbsp;Manager.<br>
 &nbsp;<br>
-INSTALLATION:&nbsp;&nbsp;&nbsp;1)&nbsp;Install&nbsp;ctypes&nbsp;module&nbsp;if&nbsp;necassary.<br>
+INSTALLATION:&nbsp;&nbsp;&nbsp;1)&nbsp;Install&nbsp;ctypes&nbsp;module&nbsp;if&nbsp;necessary.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2)&nbsp;Copy&nbsp;reportman.py&nbsp;to&nbsp;Python&nbsp;site-packages&nbsp;directory<br>
 &nbsp;<br>
 TODO:&nbsp;&nbsp;&nbsp;1)&nbsp;Implement&nbsp;Cross-platform&nbsp;compatibility&nbsp;with&nbsp;Linux.&nbsp;&nbsp;&nbsp;Should&nbsp;also<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;also&nbsp;implement&nbsp;MAC&nbsp;compatability&nbsp;but&nbsp;I&nbsp;have&nbsp;no&nbsp;way&nbsp;to&nbsp;test&nbsp;this.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;also&nbsp;implement&nbsp;MAC&nbsp;compatibility&nbsp;but&nbsp;I&nbsp;have&nbsp;no&nbsp;way&nbsp;to&nbsp;test&nbsp;this.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2)&nbsp;Add&nbsp;capabilities&nbsp;to&nbsp;export&nbsp;other&nbsp;ReportManager-supported&nbsp;file&nbsp;types<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;such&nbsp;as&nbsp;excel,&nbsp;CSV,&nbsp;&nbsp;text,&nbsp;&nbsp;etc.<br>
@@ -235,7 +235,7 @@ Usage:&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.<a href="#ReportMan-preview">preview</a>()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.<a href="#ReportMan-execute">execute</a>()&nbsp;#&nbsp;produces&nbsp;test.pdf&nbsp;in&nbsp;same&nbsp;directory&nbsp;as&nbsp;test.rep<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.<a href="#ReportMan-execute">execute</a>(metafile=True)&nbsp;#&nbsp;produces&nbsp;test.rpmf&nbsp;in&nbsp;same&nbsp;directory&nbsp;as&nbsp;test.rep<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.<a href="#ReportMan-execute">execute</a>("c:\report.pdf")&nbsp;#&nbsp;Proudces&nbsp;c:\report.pdf<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.<a href="#ReportMan-execute">execute</a>("c:\report.pdf")&nbsp;#&nbsp;Produces&nbsp;c:\report.pdf<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;report.params<br>
 &nbsp;&nbsp;&nbsp;&nbsp;['TITLE',&nbsp;'DATETEST']<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>&nbsp;</tt></td></tr>
@@ -251,7 +251,7 @@ report_filename&nbsp;=&nbsp;"\path\to\your\report.rep"</tt></dd></dl>
 &nbsp;<br>
 filename=name&nbsp;of&nbsp;report&nbsp;file&nbsp;(defaults&nbsp;to&nbsp;report&nbsp;file&nbsp;name+.pdf/.rpmf)<br>
 metafile=True&nbsp;to&nbsp;produce&nbsp;Report&nbsp;Manager&nbsp;meta-file&nbsp;or&nbsp;false&nbsp;for&nbsp;PDF.<br>
-compressed=True&nbsp;to&nbsp;produce&nbsp;commpressed&nbsp;file&nbsp;output.<br>
+compressed=True&nbsp;to&nbsp;produce&nbsp;compressed&nbsp;file&nbsp;output.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
 
@@ -269,17 +269,17 @@ showprintdialog=True&nbsp;to&nbsp;show&nbsp;standard&nbsp;printer&nbsp;dialog&nb
 &nbsp;<br>
 returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
 
-<dl><dt><a name="ReportMan-set_param"><strong>set_param</strong></a>(self, paramname, paramvalue)</dt><dd><tt>Sets&nbsp;the&nbsp;specified&nbsp;paramater&nbsp;to&nbsp;the&nbsp;specified&nbsp;value&nbsp;<br>
+<dl><dt><a name="ReportMan-set_param"><strong>set_param</strong></a>(self, paramname, paramvalue)</dt><dd><tt>Sets&nbsp;the&nbsp;specified&nbsp;parameter&nbsp;to&nbsp;the&nbsp;specified&nbsp;value&nbsp;<br>
 &nbsp;<br>
-paramname=Name&nbsp;of&nbsp;the&nbsp;paramater.<br>
-paramvalue=Value&nbsp;of&nbsp;the&nbsp;paramater&nbsp;must&nbsp;be&nbsp;one&nbsp;of&nbsp;the&nbsp;following&nbsp;types:<br>
+paramname=Name&nbsp;of&nbsp;the&nbsp;parameter.<br>
+paramvalue=Value&nbsp;of&nbsp;the&nbsp;parameter&nbsp;must&nbsp;be&nbsp;one&nbsp;of&nbsp;the&nbsp;following&nbsp;types:<br>
 &nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;None:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;to&nbsp;SQL&nbsp;NULL&nbsp;-&nbsp;c-void*&nbsp;&nbsp;&nbsp;&nbsp;(None)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;using&nbsp;c-int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1,2,3)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;long:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;using&nbsp;c-longlong&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1L,2L)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;str:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;to&nbsp;string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("string")<br>
-&nbsp;&nbsp;&nbsp;&nbsp;unicode:&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;to&nbsp;unicode&nbsp;string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(u"Unicode")<br>
-&nbsp;&nbsp;&nbsp;&nbsp;float:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;paramater&nbsp;using&nbsp;c-double&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(12.54321)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;None:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;to&nbsp;SQL&nbsp;NULL&nbsp;-&nbsp;c-void*&nbsp;&nbsp;&nbsp;&nbsp;(None)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;using&nbsp;c-int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1,2,3)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;long:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;using&nbsp;c-longlong&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1L,2L)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;str:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;to&nbsp;string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("string")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;unicode:&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;to&nbsp;unicode&nbsp;string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(u"Unicode")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;float:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets&nbsp;parameter&nbsp;using&nbsp;c-double&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(12.54321)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Other&nbsp;types&nbsp;result&nbsp;in&nbsp;a&nbsp;value&nbsp;exception.&nbsp;&nbsp;I&nbsp;use&nbsp;strings&nbsp;to&nbsp;pass<br>
 &nbsp;&nbsp;&nbsp;&nbsp;dates&nbsp;and&nbsp;just&nbsp;adjust&nbsp;the&nbsp;SQL&nbsp;statement&nbsp;to&nbsp;convert&nbsp;them&nbsp;for<br>
@@ -290,7 +290,7 @@ returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;erro
 <hr>
 Properties defined here:<br>
 <dl><dt><strong>params</strong></dt>
-<dd><tt>Read&nbsp;Only&nbsp;list&nbsp;of&nbsp;paramater&nbsp;names</tt></dd>
+<dd><tt>Read&nbsp;Only&nbsp;list&nbsp;of&nbsp;parameter&nbsp;names</tt></dd>
 <dd><dl><dt><strong><em>get</em></strong> <em>lambda</em> self</dt></dl>
 </dd>
 </dl>
@@ -316,13 +316,13 @@ returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;erro
 returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
  <dl><dt><a name="-rp_getparamcount"><strong>rp_getparamcount</strong></a>(hreport)</dt><dd><tt>Wrapper&nbsp;for:&nbsp;int&nbsp;<a href="#-rp_getparamcount">rp_getparamcount</a>(int&nbsp;hreport,int&nbsp;*paramcount);&nbsp;<br>
 &nbsp;<br>
-returns&nbsp;paramater&nbsp;count&nbsp;as&nbsp;int&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
+returns&nbsp;parameter&nbsp;count&nbsp;as&nbsp;int&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
  <dl><dt><a name="-rp_getparamname"><strong>rp_getparamname</strong></a>(hreport, index)</dt><dd><tt>Wrapper&nbsp;for:&nbsp;int&nbsp;<a href="#-rp_getparamname">rp_getparamname</a>(int&nbsp;hreport,int&nbsp;index,char&nbsp;*abuffer);&nbsp;<br>
 &nbsp;<br>
-returns&nbsp;paramater&nbsp;name&nbsp;as&nbsp;str&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
+returns&nbsp;parameter&nbsp;name&nbsp;as&nbsp;str&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>
  <dl><dt><a name="-rp_open"><strong>rp_open</strong></a>(filename)</dt><dd><tt>Wrapper&nbsp;for:&nbsp;int&nbsp;<a href="#-rp_open">rp_open</a>(char&nbsp;*filename);&nbsp;<br>
 &nbsp;<br>
-returns&nbsp;ReportManager&nbsp;handle&nbsp;as&nbsp;int&nbsp;on&nbsp;success&nbsp;or&nbsp;ValurError&nbsp;on&nbsp;error</tt></dd></dl>
+returns&nbsp;ReportManager&nbsp;handle&nbsp;as&nbsp;int&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error</tt></dd></dl>
  <dl><dt><a name="-rp_preview"><strong>rp_preview</strong></a>(hreport, title)</dt><dd><tt>Wrapper&nbsp;for:&nbsp;int&nbsp;<a href="#-rp_preview">rp_preview</a>(int&nbsp;hreport,char&nbsp;*title);&nbsp;<br>
 &nbsp;<br>
 returns&nbsp;None&nbsp;on&nbsp;success&nbsp;or&nbsp;ValueError&nbsp;on&nbsp;error.</tt></dd></dl>

@@ -161,7 +161,7 @@
 <h2>Installation</h2>
 <h3><b>Compiling Report Manager using Delphi</b></h3>
 <p>Download the components from sourceforge and unpack it to a directory:</p>
-<p><a href="http://sourceforge.net/projects/reportman" target="_blank" rel="noopener">http://sourceforge.net/projects/reportman</a></p>
+<p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
 <table border="1">
   <tr> 
     <td bgcolor="#00FFFF"><b>Version</b></td>
@@ -183,7 +183,7 @@
     <td>VCL components</td>
   </tr>
   <tr> 
-    <td>rppackdesisgnvcl_del</td>
+    <td>rppackdesignvcl_del</td>
     <td>Interface to Report Manager Designer (VCL)</td>
   </tr>
   <tr> 
@@ -192,11 +192,11 @@
   </tr>
   <tr> 
     <td>rppackv_del.dpk</td>
-    <td>Visual CLX package, for cross platform development</td>
+    <td>Visual CLX package, for cross platform development (legacy)</td>
   </tr>
   <tr> 
     <td>rppackdesign_del.dpk</td>
-    <td>Visual CLX interface to Report Manager Designer</td>
+    <td>Visual CLX interface to Report Manager Designer (legacy)</td>
   </tr>
   <tr> 
     <td rowspan="4" bgcolor="#FFFFCC">Delphi 2005</td>
@@ -230,24 +230,24 @@
   You should install rppackdesigntime_del in Delphi 6/7 to install integrated 
   property editors into your IDE, so you can preview report without compiling 
   your application. </p>
-<p>You must <a href="http://www.indyproject.org" target="_blank" rel="noopener">install Indy 
+<p>You must <a href="https://www.indyproject.org" target="_blank" rel="noopener">install Indy
   components</a> in Delphi 5 before installing Report Manager components or disable 
   Indy support in rpconf.inc file.</p>
-<p>For Delphi 7, if you enable Indy (enabled by default) you must upgrade to latest version 9. </p>
+<p>For Delphi 7 (legacy), if you enable Indy (enabled by default) you must upgrade to the Indy 9 release that matched that IDE. </p>
 <p>After a Delphi update or a component library update to related packages (IBX,Indy for example), can be necessary to rebuild 
   all the packages. Uninstall them and then install them in the same order.</p>
 <p>Before begin installation you must remove all packages of any previous version 
   (it's not totally necessary but a few warning or error messages may appear).</p>
 <p>In Delphi IDE select Open option of file menu, then select .dpk package files, 
-  click the install button. A warning about dependences can apper, click yes to 
-  solve dependences and install.</p>
-<p>If you alter rpconf.inc, you can remove the dependeces of the disabled options, 
+  click the install button. A warning about dependencies can appear, click yes to
+  solve dependencies and install.</p>
+<p>If you alter rpconf.inc, you can remove the dependencies of the disabled options,
   for example if you disable ADO support you can remove adortl dependence.</p>
 <p><img src="images/installpack.jpg" width="394" height="258" alt="Compiling in Delphi (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>To compile your projetcs must add the report manager components directory to 
+<p>To compile your projects must add the report manager components directory to
   the library path.</p>
 <p>If you compile with runtime packages you must include the .bpl files generated 
-  with your application (just like other Borland packages)</p>
+  with your application (just like any other Delphi runtime package)</p>
 <p>Report Manager is divided in packages because you can use it in different scenarios, 
   for example for a console application you only need rppack_del.dpk, for VCL 
   applications you need also rppackvcl_del.dpk, for CLX applications you need 

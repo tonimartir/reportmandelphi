@@ -175,7 +175,7 @@
 <p><img src="images/groupheader2.jpg" width="566" height="539" alt="Group header and footer (screenshot 2)" loading="lazy" decoding="async"></p>
 <p>To force group change, we must enter the change expression for the group as 
   Left(CUSTOMER.CUSTOMER,1),click 'Header-Initial' item in the design tree and 
-  then set the Group Expression, if you preview the report, then the deail sections 
+  then set the Group Expression, if you preview the report, then the detail sections
   are enclosed by group header and footer grouping customers with the same initial 
   customer name character:</p>
 <p><img src="images/groupheader3.jpg" width="533" height="580" alt="Group header and footer (screenshot 3)" loading="lazy" decoding="async"></p>
@@ -191,7 +191,7 @@
 <p>SELECT .... ORDER BY MORE_EXTERNAL_GROUP_FIELD,...,MORE_INTERNAL_GROUP_FIELD</p>
 <p> For compatibility reasons, the expression of each group must contain other 
   groups fields that is, for a grouping by custno,orderno and partno:</p>
-<p>The select musbe SELECT ... ORDER BY CUSTNO,ORDERNO,PARTNO...</p>
+<p>The select must be SELECT ... ORDER BY CUSTNO,ORDERNO,PARTNO...</p>
 <p>The more external CUSTNO group expression:</p>
 <p>FormatStr('0000000000',CUSTNO)</p>
 <p>The ORDERNO group expression:</p>

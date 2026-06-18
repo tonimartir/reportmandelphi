@@ -1,0 +1,51 @@
+{
+  "typoResiduals": [
+    {
+      "path": "doc/doc/axtivexcomp.html",
+      "wrong": "an instance",
+      "correct": "an instance"
+    },
+    {
+      "path": "doc/doc/labels.html",
+      "wrong": "with",
+      "correct": "width"
+    },
+    {
+      "path": "doc/doc/building.html",
+      "wrong": "build the distributable",
+      "correct": "built the distributable"
+    },
+    {
+      "path": "doc/doc/units/rpgdidriver.html",
+      "wrong": "tittle",
+      "correct": "title"
+    }
+  ],
+  "mojibakeHits": [
+    {
+      "path": "doc/doc/bidi_behavior.html",
+      "sample": "Ãƒ"
+    }
+  ],
+  "deadHits": [
+    {
+      "path": "doc/doc/success.html",
+      "host": "sancharnet.in"
+    }
+  ],
+  "httpHits": [],
+  "markupHits": [
+    {
+      "path": "doc/doc/faq.html",
+      "issues": [
+        "p balance: 42 open / 40 close"
+      ]
+    },
+    {
+      "path": "doc/doc/python_bind.html",
+      "issues": [
+        "p balance: 6 open / 1 close"
+      ]
+    }
+  ]
+}

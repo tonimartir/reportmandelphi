@@ -160,7 +160,7 @@
 <h1>Common properties for TRpBarcode</h1>
 <h2>Component Reference</h2>
 <h3>Properties for TRpBarcode</h3>
-<p><b>Sumary</b></p>
+<p><b>Summary</b></p>
 <table border="1">
   <tr> 
     <td bgcolor="#FFFFCC">Name</td>
@@ -193,13 +193,13 @@
         <tr> 
           <td>Code128A, Code128B, Code128C, Code128</td>
           <td> <p>Code 128 family, A and B allow alphanumeric coding, the B allow 
-              also lowercase chars. The C allow only numeric values but gerenerates 
+              also lowercase chars. The C allow only numeric values but generates
               the narrowest barcode, grouping in pair of digits. The Code128 generates a B and C mixed barcode, 
               full optimized, so a code like 234534AB generates a 128C segment 
               and a 128B segment, so the barcode is 50% smaller than using 128B.</p>
-            <p>To generate GS1 barcodes, the FNC1 char must precede the barcode, it's represented by the ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ char. 
+            <p>To generate GS1 barcodes, the FNC1 char must precede the barcode, it's represented by the ¿ char. 
               Also ensure to set calculate checksum to true</p>
-            <p>'ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿'+ '001234567890123456789'   </p></td>
+            <p>'¿'+ '001234567890123456789'   </p></td>
         </tr>
         <tr> 
           <td>Code93, Code93Extended</td>
@@ -264,7 +264,7 @@
     <td>Expression</td>
     <td>WideString</td>
     <td>The value of the barcode is obtained evaluating this expression, the result 
-      must be a string, depends on the barcode type, can contain aphanumeric or 
+      must be a string, depends on the barcode type, can contain alphanumeric or
       only digits</td>
   </tr>
   <tr> 
@@ -284,19 +284,19 @@
     <td>Row count</td>
     <td>NumRows</td>
     <td>Integer</td>
-    <td>PDF437, number of rows 0=auto</td>
+    <td>PDF417, number of rows 0=auto</td>
   </tr>
   <tr>
     <td>Column count</td>
     <td>NumColumns</td>
     <td>Integer</td>
-    <td>PDF437, number of columns 0=auto</td>
+    <td>PDF417, number of columns 0=auto</td>
   </tr>
   <tr>
-    <td>Truncate PDF437</td>
+    <td>Truncate PDF417</td>
     <td>Truncated</td>
     <td>Integer</td>
-    <td>PDF437, truncate data if needed</td>
+    <td>PDF417, truncate data if needed</td>
   </tr>
   <tr>
     <td>Background color</td>
@@ -311,8 +311,8 @@
     <td>Transparent background color</td>
   </tr>
 </table>
-<p><strong>Aditional details about the implementation</strong></p>
-<p>Because Report Manager <a href="devdriver.html">driver architechture</a>, the 
+<p><strong>Additional details about the implementation</strong></p>
+<p>Because Report Manager <a href="devdriver.html">driver architecture</a>, the
   barcodes are only supported by the drivers supporting drawing and filling rects, 
   that is the Excel and Plain text driver does not support barcodes.</p>
 <p><b>Developer info</b></p>
