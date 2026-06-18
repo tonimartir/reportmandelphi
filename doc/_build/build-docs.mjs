@@ -78,6 +78,7 @@ const NAV = [
     ['Barcode printing', '/doc/barcodes.html'],
     ['TeeChart support', '/doc/teechart.html'],
     ['International support', '/doc/internatsupport.html'],
+    ['Bidirectional text and complex scripts', '/doc/bidi_behavior.html'],
     ['Composite reports', '/doc/compsiterep.html'],
     ['Dot matrix and POS devices', '/doc/dotmatrix.html'],
     ['Database access information', '/doc/openingdatatrouble.html'],

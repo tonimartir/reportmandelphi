@@ -114,6 +114,7 @@
 <li><a href="/doc/barcodes.html">Barcode printing</a></li>
 <li><a href="/doc/teechart.html">TeeChart support</a></li>
 <li><a href="/doc/internatsupport.html" class="current" aria-current="page">International support</a></li>
+<li><a href="/doc/bidi_behavior.html">Bidirectional text and complex scripts</a></li>
 <li><a href="/doc/compsiterep.html">Composite reports</a></li>
 <li><a href="/doc/dotmatrix.html">Dot matrix and POS devices</a></li>
 <li><a href="/doc/openingdatatrouble.html">Database access information</a></li>
@@ -193,9 +194,9 @@
   </tr>
 </table>
 <p>For a more detail description see <a href="bidi_behavior.html">Bidi Behaviour</a>.</p>
-<p>The Bidi algorithm used is very simple in Linux and PDF output so text containing 
-  numbers may be drawn incorrectly, with the Windows GDI driver the drawing is 
-  done with Windows GDI and should be correct.</p>
+<p>Bidi reordering follows the Unicode bidi algorithm on every platform (DirectWrite
+  on Windows, ICU on Linux), so mixed text such as Latin digits inside a right-to-left
+  sentence is ordered correctly in the preview, on the printer and in PDF output.</p>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
