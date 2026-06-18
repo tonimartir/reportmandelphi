@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Using Report Manager .Net native controls - Report Manager Docs</title>
-<meta name="description" content="Installation Using Report Manager .Net native components Download the .Net package from sourceforge, then uncompress the package to a directory in your">
-<link rel="canonical" href="https://reportman.es/doc/visualnetcomp.html">
+<title>HTML formatting and interpolation - Report Manager Docs</title>
+<meta name="description" content="Use inline HTML (bold, italic, fonts, colors) and {{ }} expression interpolation in Report Manager label and expression text by enabling the Is Html property.">
+<link rel="canonical" href="https://reportman.es/doc/htmlformat.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="stylesheet" href="/doc/docs.css">
@@ -29,8 +29,8 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "Using Report Manager .Net native controls",
-      "item": "https://reportman.es/doc/visualnetcomp.html"
+      "name": "HTML formatting and interpolation",
+      "item": "https://reportman.es/doc/htmlformat.html"
     }
   ]
 }
@@ -67,7 +67,7 @@
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li><a href="/doc/otherlang.html">Other languages</a></li>
 <li><a href="/doc/linuxcomp.html">Linux printreptopdf</a></li>
-<li><a href="/doc/visualnetcomp.html" class="current" aria-current="page">Visual Studio .NET</a></li>
+<li><a href="/doc/visualnetcomp.html">Visual Studio .NET</a></li>
 <li><a href="/doc/delphinetcomp.html">Delphi for .NET (deprecated)</a></li>
 <li><a href="/doc/kylixcomp.html">Kylix (deprecated)</a></li>
 <li><a href="/doc/installwebreport.html">ActiveX IE plugin (deprecated)</a></li>
@@ -111,7 +111,7 @@
 <li><a href="/doc/labels.html">Printing labels</a></li>
 <li><a href="/doc/externalsec.html">Report files sharing sections</a></li>
 <li><a href="/doc/exevaluator.html">Expression evaluator</a></li>
-<li><a href="/doc/htmlformat.html">HTML and interpolation</a></li>
+<li><a href="/doc/htmlformat.html" class="current" aria-current="page">HTML and interpolation</a></li>
 <li><a href="/doc/barcodes.html">Barcode printing</a></li>
 <li><a href="/doc/teechart.html">TeeChart support</a></li>
 <li><a href="/doc/internatsupport.html">International support</a></li>
@@ -158,81 +158,79 @@
 </nav>
 </div>
 <main class="doc-main">
-<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Using Report Manager .Net native controls</span></nav>
-<h1>Using Report Manager .Net native controls</h1>
-<h2>Installation</h2>
-<h3><b>Using Report Manager .Net native components </b></h3>
-<p>Download the .Net package from sourceforge, then uncompress the package to 
-  a directory in your computer.</p>
-<p><a href="https://sourceforge.net/projects/reportman">https://sourceforge.net/projects/reportman</a></p>
-<p>You can choose to install the binary assemblies or add the project files directly to your project. </p>
-<p>To optimize the file sizes and separate technologies used (Windows Forms, ASP.Net mostly), Report Manager is separated in diverse assemblies, so they have different dependencies. </p>
-<p>Name spaces are used for different components, they match with library name. </p>
-<p>&nbsp;</p>
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>HTML formatting and interpolation</span></nav>
+<h1>HTML formatting and interpolation</h1>
+<h2>Advanced report design</h2>
+<h3>HTML formatting and interpolation</h3>
+<p>Text components can render a small subset of inline <b>HTML</b> and can
+  <b>interpolate report expressions</b> inside their text. Both features are
+  controlled by a single property, <b>Is Html</b>, on the component.</p>
+
+<h3>Enabling it: the Is Html property</h3>
+<p>Set the <b>Is Html</b> property of a text component to <b>True</b>. While it is
+  False (the default), the text is printed verbatim &ndash; angle brackets and
+  <code>{{ }}</code> markers are shown literally. Enabling Is Html turns on
+  <b>both</b> inline HTML rendering and <code>{{ }}</code> interpolation at the
+  same time, so existing reports are unaffected and nothing changes unless you
+  opt in.</p>
+
+<h3>Supported HTML tags</h3>
+<p>The inline parser recognizes the following tags. Everything is laid out as
+  inline text; there is no block layout.</p>
 <table border="1">
-  <tr>
-    <td colspan="2" bgcolor="#00FFFF">&nbsp;</td>
-    <td colspan="4" bgcolor="#00FFFF"><div align="center"><strong>Dependencies</strong></div></td>
-  </tr>
-  <tr>
-    <td bgcolor="#00FFFF"><strong>Library name </strong></td>
-    <td bgcolor="#00FFFF"><b>Description</b></td>
-    <td bgcolor="#00FFFF"><strong>System.Drawing</strong></td>
-    <td bgcolor="#00FFFF"><strong>Windows.Forms </strong></td>
-    <td bgcolor="#00FFFF"><strong>Web.Forms</strong></td>
-    <td bgcolor="#00FFFF"><strong>System.Data</strong></td>
-  </tr>
-  <tr>
-    <td>Reportman.Drawing.dll</td>
-    <td>Base classes, no database support, drawing structures and routines to preview and print already calculated reports </td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>No</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Reportman.Reporting.dll</td>
-    <td>Classes no read, write, and execute report templates, converting them into metafiles</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>No</td>
-    <td>Yes</td>
-  </tr>
-  <tr>
-    <td>Reportman.Drawing.Forms.dll</td>
-    <td>Define Window.Forms presentation of metafiles and other drawing utilities dependent on Windows.Forms</td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Reportman.Reporting.Forms.dll</td>
-    <td>Define Windows.Forms presentation for report options and another data enabled forms </td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Reportman.Designer.dll</td>
-    <td>Define Windows.Forms presentation for the end user report designer where the user design report templates </td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>&nbsp;</td>
-    <td>Yes</td>
-  </tr>
-  <tr>
-    <td>Reportman.Web</td>
-    <td>Define the utilities and Web.Forms provided to execute and present reports in a Web application </td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>Yes</td>
-    <td>Yes</td>
-  </tr>
+  <tr><th>Tag</th><th>Effect</th></tr>
+  <tr><td><code>&lt;b&gt;</code>, <code>&lt;strong&gt;</code></td><td>Bold</td></tr>
+  <tr><td><code>&lt;i&gt;</code>, <code>&lt;em&gt;</code></td><td>Italic</td></tr>
+  <tr><td><code>&lt;u&gt;</code></td><td>Underline</td></tr>
+  <tr><td><code>&lt;s&gt;</code>, <code>&lt;strike&gt;</code>, <code>&lt;del&gt;</code></td><td>Strikethrough</td></tr>
+  <tr><td><code>&lt;br&gt;</code></td><td>Line break</td></tr>
+  <tr><td><code>&lt;font face="Name" size="N" color="#RRGGBB"&gt;</code></td><td>Font family, size and color</td></tr>
+  <tr><td><code>&lt;span style="font-family:Name; font-size:Npt; color:#RRGGBB"&gt;</code></td><td>Font family, size and color</td></tr>
 </table>
-<p>Usually you add always the base class Reportman.Drawing plus the technologies no need (Winforms, Data access, Web) </p>
-<p>&nbsp;</p>
+<p>Colors accept <code>#RRGGBB</code>, <code>#RGB</code> or a color name. The HTML
+  entities <code>&amp;nbsp;</code>, <code>&amp;lt;</code>, <code>&amp;gt;</code>,
+  <code>&amp;amp;</code>, <code>&amp;quot;</code> and <code>&amp;#39;</code> are
+  decoded.</p>
+
+<h3>Interpolating expressions with {{ }}</h3>
+<p>When Is Html is True, every <code>{{ expression }}</code> found in the text is
+  replaced by the value of <i>expression</i>, evaluated by the report
+  <a href="exevaluator.html">expression evaluator</a>. You can use fields and
+  functions, for example <code>{{CUSTOMER.NAME}}</code> or
+  <code>{{UPPER(CUSTOMER.CITY)}}</code>. If an expression cannot be evaluated, the
+  original <code>{{...}}</code> placeholder is left untouched.</p>
+
+<h3>Labels and expressions behave differently</h3>
+<p>Where you place the HTML and the <code>{{ }}</code> markers depends on the
+  component, because a <b>TRpLabel</b> prints static text while a
+  <b>TRpExpression</b> first evaluates an expression and then prints the
+  result.</p>
+<p><b>TRpLabel</b> &ndash; write the HTML and the interpolation directly in the
+  label text. For example, set the label text to:</p>
+<p><code>Customer: &lt;b&gt;{{CUSTOMER.NAME}}&lt;/b&gt;</code></p>
+<p><b>TRpExpression</b> &ndash; the HTML must be produced by the expression
+  itself, so a field value is inserted in one of two equivalent ways:</p>
+<ul>
+  <li>Concatenate the field inside the expression:
+    <code>'&lt;b&gt;'+CUSTOMER.NAME+'&lt;/b&gt;'</code></li>
+  <li>Return a string literal that contains the mustaches:
+    <code>'&lt;b&gt;{{CUSTOMER.NAME}}&lt;/b&gt;'</code></li>
+</ul>
+<p>In both cases Is Html must be True. For expressions, the display format is
+  applied to the evaluated value before the HTML and the <code>{{ }}</code>
+  interpolation are processed.</p>
+
+<h3>Notes</h3>
+<ul>
+  <li>HTML rendering and interpolation work in the preview, when printing
+    (Windows GDI and Linux) and in PDF output.</li>
+  <li>The component font is the base style; the tags add bold, italic, underline
+    and the other effects on top of it. Make sure the chosen font contains the
+    glyphs you need.</li>
+  <li>This is different from the <a href="htmloutput.html">HTML output driver</a>,
+    which exports a whole report to an <code>.html</code> file. Here the HTML is
+    inline formatting <i>inside</i> a single text component.</li>
+</ul>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>

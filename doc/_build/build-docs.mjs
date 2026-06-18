@@ -75,6 +75,7 @@ const NAV = [
     ['Printing labels', '/doc/labels.html'],
     ['Report files sharing sections', '/doc/externalsec.html'],
     ['Expression evaluator', '/doc/exevaluator.html'],
+    ['HTML and interpolation', '/doc/htmlformat.html'],
     ['Barcode printing', '/doc/barcodes.html'],
     ['TeeChart support', '/doc/teechart.html'],
     ['International support', '/doc/internatsupport.html'],
