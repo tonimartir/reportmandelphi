@@ -159,87 +159,35 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Compiling in C++Builder</span></nav>
 <h1>Compiling in C++Builder</h1>
 <h2>Installation</h2>
-<h3><b>Compiling Report Manager using C++Builder</b></h3>
-<p>Download the components from sourceforge and unpack it to a directory:</p>
+<h3>Compiling Report Manager using C++Builder</h3>
+<p>Download the components from SourceForge and unpack them to a directory:</p>
 <p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
+
+<h3>RAD Studio 10.3 Rio and later (recommended)</h3>
+<p>In modern RAD Studio the C++Builder and Delphi personalities share the same packages. Open the project group for your version under the <code>packages</code> folder, build it, then install the design-time package <b>reportman_designvcl</b> (it pulls in <b>reportman_rtl</b> and <b>reportman_vcl</b>). To call the components from C++ code, add the components directory to the project include and library paths.</p>
 <table border="1">
-  <tr> 
-    <td bgcolor="#00FFFF"><b>Version</b></td>
-    <td bgcolor="#00FFFF"><b>Packages</b></td>
-    <td bgcolor="#00FFFF"><b>Description</b></td>
-  </tr>
-  <tr> 
-    <td bgcolor="#FFFFCC">Builder 4</td>
-    <td>rppack_builder4.bpk</td>
-    <td>Unique complete package (no report design)</td>
-  </tr>
-  <tr> 
-    <td rowspan="6" bgcolor="#FFFFCC">Builder 6</td>
-    <td>rppack_builder6.bpk</td>
-    <td>Report Components (non Visual)</td>
-  </tr>
-  <tr>
-    <td>rppackvcl_builder6.bpk</td>
-    <td>Report Components (VCL)</td>
-  </tr>
-  <tr> 
-    <td>rppackdesignvcl_builder6.bpk</td>
-    <td>Report Manager Designer VCL components</td>
-  </tr>
-  <tr> 
-    <td>rppackdesigntime_builder.bpk</td>
-    <td>Report Manager Design editors</td>
-  </tr>
-  <tr> 
-    <td>rppackv_builder6.bpk</td>
-    <td>Visual CLX package, for cross platform development</td>
-  </tr>
-  <tr> 
-    <td>rppackdesign_builder6.bpk</td>
-    <td>Designer CLX package, for cross platform development</td>
-  </tr>
-  <tr>
-    <td bgcolor="#FFFFCC">Builder 7 </td>
-    <td>rppack_builder2007.cbproj</td>
-    <td>All in one </td>
-  </tr>
+  <tr><th>Version</th><th>Project group</th></tr>
+  <tr><td>RAD Studio 13</td><td>packages\13.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 12 Athens</td><td>packages\12.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 11.2 Alexandria</td><td>packages\11.2\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 11 Alexandria</td><td>packages\11.0\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 10.4 Sydney</td><td>packages\10.4\reportman.groupproj</td></tr>
+  <tr><td>RAD Studio 10.3 Rio</td><td>packages\10.3\reportman.groupproj</td></tr>
 </table>
-<p>You must install the packages in the correct order.</p>
-<p>C++Builder 6 does not allow sharing VCL and CLX forms in the same project as 
-  Delphi allow, because this, when you use the TCLXReport component, the GDI driver 
-  is never used, only Qt printing is available. Also TeeChart have the limitation 
-  of compiling as a CLX or a VCL (default), that is TeeChart is not available 
-  in CLX applications by default.</p>
-<p>Note: C++Builder have known problems using qt library wrappers, and QPrinter, 
-  to fix QPrinter you must install an updated qtintf.dll library, installed after
-  Delphi 6 Update Pack #2, but to fix problems with Qt library wrappers you should 
-  read <a href="https://docwiki.embarcadero.com" target="_blank" rel="noopener">this
-  article</a> and <a href="https://docwiki.embarcadero.com">this
-  article</a>.</p>
-<p>In Builder IDE select Open option in file menu, then select .bpk package files, 
-  click the install button.</p>
-<p>If you alter rpconf.inc, you can remove the dependencies of the disabled options,
-  for example if you disable ADO support you can remove adortl dependence. Or 
-  add other component support like Zeos database objects.</p>
-<p><img src="images/installpack.jpg" width="394" height="258" alt="Compiling in C++Builder (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>To compile your projects you must add the report manager components directory
-  to the library path, and for CLX application you may need add antivcl.hpp file 
-  to avoid the use of VCL components in a CLX application.</p>
-<p>Thanks to Cristian A. Bugeiro (cbugeiro@fibertel.com.ar) for the help in building 
-  the first version of the C++Builder 6 packages.</p>
-<p>If you compile with runtime packages you must include the .bpl files generated 
-  with your application (just like other runtime packages)</p>
-<p>Notes:</p>
-<p>To compile your projects you should <strong>add the library shlwapi.lib to 
-  it.</strong></p>
-<p>Sample steps to add support of Zeos library to the components:</p>
-<p>- Make sure your zeos components are installed and working. Build an application 
-  with only a Zconnection for example.<br>
-  - Enable zeos support at rpconf.inc file, uncomment the line {$DEFINE USEZEOS}<br>
-  - Open rppack_builder6.bpk, then click on requires clause and add all Z*.bpi 
-  files in your $BCB\Projects\Lib (or the output library you have).<br>
-  - Use build to compile each package, add zeos components library to any package 
-  requiring it.</p>
+
+<h3>Legacy C++Builder versions</h3>
+<p>Open the package files from the components root directory in the C++Builder IDE (<b>File &gt; Open</b>), then build and install them in the order shown.</p>
+<table border="1">
+  <tr><th>Version</th><th>Packages (install in this order)</th></tr>
+  <tr><td>C++Builder 2007</td><td>rppack_builder2007 (all in one)</td></tr>
+  <tr><td>C++Builder 6</td><td>rppack_builder6.bpk (non-visual), rppackvcl_builder6.bpk (VCL), rppackdesignvcl_builder6.bpk (designer), rppackdesigntime_builder6.bpk (design editors). The CLX packages rppackv_builder6.bpk and rppackdesign_builder6.bpk are legacy and optional.</td></tr>
+  <tr><td>C++Builder 4</td><td>rppack_builder4.bpk (all in one, without report design)</td></tr>
+</table>
+<p>Add the library <b>shlwapi.lib</b> to your C++Builder project. If you build with runtime packages, ship the generated .bpl files with your application.</p>
+<p>You can tailor the build through <a href="compileropts.html">rpconf.inc</a>; if you disable an option you can drop its dependency from the package <code>requires</code> clause, or add support for another data layer such as Zeos (enable {$DEFINE USEZEOS} and add the Z*.bpi files to the requires clause).</p>
+<p><img src="images/installpack.jpg" width="394" height="258" alt="Installing the Report Manager packages in the C++Builder IDE" loading="lazy" decoding="async"></p>
+<p>Thanks to Cristian A. Bugeiro for the help building the first C++Builder 6 packages.</p>
+<p>If you have problems, see the <a href="compileropts.html">compilation options</a>.</p>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
