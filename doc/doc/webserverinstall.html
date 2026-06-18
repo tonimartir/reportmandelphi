@@ -173,13 +173,13 @@
             <li>
               Add roles or features. Add Web Server Role including Management tools. Click Add features
               <p>
-                <img src="installrole.png" alt="Installing Report Manager Web Server (screenshot 1)">
+                <img src="installrole.png" alt="Installing Report Manager Web Server (screenshot 1)" loading="lazy" decoding="async">
               </p>
             </li>
             <li>
               Click Next until Role Services and add CGI and ISAPI Extensions.
               <p>
-                <img src="rolefeatures.png" alt="Installing Report Manager Web Server (screenshot 2)">
+                <img src="rolefeatures.png" alt="Installing Report Manager Web Server (screenshot 2)" loading="lazy" decoding="async">
               </p>
             </li>
             <li>
@@ -197,13 +197,13 @@
         <li>
           Explore the website
           <p>
-            <img src="websiteexplore.png" alt="Installing Report Manager Web Server (screenshot 3)">
+            <img src="websiteexplore.png" alt="Installing Report Manager Web Server (screenshot 3)" loading="lazy" decoding="async">
           </p>
         </li>
         <li>
           Create cgi-bin folder and copy the files repwebserver.dll for ISAPI and/or repwebexe.exe for CGI.
           <p>
-            <img src="webservercopy.png" alt="Installing Report Manager Web Server (screenshot 4)">
+            <img src="webservercopy.png" alt="Installing Report Manager Web Server (screenshot 4)" loading="lazy" decoding="async">
           </p>
         </li>
       </ul>
@@ -214,23 +214,23 @@
         <li>
           Select server node and double click ISAPI and CGI Restrictions.
           <p>
-            <img src="isapirestrict1.png" alt="Installing Report Manager Web Server (screenshot 5)">
+            <img src="isapirestrict1.png" alt="Installing Report Manager Web Server (screenshot 5)" loading="lazy" decoding="async">
           </p>
         </li>
         <li>
           Add the repwebserver and/or repwebexe.dll to the list, selecting the cgi-bin path and the file
           <p>
-            <img src="selectfile.png" alt="Installing Report Manager Web Server (screenshot 6)">
+            <img src="selectfile.png" alt="Installing Report Manager Web Server (screenshot 6)" loading="lazy" decoding="async">
           </p>
           <p>Set a description and allow execution</p>
           <p>
-            <img src="addexecution.png" alt="Installing Report Manager Web Server (screenshot 7)">
+            <img src="addexecution.png" alt="Installing Report Manager Web Server (screenshot 7)" loading="lazy" decoding="async">
           </p>
         </li>
         <li>
           Review the sumary to check execution is enabled
           <p>
-            <img src="sumary.png" alt="Installing Report Manager Web Server (screenshot 8)">
+            <img src="sumary.png" alt="Installing Report Manager Web Server (screenshot 8)" loading="lazy" decoding="async">
           </p>
         </li>
       </ul>
@@ -241,16 +241,16 @@
         <li>
           Double click on Handler Mappings.
           <p>
-            <img src="handlermap.png" alt="Installing Report Manager Web Server (screenshot 9)">
+            <img src="handlermap.png" alt="Installing Report Manager Web Server (screenshot 9)" loading="lazy" decoding="async">
           </p>      
         </li>
         <li>
           Select the ISAPI or CGI handler mapping and set execute permission.
           <p>
-            <img src="isapiedit.png" alt="Installing Report Manager Web Server (screenshot 10)">
+            <img src="isapiedit.png" alt="Installing Report Manager Web Server (screenshot 10)" loading="lazy" decoding="async">
           </p>      
           <p>
-            <img src="isapienable.png" alt="Installing Report Manager Web Server (screenshot 11)">
+            <img src="isapienable.png" alt="Installing Report Manager Web Server (screenshot 11)" loading="lazy" decoding="async">
           </p>      
         </li>          
       </ul>
@@ -258,14 +258,14 @@
     <li>
       If you run a 32bit version of Report Manager you must enable 32bit in the application group. Else you will get a 500.0 internal error.
       <p>
-        <img src="app32bit.png" alt="Installing Report Manager Web Server (screenshot 12)">
+        <img src="app32bit.png" alt="Installing Report Manager Web Server (screenshot 12)" loading="lazy" decoding="async">
       </p>      
     </li>
     <li>
       <p>You can test the installation by calling the application with /version command:</p>
       <p><a href="http://localhost/cgi-bin/repwebserver.dll/version">http://localhost/cgi-bin/repwebserver.dll/version</a>    
       <p>
-        <img src="installversion.png" alt="Installing Report Manager Web Server (screenshot 13)">
+        <img src="installversion.png" alt="Installing Report Manager Web Server (screenshot 13)" loading="lazy" decoding="async">
       </p>
       <p>This will give you info about the configuration file the report web server
         is using, including the location of the configuration file and the system user name running the Report Server.</p>    
@@ -277,27 +277,27 @@
           Copy the configuration files for databases (dbxconnections.ini and dbxdrivers.ini)  into the folder indicated by /version command.
           The files could be located at hidden folder C:\Users\YourUserName\AppData\Local
           <p>
-            <img src="dbxlocal.png" alt="Installing Report Manager Web Server (screenshot 14)">
+            <img src="dbxlocal.png" alt="Installing Report Manager Web Server (screenshot 14)" loading="lazy" decoding="async">
           </p>
           <p>
-            <img src="dbxpublic.png" alt="Installing Report Manager Web Server (screenshot 15)">
+            <img src="dbxpublic.png" alt="Installing Report Manager Web Server (screenshot 15)" loading="lazy" decoding="async">
           </p>    
         </li>
         <li>
           Give access to files to the user executing IIS Service. The user executing the ISAPI or CGI extension appear in the end of the /version command 
            by default ISUSR but depends on the application pool assigned to the website.
           <p>
-            <img src="giveaccess.png" alt="Installing Report Manager Web Server (screenshot 16)">
+            <img src="giveaccess.png" alt="Installing Report Manager Web Server (screenshot 16)" loading="lazy" decoding="async">
           </p>    
           <p>
-            <img src="giveaccess2.png" alt="Installing Report Manager Web Server (screenshot 17)">
+            <img src="giveaccess2.png" alt="Installing Report Manager Web Server (screenshot 17)" loading="lazy" decoding="async">
           </p>    
         </li>
       </ul>
       <li>
         Chek again the /version command and see if the files are now accesible.
         <p>
-          <img src="dbxaccessok.png" alt="Installing Report Manager Web Server (screenshot 18)">
+          <img src="dbxaccessok.png" alt="Installing Report Manager Web Server (screenshot 18)" loading="lazy" decoding="async">
         </p>    
     </li>
     </li>

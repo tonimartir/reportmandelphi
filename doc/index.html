@@ -82,7 +82,7 @@
         <a href="download.html">Download</a>
         <a href="webserver.html">Web Server</a>
         <a href="docnet/index.html">.NET</a>
-        <a href="doc/index.html" target="_blank">Docs</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
         <a href="support.html">Support</a>
       </nav>
       <div class="topbar-right">
@@ -99,7 +99,7 @@
         <p class="tagline">Open-source reporting engine and visual designer for .NET, Delphi, C++Builder and Linux &mdash; output to PDF, SVG, HTML and print.</p>
         <div class="cta">
           <a class="btn btn-primary" href="download.html">Download</a>
-          <a class="btn" href="https://ai.reportman.es" target="_blank">Discover Reportman.AI</a>
+          <a class="btn" href="https://ai.reportman.es" target="_blank" rel="noopener">Discover Reportman.AI</a>
         </div>
       </div>
     </section>
@@ -138,30 +138,33 @@
 
     <section class="page">
       <h2>Application description</h2>
-      <p>Report Manager is a reporting application (Report Manager Designer) and a set of libraries and utilities to preview, export or print reports. It includes native <a href="doc/dotnetport.html" target="_blank">.NET and .NET Core</a> and Delphi/C++Builder libraries, an ActiveX component, and a standard dynamic link library for use from any language <a href="doc/gnuc.html" target="_blank">such as GNU C</a>. A Linux 64-bit PDF generation tool is also available.</p>
+      <p>Report Manager is a reporting application (Report Manager Designer) and a set of libraries and utilities to preview, export or print reports. It includes native <a href="doc/dotnetport.html" target="_blank" rel="noopener">.NET and .NET Core</a> and Delphi/C++Builder libraries, an ActiveX component, and a standard dynamic link library for use from any language <a href="doc/gnuc.html" target="_blank" rel="noopener">such as GNU C</a>. A Linux 64-bit PDF generation tool is also available.</p>
 
       <figure class="shots">
-        <img src="doc/images/designerxpsmall2.jpg" alt="Report Manager Designer with the AI assistant">
-        <img src="doc/images/preview.webp" alt="Report Manager report preview">
+        <picture>
+          <source srcset="doc/images/designerxpsmall2.webp" type="image/webp">
+          <img src="doc/images/designerxpsmall2.jpg" width="400" height="300" loading="lazy" decoding="async" alt="Report Manager Designer with the AI assistant">
+        </picture>
+        <img src="doc/images/preview.webp" width="800" height="491" loading="lazy" decoding="async" alt="Report Manager report preview">
         <figcaption>The Report Manager Designer with the AI assistant, and a report preview.</figcaption>
       </figure>
 
-      <p>NuGet packages of Report Manager are available; a new <a href="https://github.com/tonimartir/reportman" target="_blank">repository</a> for .NET development has been created.</p>
+      <p>NuGet packages of Report Manager are available; a new <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">repository</a> for .NET development has been created.</p>
 
-      <p>The engine includes a TCP <a href="doc/serverintro.html" target="_blank">Report Server</a> so thin <a href="doc/serverclient.html">clients</a> can obtain reports processed on the server. A fully functional <a href="webserver.html">web report server</a> generates Adobe PDF files on the fly &mdash; a true network and web report server with no license fees and multiprocessor support.</p>
+      <p>The engine includes a TCP <a href="doc/serverintro.html" target="_blank" rel="noopener">Report Server</a> so thin <a href="doc/serverclient.html">clients</a> can obtain reports processed on the server. A fully functional <a href="webserver.html">web report server</a> generates Adobe PDF files on the fly &mdash; a true network and web report server with no license fees and multiprocessor support.</p>
 
       <h2>License</h2>
-      <p>Report Manager is open source under the <a href="doc/license.html" target="_blank">MPL license model</a> (including a GPL-compatible use clause), so you can use it in commercial software, but any enhancement to the engine must be published.</p>
+      <p>Report Manager is open source under the <a href="doc/license.html" target="_blank" rel="noopener">MPL license model</a> (including a GPL-compatible use clause), so you can use it in commercial software, but any enhancement to the engine must be published.</p>
 
       <h2>Order</h2>
       <p>The product is free; you can order <a href="contrib.html">support and other services</a>.</p>
 
       <h2>Features overview</h2>
       <p>It works on Windows and Linux. You can distribute the report designer, so reports can be modified without changing your application, and results exported to Adobe PDF.</p>
-      <p>Report Manager has many <a href="doc/features.html" target="_blank">features</a>, including exclusive ones like report libraries, metafile reports, device fonts, external sections and child subreports. If you use Delphi, C++Builder or FPC/Lazarus, you can embed the reporting engine &mdash; preview window, print dialog and report options &mdash; directly in your executables.</p>
+      <p>Report Manager has many <a href="doc/features.html" target="_blank" rel="noopener">features</a>, including exclusive ones like report libraries, metafile reports, device fonts, external sections and child subreports. If you use Delphi, C++Builder or FPC/Lazarus, you can embed the reporting engine &mdash; preview window, print dialog and report options &mdash; directly in your executables.</p>
 
       <h2>Current version</h2>
-      <p>See the <a href="doc/whatisnew.html" target="_blank">new features</a> in the current version, an <a href="doc/interoperability.html" target="_blank">overview of supported development environments</a>, the detailed <a href="doc/features.html" target="_blank">feature list</a>, the <a href="doc/index.html" target="_blank">documentation</a> and the <a href="doc/faq.html" target="_blank">F.A.Q.</a></p>
+      <p>See the <a href="doc/whatisnew.html" target="_blank" rel="noopener">new features</a> in the current version, an <a href="doc/interoperability.html" target="_blank" rel="noopener">overview of supported development environments</a>, the detailed <a href="doc/features.html" target="_blank" rel="noopener">feature list</a>, the <a href="doc/index.html" target="_blank" rel="noopener">documentation</a> and the <a href="doc/faq.html" target="_blank" rel="noopener">F.A.Q.</a></p>
     </section>
 
   </main>
@@ -170,17 +173,17 @@
     <div class="footer-inner">
       <span>&copy; 1994&ndash;2026 Toni Martir</span>
       <span class="sep">&middot;</span>
-      <a href="doc/license.html" target="_blank">MPL License</a>
+      <a href="doc/license.html" target="_blank" rel="noopener">MPL License</a>
       <span class="sep">&middot;</span>
       <a href="company.html">Company</a>
       <span class="sep">&middot;</span>
       <a href="links.html">Related links</a>
       <span class="sep">&middot;</span>
-      <a href="https://github.com/tonimartir/reportman" target="_blank">GitHub</a>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
       <span class="sep">&middot;</span>
-      <a href="https://sourceforge.net/projects/reportman/" target="_blank">SourceForge</a>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
       <span class="sep">&middot;</span>
-      <a href="https://reportman.es" target="_blank">reportman.es</a>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
     </div>
   </footer>
 

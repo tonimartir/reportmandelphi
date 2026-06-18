@@ -202,16 +202,25 @@ function transformContent(body, title){
   body = body.replace(/\s+target=["']?(mainFrame|leftFrame|_parent)["']?/gi, '');
   body = body.replace(/https?:\/\/(www\.)?reportman\.es\//gi, '/');
   body = body.replace(/https?:\/\/(www\.)?reportman\.es(?=["'])/gi, '/');
+  // images: fill alt from context, lazy-load below-fold, async decode (idempotent)
   let n = 0;
   body = body.replace(/<img\b[^>]*>/gi, (tag) => {
-    if (/\balt\s*=/i.test(tag)) return tag;
-    const srcM = tag.match(/\bsrc\s*=\s*["']?([^"'>\s]+)/i);
-    const src = srcM ? srcM[1] : '';
-    let alt;
-    if (/(arrow|spacer|bullet|pixel|blank|\bline)\b/i.test(src)) alt = '';
-    else { n++; alt = `${title} (screenshot ${n})`; }
-    return tag.replace(/\s*\/?>\s*$/, ` alt="${escAttr(alt)}">`);
+    let out = tag;
+    if (!/\balt\s*=/i.test(out)){
+      const srcM = out.match(/\bsrc\s*=\s*["']?([^"'>\s]+)/i);
+      const src = srcM ? srcM[1] : '';
+      let alt;
+      if (/(arrow|spacer|bullet|pixel|blank|\bline)\b/i.test(src)) alt = '';
+      else { n++; alt = `${title} (screenshot ${n})`; }
+      out = out.replace(/\s*\/?>\s*$/, ` alt="${escAttr(alt)}">`);
+    }
+    if (!/\bloading\s*=/i.test(out)) out = out.replace(/\s*\/?>\s*$/, ' loading="lazy">');
+    if (!/\bdecoding\s*=/i.test(out)) out = out.replace(/\s*\/?>\s*$/, ' decoding="async">');
+    return out;
   });
+  // links opening a new tab: add rel="noopener" if no rel is present (idempotent)
+  body = body.replace(/<a\b[^>]*\btarget=["']?_blank["']?[^>]*>/gi, (tag) =>
+    /\brel\s*=/i.test(tag) ? tag : tag.replace(/\s*>$/, ' rel="noopener">'));
   return body;
 }
 
