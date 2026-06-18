@@ -127,6 +127,16 @@ const TUT_NAV = [
 
 const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const escText = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// Fully decode HTML entities (loops to undo any accidental multi-escaping), so a
+// re-used meta description is escaped exactly once -> the build stays idempotent.
+function decodeEntities(s){
+  let prev, out = String(s);
+  do { prev = out; out = out
+    .replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
+  } while (out !== prev);
+  return out;
+}
 
 function decode(buf){
   const head = buf.toString('latin1', 0, 1024).toLowerCase();
@@ -168,7 +178,7 @@ function extractLdJson(html){
 
 function extractDescription(html){
   const m = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i);
-  return m ? m[1] : '';
+  return m ? decodeEntities(m[1]) : '';
 }
 
 // Returns {title, content} from either an original legacy page or an
@@ -227,7 +237,7 @@ function transformContent(body, title){
 
 function makeDescription(existing, body, title){
   if (existing) return existing;
-  const text = body.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+  const text = decodeEntities(body.replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();
   let d = text.slice(0, 200);
   if (d.length > 155){ d = d.slice(0,155); d = d.slice(0, d.lastIndexOf(' ')); }
   d = d.trim();
