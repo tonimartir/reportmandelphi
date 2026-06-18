@@ -136,10 +136,6 @@
     "title": "Printing labels",
     "desc": "Design label reports in Report Manager: measure label spacing, set margins and detail size, use Horz.Desp/Vert.Desp, blank records and copies for label"
   },
-  "/doc/left2.html": {
-    "title": "Documentation contents index",
-    "desc": "Complete table of contents linking every Report Manager guide: installation, report servers, report design, component reference and developer topics."
-  },
   "/doc/license.html": {
     "title": "Mozilla Public License 1.1 full text",
     "desc": "Full text of the Mozilla Public License 1.1 (dual-licensed with GPL) governing Report Manager, including definitions, distribution duties and disclaimers."
