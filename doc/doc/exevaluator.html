@@ -163,13 +163,13 @@
 
 <p>The expression evaluator is a <b>powerful tool</b> included in Report Manager 
   engine. It allows to evaluate complex expressions <b>accessing dataset fields</b>, 
-  convert field types, interactuate with the report to <b>know the available free 
+  convert field types, interact with the report to <b>know the available free
   space</b> in the current page, the current data group...</p>
 <p>The Report Manager expression evaluator is like a scripting language but without 
   iteration operators.</p>
 <p>There are lot of report component properties that are expressions: print condition, 
   skip page condition,...</p>
-<p>To design advanced reports you should understand how the evaluator interactuates 
+<p>To design advanced reports you should understand how the evaluator interacts
   with the engine:</p>
 <ul>
   <li>Before the print process, the expression evaluator is initialized, <b>the 
@@ -197,7 +197,7 @@
   <li>To create a variable assign a value to it: (newvariable:=0), but better 
     if you create the variable adding a report parameter.</li>
   <li>All variables can be of any type, if an operator does not allow the combination 
-    of diferent types it will raise an exception (error), that is like using variant 
+    of different types it will raise an exception (error), that is like using variant
     type in <i>object pascal</i> language or like <i>basic</i> language</li>
   <li>Sentence separator operator (;) has more precedence than assignment operator 
     so you should use parentesis: (variable1:=2);(variable2:=4);</li>
@@ -209,10 +209,10 @@
   <li>Variables are accessed as M.VARIABLENAME or VARIABLENAME, dataset fields 
     are accessed as ALIASNAME.FIELDNAME, or also FIELDNAME, but last syntax is 
     not recommended because can cause confusion with variable names, it's not 
-    recomended to use an ALIAS with name 'M' .<br>
+    recommended to use an ALIAS with name 'M' .<br>
   </li>
 </ul>
-<p><b>Suported data types</b></p>
+<p><b>Supported data types</b></p>
 <table border="1">
   <tr>
     <td bgcolor="#FFFFCC"><b>Data type</b></td>
@@ -231,7 +231,7 @@
   </tr>
   <tr>
     <td>Currency</td>
-    <td>Currency types, with a low range but without lossing precision (four decimals 
+    <td>Currency types, with a low range but without losing precision (four decimals
       allowed) </td>
     <td>12.4534 </td>
   </tr>
@@ -267,7 +267,7 @@
   </tr>
   <tr>
     <td>Binary</td>
-    <td>Althoug there is no operator suport to binary values, you can evaluate 
+    <td>Although there is no operator support to binary values, you can evaluate
       fields to pass content to report components, for example images or large 
       texts </td>
     <td>ADATASET.ABINARYFIELD</td>
@@ -285,8 +285,8 @@
   <tr> 
     <td>( )</td>
     <td>Parenthesis</td>
-    <td>Expressions enclosed by parenthesis are always evaluated first. Parenethesis 
-      are also used to pass paraeters to functions</td>
+    <td>Expressions enclosed by parenthesis are always evaluated first. Parenthesis
+      are also used to pass parameters to functions</td>
   </tr>
   <tr> 
     <td>IIF(condition,expr1,expr2)</td>
@@ -406,7 +406,7 @@
   </tr>
   <tr> 
     <td> function Int (num:double):integer </td>
-    <td>Converts a double to an integer unsing the standard Int function, that 
+    <td>Converts a double to an integer using the standard Int function, that
       is the smaller more closer integer value</td>
   </tr>
   <tr> 
@@ -428,15 +428,15 @@
   </tr>
   <tr> 
     <td> function Right (s:string; count:integer) :string</td>
-    <td>Retutns the right part of a string</td>
+    <td>Returns the right part of a string</td>
   </tr>
   <tr> 
     <td> function Substr(cadena:string; index:integer; count:integer) :string    </td>
-    <td>Returns a substring begining at index and copying count characters</td>
+    <td>Returns a substring beginning at index and copying count characters</td>
   </tr>
   <tr> 
     <td> function Pos (substr:string,str:string):integer</td>
-    <td>Search a substrin inside a string and returns the index wher is found 
+    <td>Search a substring inside a string and returns the index where is found
       or 0 if not found</td>
   </tr>
   <tr> 
@@ -482,11 +482,11 @@
     <td>FormatNum(mask:String; number:double)</td>
     <td><p>Formats a number with a mask, this function is used in display format 
         property for expressions. The mask is similar to the one used in FormatStr 
-        but allow the use of repeatable thousand separator amd other options:</p>
+        but allow the use of repeatable thousand separator and other options:</p>
       <p>A hidden decimal separator can be specified (indicates the position for 
         the separation of integer and decimal part) as :, also you can include 
         this pairs of chars indicating:</p>
-      <p>LX Where X is the character used to fill needed numers on the left, the 
+      <p>LX Where X is the character used to fill needed numbers on the left, the 
         default is 0</p>
       <p>TX Where X is the character used as thousand separator.</p>
       <p>Some samples:</p>
@@ -529,7 +529,7 @@
       Spanish, Catalan.</td>
   </tr>
   <tr> 
-    <td>function ReplaceStr(S,OldPattern, NewPattern:Sring):String</td>
+    <td>function ReplaceStr(S,OldPattern, NewPattern:String):String</td>
     <td>Search OldPattern inside S replacing it if found with NewPattern</td>
   </tr>
   <tr> 
@@ -538,12 +538,12 @@
   </tr>
   <tr> 
     <td>function ChtToChs (expr:string):String</td>
-    <td>Translates traditional Chinesse to simplified chinesse (available only 
+    <td>Translates traditional Chinese to simplified Chinese (available only
       on Win32)</td>
   </tr>
   <tr> 
     <td>function ChtToChs (expr:string):String</td>
-    <td>Translates simplified chinesse to traditional chinesse (available only 
+    <td>Translates simplified Chinese to traditional Chinese (available only
       on Win32)</td>
   </tr>
   <tr> 
@@ -564,7 +564,7 @@
   </tr>
   <tr>
     <td>function StringToBin:binary</td>
-    <td>Convers a string to a binary type. An expression returning a binary type can be used in the image expression for example. </td>
+    <td>Converts a string to a binary type. An expression returning a binary type can be used in the image expression for example. </td>
   </tr>
   <tr>
     <td>function Decode64(value:string):string </td>
@@ -594,7 +594,7 @@
     <td>function GraphicBounds (Gr:string; autol,autoh:boolean; low,high:double;log:boolean; 
       logbase:double; inverted:boolean):Boolean;<br></td>
     <td>Establish upper and lower bound for a chart, the axis can be inverted 
-      and also a logaritthmic scale can be used. Set autol (automatic lower bound) 
+      and also a logarithmic scale can be used. Set autol (automatic lower bound)
       to false and set a value to the low parameter, idem for autoh (automatic 
       higher bound)</td>
   </tr>
@@ -607,7 +607,7 @@
     <td>Set the color for the last value added to the chart</td>
   </tr>
   <tr> 
-    <td>Identifer </td>
+    <td>Identifier </td>
     <td>Any identifier property assigned to a report component usually (TRpExpressions 
       and TRpCharts) will create a variable in the expression evaluator, so you 
       can calculate totals and then use the calculated value in other report components</td>
@@ -673,7 +673,7 @@
   </tr>
   <tr> 
     <td><p>PAGEHEIGHT, PAGEWIDTH</p></td>
-    <td>Returns the page witdh and page height in twips ((1440 twips = 1 inches)</td>
+    <td>Returns the page width and page height in twips ((1440 twips = 1 inches)</td>
   </tr>
   <tr> 
     <td> function GetValueFromSQL (connectionname:String; sql:String):Variant<br></td>

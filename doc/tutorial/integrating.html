@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Integrating into the application with delphi/kylix - Report Manager Docs</title>
+<title>Integrating into the application with Delphi - Report Manager Docs</title>
 <meta name="description" content="Integrating the report in Delphi/Kylix To integrate the report in Delphi/Kylix you must install first the correct packages, refer to documentation in">
 <link rel="canonical" href="https://reportman.es/tutorial/integrating.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -35,7 +35,7 @@
     {
       "@type": "ListItem",
       "position": 4,
-      "name": "Integrating into the application with delphi/kylix",
+      "name": "Integrating into the application with Delphi",
       "item": "https://reportman.es/tutorial/integrating.html"
     }
   ]
@@ -62,25 +62,25 @@
 </nav>
 </div>
 <main class="doc-main">
-<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <a href="/tutorial/index.html">Quick tutorial</a> &rsaquo; <span>Integrating into the application with delphi/kylix</span></nav>
-<h1>Integrating into the application with delphi/kylix</h1>
-<h3>Integrating the report in Delphi/Kylix</h3>
-<p>To integrate the report in Delphi/Kylix you must install first the correct 
-  packages, refer to documentation in <a href="../doc/kylixcomp.html">Kylix</a> 
-  and <a href="../doc/delphicomp.html">Delphi</a>.</p>
-<p>New components appear in the palette (reportman section) wherefrom most important 
-  is the TCLXReport component.</p>
-<p><img src="integrating2.jpg" width="569" height="52" alt="Integrating into the application with delphi/kylix (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>To pass custom opened datasets (any dataaccess engine with a TDataset descendant 
-  like Zeos, Direct Oracle Access...) to the reporting engine you can use the 
-  AliasList property in TCLXReport and a TRpAlias component that establishes relations 
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <a href="/tutorial/index.html">Quick tutorial</a> &rsaquo; <span>Integrating into the application with Delphi</span></nav>
+<h1>Integrating into the application with Delphi</h1>
+<h3>Integrating the report in Delphi</h3>
+<p>To integrate the report in Delphi you must install first the correct
+  packages, refer to documentation in <a href="../doc/delphicomp.html">Delphi</a>
+  (and <a href="../doc/kylixcomp.html">Kylix</a> for legacy builds).</p>
+<p>New components appear in the palette (reportman section) wherefrom most important
+  is the VCL report component (the legacy CLX builds used TCLXReport).</p>
+<p><img src="integrating2.jpg" width="569" height="52" loading="lazy" decoding="async" alt="Integrating into the application with Delphi (screenshot 1)"></p>
+<p>To pass custom opened datasets (any dataaccess engine with a TDataset descendant
+  like Zeos, Direct Oracle Access...) to the reporting engine you can use the
+  AliasList property on the report component and a TRpAlias component that establishes relations
   between aliases and Application datasets.</p>
-<p>Drop the TNewCLXReport to a form and select a report by clicking the button 
-  beside the Filename property. You can select also the preview property and the 
-  tittle.</p>
-<p><img src="integrating3.jpg" width="175" height="253" alt="Integrating into the application with delphi/kylix (screenshot 2)" loading="lazy" decoding="async"> </p>
-<p>Place a button and call the execute methot at onclick event as this:</p>
-<p><img src="integrating4.jpg" width="469" height="282" alt="Integrating into the application with delphi/kylix (screenshot 3)" loading="lazy" decoding="async"></p>
+<p>Drop the report component to a form and select a report by clicking the button
+  beside the Filename property. You can select also the preview property and the
+  title.</p>
+<p><img src="integrating3.jpg" width="175" height="253" loading="lazy" decoding="async" alt="Integrating into the application with Delphi (screenshot 2)"> </p>
+<p>Place a button and call the execute method at onclick event as this:</p>
+<p><img src="integrating4.jpg" width="469" height="282" loading="lazy" decoding="async" alt="Integrating into the application with Delphi (screenshot 3)"></p>
 <p>If you have problems compiling the application check the library path includes 
   the path to the directory where reportman packages are stored.</p>
 <p>You can call other methods like SaveToPdf, ShowParams...</p>

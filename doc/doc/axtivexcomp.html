@@ -162,13 +162,13 @@
 <h3><b>Using Report Manager ActiveX control</b></h3>
 <p>Download the Report Manager Activex component from sourceforge and unpack it 
   to a directory usually windows system directory.</p>
-<p><a href="http://sourceforge.net/projects/reportman" target="_blank" rel="noopener">http://sourceforge.net/projects/reportman</a></p>
+<p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
 <p>Unzip it and install it (you must have Administrator Rights)</p>
 <p>At command line execute:</p>
 <p><b>regsvr32 Reportman.ocx</b></p>
-<p>Then the control is available to insert in any ActiveX application or development 
-  enviroment</p>
-<p>In your development enviroment you usually must activate (or include into your 
+<p>Then the control is available to insert in any ActiveX application or development
+  environment</p>
+<p>In your development environment you usually must activate (or include into your
   project) to use, is called ReportManX Control or Reportman Library.</p>
 <p></p>
 <p> Usually you use Filename, Preview property and Visible properties at design
@@ -260,7 +260,7 @@ procedure SetRecordSet(const datasetname: String,recordset: OleVariant);
 </p>
 <p>To add columns to a report you can call the AddColum method</p>
 <p>procedure AddColumn(width:integer;expression,expformat,caption,captionformat,summaryexp,summaryformat:widestring);</p>
-<p>The expformat must be a report elementent inside the template, for example 
+<p>The expformat must be a report element inside the template, for example
   'TRpExpression2'.</p>
 <p>Inside params, exists a new function, FindParam that returns true if the parameter 
   exists. </p>
@@ -305,7 +305,7 @@ procedure SetRecordSet(const datasetname: String,recordset: OleVariant);
   from within a VB Project. This gives &quot;early binding&quot; which improves 
   the performance of your application over &quot;late binding&quot;. This is not 
   an option within VBScript languages. </p>
-<p>Here is an complete example of the use of control in a VBScript program. This
+<p>Here is a complete example of the use of control in a VBScript program. This
 one was developed under W/98 and runs under the Windows Scripting Host (WSH).
 The choice of runtime environment dictates the format of the second line of the
 program where the activeX object is created. For example, under Active Server
@@ -336,7 +336,7 @@ top of this page. </p>
 <p>It is possible to pass parameters to the report at run time. These parameters
 could, for example, change the set of data that is returned from the database
 and reported. The parameters are identified within the report definition and
-used within the SQL Select statement by preceeding the parameter name with a
+used within the SQL Select statement by preceding the parameter name with a
 colon (:) character. So if a parameter named &quot;PARAM1&quot; was defined it
 may be utilised in a SQL Select statement such as:</p>
 <p> </p>

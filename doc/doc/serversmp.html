@@ -171,9 +171,9 @@
 <p>In a SMP machine you must copy the tool printreptopdf.exe in the same directory 
   as the server application (reportserverapp.exe, reportservercon.exe, repserver 
   service.)</p>
-<p>It's recomended the use of reportservercon application in Linux because smp 
-  applications are more stable running in console mode, not in top of a X window 
-  architechture.</p>
+<p>It's recommended the use of reportservercon application in Linux because smp
+  applications are more stable running in console mode, not in top of a X window
+  architecture.</p>
 <p><strong>Performance gain</strong></p>
 <p>In practice you will only experiment performance gain while executing report 
   server applications, and also only when there is more than one active request 
@@ -188,10 +188,10 @@
   like:</p>
 <ul>
   <li>The support of smp in database engine</li>
-  <li>The database server is the same that executes the report sever</li>
-  <li>The complexity of the querys, that is if the report server is waiting for 
+  <li>The database server is the same that executes the report server</li>
+  <li>The complexity of the queries, that is if the report server is waiting for
     the database server to calculate the query.</li>
-  <li>The network bandwidth and ammount of data transfered from the database server.</li>
+  <li>The network bandwidth and amount of data transferred from the database server.</li>
 </ul>
 <p><strong>How it works</strong></p>
 <p>The server application detects the multiprocessing capability, then for each 
@@ -202,7 +202,7 @@
   DISABLESMP=1<br>
 </p>
 <p> Take care disabling smp can break the server, that is in some smp systems 
-  it's not allowed to disable smp (most Linux distros) because the ystem threads 
+  it's not allowed to disable smp (most Linux distros) because the system threads
   implementation, so it's <strong>not recommended and not supported in any way</strong>.</p>
 </main>
 </div>

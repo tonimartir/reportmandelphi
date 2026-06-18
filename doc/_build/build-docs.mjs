@@ -131,7 +131,8 @@ const escText = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 function decode(buf){
   const head = buf.toString('latin1', 0, 1024).toLowerCase();
   let enc = 'windows-1252';
-  if (head.includes('charset=utf-8')) enc = 'utf-8';
+  // built pages declare charset="UTF-8" (quoted); legacy pages declare iso-8859-1.
+  if (/charset\s*=\s*["']?\s*utf-8/.test(head)) enc = 'utf-8';
   try { return new TextDecoder(enc).decode(buf); }
   catch { return buf.toString('utf-8'); }
 }

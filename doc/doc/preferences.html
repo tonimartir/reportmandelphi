@@ -162,12 +162,13 @@
 <h3><b>Designer Preferences</b></h3>
 <p>Designer preferences are not stored for each report, but for each machine or 
   user where Report Manager Designer is installed.</p>
-<p>You can switch between centimeters and inchess measurement units:</p>
+<p>You can switch between centimeters and inches measurement units:</p>
 <p><img src="images/preferences.jpg" width="610" height="401" alt="Design preferences (screenshot 1)" loading="lazy" decoding="async"></p>
 <p>Note that the measurement properties of items and sections are expressed in 
   the unit you select here.</p>
-<p>In Microsoft Windows you can select to print using Qt/CLX library or GDI/VCL 
-  library (a report definition is platform and device independent).</p>
+<p>In Microsoft Windows you can select to print using the GDI/VCL library; older
+  versions also offered the Qt/CLX library (legacy). A report definition is
+  platform and device independent.</p>
 <p>Here is a table of differences between the drivers:</p>
 <table border="1">
   <tr> 
@@ -216,7 +217,7 @@
     <td>Yes</td>
   </tr>
   <tr> 
-    <td>Needs ghostcript in Linux</td>
+    <td>Needs ghostscript in Linux (legacy)</td>
     <td>Yes</td>
     <td>No</td>
   </tr>
@@ -231,19 +232,19 @@
   good device driver), but it's not cross platform.</p>
 <p>When you print/preview using GDI driver you are obtaining the same result as 
   using TVCLReport Delphi/Builder component.</p>
-<p>When you print/prevew using Qt driver you are obtaining the same result as 
-  using TCLXDriver.</p>
-<p><b>Qt System print dialog</b></p>
-<p>Selecting this option (default) the print dialog is the Qt system print dialog 
-  in Linux and Windows print dialog in Windows, if you disable this option a custom 
+<p>When you print/preview using the Qt driver you obtained the same result as
+  using TCLXDriver (legacy).</p>
+<p><b>Qt System print dialog (legacy)</b></p>
+<p>Selecting this option (default) the print dialog is the Qt system print dialog
+  in Linux and Windows print dialog in Windows, if you disable this option a custom
   Report Manager engine is shown.</p>
 <p><b>Status Bar</b></p>
 <p>Selecting this option (default) the status bar is shown. You can obtain a little 
   more workspace disabling the status bar.</p>
 <p><b>Qt Widget Style</b></p>
-<p>Qt widget style is set initially to default, so in Microsoft Windows the widget 
-  appearance is the same as Windows 9x/NT/Millenium/2000 but in Linux the widget 
-  style is the default system widget style (usually windows).</p>
+<p>Qt widget style is set initially to default, so in Microsoft Windows the widget
+  appearance follows the native Windows style and in Linux the widget
+  style is the default system widget style.</p>
 <p>You can select the widget style you like, it will be remembered by Report Manager 
   Designer, here are two samples:</p>
 <p><img src="images/preferences2.jpg" width="704" height="461" alt="Design preferences (screenshot 2)" loading="lazy" decoding="async"></p>

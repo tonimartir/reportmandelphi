@@ -160,7 +160,7 @@
 <h1>Section properties</h1>
 <h2>Component Reference</h2>
 <h3>Section properties</h3>
-<p><b>Sumary</b></p>
+<p><b>Summary</b></p>
 <p>The sections are contained inside subreports, depending on the section type 
   it will print after the detail (group header), before the detail (group header), 
   or in special places (page headers and footers)</p>
@@ -175,10 +175,10 @@
     <td>Horz.Desp</td>
     <td>HorzDesp</td>
     <td>Boolean</td>
-    <td>When horizzontal desplacement is set to true, after printing the section 
-      the print position will move to the left, in an amount equivalent to the 
-      section width. But this will happen only when the next section to print 
-      has also the horizontal desplacement set to true, else the horizontal print 
+    <td>When horizontal displacement is set to true, after printing the section
+      the print position will move to the left, in an amount equivalent to the
+      section width. But this will happen only when the next section to print
+      has also the horizontal displacement set to true, else the horizontal print
       position will be restored. Set this property to true in the detail section 
       for example to print labels left to right, adjust the section with so many 
       details fit in the total page width. See also <a href="labels.html">labels 
@@ -188,12 +188,12 @@
     <td>Vert.Desp.</td>
     <td>VertDesp</td>
     <td>Boolean</td>
-    <td>When vertical desplacement is set to true, the print is performed as usually 
+    <td>When vertical displacement is set to true, the print is performed as usually
       (up to down), after reaching the bottom of the page, the print position 
       will place at the top of the page (or group header) , and the left print 
       position will move an amount equivalent to the section with (if fits in 
       the page), then printing continue. But this will happen only when the next 
-      section to print has also the vertical desplacement set to true, else the 
+      section to print has also the vertical displacement set to true, else the
       engine will skip to next page. Set this property to true in the detail section 
       for example to print labels up to down, adjust the section with so many 
       details fit in the total page width. See also <a href="labels.html">labels 
@@ -278,7 +278,7 @@
     <td>Horz.Desp.</td>
     <td>HorzDesp</td>
     <td>Boolean</td>
-    <td>If this property is true, the displazement for the next printed section 
+    <td>If this property is true, the displacement for the next printed section
       will be horizontal, not vertical unless the next section have this property 
       false. </td>
   </tr>
@@ -288,7 +288,7 @@
     <td>TRpSkipType</td>
     <td><p>Default=no skip, Before=skip before print, After=skip after print</p>
       <p>The skip is a repositioning of the print pointer, you can place print 
-        pointer to another page and/or page position with properties bellow</p></td>
+        pointer to another page and/or page position with properties below</p></td>
   </tr>
   <tr> 
     <td>Skip to page</td>
@@ -303,7 +303,7 @@
     <td>WideString</td>
     <td> <p>Determines the horizontal position, the result of the expression must 
         be an integer, the unit is in twips (1440twips=1 inch), the skip may be 
-        relative or absolute depending on property bellow</p></td>
+        relative or absolute depending on property below</p></td>
   </tr>
   <tr> 
     <td>H.Relative Skip</td>
@@ -316,9 +316,9 @@
     <td>V.Skip Expre</td>
     <td>SkipExpreV</td>
     <td>WideString</td>
-    <td>Determines the verticalposition, the result of the expression must be 
-      an integer, the unit is in twips (1440twips=1 inch), the skip may be relative 
-      or absolute depending on property bellow</td>
+    <td>Determines the vertical position, the result of the expression must be
+      an integer, the unit is in twips (1440twips=1 inch), the skip may be relative
+      or absolute depending on property below</td>
   </tr>
   <tr> 
     <td>V.Relative Skip</td>
@@ -368,10 +368,10 @@
     <td>Image</td>
     <td>Stream</td>
     <td>TStream</td>
-    <td>Embedded image, stored with the report structure containing a image stream, 
-      will be drawn bellow the grid, using the resolution bellow. When embedding 
-      large images you should set prefered save format in page setup to binary/gzip 
-      to enhace performance.</td>
+    <td>Embedded image, stored with the report structure containing a image stream,
+      will be drawn below the grid, using the resolution below. When embedding
+      large images you should set prefered save format in page setup to binary/gzip
+      to enhance performance.</td>
   </tr>
   <tr> 
     <td>Resolution (dpi)</td>
@@ -393,7 +393,7 @@
     <td>Back. Expression</td>
     <td>Expression</td>
     <td>WideString</td>
-    <td>The image can be embedded (Image propery) or obtained throught this expression 
+    <td>The image can be embedded (Image property) or obtained through this expression
       property, the expression is evaluated, if the expression result is a binary 
       database field will try to read the image from there, see below the image 
       formats supported. If the field is a string field or the result of evaluation 
@@ -423,7 +423,7 @@
     <td>Exp. Position</td>
     <td>ExportPosition</td>
     <td>Integer</td>
-    <td>Postion inside the line (first position is 1), where the text will be 
+    <td>Position inside the line (first position is 1), where the text will be
       placed in custom text output</td>
   </tr>
   <tr> 

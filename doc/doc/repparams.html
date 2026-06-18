@@ -181,7 +181,7 @@
     inside a dataset.</li>
   <li>Set a validation rule for the parameter</li>
   <li>Set an error message for the validation rule fail</li>
-  <li>Set diferent description, hints and error messages for each report language</li>
+  <li>Set different description, hints and error messages for each report language</li>
 </ul>
 <p>You can define the parameters, and also preview how the parameters will show 
   to the user.</p>
@@ -254,12 +254,12 @@
         using Expression evaluator function: ParamInfo</p>    </td>
   </tr>
   <tr>
-    <td>String sustitution extended </td>
-    <td>Same as string sustitition but using multiple selection.</td>
+    <td>String substitution extended </td>
+    <td>Same as string substitution but using multiple selection.</td>
   </tr>
   <tr>
     <td>Initial value </td>
-    <td>The datatype is detected by evaluating an expression, the value of the parameter must be a valid expression, for example, to create a paremeter with initial value of today, you select the initial value and set the value to TODAY.</td>
+    <td>The datatype is detected by evaluating an expression, the value of the parameter must be a valid expression, for example, to create a parameter with initial value of today, you select the initial value and set the value to TODAY.</td>
   </tr>
 </table>
 <p><strong>Special parameters</strong></p>
@@ -301,7 +301,7 @@
   </tr>
   <tr>
     <td>MAIL_FILE</td>
-    <td>Optional, force a filename for the attatched file, you should include 
+    <td>Optional, force a filename for the attached file, you should include
       file extension </td>
   </tr>
   <tr> 
@@ -309,7 +309,7 @@
     <td><p>Replaces database connection parameter PARAMNAME with the value in 
         the parameter. Useful to provide user name, password, database path, before 
         executing the report</p>
-      <p>For DBExpress also DriverName, VendorLib,LibraryName,GetDriverFunc</p>
+      <p>For DBExpress (legacy) also DriverName, VendorLib,LibraryName,GetDriverFunc</p>
       <p>For InterbaseExpress also DatabaseName is allowed</p>
       <p>For Mybase, Database param indicates the directory path</p></td>
   </tr>
@@ -330,7 +330,7 @@
   to do validations before running the report you can use the checkexpression 
   evaluator function.</p>
 <p><strong>Lookup help for parameters</strong></p>
-<p>Sometines a parameter is specified as a code number (customer code, family 
+<p>Sometimes a parameter is specified as a code number (customer code, family
   code). You can specify a lookup search so the user can browse a dataset to find 
   the code number.</p>
 <p>The simple case is to select a code number from a small dataset. Imagine you 
@@ -353,7 +353,7 @@
 <p>Another case is to select a code from a large dataset where the user should 
   search for, like a customers table.</p>
 <p>Steps to create a lookup dataset to assist the user on parameters window, with 
-  search feature, usually to loockup on large datasets:</p>
+  search feature, usually to lookup on large datasets:</p>
 <ol>
   <li>Create the parameter CUSTOMER_CODE as integer. Description family code.</li>
   <li>Create a new dataset CUSTOMER_LOOKUP with the sql sentence to show help 
@@ -363,7 +363,7 @@
     FROM CUSTOMERS WHERE UPPER(DESCRIPTION) CONTAINING :CUST_DESCRIPTION ORDER 
     BY DESCRIPTION. Also uncheck the option Open at start, so the dataset will 
     no be open on report start, but only when needed.</li>
-  <li>You must create a paramerter called CUST_DESCRIPTION as string and assigned 
+  <li>You must create a parameter called CUST_DESCRIPTION as string and assigned
     to CUSTOMER_LOOKUP dataset, you should set the visible property to false for 
     this parameter.</li>
   <li>Go to parameter definition and select the new dataset, as the Search Dataset 
@@ -378,9 +378,9 @@
 <p><strong>About parameters and database drivers</strong></p>
 <p>When you place a parameter inside a query:</p>
 <p>SELECT MYDATA FROM MYTABLE WHERE MYCODE=:CODE</p>
-<p>This is called a parametrized query, the query is send throught the database 
-  driver, and translated by the driver to a similar syntax, the parameters must 
-  be reconized by the database driver and the database engine (usually a sql server).Depending 
+<p>This is called a parametrized query, the query is send through the database
+  driver, and translated by the driver to a similar syntax, the parameters must
+  be recognized by the database driver and the database engine (usually a sql server).Depending
   on the SQL server the query will translate by the database driver natively with 
   different syntax:</p>
 <p>SELECT MYDATA FROM MYTABLE WHERE MYCODE=?<br>
@@ -390,7 +390,7 @@ SELECT MYDATA FROM MYTABLE WHERE MYCODE=@CODE</p>
   method (query plan) including indexes used by the engine, the query can be compiled 
   once (also called prepare procedure), and execute multiple times, the successive 
   executions will be lot faster because the database engine can bypass the parse 
-  of the query and analizing index statistics to select the best path to execute 
+  of the query and analyzing index statistics to select the best path to execute
   the query.</p>
 <p>So passing parameters to a database involves the database driver and database 
   server, some database drivers, does not support large parameters or does not 
@@ -408,17 +408,17 @@ SELECT MYDATA FROM MYTABLE WHERE MYCODE=@CODE</p>
   is usually not valid, think that changing the order of a query can change the 
   way the query is optimized by the database server, for example if the where 
   clause and the order by clause references same field, only one index is needed, 
-  if they differ, a diferent query plan (index path) is needed to execute the 
+  if they differ, a different query plan (index path) is needed to execute the
   query, so a recompilation of the query is needed.</p>
 <p>Some database drivers and servers allow parameters inside the select fields 
   part but others not:</p>
 <p>SELECT :MYPARAM,MYFIELD FROM ....</p>
 <p>This is also applicable to linked querys, but linked querys takes the parameters 
   from the master query fields by name.</p>
-<p>Note: When you missplace a parameter, the database driver can ignore not returning 
+<p>Note: When you misplace a parameter, the database driver can ignore not returning
   you any error.</p>
 <p><strong>Workarounds</strong></p>
-<p>Using query parameters is efficient and the prefered way, but when database 
+<p>Using query parameters is efficient and the preferred way, but when database
   drivers have some problem, or it's not possible to do it you must find alternative 
   methods. For example, if the database driver does not accept Date parameter 
   type, you can define the parameter as string, the syntax of the date will be 
@@ -459,7 +459,7 @@ SELECT MYDATA FROM MYTABLE WHERE MYCODE=@CODE</p>
 <p>Will search for the string ORDER BY 1,2,3 inside the sql sentence, if found, 
   it will be replaced by ORDER BY 2,1,3 then , the new generated sql sentence 
   is executed.</p>
-<p>This is also usefull to change some part of the where clause (or the entire 
+<p>This is also useful to change some part of the where clause (or the entire
   clause) or also to change the entire sql sentence at runtime.</p>
 <p></p>
 <p><b>How to modify parameter values at runtime</b></p>
@@ -467,16 +467,16 @@ SELECT MYDATA FROM MYTABLE WHERE MYCODE=@CODE</p>
   so if you want to modify the values while the report is executing you must alter 
   the variable value using a expression like:</p>
 <p>paramname:='NewStringValue'</p>
-<p>From Delphi/Kylix/Builder you can evaluate this expression:</p>
+<p>From Delphi/Kylix (legacy)/Builder you can evaluate this expression:</p>
 <p>CLXReport1.Report.Evaluator.EvaluateText('paramname:=''NewStringValue''');. 
 </p>
-<p><b>Using parameters from Delphi/Builder/Kylix/ActiveX</b></p>
+<p><b>Using parameters from Delphi/Builder/Kylix (legacy)/ActiveX</b></p>
 <p>You can call parameter window from your application with <b>the method ShowParam</b>s:</p>
-<p>VCL/CLX Components:</p>
+<p>VCL/CLX (legacy) Components:</p>
 <p><code>if CLXReport1.ShowParams then</code></p>
 <p><code> CLXReport1.Execute</code></p>
 <p>You can modify report parameters in runtime in your application.</p>
-<p>VCL/CLX Components:</p>
+<p>VCL/CLX (legacy) Components:</p>
 <p><code>CLXReport1.Report.Params.ParamByName('CUSTOMERINI').Value:=2;</code></p>
 <p>ActiveX:</p>
 <p><code>ReportManX.ParamByName('CUSTOMERINI').Value=2</code></p>

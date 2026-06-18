@@ -161,7 +161,7 @@
 <h2>Installation</h2>
 <h3><b>Compiling Report Manager using C++Builder</b></h3>
 <p>Download the components from sourceforge and unpack it to a directory:</p>
-<p><a href="http://sourceforge.net/projects/reportman" target="_blank" rel="noopener">http://sourceforge.net/projects/reportman</a></p>
+<p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
 <table border="1">
   <tr> 
     <td bgcolor="#00FFFF"><b>Version</b></td>
@@ -180,7 +180,7 @@
   </tr>
   <tr>
     <td>rppackvcl_builder6.bpk</td>
-    <td>Report Componentes (VCL)</td>
+    <td>Report Components (VCL)</td>
   </tr>
   <tr> 
     <td>rppackdesignvcl_builder6.bpk</td>
@@ -211,29 +211,29 @@
   of compiling as a CLX or a VCL (default), that is TeeChart is not available 
   in CLX applications by default.</p>
 <p>Note: C++Builder have known problems using qt library wrappers, and QPrinter, 
-  to fix QPrinter you must install a updated qtintf.dll library, installed after 
+  to fix QPrinter you must install an updated qtintf.dll library, installed after
   Delphi 6 Update Pack #2, but to fix problems with Qt library wrappers you should 
-  read <a href="http://bdn.borland.com/article/0,1410,29631,00.html" target="_blank" rel="noopener">this 
-  article (http://bdn.borland.com/article/0,1410,29631,00.html)</a> and <a href="http://bdn.borland.com/article/0,1410,29638,00.html">this 
-  article (http://bdn.borland.com/article/0,1410,29638,00.html)</a>.</p>
+  read <a href="https://docwiki.embarcadero.com" target="_blank" rel="noopener">this
+  article</a> and <a href="https://docwiki.embarcadero.com">this
+  article</a>.</p>
 <p>In Builder IDE select Open option in file menu, then select .bpk package files, 
   click the install button.</p>
-<p>If you alter rpconf.inc, you can remove the dependeces of the disabled options, 
+<p>If you alter rpconf.inc, you can remove the dependencies of the disabled options,
   for example if you disable ADO support you can remove adortl dependence. Or 
   add other component support like Zeos database objects.</p>
 <p><img src="images/installpack.jpg" width="394" height="258" alt="Compiling in C++Builder (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>To compile your projetcs you must add the report manager components directory 
+<p>To compile your projects you must add the report manager components directory
   to the library path, and for CLX application you may need add antivcl.hpp file 
   to avoid the use of VCL components in a CLX application.</p>
 <p>Thanks to Cristian A. Bugeiro (cbugeiro@fibertel.com.ar) for the help in building 
   the first version of the C++Builder 6 packages.</p>
 <p>If you compile with runtime packages you must include the .bpl files generated 
-  with your application (just like other Borland packages)</p>
+  with your application (just like other runtime packages)</p>
 <p>Notes:</p>
 <p>To compile your projects you should <strong>add the library shlwapi.lib to 
   it.</strong></p>
 <p>Sample steps to add support of Zeos library to the components:</p>
-<p>- Make sure your zeos components are installed and working. Build a application 
+<p>- Make sure your zeos components are installed and working. Build an application 
   with only a Zconnection for example.<br>
   - Enable zeos support at rpconf.inc file, uncomment the line {$DEFINE USEZEOS}<br>
   - Open rppack_builder6.bpk, then click on requires clause and add all Z*.bpi 

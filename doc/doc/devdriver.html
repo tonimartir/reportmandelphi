@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Driver architechture of Report Manager - Report Manager Docs</title>
+<title>Driver architecture of Report Manager - Report Manager Docs</title>
 <meta name="description" content="Developer Driver Architechture of Report Manager Report Manager engine is a driver based print engine. That is: you can implement a driver and you get the">
 <link rel="canonical" href="https://reportman.es/doc/devdriver.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -29,7 +29,7 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "Driver architechture of Report Manager",
+      "name": "Driver architecture of Report Manager",
       "item": "https://reportman.es/doc/devdriver.html"
     }
   ]
@@ -156,16 +156,16 @@
 </nav>
 </div>
 <main class="doc-main">
-<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Driver architechture of Report Manager</span></nav>
-<h1>Driver architechture of Report Manager</h1>
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Driver architecture of Report Manager</span></nav>
+<h1>Driver architecture of Report Manager</h1>
 <h2>Developer</h2>
-<h3>Driver Architechture of Report Manager</h3>
+<h3>Driver Architecture of Report Manager</h3>
 <p>Report Manager engine is a driver based print engine. That is: you can implement 
   a driver and you get the desired output.</p>
 <p>The driver is defined as an interface in the unit rpmetafile.pas, so any object 
   or component can implement it:</p>
 <p>IRpPrintDriver=interface</p>
-<p>The drivers availabe now are:</p>
+<p>The drivers available now are:</p>
 <table border="1">
   <tr> 
     <td bgcolor="#FFFFCC"><b>Class</b></td>
@@ -179,23 +179,23 @@
     <td>TVCLReport</td>
     <td>Windows</td>
   </tr>
-  <tr> 
+  <tr>
     <td>TRpQtDriver</td>
     <td>rpqtdriver</td>
     <td>TCLXReport</td>
-    <td>Linux/Windows</td>
+    <td>Linux/Windows (legacy CLX/Qt, discontinued)</td>
   </tr>
-  <tr> 
+  <tr>
     <td>TRpPDFDriver</td>
-    <td>rppdffriver</td>
+    <td>rppdfdriver</td>
     <td>TPDFReport</td>
     <td>Linux/Windows</td>
   </tr>
-  <tr> 
+  <tr>
     <td>--</td>
     <td>rpexceldriver</td>
     <td>--</td>
-    <td>Windows</td>
+    <td>Windows (legacy, discontinued)</td>
   </tr>
   <tr> 
     <td>TRpTextDriver</td>
@@ -211,24 +211,23 @@
   </tr>
 </table>
 <p>The <b>Web Report server and TCP Report Server always work with TRpPDFDriver</b>, 
-  in Linux, it has no dependences on X Server, so it can run in console mode, as a service.</p>
+  in Linux, it has no dependencies on X Server, so it can run in console mode, as a service.</p>
 <p>The engine asks the driver texts sizes, and others while calculating the report, 
   once calculated (metafile report), the engine use the driver for printing or 
-  previewing the report. This proces is done in a page by page basis when the 
+  previewing the report. This process is done in a page by page basis when the
   report is not marked as a 'two pass report'.</p>
 <p>The excel and html driver calculate sizes with the pdfdriver, they can only 
   process metafiles, not reports.</p>
 <p>Note that a report can be calculated using a driver, then print or preview 
   using another driver, that is the case of generating metafiles using web report 
-  server, and print this metafiles using metaview in Linux (QtDriver) or metaviewxp 
-  in Windows (GDIDriver).</p>
+  server, and print this metafiles using metaviewxp in Windows (GDIDriver).</p>
 <p>So a report can be processed directly using one of the drivers above or you 
   can also use any of the drivers to generate a <b>Report Metafile</b>, this is 
   a file that contains all the info necessary to print or display the pages using 
   also same drivers, is the same concept as a PDF File, but it includes additional 
-  information like destination printer name, custom paper sizes... A report metafile 
-  can be sent to the <a href="installwebreport.html">ActiveX control plugin</a> 
-  so it shows or prints it.</p>
+  information like destination printer name, custom paper sizes... A report metafile
+  can be shown or printed with metaviewxp, or, in legacy deployments, sent to the
+  discontinued <a href="installwebreport.html">ActiveX control plugin</a>.</p>
 <p><br>
   The engine calls driver functions, to know the size of a text or a graphic.</p>
 <p>procedure TextExtent(atext:TRpTextObject;var extent:TPoint);stdcall;<br>
@@ -244,24 +243,24 @@
   obtain different output results.</p>
 <p>That is because:</p>
 <ul>
-  <li>Printer resolution may be diferent than screen resolution.</li>
+  <li>Printer resolution may be different than screen resolution.</li>
   <li>Fonts on the screen may be drawn different than on the printer.</li>
 </ul>
 <p>The PDF driver knows exact size about Fonts and work at a fixed resolution 
   (72 dpi), so the result should be the same in all PDF viewers.</p>
 <ul>
-  <li>One possible enhacement to the engine could be returning the size of the 
+  <li>One possible enhancement to the engine could be returning the size of the
     objects as if they print with current printer, it's not difficult but need 
     testing and have this issues:</li>
   <li> If the printer is not installed it should get the screen canvas.</li>
   <li> If the printer is offline (in a network) Windows Systems does not allow 
     opening it, but an error is raised, this situation must be controlled.</li>
   <li> Texts on the screen may appear incorrectly.</li>
-  <li> Implementation requires a little more low level access to printer and forget 
-    to get it to work in Linux at least until Borland upgrades to Qt 3..</li>
+  <li> Implementation requires a little more low level access to printer and forget
+    to get it to work in Linux at least until Borland upgrades to Qt 3.. (historical note)</li>
 </ul>
 <p><strong>About font sizes and Truetype PDF Output.</strong></p>
-<p>Having a symple sentence covering near one line and a Truetype Font selected 
+<p>Having a simple sentence covering near one line and a Truetype Font selected
   at point size 26.I see some differences between:<br>
   1- Report Manager preview.<br>
   2- Printing from Report Manager engine.<br>
@@ -269,10 +268,10 @@
   implementation)<br>
   4- Printing from Openoffice<br>
   5- Exporting from OpenOffice to PDF and print out.</p>
-<p>- The 1 print (screen) have the larger width, with a diference of about 2 chars 
-  over the output numer 2 (printing from Report Manager engine).<br>
-  - The 4 option (Open Office) output have a larger result in print out than number 
-  2 but less than number 1 (just 1 char diference with number 2)<br>
+<p>- The 1 print (screen) have the larger width, with a difference of about 2 chars
+  over the output number 2 (printing from Report Manager engine).<br>
+  - The 4 option (Open Office) output have a larger result in print out than number
+  2 but less than number 1 (just 1 char difference with number 2)<br>
   - The 5 (exporting from OpenOffice to PDF) coincides exactly with option 2 and 
   3, but shows printout in OpenOffice gives different result than Export to PDF 
   then print out (not a acrobat reader problem)<br>

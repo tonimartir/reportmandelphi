@@ -193,7 +193,7 @@
     <td>&nbsp;</td>
   </tr>
 </table>
-<p>The <b>calling convention of all exported funtions is stdcall</b> because it's 
+<p>The <b>calling convention of all exported functions is stdcall</b> because it's
   safer than the standard cdecl.</p>
 <p>The header files and declaration files are the following:</p>
 <table border="1">
@@ -222,11 +222,11 @@
     <td>rpreportmanapiqt.h</td>
   </tr>
 </table>
-<p>In Linux it you want preview functionallity you must use reportmanapiqt.h, 
+<p>In Linux it you want preview functionality you must use reportmanapiqt.h,
   and link to libreportmanapiqt.so library, this library needs a X-Server running 
   and needs also all the other libraries used by Report Manager designer, see 
   <a href="deploy.html">deploy documentation</a> for more information.</p>
-<p>Note the libraries that ususally uses the designer and the database libraries 
+<p>Note the libraries that usually uses the designer and the database libraries
   must be in library path, and you should use the same launch script (repmand.sh) 
   to start your compiled applications.</p>
 <p>Library functionality is about returning a handle to a report and process this 
@@ -274,7 +274,7 @@ int rp_setdefaultprinter(char *device);
 <p> All the functions returns 0 if fail, the rp_lasterror function returns the 
   error message for the last library call so the call of a report engine function 
   clears the rp_lasterror returned value, you should call rp_lasterror after checking 
-  if the function is successfull, for example:</p>
+  if the function is successful, for example:</p>
 <p>
 #include "rpreportmanapi.h"<br>
 int hreport;<br>
@@ -386,7 +386,7 @@ hreport=rp_open(reportmanfile);<br>
 <p>To compile the program you use:</p>
 <p><b>GNU C for Linux</b></p>
 <p> g++ -o test test.cc libreportmanapi.so</p>
-<p>or if you want preview and print functionallity and you have X Server running:</p>
+<p>or if you want preview and print functionality and you have X Server running:</p>
 <p>Change the include file for rpreportmanapiqt.h and execute</p>
 <p>g++ -o test test.cc libreportmanapiqt.so</p>
 <p><b> GNU C for Microsoft Windows</b></p>
@@ -404,7 +404,7 @@ hreport=rp_open(reportmanfile);<br>
 <p>You can create the import library as above then add to your project the Reportman.lib 
   file so the compiler includes it in the link stage.</p>
 <p><strong>With Visual Basic</strong></p>
-<p>Add the module rpreportmanapi.bas to your proyect, then you can call the functions, 
+<p>Add the module rpreportmanapi.bas to your project, then you can call the functions,
   for example:</p>
 <p>Dim ares As Long<br>
   Dim Avar As Variant</p>
@@ -425,7 +425,7 @@ hreport=rp_open(reportmanfile);<br>
 <p><strong>With Delphi</strong></p>
 <p>Include the rpreportmanapiqt.pas unit in your uses clause, then use the functions.</p>
 <p><b>Known problems</b></p>
-<p>In some linux distros you must define the CLX_USE_LIBQT=true enviroment variable 
+<p>In some linux distros you must define the CLX_USE_LIBQT=true environment variable
   to use the libreportmanapiqt.so library. Make sure all the libraries Report 
   Manager engine needs are in the library path.</p>
 </main>

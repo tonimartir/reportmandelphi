@@ -160,7 +160,7 @@
 <h1>Common properties for TRpImage</h1>
 <h2>Component Reference</h2>
 <h3>Properties for TRpImage</h3>
-<p><b>Sumary</b></p>
+<p><b>Summary</b></p>
 <table border="1">
   <tr> 
     <td bgcolor="#FFFFCC">Name</td>
@@ -190,14 +190,14 @@
         <tr> 
           <td>Full</td>
           <td>Draws the image using the Resolution property to determine size, 
-            then ignores component size, you can use this property with parent 
-            sectoin autoexpand property to draw different image sizes optimizing 
+            then ignores component size, you can use this property with parent
+            section autoexpand property to draw different image sizes optimizing
             page space</td>
         </tr>
         <tr> 
           <td>Tile</td>
           <td>Draws the image repeating it until the component size is filled, 
-            this is used to obtain for example beatiful backgrounds from small 
+            this is used to obtain for example beautiful backgrounds from small
             sized bitmaps</td>
         </tr>
       </table></td>
@@ -206,7 +206,7 @@
     <td>Expression</td>
     <td>Expression</td>
     <td>WideString</td>
-    <td><p>The image can be embedded (Image propery) or obtained throught this 
+    <td><p>The image can be embedded (Image property) or obtained through this
         expression property, the expression is evaluated, if the expression result 
         is a binary database field will try to read the image from there, see 
         below the image formats supported. If the field is a string field or the 
@@ -218,8 +218,8 @@
     <td>Stream</td>
     <td>TStream</td>
     <td>Embedded image, stored with the report structure containing a image stream. 
-      When embedding large images you should set prefered save format in page 
-      setup to binary/gzip to enhace performance. </td>
+      When embedding large images you should set preferred save format in page 
+      setup to binary/gzip to enhance performance. </td>
   </tr>
   <tr> 
     <td>Resolution (dpi)</td>
@@ -230,24 +230,24 @@
       property </td>
   </tr>
 </table>
-<p><strong>Aditional details about the implementation</strong></p>
-<p>Because Report Manager <a href="devdriver.html">driver architechture</a>, the 
+<p><strong>Additional details about the implementation</strong></p>
+<p>Because Report Manager <a href="devdriver.html">driver architecture</a>, the
   image formats supported depends on the output driver used, the server applications 
   use the PDF driver.</p>
 <p><strong>Supported Image file formats</strong></p>
 <table border="1">
   <tr> 
     <td bgcolor="#66FFFF" bordercolor="#000000"><b>Image type</b></td>
-    <td bgcolor="#66FFFF" bordercolor="#000000"><b>Windows QT</b></td>
-    <td bgcolor="#66FFFF" bordercolor="#000000"><b>Linux QT</b></td>
+    <td bgcolor="#66FFFF" bordercolor="#000000"><b>Designer/Windows (legacy CLX/Qt)</b></td>
+    <td bgcolor="#66FFFF" bordercolor="#000000"><b>Designer/Linux (legacy CLX/Qt)</b></td>
     <td bgcolor="#66FFFF" bordercolor="#000000"><b>Windows GDI</b></td>
     <td bgcolor="#66FFFF" bordercolor="#000000"><strong>HTML</strong></td>
     <td bgcolor="#66FFFF" bordercolor="#000000"><b>PDF</b></td>
   </tr>
   <tr> 
     <td bgcolor="#FFFFCC">&nbsp;</td>
-    <td bgcolor="#FFFFCC">TCLXReport</td>
-    <td bgcolor="#FFFFCC">TCLXReport</td>
+    <td bgcolor="#FFFFCC">TCLXReport (legacy)</td>
+    <td bgcolor="#FFFFCC">TCLXReport (legacy)</td>
     <td bgcolor="#FFFFCC">TVCLReport</td>
     <td bgcolor="#FFFFCC">&nbsp;</td>
     <td bgcolor="#FFFFCC">TPDFReport</td>
@@ -313,10 +313,10 @@
 <ul>
   <li>The image files supported by the Report Servers (TCP and Web) are the same 
     as the TPDFReport.</li>
-  <li>The text ourput driver does not support any image or drawing</li>
-  <li>The TVCLReport and TCLXReport components can extend graphic file formats 
-    by calling from Delphi/Builder/Kylix source code the RegisterGraphicFileFormat 
-    function, this will allow loading of different file image formats like GIF 
+  <li>The text output driver does not support any image or drawing</li>
+  <li>The TVCLReport and TCLXReport (legacy) components can extend graphic file formats
+    by calling from Delphi/Builder source code (or the older Kylix) the RegisterGraphicFileFormat
+    function, this will allow loading of different file image formats like GIF
     or PNG</li>
 </ul>
 <p><b>Developer info</b></p>

@@ -172,24 +172,23 @@
   </tr>
   <tr> 
     <td> 
-      <p><a href="http://www.borland.com/delphi" target="_blank" rel="noopener">Delphi 6/7 Professional</a></p>
+      <p><a href="https://www.embarcadero.com/products/delphi" target="_blank" rel="noopener">Delphi (legacy 6/7 Professional, now Embarcadero Delphi)</a></p>
       <p>Enterprise version is required for translation manager features</p>
     </td>
-    <td><a href="http://www.borland.com/kylix" target="_blank" rel="noopener">Kylix 2/3 Professional</a>, 
-      open edition is reported to compile also previous installation of the FreeCLX</td>
+    <td>Kylix 2/3 Professional (legacy, discontinued),
+      open edition was reported to compile also a previous installation of the FreeCLX (legacy)</td>
   </tr>
   <tr> 
-    <td><a href="http://www.innosetup.com" target="_blank" rel="noopener">InnoSetup</a> 
+    <td><a href="https://jrsoftware.org/isinfo.php" target="_blank" rel="noopener">InnoSetup</a>
       2.019 to build autoinstallable executable</td>
     <td>GNU Makefile to build the distributable tar.gz package, this tool is usually 
       provided by all linux distributions</td>
   </tr>
   <tr> 
-    <td><a href="http://www.wincvs.org" target="_blank" rel="noopener">CVS</a> to 
-      obtain the source also SSH to contribute actively in the project.</td>
-    <td>CVS client and SSH client are provided in most linux distributions and 
-      is installed by default if developer workstation installation is selected 
-      (Red Hat,Suse,Mandrake...)</td>
+    <td><a href="https://github.com/reportman" target="_blank" rel="noopener">Git</a> to
+      obtain the source and contribute actively in the project (legacy versions used CVS over SSH).</td>
+    <td>A Git client is provided in most linux distributions and
+      is installed by default if developer workstation installation is selected.</td>
   </tr>
 </table>
 <p>The following steps are for building Report Manager from Delphi/Kylix IDE. 
@@ -212,12 +211,12 @@
 <p></p>
 <p></p>
 <p>After that you can translate the strings you added.</p>
-<p>Build the resources for all languajes then copy them to repman\transwin directory.</p>
+<p>Build the resources for all languages then copy them to repman\transwin directory.</p>
 <p><b>3.Build the applications</b></p>
-<p>Windows have two versions of various applications (Qt dependent and Pure VCL), 
-  because Qt draws controls in a custom way does not look like standard Windows 
-  apps, Pure VCL applications (marqued here as xp) looks like all other applications 
-  specially in XP or .Net versions.</p>
+<p>The current Report Manager Designer is a Windows VCL application, so it looks like
+  any other native Windows program. Historically there were two variants of various
+  applications (a legacy Qt/CLX-based one and the pure VCL one, the latter marked here
+  as xp); only the pure VCL build is current.</p>
 <p>You must open and compile the following project groups:</p>
 <table border="1">
   <tr> 
@@ -225,18 +224,18 @@
     <td bgcolor="#FFFFCC"><b>Linux</b></td>
   </tr>
   <tr> 
-    <td> 
-      <p>repman\reportman.bpg</p>
+    <td>
+      <p>repman\reportman.bpg (legacy; current builds use repman\reportmanxe2.groupproj)</p>
     </td>
-    <td>repman\reportman.bpg</td>
+    <td>repman\reportman.bpg (legacy)</td>
   </tr>
-  <tr> 
-    <td>repman\reportmanxp.bpg</td>
+  <tr>
+    <td>repman\reportmanxp.bpg (legacy)</td>
     <td>&nbsp;</td>
   </tr>
 </table>
 <p><b>4.Build installation packages</b></p>
-<p>After executable applications are build, you can build the distributable packages 
+<p>After executable applications are built, you can build the distributable packages
   to easy install Report manager designer in other computers.</p>
 <table border="1">
   <tr> 
@@ -255,8 +254,8 @@
       </td>
   </tr>
   <tr> 
-    <td>Open \install\reportman.iss with Innosetup if you want the 
-      applications without qt dependences (the docs are also removed because are 
+    <td>Open \install\reportman.iss with Innosetup if you want the
+      applications without qt dependencies (the docs are also removed because are
       internet enabled)</td>
     <td>Note: Edit GNUmakefile in \tests\repmand and specify your path to Kylix 
       installation</td>
@@ -266,9 +265,9 @@
 <p><b>5. Distribution of source packages for Linux and Delphi</b></p>
 <p>To distribute the installable packages it's recommended to use Windows because 
   source code compatibility with Delphi 5/Builder 4 (MSDOS style line ends)</p>
-<p>Go to the main tree in a console window and with borland make in the path type</p>
+<p>Go to the main tree in a console window and with the Embarcadero/Delphi make in the path type</p>
 <p>make clean</p>
-<p>This will delete any dcus, dpus innecessary files (warning also cleans the 
+<p>This will delete any dcus, dpus unnecessary files (warning also cleans the
   executables)</p>
 <p>Zip all the files in one and it's done.</p>
 <h3><a name="commandline"></a>Building Report Manager from the command line</h3>
@@ -278,7 +277,7 @@
   directory, that is the directory containing the .dpk files GNUmakefile(Linux) 
   and Makefile (Windows).</p>
 <p>Edit <i>GNUmakefile</i> (Linux) or <i>Makefile</i> (Windows) and set Borland 
-  Delphi path or Kylix path enviroment variables to correct paths.</p>
+  Delphi path or Kylix path environment variables to correct paths.</p>
 <p>Enter:</p>
 <p>make all</p>
 <p>All the packages and command line tools will be compiled.</p>

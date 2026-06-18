@@ -162,8 +162,8 @@
 <h3>Barcode printing</h3>
 
 <h4>Barcode limitations</h4>
-<p>In Linux, the qt library (version 2.3) have only a resolution of 100dpi (dots 
-  per inches) so with some printer drivers the barcodes printed are not readable, 
+<p>On older Linux builds, the legacy Qt library (version 2.3) had only a resolution of 100dpi (dots
+  per inches) so with some printer drivers the barcodes printed are not readable,
   that is because the rectangles of the barcode are slightly bad positioned because 
   this low resolution. If you export the report to Adobe PDF format and print 
   them using Adobe Acrobat Reader you will obtain better quality. You can try 
@@ -187,7 +187,7 @@
   <tr> 
     <td>bcCode39, bcCode39Extended</td>
       <td>Code39 Family, supports all properties, this code allow an unlimited 
-        number of alphanumeric characters, the barcode with is wider than other 
+        number of alphanumeric characters, the barcode width is wider than other
         that only supports digits, if Calc.Checksum is set an additional character 
         checksum is added, the start and stop characters (*) are automatically 
         added. </td>
@@ -196,13 +196,13 @@
     <td>bcCode128A, bcCode128B, bcCode128C, bcCode128</td>
     <td> 
       <p>Code 128 family, A and B allow alphanumeric coding, the B allow also 
-        lowercase chars. The C allow only numeric values but gerenerates the narrowest 
+        lowercase chars. The C allow only numeric values but generates the narrowest
         barcode, but the total number of digits must be even. The bcCode128 generates a B and C mixed barcode, full optimized, 
         so a code like 234534AB generates a 128C segment and a 128B segment, so 
         the barcode is 50% smaller than using 128B.</p>
       <p>Example of a GS1 SSCC:</p>
-      <p>Calc.Checsum set to true, Bar Modul set to 0.05, FNC1 required is ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ character</p>
-      <p>Expression: 'ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿'+ '001234567890123456789'        
+      <p>Calc.Checksum set to true, Bar Modul set to 0.05, FNC1 required is ¿ character</p>
+      <p>Expression: '¿'+ '001234567890123456789'
       </p>
     </td>
   </tr>
@@ -220,7 +220,7 @@
   </tr>
   <tr> 
     <td>bcCodeCodabar</td>
-    <td>Codabar barcode, digits, and A..D letters and some simbols</td>
+    <td>Codabar barcode, digits, and A..D letters and some symbols</td>
   </tr>
   <tr> 
     <td>bcCodeEAN8, bcCodeEAN13</td>

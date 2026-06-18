@@ -228,9 +228,9 @@
           </p>
         </li>
         <li>
-          Review the sumary to check execution is enabled
+          Review the summary to check execution is enabled
           <p>
-            <img src="sumary.png" alt="Installing Report Manager Web Server (screenshot 8)" loading="lazy" decoding="async">
+            <img src="summary.png" alt="Installing Report Manager Web Server (screenshot 8)" loading="lazy" decoding="async">
           </p>
         </li>
       </ul>
@@ -295,7 +295,7 @@
         </li>
       </ul>
       <li>
-        Chek again the /version command and see if the files are now accesible.
+        Check again the /version command and see if the files are now accessible.
         <p>
           <img src="dbxaccessok.png" alt="Installing Report Manager Web Server (screenshot 18)" loading="lazy" decoding="async">
         </p>    
@@ -310,7 +310,7 @@
     and add aliases and users. You can see the generated file location in reportserverapp
     form, this configuration file will be used by the web report server.</p>
   <p><a href="http://localhost/cgi-bin/repwebserver.dll/login">http://localhost/cgi-bin/repwebserver.dll/login</a></p>
-  <p>Some tricks will help you otsetup the web server:</p>
+  <p>Some tricks will help you to setup the web server:</p>
   <ul>
     <li> Make sure the user executing Internet Information Services have read privileges
       for the directories containing reports</li>
@@ -321,11 +321,11 @@
       indicates or execute /version command to see the path. </li>
     <li>Check the permissions of the above files for the user executing IIS. User executing the Report Server is shown at /version command</li>
     <li>If your machine is a multiprocessor machine or a hyperthreading technology
-      machine may be rebwebexe.exe will give you the better performance than repwebserver.dll if you execute multiple reports at once</li>
+      machine may be repwebexe.exe will give you the better performance than repwebserver.dll if you execute multiple reports at once</li>
   </ul>
   <p><b>Installing Report Manager web server in Linux Apache</b></p>
   <p>Usually you copy the application (rpwebexe.bin and repwebexe) into a directory
-    with execution privileges, in Suse 7.3, is /usr/local/httpd/cgi-bin.</p>
+    with execution privileges, for example a cgi-bin directory under your Apache document root.</p>
   <p>You must place the configuration file of the server in /etc/reportmanserver
     file. You can generate it with the <a href="serverserver.html">tcp server application</a>
     and the <a href="serverconfig.html">tcp server configuration</a>. </p>
@@ -338,13 +338,13 @@
     this files are:</p>
   <p>dbxconnections.conf, dbxdrivers.conf</p>
   <p>There information about database location, user names and passwords are stored,
-    if you use the designer application (repmand) it usually reads and writes this
-    configuration files to /home/username/.borland directory, you can copy the files
+    if you use the designer application (repmand) it usually reads and writes these
+    configuration files to a per-user configuration directory, you can copy the files
     from there to the correct directory.</p>
-  <p>Finally the report server application must link to required libraries, you
-    should place this libs (provided with the report designer) in /opt/kylixlibs
-    directory, because repwebexe.bin application launcher add this directory to
-    the path, otherwise you can add other directory to /etc/ld.so.conf file and
+  <p>Finally the report server application must link to required libraries (legacy
+    Kylix builds); you should place these libs (provided with the report designer)
+    in the directory the repwebexe.bin application launcher adds to the path,
+    otherwise you can add another directory to /etc/ld.so.conf file and
     run ldconfig command.</p>
   <p>To test the server you can write:</p>
   <p>http://localhost/cgi-bin/repwebexe.bin/version</p>
@@ -352,10 +352,11 @@
     test the configured reports:</p>
   <p>http://localhost/cgi-bin/repwebexe.bin/login</p>
   <h4>Thousand separator and other locales</h4>
-  <p>Most linux distros use a diferent locale for apache, you can check environment
+  <p>Most linux distros use a different locale for apache, you can check environment
     variables with the /version command and see the resulting decimal separator,
     thousand separator etc, you can override it by placing for example a .htaccess
-    file in cgi-bin directory where repwebexe is placed, with this content:</p>
+    file in cgi-bin directory where repwebexe is placed. On legacy Kylix builds the
+    override variables were:</p>
   <p>SetEnv KYLIX_DEFINEDENVLOCALES yes<br>
     SetEnv KYLIX_THOUSAND_SEPARATOR .<br>
     SetEnv KYLIX_DECIMAL_SEPARATOR ,<br>
@@ -372,13 +373,13 @@
   <p></p>
   <p>To serve alternative html files, you must configure where the html files are
     and use the replacement strings contained in the models. You will find the html
-    original files (models) in the cvs development tree. </p>
+    original files (models) in the project source repository. </p>
   <p>To configure place in the configuration file</p>
   <p>[CONFIG]</p>
   <p>PAGESDIR=c:\inetpub\wwwroot\reportserver</p>
   <p></p>
   <p><b>Configuring environment variables in Apache using Oracle</b></p>
-  <p>You can pass environment varaibles to any cgi with apache, for example oracle
+  <p>You can pass environment variables to any cgi with apache, for example oracle
     needed ones. </p>
   <p>---------------------------------------------------------------------<br>
     PassEnv directive<br>
@@ -405,7 +406,7 @@
   <p>To generate advanced graphics (charts) you must use the alternative repwebexex.<br>
     The apache server service must start in runlevel 5, and the Xserver must be running.<br>
     The environment variable DISPLAY must be defined to :0 in he apache runtime.<br>
-    Some security settigs should be disabled, the fastest way is to disable the firewall and then execute the comand to
+    Some security settings should be disabled, the fastest way is to disable the firewall and then execute the command to
     enable access to the Xserver: xhost +<br>
 </main>
 </div>

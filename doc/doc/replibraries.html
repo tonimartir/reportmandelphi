@@ -161,7 +161,7 @@
 <h2>Basic report design</h2>
 <h3><b>Report Libraries</b></h3>
 <p>Report Manager supports report libraries, you can store reports inside database 
-  tables, so they are centraliced in a single place.</p>
+  tables, so they are centralized in a single place.</p>
 <p>You can configure available libraries at Report Manager designer, go to File 
   Menu, Libraries and configuration:</p>
 <p><img src="images/replib1.jpg" width="635" height="430" alt="Report Libraries (screenshot 1)" loading="lazy" decoding="async"></p>
@@ -174,12 +174,12 @@
 <p>You can create new folders and new reports.</p>
 <p>Use the save to library and open from library options and file menu to manage 
   the reports inside the library.</p>
-<p>Delphi/Bulider/Kylix components support also report libraries from the IDE, 
+<p>Delphi and C++Builder (and legacy Kylix) components support also report libraries from the IDE,
   you can even test your reports without compiling your application. Use a TRpAlias 
   to setup database connections and check report library access, then link your 
   PDF/CLX/VCLReport to the TRpAlias, select a connection name and a report name.</p>
-<p><strong>Report Library with PosgreSQL</strong></p>
-<p>You can create report libraries with PosgreSQL, but you need to create a domain 
+<p><strong>Report Library with PostgreSQL</strong></p>
+<p>You can create report libraries with PostgreSQL, but you need to create a domain
   BLOB in your database to identify the binary datatype:</p>
 <p>CREATE DOMAIN BLOB AS bytea</p>
 <p><strong>Creating the library yourself</strong></p>
