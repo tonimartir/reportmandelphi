@@ -153,6 +153,7 @@
     "desc": "Compile the printreptopdf tool for Linux via the PAServer cross-compiler, installing freetype, harfbuzz, subset and libicu devel packages for font shaping."
   },
   "/doc/linuxprintreptopdf.html": {
+    "title": "printreptopdf command line tool on Linux",
     "desc": "Run printreptopdf to render .rep reports to PDF on Linux, with FireDAC MySQL client setup, libmysqlclient links and a .dbxconnections example."
   },
   "/doc/mfeatures.html": {
