@@ -58,13 +58,17 @@ type
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;override;
 {$IFNDEF WINDOWS_USEHARFBUZZ}
+{$IFDEF RPXPGDIFALLBACK}
   // Windows XP / no-DirectWrite fallback: simple GDI (ExtTextOut/glyph-index) text
   // measurement used when DirectWrite is not available on the host. It performs no
   // complex shaping or bidirectional reordering - left-to-right placement only - but
   // it keeps the OCX usable (and never AVs) on systems without dwrite.dll.
+  // Compiled ONLY into the 32-bit OCX (RPXPGDIFALLBACK); the designer/runtime do not
+  // declare or include this method and keep their original behaviour.
   function TextExtentGDI(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;
+{$ENDIF}
 {$ENDIF}
   function  GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 {$IFDEF WINDOWS_USEHARFBUZZ}
@@ -276,6 +280,7 @@ end;
 
 var
   SingletonDWriteFactory: IDWriteFactory;
+{$IFDEF RPXPGDIFALLBACK}
   DWriteChecked: Boolean = False;
   DWriteUsable: Boolean = False;
 
@@ -286,6 +291,7 @@ var
 // factory cannot be created the result is nil and the caller must fall back to
 // the GDI text path. The previous implementation called _AddRef on a nil
 // interface in that case, which produced an access violation on XP.
+// Hardened version compiled ONLY into the 32-bit OCX (RPXPGDIFALLBACK).
 function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
 var
   LDWriteFactory: IDWriteFactory;
@@ -313,6 +319,20 @@ begin
   end;
   Result := SingletonDWriteFactory;
 end;
+{$ELSE}
+function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
+var
+  LDWriteFactory: IDWriteFactory;
+begin
+  if SingletonDWriteFactory = nil then
+  begin
+    DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
+    if InterlockedCompareExchangePointer(Pointer(SingletonDWriteFactory), Pointer(LDWriteFactory), nil) = nil then
+      LDWriteFactory._AddRef;
+  end;
+  Result := SingletonDWriteFactory;
+end;
+{$ENDIF}
 
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
@@ -370,10 +390,14 @@ begin
   tr.length := Length(Text);
   Result := nil;
   Factory := DWriteFactory;
+{$IFDEF RPXPGDIFALLBACK}
   // DirectWrite missing (e.g. Windows XP): fall back to the plain GDI measurement
   // path so the report still lays out and renders (without advanced shaping/bidi).
   if not Assigned(Factory) then
     Exit(TextExtentGDI(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml));
+{$ELSE}
+  if not Assigned(Factory) then Exit;
+{$ENDIF}
 
   FamilyNameWide := WideString(adata.FamilyName);
 
@@ -646,6 +670,7 @@ begin
   end;
 end;
 
+{$IFDEF RPXPGDIFALLBACK}
 // ---------------------------------------------------------------------------
 //  TextExtentGDI - Windows XP / no-DirectWrite fallback
 // ---------------------------------------------------------------------------
@@ -849,6 +874,7 @@ begin
   Rect.Right := Rect.Left + TotalWidth;
   Rect.Height := Result[High(Result)].TopPos + descentLeadingTwips;
 end;
+{$ENDIF} // RPXPGDIFALLBACK
 {$ENDIF}
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
