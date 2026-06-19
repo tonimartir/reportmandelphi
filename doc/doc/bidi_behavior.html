@@ -178,11 +178,11 @@
 <p>Bidirectional behaviour is controlled per component by the <b>Bidi Mode</b> property, available on every text component (labels and expressions). Together with the component <b>horizontal alignment</b> it gives three modes:</p>
 <table border="1">
   <tr><th>Bidi Mode</th><th>Reading order and shaping</th><th>Horizontal alignment</th></tr>
-  <tr><td><b>Bidi No</b></td><td>No bidi processing and no complex shaping; text is laid out left-to-right exactly as stored. Best for plain Latin text (fastest).</td><td>As set</td></tr>
-  <tr><td><b>Bidi Partial</b></td><td>Complex shaping and the Unicode bidi algorithm are enabled, so right-to-left runs are reordered and shaped correctly.</td><td>Kept as you set it</td></tr>
-  <tr><td><b>Bidi Full</b></td><td>Same shaping and reordering as Bidi Partial.</td><td>Mirrored &ndash; a left-aligned field becomes right-aligned, matching a right-to-left document.</td></tr>
+  <tr><td><b>No Bidi</b></td><td>No bidi processing and no complex shaping; text is laid out left-to-right exactly as stored. Best for plain Latin text (fastest).</td><td>As set</td></tr>
+  <tr><td><b>Partial Bidi</b></td><td>Complex shaping and the Unicode bidi algorithm are enabled, so right-to-left runs are reordered and shaped correctly.</td><td>Kept as you set it</td></tr>
+  <tr><td><b>Full Bidi</b></td><td>Same shaping and reordering as Partial Bidi.</td><td>Mirrored &ndash; a left-aligned field becomes right-aligned, matching a right-to-left document.</td></tr>
 </table>
-<p>Set Bidi Mode to <b>Bidi Partial</b> or <b>Bidi Full</b> on any component that must display Hebrew, Arabic or another complex script; choose <b>Bidi Full</b> when the whole field should follow right-to-left alignment.</p>
+<p>Set Bidi Mode to <b>Partial Bidi</b> or <b>Full Bidi</b> on any component that must display Hebrew, Arabic or another complex script; choose <b>Full Bidi</b> when the whole field should follow right-to-left alignment.</p>
 
 <h3>Notes</h3>
 <ul>
