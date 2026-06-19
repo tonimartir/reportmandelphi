@@ -168,6 +168,8 @@
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <OutputExt>dll</OutputExt>
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_UnitSearchPath>xpcompat;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_Define>RPXPGDIFALLBACK;$(DCC_Define)</DCC_Define>
         <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <DCC_ExeOutput>.\bin32</DCC_ExeOutput>
         <DCC_DcpOutput>.\dcu32</DCC_DcpOutput>
