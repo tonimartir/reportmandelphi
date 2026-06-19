@@ -364,7 +364,7 @@
     "desc": "rpmdshfolder.pas resolves per-user, per-machine and system config file paths across Windows and Linux for Report Manager settings."
   },
   "/doc/units/rpmetafile.html": {
-    "desc": "rpmetafile.pas defines the IRpPrintDriver abstraction and the streamable TRpMetafileReport page format used to store and draw reports."
+    "desc": "rpmetafile.pas defines the abstract TRpPrintDriver base class for output drivers and the streamable TRpMetafileReport page format for reports."
   },
   "/doc/units/rpmreg.html": {
     "desc": "rpmreg.pas provides the Register procedure that registers the non-visual Report Manager components in the Delphi/Kylix package."

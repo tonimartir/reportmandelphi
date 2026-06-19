@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Units documentation - rpmetafile.pas - Report Manager Docs</title>
-<meta name="description" content="rpmetafile.pas defines the IRpPrintDriver abstraction and the streamable TRpMetafileReport page format used to store and draw reports.">
+<meta name="description" content="rpmetafile.pas defines the abstract TRpPrintDriver base class for output drivers and the streamable TRpMetafileReport page format for reports.">
 <link rel="canonical" href="https://reportman.es/doc/units/rpmetafile.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -231,11 +231,11 @@
     <td>Used to store total page variable print for the two pass report</td>
   </tr>
   <tr> 
-    <td>IRpPrintDriver</td>
+    <td>TRpPrintDriver</td>
     <td>
-      <p>IUnknown</p>
+      <p>TObject</p>
       </td>
-    <td>Interface, defines the required functions to implement a Report Manager 
+    <td>Abstract base class, defines the required methods to implement a Report Manager 
       output driver</td>
   </tr>
   <tr> 
@@ -247,7 +247,7 @@
     <td>TRpMetafileReport</td>
     <td>TComponent</td>
     <td>Report Metafile component, contains a collection of pages, the pages can 
-      be streamed, the TRpMetafileReport can be drawn to any IRpPrintDriver</td>
+      be streamed, the TRpMetafileReport can be drawn to any TRpPrintDriver</td>
   </tr>
 </table>
 </main>
