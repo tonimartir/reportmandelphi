@@ -621,7 +621,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
           'Default'
           'Always use printer fonts'
           'Never use printer fonts'
-          'Recalculte report')
+          'Recalculate report')
       end
       object ComboLanguage: TComboBox
         Left = 315
