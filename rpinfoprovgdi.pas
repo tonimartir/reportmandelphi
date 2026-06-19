@@ -57,6 +57,15 @@ type
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
      wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;override;
+{$IFNDEF WINDOWS_USEHARFBUZZ}
+  // Windows XP / no-DirectWrite fallback: simple GDI (ExtTextOut/glyph-index) text
+  // measurement used when DirectWrite is not available on the host. It performs no
+  // complex shaping or bidirectional reordering - left-to-right placement only - but
+  // it keeps the OCX usable (and never AVs) on systems without dwrite.dll.
+  function TextExtentGDI(const Text:WideString;
+     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;
+{$ENDIF}
   function  GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 {$IFDEF WINDOWS_USEHARFBUZZ}
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
@@ -267,14 +276,38 @@ end;
 
 var
   SingletonDWriteFactory: IDWriteFactory;
+  DWriteChecked: Boolean = False;
+  DWriteUsable: Boolean = False;
 
+// Returns the shared IDWriteFactory, or nil when DirectWrite is not available on
+// this host (e.g. Windows XP, which has no dwrite.dll). The RTL binds
+// DWriteCreateFactory dynamically (LoadLibrary), so this call does NOT add a
+// static import of dwrite.dll and never prevents the OCX from loading. When the
+// factory cannot be created the result is nil and the caller must fall back to
+// the GDI text path. The previous implementation called _AddRef on a nil
+// interface in that case, which produced an access violation on XP.
 function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
 var
   LDWriteFactory: IDWriteFactory;
+  hr: HRESULT;
 begin
+  Result := nil;
+  // Once we know DirectWrite is missing, never retry (avoids repeated LoadLibrary).
+  if DWriteChecked and (not DWriteUsable) then
+    Exit;
   if SingletonDWriteFactory = nil then
   begin
-    DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
+    LDWriteFactory := nil;
+    hr := E_FAIL;
+    try
+      hr := DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
+    except
+      hr := E_FAIL;
+    end;
+    DWriteChecked := True;
+    DWriteUsable := Succeeded(hr) and Assigned(LDWriteFactory);
+    if not DWriteUsable then
+      Exit; // DirectWrite unavailable -> caller uses the GDI fallback
     if InterlockedCompareExchangePointer(Pointer(SingletonDWriteFactory), Pointer(LDWriteFactory), nil) = nil then
       LDWriteFactory._AddRef;
   end;
@@ -337,7 +370,10 @@ begin
   tr.length := Length(Text);
   Result := nil;
   Factory := DWriteFactory;
-  if not Assigned(Factory) then Exit;
+  // DirectWrite missing (e.g. Windows XP): fall back to the plain GDI measurement
+  // path so the report still lays out and renders (without advanced shaping/bidi).
+  if not Assigned(Factory) then
+    Exit(TextExtentGDI(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml));
 
   FamilyNameWide := WideString(adata.FamilyName);
 
@@ -608,6 +644,210 @@ begin
   finally
     Renderer.Free;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  TextExtentGDI - Windows XP / no-DirectWrite fallback
+// ---------------------------------------------------------------------------
+//  Plain GDI text measurement used when DirectWrite is not available. It produces
+//  the same TRpLineInfoArray / glyph-index contract the rest of the engine (and the
+//  ETO_GLYPH_INDEX painting in rpgdidriver) expects, but with simple left-to-right
+//  placement: no complex shaping, ligatures, kerning or bidirectional reordering.
+//  All coordinates are in TWIPS, matching the DirectWrite path.
+function TRpGDIInfoProvider.TextExtentGDI(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordwrap: Boolean;
+  singleline: Boolean;
+  FontSize: Double;
+  IsHtml: Boolean
+): TRpLineInfoArray;
+var
+  WorkText: WideString;
+  Segments: THtmlSegmentList;
+  Seg: THtmlSegment;
+  dpi: Integer;
+  tm: TTextMetricW;
+  factor: Double;              // device px (at the 1000pt measuring font) -> TWIPS
+  ascentTwips: Integer;
+  lineHeightTwips: Integer;
+  descentLeadingTwips: Integer;
+  MaxLineWidth: Integer;       // TWIPS
+  n, i: Integer;
+  advances: array of Integer;  // 1-based: TWIPS advance per character
+  glyphs: array of Word;       // 1-based: glyph index per character
+  sz: TSize;
+  gi: Word;
+  ch: WideChar;
+  lineStart, lineWidth, lastBreak: Integer;
+  lines: TList<TRpLineInfo>;
+  LineInfo: TRpLineInfo;
+  TotalWidth: Integer;
+
+  procedure EmitLine(s, e: Integer);   // inclusive, 1-based; e<s => empty line
+  var
+    k, w, cnt, idx, te: Integer;
+    gp: TGlyphPos;
+    glist: TGlyphPosArray;
+  begin
+    te := e;
+    while (te >= s) and ((WorkText[te] = ' ') or (WorkText[te] = #9) or
+                         (WorkText[te] = #13) or (WorkText[te] = #10)) do
+      Dec(te);
+    cnt := te - s + 1;
+    if cnt < 0 then cnt := 0;
+    LineInfo := Default(TRpLineInfo);
+    SetLength(glist, cnt);
+    w := 0;
+    idx := 0;
+    for k := s to te do
+    begin
+      gp := Default(TGlyphPos);
+      gp.GlyphIndex := glyphs[k];
+      gp.XAdvance := advances[k];
+      gp.CharCode := WorkText[k];
+      gp.Cluster := idx;            // 0-based within the line
+      gp.LineCluster := k - 1;      // 0-based absolute index into WorkText
+      gp.FontSize := FontSize;
+      glist[idx] := gp;
+      w := w + advances[k];
+      Inc(idx);
+    end;
+    LineInfo.Glyphs := glist;
+    LineInfo.Width := w;
+    LineInfo.Position := s;
+    LineInfo.Size := cnt;
+    LineInfo.Text := Copy(WorkText, s, cnt);
+    LineInfo.TopPos := ascentTwips + lines.Count * lineHeightTwips;
+    LineInfo.LineHeight := lineHeightTwips;
+    LineInfo.Height := lineHeightTwips;
+    LineInfo.lastline := False;     // fixed after the loop
+    lines.Add(LineInfo);
+  end;
+
+begin
+  Result := nil;
+
+  // Resolve plain text (HTML styling is ignored in the fallback).
+  if IsHtml then
+  begin
+    WorkText := '';
+    Segments := ParseHtml(Text);
+    try
+      for Seg in Segments do
+        WorkText := WorkText + Seg.Text;
+    finally
+      Segments.Free;
+    end;
+  end
+  else
+    WorkText := Text;
+
+  SelectFont(pdfFont);
+  dpi := GetDeviceCaps(adc, LOGPIXELSX);
+  if dpi <= 0 then dpi := 96;
+  FillChar(tm, SizeOf(tm), 0);
+  GetTextMetricsW(adc, tm);
+
+  // The font selected by SelectFont is a TTF_PRECISION (1000pt) measuring font.
+  // Convert its device-pixel metrics to TWIPS at the requested FontSize:
+  //   twips = px * FontSize * 1440 / (dpi * TTF_PRECISION)
+  factor := FontSize * 1440.0 / (dpi * TTF_PRECISION);
+  ascentTwips := Round(tm.tmAscent * factor);
+  lineHeightTwips := Round((tm.tmHeight + tm.tmExternalLeading) * factor);
+  if lineHeightTwips <= 0 then
+    lineHeightTwips := Round(FontSize * 20);
+  descentLeadingTwips := Round((tm.tmDescent + tm.tmExternalLeading) * factor);
+
+  MaxLineWidth := Rect.Right - Rect.Left;
+  Rect.Left := 0;
+  Rect.Top := 0;
+
+  n := Length(WorkText);
+  SetLength(advances, n + 1);
+  SetLength(glyphs, n + 1);
+  for i := 1 to n do
+  begin
+    ch := WorkText[i];
+    gi := 0;
+    if GetGlyphIndicesW(adc, @ch, 1, @gi, GGI_MARK_NONEXISTING_GLYPHS) <> GDI_ERROR then
+    begin
+      if gi = $FFFF then
+        gi := 0;                    // missing glyph -> .notdef
+    end;
+    glyphs[i] := gi;
+    if (ch = #13) or (ch = #10) then
+      advances[i] := 0
+    else if GetTextExtentPoint32W(adc, @ch, 1, sz) then
+      advances[i] := Round(sz.cx * factor)
+    else
+      advances[i] := 0;
+  end;
+
+  lines := TList<TRpLineInfo>.Create;
+  try
+    i := 1;
+    lineStart := 1;
+    lineWidth := 0;
+    lastBreak := 0;
+    while i <= n do
+    begin
+      ch := WorkText[i];
+      if (ch = #10) and (not singleline) then
+      begin
+        EmitLine(lineStart, i - 1);
+        Inc(i);
+        lineStart := i; lineWidth := 0; lastBreak := 0;
+        Continue;
+      end;
+      if (ch = #13) or ((ch = #10) and singleline) then
+      begin
+        Inc(i);
+        Continue;
+      end;
+      if wordwrap and (not singleline) and (i > lineStart) and
+         (lineWidth + advances[i] > MaxLineWidth) and (MaxLineWidth > 0) then
+      begin
+        if lastBreak >= lineStart then
+        begin
+          EmitLine(lineStart, lastBreak);
+          i := lastBreak + 1;
+        end
+        else
+        begin
+          EmitLine(lineStart, i - 1);
+        end;
+        lineStart := i; lineWidth := 0; lastBreak := 0;
+        Continue;
+      end;
+      lineWidth := lineWidth + advances[i];
+      if ch = ' ' then
+        lastBreak := i;
+      Inc(i);
+    end;
+    if lineStart <= n then
+      EmitLine(lineStart, n);
+    if lines.Count = 0 then
+      EmitLine(1, 0);              // empty text -> one empty line with valid metrics
+
+    SetLength(Result, lines.Count);
+    TotalWidth := 0;
+    for i := 0 to lines.Count - 1 do
+    begin
+      LineInfo := lines[i];
+      LineInfo.lastline := (i = lines.Count - 1);
+      Result[i] := LineInfo;
+      if LineInfo.Width > TotalWidth then
+        TotalWidth := LineInfo.Width;
+    end;
+  finally
+    lines.Free;
+  end;
+
+  Rect.Right := Rect.Left + TotalWidth;
+  Rect.Height := Result[High(Result)].TopPos + descentLeadingTwips;
 end;
 {$ENDIF}
 

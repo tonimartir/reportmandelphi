@@ -168,6 +168,10 @@
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <OutputExt>dll</OutputExt>
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+        <!-- Windows XP compatibility: recompile Winapi.UIAutomation from the local
+             override so UIAutomationCore.dll is bound dynamically (see xpcompat\Winapi.UIAutomation.pas).
+             Win32-only: this is the 32-bit OCX that targets Windows XP. -->
+        <DCC_UnitSearchPath>xpcompat;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <DCC_ExeOutput>.\bin32</DCC_ExeOutput>
         <DCC_DcpOutput>.\dcu32</DCC_DcpOutput>
