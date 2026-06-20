@@ -36,13 +36,21 @@ const NAV = [
   ]],
   ['Installation', [
     ['Microsoft Windows', '/doc/installwin.html'],
-    ['Linux', '/doc/installlin.html'],
+    ['Linux (deprecated)', '/doc/installlin.html'],
     ['Compilation options', '/doc/compileropts.html'],
     ['Delphi', '/doc/delphicomp.html'],
     ['C++Builder', '/doc/buildercomp.html'],
     ['ActiveX', '/doc/axtivexcomp.html'],
-    ['Other languages', '/doc/otherlang.html'],
-    ['Linux printreptopdf', '/doc/linuxcomp.html'],
+    ['Other languages', '/doc/otherlang.html', [
+      ['GNU C', '/doc/gnuc.html'],
+      ['PHP', '/doc/php.html'],
+      ['Python', '/doc/python.html'],
+      ['Python binding (reportman.py)', '/doc/python_bind.html'],
+      ['JavaScript', '/doc/javascript.html'],
+    ]],
+    ['Linux printreptopdf', '/doc/linuxcomp.html', [
+      ['printreptopdf command line', '/doc/linuxprintreptopdf.html'],
+    ]],
     ['Visual Studio .NET', '/doc/visualnetcomp.html'],
     ['Delphi for .NET (deprecated)', '/doc/delphinetcomp.html'],
     ['Kylix (deprecated)', '/doc/kylixcomp.html'],
@@ -54,7 +62,9 @@ const NAV = [
   ['TCP Report Server', [
     ['Introduction', '/doc/serverintro.html'],
     ['Report server', '/doc/serverserver.html'],
-    ['Report client', '/doc/serverclient.html'],
+    ['Report client', '/doc/serverclient.html', [
+      ['Custom client', '/doc/serverclientcustom.html'],
+    ]],
     ['Configuration', '/doc/serverconfig.html'],
     ['Multiprocessor support', '/doc/serversmp.html'],
   ]],
@@ -82,8 +92,12 @@ const NAV = [
     ['Child subreports', '/doc/childsubreports.html'],
     ['Printing labels', '/doc/labels.html'],
     ['Report files sharing sections', '/doc/externalsec.html'],
-    ['Expression evaluator', '/doc/exevaluator.html'],
-    ['HTML and interpolation', '/doc/htmlformat.html'],
+    ['Expression evaluator', '/doc/exevaluator.html', [
+      ['Draw functions', '/doc/drawfunctions.html'],
+    ]],
+    ['HTML and interpolation', '/doc/htmlformat.html', [
+      ['Export to HTML', '/doc/htmloutput.html'],
+    ]],
     ['Barcode printing', '/doc/barcodes.html'],
     ['TeeChart support', '/doc/teechart.html'],
     ['International support', '/doc/internatsupport.html'],
@@ -99,6 +113,10 @@ const NAV = [
   ['Component reference', [
     ['Common properties', '/doc/refcommon.html'],
     ['Text components', '/doc/refcommontext.html'],
+    ['TRpReport', '/doc/refreport.html', [
+      ['Report parameters (TRpParamList)', '/doc/refparameters.html'],
+      ['Connection & dataset collections', '/doc/refdatainfo.html'],
+    ]],
     ['TRpSubReport', '/doc/refsubreport.html'],
     ['TRpSection', '/doc/refsection.html'],
     ['TRpLabel', '/doc/reflabel.html'],
@@ -110,7 +128,9 @@ const NAV = [
     ['Database connections', '/doc/refdatabaseinfo.html'],
   ]],
   ['Developer', [
-    ['License questions', '/doc/licensequestions.html'],
+    ['License questions', '/doc/licensequestions.html', [
+      ['MPL 1.1 full text', '/doc/license.html'],
+    ]],
     ['Translating Report Manager', '/doc/translation.html'],
     ['Building binaries and tools', '/doc/building.html'],
     ['Driver architecture', '/doc/devdriver.html'],
@@ -157,15 +177,37 @@ function decode(buf){
   catch { return buf.toString('utf-8'); }
 }
 
+// Sidebar as native <details> (no JavaScript). Each section, and each parent
+// item that has children, is its own <details>; it is rendered `open` only when
+// it contains the current page, so the active item is always in view and the
+// rest stays collapsed.
 function navHtmlFrom(sections, currentPath, menuLabel){
+  const isCur = href => href === currentPath;
+  const mark = href => isCur(href) ? ' class="current" aria-current="page"' : '';
+  const itemHasCurrent = item => isCur(item[1]) || (item[2] && item[2].some(c => isCur(c[1])));
   let h = `<div class="doc-nav-wrap">\n<input type="checkbox" id="docnav" class="doc-nav-cb">\n<label for="docnav" class="doc-nav-btn">${escText(menuLabel)}</label>\n<nav class="doc-nav" aria-label="${escText(menuLabel)}">\n`;
   for (const [section, items] of sections){
-    h += `<h4>${escText(section)}</h4>\n<ul>\n`;
-    for (const [label, href] of items){
-      const cur = href === currentPath ? ' class="current" aria-current="page"' : '';
-      h += `<li><a href="${href}"${cur}>${escText(label)}</a></li>\n`;
+    const secOpen = items.some(itemHasCurrent) ? ' open' : '';
+    h += `<details class="doc-sec"${secOpen}>\n<summary>${escText(section)}</summary>\n<ul>\n`;
+    for (const item of items){
+      const [label, href, children] = item;
+      const cur = mark(href);
+      if (children && children.length){
+        // A <summary> must not wrap a link (toggle vs navigate clash); the
+        // parent's own page becomes the first child link instead.
+        const subOpen = itemHasCurrent(item) ? ' open' : '';
+        h += `<li class="has-sub"><details class="doc-sub"${subOpen}>\n<summary>${escText(label)}</summary>\n<ul>\n`;
+        h += `<li><a href="${href}"${cur}>${escText(label)}</a></li>\n`;
+        for (const [clabel, chref] of children){
+          const ccur = mark(chref);
+          h += `<li><a href="${chref}"${ccur}>${escText(clabel)}</a></li>\n`;
+        }
+        h += `</ul>\n</details></li>\n`;
+      } else {
+        h += `<li><a href="${href}"${cur}>${escText(label)}</a></li>\n`;
+      }
     }
-    h += '</ul>\n';
+    h += '</ul>\n</details>\n';
   }
   h += '</nav>\n</div>';
   return h;

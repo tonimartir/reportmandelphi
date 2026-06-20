@@ -22,7 +22,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.AdvFontData",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.AdvFontData.yml\" sourcestartlinenumber=\"1\">Wraps the raw bytes of a TrueType/OpenType font file together with the offset of its table directory.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -36,7 +36,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.AssemblyResolver",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.AssemblyResolver.yml\" sourcestartlinenumber=\"1\">Installs an AppDomain assembly-resolve handler that locates the native System.Data.SQLite\nassembly from the architecture-specific (Win32/Win64) subfolder next to the executing assembly.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -64,7 +64,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.BarType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.BarType.yml\" sourcestartlinenumber=\"1\">Specifies how multiple bar series are combined: not combined, placed side by side,\nstacked, or stacked to fill 100 percent.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -92,7 +92,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.BitmapInfo",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.BitmapInfo.yml\" sourcestartlinenumber=\"1\">Holds the pixel dimensions (width and height) of a decoded image.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -106,7 +106,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.BitmapUtil",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.BitmapUtil.yml\" sourcestartlinenumber=\"1\">Static helpers for inspecting and decoding raw image streams, reading JPEG dimensions and\nconverting BMP/DIB pixel data into the Adobe PDF compatible form used by the render drivers.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -134,7 +134,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ChartDriver",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ChartDriver.yml\" sourcestartlinenumber=\"1\">Selects which charting back end renders the chart: the default, the built-in engine, or TeeChart.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -148,7 +148,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ChartType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ChartType.yml\" sourcestartlinenumber=\"1\">Enumerates the available chart rendering styles, such as line, bar, pie, area, gantt or radar.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -162,7 +162,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.CompressionTask",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.CompressionTask.yml\" sourcestartlinenumber=\"1\">Tracks an asynchronous stream-compression operation, holding its task, cancellation\nsource, and the output stream position where the compressed result will be written.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -176,6 +176,34 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.CopyProgress",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.CopyProgress.yml\" sourcestartlinenumber=\"1\">Callback invoked during a file-copy/update operation to report progress for the current file\nand allow the handler to request cancellation via the <code>docancel</code> reference parameter.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.CrossPlatform.PrintOutPDFFreeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.CrossPlatform.PrintOutPDFFreeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.CrossPlatform.PrintOutPDFFreeType",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.CrossPlatform.PrintOutPDFFreeType.yml\" sourcestartlinenumber=\"1\">Cross-platform PDF render driver that uses FreeType for font metrics and SkiaSharp for image\nhandling, supplying its own bitmap-info and font-info providers for portable PDF generation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.CrossPlatform.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.CrossPlatform.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.CrossPlatform",
       "Summary": null
     },
     {
@@ -218,7 +246,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.DbSqlExecuter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.DbSqlExecuter.yml\" sourcestartlinenumber=\"1\">ADO.NET-based <xref href=\"Reportman.Drawing.ISqlExecuter\" data-throw-if-not-resolved=\"false\"></xref> implementation that queues SQL open/execute\nand transaction operations and runs them against a generic <xref href=\"System.Data.Common.DbConnection\" data-throw-if-not-resolved=\"false\"></xref>\n(via a <xref href=\"System.Data.Common.DbProviderFactory\" data-throw-if-not-resolved=\"false\"></xref>) when flushed, with support for parameterized\ncommands, insert blocks and partial (chunked) result-set filling.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -260,7 +288,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.EmbeddedFile",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.EmbeddedFile.yml\" sourcestartlinenumber=\"1\">A file embedded in the metafile (and later in the generated PDF), holding its content stream\ntogether with its name, MIME type, description, dates and PDF/A association relationship.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -274,7 +302,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Encrypter.RijndaelSimple",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Encrypter.RijndaelSimple.yml\" sourcestartlinenumber=\"1\">Simple Rijndael (AES) helper that encrypts and decrypts strings to and from Base64\nusing CBC mode and a password-derived key, with most cryptographic parameters fixed as constants.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -288,7 +316,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Encrypter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Encrypter.yml\" sourcestartlinenumber=\"1\">Provides text encryption and decryption helpers used by the library.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -302,7 +330,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ExcelFileFormat",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ExcelFileFormat.yml\" sourcestartlinenumber=\"1\">Identifies the workbook format used when saving an Excel file, mapping to Excel's native\nXlFileFormat values (or auto-detected from the file extension).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -330,7 +358,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.FastSerializer",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.FastSerializer.yml\" sourcestartlinenumber=\"1\">Serializes and deserializes ADO.NET DataSets to and from a compact custom binary\nformat (including table schema, primary keys and row values), as an alternative to\nthe slower built-in DataSet XML serialization.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -344,7 +372,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.FileHash",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.FileHash.yml\" sourcestartlinenumber=\"1\">Pairs a file's path (relative to a base folder) with its computed content hash.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -358,7 +386,21 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.FileHashes",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.FileHashes.yml\" sourcestartlinenumber=\"1\">A snapshot of file hashes for a folder tree, with the UTC timestamp at which it was generated.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.FontInfoFt.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.FontInfoFt.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.FontInfoFt",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.FontInfoFt.yml\" sourcestartlinenumber=\"1\">Cross-platform <xref href=\"Reportman.Drawing.FontInfoProvider\" data-throw-if-not-resolved=\"false\"></xref> built on FreeType, HarfBuzz and ICU that enumerates\nsystem fonts, supplies font metrics, glyph and kerning widths, subsetted font streams and performs\nBiDi/script-aware text layout (including HTML) for the PDF and rendering pipeline.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -372,7 +414,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.FontInfoProvider",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.FontInfoProvider.yml\" sourcestartlinenumber=\"1\">Abstract provider of font metrics and text measurement; implementations supply character/glyph\nwidths, kerning, text extent and font stream data for a given platform's font subsystem.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -386,7 +428,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.AdvancedEditingControl",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.AdvancedEditingControl.yml\" sourcestartlinenumber=\"1\">The in-cell editing control for <xref href=\"Reportman.Drawing.Forms.DataGridViewColumnAdvanced\" data-throw-if-not-resolved=\"false\"></xref>; switches between a text box and date/time pickers depending on the column's <xref href=\"Reportman.Drawing.Forms.ColumnDataType\" data-throw-if-not-resolved=\"false\"></xref> and supports an optional image button and search window.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -414,7 +456,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.AutoCompleteInfo",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.AutoCompleteInfo.yml\" sourcestartlinenumber=\"1\">A pinned auto-complete suggestion that carries display text, an address detail,\nand an icon to show alongside it in the suggestion list.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -428,7 +470,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.BeforeEnterTabEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.BeforeEnterTabEvent.yml\" sourcestartlinenumber=\"1\">Callback raised before a tab page is entered, allowing a handler to veto the change by setting <code>cancel</code> to true.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -442,7 +484,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ButtonCalc",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ButtonCalc.yml\" sourcestartlinenumber=\"1\">Owner-drawn calculator button: paints itself as a labelled ellipse, tracks selection\nstate and hit-testing, and carries the <xref href=\"Reportman.Drawing.Forms.ScreenKeyboard.Command\" data-throw-if-not-resolved=\"false\"></xref> it triggers.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -456,7 +498,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CalcReportProgress",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CalcReportProgress.yml\" sourcestartlinenumber=\"1\">Runs report calculation on a background thread and, if it does not finish quickly,\nshows a <xref href=\"Reportman.Drawing.Forms.ReportProgressForm\" data-throw-if-not-resolved=\"false\"></xref> to display progress and allow cancellation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -470,7 +512,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.Calculator",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.Calculator.yml\" sourcestartlinenumber=\"1\">Stack-based calculator engine that holds a list of operator/number tokens, applies digit,\noperator and memory commands, evaluates the expression with operator precedence, and can\ndisplay a modal calculator dialog through <xref href=\"Reportman.Drawing.Forms.Calculator.ShowCalc(System.Decimal%2cSystem.Boolean%40%2cSystem.Boolean)\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -484,7 +526,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CancelArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CancelArgs.yml\" sourcestartlinenumber=\"1\">Event arguments for a tab page action that can be vetoed, carrying the affected\npage and a <code>Cancel</code> flag a handler can set to prevent the operation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -498,7 +540,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CancelEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CancelEvent.yml\" sourcestartlinenumber=\"1\">Callback for tab page events that may be cancelled, supplying <xref href=\"Reportman.Drawing.Forms.CancelArgs\" data-throw-if-not-resolved=\"false\"></xref>\nwhose <code>Cancel</code> flag the handler can set to stop the action.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -512,7 +554,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CheckBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CheckBoxAdvanced.yml\" sourcestartlinenumber=\"1\">A CheckBox that optionally treats the Enter key as a Tab keypress to move focus\nto the next control, raising a cancelable event beforehand.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -526,7 +568,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CollectionChange",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CollectionChange.yml\" sourcestartlinenumber=\"1\">Callback signaling that an item is being or has been inserted or removed,\nsupplying the affected index and value.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -540,7 +582,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CollectionClear",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CollectionClear.yml\" sourcestartlinenumber=\"1\">Callback signaling that a collection is being or has been cleared of all items.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -554,7 +596,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CollectionWithEvents",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CollectionWithEvents.yml\" sourcestartlinenumber=\"1\">A <xref href=\"System.Collections.CollectionBase\" data-throw-if-not-resolved=\"false\"></xref> that raises before/after events (Clearing/Cleared,\nInserting/Inserted, Removing/Removed) as its contents change, and supports swapping\ntwo items by index.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -568,7 +610,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ColorHelper",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ColorHelper.yml\" sourcestartlinenumber=\"1\">Static color utilities for the tab control, deriving the IDE-style tab background\ncolor from a given base control color (with special cases for Classic and XP themes).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -582,7 +624,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ColumnDataType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ColumnDataType.yml\" sourcestartlinenumber=\"1\">Identifies the kind of value a grid column edits, selecting the appropriate editor and formatting (text, numeric, date/time, boolean, combo box or password).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -596,7 +638,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ComboBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ComboBoxAdvanced.yml\" sourcestartlinenumber=\"1\">A ComboBox that supports owner-drawn items with images from an ImageList,\nauto-complete entries, and optional Enter-acts-as-Tab navigation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -610,7 +652,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ComboBoxAdvancedItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ComboBoxAdvancedItem.yml\" sourcestartlinenumber=\"1\">An item for ComboBoxAdvanced that pairs display text with an ImageList image index\nfor owner-drawn rendering.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -624,7 +666,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ComboListMatcher",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ComboListMatcher.yml\" sourcestartlinenumber=\"1\">A TextBox that shows a floating, non-selectable list of matching entries from an\nauto-complete list as the user types, letting them pick a value with the mouse or keyboard.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -638,7 +680,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ControlHelper",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ControlHelper.yml\" sourcestartlinenumber=\"1\">Static helpers for safely removing child controls or detaching a hosted form from a\ncontainer, using a temporary hidden button to preserve a valid active control.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -666,7 +708,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.CustomPaintControl",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.CustomPaintControl.yml\" sourcestartlinenumber=\"1\">A double-buffered Control that forwards its paint pass to a user-supplied\nOnCustomPaint handler, allowing fully custom rendering.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -680,7 +722,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DataColumnButtonClickEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataColumnButtonClickEvent.yml\" sourcestartlinenumber=\"1\">Callback invoked when a column's editor button is clicked; returns true if it changed <code>value</code> so the cell should be updated.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -694,7 +736,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent.yml\" sourcestartlinenumber=\"1\">Callback raised just before focus moves to a new row after the user presses Enter,\npassing the row that was being edited so handlers can validate or react to it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -722,7 +764,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DataGridViewCellAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewCellAdvanced.yml\" sourcestartlinenumber=\"1\">The cell type used by <xref href=\"Reportman.Drawing.Forms.DataGridViewColumnAdvanced\" data-throw-if-not-resolved=\"false\"></xref>; hosts the <xref href=\"Reportman.Drawing.Forms.AdvancedEditingControl\" data-throw-if-not-resolved=\"false\"></xref> editor and masks password-typed values when displaying.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -736,7 +778,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DataGridViewColumnAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DataGridViewColumnAdvanced.yml\" sourcestartlinenumber=\"1\">A DataGridView column with extended editing behavior: typed input (<xref href=\"Reportman.Drawing.Forms.ColumnDataType\" data-throw-if-not-resolved=\"false\"></xref>), maximum input length, an optional image button, and a pluggable search window.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -778,7 +820,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DateDropButton",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DateDropButton.yml\" sourcestartlinenumber=\"1\">Button that paints itself as a combo-box style drop-down arrow, used to open the calendar popup.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -792,7 +834,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler.yml\" sourcestartlinenumber=\"1\">Callback signature for notifications that the control's date and/or time value has changed.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -806,7 +848,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DateTimePickerAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DateTimePickerAdvanced.yml\" sourcestartlinenumber=\"1\">Masked date/time entry control that combines a formatted text box with a\ndrop-down month calendar, validating user input against configurable date and\ntime format strings and min/max date limits.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -834,7 +876,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.Direction",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.Direction.yml\" sourcestartlinenumber=\"1\">Orientation of a drawing or layout operation, either vertical or horizontal.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -848,7 +890,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DoubleClickControlEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DoubleClickControlEvent.yml\" sourcestartlinenumber=\"1\">Callback raised when the grid's double-click action is triggered, passing the control\nthat was double-clicked (typically the active editing control).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -862,7 +904,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DrawHelper.CommandState",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DrawHelper.CommandState.yml\" sourcestartlinenumber=\"1\">Visual state of a command/button being drawn: normal, hot-tracked (mouse over),\nor pushed (pressed).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -876,7 +918,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.DrawHelper",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.DrawHelper.yml\" sourcestartlinenumber=\"1\">Static drawing utilities for the tab control, providing helpers such as rendering\nreversed (rotated) text and painting raised plain-style borders.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -890,7 +932,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.Edge",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.Edge.yml\" sourcestartlinenumber=\"1\">Identifies a side of a rectangle (top, left, bottom, or right), or none.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -904,7 +946,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.EditCalc",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.EditCalc.yml\" sourcestartlinenumber=\"1\">Owner-drawn display line for the calculator that renders the current value, optionally\nmasking it as a password, and repaints itself when the text changes.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -918,7 +960,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.EventPrinterNamesArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.EventPrinterNamesArgs.yml\" sourcestartlinenumber=\"1\">Event arguments carrying the alternative printer display names, keyed by printer slot\nindex, supplied to the printers configuration dialog.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -932,7 +974,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.EventPrinterNamesHandler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.EventPrinterNamesHandler.yml\" sourcestartlinenumber=\"1\">Callback used by the printers configuration dialog to retrieve the alternative\ndisplay names for the configurable printer slots.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -946,7 +988,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.FormUtils",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.FormUtils.yml\" sourcestartlinenumber=\"1\">Static helpers for Windows Forms layout and focus, including locating the active form\nand focused control, testing parent/child relationships, and DPI-scaling padding and image lists.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -960,7 +1002,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.GroupBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.GroupBoxAdvanced.yml\" sourcestartlinenumber=\"1\">A GroupBox subclass that supports customizable border and caption text colors,\ndrawing its frame and title with the configured BorderColor and TextColor.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -974,7 +1016,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.IDisplayDisable",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.IDisplayDisable.yml\" sourcestartlinenumber=\"1\">Marker interface implemented by tool strip items that allow a custom disabled\n(grayed-out) appearance to be rendered for their image and text.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -988,7 +1030,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ISearchWindow",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ISearchWindow.yml\" sourcestartlinenumber=\"1\">Contract for a drop-down search/lookup window attached to a grid editor; implementers create the window control and respond to search-string changes, navigation keys and clicks.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1002,7 +1044,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.InertButton",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.InertButton.yml\" sourcestartlinenumber=\"1\">A lightweight, non-selectable image button drawn from an <xref href=\"Reportman.Drawing.Forms.InertButton.ImageList\" data-throw-if-not-resolved=\"false\"></xref>,\nsupporting hot-track and pushed states with a flat/popup border, used for the tab\ncontrol's close, drop-down, and scroll-arrow buttons.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1016,7 +1058,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.InputBox",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.InputBox.yml\" sourcestartlinenumber=\"1\">A simple modal dialog that prompts the user for a single value, either free text or a\ndate, returning the entered value through its static Execute helpers.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1030,7 +1072,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.IsDateValidResult",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.IsDateValidResult.yml\" sourcestartlinenumber=\"1\">Outcome of validating an entered date/time value: whether it is valid, malformed,\nor falls below the minimum or above the maximum allowed date.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1044,7 +1086,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ListBoxNonSelectable",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ListBoxNonSelectable.yml\" sourcestartlinenumber=\"1\">A double-buffered ListBox that does not activate or take focus when shown or clicked,\nused as the floating suggestion list for the advanced auto-complete controls.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1072,7 +1114,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.NextColumnFocusEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.NextColumnFocusEvent.yml\" sourcestartlinenumber=\"1\">Callback that lets a handler override which column receives focus next when the user\nadvances with Enter/Tab; the target column index is returned through nextcolumn.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1086,7 +1128,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.NoTitleForm",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.NoTitleForm.yml\" sourcestartlinenumber=\"1\">A borderless form that replaces the standard window caption with custom-drawn chrome,\nproviding its own resize hit-testing, maximize/restore/minimize buttons hosted on a\ntool strip, full-screen mode, and persistence of window bounds between sessions.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1100,7 +1142,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.Number",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.Number.yml\" sourcestartlinenumber=\"1\">Value type wrapping a double and the basic arithmetic operations the calculator\nperforms on it (add, subtract, multiply, divide, equality).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1128,7 +1170,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.PanelAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PanelAdvanced.yml\" sourcestartlinenumber=\"1\">A panel that defers its size-changed handling to the UI thread via BeginInvoke,\navoiding reentrancy issues during layout on Windows.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1142,7 +1184,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.PopupWindow",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PopupWindow.yml\" sourcestartlinenumber=\"1\">Borderless drop-down window that hosts an arbitrary child control (here the month\ncalendar) by wrapping it in a ToolStripControlHost.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1184,7 +1226,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.PreviewWindowMode",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PreviewWindowMode.yml\" sourcestartlinenumber=\"1\">Selects how the report preview is hosted: a normal form, a modal form, or an\nembedded window.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1212,7 +1254,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.PrintersConfiguration",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.PrintersConfiguration.yml\" sourcestartlinenumber=\"1\">Dialog for configuring the device, text-only driver and POS escape sequences\n(cut paper, open drawer) of Report Manager's configurable printer slots, persisting\nthe settings to a per-user or system-wide reportman.ini file.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1226,7 +1268,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ProgresEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgresEvent.yml\" sourcestartlinenumber=\"1\">Callback invoked during a long-running operation to report progress (current of count)\nand to let the handler request cancellation via the <code>cancelar</code> parameter.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1296,7 +1338,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow.yml\" sourcestartlinenumber=\"1\">Provides a way for background work to report progress as a current/total pair,\nimplemented by the progress dialog.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1310,7 +1352,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ProgressForm.SetProgressCallback",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressForm.SetProgressCallback.yml\" sourcestartlinenumber=\"1\">Callback invoked when the progress dialog is created, handing the caller the\nprogress-reporting object so it can push progress updates.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1324,7 +1366,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ProgressForm",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ProgressForm.yml\" sourcestartlinenumber=\"1\">Modal dialog that runs a background task while displaying a progress bar and a\ncancel button, closing automatically when the task completes.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1338,7 +1380,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.RadioGroup",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.RadioGroup.yml\" sourcestartlinenumber=\"1\">Group box that hosts a set of mutually exclusive radio buttons built from a caption\nlist, exposing the selected index and auto-laying out the buttons horizontally or vertically.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1380,7 +1422,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.Ruler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.Ruler.yml\" sourcestartlinenumber=\"1\">A ruler control that draws a scaled measurement scale (in centimeters or inches) for use\nalongside a report design surface, honoring orientation, scale, colors and DPI.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1394,7 +1436,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.RulerBorder",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.RulerBorder.yml\" sourcestartlinenumber=\"1\">Border drawing mode of a <xref href=\"Reportman.Drawing.Forms.Ruler\" data-throw-if-not-resolved=\"false\"></xref> control: a single-line border or no border.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1408,7 +1450,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.RulerStyle",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.RulerStyle.yml\" sourcestartlinenumber=\"1\">Orientation of a <xref href=\"Reportman.Drawing.Forms.Ruler\" data-throw-if-not-resolved=\"false\"></xref> control: drawn horizontally or vertically.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1422,7 +1464,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ScreenKeyboard.Command",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ScreenKeyboard.Command.yml\" sourcestartlinenumber=\"1\">Identifies each calculator button action, including digits, operators, memory\nfunctions and the OK/Enter command; values are ordered to match the button layout.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1436,7 +1478,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ScreenKeyboard",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ScreenKeyboard.yml\" sourcestartlinenumber=\"1\">On-screen calculator UserControl that renders a 5x5 grid of buttons and an edit line,\nused to enter or compute decimal/password values via mouse or keyboard.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1450,7 +1492,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ScrollTextPanel",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ScrollTextPanel.yml\" sourcestartlinenumber=\"1\">A panel that displays a single line of text scrolling horizontally (marquee style),\ndriven by a timer; scrolling and speed are configurable.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1464,7 +1506,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.SearchWindowKeyOperation",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.SearchWindowKeyOperation.yml\" sourcestartlinenumber=\"1\">Navigation keystrokes forwarded to a search window so it can move its selection or accept the current entry.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1492,7 +1534,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.SendMailEventArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.SendMailEventArgs.yml\" sourcestartlinenumber=\"1\">Carries the message details (recipients, subject, body and attached report content)\npassed to the OnMail event so the host can customize the e-mail before it is sent from the preview.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1506,7 +1548,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ShowSearchWindowArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ShowSearchWindowArgs.yml\" sourcestartlinenumber=\"1\">Event arguments for showing a search window, exposing the control that hosts the search UI.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1520,7 +1562,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ShowSearchWindowEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ShowSearchWindowEvent.yml\" sourcestartlinenumber=\"1\">Callback raised when a search window should be shown, carrying the control to display in <xref href=\"Reportman.Drawing.Forms.ShowSearchWindowArgs\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1534,7 +1576,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.SignatureControl.SignatureStyle",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.SignatureControl.SignatureStyle.yml\" sourcestartlinenumber=\"1\">Determines how captured signature points are drawn: as a smoothed curve or as connected straight lines.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1548,7 +1590,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.SignatureControl",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.SignatureControl.yml\" sourcestartlinenumber=\"1\">A Windows Forms control that captures a hand-drawn signature by tracking mouse movement,\nrendering it as a curve or straight-line path into a bitmap.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1562,7 +1604,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.StandardEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.StandardEvent.yml\" sourcestartlinenumber=\"1\">Generic callback for a simple control event carrying the sender and standard event arguments.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1576,7 +1618,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.StringEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.StringEvent.yml\" sourcestartlinenumber=\"1\">Callback raised when an item is chosen from an advanced control's drop-down list,\npassing the selected item (a string or an AutoCompleteInfo) as the second argument.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1590,7 +1632,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler.yml\" sourcestartlinenumber=\"1\">Callback raised when a tab is double-clicked, supplying the originating control\nand the tab page that was double-clicked.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1604,7 +1646,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes.yml\" sourcestartlinenumber=\"1\">Controls when the tabs area is shown or hidden: always shown, always hidden,\nhidden based on logic (e.g. a single page), or hidden when the mouse is away.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1674,7 +1716,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance.yml\" sourcestartlinenumber=\"1\">High-level appearance preset for the tab control: a multi-document (MDI-like)\nlook, a multi-form look, or a compact multi-box look.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1688,7 +1730,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabControlAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabControlAdvanced.yml\" sourcestartlinenumber=\"1\">An owner-drawn, multi-style tabbed container control that hosts a collection of\n<xref href=\"Reportman.Drawing.Forms.TabPageAdvanced\" data-throw-if-not-resolved=\"false\"></xref> pages with configurable appearance, close/scroll/drop-down\nbuttons, hot tracking, multiline tabs, and optional tab reordering.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1702,7 +1744,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler.yml\" sourcestartlinenumber=\"1\">Handler signature for a tab page property change, receiving the page, the <xref href=\"Reportman.Drawing.Forms.TabPageAdvanced.Property\" data-throw-if-not-resolved=\"false\"></xref> that changed and its previous value.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1716,7 +1758,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabPageAdvanced.Property",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabPageAdvanced.Property.yml\" sourcestartlinenumber=\"1\">Identifies which property of a <xref href=\"Reportman.Drawing.Forms.TabPageAdvanced\" data-throw-if-not-resolved=\"false\"></xref> changed, reported through the page's property-changed notification.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1730,7 +1772,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabPageAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabPageAdvanced.yml\" sourcestartlinenumber=\"1\">A single page within an advanced tab control, carrying its title, icon, hosted control and selection state, and raising change notifications; also supports animated processing and alerting icons.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1744,7 +1786,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TabPageCollection",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TabPageCollection.yml\" sourcestartlinenumber=\"1\">A strongly typed, event-raising collection of <xref href=\"Reportman.Drawing.Forms.TabPageAdvanced\" data-throw-if-not-resolved=\"false\"></xref> pages\nbelonging to a <xref href=\"Reportman.Drawing.Forms.TabControlAdvanced\" data-throw-if-not-resolved=\"false\"></xref>, with lookup by index or title.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1758,7 +1800,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TableLayoutPanelAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TableLayoutPanelAdvanced.yml\" sourcestartlinenumber=\"1\">A TableLayoutPanel that lets the user interactively resize rows and columns by dragging the splitter regions between cells with the mouse.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1772,7 +1814,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TextBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TextBoxAdvanced.yml\" sourcestartlinenumber=\"1\">An enhanced Windows Forms text box that adds input validation by data type, an\nauto-complete drop-down list (optionally including Google suggestions), a watermark,\nbarcode capture, uppercase-only mode and Enter-as-Tab navigation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1786,7 +1828,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TextBoxDataType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TextBoxDataType.yml\" sourcestartlinenumber=\"1\">The kind of data a <xref href=\"Reportman.Drawing.Forms.TextBoxAdvanced\" data-throw-if-not-resolved=\"false\"></xref> accepts, used to restrict input to\nfree text, integers, numeric (decimal) or floating-point values.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1800,7 +1842,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TokenCalc.TokenType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TokenCalc.TokenType.yml\" sourcestartlinenumber=\"1\">Kind of a <xref href=\"Reportman.Drawing.Forms.TokenCalc\" data-throw-if-not-resolved=\"false\"></xref>: one of the four arithmetic operators, a numeric\nvalue, or Nil to mark the absence of a token.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1814,7 +1856,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TokenCalc",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TokenCalc.yml\" sourcestartlinenumber=\"1\">A single element of the calculator's expression: either a numeric operand or an\narithmetic operator, tracking its decimal-entry factor and whether it has been sealed.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1828,7 +1870,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripAdvanced.yml\" sourcestartlinenumber=\"1\">A ToolStrip with DPI-scaled image sizing and a workaround that makes its buttons\nrespond on the first click even when the strip is not the active control.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1842,7 +1884,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripButtonAllowDisable",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripButtonAllowDisable.yml\" sourcestartlinenumber=\"1\">A tool strip button that opts in to custom disabled-state rendering by implementing\n<xref href=\"Reportman.Drawing.Forms.IDisplayDisable\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1856,7 +1898,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripComboBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripComboBoxAdvanced.yml\" sourcestartlinenumber=\"1\">A ToolStripComboBox whose Size property is automatically scaled by the current\nDPI factors so it renders consistently across display resolutions.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1870,7 +1912,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable.yml\" sourcestartlinenumber=\"1\">A tool strip drop-down button that opts in to custom disabled-state rendering by\nimplementing <xref href=\"Reportman.Drawing.Forms.IDisplayDisable\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1884,7 +1926,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripTextBoxAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripTextBoxAdvanced.yml\" sourcestartlinenumber=\"1\">A ToolStripTextBox that drops down a self-managed suggestion list as the user types,\nmatching against a local auto-complete list and optionally Google query suggestions,\nwith a cue-banner placeholder and DPI-aware drawing.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1898,7 +1940,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolStripTextBoxFilter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolStripTextBoxFilter.yml\" sourcestartlinenumber=\"1\">A ToolStrip-hosted label-and-textbox filter control that raises a debounced\n<xref href=\"Reportman.Drawing.Forms.ToolStripTextBoxFilter.DelayedTextChanged\" data-throw-if-not-resolved=\"false\"></xref> event after the user stops typing for a configurable delay.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1912,7 +1954,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.ToolTipAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.ToolTipAdvanced.yml\" sourcestartlinenumber=\"1\">An owner-drawn <xref href=\"System.Windows.Forms.ToolTip\" data-throw-if-not-resolved=\"false\"></xref> that displays an image (instead of text) inside a\nbordered tooltip, sizing the popup to the assigned <xref href=\"Reportman.Drawing.Forms.ToolTipAdvanced.Image\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1926,7 +1968,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TransformImageForm",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TransformImageForm.yml\" sourcestartlinenumber=\"1\">A dialog for resizing and re-encoding an image, letting the user change dimensions (optionally keeping aspect ratio), pick the output format (PNG, JPEG or GIF) and JPEG quality, and returns the transformed image stream.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1940,7 +1982,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TransparentPanel",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TransparentPanel.yml\" sourcestartlinenumber=\"1\">A panel that paints its background as a semi-transparent dark overlay, used to dim\nthe area behind it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1954,7 +1996,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TreeGridAdvanced",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TreeGridAdvanced.yml\" sourcestartlinenumber=\"1\">A <xref href=\"System.Windows.Forms.DataGridView\" data-throw-if-not-resolved=\"false\"></xref> that displays hierarchical, expandable/collapsible tree nodes,\nwith support for tree lines, node images, level-based expansion, text search and Excel export.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1982,7 +2024,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TreeGridAdvancedColumn",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TreeGridAdvancedColumn.yml\" sourcestartlinenumber=\"1\">The tree column of a <xref href=\"Reportman.Drawing.Forms.TreeGridAdvanced\" data-throw-if-not-resolved=\"false\"></xref>: a text column whose cells render the\nexpand/collapse glyphs and indentation, and whose clicks toggle the node's expanded state.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -1996,7 +2038,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TreeGridAdvancedNode",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TreeGridAdvancedNode.yml\" sourcestartlinenumber=\"1\">A node in a <xref href=\"Reportman.Drawing.Forms.TreeGridAdvanced\" data-throw-if-not-resolved=\"false\"></xref> tree, linking a grid row to its parent and child\nnodes and tracking its level and expanded state; provides expand/collapse and removal logic.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2010,7 +2052,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.TreeGridRow",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.TreeGridRow.yml\" sourcestartlinenumber=\"1\">A <xref href=\"System.Windows.Forms.DataGridViewRow\" data-throw-if-not-resolved=\"false\"></xref> used by <xref href=\"Reportman.Drawing.Forms.TreeGridAdvanced\" data-throw-if-not-resolved=\"false\"></xref> that carries its tree\nnode, level, parent row, sibling position and optional image for hierarchical display.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2024,7 +2066,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.UnSelectableButton",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.UnSelectableButton.yml\" sourcestartlinenumber=\"1\">A Button that never takes input focus when clicked, so it can be pressed without\nstealing focus from the currently active control.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2038,7 +2080,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.UpdateForm",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.UpdateForm.yml\" sourcestartlinenumber=\"1\">Modal dialog that copies a set of files to update an installation via an <xref href=\"Reportman.Drawing.Updater\" data-throw-if-not-resolved=\"false\"></xref>,\nshowing per-file and byte-level progress and optionally backing up replaced files.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2052,7 +2094,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.VisualStyle",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.VisualStyle.yml\" sourcestartlinenumber=\"1\">The overall visual rendering style used to paint the tab control (Visual Studio IDE\nlook, a flat Plain look, or a Chrome-browser-like look).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2066,7 +2108,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness.yml\" sourcestartlinenumber=\"1\">The DPI-awareness level of a process as reported by the Windows shell:\nunaware, system-aware, or per-monitor-aware.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2080,7 +2122,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Forms.WinFormsGraphics",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Forms.WinFormsGraphics.yml\" sourcestartlinenumber=\"1\">Windows Forms helpers for resolving the screen DPI, the corresponding DPI scale factor,\nand whether the current process is DPI-aware.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2108,7 +2150,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.GS1_128",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.GS1_128.yml\" sourcestartlinenumber=\"1\">Parses the application-identifier data of a GS1-128 (UCC/EAN-128) barcode payload, exposing decoded fields such as SSCC, product code, dates, batch/serial numbers and a wide set of weight, dimension and volume measurements.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2122,7 +2164,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.GlyphInfo",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.GlyphInfo.yml\" sourcestartlinenumber=\"1\">Holds metrics for a single glyph: its advance width, glyph index and source character.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2136,7 +2178,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.GraphicUtils",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.GraphicUtils.yml\" sourcestartlinenumber=\"1\">Static helpers for working with colors and font styles, including conversions between\n<xref href=\"System.Drawing.Color\" data-throw-if-not-resolved=\"false\"></xref> and the engine's 32-bit integer (BBGGRR) and string color encodings.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2150,7 +2192,49 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.HashGenerator",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.HashGenerator.yml\" sourcestartlinenumber=\"1\">Computes SHA-256 hashes for every file under a folder and its subfolders.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.HtmlFormatRun.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.HtmlFormatRun.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.HtmlFormatRun",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.HtmlFormatRun.yml\" sourcestartlinenumber=\"1\">A contiguous span of text together with the formatting (bold, italic, underline,\nstrike-out, font family, font size and color) that applies to it, produced when\nparsing an HTML fragment into styled runs.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.HtmlLayoutUtils.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.HtmlLayoutUtils.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.HtmlLayoutUtils",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.HtmlLayoutUtils.yml\" sourcestartlinenumber=\"1\">Helper routines for laying out HTML text: splitting text into lines, locating\npossible line-break positions, and breaking shaped glyph runs into chunks that fit\na given width for both left-to-right and right-to-left text.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.HtmlTextParser.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.HtmlTextParser.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.HtmlTextParser",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.HtmlTextParser.yml\" sourcestartlinenumber=\"1\">Parses a supported subset of HTML markup into a list of styled <xref href=\"Reportman.Drawing.HtmlFormatRun\" data-throw-if-not-resolved=\"false\"></xref>\nsegments, sanitizing and normalizing the input and resolving inline tags such as\nb/i/u/s, span and legacy font into bold, italic, font family, size and color attributes.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2164,7 +2248,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.IBitmapInfoProvider",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.IBitmapInfoProvider.yml\" sourcestartlinenumber=\"1\">Provides image inspection services for render drivers: reading the dimensions of an encoded\nimage and re-encoding an image stream into bitmap (BMP) format.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2178,7 +2262,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.IDbCommandExecuter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.IDbCommandExecuter.yml\" sourcestartlinenumber=\"1\">Abstraction for executing an ADO.NET <xref href=\"System.Data.IDbCommand\" data-throw-if-not-resolved=\"false\"></xref> and creating new commands,\nreturning query results as a <xref href=\"System.Data.DataTable\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2192,7 +2276,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ISqlExecuter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ISqlExecuter.yml\" sourcestartlinenumber=\"1\">Abstraction over a database connection used by the reporting engine to run SQL,\nopen result sets, manage transactions, batch inserts, and obtain generator values,\nindependent of the underlying data driver.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2206,7 +2290,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ISqlExecuterPartialFillArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ISqlExecuterPartialFillArgs.yml\" sourcestartlinenumber=\"1\">Arguments for a partial-fill event, carrying the total expected record count and the\n<xref href=\"System.Data.DataTable\" data-throw-if-not-resolved=\"false\"></xref> being populated.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2220,7 +2304,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ISqlExecuterPartialFillEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ISqlExecuterPartialFillEvent.yml\" sourcestartlinenumber=\"1\">Callback raised while a result set is being filled incrementally, giving access to the\npartially populated table through <xref href=\"Reportman.Drawing.ISqlExecuterPartialFillArgs\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2234,7 +2318,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ISqlExecuterProgressEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ISqlExecuterProgressEvent.yml\" sourcestartlinenumber=\"1\">Callback reporting the progress of a long-running SQL operation as the number of\nrecords processed so far out of the total.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2262,7 +2346,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.IniFile",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.IniFile.yml\" sourcestartlinenumber=\"1\">Reads and writes classic INI configuration files, exposing typed accessors for\nstring, integer, decimal, boolean and date/time values grouped into named sections,\nwith support for loading from a file or stream and saving back.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2276,7 +2360,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.IniSection",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.IniSection.yml\" sourcestartlinenumber=\"1\">A single section of an <xref href=\"Reportman.Drawing.IniFile\" data-throw-if-not-resolved=\"false\"></xref>, holding its key/value pairs as a\nsorted list keyed by value name.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2294,6 +2378,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.LineGlyphs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.LineGlyphs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.LineGlyphs",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.LineGlyphs.yml\" sourcestartlinenumber=\"1\">Holds the shaped glyph positions for a single line of text, indexed from a base\ntext offset, along with a cluster map that links each logical text cluster to the\nglyphs that render it.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Drawing.LineInfo.yml",
       "output": {
         ".html": {
@@ -2308,6 +2406,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.LineSubText.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.LineSubText.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.LineSubText",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.LineSubText.yml\" sourcestartlinenumber=\"1\">Identifies a single line within a larger text by its start position and length,\nas produced when splitting text on line breaks for layout.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Drawing.ListExtensions.yml",
       "output": {
         ".html": {
@@ -2318,7 +2430,21 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ListExtensions",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ListExtensions.yml\" sourcestartlinenumber=\"1\">Extension methods for <xref href=\"System.Collections.Generic.List%601\" data-throw-if-not-resolved=\"false\"></xref>, providing a helper to swap two elements by index.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.LogFontFt.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.LogFontFt.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.LogFontFt",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.LogFontFt.yml\" sourcestartlinenumber=\"1\">Holds the FreeType face handle and cached metrics (family, style, ascent/descent, bounding box,\nkerning and other attributes) for a single font file, and lazily opens the FreeType face on demand.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2360,7 +2486,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.MemStreams",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MemStreams.yml\" sourcestartlinenumber=\"1\">Growable list of in-memory streams that spills to temporary files once the\ntotal buffered size exceeds a threshold, keeping memory use bounded.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2374,7 +2500,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.MetaFile.MetaFileVersion",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.MetaFile.MetaFileVersion.yml\" sourcestartlinenumber=\"1\">On-disk format version of a metafile, controlling which features (PDF/A metadata,\nembedded files, recalculated printer fonts) are written and how the file is parsed.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2654,7 +2780,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ObjectViewModel",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ObjectViewModel.yml\" sourcestartlinenumber=\"1\">A tree node that exposes an arbitrary object's public fields (and enumerable items) for\ndisplay in a hierarchical, lazily expanded property browser, with selection and expansion state.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2668,7 +2794,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ObjectViewModelHierarchy",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ObjectViewModelHierarchy.yml\" sourcestartlinenumber=\"1\">Wraps a root object as the top of an <xref href=\"Reportman.Drawing.ObjectViewModel\" data-throw-if-not-resolved=\"false\"></xref> tree, exposing the\nfirst generation of nodes for binding to a tree view.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2696,7 +2822,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PDFAFRelationShip",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFAFRelationShip.yml\" sourcestartlinenumber=\"1\">Relationship of an embedded (associated) file to the PDF document, as defined by the\nPDF/A-3 AFRelationship key (for example Data, Source, Alternative or Supplement).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2710,7 +2836,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PDFCanvas",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFCanvas.yml\" sourcestartlinenumber=\"1\">Low-level PDF drawing surface that emits PDF content-stream operators for lines,\nshapes, and (shaped or plain) text, handling fonts, colors, and unit conversion.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2752,7 +2878,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PDFFile.PDFAnnotation",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFFile.PDFAnnotation.yml\" sourcestartlinenumber=\"1\">Describes a single PDF annotation (typically a link), recording its target\ncontent stream, page, position, size, and annotation dictionary text.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2766,7 +2892,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PDFFile",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFFile.yml\" sourcestartlinenumber=\"1\">Builds a complete PDF document: manages object/cross-reference tables, pages,\nembedded fonts, metadata, annotations, stream compression, and final assembly.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2780,7 +2906,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PDFFont",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PDFFont.yml\" sourcestartlinenumber=\"1\">Describes a font as used by the rendering engine: the base PDF font type, platform-specific\nfont names, size, color and style flags (bold, italic, underline, strike-out, background).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2836,7 +2962,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PosText",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PosText.yml\" sourcestartlinenumber=\"1\">A text fragment placed at a column on a print line, recording its position, length, and the\nstyle attributes (bold, italic, underline, strikeout, red, regular) to apply when emitting it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2864,7 +2990,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintLine",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintLine.yml\" sourcestartlinenumber=\"1\">One physical text row of a page being built by the text driver, holding the line contents,\nits character-per-inch font step, and the positioned text fragments keyed by column.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2892,7 +3018,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutBitmap",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutBitmap.yml\" sourcestartlinenumber=\"1\">Print-out driver that renders report metafile pages onto GDI+ bitmaps, stacking the\nselected pages into a single image for export.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2906,7 +3032,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType.yml\" sourcestartlinenumber=\"1\">Horizontal alignment of a text cell: left, right, or centered.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2920,7 +3046,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle.yml\" sourcestartlinenumber=\"1\">Bit flags describing font styling: bold, underline, italic, and strikethrough.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2934,7 +3060,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutCSV.TextFormat",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutCSV.TextFormat.yml\" sourcestartlinenumber=\"1\">Captures the visual formatting (alignment, font size, family, style flags, and\ncolor) of a text cell when exporting a metafile to a tabular array.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2976,7 +3102,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutNet",
-      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutNet.yml\" sourcestartlinenumber=\"1\">This is the base class for all Report processing drivers working in Reportman.Drawing space,\nthat is print to printer, preview on screen or exporting to bitmap, provides basic functionality\nto measure texts, bitmaps and shapes, but still not work with printers (System.Drawing.Printing)\nor printer dialogs (Windows Forms).\nSo it's a step forward to the implementation of some Report processing drivers, useful for\npreview, becuase it can use bitmap as output\nVariant</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutNet.yml\" sourcestartlinenumber=\"1\">This is the base class for all Report processing drivers working in Reportman.Drawing space,\nthat is print to printer, preview on screen or exporting to bitmap, provides basic functionality\nto measure texts, bitmaps and shapes, but still not work with printers (System.Drawing.Printing)\nor printer dialogs (Windows Forms).\nSo it's a step forward to the implementation of some Report processing drivers, useful for\npreview, becuase it can use bitmap as output\n<xref href=\"Reportman.Drawing.PrintOutPrint\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -2990,7 +3116,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutPDF.ImageDepth",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutPDF.ImageDepth.yml\" sourcestartlinenumber=\"1\">Color depth and rendering mode used when embedding images into the PDF, ranging from\nfull color through grayscale to bitonal black-and-white and text-optimized variants.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3004,7 +3130,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutPDF",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutPDF.yml\" sourcestartlinenumber=\"1\">PDF render driver that uses GDI+/System.Drawing for font metrics and bitmap handling,\nand provides helpers to encode images and build a PDF directly from a sequence of images.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3046,7 +3172,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutText.OemConvertOverride",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutText.OemConvertOverride.yml\" sourcestartlinenumber=\"1\">Controls whether OEM character-set conversion is applied to output text: use the printer\nconfiguration default (<code>None</code>), or force it off (<code>False</code>) or on (<code>True</code>).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3060,7 +3186,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrintOutText",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutText.yml\" sourcestartlinenumber=\"1\">Render driver that paints a report metafile as plain or escape-coded text for line/dot-matrix\nand receipt printers, mapping fonts to character-per-inch steps and emitting the printer\ncontrol codes (EPSON, IBM ProPrinter, HP-PCL, PLAIN, etc.) into a byte stream.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3116,7 +3242,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.PrinterRawOperation",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrinterRawOperation.yml\" sourcestartlinenumber=\"1\">Low-level printer control operations sent to raw/ESC-POS style devices, covering paper\nhandling (cut, feed, tear-off), cash-drawer pulses, font styles, line spacing and pitch (cpi).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3158,7 +3284,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ProgressArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ProgressArgs.yml\" sourcestartlinenumber=\"1\">Event arguments reporting progress of a long-running operation, exposing the current\ncount and total and allowing the handler to request cancellation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3172,7 +3298,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.ProgressEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.ProgressEvent.yml\" sourcestartlinenumber=\"1\">Callback invoked to report progress of a long-running operation; handlers may set\n<xref href=\"Reportman.Drawing.ProgressArgs.Cancel\" data-throw-if-not-resolved=\"false\"></xref> to request that the operation stop.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3186,7 +3312,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.QRCodeEncoder.ENCODE_MODE",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.QRCodeEncoder.ENCODE_MODE.yml\" sourcestartlinenumber=\"1\">Data encoding mode used to pack the QR Code payload: alphanumeric, numeric, or raw 8-bit byte.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3200,7 +3326,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION.yml\" sourcestartlinenumber=\"1\">QR Code error-correction level (L, M, Q, H), in increasing order of redundancy and recoverability.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3214,7 +3340,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.QRCodeEncoder",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.QRCodeEncoder.yml\" sourcestartlinenumber=\"1\">Generates QR Code symbols from input data, computing version, mask, and Reed-Solomon\nerror correction, and renders the resulting matrix into a report metafile.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3242,7 +3368,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Series.AutoRangeAxis",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Series.AutoRangeAxis.yml\" sourcestartlinenumber=\"1\">Controls how a chart axis range is computed: from explicit bounds, or automatically\nfor both ends, only the upper bound, only the lower bound, or not at all.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3256,7 +3382,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Series",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Series.yml\" sourcestartlinenumber=\"1\">Describes a chart's overall appearance and axis configuration (ranges, scaling, fonts,\n3D effect, legend) together with the collection of data series it contains.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3270,7 +3396,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.SeriesItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.SeriesItem.yml\" sourcestartlinenumber=\"1\">A single data series within a chart, holding its values, per-point colors and captions,\nvalue range, caption and the chart style used to draw it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3298,7 +3424,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.StreamPosition",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.StreamPosition.yml\" sourcestartlinenumber=\"1\">Pairs a stream with a byte offset, used to remember where a value must later be\npatched back into the PDF output.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3312,7 +3438,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.StreamUtil",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.StreamUtil.yml\" sourcestartlinenumber=\"1\">Static utility helpers for working with streams: file/stream/memory conversions, writing strings,\nprimitive-to-byte-array conversions and (when ZLib is enabled) stream compression and decompression.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3326,7 +3452,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.StringExtensions",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.StringExtensions.yml\" sourcestartlinenumber=\"1\">Extension methods for <xref href=\"System.String\" data-throw-if-not-resolved=\"false\"></xref> providing escape-aware splitting, escaping/unescaping with a custom escape character, diacritic removal and quoting helpers.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3368,7 +3494,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TGlyphPos",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TGlyphPos.yml\" sourcestartlinenumber=\"1\">Describes the positioned glyph produced by text shaping, including its index, offsets,\nadvances, source character/cluster and the font styling (family, size, color, bold/italic) applied to it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3382,7 +3508,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TTFontData",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TTFontData.yml\" sourcestartlinenumber=\"1\">Aggregates all the metrics and tables needed to embed and measure a TrueType/Type1 font in a PDF:\nascent/descent, bounding box, per-glyph widths, kerning, encoding and the PDF object indices for the font.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3396,7 +3522,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TableData",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TableData.yml\" sourcestartlinenumber=\"1\">Directory entry for a single table inside a TrueType font file, holding its tag name,\nbyte offset, length and checksum.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3410,7 +3536,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TaskCompressResult",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TaskCompressResult.yml\" sourcestartlinenumber=\"1\">Result of an asynchronous compression task, reporting the source and destination streams,\nwhether the source was disposed, whether the operation was cancelled and the number of compressed bytes produced.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3424,7 +3550,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TextAlignType",
-      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the text alignment, that is how the text is drawn inside the defined box\nVariant</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the text alignment, that is how the text is drawn inside the defined box\nPrintItemText</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3438,7 +3564,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TextAlignVerticalType",
-      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignVerticalType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating vertical text alignment, that is how the full text, after horizontal alignment is done, is drawn inside the defined box\nVariant</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TextAlignVerticalType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating vertical text alignment, that is how the full text, after horizontal alignment is done, is drawn inside the defined box\nPrintItemText</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3480,7 +3606,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TotalPages",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TotalPages.yml\" sourcestartlinenumber=\"1\">List of <xref href=\"Reportman.Drawing.TotalPage\" data-throw-if-not-resolved=\"false\"></xref> references whose total-page placeholders are resolved\nand updated once the report has finished and the final page count is known.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3508,7 +3634,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TrueTypeFontSubSet",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TrueTypeFontSubSet.yml\" sourcestartlinenumber=\"1\">Builds a minimal subset of a TrueType font containing only the glyphs actually used,\nrewriting the loca/glyf tables and reassembling the font for embedding (e.g. in PDF output).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3536,7 +3662,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.TwipsGraphics",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.TwipsGraphics.yml\" sourcestartlinenumber=\"1\">Helper for converting between twips and screen pixels at the current display DPI (with an\noptional scale factor) and for snapping points to a design grid.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3578,7 +3704,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Updater",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Updater.yml\" sourcestartlinenumber=\"1\">Applies file updates to a target directory, scanning source folders, detecting modified files\nby hash or timestamp, optionally backing up existing files and reporting progress as content is written.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3592,7 +3718,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.VersionInfo",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.VersionInfo.yml\" sourcestartlinenumber=\"1\">Helper for reading assembly and file version numbers and deciding whether one version\nsupersedes another, used to determine when files require upgrading.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3606,7 +3732,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.WMFOptimization",
-      "Summary": "<p sourcefile=\"api/Reportman.Drawing.WMFOptimization.yml\" sourcestartlinenumber=\"1\">This enumeration indicates diferent optimization implementations while drawing pages\n(preview, web presentation or print). Microsoft .Net have an optimized graphic object,\ncalled Windows Metafile, so when the same graphic operations must be done multiple times,\nthey can be stored in it and &quot;played&quot; multiple times. This is the case for example,\nwhen previewing a Report, you can go forward and backwards drawing again and again the\nsame pages. If the engine have the capability of drawing multiple pages in the screen,\nlike Report Manager Windows Forms preview does, the use of playing optimized windows\nmetafiles can enhace performance, specially if the pages are dense (lot of text items).\nThe drawbacks of playing metafiles is that they must be stored into memory, so when you\noptimize performance you hit memory consumption.\nVariant</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.WMFOptimization.yml\" sourcestartlinenumber=\"1\">This enumeration indicates diferent optimization implementations while drawing pages\n(preview, web presentation or print). Microsoft .Net have an optimized graphic object,\ncalled Windows Metafile, so when the same graphic operations must be done multiple times,\nthey can be stored in it and &quot;played&quot; multiple times. This is the case for example,\nwhen previewing a Report, you can go forward and backwards drawing again and again the\nsame pages. If the engine have the capability of drawing multiple pages in the screen,\nlike Report Manager Windows Forms preview does, the use of playing optimized windows\nmetafiles can enhace performance, specially if the pages are dense (lot of text items).\nThe drawbacks of playing metafiles is that they must be stored into memory, so when you\noptimize performance you hit memory consumption.\n<xref href=\"Reportman.Drawing.PrintOutNet\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3620,7 +3746,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.BitmapUtilWindows",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.BitmapUtilWindows.yml\" sourcestartlinenumber=\"1\">Windows-specific bitmap helpers, including an extension method that resolves the default file\nextension for a given <xref href=\"System.Drawing.Imaging.ImageFormat\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3634,7 +3760,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.FontUtils",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.FontUtils.yml\" sourcestartlinenumber=\"1\">Helper methods for reading raw OpenType font tables, in particular extracting the\nfont family name (name ID 1) directly from a DirectWrite font face's 'name' table.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3648,7 +3774,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.GraphicUtils",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.GraphicUtils.yml\" sourcestartlinenumber=\"1\">Windows GDI+ graphics utilities for the report engine: DPI scaling, grid drawing, text measurement,\nfont-style conversions, metafile/bitmap rendering and image codec, scaling and format helpers.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3662,7 +3788,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.PrintOutPDFWindows",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.PrintOutPDFWindows.yml\" sourcestartlinenumber=\"1\">Placeholder for a Windows-specific PDF print-out driver; currently has no\nimplementation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3676,7 +3802,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.TFontFaceCache",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.TFontFaceCache.yml\" sourcestartlinenumber=\"1\">Cache that maps a DirectWrite font face native pointer to its resolved font\nfamily name, avoiding repeated name-table lookups.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3690,7 +3816,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.TGlyphLine",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.TGlyphLine.yml\" sourcestartlinenumber=\"1\">Holds the positioned glyphs that share a single text baseline, tracking the\nline's reading direction and the most recent run for correct RTL/LTR ordering.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3704,7 +3830,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Drawing.Windows.TTextExtentRenderer",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Windows.TTextExtentRenderer.yml\" sourcestartlinenumber=\"1\">Custom DirectWrite text renderer that does not draw, but instead captures glyph\nindices, advances, offsets and per-run formatting into glyph and line lists for\nmeasuring text extents and feeding the metafile.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3746,7 +3872,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Aggregate",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Aggregate.yml\" sourcestartlinenumber=\"1\">Defines the scope over which an aggregate value is accumulated: none, per group,\nper page, or across the whole report.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3760,7 +3886,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.AggregateType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.AggregateType.yml\" sourcestartlinenumber=\"1\">The kind of aggregation applied to a value: sum, minimum, maximum, average, or\nstandard deviation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3774,7 +3900,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.AliasCollection",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.AliasCollection.yml\" sourcestartlinenumber=\"1\">Strongly typed collection of <xref href=\"Reportman.Reporting.AliasCollectionItem\" data-throw-if-not-resolved=\"false\"></xref> entries held by a DatasetAlias component.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3788,7 +3914,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.AliasCollectionItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.AliasCollectionItem.yml\" sourcestartlinenumber=\"1\">A single dataset alias entry, pairing an (upper-cased) alias name with the\nDataTable it refers to and tracking the current row used during evaluation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3816,7 +3942,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.BarcodeItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.BarcodeItem.yml\" sourcestartlinenumber=\"1\">A report print item that evaluates an expression and draws it as a barcode of the configured <xref href=\"Reportman.Reporting.BarcodeItem.BarType\" data-throw-if-not-resolved=\"false\"></xref>, emitting bar/space (or QR module) rectangles into the metafile with optional checksum, rotation and colors.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3830,7 +3956,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.BarcodeType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.BarcodeType.yml\" sourcestartlinenumber=\"1\">The barcode symbology a <xref href=\"Reportman.Reporting.BarcodeItem\" data-throw-if-not-resolved=\"false\"></xref> renders, covering the 2-of-5 family, Code 39/93/128, MSI, PostNet, Codabar, EAN-8/13, PDF417 and QR.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3858,7 +3984,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ChangeObjectOperation",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ChangeObjectOperation.yml\" sourcestartlinenumber=\"1\">A single undoable change to a report component (add, remove, modify, rename or swap),\nrecording the affected component, its parent/index context and the list of property changes.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3872,7 +3998,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ChangeOperationItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ChangeOperationItem.yml\" sourcestartlinenumber=\"1\">Records the change of a single property within a <xref href=\"Reportman.Reporting.ChangeObjectOperation\" data-throw-if-not-resolved=\"false\"></xref>,\nkeeping its name, type and the old and new values for undo and redo.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3886,7 +4012,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ChartItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ChartItem.yml\" sourcestartlinenumber=\"1\">A printable report item that builds and renders a chart from expression-driven data series,\naccumulating values, captions and colors as the subreport iterates and drawing the result\nthrough the report's charting driver.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3900,7 +4026,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DBFExport",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DBFExport.yml\" sourcestartlinenumber=\"1\">Exports a <xref href=\"System.Data.DataTable\" data-throw-if-not-resolved=\"false\"></xref> to a dBASE IV (.DBF) file via an OLE DB connection,\ncreating the table and inserting rows while reporting progress and supporting cancellation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3928,7 +4054,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DataInfo",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataInfo.yml\" sourcestartlinenumber=\"1\">DatabaInfo stores information about a dataset, a Report have a collection\nof dataset definitions. Each dataset is related to one connection (DatabaseInfo)<xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=DataInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataInfo.yml\" sourcestartlinenumber=\"1\">DatabaInfo stores information about a dataset, a Report have a collection\nof dataset definitions. Each dataset is related to one connection (DatabaseInfo)<xref href=\"Reportman.Reporting.Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.DataInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3956,7 +4082,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DataNeededEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataNeededEvent.yml\" sourcestartlinenumber=\"1\">Callback raised by the <xref href=\"Reportman.Reporting.Evaluator\" data-throw-if-not-resolved=\"false\"></xref> when a referenced dataset is not yet\navailable, giving the host a chance to open or supply it before field resolution retries.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3970,7 +4096,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DataNeededEventArgs",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataNeededEventArgs.yml\" sourcestartlinenumber=\"1\">Arguments for the <xref href=\"Reportman.Reporting.DataNeededEvent\" data-throw-if-not-resolved=\"false\"></xref>, carrying the originating\n<xref href=\"Reportman.Reporting.DataNeededEventArgs.Evaluator\" data-throw-if-not-resolved=\"false\"></xref> and the name of the dataset that needs to be provided.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3984,7 +4110,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DataProgressEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DataProgressEvent.yml\" sourcestartlinenumber=\"1\">Progress callback invoked periodically during a long export, reporting the number of\nrecords processed out of the total; set <code>docancel</code> to true to abort the operation.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -3998,7 +4124,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DatabaseInfo",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatabaseInfo.yml\" sourcestartlinenumber=\"1\">DatabaseInfo stores information about database connectivity, a Report have a collection\nof connection definitions. Each connection can use diferent connectivity technology\n(database providers). <xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=DatabaseInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatabaseInfo.yml\" sourcestartlinenumber=\"1\">DatabaseInfo stores information about database connectivity, a Report have a collection\nof connection definitions. Each connection can use diferent connectivity technology\n(database providers). <xref href=\"Reportman.Reporting.Report\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.DatabaseInfos\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4012,7 +4138,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DatabaseInfos",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatabaseInfos.yml\" sourcestartlinenumber=\"1\">Collection of a report's database connection definitions, indexable by alias and\nholding the shared in-memory DataSet; supports cloning for a new report owner.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4040,7 +4166,35 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DatasetType",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatasetType.yml\" sourcestartlinenumber=\"1\">A dataset definition could represent a table inside a database or\na sql query, in .Net version, it's always a Query. <xref href=\"Reportman.Reporting.Variant?text=DataInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DatasetType.yml\" sourcestartlinenumber=\"1\">A dataset definition could represent a table inside a database or\na sql query, in .Net version, it's always a Query. <xref href=\"Reportman.Reporting.DataInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DbParameterInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DbParameterInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DbParameterInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DbParameterInfo.yml\" sourcestartlinenumber=\"1\">Represents a structured parameter for remote SQL execution via HTTP Agent.\nEnsures type safety and prevents SQL injection.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.DirectAgentExecutor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.DirectAgentExecutor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.DirectAgentExecutor",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"1\"><xref href=\"Reportman.Drawing.IDbCommandExecuter\" data-throw-if-not-resolved=\"false\"></xref> that tries the direct WebRTC\nDataChannel transport first and falls back to <xref href=\"Reportman.Reporting.HttpAgentExecutor\" data-throw-if-not-resolved=\"false\"></xref>\ntransparently if the channel cannot be opened (corporate firewall,\nSTUN unreachable, Agent that doesn't speak the protocol …).</p>\n<p sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"6\">Pattern mirrors the proven path in\n<code>ReportmanAI/Reportman.Hub.Client/HubApiClient.DataChannel.cs</code>:</p>\n<ul sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"8\">\n<li sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"8\"><xref href=\"Reportman.Reporting.DirectAgentExecutor.UseDirectChannel\" data-throw-if-not-resolved=\"false\"></xref> master switch (default true).</li>\n<li sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"9\">10-minute cooldown after a failed negotiation, so subsequent\nqueries don't re-pay the open-timeout (~5 s) on each one.</li>\n<li sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"11\">Per-database pool reuses the warm channel across calls.</li>\n<li sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"12\">Effective transport surfaced via <xref href=\"Reportman.Reporting.DirectAgentExecutor.LastConnectionMode\" data-throw-if-not-resolved=\"false\"></xref>\nand the <xref href=\"Reportman.Reporting.DirectAgentExecutor.ConnectionModeChanged\" data-throw-if-not-resolved=\"false\"></xref> event so a UI chip can\nbind to it without having to know about WebRTC.</li>\n</ul>\n<p sourcefile=\"api/Reportman.Reporting.DirectAgentExecutor.yml\" sourcestartlinenumber=\"16\">.NET Framework (net48) builds compile this file out — Reportman.DataChannel\nrequires .NET 6+ (SIPSorcery). On net48 consumers get only the HTTP\npath, identical to the Linux/FPC behaviour of the Delphi engine.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4054,7 +4208,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DotNetDriverType",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DotNetDriverType.yml\" sourcestartlinenumber=\"1\">The DotNetDriverType indicates the database provider to be used when you select DriverType.DotNet, that\nis .Net 1.x, in this versions of .Net there were no abstraction for Database access, so you must select\nand pre-link into your executable references to the database client library.\nThis type is not used in .Net 2.x because the functionality of database providers,\nconfigured in machine.config or application.config<xref href=\"Reportman.Reporting.Variant?text=DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DotNetDriverType.yml\" sourcestartlinenumber=\"1\">The DotNetDriverType indicates the database provider to be used when you select DriverType.DotNet, that\nis .Net 1.x, in this versions of .Net there were no abstraction for Database access, so you must select\nand pre-link into your executable references to the database client library.\nThis type is not used in .Net 2.x because the functionality of database providers,\nconfigured in machine.config or application.config<xref href=\"Reportman.Reporting.DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4068,7 +4222,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.DriverType",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DriverType.yml\" sourcestartlinenumber=\"1\">The DriverType is part of a report database information definition, indicating the technology to be used\nto connect to the database, in .Net version you can choose DotNet or DotNet2 depending on the version you\nare using. <xref href=\"Reportman.Reporting.Variant?text=DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.DriverType.yml\" sourcestartlinenumber=\"1\">The DriverType is part of a report database information definition, indicating the technology to be used\nto connect to the database, in .Net version you can choose DotNet or DotNet2 depending on the version you\nare using. <xref href=\"Reportman.Reporting.DatabaseInfo\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4096,7 +4250,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.EvalIdenExpression",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.EvalIdenExpression.yml\" sourcestartlinenumber=\"1\">An evaluator identifier function that resolves to the value of an associated\n<xref href=\"Reportman.Reporting.ExpressionItem\" data-throw-if-not-resolved=\"false\"></xref>, evaluating it on demand.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4180,7 +4334,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ExpressionItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ExpressionItem.yml\" sourcestartlinenumber=\"1\">A report item that evaluates an expression and prints its formatted result, supporting\naggregates (sum, min, max, average, standard deviation), page-count variables, optional\nexport values, HTML content and splitting across multiple pages.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4194,7 +4348,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ExternalReport",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ExternalReport.yml\" sourcestartlinenumber=\"1\">Helper operations for moving subreports between report documents: exporting a single\nsubreport (with its related datasets and parameters) to a stream, deleting a subreport\nand its dependencies, and importing the contents of one report into another.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4208,7 +4362,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.DataGridViewPrint",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.DataGridViewPrint.yml\" sourcestartlinenumber=\"1\">Builds a Report from the contents of a Windows Forms <xref href=\"System.Windows.Forms.DataGridView\" data-throw-if-not-resolved=\"false\"></xref> (including\ntree grids), mapping its columns, cell alignment, images, check boxes and row styling into\nreport sections so the grid can be printed or previewed.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4222,7 +4376,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.DataGridViewPrintOptions",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.DataGridViewPrintOptions.yml\" sourcestartlinenumber=\"1\">Options controlling how a <xref href=\"System.Windows.Forms.DataGridView\" data-throw-if-not-resolved=\"false\"></xref> is rendered to a report by\n<xref href=\"Reportman.Reporting.Forms.DataGridViewPrint\" data-throw-if-not-resolved=\"false\"></xref>, such as paper size, orientation, selected columns,\nwidth adjustment, word wrapping, grid lines, background colors and tree lines.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4236,7 +4390,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.DataProgress",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.DataProgress.yml\" sourcestartlinenumber=\"1\">Modal Windows Forms dialog that runs a data operation and shows record-count progress,\nallowing the user to cancel it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4250,7 +4404,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.DataProgressEventHandler",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.DataProgressEventHandler.yml\" sourcestartlinenumber=\"1\">Callback executed by the <xref href=\"Reportman.Reporting.Forms.DataProgress\" data-throw-if-not-resolved=\"false\"></xref> dialog to run the long-running data operation\nwhose progress the dialog displays.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4278,7 +4432,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.EmbeddedFileForm",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.EmbeddedFileForm.yml\" sourcestartlinenumber=\"1\">Dialog for editing the metadata of a file embedded in a PDF/A document (description,\nfile name, MIME type, creation/modification dates and AF relationship).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4292,7 +4446,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Forms.GridExport",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Forms.GridExport.yml\" sourcestartlinenumber=\"1\">Exports the contents of a Windows Forms DataGridView to a generated Report, producing\na .rep file and a PDF that mirror the grid's visible columns, headers and cell alignment.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4380,6 +4534,62 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.HttpAgentCommand.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.HttpAgentCommand.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.HttpAgentCommand",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.HttpAgentCommand.yml\" sourcestartlinenumber=\"1\">IDbCommand implementation for HttpAgent that stores SQL and parameters\nfor later execution by HttpAgentExecutor.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.HttpAgentExecutor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.HttpAgentExecutor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.HttpAgentExecutor",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.HttpAgentExecutor.yml\" sourcestartlinenumber=\"1\">Executes SQL commands via HTTP Agent API.\nImplements IDbCommandExecuter to integrate with the reporting engine.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.HttpAgentParameter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.HttpAgentParameter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.HttpAgentParameter",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.HttpAgentParameter.yml\" sourcestartlinenumber=\"1\">IDataParameter implementation for HttpAgent.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.HttpAgentParameterCollection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.HttpAgentParameterCollection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.HttpAgentParameterCollection",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.HttpAgentParameterCollection.yml\" sourcestartlinenumber=\"1\">IDataParameterCollection implementation for HttpAgent.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Reporting.IdenConstant.yml",
       "output": {
         ".html": {
@@ -4432,7 +4642,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.IdenVariableParam",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.IdenVariableParam.yml\" sourcestartlinenumber=\"1\">An evaluator variable identifier backed by a report Param, so reading or assigning the\nvariable in an expression reflects and updates that parameter's last value.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4446,7 +4656,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ImageItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ImageItem.yml\" sourcestartlinenumber=\"1\">A positioned report item that prints an image, taken either from an embedded stream or from\nan expression, honoring the draw style, resolution, rotation and image-sharing settings.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4460,7 +4670,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.LabelItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.LabelItem.yml\" sourcestartlinenumber=\"1\">A report print item that renders a static, language-aware text label, selecting the\nstring for the report's current language and supporting optional HTML content.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4474,7 +4684,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.OperationType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.OperationType.yml\" sourcestartlinenumber=\"1\">The kind of edit recorded by a <xref href=\"Reportman.Reporting.ChangeObjectOperation\" data-throw-if-not-resolved=\"false\"></xref>: adding, modifying,\nremoving, reordering (swap up/down) or renaming a report component.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4502,7 +4712,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.PagedDataChange",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PagedDataChange.yml\" sourcestartlinenumber=\"1\">Callback raised by a <xref href=\"Reportman.Reporting.PagedDataTable\" data-throw-if-not-resolved=\"false\"></xref> each time a new row is read and added,\nallowing observers to react to incremental data loading.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4516,7 +4726,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.PagedDataTable",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PagedDataTable.yml\" sourcestartlinenumber=\"1\">A <xref href=\"System.Data.DataTable\" data-throw-if-not-resolved=\"false\"></xref> that loads rows incrementally from an <xref href=\"System.Data.IDataReader\" data-throw-if-not-resolved=\"false\"></xref>\nin pages of <xref href=\"Reportman.Reporting.PagedDataTable.PageSize\" data-throw-if-not-resolved=\"false\"></xref> records, tracking end-of-data and raising a change event.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4530,7 +4740,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Param",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Param.yml\" sourcestartlinenumber=\"1\">A report parameter prompted from the user, carrying its typed value, localized\ndescriptions/hints/error messages, validation rule and optional list, lookup or\nsearch dataset that supplies selectable values.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4558,7 +4768,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Params.ParamEnumerator",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Params.ParamEnumerator.yml\" sourcestartlinenumber=\"1\">Iterates over the <xref href=\"Reportman.Reporting.Param\" data-throw-if-not-resolved=\"false\"></xref> items contained in a <xref href=\"Reportman.Reporting.Params\" data-throw-if-not-resolved=\"false\"></xref> collection.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4572,7 +4782,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Params",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Params.yml\" sourcestartlinenumber=\"1\">An ordered, self-growing collection of report <xref href=\"Reportman.Reporting.Param\" data-throw-if-not-resolved=\"false\"></xref> objects, indexable by position\nor by alias, with add/insert/remove/swap operations and support for enumeration, cloning and JSON serialization.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4586,7 +4796,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ParamsConverter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ParamsConverter.yml\" sourcestartlinenumber=\"1\">Newtonsoft.Json converter that serializes a <xref href=\"Reportman.Reporting.Params\" data-throw-if-not-resolved=\"false\"></xref> collection as a plain JSON array\nof parameters and reconstructs it when reading.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4614,7 +4824,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.PrintItemAlign",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintItemAlign.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the alignment of a Report Item related to his parent. This is useful when the\nparent Section have properties like AutoExpand or AutoContract set, you can place a Rectangle\nand set Align to AllClient, the rectangle will be adapted at run time to fill the section. You can also\nalign to bottom or expand lines from top to bottom.\n<xref href=\"Reportman.Reporting.Variant?text=PrintPosItem\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Variant?text=Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintItemAlign.yml\" sourcestartlinenumber=\"1\">Enumeration indicating the alignment of a Report Item related to his parent. This is useful when the\nparent Section have properties like AutoExpand or AutoContract set, you can place a Rectangle\nand set Align to AllClient, the rectangle will be adapted at run time to fill the section. You can also\nalign to bottom or expand lines from top to bottom.\n<xref href=\"Reportman.Reporting.PrintPosItem\" data-throw-if-not-resolved=\"false\"></xref><xref href=\"Reportman.Reporting.Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4656,7 +4866,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.PrintPosItemConverter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PrintPosItemConverter.yml\" sourcestartlinenumber=\"1\">Json.NET converter that serializes and deserializes <xref href=\"Reportman.Reporting.PrintPosItem\" data-throw-if-not-resolved=\"false\"></xref> instances,\nusing the &quot;className&quot; discriminator to instantiate the correct concrete report item type\n(shape, label, expression, image, barcode or chart).</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4670,7 +4880,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.PropertyType",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.PropertyType.yml\" sourcestartlinenumber=\"1\">Identifies the data type of a property value tracked in an undo/redo operation,\nused to convert the stored value back to the correct type when applied.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4684,7 +4894,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.Report",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Report.yml\" sourcestartlinenumber=\"1\">Concrete report document derived from <xref href=\"Reportman.Reporting.BaseReport\" data-throw-if-not-resolved=\"false\"></xref>; it drives the page-generation\nlifecycle (BeginPrint/PrintNextPage) and rewires its child objects — params, database/data info,\nsubreports, sections and items — back to the report after deserialization.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4698,7 +4908,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportDataset.CreateTableEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportDataset.CreateTableEvent.yml\" sourcestartlinenumber=\"1\">Callback invoked once the table schema is built; returns true to request that all rows be loaded into memory.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4712,7 +4922,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportDataset.UpdateDataEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportDataset.UpdateDataEvent.yml\" sourcestartlinenumber=\"1\">Callback invoked after a record has been fetched, allowing the consumer to inspect or post-process the new row.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4726,7 +4936,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportDataset.UpdateDataEventAsync",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportDataset.UpdateDataEventAsync.yml\" sourcestartlinenumber=\"1\">Asynchronous callback invoked when a record is fetched, receiving the raw column values and target table for deferred processing.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4768,7 +4978,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportItem",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportItem.yml\" sourcestartlinenumber=\"1\">Base classs for Report items providing common base functionality, and a relation to the owner (Report).\n<xref href=\"Reportman.Reporting.Variant?text=Report\" data-throw-if-not-resolved=\"false\"></xref>\n<xref href=\"Reportman.Reporting.Variant?text=Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportItem.yml\" sourcestartlinenumber=\"1\">Base classs for Report items providing common base functionality, and a relation to the owner (Report).\n<xref href=\"Reportman.Reporting.ReportItem.Report\" data-throw-if-not-resolved=\"false\"></xref>\n<xref href=\"Reportman.Reporting.Section\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4810,7 +5020,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportLibraryConfig",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportLibraryConfig.yml\" sourcestartlinenumber=\"1\">Configuration for a report library connection: the database driver, connection\nstring and table/field mapping used to read and save report templates from a\ndatabase, including optional HttpAgent (remote agent) credentials.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4824,7 +5034,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportLibraryConfigCollection",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportLibraryConfigCollection.yml\" sourcestartlinenumber=\"1\">A collection of <xref href=\"Reportman.Reporting.ReportLibraryConfig\" data-throw-if-not-resolved=\"false\"></xref> entries that can be persisted to\nand loaded from an INI file (repmandlib.ini), one section per connection.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4838,7 +5048,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ReportLibrarySelection",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportLibrarySelection.yml\" sourcestartlinenumber=\"1\">Identifies a specific report by name within a <xref href=\"Reportman.Reporting.ReportLibraryConfig\" data-throw-if-not-resolved=\"false\"></xref> and\nholds its loaded stream, providing a convenience method to save a report back to\nthat library entry.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4898,6 +5108,48 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportmanAgentClient.ProgressEventHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportmanAgentClient.ProgressEventHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportmanAgentClient.ProgressEventHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportmanAgentClient.ProgressEventHandler.yml\" sourcestartlinenumber=\"1\">Callback raised for each streamed progress event from the agent, carrying the actor, stage,\nchunk type and content, token counts, progress identifier, and prefill percentage.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportmanAgentClient.ResultEventHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportmanAgentClient.ResultEventHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportmanAgentClient.ResultEventHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportmanAgentClient.ResultEventHandler.yml\" sourcestartlinenumber=\"1\">Callback raised when an agent request completes, delivering the final result JSON document\nor an error message if the request failed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.ReportmanAgentClient.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.ReportmanAgentClient.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.ReportmanAgentClient",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ReportmanAgentClient.yml\" sourcestartlinenumber=\"1\">HTTP client for the Reportman AI agent service (api.reportman.es) that streams AI authoring\nrequests — SQL suggestion/translation, expression suggestion, and report modification — over\nserver-sent events, reporting incremental progress and returning the final JSON result.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Reporting.Section.yml",
       "output": {
         ".html": {
@@ -4909,6 +5161,20 @@
       "IsMRef": true,
       "Title": "Reportman.Reporting.Section",
       "Summary": "<p sourcefile=\"api/Reportman.Reporting.Section.yml\" sourcestartlinenumber=\"1\">The sections are contained inside subreports, depending on the section type it\nwill print after the detail (group header), before the detail (group header),\nor in special places (page headers and footers)</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.SectionFillOrderHelper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.SectionFillOrderHelper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.SectionFillOrderHelper",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SectionFillOrderHelper.yml\" sourcestartlinenumber=\"1\">AI-friendly semantic fill order for repeated section printing.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4950,7 +5216,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.ShapeItem",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.ShapeItem.yml\" sourcestartlinenumber=\"1\">A report print item that draws a geometric shape (rectangle, ellipse, line, etc.) with a\nconfigurable pen and brush, optionally deriving the fill color from an evaluated expression.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4964,7 +5230,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.SharedImageType",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SharedImageType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating if the image should be shared, so only one instance of the image is stored\nwhile generating the report (ReportMetafile), if the image is repeated in the report, it's recommended\nto share it, so the image is stored only once, and not for each page (a internal reference is done).\n<xref href=\"Reportman.Reporting.Variant?text=ImageItem\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SharedImageType.yml\" sourcestartlinenumber=\"1\">Enumeration indicating if the image should be shared, so only one instance of the image is stored\nwhile generating the report (ReportMetafile), if the image is repeated in the report, it's recommended\nto share it, so the image is stored only once, and not for each page (a internal reference is done).\n<xref href=\"Reportman.Reporting.ImageItem\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5020,7 +5286,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.StreamVersion",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.StreamVersion.yml\" sourcestartlinenumber=\"1\">Identifies the version of the report stream/serialization format, selecting between\nthe legacy layout (V1) and the current format (V2) when saving a report.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5034,7 +5300,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.SubReport",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SubReport.yml\" sourcestartlinenumber=\"1\">A subreport bound to a data alias, holding the ordered collection of sections\n(page headers/footers, group headers/footers and details) that are printed for\neach record of its dataset, and managing group breaks and page-count tracking.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5048,7 +5314,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.SubReportEvent",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SubReportEvent.yml\" sourcestartlinenumber=\"1\">Notifications raised during report processing to inform a subreport and its sections\nof state transitions such as report start, data/group/page changes and subreport start/end.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5062,7 +5328,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.SubReports",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.SubReports.yml\" sourcestartlinenumber=\"1\">Strongly typed list of the <xref href=\"Reportman.Reporting.SubReport\" data-throw-if-not-resolved=\"false\"></xref> instances contained in a report.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5090,7 +5356,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.UndoCue",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.UndoCue.yml\" sourcestartlinenumber=\"1\">Undo/redo history for a report, holding queues of grouped change operations and\napplying them to a <xref href=\"Reportman.Reporting.Report\" data-throw-if-not-resolved=\"false\"></xref> to step backward or forward through edits.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5108,6 +5374,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.VariantCoercion.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.VariantCoercion.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.VariantCoercion",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantCoercion.yml\" sourcestartlinenumber=\"1\">Applies Delphi-compatible Variant type coercion rules, promoting two operands to a\ncommon base type before comparison or arithmetic and raising on invalid combinations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Reporting.VariantJsonConverter.yml",
       "output": {
         ".html": {
@@ -5118,7 +5398,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.VariantJsonConverter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantJsonConverter.yml\" sourcestartlinenumber=\"1\">Newtonsoft.Json converter that serializes a <xref href=\"Reportman.Reporting.Variant\" data-throw-if-not-resolved=\"false\"></xref> as a JSON object carrying\nits VariantType and value, and reconstructs the Variant when reading.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5132,7 +5412,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.VariantSystemTextJsonConverter",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantSystemTextJsonConverter.yml\" sourcestartlinenumber=\"1\">System.Text.Json converter that serializes a <xref href=\"Reportman.Reporting.Variant\" data-throw-if-not-resolved=\"false\"></xref> as a JSON object with\nType and Value properties, and reconstructs the typed Variant when reading.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5146,7 +5426,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Reporting.VariantType",
-      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantType.yml\" sourcestartlinenumber=\"1\">Variant internal type, used to store current type value for a <xref href=\"Reportman.Reporting.Variant?text=Variant\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.VariantType.yml\" sourcestartlinenumber=\"1\">Variant internal type, used to store current type value for a <xref href=\"Reportman.Reporting.Variant\" data-throw-if-not-resolved=\"false\"></xref></p>\n"
     },
     {
       "type": "ManagedReference",
@@ -5216,7 +5496,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.WPF.PrintOutWPF",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/Reportman.WPF.PrintOutWPF.yml\" sourcestartlinenumber=\"1\">Render driver that lays out a report MetaFile into a WPF FixedDocument, building one\nfixed page per metafile page for on-screen preview and WPF-based printing.</p>\n"
     },
     {
       "type": "ManagedReference",

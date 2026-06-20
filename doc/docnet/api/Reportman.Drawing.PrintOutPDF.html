@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class PrintOutPDF | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="PDF render driver that uses GDI+/System.Drawing for font metrics and bitmap handling, and provides helpers to encode images and build a PDF directly from a sequence of images.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Drawing_PrintOutPDF" data-uid="Reportman.Drawing.PrintOutPDF" class="text-break">Class PrintOutPDF</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>PDF render driver that uses GDI+/System.Drawing for font metrics and bitmap handling,
+and provides helpers to encode images and build a PDF directly from a sequence of images.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -113,6 +115,9 @@
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_NewDocument_Reportman_Drawing_MetaFile_">PrintOutPDFBase.NewDocument(MetaFile)</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_PreparePrint_Reportman_Drawing_MetaFile_">PrintOutPDFBase.PreparePrint(MetaFile)</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_EndDocument_Reportman_Drawing_MetaFile_">PrintOutPDFBase.EndDocument(MetaFile)</a>
     </div>
     <div>
@@ -131,10 +136,16 @@
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_WordExtent_System_String_System_Drawing_Point_">PrintOutPDFBase.WordExtent(string, Point)</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_WordExtentLineInfo_System_String_System_Drawing_Point__System_Boolean_">PrintOutPDFBase.WordExtentLineInfo(string, ref Point, bool)</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_TextExtent_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_">PrintOutPDFBase.TextExtent(TextObjectStruct, Point)</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_">PrintOutPDFBase.TextExtentLineInfo(TextObjectStruct, Point)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point__">PrintOutPDFBase.TextExtentLineInfo(TextObjectStruct, ref Point)</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_GraphicExtent_System_IO_MemoryStream_System_Drawing_Point_System_Int32_">PrintOutPDFBase.GraphicExtent(MemoryStream, Point, int)</a>
@@ -153,6 +164,9 @@
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_PDFConformance">PrintOutPDFBase.PDFConformance</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_ForceComplexShaping">PrintOutPDFBase.ForceComplexShaping</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_LineInfo">PrintOutPDFBase.LineInfo</a>
@@ -209,9 +223,6 @@
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_DrawChart_Reportman_Drawing_Series_Reportman_Drawing_MetaFile_System_Int32_System_Int32_System_Object_">PrintOut.DrawChart(Series, MetaFile, int, int, object)</a>
     </div>
     <div>
-      <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_PreparePrint_Reportman_Drawing_MetaFile_">PrintOut.PreparePrint(MetaFile)</a>
-    </div>
-    <div>
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_ProcessNoDataToPrint">PrintOut.ProcessNoDataToPrint()</a>
     </div>
     <div>
@@ -245,7 +256,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF__ctor_" data-uid="Reportman.Drawing.PrintOutPDF.#ctor*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF__ctor" data-uid="Reportman.Drawing.PrintOutPDF.#ctor">PrintOutPDF()</h4>
   <div class="markdown level1 summary"></div>
@@ -257,7 +270,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF_EncodeImageStreamAsBitmapStream_" data-uid="Reportman.Drawing.PrintOutPDF.EncodeImageStreamAsBitmapStream*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF_EncodeImageStreamAsBitmapStream_System_IO_MemoryStream_" data-uid="Reportman.Drawing.PrintOutPDF.EncodeImageStreamAsBitmapStream(System.IO.MemoryStream)">EncodeImageStreamAsBitmapStream(MemoryStream)</h4>
   <div class="markdown level1 summary"></div>
@@ -299,7 +314,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF_GetBitmapInfo_" data-uid="Reportman.Drawing.PrintOutPDF.GetBitmapInfo*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF_GetBitmapInfo_System_IO_Stream_" data-uid="Reportman.Drawing.PrintOutPDF.GetBitmapInfo(System.IO.Stream)">GetBitmapInfo(Stream)</h4>
   <div class="markdown level1 summary"></div>
@@ -341,7 +358,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF_GetBitmapInfoProvider_" data-uid="Reportman.Drawing.PrintOutPDF.GetBitmapInfoProvider*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF_GetBitmapInfoProvider" data-uid="Reportman.Drawing.PrintOutPDF.GetBitmapInfoProvider">GetBitmapInfoProvider()</h4>
   <div class="markdown level1 summary"></div>
@@ -368,7 +387,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_GetBitmapInfoProvider">PrintOutPDFBase.GetBitmapInfoProvider()</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF_GetFontInfoProvider_" data-uid="Reportman.Drawing.PrintOutPDF.GetFontInfoProvider*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF_GetFontInfoProvider" data-uid="Reportman.Drawing.PrintOutPDF.GetFontInfoProvider">GetFontInfoProvider()</h4>
   <div class="markdown level1 summary"></div>
@@ -395,7 +416,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html#Reportman_Drawing_PrintOutPDFBase_GetFontInfoProvider">PrintOutPDFBase.GetFontInfoProvider()</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDF_ImagesToPDF_" data-uid="Reportman.Drawing.PrintOutPDF.ImagesToPDF*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDF_ImagesToPDF_System_Collections_Generic_IEnumerable_System_Drawing_Image__System_Int32_System_Drawing_Imaging_ImageFormat_System_Int32_Reportman_Drawing_PrintOutPDF_ImageDepth_Reportman_Drawing_PDFConformanceType_" data-uid="Reportman.Drawing.PrintOutPDF.ImagesToPDF(System.Collections.Generic.IEnumerable{System.Drawing.Image},System.Int32,System.Drawing.Imaging.ImageFormat,System.Int32,Reportman.Drawing.PrintOutPDF.ImageDepth,Reportman.Drawing.PDFConformanceType)">ImagesToPDF(IEnumerable&lt;Image&gt;, int, ImageFormat, int, ImageDepth, PDFConformanceType)</h4>
   <div class="markdown level1 summary"></div>
@@ -476,6 +499,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutPDF.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

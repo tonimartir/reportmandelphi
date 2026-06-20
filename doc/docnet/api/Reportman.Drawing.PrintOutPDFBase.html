@@ -89,6 +89,7 @@
     <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
     <div class="level1"><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></div>
     <div class="level2"><span class="xref">PrintOutPDFBase</span></div>
+      <div class="level3"><a class="xref" href="Reportman.Drawing.CrossPlatform.PrintOutPDFFreeType.html">PrintOutPDFFreeType</a></div>
       <div class="level3"><a class="xref" href="Reportman.Drawing.PrintOutPDF.html">PrintOutPDF</a></div>
   </div>
   <div class="implements">
@@ -149,9 +150,6 @@
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_DrawChart_Reportman_Drawing_Series_Reportman_Drawing_MetaFile_System_Int32_System_Int32_System_Object_">PrintOut.DrawChart(Series, MetaFile, int, int, object)</a>
     </div>
     <div>
-      <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_PreparePrint_Reportman_Drawing_MetaFile_">PrintOut.PreparePrint(MetaFile)</a>
-    </div>
-    <div>
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_ProcessNoDataToPrint">PrintOut.ProcessNoDataToPrint()</a>
     </div>
     <div>
@@ -185,7 +183,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase__ctor_" data-uid="Reportman.Drawing.PrintOutPDFBase.#ctor*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase__ctor" data-uid="Reportman.Drawing.PrintOutPDFBase.#ctor">PrintOutPDFBase()</h4>
   <div class="markdown level1 summary"><p>Constructo and initialization</p>
@@ -198,7 +198,9 @@
   <h3 id="fields">Fields
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_CalculateOnly" data-uid="Reportman.Drawing.PrintOutPDFBase.CalculateOnly">CalculateOnly</h4>
   <div class="markdown level1 summary"><p>The pdf is not generated but all size calculations are done</p>
 </div>
@@ -223,7 +225,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_Compressed" data-uid="Reportman.Drawing.PrintOutPDFBase.Compressed">Compressed</h4>
   <div class="markdown level1 summary"><p>The resulting PDF file can be compressed to reduce the file size</p>
 </div>
@@ -248,7 +252,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_FileName" data-uid="Reportman.Drawing.PrintOutPDFBase.FileName">FileName</h4>
   <div class="markdown level1 summary"><p>Destination file where the Adobe PDF format file will be saved</p>
 </div>
@@ -275,7 +281,40 @@
   <h3 id="properties">Properties
 </h3>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
+  <a id="Reportman_Drawing_PrintOutPDFBase_ForceComplexShaping_" data-uid="Reportman.Drawing.PrintOutPDFBase.ForceComplexShaping*"></a>
+  <h4 id="Reportman_Drawing_PrintOutPDFBase_ForceComplexShaping" data-uid="Reportman.Drawing.PrintOutPDFBase.ForceComplexShaping">ForceComplexShaping</h4>
+  <div class="markdown level1 summary"><p>Routes to PDFCanvas.ForceComplexShaping. When true, TextExtent/TextExtentLineInfo
+always populate LineInfo.Glyphs by going through the DirectWrite/HarfBuzz shaper,
+even for plain (non-HTML, non-RTL) text. Required for callers that need glyph-indexed
+rendering (e.g. ExtTextOutW with ETO_GLYPH_INDEX) on plain text.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ForceComplexShaping { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_LineInfo_" data-uid="Reportman.Drawing.PrintOutPDFBase.LineInfo*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_LineInfo" data-uid="Reportman.Drawing.PrintOutPDFBase.LineInfo">LineInfo</h4>
   <div class="markdown level1 summary"></div>
@@ -294,13 +333,15 @@
     </thead>
     <tbody>
       <tr>
-        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.LineInfo.html">LineInfo</a>&gt;</td>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">LineInfo</a>&gt;</td>
         <td></td>
       </tr>
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_PDFConformance_" data-uid="Reportman.Drawing.PrintOutPDFBase.PDFConformance*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_PDFConformance" data-uid="Reportman.Drawing.PrintOutPDFBase.PDFConformance">PDFConformance</h4>
   <div class="markdown level1 summary"></div>
@@ -325,7 +366,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_PDFStream_" data-uid="Reportman.Drawing.PrintOutPDFBase.PDFStream*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_PDFStream" data-uid="Reportman.Drawing.PrintOutPDFBase.PDFStream">PDFStream</h4>
   <div class="markdown level1 summary"><p>In memory stream containing the Adobe PDF format file</p>
@@ -353,7 +396,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_Dispose_" data-uid="Reportman.Drawing.PrintOutPDFBase.Dispose*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_Dispose" data-uid="Reportman.Drawing.PrintOutPDFBase.Dispose">Dispose()</h4>
   <div class="markdown level1 summary"><p>Free memory consumed by graphics resources</p>
@@ -366,7 +411,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_Dispose">PrintOut.Dispose()</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_DrawObject_" data-uid="Reportman.Drawing.PrintOutPDFBase.DrawObject*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_DrawObject_Reportman_Drawing_MetaPage_Reportman_Drawing_MetaObject_" data-uid="Reportman.Drawing.PrintOutPDFBase.DrawObject(Reportman.Drawing.MetaPage,Reportman.Drawing.MetaObject)">DrawObject(MetaPage, MetaObject)</h4>
   <div class="markdown level1 summary"><p>Draw an object to the PDF file</p>
@@ -401,7 +448,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_DrawPage_" data-uid="Reportman.Drawing.PrintOutPDFBase.DrawPage*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_DrawPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_" data-uid="Reportman.Drawing.PrintOutPDFBase.DrawPage(Reportman.Drawing.MetaFile,Reportman.Drawing.MetaPage)">DrawPage(MetaFile, MetaPage)</h4>
   <div class="markdown level1 summary"><p>Draw all objects of the page to current PDF file page</p>
@@ -438,7 +487,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_DrawPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_">PrintOut.DrawPage(MetaFile, MetaPage)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_EndDocument_" data-uid="Reportman.Drawing.PrintOutPDFBase.EndDocument*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_EndDocument_Reportman_Drawing_MetaFile_" data-uid="Reportman.Drawing.PrintOutPDFBase.EndDocument(Reportman.Drawing.MetaFile)">EndDocument(MetaFile)</h4>
   <div class="markdown level1 summary"><p>Finalization</p>
@@ -469,7 +520,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_EndDocument_Reportman_Drawing_MetaFile_">PrintOut.EndDocument(MetaFile)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_GetBitmapInfoProvider_" data-uid="Reportman.Drawing.PrintOutPDFBase.GetBitmapInfoProvider*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_GetBitmapInfoProvider" data-uid="Reportman.Drawing.PrintOutPDFBase.GetBitmapInfoProvider">GetBitmapInfoProvider()</h4>
   <div class="markdown level1 summary"></div>
@@ -494,7 +547,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_GetFontInfoProvider_" data-uid="Reportman.Drawing.PrintOutPDFBase.GetFontInfoProvider*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_GetFontInfoProvider" data-uid="Reportman.Drawing.PrintOutPDFBase.GetFontInfoProvider">GetFontInfoProvider()</h4>
   <div class="markdown level1 summary"></div>
@@ -519,7 +574,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_GetPageSize_" data-uid="Reportman.Drawing.PrintOutPDFBase.GetPageSize*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_GetPageSize_System_Int32__" data-uid="Reportman.Drawing.PrintOutPDFBase.GetPageSize(System.Int32@)">GetPageSize(out int)</h4>
   <div class="markdown level1 summary"><p>Get page size</p>
@@ -566,7 +623,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_GetPageSize_System_Int32__">PrintOut.GetPageSize(out int)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_GraphicExtent_" data-uid="Reportman.Drawing.PrintOutPDFBase.GraphicExtent*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_GraphicExtent_System_IO_MemoryStream_System_Drawing_Point_System_Int32_" data-uid="Reportman.Drawing.PrintOutPDFBase.GraphicExtent(System.IO.MemoryStream,System.Drawing.Point,System.Int32)">GraphicExtent(MemoryStream, Point, int)</h4>
   <div class="markdown level1 summary"><p>Obtain graphic extent</p>
@@ -625,7 +684,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_GraphicExtent_System_IO_MemoryStream_System_Drawing_Point_System_Int32_">PrintOut.GraphicExtent(MemoryStream, Point, int)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_NewDocument_" data-uid="Reportman.Drawing.PrintOutPDFBase.NewDocument*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_NewDocument_Reportman_Drawing_MetaFile_" data-uid="Reportman.Drawing.PrintOutPDFBase.NewDocument(Reportman.Drawing.MetaFile)">NewDocument(MetaFile)</h4>
   <div class="markdown level1 summary"><p>Initialization</p>
@@ -656,7 +717,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_NewDocument_Reportman_Drawing_MetaFile_">PrintOut.NewDocument(MetaFile)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_NewPage_" data-uid="Reportman.Drawing.PrintOutPDFBase.NewPage*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_NewPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_" data-uid="Reportman.Drawing.PrintOutPDFBase.NewPage(Reportman.Drawing.MetaFile,Reportman.Drawing.MetaPage)">NewPage(MetaFile, MetaPage)</h4>
   <div class="markdown level1 summary"><p>Creates a new page</p>
@@ -691,7 +754,58 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_NewPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_">PrintOut.NewPage(MetaFile, MetaPage)</a></div>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
+  <a id="Reportman_Drawing_PrintOutPDFBase_PreparePrint_" data-uid="Reportman.Drawing.PrintOutPDFBase.PreparePrint*"></a>
+  <h4 id="Reportman_Drawing_PrintOutPDFBase_PreparePrint_Reportman_Drawing_MetaFile_" data-uid="Reportman.Drawing.PrintOutPDFBase.PreparePrint(Reportman.Drawing.MetaFile)">PreparePrint(MetaFile)</h4>
+  <div class="markdown level1 summary"><p>Layout (BeginPrint) runs before NewDocument, so the shaper must be forced here too:
+otherwise line breaks would be computed with the simple metrics and then drawn with
+the shaped ones.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool PreparePrint(MetaFile meta)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></td>
+        <td><span class="parametername">meta</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_PreparePrint_Reportman_Drawing_MetaFile_">PrintOut.PreparePrint(MetaFile)</a></div>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_Print_" data-uid="Reportman.Drawing.PrintOutPDFBase.Print*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_Print_Reportman_Drawing_MetaFile_" data-uid="Reportman.Drawing.PrintOutPDFBase.Print(Reportman.Drawing.MetaFile)">Print(MetaFile)</h4>
   <div class="markdown level1 summary"><p>Generate the PDF file in a single pass</p>
@@ -736,7 +850,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_Print_Reportman_Drawing_MetaFile_">PrintOut.Print(MetaFile)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_SetOrientation_" data-uid="Reportman.Drawing.PrintOutPDFBase.SetOrientation*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_SetOrientation_Reportman_Drawing_OrientationType_" data-uid="Reportman.Drawing.PrintOutPDFBase.SetOrientation(Reportman.Drawing.OrientationType)">SetOrientation(OrientationType)</h4>
   <div class="markdown level1 summary"><p>Sets page orientation</p>
@@ -767,7 +883,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_SetOrientation_Reportman_Drawing_OrientationType_">PrintOut.SetOrientation(OrientationType)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_SetPageSize_" data-uid="Reportman.Drawing.PrintOutPDFBase.SetPageSize*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_SetPageSize_Reportman_Drawing_PageSizeDetail_" data-uid="Reportman.Drawing.PrintOutPDFBase.SetPageSize(Reportman.Drawing.PageSizeDetail)">SetPageSize(PageSizeDetail)</h4>
   <div class="markdown level1 summary"><p>Sets page size</p>
@@ -814,7 +932,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_SetPageSize_Reportman_Drawing_PageSizeDetail_">PrintOut.SetPageSize(PageSizeDetail)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_TextExtent_" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtent*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_TextExtent_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtent(Reportman.Drawing.TextObjectStruct,System.Drawing.Point)">TextExtent(TextObjectStruct, Point)</h4>
   <div class="markdown level1 summary"><p>Obtain text extent</p>
@@ -864,10 +984,12 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_TextExtent_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_">PrintOut.TextExtent(TextObjectStruct, Point)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtentLineInfo*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtentLineInfo(Reportman.Drawing.TextObjectStruct,System.Drawing.Point)">TextExtentLineInfo(TextObjectStruct, Point)</h4>
-  <div class="markdown level1 summary"><p>Obtain text extent, fills LineInfo</p>
+  <div class="markdown level1 summary"><p>Obtain text extent, fills LineInfo (original signature for backward compatibility)</p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="declaration">Declaration</h5>
@@ -912,7 +1034,61 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
+  <a id="Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtentLineInfo*"></a>
+  <h4 id="Reportman_Drawing_PrintOutPDFBase_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point__" data-uid="Reportman.Drawing.PrintOutPDFBase.TextExtentLineInfo(Reportman.Drawing.TextObjectStruct,System.Drawing.Point@)">TextExtentLineInfo(TextObjectStruct, ref Point)</h4>
+  <div class="markdown level1 summary"><p>Obtain text extent and return LineInfo list directly</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override List&lt;LineInfo&gt; TextExtentLineInfo(TextObjectStruct aobj, ref Point extent)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Drawing.TextObjectStruct.html">TextObjectStruct</a></td>
+        <td><span class="parametername">aobj</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">extent</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">LineInfo</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point__">PrintOut.TextExtentLineInfo(TextObjectStruct, ref Point)</a></div>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutPDFBase_WordExtent_" data-uid="Reportman.Drawing.PrintOutPDFBase.WordExtent*"></a>
   <h4 id="Reportman_Drawing_PrintOutPDFBase_WordExtent_System_String_System_Drawing_Point_" data-uid="Reportman.Drawing.PrintOutPDFBase.WordExtent(System.String,System.Drawing.Point)">WordExtent(string, Point)</h4>
   <div class="markdown level1 summary"><p>Obtain word extent using current settings</p>
@@ -959,6 +1135,63 @@
       </tr>
     </tbody>
   </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs">View Source</a>
+  </span>
+  <a id="Reportman_Drawing_PrintOutPDFBase_WordExtentLineInfo_" data-uid="Reportman.Drawing.PrintOutPDFBase.WordExtentLineInfo*"></a>
+  <h4 id="Reportman_Drawing_PrintOutPDFBase_WordExtentLineInfo_System_String_System_Drawing_Point__System_Boolean_" data-uid="Reportman.Drawing.PrintOutPDFBase.WordExtentLineInfo(System.String,System.Drawing.Point@,System.Boolean)">WordExtentLineInfo(string, ref Point, bool)</h4>
+  <div class="markdown level1 summary"><p>Same measurement WordExtent performs, but returning the shaped LineInfo so the
+caller can reproduce the word glyph by glyph (glyph-exact justified printing).
+Uses the current canvas font, set by a previous TextExtentLineInfo call.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;LineInfo&gt; WordExtentLineInfo(string text, ref Point extent, bool rightToLeft = false)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">text</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.point">Point</a></td>
+        <td><span class="parametername">extent</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">rightToLeft</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">LineInfo</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
   <h3 id="implements">Implements</h3>
   <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
@@ -971,6 +1204,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PrintOutPDFBase.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

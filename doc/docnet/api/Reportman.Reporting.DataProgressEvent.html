@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Delegate DataProgressEvent | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Progress callback invoked periodically during a long export, reporting the number of records processed out of the total; set docancel to true to abort the operation.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Reporting_DataProgressEvent" data-uid="Reportman.Reporting.DataProgressEvent" class="text-break">Delegate DataProgressEvent</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Progress callback invoked periodically during a long export, reporting the number of
+records processed out of the total; set <code>docancel</code> to true to abort the operation.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
   <h6><strong>Assembly</strong>: Reportman.Drawing.dll</h6>
@@ -102,29 +104,31 @@
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
         <td><span class="parametername">sender</span></td>
-        <td></td>
+        <td>Progress callback invoked periodically during a long export, reporting the number of records processed out of the total; set docancel to true to abort the operation.</td>
       </tr>
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
         <td><span class="parametername">records</span></td>
-        <td></td>
+        <td>Progress callback invoked periodically during a long export, reporting the number of records processed out of the total; set docancel to true to abort the operation.</td>
       </tr>
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
         <td><span class="parametername">count</span></td>
-        <td></td>
+        <td>Progress callback invoked periodically during a long export, reporting the number of records processed out of the total; set docancel to true to abort the operation.</td>
       </tr>
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
         <td><span class="parametername">docancel</span></td>
-        <td></td>
+        <td>Progress callback invoked periodically during a long export, reporting the number of records processed out of the total; set docancel to true to abort the operation.</td>
       </tr>
     </tbody>
   </table>
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/DBFExport.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_DataProgressEvent__ctor_" data-uid="Reportman.Reporting.DataProgressEvent.#ctor*"></a>
   <h4 id="Reportman_Reporting_DataProgressEvent__ctor_System_Object_System_IntPtr_" data-uid="Reportman.Reporting.DataProgressEvent.#ctor(System.Object,System.IntPtr)">DataProgressEvent(object, nint)</h4>
   <div class="markdown level1 summary"></div>
@@ -158,7 +162,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/DBFExport.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_DataProgressEvent_BeginInvoke_" data-uid="Reportman.Reporting.DataProgressEvent.BeginInvoke*"></a>
   <h4 id="Reportman_Reporting_DataProgressEvent_BeginInvoke_System_Object_System_Int32_System_Int32_System_Boolean__System_AsyncCallback_System_Object_" data-uid="Reportman.Reporting.DataProgressEvent.BeginInvoke(System.Object,System.Int32,System.Int32,System.Boolean@,System.AsyncCallback,System.Object)">BeginInvoke(object, int, int, ref bool, AsyncCallback, object)</h4>
   <div class="markdown level1 summary"></div>
@@ -225,7 +231,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/DBFExport.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_DataProgressEvent_EndInvoke_" data-uid="Reportman.Reporting.DataProgressEvent.EndInvoke*"></a>
   <h4 id="Reportman_Reporting_DataProgressEvent_EndInvoke_System_Boolean__System_IAsyncResult_" data-uid="Reportman.Reporting.DataProgressEvent.EndInvoke(System.Boolean@,System.IAsyncResult)">EndInvoke(ref bool, IAsyncResult)</h4>
   <div class="markdown level1 summary"></div>
@@ -257,7 +265,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/DBFExport.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_DataProgressEvent_Invoke_" data-uid="Reportman.Reporting.DataProgressEvent.Invoke*"></a>
   <h4 id="Reportman_Reporting_DataProgressEvent_Invoke_System_Object_System_Int32_System_Int32_System_Boolean__" data-uid="Reportman.Reporting.DataProgressEvent.Invoke(System.Object,System.Int32,System.Int32,System.Boolean@)">Invoke(object, int, int, ref bool)</h4>
   <div class="markdown level1 summary"></div>
@@ -306,6 +316,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/DBFExport.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

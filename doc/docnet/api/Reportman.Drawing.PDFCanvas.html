@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class PDFCanvas | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Low-level PDF drawing surface that emits PDF content-stream operators for lines, shapes, and (shaped or plain) text, handling fonts, colors, and unit conversion.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Drawing_PDFCanvas" data-uid="Reportman.Drawing.PDFCanvas" class="text-break">Class PDFCanvas</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Low-level PDF drawing surface that emits PDF content-stream operators for lines,
+shapes, and (shaped or plain) text, handling fonts, colors, and unit conversion.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -121,7 +123,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas__ctor_" data-uid="Reportman.Drawing.PDFCanvas.#ctor*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas__ctor_Reportman_Drawing_FontInfoProvider_Reportman_Drawing_IBitmapInfoProvider_" data-uid="Reportman.Drawing.PDFCanvas.#ctor(Reportman.Drawing.FontInfoProvider,Reportman.Drawing.IBitmapInfoProvider)">PDFCanvas(FontInfoProvider, IBitmapInfoProvider)</h4>
   <div class="markdown level1 summary"></div>
@@ -155,7 +159,9 @@
   <h3 id="fields">Fields
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_BrushColor" data-uid="Reportman.Drawing.PDFCanvas.BrushColor">BrushColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -179,7 +185,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_BrushStyle" data-uid="Reportman.Drawing.PDFCanvas.BrushStyle">BrushStyle</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -203,7 +211,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_ENDSTREAM" data-uid="Reportman.Drawing.PDFCanvas.ENDSTREAM">ENDSTREAM</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -227,7 +237,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_FBitmapInfoProvider" data-uid="Reportman.Drawing.PDFCanvas.FBitmapInfoProvider">FBitmapInfoProvider</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -251,7 +263,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_FInfoProvider" data-uid="Reportman.Drawing.PDFCanvas.FInfoProvider">FInfoProvider</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -275,7 +289,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_File" data-uid="Reportman.Drawing.PDFCanvas.File">File</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -299,7 +315,40 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
+  <h4 id="Reportman_Drawing_PDFCanvas_ForceComplexShaping" data-uid="Reportman.Drawing.PDFCanvas.ForceComplexShaping">ForceComplexShaping</h4>
+  <div class="markdown level1 summary"><p>When true, TextExtent always routes to the complex shaper (InfoProvider.TextExtent —
+DirectWrite on Windows, HarfBuzz on Linux) and populates LineInfo.Glyphs with glyph
+indices and advances. Default false preserves the historical fast path (TextExtentSimple)
+that only computes line widths without glyph data. Callers that need per-glyph data
+(e.g. glyph-indexed ExtTextOutW rendering) must set this to true before measuring.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ForceComplexShaping</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_OldBrushColor" data-uid="Reportman.Drawing.PDFCanvas.OldBrushColor">OldBrushColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -323,7 +372,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_OldPenColor" data-uid="Reportman.Drawing.PDFCanvas.OldPenColor">OldPenColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -347,7 +398,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_PDFConformance" data-uid="Reportman.Drawing.PDFCanvas.PDFConformance">PDFConformance</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -371,7 +424,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_PenColor" data-uid="Reportman.Drawing.PDFCanvas.PenColor">PenColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -395,7 +450,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_PenStyle" data-uid="Reportman.Drawing.PDFCanvas.PenStyle">PenStyle</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -419,7 +476,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_PenWidth" data-uid="Reportman.Drawing.PDFCanvas.PenWidth">PenWidth</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -443,7 +502,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_Resolution" data-uid="Reportman.Drawing.PDFCanvas.Resolution">Resolution</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -467,7 +528,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_SavedBrushColor" data-uid="Reportman.Drawing.PDFCanvas.SavedBrushColor">SavedBrushColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -491,7 +554,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_PDFCanvas_SavedPenColor" data-uid="Reportman.Drawing.PDFCanvas.SavedPenColor">SavedPenColor</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -517,7 +582,9 @@
   <h3 id="properties">Properties
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_BitmapInfoProvider_" data-uid="Reportman.Drawing.PDFCanvas.BitmapInfoProvider*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_BitmapInfoProvider" data-uid="Reportman.Drawing.PDFCanvas.BitmapInfoProvider">BitmapInfoProvider</h4>
   <div class="markdown level1 summary"></div>
@@ -542,7 +609,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Font_" data-uid="Reportman.Drawing.PDFCanvas.Font*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Font" data-uid="Reportman.Drawing.PDFCanvas.Font">Font</h4>
   <div class="markdown level1 summary"></div>
@@ -567,7 +636,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_FontData_" data-uid="Reportman.Drawing.PDFCanvas.FontData*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_FontData" data-uid="Reportman.Drawing.PDFCanvas.FontData">FontData</h4>
   <div class="markdown level1 summary"></div>
@@ -592,7 +663,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_InfoProvider_" data-uid="Reportman.Drawing.PDFCanvas.InfoProvider*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_InfoProvider" data-uid="Reportman.Drawing.PDFCanvas.InfoProvider">InfoProvider</h4>
   <div class="markdown level1 summary"></div>
@@ -617,7 +690,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_LineInfo_" data-uid="Reportman.Drawing.PDFCanvas.LineInfo*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_LineInfo" data-uid="Reportman.Drawing.PDFCanvas.LineInfo">LineInfo</h4>
   <div class="markdown level1 summary"></div>
@@ -636,7 +711,7 @@
     </thead>
     <tbody>
       <tr>
-        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.LineInfo.html">LineInfo</a>&gt;</td>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">LineInfo</a>&gt;</td>
         <td></td>
       </tr>
     </tbody>
@@ -644,7 +719,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_DoReverseString_" data-uid="Reportman.Drawing.PDFCanvas.DoReverseString*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_DoReverseString_System_String_" data-uid="Reportman.Drawing.PDFCanvas.DoReverseString(System.String)">DoReverseString(string)</h4>
   <div class="markdown level1 summary"></div>
@@ -686,7 +763,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_DrawImage_" data-uid="Reportman.Drawing.PDFCanvas.DrawImage*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_DrawImage_System_Drawing_Rectangle_System_IO_MemoryStream_System_Int32_System_Boolean_System_Boolean_System_Int64_" data-uid="Reportman.Drawing.PDFCanvas.DrawImage(System.Drawing.Rectangle,System.IO.MemoryStream,System.Int32,System.Boolean,System.Boolean,System.Int64)">DrawImage(Rectangle, MemoryStream, int, bool, bool, long)</h4>
   <div class="markdown level1 summary"></div>
@@ -738,7 +817,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_EOL_" data-uid="Reportman.Drawing.PDFCanvas.EOL*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_EOL" data-uid="Reportman.Drawing.PDFCanvas.EOL">EOL()</h4>
   <div class="markdown level1 summary"></div>
@@ -763,7 +844,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Ellipse_" data-uid="Reportman.Drawing.PDFCanvas.Ellipse*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Ellipse_System_Int32_System_Int32_System_Int32_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.Ellipse(System.Int32,System.Int32,System.Int32,System.Int32)">Ellipse(int, int, int, int)</h4>
   <div class="markdown level1 summary"></div>
@@ -805,7 +888,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_GetTTFontData_" data-uid="Reportman.Drawing.PDFCanvas.GetTTFontData*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_GetTTFontData" data-uid="Reportman.Drawing.PDFCanvas.GetTTFontData">GetTTFontData()</h4>
   <div class="markdown level1 summary"></div>
@@ -830,7 +915,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_IntToHex_" data-uid="Reportman.Drawing.PDFCanvas.IntToHex*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_IntToHex_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.IntToHex(System.Int32)">IntToHex(int)</h4>
   <div class="markdown level1 summary"></div>
@@ -872,7 +959,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Line_" data-uid="Reportman.Drawing.PDFCanvas.Line*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Line_System_Int32_System_Int32_System_Int32_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.Line(System.Int32,System.Int32,System.Int32,System.Int32)">Line(int, int, int, int)</h4>
   <div class="markdown level1 summary"></div>
@@ -914,7 +1003,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_NumberToText_" data-uid="Reportman.Drawing.PDFCanvas.NumberToText*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_NumberToText_System_Double_" data-uid="Reportman.Drawing.PDFCanvas.NumberToText(System.Double)">NumberToText(double)</h4>
   <div class="markdown level1 summary"></div>
@@ -956,7 +1047,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_PDFCompatibleText_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleText*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_PDFCompatibleText_System_String_Reportman_Drawing_TTFontData_Reportman_Drawing_PDFFont_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleText(System.String,Reportman.Drawing.TTFontData,Reportman.Drawing.PDFFont)">PDFCompatibleText(string, TTFontData, PDFFont)</h4>
   <div class="markdown level1 summary"></div>
@@ -1008,7 +1101,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_PDFCompatibleTextShaping_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleTextShaping*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_PDFCompatibleTextShaping_System_String_Reportman_Drawing_TTFontData_Reportman_Drawing_PDFFont_System_Boolean_System_Double_System_Double_System_Int32_Reportman_Drawing_LineInfo_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleTextShaping(System.String,Reportman.Drawing.TTFontData,Reportman.Drawing.PDFFont,System.Boolean,System.Double,System.Double,System.Int32,Reportman.Drawing.LineInfo)">PDFCompatibleTextShaping(string, TTFontData, PDFFont, bool, double, double, int, LineInfo)</h4>
   <div class="markdown level1 summary"></div>
@@ -1085,7 +1180,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_PDFCompatibleTextWithKerning_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleTextWithKerning*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_PDFCompatibleTextWithKerning_System_String_Reportman_Drawing_TTFontData_Reportman_Drawing_PDFFont_" data-uid="Reportman.Drawing.PDFCanvas.PDFCompatibleTextWithKerning(System.String,Reportman.Drawing.TTFontData,Reportman.Drawing.PDFFont)">PDFCompatibleTextWithKerning(string, TTFontData, PDFFont)</h4>
   <div class="markdown level1 summary"></div>
@@ -1137,7 +1234,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Rectangle_" data-uid="Reportman.Drawing.PDFCanvas.Rectangle*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Rectangle_System_Int32_System_Int32_System_Int32_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.Rectangle(System.Int32,System.Int32,System.Int32,System.Int32)">Rectangle(int, int, int, int)</h4>
   <div class="markdown level1 summary"></div>
@@ -1179,7 +1278,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_RestoreGraph_" data-uid="Reportman.Drawing.PDFCanvas.RestoreGraph*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_RestoreGraph" data-uid="Reportman.Drawing.PDFCanvas.RestoreGraph">RestoreGraph()</h4>
   <div class="markdown level1 summary"></div>
@@ -1189,7 +1290,9 @@
     <pre><code class="lang-csharp hljs">public void RestoreGraph()</code></pre>
   </div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Rotate_" data-uid="Reportman.Drawing.PDFCanvas.Rotate*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Rotate_System_Double_" data-uid="Reportman.Drawing.PDFCanvas.Rotate(System.Double)">Rotate(double)</h4>
   <div class="markdown level1 summary"></div>
@@ -1216,7 +1319,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_RoundedRectangle_" data-uid="Reportman.Drawing.PDFCanvas.RoundedRectangle*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_RoundedRectangle_System_Int32_System_Int32_System_Int32_System_Int32_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.RoundedRectangle(System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">RoundedRectangle(int, int, int, int, int)</h4>
   <div class="markdown level1 summary"></div>
@@ -1263,7 +1368,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_SaveGraph_" data-uid="Reportman.Drawing.PDFCanvas.SaveGraph*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_SaveGraph" data-uid="Reportman.Drawing.PDFCanvas.SaveGraph">SaveGraph()</h4>
   <div class="markdown level1 summary"></div>
@@ -1273,14 +1380,16 @@
     <pre><code class="lang-csharp hljs">public void SaveGraph()</code></pre>
   </div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_TextExtent_" data-uid="Reportman.Drawing.PDFCanvas.TextExtent*"></a>
-  <h4 id="Reportman_Drawing_PDFCanvas_TextExtent_System_String_System_Drawing_Rectangle__System_Boolean_System_Boolean_System_Boolean_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextExtent(System.String,System.Drawing.Rectangle@,System.Boolean,System.Boolean,System.Boolean,System.Boolean)">TextExtent(string, ref Rectangle, bool, bool, bool, bool)</h4>
+  <h4 id="Reportman_Drawing_PDFCanvas_TextExtent_System_String_System_Drawing_Rectangle__System_Boolean_System_Boolean_System_Boolean_System_Boolean_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextExtent(System.String,System.Drawing.Rectangle@,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.Boolean)">TextExtent(string, ref Rectangle, bool, bool, bool, bool, bool)</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="declaration">Declaration</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public List&lt;LineInfo&gt; TextExtent(string Text, ref Rectangle rect, bool wordbreak, bool singleline, bool dolineinfo, bool RightToLeft)</code></pre>
+    <pre><code class="lang-csharp hljs">public List&lt;LineInfo&gt; TextExtent(string Text, ref Rectangle rect, bool wordbreak, bool singleline, bool dolineinfo, bool RightToLeft, bool isHtml = false)</code></pre>
   </div>
   <h5 class="parameters">Parameters</h5>
   <table class="table table-bordered table-condensed">
@@ -1322,6 +1431,11 @@
         <td><span class="parametername">RightToLeft</span></td>
         <td></td>
       </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">isHtml</span></td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
   <h5 class="returns">Returns</h5>
@@ -1334,13 +1448,15 @@
     </thead>
     <tbody>
       <tr>
-        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.LineInfo.html">LineInfo</a>&gt;</td>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">LineInfo</a>&gt;</td>
         <td></td>
       </tr>
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_TextExtentSimple_" data-uid="Reportman.Drawing.PDFCanvas.TextExtentSimple*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_TextExtentSimple_System_String_System_Drawing_Rectangle__System_Boolean_System_Boolean_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextExtentSimple(System.String,System.Drawing.Rectangle@,System.Boolean,System.Boolean,System.Boolean)">TextExtentSimple(string, ref Rectangle, bool, bool, bool)</h4>
   <div class="markdown level1 summary"></div>
@@ -1387,14 +1503,16 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_TextOut_" data-uid="Reportman.Drawing.PDFCanvas.TextOut*"></a>
-  <h4 id="Reportman_Drawing_PDFCanvas_TextOut_System_Int32_System_Int32_System_String_System_Int32_System_Int32_System_Boolean_Reportman_Drawing_LineInfo_" data-uid="Reportman.Drawing.PDFCanvas.TextOut(System.Int32,System.Int32,System.String,System.Int32,System.Int32,System.Boolean,Reportman.Drawing.LineInfo)">TextOut(int, int, string, int, int, bool, LineInfo)</h4>
+  <h4 id="Reportman_Drawing_PDFCanvas_TextOut_System_Int32_System_Int32_System_String_System_Int32_System_Int32_System_Boolean_Reportman_Drawing_LineInfo_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextOut(System.Int32,System.Int32,System.String,System.Int32,System.Int32,System.Boolean,Reportman.Drawing.LineInfo,System.Boolean)">TextOut(int, int, string, int, int, bool, LineInfo, bool)</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="declaration">Declaration</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void TextOut(int X, int Y, string Text, int LineWidth, int Rotation, bool RightToLeft, LineInfo lInfo)</code></pre>
+    <pre><code class="lang-csharp hljs">public void TextOut(int X, int Y, string Text, int LineWidth, int Rotation, bool RightToLeft, LineInfo lInfo, bool isHtml = false)</code></pre>
   </div>
   <h5 class="parameters">Parameters</h5>
   <table class="table table-bordered table-condensed">
@@ -1441,17 +1559,24 @@
         <td><span class="parametername">lInfo</span></td>
         <td></td>
       </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">isHtml</span></td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_TextRect_" data-uid="Reportman.Drawing.PDFCanvas.TextRect*"></a>
-  <h4 id="Reportman_Drawing_PDFCanvas_TextRect_System_Drawing_Rectangle_System_String_System_Int32_System_Boolean_System_Boolean_System_Int32_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextRect(System.Drawing.Rectangle,System.String,System.Int32,System.Boolean,System.Boolean,System.Int32,System.Boolean)">TextRect(Rectangle, string, int, bool, bool, int, bool)</h4>
+  <h4 id="Reportman_Drawing_PDFCanvas_TextRect_System_Drawing_Rectangle_System_String_System_Int32_System_Boolean_System_Boolean_System_Int32_System_Boolean_System_Boolean_" data-uid="Reportman.Drawing.PDFCanvas.TextRect(System.Drawing.Rectangle,System.String,System.Int32,System.Boolean,System.Boolean,System.Int32,System.Boolean,System.Boolean)">TextRect(Rectangle, string, int, bool, bool, int, bool, bool)</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="declaration">Declaration</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void TextRect(Rectangle arect, string Text, int Alignment, bool Clipping, bool wordbreak, int Rotation, bool RightToLeft)</code></pre>
+    <pre><code class="lang-csharp hljs">public void TextRect(Rectangle arect, string Text, int Alignment, bool Clipping, bool wordbreak, int Rotation, bool RightToLeft, bool isHtml = false)</code></pre>
   </div>
   <h5 class="parameters">Parameters</h5>
   <table class="table table-bordered table-condensed">
@@ -1498,10 +1623,17 @@
         <td><span class="parametername">RightToLeft</span></td>
         <td></td>
       </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">isHtml</span></td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Translate_" data-uid="Reportman.Drawing.PDFCanvas.Translate*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Translate_System_Int32_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.Translate(System.Int32,System.Int32)">Translate(int, int)</h4>
   <div class="markdown level1 summary"></div>
@@ -1533,7 +1665,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_Type1FontTopdfFontName_" data-uid="Reportman.Drawing.PDFCanvas.Type1FontTopdfFontName*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_Type1FontTopdfFontName_Reportman_Drawing_PDFFontType_System_Boolean_System_Boolean_System_String_System_Int32_Reportman_Drawing_PDFConformanceType_" data-uid="Reportman.Drawing.PDFCanvas.Type1FontTopdfFontName(Reportman.Drawing.PDFFontType,System.Boolean,System.Boolean,System.String,System.Int32,Reportman.Drawing.PDFConformanceType)">Type1FontTopdfFontName(PDFFontType, bool, bool, string, int, PDFConformanceType)</h4>
   <div class="markdown level1 summary"></div>
@@ -1600,7 +1734,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_UnitsToTextX_" data-uid="Reportman.Drawing.PDFCanvas.UnitsToTextX*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_UnitsToTextX_System_Double_" data-uid="Reportman.Drawing.PDFCanvas.UnitsToTextX(System.Double)">UnitsToTextX(double)</h4>
   <div class="markdown level1 summary"></div>
@@ -1642,7 +1778,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_UnitsToTextY_" data-uid="Reportman.Drawing.PDFCanvas.UnitsToTextY*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_UnitsToTextY_System_Double_" data-uid="Reportman.Drawing.PDFCanvas.UnitsToTextY(System.Double)">UnitsToTextY(double)</h4>
   <div class="markdown level1 summary"></div>
@@ -1684,7 +1822,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_UpdateFonts_" data-uid="Reportman.Drawing.PDFCanvas.UpdateFonts*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_UpdateFonts" data-uid="Reportman.Drawing.PDFCanvas.UpdateFonts">UpdateFonts()</h4>
   <div class="markdown level1 summary"></div>
@@ -1709,7 +1849,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_WideCharToHex_" data-uid="Reportman.Drawing.PDFCanvas.WideCharToHex*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_WideCharToHex_System_Char_" data-uid="Reportman.Drawing.PDFCanvas.WideCharToHex(System.Char)">WideCharToHex(char)</h4>
   <div class="markdown level1 summary"></div>
@@ -1751,7 +1893,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_WriteBrushColor_" data-uid="Reportman.Drawing.PDFCanvas.WriteBrushColor*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_WriteBrushColor_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.WriteBrushColor(System.Int32)">WriteBrushColor(int)</h4>
   <div class="markdown level1 summary"></div>
@@ -1778,7 +1922,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PDFCanvas_WritePenColor_" data-uid="Reportman.Drawing.PDFCanvas.WritePenColor*"></a>
   <h4 id="Reportman_Drawing_PDFCanvas_WritePenColor_System_Int32_" data-uid="Reportman.Drawing.PDFCanvas.WritePenColor(System.Int32)">WritePenColor(int)</h4>
   <div class="markdown level1 summary"></div>
@@ -1812,6 +1958,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing/PDFCanvas.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

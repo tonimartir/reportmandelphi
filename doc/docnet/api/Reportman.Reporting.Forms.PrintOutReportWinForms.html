@@ -263,6 +263,9 @@ This is the recommended driver for Windows.Forms applications</p>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_OptimizeWMF">PrintOutNet.OptimizeWMF</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_UsePDFFonts">PrintOutNet.UsePDFFonts</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_HardMarginX">PrintOutNet.HardMarginX</a>
     </div>
     <div>
@@ -279,6 +282,9 @@ This is the recommended driver for Windows.Forms applications</p>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextExtent_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_">PrintOutNet.TextExtent(TextObjectStruct, Point)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point__">PrintOutNet.TextExtentLineInfo(TextObjectStruct, ref Point)</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_SetPageSize_Reportman_Drawing_PageSizeDetail_">PrintOutNet.SetPageSize(PageSizeDetail)</a>
@@ -302,7 +308,13 @@ This is the recommended driver for Windows.Forms applications</p>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_DrawObject_System_Drawing_Graphics_Reportman_Drawing_MetaPage_Reportman_Drawing_MetaObject_">PrintOutNet.DrawObject(Graphics, MetaPage, MetaObject)</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextRectHtml_System_Drawing_Graphics_System_Drawing_Rectangle_Reportman_Drawing_TextObjectStruct_System_Drawing_Font_System_Drawing_SolidBrush_">PrintOutNet.TextRectHtml(Graphics, Rectangle, TextObjectStruct, Font, SolidBrush)</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextRectJustify_System_Drawing_Graphics_System_Drawing_Rectangle_Reportman_Drawing_TextObjectStruct_System_Drawing_Font_System_Drawing_SolidBrush_">PrintOutNet.TextRectJustify(Graphics, Rectangle, TextObjectStruct, Font, SolidBrush)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_UseExactPDFText">PrintOutNet.UseExactPDFText</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_DefaultPrinterName">PrintOut.DefaultPrinterName</a>
@@ -391,7 +403,9 @@ prw.Print(rp.MetaFile);</code></pre>
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Forms_PrintOutReportWinForms__ctor_" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.#ctor*"></a>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms__ctor_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.#ctor(Reportman.Reporting.Report)">PrintOutReportWinForms(Report)</h4>
   <div class="markdown level1 summary"><p>Constructor</p>
@@ -422,7 +436,9 @@ prw.Print(rp.MetaFile);</code></pre>
   <h3 id="fields">Fields
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms_PreviewPageSetupVisible" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.PreviewPageSetupVisible">PreviewPageSetupVisible</h4>
   <div class="markdown level1 summary"><p>Set this property to false to disable the option to show page setup on preview window</p>
 </div>
@@ -447,7 +463,9 @@ prw.Print(rp.MetaFile);</code></pre>
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms_PreviewParametersVisible" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.PreviewParametersVisible">PreviewParametersVisible</h4>
   <div class="markdown level1 summary"><p>Set this property to false to disable the option to show report parameters on preview window</p>
 </div>
@@ -474,7 +492,9 @@ prw.Print(rp.MetaFile);</code></pre>
   <h3 id="properties">Properties
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Forms_PrintOutReportWinForms_Report_" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.Report*"></a>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms_Report" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.Report">Report</h4>
   <div class="markdown level1 summary"><p>Get the report being processed</p>
@@ -502,7 +522,9 @@ prw.Print(rp.MetaFile);</code></pre>
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Forms_PrintOutReportWinForms_Dispose_" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.Dispose*"></a>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms_Dispose" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.Dispose">Dispose()</h4>
   <div class="markdown level1 summary"><p>Free memory consumed by graphics resources</p>
@@ -515,7 +537,9 @@ prw.Print(rp.MetaFile);</code></pre>
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.Forms.PrintOutWinForms.html#Reportman_Drawing_Forms_PrintOutWinForms_Dispose">PrintOutWinForms.Dispose()</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Forms_PrintOutReportWinForms_SetReportEvents_" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.SetReportEvents*"></a>
   <h4 id="Reportman_Reporting_Forms_PrintOutReportWinForms_SetReportEvents" data-uid="Reportman.Reporting.Forms.PrintOutReportWinForms.SetReportEvents">SetReportEvents()</h4>
   <div class="markdown level1 summary"><p>Internally used to assign events for report alteration, report parameters and page setup</p>
@@ -539,6 +563,9 @@ prw.Print(rp.MetaFile);</code></pre>
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting.Forms/PrintOutReportWinForms.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

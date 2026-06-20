@@ -84,7 +84,7 @@
   <h1 id="Reportman_Reporting_DriverType" data-uid="Reportman.Reporting.DriverType" class="text-break">Enum DriverType</h1>
   <div class="markdown level0 summary"><p>The DriverType is part of a report database information definition, indicating the technology to be used
 to connect to the database, in .Net version you can choose DotNet or DotNet2 depending on the version you
-are using. <a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfo</a></p>
+are using. <a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a></p>
 </div>
   <div class="markdown level0 conceptual"></div>
   <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
@@ -123,22 +123,29 @@ Not available in .Net</p>
       <tr>
         <td id="Reportman_Reporting_DriverType_DotNet">DotNet</td>
         <td><p>Driver used to connect to databases in .Net 1.x, because no abstraction is provided in .Net 1.x,
-you must select alse the driver (object instances) to be used. <a class="xref" href="Reportman.Reporting.Variant.html">DotNetDriverType</a>
+you must select alse the driver (object instances) to be used. <a class="xref" href="Reportman.Reporting.DotNetDriverType.html">DotNetDriverType</a>
 Available only in .Net 1.x, deprecated</p>
 </td>
       </tr>
       <tr>
         <td id="Reportman_Reporting_DriverType_DotNet2">DotNet2</td>
         <td><p>Driver used to connect to databases in .Net 2.x, it's used with ProviderFactory property inside
-DatabaseInfo to perform the connection<a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfo</a>
+DatabaseInfo to perform the connection<a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a>
 Available only in .Net</p>
 </td>
       </tr>
       <tr>
         <td id="Reportman_Reporting_DriverType_Firedac">Firedac</td>
         <td><p>Driver used to connect to databases using Firedac Delphi/C++Buider drivers
-DatabaseInfo to perform the connection<a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfo</a>
+DatabaseInfo to perform the connection<a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a>
 Not Available only in .Net</p>
+</td>
+      </tr>
+      <tr>
+        <td id="Reportman_Reporting_DriverType_HttpAgent">HttpAgent</td>
+        <td><p>Driver used to connect to databases via HTTP Agent API.
+Uses ApiKey or Bearer token authentication to execute SQL through a remote agent.
+Available in .Net</p>
 </td>
       </tr>
       <tr>
@@ -173,6 +180,9 @@ Not available in .Net</p>
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DatabaseInfo.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

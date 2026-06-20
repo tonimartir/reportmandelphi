@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class PrintOutBitmap | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Print-out driver that renders report metafile pages onto GDI+ bitmaps, stacking the selected pages into a single image for export.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Drawing_PrintOutBitmap" data-uid="Reportman.Drawing.PrintOutBitmap" class="text-break">Class PrintOutBitmap</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Print-out driver that renders report metafile pages onto GDI+ bitmaps, stacking the
+selected pages into a single image for export.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -103,6 +105,9 @@
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_OptimizeWMF">PrintOutNet.OptimizeWMF</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_UsePDFFonts">PrintOutNet.UsePDFFonts</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_HardMarginX">PrintOutNet.HardMarginX</a>
     </div>
     <div>
@@ -119,6 +124,9 @@
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextExtent_Reportman_Drawing_TextObjectStruct_System_Drawing_Point_">PrintOutNet.TextExtent(TextObjectStruct, Point)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextExtentLineInfo_Reportman_Drawing_TextObjectStruct_System_Drawing_Point__">PrintOutNet.TextExtentLineInfo(TextObjectStruct, ref Point)</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_FontFromObject_Reportman_Drawing_MetaPage_Reportman_Drawing_MetaObjectText_">PrintOutNet.FontFromObject(MetaPage, MetaObjectText)</a>
@@ -148,7 +156,13 @@
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_DrawObject_System_Drawing_Graphics_Reportman_Drawing_MetaPage_Reportman_Drawing_MetaObject_">PrintOutNet.DrawObject(Graphics, MetaPage, MetaObject)</a>
     </div>
     <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextRectHtml_System_Drawing_Graphics_System_Drawing_Rectangle_Reportman_Drawing_TextObjectStruct_System_Drawing_Font_System_Drawing_SolidBrush_">PrintOutNet.TextRectHtml(Graphics, Rectangle, TextObjectStruct, Font, SolidBrush)</a>
+    </div>
+    <div>
       <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_TextRectJustify_System_Drawing_Graphics_System_Drawing_Rectangle_Reportman_Drawing_TextObjectStruct_System_Drawing_Font_System_Drawing_SolidBrush_">PrintOutNet.TextRectJustify(Graphics, Rectangle, TextObjectStruct, Font, SolidBrush)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_UseExactPDFText">PrintOutNet.UseExactPDFText</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Drawing.PrintOut.html#Reportman_Drawing_PrintOut_DefaultPrinterName">PrintOut.DefaultPrinterName</a>
@@ -253,7 +267,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap__ctor_" data-uid="Reportman.Drawing.PrintOutBitmap.#ctor*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap__ctor" data-uid="Reportman.Drawing.PrintOutBitmap.#ctor">PrintOutBitmap()</h4>
   <div class="markdown level1 summary"></div>
@@ -265,7 +281,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap_DrawPage_" data-uid="Reportman.Drawing.PrintOutBitmap.DrawPage*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap_DrawPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_" data-uid="Reportman.Drawing.PrintOutBitmap.DrawPage(Reportman.Drawing.MetaFile,Reportman.Drawing.MetaPage)">DrawPage(MetaFile, MetaPage)</h4>
   <div class="markdown level1 summary"><p>Draws all the objects inside a page to the Bitmap Output</p>
@@ -302,7 +320,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_DrawPage_Reportman_Drawing_MetaFile_Reportman_Drawing_MetaPage_">PrintOutNet.DrawPage(MetaFile, MetaPage)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap_ExportToBitmap_" data-uid="Reportman.Drawing.PrintOutBitmap.ExportToBitmap*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap_ExportToBitmap_Reportman_Drawing_MetaFile_System_Boolean_System_Int32_System_Int32_System_Boolean_System_Single_System_Single_" data-uid="Reportman.Drawing.PrintOutBitmap.ExportToBitmap(Reportman.Drawing.MetaFile,System.Boolean,System.Int32,System.Int32,System.Boolean,System.Single,System.Single)">ExportToBitmap(MetaFile, bool, int, int, bool, float, float)</h4>
   <div class="markdown level1 summary"></div>
@@ -374,7 +394,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap_GetPageSize_" data-uid="Reportman.Drawing.PrintOutBitmap.GetPageSize*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap_GetPageSize_System_Int32__" data-uid="Reportman.Drawing.PrintOutBitmap.GetPageSize(System.Int32@)">GetPageSize(out int)</h4>
   <div class="markdown level1 summary"><p>Obtain current page size and also an index to the PageSizeArray</p>
@@ -421,7 +443,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_GetPageSize_System_Int32__">PrintOutNet.GetPageSize(out int)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap_GraphicExtent_" data-uid="Reportman.Drawing.PrintOutBitmap.GraphicExtent*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap_GraphicExtent_System_IO_MemoryStream_System_Drawing_Point_System_Int32_" data-uid="Reportman.Drawing.PrintOutBitmap.GraphicExtent(System.IO.MemoryStream,System.Drawing.Point,System.Int32)">GraphicExtent(MemoryStream, Point, int)</h4>
   <div class="markdown level1 summary"><p>Calculate graphic extent using System.Drawing, the stream must be a valid bitmap</p>
@@ -480,7 +504,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Drawing.PrintOutNet.html#Reportman_Drawing_PrintOutNet_GraphicExtent_System_IO_MemoryStream_System_Drawing_Point_System_Int32_">PrintOutNet.GraphicExtent(MemoryStream, Point, int)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_PrintOutBitmap_SetPageSize_" data-uid="Reportman.Drawing.PrintOutBitmap.SetPageSize*"></a>
   <h4 id="Reportman_Drawing_PrintOutBitmap_SetPageSize_Reportman_Drawing_PageSizeDetail_" data-uid="Reportman.Drawing.PrintOutBitmap.SetPageSize(Reportman.Drawing.PageSizeDetail)">SetPageSize(PageSizeDetail)</h4>
   <div class="markdown level1 summary"><p>Set page size</p>
@@ -538,6 +564,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/PrintOutBitmap.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
