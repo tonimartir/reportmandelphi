@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class Report | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Concrete report document derived from ; it drives the page-generation lifecycle (BeginPrint/PrintNextPage) and rewires its child objects — params, database/data info, subreports, sections and items — back to the report after deserialization.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,10 @@
 
 
   <h1 id="Reportman_Reporting_Report" data-uid="Reportman.Reporting.Report" class="text-break">Class Report</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Concrete report document derived from <a class="xref" href="Reportman.Reporting.BaseReport.html">BaseReport</a>; it drives the page-generation
+lifecycle (BeginPrint/PrintNextPage) and rewires its child objects — params, database/data info,
+subreports, sections and items — back to the report after deserialization.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -280,7 +283,7 @@
       <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_LoadFromDataReader_System_Data_IDataReader_">BaseReport.LoadFromDataReader(IDataReader)</a>
     </div>
     <div>
-      <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_LoadFromStream_System_IO_Stream_">BaseReport.LoadFromStream(Stream)</a>
+      <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_LoadFromStream_System_IO_Stream_System_Boolean_">BaseReport.LoadFromStream(Stream, bool)</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_ConvertToDotNet">BaseReport.ConvertToDotNet()</a>
@@ -362,6 +365,9 @@
     </div>
     <div>
       <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_GenerateNewName_Reportman_Reporting_ReportItem_">BaseReport.GenerateNewName(ReportItem)</a>
+    </div>
+    <div>
+      <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_EnsureComponentNames">BaseReport.EnsureComponentNames()</a>
     </div>
     <div>
       <a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_FindNewName_Reportman_Reporting_ReportItem_">BaseReport.FindNewName(ReportItem)</a>
@@ -658,7 +664,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/Report.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Report__ctor_" data-uid="Reportman.Reporting.Report.#ctor*"></a>
   <h4 id="Reportman_Reporting_Report__ctor" data-uid="Reportman.Reporting.Report.#ctor">Report()</h4>
   <div class="markdown level1 summary"></div>
@@ -670,7 +678,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/Report.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Report_BeginPrint_" data-uid="Reportman.Reporting.Report.BeginPrint*"></a>
   <h4 id="Reportman_Reporting_Report_BeginPrint_Reportman_Drawing_PrintOut_" data-uid="Reportman.Reporting.Report.BeginPrint(Reportman.Drawing.PrintOut)">BeginPrint(PrintOut)</h4>
   <div class="markdown level1 summary"></div>
@@ -699,7 +709,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="Reportman.Reporting.BaseReport.html#Reportman_Reporting_BaseReport_BeginPrint_Reportman_Drawing_PrintOut_">BaseReport.BeginPrint(PrintOut)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/Report.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_Report_PrintNextPage_" data-uid="Reportman.Reporting.Report.PrintNextPage*"></a>
   <h4 id="Reportman_Reporting_Report_PrintNextPage" data-uid="Reportman.Reporting.Report.PrintNextPage">PrintNextPage()</h4>
   <div class="markdown level1 summary"></div>
@@ -737,6 +749,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/Report.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

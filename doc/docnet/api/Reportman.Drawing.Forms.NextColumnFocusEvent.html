@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Delegate NextColumnFocusEvent | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Callback that lets a handler override which column receives focus next when the user advances with Enter/Tab; the target column index is returned through nextcolumn.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Drawing_Forms_NextColumnFocusEvent" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent" class="text-break">Delegate NextColumnFocusEvent</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Callback that lets a handler override which column receives focus next when the user
+advances with Enter/Tab; the target column index is returned through nextcolumn.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Drawing.html">Drawing</a>.<a class="xref" href="Reportman.Drawing.Forms.html">Forms</a></h6>
   <h6><strong>Assembly</strong>: Reportman.Drawing.Forms.dll</h6>
@@ -102,24 +104,26 @@
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
         <td><span class="parametername">sender</span></td>
-        <td></td>
+        <td>Callback that lets a handler override which column receives focus next when the user advances with Enter/Tab; the target column index is returned through nextcolumn.</td>
       </tr>
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
         <td><span class="parametername">currentcolumn</span></td>
-        <td></td>
+        <td>Callback that lets a handler override which column receives focus next when the user advances with Enter/Tab; the target column index is returned through nextcolumn.</td>
       </tr>
       <tr>
         <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
         <td><span class="parametername">nextcolumn</span></td>
-        <td></td>
+        <td>Callback that lets a handler override which column receives focus next when the user advances with Enter/Tab; the target column index is returned through nextcolumn.</td>
       </tr>
     </tbody>
   </table>
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Forms/DataGridViewAdvanced.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Forms_NextColumnFocusEvent__ctor_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.#ctor*"></a>
   <h4 id="Reportman_Drawing_Forms_NextColumnFocusEvent__ctor_System_Object_System_IntPtr_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.#ctor(System.Object,System.IntPtr)">NextColumnFocusEvent(object, nint)</h4>
   <div class="markdown level1 summary"></div>
@@ -153,7 +157,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Forms/DataGridViewAdvanced.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Forms_NextColumnFocusEvent_BeginInvoke_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.BeginInvoke*"></a>
   <h4 id="Reportman_Drawing_Forms_NextColumnFocusEvent_BeginInvoke_System_Object_System_Int32_System_Int32__System_AsyncCallback_System_Object_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.BeginInvoke(System.Object,System.Int32,System.Int32@,System.AsyncCallback,System.Object)">BeginInvoke(object, int, ref int, AsyncCallback, object)</h4>
   <div class="markdown level1 summary"></div>
@@ -215,7 +221,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Forms/DataGridViewAdvanced.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Forms_NextColumnFocusEvent_EndInvoke_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.EndInvoke*"></a>
   <h4 id="Reportman_Drawing_Forms_NextColumnFocusEvent_EndInvoke_System_Int32__System_IAsyncResult_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.EndInvoke(System.Int32@,System.IAsyncResult)">EndInvoke(ref int, IAsyncResult)</h4>
   <div class="markdown level1 summary"></div>
@@ -247,7 +255,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Forms/DataGridViewAdvanced.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Forms_NextColumnFocusEvent_Invoke_" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.Invoke*"></a>
   <h4 id="Reportman_Drawing_Forms_NextColumnFocusEvent_Invoke_System_Object_System_Int32_System_Int32__" data-uid="Reportman.Drawing.Forms.NextColumnFocusEvent.Invoke(System.Object,System.Int32,System.Int32@)">Invoke(object, int, ref int)</h4>
   <div class="markdown level1 summary"></div>
@@ -291,6 +301,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Forms/DataGridViewAdvanced.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

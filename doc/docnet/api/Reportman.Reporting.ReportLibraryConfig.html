@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class ReportLibraryConfig | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Configuration for a report library connection: the database driver, connection string and table/field mapping used to read and save report templates from a database, including optional HttpAgent (remote agent) credentials.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,10 @@
 
 
   <h1 id="Reportman_Reporting_ReportLibraryConfig" data-uid="Reportman.Reporting.ReportLibraryConfig" class="text-break">Class ReportLibraryConfig</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Configuration for a report library connection: the database driver, connection
+string and table/field mapping used to read and save report templates from a
+database, including optional HttpAgent (remote agent) credentials.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -118,7 +121,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig__ctor_" data-uid="Reportman.Reporting.ReportLibraryConfig.#ctor*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig__ctor" data-uid="Reportman.Reporting.ReportLibraryConfig.#ctor">ReportLibraryConfig()</h4>
   <div class="markdown level1 summary"></div>
@@ -130,7 +135,9 @@
   <h3 id="fields">Fields
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_CurrentConnection" data-uid="Reportman.Reporting.ReportLibraryConfig.CurrentConnection">CurrentConnection</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -156,7 +163,9 @@
   <h3 id="properties">Properties
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ADOConnectionString_" data-uid="Reportman.Reporting.ReportLibraryConfig.ADOConnectionString*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ADOConnectionString" data-uid="Reportman.Reporting.ReportLibraryConfig.ADOConnectionString">ADOConnectionString</h4>
   <div class="markdown level1 summary"></div>
@@ -181,7 +190,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_Alias_" data-uid="Reportman.Reporting.ReportLibraryConfig.Alias*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_Alias" data-uid="Reportman.Reporting.ReportLibraryConfig.Alias">Alias</h4>
   <div class="markdown level1 summary"></div>
@@ -206,7 +217,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_AllowSorting_" data-uid="Reportman.Reporting.ReportLibraryConfig.AllowSorting*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_AllowSorting" data-uid="Reportman.Reporting.ReportLibraryConfig.AllowSorting">AllowSorting</h4>
   <div class="markdown level1 summary"></div>
@@ -231,7 +244,37 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_ReportLibraryConfig_ApiKey_" data-uid="Reportman.Reporting.ReportLibraryConfig.ApiKey*"></a>
+  <h4 id="Reportman_Reporting_ReportLibraryConfig_ApiKey" data-uid="Reportman.Reporting.ReportLibraryConfig.ApiKey">ApiKey</h4>
+  <div class="markdown level1 summary"><p>API Key for HttpAgent driver authentication (alternative to Bearer token)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ApiKey { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_Driver_" data-uid="Reportman.Reporting.ReportLibraryConfig.Driver*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_Driver" data-uid="Reportman.Reporting.ReportLibraryConfig.Driver">Driver</h4>
   <div class="markdown level1 summary"></div>
@@ -256,7 +299,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_DriverIndex_" data-uid="Reportman.Reporting.ReportLibraryConfig.DriverIndex*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_DriverIndex" data-uid="Reportman.Reporting.ReportLibraryConfig.DriverIndex">DriverIndex</h4>
   <div class="markdown level1 summary"></div>
@@ -281,7 +326,65 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_ReportLibraryConfig_HttpAgentBaseUrl_" data-uid="Reportman.Reporting.ReportLibraryConfig.HttpAgentBaseUrl*"></a>
+  <h4 id="Reportman_Reporting_ReportLibraryConfig_HttpAgentBaseUrl" data-uid="Reportman.Reporting.ReportLibraryConfig.HttpAgentBaseUrl">HttpAgentBaseUrl</h4>
+  <div class="markdown level1 summary"><p>Base URL for HttpAgent API (e.g., &quot;https://api.reportman.es&quot;)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string HttpAgentBaseUrl { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_ReportLibraryConfig_HubDatabaseId_" data-uid="Reportman.Reporting.ReportLibraryConfig.HubDatabaseId*"></a>
+  <h4 id="Reportman_Reporting_ReportLibraryConfig_HubDatabaseId" data-uid="Reportman.Reporting.ReportLibraryConfig.HubDatabaseId">HubDatabaseId</h4>
+  <div class="markdown level1 summary"><p>Hub Database Id for HttpAgent driver - identifies the database on the remote agent</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long HubDatabaseId { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_LoadDriverParams_" data-uid="Reportman.Reporting.ReportLibraryConfig.LoadDriverParams*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_LoadDriverParams" data-uid="Reportman.Reporting.ReportLibraryConfig.LoadDriverParams">LoadDriverParams</h4>
   <div class="markdown level1 summary"></div>
@@ -306,7 +409,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_LoadParams_" data-uid="Reportman.Reporting.ReportLibraryConfig.LoadParams*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_LoadParams" data-uid="Reportman.Reporting.ReportLibraryConfig.LoadParams">LoadParams</h4>
   <div class="markdown level1 summary"></div>
@@ -331,7 +436,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_LoginPrompt_" data-uid="Reportman.Reporting.ReportLibraryConfig.LoginPrompt*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_LoginPrompt" data-uid="Reportman.Reporting.ReportLibraryConfig.LoginPrompt">LoginPrompt</h4>
   <div class="markdown level1 summary"></div>
@@ -356,7 +463,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ProviderName_" data-uid="Reportman.Reporting.ReportLibraryConfig.ProviderName*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ProviderName" data-uid="Reportman.Reporting.ReportLibraryConfig.ProviderName">ProviderName</h4>
   <div class="markdown level1 summary"></div>
@@ -381,7 +490,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ReportField_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportField*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ReportField" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportField">ReportField</h4>
   <div class="markdown level1 summary"></div>
@@ -406,7 +517,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ReportGroupsTable_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportGroupsTable*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ReportGroupsTable" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportGroupsTable">ReportGroupsTable</h4>
   <div class="markdown level1 summary"></div>
@@ -431,7 +544,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ReportSearchField_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportSearchField*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ReportSearchField" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportSearchField">ReportSearchField</h4>
   <div class="markdown level1 summary"></div>
@@ -456,7 +571,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ReportTable_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportTable*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ReportTable" data-uid="Reportman.Reporting.ReportLibraryConfig.ReportTable">ReportTable</h4>
   <div class="markdown level1 summary"></div>
@@ -480,10 +597,40 @@
       </tr>
     </tbody>
   </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_ReportLibraryConfig_Token_" data-uid="Reportman.Reporting.ReportLibraryConfig.Token*"></a>
+  <h4 id="Reportman_Reporting_ReportLibraryConfig_Token" data-uid="Reportman.Reporting.ReportLibraryConfig.Token">Token</h4>
+  <div class="markdown level1 summary"><p>Bearer token for HttpAgent driver authentication (alternative to ApiKey)</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Token { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_GetConfigFilename_" data-uid="Reportman.Reporting.ReportLibraryConfig.GetConfigFilename*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_GetConfigFilename" data-uid="Reportman.Reporting.ReportLibraryConfig.GetConfigFilename">GetConfigFilename()</h4>
   <div class="markdown level1 summary"></div>
@@ -508,7 +655,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_GetFactory_" data-uid="Reportman.Reporting.ReportLibraryConfig.GetFactory*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_GetFactory" data-uid="Reportman.Reporting.ReportLibraryConfig.GetFactory">GetFactory()</h4>
   <div class="markdown level1 summary"></div>
@@ -533,7 +682,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ReadReport_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReadReport*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ReadReport_System_String_" data-uid="Reportman.Reporting.ReportLibraryConfig.ReadReport(System.String)">ReadReport(string)</h4>
   <div class="markdown level1 summary"></div>
@@ -575,7 +726,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_SaveReport_" data-uid="Reportman.Reporting.ReportLibraryConfig.SaveReport*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_SaveReport_Reportman_Reporting_Report_System_String_Reportman_Reporting_StreamVersion_" data-uid="Reportman.Reporting.ReportLibraryConfig.SaveReport(Reportman.Reporting.Report,System.String,Reportman.Reporting.StreamVersion)">SaveReport(Report, string, StreamVersion)</h4>
   <div class="markdown level1 summary"></div>
@@ -627,7 +780,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_ReportLibraryConfig_ToString_" data-uid="Reportman.Reporting.ReportLibraryConfig.ToString*"></a>
   <h4 id="Reportman_Reporting_ReportLibraryConfig_ToString" data-uid="Reportman.Reporting.ReportLibraryConfig.ToString">ToString()</h4>
   <div class="markdown level1 summary"></div>
@@ -661,6 +816,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/ReportLibraryConfig.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

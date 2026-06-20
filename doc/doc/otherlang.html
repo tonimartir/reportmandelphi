@@ -46,7 +46,8 @@
 <input type="checkbox" id="docnav" class="doc-nav-cb">
 <label for="docnav" class="doc-nav-btn">Documentation menu</label>
 <nav class="doc-nav" aria-label="Documentation menu">
-<h4>Introduction</h4>
+<details class="doc-sec">
+<summary>Introduction</summary>
 <ul>
 <li><a href="/doc/index.html">Application description</a></li>
 <li><a href="/doc/requirements.html">Hardware and software requirements</a></li>
@@ -57,16 +58,34 @@
 <li><a href="/tutorial/index.html">Quick tutorial</a></li>
 <li><a href="/doc/success.html">Successful projects</a></li>
 </ul>
-<h4>Installation</h4>
+</details>
+<details class="doc-sec" open>
+<summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html">Linux</a></li>
+<li><a href="/doc/installlin.html">Linux (deprecated)</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
+<li class="has-sub"><details class="doc-sub" open>
+<summary>Other languages</summary>
+<ul>
 <li><a href="/doc/otherlang.html" class="current" aria-current="page">Other languages</a></li>
+<li><a href="/doc/gnuc.html">GNU C</a></li>
+<li><a href="/doc/php.html">PHP</a></li>
+<li><a href="/doc/python.html">Python</a></li>
+<li><a href="/doc/python_bind.html">Python binding (reportman.py)</a></li>
+<li><a href="/doc/javascript.html">JavaScript</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Linux printreptopdf</summary>
+<ul>
 <li><a href="/doc/linuxcomp.html">Linux printreptopdf</a></li>
+<li><a href="/doc/linuxprintreptopdf.html">printreptopdf command line</a></li>
+</ul>
+</details></li>
 <li><a href="/doc/visualnetcomp.html">Visual Studio .NET</a></li>
 <li><a href="/doc/delphinetcomp.html">Delphi for .NET (deprecated)</a></li>
 <li><a href="/doc/kylixcomp.html">Kylix (deprecated)</a></li>
@@ -75,21 +94,33 @@
 <li><a href="/doc/installserver.html">Report Manager Server</a></li>
 <li><a href="/doc/dotnetport.html">.NET library setup</a></li>
 </ul>
-<h4>TCP Report Server</h4>
+</details>
+<details class="doc-sec">
+<summary>TCP Report Server</summary>
 <ul>
 <li><a href="/doc/serverintro.html">Introduction</a></li>
 <li><a href="/doc/serverserver.html">Report server</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Report client</summary>
+<ul>
 <li><a href="/doc/serverclient.html">Report client</a></li>
+<li><a href="/doc/serverclientcustom.html">Custom client</a></li>
+</ul>
+</details></li>
 <li><a href="/doc/serverconfig.html">Configuration</a></li>
 <li><a href="/doc/serversmp.html">Multiprocessor support</a></li>
 </ul>
-<h4>Web Report Server</h4>
+</details>
+<details class="doc-sec">
+<summary>Web Report Server</summary>
 <ul>
 <li><a href="/doc/webserverintro.html">Introduction</a></li>
 <li><a href="/doc/webserverinstall.html">Installation</a></li>
 <li><a href="/doc/webserveroperations.html">Operations</a></li>
 </ul>
-<h4>Basic report design</h4>
+</details>
+<details class="doc-sec">
+<summary>Basic report design</summary>
 <ul>
 <li><a href="/doc/openingdata.html">Opening the dataset</a></li>
 <li><a href="/doc/droppingfields.html">Dropping fields</a></li>
@@ -103,15 +134,29 @@
 <li><a href="/doc/commandline.html">Command line tools</a></li>
 <li><a href="/doc/replibraries.html">Report libraries</a></li>
 </ul>
-<h4>Advanced report design</h4>
+</details>
+<details class="doc-sec">
+<summary>Advanced report design</summary>
 <ul>
 <li><a href="/doc/repparams.html">Using report parameters</a></li>
 <li><a href="/doc/linkedquerys.html">Linked queries</a></li>
 <li><a href="/doc/childsubreports.html">Child subreports</a></li>
 <li><a href="/doc/labels.html">Printing labels</a></li>
 <li><a href="/doc/externalsec.html">Report files sharing sections</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Expression evaluator</summary>
+<ul>
 <li><a href="/doc/exevaluator.html">Expression evaluator</a></li>
+<li><a href="/doc/drawfunctions.html">Draw functions</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>HTML and interpolation</summary>
+<ul>
 <li><a href="/doc/htmlformat.html">HTML and interpolation</a></li>
+<li><a href="/doc/htmloutput.html">Export to HTML</a></li>
+</ul>
+</details></li>
 <li><a href="/doc/barcodes.html">Barcode printing</a></li>
 <li><a href="/doc/teechart.html">TeeChart support</a></li>
 <li><a href="/doc/internatsupport.html">International support</a></li>
@@ -124,10 +169,20 @@
 <li><a href="/doc/inmemorydata.html">In memory datasets</a></li>
 <li><a href="/doc/parallel.html">Parallel unions</a></li>
 </ul>
-<h4>Component reference</h4>
+</details>
+<details class="doc-sec">
+<summary>Component reference</summary>
 <ul>
 <li><a href="/doc/refcommon.html">Common properties</a></li>
 <li><a href="/doc/refcommontext.html">Text components</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>TRpReport</summary>
+<ul>
+<li><a href="/doc/refreport.html">TRpReport</a></li>
+<li><a href="/doc/refparameters.html">Report parameters (TRpParamList)</a></li>
+<li><a href="/doc/refdatainfo.html">Connection &amp; dataset collections</a></li>
+</ul>
+</details></li>
 <li><a href="/doc/refsubreport.html">TRpSubReport</a></li>
 <li><a href="/doc/refsection.html">TRpSection</a></li>
 <li><a href="/doc/reflabel.html">TRpLabel</a></li>
@@ -138,9 +193,17 @@
 <li><a href="/doc/refbarcode.html">TRpBarcode</a></li>
 <li><a href="/doc/refdatabaseinfo.html">Database connections</a></li>
 </ul>
-<h4>Developer</h4>
+</details>
+<details class="doc-sec">
+<summary>Developer</summary>
+<ul>
+<li class="has-sub"><details class="doc-sub">
+<summary>License questions</summary>
 <ul>
 <li><a href="/doc/licensequestions.html">License questions</a></li>
+<li><a href="/doc/license.html">MPL 1.1 full text</a></li>
+</ul>
+</details></li>
 <li><a href="/doc/translation.html">Translating Report Manager</a></li>
 <li><a href="/doc/building.html">Building binaries and tools</a></li>
 <li><a href="/doc/devdriver.html">Driver architecture</a></li>
@@ -148,13 +211,16 @@
 <li><a href="/doc/units.html">Source code units</a></li>
 <li><a href="/doc/devnotes.html">Developer notes</a></li>
 </ul>
-<h4>Release notes</h4>
+</details>
+<details class="doc-sec">
+<summary>Release notes</summary>
 <ul>
 <li><a href="/doc/whatisnew.html">What is new</a></li>
 <li><a href="/doc/faq.html">F.A.Q.</a></li>
 <li><a href="/doc/knownissues.html">Known issues and workarounds</a></li>
 <li><a href="/doc/mfeatures.html">Missing features (to-do)</a></li>
 </ul>
+</details>
 </nav>
 </div>
 <main class="doc-main">

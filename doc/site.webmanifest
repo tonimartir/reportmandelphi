@@ -4,7 +4,7 @@
   "description": "Open-source reporting engine and visual designer for .NET, Delphi, C++Builder and Linux.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#ffffff",
   "theme_color": "#0969da",
   "icons": [

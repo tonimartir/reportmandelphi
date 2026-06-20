@@ -86,15 +86,23 @@
 Classes
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.AdvFontData.html">AdvFontData</a></h4>
-      <section></section>
+      <section><p>Wraps the raw bytes of a TrueType/OpenType font file together with the offset of its table directory.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.AssemblyResolver.html">AssemblyResolver</a></h4>
-      <section></section>
+      <section><p>Installs an AppDomain assembly-resolve handler that locates the native System.Data.SQLite
+assembly from the architecture-specific (Win32/Win64) subfolder next to the executing assembly.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.BitmapInfo.html">BitmapInfo</a></h4>
-      <section></section>
+      <section><p>Holds the pixel dimensions (width and height) of a decoded image.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.BitmapUtil.html">BitmapUtil</a></h4>
-      <section></section>
+      <section><p>Static helpers for inspecting and decoding raw image streams, reading JPEG dimensions and
+converting BMP/DIB pixel data into the Adobe PDF compatible form used by the render drivers.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.CompressionTask.html">CompressionTask</a></h4>
-      <section></section>
+      <section><p>Tracks an asynchronous stream-compression operation, holding its task, cancellation
+source, and the output stream position where the compressed result will be written.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.DataUtilities.html">DataUtilities</a></h4>
       <section><p>DataTable and DataSet utilities</p>
 </section>
@@ -102,7 +110,11 @@ Classes
       <section><p>Provide utitilies about handling DateTime values</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.DbSqlExecuter.html">DbSqlExecuter</a></h4>
-      <section></section>
+      <section><p>ADO.NET-based <a class="xref" href="Reportman.Drawing.ISqlExecuter.html">ISqlExecuter</a> implementation that queues SQL open/execute
+and transaction operations and runs them against a generic <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbconnection">DbConnection</a>
+(via a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbproviderfactory">DbProviderFactory</a>) when flushed, with support for parameterized
+commands, insert blocks and partial (chunked) result-set filling.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.DoubleUtil.html">DoubleUtil</a></h4>
       <section><p>Provide utitilies about handling double values</p>
 </section>
@@ -110,39 +122,96 @@ Classes
       <section><p>Collection of double values</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.EmbeddedFile.html">EmbeddedFile</a></h4>
-      <section></section>
+      <section><p>A file embedded in the metafile (and later in the generated PDF), holding its content stream
+together with its name, MIME type, description, dates and PDF/A association relationship.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Encrypter.html">Encrypter</a></h4>
-      <section></section>
+      <section><p>Provides text encryption and decryption helpers used by the library.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Encrypter.RijndaelSimple.html">Encrypter.RijndaelSimple</a></h4>
-      <section></section>
+      <section><p>Simple Rijndael (AES) helper that encrypts and decrypts strings to and from Base64
+using CBC mode and a password-derived key, with most cryptographic parameters fixed as constants.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ExceptionUtil.html">ExceptionUtil</a></h4>
       <section><p>Provide utitilies about exception handling</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.FastSerializer.html">FastSerializer</a></h4>
-      <section></section>
+      <section><p>Serializes and deserializes ADO.NET DataSets to and from a compact custom binary
+format (including table schema, primary keys and row values), as an alternative to
+the slower built-in DataSet XML serialization.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.FileHash.html">FileHash</a></h4>
-      <section></section>
+      <section><p>Pairs a file's path (relative to a base folder) with its computed content hash.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.FileHashes.html">FileHashes</a></h4>
-      <section></section>
+      <section><p>A snapshot of file hashes for a folder tree, with the UTC timestamp at which it was generated.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.FontInfoFt.html">FontInfoFt</a></h4>
+      <section><p>Cross-platform <a class="xref" href="Reportman.Drawing.FontInfoProvider.html">FontInfoProvider</a> built on FreeType, HarfBuzz and ICU that enumerates
+system fonts, supplies font metrics, glyph and kerning widths, subsetted font streams and performs
+BiDi/script-aware text layout (including HTML) for the PDF and rendering pipeline.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.FontInfoProvider.html">FontInfoProvider</a></h4>
-      <section></section>
+      <section><p>Abstract provider of font metrics and text measurement; implementations supply character/glyph
+widths, kerning, text extent and font stream data for a given platform's font subsystem.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.GS1_128.html">GS1_128</a></h4>
-      <section></section>
+      <section><p>Parses the application-identifier data of a GS1-128 (UCC/EAN-128) barcode payload, exposing decoded fields such as SSCC, product code, dates, batch/serial numbers and a wide set of weight, dimension and volume measurements.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.GraphicUtils.html">GraphicUtils</a></h4>
-      <section></section>
+      <section><p>Static helpers for working with colors and font styles, including conversions between
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.color">Color</a> and the engine's 32-bit integer (BBGGRR) and string color encodings.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.HashGenerator.html">HashGenerator</a></h4>
-      <section></section>
+      <section><p>Computes SHA-256 hashes for every file under a folder and its subfolders.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.HtmlFormatRun.html">HtmlFormatRun</a></h4>
+      <section><p>A contiguous span of text together with the formatting (bold, italic, underline,
+strike-out, font family, font size and color) that applies to it, produced when
+parsing an HTML fragment into styled runs.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.HtmlLayoutUtils.html">HtmlLayoutUtils</a></h4>
+      <section><p>Helper routines for laying out HTML text: splitting text into lines, locating
+possible line-break positions, and breaking shaped glyph runs into chunks that fit
+a given width for both left-to-right and right-to-left text.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.HtmlTextParser.html">HtmlTextParser</a></h4>
+      <section><p>Parses a supported subset of HTML markup into a list of styled <a class="xref" href="Reportman.Drawing.HtmlFormatRun.html">HtmlFormatRun</a>
+segments, sanitizing and normalizing the input and resolving inline tags such as
+b/i/u/s, span and legacy font into bold, italic, font family, size and color attributes.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ISqlExecuterPartialFillArgs.html">ISqlExecuterPartialFillArgs</a></h4>
-      <section></section>
+      <section><p>Arguments for a partial-fill event, carrying the total expected record count and the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a> being populated.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.IniFile.html">IniFile</a></h4>
-      <section></section>
+      <section><p>Reads and writes classic INI configuration files, exposing typed accessors for
+string, integer, decimal, boolean and date/time values grouped into named sections,
+with support for loading from a file or stream and saving back.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.IniSection.html">IniSection</a></h4>
-      <section></section>
+      <section><p>A single section of an <a class="xref" href="Reportman.Drawing.IniFile.html">IniFile</a>, holding its key/value pairs as a
+sorted list keyed by value name.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Integers.html">Integers</a></h4>
       <section><p>Collection of integer values</p>
 </section>
+      <h4><a class="xref" href="Reportman.Drawing.LineGlyphs.html">LineGlyphs</a></h4>
+      <section><p>Holds the shaped glyph positions for a single line of text, indexed from a base
+text offset, along with a cluster map that links each logical text cluster to the
+glyphs that render it.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.LineSubText.html">LineSubText</a></h4>
+      <section><p>Identifies a single line within a larger text by its start position and length,
+as produced when splitting text on line breaks for layout.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ListExtensions.html">ListExtensions</a></h4>
-      <section></section>
+      <section><p>Extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List&lt;T&gt;</a>, providing a helper to swap two elements by index.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Drawing.LogFontFt.html">LogFontFt</a></h4>
+      <section><p>Holds the FreeType face handle and cached metrics (family, style, ascent/descent, bounding box,
+kerning and other attributes) for a single font file, and lazily opens the FreeType face on demand.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Longs.html">Longs</a></h4>
       <section><p>Collection of Long values</p>
 </section>
@@ -150,7 +219,9 @@ Classes
       <section><p>Utility class to access default Windows mail client</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.MemStreams.html">MemStreams</a></h4>
-      <section></section>
+      <section><p>Growable list of in-memory streams that spills to temporary files once the
+total buffered size exceeds a threshold, keeping memory use bounded.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.MetaFile.html">MetaFile</a></h4>
       <section><p>Class used engine to read/write metafiles.</p>
 </section>
@@ -189,33 +260,51 @@ or MetaFile stream</p>
       <section><p>Custom exception to be controlled,when the report is empty</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.ObjectViewModel.html">ObjectViewModel</a></h4>
-      <section></section>
+      <section><p>A tree node that exposes an arbitrary object's public fields (and enumerable items) for
+display in a hierarchical, lazily expanded property browser, with selection and expansion state.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ObjectViewModelHierarchy.html">ObjectViewModelHierarchy</a></h4>
-      <section></section>
+      <section><p>Wraps a root object as the top of an <a class="xref" href="Reportman.Drawing.ObjectViewModel.html">ObjectViewModel</a> tree, exposing the
+first generation of nodes for binding to a tree view.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PDFCanvas.html">PDFCanvas</a></h4>
-      <section></section>
+      <section><p>Low-level PDF drawing surface that emits PDF content-stream operators for lines,
+shapes, and (shaped or plain) text, handling fonts, colors, and unit conversion.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PDFFile.html">PDFFile</a></h4>
-      <section></section>
+      <section><p>Builds a complete PDF document: manages object/cross-reference tables, pages,
+embedded fonts, metadata, annotations, stream compression, and final assembly.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PDFFile.PDFAnnotation.html">PDFFile.PDFAnnotation</a></h4>
-      <section></section>
+      <section><p>Describes a single PDF annotation (typically a link), recording its target
+content stream, page, position, size, and annotation dictionary text.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PDFFont.html">PDFFont</a></h4>
-      <section></section>
+      <section><p>Describes a font as used by the rendering engine: the base PDF font type, platform-specific
+font names, size, color and style flags (bold, italic, underline, strike-out, background).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PageSizeDetail.html">PageSizeDetail</a></h4>
       <section><p>The PageSizeDetail structure contains advanced page information to select page size on a printer.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintLine.html">PrintLine</a></h4>
-      <section></section>
+      <section><p>One physical text row of a page being built by the text driver, holding the line contents,
+its character-per-inch font step, and the positioned text fragments keyed by column.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOut.html">PrintOut</a></h4>
       <section><p>Base class for print drivers define the funtions to be implemented by
 any print driver (Report processing driver)</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutBitmap.html">PrintOutBitmap</a></h4>
-      <section></section>
+      <section><p>Print-out driver that renders report metafile pages onto GDI+ bitmaps, stacking the
+selected pages into a single image for export.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutCSV.html">PrintOutCSV</a></h4>
       <section><p>Report preocessing driver, capable of generate csv files</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutCSV.TextFormat.html">PrintOutCSV.TextFormat</a></h4>
-      <section></section>
+      <section><p>Captures the visual formatting (alignment, font size, family, style flags, and
+color) of a text cell when exporting a metafile to a tabular array.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutExcel.html">PrintOutExcel</a></h4>
       <section><p>Report preocessing driver, capable of generate excel files</p>
 </section>
@@ -226,10 +315,12 @@ to measure texts, bitmaps and shapes, but still not work with printers (System.D
 or printer dialogs (Windows Forms).
 So it's a step forward to the implementation of some Report processing drivers, useful for
 preview, becuase it can use bitmap as output
-Variant</p>
+<a class="xref" href="Reportman.Drawing.PrintOutPrint.html">PrintOutPrint</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutPDF.html">PrintOutPDF</a></h4>
-      <section></section>
+      <section><p>PDF render driver that uses GDI+/System.Drawing for font metrics and bitmap handling,
+and provides helpers to encode images and build a PDF directly from a sequence of images.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutPDFBase.html">PrintOutPDFBase</a></h4>
       <section><p>Report preocessing driver, capable of generate Adobe PDF files</p>
 </section>
@@ -238,7 +329,10 @@ Variant</p>
 have dependencies on Windows.Forms</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutText.html">PrintOutText</a></h4>
-      <section></section>
+      <section><p>Render driver that paints a report metafile as plain or escape-coded text for line/dot-matrix
+and receipt printers, mapping fonts to character-per-inch steps and emitting the printer
+control codes (EPSON, IBM ProPrinter, HP-PCL, PLAIN, etc.) into a byte stream.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrinterConfig.html">PrinterConfig</a></h4>
       <section><p>Printer configuration class to obtain default printer settigns</p>
 </section>
@@ -246,19 +340,32 @@ have dependencies on Windows.Forms</p>
       <section><p>Process utilities</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.ProgressArgs.html">ProgressArgs</a></h4>
-      <section></section>
+      <section><p>Event arguments reporting progress of a long-running operation, exposing the current
+count and total and allowing the handler to request cancellation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.QRCodeEncoder.html">QRCodeEncoder</a></h4>
-      <section></section>
+      <section><p>Generates QR Code symbols from input data, computing version, mask, and Reed-Solomon
+error correction, and renders the resulting matrix into a report metafile.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Series.html">Series</a></h4>
-      <section></section>
+      <section><p>Describes a chart's overall appearance and axis configuration (ranges, scaling, fonts,
+3D effect, legend) together with the collection of data series it contains.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.SeriesItem.html">SeriesItem</a></h4>
-      <section></section>
+      <section><p>A single data series within a chart, holding its values, per-point colors and captions,
+value range, caption and the chart style used to draw it.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.StreamPosition.html">StreamPosition</a></h4>
-      <section></section>
+      <section><p>Pairs a stream with a byte offset, used to remember where a value must later be
+patched back into the PDF output.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.StreamUtil.html">StreamUtil</a></h4>
-      <section></section>
+      <section><p>Static utility helpers for working with streams: file/stream/memory conversions, writing strings,
+primitive-to-byte-array conversions and (when ZLib is enabled) stream compression and decompression.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.StringExtensions.html">StringExtensions</a></h4>
-      <section></section>
+      <section><p>Extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a> providing escape-aware splitting, escaping/unescaping with a custom escape character, diacritic removal and quoting helpers.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.StringUtil.html">StringUtil</a></h4>
       <section><p>Provide utitilies about handling string values</p>
 </section>
@@ -266,46 +373,67 @@ have dependencies on Windows.Forms</p>
       <section><p>String collection</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.TTFontData.html">TTFontData</a></h4>
-      <section></section>
+      <section><p>Aggregates all the metrics and tables needed to embed and measure a TrueType/Type1 font in a PDF:
+ascent/descent, bounding box, per-glyph widths, kerning, encoding and the PDF object indices for the font.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.TableData.html">TableData</a></h4>
-      <section></section>
+      <section><p>Directory entry for a single table inside a TrueType font file, holding its tag name,
+byte offset, length and checksum.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.TaskCompressResult.html">TaskCompressResult</a></h4>
-      <section></section>
+      <section><p>Result of an asynchronous compression task, reporting the source and destination streams,
+whether the source was disposed, whether the operation was cancelled and the number of compressed bytes produced.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.TotalPages.html">TotalPages</a></h4>
-      <section></section>
+      <section><p>List of <a class="xref" href="Reportman.Drawing.TotalPage.html">TotalPage</a> references whose total-page placeholders are resolved
+and updated once the report has finished and the final page count is known.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Translator.html">Translator</a></h4>
       <section><p>Translator component helps in translating aplications to multiple languages
 using current user regional configuration loads the specified file
 with the regional extension for the file</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.TrueTypeFontSubSet.html">TrueTypeFontSubSet</a></h4>
-      <section></section>
+      <section><p>Builds a minimal subset of a TrueType font containing only the glyphs actually used,
+rewriting the loca/glyf tables and reassembling the font for embedding (e.g. in PDF output).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Twips.html">Twips</a></h4>
       <section><p>Provide utitilies and constants related to Twips measurement unit.
 One inch contains 1440 twips</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.TwipsGraphics.html">TwipsGraphics</a></h4>
-      <section></section>
+      <section><p>Helper for converting between twips and screen pixels at the current display DPI (with an
+optional scale factor) and for snapping points to a design grid.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.UnNamedException.html">UnNamedException</a></h4>
       <section><p>Provide utitilies for handling streams, write strings, read/write
 datatypes etc.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Updater.html">Updater</a></h4>
-      <section></section>
+      <section><p>Applies file updates to a target directory, scanning source folders, detecting modified files
+by hash or timestamp, optionally backing up existing files and reporting progress as content is written.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.VersionInfo.html">VersionInfo</a></h4>
-      <section></section>
+      <section><p>Helper for reading assembly and file version numbers and deciding whether one version
+supersedes another, used to determine when files require upgrading.</p>
+</section>
     <h3 id="structs">
 Structs
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.GlyphInfo.html">GlyphInfo</a></h4>
-      <section></section>
+      <section><p>Holds metrics for a single glyph: its advance width, glyph index and source character.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.LineInfo.html">LineInfo</a></h4>
       <section><p>Line information when measuring pdf texts</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PosText.html">PosText</a></h4>
-      <section></section>
+      <section><p>A text fragment placed at a column on a print line, recording its position, length, and the
+style attributes (bold, italic, underline, strikeout, red, regular) to apply when emitting it.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.TGlyphPos.html">TGlyphPos</a></h4>
-      <section></section>
+      <section><p>Describes the positioned glyph produced by text shaping, including its index, offsets,
+advances, source character/cluster and the font styling (family, size, color, bold/italic) applied to it.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.TextObjectStruct.html">TextObjectStruct</a></h4>
       <section><p>This structure is used to store information about a block of text properties, alignment and content,
 it is used by some functions to measure texts or pass text and format information in a single variable</p>
@@ -319,11 +447,18 @@ are updated</p>
 Interfaces
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.IBitmapInfoProvider.html">IBitmapInfoProvider</a></h4>
-      <section></section>
+      <section><p>Provides image inspection services for render drivers: reading the dimensions of an encoded
+image and re-encoding an image stream into bitmap (BMP) format.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a></h4>
-      <section></section>
+      <section><p>Abstraction for executing an ADO.NET <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbcommand">IDbCommand</a> and creating new commands,
+returning query results as a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ISqlExecuter.html">ISqlExecuter</a></h4>
-      <section></section>
+      <section><p>Abstraction over a database connection used by the reporting engine to run SQL,
+open result sets, manage transactions, batch inserts, and obtain generator values,
+independent of the underlying data driver.</p>
+</section>
     <h3 id="enums">
 Enums
 </h3>
@@ -331,21 +466,29 @@ Enums
       <section><p>When previewing pages of a report, visualization scale can be adjusted to predetermined sizes</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.BarType.html">BarType</a></h4>
-      <section></section>
+      <section><p>Specifies how multiple bar series are combined: not combined, placed side by side,
+stacked, or stacked to fill 100 percent.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.BrushType.html">BrushType</a></h4>
       <section><p>Brush types, when drawing shapes, the filling area can be stablished to a specified pattern</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.ChartDriver.html">ChartDriver</a></h4>
-      <section></section>
+      <section><p>Selects which charting back end renders the chart: the default, the built-in engine, or TeeChart.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ChartType.html">ChartType</a></h4>
-      <section></section>
+      <section><p>Enumerates the available chart rendering styles, such as line, bar, pie, area, gantt or radar.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ExcelFileFormat.html">ExcelFileFormat</a></h4>
-      <section></section>
+      <section><p>Identifies the workbook format used when saving an Excel file, mapping to Excel's native
+XlFileFormat values (or auto-detected from the file extension).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ImageDrawStyleType.html">ImageDrawStyleType</a></h4>
       <section><p>Drawing styles, determines the way the image adapt to a bounding box</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.MetaFile.MetaFileVersion.html">MetaFile.MetaFileVersion</a></h4>
-      <section></section>
+      <section><p>On-disk format version of a metafile, controlling which features (PDF/A metadata,
+embedded files, recalculated printer fonts) are written and how the file is parsed.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.MetaObjectType.html">MetaObjectType</a></h4>
       <section><p>MetaFiles are composed by pages containing objects, each object can have a type that determines
 the action when drawing (or printing)</p>
@@ -354,7 +497,9 @@ the action when drawing (or printing)</p>
       <section><p>Page orientation</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PDFAFRelationShip.html">PDFAFRelationShip</a></h4>
-      <section></section>
+      <section><p>Relationship of an embedded (associated) file to the PDF document, as defined by the
+PDF/A-3 AFRelationship key (for example Data, Source, Alternative or Supplement).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PDFConformance.html">PDFConformance</a></h4>
       <section><p>PDF Conformance behaviour, modify default PDF Conformance</p>
 </section>
@@ -372,13 +517,19 @@ using this fonts redude file size</p>
       <section><p>Preview window size the first time it's shown</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutCSV.TextFormat.AlignmentType.html">PrintOutCSV.TextFormat.AlignmentType</a></h4>
-      <section></section>
+      <section><p>Horizontal alignment of a text cell: left, right, or centered.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutCSV.TextFormat.FontStyle.html">PrintOutCSV.TextFormat.FontStyle</a></h4>
-      <section></section>
+      <section><p>Bit flags describing font styling: bold, underline, italic, and strikethrough.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutPDF.ImageDepth.html">PrintOutPDF.ImageDepth</a></h4>
-      <section></section>
+      <section><p>Color depth and rendering mode used when embedding images into the PDF, ranging from
+full color through grayscale to bitonal black-and-white and text-optimized variants.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintOutText.OemConvertOverride.html">PrintOutText.OemConvertOverride</a></h4>
-      <section></section>
+      <section><p>Controls whether OEM character-set conversion is applied to output text: use the printer
+configuration default (<code>None</code>), or force it off (<code>False</code>) or on (<code>True</code>).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrintStepType.html">PrintStepType</a></h4>
       <section><p>When printing to dot matrix devices, a fixed pitch font will be selected, the font to be selected can be specified
 using the PrintStep</p>
@@ -388,28 +539,34 @@ using the PrintStep</p>
 are used, in some cases the print is faster (dot matrix printers)</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.PrinterRawOperation.html">PrinterRawOperation</a></h4>
-      <section></section>
+      <section><p>Low-level printer control operations sent to raw/ESC-POS style devices, covering paper
+handling (cut, feed, tear-off), cash-drawer pulses, font styles, line spacing and pitch (cpi).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.PrinterSelectType.html">PrinterSelectType</a></h4>
       <section><p>Report Manager allow automatic printer selection when processing reports, so you can assign
 a predefined printer to a report, then assign on each computer a diferent printer to predefined
 printers.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.QRCodeEncoder.ENCODE_MODE.html">QRCodeEncoder.ENCODE_MODE</a></h4>
-      <section></section>
+      <section><p>Data encoding mode used to pack the QR Code payload: alphanumeric, numeric, or raw 8-bit byte.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.QRCodeEncoder.ERROR_CORRECTION.html">QRCodeEncoder.ERROR_CORRECTION</a></h4>
-      <section></section>
+      <section><p>QR Code error-correction level (L, M, Q, H), in increasing order of redundancy and recoverability.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Series.AutoRangeAxis.html">Series.AutoRangeAxis</a></h4>
-      <section></section>
+      <section><p>Controls how a chart axis range is computed: from explicit bounds, or automatically
+for both ends, only the upper bound, only the lower bound, or not at all.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ShapeType.html">ShapeType</a></h4>
       <section><p>Available shape types</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.TextAlignType.html">TextAlignType</a></h4>
       <section><p>Enumeration indicating the text alignment, that is how the text is drawn inside the defined box
-Variant</p>
+PrintItemText</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.TextAlignVerticalType.html">TextAlignVerticalType</a></h4>
       <section><p>Enumeration indicating vertical text alignment, that is how the full text, after horizontal alignment is done, is drawn inside the defined box
-Variant</p>
+PrintItemText</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Units.html">Units</a></h4>
       <section><p>Measurement units</p>
@@ -425,7 +582,7 @@ like Report Manager Windows Forms preview does, the use of playing optimized win
 metafiles can enhace performance, specially if the pages are dense (lot of text items).
 The drawbacks of playing metafiles is that they must be stored into memory, so when you
 optimize performance you hit memory consumption.
-Variant</p>
+<a class="xref" href="Reportman.Drawing.PrintOutNet.html">PrintOutNet</a></p>
 </section>
     <h3 id="delegates">
 Delegates
@@ -434,11 +591,17 @@ Delegates
       <section><p>Event triggered when a driver starts printing</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.CopyProgress.html">CopyProgress</a></h4>
-      <section></section>
+      <section><p>Callback invoked during a file-copy/update operation to report progress for the current file
+and allow the handler to request cancellation via the <code>docancel</code> reference parameter.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ISqlExecuterPartialFillEvent.html">ISqlExecuterPartialFillEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised while a result set is being filled incrementally, giving access to the
+partially populated table through <a class="xref" href="Reportman.Drawing.ISqlExecuterPartialFillArgs.html">ISqlExecuterPartialFillArgs</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.ISqlExecuterProgressEvent.html">ISqlExecuterProgressEvent</a></h4>
-      <section></section>
+      <section><p>Callback reporting the progress of a long-running SQL operation as the number of
+records processed so far out of the total.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.MetaFileLoadError.html">MetaFileLoadError</a></h4>
       <section><p>Event launched when the loading of a MetaFile causes an error</p>
 </section>
@@ -463,7 +626,9 @@ you can show save progress to the user</p>
 true if the action have been handled and no futher processing must happen</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.ProgressEvent.html">ProgressEvent</a></h4>
-      <section></section>
+      <section><p>Callback invoked to report progress of a long-running operation; handlers may set
+<a class="xref" href="Reportman.Drawing.ProgressArgs.html#Reportman_Drawing_ProgressArgs_Cancel">Cancel</a> to request that the operation stop.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.RequestPageEvent.html">RequestPageEvent</a></h4>
       <section><p>Event launched when a page is being requested</p>
 </section>

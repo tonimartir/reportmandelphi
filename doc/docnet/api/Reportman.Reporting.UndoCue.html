@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class UndoCue | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Undo/redo history for a report, holding queues of grouped change operations and applying them to a  to step backward or forward through edits.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,9 @@
 
 
   <h1 id="Reportman_Reporting_UndoCue" data-uid="Reportman.Reporting.UndoCue" class="text-break">Class UndoCue</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Undo/redo history for a report, holding queues of grouped change operations and
+applying them to a <a class="xref" href="Reportman.Reporting.Report.html">Report</a> to step backward or forward through edits.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -121,7 +123,9 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue__ctor_" data-uid="Reportman.Reporting.UndoCue.#ctor*"></a>
   <h4 id="Reportman_Reporting_UndoCue__ctor" data-uid="Reportman.Reporting.UndoCue.#ctor">UndoCue()</h4>
   <div class="markdown level1 summary"></div>
@@ -133,7 +137,9 @@
   <h3 id="properties">Properties
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_GroupId_" data-uid="Reportman.Reporting.UndoCue.GroupId*"></a>
   <h4 id="Reportman_Reporting_UndoCue_GroupId" data-uid="Reportman.Reporting.UndoCue.GroupId">GroupId</h4>
   <div class="markdown level1 summary"></div>
@@ -158,7 +164,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_RedoOperations_" data-uid="Reportman.Reporting.UndoCue.RedoOperations*"></a>
   <h4 id="Reportman_Reporting_UndoCue_RedoOperations" data-uid="Reportman.Reporting.UndoCue.RedoOperations">RedoOperations</h4>
   <div class="markdown level1 summary"></div>
@@ -183,7 +191,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_UndoOperations_" data-uid="Reportman.Reporting.UndoCue.UndoOperations*"></a>
   <h4 id="Reportman_Reporting_UndoCue_UndoOperations" data-uid="Reportman.Reporting.UndoCue.UndoOperations">UndoOperations</h4>
   <div class="markdown level1 summary"></div>
@@ -210,7 +220,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_AddOperation_" data-uid="Reportman.Reporting.UndoCue.AddOperation*"></a>
   <h4 id="Reportman_Reporting_UndoCue_AddOperation_Reportman_Reporting_ChangeObjectOperation_Reportman_Reporting_BaseReport_" data-uid="Reportman.Reporting.UndoCue.AddOperation(Reportman.Reporting.ChangeObjectOperation,Reportman.Reporting.BaseReport)">AddOperation(ChangeObjectOperation, BaseReport)</h4>
   <div class="markdown level1 summary"></div>
@@ -242,7 +254,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_ApplyPropertiesToObject_" data-uid="Reportman.Reporting.UndoCue.ApplyPropertiesToObject*"></a>
   <h4 id="Reportman_Reporting_UndoCue_ApplyPropertiesToObject_Reportman_Reporting_ChangeObjectOperation_Reportman_Reporting_ReportItem_System_Boolean_" data-uid="Reportman.Reporting.UndoCue.ApplyPropertiesToObject(Reportman.Reporting.ChangeObjectOperation,Reportman.Reporting.ReportItem,System.Boolean)">ApplyPropertiesToObject(ChangeObjectOperation, ReportItem, bool)</h4>
   <div class="markdown level1 summary"></div>
@@ -279,7 +293,21 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_UndoCue_EnsureGroupIdIsSynchronized_" data-uid="Reportman.Reporting.UndoCue.EnsureGroupIdIsSynchronized*"></a>
+  <h4 id="Reportman_Reporting_UndoCue_EnsureGroupIdIsSynchronized" data-uid="Reportman.Reporting.UndoCue.EnsureGroupIdIsSynchronized">EnsureGroupIdIsSynchronized()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void EnsureGroupIdIsSynchronized()</code></pre>
+  </div>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_GetGroupId_" data-uid="Reportman.Reporting.UndoCue.GetGroupId*"></a>
   <h4 id="Reportman_Reporting_UndoCue_GetGroupId" data-uid="Reportman.Reporting.UndoCue.GetGroupId">GetGroupId()</h4>
   <div class="markdown level1 summary"></div>
@@ -304,7 +332,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_Redo_" data-uid="Reportman.Reporting.UndoCue.Redo*"></a>
   <h4 id="Reportman_Reporting_UndoCue_Redo_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.UndoCue.Redo(Reportman.Reporting.Report)">Redo(Report)</h4>
   <div class="markdown level1 summary"></div>
@@ -346,7 +376,57 @@
     </tbody>
   </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_UndoCue_RemoveOperationsOlderThan_" data-uid="Reportman.Reporting.UndoCue.RemoveOperationsOlderThan*"></a>
+  <h4 id="Reportman_Reporting_UndoCue_RemoveOperationsOlderThan_System_DateTime_" data-uid="Reportman.Reporting.UndoCue.RemoveOperationsOlderThan(System.DateTime)">RemoveOperationsOlderThan(DateTime)</h4>
+  <div class="markdown level1 summary"><p>Elimina del histórico las operaciones de deshacer (y rehacer) anteriores a <code class="paramref">date</code>,
+según su marca de tiempo <a class="xref" href="Reportman.Reporting.ChangeObjectOperation.html#Reportman_Reporting_ChangeObjectOperation_Date">Date</a>. Las operaciones sin fecha se
+conservan (no se pueden datar). Sirve para que el histórico persistido del informe no crezca sin
+límite. Devuelve el número de operaciones de deshacer eliminadas.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int RemoveOperationsOlderThan(DateTime date)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></td>
+        <td><span class="parametername">date</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs">View Source</a>
+  </span>
   <a id="Reportman_Reporting_UndoCue_Undo_" data-uid="Reportman.Reporting.UndoCue.Undo*"></a>
   <h4 id="Reportman_Reporting_UndoCue_Undo_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.UndoCue.Undo(Reportman.Reporting.Report)">Undo(Report)</h4>
   <div class="markdown level1 summary"></div>
@@ -395,6 +475,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/UndoCue.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

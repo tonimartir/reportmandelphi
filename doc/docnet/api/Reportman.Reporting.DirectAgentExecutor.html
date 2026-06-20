@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class DirectAgentExecutor | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class DirectAgentExecutor | Reportman .Net Documentation ">
+    
+    <meta name="description" content="that tries the direct WebRTC DataChannel transport first and falls back to  transparently if the channel cannot be opened (corporate firewall, STUN unreachable, Agent that doesn&#39;t speak the protocol …). Pattern mirrors the proven path in ReportmanAI/Reportman.Hub.Client/HubApiClient.DataChannel.cs:   master switch (default true). 10-minute cooldown after a failed negotiation, so subsequent queries don&#39;t re-pay the open-timeout (~5 s) on each one. Per-database pool reuses the warm channel across calls. Effective transport surfaced via  and the  event so a UI chip can bind to it without having to know about WebRTC.  .NET Framework (net48) builds compile this file out — Reportman.DataChannel requires .NET 6+ (SIPSorcery). On net48 consumers get only the HTTP path, identical to the Linux/FPC behaviour of the Delphi engine.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.DirectAgentExecutor">
+
+
+
+  <h1 id="Reportman_Reporting_DirectAgentExecutor" data-uid="Reportman.Reporting.DirectAgentExecutor" class="text-break">Class DirectAgentExecutor</h1>
+  <div class="markdown level0 summary"><p><a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a> that tries the direct WebRTC
+DataChannel transport first and falls back to <a class="xref" href="Reportman.Reporting.HttpAgentExecutor.html">HttpAgentExecutor</a>
+transparently if the channel cannot be opened (corporate firewall,
+STUN unreachable, Agent that doesn't speak the protocol …).</p>
+<p>Pattern mirrors the proven path in
+<code>ReportmanAI/Reportman.Hub.Client/HubApiClient.DataChannel.cs</code>:</p>
+<ul>
+<li><a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_UseDirectChannel">UseDirectChannel</a> master switch (default true).</li>
+<li>10-minute cooldown after a failed negotiation, so subsequent
+queries don't re-pay the open-timeout (~5 s) on each one.</li>
+<li>Per-database pool reuses the warm channel across calls.</li>
+<li>Effective transport surfaced via <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_LastConnectionMode">LastConnectionMode</a>
+and the <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_ConnectionModeChanged">ConnectionModeChanged</a> event so a UI chip can
+bind to it without having to know about WebRTC.</li>
+</ul>
+<p>.NET Framework (net48) builds compile this file out — Reportman.DataChannel
+requires .NET 6+ (SIPSorcery). On net48 consumers get only the HTTP
+path, identical to the Linux/FPC behaviour of the Delphi engine.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">DirectAgentExecutor</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.dll</h6>
+  <h5 id="Reportman_Reporting_DirectAgentExecutor_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class DirectAgentExecutor : IDbCommandExecuter, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor__ctor_" data-uid="Reportman.Reporting.DirectAgentExecutor.#ctor*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor__ctor" data-uid="Reportman.Reporting.DirectAgentExecutor.#ctor">DirectAgentExecutor()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DirectAgentExecutor()</code></pre>
+  </div>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor__ctor_" data-uid="Reportman.Reporting.DirectAgentExecutor.#ctor*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor__ctor_System_String_System_String_System_Int64_" data-uid="Reportman.Reporting.DirectAgentExecutor.#ctor(System.String,System.String,System.Int64)">DirectAgentExecutor(string, string, long)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DirectAgentExecutor(string baseUrl, string apiKey, long hubDatabaseId)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">baseUrl</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">apiKey</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td><span class="parametername">hubDatabaseId</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="properties">Properties
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_ApiKey_" data-uid="Reportman.Reporting.DirectAgentExecutor.ApiKey*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_ApiKey" data-uid="Reportman.Reporting.DirectAgentExecutor.ApiKey">ApiKey</h4>
+  <div class="markdown level1 summary"><p>ApiKey for the database alias when no user is logged in.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ApiKey { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_BaseUrl_" data-uid="Reportman.Reporting.DirectAgentExecutor.BaseUrl*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_BaseUrl" data-uid="Reportman.Reporting.DirectAgentExecutor.BaseUrl">BaseUrl</h4>
+  <div class="markdown level1 summary"><p>API base URL (same as <a class="xref" href="Reportman.Reporting.HttpAgentExecutor.html#Reportman_Reporting_HttpAgentExecutor_BaseUrl">BaseUrl</a>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string BaseUrl { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_HubDatabaseId_" data-uid="Reportman.Reporting.DirectAgentExecutor.HubDatabaseId*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_HubDatabaseId" data-uid="Reportman.Reporting.DirectAgentExecutor.HubDatabaseId">HubDatabaseId</h4>
+  <div class="markdown level1 summary"><p>Identifier of the database on the Hub side.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long HubDatabaseId { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_LastConnectionMode_" data-uid="Reportman.Reporting.DirectAgentExecutor.LastConnectionMode*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_LastConnectionMode" data-uid="Reportman.Reporting.DirectAgentExecutor.LastConnectionMode">LastConnectionMode</h4>
+  <div class="markdown level1 summary"><p>Effective transport of the most recent <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_Open_System_Data_IDbCommand_">Open(IDbCommand)</a>.
+<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.DataChannel/DirectChannelTypes.cs">Unknown</a> before any call.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ConnectionMode LastConnectionMode { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.DataChannel/DirectChannelTypes.cs">ConnectionMode</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_Token_" data-uid="Reportman.Reporting.DirectAgentExecutor.Token*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_Token" data-uid="Reportman.Reporting.DirectAgentExecutor.Token">Token</h4>
+  <div class="markdown level1 summary"><p>Bearer JWT for logged-in user calls.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Token { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_UseDirectChannel_" data-uid="Reportman.Reporting.DirectAgentExecutor.UseDirectChannel*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_UseDirectChannel" data-uid="Reportman.Reporting.DirectAgentExecutor.UseDirectChannel">UseDirectChannel</h4>
+  <div class="markdown level1 summary"><p>Global kill-switch. Setting this to <code>false</code> at runtime makes
+every <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_Open_System_Data_IDbCommand_">Open(IDbCommand)</a> call go straight to HTTP, no negotiation
+attempt. Useful for diagnostics or forcibly-HTTP integration tests.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool UseDirectChannel { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_CreateCommand_" data-uid="Reportman.Reporting.DirectAgentExecutor.CreateCommand*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_CreateCommand" data-uid="Reportman.Reporting.DirectAgentExecutor.CreateCommand">CreateCommand()</h4>
+  <div class="markdown level1 summary"><p>Delegates to the inner HTTP executor: both transports speak the
+same <a class="xref" href="Reportman.Reporting.HttpAgentCommand.html">HttpAgentCommand</a> for accumulated parameters,
+so callers don't need to know which one will execute.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDbCommand CreateCommand()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbcommand">IDbCommand</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_Dispose_" data-uid="Reportman.Reporting.DirectAgentExecutor.Dispose*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_Dispose" data-uid="Reportman.Reporting.DirectAgentExecutor.Dispose">Dispose()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_Open_" data-uid="Reportman.Reporting.DirectAgentExecutor.Open*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_Open_System_Data_IDbCommand_" data-uid="Reportman.Reporting.DirectAgentExecutor.Open(System.Data.IDbCommand)">Open(IDbCommand)</h4>
+  <div class="markdown level1 summary"><p>Try the direct channel first; on any failure (cooldown active,
+negotiation failed, channel error mid-query) silently fall back
+to the inner HTTP path. The caller never sees a &quot;direct channel
+broke&quot; exception — it sees the data, just over HTTP. The chip is
+the only visible difference.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataTable Open(IDbCommand ncommand)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idbcommand">IDbCommand</a></td>
+        <td><span class="parametername">ncommand</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_DirectAgentExecutor_ResetChannelPool_" data-uid="Reportman.Reporting.DirectAgentExecutor.ResetChannelPool*"></a>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_ResetChannelPool" data-uid="Reportman.Reporting.DirectAgentExecutor.ResetChannelPool">ResetChannelPool()</h4>
+  <div class="markdown level1 summary"><p>Drop every warm Direct Channel session and clear the negotiation
+cooldowns. Call after the user edits a connection (ApiKey /
+HubDatabaseId) so the next query renegotiates with the new
+credentials instead of reusing a session opened with the old ones.
+The warm pool keys sessions by HubDatabaseId, so an ApiKey change on
+the same database would otherwise keep hitting the stale session
+until the application is restarted. EvictAllAsync clears the pool
+synchronously (only the teardown of the old sessions is async), so a
+fire-and-forget call invalidates the cache immediately.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void ResetChannelPool()</code></pre>
+  </div>
+  <h3 id="events">Events
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs">View Source</a>
+  </span>
+  <h4 id="Reportman_Reporting_DirectAgentExecutor_ConnectionModeChanged" data-uid="Reportman.Reporting.DirectAgentExecutor.ConnectionModeChanged">ConnectionModeChanged</h4>
+  <div class="markdown level1 summary"><p>Fired after every Open once the transport is decided.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public event Action&lt;ConnectionMode&gt; ConnectionModeChanged</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.DataChannel/DirectChannelTypes.cs">ConnectionMode</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Reporting/DirectAgentExecutor.cs" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

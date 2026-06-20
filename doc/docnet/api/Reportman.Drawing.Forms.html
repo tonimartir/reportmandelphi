@@ -86,42 +86,73 @@
 Classes
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.Forms.AdvancedEditingControl.html">AdvancedEditingControl</a></h4>
-      <section></section>
+      <section><p>The in-cell editing control for <a class="xref" href="Reportman.Drawing.Forms.DataGridViewColumnAdvanced.html">DataGridViewColumnAdvanced</a>; switches between a text box and date/time pickers depending on the column's <a class="xref" href="Reportman.Drawing.Forms.ColumnDataType.html">ColumnDataType</a> and supports an optional image button and search window.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.AutoCompleteInfo.html">AutoCompleteInfo</a></h4>
-      <section></section>
+      <section><p>A pinned auto-complete suggestion that carries display text, an address detail,
+and an icon to show alongside it in the suggestion list.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ButtonCalc.html">ButtonCalc</a></h4>
-      <section></section>
+      <section><p>Owner-drawn calculator button: paints itself as a labelled ellipse, tracks selection
+state and hit-testing, and carries the <a class="xref" href="Reportman.Drawing.Forms.ScreenKeyboard.Command.html">ScreenKeyboard.Command</a> it triggers.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CalcReportProgress.html">CalcReportProgress</a></h4>
-      <section></section>
+      <section><p>Runs report calculation on a background thread and, if it does not finish quickly,
+shows a <a class="xref" href="Reportman.Drawing.Forms.ReportProgressForm.html">ReportProgressForm</a> to display progress and allow cancellation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.Calculator.html">Calculator</a></h4>
-      <section></section>
+      <section><p>Stack-based calculator engine that holds a list of operator/number tokens, applies digit,
+operator and memory commands, evaluates the expression with operator precedence, and can
+display a modal calculator dialog through <a class="xref" href="Reportman.Drawing.Forms.Calculator.html#Reportman_Drawing_Forms_Calculator_ShowCalc_System_Decimal_System_Boolean__System_Boolean_">ShowCalc(decimal, ref bool, bool)</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CancelArgs.html">CancelArgs</a></h4>
-      <section></section>
+      <section><p>Event arguments for a tab page action that can be vetoed, carrying the affected
+page and a <code>Cancel</code> flag a handler can set to prevent the operation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CheckBoxAdvanced.html">CheckBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>A CheckBox that optionally treats the Enter key as a Tab keypress to move focus
+to the next control, raising a cancelable event beforehand.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CollectionWithEvents.html">CollectionWithEvents</a></h4>
-      <section></section>
+      <section><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.collectionbase">CollectionBase</a> that raises before/after events (Clearing/Cleared,
+Inserting/Inserted, Removing/Removed) as its contents change, and supports swapping
+two items by index.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ColorHelper.html">ColorHelper</a></h4>
-      <section></section>
+      <section><p>Static color utilities for the tab control, deriving the IDE-style tab background
+color from a given base control color (with special cases for Classic and XP themes).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ComboBoxAdvanced.html">ComboBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>A ComboBox that supports owner-drawn items with images from an ImageList,
+auto-complete entries, and optional Enter-acts-as-Tab navigation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ComboBoxAdvancedItem.html">ComboBoxAdvancedItem</a></h4>
-      <section></section>
+      <section><p>An item for ComboBoxAdvanced that pairs display text with an ImageList image index
+for owner-drawn rendering.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ComboListMatcher.html">ComboListMatcher</a></h4>
-      <section></section>
+      <section><p>A TextBox that shows a floating, non-selectable list of matching entries from an
+auto-complete list as the user types, letting them pick a value with the mouse or keyboard.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ControlHelper.html">ControlHelper</a></h4>
-      <section></section>
+      <section><p>Static helpers for safely removing child controls or detaching a hosted form from a
+container, using a temporary hidden button to preserve a valid active control.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CueHelper.html">CueHelper</a></h4>
       <section></section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CustomPaintControl.html">CustomPaintControl</a></h4>
-      <section></section>
+      <section><p>A double-buffered Control that forwards its paint pass to a user-supplied
+OnCustomPaint handler, allowing fully custom rendering.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataGridViewAdvanced.html">DataGridViewAdvanced</a></h4>
       <section><p>Datagrid view Intro is tab</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataGridViewCellAdvanced.html">DataGridViewCellAdvanced</a></h4>
-      <section></section>
+      <section><p>The cell type used by <a class="xref" href="Reportman.Drawing.Forms.DataGridViewColumnAdvanced.html">DataGridViewColumnAdvanced</a>; hosts the <a class="xref" href="Reportman.Drawing.Forms.AdvancedEditingControl.html">AdvancedEditingControl</a> editor and masks password-typed values when displaying.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataGridViewColumnAdvanced.html">DataGridViewColumnAdvanced</a></h4>
-      <section></section>
+      <section><p>A DataGridView column with extended editing behavior: typed input (<a class="xref" href="Reportman.Drawing.Forms.ColumnDataType.html">ColumnDataType</a>), maximum input length, an optional image button, and a pluggable search window.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataGridViewNumericUpDownCell.html">DataGridViewNumericUpDownCell</a></h4>
       <section><p>Defines a NumericUpDown cell type for the System.Windows.Forms.DataGridView control</p>
 </section>
@@ -129,37 +160,65 @@ Classes
       <section><p>Custom column type dedicated to the DataGridViewNumericUpDownCell cell type.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DateDropButton.html">DateDropButton</a></h4>
-      <section></section>
+      <section><p>Button that paints itself as a combo-box style drop-down arrow, used to open the calendar popup.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DateTimePickerAdvanced.html">DateTimePickerAdvanced</a></h4>
-      <section></section>
+      <section><p>Masked date/time entry control that combines a formatted text box with a
+drop-down month calendar, validating user input against configurable date and
+time format strings and min/max date limits.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DateTimePickerNullable.html">DateTimePickerNullable</a></h4>
       <section><p>Nullable DateTime picker</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DrawHelper.html">DrawHelper</a></h4>
-      <section></section>
+      <section><p>Static drawing utilities for the tab control, providing helpers such as rendering
+reversed (rotated) text and painting raised plain-style borders.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.EditCalc.html">EditCalc</a></h4>
-      <section></section>
+      <section><p>Owner-drawn display line for the calculator that renders the current value, optionally
+masking it as a password, and repaints itself when the text changes.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.EventPrinterNamesArgs.html">EventPrinterNamesArgs</a></h4>
-      <section></section>
+      <section><p>Event arguments carrying the alternative printer display names, keyed by printer slot
+index, supplied to the printers configuration dialog.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.FormUtils.html">FormUtils</a></h4>
-      <section></section>
+      <section><p>Static helpers for Windows Forms layout and focus, including locating the active form
+and focused control, testing parent/child relationships, and DPI-scaling padding and image lists.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.GroupBoxAdvanced.html">GroupBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>A GroupBox subclass that supports customizable border and caption text colors,
+drawing its frame and title with the configured BorderColor and TextColor.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.InertButton.html">InertButton</a></h4>
-      <section></section>
+      <section><p>A lightweight, non-selectable image button drawn from an <a class="xref" href="Reportman.Drawing.Forms.InertButton.html#Reportman_Drawing_Forms_InertButton_ImageList">ImageList</a>,
+supporting hot-track and pushed states with a flat/popup border, used for the tab
+control's close, drop-down, and scroll-arrow buttons.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.InputBox.html">InputBox</a></h4>
-      <section></section>
+      <section><p>A simple modal dialog that prompts the user for a single value, either free text or a
+date, returning the entered value through its static Execute helpers.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ListBoxNonSelectable.html">ListBoxNonSelectable</a></h4>
-      <section></section>
+      <section><p>A double-buffered ListBox that does not activate or take focus when shown or clicked,
+used as the floating suggestion list for the advanced auto-complete controls.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.MessageBoxError.html">MessageBoxError</a></h4>
       <section><p>Descripción breve de MessageBoxError.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.NoTitleForm.html">NoTitleForm</a></h4>
-      <section></section>
+      <section><p>A borderless form that replaces the standard window caption with custom-drawn chrome,
+providing its own resize hit-testing, maximize/restore/minimize buttons hosted on a
+tool strip, full-screen mode, and persistence of window bounds between sessions.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PanelAdvanced.html">PanelAdvanced</a></h4>
-      <section></section>
+      <section><p>A panel that defers its size-changed handling to the UI thread via BeginInvoke,
+avoiding reentrancy issues during layout on Windows.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PopupWindow.html">PopupWindow</a></h4>
-      <section></section>
+      <section><p>Borderless drop-down window that hosts an arbitrary child control (here the month
+calendar) by wrapping it in a ToolStripControlHost.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PreviewMetaFile.html">PreviewMetaFile</a></h4>
       <section><p>Windowed control to preview report MetaFiles, it's used by PreviewWinForms.</p>
 </section>
@@ -174,14 +233,21 @@ The PrintOutReportWinForms at Reportman.Reporting.Forms provides the full intera
 like page setup or altering parameters at preview window.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PrintersConfiguration.html">PrintersConfiguration</a></h4>
-      <section></section>
+      <section><p>Dialog for configuring the device, text-only driver and POS escape sequences
+(cut paper, open drawer) of Report Manager's configurable printer slots, persisting
+the settings to a per-user or system-wide reportman.ini file.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgressBarAdvanced.html">ProgressBarAdvanced</a></h4>
       <section><p>A replacement for the default ProgressBar control.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgressForm.html">ProgressForm</a></h4>
-      <section></section>
+      <section><p>Modal dialog that runs a background task while displaying a progress bar and a
+cancel button, closing automatically when the task completes.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.RadioGroup.html">RadioGroup</a></h4>
-      <section></section>
+      <section><p>Group box that hosts a set of mutually exclusive radio buttons built from a caption
+list, exposing the selected index and auto-laying out the buttons horizontally or vertically.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.RawPrinterHelper.html">RawPrinterHelper</a></h4>
       <section><p>Utility class to send raw data to a printer queue, becase .Net library does not provide this functionalyty,
 it uses the pinvoke to call library functions</p>
@@ -190,125 +256,215 @@ it uses the pinvoke to call library functions</p>
       <section><p>Form to show report processing progres</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.Ruler.html">Ruler</a></h4>
-      <section></section>
+      <section><p>A ruler control that draws a scaled measurement scale (in centimeters or inches) for use
+alongside a report design surface, honoring orientation, scale, colors and DPI.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ScreenKeyboard.html">ScreenKeyboard</a></h4>
-      <section></section>
+      <section><p>On-screen calculator UserControl that renders a 5x5 grid of buttons and an edit line,
+used to enter or compute decimal/password values via mouse or keyboard.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ScrollTextPanel.html">ScrollTextPanel</a></h4>
-      <section></section>
+      <section><p>A panel that displays a single line of text scrolling horizontally (marquee style),
+driven by a timer; scrolling and speed are configurable.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.SendMailEventArgs.html">SendMailEventArgs</a></h4>
-      <section></section>
+      <section><p>Carries the message details (recipients, subject, body and attached report content)
+passed to the OnMail event so the host can customize the e-mail before it is sent from the preview.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ShowSearchWindowArgs.html">ShowSearchWindowArgs</a></h4>
-      <section></section>
+      <section><p>Event arguments for showing a search window, exposing the control that hosts the search UI.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.SignatureControl.html">SignatureControl</a></h4>
-      <section></section>
+      <section><p>A Windows Forms control that captures a hand-drawn signature by tracking mouse movement,
+rendering it as a curve or straight-line path into a bitmap.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.html">TabControlAdvanced</a></h4>
-      <section></section>
+      <section><p>An owner-drawn, multi-style tabbed container control that hosts a collection of
+<a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.html">TabPageAdvanced</a> pages with configurable appearance, close/scroll/drop-down
+buttons, hot tracking, multiline tabs, and optional tab reordering.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.HostPanel.html">TabControlAdvanced.HostPanel</a></h4>
       <section></section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.MultiRect.html">TabControlAdvanced.MultiRect</a></h4>
       <section></section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.html">TabPageAdvanced</a></h4>
-      <section></section>
+      <section><p>A single page within an advanced tab control, carrying its title, icon, hosted control and selection state, and raising change notifications; also supports animated processing and alerting icons.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabPageCollection.html">TabPageCollection</a></h4>
-      <section></section>
+      <section><p>A strongly typed, event-raising collection of <a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.html">TabPageAdvanced</a> pages
+belonging to a <a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.html">TabControlAdvanced</a>, with lookup by index or title.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TableLayoutPanelAdvanced.html">TableLayoutPanelAdvanced</a></h4>
-      <section></section>
+      <section><p>A TableLayoutPanel that lets the user interactively resize rows and columns by dragging the splitter regions between cells with the mouse.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TextBoxAdvanced.html">TextBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>An enhanced Windows Forms text box that adds input validation by data type, an
+auto-complete drop-down list (optionally including Google suggestions), a watermark,
+barcode capture, uppercase-only mode and Enter-as-Tab navigation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TokenCalc.html">TokenCalc</a></h4>
-      <section></section>
+      <section><p>A single element of the calculator's expression: either a numeric operand or an
+arithmetic operator, tracking its decimal-entry factor and whether it has been sealed.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripAdvanced.html">ToolStripAdvanced</a></h4>
-      <section></section>
+      <section><p>A ToolStrip with DPI-scaled image sizing and a workaround that makes its buttons
+respond on the first click even when the strip is not the active control.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripButtonAllowDisable.html">ToolStripButtonAllowDisable</a></h4>
-      <section></section>
+      <section><p>A tool strip button that opts in to custom disabled-state rendering by implementing
+<a class="xref" href="Reportman.Drawing.Forms.IDisplayDisable.html">IDisplayDisable</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripComboBoxAdvanced.html">ToolStripComboBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>A ToolStripComboBox whose Size property is automatically scaled by the current
+DPI factors so it renders consistently across display resolutions.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripDropDownButtonAllowDisable.html">ToolStripDropDownButtonAllowDisable</a></h4>
-      <section></section>
+      <section><p>A tool strip drop-down button that opts in to custom disabled-state rendering by
+implementing <a class="xref" href="Reportman.Drawing.Forms.IDisplayDisable.html">IDisplayDisable</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripTextBoxAdvanced.html">ToolStripTextBoxAdvanced</a></h4>
-      <section></section>
+      <section><p>A ToolStripTextBox that drops down a self-managed suggestion list as the user types,
+matching against a local auto-complete list and optionally Google query suggestions,
+with a cue-banner placeholder and DPI-aware drawing.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolStripTextBoxFilter.html">ToolStripTextBoxFilter</a></h4>
-      <section></section>
+      <section><p>A ToolStrip-hosted label-and-textbox filter control that raises a debounced
+<a class="xref" href="Reportman.Drawing.Forms.ToolStripTextBoxFilter.html#Reportman_Drawing_Forms_ToolStripTextBoxFilter_DelayedTextChanged">DelayedTextChanged</a> event after the user stops typing for a configurable delay.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ToolTipAdvanced.html">ToolTipAdvanced</a></h4>
-      <section></section>
+      <section><p>An owner-drawn <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.tooltip">ToolTip</a> that displays an image (instead of text) inside a
+bordered tooltip, sizing the popup to the assigned <a class="xref" href="Reportman.Drawing.Forms.ToolTipAdvanced.html#Reportman_Drawing_Forms_ToolTipAdvanced_Image">Image</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TransformImageForm.html">TransformImageForm</a></h4>
-      <section></section>
+      <section><p>A dialog for resizing and re-encoding an image, letting the user change dimensions (optionally keeping aspect ratio), pick the output format (PNG, JPEG or GIF) and JPEG quality, and returns the transformed image stream.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TransparentPanel.html">TransparentPanel</a></h4>
-      <section></section>
+      <section><p>A panel that paints its background as a semi-transparent dark overlay, used to dim
+the area behind it.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvanced.html">TreeGridAdvanced</a></h4>
-      <section></section>
+      <section><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridview">DataGridView</a> that displays hierarchical, expandable/collapsible tree nodes,
+with support for tree lines, node images, level-based expansion, text search and Excel export.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvancedCell.html">TreeGridAdvancedCell</a></h4>
       <section><p>TreeGridAdvancedCell</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvancedColumn.html">TreeGridAdvancedColumn</a></h4>
-      <section></section>
+      <section><p>The tree column of a <a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvanced.html">TreeGridAdvanced</a>: a text column whose cells render the
+expand/collapse glyphs and indentation, and whose clicks toggle the node's expanded state.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvancedNode.html">TreeGridAdvancedNode</a></h4>
-      <section></section>
+      <section><p>A node in a <a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvanced.html">TreeGridAdvanced</a> tree, linking a grid row to its parent and child
+nodes and tracking its level and expanded state; provides expand/collapse and removal logic.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TreeGridRow.html">TreeGridRow</a></h4>
-      <section></section>
+      <section><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.datagridviewrow">DataGridViewRow</a> used by <a class="xref" href="Reportman.Drawing.Forms.TreeGridAdvanced.html">TreeGridAdvanced</a> that carries its tree
+node, level, parent row, sibling position and optional image for hierarchical display.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.UnSelectableButton.html">UnSelectableButton</a></h4>
-      <section></section>
+      <section><p>A Button that never takes input focus when clicked, so it can be pressed without
+stealing focus from the currently active control.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.UpdateForm.html">UpdateForm</a></h4>
-      <section></section>
+      <section><p>Modal dialog that copies a set of files to update an installation via an <a class="xref" href="Reportman.Drawing.Updater.html">Updater</a>,
+showing per-file and byte-level progress and optionally backing up replaced files.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.WinFormsGraphics.html">WinFormsGraphics</a></h4>
-      <section></section>
+      <section><p>Windows Forms helpers for resolving the screen DPI, the corresponding DPI scale factor,
+and whether the current process is DPI-aware.</p>
+</section>
     <h3 id="structs">
 Structs
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.Forms.Number.html">Number</a></h4>
-      <section></section>
+      <section><p>Value type wrapping a double and the basic arithmetic operations the calculator
+performs on it (add, subtract, multiply, divide, equality).</p>
+</section>
     <h3 id="interfaces">
 Interfaces
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.Forms.IDisplayDisable.html">IDisplayDisable</a></h4>
-      <section></section>
+      <section><p>Marker interface implemented by tool strip items that allow a custom disabled
+(grayed-out) appearance to be rendered for their image and text.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ISearchWindow.html">ISearchWindow</a></h4>
-      <section></section>
+      <section><p>Contract for a drop-down search/lookup window attached to a grid editor; implementers create the window control and respond to search-string changes, navigation keys and clicks.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgressForm.ITaskProgressShow.html">ProgressForm.ITaskProgressShow</a></h4>
-      <section></section>
+      <section><p>Provides a way for background work to report progress as a current/total pair,
+implemented by the progress dialog.</p>
+</section>
     <h3 id="enums">
 Enums
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ColumnDataType.html">ColumnDataType</a></h4>
-      <section></section>
+      <section><p>Identifies the kind of value a grid column edits, selecting the appropriate editor and formatting (text, numeric, date/time, boolean, combo box or password).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.Direction.html">Direction</a></h4>
-      <section></section>
+      <section><p>Orientation of a drawing or layout operation, either vertical or horizontal.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DrawHelper.CommandState.html">DrawHelper.CommandState</a></h4>
-      <section></section>
+      <section><p>Visual state of a command/button being drawn: normal, hot-tracked (mouse over),
+or pushed (pressed).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.Edge.html">Edge</a></h4>
-      <section></section>
+      <section><p>Identifies a side of a rectangle (top, left, bottom, or right), or none.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.IsDateValidResult.html">IsDateValidResult</a></h4>
-      <section></section>
+      <section><p>Outcome of validating an entered date/time value: whether it is valid, malformed,
+or falls below the minimum or above the maximum allowed date.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PreviewWindowMode.html">PreviewWindowMode</a></h4>
-      <section></section>
+      <section><p>Selects how the report preview is hosted: a normal form, a modal form, or an
+embedded window.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.RulerBorder.html">RulerBorder</a></h4>
-      <section></section>
+      <section><p>Border drawing mode of a <a class="xref" href="Reportman.Drawing.Forms.Ruler.html">Ruler</a> control: a single-line border or no border.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.RulerStyle.html">RulerStyle</a></h4>
-      <section></section>
+      <section><p>Orientation of a <a class="xref" href="Reportman.Drawing.Forms.Ruler.html">Ruler</a> control: drawn horizontally or vertically.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ScreenKeyboard.Command.html">ScreenKeyboard.Command</a></h4>
-      <section></section>
+      <section><p>Identifies each calculator button action, including digits, operators, memory
+functions and the OK/Enter command; values are ordered to match the button layout.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.SearchWindowKeyOperation.html">SearchWindowKeyOperation</a></h4>
-      <section></section>
+      <section><p>Navigation keystrokes forwarded to a search window so it can move its selection or accept the current entry.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.SignatureControl.SignatureStyle.html">SignatureControl.SignatureStyle</a></h4>
-      <section></section>
+      <section><p>Determines how captured signature points are drawn: as a smoothed curve or as connected straight lines.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.HideTabsModes.html">TabControlAdvanced.HideTabsModes</a></h4>
-      <section></section>
+      <section><p>Controls when the tabs area is shown or hidden: always shown, always hidden,
+hidden based on logic (e.g. a single page), or hidden when the mouse is away.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.ImageStrip.html">TabControlAdvanced.ImageStrip</a></h4>
       <section></section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.PositionIndex.html">TabControlAdvanced.PositionIndex</a></h4>
       <section></section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.VisualAppearance.html">TabControlAdvanced.VisualAppearance</a></h4>
-      <section></section>
+      <section><p>High-level appearance preset for the tab control: a multi-document (MDI-like)
+look, a multi-form look, or a compact multi-box look.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.Property.html">TabPageAdvanced.Property</a></h4>
-      <section></section>
+      <section><p>Identifies which property of a <a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.html">TabPageAdvanced</a> changed, reported through the page's property-changed notification.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TextBoxDataType.html">TextBoxDataType</a></h4>
-      <section></section>
+      <section><p>The kind of data a <a class="xref" href="Reportman.Drawing.Forms.TextBoxAdvanced.html">TextBoxAdvanced</a> accepts, used to restrict input to
+free text, integers, numeric (decimal) or floating-point values.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TokenCalc.TokenType.html">TokenCalc.TokenType</a></h4>
-      <section></section>
+      <section><p>Kind of a <a class="xref" href="Reportman.Drawing.Forms.TokenCalc.html">TokenCalc</a>: one of the four arithmetic operators, a numeric
+value, or Nil to mark the absence of a token.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.VisualStyle.html">VisualStyle</a></h4>
-      <section></section>
+      <section><p>The overall visual rendering style used to paint the tab control (Visual Studio IDE
+look, a flat Plain look, or a Chrome-browser-like look).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.WinFormsGraphics.DpiAwareness.html">WinFormsGraphics.DpiAwareness</a></h4>
-      <section></section>
+      <section><p>The DPI-awareness level of a process as reported by the Windows shell:
+unaware, system-aware, or per-monitor-aware.</p>
+</section>
     <h3 id="delegates">
 Delegates
 </h3>
@@ -316,30 +472,48 @@ Delegates
       <section><p>Event launched when Page Setup action is activated by the user</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.BeforeEnterTabEvent.html">BeforeEnterTabEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised before a tab page is entered, allowing a handler to veto the change by setting <code>cancel</code> to true.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CancelEvent.html">CancelEvent</a></h4>
-      <section></section>
+      <section><p>Callback for tab page events that may be cancelled, supplying <a class="xref" href="Reportman.Drawing.Forms.CancelArgs.html">CancelArgs</a>
+whose <code>Cancel</code> flag the handler can set to stop the action.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CollectionChange.html">CollectionChange</a></h4>
-      <section></section>
+      <section><p>Callback signaling that an item is being or has been inserted or removed,
+supplying the affected index and value.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.CollectionClear.html">CollectionClear</a></h4>
-      <section></section>
+      <section><p>Callback signaling that a collection is being or has been cleared of all items.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataColumnButtonClickEvent.html">DataColumnButtonClickEvent</a></h4>
-      <section></section>
+      <section><p>Callback invoked when a column's editor button is clicked; returns true if it changed <code>value</code> so the cell should be updated.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent.html">DataGridViewAdvanced.SelectNextRowAfterEnterKeyEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised just before focus moves to a new row after the user presses Enter,
+passing the row that was being edited so handlers can validate or react to it.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DateTimePickerAdvanced.ValueChangedEventHandler.html">DateTimePickerAdvanced.ValueChangedEventHandler</a></h4>
-      <section></section>
+      <section><p>Callback signature for notifications that the control's date and/or time value has changed.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.DoubleClickControlEvent.html">DoubleClickControlEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised when the grid's double-click action is triggered, passing the control
+that was double-clicked (typically the active editing control).</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.EventPrinterNamesHandler.html">EventPrinterNamesHandler</a></h4>
-      <section></section>
+      <section><p>Callback used by the printers configuration dialog to retrieve the alternative
+display names for the configurable printer slots.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.NextColumnFocusEvent.html">NextColumnFocusEvent</a></h4>
-      <section></section>
+      <section><p>Callback that lets a handler override which column receives focus next when the user
+advances with Enter/Tab; the target column index is returned through nextcolumn.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.PageDrawnEvent.html">PageDrawnEvent</a></h4>
       <section><p>Event launched after a page is drawn</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgresEvent.html">ProgresEvent</a></h4>
-      <section></section>
+      <section><p>Callback invoked during a long-running operation to report progress (current of count)
+and to let the handler request cancellation via the <code>cancelar</code> parameter.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgressBarAdvanced.MaxChangedHandler.html">ProgressBarAdvanced.MaxChangedHandler</a></h4>
       <section><p>When the MaxValue property is changed.</p>
 </section>
@@ -350,20 +524,29 @@ Delegates
       <section><p>When the Value property is changed.</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ProgressForm.SetProgressCallback.html">ProgressForm.SetProgressCallback</a></h4>
-      <section></section>
+      <section><p>Callback invoked when the progress dialog is created, handing the caller the
+progress-reporting object so it can push progress updates.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.SendMailEvent.html">SendMailEvent</a></h4>
       <section><p>Event launched to alter mail options before send to mail in preview is done</p>
 </section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.ShowSearchWindowEvent.html">ShowSearchWindowEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised when a search window should be shown, carrying the control to display in <a class="xref" href="Reportman.Drawing.Forms.ShowSearchWindowArgs.html">ShowSearchWindowArgs</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.StandardEvent.html">StandardEvent</a></h4>
-      <section></section>
+      <section><p>Generic callback for a simple control event carrying the sender and standard event arguments.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.StringEvent.html">StringEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised when an item is chosen from an advanced control's drop-down list,
+passing the selected item (a string or an AutoCompleteInfo) as the second argument.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabControlAdvanced.DoubleClickTabHandler.html">TabControlAdvanced.DoubleClickTabHandler</a></h4>
-      <section></section>
+      <section><p>Callback raised when a tab is double-clicked, supplying the originating control
+and the tab page that was double-clicked.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.PropChangeHandler.html">TabPageAdvanced.PropChangeHandler</a></h4>
-      <section></section>
+      <section><p>Handler signature for a tab page property change, receiving the page, the <a class="xref" href="Reportman.Drawing.Forms.TabPageAdvanced.Property.html">TabPageAdvanced.Property</a> that changed and its previous value.</p>
+</section>
 
 
 </article>

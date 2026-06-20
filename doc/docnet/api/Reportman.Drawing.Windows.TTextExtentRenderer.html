@@ -9,7 +9,7 @@
       <meta name="viewport" content="width=device-width">
       <meta name="title" content="Class TTextExtentRenderer | Reportman .Net Documentation ">
     
-    
+    <meta name="description" content="Custom DirectWrite text renderer that does not draw, but instead captures glyph indices, advances, offsets and per-run formatting into glyph and line lists for measuring text extents and feeding the metafile.">
       <link rel="shortcut icon" href="../favicon.ico">
       <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
       <link rel="stylesheet" href="../styles/docfx.css">
@@ -81,7 +81,10 @@
 
 
   <h1 id="Reportman_Drawing_Windows_TTextExtentRenderer" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer" class="text-break">Class TTextExtentRenderer</h1>
-  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 summary"><p>Custom DirectWrite text renderer that does not draw, but instead captures glyph
+indices, advances, offsets and per-run formatting into glyph and line lists for
+measuring text extents and feeding the metafile.</p>
+</div>
   <div class="markdown level0 conceptual"></div>
   <div class="inheritance">
     <h5>Inheritance</h5>
@@ -156,14 +159,16 @@
   <h3 id="constructors">Constructors
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer__ctor_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.#ctor*"></a>
-  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer__ctor_System_String_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.#ctor(System.String)">TTextExtentRenderer(string)</h4>
+  <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer__ctor_System_String_System_Collections_Generic_List_Reportman_Drawing_HtmlFormatRun__" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.#ctor(System.String,System.Collections.Generic.List{Reportman.Drawing.HtmlFormatRun})">TTextExtentRenderer(string, List&lt;HtmlFormatRun&gt;)</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="declaration">Declaration</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public TTextExtentRenderer(string originalText)</code></pre>
+    <pre><code class="lang-csharp hljs">public TTextExtentRenderer(string originalText, List&lt;HtmlFormatRun&gt; htmlRuns = null)</code></pre>
   </div>
   <h5 class="parameters">Parameters</h5>
   <table class="table table-bordered table-condensed">
@@ -180,12 +185,19 @@
         <td><span class="parametername">originalText</span></td>
         <td></td>
       </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Drawing.HtmlFormatRun.html">HtmlFormatRun</a>&gt;</td>
+        <td><span class="parametername">htmlRuns</span></td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
   <h3 id="fields">Fields
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer__fontFace" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer._fontFace">_fontFace</h4>
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
@@ -211,7 +223,9 @@
   <h3 id="properties">Properties
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GlyphPositions_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GlyphPositions*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GlyphPositions" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GlyphPositions">GlyphPositions</h4>
   <div class="markdown level1 summary"></div>
@@ -236,7 +250,9 @@
     </tbody>
   </table>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_Lines_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.Lines*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_Lines" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.Lines">Lines</h4>
   <div class="markdown level1 summary"></div>
@@ -263,7 +279,9 @@
   <h3 id="methods">Methods
 </h3>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawGlyphRun_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawGlyphRun*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawGlyphRun_System_Object_System_Single_System_Single_SharpDX_Direct2D1_MeasuringMode_SharpDX_DirectWrite_GlyphRun_SharpDX_DirectWrite_GlyphRunDescription_SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawGlyphRun(System.Object,System.Single,System.Single,SharpDX.Direct2D1.MeasuringMode,SharpDX.DirectWrite.GlyphRun,SharpDX.DirectWrite.GlyphRunDescription,SharpDX.ComObject)">DrawGlyphRun(object, float, float, MeasuringMode, GlyphRun, GlyphRunDescription, ComObject)</h4>
   <div class="markdown level1 summary"></div>
@@ -337,7 +355,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawGlyphRun(object, float, float, MeasuringMode, GlyphRun, GlyphRunDescription, ComObject)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawInlineObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawInlineObject*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawInlineObject_System_Object_System_Single_System_Single_SharpDX_DirectWrite_InlineObject_System_Boolean_System_Boolean_SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawInlineObject(System.Object,System.Single,System.Single,SharpDX.DirectWrite.InlineObject,System.Boolean,System.Boolean,SharpDX.ComObject)">DrawInlineObject(object, float, float, InlineObject, bool, bool, ComObject)</h4>
   <div class="markdown level1 summary"></div>
@@ -411,7 +431,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawInlineObject(object, float, float, InlineObject, bool, bool, ComObject)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawStrikethrough_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawStrikethrough*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawStrikethrough_System_Object_System_Single_System_Single_SharpDX_DirectWrite_Strikethrough__SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawStrikethrough(System.Object,System.Single,System.Single,SharpDX.DirectWrite.Strikethrough@,SharpDX.ComObject)">DrawStrikethrough(object, float, float, ref Strikethrough, ComObject)</h4>
   <div class="markdown level1 summary"></div>
@@ -475,7 +497,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawStrikethrough(object, float, float, ref Strikethrough, ComObject)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawUnderline_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawUnderline*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_DrawUnderline_System_Object_System_Single_System_Single_SharpDX_DirectWrite_Underline__SharpDX_ComObject_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.DrawUnderline(System.Object,System.Single,System.Single,SharpDX.DirectWrite.Underline@,SharpDX.ComObject)">DrawUnderline(object, float, float, ref Underline, ComObject)</h4>
   <div class="markdown level1 summary"></div>
@@ -539,7 +563,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.DrawUnderline(object, float, float, ref Underline, ComObject)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GetCurrentTransform_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetCurrentTransform*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GetCurrentTransform_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetCurrentTransform(System.Object)">GetCurrentTransform(object)</h4>
   <div class="markdown level1 summary"></div>
@@ -583,7 +609,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.GetCurrentTransform(object)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_GetPixelsPerDip_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetPixelsPerDip*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_GetPixelsPerDip_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.GetPixelsPerDip(System.Object)">GetPixelsPerDip(object)</h4>
   <div class="markdown level1 summary"></div>
@@ -627,7 +655,9 @@
   <h5 class="overrides">Overrides</h5>
   <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">TextRendererBase.GetPixelsPerDip(object)</a></div>
 
-
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs">View Source</a>
+  </span>
   <a id="Reportman_Drawing_Windows_TTextExtentRenderer_IsPixelSnappingDisabled_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.IsPixelSnappingDisabled*"></a>
   <h4 id="Reportman_Drawing_Windows_TTextExtentRenderer_IsPixelSnappingDisabled_System_Object_" data-uid="Reportman.Drawing.Windows.TTextExtentRenderer.IsPixelSnappingDisabled(System.Object)">IsPixelSnappingDisabled(object)</h4>
   <div class="markdown level1 summary"></div>
@@ -694,6 +724,9 @@
             <div class="sideaffix">
               <div class="contribution">
                 <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/94d1f15e451fa281ed5d1346c641c4098c60d404/Reportman.Drawing.Windows/DirectWriteRenderer.cs" class="contribution-link">View Source</a>
+                  </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">

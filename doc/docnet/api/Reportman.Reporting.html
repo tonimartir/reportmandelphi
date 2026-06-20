@@ -86,47 +86,90 @@
 Classes
 </h3>
       <h4><a class="xref" href="Reportman.Reporting.AliasCollection.html">AliasCollection</a></h4>
-      <section></section>
+      <section><p>Strongly typed collection of <a class="xref" href="Reportman.Reporting.AliasCollectionItem.html">AliasCollectionItem</a> entries held by a DatasetAlias component.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.AliasCollectionItem.html">AliasCollectionItem</a></h4>
-      <section></section>
+      <section><p>A single dataset alias entry, pairing an (upper-cased) alias name with the
+DataTable it refers to and tracking the current row used during evaluation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.BarcodeItem.html">BarcodeItem</a></h4>
-      <section></section>
+      <section><p>A report print item that evaluates an expression and draws it as a barcode of the configured <a class="xref" href="Reportman.Reporting.BarcodeItem.html#Reportman_Reporting_BarcodeItem_BarType">BarType</a>, emitting bar/space (or QR module) rectangles into the metafile with optional checksum, rotation and colors.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.BaseReport.html">BaseReport</a></h4>
       <section><p>Base class for Report, defines basic functionallity</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ChangeObjectOperation.html">ChangeObjectOperation</a></h4>
-      <section></section>
+      <section><p>A single undoable change to a report component (add, remove, modify, rename or swap),
+recording the affected component, its parent/index context and the list of property changes.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ChangeOperationItem.html">ChangeOperationItem</a></h4>
-      <section></section>
+      <section><p>Records the change of a single property within a <a class="xref" href="Reportman.Reporting.ChangeObjectOperation.html">ChangeObjectOperation</a>,
+keeping its name, type and the old and new values for undo and redo.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ChartItem.html">ChartItem</a></h4>
-      <section></section>
+      <section><p>A printable report item that builds and renders a chart from expression-driven data series,
+accumulating values, captions and colors as the subreport iterates and drawing the result
+through the report's charting driver.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DBFExport.html">DBFExport</a></h4>
-      <section></section>
+      <section><p>Exports a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a> to a dBASE IV (.DBF) file via an OLE DB connection,
+creating the table and inserting rows while reporting progress and supporting cancellation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DataInfo.html">DataInfo</a></h4>
       <section><p>DatabaInfo stores information about a dataset, a Report have a collection
-of dataset definitions. Each dataset is related to one connection (DatabaseInfo)<a class="xref" href="Reportman.Reporting.Variant.html">Report</a><a class="xref" href="Reportman.Reporting.Variant.html">DataInfos</a></p>
+of dataset definitions. Each dataset is related to one connection (DatabaseInfo)<a class="xref" href="Reportman.Reporting.Report.html">Report</a><a class="xref" href="Reportman.Reporting.DataInfos.html">DataInfos</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DataInfos.html">DataInfos</a></h4>
       <section><p>Collection of DataInfo items</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DataNeededEventArgs.html">DataNeededEventArgs</a></h4>
-      <section></section>
+      <section><p>Arguments for the <a class="xref" href="Reportman.Reporting.DataNeededEvent.html">DataNeededEvent</a>, carrying the originating
+<a class="xref" href="Reportman.Reporting.DataNeededEventArgs.html#Reportman_Reporting_DataNeededEventArgs_Evaluator">Evaluator</a> and the name of the dataset that needs to be provided.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a></h4>
       <section><p>DatabaseInfo stores information about database connectivity, a Report have a collection
 of connection definitions. Each connection can use diferent connectivity technology
-(database providers). <a class="xref" href="Reportman.Reporting.Variant.html">Report</a><a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfos</a></p>
+(database providers). <a class="xref" href="Reportman.Reporting.Report.html">Report</a><a class="xref" href="Reportman.Reporting.DatabaseInfos.html">DatabaseInfos</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DatabaseInfos.html">DatabaseInfos</a></h4>
-      <section></section>
+      <section><p>Collection of a report's database connection definitions, indexable by alias and
+holding the shared in-memory DataSet; supports cloning for a new report owner.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DatasetAlias.html">DatasetAlias</a></h4>
       <section><p>DatasetAlias is a component that can contain references to datasets for substitution
 in report dataset list or expression evaluator</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.DbParameterInfo.html">DbParameterInfo</a></h4>
+      <section><p>Represents a structured parameter for remote SQL execution via HTTP Agent.
+Ensures type safety and prevents SQL injection.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html">DirectAgentExecutor</a></h4>
+      <section><p><a class="xref" href="Reportman.Drawing.IDbCommandExecuter.html">IDbCommandExecuter</a> that tries the direct WebRTC
+DataChannel transport first and falls back to <a class="xref" href="Reportman.Reporting.HttpAgentExecutor.html">HttpAgentExecutor</a>
+transparently if the channel cannot be opened (corporate firewall,
+STUN unreachable, Agent that doesn't speak the protocol …).</p>
+<p>Pattern mirrors the proven path in
+<code>ReportmanAI/Reportman.Hub.Client/HubApiClient.DataChannel.cs</code>:</p>
+<ul>
+<li><a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_UseDirectChannel">UseDirectChannel</a> master switch (default true).</li>
+<li>10-minute cooldown after a failed negotiation, so subsequent
+queries don't re-pay the open-timeout (~5 s) on each one.</li>
+<li>Per-database pool reuses the warm channel across calls.</li>
+<li>Effective transport surfaced via <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_LastConnectionMode">LastConnectionMode</a>
+and the <a class="xref" href="Reportman.Reporting.DirectAgentExecutor.html#Reportman_Reporting_DirectAgentExecutor_ConnectionModeChanged">ConnectionModeChanged</a> event so a UI chip can
+bind to it without having to know about WebRTC.</li>
+</ul>
+<p>.NET Framework (net48) builds compile this file out — Reportman.DataChannel
+requires .NET 6+ (SIPSorcery). On net48 consumers get only the HTTP
+path, identical to the Linux/FPC behaviour of the Delphi engine.</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.EvalException.html">EvalException</a></h4>
       <section><p>Definition of a specialiced exception used by expression evaluator</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.EvalIdenExpression.html">EvalIdenExpression</a></h4>
-      <section></section>
+      <section><p>An evaluator identifier function that resolves to the value of an associated
+<a class="xref" href="Reportman.Reporting.ExpressionItem.html">ExpressionItem</a>, evaluating it on demand.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.EvalIdentifier.html">EvalIdentifier</a></h4>
       <section><p>EvalIdentifier is the base class for all objects capable of integration
 with Evaluator,this includes variables, functions, constants...</p>
@@ -145,9 +188,29 @@ with Evaluator,this includes variables, functions, constants...</p>
 for dataset fields, function calls are also supported</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ExpressionItem.html">ExpressionItem</a></h4>
-      <section></section>
+      <section><p>A report item that evaluates an expression and prints its formatted result, supporting
+aggregates (sum, min, max, average, standard deviation), page-count variables, optional
+export values, HTML content and splitting across multiple pages.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ExternalReport.html">ExternalReport</a></h4>
-      <section></section>
+      <section><p>Helper operations for moving subreports between report documents: exporting a single
+subreport (with its related datasets and parameters) to a stream, deleting a subreport
+and its dependencies, and importing the contents of one report into another.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.HttpAgentCommand.html">HttpAgentCommand</a></h4>
+      <section><p>IDbCommand implementation for HttpAgent that stores SQL and parameters
+for later execution by HttpAgentExecutor.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.HttpAgentExecutor.html">HttpAgentExecutor</a></h4>
+      <section><p>Executes SQL commands via HTTP Agent API.
+Implements IDbCommandExecuter to integrate with the reporting engine.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.HttpAgentParameter.html">HttpAgentParameter</a></h4>
+      <section><p>IDataParameter implementation for HttpAgent.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.HttpAgentParameterCollection.html">HttpAgentParameterCollection</a></h4>
+      <section><p>IDataParameterCollection implementation for HttpAgent.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.IdenConstant.html">IdenConstant</a></h4>
       <section><p>Class avaible to define constants in expression evaluator</p>
 </section>
@@ -158,21 +221,37 @@ for dataset fields, function calls are also supported</p>
       <section><p>Identifier with the functionality of a variable</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.IdenVariableParam.html">IdenVariableParam</a></h4>
-      <section></section>
+      <section><p>An evaluator variable identifier backed by a report Param, so reading or assigning the
+variable in an expression reflects and updates that parameter's last value.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ImageItem.html">ImageItem</a></h4>
-      <section></section>
+      <section><p>A positioned report item that prints an image, taken either from an embedded stream or from
+an expression, honoring the draw style, resolution, rotation and image-sharing settings.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.LabelItem.html">LabelItem</a></h4>
-      <section></section>
+      <section><p>A report print item that renders a static, language-aware text label, selecting the
+string for the report's current language and supporting optional HTML content.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.PagedDataTable.html">PagedDataTable</a></h4>
-      <section></section>
+      <section><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a> that loads rows incrementally from an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idatareader">IDataReader</a>
+in pages of <a class="xref" href="Reportman.Reporting.PagedDataTable.html#Reportman_Reporting_PagedDataTable_PageSize">PageSize</a> records, tracking end-of-data and raising a change event.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Param.html">Param</a></h4>
-      <section></section>
+      <section><p>A report parameter prompted from the user, carrying its typed value, localized
+descriptions/hints/error messages, validation rule and optional list, lookup or
+search dataset that supplies selectable values.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Params.html">Params</a></h4>
-      <section></section>
+      <section><p>An ordered, self-growing collection of report <a class="xref" href="Reportman.Reporting.Param.html">Param</a> objects, indexable by position
+or by alias, with add/insert/remove/swap operations and support for enumeration, cloning and JSON serialization.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Params.ParamEnumerator.html">Params.ParamEnumerator</a></h4>
-      <section></section>
+      <section><p>Iterates over the <a class="xref" href="Reportman.Reporting.Param.html">Param</a> items contained in a <a class="xref" href="Reportman.Reporting.Params.html">Params</a> collection.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ParamsConverter.html">ParamsConverter</a></h4>
-      <section></section>
+      <section><p>Newtonsoft.Json converter that serializes a <a class="xref" href="Reportman.Reporting.Params.html">Params</a> collection as a plain JSON array
+of parameters and reconstructs it when reading.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.PrintItem.html">PrintItem</a></h4>
       <section><p>Basic class providing more basic functionality this item provides printing capability and some events</p>
 </section>
@@ -183,9 +262,15 @@ for dataset fields, function calls are also supported</p>
       <section><p>Base print item providing position and alignment properties</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.PrintPosItemConverter.html">PrintPosItemConverter</a></h4>
-      <section></section>
+      <section><p>Json.NET converter that serializes and deserializes <a class="xref" href="Reportman.Reporting.PrintPosItem.html">PrintPosItem</a> instances,
+using the &quot;className&quot; discriminator to instantiate the correct concrete report item type
+(shape, label, expression, image, barcode or chart).</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Report.html">Report</a></h4>
-      <section></section>
+      <section><p>Concrete report document derived from <a class="xref" href="Reportman.Reporting.BaseReport.html">BaseReport</a>; it drives the page-generation
+lifecycle (BeginPrint/PrintNextPage) and rewires its child objects — params, database/data info,
+subreports, sections and items — back to the report after deserialization.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportDataset.html">ReportDataset</a></h4>
       <section><p>ReportDataset is used internally by the reporting engine.
 Allow navigation in a IDataReader, using a two record buffer, so you can go back one record, but
@@ -196,8 +281,8 @@ not two. The navigation is done forward, and does not consume memory (like IData
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ReportItem.html">ReportItem</a></h4>
       <section><p>Base classs for Report items providing common base functionality, and a relation to the owner (Report).
-<a class="xref" href="Reportman.Reporting.Variant.html">Report</a>
-<a class="xref" href="Reportman.Reporting.Variant.html">Section</a></p>
+<a class="xref" href="Reportman.Reporting.ReportItem.html#Reportman_Reporting_ReportItem_Report">Report</a>
+<a class="xref" href="Reportman.Reporting.Section.html">Section</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ReportItems.html">ReportItems</a></h4>
       <section><p>Collections of ReportItems</p>
@@ -206,11 +291,19 @@ not two. The navigation is done forward, and does not consume memory (like IData
       <section><p>Inner class implements IEnumerator interface:</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ReportLibraryConfig.html">ReportLibraryConfig</a></h4>
-      <section></section>
+      <section><p>Configuration for a report library connection: the database driver, connection
+string and table/field mapping used to read and save report templates from a
+database, including optional HttpAgent (remote agent) credentials.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportLibraryConfigCollection.html">ReportLibraryConfigCollection</a></h4>
-      <section></section>
+      <section><p>A collection of <a class="xref" href="Reportman.Reporting.ReportLibraryConfig.html">ReportLibraryConfig</a> entries that can be persisted to
+and loaded from an INI file (repmandlib.ini), one section per connection.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportLibrarySelection.html">ReportLibrarySelection</a></h4>
-      <section></section>
+      <section><p>Identifies a specific report by name within a <a class="xref" href="Reportman.Reporting.ReportLibraryConfig.html">ReportLibraryConfig</a> and
+holds its loaded stream, providing a convenience method to save a report back to
+that library entry.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportNamedException.html">ReportNamedException</a></h4>
       <section><p>Exception class, used by reporting engine when an error in report item by name</p>
 </section>
@@ -220,29 +313,53 @@ not two. The navigation is done forward, and does not consume memory (like IData
       <h4><a class="xref" href="Reportman.Reporting.ReportWriter.html">ReportWriter</a></h4>
       <section><p>Class used to write a report template to a file (or stream) in xml format</p>
 </section>
+      <h4><a class="xref" href="Reportman.Reporting.ReportmanAgentClient.html">ReportmanAgentClient</a></h4>
+      <section><p>HTTP client for the Reportman AI agent service (api.reportman.es) that streams AI authoring
+requests — SQL suggestion/translation, expression suggestion, and report modification — over
+server-sent events, reporting incremental progress and returning the final JSON result.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Section.html">Section</a></h4>
       <section><p>The sections are contained inside subreports, depending on the section type it
 will print after the detail (group header), before the detail (group header),
 or in special places (page headers and footers)</p>
 </section>
+      <h4><a class="xref" href="Reportman.Reporting.SectionFillOrderHelper.html">SectionFillOrderHelper</a></h4>
+      <section><p>AI-friendly semantic fill order for repeated section printing.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Sections.html">Sections</a></h4>
       <section><p>Collection of sections</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.ShapeItem.html">ShapeItem</a></h4>
-      <section></section>
+      <section><p>A report print item that draws a geometric shape (rectangle, ellipse, line, etc.) with a
+configurable pen and brush, optionally deriving the fill color from an evaluated expression.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.SqlParser.html">SqlParser</a></h4>
       <section><p>Class used by Evaluator to divide a expression into tokens</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.SubReport.html">SubReport</a></h4>
-      <section></section>
+      <section><p>A subreport bound to a data alias, holding the ordered collection of sections
+(page headers/footers, group headers/footers and details) that are printed for
+each record of its dataset, and managing group breaks and page-count tracking.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.SubReports.html">SubReports</a></h4>
-      <section></section>
+      <section><p>Strongly typed list of the <a class="xref" href="Reportman.Reporting.SubReport.html">SubReport</a> instances contained in a report.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.UndoCue.html">UndoCue</a></h4>
-      <section></section>
+      <section><p>Undo/redo history for a report, holding queues of grouped change operations and
+applying them to a <a class="xref" href="Reportman.Reporting.Report.html">Report</a> to step backward or forward through edits.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.VariantCoercion.html">VariantCoercion</a></h4>
+      <section><p>Applies Delphi-compatible Variant type coercion rules, promoting two operands to a
+common base type before comparison or arithmetic and raising on invalid combinations.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.VariantJsonConverter.html">VariantJsonConverter</a></h4>
-      <section></section>
+      <section><p>Newtonsoft.Json converter that serializes a <a class="xref" href="Reportman.Reporting.Variant.html">Variant</a> as a JSON object carrying
+its VariantType and value, and reconstructs the Variant when reading.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.VariantSystemTextJsonConverter.html">VariantSystemTextJsonConverter</a></h4>
-      <section></section>
+      <section><p>System.Text.Json converter that serializes a <a class="xref" href="Reportman.Reporting.Variant.html">Variant</a> as a JSON object with
+Type and Value properties, and reconstructs the typed Variant when reading.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.Variants.html">Variants</a></h4>
       <section><p>Collection of Variant values</p>
 </section>
@@ -262,33 +379,40 @@ The Variant type is a useful feature to implement an expression
 Enums
 </h3>
       <h4><a class="xref" href="Reportman.Reporting.Aggregate.html">Aggregate</a></h4>
-      <section></section>
+      <section><p>Defines the scope over which an aggregate value is accumulated: none, per group,
+per page, or across the whole report.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.AggregateType.html">AggregateType</a></h4>
-      <section></section>
+      <section><p>The kind of aggregation applied to a value: sum, minimum, maximum, average, or
+standard deviation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.BackStyleType.html">BackStyleType</a></h4>
       <section><p>The background of a section can be visible only on design time, while preview only (will not print) or
 also print the background</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.BarcodeType.html">BarcodeType</a></h4>
-      <section></section>
+      <section><p>The barcode symbology a <a class="xref" href="Reportman.Reporting.BarcodeItem.html">BarcodeItem</a> renders, covering the 2-of-5 family, Code 39/93/128, MSI, PostNet, Codabar, EAN-8/13, PDF417 and QR.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DatasetType.html">DatasetType</a></h4>
       <section><p>A dataset definition could represent a table inside a database or
-a sql query, in .Net version, it's always a Query. <a class="xref" href="Reportman.Reporting.Variant.html">DataInfo</a></p>
+a sql query, in .Net version, it's always a Query. <a class="xref" href="Reportman.Reporting.DataInfo.html">DataInfo</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DotNetDriverType.html">DotNetDriverType</a></h4>
       <section><p>The DotNetDriverType indicates the database provider to be used when you select DriverType.DotNet, that
 is .Net 1.x, in this versions of .Net there were no abstraction for Database access, so you must select
 and pre-link into your executable references to the database client library.
 This type is not used in .Net 2.x because the functionality of database providers,
-configured in machine.config or application.config<a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfo</a></p>
+configured in machine.config or application.config<a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DriverType.html">DriverType</a></h4>
       <section><p>The DriverType is part of a report database information definition, indicating the technology to be used
 to connect to the database, in .Net version you can choose DotNet or DotNet2 depending on the version you
-are using. <a class="xref" href="Reportman.Reporting.Variant.html">DatabaseInfo</a></p>
+are using. <a class="xref" href="Reportman.Reporting.DatabaseInfo.html">DatabaseInfo</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.OperationType.html">OperationType</a></h4>
-      <section></section>
+      <section><p>The kind of edit recorded by a <a class="xref" href="Reportman.Reporting.ChangeObjectOperation.html">ChangeObjectOperation</a>: adding, modifying,
+removing, reordering (swap up/down) or renaming a report component.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.PageSizeType.html">PageSizeType</a></h4>
       <section><p>Page size configuration for report scheme</p>
 </section>
@@ -302,10 +426,12 @@ any number of database querys</p>
 parent Section have properties like AutoExpand or AutoContract set, you can place a Rectangle
 and set Align to AllClient, the rectangle will be adapted at run time to fill the section. You can also
 align to bottom or expand lines from top to bottom.
-<a class="xref" href="Reportman.Reporting.Variant.html">PrintPosItem</a><a class="xref" href="Reportman.Reporting.Variant.html">Section</a></p>
+<a class="xref" href="Reportman.Reporting.PrintPosItem.html">PrintPosItem</a><a class="xref" href="Reportman.Reporting.Section.html">Section</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.PropertyType.html">PropertyType</a></h4>
-      <section></section>
+      <section><p>Identifies the data type of a property value tracked in an undo/redo operation,
+used to convert the stored value back to the correct type when applied.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.SectionType.html">SectionType</a></h4>
       <section><p>Section type, each section of a subreport have different function</p>
 </section>
@@ -313,7 +439,7 @@ align to bottom or expand lines from top to bottom.
       <section><p>Enumeration indicating if the image should be shared, so only one instance of the image is stored
 while generating the report (ReportMetafile), if the image is repeated in the report, it's recommended
 to share it, so the image is stored only once, and not for each page (a internal reference is done).
-<a class="xref" href="Reportman.Reporting.Variant.html">ImageItem</a></p>
+<a class="xref" href="Reportman.Reporting.ImageItem.html">ImageItem</a></p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.SkipType.html">SkipType</a></h4>
       <section><p>A section can skip to a page or position</p>
@@ -322,9 +448,13 @@ to share it, so the image is stored only once, and not for each page (a internal
       <section><p>Report stream format</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.StreamVersion.html">StreamVersion</a></h4>
-      <section></section>
+      <section><p>Identifies the version of the report stream/serialization format, selecting between
+the legacy layout (V1) and the current format (V2) when saving a report.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.SubReportEvent.html">SubReportEvent</a></h4>
-      <section></section>
+      <section><p>Notifications raised during report processing to inform a subreport and its sections
+of state transitions such as report start, data/group/page changes and subreport start/end.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.TokenType.html">TokenType</a></h4>
       <section><p>This enumeration is used in string parsing functions, a string is divided in tokens,
 each token can represent operators, symbols...</p>
@@ -339,19 +469,36 @@ Delegates
       <section><p>Delegate used by ReportDataset to trigger an event when CurrentRow data changes</p>
 </section>
       <h4><a class="xref" href="Reportman.Reporting.DataNeededEvent.html">DataNeededEvent</a></h4>
-      <section></section>
+      <section><p>Callback raised by the <a class="xref" href="Reportman.Reporting.Evaluator.html">Evaluator</a> when a referenced dataset is not yet
+available, giving the host a chance to open or supply it before field resolution retries.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.DataProgressEvent.html">DataProgressEvent</a></h4>
-      <section></section>
+      <section><p>Progress callback invoked periodically during a long export, reporting the number of
+records processed out of the total; set <code>docancel</code> to true to abort the operation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.PagedDataChange.html">PagedDataChange</a></h4>
-      <section></section>
+      <section><p>Callback raised by a <a class="xref" href="Reportman.Reporting.PagedDataTable.html">PagedDataTable</a> each time a new row is read and added,
+allowing observers to react to incremental data loading.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportDataset.CreateTableEvent.html">ReportDataset.CreateTableEvent</a></h4>
-      <section></section>
+      <section><p>Callback invoked once the table schema is built; returns true to request that all rows be loaded into memory.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportDataset.UpdateDataEvent.html">ReportDataset.UpdateDataEvent</a></h4>
-      <section></section>
+      <section><p>Callback invoked after a record has been fetched, allowing the consumer to inspect or post-process the new row.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportDataset.UpdateDataEventAsync.html">ReportDataset.UpdateDataEventAsync</a></h4>
-      <section></section>
+      <section><p>Asynchronous callback invoked when a record is fetched, receiving the raw column values and target table for deferred processing.</p>
+</section>
       <h4><a class="xref" href="Reportman.Reporting.ReportProgress.html">ReportProgress</a></h4>
       <section><p>Delegate definition for report processing</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.ReportmanAgentClient.ProgressEventHandler.html">ReportmanAgentClient.ProgressEventHandler</a></h4>
+      <section><p>Callback raised for each streamed progress event from the agent, carrying the actor, stage,
+chunk type and content, token counts, progress identifier, and prefill percentage.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.ReportmanAgentClient.ResultEventHandler.html">ReportmanAgentClient.ResultEventHandler</a></h4>
+      <section><p>Callback raised when an agent request completes, delivering the final result JSON document
+or an error message if the request failed.</p>
 </section>
 
 

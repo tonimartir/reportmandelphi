@@ -86,19 +86,34 @@
 Classes
 </h3>
       <h4><a class="xref" href="Reportman.Drawing.Windows.BitmapUtilWindows.html">BitmapUtilWindows</a></h4>
-      <section></section>
+      <section><p>Windows-specific bitmap helpers, including an extension method that resolves the default file
+extension for a given <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.drawing.imaging.imageformat">ImageFormat</a>.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.FontUtils.html">FontUtils</a></h4>
-      <section></section>
+      <section><p>Helper methods for reading raw OpenType font tables, in particular extracting the
+font family name (name ID 1) directly from a DirectWrite font face's 'name' table.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.GraphicUtils.html">GraphicUtils</a></h4>
-      <section></section>
+      <section><p>Windows GDI+ graphics utilities for the report engine: DPI scaling, grid drawing, text measurement,
+font-style conversions, metafile/bitmap rendering and image codec, scaling and format helpers.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.PrintOutPDFWindows.html">PrintOutPDFWindows</a></h4>
-      <section></section>
+      <section><p>Placeholder for a Windows-specific PDF print-out driver; currently has no
+implementation.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.TFontFaceCache.html">TFontFaceCache</a></h4>
-      <section></section>
+      <section><p>Cache that maps a DirectWrite font face native pointer to its resolved font
+family name, avoiding repeated name-table lookups.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.TGlyphLine.html">TGlyphLine</a></h4>
-      <section></section>
+      <section><p>Holds the positioned glyphs that share a single text baseline, tracking the
+line's reading direction and the most recent run for correct RTL/LTR ordering.</p>
+</section>
       <h4><a class="xref" href="Reportman.Drawing.Windows.TTextExtentRenderer.html">TTextExtentRenderer</a></h4>
-      <section></section>
+      <section><p>Custom DirectWrite text renderer that does not draw, but instead captures glyph
+indices, advances, offsets and per-run formatting into glyph and line lists for
+measuring text extents and feeding the metafile.</p>
+</section>
 
 
 </article>
