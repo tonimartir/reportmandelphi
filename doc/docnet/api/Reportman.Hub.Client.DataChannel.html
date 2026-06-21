@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace Reportman.Hub.Client.DataChannel | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace Reportman.Hub.Client.DataChannel | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Hub.Client.DataChannel">
+
+  <h1 id="Reportman_Hub_Client_DataChannel" data-uid="Reportman.Hub.Client.DataChannel" class="text-break">Namespace Reportman.Hub.Client.DataChannel</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="Reportman.Hub.Client.DataChannel.QueryProgress.html">QueryProgress</a></h4>
+      <section><p>Snapshot of the current phase of an in-flight SQL operation, suitable
+for binding to UI text near the busy indicator. The Agent emits its own
+1Hz pulse over the DataChannel; this struct mirrors that into a single
+observable shape.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.html">WebRtcChannelPool</a></h4>
+      <section><p>Caches one open <a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a> per Hub database so
+successive SQL queries on the same database reuse the negotiated peer
+connection. Without the pool every query pays the full ~1–3s setup cost
+(STUN gather + signaling + ICE checks + DTLS + SCTP). With the pool the
+first query is unchanged, all subsequent queries cost ~50–100 ms (just
+one DataChannel message round-trip).</p>
+<p>Lifecycle of a pooled session (three concurrent timers — none of them
+holds the channel open &quot;forever&quot;):</p>
+<ul>
+<li><b>Idle timeout</b> (default 60 s): closes when no <code>ExecuteAsync</code>
+has been issued for that long. Matches typical residential NAT UDP
+binding TTL — past this point the warm channel wouldn't be useful
+even if we kept it.</li>
+<li><b>Max lifetime</b> (default 10 min): absolute cap regardless of use.
+Prevents stale DTLS state and rotates the channel periodically.</li>
+<li><b>Keepalive ping</b> (default every 25 s): sends a tiny &quot;ping&quot;
+message on the DataChannel. The Agent ack'es with &quot;pong&quot;; the
+outbound UDP packet alone refreshes the NAT mapping so the channel
+keeps working past the router's idle binding TTL.</li>
+</ul>
+<p>Also evicts when the channel is observed dead (DTLS failure, Agent
+closed it, peer state change). The next caller gets a freshly negotiated
+session transparently.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a></h4>
+      <section><p>One-shot WebRTC peer for a single SQL operation against an Agent.</p>
+<p>Lifecycle (per the per-SQL token decision):</p>
+<ol>
+<li>POST /api/data-session/start (Bearer + agentApiKey) → sessionId + JWT + iceServers.</li>
+<li>Open WS /api/data-session/{sessionId}/signal?token=jwt.</li>
+<li>Build RTCPeerConnection, create a DataChannel, generate offer,
+wait for ICE gather complete, forward offer over the signaling WS.
+The Hub routes it to the Agent and the answer comes back wrapped
+in {&quot;source&quot;:&quot;hub&quot;,&quot;body&quot;:&quot;&lt;agent reply json&gt;&quot;}.</li>
+<li>setRemoteDescription(answer), wait DC open (≤10s).</li>
+<li>Send {requestId, action, data} on the DC, collect executing /
+fetching / data / done messages, return the deserialized payload.</li>
+<li>Close the DC + peer + signaling WS; the session dies with the SQL.</li>
+</ol>
+<p>If anything fails before <code>DataChannelReadyAsync</code> returns true,
+the caller falls back to the existing HTTP path.</p>
+</section>
+    <h3 id="enums">
+Enums
+</h3>
+      <h4><a class="xref" href="Reportman.Hub.Client.DataChannel.ConnectionMode.html">ConnectionMode</a></h4>
+      <section><p>Effective transport for the most recent SQL operation.
+Surfaced to the UI as a chip next to the busy indicator.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Hub.Client.DataChannel.QueryPhase.html">QueryPhase</a></h4>
+      <section><p>The sequential stages a single SQL operation passes through, from connecting and
+preparing through fetching, transfer and decoding to completion.</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

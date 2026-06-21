@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class WebRtcChannelPool | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class WebRtcChannelPool | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Caches one open  per Hub database so successive SQL queries on the same database reuse the negotiated peer connection. Without the pool every query pays the full ~1–3s setup cost (STUN gather + signaling + ICE checks + DTLS + SCTP). With the pool the first query is unchanged, all subsequent queries cost ~50–100 ms (just one DataChannel message round-trip). Lifecycle of a pooled session (three concurrent timers — none of them holds the channel open &amp;quot;forever&amp;quot;):  Idle timeout (default 60 s): closes when no ExecuteAsync has been issued for that long. Matches typical residential NAT UDP binding TTL — past this point the warm channel wouldn&#39;t be useful even if we kept it. Max lifetime (default 10 min): absolute cap regardless of use. Prevents stale DTLS state and rotates the channel periodically. Keepalive ping (default every 25 s): sends a tiny &amp;quot;ping&amp;quot; message on the DataChannel. The Agent ack&#39;es with &amp;quot;pong&amp;quot;; the outbound UDP packet alone refreshes the NAT mapping so the channel keeps working past the router&#39;s idle binding TTL.  Also evicts when the channel is observed dead (DTLS failure, Agent closed it, peer state change). The next caller gets a freshly negotiated session transparently.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool">
+
+
+
+  <h1 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool" class="text-break">Class WebRtcChannelPool</h1>
+  <div class="markdown level0 summary"><p>Caches one open <a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a> per Hub database so
+successive SQL queries on the same database reuse the negotiated peer
+connection. Without the pool every query pays the full ~1–3s setup cost
+(STUN gather + signaling + ICE checks + DTLS + SCTP). With the pool the
+first query is unchanged, all subsequent queries cost ~50–100 ms (just
+one DataChannel message round-trip).</p>
+<p>Lifecycle of a pooled session (three concurrent timers — none of them
+holds the channel open &quot;forever&quot;):</p>
+<ul>
+<li><b>Idle timeout</b> (default 60 s): closes when no <code>ExecuteAsync</code>
+has been issued for that long. Matches typical residential NAT UDP
+binding TTL — past this point the warm channel wouldn't be useful
+even if we kept it.</li>
+<li><b>Max lifetime</b> (default 10 min): absolute cap regardless of use.
+Prevents stale DTLS state and rotates the channel periodically.</li>
+<li><b>Keepalive ping</b> (default every 25 s): sends a tiny &quot;ping&quot;
+message on the DataChannel. The Agent ack'es with &quot;pong&quot;; the
+outbound UDP packet alone refreshes the NAT mapping so the channel
+keeps working past the router's idle binding TTL.</li>
+</ul>
+<p>Also evicts when the channel is observed dead (DTLS failure, Agent
+closed it, peer state change). The next caller gets a freshly negotiated
+session transparently.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">WebRtcChannelPool</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Hub.html">Hub</a>.<a class="xref" href="Reportman.Hub.Client.html">Client</a>.<a class="xref" href="Reportman.Hub.Client.DataChannel.html">DataChannel</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.DataChannel.dll</h6>
+  <h5 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class WebRtcChannelPool : IAsyncDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool__ctor_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.#ctor*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool__ctor" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.#ctor">WebRtcChannelPool()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public WebRtcChannelPool()</code></pre>
+  </div>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool__ctor_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.#ctor*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool__ctor_System_TimeSpan_System_TimeSpan_System_TimeSpan_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.#ctor(System.TimeSpan,System.TimeSpan,System.TimeSpan)">WebRtcChannelPool(TimeSpan, TimeSpan, TimeSpan)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public WebRtcChannelPool(TimeSpan idleTimeout, TimeSpan maxLifetime, TimeSpan keepaliveInterval)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></td>
+        <td><span class="parametername">idleTimeout</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></td>
+        <td><span class="parametername">maxLifetime</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></td>
+        <td><span class="parametername">keepaliveInterval</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_DisposeAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.DisposeAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_DisposeAsync" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.DisposeAsync">DisposeAsync()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_EvictAllAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.EvictAllAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_EvictAllAsync" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.EvictAllAsync">EvictAllAsync()</h4>
+  <div class="markdown level1 summary"><p>Closes every cached session but keeps the pool itself usable. Call on
+logout / identity change — pooled sessions hold JWTs tied to the
+previous identity and shouldn't be reused under a new one. Subsequent
+<a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.html#Reportman_Hub_Client_DataChannel_WebRtcChannelPool_GetOrOpenAsync_System_Int64_System_Func_System_Threading_CancellationToken_System_Threading_Tasks_Task_Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession___System_Threading_CancellationToken_">GetOrOpenAsync(long, Func&lt;CancellationToken, Task&lt;WebRtcDataChannelSession?&gt;&gt;, CancellationToken)</a> calls will negotiate fresh sessions.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task EvictAllAsync()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_GetOrOpenAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.GetOrOpenAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcChannelPool_GetOrOpenAsync_System_Int64_System_Func_System_Threading_CancellationToken_System_Threading_Tasks_Task_Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession___System_Threading_CancellationToken_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcChannelPool.GetOrOpenAsync(System.Int64,System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession}},System.Threading.CancellationToken)">GetOrOpenAsync(long, Func&lt;CancellationToken, Task&lt;WebRtcDataChannelSession?&gt;&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Returns a live session for <code class="paramref">hubDatabaseId</code>, either
+from cache or by negotiating a new one via the supplied opener. The
+opener is the same delegate the caller used to call
+<a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html#Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_TryOpenAsync_System_Net_Http_HttpClient_System_Uri_System_String_System_Object_System_Action_Reportman_Hub_Client_DataChannel_QueryProgress__System_Threading_CancellationToken_">TryOpenAsync(HttpClient, Uri, string?, object, Action&lt;QueryProgress&gt;?, CancellationToken)</a> — passing it
+keeps this class free of HttpClient/Uri/bearer plumbing details.
+Returns <code>null</code> when opening fails (caller falls back to HTTP).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;WebRtcDataChannelSession?&gt; GetOrOpenAsync(long hubDatabaseId, Func&lt;CancellationToken, Task&lt;WebRtcDataChannelSession?&gt;&gt; opener, CancellationToken ct)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td><span class="parametername">hubDatabaseId</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a>&gt;&gt;</td>
+        <td><span class="parametername">opener</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcChannelPool.cs" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

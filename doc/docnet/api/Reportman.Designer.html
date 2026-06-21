@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace Reportman.Designer | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace Reportman.Designer | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Designer">
+
+  <h1 id="Reportman_Designer" data-uid="Reportman.Designer" class="text-break">Namespace Reportman.Designer</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="Reportman.Designer.AIChatPanelControl.html">AIChatPanelControl</a></h4>
+      <section><p>Replicates Delphi's TFRpChatFrame layout:
+PRoot → PTop(alTop) + PControl(alClient) + PBottom(alBottom)
+PBottom is OUTSIDE the TabControl so it's always visible.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AICopilotManager.html">AICopilotManager</a></h4>
+      <section><p>Singleton that tracks the AI copilot's busy (&quot;thinking&quot;) state, guards report
+modifications while inference is running, and wraps AI-driven changes so they can
+be grouped into the designer's undo/redo history.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AILoginForm.html">AILoginForm</a></h4>
+      <section><p>Port of Delphi's TFRpLoginVCL: modal dialog with Google, Microsoft, and Email OTP login.
+Uses RpAuthManager for all auth operations.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AILoginFrameControl.html">AILoginFrameControl</a></h4>
+      <section><p>Replicates Delphi's TFRpLoginFrameVCL: a compact login banner that shows
+&quot;Guest (Login available)&quot; when logged out, or [Tier][Avatar][Username][▼] when logged in.
+Connected to RpAuthManager for real auth state and persistence.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AISchemaSelectorControl.html">AISchemaSelectorControl</a></h4>
+      <section><p>Replicates Delphi's PSchemaHost layout:
+Row 0: &quot;SCHEMA&quot; label spanning full width (like PROVIDER/MODE labels)
+Row 1: [ComboBox (fill)] [Config ⚙ button] [Refresh button]</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AISelectionControl.html">AISelectionControl</a></h4>
+      <section><p>Replicates Delphi's TFRpAISelectionVCL: 3-column grid with Provider/Mode combos
+and credit gauge, plus an inference progress mode with Stop/Tokens/Spinner.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.AssetsManager.html">AssetsManager</a></h4>
+      <section><p>Extracts embedded web assets (the Monaco editor and Web Markdown bundles) into the
+local application data folder on first use or version change, and preloads the
+WebView2 loader native library.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.BandInfo.html">BandInfo</a></h4>
+      <section><p>Holds the layout state and cached bitmaps for a single section band drawn on the
+design surface, including its position, size, title and the rendered section, ruler
+and band images.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ConnectionEditor.html">ConnectionEditor</a></h4>
+      <section><p>Connection assistant dialog. Hosts a <a class="xref" href="Reportman.Designer.ConnectionParamsControl.html">ConnectionParamsControl</a>
+(driver picker + dynamic parameter grid + test) and OK/Cancel. Opened from
+the object inspector &quot;Connection String&quot; property and from the new report
+wizard. For a .Net provider the connection string is stored in the report;
+for the HTTP Agent driver the API key + Hub database are stored in
+dbxconnections.ini (Delphi-compatible) and the report only keeps the alias.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ConnectionParamsControl.html">ConnectionParamsControl</a></h4>
+      <section><p>Reusable connection assistant. Lets the user pick a .Net provider (driver),
+edits its connection parameters dynamically through the provider's own
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbconnectionstringbuilder">DbConnectionStringBuilder</a> bound to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.windows.forms.propertygrid">PropertyGrid</a>
+(works for ANY registered provider), shows the resulting connection string
+and tests the connection. The only persisted value is the connection string
+plus the provider factory invariant name (no JSON).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.DbxConnections.html">DbxConnections</a></h4>
+      <section><p>Reads/writes the shared <code>dbxconnections.ini</code> used by both the Delphi and
+the .Net designers to store connection definitions. For HTTP Agent connections
+it keeps the sensitive data (API key, selected Hub database) here instead of in
+the report, exactly like Delphi. Path resolution and section/key names are kept
+compatible with Delphi (see Reportman.Reporting.DatabaseInfo dbx config reader).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.DesignerSelfTest.html">DesignerSelfTest</a></h4>
+      <section><p>Headless designer self-tests (invoked from designer.exe /undotest).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.EditSubReport.html">EditSubReport</a></h4>
+      <section><p>Design-surface control that renders a subreport's sections (bands) and their
+print items, handling selection, drag-and-drop, resizing and band repositioning
+for the visual report designer.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.EllipsisEditingControl.html">EllipsisEditingControl</a></h4>
+      <section><p>A DataGridView in-cell editing control that pairs a text box with an ellipsis button,
+letting the user edit a cell value directly or open an external picker via the button.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ExpressionChatPanelControl.html">ExpressionChatPanelControl</a></h4>
+      <section><p>Side panel that lets the user chat with the AI agent to generate, fix or explain a report
+expression, streaming the response and offering to apply the suggested expression.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ExpressionDlg.html">ExpressionDlg</a></h4>
+      <section><p>Dialog for editing a report expression, providing a categorized helper of fields, functions,
+variables and operators, syntax checking and evaluation, alongside an AI expression chat panel.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ExpressionEditorControl.html">ExpressionEditorControl</a></h4>
+      <section><p>Monaco-based editor for report expressions with an optional AI suggestion toggle that
+requests completions from the agent after a debounced pause in typing.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FieldInfo.html">FieldInfo</a></h4>
+      <section><p>Describes a single field shown in the fields tree, carrying its owning dataset,
+field name, .NET data type and display size.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameDataDef.html">FrameDataDef</a></h4>
+      <section><p>Tree-based editor control for a report's data definitions, letting the user add,
+remove, reorder and connect database connections, datasets and parameters.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameFields.html">FrameFields</a></h4>
+      <section><p>User control that displays a report's datasets and variables in a tree view,
+letting the user drag fields out as expressions for use in the designer.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.html">FrameMainDesigner</a></h4>
+      <section><p>Main WinForms designer control hosting the full report-authoring surface:
+toolbar, structure/data/fields tabs, the section design canvas, the object
+inspector, undo/redo, recent files and the optional AI copilot chat panel.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.ExitReportArgs.html">FrameMainDesigner.ExitReportArgs</a></h4>
+      <section><p>Event arguments for an exit request, allowing the host to cancel the exit
+or to suppress removal of the designer control from its parent.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.PreviewReportArgs.html">FrameMainDesigner.PreviewReportArgs</a></h4>
+      <section><p>Event arguments for a preview request, carrying the laid-out report
+metafile that the host should display.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.SaveReportArgs.html">FrameMainDesigner.SaveReportArgs</a></h4>
+      <section><p>Event arguments for a save request, letting the host report back whether
+the report was actually saved via the <code>Saved</code> flag.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameStructure.html">FrameStructure</a></h4>
+      <section><p>Designer control that shows the report's structure as a tree of
+subreports and sections, and lets the user add, delete, reorder, import
+and export those elements.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.GridOptions.html">GridOptions</a></h4>
+      <section><p>Dialog for editing a report's design grid settings, including spacing, color,
+line style, and whether the grid is enabled and visible.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.HttpAgentParams.html">HttpAgentParams</a></h4>
+      <section><p>Object bound to the connection assistant PropertyGrid when the HTTP Agent
+&quot;driver&quot; is selected: the API key plus a live Hub-database selector.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.HubDatabaseConverter.html">HubDatabaseConverter</a></h4>
+      <section><p>TypeConverter for the Hub database property: provides the dropdown values by
+querying the agent with the current API key when the list is expanded.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.HubDatabaseRef.html">HubDatabaseRef</a></h4>
+      <section><p>A Hub database reference (display name + hubDatabaseId).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.LibraryConfig.html">LibraryConfig</a></h4>
+      <section><p>Designer control for editing the report library configuration: the
+database driver, provider factory, connection string and the table and
+field names used to store and look up reports.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.LibraryConfigForm.html">LibraryConfigForm</a></h4>
+      <section><p>Modal dialog that hosts the report library configuration control, persisting the
+settings when the user confirms with OK.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.MainForm.html">MainForm</a></h4>
+      <section><p>Top-level window of the Reportman designer application; hosts the main designer frame,
+opens a report passed on the command line, and prompts to save unsaved changes on close.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.MonacoEditorControl.html">MonacoEditorControl</a></h4>
+      <section><p>SQL editor control that hosts the Monaco editor in a WebView2 and optionally
+provides AI-driven SQL autocompletion through the Reportman agent, including
+schema selection and inline/list completion suggestions.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.NewReportWizard.html">NewReportWizard</a></h4>
+      <section><p>New report connection wizard (port of the Delphi modern new report wizard,
+adapted to the .Net model). On &quot;New&quot; the user chooses a connection route:
+a Reportman AI / DB Agent connection (API key + Hub database), a direct
+database connection (.Net provider + connection string) or no connection.
+Direct connections store the connection string in the report; agent
+connections store the API key + Hub database in dbxconnections.ini (the
+report only keeps the alias + HttpAgent driver), exactly like Delphi.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ObjectInspectorCell.html">ObjectInspectorCell</a></h4>
+      <section><p>Object-inspector grid cell that selects, paints and parses the
+appropriate editing control for each property value according to its
+<a class="xref" href="Reportman.Designer.ObjectInspectorCellType.html">ObjectInspectorCellType</a> (combo box, color/image picker,
+numeric editor, checkbox or ellipsis dialog launcher).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ObjectInspectorColumn.html">ObjectInspectorColumn</a></h4>
+      <section><p>Grid column for the designer's object inspector that hosts
+<a class="xref" href="Reportman.Designer.ObjectInspectorCell.html">ObjectInspectorCell</a> instances as its cell template.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.html">OpenFromLibrary</a></h4>
+      <section><p>User control that browses a report library stored in a database, presenting
+reports and their folder groups as a tree and supporting selection, creation,
+renaming, deletion, reordering, and import/export of reports.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.AfterSelectEventArgs.html">OpenFromLibrary.AfterSelectEventArgs</a></h4>
+      <section><p>Carries the report name and group code of the tree node that has just
+been selected.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.html">OpenFromLibrary.BeforeSelectEventArgs</a></h4>
+      <section><p>Carries the report name and group code of the node about to be selected,
+and lets a handler cancel the selection by setting <a class="xref" href="Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.html#Reportman_Designer_OpenFromLibrary_BeforeSelectEventArgs_Cancel">Cancel</a>.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibraryForm.html">OpenFromLibraryForm</a></h4>
+      <section><p>Dialog that lets the user pick a configured report library from a combo box
+and then choose a report from it, returning the selection along with the
+loaded report stream.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.RpAuthManager.html">RpAuthManager</a></h4>
+      <section><p>Port of Delphi's TRpAuthManager: singleton managing authentication,
+profile, tiers, OAuth flows (Google/Microsoft), email OTP, and config persistence.
+Config is saved to %LOCALAPPDATA%\Reportman\reportman_auth.ini (shared with Delphi).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.RpProfile.html">RpProfile</a></h4>
+      <section><p>Profile data from the Hub API. Matches Delphi's TRpProfile record.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.RuntimeResize.html">RuntimeResize</a></h4>
+      <section><p>Utility for resizing any item</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.SQLEditor.html">SQLEditor</a></h4>
+      <section><p>Dialog for editing a data source's SQL query using a Monaco editor with schema-aware
+autocomplete, a natural-language-to-SQL chat panel, and a preview of the query results.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.SQLEditorControl.html">SQLEditorControl</a></h4>
+      <section><p>Composite control that pairs a Monaco-based SQL editor with an AI schema selector
+and audit log, debouncing edits to request AI-powered SQL autocomplete from the
+Reportman agent.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.SqlChatPanelControl.html">SqlChatPanelControl</a></h4>
+      <section><p>Designer panel that lets the user chat with the Reportman AI agent to
+generate SQL from natural language, streaming the response and exposing
+the suggested SQL for the caller to apply.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.SqlSchemaContextChangedEventArgs.html">SqlSchemaContextChangedEventArgs</a></h4>
+      <section><p>Event data raised when the active Hub database, schema or API key bound to
+the SQL chat panel changes, carrying the effective identifiers used for
+subsequent AI requests.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.WebMarkdownControl.html">WebMarkdownControl</a></h4>
+      <section><p>WebView2-hosted control that renders chat conversations and log output as
+Markdown, supporting incremental streaming of assistant messages and log
+chunks into the embedded page.</p>
+</section>
+    <h3 id="structs">
+Structs
+</h3>
+      <h4><a class="xref" href="Reportman.Designer.ConnectionEditor.ConnResult.html">ConnectionEditor.ConnResult</a></h4>
+      <section><p>Result of editing a connection.</p>
+</section>
+    <h3 id="enums">
+Enums
+</h3>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.EditModeType.html">FrameMainDesigner.EditModeType</a></h4>
+      <section><p>Controls which save/open toolbar actions the designer exposes: full
+open-and-save, save-only (no open/new), or self-managed saving where the
+standard save drop-down is suppressed.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ObjectInspectorCellType.html">ObjectInspectorCellType</a></h4>
+      <section><p>Identifies the editor and formatting an object-inspector cell uses for a
+property value, such as plain text, expression, numeric, color, image,
+font, SQL or connection-string editing.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.SelectionModeType.html">OpenFromLibrary.SelectionModeType</a></h4>
+      <section><p>Determines which operations the library browser exposes: read-only
+selection, selection combined with editing, or pure editing of the library.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ResizeAction.html">ResizeAction</a></h4>
+      <section><p>Action to do</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.SelectedItemPalette.html">SelectedItemPalette</a></h4>
+      <section><p>Identifies the currently active design palette tool, determining whether the mouse
+selects existing items (Arrow) or inserts a new item of the given kind.</p>
+</section>
+    <h3 id="delegates">
+Delegates
+</h3>
+      <h4><a class="xref" href="Reportman.Designer.EllipsisClick.html">EllipsisClick</a></h4>
+      <section><p>Callback raised when the ellipsis button of an <a class="xref" href="Reportman.Designer.EllipsisEditingControl.html">EllipsisEditingControl</a> is clicked;
+the handler may replace <code class="paramref">text</code> and returns true if the value was changed.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ExpressionChatPanelControl.ValidateExpressionHandler.html">ExpressionChatPanelControl.ValidateExpressionHandler</a></h4>
+      <section><p>Callback used to validate a generated expression locally; returns true when valid,
+otherwise sets <code class="paramref">errorMessage</code> describing why validation failed.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.ExitReportEventHandler.html">FrameMainDesigner.ExitReportEventHandler</a></h4>
+      <section><p>Callback raised when the user requests to exit the designer, letting the
+host cancel or control disposal through <a class="xref" href="Reportman.Designer.FrameMainDesigner.ExitReportArgs.html">FrameMainDesigner.ExitReportArgs</a>.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.PreviewReportEvent.html">FrameMainDesigner.PreviewReportEvent</a></h4>
+      <section><p>Callback raised when the user requests a preview, supplying the report
+metafile to render through <a class="xref" href="Reportman.Designer.FrameMainDesigner.PreviewReportArgs.html">FrameMainDesigner.PreviewReportArgs</a>.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.FrameMainDesigner.SaveReportEvent.html">FrameMainDesigner.SaveReportEvent</a></h4>
+      <section><p>Callback raised when the user requests a save, letting the host perform
+custom save logic and report the outcome through <a class="xref" href="Reportman.Designer.FrameMainDesigner.SaveReportArgs.html">FrameMainDesigner.SaveReportArgs</a>.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.AfterSelectEvent.html">OpenFromLibrary.AfterSelectEvent</a></h4>
+      <section><p>Callback raised after a tree node has been selected, reporting the
+selected report name and group code.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.OpenFromLibrary.BeforeSelectEvent.html">OpenFromLibrary.BeforeSelectEvent</a></h4>
+      <section><p>Callback raised before a tree node is selected, allowing the handler to
+inspect or cancel the pending selection.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.PropertyChanged.html">PropertyChanged</a></h4>
+      <section><p>Callback raised when an inspected object's property is edited, reporting the
+property name and its new value.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ResizeEventGetBounds.html">ResizeEventGetBounds</a></h4>
+      <section><p>Event to retrieve original object bounds</p>
+</section>
+      <h4><a class="xref" href="Reportman.Designer.ResizeEventSetBounds.html">ResizeEventSetBounds</a></h4>
+      <section><p>Event to set new bounds, can return validated new bounds</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

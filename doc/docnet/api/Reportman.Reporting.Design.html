@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace Reportman.Reporting.Design | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace Reportman.Reporting.Design | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Design">
+
+  <h1 id="Reportman_Reporting_Design" data-uid="Reportman.Reporting.Design" class="text-break">Namespace Reportman.Reporting.Design</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.CompactReportSerializer.html">CompactReportSerializer</a></h4>
+      <section><p>Serializes a Report into a compact text DSL for LLM instance context.
+Only properties present in the schemaContext (ReportContextBuilder allowed properties)
+are emitted, so the AI designer does not see properties it cannot edit.
+Only non-default property values are emitted to reduce token usage.
+Font names are always included (Report Manager has no parent-font inheritance).</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchApplyResult.html">ReportBatchApplyResult</a></h4>
+      <section><p>Result of applying a batch of operations to a report, including the modified report, the undo group id,
+the count of applied operations, the inverse undo operations, and any issues encountered.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchEditor.html">ReportBatchEditor</a></h4>
+      <section><p>Validates and applies batches of structural report operations (add, remove, modify,
+reorder and z-order changes) against a report, enforcing layout rules and recording
+the changes in the report's undo history.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchIssue.html">ReportBatchIssue</a></h4>
+      <section><p>A validation or application problem reported for a batch, carrying a diagnostic code, a message,
+and a reference to the offending operation by index or id.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchOperation.html">ReportBatchOperation</a></h4>
+      <section><p>Describes one editing action within a batch, including its type, the target and parent objects,
+optional positioning indices, and the set of properties to apply.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchProperty.html">ReportBatchProperty</a></h4>
+      <section><p>A single property name/value pair to assign to a target report object as part of a batch operation.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></h4>
+      <section><p>Outcome of validating a batch of operations, exposing the collected issues and whether the batch is valid.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportStructureContext.html">ReportStructureContext</a></h4>
+      <section><p>Container for a report's structure tree, exposing the root node from which
+the full hierarchy of params, datasets, subreports and sections is reachable.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportStructureContextBuilder.html">ReportStructureContextBuilder</a></h4>
+      <section><p>Builds a <a class="xref" href="Reportman.Reporting.Design.ReportStructureContext.html">ReportStructureContext</a> tree from a report, walking its
+params, database and data infos, subreports, sections and components.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportStructureContextNode.html">ReportStructureContextNode</a></h4>
+      <section><p>A single node in the tree that mirrors a report's structure, holding the
+element's name, class name and parent name plus its child nodes.</p>
+</section>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.IReportBatchEditor.html">IReportBatchEditor</a></h4>
+      <section><p>Implemented by services that both validate and apply batches of operations to a report,
+producing the resulting changes together with any undo information.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.IReportBatchValidator.html">IReportBatchValidator</a></h4>
+      <section><p>Implemented by services that check whether a sequence of batch operations can be applied to a report,
+returning the validation result without modifying the report.</p>
+</section>
+    <h3 id="enums">
+Enums
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.ReportBatchOperationType.html">ReportBatchOperationType</a></h4>
+      <section><p>Identifies the kind of editing action a <a class="xref" href="Reportman.Reporting.Design.ReportBatchOperation.html">ReportBatchOperation</a> performs,
+such as creating a report, adding or removing objects, modifying properties, or reordering.</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>
