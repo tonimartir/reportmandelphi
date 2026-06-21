@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace Reportman.Reporting.Design.Json | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace Reportman.Reporting.Design.Json | Reportman .Net Documentation ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Design.Json">
+
+  <h1 id="Reportman_Reporting_Design_Json" data-uid="Reportman.Reporting.Design.Json" class="text-break">Namespace Reportman.Reporting.Design.Json</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.html">ReportBatchJsonAdapter</a></h4>
+      <section><p>Bridges the JSON wire format for batch report operations to the in-memory editor: it
+deserializes batch requests and report documents (JSON or XML), maps them to editor
+operations, applies or validates them against a report, and serializes the results back to JSON.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonApplyResponse.html">ReportBatchJsonApplyResponse</a></h4>
+      <section><p>Result of applying a batch request, extending the validation response with the undo
+group identifier and the number of operations that were applied.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html">ReportBatchJsonDocumentApplyResponse</a></h4>
+      <section><p>Apply result that also returns the resulting report document, serialized in the given
+<a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html#Reportman_Reporting_Design_Json_ReportBatchJsonDocumentApplyResponse_Format">Format</a>; <a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html#Reportman_Reporting_Design_Json_ReportBatchJsonDocumentApplyResponse_ReportJson">ReportJson</a> is an alias for the document text.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonIssue.html">ReportBatchJsonIssue</a></h4>
+      <section><p>A validation problem reported for a batch request, identifying the offending operation
+(by index and id) along with a diagnostic code and human-readable message.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.html">ReportBatchJsonOperation</a></h4>
+      <section><p>A single JSON-serializable report edit operation (add, modify, move, delete, etc.),
+including its target, properties, and the optional high-level semantic V1 fields the
+AI designer uses before they are expanded into low-level operations.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonProperty.html">ReportBatchJsonProperty</a></h4>
+      <section><p>A single property assignment within an operation, pairing the property name with its
+raw JSON value to be applied to the target report object.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></h4>
+      <section><p>JSON-serializable envelope for a batch of report edit operations, carrying a
+schema version and the ordered list of operations to apply.</p>
+</section>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.html">ReportBatchJsonValidationResponse</a></h4>
+      <section><p>Result of validating a batch request, exposing any issues found and an
+<a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.html#Reportman_Reporting_Design_Json_ReportBatchJsonValidationResponse_IsValid">IsValid</a> flag that is true when no issues were reported.</p>
+</section>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.html">IReportBatchJsonAdapter</a></h4>
+      <section><p>Bridges JSON batch contracts and the in-memory report model: implementers deserialize
+requests and reports, validate and apply batches of operations, and serialize reports
+and result objects back to JSON in the supported document formats.</p>
+</section>
+    <h3 id="enums">
+Enums
+</h3>
+      <h4><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></h4>
+      <section><p>Identifies the serialization format used to read or write a report document,
+either JSON or XML.</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

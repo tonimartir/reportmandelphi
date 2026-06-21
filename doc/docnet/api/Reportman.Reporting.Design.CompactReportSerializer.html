@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class CompactReportSerializer | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class CompactReportSerializer | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Serializes a Report into a compact text DSL for LLM instance context. Only properties present in the schemaContext (ReportContextBuilder allowed properties) are emitted, so the AI designer does not see properties it cannot edit. Only non-default property values are emitted to reduce token usage. Font names are always included (Report Manager has no parent-font inheritance).">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Design.CompactReportSerializer">
+
+
+
+  <h1 id="Reportman_Reporting_Design_CompactReportSerializer" data-uid="Reportman.Reporting.Design.CompactReportSerializer" class="text-break">Class CompactReportSerializer</h1>
+  <div class="markdown level0 summary"><p>Serializes a Report into a compact text DSL for LLM instance context.
+Only properties present in the schemaContext (ReportContextBuilder allowed properties)
+are emitted, so the AI designer does not see properties it cannot edit.
+Only non-default property values are emitted to reduce token usage.
+Font names are always included (Report Manager has no parent-font inheritance).</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">CompactReportSerializer</span></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a>.<a class="xref" href="Reportman.Reporting.Design.html">Design</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.Design.dll</h6>
+  <h5 id="Reportman_Reporting_Design_CompactReportSerializer_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class CompactReportSerializer</code></pre>
+  </div>
+  <h5 id="Reportman_Reporting_Design_CompactReportSerializer_remarks"><strong>Remarks</strong></h5>
+  <div class="markdown level0 remarks"><p>EXCLUDED PROPERTIES — present in the model but intentionally not exposed to the designer.
+To expose a property, move it from this list to the corresponding Write* method AND
+add it to the matching AllowedProperties array in ReportContextBuilder.</p>
+<p>Report: FontName, FontSize, FontStyle, FontRotation, FontColor, BackColor, Transparent,
+CutText, Alignment, VAlignment, WordWrap, SingleLine, MultiPage, PrintStep, Type1Font,
+PageSize, PageHeight, PageWidth,
+PageBackColor, LeftMargin, RightMargin, TopMargin, BottomMargin, LinesPerInch,
+PaperSource, Duplex, ForcePaperName, PageSizeIndex, AutoScale, PreviewWindow,
+PreviewMargins, PreviewAbout, GridVisible, GridEnabled, GridLines, GridColor,
+GridWidth, GridHeight, Copies, CollateCopies, PrinterFonts,
+PrintOnlyIfDataAvailable, PrinterSelect, PDFConformance, PDFCompressed,
+DocProducer, DocCreator, DocCreationDate, DocModificationDate, DocXMPContent,
+StreamFormat, ActionBefore, ActionAfter, Language</p>
+<p>DatabaseInfo: entire object type (not editable by the designer)</p>
+<p>DataInfo (extras): SQL, MyBaseFilename, MyBaseFields,
+MyBaseIndexFields, MyBaseMasterFields, BDEIndexFields, BDEIndexName, BDETable,
+BDEType, BDEFilter, BDEMasterFields, BDEFirstRange, BDELastRange, OpenOnStart,
+GroupUnion, ParallelUnion, HubSchemaId, DataUnions</p>
+<p>Param (extras): ErrorMessage, IsReadOnly, NeverVisible,
+AllowNulls, LookupDataset, SearchDataset, Search, SearchParam, Items, Values,
+Selected</p>
+<p>SubReport (extras): ReOpenOnPrint, ParentSub, ParentSec</p>
+<p>Section (extras): ChangeBool, SkipPage, SkipType, SkipToPageExpre, SkipRelativeH,
+SkipRelativeV, SkipExpreH, SkipExpreV, HorzDesp, VertDesp (use FillOrder instead), BeginPage, IniNumPage,
+Global, Visible, BackStyle, DrawStyle, SharedImage, dpires, StreamFormat, SyncWidth,
+DoBeforePrint, DoAfterPrint, BackExpression, ExternalFilename, ExternalConnection,
+ExternalTable, ExternalField, ExternalSearchField, ExternalSearchValue,
+ChildSubReportName, Stream</p>
+<p>Component base (extras): Hidden, Visible, PartialFlag, AnnotationExpression</p>
+<p>TextItem (extras): FontRotation, WordBreak, InterLine, PrintStep, Type1Font</p>
+<p>Expression (extras): DataType, ExportDisplayFormat, ExportExpression, ExportLine,
+ExportPosition, ExportSize, ExportDoNewLine</p>
+<p>Image (extras): Stream (embedded indicator)</p>
+<p>Barcode (extras): Truncated</p>
+<p>Chart (extras): Driver, View3d, View3dWalls, Perspective, Elevation, Rotation, Zoom,
+HorzOffset, VertOffset, Tilt, Orthogonal, MultiBar, Resolution, ShowHint, MarkStyle,
+HorzFontSize, VertFontSize, HorzFontRotation, VertFontRotation, AutoRange,
+AxisYInitial, AxisYFinal, Identifier, ColorExpression, SerieColorExpression,
+ChangeSerieBool, ClearExpressionBool</p>
+</div>
+  <h3 id="methods">Methods
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.Reporting.Design/CompactReportSerializer.cs">View Source</a>
+  </span>
+  <a id="Reportman_Reporting_Design_CompactReportSerializer_Serialize_" data-uid="Reportman.Reporting.Design.CompactReportSerializer.Serialize*"></a>
+  <h4 id="Reportman_Reporting_Design_CompactReportSerializer_Serialize_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.Design.CompactReportSerializer.Serialize(Reportman.Reporting.Report)">Serialize(Report)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static string Serialize(Report report)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.Reporting.Design/CompactReportSerializer.cs" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

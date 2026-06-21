@@ -141,8 +141,7 @@ const NAV = [
   ['Release notes', [
     ['What is new', '/doc/whatisnew.html'],
     ['F.A.Q.', '/doc/faq.html'],
-    ['Known issues and workarounds', '/doc/knownissues.html'],
-    ['Missing features (to-do)', '/doc/mfeatures.html'],
+    ['Known issues (deprecated)', '/doc/knownissues.html'],
   ]],
 ];
 

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class WebRtcDataChannelSession | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class WebRtcDataChannelSession | Reportman .Net Documentation ">
+    
+    <meta name="description" content="One-shot WebRTC peer for a single SQL operation against an Agent. Lifecycle (per the per-SQL token decision):  POST /api/data-session/start (Bearer + agentApiKey) → sessionId + JWT + iceServers. Open WS /api/data-session/{sessionId}/signal?token=jwt. Build RTCPeerConnection, create a DataChannel, generate offer, wait for ICE gather complete, forward offer over the signaling WS. The Hub routes it to the Agent and the answer comes back wrapped in {&amp;quot;source&amp;quot;:&amp;quot;hub&amp;quot;,&amp;quot;body&amp;quot;:&amp;quot;&amp;lt;agent reply json&amp;gt;&amp;quot;}. setRemoteDescription(answer), wait DC open (≤10s). Send {requestId, action, data} on the DC, collect executing / fetching / data / done messages, return the deserialized payload. Close the DC + peer + signaling WS; the session dies with the SQL.  If anything fails before DataChannelReadyAsync returns true, the caller falls back to the existing HTTP path.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession">
+
+
+
+  <h1 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession" class="text-break">Class WebRtcDataChannelSession</h1>
+  <div class="markdown level0 summary"><p>One-shot WebRTC peer for a single SQL operation against an Agent.</p>
+<p>Lifecycle (per the per-SQL token decision):</p>
+<ol>
+<li>POST /api/data-session/start (Bearer + agentApiKey) → sessionId + JWT + iceServers.</li>
+<li>Open WS /api/data-session/{sessionId}/signal?token=jwt.</li>
+<li>Build RTCPeerConnection, create a DataChannel, generate offer,
+wait for ICE gather complete, forward offer over the signaling WS.
+The Hub routes it to the Agent and the answer comes back wrapped
+in {&quot;source&quot;:&quot;hub&quot;,&quot;body&quot;:&quot;&lt;agent reply json&gt;&quot;}.</li>
+<li>setRemoteDescription(answer), wait DC open (≤10s).</li>
+<li>Send {requestId, action, data} on the DC, collect executing /
+fetching / data / done messages, return the deserialized payload.</li>
+<li>Close the DC + peer + signaling WS; the session dies with the SQL.</li>
+</ol>
+<p>If anything fails before <code>DataChannelReadyAsync</code> returns true,
+the caller falls back to the existing HTTP path.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">WebRtcDataChannelSession</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Hub.html">Hub</a>.<a class="xref" href="Reportman.Hub.Client.html">Client</a>.<a class="xref" href="Reportman.Hub.Client.DataChannel.html">DataChannel</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.DataChannel.dll</h6>
+  <h5 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class WebRtcDataChannelSession : IAsyncDisposable</code></pre>
+  </div>
+  <h3 id="properties">Properties
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_IsAlive_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.IsAlive*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_IsAlive" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.IsAlive">IsAlive</h4>
+  <div class="markdown level1 summary"><p>True when the negotiated DataChannel is open and the session hasn't
+been disposed. The pool reads this to decide whether to reuse the
+cached session or evict it and open a fresh one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsAlive { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_IsBusy_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.IsBusy*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_IsBusy" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.IsBusy">IsBusy</h4>
+  <div class="markdown level1 summary"><p>True while at least one <a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html#Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_ExecuteAsync_System_String_System_Object_System_Threading_CancellationToken_">ExecuteAsync(string, object, CancellationToken)</a> is in flight. The
+pool reads this in its idle/max-life check to avoid evicting a session
+whose query is still running — without this guard a query lasting
+longer than the pool's idle window (60s) or max-lifetime (10min)
+would be killed mid-flight as the timer fires against a session
+whose <code>Touch()</code> only ran at the start of the request.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsBusy { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_Mode_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.Mode*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_Mode" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.Mode">Mode</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ConnectionMode Mode { get; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Hub.Client.DataChannel.ConnectionMode.html">ConnectionMode</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_DisposeAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.DisposeAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_DisposeAsync" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.DisposeAsync">DisposeAsync()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_ExecuteAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.ExecuteAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_ExecuteAsync_System_String_System_Object_System_Threading_CancellationToken_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.ExecuteAsync(System.String,System.Object,System.Threading.CancellationToken)">ExecuteAsync(string, object, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Sends a single <code>{requestId, action, data}</code> request on the live
+DataChannel and returns the fully reassembled payload bytes. The
+caller decodes them per action: SQL-shaped actions get
+FastSerializer-binary bytes; metadata actions get UTF-8 JSON bytes.
+Progress messages from the Agent are surfaced via the constructor's
+onProgress callback. A 15s gap without any message from the Agent
+throws — the request is considered dead.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;byte[]&gt; ExecuteAsync(string action, object data, CancellationToken ct)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">action</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">data</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_SendKeepaliveAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.SendKeepaliveAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_SendKeepaliveAsync_System_Threading_CancellationToken_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.SendKeepaliveAsync(System.Threading.CancellationToken)">SendKeepaliveAsync(CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Sends a tiny ping over the DataChannel and waits briefly for the pong.
+Used by the pool to keep the NAT mapping warm during idle windows so
+the next real query doesn't pay the full STUN/ICE/DTLS setup cost.
+Returns true if the channel was alive at send time (pong arrival is
+not strictly required — the outbound UDP packet alone refreshes the
+router's binding).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;bool&gt; SendKeepaliveAsync(CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <a id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_TryOpenAsync_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.TryOpenAsync*"></a>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_TryOpenAsync_System_Net_Http_HttpClient_System_Uri_System_String_System_Object_System_Action_Reportman_Hub_Client_DataChannel_QueryProgress__System_Threading_CancellationToken_" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.TryOpenAsync(System.Net.Http.HttpClient,System.Uri,System.String,System.Object,System.Action{Reportman.Hub.Client.DataChannel.QueryProgress},System.Threading.CancellationToken)">TryOpenAsync(HttpClient, Uri, string?, object, Action&lt;QueryProgress&gt;?, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Attempts to negotiate a fresh DataChannel. <code class="paramref">startBody</code>
+is the JSON body for <code>POST /api/data-session/start</code>; accepts either
+<code>new { agentApiKey }</code> or <code>new { hubDatabaseId }</code>. Returns null
+on any failure; the caller should then fall back to the HTTP path.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;WebRtcDataChannelSession?&gt; TryOpenAsync(HttpClient http, Uri apiBaseUri, string? bearer, object startBody, Action&lt;QueryProgress&gt;? onProgress, CancellationToken ct)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpclient">HttpClient</a></td>
+        <td><span class="parametername">http</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="xref">Uri</span></td>
+        <td><span class="parametername">apiBaseUri</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">bearer</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></td>
+        <td><span class="parametername">startBody</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Reportman.Hub.Client.DataChannel.QueryProgress.html">QueryProgress</a>&gt;</td>
+        <td><span class="parametername">onProgress</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html">WebRtcDataChannelSession</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="events">Events
+</h3>
+
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs">View Source</a>
+  </span>
+  <h4 id="Reportman_Hub_Client_DataChannel_WebRtcDataChannelSession_DiagnosticLog" data-uid="Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.DiagnosticLog">DiagnosticLog</h4>
+  <div class="markdown level1 summary"><p>Raised for every direct-channel negotiation trace line. A UI host (e.g.
+the Designer's &quot;Net Log&quot; tab) can subscribe to surface the handshake
+live: iceServers, candidates exchanged, answer arrival, peer state and
+where it threw. Fired on whatever thread produced the line (often a
+SIPSorcery worker) — subscribers must marshal to their UI thread.
+Static because sessions are created deep inside the engine
+(DirectAgentExecutor) with no handle to the UI.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static event Action&lt;string&gt;? DiagnosticLog</code></pre>
+  </div>
+  <h5 class="eventType">Event Type</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/tonimartir/reportman/blob/2308c64c7bfc797dd7c65c5fcad03fe750e2c96e/Reportman.DataChannel/WebRtcDataChannelSession.cs" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

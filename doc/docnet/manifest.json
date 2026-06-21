@@ -12,6 +12,916 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AIChatPanelControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AIChatPanelControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AIChatPanelControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AIChatPanelControl.yml\" sourcestartlinenumber=\"1\">Replicates Delphi's TFRpChatFrame layout:\nPRoot → PTop(alTop) + PControl(alClient) + PBottom(alBottom)\nPBottom is OUTSIDE the TabControl so it's always visible.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AICopilotManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AICopilotManager.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AICopilotManager",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AICopilotManager.yml\" sourcestartlinenumber=\"1\">Singleton that tracks the AI copilot's busy (&quot;thinking&quot;) state, guards report\nmodifications while inference is running, and wraps AI-driven changes so they can\nbe grouped into the designer's undo/redo history.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AILoginForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AILoginForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AILoginForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AILoginForm.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TFRpLoginVCL: modal dialog with Google, Microsoft, and Email OTP login.\nUses RpAuthManager for all auth operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AILoginFrameControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AILoginFrameControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AILoginFrameControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AILoginFrameControl.yml\" sourcestartlinenumber=\"1\">Replicates Delphi's TFRpLoginFrameVCL: a compact login banner that shows\n&quot;Guest (Login available)&quot; when logged out, or [Tier][Avatar][Username][▼] when logged in.\nConnected to RpAuthManager for real auth state and persistence.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AISchemaSelectorControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AISchemaSelectorControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AISchemaSelectorControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AISchemaSelectorControl.yml\" sourcestartlinenumber=\"1\">Replicates Delphi's PSchemaHost layout:\nRow 0: &quot;SCHEMA&quot; label spanning full width (like PROVIDER/MODE labels)\nRow 1: [ComboBox (fill)] [Config ⚙ button] [Refresh button]</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AISelectionControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AISelectionControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AISelectionControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AISelectionControl.yml\" sourcestartlinenumber=\"1\">Replicates Delphi's TFRpAISelectionVCL: 3-column grid with Provider/Mode combos\nand credit gauge, plus an inference progress mode with Stop/Tokens/Spinner.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.AssetsManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.AssetsManager.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.AssetsManager",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AssetsManager.yml\" sourcestartlinenumber=\"1\">Extracts embedded web assets (the Monaco editor and Web Markdown bundles) into the\nlocal application data folder on first use or version change, and preloads the\nWebView2 loader native library.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.BandInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.BandInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.BandInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.BandInfo.yml\" sourcestartlinenumber=\"1\">Holds the layout state and cached bitmaps for a single section band drawn on the\ndesign surface, including its position, size, title and the rendered section, ruler\nand band images.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ConnectionEditor.ConnResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ConnectionEditor.ConnResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ConnectionEditor.ConnResult",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ConnectionEditor.ConnResult.yml\" sourcestartlinenumber=\"1\">Result of editing a connection.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ConnectionEditor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ConnectionEditor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ConnectionEditor",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ConnectionEditor.yml\" sourcestartlinenumber=\"1\">Connection assistant dialog. Hosts a <xref href=\"Reportman.Designer.ConnectionParamsControl\" data-throw-if-not-resolved=\"false\"></xref>\n(driver picker + dynamic parameter grid + test) and OK/Cancel. Opened from\nthe object inspector &quot;Connection String&quot; property and from the new report\nwizard. For a .Net provider the connection string is stored in the report;\nfor the HTTP Agent driver the API key + Hub database are stored in\ndbxconnections.ini (Delphi-compatible) and the report only keeps the alias.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ConnectionParamsControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ConnectionParamsControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ConnectionParamsControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ConnectionParamsControl.yml\" sourcestartlinenumber=\"1\">Reusable connection assistant. Lets the user pick a .Net provider (driver),\nedits its connection parameters dynamically through the provider's own\n<xref href=\"System.Data.Common.DbConnectionStringBuilder\" data-throw-if-not-resolved=\"false\"></xref> bound to a <xref href=\"System.Windows.Forms.PropertyGrid\" data-throw-if-not-resolved=\"false\"></xref>\n(works for ANY registered provider), shows the resulting connection string\nand tests the connection. The only persisted value is the connection string\nplus the provider factory invariant name (no JSON).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.DbxConnections.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.DbxConnections.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.DbxConnections",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.DbxConnections.yml\" sourcestartlinenumber=\"1\">Reads/writes the shared <code>dbxconnections.ini</code> used by both the Delphi and\nthe .Net designers to store connection definitions. For HTTP Agent connections\nit keeps the sensitive data (API key, selected Hub database) here instead of in\nthe report, exactly like Delphi. Path resolution and section/key names are kept\ncompatible with Delphi (see Reportman.Reporting.DatabaseInfo dbx config reader).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.DesignerSelfTest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.DesignerSelfTest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.DesignerSelfTest",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.DesignerSelfTest.yml\" sourcestartlinenumber=\"1\">Headless designer self-tests (invoked from designer.exe /undotest).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.EditSubReport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.EditSubReport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.EditSubReport",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.EditSubReport.yml\" sourcestartlinenumber=\"1\">Design-surface control that renders a subreport's sections (bands) and their\nprint items, handling selection, drag-and-drop, resizing and band repositioning\nfor the visual report designer.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.EllipsisClick.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.EllipsisClick.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.EllipsisClick",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.EllipsisClick.yml\" sourcestartlinenumber=\"1\">Callback raised when the ellipsis button of an <xref href=\"Reportman.Designer.EllipsisEditingControl\" data-throw-if-not-resolved=\"false\"></xref> is clicked;\nthe handler may replace <code class=\"paramref\">text</code> and returns true if the value was changed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.EllipsisEditingControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.EllipsisEditingControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.EllipsisEditingControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.EllipsisEditingControl.yml\" sourcestartlinenumber=\"1\">A DataGridView in-cell editing control that pairs a text box with an ellipsis button,\nletting the user edit a cell value directly or open an external picker via the button.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ExpressionChatPanelControl.ValidateExpressionHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ExpressionChatPanelControl.ValidateExpressionHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ExpressionChatPanelControl.ValidateExpressionHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ExpressionChatPanelControl.ValidateExpressionHandler.yml\" sourcestartlinenumber=\"1\">Callback used to validate a generated expression locally; returns true when valid,\notherwise sets <code class=\"paramref\">errorMessage</code> describing why validation failed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ExpressionChatPanelControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ExpressionChatPanelControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ExpressionChatPanelControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ExpressionChatPanelControl.yml\" sourcestartlinenumber=\"1\">Side panel that lets the user chat with the AI agent to generate, fix or explain a report\nexpression, streaming the response and offering to apply the suggested expression.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ExpressionDlg.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ExpressionDlg.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ExpressionDlg",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ExpressionDlg.yml\" sourcestartlinenumber=\"1\">Dialog for editing a report expression, providing a categorized helper of fields, functions,\nvariables and operators, syntax checking and evaluation, alongside an AI expression chat panel.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ExpressionEditorControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ExpressionEditorControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ExpressionEditorControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ExpressionEditorControl.yml\" sourcestartlinenumber=\"1\">Monaco-based editor for report expressions with an optional AI suggestion toggle that\nrequests completions from the agent after a debounced pause in typing.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FieldInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FieldInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FieldInfo",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FieldInfo.yml\" sourcestartlinenumber=\"1\">Describes a single field shown in the fields tree, carrying its owning dataset,\nfield name, .NET data type and display size.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameDataDef.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameDataDef.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameDataDef",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameDataDef.yml\" sourcestartlinenumber=\"1\">Tree-based editor control for a report's data definitions, letting the user add,\nremove, reorder and connect database connections, datasets and parameters.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameFields.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameFields.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameFields",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameFields.yml\" sourcestartlinenumber=\"1\">User control that displays a report's datasets and variables in a tree view,\nletting the user drag fields out as expressions for use in the designer.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.EditModeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.EditModeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.EditModeType",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.EditModeType.yml\" sourcestartlinenumber=\"1\">Controls which save/open toolbar actions the designer exposes: full\nopen-and-save, save-only (no open/new), or self-managed saving where the\nstandard save drop-down is suppressed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.ExitReportArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.ExitReportArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.ExitReportArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.ExitReportArgs.yml\" sourcestartlinenumber=\"1\">Event arguments for an exit request, allowing the host to cancel the exit\nor to suppress removal of the designer control from its parent.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.ExitReportEventHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.ExitReportEventHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.ExitReportEventHandler",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.ExitReportEventHandler.yml\" sourcestartlinenumber=\"1\">Callback raised when the user requests to exit the designer, letting the\nhost cancel or control disposal through <xref href=\"Reportman.Designer.FrameMainDesigner.ExitReportArgs\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.PreviewReportArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.PreviewReportArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.PreviewReportArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.PreviewReportArgs.yml\" sourcestartlinenumber=\"1\">Event arguments for a preview request, carrying the laid-out report\nmetafile that the host should display.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.PreviewReportEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.PreviewReportEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.PreviewReportEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.PreviewReportEvent.yml\" sourcestartlinenumber=\"1\">Callback raised when the user requests a preview, supplying the report\nmetafile to render through <xref href=\"Reportman.Designer.FrameMainDesigner.PreviewReportArgs\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.SaveReportArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.SaveReportArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.SaveReportArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.SaveReportArgs.yml\" sourcestartlinenumber=\"1\">Event arguments for a save request, letting the host report back whether\nthe report was actually saved via the <code>Saved</code> flag.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.SaveReportEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.SaveReportEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner.SaveReportEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.SaveReportEvent.yml\" sourcestartlinenumber=\"1\">Callback raised when the user requests a save, letting the host perform\ncustom save logic and report the outcome through <xref href=\"Reportman.Designer.FrameMainDesigner.SaveReportArgs\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameMainDesigner.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameMainDesigner.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameMainDesigner",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameMainDesigner.yml\" sourcestartlinenumber=\"1\">Main WinForms designer control hosting the full report-authoring surface:\ntoolbar, structure/data/fields tabs, the section design canvas, the object\ninspector, undo/redo, recent files and the optional AI copilot chat panel.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.FrameStructure.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.FrameStructure.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.FrameStructure",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.FrameStructure.yml\" sourcestartlinenumber=\"1\">Designer control that shows the report's structure as a tree of\nsubreports and sections, and lets the user add, delete, reorder, import\nand export those elements.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.GridOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.GridOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.GridOptions",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.GridOptions.yml\" sourcestartlinenumber=\"1\">Dialog for editing a report's design grid settings, including spacing, color,\nline style, and whether the grid is enabled and visible.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.HttpAgentParams.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.HttpAgentParams.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.HttpAgentParams",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.HttpAgentParams.yml\" sourcestartlinenumber=\"1\">Object bound to the connection assistant PropertyGrid when the HTTP Agent\n&quot;driver&quot; is selected: the API key plus a live Hub-database selector.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.HubDatabaseConverter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.HubDatabaseConverter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.HubDatabaseConverter",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.HubDatabaseConverter.yml\" sourcestartlinenumber=\"1\">TypeConverter for the Hub database property: provides the dropdown values by\nquerying the agent with the current API key when the list is expanded.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.HubDatabaseRef.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.HubDatabaseRef.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.HubDatabaseRef",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.HubDatabaseRef.yml\" sourcestartlinenumber=\"1\">A Hub database reference (display name + hubDatabaseId).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.LibraryConfig.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.LibraryConfig.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.LibraryConfig",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.LibraryConfig.yml\" sourcestartlinenumber=\"1\">Designer control for editing the report library configuration: the\ndatabase driver, provider factory, connection string and the table and\nfield names used to store and look up reports.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.LibraryConfigForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.LibraryConfigForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.LibraryConfigForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.LibraryConfigForm.yml\" sourcestartlinenumber=\"1\">Modal dialog that hosts the report library configuration control, persisting the\nsettings when the user confirms with OK.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.MainForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.MainForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.MainForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.MainForm.yml\" sourcestartlinenumber=\"1\">Top-level window of the Reportman designer application; hosts the main designer frame,\nopens a report passed on the command line, and prompts to save unsaved changes on close.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.MonacoEditorControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.MonacoEditorControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.MonacoEditorControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.MonacoEditorControl.yml\" sourcestartlinenumber=\"1\">SQL editor control that hosts the Monaco editor in a WebView2 and optionally\nprovides AI-driven SQL autocompletion through the Reportman agent, including\nschema selection and inline/list completion suggestions.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.NewReportWizard.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.NewReportWizard.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.NewReportWizard",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.NewReportWizard.yml\" sourcestartlinenumber=\"1\">New report connection wizard (port of the Delphi modern new report wizard,\nadapted to the .Net model). On &quot;New&quot; the user chooses a connection route:\na Reportman AI / DB Agent connection (API key + Hub database), a direct\ndatabase connection (.Net provider + connection string) or no connection.\nDirect connections store the connection string in the report; agent\nconnections store the API key + Hub database in dbxconnections.ini (the\nreport only keeps the alias + HttpAgent driver), exactly like Delphi.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ObjectInspectorCell.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ObjectInspectorCell.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ObjectInspectorCell",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ObjectInspectorCell.yml\" sourcestartlinenumber=\"1\">Object-inspector grid cell that selects, paints and parses the\nappropriate editing control for each property value according to its\n<xref href=\"Reportman.Designer.ObjectInspectorCellType\" data-throw-if-not-resolved=\"false\"></xref> (combo box, color/image picker,\nnumeric editor, checkbox or ellipsis dialog launcher).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ObjectInspectorCellType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ObjectInspectorCellType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ObjectInspectorCellType",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ObjectInspectorCellType.yml\" sourcestartlinenumber=\"1\">Identifies the editor and formatting an object-inspector cell uses for a\nproperty value, such as plain text, expression, numeric, color, image,\nfont, SQL or connection-string editing.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ObjectInspectorColumn.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ObjectInspectorColumn.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ObjectInspectorColumn",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ObjectInspectorColumn.yml\" sourcestartlinenumber=\"1\">Grid column for the designer's object inspector that hosts\n<xref href=\"Reportman.Designer.ObjectInspectorCell\" data-throw-if-not-resolved=\"false\"></xref> instances as its cell template.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.AfterSelectEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.AfterSelectEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary.AfterSelectEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.AfterSelectEvent.yml\" sourcestartlinenumber=\"1\">Callback raised after a tree node has been selected, reporting the\nselected report name and group code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.AfterSelectEventArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.AfterSelectEventArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary.AfterSelectEventArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.AfterSelectEventArgs.yml\" sourcestartlinenumber=\"1\">Carries the report name and group code of the tree node that has just\nbeen selected.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.BeforeSelectEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.BeforeSelectEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary.BeforeSelectEvent",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.BeforeSelectEvent.yml\" sourcestartlinenumber=\"1\">Callback raised before a tree node is selected, allowing the handler to\ninspect or cancel the pending selection.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.yml\" sourcestartlinenumber=\"1\">Carries the report name and group code of the node about to be selected,\nand lets a handler cancel the selection by setting <xref href=\"Reportman.Designer.OpenFromLibrary.BeforeSelectEventArgs.Cancel\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.SelectionModeType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.SelectionModeType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary.SelectionModeType",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.SelectionModeType.yml\" sourcestartlinenumber=\"1\">Determines which operations the library browser exposes: read-only\nselection, selection combined with editing, or pure editing of the library.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibrary.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibrary.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibrary",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibrary.yml\" sourcestartlinenumber=\"1\">User control that browses a report library stored in a database, presenting\nreports and their folder groups as a tree and supporting selection, creation,\nrenaming, deletion, reordering, and import/export of reports.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.OpenFromLibraryForm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.OpenFromLibraryForm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.OpenFromLibraryForm",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.OpenFromLibraryForm.yml\" sourcestartlinenumber=\"1\">Dialog that lets the user pick a configured report library from a combo box\nand then choose a report from it, returning the selection along with the\nloaded report stream.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.PropertyChanged.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.PropertyChanged.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.PropertyChanged",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.PropertyChanged.yml\" sourcestartlinenumber=\"1\">Callback raised when an inspected object's property is edited, reporting the\nproperty name and its new value.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ResizeAction.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ResizeAction.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ResizeAction",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ResizeAction.yml\" sourcestartlinenumber=\"1\">Action to do</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ResizeEventGetBounds.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ResizeEventGetBounds.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ResizeEventGetBounds",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ResizeEventGetBounds.yml\" sourcestartlinenumber=\"1\">Event to retrieve original object bounds</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.ResizeEventSetBounds.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.ResizeEventSetBounds.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.ResizeEventSetBounds",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.ResizeEventSetBounds.yml\" sourcestartlinenumber=\"1\">Event to set new bounds, can return validated new bounds</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.RpAuthManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.RpAuthManager.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.RpAuthManager",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.RpAuthManager.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TRpAuthManager: singleton managing authentication,\nprofile, tiers, OAuth flows (Google/Microsoft), email OTP, and config persistence.\nConfig is saved to %LOCALAPPDATA%\\Reportman\\reportman_auth.ini (shared with Delphi).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.RpProfile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.RpProfile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.RpProfile",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.RpProfile.yml\" sourcestartlinenumber=\"1\">Profile data from the Hub API. Matches Delphi's TRpProfile record.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.RuntimeResize.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.RuntimeResize.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.RuntimeResize",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.RuntimeResize.yml\" sourcestartlinenumber=\"1\">Utility for resizing any item</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.SQLEditor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.SQLEditor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.SQLEditor",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.SQLEditor.yml\" sourcestartlinenumber=\"1\">Dialog for editing a data source's SQL query using a Monaco editor with schema-aware\nautocomplete, a natural-language-to-SQL chat panel, and a preview of the query results.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.SQLEditorControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.SQLEditorControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.SQLEditorControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.SQLEditorControl.yml\" sourcestartlinenumber=\"1\">Composite control that pairs a Monaco-based SQL editor with an AI schema selector\nand audit log, debouncing edits to request AI-powered SQL autocomplete from the\nReportman agent.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.SelectedItemPalette.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.SelectedItemPalette.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.SelectedItemPalette",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.SelectedItemPalette.yml\" sourcestartlinenumber=\"1\">Identifies the currently active design palette tool, determining whether the mouse\nselects existing items (Arrow) or inserts a new item of the given kind.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.SqlChatPanelControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.SqlChatPanelControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.SqlChatPanelControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.SqlChatPanelControl.yml\" sourcestartlinenumber=\"1\">Designer panel that lets the user chat with the Reportman AI agent to\ngenerate SQL from natural language, streaming the response and exposing\nthe suggested SQL for the caller to apply.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.SqlSchemaContextChangedEventArgs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.SqlSchemaContextChangedEventArgs.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.SqlSchemaContextChangedEventArgs",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.SqlSchemaContextChangedEventArgs.yml\" sourcestartlinenumber=\"1\">Event data raised when the active Hub database, schema or API key bound to\nthe SQL chat panel changes, carrying the effective identifiers used for\nsubsequent AI requests.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.WebMarkdownControl.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.WebMarkdownControl.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer.WebMarkdownControl",
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.WebMarkdownControl.yml\" sourcestartlinenumber=\"1\">WebView2-hosted control that renders chat conversations and log output as\nMarkdown, supporting incremental streaming of assistant messages and log\nchunks into the embedded page.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Designer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Designer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Designer",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Drawing.AdvFontData.yml",
       "output": {
         ".html": {
@@ -317,6 +1227,34 @@
       "IsMRef": true,
       "Title": "Reportman.Drawing.Encrypter",
       "Summary": "<p sourcefile=\"api/Reportman.Drawing.Encrypter.yml\" sourcestartlinenumber=\"1\">Provides text encryption and decryption helpers used by the library.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Excel.Helper.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Excel.Helper.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Excel.Helper",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.Excel.Helper.yml\" sourcestartlinenumber=\"1\">Helper utilities for exporting tabular report data to Excel, writing each\n<xref href=\"System.Data.DataTable\" data-throw-if-not-resolved=\"false\"></xref> as a worksheet in an XLSX workbook.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.Excel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.Excel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.Excel",
+      "Summary": null
     },
     {
       "type": "ManagedReference",
@@ -3078,6 +4016,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Drawing.PrintOutClosedExcel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Drawing.PrintOutClosedExcel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Drawing.PrintOutClosedExcel",
+      "Summary": "<p sourcefile=\"api/Reportman.Drawing.PrintOutClosedExcel.yml\" sourcestartlinenumber=\"1\">Print-out driver that exports a rendered report metafile to an XLSX\nworkbook using ClosedXML, mapping text and image objects onto worksheet\ncells by their page position with optional single-sheet output.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Drawing.PrintOutExcel.yml",
       "output": {
         ".html": {
@@ -3862,6 +4814,90 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.ConnectionMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.ConnectionMode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel.ConnectionMode",
+      "Summary": "<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.ConnectionMode.yml\" sourcestartlinenumber=\"1\">Effective transport for the most recent SQL operation.\nSurfaced to the UI as a chip next to the busy indicator.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.QueryPhase.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.QueryPhase.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel.QueryPhase",
+      "Summary": "<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.QueryPhase.yml\" sourcestartlinenumber=\"1\">The sequential stages a single SQL operation passes through, from connecting and\npreparing through fetching, transfer and decoding to completion.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.QueryProgress.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.QueryProgress.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel.QueryProgress",
+      "Summary": "<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.QueryProgress.yml\" sourcestartlinenumber=\"1\">Snapshot of the current phase of an in-flight SQL operation, suitable\nfor binding to UI text near the busy indicator. The Agent emits its own\n1Hz pulse over the DataChannel; this struct mirrors that into a single\nobservable shape.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel.WebRtcChannelPool",
+      "Summary": "<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"1\">Caches one open <xref href=\"Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession\" data-throw-if-not-resolved=\"false\"></xref> per Hub database so\nsuccessive SQL queries on the same database reuse the negotiated peer\nconnection. Without the pool every query pays the full ~1–3s setup cost\n(STUN gather + signaling + ICE checks + DTLS + SCTP). With the pool the\nfirst query is unchanged, all subsequent queries cost ~50–100 ms (just\none DataChannel message round-trip).</p>\n<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"8\">Lifecycle of a pooled session (three concurrent timers — none of them\nholds the channel open &quot;forever&quot;):</p>\n<ul sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"11\">\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"11\"><b>Idle timeout</b> (default 60 s): closes when no <code>ExecuteAsync</code>\nhas been issued for that long. Matches typical residential NAT UDP\nbinding TTL — past this point the warm channel wouldn't be useful\neven if we kept it.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"15\"><b>Max lifetime</b> (default 10 min): absolute cap regardless of use.\nPrevents stale DTLS state and rotates the channel periodically.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"17\"><b>Keepalive ping</b> (default every 25 s): sends a tiny &quot;ping&quot;\nmessage on the DataChannel. The Agent ack'es with &quot;pong&quot;; the\noutbound UDP packet alone refreshes the NAT mapping so the channel\nkeeps working past the router's idle binding TTL.</li>\n</ul>\n<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcChannelPool.yml\" sourcestartlinenumber=\"22\">Also evicts when the channel is observed dead (DTLS failure, Agent\nclosed it, peer state change). The next caller gets a freshly negotiated\nsession transparently.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession",
+      "Summary": "<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"1\">One-shot WebRTC peer for a single SQL operation against an Agent.</p>\n<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"3\">Lifecycle (per the per-SQL token decision):</p>\n<ol sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"4\">\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"4\">POST /api/data-session/start (Bearer + agentApiKey) → sessionId + JWT + iceServers.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"5\">Open WS /api/data-session/{sessionId}/signal?token=jwt.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"6\">Build RTCPeerConnection, create a DataChannel, generate offer,\nwait for ICE gather complete, forward offer over the signaling WS.\nThe Hub routes it to the Agent and the answer comes back wrapped\nin {&quot;source&quot;:&quot;hub&quot;,&quot;body&quot;:&quot;&lt;agent reply json&gt;&quot;}.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"10\">setRemoteDescription(answer), wait DC open (≤10s).</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"11\">Send {requestId, action, data} on the DC, collect executing /\nfetching / data / done messages, return the deserialized payload.</li>\n<li sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"13\">Close the DC + peer + signaling WS; the session dies with the SQL.</li>\n</ol>\n<p sourcefile=\"api/Reportman.Hub.Client.DataChannel.WebRtcDataChannelSession.yml\" sourcestartlinenumber=\"15\">If anything fails before <code>DataChannelReadyAsync</code> returns true,\nthe caller falls back to the existing HTTP path.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Hub.Client.DataChannel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Hub.Client.DataChannel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Hub.Client.DataChannel",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Reportman.Reporting.Aggregate.yml",
       "output": {
         ".html": {
@@ -4181,6 +5217,356 @@
       "IsMRef": true,
       "Title": "Reportman.Reporting.DbParameterInfo",
       "Summary": "<p sourcefile=\"api/Reportman.Reporting.DbParameterInfo.yml\" sourcestartlinenumber=\"1\">Represents a structured parameter for remote SQL execution via HTTP Agent.\nEnsures type safety and prevents SQL injection.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.CompactReportSerializer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.CompactReportSerializer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.CompactReportSerializer",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.CompactReportSerializer.yml\" sourcestartlinenumber=\"1\">Serializes a Report into a compact text DSL for LLM instance context.\nOnly properties present in the schemaContext (ReportContextBuilder allowed properties)\nare emitted, so the AI designer does not see properties it cannot edit.\nOnly non-default property values are emitted to reduce token usage.\nFont names are always included (Report Manager has no parent-font inheritance).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.IReportBatchEditor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.IReportBatchEditor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.IReportBatchEditor",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.IReportBatchEditor.yml\" sourcestartlinenumber=\"1\">Implemented by services that both validate and apply batches of operations to a report,\nproducing the resulting changes together with any undo information.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.IReportBatchValidator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.IReportBatchValidator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.IReportBatchValidator",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.IReportBatchValidator.yml\" sourcestartlinenumber=\"1\">Implemented by services that check whether a sequence of batch operations can be applied to a report,\nreturning the validation result without modifying the report.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.IReportBatchJsonAdapter",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.yml\" sourcestartlinenumber=\"1\">Bridges JSON batch contracts and the in-memory report model: implementers deserialize\nrequests and reports, validate and apply batches of operations, and serialize reports\nand result objects back to JSON in the supported document formats.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonAdapter",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.yml\" sourcestartlinenumber=\"1\">Bridges the JSON wire format for batch report operations to the in-memory editor: it\ndeserializes batch requests and report documents (JSON or XML), maps them to editor\noperations, applies or validates them against a report, and serializes the results back to JSON.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonApplyResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonApplyResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonApplyResponse",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonApplyResponse.yml\" sourcestartlinenumber=\"1\">Result of applying a batch request, extending the validation response with the undo\ngroup identifier and the number of operations that were applied.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.yml\" sourcestartlinenumber=\"1\">Apply result that also returns the resulting report document, serialized in the given\n<xref href=\"Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.Format\" data-throw-if-not-resolved=\"false\"></xref>; <xref href=\"Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.ReportJson\" data-throw-if-not-resolved=\"false\"></xref> is an alias for the document text.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonIssue.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonIssue.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonIssue",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonIssue.yml\" sourcestartlinenumber=\"1\">A validation problem reported for a batch request, identifying the offending operation\n(by index and id) along with a diagnostic code and human-readable message.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonOperation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonOperation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonOperation",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonOperation.yml\" sourcestartlinenumber=\"1\">A single JSON-serializable report edit operation (add, modify, move, delete, etc.),\nincluding its target, properties, and the optional high-level semantic V1 fields the\nAI designer uses before they are expanded into low-level operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonProperty.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonProperty.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonProperty",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonProperty.yml\" sourcestartlinenumber=\"1\">A single property assignment within an operation, pairing the property name with its\nraw JSON value to be applied to the target report object.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonRequest",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonRequest.yml\" sourcestartlinenumber=\"1\">JSON-serializable envelope for a batch of report edit operations, carrying a\nschema version and the ordered list of operations to apply.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.yml\" sourcestartlinenumber=\"1\">Result of validating a batch request, exposing any issues found and an\n<xref href=\"Reportman.Reporting.Design.Json.ReportBatchJsonValidationResponse.IsValid\" data-throw-if-not-resolved=\"false\"></xref> flag that is true when no issues were reported.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.ReportDocumentFormat.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.ReportDocumentFormat.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json.ReportDocumentFormat",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.Json.ReportDocumentFormat.yml\" sourcestartlinenumber=\"1\">Identifies the serialization format used to read or write a report document,\neither JSON or XML.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.Json.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.Json.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.Json",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchApplyResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchApplyResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchApplyResult",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchApplyResult.yml\" sourcestartlinenumber=\"1\">Result of applying a batch of operations to a report, including the modified report, the undo group id,\nthe count of applied operations, the inverse undo operations, and any issues encountered.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchEditor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchEditor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchEditor",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchEditor.yml\" sourcestartlinenumber=\"1\">Validates and applies batches of structural report operations (add, remove, modify,\nreorder and z-order changes) against a report, enforcing layout rules and recording\nthe changes in the report's undo history.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchIssue.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchIssue.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchIssue",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchIssue.yml\" sourcestartlinenumber=\"1\">A validation or application problem reported for a batch, carrying a diagnostic code, a message,\nand a reference to the offending operation by index or id.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchOperation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchOperation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchOperation",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchOperation.yml\" sourcestartlinenumber=\"1\">Describes one editing action within a batch, including its type, the target and parent objects,\noptional positioning indices, and the set of properties to apply.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchOperationType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchOperationType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchOperationType",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchOperationType.yml\" sourcestartlinenumber=\"1\">Identifies the kind of editing action a <xref href=\"Reportman.Reporting.Design.ReportBatchOperation\" data-throw-if-not-resolved=\"false\"></xref> performs,\nsuch as creating a report, adding or removing objects, modifying properties, or reordering.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchProperty.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchProperty.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchProperty",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchProperty.yml\" sourcestartlinenumber=\"1\">A single property name/value pair to assign to a target report object as part of a batch operation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportBatchValidationResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportBatchValidationResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportBatchValidationResult",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportBatchValidationResult.yml\" sourcestartlinenumber=\"1\">Outcome of validating a batch of operations, exposing the collected issues and whether the batch is valid.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportStructureContext.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportStructureContext.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportStructureContext",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportStructureContext.yml\" sourcestartlinenumber=\"1\">Container for a report's structure tree, exposing the root node from which\nthe full hierarchy of params, datasets, subreports and sections is reachable.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportStructureContextBuilder.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportStructureContextBuilder.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportStructureContextBuilder",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportStructureContextBuilder.yml\" sourcestartlinenumber=\"1\">Builds a <xref href=\"Reportman.Reporting.Design.ReportStructureContext\" data-throw-if-not-resolved=\"false\"></xref> tree from a report, walking its\nparams, database and data infos, subreports, sections and components.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.ReportStructureContextNode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.ReportStructureContextNode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design.ReportStructureContextNode",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Design.ReportStructureContextNode.yml\" sourcestartlinenumber=\"1\">A single node in the tree that mirrors a report's structure, holding the\nelement's name, class name and parent name plus its child nodes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Design.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Design.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Design",
+      "Summary": null
     },
     {
       "type": "ManagedReference",
@@ -5329,6 +6715,34 @@
       "IsMRef": true,
       "Title": "Reportman.Reporting.SubReports",
       "Summary": "<p sourcefile=\"api/Reportman.Reporting.SubReports.yml\" sourcestartlinenumber=\"1\">Strongly typed list of the <xref href=\"Reportman.Reporting.SubReport\" data-throw-if-not-resolved=\"false\"></xref> instances contained in a report.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Templates.ReportTemplateFactory.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Templates.ReportTemplateFactory.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Templates.ReportTemplateFactory",
+      "Summary": "<p sourcefile=\"api/Reportman.Reporting.Templates.ReportTemplateFactory.yml\" sourcestartlinenumber=\"1\">Builds ready-made report templates in code, such as a blank report and a grouped sales\nreport, including a design-driven variant constructed through batch edit operations for\nverifying that both construction paths produce equivalent reports.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Reportman.Reporting.Templates.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Reportman.Reporting.Templates.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Reportman.Reporting.Templates",
+      "Summary": null
     },
     {
       "type": "ManagedReference",

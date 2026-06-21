@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class ReportBatchJsonOperation | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class ReportBatchJsonOperation | Reportman .Net Documentation ">
+    
+    <meta name="description" content="A single JSON-serializable report edit operation (add, modify, move, delete, etc.), including its target, properties, and the optional high-level semantic V1 fields the AI designer uses before they are expanded into low-level operations.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation">
+
+
+
+  <h1 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation" class="text-break">Class ReportBatchJsonOperation</h1>
+  <div class="markdown level0 summary"><p>A single JSON-serializable report edit operation (add, modify, move, delete, etc.),
+including its target, properties, and the optional high-level semantic V1 fields the
+AI designer uses before they are expanded into low-level operations.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">ReportBatchJsonOperation</span></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a>.<a class="xref" href="Reportman.Reporting.Design.html">Design</a>.<a class="xref" href="Reportman.Reporting.Design.Json.html">Json</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.Design.Json.dll</h6>
+  <h5 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ReportBatchJsonOperation</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation__ctor_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.#ctor*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation__ctor" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.#ctor">ReportBatchJsonOperation()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonOperation()</code></pre>
+  </div>
+  <h3 id="properties">Properties
+</h3>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ChangeExpression_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ChangeExpression*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ChangeExpression" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ChangeExpression">ChangeExpression</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ChangeExpression { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_DetailName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.DetailName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_DetailName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.DetailName">DetailName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string DetailName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupFooterProperties_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupFooterProperties*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupFooterProperties" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupFooterProperties">GroupFooterProperties</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;ReportBatchJsonProperty&gt; GroupFooterProperties { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonProperty.html">ReportBatchJsonProperty</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupFooterSectionName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupFooterSectionName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupFooterSectionName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupFooterSectionName">GroupFooterSectionName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GroupFooterSectionName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupHeaderProperties_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupHeaderProperties*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupHeaderProperties" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupHeaderProperties">GroupHeaderProperties</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;ReportBatchJsonProperty&gt; GroupHeaderProperties { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonProperty.html">ReportBatchJsonProperty</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupHeaderSectionName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupHeaderSectionName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupHeaderSectionName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupHeaderSectionName">GroupHeaderSectionName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GroupHeaderSectionName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_GroupName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.GroupName">GroupName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string GroupName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Index_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Index*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Index" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Index">Index</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? Index { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndex_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndex*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndex" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndex">InsertIndex</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? InsertIndex { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstDetail_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstDetail*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstDetail" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstDetail">InsertIndexRelativeToFirstDetail</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? InsertIndexRelativeToFirstDetail { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstGroupHeader_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstGroupHeader*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstGroupHeader" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstGroupHeader">InsertIndexRelativeToFirstGroupHeader</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? InsertIndexRelativeToFirstGroupHeader { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstPageFooter_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstPageFooter*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstPageFooter" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstPageFooter">InsertIndexRelativeToFirstPageFooter</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? InsertIndexRelativeToFirstPageFooter { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstPageHeader_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstPageHeader*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_InsertIndexRelativeToFirstPageHeader" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.InsertIndexRelativeToFirstPageHeader">InsertIndexRelativeToFirstPageHeader</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? InsertIndexRelativeToFirstPageHeader { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_NewIndex_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.NewIndex*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_NewIndex" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.NewIndex">NewIndex</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int? NewIndex { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ObjectClass_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ObjectClass*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ObjectClass" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ObjectClass">ObjectClass</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ObjectClass { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_OperationId_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.OperationId*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_OperationId" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.OperationId">OperationId</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string OperationId { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_PageFooterName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.PageFooterName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_PageFooterName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.PageFooterName">PageFooterName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string PageFooterName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_PageHeaderName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.PageHeaderName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_PageHeaderName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.PageHeaderName">PageHeaderName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string PageHeaderName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ParentName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ParentName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ParentName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ParentName">ParentName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ParentName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ParentSubreportName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ParentSubreportName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_ParentSubreportName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.ParentSubreportName">ParentSubreportName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ParentSubreportName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Properties_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Properties*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Properties" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Properties">Properties</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;ReportBatchJsonProperty&gt; Properties { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonProperty.html">ReportBatchJsonProperty</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_SectionName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.SectionName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_SectionName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.SectionName">SectionName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SectionName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_TargetName_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.TargetName*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_TargetName" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.TargetName">TargetName</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string TargetName { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Type_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Type*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonOperation_Type" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonOperation.Type">Type</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Type { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

@@ -217,8 +217,7 @@
 <ul>
 <li><a href="/doc/whatisnew.html">What is new</a></li>
 <li><a href="/doc/faq.html">F.A.Q.</a></li>
-<li><a href="/doc/knownissues.html">Known issues and workarounds</a></li>
-<li><a href="/doc/mfeatures.html">Missing features (to-do)</a></li>
+<li><a href="/doc/knownissues.html">Known issues (deprecated)</a></li>
 </ul>
 </details>
 </nav>
@@ -254,67 +253,14 @@
     installed. </li>
 </ul>
 <p><strong>Linux and Windows, different technologies, different implementation</strong></p>
-<p>Microsoft Windows already have a font cache, that is any application can ask 
-  information about installed fonts, including obtaining the entire font file 
-  (to be embedded), also the operating system will search the most appropriate
-  font when the original font is not available (font matching). Implementation
-  works for TrueType and OpenType fonts, but some fonts can not be embedded (I 
-  didn't found anyone), that is the API does not allow to get font data for that 
-  fonts (maybe distribution license issues?)</p>
-<p>Linux does not have a standard font service in the operating system itself, 
-  instead of this it has libraries that provides some services, and of course 
-  there is the X library.</p>
-<p><strong>The X client library</strong></p>
-<p>There are functions in the X protocol to retrieve sizing information about installed
-  fonts (in the server), but this information is not complete, and there is no 
-  way to retrieve full font data (the font file), some work have been done, there 
-  is a project called X print server in early stages, this requires the installation 
-  of a X print server process, and X print client libraries, but this is not the 
-  good way.</p>
-<p>There is also a font information library Xft, the good thing is that it can 
-  work optionally with font servers, the bad thing is that does not provide enough
-  information (font file data). Anyway it depends on a running X server (bad thing 
-  for console applications).</p>
-<p>Applications like OpenOffice take the font information from the computer executing 
-  the X client program not the X server so the X server protocol probably does 
-  not allow to work with sever side installed fonts.</p>
-<p>Another library providing font services Fontconfig, font config provides font 
-  information and font matching services, but does not provide enough information
-  (char sizes and full font data), it's designed as very basic font information 
-  system.</p>
-<p>But a great <strong>library is usually available in Linux systems, <a href="https://freetype.org">freetype
-  library</a></strong>, Report Manager implementation is done using the version 
-  2.1.8, but it's compatible with 2.X version, <strong>you will find it as freetype2 
-  in your linux distribution </strong>, and the <strong>shared object needed is 
-  libfreetype.so</strong>. Usually is installed by default, probably minimal console 
-  Linux installations does not install it, Report Manager will need it only if 
-  you use TrueType font embedding or linking.</p>
-<p>Because freetype allows the access to Type1 fonts information, <strong>the 
-  Type1 fonts can be also used in a pdf but only linking is available</strong>, 
-  because of the requirements of PDF specification there is additional work to 
-  embed Type1 fonts.</p>
-<p>Unfortunately the freetype library does not implement font matching (and font
-  information file caching), bug at least it can provide full information about
-  font files, also extended information and can also render fonts. So simple font 
-  matching is done in code at Report Manager engine.</p>
-<p>Report Manager <strong>uses /etc/fonts/fonts.conf file to search for font directories</strong>, 
-  the font information is cached the first time a TrueType font embedding is required, 
-  but to retrieve this information costs reading all font files and get information 
-  about the fonts (font names, styles...) to perform font matching. This process
-  is done once, but it's expensive when you execute only one report (printreptopdf 
-  command line tool for example). Note that this overhead will not appear if you 
-  don't embed PDF fonts. Depending on the number of fonts you have installed
-  it will be not noticeable. </p>
-<p>The good thing is that <strong>you don't need a X server</strong> generate 
-  the pdfs with TrueType embedding.</p>
-<p>The font matching algorithm inside Report Manager is really simple, search for
-  the same family name and style, else search for a similar family name, else
-  get a default font and apply the style. Note that Fontconfig does not force 
-  font matching to his own unique way like Microsoft Windows do (give few options),
-  but you must provide preferences about the most important features of the font
-  to match. Maybe a future enhancement to use FontConfig for font matching but
-  for now it only adds a dependence to enhance a little the matching algorithm
-  (maybe only font information caching is only the reason to use it).</p>
+<p>Microsoft Windows already has a font cache: any application can query information about the installed fonts, obtain the whole font file (to embed it), and ask the operating system for the closest match when the requested font is not available (font matching). This works for TrueType and OpenType fonts, although a few fonts cannot be embedded because the API does not allow retrieving their font data, perhaps because of distribution-license restrictions.</p>
+<p>Linux does not provide a single standard font service in the operating system; instead, fonts are handled through libraries such as Fontconfig and FreeType.</p>
+<p><strong>Font selection on Linux (since version 3.9)</strong></p>
+<p>Since version 3.9 the Report Manager engine uses <a href="https://www.freedesktop.org/wiki/Software/fontconfig/">Fontconfig</a> to select fonts on Linux, providing a sensible fallback when the requested font is not available. The older mechanism &mdash; scanning the font directories listed in <code>/etc/fonts/fonts.conf</code> and matching fonts with a simple built-in algorithm &mdash; is used only when Fontconfig is not present on the system.</p>
+<p><strong>Installing Fontconfig is recommended</strong> for correct font selection. It is available on virtually every Linux distribution (package <code>fontconfig</code>, shared object <code>libfontconfig.so</code>) and is already present on most desktop systems; minimal or console installations may need to add it.</p>
+<p>For the font data itself &mdash; reading glyphs and embedding the font file in the PDF &mdash; Report Manager uses the <a href="https://freetype.org">FreeType</a> library (package <code>freetype2</code>, shared object <code>libfreetype.so</code>), which is also installed by default on most distributions and is needed only when you embed or link TrueType, OpenType or Type1 fonts. Because FreeType exposes Type1 font information, Type1 fonts can be linked in the PDF, while TrueType and OpenType fonts can be fully embedded.</p>
+<p>Font information is cached the first time a TrueType font is embedded; building that cache means reading the installed font files to obtain their names and styles, so the first run of a single report (for example with the <code>printreptopdf</code> command line tool) carries a one-off cost. It does not appear if you do not embed PDF fonts, and is usually unnoticeable depending on how many fonts are installed.</p>
+<p>The good thing is that <strong>you do not need a running X server</strong> to generate PDFs with TrueType embedding.</p>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>

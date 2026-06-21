@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class ReportBatchJsonAdapter | Reportman .Net Documentation </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class ReportBatchJsonAdapter | Reportman .Net Documentation ">
+    
+    <meta name="description" content="Bridges the JSON wire format for batch report operations to the in-memory editor: it deserializes batch requests and report documents (JSON or XML), maps them to editor operations, applies or validates them against a report, and serializes the results back to JSON.">
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter">
+
+
+
+  <h1 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter" class="text-break">Class ReportBatchJsonAdapter</h1>
+  <div class="markdown level0 summary"><p>Bridges the JSON wire format for batch report operations to the in-memory editor: it
+deserializes batch requests and report documents (JSON or XML), maps them to editor
+operations, applies or validates them against a report, and serializes the results back to JSON.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">ReportBatchJsonAdapter</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.html">IReportBatchJsonAdapter</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="Reportman.html">Reportman</a>.<a class="xref" href="Reportman.Reporting.html">Reporting</a>.<a class="xref" href="Reportman.Reporting.Design.html">Design</a>.<a class="xref" href="Reportman.Reporting.Design.Json.html">Json</a></h6>
+  <h6><strong>Assembly</strong>: Reportman.Reporting.Design.Json.dll</h6>
+  <h5 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ReportBatchJsonAdapter : IReportBatchJsonAdapter</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter__ctor_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.#ctor*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter__ctor" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.#ctor">ReportBatchJsonAdapter()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonAdapter()</code></pre>
+  </div>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter__ctor_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.#ctor*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter__ctor_Reportman_Reporting_Design_IReportBatchEditor_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.#ctor(Reportman.Reporting.Design.IReportBatchEditor)">ReportBatchJsonAdapter(IReportBatchEditor)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonAdapter(IReportBatchEditor editor)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.IReportBatchEditor.html">IReportBatchEditor</a></td>
+        <td><span class="parametername">editor</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Apply_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Apply*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Apply_Reportman_Reporting_Report_Reportman_Reporting_Design_Json_ReportBatchJsonRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Apply(Reportman.Reporting.Report,Reportman.Reporting.Design.Json.ReportBatchJsonRequest)">Apply(Report, ReportBatchJsonRequest)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchApplyResult Apply(Report report, ReportBatchJsonRequest request)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></td>
+        <td><span class="parametername">request</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchApplyResult.html">ReportBatchApplyResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Apply_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Apply*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Apply_Reportman_Reporting_Report_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Apply(Reportman.Reporting.Report,System.String)">Apply(Report, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchApplyResult Apply(Report report, string json)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">json</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchApplyResult.html">ReportBatchApplyResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocument_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocument(System.String,System.String)">ApplyReportDocument(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonDocumentApplyResponse ApplyReportDocument(string reportDocument, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html">ReportBatchJsonDocumentApplyResponse</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocument_System_String_System_String_Reportman_Reporting_Design_Json_ReportDocumentFormat_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocument(System.String,System.String,Reportman.Reporting.Design.Json.ReportDocumentFormat)">ApplyReportDocument(string, string, ReportDocumentFormat)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonDocumentApplyResponse ApplyReportDocument(string reportDocument, string operationsJson, ReportDocumentFormat format)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></td>
+        <td><span class="parametername">format</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html">ReportBatchJsonDocumentApplyResponse</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocumentToReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocumentToReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocumentToReportDocument_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocumentToReportDocument(System.String,System.String)">ApplyReportDocumentToReportDocument(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ApplyReportDocumentToReportDocument(string reportDocument, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocumentToReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocumentToReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportDocumentToReportDocument_System_String_System_String_Reportman_Reporting_Design_Json_ReportDocumentFormat_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportDocumentToReportDocument(System.String,System.String,Reportman.Reporting.Design.Json.ReportDocumentFormat)">ApplyReportDocumentToReportDocument(string, string, ReportDocumentFormat)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ApplyReportDocumentToReportDocument(string reportDocument, string operationsJson, ReportDocumentFormat format)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></td>
+        <td><span class="parametername">format</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportJson_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportJson*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportJson_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportJson(System.String,System.String)">ApplyReportJson(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonDocumentApplyResponse ApplyReportJson(string reportJson, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html">ReportBatchJsonDocumentApplyResponse</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportJsonToReportJson_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportJsonToReportJson*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ApplyReportJsonToReportJson_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ApplyReportJsonToReportJson(System.String,System.String)">ApplyReportJsonToReportJson(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ApplyReportJsonToReportJson(string reportJson, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReport_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReport*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReport_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReport(System.String)">DeserializeReport(string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Report DeserializeReport(string reportJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReport_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReport*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReport_System_String_Reportman_Reporting_Design_Json_ReportDocumentFormat_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReport(System.String,Reportman.Reporting.Design.Json.ReportDocumentFormat)">DeserializeReport(string, ReportDocumentFormat)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Report DeserializeReport(string reportDocument, ReportDocumentFormat format)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></td>
+        <td><span class="parametername">format</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeReportDocument_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeReportDocument(System.String)">DeserializeReportDocument(string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Report DeserializeReportDocument(string reportDocument)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeRequest*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_DeserializeRequest_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.DeserializeRequest(System.String)">DeserializeRequest(string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchJsonRequest DeserializeRequest(string json)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">json</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeApplyResult_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeApplyResult*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeApplyResult_Reportman_Reporting_Design_ReportBatchApplyResult_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeApplyResult(Reportman.Reporting.Design.ReportBatchApplyResult)">SerializeApplyResult(ReportBatchApplyResult)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeApplyResult(ReportBatchApplyResult result)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchApplyResult.html">ReportBatchApplyResult</a></td>
+        <td><span class="parametername">result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeDocumentApplyResult_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeDocumentApplyResult*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeDocumentApplyResult_Reportman_Reporting_Design_Json_ReportBatchJsonDocumentApplyResponse_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeDocumentApplyResult(Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse)">SerializeDocumentApplyResult(ReportBatchJsonDocumentApplyResponse)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeDocumentApplyResult(ReportBatchJsonDocumentApplyResponse result)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonDocumentApplyResponse.html">ReportBatchJsonDocumentApplyResponse</a></td>
+        <td><span class="parametername">result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeReport_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeReport*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeReport_Reportman_Reporting_Report_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeReport(Reportman.Reporting.Report)">SerializeReport(Report)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeReport(Report report)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeReport_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeReport*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeReport_Reportman_Reporting_Report_Reportman_Reporting_Design_Json_ReportDocumentFormat_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeReport(Reportman.Reporting.Report,Reportman.Reporting.Design.Json.ReportDocumentFormat)">SerializeReport(Report, ReportDocumentFormat)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeReport(Report report, ReportDocumentFormat format)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></td>
+        <td><span class="parametername">format</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeRequest*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeRequest_Reportman_Reporting_Design_Json_ReportBatchJsonRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeRequest(Reportman.Reporting.Design.Json.ReportBatchJsonRequest)">SerializeRequest(ReportBatchJsonRequest)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeRequest(ReportBatchJsonRequest request)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></td>
+        <td><span class="parametername">request</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeValidationResult_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeValidationResult*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_SerializeValidationResult_Reportman_Reporting_Design_ReportBatchValidationResult_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.SerializeValidationResult(Reportman.Reporting.Design.ReportBatchValidationResult)">SerializeValidationResult(ReportBatchValidationResult)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string SerializeValidationResult(ReportBatchValidationResult result)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td><span class="parametername">result</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ToOperations_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ToOperations*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ToOperations_Reportman_Reporting_Design_Json_ReportBatchJsonRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ToOperations(Reportman.Reporting.Design.Json.ReportBatchJsonRequest)">ToOperations(ReportBatchJsonRequest)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;ReportBatchOperation&gt; ToOperations(ReportBatchJsonRequest request)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></td>
+        <td><span class="parametername">request</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Reportman.Reporting.Design.ReportBatchOperation.html">ReportBatchOperation</a>&gt;</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Validate_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Validate*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Validate_Reportman_Reporting_Report_Reportman_Reporting_Design_Json_ReportBatchJsonRequest_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Validate(Reportman.Reporting.Report,Reportman.Reporting.Design.Json.ReportBatchJsonRequest)">Validate(Report, ReportBatchJsonRequest)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchValidationResult Validate(Report report, ReportBatchJsonRequest request)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportBatchJsonRequest.html">ReportBatchJsonRequest</a></td>
+        <td><span class="parametername">request</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Validate_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Validate*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_Validate_Reportman_Reporting_Report_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.Validate(Reportman.Reporting.Report,System.String)">Validate(Report, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchValidationResult Validate(Report report, string json)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Report.html">Report</a></td>
+        <td><span class="parametername">report</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">json</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportDocument_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportDocument(System.String,System.String)">ValidateReportDocument(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchValidationResult ValidateReportDocument(string reportDocument, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportDocument_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportDocument*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportDocument_System_String_System_String_Reportman_Reporting_Design_Json_ReportDocumentFormat_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportDocument(System.String,System.String,Reportman.Reporting.Design.Json.ReportDocumentFormat)">ValidateReportDocument(string, string, ReportDocumentFormat)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchValidationResult ValidateReportDocument(string reportDocument, string operationsJson, ReportDocumentFormat format)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportDocument</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.Json.ReportDocumentFormat.html">ReportDocumentFormat</a></td>
+        <td><span class="parametername">format</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <a id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportJson_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportJson*"></a>
+  <h4 id="Reportman_Reporting_Design_Json_ReportBatchJsonAdapter_ValidateReportJson_System_String_System_String_" data-uid="Reportman.Reporting.Design.Json.ReportBatchJsonAdapter.ValidateReportJson(System.String,System.String)">ValidateReportJson(string, string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ReportBatchValidationResult ValidateReportJson(string reportJson, string operationsJson)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">reportJson</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">operationsJson</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="Reportman.Reporting.Design.ReportBatchValidationResult.html">ReportBatchValidationResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="Reportman.Reporting.Design.Json.IReportBatchJsonAdapter.html">IReportBatchJsonAdapter</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>
