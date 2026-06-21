@@ -1,0 +1,11 @@
+# Report Manager (reportman.es) - cache policy
+# Force browsers to revalidate text assets on every request (ETag -> 304 when
+# unchanged), so edits go live without visitors having to hard-refresh.
+# Note: this only takes effect when Apache serves these files. If Plesk has
+# nginx serving static files directly, these directives are ignored and the
+# equivalent nginx "add_header Cache-Control no-cache always;" must be used.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|htm|css|js|svg|webmanifest|json|xml|txt)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
