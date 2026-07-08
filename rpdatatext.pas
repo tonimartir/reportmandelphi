@@ -29,12 +29,20 @@ uses
  Variants,Types,
 {$ENDIF}
  DB,
+{$IFDEF USERPFDMEM}
+ FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+ FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+ FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
+{$ENDIF}
 {$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
  DBClient,
+{$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
  memds,
 {$ENDIF}
+ rpdataset,
  rpmdconsts;
 
 type
@@ -61,14 +69,8 @@ type
    secsize:Integer;
   end;
 
-{$IFDEF FPC}
-procedure FillClientDatasetFromFile(data:TMemDataSet;fieldsfile:String;
+procedure FillClientDatasetFromFile(data:TRpMemDataSet;fieldsfile:String;
  textfilename:String;IndexFields:String);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillClientDatasetFromFile(data:TClientDataSet;fieldsfile:String;
- textfilename:String;IndexFields:String);
-{$ENDIF}
 procedure FillFieldObjList(fieldsfile:String;
  lfields:TStringList;
  var recordseparator:char;
@@ -243,12 +245,7 @@ begin
  end;
 end;
 
-{$IFDEF FPC}
-procedure FillDatasetFromSeparated(data:TMemDataset;textfilename:String;indexfields:string);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillDatasetFromSeparated(data:TClientDataset;textfilename:String;indexfields:string);
-{$ENDIF}
+procedure FillDatasetFromSeparated(data:TRpMemDataSet;textfilename:String;indexfields:string);
 var
  memstream:TMemoryStream;
  buf:array of Byte;
@@ -376,12 +373,7 @@ begin
 end;
 
 
-{$IFDEF FPC}
-procedure FillClientDatasetFromFile(data:TMemDataSet;fieldsfile:String;textfilename:String;indexfields:String);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillClientDatasetFromFile(data:TClientDataSet;fieldsfile:String;textfilename:String;indexfields:String);
-{$ENDIF}
+procedure FillClientDatasetFromFile(data:TRpMemDataSet;fieldsfile:String;textfilename:String;indexfields:String);
 var
  recordseparator:char;
  ignoreafterrecordseparator:char;

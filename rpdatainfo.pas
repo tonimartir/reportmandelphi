@@ -134,7 +134,9 @@ uses Classes,SysUtils,
   Variants,Types,
 {$ENDIF}
  {$IFNDEF FPC}
+ {$IFNDEF USERPFDMEM}
   DBClient,
+ {$ENDIF}
  {$ENDIF}
 {$IFDEF USERPDATASET}
  rpdataset,
@@ -160,6 +162,15 @@ const
  DBXCONFIGFILENAME='dbxconnections';
 {$ENDIF}
 type
+{$IFDEF USERPFDMEM}
+  TRpMemDataSet = TFDMemTable;
+{$ELSE}
+ {$IFDEF FPC}
+  TRpMemDataSet = TMemDataset;
+ {$ELSE}
+  TRpMemDataSet = TClientDataSet;
+ {$ENDIF}
+{$ENDIF}
  TRpDbDriver=(rpdatadbexpress=0,rpdatamybase=1,rpdataibx=2,
   rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9,
   rpdbHttp=10);
@@ -526,8 +537,8 @@ procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
 function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
 {$ENDIF}
 {$IFNDEF FPC}
-procedure CombineAddDataset(client:TClientDataset;data:TDataset;group:boolean);
-function CombineParallel(data1:TClientDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TClientDataset;
+procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
+function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 {$IFDEF USEIBX}
 procedure ConvertParamsFromDBXToIBX(base:TIBDatabase);
 {$ENDIF}
@@ -2628,7 +2639,7 @@ var
 {$IFDEF FPC}
 ndataset:TMemDataset;
 {$ELSE}
-ndataset:TClientDataset;
+ndataset:TRpMemDataSet;
 {$ENDIF}
 {$IFDEF FIREDAC}
  fetchItems: TFDFetchItems;
@@ -2770,7 +2781,7 @@ begin
        FSQLInternalQuery:=TMemDataset.Create(nil);
  {$ENDIF}
  {$IFNDEF FPC}
-       FSQLInternalQuery:=TClientDataset.Create(nil);
+       FSQLInternalQuery:=TRpMemDataSet.Create(nil);
  {$ENDIF}
 {$ENDIF}
 {$IFNDEF USERPDATASET}
@@ -2966,11 +2977,11 @@ begin
       end;
      rpdbHttp:
       begin
-        if Not (FSQLInternalQuery is TClientDataSet) then
+        if Not (FSQLInternalQuery is TRpMemDataSet) then
         begin
          FSQLInternalQuery.Free;
          FSQLInternalQuery:=nil;
-         FSQLInternalQuery:=TClientDataSet.Create(nil);
+         FSQLInternalQuery:=TRpMemDataSet.Create(nil);
         end;
       end;
     end;
@@ -3020,8 +3031,8 @@ begin
 {$IFDEF USERPDATASET}
       try
 {$IFNDEF FPC}
-       TClientDataSet(FSQLInternalQuery).IndexName:='';
-       TClientDataSet(FSQLInternalQuery).IndexFieldNames:='';
+       TRpMemDataSet(FSQLInternalQuery).IndexName:='';
+       TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:='';
 {$ENDIF}
        if Length(FMyBaseFileName)>0 then
        begin
@@ -3030,9 +3041,9 @@ begin
         if Length(FMyBaseFields)>0 then
         begin
 {$IFNDEF FPC}
-         TClientDataSet(FSQLInternalQuery).IndexDefs.Clear;
-         TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-         FillClientDatasetFromFile(TClientDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
+         TRpMemDataSet(FSQLInternalQuery).IndexDefs.Clear;
+         TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+         FillClientDatasetFromFile(TRpMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
 {$ENDIF}
 {$IFDEF FPC}
          FillClientDatasetFromFile(TMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
@@ -3041,8 +3052,8 @@ begin
         else
         begin
 {$IFNDEF FPC}
-         TClientDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
-         TClientDataSet(FSQLInternalQuery).LoadFromFile(afilename);
+         TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+         TRpMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
 {$ENDIF}
 {$IFDEF FPC}
          TMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
@@ -3054,10 +3065,10 @@ begin
        end
        else
        begin
-        TClientDataSet(FSQLInternalQuery).IndexDefs.Clear;
-        TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-        TClientDataSet(FSQLInternalQuery).IndexDefs.Add('IPRIM',FMyBaseIndexFields,[]);
-        TClientDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+        TRpMemDataSet(FSQLInternalQuery).IndexDefs.Clear;
+        TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+        TRpMemDataSet(FSQLInternalQuery).IndexDefs.Add('IPRIM',FMyBaseIndexFields,[]);
+        TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
        end;
 {$ENDIF}
        commonfields:=TStringList.Create;
@@ -3074,7 +3085,7 @@ begin
          if ((i=0) or (not FParallelUnion)) then
          begin
 {$IFNDEF FPC}
-         CombineAddDataset(TClientDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
+         CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
 {$ENDIF}
 {$IFDEF FPC}
          CombineAddDataset(TMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
@@ -3084,12 +3095,12 @@ begin
          else
          begin
           {$IFNDEF FPC}
-          ndataset:=CombineParallel(TClientDataset(FSQLInternalQuery),
+          ndataset:=CombineParallel(TRpMemDataSet(FSQLInternalQuery),
            TRpDatainfolist(Collection).Items[index].Dataset,'Q'+FormatFloat('00',i+1)+'_',commonfields,originalfields);
           try
            FSQLInternalQuery.Close;
-           TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-           CombineAddDataset(TClientDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
+           TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+           CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
           finally
            ndataset.free;
           end;
@@ -3120,11 +3131,11 @@ begin
         begin
          try
 {$IFNDEF FPC}
-          if (TClientDataSet(FSQLInternalQuery).Filter<>afilter) then
+          if (TRpMemDataSet(FSQLInternalQuery).Filter<>afilter) then
           begin
-           TClientDataSet(FSQLInternalQuery).Filtered:=false;
-           TClientDataSet(FSQLInternalQuery).Filter:=afilter;
-           TClientDataSet(FSQLInternalQuery).Filtered:=true;
+           TRpMemDataSet(FSQLInternalQuery).Filtered:=false;
+           TRpMemDataSet(FSQLInternalQuery).Filter:=afilter;
+           TRpMemDataSet(FSQLInternalQuery).Filtered:=true;
           end;
 {$ENDIF}
 {$IFDEF FPC}
@@ -3144,10 +3155,10 @@ begin
         else
         begin
          {$IFNDEF FPC}
-         if TClientDataSet(FSQLInternalQuery).Filtered then
+         if TRpMemDataSet(FSQLInternalQuery).Filtered then
          begin
-          TClientDataSet(FSQLInternalQuery).Filtered:=false;
-          TClientDataSet(FSQLInternalQuery).Filter:=afilter;
+          TRpMemDataSet(FSQLInternalQuery).Filtered:=false;
+          TRpMemDataSet(FSQLInternalQuery).Filter:=afilter;
          end;
          {$ENDIF}
         end;
@@ -3261,7 +3272,7 @@ begin
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
 
         LHttpDataset := TRpDatasetHttp.CreateForQuery(baseinfo.FHttpDatabase,
-          TClientDataSet(FSQLInternalQuery), params);
+          TRpMemDataSet(FSQLInternalQuery), params);
         try
           LHttpDataset.Sql := SQLsentence;
           LHttpDataset.Open;
@@ -3367,7 +3378,7 @@ begin
        begin
          // Parameters are already handled via TRpDatasetHttp.Open if passed in Sql
          // But let's ensure they are available in the underlying dataset if needed
-         if TClientDataSet(FSQLInternalQuery).FindField(param.Name) = nil then
+         if TRpMemDataSet(FSQLInternalQuery).FindField(param.Name) = nil then
          begin
             // TODO: Optional: Add parameters to a list for the HTTP driver if not using macro/text replacement
          end;
@@ -3451,8 +3462,8 @@ begin
      rpdatamybase:
       begin
 {$IFNDEF FPC}
-       TClientDataset(FSQLInternalQuery).MasterFields:=MyBaseMasterFields;
-       TClientDataset(FSQLInternalQuery).MasterSource:=FMasterSource;
+       TRpMemDataSet(FSQLInternalQuery).MasterFields:=MyBaseMasterFields;
+       TRpMemDataSet(FSQLInternalQuery).MasterSource:=FMasterSource;
 {$IFDEF USERPDATASET}
        if datainfosource.cached then
         FMasterSource.DataSet:=datainfosource.CachedDataset
@@ -3531,7 +3542,9 @@ begin
       end;
      rpdbHttp:
       begin
-        TClientDataSet(FSQLInternalQuery).RemoteServer := nil;
+{$IFNDEF USERPFDMEM}
+        TRpMemDataSet(FSQLInternalQuery).RemoteServer := nil;
+{$ENDIF}
       end;
     end;
    end;
@@ -4856,9 +4869,9 @@ end;
 
 
 {$IFNDEF FPC}
-function CombineParallel(data1:TClientDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TClientDataset;
+function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 var
- aresult:TClientDataset;
+ aresult:TRpMemDataSet;
 {$ELSE}
 function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
 var
@@ -4874,7 +4887,7 @@ var
 begin
  {$IFNDEF FPC}
  counter:=0;
- aresult:=TClientDataset.Create(nil);
+ aresult:=TRpMemDataSet.Create(nil);
  lfields1:=TStringList.Create;
  lfields2:=TStringList.Create;
  try
@@ -4984,7 +4997,7 @@ end;
 procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
 {$ENDIF}
 {$IFNDEF FPC}
-procedure CombineAddDataset(client:TClientDataset;data:TDataset;group:boolean);
+procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
 {$ENDIF}
 var
  i,index:integer;
@@ -5097,8 +5110,8 @@ begin
   end;
   client.First;
 {$IFNDEF FPC}
-  if data is TClientDataset then
-   TClientDataSet(data).First;
+  if data is TRpMemDataSet then
+   TRpMemDataSet(data).First;
 {$ENDIF}
 {$IFDEF FPC}
   if data is TMemDataset then
@@ -5323,8 +5336,8 @@ var
  adatareports:TDataset;
  adatagroups:TDataset;
  dbinfo:TRpDatabaseInfoItem;
- DReportgroups,DReportgroups2:TClientDataset;
- Dreports:TClientDataset;
+ DReportgroups,DReportgroups2:TRpMemDataSet;
+ Dreports:TRpMemDataSet;
  groupcode:Integer;
  grouppath:string;
  sqltext:string;
@@ -5388,9 +5401,9 @@ begin
   end;
   try
    // Fill client dataset helpers
-   DReportGroups:=TClientDataSet.Create(nil);
-   DReportGroups2:=TClientDataSet.Create(nil);
-   DReports:=TClientDataSet.Create(nil);
+   DReportGroups:=TRpMemDataSet.Create(nil);
+   DReportGroups2:=TRpMemDataSet.Create(nil);
+   DReports:=TRpMemDataSet.Create(nil);
    try
     DReportGroups.FieldDefs.Add('GROUP_CODE',ftInteger,0,true);
     DReportGroups.FieldDefs.Add('GROUP_NAME',ftString,100,false);

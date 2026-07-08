@@ -29,8 +29,15 @@ uses Sysutils,Classes,
 {$IFDEF FPC}
  memds,
 {$ENDIF}
+{$IFDEF USERPFDMEM}
+ FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+ FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+ FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
+{$ENDIF}
 {$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
  DBClient,
+{$ENDIF}
 {$ENDIF}
  db;
 
@@ -41,19 +48,19 @@ resourcestring
 
 type
 
-{$IFDEF FPC}
- TRpDataset=class(TMemDataset)
+{$IFDEF USERPFDMEM}
+  TRpMemDataSet = TFDMemTable;
+{$ELSE}
+ {$IFDEF FPC}
+  TRpMemDataSet = TMemDataset;
+ {$ELSE}
+  TRpMemDataSet = TClientDataSet;
+ {$ENDIF}
 {$ENDIF}
-{$IFNDEF FPC}
- TRpDataset=class(TClientDataSet)
-{$ENDIF}
+
+ TRpDataset=class(TRpMemDataSet)
   private
-{$IFDEF FPC}
-   FCopyDataset:TMemDataset;
-{$ENDIF}
-{$IFNDEF FPC}
-   FCopyDataset:TClientDataset;
-{$ENDIF}
+   FCopyDataset:TRpMemDataSet;
    FDataset:TDataset;
    procedure SetDataset(Value:TDataset);
   protected
@@ -135,12 +142,7 @@ end;
 constructor TRpDataSet.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
-{$IFDEF FPC}
- FCopyDataset:=TMemDataset.Create(Self);
-{$ENDIF}
-{$IFNDEF FPC}
-  FCopyDataset:=TCLientDataset.Create(Self);
-{$ENDIF}
+ FCopyDataset:=TRpMemDataSet.Create(Self);
 end;
 
 procedure TRpDataSet.DoOpen;
@@ -228,7 +230,9 @@ begin
 {$ENDIF}
 {$IFNDEF FPC}
      FCopyDataset.CreateDataSet;
+ {$IFNDEF USERPFDMEM}
      FCopyDataset.LogChanges:=false;
+ {$ENDIF}
 {$ENDIF}
     end
     else
@@ -365,7 +369,9 @@ procedure TRpDataSet.DoAfterOpen;
 begin
  inherited DoAfterOpen;
 {$IFNDEF FPC}
+ {$IFNDEF USERPFDMEM}
  LogChanges:=false;
+ {$ENDIF}
 {$ENDIF}
 end;
 
