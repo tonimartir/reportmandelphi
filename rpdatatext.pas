@@ -94,7 +94,8 @@ implementation
 
 {$IFDEF USERPFDMEM}
 uses
- System.Generics.Collections, System.StrUtils, Data.FmtBcd, System.DateUtils;
+ System.Generics.Collections, System.StrUtils, Data.FmtBcd, System.DateUtils,
+ System.NetEncoding;
 
 {$I rpfdmidas.inc}
 {$ENDIF}

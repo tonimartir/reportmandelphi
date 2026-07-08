@@ -12,10 +12,10 @@
 {   binary MIDAS packets raise a clear exception.       }
 {                                                       }
 {   This file is meant to be include-directive-included }
-{   implementation section of a unit that already has   }
-{   in scope: Classes, SysUtils, Variants, DB,          }
-{   FireDAC.Comp.DataSet/Client, Generics.Collections,  }
-{   Data.FmtBcd, DateUtils, StrUtils.                   }
+{   inside the implementation section of a unit that    }
+{   already has in scope: Classes, SysUtils, Variants,  }
+{   DB, FireDAC.Comp.DataSet/Client, Generics.Colls,    }
+{   Data.FmtBcd, DateUtils, StrUtils, NetEncoding.      }
 {*******************************************************}
 
 resourcestring
@@ -28,6 +28,33 @@ resourcestring
 function RpMidasInv: TFormatSettings;
 begin
   Result := TFormatSettings.Invariant;
+end;
+
+// ---------- base64 (no line breaks, matching TClientDataSet) --------------
+function RpMidasB64Encode(const B: TBytes): string;
+var
+  enc: TBase64Encoding;
+begin
+  if Length(B) = 0 then Exit('');
+  enc := TBase64Encoding.Create(0); // 0 chars-per-line = no wrapping
+  try
+    Result := enc.EncodeBytesToString(B);
+  finally
+    enc.Free;
+  end;
+end;
+
+function RpMidasB64Decode(const S: string): TBytes;
+var
+  enc: TBase64Encoding;
+begin
+  if S = '' then Exit(nil);
+  enc := TBase64Encoding.Create(0);
+  try
+    Result := enc.DecodeStringToBytes(S);
+  finally
+    enc.Free;
+  end;
 end;
 
 // ---------- stream -> string (BOM / encoding aware) ----------------------
@@ -103,8 +130,6 @@ begin
 end;
 
 // ---------- attribute parser ---------------------------------------------
-// AInner = text between the tag name and the closing '/>' (values are XML
-// escaped, so a value never contains a raw quote / '<' / '>').
 procedure RpMidasParseAttrs(const AInner: string; ANames, AValues: TStringList);
 var
   i, L: Integer;
@@ -141,6 +166,7 @@ begin
 end;
 
 // ---------- type mapping (read) ------------------------------------------
+// Returns the TFieldType; ASize gets the char size for string/memo types.
 function RpMidasTypeToField(const AType, ASubType: string; AWidth: Integer;
   out ASize: Integer): TFieldType;
 begin
@@ -148,7 +174,8 @@ begin
   if (AType = 'i1') or (AType = 'i2') then Result := ftSmallint
   else if AType = 'i4' then Result := ftInteger
   else if AType = 'i8' then Result := ftLargeint
-  else if (AType = 'ui1') or (AType = 'ui2') then Result := ftWord
+  else if AType = 'ui1' then Result := ftWord
+  else if AType = 'ui2' then Result := ftWord
   else if AType = 'ui4' then Result := ftLongWord
   else if AType = 'r4' then Result := ftSingle
   else if AType = 'r8' then
@@ -156,11 +183,13 @@ begin
     if SameText(ASubType, 'Money') then Result := ftCurrency
     else Result := ftFloat;
   end
-  else if (AType = 'fixed') or (AType = 'fixedFMT') then Result := ftFMTBcd
+  else if AType = 'fixed' then Result := ftBCD
+  else if AType = 'fixedFMT' then Result := ftFMTBcd
   else if AType = 'boolean' then Result := ftBoolean
   else if AType = 'date' then Result := ftDate
   else if AType = 'time' then Result := ftTime
   else if SameText(AType, 'dateTime') then Result := ftDateTime
+  else if SameText(AType, 'SQLdateTime') then Result := ftTimeStamp
   else if AType = 'string' then
   begin Result := ftString; ASize := AWidth; if ASize <= 0 then ASize := 255; end
   else if AType = 'string.uni' then
@@ -214,24 +243,20 @@ begin
       RpMidasParseTime(Copy(S, tp + 1, MaxInt));
 end;
 
-procedure RpMidasSetBlobHex(F: TField; const S: string);
-var
-  bytes: TBytes;
-  i, n: Integer;
-begin
-  n := Length(S) div 2;
-  SetLength(bytes, n);
-  for i := 0 to n - 1 do
-    bytes[i] := StrToIntDef('$' + Copy(S, i * 2 + 1, 2), 0);
-  F.AsBytes := bytes;
-end;
-
 procedure RpMidasSetValue(F: TField; const S: string);
+var
+  i64: Int64;
 begin
   case F.DataType of
-    ftSmallint, ftShortint, ftByte, ftWord, ftInteger, ftAutoInc:
+    ftShortint, ftSmallint, ftInteger, ftAutoInc:
       F.AsInteger := StrToInt(S);
-    ftLargeint, ftLongWord:
+    ftByte:
+      F.AsInteger := Byte(StrToInt(S));   // unsigned reinterpret (ui1)
+    ftWord:
+      F.AsInteger := Word(StrToInt(S));   // unsigned reinterpret (ui2)
+    ftLongWord:
+      begin i64 := StrToInt64(S); F.AsLargeInt := Cardinal(i64); end; // ui4
+    ftLargeint:
       F.AsLargeInt := StrToInt64(S);
     ftSingle, ftFloat:
       F.AsFloat := StrToFloat(S, RpMidasInv);
@@ -248,19 +273,21 @@ begin
     ftDateTime, ftTimeStamp:
       F.AsDateTime := RpMidasParseDateTime(S);
     ftBlob, ftGraphic, ftVarBytes, ftBytes:
-      RpMidasSetBlobHex(F, S);
+      F.AsBytes := RpMidasB64Decode(S);
   else
     F.AsString := S; // string, wide string, memo, wide memo, guid, ...
   end;
 end;
 
 // ---------- type mapping (write) -----------------------------------------
-function RpMidasFieldToType(F: TField; out ASub: string; out AWidth: Integer): string;
+// Returns fieldtype; sets ASub (SUBTYPE), AWidth (WIDTH), ADec (DECIMALS, -1 = none).
+function RpMidasFieldToType(F: TField; out ASub: string; out AWidth, ADec: Integer): string;
 begin
   ASub := '';
   AWidth := 0;
+  ADec := -1;
   case F.DataType of
-    ftSmallint, ftShortint: Result := 'i2';
+    ftShortint, ftSmallint: Result := 'i2';
     ftByte: Result := 'ui1';
     ftWord: Result := 'ui2';
     ftInteger, ftAutoInc: Result := 'i4';
@@ -269,33 +296,30 @@ begin
     ftSingle: Result := 'r4';
     ftFloat: Result := 'r8';
     ftCurrency: begin Result := 'r8'; ASub := 'Money'; end;
-    ftBCD, ftFMTBcd: Result := 'r8';
+    ftBCD:
+      begin
+        Result := 'fixed'; ADec := F.Size;
+        if F is TBCDField then AWidth := TBCDField(F).Precision;
+      end;
+    ftFMTBcd:
+      begin
+        Result := 'fixedFMT'; ADec := F.Size;
+        if F is TFMTBCDField then AWidth := TFMTBCDField(F).Precision;
+      end;
     ftBoolean: Result := 'boolean';
     ftDate: Result := 'date';
     ftTime: Result := 'time';
-    ftDateTime, ftTimeStamp: Result := 'dateTime';
+    ftDateTime: Result := 'dateTime';
+    ftTimeStamp: begin Result := 'SQLdateTime'; ASub := 'Formatted'; end;
     ftWideString, ftFixedWideChar: begin Result := 'string.uni'; AWidth := F.Size * 2; end;
     ftString, ftFixedChar, ftGuid: begin Result := 'string'; AWidth := F.Size; end;
     ftMemo, ftFmtMemo: begin Result := 'bin.hex'; ASub := 'Text'; AWidth := F.Size; end;
     ftWideMemo: begin Result := 'bin.hex'; ASub := 'Text.uni'; AWidth := F.Size; end;
     ftGraphic: begin Result := 'bin.hex'; ASub := 'Graphics'; end;
-    ftBlob, ftVarBytes, ftBytes: Result := 'bin.hex';
+    ftBlob: begin Result := 'bin.hex'; ASub := 'Binary'; end;
+    ftBytes, ftVarBytes: begin Result := 'bin.hex'; AWidth := F.Size; end;
   else
     begin Result := 'string'; AWidth := F.Size; if AWidth <= 0 then AWidth := 255; end;
-  end;
-end;
-
-function RpMidasBytesToHex(const B: TBytes): string;
-const
-  H: array[0..15] of Char = '0123456789ABCDEF';
-var
-  i: Integer;
-begin
-  SetLength(Result, Length(B) * 2);
-  for i := 0 to High(B) do
-  begin
-    Result[i * 2 + 1] := H[B[i] shr 4];
-    Result[i * 2 + 2] := H[B[i] and $F];
   end;
 end;
 
@@ -318,12 +342,18 @@ begin
       Result := FloatToStr(F.AsCurrency, RpMidasInv);
     ftBCD, ftFMTBcd:
       Result := BcdToStr(F.AsBcd, RpMidasInv);
-    ftSmallint, ftShortint, ftByte, ftWord, ftInteger, ftAutoInc:
+    ftShortint, ftSmallint, ftInteger, ftAutoInc:
       Result := IntToStr(F.AsInteger);
-    ftLargeint, ftLongWord:
+    ftByte:
+      Result := IntToStr(ShortInt(F.AsInteger));   // CDS stores ui1 as a signed pattern
+    ftWord:
+      Result := IntToStr(SmallInt(F.AsInteger));    // ui2 as a signed pattern
+    ftLongWord:
+      Result := IntToStr(Integer(F.AsLargeInt));    // ui4 as a signed pattern
+    ftLargeint:
       Result := IntToStr(F.AsLargeInt);
     ftBlob, ftGraphic, ftVarBytes, ftBytes:
-      Result := RpMidasBytesToHex(F.AsBytes);
+      Result := RpMidasB64Encode(F.AsBytes);
   else
     Result := F.AsString;
   end;
@@ -378,10 +408,11 @@ end;
 procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
 var
   xml, inner, attrName, fieldName, ftype, fsub, realName: string;
-  p, tagEnd, fieldsB, fieldsE, rowsB, rowsE, fwidth, fsize, k: Integer;
+  p, tagEnd, fieldsB, fieldsE, rowsB, rowsE, fwidth, fdec, fsize, k: Integer;
   names, values: TStringList;
   attrToReal: TDictionary<string, string>;
   ft: TFieldType;
+  fd: TFieldDef;
   F: TField;
 begin
   xml := RpMidasStreamToStr(Stream);
@@ -411,21 +442,30 @@ begin
       inner := Copy(xml, p + Length('<FIELD'), tagEnd - (p + Length('<FIELD')));
       names.Clear; values.Clear;
       RpMidasParseAttrs(inner, names, values);
-      attrName := ''; fieldName := ''; ftype := ''; fsub := ''; fwidth := 0;
+      attrName := ''; fieldName := ''; ftype := ''; fsub := ''; fwidth := 0; fdec := -1;
       for k := 0 to names.Count - 1 do
       begin
         if SameText(names[k], 'attrname') then attrName := values[k]
         else if SameText(names[k], 'fieldname') then fieldName := values[k]
         else if SameText(names[k], 'fieldtype') then ftype := values[k]
         else if SameText(names[k], 'SUBTYPE') then fsub := values[k]
-        else if SameText(names[k], 'WIDTH') then fwidth := StrToIntDef(values[k], 0);
+        else if SameText(names[k], 'WIDTH') then fwidth := StrToIntDef(values[k], 0)
+        else if SameText(names[k], 'DECIMALS') then fdec := StrToIntDef(values[k], 0);
       end;
       p := tagEnd + 1;
       if attrName = '' then Continue;
       if fieldName = '' then realName := attrName else realName := fieldName;
       ft := RpMidasTypeToField(ftype, fsub, fwidth, fsize);
-      if fsize > 0 then mem.FieldDefs.Add(realName, ft, fsize)
-      else mem.FieldDefs.Add(realName, ft);
+      fd := mem.FieldDefs.AddFieldDef;
+      fd.Name := realName;
+      fd.DataType := ft;
+      if ft in [ftBCD, ftFMTBcd] then
+      begin
+        if fwidth > 0 then fd.Precision := fwidth;
+        if fdec >= 0 then fd.Size := fdec;
+      end
+      else if fsize > 0 then
+        fd.Size := fsize;
       attrToReal.AddOrSetValue(attrName, realName);
     end;
     if mem.FieldDefs.Count = 0 then
@@ -480,7 +520,7 @@ var
   i: Integer;
   F: TField;
   t, sub: string;
-  w: Integer;
+  w, dec: Integer;
   attrs: TArray<string>;
   bm: TBookmark;
   bytes: TBytes;
@@ -493,7 +533,7 @@ begin
     for i := 0 to mem.Fields.Count - 1 do
     begin
       F := mem.Fields[i];
-      t := RpMidasFieldToType(F, sub, w);
+      t := RpMidasFieldToType(F, sub, w, dec);
       attrs[i] := RpMidasSanitize(F.FieldName);
       sb.Append('<FIELD');
       if attrs[i] <> F.FieldName then
@@ -501,6 +541,8 @@ begin
       sb.Append(' attrname="').Append(attrs[i]).Append('" fieldtype="').Append(t).Append('"');
       if sub <> '' then
         sb.Append(' SUBTYPE="').Append(sub).Append('"');
+      if dec >= 0 then
+        sb.Append(' DECIMALS="').Append(dec).Append('"');
       if w > 0 then
         sb.Append(' WIDTH="').Append(w).Append('"');
       sb.Append('/>');
