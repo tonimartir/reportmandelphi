@@ -603,6 +603,21 @@
  //{$DEFINE ALTLINUXTEXTPRINT}
 {$ENDIF}
 
+// Linux/Delphi (non-FPC) uses TFDMemTable instead of TClientDataSet as the
+// in-memory dataset, so the executable does not depend on libmidas.so at
+// runtime. Midas has no static-link path on Linux (the RTL always dlopens
+// libmidas.so.2; MidasLib is Windows-only), so we route the runtime dataset
+// layer through FireDAC. Affects rpdataset, rpdatainfo, rpdatahttp, rpdatatext
+// via the TRpMemDataSet alias. FPC keeps using TMemDataset; Windows/Delphi
+// keeps using TClientDataSet (+midaslib) unchanged.
+{$IFDEF LINUX}
+ {$IFNDEF FPC}
+  {$IFDEF FIREDAC}
+   {$DEFINE USERPFDMEM}
+  {$ENDIF}
+ {$ENDIF}
+{$ENDIF}
+
 
 {$DEFINE USEVARIANTS}
 {$DEFINE USEBCD}

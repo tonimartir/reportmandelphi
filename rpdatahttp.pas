@@ -25,9 +25,17 @@ uses
   System.JSON,
   System.DateUtils,
   System.NetEncoding,
+{$IFDEF USERPFDMEM}
+  FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+  FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+  FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
+{$ENDIF}
 {$IFDEF USERPDATASET}
+{$IFNDEF USERPFDMEM}
   DBClient,
 {$ENDIF}
+{$ENDIF}
+  rpdataset,
   rpparams,
   rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
   rpaireportcontracts;
@@ -149,17 +157,17 @@ type
   private
     FDatabase: TRpDatabaseHttp;
     FSql: string;
-    FDataset: TClientDataSet;
+    FDataset: TRpMemDataSet;
     FParams: TRpParamList;
     function CreateParameterObject(AParam: TRpParam): TJSONObject;
   public
     class function CreateForQuery(ADatabase: TRpDatabaseHttp;
-      ADataset: TClientDataSet; AParams: TRpParamList = nil): TRpDatasetHttp; static;
-    constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet; AParams: TRpParamList = nil);
+      ADataset: TRpMemDataSet; AParams: TRpParamList = nil): TRpDatasetHttp; static;
+    constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TRpMemDataSet; AParams: TRpParamList = nil);
     destructor Destroy; override;
     procedure Open;
     property Sql: string read FSql write FSql;
-    property Dataset: TClientDataSet read FDataset;
+    property Dataset: TRpMemDataSet read FDataset;
     // Exposed so the optional direct-channel hook can read the
     // request shape (the hook is in another unit; it receives
     // TObject and as-casts back to the concrete TRpDatasetHttp).
@@ -1435,7 +1443,7 @@ begin
 end;
 {$ENDIF}
 { TRpDatasetHttp }
-constructor TRpDatasetHttp.Create(ADatabase: TRpDatabaseHttp; ADataset: TClientDataSet; AParams: TRpParamList = nil);
+constructor TRpDatasetHttp.Create(ADatabase: TRpDatabaseHttp; ADataset: TRpMemDataSet; AParams: TRpParamList = nil);
 begin
   inherited Create;
   FDatabase := ADatabase;
@@ -1444,7 +1452,7 @@ begin
 end;
 
 class function TRpDatasetHttp.CreateForQuery(ADatabase: TRpDatabaseHttp;
-  ADataset: TClientDataSet; AParams: TRpParamList = nil): TRpDatasetHttp;
+  ADataset: TRpMemDataSet; AParams: TRpParamList = nil): TRpDatasetHttp;
 begin
   Result := TRpDatasetHttp.Create(ADatabase, ADataset, AParams);
 end;
@@ -1536,9 +1544,9 @@ begin
 
   // The HTTP path below lazy-creates FDataset further down; the
   // direct-channel hook needs it populated NOW, so create it up
-  // front. Both paths end up writing into the same TClientDataSet.
+  // front. Both paths end up writing into the same TRpMemDataSet.
   if not Assigned(FDataset) then
-    FDataset := TClientDataSet.Create(nil);
+    FDataset := TRpMemDataSet.Create(nil);
 
 {$IFDEF MSWINDOWS}
   // Try the direct WebRTC DataChannel path if a handler has been
@@ -1606,7 +1614,7 @@ begin
            raise Exception.Create('No rows in result');
         if not Assigned(FDataset) then
         begin
-          FDataset:=TClientDataSet.Create(nil);
+          FDataset:=TRpMemDataSet.Create(nil);
         end;
         FDataset.Close;
         FDataset.FieldDefs.Clear;
