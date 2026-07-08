@@ -5985,24 +5985,35 @@ end;
 
 procedure ForceLoadDrivers;
 begin
+{$IFDEF FIREDAC}
   // Drivers Gen�ricos y de Conectividad
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
   TFDPhysODBCDriverLink.Create(nil);
+ {$ENDIF}
 
   // SQL Server (v�a ODBC en Linux)
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
   TFDPhysMSSQLDriverLink.Create(nil);
+ {$ENDIF}
 
   // MySQL / MariaDB
+ {$IFNDEF ANDROID}
   TFDPhysMySQLDriverLink.Create(nil);
+ {$ENDIF}
 
   // PostgreSQL
+ {$IFNDEF ANDROID}
   TFDPhysPGDriverLink.Create(nil);
+ {$ENDIF}
 
   // SQLite
   TFDPhysSQLiteDriverLink.Create(nil);
 
   // Interbase / Firebird
   TFDPhysIBDriverLink.Create(nil);
+ {$IFNDEF ANDROID}
   TFDPhysFBDriverLink.Create(nil);
+ {$ENDIF}
 
   {$IFDEF MSWINDOWS}
   // Microsoft Access (Solo Windows)
@@ -6012,14 +6023,16 @@ begin
   {$ENDIF}
 
   // Otros Drivers que mencionaste (aseg�rate de tener las unidades en el uses)
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
   TFDPhysASADriverLink.Create(nil);   // Sybase ASA
   TFDPhysDB2DriverLink.Create(nil);   // IBM DB2
   TFDPhysInfxDriverLink.Create(nil);  // Informix
-  TFDPhysTDataDriverLink.Create(nil); // Teradata
+  TFDPhysTDataDriverLink.Create(nil);
+ {$ENDIF} // Teradata
 
 
   TFDMoniFlatFileClientLink.Create(nil);
-
+{$ENDIF}
 end;
 
 initialization
