@@ -3051,9 +3051,16 @@ begin
         end
         else
         begin
+{$IFDEF USERPFDMEM}
+         // MyBase/MIDAS XML DataPacket via FireDAC (no libmidas on Linux)
+         FDMemLoadFromMidasFile(TRpMemDataSet(FSQLInternalQuery),afilename);
+         TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+{$ENDIF}
 {$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
          TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
          TRpMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
+{$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
          TMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);

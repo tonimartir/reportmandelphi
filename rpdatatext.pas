@@ -80,8 +80,24 @@ procedure SaveFieldObjListToFile(lfields:TStringList;fieldsfile:String;
  recordseparator:char;
  ignoreafterrecordseparator:char);
 
+{$IFDEF USERPFDMEM}
+// MIDAS / MyBase "DATAPACKET 2.0" XML read-write for a FireDAC TFDMemTable,
+// so the Linux/Delphi build can interchange the same data files that
+// TClientDataSet produces/consumes on Windows (impl in rpfdmidas.inc).
+procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemSaveToMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemLoadFromMidasFile(mem: TFDMemTable; const FileName: string);
+procedure FDMemSaveToMidasFile(mem: TFDMemTable; const FileName: string);
+{$ENDIF}
 
 implementation
+
+{$IFDEF USERPFDMEM}
+uses
+ System.Generics.Collections, System.StrUtils, Data.FmtBcd, System.DateUtils;
+
+{$I rpfdmidas.inc}
+{$ENDIF}
 
 
 // Reads the field definition file as a TInifile
