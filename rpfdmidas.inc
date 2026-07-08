@@ -167,8 +167,9 @@ begin
   begin Result := ftWideString; ASize := AWidth div 2; if ASize <= 0 then ASize := 255; end
   else if AType = 'bin.hex' then
   begin
-    if SameText(ASubType, 'Text') then Result := ftMemo
-    else if SameText(ASubType, 'Text.uni') then Result := ftWideMemo
+    if SameText(ASubType, 'Text') then begin Result := ftMemo; ASize := AWidth; end
+    else if SameText(ASubType, 'Text.uni') then begin Result := ftWideMemo; ASize := AWidth div 2; end
+    else if SameText(ASubType, 'Graphics') then Result := ftGraphic
     else Result := ftBlob;
   end
   else
@@ -275,9 +276,10 @@ begin
     ftDateTime, ftTimeStamp: Result := 'dateTime';
     ftWideString, ftFixedWideChar: begin Result := 'string.uni'; AWidth := F.Size * 2; end;
     ftString, ftFixedChar, ftGuid: begin Result := 'string'; AWidth := F.Size; end;
-    ftMemo, ftFmtMemo: begin Result := 'bin.hex'; ASub := 'Text'; end;
-    ftWideMemo: begin Result := 'bin.hex'; ASub := 'Text.uni'; end;
-    ftBlob, ftGraphic, ftVarBytes, ftBytes: Result := 'bin.hex';
+    ftMemo, ftFmtMemo: begin Result := 'bin.hex'; ASub := 'Text'; AWidth := F.Size; end;
+    ftWideMemo: begin Result := 'bin.hex'; ASub := 'Text.uni'; AWidth := F.Size; end;
+    ftGraphic: begin Result := 'bin.hex'; ASub := 'Graphics'; end;
+    ftBlob, ftVarBytes, ftBytes: Result := 'bin.hex';
   else
     begin Result := 'string'; AWidth := F.Size; if AWidth <= 0 then AWidth := 255; end;
   end;
@@ -308,8 +310,10 @@ begin
       Result := FormatDateTime('hh":"nn":"sszzz', F.AsDateTime);
     ftDateTime, ftTimeStamp:
       Result := FormatDateTime('yyyymmdd"T"hh":"nn":"sszzz', F.AsDateTime);
-    ftSingle, ftFloat:
-      Result := FloatToStr(F.AsFloat, RpMidasInv);
+    ftSingle:
+      Result := FloatToStrF(F.AsFloat, ffGeneral, 9, 0, RpMidasInv);
+    ftFloat:
+      Result := FloatToStrF(F.AsFloat, ffGeneral, 17, 0, RpMidasInv);
     ftCurrency:
       Result := FloatToStr(F.AsCurrency, RpMidasInv);
     ftBCD, ftFMTBcd:
@@ -495,10 +499,10 @@ begin
       if attrs[i] <> F.FieldName then
         sb.Append(' fieldname="').Append(RpMidasEscape(F.FieldName)).Append('"');
       sb.Append(' attrname="').Append(attrs[i]).Append('" fieldtype="').Append(t).Append('"');
-      if w > 0 then
-        sb.Append(' WIDTH="').Append(w).Append('"');
       if sub <> '' then
         sb.Append(' SUBTYPE="').Append(sub).Append('"');
+      if w > 0 then
+        sb.Append(' WIDTH="').Append(w).Append('"');
       sb.Append('/>');
     end;
     sb.Append('</FIELDS><PARAMS/></METADATA><ROWDATA>');
