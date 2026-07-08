@@ -1,0 +1,11 @@
+# build / run artifacts
+*.exe
+*.dcu
+*.map
+*.log
+*.identcache
+*.local
+__history/
+__recovery/
+dcu*/
+writer_out.xml
