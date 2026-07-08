@@ -367,7 +367,7 @@ function buildIndex(dirAbs, webPath, title, desc, opts){
   fs.writeFileSync(idxAbs, render({title: ftitle, desc: fdesc, canonicalPath: webPath, nav, crumbs, content, extraLd: []}), 'utf-8');
   for (const dead of ['left.html','right.html']){
     const p = path.join(dirAbs, dead);
-    if (fs.existsSync(p)) fs.unlinkSync(p);
+    fs.writeFileSync(p, '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="robots" content="noindex">\n<meta http-equiv="refresh" content="0;url=index.html">\n<link rel="canonical" href="https://reportman.es' + webPath + '">\n<title>Redirecting</title>\n</head>\n<body><p>Redirecting to <a href="index.html">index</a>.</p></body>\n</html>\n', 'utf-8');
   }
   return {file: webPath, title, bodyLen: content.length, extraLd: 0};
 }
