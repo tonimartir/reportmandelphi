@@ -1,0 +1,12 @@
+# build / run artifacts (the test generates its own *.xml at runtime)
+*.exe
+*.dcu
+*.map
+*.log
+*.txt
+*.xml
+*.identcache
+*.local
+__history/
+__recovery/
+dcu*/

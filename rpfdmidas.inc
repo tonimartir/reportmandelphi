@@ -268,7 +268,9 @@ begin
   else if t = 'bin.hex' then
   begin
     if SameText(ASubType, 'Text') then begin Result := ftMemo; ASize := AWidth; end
-    else if SameText(ASubType, 'Text.uni') then begin Result := ftWideMemo; ASize := AWidth div 2; end
+    // CDS emits SUBTYPE="WideText" for ftWideMemo; "Text.uni" kept for other producers.
+    else if SameText(ASubType, 'WideText') or SameText(ASubType, 'Text.uni') then
+      begin Result := ftWideMemo; ASize := AWidth div 2; end
     else if SameText(ASubType, 'Graphics') then Result := ftGraphic
     else Result := ftBlob;
   end
@@ -385,7 +387,7 @@ begin
     ftWideString, ftFixedWideChar: begin Result := 'string.uni'; AWidth := F.Size * 2; end;
     ftString, ftFixedChar, ftGuid: begin Result := 'string'; AWidth := F.Size; end;
     ftMemo, ftFmtMemo: begin Result := 'bin.hex'; ASub := 'Text'; AWidth := F.Size; end;
-    ftWideMemo: begin Result := 'bin.hex'; ASub := 'Text.uni'; AWidth := F.Size; end;
+    ftWideMemo: begin Result := 'bin.hex'; ASub := 'WideText'; end;  // CDS uses "WideText"
     ftGraphic: begin Result := 'bin.hex'; ASub := 'Graphics'; end;
     ftBlob: begin Result := 'bin.hex'; ASub := 'Binary'; end;
     ftBytes, ftVarBytes: begin Result := 'bin.hex'; AWidth := F.Size; end;
@@ -462,8 +464,16 @@ begin
         #10: sb.Append('&#010;');
         #9:  sb.Append('&#009;');
       else
+        // Encode every non-ASCII UTF-16 code unit as a decimal entity, exactly
+        // like TClientDataSet does for string.uni/WideText fields: CDS reads a
+        // .uni value as ANSI/entities, so raw UTF-8 bytes there are mis-decoded
+        // (n~ -> A±). Entities are also valid inside plain "string" fields, so a
+        // single rule keeps every field type readable by CDS. Surrogate pairs
+        // emit one entity per half (&#55357;&#56832;), matching CDS.
         if c < ' ' then
           sb.Append('&#').Append(Format('%.3d', [Ord(c)])).Append(';')
+        else if c >= #$80 then
+          sb.Append('&#').Append(IntToStr(Ord(c))).Append(';')
         else
           sb.Append(c);
       end;
