@@ -58,6 +58,70 @@ begin
 end;
 
 // ---------- stream -> string (BOM / encoding aware) ----------------------
+// Lenient UTF-8 decode: valid sequences decode normally; any byte that is not
+// part of a well-formed UTF-8 sequence is taken as ISO-8859-1 (Latin-1), i.e.
+// codepoint = byte value. Real-world MyBase exports are frequently declared
+// UTF-8 yet carry stray CP1252/Latin-1 bytes (e.g. 0xB0 for the degree sign in
+// "5° DITO", 0xA3 for the pound sign). Strict decoding would replace those with
+// U+FFFD and silently corrupt the data (on every platform); the Latin-1 fallback
+// recovers the intended character instead.
+function RpMidasUtf8Lenient(const b: TBytes; AStart, ACount: Integer): string;
+var
+  sb: TStringBuilder;
+  i, last, need, cp, j: Integer;
+  ok: Boolean;
+begin
+  sb := TStringBuilder.Create(ACount);
+  try
+    i := AStart;
+    last := AStart + ACount;
+    while i < last do
+    begin
+      if b[i] < $80 then
+      begin
+        sb.Append(Char(b[i])); Inc(i);
+        Continue;
+      end;
+      if (b[i] and $E0) = $C0 then begin need := 1; cp := b[i] and $1F; end
+      else if (b[i] and $F0) = $E0 then begin need := 2; cp := b[i] and $0F; end
+      else if (b[i] and $F8) = $F0 then begin need := 3; cp := b[i] and $07; end
+      else begin need := -1; cp := 0; end;
+      ok := need > 0;
+      if ok then
+        for j := 1 to need do
+          if (i + j >= last) or ((b[i + j] and $C0) <> $80) then
+          begin ok := False; Break; end;
+      if ok then
+      begin
+        for j := 1 to need do
+          cp := (cp shl 6) or (b[i + j] and $3F);
+        if (cp < $80) or ((cp >= $D800) and (cp <= $DFFF)) or (cp > $10FFFF) then
+          ok := False;               // overlong / surrogate / out of range
+      end;
+      if ok then
+      begin
+        if cp <= $FFFF then
+          sb.Append(Char(cp))
+        else
+        begin
+          Dec(cp, $10000);
+          sb.Append(Char($D800 or (cp shr 10)));
+          sb.Append(Char($DC00 or (cp and $3FF)));
+        end;
+        Inc(i, need + 1);
+      end
+      else
+      begin
+        sb.Append(Char(b[i]));       // Latin-1 fallback for the offending byte
+        Inc(i);
+      end;
+    end;
+    Result := sb.ToString;
+  finally
+    sb.Free;
+  end;
+end;
+
 function RpMidasStreamToStr(Stream: TStream): string;
 var
   b: TBytes;
@@ -69,13 +133,13 @@ begin
   if n > 0 then
     Stream.ReadBuffer(b[0], n);
   if (n >= 3) and (b[0] = $EF) and (b[1] = $BB) and (b[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(b, 3, n - 3)
+    Result := RpMidasUtf8Lenient(b, 3, n - 3)
   else if (n >= 2) and (b[0] = $FF) and (b[1] = $FE) then
     Result := TEncoding.Unicode.GetString(b, 2, n - 2)
   else if (n >= 2) and (b[0] = $FE) and (b[1] = $FF) then
     Result := TEncoding.BigEndianUnicode.GetString(b, 2, n - 2)
   else
-    Result := TEncoding.UTF8.GetString(b);
+    Result := RpMidasUtf8Lenient(b, 0, n);
 end;
 
 // ---------- XML entity decode --------------------------------------------
@@ -169,32 +233,39 @@ end;
 // Returns the TFieldType; ASize gets the char size for string/memo types.
 function RpMidasTypeToField(const AType, ASubType: string; AWidth: Integer;
   out ASize: Integer): TFieldType;
+var
+  t: string;
 begin
   ASize := 0;
-  if (AType = 'i1') or (AType = 'i2') then Result := ftSmallint
-  else if AType = 'i4' then Result := ftInteger
-  else if AType = 'i8' then Result := ftLargeint
-  else if AType = 'ui1' then Result := ftWord
-  else if AType = 'ui2' then Result := ftWord
-  else if AType = 'ui4' then Result := ftLongWord
-  else if AType = 'r4' then Result := ftSingle
-  else if AType = 'r8' then
+  // MIDAS field types are case-insensitive. Delphi's own TClientDataSet emits
+  // them lower-case (r8, i4, fixed) but other producers (e.g. several ERPs)
+  // emit them upper-case (R8, I4) -- normalise before matching, otherwise the
+  // numeric types silently fall through to ftString.
+  t := LowerCase(Trim(AType));
+  if (t = 'i1') or (t = 'i2') then Result := ftSmallint
+  else if t = 'i4' then Result := ftInteger
+  else if t = 'i8' then Result := ftLargeint
+  else if t = 'ui1' then Result := ftWord
+  else if t = 'ui2' then Result := ftWord
+  else if t = 'ui4' then Result := ftLongWord
+  else if t = 'r4' then Result := ftSingle
+  else if t = 'r8' then
   begin
     if SameText(ASubType, 'Money') then Result := ftCurrency
     else Result := ftFloat;
   end
-  else if AType = 'fixed' then Result := ftBCD
-  else if AType = 'fixedFMT' then Result := ftFMTBcd
-  else if AType = 'boolean' then Result := ftBoolean
-  else if AType = 'date' then Result := ftDate
-  else if AType = 'time' then Result := ftTime
-  else if SameText(AType, 'dateTime') then Result := ftDateTime
-  else if SameText(AType, 'SQLdateTime') then Result := ftTimeStamp
-  else if AType = 'string' then
+  else if t = 'fixed' then Result := ftBCD
+  else if t = 'fixedfmt' then Result := ftFMTBcd
+  else if t = 'boolean' then Result := ftBoolean
+  else if t = 'date' then Result := ftDate
+  else if t = 'time' then Result := ftTime
+  else if t = 'datetime' then Result := ftDateTime
+  else if t = 'sqldatetime' then Result := ftTimeStamp
+  else if t = 'string' then
   begin Result := ftString; ASize := AWidth; if ASize <= 0 then ASize := 255; end
-  else if AType = 'string.uni' then
+  else if t = 'string.uni' then
   begin Result := ftWideString; ASize := AWidth div 2; if ASize <= 0 then ASize := 255; end
-  else if AType = 'bin.hex' then
+  else if t = 'bin.hex' then
   begin
     if SameText(ASubType, 'Text') then begin Result := ftMemo; ASize := AWidth; end
     else if SameText(ASubType, 'Text.uni') then begin Result := ftWideMemo; ASize := AWidth div 2; end
