@@ -234,3 +234,22 @@ tests/dchub_test/bin_x86/
 tests/dchub_test/bin_x64/
 repman/binr32/net2/
 server/docker/web/artifacts/linux64/
+
+# --- Artefactos de build regenerables: .res de proyecto (version-info/icono/manifest) + .tlb de ActiveX ---
+# Se regeneran en cada compilacion (AutoIncBuild sube el nº de build en el version-info),
+# asi que cambian aunque no toques codigo. Van DESPUES del "!*.RES" de arriba para que estos
+# paths concretos ganen por ultima-coincidencia SIN re-ignorar los recursos de assets reales
+# (REPORTMANRES.RES, *Assets.RES, dbxdrivers.RES, ...).
+activex/reportman.res
+repman/repmandxp.res
+repman/utils/metaview/metaviewxp.res
+repman/utils/rptranslator/rptranslate.res
+server/app/reportserverappxp.res
+server/config/repserverconfigxp.res
+server/service/repserverservice.res
+server/service/repserviceinstall.res
+server/web/repwebserver.res
+webactivex/WebReportManX.res
+# Type library de ActiveX (contrato COM). Se deja fuera del control de versiones como artefacto;
+# si algun dia quieres volver a versionar los GUIDs COM publicados, borra esta linea y re-anade el fichero.
+webactivex/WebReportManX.tlb
