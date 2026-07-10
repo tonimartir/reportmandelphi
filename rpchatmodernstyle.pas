@@ -17,7 +17,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.Types,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.ComCtrls;
+  Vcl.ComCtrls, System.UITypes;
 
 const
   // Neutral corporate palette, light only

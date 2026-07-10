@@ -468,7 +468,7 @@ var
   LAvatarStartedAt: TDateTime;
 begin
   if FInstallId = '' then Exit;
-
+  LRequestStartedAt:=Now;
   LClient := TNetHTTPClient.Create(nil);
   try
     ConfigureDebugHttpClient(LClient);
@@ -815,9 +815,10 @@ class function TRpAuthManager.ResolveDefaultAILanguage: string;
 var
 {$IFDEF MSWINDOWS}
   LBuffer: array[0..15] of Char;
-{$ENDIF}
   LCode: string;
+{$ELSE}
   LPos: Integer;
+{$ENDIF}
 begin
   LCode := '';
 {$IFDEF MSWINDOWS}

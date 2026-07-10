@@ -3109,7 +3109,6 @@ var
   Row, Column: Integer;
   squareWidth:integer;
   squareHeight:integer;
-  metaPage:TRpMetafilePage;
   PenColor:Integer;
   BrushColor:Integer;
   PenWidth:Integer;
@@ -3117,7 +3116,6 @@ var
   isBlack:boolean;
 begin
   PenWidth:= 0;
-  metaPage:=meta.Pages[meta.CurrentPage];
   QRCode := TRpDelphiZXingQRCode.Create;
   try
     QRCode.Encoding := qrAuto;

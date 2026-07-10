@@ -32,8 +32,6 @@ object FRpMainFVCL: TFRpMainFVCL
       item
         Width = 40
       end>
-    ExplicitTop = 564
-    ExplicitWidth = 801
   end
   object ToolBar1: TToolBar
     Left = 0
@@ -48,6 +46,7 @@ object FRpMainFVCL: TFRpMainFVCL
     Images = VirtualImageList1
     ParentColor = False
     TabOrder = 1
+    ExplicitWidth = 801
     object ToolButton1: TToolButton
       Left = 0
       Top = 0
@@ -814,7 +813,6 @@ object FRpMainFVCL: TFRpMainFVCL
     object AChatIA: TAction
       AutoCheck = True
       Caption = 'AI chat'
-      Checked = False
       Hint = 'Show or hide the AI chat panel'
       ImageIndex = 35
       ImageName = 'chatia32'

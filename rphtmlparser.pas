@@ -78,7 +78,6 @@ end;
 function ExtractFontFamily(const Attrs: string): string;
 var
   p, p2: Integer;
-  val: string;
 begin
   Result := '';
   p := Pos('font-family', LowerCase(Attrs));
@@ -126,7 +125,7 @@ begin
   p := pdelim;
   Inc(p);
   while (p <= Length(Attrs)) and (Attrs[p] = ' ') do Inc(p);
-  if (p <= Length(Attrs)) and (Attrs[p] in ['"', '''']) then
+  if (p <= Length(Attrs)) and (AnsiChar(Attrs[p]) in ['"', '''']) then
     Inc(p);
   p2 := p;
   while (p2 <= Length(Attrs)) and (Attrs[p2] <> ';') and (Attrs[p2] <> '''') and (Attrs[p2] <> '"') do
@@ -188,7 +187,7 @@ begin
   // Skip optional quote
   if (p <= Length(Attrs)) and (Attrs[p] = '''') then Inc(p);
   p2 := p;
-  while (p2 <= Length(Attrs)) and (Attrs[p2] in ['0'..'9', '.']) do Inc(p2);
+  while (p2 <= Length(Attrs)) and (AnsiChar(Attrs[p2]) in ['0'..'9', '.']) do Inc(p2);
   numStr := Copy(Attrs, p, p2 - p);
   if numStr <> '' then
     Result := StrToFloatDef(numStr, 0);
@@ -208,7 +207,7 @@ begin
   Inc(p);
   while (p <= Length(Attrs)) and (Attrs[p] = ' ') do Inc(p);
   if (p > Length(Attrs)) then Exit;
-  if Attrs[p] in ['"', ''''] then
+  if AnsiChar(Attrs[p]) in ['"', ''''] then
   begin
     delim := Attrs[p];
     Inc(p);
@@ -239,9 +238,9 @@ begin
   if p = 0 then Exit;
   Inc(p);
   while (p <= Length(Attrs)) and (Attrs[p] = ' ') do Inc(p);
-  if (p <= Length(Attrs)) and (Attrs[p] in ['"', '''']) then Inc(p);
+  if (p <= Length(Attrs)) and (AnsiChar(Attrs[p]) in ['"', '''']) then Inc(p);
   p2 := p;
-  while (p2 <= Length(Attrs)) and (Attrs[p2] in ['0'..'9']) do Inc(p2);
+  while (p2 <= Length(Attrs)) and (AnsiChar(Attrs[p2]) in ['0'..'9']) do Inc(p2);
   numStr := Copy(Attrs, p, p2 - p);
   if numStr = '' then Exit;
   sizeVal := StrToIntDef(numStr, 0);

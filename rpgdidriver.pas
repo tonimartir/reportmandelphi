@@ -3831,7 +3831,9 @@ var
   aFastLineSerie: TFastLineSeries;
   average: TTeeFunction;
   serieIndex: integer;
+{$IFDEF TEECHARTPRO}
   chartSerie:TChartSeries;
+{$ENDIF}
 begin
   serieIndex := achart.SeriesCount - 1;
   while (serieIndex < achart.SeriesCount) do

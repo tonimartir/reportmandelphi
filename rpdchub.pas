@@ -149,7 +149,6 @@ type
     // DataChannel message dispatch
     procedure HandleDcText(const Json: string);
     procedure HandleDcBinary(const Chunk: TBytes);
-    procedure CompleteCurrentQuery;
   public
     constructor Create(const ApiBaseUrl, BearerToken: string;
                        const InstallId: string = '';
@@ -675,7 +674,7 @@ var
   root, dataNode: TJSONObject;
   rid, t, phase, errMsg, jsonInline: string;
   rowsRead, bytesSent, bytesTotal: Int64;
-  cols, elapsed: Integer;
+  cols: Integer;
   isBinary, isCompressed, ok: Boolean;
   inlineBytes: TBytes;
 begin
@@ -688,7 +687,6 @@ begin
     if t = 'progress' then
     begin
       phase := root.GetValue<string>('phase', '');
-      elapsed := root.GetValue<Integer>('elapsedSec', 0);
       if phase = 'executing' then
         ReportProgress(dchpExecuting, 0, 0, 0, 0)
       else if phase = 'fetching' then
@@ -1022,11 +1020,6 @@ begin
       rtcDeleteWebSocket(FSignalingWsId);
     FSignalingWsId := -1;
   end;
-end;
-
-procedure TRpDcHubClient.CompleteCurrentQuery;
-begin
-  // Currently unused; reserved for cancel handling.
 end;
 
 function TRpDcHubClient.GetConnectionMode: TRpDcConnectionMode;

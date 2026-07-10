@@ -72,7 +72,6 @@ type
     FOriginalText:PWideChar;
     FLines: TList<TGlyphLine>;
     FFontFamilyCache: TFontFaceCache;
-    LastIsLTR: boolean;
     FParagraphIsRTL: Boolean;
     FParagraphDirectionDetected: Boolean;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
@@ -278,7 +277,7 @@ begin
       for i := 0 to recordCount - 1 do
       begin
         // a. Calcular el puntero del registro actual
-        currentRecordPtr := PTNameRecord(NativeUInt(recordsBasePtr) + i * SizeOf(TNameRecord));
+        currentRecordPtr := PTNameRecord(NativeUInt(recordsBasePtr) + Uint(i) * SizeOf(TNameRecord));
 
         // b. Validaci�n de l�mites (simplificada)
         if NativeUInt(currentRecordPtr) + SizeOf(TNameRecord) > NativeUInt(tableData) + tableSize then
@@ -301,7 +300,7 @@ begin
           lengthInBytes := SwapWord(currentRecordPtr.length);
           lengthInChars := lengthInBytes div 2;
 
-          if NativeUInt(strPtr) + lengthInBytes > NativeUInt(tableData) + tableSize then
+          if NativeUInt(strPtr) + UInt(lengthInBytes) > NativeUInt(tableData) + UInt(tableSize) then
             Continue;
 
           // f. Copiar y corregir Endianness
