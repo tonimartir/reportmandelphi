@@ -2635,9 +2635,6 @@ ndataset:TMemDataset;
 {$ELSE}
 ndataset:TRpMemDataSet;
 {$ENDIF}
-{$IFDEF FIREDAC}
- fetchItems: TFDFetchItems;
-{$ENDIF}
  LHttpDataset: TRpDatasetHttp;
 begin
  if connecting then
@@ -4601,7 +4598,7 @@ begin
       if assigned(astream) then
       begin
        TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=ftBlob;
-       TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).LoadFromStream(astream,ftBlob);
+       TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).LoadBinaryFromStream(astream);
       end
       else
       begin

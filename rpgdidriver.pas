@@ -1396,7 +1396,6 @@ var
   aword: Widestring;
   nposx, nposy: integer;
   aatext: Widestring;
-  aansitext: string;
   aalign: Cardinal;
   aintdpix, aintdpiy: integer;
   lastword: boolean;
@@ -1988,7 +1987,7 @@ procedure TRpGDIDriver.TextRectHtml(Canvas: TCanvas; ARect: TRect;
   BackColor: TColor; IsHtml: Boolean; RightToLeft: Boolean);
 var
   recsize: TRect;
-  i, k: integer;
+  i: integer;
   posx, posy: integer;
   singleline: boolean;
   larray: TRpLineInfoArray;

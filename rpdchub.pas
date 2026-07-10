@@ -671,7 +671,7 @@ end;
 
 procedure TRpDcHubClient.HandleDcText(const Json: string);
 var
-  root, dataNode: TJSONObject;
+  root: TJSONObject;
   rid, t, phase, errMsg, jsonInline: string;
   rowsRead, bytesSent, bytesTotal: Int64;
   cols: Integer;
