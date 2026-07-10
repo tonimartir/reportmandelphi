@@ -27,7 +27,7 @@ uses
   Firedac.VCLUI.Wait,
 {$ENDIF}
 {$IFDEF VCLNOTATION}
-  VCL.Imaging.jpeg, VCL.Imaging.pngimage, System.Win.registry,
+  VCL.Imaging.jpeg, VCL.Imaging.pngimage, System.Win.registry, System.UITypes,
 {$ENDIF}
 {$IFNDEF FORWEBAX}
   rpmdchart,
@@ -609,7 +609,6 @@ procedure TRpGDIDriver.NewDocument(report: TRpMetafileReport;
 var
   asize: TPoint;
   qtsize: integer;
-  rpagesizeQt: TPageSizeQt;
 begin
   FReport := report;
 {$IFNDEF FORWEBAX}
@@ -638,8 +637,8 @@ begin
 
     if not noenddoc then
       if DrawerBefore then
-        SendControlCodeToPrinter(GetPrinterRawOp(selectedprinter,
-          rawopopendrawer));
+        SendControlCodeToPrinter(AnsiString(GetPrinterRawOp(selectedprinter,
+          rawopopendrawer)));
     // Sets pagesize
     (* rpagesizeQt.papersource := report.papersource;
     SetForcePaperName(rpagesizeQt, report.ForcePaperName);
@@ -696,8 +695,8 @@ begin
       Printer.EndDoc;
       RestoreOrientation;
       if DrawerAfter then
-        SendControlCodeToPrinter(GetPrinterRawOp(selectedprinter,
-          rawopopendrawer));
+        SendControlCodeToPrinter(AnsiString(GetPrinterRawOp(selectedprinter,
+          rawopopendrawer)));
       // Send Especial operations
       SendAfterPrintOperations;
     end;
@@ -1494,6 +1493,7 @@ begin
       exit;
     end;
 
+    ascent := 0;
     for i := 0 to Length(larray) - 1 do
     begin
       if (i=0) then
@@ -2005,6 +2005,8 @@ var
   allPixPos: TArray<Integer>;
   allDx: TArray<Integer>;
 begin
+  savedDC := 0;
+  clipRgn := 0;
   try
     if drawbackground then
     begin
@@ -2075,6 +2077,7 @@ begin
     if (Alignment AND AlignmentFlags_AlignVCenter) > 0 then
       posy := ARect.Top + (((ARect.Bottom - ARect.Top) - recsize.Bottom) div 2);
 
+    ascent := 0;
     for i := 0 to Length(larray) - 1 do
     begin
       if (i = 0) then
@@ -2131,7 +2134,6 @@ var
   dpix, dpiy: integer;
   selected: boolean;
   metadpix, metadpiy: integer;
-  regx: TRegistry;
 begin
   if toprinter then
   begin
@@ -2350,7 +2352,6 @@ end;
 
 function TRpGDIDriver.SetPagesize(PageSizeQt: TPageSizeQt): TPoint;
 var
-  qtsize: integer;
   newwidth,newheight:integer;
 begin
    // Sets the page size for the pdf file, first if it's a qt page
@@ -2397,7 +2398,6 @@ end;
 
 procedure TRpGDIDriver.SetOrientation(Orientation: TRpOrientation);
 var
-  currentorientation: TPrinterOrientation;
   atemp:integer;
 begin
   if Orientation<>FOrientation then
@@ -2511,7 +2511,7 @@ begin
       if (not metafile.BlockPrinterSelection) then
         PrinterSelection(metafile.PrinterSelect, metafile.papersource,
           metafile.duplex, pconfig);
-      SendControlCodeToPrinter(S);
+      SendControlCodeToPrinter(AnsiString(S));
     end
     else
     begin
@@ -2628,8 +2628,8 @@ begin
           topage := metafile.CurrentPageCount - 1;
       end;
       if metafile.OpenDrawerBefore then
-        SendControlCodeToPrinter(GetPrinterRawOp(printerindex,
-          rawopopendrawer));
+        SendControlCodeToPrinter(AnsiString(GetPrinterRawOp(printerindex,
+          rawopopendrawer)));
       if ((not nobegindoc) OR (not Printer.printing)) then
       begin
         Printer.Title := tittle;
@@ -2710,7 +2710,7 @@ begin
       end;
     end;
     if metafile.OpenDrawerAfter then
-      SendControlCodeToPrinter(GetPrinterRawOp(printerindex, rawopopendrawer));
+      SendControlCodeToPrinter(AnsiString(GetPrinterRawOp(printerindex, rawopopendrawer)));
 
   finally
     if assigned(gdidriver) then
@@ -3300,7 +3300,6 @@ function CalcReportWidthProgress(report: TRpReport;
 var
   dia: TFRpVCLProgress;
 begin
-  Result := false;
   dia := TFRpVCLProgress.Create(Application);
   try
     dia.oldonidle := Application.OnIdle;
@@ -3325,7 +3324,6 @@ function CalcReportWidthProgressPDF(report: TRpReport;
 var
   dia: TFRpVCLProgress;
 begin
-  Result := false;
   dia := TFRpVCLProgress.Create(Application);
   try
     dia.oldonidle := Application.OnIdle;
@@ -3790,7 +3788,7 @@ begin
     begin
       Operation := GetPrinterRawOp(selectedprinter, i);
       if Length(Operation) > 0 then
-        SendControlCodeToPrinter(Operation);
+        SendControlCodeToPrinter(AnsiString(Operation));
     end;
   end;
 end;
@@ -3957,6 +3955,9 @@ begin
     exit;
   end;
   achart := TChart.Create(nil);
+{$IFDEF DELPHI2009UP}
+  nform := nil;
+{$ENDIF}
   try
     // In delphi 7 there is no need for parent
 {$IFDEF DELPHI2009UP}
@@ -4287,7 +4288,6 @@ var
   bitmap: TBitmap;
   gpicture: TPicture;
   jpeg: TJPegImage;
-  stream: TMemoryStream;
   width, height: Integer;
   format: string;
 begin

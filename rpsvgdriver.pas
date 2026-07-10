@@ -125,7 +125,6 @@ end;
 function ObjectToSVGText(apage:TrpMetafilePage;pageindex:integer;obj:TRpMetaObject;filename:string;index:integer):String;
 var
  imafilename:String;
- isjpeg:Boolean;
  fimagestream:TMemoryStream;
  bitmapwidth,bitmapheight,imagesize:Integer;
  indexed:boolean;
@@ -338,7 +337,7 @@ begin
   astring:=astring+ObjectToSVGText(page,pageindex,page.Objects[i],filename,i);
  end;
  astring:=astring+'</svg>';
- WriteStringToStream(astring,stream);
+ WriteStringToStream(AnsiString(astring),stream);
 end;
 
 function ExportMetafileToSVG (metafile:TRpMetafileReport; caption,filename:string;

@@ -497,7 +497,7 @@ procedure TRpCustomEvaluator.Evaluate;
 begin
  Rpparser.Expression:=FExpression;
  FChecking:=False;
- if ((Rpparser.TokenString='') AND (Not (Rpparser.Token in [tkString,toWString]))) then
+ if ((Rpparser.TokenString='') AND (Not CharInSet(Rpparser.Token,[tkString,toWString]))) then
  begin
   FEvalResult:=True;
   Exit;
@@ -661,7 +661,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while (operador='OR') do
   begin
    Auxiliar2:=Value;
@@ -673,7 +673,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -686,7 +686,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while (operador='AND') do
   begin
    Rpparser.NextToken;
@@ -698,7 +698,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -734,7 +734,7 @@ begin
  sum_dif(Value);
  while Rpparser.Token=tooperator do
  begin
-  operation:=Rpparser.TokenString;
+  operation:=ShortString(AnsiString(Rpparser.TokenString));
   if operation='=' then
     begin
      Rpparser.NextToken;
@@ -817,7 +817,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while ((operador='+') or (operador='-')) do
   begin
    Rpparser.NextToken;
@@ -833,7 +833,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -846,7 +846,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=Uppercase(Rpparser.TokenString);
+  operador:=ShortString(Uppercase(Rpparser.TokenString));
   while ((operador='*') or (operador='/')) do
   begin
    Rpparser.NextToken;
@@ -860,7 +860,7 @@ begin
    if Rpparser.Token<>toOperator then
       Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -875,7 +875,7 @@ begin
  operador:='';
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   if ((operador='+') or (operador='-')
        or (operador='NOT') or (operador='IIF')) then
    Rpparser.NextToken;
@@ -1392,7 +1392,6 @@ begin
     afilename:=Trim(aValue);
     if (Length(afilename)=0) then
     begin
-     FMStream:=nil;
     end
     else
     begin

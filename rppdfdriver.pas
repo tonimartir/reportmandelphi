@@ -83,6 +83,7 @@ type
    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
    procedure SetOrientation(Orientation:TRpOrientation);override;
    function GetOrientation:TRpOrientation;override;
+   procedure RestoreOrientation;override;
    procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
    function SupportsCopies(maxcopies:integer):boolean;override;
    function SupportsCollation:boolean;override;
@@ -589,8 +590,10 @@ begin
  end;
 end;
 
-
-
+procedure TRpPDFDriver.RestoreOrientation;
+begin
+ // No printer orientation to restore
+end;
 
 
 procedure TRpPDFDriver.SelectPrinter(printerindex:TRpPrinterSelect);

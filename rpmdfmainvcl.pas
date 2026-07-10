@@ -521,7 +521,7 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 
 implementation
 
-uses rpmdfdatasetsvcl, rpchatdialogvcl;
+uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs;
 
 {$R *.dfm}
 

@@ -121,8 +121,8 @@ begin
   C := 0;
   for I := 0 to Count - 1 do
   begin
-    if not (Text[TextOffset + I * 2] in ['0'..'f']) or
-       not (Text[TextOffset + 1 + I * 2] in ['0'..'f']) then
+    if not CharInSet(Text[TextOffset + I * 2], ['0'..'f']) or
+       not CharInSet(Text[TextOffset + 1 + I * 2], ['0'..'f']) then
       Break;
     Buffer[BufOffset + I] :=
       (H2BConvert[AnsiChar(Text[TextOffset + I * 2])] shl 4) or
@@ -236,7 +236,7 @@ begin
        Inc(P);
        case Char(FBuffer[P]) of
         '=':
-         if operador in [':','!','<','>','='] then
+         if CharInSet(operador, [':','!','<','>','=']) then
           Inc(P);
         '<':
          if operador='>' then
@@ -258,7 +258,7 @@ begin
               begin
                 Inc(P);
                 I := 0;
-                while FBuffer[P] in ['0'..'9'] do
+                while CharInSet(FBuffer[P], ['0'..'9']) do
                 begin
                   I := I * 10 + (Ord(FBuffer[P]) - Ord('0'));
                   Inc(P);
@@ -299,7 +299,7 @@ begin
               begin
                 Inc(P);
                 I := 0;
-                while FBuffer[P] in ['0'..'9'] do
+                while CharInSet(FBuffer[P], ['0'..'9']) do
                 begin
                   I := I * 10 + (Ord(FBuffer[P]) - Ord('0'));
                   Inc(P);
@@ -356,7 +356,7 @@ begin
     '$':
       begin
         Inc(P);
-        while FBuffer[P] in ['0'..'9', 'A'..'F', 'a'..'f'] do
+        while CharInSet(FBuffer[P], ['0'..'9', 'A'..'F', 'a'..'f']) do
           Inc(P);
         Result := toInteger;
       end;
@@ -364,10 +364,10 @@ begin
     '0'..'9':
       begin
         Inc(P);
-        while FBuffer[P] in ['0'..'9'] do
+        while CharInSet(FBuffer[P], ['0'..'9']) do
           Inc(P);
         Result := toInteger;
-        while FBuffer[P] in ['0'..'9', '.', 'e', 'E'] do
+        while CharInSet(FBuffer[P], ['0'..'9', '.', 'e', 'E']) do
         begin
           if FBuffer[P]='.' then
           begin
@@ -380,7 +380,7 @@ begin
           Inc(P);
           Result := toFloat;
         end;
-        if (FBuffer[P] in ['c', 'C', 'd', 'D', 's', 'S', 'f', 'F']) then
+        if CharInSet(FBuffer[P], ['c', 'C', 'd', 'D', 's', 'S', 'f', 'F']) then
         begin
           Result := toFloat;
           FFloatType := Char(FBuffer[P]);
@@ -395,7 +395,7 @@ begin
     if (Result.IsLetterOrDigit or (Result = '_')) then
     begin
       Inc(P);
-      while (FBuffer[P].IsLetterOrDigit or (FBuffer[P] in ['_','.'])) do
+      while (FBuffer[P].IsLetterOrDigit or CharInSet(FBuffer[P], ['_','.'])) do
       // while FBuffer[P] in ['A'..'Z', 'a'..'z','á','à','é','è','í','ó','ò','ú', 'Ñ','ñ','0'..'9','_','.',
       //  'ä','Ä','ö','Ö','ü','Ü','Á','À','É','È','Í','Ó','Ò','Ú','ß'] do
         Inc(P);
@@ -509,11 +509,11 @@ begin
   while FBuffer[P] = '.' do
   begin
     Inc(P);
-    if not (FBuffer[P] in ['A'..'Z', 'a'..'z', '_']) then
+    if not CharInSet(FBuffer[P], ['A'..'Z', 'a'..'z', '_']) then
       Error(SRpIdentifierexpected);
     repeat
       Inc(P)
-    until not (FBuffer[P] in ['A'..'Z', 'a'..'z', '0'..'9', '_']);
+    until not CharInSet(FBuffer[P], ['A'..'Z', 'a'..'z', '0'..'9', '_']);
   end;
   FSourcePtr := P;
   Result := TokenString;
@@ -533,7 +533,7 @@ begin
   try
    NewParser.Expression:=Copy(Expression,Apuntador+1,Length(Expression));
    Result:=False;
-   if NewParser.Token in [toSymbol,toOperator] then
+   if CharInSet(NewParser.Token, [toSymbol,toOperator]) then
     if NewParser.TokenString=Value then
      Result:=True;
   finally

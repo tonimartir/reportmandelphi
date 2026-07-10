@@ -193,7 +193,7 @@ implementation
 
 uses
   rptypes, rpdatainfo, rpgraphutilsvcl, Vcl.ToolWin, Vcl.ActnList,
-  rpchatmodernstyle;
+  rpchatmodernstyle, System.Generics.Collections;
 
 const
   MonacoAssetsVersion = '3'; // bump to force re-extraction when asset layout changes
@@ -313,8 +313,6 @@ end;
 
 constructor TFRpMonacoEditorVCL.Create(AOwner: TComponent);
 var
-  LResStream: TResourceStream;
-  LZip: TZipFile;
   LDllPath: string;
 begin
   inherited Create(AOwner);
@@ -1365,7 +1363,6 @@ end;
 procedure TFRpMonacoEditorVCL.StartPendingInference;
 var
   LGuard: IEditorGuard;
-  LCurrentVersion: Integer;
   LStartRequestId: string;
   LStartSql: string;
   LStartPos: Integer;
@@ -1390,7 +1387,6 @@ begin
   FInferenceRunning := True;
   FRestartPendingInference := False;
   LGuard := FGuard;
-  LCurrentVersion := FAuthUIUpdateVersion;
 
   // Create AI completion task (asynchronous)
   LTaskProc := procedure
@@ -1440,7 +1436,6 @@ begin
         LHttp.AgentAiId := FAISelection.AgentAiId;
         LUAIMode := FAISelection.AIMode;
 
-        LResponse := nil;
         try
           LResponse := LHttp.SuggestSql(LSql, LPos, LUAIMode, Self,
             SuggestSqlStreamProgress, SuggestSqlStreamCancelRequested);

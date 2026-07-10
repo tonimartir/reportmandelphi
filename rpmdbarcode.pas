@@ -246,7 +246,7 @@ begin
  Result:=bcCodeEAN13;
  for i:=bcCode_2_5_interleaved to bcCodeQr do
  begin
-  if (value=BarcodeTypeStrings[i]) then
+  if (String(value)=BarcodeTypeStrings[i]) then
   begin
    Result:=i;
    break;
@@ -276,7 +276,7 @@ begin
 
 		if odd(i) then
 			Inc(v, 5);
-		t := t + Chr(v);
+		t := AnsiString(String(t) + Chr(v));
 	end;
 	Convert := t;
 end;
@@ -366,7 +366,7 @@ const bcNames:array[bcCode_2_5_interleaved..bcCodeEAN13] of string =
 	);
 
 begin
-	Result := bcNames[FTyp];
+	Result := AnsiString(bcNames[FTyp]);
 end;
 
 
@@ -398,15 +398,15 @@ begin
      for i:=1 to length(tmp) do
          begin
          if (fak mod 2) = 0 then
-            sum := sum + (StrToInt(tmp[i])*1)
+            sum := sum + (StrToInt(String(tmp[i]))*1)
          else
-            sum := sum + (StrToInt(tmp[i])*3);
+            sum := sum + (StrToInt(String(tmp[i]))*3);
          dec(fak);
          end;
      if (sum mod 10) = 0 then
         result := tmp+'0'
      else
-        result := tmp+IntToStr(10-(sum mod 10));
+        result := AnsiString(String(tmp)+IntToStr(10-(sum mod 10)));
 end;
 
 ////////////////////////////// EAN8 /////////////////////////////////////////
@@ -451,11 +451,11 @@ var
 begin
 	if FCheckSum then
            begin
-           tmp := '00000000'+string(CurrentText);
+           tmp := AnsiString('00000000'+string(CurrentText));
            tmp := getEAN(copy(tmp,length(tmp)-6,7)+'0');
            end
         else
-           tmp := string(CurrentText);
+           tmp := AnsiString(string(CurrentText));
   if Length(tmp)<8 then
   begin
     Result:='';
@@ -468,7 +468,7 @@ begin
 	for i:=1 to 4 do
             for j:= 1 to 4 do
                 begin
-                result := result + tabelle_EAN_A[TRpDigit(tmp[i]), j] ;
+                result := AnsiString(String(result) + tabelle_EAN_A[TRpDigit(tmp[i]), j]) ;
                 end;
 
  	result := result + '05050';   // Trennzeichen
@@ -476,7 +476,7 @@ begin
 	for i:=5 to 8 do
             for j:= 1 to 4 do
                 begin
-                result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+                result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
                 end;
 
         result := result + '505';   // Stopcode
@@ -522,11 +522,11 @@ var
 begin
 	if FCheckSum then
 	begin
-		tmp := '0000000000000'+String(CurrentText);
+		tmp := AnsiString('0000000000000'+String(CurrentText));
 		tmp := getEAN(copy(tmp,length(tmp)-11,12)+'0');
 	end
 	else
-		tmp := string(CurrentText);
+		tmp := AnsiString(string(CurrentText));
 
   if Length(tmp)<13 then
   begin
@@ -534,7 +534,7 @@ begin
     Exit;
   end;
 
-	LK := StrToInt(tmp[1]);
+	LK := StrToInt(String(tmp[1]));
 	tmp := copy(tmp,2,12);
 
 	result := '505';   // Startcode
@@ -543,11 +543,11 @@ begin
 	begin
 		case tabelle_ParityEAN13[LK,i] of
 			'A' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_A[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_A[TRpDigit(tmp[i]), j]) ;
 			'B' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_B[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_B[TRpDigit(tmp[i]), j]) ;
 			'C' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
 	end;
 	end;
 
@@ -556,7 +556,7 @@ begin
 	for i:=7 to 12 do
 		for j:= 1 to 4 do
 		begin
-			result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+			result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
 		end;
 
 	result := result + '505';   // Stopcode
@@ -583,7 +583,7 @@ var
 	c : char;
         FText: AnsiString;
 begin
-        FText:=string(CurrentText);
+        FText:=AnsiString(string(CurrentText));
 	result := '5050';   // Startcode
 
 	for i:=1 to Length(FText) div 2 do
@@ -594,12 +594,12 @@ begin
 				c := '6'
 			else
 				c := '5';
-			result := result + c;
+			result := AnsiString(String(result) + c);
 			if tabelle_2_5[TRpDigit(FText[i*2]), j] = '1' then
 				c := '1'
 			else
 				c := '0';
-			result := result + c;
+			result := AnsiString(String(result) + c);
 		end;
 	end;
 
@@ -648,7 +648,7 @@ begin
 			// Falls i ungerade ist dann mache L�cke zu Strich
 			if odd(j) then
 				c := chr(ord(c)+5);
-			result := result + c;
+			result := AnsiString(String(result) + c);
 		end;
 		result := result + '0';   // L�cke zwischen den Zeichen
 	end;
@@ -988,7 +988,7 @@ begin
  if FText[i]=Chr($BF) then
   inc(i);
  acopy:=Copy(ftext,i,Length(FText));
- index:=Pos(Chr($BF),acopy);
+ index:=Pos(Chr($BF),String(acopy));
  if index>0 then
   acopy:=copy(acopy,1,index-1);
  if (length(acopy) mod 2)<>0 then
@@ -1592,6 +1592,7 @@ begin
   alpha := Rotation / 10 * pi / 180.0;
 
   PenWidth := 0;
+  PenColor := 0;
   for i := 1 to Length(data) do // examine the pattern string
   begin
     drawline := true;
@@ -1661,7 +1662,7 @@ begin
       begin
         // something went wrong
         // mistyped pattern table
-        raise Exception.Create(SRpWrongBarcodeType + ':' + data);
+        raise Exception.Create(SRpWrongBarcodeType + ':' + WideString(data));
       end;
     end;
     if (lt = black) or (lt = black_half) then
@@ -2658,7 +2659,7 @@ begin
       case FCode[Position + 1] of
         '0'..'9' : begin
           try
-            NewChar := StrToInt (Copy (FCode, Position + 1, 3));
+            NewChar := StrToInt (String(Copy (FCode, Position + 1, 3)));
             Inc (Position, 4);
           except
             NewChar := 0;
@@ -2668,7 +2669,7 @@ begin
         'C', 'c' : begin
           try
             Codeword := True;
-            NewChar := StrToInt (Copy (FCode, Position + 2, 3));
+            NewChar := StrToInt (String(Copy (FCode, Position + 2, 3)));
             Inc (Position, 5);
           except
             NewChar := 0;
@@ -2676,7 +2677,7 @@ begin
           end;
         end;
         'G', 'g' : begin
-          WorkNum := StrToInt (Copy (FCode, Position + 1, 6));
+          WorkNum := StrToInt (String(Copy (FCode, Position + 1, 6)));
           Inc (Position, 8);
           if (WorkNum >= 0) and (WorkNum <= 899) then begin
             AddCodeword (927);
@@ -2696,7 +2697,7 @@ begin
         end;
         'X', 'x' : begin
           try
-            NewChar := StrToInt ('$' + Copy (FCode, Position + 2, 2));
+            NewChar := StrToInt (String('$' + Copy (FCode, Position + 2, 2)));
             Inc (Position, 4);
           except
             NewChar := 0;
@@ -2745,7 +2746,7 @@ var
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  CurrentTextW:=GetText;
- CurrentText:=CurrentTextW;
+ CurrentText:=AnsiString(CurrentTextW);
  try
   data:=Calculatebarcode;
  except
@@ -2946,7 +2947,7 @@ begin
   CurPos := 0;
   DrawBlock := True;
   for i := 1 to Length (Pattern) do begin
-    NewPos := StrToInt (Copy (Pattern, i, 1)) * Modul;
+    NewPos := StrToInt (String(Copy (Pattern, i, 1))) * Modul;
     if DrawBlock then
     begin
      aleft:=CurPos + GetColumnPosition (ColNumber);
@@ -3080,14 +3081,14 @@ begin
  if value='Auto' then
   Result:=-1
  else
-  Result:=StrToInt(value[6]);
+  Result:=StrToInt(String(value[6]));
 end;
 
 function ECCToString(value:integer): AnsiString;
 begin
  Result:='Auto';
  if (value in [0..8]) then
-  Result:='Level'+IntToStr(value);
+  Result:=AnsiString('Level'+IntToStr(value));
 end;
 
 procedure FillECCValues(alist:TRpWideStrings);
@@ -3132,7 +3133,7 @@ begin
         QRCode.ErrorCorrectionLevel := 0; // 0=L (7%); 1=M (15%); 2=Q (25%); 3=H (35%)
 
     end;
-    QRCode.Data := CurrentText;
+    QRCode.Data := WideString(CurrentText);
     squareWidth:=Width div QRCode.Columns;
     squareHeight:=Height div QRCode.Rows;
     // Center barcode in rectangle

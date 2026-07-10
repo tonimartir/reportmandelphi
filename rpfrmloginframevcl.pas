@@ -61,8 +61,6 @@ type
     procedure DownloadAvatarAsync(const AUrl: string);
     procedure ContainerWndProc(var Message: TMessage);
     procedure PaintContainerBackground(ADC: HDC = 0);
-    procedure ContainerMouseEnter(Sender: TObject);
-    procedure ContainerMouseLeave(Sender: TObject);
     procedure ApplyModernStyling;
   protected
   public
@@ -228,24 +226,6 @@ begin
     Canv.Free;
     if OwnDC then
       ReleaseDC(PContainer.Handle, DC);
-  end;
-end;
-
-procedure TFRpLoginFrameVCL.ContainerMouseEnter(Sender: TObject);
-begin
-  if not FHover then
-  begin
-    FHover := True;
-    PContainer.Invalidate;
-  end;
-end;
-
-procedure TFRpLoginFrameVCL.ContainerMouseLeave(Sender: TObject);
-begin
-  if FHover then
-  begin
-    FHover := False;
-    PContainer.Invalidate;
   end;
 end;
 

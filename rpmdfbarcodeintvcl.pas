@@ -151,7 +151,7 @@ begin
  lhints.Add('refbarcode.html');
  lcat.Add(SRpBarcode);
  if Assigned(lvalues) then
-  lvalues.Add(ECCToString(TRpBarcode(printitem).ECCLevel));
+  lvalues.Add(WideString(ECCToString(TRpBarcode(printitem).ECCLevel)));
  // Num rows
  lnames.Add(SRpNumRows);
  ltypes.Add(SRpInteger);
@@ -181,7 +181,7 @@ procedure TRpBarcodeInterface.SetProperty(pname:string;value:Widestring);
 begin
  if pname=SRpSBarcodeType then
  begin
-  TRpBarcode(fprintitem).Typ:=StringBarcodeToBarCodeType(value);
+  TRpBarcode(fprintitem).Typ:=StringBarcodeToBarCodeType(AnsiString(value));
   invalidate;
   exit;
  end;
@@ -259,7 +259,7 @@ begin
  end;
  if pname=SRpECCLevel then
  begin
-  TRpBarcode(fprintitem).ECCLevel:=StringECCToInteger(value);
+  TRpBarcode(fprintitem).ECCLevel:=StringECCToInteger(AnsiString(value));
   invalidate;
   exit;
  end;
@@ -337,7 +337,7 @@ begin
  end;
  if pname=SRpECCLevel then
  begin
-  Result:=ECCToString(TRpBarcode(printitem).ECCLevel);
+  Result:=WideString(ECCToString(TRpBarcode(printitem).ECCLevel));
   exit;
  end;
  Result:=inherited GetProperty(pname);

@@ -101,6 +101,7 @@ var
  FForm:TWinControl;
  OldIdleHandler : TIdleEvent;
 begin
+ OldIdleHandler:=nil;
  if not assigned(aform) then
  begin
   dia:=TFRpMainMetaVCL.Create(Application);

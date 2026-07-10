@@ -806,7 +806,7 @@ begin
  while index<(Length(Name)) do
  begin
   inc(index);
-  if (Name[index] in ['0'..'9']) then
+  if CharInSet(Name[index],['0'..'9']) then
    break;
  end;
  if index<=(Length(Name)) then

@@ -82,8 +82,6 @@ type
     procedure ReadErrorMessage(Reader:TReader);
     procedure ReadValidation(Reader:TReader);
     procedure ReadHint(Reader:TReader);
-    procedure ReadIntName(Reader:TReader);
-    procedure WriteIntName(Writer:TWriter);
     function GetAsString:WideString;
     procedure SetAsString(NewValue:WideString);
     function GetMultiValue:String;
@@ -1043,16 +1041,6 @@ end;
 procedure TRpParam.ReadSearch(Reader:TReader);
 begin
  FSearch:=ReadWideString(Reader);
-end;
-
-procedure TRpParam.WriteIntName(Writer:TWriter);
-begin
- Writer.WriteString(FIntName);
-end;
-
-procedure TRpParam.ReadIntName(Reader:TReader);
-begin
- FIntName:=AnsiUpperCase(Reader.ReadString);
 end;
 
 procedure TRpParam.DefineProperties(Filer:TFiler);

@@ -206,7 +206,6 @@ var
  LHubDbId: Int64;
 {$ENDIF}
 begin
- Result:=False;
  AMessageText := '';
  LDatabase:=TRpDatabaseHttp.Create;
  try

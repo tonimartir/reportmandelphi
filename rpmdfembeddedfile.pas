@@ -40,7 +40,6 @@ var
   EnumValue: TPDFAFRelationShip;
   EnumName: string;
   mimes: TStringList;
-  mime: string;
 begin
  Caption:=SRpEmbeddedFile;
  labelDescription.Caption:=SRpDescription;

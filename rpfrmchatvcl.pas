@@ -181,7 +181,6 @@ type
     procedure RefreshTopLayout;
     procedure RebuildConversation;
     procedure SelectCurrentSchema;
-    procedure ScrollConversationToEnd;
     procedure StopDesignPrompt;
     procedure UpdateButtons;
     procedure AppendNetLogLine(const AText: string);
@@ -257,7 +256,7 @@ implementation
 {$R *.dfm}
 
 uses
-  rpdatainfo;
+  System.Contnrs, rpdatainfo;
 
 type
   TRpQueuedSchemasPayload = class(TObject)
@@ -607,7 +606,6 @@ begin
   LRefreshTop := LRowTop + ((LControlsHeight - LRowHeight) div 2);
   LConfigTop := LRowTop + ((LControlsHeight - LConfigButtonSize) div 2);
 
-  LRefreshWidth := 0;
   if (BRefreshSchemas <> nil) and BRefreshSchemas.Visible then
   begin
     if BRefreshSchemas.Width <= 0 then
@@ -825,12 +823,6 @@ begin
     FWebChat.AppendMessage('system', '**' + FProgressTitle + '**' + sLineBreak + FProgressText);
 
   FWebChat.ScrollToEnd;
-end;
-
-procedure TFRpChatFrame.ScrollConversationToEnd;
-begin
-  if FWebChat <> nil then
-    FWebChat.ScrollToEnd;
 end;
 
 procedure TFRpChatFrame.LoadUserAgents(ADelayBeforeRequestMs: Cardinal = 0);
@@ -1648,7 +1640,6 @@ begin
                   if Assigned(FOnDesignInferenceEnd) then
                     FOnDesignInferenceEnd(Self);
                 end);
-              LDesignInferenceActive := False;
             end;
           end;
 

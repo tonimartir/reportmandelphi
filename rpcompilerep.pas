@@ -48,7 +48,6 @@ var
  isok:Boolean;
  haninfo:BY_HANDLE_FILE_INFORMATION;
  filesize:INteger;
- upxExists: boolean;
  path:String;
 begin
  // Find the path to the executable module
@@ -106,10 +105,10 @@ begin
  begin
   if FileExists(path+'\upx.exe') then
   begin
-   WinExec(PAnsiChar('"'+path+'\'+'upx" '+'"'+destinationexe+'"'),SW_HIDE);
+   WinExec(PAnsiChar(AnsiString('"'+path+'\'+'upx" '+'"'+destinationexe+'"')),SW_HIDE);
   end
   else
-   WinExec(PAnsiChar('"upx" '+'"'+destinationexe+'"'),SW_HIDE);
+   WinExec(PAnsiChar(AnsiString('"upx" '+'"'+destinationexe+'"')),SW_HIDE);
  end;
 end;
 

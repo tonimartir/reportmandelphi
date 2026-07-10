@@ -63,7 +63,7 @@ type
 
 implementation
 
-uses rphtmlparser;
+uses rphtmlparser, System.UITypes;
 
 const
  AlignmentFlags_SingleLine=64;
@@ -186,10 +186,6 @@ var
  Segments: THtmlSegmentList;
  Seg: THtmlSegment;
  X, Y: Integer;
- i: Integer;
- CurrentLineSegments: TList; // Simplification: assume simple segments for calculation
- CurrentLineWidth: Integer;
- StartSegIndex: Integer;
 begin
  alabel:=TRpLabel(printitem);
  if csDestroying in alabel.ComponentState then

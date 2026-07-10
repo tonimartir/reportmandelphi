@@ -174,7 +174,7 @@ var
  maxcopies:Integer;
  FPrinterHandle:THandle;
  DeviceMode: THandle;
- Device, Driver, Port: array[0..1023] of char;
+ Device, Driver, Port: string;
  pdevmode:^DEVMODE;
  buf:PChar;
  pforminfo:^Form_info_1;
@@ -232,9 +232,9 @@ begin
   else
   begin
    EStatus.Text:=SRpSReady;
-   EDevice.Text:=StrPas(Device);
-   EDriver.Text:=StrPas(Driver);
-   EPort.Text:=StrPas(Port);
+   EDevice.Text:=Device;
+   EDriver.Text:=Driver;
+   EPort.Text:=Port;
    maxcopies:=PrinterMaxCopiesSupport;
    if PrinterDuplexSupport then
     LDuplex.Caption:=SRpYes
@@ -251,14 +251,14 @@ begin
    begin
     try
      pdevmode:=nil;
-     asize:=DocumentProperties(0,fprinterhandle,Device,pdevmode^,pdevmode^,0);
+     asize:=DocumentProperties(0,fprinterhandle,PChar(Device),pdevmode^,pdevmode^,0);
      pdevmode:=AllocMem(sizeof(asize));
      try
       if asize>0 then
       begin
        FreeMem(pdevmode);
        pdevmode:=AllocMem(asize);
-       if IDOK=DocumentProperties(0,fprinterhandle,Device,pdevmode^,pdevmode^,DM_OUT_BUFFER) then
+       if IDOK=DocumentProperties(0,fprinterhandle,PChar(Device),pdevmode^,pdevmode^,DM_OUT_BUFFER) then
        begin
         // Orientation
         if (pdevmode^.dmFields AND DM_ORIENTATION)>0 then
@@ -384,7 +384,7 @@ begin
 
       // Se obtienen las posibles bandejas de entrada
       ComboSource.Items.Clear;
-      numbins:=DeviceCapabilities(Device,Port,DC_BINS,nil,nil);
+      numbins:=DeviceCapabilities(PChar(Device),PChar(Port),DC_BINS,nil,nil);
       if numbins=0 then
       begin
        ComboSource.Items.Add(SRpNo);
@@ -392,13 +392,13 @@ begin
       else
       begin
        SetLength(bufint,numbins);
-       DeviceCapabilities(Device,Port,DC_BINS,@bufint[0],nil);
+       DeviceCapabilities(PChar(Device),PChar(Port),DC_BINS,@bufint[0],nil);
        for i:=0 to numbins-1 do
        begin
         ComboSource.Items.Add(IntToStr(bufint[i]));
        end;
        SetLength(bufchar,numbins);
-       DeviceCapabilities(Device,Port,DC_BINNAMES,@bufchar[0],nil);
+       DeviceCapabilities(PChar(Device),PChar(Port),DC_BINNAMES,@bufchar[0],nil);
        for i:=0 to numbins-1 do
        begin
         ComboSource.Items.Strings[i]:=ComboSource.Items.Strings[i]

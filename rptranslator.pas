@@ -186,16 +186,8 @@ var
 {$ENDIF}
 {$IFDEF MSWINDOWS}
 var
-  Key: LongWord;
-{$IFDEF FPC}
-  keyuser:Handle;
-{$ELSE}
-  keyuser:Cardinal;
-{$ENDIF}
   nfilename:string;
   LocaleName: array[0..4] of Char;
-  Size: Integer;
-  P: PChar;
 
   function FindBS(Current: PChar): PChar;
   begin
@@ -311,15 +303,6 @@ begin
 {$IFDEF MSWINDOWS}
   afilename:=afilename+'.exe';
 
-{$IFDEF FPC}
- keyuser:=HKEY_CURRENT_USER;
-{$ELSE}
-  keyuser := $80000001;
-//  if (sizeof(pointer)>4) then
-//    keyuser :=  $80000001
-//  else
-//   keyuser:=HKEY_CURRENT_USER;
-{$ENDIF}
   GetLocaleInfo(GetThreadLocale, LOCALE_SABBREVLANGNAME, LocaleName, SizeOf(LocaleName));
   Result := '';
   if ((Length(afilename)>0) and (LocaleName[0] <> #0)) then
