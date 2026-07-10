@@ -171,9 +171,6 @@ type
     procedure DoParamsTest(Sender: TObject);
 
     procedure LoadHubDatabases;
-    procedure LoadUserSchemas;
-    procedure ParseHubSchemaValue(const AValue: string;
-      out ADatabaseId, ASchemaId: Int64);
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
     procedure UpdateExistingConnDriverHint;
@@ -255,7 +252,6 @@ begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   AHubApiKey := '';
-  Result := False;
   dia := TFRpNewReportWizardVCL.Create(Application);
   try
     report.CreateNew;
@@ -817,7 +813,6 @@ function TFRpNewReportWizardVCL.ConnectionExists(
 var
   existing: TStringList;
 begin
-  Result := False;
   existing := TStringList.Create;
   try
     FConnAdmin.GetConnectionNames(existing, '');
@@ -1211,7 +1206,6 @@ end;
 procedure TFRpNewReportWizardVCL.RefreshConcreteDriver;
 {$IFDEF USEBDE}
 var
-  i: Integer;
   aliases: TStringList;
 {$ENDIF}
 begin
@@ -1260,8 +1254,6 @@ begin
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageConnName;
-var
-  L: TLabel;
 begin
   FRbExisting := TRadioButton.Create(PContent);
   FRbExisting.Parent := PContent;
@@ -1272,9 +1264,9 @@ begin
   FRbExisting.OnClick := DoConnNameModeChange;
 
   if FState.Route = wrAgent then
-    L := CreateLabel(PContent, 'Reportman AI Connection', 48, 44)
+    CreateLabel(PContent, 'Reportman AI Connection', 48, 44)
   else
-    L := CreateLabel(PContent, 'DBX Connection', 48, 44);
+    CreateLabel(PContent, 'DBX Connection', 48, 44);
   FCbExistingConn := TComboBox.Create(PContent);
   FCbExistingConn.Parent := PContent;
   FCbExistingConn.Left := 48; FCbExistingConn.Top := 64;
@@ -1779,53 +1771,6 @@ begin
   finally
     list.Free;
   end;
-end;
-
-procedure TFRpNewReportWizardVCL.LoadUserSchemas;
-var
-  http: TRpDatabaseHttp;
-  list: TStringList;
-begin
-  if FCbHubSchema = nil then Exit;
-  list := TStringList.Create;
-  http := TRpDatabaseHttp.Create;
-  try
-    http.ApiKey := FState.HubApiKey;
-    Screen.Cursor := crHourGlass;
-    try
-      if not http.GetUserSchemas(list) then
-      begin
-        RpMessageBox('Could not load schemas from Reportman AI Web.',
-          'Schemas', [smbOK], smsCritical, smbOK, smbOK);
-        Exit;
-      end;
-    finally
-      Screen.Cursor := crDefault;
-    end;
-    FCbHubSchema.Items.Assign(list);
-    if FCbHubSchema.Items.Count > 0 then
-      FCbHubSchema.ItemIndex := 0;
-  finally
-    list.Free;
-    http.Free;
-  end;
-end;
-
-procedure TFRpNewReportWizardVCL.ParseHubSchemaValue(const AValue: string;
-  out ADatabaseId, ASchemaId: Int64);
-var
-  LSep: Integer;
-begin
-  ADatabaseId := 0;
-  ASchemaId := 0;
-  LSep := Pos('|', AValue);
-  if LSep > 0 then
-  begin
-    ADatabaseId := StrToInt64Def(Copy(AValue, 1, LSep - 1), 0);
-    ASchemaId := StrToInt64Def(Copy(AValue, LSep + 1, MaxInt), 0);
-  end
-  else
-    ASchemaId := StrToInt64Def(AValue, 0);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageFinish;

@@ -860,7 +860,6 @@ var
   increment: Integer;
   subreport: TRpSubReport;
   section: TRpSection;
-  temp: TCollectionItem;
 begin
   if down then
     increment := 1

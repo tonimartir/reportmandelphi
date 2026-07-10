@@ -323,7 +323,7 @@ type
    public ModificationDate: string;
    public function AFRelationShipToString(): string;
    public function Clone(): TEmbeddedFile;
-   destructor Destroy;
+   destructor Destroy;override;
  end;
 
 
@@ -803,7 +803,6 @@ begin
  GetMem(buffer,buflen);
  try
   pending:=source.Size;
-  toread:=pending;
   if (pending>buflen) then
   begin
    toread:=buflen;
@@ -1615,6 +1614,7 @@ begin
  begin
   IsWindows10:=true;
  end;
+ Result:=isWindows10;
 end;
 
 function IsWindowsNT:Boolean;
@@ -1788,7 +1788,7 @@ end;
 function ReadWideString(Reader:TReader):WideString;
 {$IFDEF DELPHI2009UP}
 begin
- Result:=Reader.ReadWideString;
+ Result:=Reader.ReadString;
 end;
 {$ENDIF}
 {$IFNDEF DELPHI2009UP}
@@ -2424,7 +2424,7 @@ montados }
       for i := 36 downto 1 do begin
           Resto := ( Inteiro div valores[i] ) * valores[i];
           if ( Resto = valores[i] ) and ( Inteiro >= Resto ) then begin
-             Resposta := Resposta + Nomes[i] + ' e ';
+             Resposta := Resposta + String(Nomes[i]) + ' e ';
              Inteiro  := Inteiro - Valores[i];
           end;
       end;
@@ -2470,6 +2470,7 @@ sempre
 boolean;
           Inteiro       : extended;
           NumStr        : string;
+          NumStrS       : ShortString;
           TriosUsados   : set of CasaDosTrilhoes..CasaDosCentavos;
           NumTriosInt   : byte;
 
@@ -2499,7 +2500,8 @@ casas:
 sexta)
         cont m apenas os centavos, com duas casas
       }
-      Str( Inteiro : 17 : 0, NumStr );
+      Str( Inteiro : 17 : 0, NumStrS );
+      NumStr := String(NumStrS);
       TrioAtual    := 1;
       Inteiro      := Int( Inteiro / 100 ); { remove os centavos }
 
@@ -4205,7 +4207,6 @@ var
  handle:integer;
 {$ENDIF}
  astream:TMemoryStream;
- i:integer;
    Bytes: TBytes;
 begin
 {$IFDEF MSWINDOWS}
@@ -4286,7 +4287,6 @@ function RpTempFileName:String;
 var
  apath:array [0..MAX_PATH] of char;
  afilename:array [0..MAX_PATH] of char;
- alen:DWord;
 begin
 // apath:=AllocMem(alen+1);
  try
@@ -4566,8 +4566,8 @@ begin
  try
   if (Length(originalfile)>0) then
   begin
-   files.Add(filename);
-   origfiles.Add(originalfile);
+   files.Add(String(filename));
+   origfiles.Add(String(originalfile));
   end;
   SendMail(destination,subject,content,files,origfiles);
  finally
@@ -4582,12 +4582,6 @@ var
   SendMailInt: TFNMapiSendMail = nil;
 
 procedure InitMapiInt;
-var
-  OSVersionInfo: TOSVersionInfo;
-  hkWMS: HKEY;
-  MAPIValueSize: Longint;
-  MAPIValueBuf: array[0..8] of Char;
-  rType: Longint;
 begin
   if not MAPIChecked then
   begin
@@ -4670,11 +4664,8 @@ begin
 end;
 
 var
- Sessionh:LHandle;
  amessage:MapiMessage;
  i:integer;
- npfile:PAnsiChar;
- npfile2:PAnsiChar;
  PtrMapiFileDescs : PMapiFileDescs;
  how:Cardinal;
 begin
@@ -5111,7 +5102,7 @@ begin
  leftmask:='';
  while index>0 do
  begin
-  if mask[index] in ['#',',','0'] then
+  if CharInSet(mask[index],['#',',','0']) then
    leftmask:=leftmask+mask[index];
   dec(index);
  end;
@@ -5256,12 +5247,12 @@ begin
  abuf:=AllocMem(Length(source)*2+2);
  try
   CharToOemA(PAnsiChar(source),abuf);
-  Result:=string.Copy(abuf);
+  Result:=AnsiString(abuf);
   for i:=1 to Length(Result) do
   begin
    // The Euro symbol
-   if Source[i]=AnsiChar(chr(128)) then
-    Result[i]:=AnsiChar(chr($D5));
+   if Source[i]=AnsiChar($80) then
+    Result[i]:=AnsiChar($D5);
   end;
  finally
   FreeMem(abuf);

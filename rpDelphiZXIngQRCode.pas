@@ -197,7 +197,6 @@ const
 type
   TErrorCorrectionLevel = class
   private
-    FBits: Integer;
     FOrdinal : Integer;
     function GetBits:Integer;
   public

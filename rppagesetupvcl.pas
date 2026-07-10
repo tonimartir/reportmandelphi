@@ -181,7 +181,7 @@ function ExecutePageSetup(report:TRpBaseReport):boolean;
 
 implementation
 
-uses rpmdundocue;
+uses rpmdundocue, System.UITypes;
 
 {$R *.dfm}
 
@@ -212,7 +212,6 @@ var
  dpiAwareContext:DPI_AWARENESS_CONTEXT;
  dpiAware: DPI_AWARENESS;
  doScale:boolean;
- buttonheight:integer;
 begin
   doScale := true;
   // Fix for ActiveX black background

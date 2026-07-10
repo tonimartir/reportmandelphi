@@ -90,7 +90,6 @@ type
     FConnectionsOverride: string;
     FDriversOverride: string;
     function CreateConnAdmin: TRpConnAdmin;
-    function IsDriverSupported(const ADriverName: string): Boolean;
     function IsSensitiveParam(const AName: string): Boolean;
     function IsReadOnlyParam(const AName: string): Boolean;
     function IsClosedOptionSet(const AName: string; AOptions: TStrings): Boolean;
@@ -113,7 +112,6 @@ type
     procedure CopyFileSimple(const ASourceFileName, ADestFileName: string);
     procedure MergeConnectionValues(ABaseValues, AOverrideValues: TStrings);
     procedure MergeKnownConnectionValues(ABaseValues, AOverrideValues: TStrings);
-    procedure ListSupportedDrivers(AConnAdmin: TRpConnAdmin; ADrivers: TStrings);
     procedure ListDbExpressConcreteDrivers(AConnAdmin: TRpConnAdmin;
       ADrivers: TStrings);
     procedure AddSafeDetails(const AConnectionName: string; AParams,
@@ -269,7 +267,6 @@ var
   LRequestBody: TJSONObject;
   LResponseStream: TStringStream;
 begin
-  Result := False;
   AMessageText := '';
   LDatabase := TRpDatabaseHttp.Create;
   try
@@ -356,38 +353,6 @@ begin
   inherited Create;
   FConnectionsOverride := AConnectionsOverride;
   FDriversOverride := ADriversOverride;
-end;
-
-function TRpWebDbxAdminService.IsDriverSupported(
-  const ADriverName: string): Boolean;
-begin
-  if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_AGENT) then
-    Exit(True);
-  if SameText(ADriverName, RP_WEB_DRIVER_FAMILY_FIREDAC) then
-  begin
-{$IFDEF FIREDAC}
-    Exit(True);
-{$ELSE}
-    Exit(False);
-{$ENDIF}
-  end;
-  if SameText(ADriverName, 'ZeosLib') then
-  begin
-{$IFDEF USEZEOS}
-    Exit(True);
-{$ELSE}
-    Exit(False);
-{$ENDIF}
-  end;
-{$IFDEF MSWINDOWS}
-{$IFDEF USESQLEXPRESS}
-  Result := True;
-{$ELSE}
-  Result := False;
-{$ENDIF}
-{$ELSE}
-  Result := False;
-{$ENDIF}
 end;
 
 // TRpConnAdmin raises on Linux when no dbxconnections file exists anywhere, so
@@ -498,24 +463,6 @@ begin
     if SameText(LName, 'DriverName') or (ABaseValues.IndexOfName(LName) >= 0) then
       SetNameValuePreserveEmpty(ABaseValues, LName,
         AOverrideValues.ValueFromIndex[I]);
-  end;
-end;
-
-procedure TRpWebDbxAdminService.ListSupportedDrivers(AConnAdmin: TRpConnAdmin;
-  ADrivers: TStrings);
-var
-  LAllDrivers: TStringList;
-  I: Integer;
-begin
-  ADrivers.Clear;
-  LAllDrivers := TStringList.Create;
-  try
-    AConnAdmin.GetDriverNames(LAllDrivers);
-    for I := 0 to LAllDrivers.Count - 1 do
-      if IsDriverSupported(LAllDrivers[I]) then
-        ADrivers.Add(LAllDrivers[I]);
-  finally
-    LAllDrivers.Free;
   end;
 end;
 

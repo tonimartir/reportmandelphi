@@ -161,7 +161,6 @@ var
  wproduct:WideString;
  wfilename:WideString;
 {$IFDEF MSWINDOWS}
-szAppDataA:array [0..MAX_PATH] of AnsiChar;
 szAppDataW:array [0..MAX_PATH] of WideChar;
 {$ELSE}
  ap:PCHar;
@@ -236,13 +235,13 @@ begin
 end;
 function Obtainininameuserconfig(company,product,filename:string):string;
 var
- szAppDataA:array [0..MAX_PATH] of AnsiChar;
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
 {$IFDEF LINUX}
  ap:PCHar;
+ szAppDataA:array [0..MAX_PATH] of AnsiChar;
 {$ENDIF}
  nresult:THandle;
 begin
@@ -333,7 +332,6 @@ function GetWebPath: string;
 function Obtainininamecommonconfig(company,product,filename:string;create:boolean):string;
 var
  nresult:THandle;
- szAppDataA:array [0..MAX_PATH] of AnsiChar;
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;
@@ -445,7 +443,6 @@ end;
 function Obtainininamelocalconfig(company,product,filename:string):string;
 var
  nresult:THandle;
- szAppDataA:array [0..MAX_PATH] of AnsiChar;
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;

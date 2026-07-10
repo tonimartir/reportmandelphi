@@ -120,7 +120,7 @@ function IsValidNumberChar(achar:char):Boolean;
 begin
  Result:=false;
 {$IFDEF DELPHI2009UP}
- if (achar in ['-','+','e','E','0'..'9',' ',FormatSettings.DecimalSeparator]) then
+ if CharInSet(achar,['-','+','e','E','0'..'9',' ',AnsiChar(FormatSettings.DecimalSeparator)]) then
 {$ELSE}
  if (achar in ['-','+','e','E','0'..'9',' ',DecimalSeparator]) then
 {$ENDIF}
@@ -131,22 +131,19 @@ end;
 
 
 function VarTryStrToFloat(S: string; var Value: Double): Boolean;
+{$IFNDEF DELPHI2009UP}
 var
  index,i:integer;
+{$ENDIF}
 begin
 {$IFDEF DELPHI2009UP}
   Result:=TryStrToFloat(S,Value);
-  exit;
-{$ENDIF}
+{$ELSE}
  Result:=true;
  S:=Trim(S);
  // Remove thousand separators
  repeat
-{$IFDEF DELPHI2009UP}
-  index:=Pos(FormatSettings.ThousandSeparator,S);
-{$ELSE}
   index:=Pos(ThousandSeparator,S);
-{$ENDIF}
   if index>0 then
    S:=Copy(S,1,index-1)+Copy(S,index+1,Length(S));
  until index=0;
@@ -165,6 +162,7 @@ begin
  except
   Result:=false;
  end;
+{$ENDIF}
 end;
 
 function VarTryStrToDate(S: string; var Value: TDateTime): Boolean;

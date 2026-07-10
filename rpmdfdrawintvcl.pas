@@ -940,10 +940,7 @@ var
  OpenDialog1:TOpenPictureDialog;
  aimage:TRpImage;
  jpeg:TJPegImage;
- gfilter:string;
  apic:TPicture;
- list: TStrings;
- i:integer;
  bitmap:TBitmap;
 begin
  aimage:=TRpImage(printitem);

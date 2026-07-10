@@ -264,7 +264,7 @@ function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias
 implementation
 
 {$R *.dfm}
-uses rplabelitem, rpauthmanager;
+uses System.Contnrs, System.Generics.Collections, rplabelitem, rpauthmanager;
 
 const
   CSchemaFieldSep = #1;
@@ -548,7 +548,6 @@ var
   LTargetAlias: TRpAlias;
   LOwnAlias: Boolean;
   I: Integer;
-  J: Integer;
   LDataInfo: TRpDataInfoItem;
   LRuntimeSource: TJSONObject;
   LRuntimeSchema: TJSONObject;
@@ -2491,7 +2490,6 @@ begin
               LChatPayload := TRpQueuedExpressionChatPayload.Create;
               LChatPayload.Kind := rpqecUpdateUserProfile;
               LChatPayload.UserProfile := LUserProfile;
-              LUserProfile := nil;
               PostExpressionChatPayload(LChatPayload);
             end;
 

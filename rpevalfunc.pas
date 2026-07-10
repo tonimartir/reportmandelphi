@@ -1085,7 +1085,7 @@ begin
   cadenaw:='';
   cadena:=String(Params[0]);
 {$IFDEF USEVARIANTS}
-  Result:=UTF8ToWideString(cadena);
+  Result:=UTF8ToWideString(RawByteString(cadena));
 {$ENDIF}
 {$IFNDEF USEVARIANTS}
   Result:=cadena;
@@ -3041,13 +3041,6 @@ end;
 {**************************************************************************}
 
 function TIdenStringToBin.GeTRpValue:TRpValue;
-var
-// i:integer;
- astring:AnsiString;
- p:pointer;
- astring2: AnsiString;
- amemStream: TMemoryStream;
- nparam:string;
 begin
  if Not VarIsString(Params[0]) then
    Raise TRpNamedException.Create(SRpEvalType,

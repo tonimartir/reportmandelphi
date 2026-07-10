@@ -151,7 +151,7 @@ type
    Offset:integer;
    ClusterMap: TDictionary<Integer, TList<Integer>>;
    constructor Create(TextOffset: integer);
-   destructor Destroy;
+   destructor Destroy;override;
    procedure AddGlyph(g: TGlyphPos;rOffset: integer);
  end;
 
@@ -198,15 +198,15 @@ begin
   while i <= Length(text) do
   begin
     c := text[i];
-    if c in [#10, #13] then
+    if CharInSet(c, [#10, #13]) then
     begin
-      // línea encontrada
+      // lï¿½nea encontrada
       lineEnd := i - 1;
       lb.Position := lineStart;
       lb.Length := lineEnd - lineStart + 1;
       Result.Add(lb);
 
-      // saltos de línea: manejar CR+LF como uno solo
+      // saltos de lï¿½nea: manejar CR+LF como uno solo
       if (c = #13) and (i < Length(text)) and (text[i + 1] = #10) then
         Inc(i);
 
@@ -214,7 +214,7 @@ begin
     end;
     Inc(i);
   end;
-  // agregar última línea si no termina en salto
+  // agregar ï¿½ltima lï¿½nea si no termina en salto
   if lineStart <= Length(text) then
   begin
     lb.Position := lineStart;
@@ -249,14 +249,14 @@ var
   lst: TList<Integer>;
 begin
  Glyphs.Add(g);
- if (g.Cluster+Offset+rOffset<MinClusterText) then
-  MinClusterText:=g.Cluster+Offset+rOffset;
- if (g.Cluster+Offset+rOffset>MaxClusterText) then
-  MaxClusterText:=g.Cluster+Offset+rOffset;
- if (g.Cluster+rOffset<MinClusterLine) then
-  MinClusterLine:=g.Cluster+rOffset;
- if (g.Cluster+rOffset>MaxClusterLine) then
-  MaxClusterLine:=g.Cluster+rOffset;
+ if (Integer(g.Cluster)+Offset+rOffset<MinClusterText) then
+  MinClusterText:=Integer(g.Cluster)+Offset+rOffset;
+ if (Integer(g.Cluster)+Offset+rOffset>MaxClusterText) then
+  MaxClusterText:=Integer(g.Cluster)+Offset+rOffset;
+ if (Integer(g.Cluster)+rOffset<MinClusterLine) then
+  MinClusterLine:=Integer(g.Cluster)+rOffset;
+ if (Integer(g.Cluster)+rOffset>MaxClusterLine) then
+  MaxClusterLine:=Integer(g.Cluster)+rOffset;
 
  // Asignar ChunkCluster usando el diccionario
  if not ClusterMap.TryGetValue(g.LineCluster, lst) then
@@ -326,7 +326,6 @@ begin
 end;
 
 function TrpPDFFont.GetPDFFontFamilyStyleKey: string;
-var acum:integer;
 begin
  Result:=GetFontFamilyKey+IntToStr(GetPDFStyleKey);
 end;

@@ -79,8 +79,6 @@ type
     FLblMode: TLabel;
     procedure ClearProgressTokens;
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
-    procedure DrawCircularArc(ACanvas: TCanvas; const ARect: TRect;
-      AStartAngle, ASweepAngle: Double; AColor: TColor; APenWidth: Integer);
     function EnsureProgressTokenEntry(const AProgressId: string): TRpProgressTokenEntry;
     function FormatProgressTokenId(const AProgressId: string): string;
     function GetProgressTokenKey(const AProgressId: string): string;
@@ -94,7 +92,6 @@ type
     procedure UpdateSpinnerState;
     procedure UpdateDropDownWidths;
     procedure ApplyModernStyling;
-    function GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
     function GetAITier: string;
     function GetAIMode: string;
     function GetAgentSecret: string;
@@ -598,47 +595,6 @@ begin
   UpdateGaugeVisibility;
   LayoutGaugeControls;
   Invalidate;
-end;
-
-procedure TFRpAISelectionVCL.DrawCircularArc(ACanvas: TCanvas;
-  const ARect: TRect; AStartAngle, ASweepAngle: Double; AColor: TColor;
-  APenWidth: Integer);
-var
-  AngleStep: Double;
-  AngleValue: Double;
-  PointCount: Integer;
-  PointIndex: Integer;
-  GaugePoints: array of TPoint;
-begin
-  PointCount := Round(Abs(ASweepAngle) / 8) + 2;
-  if PointCount < 2 then
-    PointCount := 2;
-  SetLength(GaugePoints, PointCount);
-  AngleStep := ASweepAngle / (PointCount - 1);
-  AngleValue := AStartAngle;
-  for PointIndex := 0 to PointCount - 1 do
-  begin
-    GaugePoints[PointIndex] := GetPointOnCircle(ARect, AngleValue);
-    AngleValue := AngleValue + AngleStep;
-  end;
-  ACanvas.Pen.Width := APenWidth;
-  ACanvas.Pen.Color := AColor;
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Polyline(GaugePoints);
-end;
-
-function TFRpAISelectionVCL.GetPointOnCircle(const ARect: TRect; const AAngleDegrees: Double): TPoint;
-var
-  RadiusX, RadiusY, CenterX, CenterY: Integer;
-  Rad: Double;
-begin
-  RadiusX := ARect.Width div 2;
-  RadiusY := ARect.Height div 2;
-  CenterX := ARect.Left + RadiusX;
-  CenterY := ARect.Top + RadiusY;
-  Rad := AAngleDegrees * PI / 180.0;
-  Result.X := Round(CenterX + RadiusX * Cos(Rad));
-  Result.Y := Round(CenterY - RadiusY * Sin(Rad));
 end;
 
 procedure TFRpAISelectionVCL.PaintBoxGaugePaint(Sender: TObject);

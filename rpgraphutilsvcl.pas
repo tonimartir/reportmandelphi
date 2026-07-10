@@ -168,7 +168,6 @@ var
  i:integer;
  possep:integer;
  list:TStrings;
- parts: TArray<string>;
  part:string;
  extension: string;
  description: string;

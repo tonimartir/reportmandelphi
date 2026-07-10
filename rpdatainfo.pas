@@ -81,7 +81,7 @@ uses Classes,SysUtils,
 {$ENDIF}
 {$IFDEF FIREDAC}
   FireDAC.Phys, FireDAC.Stan.Intf, FireDAC.Comp.Client,FireDAC.Stan.Def,FireDAC.DApt,FireDAC.Stan.Option,
-  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,FireDAC.Moni.FlatFile,
+  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,FireDAC.Moni.FlatFile,FireDAC.Stan.Param,
  {$IFDEF ANDROID}
  {$ELSE}
   FireDAC.Phys.ADS,  FireDAC.Phys.ODBCBase,FireDAC.Phys.ODBCWrapper,
@@ -283,8 +283,6 @@ type
 {$ENDIF}
    procedure ReadAdoConnectionString(Reader:TReader);
    procedure WriteAdoConnectionString(Writer:TWriter);
-   procedure ReadNewName(Reader: TReader);
-   procedure WriteNewName(Writer: TWriter);
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
@@ -441,8 +439,6 @@ type
 {$IFDEF USEBDE}
    procedure SetRangeForTable(lastrange:boolean);
 {$ENDIF}
-   procedure ReadNewName(Reader: TReader);
-   procedure WriteNewName(Writer: TWriter);
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
@@ -1480,8 +1476,6 @@ end;
 
 procedure TRpDataInfoList.Swap(index1, index2: integer);
 var
- item1: TRpDataInfoItem;
- item2: TRpDataInfoItem;
  newItem: TRpDataInfoItem;
 begin
  AssertCanModify('DataInfo.Swap');
@@ -3934,7 +3928,6 @@ begin
     driverfilename:=GetPublicPathSlash+'dbxdrivers.ini';
     configfilename:=GetPublicPathSlash+'dbxconnections.ini';
   {$ENDIF}
-      fromresource:=false;
       if (Length(driverfilename)>0) and (not FileExists(driverfilename)) then
         drivers:=LoadDbxDriversResourceIni(driverfilename)
       else
@@ -4055,7 +4048,6 @@ var
  memstream:TMemoryStream;
  astream:TStream;
 begin
- Result:=nil;
  data:=OpenDatasetFromSQL(sqlsentence,params,false,paramlist);
  try
   if data.Eof then
@@ -4889,11 +4881,9 @@ var
  i,index:integer;
  fname:string;
  fdef:TFieldDef;
- counter:integer;
  indexfieldnames:string;
 begin
  {$IFNDEF FPC}
- counter:=0;
  aresult:=TRpMemDataSet.Create(nil);
  lfields1:=TStringList.Create;
  lfields2:=TStringList.Create;
@@ -4928,7 +4918,6 @@ begin
    begin
     lfields1.Add(data2.FieldDefs.Items[i].Name);
     lfields2.Add(data2.FieldDefs.Items[i].Name);
-    Inc(counter);
    end;
   end;
   aresult.CreateDataSet;
@@ -5254,7 +5243,6 @@ var
  adata:TDataset;
  astream:TStream;
 begin
- Result:=nil;
  astring:='SELECT '+ReportField+' FROM '+
   ReportTable+' WHERE '+ReportSearchField+
   '=:REPNAME';
@@ -5940,27 +5928,6 @@ begin
      SysUtils.DeleteFile(tmpfile);
     end;
 end;
-
-procedure TRpDatabaseInfoItem.ReadNewName(Reader: TReader);
-begin
-  FName := Reader.ReadString;
-end;
-
-procedure TRpDataInfoItem.WriteNewName(Writer: TWriter);
-begin
-    Writer.WriteString(FName);
-end;
-
-procedure TRpDataInfoItem.ReadNewName(Reader: TReader);
-begin
-  FName := Reader.ReadString;
-end;
-
-procedure TRpDatabaseInfoItem.WriteNewName(Writer: TWriter);
-begin
-    Writer.WriteString(FName);
-end;
-
 
 procedure TRpDatabaseInfoItem.DefineProperties(Filer:TFiler);
 begin

@@ -528,8 +528,6 @@ begin
 end;
 
 procedure TRpMetafilePage.Clear;
-var
- i:integer;
 begin
  SetLength(FObjects,FIRST_ALLOCATION_OBJECTS);
  FPool:='';
@@ -1016,9 +1014,7 @@ end;
 function ReadStringFromStream(stream:TStream): string;
 var
  i:integer;
- strLength:integer;
  buf:array of Byte;
- bytes:TBytes;
 begin
  stream.Read(i,4);
  if (i=0) then
@@ -1510,7 +1506,7 @@ begin
     FReadThread.Metafile:=self;
     FReadThread.Stream:=Stream;
     FReading:=true;
-    FReadThread.Resume;
+    FReadThread.Start;
     break;
    end;
   end;

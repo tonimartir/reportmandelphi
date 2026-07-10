@@ -35,7 +35,7 @@ uses
 type
   TRpEditType=(tegeneral,teinteger,tefloat,tecurrency,teDate,teTime,teDateTime);
 
-  TTValidChars=set of Char;
+  TTValidChars=set of AnsiChar;
 
   TRpMaskEdit = class(TCustomMaskEdit)
   private
@@ -474,7 +474,7 @@ begin
   end
   else
    inherited KeyPress(Key);
-  if ((Key in [#32..#255]) and
+  if (CharInSet(Key,[#32..#255]) and
     (not IsValidChar(Key)) and (not (key=chr(13)))) then
   begin
    {$IFNDEF FPC}
@@ -523,7 +523,7 @@ end;
 
 function TRpMaskEdit.IsValidChar(key:char):Boolean;
 begin
- result:=key in ValidChars;
+ result:=CharInSet(key,ValidChars);
 {$IFDEF DOTNETD}
  if not result then
  begin

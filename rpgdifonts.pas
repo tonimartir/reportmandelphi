@@ -30,6 +30,9 @@ uses SysUtils, Classes,
 {$IFDEF DOTNETD}
  System.Drawing,
 {$ENDIF}
+{$IFDEF XE3UP}
+ System.UITypes,
+{$ENDIF}
  rptypes,syncobjs;
 
 type

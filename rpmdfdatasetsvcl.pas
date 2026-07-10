@@ -257,7 +257,6 @@ begin
   if LDatabaseInfo.Driver in [rpdatadriver, rpdotnet2driver] then
     Exit('ADO_Net');
 
-  LHubDatabaseId := 0;
   LParams := TStringList.Create;
   try
     LDatabaseInfo.UpdateConAdmin;
@@ -570,8 +569,6 @@ end;
 procedure TFRpDatasetsVCL.LDatasetsClick(Sender: TObject);
 var
   dinfo: TRpDataInfoItem;
-  dbinfo: TRpDatabaseInfoItem;
-  LParams: TStringList;
   index: Integer;
   oldloading:Boolean;
 begin

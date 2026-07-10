@@ -25,6 +25,7 @@ uses
   System.JSON,
   System.DateUtils,
   System.NetEncoding,
+  System.Generics.Collections,
 {$IFDEF USERPFDMEM}
   FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
   FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
@@ -644,7 +645,6 @@ var
   LUrl: string;
   LStartedAt: TDateTime;
 begin
-  Result := nil;
   LHttpClient := TNetHTTPClient.Create(nil);
   LResponseStream := TMemoryStream.Create;
   LCapture := TRpApiStreamCapture.Create(Sender, AOnProgress, ACancel);
@@ -764,7 +764,6 @@ var
   LRequestBody: TJSONObject;
   LResponseStream: TMemoryStream;
 begin
-  Result := False;
   LRequestBody := TJSONObject.Create;
   try
     LRequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
@@ -792,7 +791,6 @@ var
   LResponseJson: TJSONObject;
 {$ENDIF}
 begin
-  Result := nil;
   LRequest := TJSONObject.Create;
   try
     LRequest.AddPair('sql', ASql);
@@ -818,6 +816,7 @@ begin
     Result := StreamJsonRequest(Self, 'NlToSql/SuggestSqlCodeStream', LRequest,
       Sender, AOnProgress, ACancel);
 {$ELSE}
+    Result := nil;
     LResponseStream := TStringStream.Create;
     try
       if InternalRequest('NlToSql/SuggestSqlCode', LRequest, LResponseStream) then
@@ -848,7 +847,6 @@ var
   LResponseJson: TJSONObject;
 {$ENDIF}
 begin
-  Result := nil;
   LRequest := TJSONObject.Create;
   try
     LQueries := TJSONArray.Create;
@@ -878,6 +876,7 @@ begin
     Result := StreamJsonRequest(Self, 'NlToSql/TranslateToSQLStream', LRequest,
       Sender, AOnProgress, ACancel);
 {$ELSE}
+    Result := nil;
     LResponseStream := TStringStream.Create;
     try
       if InternalRequest('NlToSql/TranslateToSQL', LRequest, LResponseStream) then
@@ -907,7 +906,6 @@ var
   LResponseJson: TJSONObject;
 {$ENDIF}
 begin
-  Result := nil;
   LRequest := TJSONObject.Create;
   try
     LRequest.AddPair('sqlToExplain', ASql);
@@ -937,6 +935,7 @@ begin
     Result := StreamJsonRequest(Self, 'NlToSql/ExplainSQLStream', LRequest,
       Sender, AOnProgress, ACancel);
 {$ELSE}
+    Result := nil;
     LResponseStream := TStringStream.Create;
     try
       if InternalRequest('NlToSql/ExplainSQL', LRequest, LResponseStream) then
@@ -1116,7 +1115,6 @@ var
   LRequestJson: TJSONObject;
   LResponseStream: TStringStream;
 begin
-  Result := False;
   if AReport = nil then
     raise Exception.Create('AI report not assigned');
 
@@ -1151,7 +1149,6 @@ var
   LUserQuery: TJSONArray;
   LUrl: string;
 begin
-  Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   LResponseStream := TMemoryStream.Create;
   LContext := TRpExpressionStreamContext.Create(LResponseStream, Sender,
@@ -1314,7 +1311,6 @@ var
   LUrl: string;
   LStartedAt: TDateTime;
 begin
-  Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
@@ -1797,7 +1793,6 @@ var
   LUrl: string;
   LStartedAt: TDateTime;
 begin
-  Result := False;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);

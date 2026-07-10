@@ -1783,7 +1783,6 @@ var
  FValue:Variant;
  data:string;
 begin
- Result:=False;
  barcode:=TRpBarcode.Create(Self);
  try
   barcode.Width:=Width;
@@ -1794,9 +1793,9 @@ begin
   barcode.Rotation:=Round(Rotation*10);
   barcode.Checksum:=CalcChecksum;
   FValue:=Evaluator.EvaluateText(Expression);
-  barcode.CurrentText:=FormatVariant(displayformat,FValue,rpParamUnknown,true);
+  barcode.CurrentText:=AnsiString(FormatVariant(displayformat,FValue,rpParamUnknown,true));
   try
-   data:=barcode.Calculatebarcode;
+   data:=String(barcode.Calculatebarcode);
   except
    on E:Exception do
    begin
@@ -1806,7 +1805,7 @@ begin
   // Draws Barcode
   barcode.PrintHeight:=Height;
   barcode.BColor:=BrushColor;
-  barcode.DoLines(data, Left,Top,metafile);    // draw the barcode
+  barcode.DoLines(AnsiString(data), Left,Top,metafile);    // draw the barcode
   Result:=true;
  finally
   barcode.Free;
@@ -2141,7 +2140,7 @@ begin
    abufdest:=AllocMem(memStream.Size*2+1);
    try
     BinToHex(abufsource,abufdest,memStream.Size);
-    bhes:=StrPas(abufdest);
+    bhes:=WideString(AnsiString(abufdest));
     WriteWideString(Writer,bhes);
    finally
    FreeMem(abufdest);
@@ -2486,7 +2485,7 @@ begin
      FThreadExec:=TThreadExecReport.Create(true);
      FThreadExec.Report:=self;
      AbortingThread:=false;
-     FThreadExec.Resume;
+     FThreadExec.Start;
    except
     FExecuting:=false;
     FThreadExec.free;

@@ -175,7 +175,7 @@ function ShowPreview(previewcontrol:TRpPreviewMeta;
 
 implementation
 
-uses rprfvparams, rppdfdriver;
+uses System.Types, rprfvparams, rppdfdriver;
 
 {$R *.dfm}
 
@@ -316,7 +316,6 @@ var
  dpiAwareContext:DPI_AWARENESS_CONTEXT;
  dpiAware: DPI_AWARENESS;
  doScale:boolean;
- buttonheight:integer;
 begin
   doScale := true;
   if (IsWindows10orUpper) then
@@ -331,7 +330,6 @@ begin
    btoolbar.Images:=ImageList1;
    ActionList1.Images:=ImageList1;
   end;
-  buttonheight:=btoolbar.Height;
    // ScaleToolBar(BToolBar);
   SaveDialog1.Filter:=SRpRepMetafile+'|*.rpmf|'+
    SRpPDFFile+'|*.pdf|'+
@@ -567,7 +565,6 @@ begin
           if (TRpPreviewControl(previewcontrol).Report.PrinterFonts in [rppfontsalways,rppfontsrecalculate]) then
           begin
            recalcreport:=true;
-           areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
           end;
         end;
         if recalcreport then
@@ -593,7 +590,6 @@ begin
          if (TRpPreviewControl(previewcontrol).Report.PrinterFonts in [rppfontsalways,rppfontsrecalculate]) then
          begin
           recalcreport:=true;
-          areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
          end;
        end;
        if recalcreport then
@@ -1030,7 +1026,7 @@ begin
  try
   if Length(subject)<1 then
    subject:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));
-  rptypes.SendMail(destination,subject,body,afilename,ExtractFileName(ChangeFileExt(afilename,'.pdf')));
+  rptypes.SendMail(AnsiString(destination),AnsiString(subject),AnsiString(body),AnsiString(afilename),AnsiString(ExtractFileName(ChangeFileExt(afilename,'.pdf'))));
  finally
   sysutils.DeleteFile(afilename);
  end;
@@ -1045,7 +1041,6 @@ var
 
   Outlook: OLEVariant;
   vmailitem: variant;
-  savetofol: string;
   filenameTitle: string;
 begin
  destination:='';

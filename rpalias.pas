@@ -47,7 +47,6 @@ type
    private
     Iden:TIdenField;
     FList:TRpAliaslist;
-    FReport:TComponent;
 {$IFDEF USEREPORTFUNC}
     FConnections:TRpDatabaseInfoList;
     procedure SetConnections(Newconn:TRpDatabaseInfoList);

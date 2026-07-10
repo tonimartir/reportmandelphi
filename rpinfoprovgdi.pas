@@ -178,8 +178,6 @@ end;
 
 
 constructor TRpGDIInfoProvider.Create;
-var
- ddc:THandle;
 begin
  inherited Create;
  currentname:='';
@@ -217,7 +215,6 @@ end;
 procedure AdjustLineSpaces(line: TGlyphLine);
 var keepNBSP:boolean;
  LastIndex:integer;
- FirstIndex:integer;
  ch:WideChar;
  isWS: boolean;
 begin
@@ -272,7 +269,6 @@ begin
 
       // eliminar último glifo lógico (trailing whitespace)
       line.Glyphs.Delete(0);
-      Dec(LastIndex);
     end;
  end;
 end;
@@ -449,7 +445,6 @@ begin
   // Detect paragraph direction from first strong character (skip HTML tags)
   var inTag: Boolean := False;
   var firstStrongRTL: Boolean := False;
-  var dirDetected: Boolean := False;
   for var ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
@@ -461,16 +456,16 @@ begin
     if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
        ((cp >= $8A0) and (cp <= $8FF)) or ((cp >= $FB50) and (cp <= $FDFF)) or
        ((cp >= $FE70) and (cp <= $FEFF)) then
-    begin firstStrongRTL := True; dirDetected := True; Break; end;
+    begin firstStrongRTL := True; Break; end;
     // Hebrew
     if ((cp >= $590) and (cp <= $5FF)) or ((cp >= $FB1D) and (cp <= $FB4F)) then
-    begin firstStrongRTL := True; dirDetected := True; Break; end;
+    begin firstStrongRTL := True; Break; end;
     // Latin, Greek, Cyrillic = LTR
     if (cp >= $41) and (cp <= $24F) then
-    begin dirDetected := True; Break; end;
+    begin Break; end;
     // CJK = LTR
     if (cp >= $4E00) and (cp <= $9FFF) then
-    begin dirDetected := True; Break; end;
+    begin Break; end;
   end;
 //  if firstStrongRTL then
 //    TextFormat.SetReadingDirection(1); // DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1
@@ -1465,7 +1460,6 @@ var
  subset:TTrueTypeFontSubSet;
  bytes:TBytes;
  GlyphsUsed: TDictionary<Integer, TArray<Integer>>;
- xchar: WideChar;
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
@@ -1522,7 +1516,6 @@ var
  newsize:integer;
  header:string;
  dwtable: Cardinal;
- directoryoffset: Cardinal;
 begin
    // See if data can be embedded
    embeddable:=false;
@@ -1673,14 +1666,13 @@ begin
 
    if embeddable then
    begin
-    directoryOffset:=0;
     data.FontData.Fontdata.SetSize(4);
     dwtable:=$66637474;
     // Detect font collection
 {$R-} // disable range checking
 // do non-range-checked operations here
    SetLength(fontCollectionbuffer,4);
-   asize:=GetFontData(adc,dwtable,0,fontcollectionbuffer,4);
+   GetFontData(adc,dwtable,0,fontcollectionbuffer,4);
    header := TEncoding.ASCII.GetString(fontCollectionBuffer);
    if (header <> 'ttcf') then
    begin
@@ -1706,7 +1698,6 @@ end;
 
 function TRpGDIInfoProvider.GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;
 var
- logx:double;
  ginfo: TGlyphInfo;
    gm: _GLYPHMETRICS;
      mat: MAT2;
@@ -1938,7 +1929,7 @@ begin
 //     RaiseLastOSError;
 
  Result:=
-   (aabc[1].abcA+aabc[1].abcB+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
+   (aabc[1].abcA+Int64(aabc[1].abcB)+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
  data.widths.Add(charcode, Result);
 

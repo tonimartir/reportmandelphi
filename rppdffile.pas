@@ -148,7 +148,6 @@ type
    procedure RestoreGraph;
    procedure SetInfoProvider(aprov:TRpInfoProvider);
    function GetTTFontData:TRpTTFontData;
-   function EncodeUnicode(astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):string;
    procedure SWriteLine(Stream:TStream;astring:string);
   public
    PenColor:integer;
@@ -237,7 +236,6 @@ type
    FOutputIntentObject: integer;
    FColorSpaceObject: integer;
    FInternalFDocCreationDate: TDateTime;
-   FModDate: string;
    PageObjNum: integer;
    FResolution:integer;
    FBitmapStreams:TList;
@@ -611,7 +609,7 @@ end;
 procedure TRpPDFFile.SWriteLine(Stream:TStream;astring:string);
 begin
  astring:=astring+EndOfLine;
- WriteStringToStream(astring,Stream);
+ WriteStringToStream(AnsiString(astring),Stream);
 end;
 
 procedure TRpPDFFile.NewAnnotation(posx,posy,width,height: integer; annotation: string);
@@ -796,9 +794,8 @@ end;
 {$ENDIF}
 
 procedure TrpPDFFIle.WriteStream(stream,dest: TMemoryStream);
-var longitud: integer;
 {$IFDEF USEZLIB}
- longitudOriginal: integer;
+var
  Fmem: TMemoryStream;
 {$ENDIF}
 begin
@@ -962,8 +959,6 @@ end;
 procedure TRpPDFFile.SetXMPMetadata;
 var
  FXMPStream: TMemoryStream;
- i:integer;
- efile: TEmbeddedFile;
  keywords:TArray<string>;
  keyword: string;
 begin
@@ -1109,7 +1104,6 @@ begin
 end;
 
 procedure TRpPDFFile.EndStream;
-var TempSize: LongInt;
 var StreamSize: Longint;
 var CurrentSize: Longint;
 {$IFDEF USEZLIB}
@@ -1399,7 +1393,7 @@ end;
 procedure TrpPDFFile.SetPageObject(index:integer);
 var
  aobj:TRpPageInfo;
- annotationsString, anot: string;
+ annotationsString: string;
  annotation:TPDFAnnotation;
 begin
  aobj:=TRpPageInfo(FPageInfos.Objects[index-1]);
@@ -2740,7 +2734,7 @@ begin
   aarray:=nil;
   defaultwidth:=Default_Font_Width;
   isdefault:=true;
-  if charcode in [WideChar(#0),WideChar(#13),WideChar(#10)] then
+  if CharInSet(charcode,[#0,#13,#10]) then
   begin
    Result:=0;
    exit;
@@ -2960,7 +2954,7 @@ begin
     newsize:=newsize-(kerningamount*FFont.Size/1000);
    end;
   end;
-  if (Not (astring[i] in [WideChar(' '),WideChar(#10),WideChar(#13)])) then
+  if (Not CharInSet(astring[i],[' ',#10,#13])) then
    lockspace:=false;
   if wordbreak then
   begin
@@ -2985,7 +2979,7 @@ begin
    end
    else
    begin
-    if astring[i] in [WideChar('-'),WideChar(' ')] then
+    if CharInSet(astring[i],['-',' ']) then
     begin
      linebreakpos:=i;
      if astring[i]=' ' then
@@ -4035,7 +4029,6 @@ end;
 procedure TRpPDFFile.SetFontType;
 var
  i:integer;
- index2: Word;
  adata:TRpTTFontData;
  aunicodecount,index,acount:integer;
  currentindex,nextindex:integer;
@@ -4178,14 +4171,14 @@ begin
     end;
     if (aunicodecount>0) then
     begin
-     cmaphead:= cmaphead+IntToStr(aunicodecount)+
-      ' beginbfchar'+LINE_FEED;
+     cmaphead:= AnsiString(String(cmaphead)+IntToStr(aunicodecount)+
+      ' beginbfchar'+LINE_FEED);
      for index := currentindex to nextindex do
      begin
       if adata.loaded[index] then
       begin
-       fromTo:='<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ';
-       cmaphead:=cmaphead+fromTo+' <'+IntToHex4(index)+'>'+LINE_FEED;
+       fromTo:=AnsiString('<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ');
+       cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <'+IntToHex4(index)+'>'+LINE_FEED);
       end;
      end;
      cmaphead:=cmaphead+'endbfchar' +LINE_FEED;
@@ -4406,40 +4399,6 @@ end;
 
 
 
-function TRpPDFCanvas.EncodeUnicode(astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):string;
-var
- aresult:string;
- i:integer;
- kerningvalue:integer;
-begin
- aresult:= aresult+'[(';
- aresult := aresult + char(254);
- aresult := aresult + char(254);
-// aresult := aresult + char(255);
-  for i:=1 to Length(astring) do
-  begin
-   if astring[i] in [WideChar('('),WideChar(')'),WideChar('\')] then
-    aresult:=aresult+'\';
-   // Euro exception
-//   if astring[i]=widechar(8364) then
-//    Result:=Result+chr(128)
-//   else
-   aresult:=aresult+chr(Word(astring[i]) shr 8);
-   aresult:=aresult+chr(Word(astring[i]) AND $F0);
-   if (i<Length(astring)) then
-   begin
-    kerningvalue:=infoprovider.GetKerning(pdffont,adata,WideChar(astring[i]),WideChar(astring[i+1]));
-    if kerningvalue<>0 then
-    begin
-     aresult:=aresult+')'+' '+IntToStr(kerningvalue);
-     aresult:=aresult+' (';
-    end;
-   end;
-  end;
-  aresult:=aresult+')]';
-  Result:=aresult;
-end;
-
 function TRpPDFCanvas.PDFCompatibleTextShaping(
   adata: TRpTTFontData;
   pdffont: TRpPDFFont;
@@ -4557,7 +4516,7 @@ begin
    Font.Italic:=originalItalic;
    Font.Size:=Round(originalFontSize);
    UpdateFonts;
-   adata:=GetTTFontData;
+   GetTTFontData;
   end;
   // Restore original color if changed
   if actualColor <> originalColor then
@@ -4600,7 +4559,7 @@ begin
   Result:='[(';
   for i:=1 to Length(astring) do
   begin
-   if astring[i] in [WideChar('('),WideChar(')'),WideChar('\')] then
+   if CharInSet(astring[i],['(',')','\']) then
     Result:=Result+'\';
    // Euro exception
    if (Ord(astring[i])=8364) then
@@ -4649,7 +4608,7 @@ begin
   for i:=1 to Length(astring) do
   begin
    nchar:=astring[i];
-   if nchar in [WideChar('('),WideChar(')'),WideChar('\')] then
+   if CharInSet(nchar,['(',')','\']) then
     Result:=Result+'\';
    // Euro character exception
    if (Ord(nchar)=8364) then

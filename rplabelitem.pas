@@ -267,7 +267,7 @@ begin
   for Index:=1 to Length(Segment.Text) do
   begin
    Character:=Segment.Text[Index];
-   if not (Character in [#9,#10,#11,#12,#13,' ',WideChar($00A0)]) then
+   if not CharInSet(Character,[#9,#10,#11,#12,#13,' ',#160]) then
    begin
     Result:=True;
     exit;

@@ -14,7 +14,7 @@ interface
 {$I rpconf.inc}
 
 uses
-  SysUtils, Classes, Contnrs, System.JSON;
+  SysUtils, Classes, Contnrs, System.Generics.Collections, System.JSON;
 
 type
   TRpReportDesignerMode = (rdmFast, rdmReasoning);
