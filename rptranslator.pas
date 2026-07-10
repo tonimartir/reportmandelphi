@@ -269,7 +269,7 @@ begin
   Exit;
  // look for modulename.en_US
  P := LangCode;
- while P^ in ['a'..'z', 'A'..'Z', '_'] do
+ while CharInSet(P^, ['a'..'z', 'A'..'Z', '_']) do
   Inc(P);
  if P = LangCode then
   Result := afilename
@@ -280,7 +280,7 @@ begin
   begin
    // look for modulename.en    (ignoring country code and suffixes)
    I := Length(Result);
-   while (I > 0) and not (Result[I] in ['.', '_']) do
+   while (I > 0) and not CharInSet(Result[I], ['.', '_']) do
     Dec(I);
    if (I-1 = Length(Result)) or (I-1 < Length(afilename)) then
     Exit;
@@ -331,11 +331,11 @@ var
  memstream:TMemoryStream;
  astring:array of WideChar;
  asize,i:integer;
- resname:string;
  nstream:TMemoryStream;
  tempstring:widestring;
- isFile: boolean;
 {$IFDEF MSWINDOWS}
+ resname:string;
+ isFile: boolean;
  resstream:TResourceStream;
  fromresource:boolean;
  hfind:HRSRC;
@@ -350,7 +350,9 @@ begin
  FPoolPos:=1;
  SetLength(FStrings,DEFAULT_SARRAY_SIZE);
  FArraySize:=DEFAULT_SARRAY_SIZE;
+{$IFDEF MSWINDOWS}
  isFile:=false;
+{$ENDIF}
  // Finds the file and read the strings
  // The format is translations separator is a #10, two #10 is a true single #10.
  if Length(FFilename)<1 then
@@ -365,7 +367,9 @@ begin
    end
    else
    begin
+{$IFDEF MSWINDOWS}
     isFile := true;
+{$ENDIF}
    end;
  end;
 {$IFDEF MSWINDOWS}

@@ -93,10 +93,10 @@ uses rptypes;
 
 function ObtainFolderLocalUserConfig(company, product, folder: string): string;
 var
+{$IFDEF MSWINDOWS}
   wcompany: Widestring;
   wproduct: WideString;
   wfolder: WideString;
-{$IFDEF MSWINDOWS}
   szAppDataW: array [0..MAX_PATH] of WideChar;
   nresult: THandle;
 {$ELSE}
@@ -140,8 +140,8 @@ begin
 {$ENDIF}
   if assigned(ap) then
   begin
-    StrPCopy(szAppDataA, ap);
-    Result := StrPas(szAppDataA) + '/.';
+    StrPCopy(szAppDataA, AnsiString(String(ap)));
+    Result := String(StrPas(szAppDataA)) + '/.';
   end
   else
     Result := './.';
@@ -157,16 +157,16 @@ end;
 
 function Obtainininamelocaluserconfig(company,product,filename:string):string;
 var
+{$IFDEF MSWINDOWS}
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
-{$IFDEF MSWINDOWS}
 szAppDataW:array [0..MAX_PATH] of WideChar;
+ nresult:THandle;
 {$ELSE}
  ap:PCHar;
  szAppdata:array [0..MAX_PATH] of AnsiChar;
 {$ENDIF}
- nresult:THandle;
 begin
 {$IFDEF MSWINDOWS}
  if length(filename)<1 then
@@ -220,8 +220,8 @@ begin
 {$ENDIF}
  if assigned(ap) then
  begin
-  StrPCopy(szAppdata,ap);
-  Result:=StrPas(szAppdata)+'/.'
+  StrPCopy(szAppdata,AnsiString(String(ap)));
+  Result:=String(StrPas(szAppdata))+'/.'
  end
  else
   Result:='./.';
@@ -235,23 +235,25 @@ begin
 end;
 function Obtainininameuserconfig(company,product,filename:string):string;
 var
+{$IFDEF MSWINDOWS}
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
+ nresult:THandle;
+{$ENDIF}
 {$IFDEF LINUX}
  ap:PCHar;
  szAppDataA:array [0..MAX_PATH] of AnsiChar;
 {$ENDIF}
- nresult:THandle;
 begin
 
 {$IFDEF LINUX}
  ap:=PChar(System.SysUtils.GetEnvironmentVariable('HOME'));
  if assigned(ap) then
  begin
-  StrPCopy(szAppdataA,ap);
-  Result:=StrPas(szAppdataA)+'/.'
+  StrPCopy(szAppdataA,AnsiString(String(ap)));
+  Result:=String(StrPas(szAppdataA))+'/.'
  end
  else
   Result:='./.';
@@ -330,19 +332,19 @@ function GetWebPath: string;
 {$ENDIF}
 
 function Obtainininamecommonconfig(company,product,filename:string;create:boolean):string;
+{$IFDEF MSWINDOWS}
 var
  nresult:THandle;
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
-{$IFDEF MSWINDOWS}
  dwflags:Cardinal;
-{$ENDIF}
 hardcoded:boolean;
+{$ENDIF}
 begin
- hardcoded:=false;
 {$IFDEF MSWINDOWS}
+ hardcoded:=false;
  if length(filename)<1 then
   Raise Exception.Create(SRpFileNameRequired);
  Result:='';
@@ -441,12 +443,14 @@ end;
 
 
 function Obtainininamelocalconfig(company,product,filename:string):string;
+{$IFDEF MSWINDOWS}
 var
  nresult:THandle;
  szAppDataW:array [0..MAX_PATH] of WideChar;
  wcompany:Widestring;
  wproduct:WideString;
  wfilename:WideString;
+{$ENDIF}
 begin
 {$IFDEF MSWINDOWS}
  if length(filename)<1 then

@@ -558,6 +558,11 @@ uses
 {$IFDEF USEBDE}
  rpeval,
 {$ENDIF}
+{$IFDEF LINUX}
+ {$IFNDEF FPC}
+ Posix.Unistd,
+ {$ENDIF}
+{$ENDIF}
  rpreport,rpbasereport;
 
 
@@ -3838,7 +3843,9 @@ end;
 procedure TRpConnAdmin.LoadConfig;
 var
  dbxconpath,dbxdrivpath:String;
+{$IFDEF MSWINDOWS}
  nconfigfilename:string;
+{$ENDIF}
  fromresource:boolean;
  defaultdrivers:TMemIniFile;
 {$IFNDEF MSWINDOWS}
@@ -4086,7 +4093,6 @@ var
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
 {$ELSE}
- aparams:TStringList;
 {$ENDIF}
 begin
  report:=TRpDataInfoList(Collection).FReport As TRpReport;
@@ -5872,7 +5878,6 @@ var
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
 {$ELSE}
- aparams:TStringList;
 {$ENDIF}
 begin
  tmpfile:=RpTempFileName;

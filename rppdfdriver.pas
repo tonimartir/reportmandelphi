@@ -1045,10 +1045,6 @@ end;
 
 {$IFDEF LINUX}
 procedure PrintMetafileUsingKPrinter(metafile:TRpMetafileReport);
-var
- afilename:String;
- destfilename:string;
- alist:TStringList;
 begin
  raise Exception.Create('Not Implemented KPrinter');
  (*
