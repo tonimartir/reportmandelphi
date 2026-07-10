@@ -184,6 +184,13 @@ type
 
 implementation
 
+{$IFDEF LINUX}
+{$IFNDEF FPC}
+uses
+  Posix.Unistd;
+{$ENDIF}
+{$ENDIF}
+
 procedure CopyFileSimple(const ASourceFileName, ADestFileName: string);
 var
   LSource: TFileStream;
@@ -211,7 +218,6 @@ var
   LExisting: Boolean;
   LGuid: TGUID;
 begin
-  Result := False;
   LExisting := FileExists(AFileName);
   if LExisting then
   begin

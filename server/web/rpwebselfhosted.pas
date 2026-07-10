@@ -82,7 +82,9 @@ end;
 procedure WriteSelfHostedBanner(const APort: Integer; const ABindAddress: string);
 var
   LConfigFileName: string;
+{$IFDEF LINUX}
   LCommonFileName: string;
+{$ENDIF}
 begin
   WriteLn('Reportman selfhosted mode enabled');
   WriteLn('Parameters: -selfhosted [-port=<port>] [-bind=<address>] [-configfile <file>] [-dbxconnectionfile <file>]');

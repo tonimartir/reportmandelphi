@@ -27,7 +27,7 @@ uses
 {$R *.res}
 
 begin
-  Graphics.DefFontData.Name:=Screen.IconFont.Name;
+  Graphics.DefFontData.Name:=ShortString(AnsiString(Screen.IconFont.Name));
   Application.Initialize;
   Application.CreateForm(TFStartService, FStartService);
   FStartService.Font.Assign(Screen.IconFont);

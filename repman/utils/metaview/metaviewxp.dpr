@@ -27,7 +27,7 @@ begin
   begin
    Title:=SRpRepMetafile;
   end;
-  Graphics.DefFontData.Name:=Screen.IconFont.Name;
+  Graphics.DefFontData.Name:=ShortString(AnsiString(Screen.IconFont.Name));
   Application.Initialize;
   Application.Title := 'Metafile reader';
   Application.CreateForm(TFRpMainMetaVCL, FRpMainMetaVCL);

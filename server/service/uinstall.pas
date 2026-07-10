@@ -126,7 +126,7 @@ begin
  exename:='"'+exename+'"'+' /INSTALL ';
  if Length(Trim(EUserName.Text))>0 then
   exename:=exename+Trim(EUserName.Text)+' '+EPassword.Text;
- if (WinExec(PAnsichar(exename),SW_SHOWNORMAL)<=31) then
+ if (WinExec(PAnsichar(AnsiString(exename)),SW_SHOWNORMAL)<=31) then
   Raise Exception.Create(SRpCanNotExecute+' '+exename);
  RefreshServiceTimer;
 end;
@@ -138,7 +138,7 @@ begin
  // Executes repserverservice with parameters
  exename:=ExtractFilePath(Application.ExeName)+'repserverservice.exe';
  exename:='"'+exename+'"'+' /UNINSTALL ';
- if (WinExec(PAnsichar(exename),SW_SHOWNORMAL)<=31) then
+ if (WinExec(PAnsichar(AnsiString(exename)),SW_SHOWNORMAL)<=31) then
   Raise Exception.Create(SRpCanNotExecute+' '+exename);
  RefreshServiceTimer;
 end;
@@ -160,7 +160,7 @@ begin
  pbuf:=@buffer[0];
  if 0<>gethostname(pbuf,255) then
   RaiseLastOSError;
- nhostname:=StrPas(pbuf);
+ nhostname:=String(pbuf);
  BStart.Enabled:=false;
  BStop.Enabled:=false;
  // Open the service control manager and
@@ -221,7 +221,7 @@ begin
  pbuf:=@buffer[0];
  if 0<>gethostname(pbuf,255) then
   RaiseLastOSError;
- nhostname:=StrPas(pbuf);
+ nhostname:=String(pbuf);
  BStart.Enabled:=false;
  BStop.Enabled:=false;
  // Open the service control manager and
@@ -271,7 +271,7 @@ begin
  pbuf:=@buffer[0];
  if 0<>gethostname(pbuf,255) then
   RaiseLastOSError;
- nhostname:=StrPas(pbuf);
+ nhostname:=String(pbuf);
  BStart.Enabled:=false;
  BStop.Enabled:=false;
  // Open the service control manager and

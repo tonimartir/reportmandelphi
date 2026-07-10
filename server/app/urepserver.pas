@@ -154,6 +154,9 @@ procedure SMPExecuteReport(report:TRpReport;astream:TMemoryStream;metafile:Boole
 
 implementation
 
+uses
+  Types;
+
 {$R *.dfm}
 
 procedure TRpClient.CreateReport;
@@ -1131,7 +1134,7 @@ begin
 {$ENDIF}
            adataLASTOPERATION.Value:=actclient.LastAction;
            adataCONNECTIONDATE.Value:=actclient.ConnectionDate;
-           adataUSERNAME.Value:=actclient.username;
+           adataUSERNAME.Value:=AnsiString(actclient.username);
 {$IFDEF INDY10}
            adataRUNNING.Value:=true;
 {$ENDIF}

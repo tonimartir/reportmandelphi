@@ -432,8 +432,8 @@ end;
 
 function TRpWebPageLoader.HiddenInput(const AName, AValue: string): string;
 begin
- Result:='<input type="hidden" name="'+HtmlEncode(AName)+'" value="'+
-  HtmlEncode(AValue)+'">';
+ Result:='<input type="hidden" name="'+TNetEncoding.HTML.Encode(AName)+'" value="'+
+  TNetEncoding.HTML.Encode(AValue)+'">';
 end;
 
 function TRpWebPageLoader.HiddenAuthInputs(Request: TWebRequest): string;
@@ -1279,7 +1279,7 @@ var
 begin
  if not FAllowUserAccess then
  begin
-  Result:='<html><body><h3>'+HtmlEncode(TranslateStr(838,'Report Manager Login'))+
+  Result:='<html><body><h3>'+TNetEncoding.HTML.Encode(TranslateStr(838,'Report Manager Login'))+
    '</h3><p>User/password access disabled. Use X-ReportmanServer-ApiKey header.</p></body></html>';
   exit;
  end;
@@ -1356,7 +1356,7 @@ begin
      else
       aliasesstring:=aliasesstring+#10+'<form method="post" action="./showalias">'+
        HiddenInput('aliasname',laliases.Names[i])+HiddenAuthInputs(Request)+
-       '<input type="submit" value="'+HtmlEncode(laliases.Names[i])+'">'+
+       '<input type="submit" value="'+TNetEncoding.HTML.Encode(laliases.Names[i])+'">'+
        '</form>';
     end;
  end;
@@ -2027,7 +2027,7 @@ end;
      begin
       PrevValue:=GetAdminParam(Request,'Param'+aparam.Name);
       AParamsHtml:=AParamsHtml+'<tr>'+#10+
-        '<td>'+HtmlEncode(aparam.Description)+'</td>'+#10+
+        '<td>'+TNetEncoding.HTML.Encode(aparam.Description)+'</td>'+#10+
         '<td>'+#10;
       case aparam.ParamType of
         rpParamBool:
@@ -2035,7 +2035,7 @@ end;
           AParamsHtml:=AParamsHtml+
            '<select name="Param'+aparam.Name+'" id="Param'+aparam.Name+'" ';
           if Length(aparam.Hint)>0 then
-           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+           AParamsHtml:=AParamsHtml+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
           if aparam.IsReadOnly then
            AParamsHtml:=AParamsHtml+' readonly ';
           AParamsHtml:=AParamsHtml+'>'+#10;
@@ -2047,7 +2047,7 @@ end;
           end
           else if (not VarIsNull(aparam.Value)) and (not aparam.Value) then
            AParamsHtml:=AParamsHtml+' selected ';
-          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpNo)+'</option>'+#10;
+          AParamsHtml:=AParamsHtml+'>'+TNetEncoding.HTML.Encode(SRpNo)+'</option>'+#10;
           AParamsHtml:=AParamsHtml+'<option value="'+BoolToStr(True,True)+'" ';
           if Length(PrevValue)>0 then
           begin
@@ -2056,7 +2056,7 @@ end;
           end
           else if (not VarIsNull(aparam.Value)) and aparam.Value then
            AParamsHtml:=AParamsHtml+' selected ';
-          AParamsHtml:=AParamsHtml+'>'+HtmlEncode(SRpYes)+'</option>'+#10+
+          AParamsHtml:=AParamsHtml+'>'+TNetEncoding.HTML.Encode(SRpYes)+'</option>'+#10+
            '</select>'+#10;
          end;
         rpParamMultiple:
@@ -2064,7 +2064,7 @@ end;
           AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
            '" id="Param'+aparam.Name+'" multiple ';
           if Length(aparam.Hint)>0 then
-           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+           AParamsHtml:=AParamsHtml+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
           if aparam.IsReadOnly then
            AParamsHtml:=AParamsHtml+' readonly ';
           multisize:=10;
@@ -2076,7 +2076,7 @@ end;
            AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
            if aparam.Selected.IndexOf(IntToStr(k))>=0 then
             AParamsHtml:=AParamsHtml+' selected ';
-           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+           AParamsHtml:=AParamsHtml+'>'+TNetEncoding.HTML.Encode(aparam.Items.Strings[k])+
             '</option>'+#10;
           end;
           AParamsHtml:=AParamsHtml+'</select>'+#10;
@@ -2086,7 +2086,7 @@ end;
           AParamsHtml:=AParamsHtml+'<select name="Param'+aparam.Name+
            '" id="Param'+aparam.Name+'" ';
           if Length(aparam.Hint)>0 then
-           AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+           AParamsHtml:=AParamsHtml+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
           if aparam.IsReadOnly then
            AParamsHtml:=AParamsHtml+' readonly ';
           AParamsHtml:=AParamsHtml+'>'+#10;
@@ -2106,7 +2106,7 @@ end;
            AParamsHtml:=AParamsHtml+'<option value="'+IntToStr(k)+'" ';
            if k=selectedindex then
             AParamsHtml:=AParamsHtml+' selected ';
-           AParamsHtml:=AParamsHtml+'>'+HtmlEncode(aparam.Items.Strings[k])+
+           AParamsHtml:=AParamsHtml+'>'+TNetEncoding.HTML.Encode(aparam.Items.Strings[k])+
             '</option>'+#10;
           end;
           AParamsHtml:=AParamsHtml+'</select>'+#10;
@@ -2118,10 +2118,10 @@ end;
          AParamsHtml:=AParamsHtml+'<input type="text" name="Param'+
           aparam.Name+'" id="Param'+aparam.Name+'" ';
          if Length(aparam.Hint)>0 then
-          AParamsHtml:=AParamsHtml+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          AParamsHtml:=AParamsHtml+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
          if aparam.IsReadOnly then
           AParamsHtml:=AParamsHtml+' readonly ';
-         AParamsHtml:=AParamsHtml+' value="'+HtmlEncode(PrevValue)+'">';
+         AParamsHtml:=AParamsHtml+' value="'+TNetEncoding.HTML.Encode(PrevValue)+'">';
         end;
       end;
       AParamsHtml:=AParamsHtml+'</td>'+#10;
@@ -2526,7 +2526,7 @@ begin
   LStatus:='EXISTS'
  else
   LStatus:='MISSING';
- Result:='<p>'+HtmlEncode(ACaption)+': '+HtmlEncode(APath)+' ['+LStatus+']</p>';
+ Result:='<p>'+TNetEncoding.HTML.Encode(ACaption)+': '+TNetEncoding.HTML.Encode(APath)+' ['+LStatus+']</p>';
 end;
 
 procedure TRpWebPageLoader.GetWebPage(Request: TWebRequest;apage:TRpWebPage;
@@ -2547,73 +2547,73 @@ begin
     begin
      astring:='<html><body>'+TranslateStr(837,'Report Manager Web Server')+#10+
       '<p></p>'+TranslateStr(91,'Version')+' '+RM_VERSION+#10+'<p></p>'+
-      TranslateStr(743,'Configuration File')+': '+HtmlEncode(Ffilenameconfig);
+      TranslateStr(743,'Configuration File')+': '+TNetEncoding.HTML.Encode(Ffilenameconfig);
      if Length(FLogFileName)>0 then
       astring:=astring+'<p>[CONFIG]LOGFILE='+
-       HtmlEncode(ExpandFileName(FLogFileName))+'</p>'
+       TNetEncoding.HTML.Encode(ExpandFileName(FLogFileName))+'</p>'
      else
       astring:=astring+'<p>[CONFIG]LOGFILE=</p>';
      astring:=astring+'<p>[CONFIG]LOG_JSON='+
-      HtmlEncode(BoolToStr(FLogJson,True))+'</p>';
+      TNetEncoding.HTML.Encode(BoolToStr(FLogJson,True))+'</p>';
      if Length(FJsonLogFilename)>0 then
       astring:=astring+'<p>JSON Log File='+
-       HtmlEncode(ExpandFileName(FJsonLogFilename))+'</p>'
+       TNetEncoding.HTML.Encode(ExpandFileName(FJsonLogFilename))+'</p>'
      else
       astring:=astring+'<p>JSON Log File=</p>';
 
      if Length(LogFileErrorMessage)>0 then
      begin
-      astring:=astring+'<p>'+HtmlEncode(LogFileErrorMessage)+'</p>';
+      astring:=astring+'<p>'+TNetEncoding.HTML.Encode(LogFileErrorMessage)+'</p>';
      end;
      // Configuration
-     astring:=astring+'<p>[CONFIG]PAGESDIR='+HtmlEncode(FPagesDirectory)+'</p>';
-    astring:=astring+'<p>[SECURITY]USER_ACCESS='+HtmlEncode(BoolToStr(FAllowUserAccess,True))+'</p>';
-    astring:=astring+'<p>[SECURITY]API_KEY_ACCESS='+HtmlEncode(BoolToStr(FAllowApiKeyAccess,True))+'</p>';
-    astring:=astring+'<p>[SECURITY]SHOWUNAUTHORIZEDPAGE='+HtmlEncode(BoolToStr(FShowUnauthorizedPage,True))+'</p>';
-    astring:=astring+'<p>[SECURITY]URLGETPARAMS='+HtmlEncode(BoolToStr(FUrlGetParams,True))+'</p>';
-    astring:=astring+'<p>Connection type='+HtmlEncode(GetConnectionType(Request))+'</p>';
-    astring:=astring+'<p>Connection secure='+HtmlEncode(BoolToStr(IsSecureConnection(Request),True))+'</p>';
+     astring:=astring+'<p>[CONFIG]PAGESDIR='+TNetEncoding.HTML.Encode(FPagesDirectory)+'</p>';
+    astring:=astring+'<p>[SECURITY]USER_ACCESS='+TNetEncoding.HTML.Encode(BoolToStr(FAllowUserAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]API_KEY_ACCESS='+TNetEncoding.HTML.Encode(BoolToStr(FAllowApiKeyAccess,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]SHOWUNAUTHORIZEDPAGE='+TNetEncoding.HTML.Encode(BoolToStr(FShowUnauthorizedPage,True))+'</p>';
+    astring:=astring+'<p>[SECURITY]URLGETPARAMS='+TNetEncoding.HTML.Encode(BoolToStr(FUrlGetParams,True))+'</p>';
+    astring:=astring+'<p>Connection type='+TNetEncoding.HTML.Encode(GetConnectionType(Request))+'</p>';
+    astring:=astring+'<p>Connection secure='+TNetEncoding.HTML.Encode(BoolToStr(IsSecureConnection(Request),True))+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_PROTOCOL','HTTPS_PROTOCOL']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>TLS protocol='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>TLS protocol='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_CIPHER','HTTPS_CIPHER']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>TLS cipher='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>TLS cipher='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_CIPHER_USEKEYSIZE','HTTPS_KEYSIZE']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>TLS key size='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>TLS key size='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_SERVER_S_DN','CERT_SUBJECT']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate subject='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>Certificate subject='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_SERVER_I_DN','CERT_ISSUER']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate issuer='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>Certificate issuer='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['CERT_SERIALNUMBER','SSL_SERVER_M_SERIAL']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate serial='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>Certificate serial='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_START','CERT_VALIDFROM']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate valid from='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>Certificate valid from='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_SERVER_V_END','CERT_VALIDUNTIL']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate valid until='+HtmlEncode(atemp)+'</p>';
+     astring:=astring+'<p>Certificate valid until='+TNetEncoding.HTML.Encode(atemp)+'</p>';
     atemp:=GetFirstRequestValue(Request,['SSL_SERVER_VERIFY','CERT_SERVER_VERIFY',
      'SSL_VERIFY_RESULT','CERT_VERIFY_RESULT']);
     if Length(atemp)>0 then
-     astring:=astring+'<p>Certificate verify raw='+HtmlEncode(atemp)+'</p>';
-    astring:=astring+'<p>Certificate valid='+HtmlEncode(GetCertificateValidityText(Request))+'</p>';
+     astring:=astring+'<p>Certificate verify raw='+TNetEncoding.HTML.Encode(atemp)+'</p>';
+    astring:=astring+'<p>Certificate valid='+TNetEncoding.HTML.Encode(GetCertificateValidityText(Request))+'</p>';
      astring:=astring+'<p>Configured libs:<br/>';
      // Configured libs
      for i:=0 to FRpAliasLibs.Connections.Count-1 do
      begin
-      astring:=astring+HtmlEncode(FRpAliasLibs.Connections.Items[i].Alias)+'<br/>';
+      astring:=astring+TNetEncoding.HTML.Encode(FRpAliasLibs.Connections.Items[i].Alias)+'<br/>';
      end;
      astring:=astring+'</p>';
      try
       ConAdmin:=TRpConnAdmin.Create;
       try
        astring:=astring+'<p>[DBXCONNECTIONS]='+
-        HtmlEncode(ConAdmin.configfilename)+'</p>';
+        TNetEncoding.HTML.Encode(ConAdmin.configfilename)+'</p>';
        // Configuration resolution diagnostic: make it explicit WHERE each file is
        // searched and WHICH one is effective. CGI is read-only; selfhosted copies
        // the files to the editable home path because it lacks permissions to
@@ -2660,7 +2660,7 @@ begin
         On E:Exception do
         begin
          astring:=astring+'<p>DBXConnections accessibility error:'+
-          HtmlEncode(E.Message)+'</p>';
+          TNetEncoding.HTML.Encode(E.Message)+'</p>';
         end;
        end;
       finally
@@ -2670,7 +2670,7 @@ begin
       on E:Exception do
       begin
        astring:=astring+'<p><b>DBXConnections accessibility error:'+
-        HtmlEncode(E.Message)+'</b></p>';
+        TNetEncoding.HTML.Encode(E.Message)+'</b></p>';
       end;
      end;
      astring:=astring+'</p>';
@@ -3332,7 +3332,7 @@ begin
       reportlist:=reportlist+#10+'<form method="post" action="./showparams">'+
        HiddenInput('reportname',alist.Strings[i])+HiddenInput('aliasname',aliasname)+
        HiddenAuthInputs(Request)+'<input type="submit" value="'+
-       HtmlEncode(reportname)+'">'+'</form>';
+       TNetEncoding.HTML.Encode(reportname)+'">'+'</form>';
     end;
    end;
   finally
@@ -3440,15 +3440,15 @@ begin
      areportname,[rfReplaceAll]);
 
     inputstring:='<input type="hidden" name="reportname" '+
-    'value="'+HtmlEncode(GetRequestParam(Request,'reportname'))+'">';
+    'value="'+TNetEncoding.HTML.Encode(GetRequestParam(Request,'reportname'))+'">';
     inputstring:=inputstring+'<input type="hidden" name="aliasname" '+
-    'value="'+HtmlEncode(GetRequestParam(Request,'aliasname'))+'">';
+    'value="'+TNetEncoding.HTML.Encode(GetRequestParam(Request,'aliasname'))+'">';
     if not HasServerApiKey(Request) then
     begin
      inputstring:=inputstring+'<input type="hidden" name="username" '+
-     'value="'+HtmlEncode(GetRequestParam(Request,'username'))+'">';
+     'value="'+TNetEncoding.HTML.Encode(GetRequestParam(Request,'username'))+'">';
      inputstring:=inputstring+'<input type="hidden" name="password" '+
-     'value="'+HtmlEncode(GetRequestParam(Request,'password'))+'">';
+     'value="'+TNetEncoding.HTML.Encode(GetRequestParam(Request,'password'))+'">';
     end;
     astring:=StringReplace(astring,REPMAN_HIDDEN,
      inputstring,[rfReplaceAll]);
@@ -3464,7 +3464,7 @@ begin
       if (Length(prevvalue)<1) and FUrlGetParams then
        prevvalue:=Request.QueryFields.Values['Param'+aparam.Name];
       aparamstring:=aparamstring+'<tr>'+#10+
-       '<td>'+HtmlEncode(aparam.Description)+'</td>'+#10+
+       '<td>'+TNetEncoding.HTML.Encode(aparam.Description)+'</td>'+#10+
        '<td>'+#10;
       case aparam.ParamType of
        rpParamBool:
@@ -3472,7 +3472,7 @@ begin
          aparamstring:=aparamstring+
           '<select name="Param'+aparam.Name+'" id="Param'+aparam.Name+'" ';
          if Length(aparam.Hint)>0 then
-          aparamstring:=aparamstring+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+          aparamstring:=aparamstring+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
          if aparam.IsReadOnly then
           aparamstring:=aparamstring+' readonly ';
          aparamstring:=aparamstring+'>'+#10;
@@ -3489,14 +3489,14 @@ begin
          if Not VarIsNull(aparam.Value) then
           if Not aparam.Value then
            aparamstring:=aparamstring+' selected ';
-         aparamstring:=aparamstring+'>'+HtmlEncode(SRpNo)+
+         aparamstring:=aparamstring+'>'+TNetEncoding.HTML.Encode(SRpNo)+
           '</option>'+#10;
          aparamstring:=aparamstring+'<option value="'+
            BoolToStr(true,true)+'" ';
          if Not VarIsNull(aparam.Value) then
           if aparam.Value then
            aparamstring:=aparamstring+' selected ';
-         aparamstring:=aparamstring+'>'+HtmlEncode(SRpYes)+
+         aparamstring:=aparamstring+'>'+TNetEncoding.HTML.Encode(SRpYes)+
           '</option>'+#10;
          aparamstring:=aparamstring+
           '</select>'+#10;
@@ -3512,7 +3512,7 @@ begin
           aparam.Name+'" id="Param'+aparam.Name+'" ';
          aparamstring:=aparamstring+' multiple ';
          if Length(aparam.Hint)>0 then
-           aparamstring:=aparamstring+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+           aparamstring:=aparamstring+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
          if aparam.Isreadonly then
           aparamstring:=aparamstring+' readonly ';
          multisize:=10;
@@ -3525,7 +3525,7 @@ begin
             IntToStr(k)+'" ';
           if aparam.Selected.IndexOf(IntToStr(k))>=0 then
            aparamstring:=aparamstring+' selected ';
-          aparamstring:=aparamstring+'>'+HtmlEncode(aparam.Items.Strings[k])+
+          aparamstring:=aparamstring+'>'+TNetEncoding.HTML.Encode(aparam.Items.Strings[k])+
            '</option>'+#10;
          end;
          aparamstring:=aparamstring+'</select>'+#10;
@@ -3540,7 +3540,7 @@ begin
          aparamstring:=aparamstring+'<select name="Param'+
           aparam.Name+'" id="Param'+aparam.Name+'" ';
          if Length(aparam.Hint)>0 then
-           aparamstring:=aparamstring+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+           aparamstring:=aparamstring+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
          if aparam.Isreadonly then
           aparamstring:=aparamstring+' readonly ';
          aparamstring:=aparamstring+'>'+#10;
@@ -3559,7 +3559,7 @@ begin
             IntToStr(k)+'" ';
           if k=selectedindex then
            aparamstring:=aparamstring+' selected ';
-          aparamstring:=aparamstring+'>'+HtmlEncode(aparam.Items.Strings[k])+
+          aparamstring:=aparamstring+'>'+TNetEncoding.HTML.Encode(aparam.Items.Strings[k])+
            '</option>'+#10;
          end;
          aparamstring:=aparamstring+'</select>'+#10;
@@ -3573,11 +3573,11 @@ begin
          '<input type="text" name="Param'+
          aparam.Name+'" id="Param'+aparam.Name+'" ';
         if Length(aparam.Hint)>0 then
-         aparamstring:=aparamstring+' alt="'+HtmlEncode(aparam.Hint)+'" ';
+         aparamstring:=aparamstring+' alt="'+TNetEncoding.HTML.Encode(aparam.Hint)+'" ';
         if aparam.IsReadOnly then
          aparamstring:=aparamstring+' readonly '+#10;
         aparamstring:=aparamstring+
-         ' value="'+HtmlEncode(prevvalue)+'">';
+         ' value="'+TNetEncoding.HTML.Encode(prevvalue)+'">';
        end;
       end;
       aparamstring:=aparamstring+'</td>'+#10;
@@ -3610,7 +3610,7 @@ begin
     if Length(GetRequestParam(Request,'ERROR_MESSAGE'))>0 then
     begin
      aparamstring:=aparamstring+'<tr>'+
-      '<td  colspan="2"><b>'+HtmlEncode(GetRequestParam(Request,'ERROR_MESSAGE'))
+      '<td  colspan="2"><b>'+TNetEncoding.HTML.Encode(GetRequestParam(Request,'ERROR_MESSAGE'))
       +'</b></td><tr>';
     end;
     tofocus:=GetRequestParam(Request,'ERROR_PARAM');
@@ -3859,12 +3859,12 @@ begin
 
           LResultHtml :=
             '<h3>Response</h3>' +
-            '<p>Status</p><pre>' + HtmlEncode(IntToStr(LResponse.StatusCode) + ' ' +
+            '<p>Status</p><pre>' + TNetEncoding.HTML.Encode(IntToStr(LResponse.StatusCode) + ' ' +
               LResponse.StatusText) + '</pre>' +
-            '<p>Response headers</p><pre>' + HtmlEncode('Content-Type: ' +
+            '<p>Response headers</p><pre>' + TNetEncoding.HTML.Encode('Content-Type: ' +
               LResponseContentType + sLineBreak + 'Content-Length: ' +
               IntToStr(LResponseStream.Size)) + '</pre>' +
-            '<p>Response body</p><pre>' + HtmlEncode(LResponseBodyText) + '</pre>';
+            '<p>Response body</p><pre>' + TNetEncoding.HTML.Encode(LResponseBodyText) + '</pre>';
 
           if LHasDownload then
             LMessage := 'PDF response ready for download.'
@@ -3880,7 +3880,7 @@ begin
           LResultHtml :=
             '<h3>Response</h3>' +
             '<p>Status</p><pre>Request failed</pre>' +
-            '<p>Response body</p><pre>' + HtmlEncode(E.Message) + '</pre>';
+            '<p>Response body</p><pre>' + TNetEncoding.HTML.Encode(E.Message) + '</pre>';
           LMessage := 'Request execution failed.';
         end;
       end;

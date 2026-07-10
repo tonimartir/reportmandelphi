@@ -37,7 +37,7 @@ uses
 {$R *.res}
 
 begin
-  Graphics.DefFontData.Name:=Screen.IconFont.Name;
+  Graphics.DefFontData.Name:=ShortString(AnsiString(Screen.IconFont.Name));
   IsMultiThread:=True;
   Application.Initialize;
   Application.Title := 'Report Manager Report Server';

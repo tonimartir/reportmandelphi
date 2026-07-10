@@ -300,7 +300,6 @@ begin
   if SingletonDWriteFactory = nil then
   begin
     LDWriteFactory := nil;
-    hr := E_FAIL;
     try
       hr := DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
     except

@@ -454,12 +454,12 @@ implementation
 
 function zError(err : inti) : string;
 begin
-  zError := z_errmsg[Z_NEED_DICT-err];
+  zError := String(z_errmsg[Z_NEED_DICT-err]);
 end;
 
 function zlibVersion : string;
 begin
-  zlibVersion := ZLIB_VERSION;
+  zlibVersion := String(ZLIB_VERSION);
 end;
 
 procedure z_error (m : string);

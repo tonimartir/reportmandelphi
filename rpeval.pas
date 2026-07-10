@@ -1207,7 +1207,9 @@ function TRpCustomEvaluator.Searchidentifier(name1:WideString):TRpIdentifier;
 var
 pospunt:byte;
 primer,sensepunt:string;
+{$IFDEF USEREPORTFUNC}
 doble:Boolean;
+{$ENDIF}
 {$IFNDEF USEEVALHASH}
  index:integer;
 {$ENDIF}

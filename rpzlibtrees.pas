@@ -2013,7 +2013,7 @@ begin
 
     { Check that the overlay between pending_buf and d_buf+l_buf is ok: }
     {$IFDEF DEBUG}
-    Assert(s.pending < s.lit_bufsize + 2*lx, 'pendingBuf overflow');
+    Assert(Int64(s.pending) < Int64(s.lit_bufsize + 2*lx), 'pendingBuf overflow');
     {$ENDIF}
   until (lx >= s.last_lit);
 
