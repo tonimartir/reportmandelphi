@@ -111,9 +111,11 @@ type
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
 {$IFDEF FIREDAC}
+{$IFDEF DEBUG}
     procedure AcceptAnyServerCertificate(const Sender: TObject;
       const ARequest: TURLRequest; const Certificate: TCertificate;
       var Accepted: Boolean);
+{$ENDIF}
 {$ENDIF}
     
     // Persistence
@@ -254,14 +256,14 @@ end;
 {$ENDIF}
 
 {$IFDEF FIREDAC}
+{$IFDEF DEBUG}
 procedure TRpAuthManager.AcceptAnyServerCertificate(const Sender: TObject;
   const ARequest: TURLRequest; const Certificate: TCertificate;
   var Accepted: Boolean);
 begin
-{$IFDEF DEBUG}
   Accepted := True;
-{$ENDIF}
 end;
+{$ENDIF}
 
 procedure TRpAuthManager.ConfigureDebugHttpClient(AHttpClient: TNetHTTPClient);
 begin

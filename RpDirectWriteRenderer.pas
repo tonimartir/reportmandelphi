@@ -373,10 +373,6 @@ var
   GlyphList: TList<TGlyphPos>;
   runIsRTL: Boolean;
   // trimming
-  LastIndex: Integer;
-  ch: WideChar;
-  isWS: Boolean;
-  keepNBSP: Boolean;
   clusterIndexCount: integer;
   clusterDic: TDictionary<integer,integer>;
   currentCluster:integer;

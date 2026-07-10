@@ -2700,7 +2700,7 @@ end;
 
 function TRpBaseReport.FindReporItemByName(itemName: string):TObject;
 var
- i,j:integer;
+ i:integer;
  colItem: TCollectionItem;
  colItem2: TCollectionItem;
  colItem3: TCollectionItem;
