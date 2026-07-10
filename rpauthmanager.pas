@@ -89,10 +89,10 @@ type
     FAuthListeners: TList<TRpAuthEvent>;
   {$IFDEF MSWINDOWS}
     FDispatchHandle: HWND;
-  {$ENDIF}
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
+  {$ENDIF}
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
   {$IFDEF MSWINDOWS}
     procedure DispatchWndProc(var Msg: TMessage);
@@ -107,9 +107,11 @@ type
     procedure SetIsLoggedIn(Value: Boolean);
     procedure SetAIEnabled(Value: Boolean);
     procedure SetAILanguage(const Value: string);
+  {$IFDEF MSWINDOWS}
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
+  {$ENDIF}
 {$IFDEF FIREDAC}
 {$IFDEF DEBUG}
     procedure AcceptAnyServerCertificate(const Sender: TObject;
@@ -817,13 +819,13 @@ class function TRpAuthManager.ResolveDefaultAILanguage: string;
 var
 {$IFDEF MSWINDOWS}
   LBuffer: array[0..15] of Char;
-  LCode: string;
 {$ELSE}
   LPos: Integer;
 {$ENDIF}
+  LCode: string;
 begin
-  LCode := '';
 {$IFDEF MSWINDOWS}
+  LCode := '';
   if GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, LBuffer,
     Length(LBuffer)) > 0 then
     LCode := LowerCase(string(LBuffer));
@@ -888,8 +890,8 @@ begin
   FLogListeners.Remove(AListener);
 end;
 
-function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
 {$IFDEF MSWINDOWS}
+function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
 var
   LListenSocket, LClientSocket: TSocket;
   LAddr: sockaddr_in;
@@ -1000,13 +1002,9 @@ begin
     closesocket(LListenSocket);
   end;
 end;
-{$ELSE}
-begin
-  Result := False;
-  Log('OAuth loopback callback is not supported on this platform.');
-end;
 {$ENDIF}
 
+{$IFDEF MSWINDOWS}
 function TRpAuthManager.ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
 {$IFDEF FIREDAC}
 var
@@ -1086,7 +1084,9 @@ begin
   Result := False;
 end;
 {$ENDIF}
+{$ENDIF}
 
+{$IFDEF MSWINDOWS}
 function TRpAuthManager.ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
 {$IFDEF FIREDAC}
 var
@@ -1195,6 +1195,7 @@ end;
 begin
   Result := False;
 end;
+{$ENDIF}
 {$ENDIF}
 
 function TRpAuthManager.LoginGoogle: Boolean;

@@ -67,8 +67,8 @@ const
 const
   UBIDI_DO_MIRRORING = $0001;
   UBIDI_MAX_EXPLICIT_LEVEL = 61;
-  UBIDI_DEFAULT_LTR        = $FE;  // level para pedir LTR automático
-  UBIDI_DEFAULT_RTL        = $FF;  // level para pedir RTL automático
+  UBIDI_DEFAULT_LTR        = $FE;  // level para pedir LTR automï¿½tico
+  UBIDI_DEFAULT_RTL        = $FF;  // level para pedir RTL automï¿½tico
   UBIDI_L       = 0;   // Letter L
   UBIDI_R       = 1;   // Letter R
   UBIDI_AL      = 2;   // Arabic Letter
@@ -108,19 +108,19 @@ const
   UBRK_LINE      = 2;
   UBRK_SENTENCE  = 3;
 
-  UBRK_WORD_NONE = 0; // no es límite de palabra
+  UBRK_WORD_NONE = 0; // no es lï¿½mite de palabra
 
-  UBRK_WORD_NUMBER = 100; // límite dentro de un número
+  UBRK_WORD_NUMBER = 100; // lï¿½mite dentro de un nï¿½mero
 
-  UBRK_WORD_LETTER = 200; // límite entre letras
+  UBRK_WORD_LETTER = 200; // lï¿½mite entre letras
 
-  UBRK_WORD_KANA = 300; // límite para kana (japonés)
+  UBRK_WORD_KANA = 300; // lï¿½mite para kana (japonï¿½s)
 
-  UBRK_WORD_IDEO = 400; // límite para ideogramas (chino, kanji)
-  // UBreakIterator devuelve este valor cuando no hay más límites
+  UBRK_WORD_IDEO = 400; // lï¿½mite para ideogramas (chino, kanji)
+  // UBreakIterator devuelve este valor cuando no hay mï¿½s lï¿½mites
   UBRK_DONE = -1;
  type
-   // Representa un iterador de límites de texto
+   // Representa un iterador de lï¿½mites de texto
   UBreakIterator = Pointer;
   UScriptCode=Integer;
   UChar = Int32; // 32 bi
@@ -183,7 +183,7 @@ const
   // Reiniciar iterador al inicio
   T_ubrk_first = function(bi: UBreakIterator): Integer; cdecl;
 
-  // Avanzar al siguiente límite
+  // Avanzar al siguiente lï¿½mite
   T_ubrk_next = function(bi: UBreakIterator): Integer; cdecl;
 
   // Cambiar el texto del iterador
@@ -263,7 +263,7 @@ end;
 
 function TICUBidi.GetVisualMap(var Map: TArray<Integer>): Boolean;
 var
-  L, i, status: Integer;
+  L, status: Integer;
 begin
   Result := False;
   status := 0;
@@ -319,19 +319,19 @@ begin
 
   for i := 0 to runCount - 1 do
   begin
-    // devuelve start lógico y length (no limit), y la dirección del run (UBIDI_LTR/UBIDI_RTL/...)
+    // devuelve start lï¿½gico y length (no limit), y la direcciï¿½n del run (UBIDI_LTR/UBIDI_RTL/...)
     dir := ubidi_getVisualRun(FBidi, i, vStart, vLength);
 
-    // Seguridad básica
+    // Seguridad bï¿½sica
     if (vStart < 0) or (vLength <= 0) then
       Continue;
 
-    vLimit := vStart + vLength; // límite exclusivo
+    vLimit := vStart + vLength; // lï¿½mite exclusivo
 
-    // rellenar el record básico
-    run.LogicalStart := vStart;      // índice lógico del inicio
-    run.Length := vLength;           // longitud en unidades lógicas (UTF-16 code units)
-    run.VisualIndex := i;            // índice visual (posición del run)
+    // rellenar el record bï¿½sico
+    run.LogicalStart := vStart;      // ï¿½ndice lï¿½gico del inicio
+    run.Length := vLength;           // longitud en unidades lï¿½gicas (UTF-16 code units)
+    run.VisualIndex := i;            // ï¿½ndice visual (posiciï¿½n del run)
 
 
 
@@ -341,22 +341,18 @@ end;
 *)
 function U_FAILURE(code: UErrorCode): Boolean;
 begin
-  // En ICU, cualquier código >= 0 es éxito
+  // En ICU, cualquier cï¿½digo >= 0 es ï¿½xito
   Result := code < 0;
 end;
 
 
 function FillPossibleWordBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
-var
-  bi: UBreakIterator;
-  status: UErrorCode;
-  pos, prevPos: Integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
  (* if RunText = '' then Exit;
 
   status := U_ZERO_ERROR;
-  // Usamos BREAK ITERATOR de palabras en lugar de línea
+  // Usamos BREAK ITERATOR de palabras en lugar de lï¿½nea
   bi := ubrk_open(UBRK_WORD, 'ar', PChar(RunText), Length(RunText), status);
   if U_FAILURE(status) then Exit;
 
@@ -365,7 +361,7 @@ begin
     pos := ubrk_next(bi);
     while pos <> UBRK_DONE do
     begin
-      // Solo consideramos los límites “reales” de palabra
+      // Solo consideramos los lï¿½mites ï¿½realesï¿½ de palabra
       if ubrk_getRuleStatus(bi) <> UBRK_WORD_NONE then
         Result.Add(prevPos, pos);
       prevPos := pos;
@@ -377,14 +373,6 @@ begin
 end;
 
 function FillPossibleLineBreaksString(const RunText: UnicodeString): TDictionary<Integer,Integer>;
-var
-  bi: UBreakIterator;
-  status: UErrorCode;
-  pos, prevPos: Integer;
-  locale: array of char;
-  buf: array of WideChar;
-  i, txtLen: Integer;
-  flag:Integer;
 begin
   Result := TDictionary<Integer,Integer>.Create;
   (*
@@ -400,12 +388,12 @@ begin
   locale[1]:='r';
 
 
-  // (diagnóstico opcional)
+  // (diagnï¿½stico opcional)
   // Writeln('txtLen=', txtLen);
   // for i := 0 to Min(txtLen-1, 10) do Writeln('cp[', i, ']=', IntToHex(Word(buf[i]), 4));
 
   status := U_ZERO_ERROR;
-  // pasar locale en UTF-8 (aunque 'ar' es ASCII, mejor hacerlo explícito)
+  // pasar locale en UTF-8 (aunque 'ar' es ASCII, mejor hacerlo explï¿½cito)
   flag:=UBRK_LINE;
   // 2) Crear iterator SIN texto (recomendado)
   bi := ubrk_open(flag, PAnsiChar(locale), nil, 0, status);
@@ -425,7 +413,7 @@ begin
       Exit;
     end;
 
-    // 4) Iterar límites
+    // 4) Iterar lï¿½mites
     prevPos := ubrk_first(bi);
     pos := ubrk_next(bi);
     while pos <> UBRK_DONE do
@@ -459,7 +447,7 @@ begin
     buf[i-1] := UChar(RunText[i]);  // copiar code units
 
   status := U_ZERO_ERROR;
-  // Creamos un BreakIterator de tipo línea
+  // Creamos un BreakIterator de tipo lï¿½nea
   ptext:=PWideChar(RunText);
   plength:=Length(ptext);
   bi := ubrk_open(UBRK_LINE, PAnsiChar(AnsiString('ar')), @buf[0], Length(buf), status);
@@ -510,11 +498,11 @@ begin
   if AText <> '' then
     pText := PWideChar(AText);
 
-  // recorremos runs lógicos avanzando por el texto
+  // recorremos runs lï¿½gicos avanzando por el texto
   cur := 0;
   while cur < textLen do
   begin
-    // Llamada al binding que rellena lLimit (índice exclusivo) y level
+    // Llamada al binding que rellena lLimit (ï¿½ndice exclusivo) y level
     lLimit := 0;
     level := 0;
     ubidi_getLogicalRun(FBidi, cur, lLimit, level);
@@ -546,9 +534,9 @@ begin
       for j := lStart to (lStart + lLength - 1) do
       begin
         uerr := U_ZERO_ERROR;
-        // toma la unidad UTF-16 en la posición j
+        // toma la unidad UTF-16 en la posiciï¿½n j
         charCode := UChar(Ord(pText[j]));
-        // uscript_getScript puede requerir UChar32; si tienes una versión que acepta UChar, úsala
+        // uscript_getScript puede requerir UChar32; si tienes una versiï¿½n que acepta UChar, ï¿½sala
         script := uscript_getScript(charCode,uerr);
         if uerr <> U_ZERO_ERROR then
         begin
@@ -578,7 +566,7 @@ begin
 
     Result.Add(run);
 
-    // avanzar al siguiente run lógico
+    // avanzar al siguiente run lï¿½gico
     cur := lStart + lLength;
   end;
 end;
@@ -615,26 +603,26 @@ begin
 
   for i := 0 to runCount - 1 do
   begin
-    // devuelve start lógico y length (no limit), y la dirección del run (UBIDI_LTR/UBIDI_RTL/UBIDI_MIXED)
+    // devuelve start lï¿½gico y length (no limit), y la direcciï¿½n del run (UBIDI_LTR/UBIDI_RTL/UBIDI_MIXED)
     dir := ubidi_getVisualRun(FBidi, i, vStart, vLength);
 
-    // Seguridad básica
+    // Seguridad bï¿½sica
     if (vStart < 0) or (vLength <= 0) then
       Continue;
 
-    vLimit := vStart + vLength; // límite exclusivo
+    vLimit := vStart + vLength; // lï¿½mite exclusivo
 
-    // rellenar el record básico
-    run.LogicalStart := vStart;      // índice lógico del inicio
-    run.Length := vLength;           // longitud en unidades lógicas (UTF-16 code units)
-    run.VisualIndex := i;            // índice visual (posición del run)
+    // rellenar el record bï¿½sico
+    run.LogicalStart := vStart;      // ï¿½ndice lï¿½gico del inicio
+    run.Length := vLength;           // longitud en unidades lï¿½gicas (UTF-16 code units)
+    run.VisualIndex := i;            // ï¿½ndice visual (posiciï¿½n del run)
 
-    // nivel del primer carácter (útil para afinar direction si es MIXED)
+    // nivel del primer carï¿½cter (ï¿½til para afinar direction si es MIXED)
     level := ubidi_getLevelAt(FBidi, vStart);
     run.Level := level;
 
-    // determinar dirección: usar lo devuelto por ubidi_getVisualRun,
-    // pero si es UBIDI_MIXED afinamos por el nivel del primer carácter
+    // determinar direcciï¿½n: usar lo devuelto por ubidi_getVisualRun,
+    // pero si es UBIDI_MIXED afinamos por el nivel del primer carï¿½cter
     if dir = UBIDI_MIXED then
     begin
       if (level and 1) <> 0 then
@@ -719,7 +707,7 @@ begin
   ICUlib := 0;
   ICUSuffix := '';
 
-  // Intentar cargar la versión de ICU desde 60 hasta 90
+  // Intentar cargar la versiï¿½n de ICU desde 60 hasta 90
   for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
   begin
 {$IFDEF MSWINDOWS}
@@ -745,90 +733,90 @@ begin
 
 
     // ==== Cargar ICU Bidi ====
-  ProcName := 'ubidi_open' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_open' + String(AnsiString(ICUSuffix));
   ubidi_open := GetProcAddr(ProcName);
   if not Assigned(ubidi_open) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_close' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_close' + String(AnsiString(ICUSuffix));
   ubidi_close := GetProcAddr(ProcName);
   if not Assigned(ubidi_close) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
 
-  // Cargar funciones dinámicamente con sufijo detectado
+  // Cargar funciones dinï¿½micamente con sufijo detectado
   ProcName := 'unorm2_getNFCInstance' + ICUSuffix;
   unorm2_getNFCInstance := TUnorm2_getNFCInstance(GetProcAddr(ProcName));
 
   ProcName := 'unorm2_normalize' + PAnsiChar(AnsiString(ICUSuffix));
   unorm2_normalize := TUnorm2_normalize(GetProcAddr(ProcName));
 
-  ProcName := 'ubidi_setPara' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_setPara' + String(AnsiString(ICUSuffix));
   ubidi_setPara := GetProcAddr(ProcName);
   if not Assigned(ubidi_setPara) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_getVisualRun' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_getVisualRun' + String(AnsiString(ICUSuffix));
   ubidi_getVisualRun := GetProcAddr(ProcName);
   if not Assigned(ubidi_getVisualRun) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_getVisualMap' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_getVisualMap' + String(AnsiString(ICUSuffix));
   ubidi_getVisualMap := GetProcAddr(ProcName);
   if not Assigned(ubidi_getVisualMap) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_getLength' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_getLength' + String(AnsiString(ICUSuffix));
   ubidi_getLength := GetProcAddr(ProcName);
   if not Assigned(ubidi_getLength) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_countRuns' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_countRuns' + String(AnsiString(ICUSuffix));
   ubidi_countRuns := GetProcAddr(ProcName);
   if not Assigned(ubidi_countRuns) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubidi_getLogicalRun' + AnsiString(ICUSuffix);
+  ProcName := 'ubidi_getLogicalRun' + String(AnsiString(ICUSuffix));
   ubidi_getLogicalRun := GetProcAddr(ProcName);
   if not Assigned(ubidi_getLogicalRun) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubidi_getLevelAt' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubidi_getLevelAt' + String(AnsiString(ICUSuffix));
   ubidi_getLevelAt := GetProcAddr(ProcName);
   if not Assigned(ubidi_getLevelAt) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'uscript_getScript' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'uscript_getScript' + String(AnsiString(ICUSuffix));
   uscript_getScript := GetProcAddr(ProcName);
   if not Assigned(uscript_getScript) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'uscript_getShortName' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'uscript_getShortName' + String(AnsiString(ICUSuffix));
   uscript_getShortName := GetProcAddr(ProcName);
   if not Assigned(uscript_getShortName) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
-  ProcName := 'ubrk_open' + AnsiString(ICUSuffix);
+  ProcName := 'ubrk_open' + String(AnsiString(ICUSuffix));
   ubrk_open := GetProcAddr(ProcName);
   if not Assigned(ubrk_open) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubrk_close' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubrk_close' + String(AnsiString(ICUSuffix));
   ubrk_close := GetProcAddr(ProcName);
   if not Assigned(ubrk_close) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubrk_first' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubrk_first' + String(AnsiString(ICUSuffix));
   ubrk_first := GetProcAddr(ProcName);
   if not Assigned(ubrk_first) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubrk_next' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubrk_next' + String(AnsiString(ICUSuffix));
   ubrk_next := GetProcAddr(ProcName);
   if not Assigned(ubrk_next) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubrk_setText' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubrk_setText' + String(AnsiString(ICUSuffix));
   ubrk_setText := GetProcAddr(ProcName);
   if not Assigned(ubrk_setText) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
-  ProcName := 'ubrk_getRuleStatus' + AnsiString(ICUSuffix);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName := 'ubrk_getRuleStatus' + String(AnsiString(ICUSuffix));
   ubrk_getRuleStatus := GetProcAddr(ProcName);
   if not Assigned(ubrk_getRuleStatus) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
 end;
 
@@ -848,26 +836,26 @@ begin
   status := U_ZERO_ERROR;
   normalizer := unorm2_getNFCInstance(status);
   if (status <> U_ZERO_ERROR) or (normalizer = nil) then
-    raise Exception.CreateFmt('unorm2_getNFCInstance falló con el estado: %d', [status]);
+    raise Exception.CreateFmt('unorm2_getNFCInstance fallï¿½ con el estado: %d', [status]);
 
-  // Si la cadena de entrada está vacía, no hay nada que normalizar
+  // Si la cadena de entrada estï¿½ vacï¿½a, no hay nada que normalizar
   if srcLen = 0 then
     Exit;
 
-  // Capacidad inicial del búfer de destino (heurística: doble de la fuente)
+  // Capacidad inicial del bï¿½fer de destino (heurï¿½stica: doble de la fuente)
   capacity := srcLen * 2;
   SetLength(destArr, capacity);
 
-  // Primera llamada a la normalización
+  // Primera llamada a la normalizaciï¿½n
   status := U_ZERO_ERROR;
   outLen := unorm2_normalize(normalizer, PWord(@S[1]), srcLen, PWord(@destArr[0]), Length(destArr), status);
 
-  // Manejar el desbordamiento de búfer si ocurre
+  // Manejar el desbordamiento de bï¿½fer si ocurre
   if status = U_BUFFER_OVERFLOW_ERROR then
   begin
     // unorm2_normalize devuelve la longitud requerida en caso de desbordamiento
     if outLen <= 0 then
-      raise Exception.Create('unorm2_normalize devolvió U_BUFFER_OVERFLOW_ERROR pero outLen es inválido.');
+      raise Exception.Create('unorm2_normalize devolviï¿½ U_BUFFER_OVERFLOW_ERROR pero outLen es invï¿½lido.');
 
     capacity := outLen;
     SetLength(destArr, capacity);
@@ -876,11 +864,11 @@ begin
     outLen := unorm2_normalize(normalizer, PWord(@S[1]), srcLen, PWord(@destArr[0]), capacity, status);
   end;
 
-  // Validar el resultado final de la normalización
+  // Validar el resultado final de la normalizaciï¿½n
   if status <> U_ZERO_ERROR then
-    raise Exception.CreateFmt('unorm2_normalize falló con el estado: %d', [status]);
+    raise Exception.CreateFmt('unorm2_normalize fallï¿½ con el estado: %d', [status]);
 
-  // Si la normalización tuvo éxito, establecer el resultado
+  // Si la normalizaciï¿½n tuvo ï¿½xito, establecer el resultado
   if outLen > 0 then
   begin
     SetLength(Result, outLen);

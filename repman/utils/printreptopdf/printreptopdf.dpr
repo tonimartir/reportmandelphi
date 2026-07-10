@@ -86,7 +86,6 @@ var
  report:TRpReport;
  indexparam:integer;
  showprogress:boolean;
- onesheet:Boolean;
  filename:string;
  pdffilename:string;
  allpages:boolean;
@@ -100,6 +99,7 @@ var
  doprintastext:Boolean;
  errorfile:string;
 {$IFDEF MSWINDOWS}
+ onesheet:Boolean;
  toexcel:Boolean;
 {$ENDIF}
  textdriver:String;
@@ -198,7 +198,10 @@ begin
   tocsv:=false;
   toctxt:=false;
   tosvg:=false;
+{$IFDEF MSWINDOWS}
   onesheet:=false;
+  toexcel:=false;
+{$ENDIF}
   htmloutput:=false;
   singlefile:=false;
   stdinput:=false;
@@ -536,7 +539,4 @@ begin
    ExitCode:=1;
   end;
  end;
-end.
-
-
 end.

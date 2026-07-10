@@ -122,7 +122,7 @@ type
   procedure SelectFontFontConfigInt(pdffont: TRpPDFFont; unicodeContent: string;removeFamily: boolean);
 {$ENDIF}
   constructor Create;
-  destructor destroy;override;
+  destructor Destroy;override;
  end;
 
 var
@@ -242,8 +242,8 @@ begin
       aobj.familyname:='';
       if (aface.family_name<>nil) then
       begin
-       aobj.postcriptname:=StringReplace(StrPas(aface.family_name),' ','',[rfReplaceAll]);
-       aobj.familyname:=StrPas(aface.family_name);
+       aobj.postcriptname:=StringReplace(String(aface.family_name),' ','',[rfReplaceAll]);
+       aobj.familyname:=String(aface.family_name);
       end;
       if Pos('ARABIC',UpperCase(aobj.familyname))>0 then
       begin
@@ -274,7 +274,7 @@ begin
       aobj.italic:=(aface.style_flags AND FT_STYLE_FLAG_ITALIC)<>0;
       if (aface.style_name<>nil) then
       begin
-       aobj.stylename:=StrPas(aface.style_name);
+       aobj.stylename:=String(aface.style_name);
        if not aobj.bold then
          aobj.bold :=
               (Pos('BOLD', UpperCase(aobj.stylename)) > 0)
@@ -628,7 +628,7 @@ begin
                  direction := RP_BIDI_LTR;
 
                ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
-               positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
+               positions := CalcGlyphPositions(ChunkText, direction, String(logicalRun.ScriptString), activeSize);
 
                // Font fallback: if any glyph has GlyphIndex=0, the current font
                // doesn't support these characters. Try re-selecting with content.
@@ -645,7 +645,7 @@ begin
                if (doFallback) then
                begin
                  SelectFont(TempFont, ChunkText, false);
-                 positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
+                 positions := CalcGlyphPositions(ChunkText, direction, String(logicalRun.ScriptString), activeSize);
                  // Second fallback: ignore family
                  var secondFallback := false;
                  for k:=0 to Length(positions)-1 do
@@ -659,7 +659,7 @@ begin
                  if (secondFallback) then
                  begin
                    SelectFont(TempFont, ChunkText, true);
-                   positions := CalcGlyphPositions(ChunkText, direction, logicalRun.ScriptString, activeSize);
+                   positions := CalcGlyphPositions(ChunkText, direction, String(logicalRun.ScriptString), activeSize);
                  end;
                end;
 
@@ -667,7 +667,7 @@ begin
                for k:=0 to Length(positions)-1 do
                begin
                  runWidth:=runWidth+positions[k].XAdvance;
-                 positions[k].LineCluster:=positions[k].Cluster + (IntStart - lineSubText.Position);
+                 positions[k].LineCluster:=positions[k].Cluster + Cardinal(IntStart - lineSubText.Position);
                  positions[k].Style := 0;
                  if hsBold in Seg.Styles then positions[k].Style := positions[k].Style or 1;
                  if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
@@ -746,7 +746,6 @@ begin
           begin
            if vRun.Direction = UBIDI_RTL then
            begin
-            direction := RP_UBIDI_RTL;
             for k:=vRun.LogicalStart+vRun.Length downto vRun.LogicalStart+1  do
             begin
              if (calculatedLine.ClusterMap.ContainsKey(k)) then
@@ -758,7 +757,6 @@ begin
            end
            else
            begin
-            direction := RP_BIDI_LTR;
             for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
             begin
              if (calculatedLine.ClusterMap.ContainsKey(k)) then
@@ -828,9 +826,9 @@ begin
             maxCluster := -1;
             for k := 0 to visualGlyphs.Count - 1 do
             begin
-              if visualGlyphs[k].LineCluster < minCluster then
+              if Int64(visualGlyphs[k].LineCluster) < minCluster then
                 minCluster := visualGlyphs[k].LineCluster;
-              if visualGlyphs[k].LineCluster > maxCluster then
+              if Int64(visualGlyphs[k].LineCluster) > maxCluster then
                 maxCluster := visualGlyphs[k].LineCluster;
             end;
           end;
@@ -973,7 +971,7 @@ begin
       else
         Buf.Direction := hbdLTR;
 
-      Buf.Script := THBScript.FromString(script);
+      Buf.Script := THBScript.FromString(AnsiString(script));
       if script = 'Arab' then
         Buf.Language := hb_language_from_string('ar', -1);
 
@@ -1036,16 +1034,10 @@ end;
 // Parses /etc/fonts/fonts.conf for font directories
 // also includes subdirectories
 procedure GetFontsDirectories(alist:TStringList);
-var
 {$IFDEF MSWINDOWS}
+var
   abuf:pchar;
   szAppDataW:array [0..MAX_PATH] of WideChar;
-{$ELSE}
- afile:TStringList;
- astring:String;
- diderror:Boolean;
- apath:String;
- index:integer;
 {$ENDIF}
 begin
 {$IFDEF MSWINDOWS}
@@ -1136,10 +1128,7 @@ var
 // afaceRec:FT_FaceRec;
  fontpaths1:TStrings;
  direc:string;
- bytes: TBytes;
  afilename2: AnsiString;
- externalLeading: Integer;
- internalLeading: Integer;
 begin
  CheckFreeTypeLoaded;
  CheckFreeType(FT_Init_FreeType(ftlibrary));
@@ -1410,13 +1399,13 @@ begin
  for i:=0 to fontfiles.Count-1 do
  begin
   afilename:=fontfiles.strings[i];
-  afilename2:=afilename;
+  afilename2:=AnsiString(afilename);
 //  FileToBytes(afileName,bytes);
   aface:=nil;
-  errorface:=FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
+  FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
   if (aface.num_faces>1) then
   begin
-    errorface:=FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
+    FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
   end;
 
 //  if errorface=0 then
@@ -1432,7 +1421,7 @@ begin
     // Add it only if it's a TrueType or OpenType font
     // Type1 fonts also supported
     // Some truetype do not set scalable, so add all
-    aobj:=FillLogFont(afilename2,0);
+    aobj:=FillLogFont(String(afilename2),0);
     // NOn scalable fonts not supported
     if (not aobj.scalable) then
      continue;
@@ -1601,7 +1590,7 @@ begin
  end;
 end;
 
-destructor TRpFTInfoProvider.destroy;
+destructor TRpFTInfoProvider.Destroy;
 begin
  crit.free;
 
@@ -1671,8 +1660,6 @@ var
   Pattern: PFcPattern;
   Match: PFcPattern;
   FileNamePtr: PChar;
-  StyleWeight: Integer;
-  StyleSlant: Integer;
   filename: string;
   MatchKind: Integer;
   familyname:string;
@@ -1742,7 +1729,7 @@ begin
       if Assigned(FileNamePtr) then
       begin
        // Asignación de la ruta de archivo solo si el puntero no es nil
-       filename := UTF8ToString(string(FileNamePtr));
+       filename := UTF8ToString(RawByteString(string(FileNamePtr)));
        FontIndex:=0;
        FcPatternGetInteger(Match, PChar(FC_INDEX), 0, FontIndex);
        currentfont:=GetOrAddLogFont(filename,FontIndex);
@@ -1991,9 +1978,8 @@ end;
 
 function FontHasCFF2OrFVAR(face: THBFace): Boolean;
 var
-  count, i: Cardinal;
+  i: Cardinal;
   tableCount: Cardinal;
-  tableCountTotal: Cardinal;
   tags: array of Cardinal;
 
   function TAG(a, b, c, d: Char): Cardinal;
@@ -2008,7 +1994,7 @@ begin
   fvartag := TAG('f','v','a','r');
   setLength(tags,1000);
   tableCount:=1000;
-  tableCountTotal:=hb_face_get_table_tags(face, 0, tableCount, @tags[0]);
+  hb_face_get_table_tags(face, 0, tableCount, @tags[0]);
   if tableCount = 0 then Exit(False);
 
 
@@ -2048,7 +2034,7 @@ var
   HasCCF2: boolean;
 begin
 
-  Result := nil;
+  HasCCF2 := False;
 
   // --- Crear blob desde la fuente ---
   blob := hb_blob_create(@data.FontData.FontData.Memory^, data.FontData.FontData.Size,
@@ -2114,7 +2100,6 @@ var
  subset:TTrueTypeFontSubSet;
  bytes:TBytes;
  GlyphsUsed: TDictionary<Integer, TArray<Integer>>;
- xchar: WideChar;
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
@@ -2429,7 +2414,7 @@ var
 begin
  if faceinit then
   exit;
- filename2:=filename;
+ filename2:=AnsiString(filename);
  CheckFreeType(FT_New_Face(ftlibrary,PAnsiChar(filename2),0,ftface));
  faceinit:=true;
  if type1 then
@@ -2438,7 +2423,7 @@ begin
   kerningfile:=ChangeFileExt(filename,'.afm');
   if FileExists(kerningfile) then
   begin
-   CheckFreeType(FT_Attach_File(ftface,PAnsichar(kerningfile)));
+   CheckFreeType(FT_Attach_File(ftface,PAnsichar(AnsiString(kerningfile))));
   end;
  end;
  // Don't need scale, but this is a scale that returns

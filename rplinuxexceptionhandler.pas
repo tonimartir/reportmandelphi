@@ -1,8 +1,8 @@
 unit rplinuxexceptionhandler;
 
-{$IFDEF LINUX}
 interface
 
+{$IFDEF LINUX}
 uses
   System.SysUtils,
   System.Classes,
@@ -13,14 +13,15 @@ const
 
 procedure WriteToStdError(const AString: string);
 procedure InitStackTraceExceptionHandling;
-
+{$ENDIF}
 
 implementation
 
+{$IFDEF LINUX}
 uses
   System.Character; // solo por compatibilidad de strings si hace falta
 
-// --- Constantes / configuración ---
+// --- Constantes / configuraciï¿½n ---
 const
   libc = 'libc.so.6';
   STDERR_FILENO = 2;
@@ -82,7 +83,6 @@ var
   p: PAnsiChar;
   tmp: AnsiString;
 begin
-  Result := False;
   Lines := TStringList.Create;
   try
     cmd := AnsiString(Format('addr2line -f -C -e "%s" 0x%x', [AFileName, AAddress]));
@@ -95,12 +95,12 @@ begin
       Exit(False);
     end;
 
-    // Leer líneas hasta EOF
+    // Leer lï¿½neas hasta EOF
     while Assigned(fgets(@buf[0], ADDR2LINE_BUF, stream)) do
     begin
       p := @buf[0];
-      tmp := string(p);
-      tmp := TrimRight(tmp);
+      tmp := AnsiString(string(p));
+      tmp := AnsiString(TrimRight(String(tmp)));
       Lines.Add(string(UTF8String(tmp)));
     end;
 
@@ -154,7 +154,7 @@ begin
   Result := Format('0x%x', [NativeUInt(p)]);
 end;
 
-// GetStackInfoString: toma el bloque opaco y lo transforma a texto resolviendo símbolos con dladdr+addr2line
+// GetStackInfoString: toma el bloque opaco y lo transforma a texto resolviendo sï¿½mbolos con dladdr+addr2line
 function GetStackInfoString(Info: Pointer): string;
 var
   Count: NativeInt;
@@ -180,7 +180,7 @@ begin
   begin
     FrameAddr := PPointer(NativeInt(FramePointers) + i * POINTER_SIZE)^;
 
-    // Si dladdr puede identificar la librería/exe:
+    // Si dladdr puede identificar la librerï¿½a/exe:
     if dladdr(FrameAddr, @dl) <> 0 then
     begin
       if dl.dli_fname <> nil then
@@ -188,7 +188,7 @@ begin
       else
         fname := '';
 
-      // Primero intenta addr2line con dirección absoluta
+      // Primero intenta addr2line con direcciï¿½n absoluta
       ok := RunAddr2Line(fname, NativeUInt(FrameAddr), Lines);
       if ok and (Lines <> nil) then
       begin
@@ -203,7 +203,7 @@ begin
       end;
       if Assigned(Lines) then FreeAndNil(Lines);
 
-      // Si falló, intenta con dirección relativa (addr - base)
+      // Si fallï¿½, intenta con direcciï¿½n relativa (addr - base)
       if dl.dli_fbase <> nil then
       begin
         relative := NativeUInt(FrameAddr) - NativeUInt(dl.dli_fbase);
@@ -221,7 +221,7 @@ begin
         if Assigned(Lines) then FreeAndNil(Lines);
       end;
 
-      // Si no resolvió con addr2line, intenta usar el nombre de símbolo devuelto por dladdr
+      // Si no resolviï¿½ con addr2line, intenta usar el nombre de sï¿½mbolo devuelto por dladdr
       if dl.dli_sname <> nil then
         Result := Result + Format('%s (in %s)%s', [string(UTF8ToString(dl.dli_sname)), fname, LineEnding])
       else
@@ -229,7 +229,7 @@ begin
     end
     else
     begin
-      // Si dladdr no ayudó, mostramos la dirección hex
+      // Si dladdr no ayudï¿½, mostramos la direcciï¿½n hex
       Result := Result + PtrToHex(FrameAddr) + LineEnding;
     end;
   end;
@@ -242,7 +242,7 @@ begin
     FreeMem(Info);
 end;
 
-// Inicialización: asignar las proc pointers en Exception (como hacías)
+// Inicializaciï¿½n: asignar las proc pointers en Exception (como hacï¿½as)
 procedure  InitStackTraceExceptionHandling;
 begin
   if (InitDone) then
@@ -259,11 +259,7 @@ finalization
   Pointer(Exception.GetExceptionStackInfoProc) := nil;
   Pointer(Exception.GetStackInfoStringProc) := nil;
   Pointer(Exception.CleanUpStackInfoProc) := nil;
-end.
-
-{$ELSE}
-interface
-implementation
-end.
 {$ENDIF}
+
+end.
 
