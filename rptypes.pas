@@ -4111,10 +4111,10 @@ begin
         if readed=0 then
          finish:=true;
 {$ELSE}
-         raise Exception.Create('Read from handle not implemented');
-  // readed:=__read(0,pbuf^,1);
-  // if readed=0 then
-  //  finish:=true;
+        // FileRead returns bytes read, 0 at EOF and -1 on error
+        readed:=SysUtils.FileRead(handle,pbuf^,1);
+        if readed<=0 then
+         finish:=true;
 {$ENDIF}
 {$ENDIF}
    if readed>0 then
