@@ -474,23 +474,15 @@ type
     procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
       AResult: TRpApiPreprocessSqlContextResult);
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
-    procedure DesignerChatSendPrompt(Sender: TObject; const APrompt, AExpression: string);
     procedure StopDesignChatRequest(Sender: TObject);
     procedure RefreshDesignChatContext(Sender: TObject);
     procedure InitializeDesignChatSchemaSelection;
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string);
-    procedure PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
     procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
     procedure ResetDesignChatContextCache;
     procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
       ANotifyOnSuccess: Boolean);
-    procedure ExecuteDesignChatPrompt(const APrompt: string);
-    function GetDesignChatPrefillPercent(const AStage, AChunkType: string): Integer;
-    procedure DesignChatStreamProgress(Sender: TObject; const AActor, AStage,
-      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-      const AProgressId: string; APrefillPercent: Integer);
-    function DesignChatStreamCancelRequested(Sender: TObject): Boolean;
     function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
       const AErrorMessage: string): string;
     function ConfirmDesignPromptWithDatasetErrors(
@@ -3150,163 +3142,7 @@ begin
   ARedoExecute(Sender);
   end;
 
-  procedure TFRpMainFVCL.DesignerChatSendPrompt(Sender: TObject; const APrompt,
-    AExpression: string);
-  var
-   LPrompt: string;
-  begin
-   if (not Assigned(fchatframe)) or (not Assigned(report)) then
-    Exit;
 
-   LPrompt := Trim(APrompt);
-   if LPrompt = '' then
-    Exit;
-
-  if not FDesignChatContextInitialized then
-  begin
-      BeginDesignChatContextRefresh(LPrompt, False);
-      Exit;
-  end;
-
-    ExecuteDesignChatPrompt(LPrompt);
-   end;
-
-  procedure TFRpMainFVCL.ExecuteDesignChatPrompt(const APrompt: string);
-  var
-    LPreprocessRequest: TRpApiPreprocessSqlContextRequest;
-   LRequest: TRpApiModifyReportRequest;
-   LRequestVersion: Integer;
-    LSelectedHubDatabaseId: Int64;
-    LSelectedHubSchemaId: Int64;
-   LWorker: TThread;
-  begin
-   if (not Assigned(fchatframe)) or (not Assigned(report)) then
-    Exit;
-
-    LPreprocessRequest := BuildPreprocessSqlContextRequest;
-   LRequest := BuildDesignChatRequest(APrompt);
-    LSelectedHubDatabaseId := fchatframe.GetHubDatabaseId;
-    LSelectedHubSchemaId := fchatframe.GetHubSchemaId;
-   Inc(FDesignChatRequestVersion);
-   LRequestVersion := FDesignChatRequestVersion;
-   fchatframe.BeginStreamingResponse;
-   fchatframe.SetBusy(True);
-
-   LWorker := TThread.CreateAnonymousThread(
-     procedure
-     var
-      LHttp: TRpDatabaseHttp;
-      LPayload: TRpQueuedDesignChatPayload;
-      LPreprocessResponse: TRpApiPreprocessSqlContextResult;
-      LPreprocessUserProfileJson: string;
-      LResponse: TRpApiModifyReportResult;
-        LStreamContext: TRpDesignChatStreamContext;
-        I: Integer;
-     begin
-      LHttp := TRpDatabaseHttp.Create;
-      LPreprocessResponse := nil;
-      LPreprocessUserProfileJson := '';
-      LResponse := nil;
-        LStreamContext := TRpDesignChatStreamContext.Create;
-        LStreamContext.RequestVersion := LRequestVersion;
-      try
-        try
-          LHttp.Token := TRpAuthManager.Instance.Token;
-          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-          LHttp.AITier := RpAITierTypeToString(LRequest.AITier);
-          LHttp.HubDatabaseId := LSelectedHubDatabaseId;
-          LHttp.HubSchemaId := LSelectedHubSchemaId;
-          LHttp.AgentSecret := LRequest.AgentSecret;
-          if LRequest.HasAgentAiId then
-            LHttp.AgentAiId := LRequest.AgentAiId;
-
-          if LPreprocessRequest <> nil then
-          begin
-            LPreprocessResponse := LHttp.PreprocessSqlContext(LPreprocessRequest,
-              LStreamContext, DesignChatStreamProgress, DesignChatStreamCancelRequested);
-
-            if (LPreprocessResponse <> nil) and (Trim(LPreprocessResponse.ErrorMessage) <> '') then
-              raise Exception.Create(RpComposeApiErrorMessage(
-                LPreprocessResponse.ErrorMessage,
-                LPreprocessResponse.DebugDetails));
-
-            TThread.Synchronize(nil,
-              procedure
-              begin
-                ApplyPreprocessSqlContextResult(LPreprocessResponse);
-                LRequest.ReportDocument := SaveReportAsXml;
-              end);
-
-            if Trim(LRequest.ReportDocument) = '' then
-              raise Exception.Create('Unable to serialize the current report to XML after preprocessing SQL context.');
-
-            LPreprocessUserProfileJson := LPreprocessResponse.UserProfileJson;
-          end;
-
-          LResponse := LHttp.ModifyReport(LRequest, LStreamContext,
-            DesignChatStreamProgress, DesignChatStreamCancelRequested);
-          LPayload := TRpQueuedDesignChatPayload.Create;
-          LPayload.Kind := rpqdcApplyDesignResult;
-          LPayload.RequestVersion := LRequestVersion;
-          if LPreprocessResponse <> nil then
-          begin
-            for I := 0 to LPreprocessResponse.Steps.Count - 1 do
-            begin
-              if LPreprocessResponse.Steps[I] is TRpTokenUsage then
-              begin
-                Inc(LPayload.InputTokens,
-                  TRpTokenUsage(LPreprocessResponse.Steps[I]).InputTokens);
-                Inc(LPayload.OutputTokens,
-                  TRpTokenUsage(LPreprocessResponse.Steps[I]).OutputTokens);
-              end;
-            end;
-          end;
-          if LResponse <> nil then
-          begin
-            LPayload.ErrorMessage := RpComposeApiErrorMessage(
-              LResponse.ErrorMessage,
-              LResponse.DebugDetails);
-            if Trim(LPayload.ErrorMessage) = '' then
-              LPayload.ErrorMessage := LResponse.ResultData.ErrorMessage;
-            LPayload.Text2 := LResponse.ResultData.Explanation;
-            LPayload.Text1 := LResponse.ResultData.ModifiedReportDocument;
-            LPayload.UserProfileJson := LResponse.UserProfileJson;
-            for I := 0 to LResponse.Steps.Count - 1 do
-            begin
-              if LResponse.Steps[I] is TRpTokenUsage then
-              begin
-                Inc(LPayload.InputTokens,
-                  TRpTokenUsage(LResponse.Steps[I]).InputTokens);
-                Inc(LPayload.OutputTokens,
-                  TRpTokenUsage(LResponse.Steps[I]).OutputTokens);
-              end;
-            end;
-          end;
-          if Trim(LPayload.UserProfileJson) = '' then
-            LPayload.UserProfileJson := LPreprocessUserProfileJson;
-          PostDesignChatPayload(LPayload);
-        except
-          on E: Exception do
-          begin
-            LPayload := TRpQueuedDesignChatPayload.Create;
-            LPayload.Kind := rpqdcAddAssistantMessage;
-            LPayload.RequestVersion := LRequestVersion;
-            LPayload.Text1 := E.Message;
-            PostDesignChatPayload(LPayload);
-          end;
-        end;
-      finally
-        LPreprocessResponse.Free;
-        LStreamContext.Free;
-        LResponse.Free;
-        LHttp.Free;
-        LPreprocessRequest.Free;
-        LRequest.Free;
-      end;
-     end);
-   LWorker.FreeOnTerminate := True;
-   LWorker.Start;
-  end;
 
 procedure TFRpMainFVCL.StopDesignChatRequest(Sender: TObject);
 begin
@@ -3322,71 +3158,7 @@ begin
  UpdateDesignContextProgress(False, '');
 end;
 
-function TFRpMainFVCL.GetDesignChatPrefillPercent(const AStage,
-  AChunkType: string): Integer;
-begin
- if SameText(AStage, 'PreparingContext') then
-  Result := 15
- else if SameText(AStage, 'SendingRequest') then
-  Result := 45
- else if SameText(AStage, 'ReceivingResponse') then
- begin
-  if SameText(AChunkType, 'Start') then
-   Result := 70
-  else
-   Result := 100;
- end
- else if SameText(AStage, 'ApplyingOperations') then
-  Result := 95
- else
-  Result := 100;
-end;
 
-procedure TFRpMainFVCL.DesignChatStreamProgress(Sender: TObject; const AActor,
-  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
-  const AProgressId: string; APrefillPercent: Integer);
-var
-  LPayload: TRpQueuedDesignChatPayload;
-  LChunk: string;
-begin
-  LChunk := '';
-  if SameText(AStage, 'ReceivingResponse') and SameText(AChunkType, 'Partial') then
-    LChunk := AChunk;
-
-  LPayload := TRpQueuedDesignChatPayload.Create;
-  LPayload.Kind := rpqdcUpdateStreamingResponse;
-  if Sender is TRpDesignChatStreamContext then
-    LPayload.RequestVersion := TRpDesignChatStreamContext(Sender).RequestVersion;
-  LPayload.Actor1 := AActor;
-  LPayload.ProgressId1 := AProgressId;
-  LPayload.ChunkType1 := AChunkType;
-  LPayload.Text1 := LChunk;
-  LPayload.LogText1 := AChunk;
-  if APrefillPercent > 0 then
-    LPayload.PrefillPercent := APrefillPercent
-  else
-    LPayload.PrefillPercent := GetDesignChatPrefillPercent(AStage, AChunkType);
-  LPayload.InputTokens := AInputTokens;
-  LPayload.OutputTokens := AOutputTokens;
-  PostDesignChatPayload(LPayload);
-end;
-
-function TFRpMainFVCL.DesignChatStreamCancelRequested(Sender: TObject): Boolean;
-begin
- Result := False;
- if Sender is TRpDesignChatStreamContext then
-  Result := TRpDesignChatStreamContext(Sender).RequestVersion <> FDesignChatRequestVersion;
-end;
-
-procedure TFRpMainFVCL.PostDesignChatPayload(APayload: TRpQueuedDesignChatPayload);
-begin
- if APayload = nil then
-  Exit;
- if HandleAllocated then
-  PostMessage(Handle, WM_USER + 206, WPARAM(APayload), 0)
- else
-  APayload.Free;
-end;
 
 procedure TFRpMainFVCL.PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
 begin

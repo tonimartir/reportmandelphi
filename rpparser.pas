@@ -68,15 +68,8 @@ type
     property Expression:string read FNewExpression write SetExpression;
   end;
 
-var
- ParserSetChars:set of Char=
-{$IFDEF DOTNETD}
-  ['A'..'Z', 'a'..'z','0'..'9', '_','.'];
-{$ENDIF}
-{$IFNDEF DOTNETD}
-  ['A'..'Z', 'a'..'z','á','à','é','è','í','ó','ò','ú', 'Ñ','ñ','0'..'9','_','.',
-         'ä','Ä','ö','Ö','ü','Ü','Á','À','É','È','Í','Ó','Ò','Ú','ß'];
-{$ENDIF}
+const
+  ParserSetChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáàéèíóòúÑñ0123456789_.äÄöÖüÜÁÀÉÈÍÓÒÚß';
 
 implementation
 

@@ -548,10 +548,9 @@ procedure WriteValue(AStream: TStream; AField: TField;
                     AType: TRpFastTypeData);
 var
   payload: TBytes;
-  payloadLen, i: Integer;
+  payloadLen: Integer;
   s: string;
   blob: TBytes;
-  utf8: TBytes;
   ch: Char;
   blobStream: TStream;
 begin
@@ -676,11 +675,8 @@ procedure ReadValue(AStream: TStream; AField: TField; AType: TRpFastTypeData);
 var
   nlen: Byte;
   payload: TBytes;
-  ms: TMemoryStream;
   blob: TBytes;
   blobStream: TStream;
-  Y, M, D, H, N, S, MSv: Word;
-  rawTick: Int64;
   dt: TDateTime;
   ch: WideChar;
   shortBytes: array[0..1] of Byte;

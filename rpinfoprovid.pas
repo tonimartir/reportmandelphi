@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                      }
 {       Report Manager                                  }
 {                                                       }
@@ -57,7 +57,7 @@ type
   public Fontdata:TMemoryStream;
 	public DirectoryOffset: integer;
   constructor Create;
-  destructor Destroy;
+  destructor Destroy;override;
  end;
   TGlyphInfo=record
    Glyph: Integer;
