@@ -401,7 +401,7 @@ end;
 function rp_executeremote_report(hreport:integer;hostname:PAnsiChar;port:integer;user,password,aliasname,reportname:PAnsiChar;outputfilename:PAnsiChar;metafile,
  compressed:integer):integer;
 begin
-  rp_executeremote_reportw(hreport,PWideChar(WideString(hostname)),port,PWideChar(WideString(user)),PWidechar(WideString(password)),PWidechar(WideString(aliasname)),PWidechar(WideString(reportname)),
+  Result:=rp_executeremote_reportw(hreport,PWideChar(WideString(hostname)),port,PWideChar(WideString(user)),PWidechar(WideString(password)),PWidechar(WideString(aliasname)),PWidechar(WideString(reportname)),
    PWideChar(WideString(outputfilename)),metafile,compressed);
 end;
 

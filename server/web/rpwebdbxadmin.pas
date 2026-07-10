@@ -155,6 +155,11 @@ uses
 {$IFDEF FIREDAC}
   FireDAC.Stan.Util,
 {$ENDIF}
+{$IFDEF LINUX}
+{$IFNDEF FPC}
+  Posix.Unistd,
+{$ENDIF}
+{$ENDIF}
   rpreport, rpdatahttp, rpauthmanager;
 
 const

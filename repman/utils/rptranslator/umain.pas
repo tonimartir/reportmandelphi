@@ -142,7 +142,7 @@ var
 
 implementation
 
-uses uflanginfo, Math;
+uses uflanginfo, Math, System.UITypes;
 
 
 
@@ -257,9 +257,9 @@ begin
    memstream:=TMemoryStream.Create;
    try
      nstring:=ChangeFileExt(ExtractFileName(filename),'')+' RCDATA'+#13+#10;
-     WriteStringToStream(nstring,memstream);
+     WriteStringToStream(AnsiString(nstring),memstream);
      nstring:='BEGIN'+#13+#10;
-     WriteStringToStream(nstring,memstream);
+     WriteStringToStream(AnsiString(nstring),memstream);
      DTexts.First;
      while Not DTexts.Eof do
      begin
@@ -295,7 +295,7 @@ begin
       memstream.Write(nstring[1],Length(nstring));
      end;
      nstring:=#13+#10+'END'+#13+#10;
-     WriteStringToStream(nstring,memstream);
+     WriteStringToStream(AnsiString(nstring),memstream);
      memstream.SaveToFile(filename);
    finally
     memstream.Free;
@@ -653,7 +653,7 @@ begin
    begin
     DTexts.Edit;
     try
-     DTextsDESCRIPTION.Value:=DDescriptionsDESCRIPTION.AsString;
+     DTextsDESCRIPTION.Value:=AnsiString(DDescriptionsDESCRIPTION.AsString);
      DTexts.Post;
     except
      DTexts.Cancel;

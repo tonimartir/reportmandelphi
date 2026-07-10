@@ -2098,7 +2098,6 @@ begin
   begin
     {$IFDEF DEBUG}
     Tracevv(char(s.window^[s.strstart-1]));
-    bflush :=
     {$ENDIF}
       _tr_tally (s, 0, s.window^[s.strstart-1]);
     s.match_available := FALSE;

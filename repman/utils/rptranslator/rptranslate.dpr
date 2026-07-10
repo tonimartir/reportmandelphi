@@ -31,7 +31,7 @@ uses
 {$R *.RES}
 
 begin
-  Graphics.DefFontData.Name:=Screen.IconFont.Name;
+  Graphics.DefFontData.Name:=ShortString(AnsiString(Screen.IconFont.Name));
   Application.Initialize;
   Application.Title := 'Report Manager translator';
   Application.CreateForm(TFMain, FMain);

@@ -47,11 +47,11 @@ var
 
 function HexCharToInt(ch:Char):integer;
 begin
- if (ch in ['0'..'9']) then
+ if CharInSet(ch,['0'..'9']) then
   Result:=Ord(ch)-Ord('0')
  else
  begin
-  if (ch in ['A'..'F']) then
+  if CharInSet(ch,['A'..'F']) then
    Result:=10+Ord(ch)-Ord('A')
   else
    Raise Exception.Create(fmain.formtrans.LoadString(20,SRpIncorrectHexNumber));
@@ -136,15 +136,15 @@ begin
    for i:=0 to alist.count-1 do
    begin
     DLang.Append;
-    DLangLangId.Value:=alist.strings[i];
+    DLangLangId.Value:=AnsiString(alist.strings[i]);
     langid:=HexToDecimal(alist.strings[i]);
     DLangLANGIDBIN.Value:=langid;
     GetLocaleInfo(langid,LOCALE_SABBREVLANGNAME,abuf,MAX_BUF);
-    DLangEXTENSION.Value:=StrPas(abuf);
+    DLangEXTENSION.Value:=AnsiString(StrPas(abuf));
     GetLocaleInfo(langid,LOCALE_SLANGUAGE,abuf,MAX_BUF);
-    DLangDESCRIPTION.Value:=StrPas(abuf);
+    DLangDESCRIPTION.Value:=AnsiString(StrPas(abuf));
     GetLocaleInfo(langid,LOCALE_SENGLANGUAGE,abuf,MAX_BUF);
-    DLangENGDESC.Value:=StrPas(abuf);
+    DLangENGDESC.Value:=AnsiString(StrPas(abuf));
     DLang.Post;
    end;
    Dlang.First;
