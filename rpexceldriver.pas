@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -91,19 +91,36 @@ type
     tittle:string;
     filename:string;
     metafile:TRpMetafileReport;
+    isxml:boolean;
   end;
-
-
 
 function ExportMetafileToExcel (metafile:TRpMetafileReport; filename:string;
  showprogress,visible,allpages:boolean; frompage,topage:integer;
  onesheet:Boolean=false):boolean;
 
+function ExportMetafileToXMLSpreadsheet (metafile:TRpMetafileReport; filename:string;
+ showprogress,allpages:boolean; frompage,topage:integer;
+ onesheet:Boolean=false; openfile:Boolean=true):boolean;
+
 implementation
 
-
+uses ShellAPI;
 
 {$R *.dfm}
+
+type
+  TXMLCell = class
+  public
+    RowIndex: Integer;
+    ColIndex: Integer;
+    Value: string;
+    DataType: string;
+    StyleID: string;
+  end;
+
+procedure DoExportMetafileXML(metafile:TRpMetafileReport;filename:string;
+  aform:TFRpExcelProgress;allpages:boolean;frompage,topage:integer;
+   onesheet:Boolean); forward;
 
 const
  AlignmentFlags_SingleLine=64;
@@ -120,7 +137,7 @@ function IsValidNumberChar(achar:char):Boolean;
 begin
  Result:=false;
 {$IFDEF DELPHI2009UP}
- if CharInSet(achar,['-','+','e','E','0'..'9',' ',AnsiChar(FormatSettings.DecimalSeparator)]) then
+ if (achar in ['-','+','e','E','0'..'9',' ',FormatSettings.DecimalSeparator]) then
 {$ELSE}
  if (achar in ['-','+','e','E','0'..'9',' ',DecimalSeparator]) then
 {$ENDIF}
@@ -131,19 +148,22 @@ end;
 
 
 function VarTryStrToFloat(S: string; var Value: Double): Boolean;
-{$IFNDEF DELPHI2009UP}
 var
  index,i:integer;
-{$ENDIF}
 begin
 {$IFDEF DELPHI2009UP}
   Result:=TryStrToFloat(S,Value);
-{$ELSE}
+  exit;
+{$ENDIF}
  Result:=true;
  S:=Trim(S);
  // Remove thousand separators
  repeat
+{$IFDEF DELPHI2009UP}
+  index:=Pos(FormatSettings.ThousandSeparator,S);
+{$ELSE}
   index:=Pos(ThousandSeparator,S);
+{$ENDIF}
   if index>0 then
    S:=Copy(S,1,index-1)+Copy(S,index+1,Length(S));
  until index=0;
@@ -162,7 +182,6 @@ begin
  except
   Result:=false;
  end;
-{$ENDIF}
 end;
 
 function VarTryStrToDate(S: string; var Value: TDateTime): Boolean;
@@ -571,6 +590,7 @@ begin
    dia.frompage:=frompage;
    dia.onesheet:=onesheet;
    dia.isvisible:=visible;
+   dia.isxml:=false;
    dia.topage:=topage;
    Application.OnIdle:=dia.AppIdle;
    dia.ShowModal;
@@ -609,7 +629,10 @@ begin
  done:=false;
  LTittle.Caption:=tittle;
  LProcessing.Visible:=true;
- DoExportMetafile(metafile,filename,self,isvisible,allpages,frompage,topage,onesheet);
+ if isxml then
+  DoExportMetafileXML(metafile,filename,self,allpages,frompage,topage,onesheet)
+ else
+  DoExportMetafile(metafile,filename,self,isvisible,allpages,frompage,topage,onesheet);
 end;
 
 
@@ -642,6 +665,646 @@ begin
  end;
 end;
 
+function FloatToStrXML(pValue: Double): string;
+var
+  sVal: string;
+  i: integer;
+begin
+  sVal := FloatToStr(pValue);
+  for i := 1 to Length(sVal) do
+  begin
+    {$IFDEF DELPHI2009UP}
+    if sVal[i] = FormatSettings.DecimalSeparator then
+    {$ELSE}
+    if sVal[i] = DecimalSeparator then
+    {$ENDIF}
+      sVal[i] := '.';
+  end;
+  Result := sVal;
+end;
+
+function EscapeXML(const sText: string): string;
+var
+  i: integer;
+  sChar: char;
+begin
+  Result := '';
+  for i := 1 to Length(sText) do
+  begin
+    sChar := sText[i];
+    case sChar of
+      '&': Result := Result + '&amp;';
+      '<': Result := Result + '&lt;';
+      '>': Result := Result + '&gt;';
+      '"': Result := Result + '&quot;';
+      '''': Result := Result + '&apos;';
+    else
+      Result := Result + sChar;
+    end;
+  end;
+end;
+
+function GetDecimalPlaces(const S: string): Integer;
+var
+  SepPos, i: Integer;
+  DecSep: Char;
+begin
+  Result := 0;
+  {$IFDEF DELPHI2009UP}
+  DecSep := FormatSettings.DecimalSeparator;
+  {$ELSE}
+  DecSep := DecimalSeparator;
+  {$ENDIF}
+  SepPos := Pos(DecSep, S);
+  if SepPos > 0 then
+  begin
+    for i := SepPos + 1 to Length(S) do
+    begin
+      if S[i] in ['0'..'9'] then
+        Inc(Result)
+      else
+        Break;
+    end;
+  end;
+end;
+
+function GetStyleXML(StyleID, FontName: string; FontSize: integer; FontColor: TColor; Bold, Italic, Underline, Strikeout: boolean; Alignment: integer; WordWrap: boolean; FormatType: integer): string;
+var
+  S: string;
+  i: integer;
+begin
+  S := '  <Style ss:ID="' + StyleID + '">'#13#10;
+  
+  // Alignment
+  S := S + '   <Alignment ss:Vertical="Bottom"';
+  if WordWrap then
+    S := S + ' ss:WrapText="1"';
+  case Alignment of
+    1: S := S + ' ss:Horizontal="Left"';
+    2: S := S + ' ss:Horizontal="Center"';
+    3: S := S + ' ss:Horizontal="Right"';
+  end;
+  S := S + '/>'#13#10;
+  
+  // Font
+  S := S + '   <Font ss:FontName="' + FontName + '" ss:Size="' + IntToStr(FontSize) + '"';
+  if FontColor <> clBlack then
+    S := S + ' ss:Color="#' + Format('%.2x%.2x%.2x', [GetRValue(FontColor), GetGValue(FontColor), GetBValue(FontColor)]) + '"';
+  if Bold then
+    S := S + ' ss:Bold="1"';
+  if Italic then
+    S := S + ' ss:Italic="1"';
+  if Underline then
+    S := S + ' ss:Underline="Single"';
+  if Strikeout then
+    S := S + ' ss:StrikeThrough="1"';
+  S := S + '/>'#13#10;
+  
+  // NumberFormat
+  if (FormatType >= 1) and (FormatType <= 10) then
+  begin
+    S := S + '   <NumberFormat ss:Format="#,##0.';
+    for i := 1 to FormatType do
+      S := S + '0';
+    S := S + '"/>'#13#10;
+  end
+  else if FormatType = 100 then
+    S := S + '   <NumberFormat ss:Format="dd/mm/yyyy;@"/>'#13#10;
+    
+  S := S + '  </Style>';
+  Result := S;
+end;
+
+function RegisterStyle(StylesList, StylesXML: TStringList; FontName: string; FontSize: integer; FontColor: TColor; Bold, Italic, Underline, Strikeout: boolean; Alignment: integer; WordWrap: boolean; FormatType: integer): string;
+var
+  Sig, StyleID: string;
+begin
+  Sig := FontName + '_' + IntToStr(FontSize) + '_' + IntToHex(FontColor, 8) + '_' +
+    IntToStr(Ord(Bold)) + '_' + IntToStr(Ord(Italic)) + '_' + IntToStr(Ord(Underline)) + '_' +
+    IntToStr(Ord(Strikeout)) + '_' + IntToStr(Alignment) + '_' + IntToStr(Ord(WordWrap)) + '_' +
+    IntToStr(FormatType);
+  StyleID := StylesList.Values[Sig];
+  if StyleID = '' then
+  begin
+    StyleID := 'sStyle' + IntToStr(StylesList.Count + 1);
+    StylesList.Add(Sig + '=' + StyleID);
+    StylesXML.Add(GetStyleXML(StyleID, FontName, FontSize, FontColor, Bold, Italic, Underline, Strikeout, Alignment, WordWrap, FormatType));
+  end;
+  Result := StyleID;
+end;
+
+procedure DoExportMetafileXML(metafile:TRpMetafileReport;filename:string;
+  aform:TFRpExcelProgress;allpages:boolean;frompage,topage:integer;
+   onesheet:Boolean);
+var
+  XMLList: TStringList;
+  StylesList: TStringList;
+  StylesXML: TStringList;
+  Grid: array of TXMLCell;
+  RowCount, ColCount: Integer;
+  Columns: TStringList;
+  Rows: TStringList;
+  i, j, r, c: Integer;
+  apage: TRpMetafilePage;
+  leftstring, topstring: string;
+  index: Integer;
+  arow, acolumn: Integer;
+  aansitext: string;
+  number: Double;
+  isanumber: boolean;
+  isadate: boolean;
+  adate: TDateTime;
+  FontName: string;
+  FontSize: Integer;
+  FontColor: TColor;
+  afontstyle: TFontStyles;
+  Bold, Italic, Underline, Strikeout: boolean;
+  Alignment: Integer;
+  WordWrap: boolean;
+  FormatType: Integer;
+  StyleID: string;
+  cell: TXMLCell;
+  idx: Integer;
+  HasCells: boolean;
+  mmfirst, mmlast: DWORD;
+  difmilis: int64;
+  DefaultFontName: string;
+  DefaultFontSize: Integer;
+begin
+  DefaultFontName := 'Calibri';
+  DefaultFontSize := 11;
+  
+  mmfirst := TimeGetTime;
+  
+  if allpages then
+  begin
+    metafile.RequestPage(MAX_PAGECOUNT);
+    frompage := 0;
+    topage := metafile.CurrentPageCount - 1;
+  end
+  else
+  begin
+    frompage := frompage - 1;
+    topage := topage - 1;
+    metafile.RequestPage(topage);
+    if topage > metafile.CurrentPageCount - 1 then
+      topage := metafile.CurrentPageCount - 1;
+  end;
+
+  Columns := TStringList.Create;
+  Rows := TStringList.Create;
+  StylesList := TStringList.Create;
+  StylesXML := TStringList.Create;
+  XMLList := TStringList.Create;
+  try
+    Columns.Sorted := True;
+    Rows.Sorted := True;
+    
+    // Find all columns
+    for i := frompage to topage do
+    begin
+      apage := metafile.Pages[i];
+      for j := 0 to apage.ObjectCount - 1 do
+      begin
+        if apage.Objects[j].Metatype in [rpMetaText, rpMetaImage] then
+        begin
+          leftstring := FormatCurr('0000000000', apage.Objects[j].Left / XLS_PRECISION);
+          index := Columns.IndexOf(leftstring);
+          if index < 0 then
+            Columns.Add(leftstring);
+        end;
+      end;
+    end;
+    
+    ColCount := Columns.Count;
+    if ColCount < 1 then
+      ColCount := 1;
+
+    // XML Headers
+    XMLList.Add('<?xml version="1.0" encoding="Windows-1252"?>');
+    XMLList.Add('<?mso-application progid="Excel.Sheet"?>');
+    XMLList.Add('<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"');
+    XMLList.Add(' xmlns:o="urn:schemas-microsoft-com:office:office"');
+    XMLList.Add(' xmlns:x="urn:schemas-microsoft-com:office:excel"');
+    XMLList.Add(' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"');
+    XMLList.Add(' xmlns:html="http://www.w3.org/TR/REC-html40">');
+    XMLList.Add(' <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">');
+    XMLList.Add('  <Author>GiroSII</Author>');
+    XMLList.Add('  <Created>' + FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.000', Now) + '</Created>');
+    XMLList.Add('  <Version>16.00</Version>');
+    XMLList.Add(' </DocumentProperties>');
+    
+    // Pass 1: Style registration
+    for i := frompage to topage do
+    begin
+      apage := metafile.Pages[i];
+      for j := 0 to apage.ObjectCount - 1 do
+      begin
+        if apage.Objects[j].Metatype = rpMetaText then
+        begin
+          aansitext := apage.GetText(apage.Objects[j]);
+          
+          FontName := apage.GetWFontName(apage.Objects[j]);
+          FontSize := apage.Objects[j].FontSize;
+          FontColor := CLXColorToVCLColor(apage.Objects[j].FontColor);
+          afontstyle := CLXIntegerToFontStyle(apage.Objects[j].FontStyle);
+          Bold := fsBold in afontstyle;
+          Italic := fsItalic in afontstyle;
+          Underline := fsUnderline in afontstyle;
+          Strikeout := fsStrikeout in afontstyle;
+          
+          Alignment := 0;
+          if (apage.Objects[j].AlignMent and AlignmentFlags_AlignHCenter) > 0 then
+            Alignment := 2
+          else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignLEFT) > 0 then
+            Alignment := 1
+          else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignRight) > 0 then
+            Alignment := 3;
+            
+          WordWrap := apage.Objects[j].WordWrap;
+          
+          FormatType := 0;
+          isanumber := VarTryStrToFloat(aansitext, number);
+          isadate := False;
+          adate := 0;
+          if isanumber then
+            FormatType := GetDecimalPlaces(aansitext)
+          else
+          begin
+            isadate := VarTryStrToDate(aansitext, adate);
+            if isadate then
+              FormatType := 100;
+          end;
+            
+          RegisterStyle(StylesList, StylesXML, FontName, FontSize, FontColor, Bold, Italic, Underline, Strikeout, Alignment, WordWrap, FormatType);
+        end;
+      end;
+    end;
+
+    XMLList.Add(' <Styles>');
+    XMLList.Add('  <Style ss:ID="Default" ss:Name="Normal">');
+    XMLList.Add('   <Alignment ss:Vertical="Bottom"/>');
+    XMLList.Add('   <Borders/>');
+    XMLList.Add('   <Font ss:FontName="' + DefaultFontName + '" x:Family="Swiss" ss:Size="' + IntToStr(DefaultFontSize) + '" ss:Color="#000000"/>');
+    XMLList.Add('   <Interior/>');
+    XMLList.Add('   <NumberFormat/>');
+    XMLList.Add('   <Protection/>');
+    XMLList.Add('  </Style>');
+    XMLList.Add(StylesXML.Text);
+    XMLList.Add(' </Styles>');
+
+    if onesheet then
+    begin
+      Rows.Clear;
+      for i := frompage to topage do
+      begin
+        apage := metafile.Pages[i];
+        for j := 0 to apage.ObjectCount - 1 do
+        begin
+          if apage.Objects[j].Metatype = rpMetaText then
+          begin
+            topstring := FormatCurr('0000000000', apage.Objects[j].Top / XLS_PRECISION);
+            index := Rows.IndexOf(topstring);
+            if index < 0 then
+              Rows.Add(topstring);
+          end;
+        end;
+      end;
+      
+      RowCount := Rows.Count;
+      if RowCount < 1 then RowCount := 1;
+      
+      SetLength(Grid, RowCount * ColCount);
+      for idx := 0 to RowCount * ColCount - 1 do
+        Grid[idx] := nil;
+        
+      for i := frompage to topage do
+      begin
+        apage := metafile.Pages[i];
+        for j := 0 to apage.ObjectCount - 1 do
+        begin
+          if apage.Objects[j].Metatype = rpMetaText then
+          begin
+            topstring := FormatCurr('0000000000', apage.Objects[j].Top / XLS_PRECISION);
+            leftstring := FormatCurr('0000000000', apage.Objects[j].Left / XLS_PRECISION);
+            arow := Rows.IndexOf(topstring) + 1;
+            acolumn := Columns.IndexOf(leftstring) + 1;
+            
+            aansitext := apage.GetText(apage.Objects[j]);
+            
+            FontName := apage.GetWFontName(apage.Objects[j]);
+            FontSize := apage.Objects[j].FontSize;
+            FontColor := CLXColorToVCLColor(apage.Objects[j].FontColor);
+            afontstyle := CLXIntegerToFontStyle(apage.Objects[j].FontStyle);
+            Bold := fsBold in afontstyle;
+            Italic := fsItalic in afontstyle;
+            Underline := fsUnderline in afontstyle;
+            Strikeout := fsStrikeout in afontstyle;
+            
+            Alignment := 0;
+            if (apage.Objects[j].AlignMent and AlignmentFlags_AlignHCenter) > 0 then
+              Alignment := 2
+            else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignLEFT) > 0 then
+              Alignment := 1
+            else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignRight) > 0 then
+              Alignment := 3;
+              
+            WordWrap := apage.Objects[j].WordWrap;
+            
+            FormatType := 0;
+            isanumber := VarTryStrToFloat(aansitext, number);
+            isadate := False;
+            adate := 0;
+            if isanumber then
+              FormatType := GetDecimalPlaces(aansitext)
+            else
+            begin
+              isadate := VarTryStrToDate(aansitext, adate);
+              if isadate then
+                FormatType := 100;
+            end;
+            
+            StyleID := RegisterStyle(StylesList, StylesXML, FontName, FontSize, FontColor, Bold, Italic, Underline, Strikeout, Alignment, WordWrap, FormatType);
+            
+            cell := TXMLCell.Create;
+            cell.RowIndex := arow;
+            cell.ColIndex := acolumn;
+            cell.StyleID := StyleID;
+            if isanumber then
+            begin
+              cell.DataType := 'Number';
+              cell.Value := FloatToStrXML(number);
+            end
+            else if isadate then
+            begin
+              cell.DataType := 'DateTime';
+              cell.Value := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.000', adate);
+            end
+            else
+            begin
+              cell.DataType := 'String';
+              cell.Value := EscapeXML(aansitext);
+            end;
+            
+            idx := (arow - 1) * ColCount + (acolumn - 1);
+            if Grid[idx] <> nil then
+              Grid[idx].Free;
+            Grid[idx] := cell;
+          end;
+        end;
+      end;
+      
+      XMLList.Add(' <Worksheet ss:Name="Relatorio">');
+      XMLList.Add('  <Table>');
+      
+      for r := 1 to RowCount do
+      begin
+        HasCells := False;
+        for c := 1 to ColCount do
+        begin
+          if Grid[(r - 1) * ColCount + (c - 1)] <> nil then
+          begin
+            HasCells := True;
+            break;
+          end;
+        end;
+        
+        if HasCells then
+        begin
+          XMLList.Add('   <Row ss:Index="' + IntToStr(r) + '">');
+          for c := 1 to ColCount do
+          begin
+            cell := Grid[(r - 1) * ColCount + (c - 1)];
+            if cell <> nil then
+            begin
+              XMLList.Add('    <Cell ss:Index="' + IntToStr(c) + '" ss:StyleID="' + cell.StyleID + '">');
+              XMLList.Add('     <Data ss:Type="' + cell.DataType + '">' + cell.Value + '</Data>');
+              XMLList.Add('    </Cell>');
+            end;
+          end;
+          XMLList.Add('   </Row>');
+        end;
+      end;
+      
+      XMLList.Add('  </Table>');
+      XMLList.Add(' </Worksheet>');
+      
+      for idx := 0 to RowCount * ColCount - 1 do
+        if Grid[idx] <> nil then
+          Grid[idx].Free;
+      Grid := nil;
+    end
+    else
+    begin
+      for i := frompage to topage do
+      begin
+        apage := metafile.Pages[i];
+        Rows.Clear;
+        for j := 0 to apage.ObjectCount - 1 do
+        begin
+          if apage.Objects[j].Metatype = rpMetaText then
+          begin
+            topstring := FormatCurr('0000000000', apage.Objects[j].Top / XLS_PRECISION);
+            index := Rows.IndexOf(topstring);
+            if index < 0 then
+              Rows.Add(topstring);
+          end;
+        end;
+        
+        RowCount := Rows.Count;
+        if RowCount < 1 then RowCount := 1;
+        
+        SetLength(Grid, RowCount * ColCount);
+        for idx := 0 to RowCount * ColCount - 1 do
+          Grid[idx] := nil;
+          
+        for j := 0 to apage.ObjectCount - 1 do
+        begin
+          if apage.Objects[j].Metatype = rpMetaText then
+          begin
+            topstring := FormatCurr('0000000000', apage.Objects[j].Top / XLS_PRECISION);
+            leftstring := FormatCurr('0000000000', apage.Objects[j].Left / XLS_PRECISION);
+            arow := Rows.IndexOf(topstring) + 1;
+            acolumn := Columns.IndexOf(leftstring) + 1;
+            
+            aansitext := apage.GetText(apage.Objects[j]);
+            
+            FontName := apage.GetWFontName(apage.Objects[j]);
+            FontSize := apage.Objects[j].FontSize;
+            FontColor := CLXColorToVCLColor(apage.Objects[j].FontColor);
+            afontstyle := CLXIntegerToFontStyle(apage.Objects[j].FontStyle);
+            Bold := fsBold in afontstyle;
+            Italic := fsItalic in afontstyle;
+            Underline := fsUnderline in afontstyle;
+            Strikeout := fsStrikeout in afontstyle;
+            
+            Alignment := 0;
+            if (apage.Objects[j].AlignMent and AlignmentFlags_AlignHCenter) > 0 then
+              Alignment := 2
+            else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignLEFT) > 0 then
+              Alignment := 1
+            else if (apage.Objects[j].AlignMent and AlignmentFlags_AlignRight) > 0 then
+              Alignment := 3;
+              
+            WordWrap := apage.Objects[j].WordWrap;
+            
+            FormatType := 0;
+            isanumber := VarTryStrToFloat(aansitext, number);
+            isadate := False;
+            adate := 0;
+            if isanumber then
+              FormatType := GetDecimalPlaces(aansitext)
+            else
+            begin
+              isadate := VarTryStrToDate(aansitext, adate);
+              if isadate then
+                FormatType := 100;
+            end;
+            
+            StyleID := RegisterStyle(StylesList, StylesXML, FontName, FontSize, FontColor, Bold, Italic, Underline, Strikeout, Alignment, WordWrap, FormatType);
+            
+            cell := TXMLCell.Create;
+            cell.RowIndex := arow;
+            cell.ColIndex := acolumn;
+            cell.StyleID := StyleID;
+            if isanumber then
+            begin
+              cell.DataType := 'Number';
+              cell.Value := FloatToStrXML(number);
+            end
+            else if isadate then
+            begin
+              cell.DataType := 'DateTime';
+              cell.Value := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.000', adate);
+            end
+            else
+            begin
+              cell.DataType := 'String';
+              cell.Value := EscapeXML(aansitext);
+            end;
+            
+            idx := (arow - 1) * ColCount + (acolumn - 1);
+            if Grid[idx] <> nil then
+              Grid[idx].Free;
+            Grid[idx] := cell;
+          end;
+        end;
+        
+        XMLList.Add(' <Worksheet ss:Name="Pagina_' + IntToStr(i + 1 - frompage) + '">');
+        XMLList.Add('  <Table>');
+        
+        for r := 1 to RowCount do
+        begin
+          HasCells := False;
+          for c := 1 to ColCount do
+          begin
+            if Grid[(r - 1) * ColCount + (c - 1)] <> nil then
+            begin
+              HasCells := True;
+              break;
+            end;
+          end;
+          
+          if HasCells then
+          begin
+            XMLList.Add('   <Row ss:Index="' + IntToStr(r) + '">');
+            for c := 1 to ColCount do
+            begin
+              cell := Grid[(r - 1) * ColCount + (c - 1)];
+              if cell <> nil then
+              begin
+                XMLList.Add('    <Cell ss:Index="' + IntToStr(c) + '" ss:StyleID="' + cell.StyleID + '">');
+                XMLList.Add('     <Data ss:Type="' + cell.DataType + '">' + cell.Value + '</Data>');
+                XMLList.Add('    </Cell>');
+              end;
+            end;
+            XMLList.Add('   </Row>');
+          end;
+        end;
+        
+        XMLList.Add('  </Table>');
+        XMLList.Add(' </Worksheet>');
+        
+        for idx := 0 to RowCount * ColCount - 1 do
+          if Grid[idx] <> nil then
+            Grid[idx].Free;
+        Grid := nil;
+      end;
+    end;
+    XMLList.Add('</Workbook>');
+    
+    XMLList.SaveToFile(filename);
+  finally
+    Columns.Free;
+    Rows.Free;
+    StylesList.Free;
+    StylesXML.Free;
+    XMLList.Free;
+  end;
+  
+  if Assigned(aform) then
+    aform.Close;
+end;
+
+procedure AbrirPlanilha(pCaminho: String);
+var
+  ExcelApp: Variant;
+  bAberto: Boolean;
+begin
+  bAberto := False;
+  try
+    ExcelApp := CreateOleObject('Excel.Application');
+    ExcelApp.Workbooks.Open(pCaminho);
+    ExcelApp.Visible := True;
+    bAberto := True;
+  except
+    bAberto := False;
+  end;
+
+  if not bAberto then
+  begin
+    ShellExecute(0, 'open', PChar(pCaminho), nil, nil, SW_SHOWNORMAL);
+  end;
+end;
+
+function ExportMetafileToXMLSpreadsheet (metafile:TRpMetafileReport; filename:string;
+ showprogress,allpages:boolean; frompage,topage:integer;
+ onesheet:Boolean=false; openfile:Boolean=true):boolean;
+var
+ dia:TFRpExcelProgress;
+begin
+ Result:=true;
+ if Not ShowProgress then
+ begin
+  DoExportMetafileXML(metafile,filename,nil,allpages,frompage,topage,onesheet);
+  if openfile then
+    AbrirPlanilha(filename);
+  exit;
+ end;
+ dia:=TFRpExcelProgress.Create(Application);
+ try
+  dia.oldonidle:=Application.OnIdle;
+  try
+   dia.metafile:=metafile;
+   dia.filename:=filename;
+   dia.allpages:=allpages;
+   dia.frompage:=frompage;
+   dia.onesheet:=onesheet;
+   dia.isvisible:=false;
+   dia.isxml:=true;
+   dia.topage:=topage;
+   Application.OnIdle:=dia.AppIdle;
+   dia.ShowModal;
+   Result:=Not dia.cancelled;
+   if Result and openfile then
+     AbrirPlanilha(filename);
+  finally
+   Application.OnIdle:=dia.oldonidle;
+  end;
+ finally
+  dia.free;
+ end;
+end;
 
 end.
 
