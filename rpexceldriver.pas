@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -137,7 +137,7 @@ function IsValidNumberChar(achar:char):Boolean;
 begin
  Result:=false;
 {$IFDEF DELPHI2009UP}
- if (achar in ['-','+','e','E','0'..'9',' ',FormatSettings.DecimalSeparator]) then
+ if CharInSet(achar, ['-','+','e','E','0'..'9',' ', AnsiChar(FormatSettings.DecimalSeparator)]) then
 {$ELSE}
  if (achar in ['-','+','e','E','0'..'9',' ',DecimalSeparator]) then
 {$ENDIF}
@@ -148,22 +148,19 @@ end;
 
 
 function VarTryStrToFloat(S: string; var Value: Double): Boolean;
+{$IFNDEF DELPHI2009UP}
 var
  index,i:integer;
+{$ENDIF}
 begin
 {$IFDEF DELPHI2009UP}
   Result:=TryStrToFloat(S,Value);
-  exit;
-{$ENDIF}
+{$ELSE}
  Result:=true;
  S:=Trim(S);
  // Remove thousand separators
  repeat
-{$IFDEF DELPHI2009UP}
-  index:=Pos(FormatSettings.ThousandSeparator,S);
-{$ELSE}
   index:=Pos(ThousandSeparator,S);
-{$ENDIF}
   if index>0 then
    S:=Copy(S,1,index-1)+Copy(S,index+1,Length(S));
  until index=0;
@@ -182,6 +179,7 @@ begin
  except
   Result:=false;
  end;
+{$ENDIF}
 end;
 
 function VarTryStrToDate(S: string; var Value: TDateTime): Boolean;
@@ -720,7 +718,11 @@ begin
   begin
     for i := SepPos + 1 to Length(S) do
     begin
+      {$IFDEF DELPHI2009UP}
+      if CharInSet(S[i], ['0'..'9']) then
+      {$ELSE}
       if S[i] in ['0'..'9'] then
+      {$ENDIF}
         Inc(Result)
       else
         Break;
@@ -749,7 +751,7 @@ begin
   // Font
   S := S + '   <Font ss:FontName="' + FontName + '" ss:Size="' + IntToStr(FontSize) + '"';
   if FontColor <> clBlack then
-    S := S + ' ss:Color="#' + Format('%.2x%.2x%.2x', [GetRValue(FontColor), GetGValue(FontColor), GetBValue(FontColor)]) + '"';
+    S := S + ' ss:Color="#' + Format('%.2x%.2x%.2x', [GetRValue(DWord(FontColor)), GetGValue(DWord(FontColor)), GetBValue(DWord(FontColor))]) + '"';
   if Bold then
     S := S + ' ss:Bold="1"';
   if Italic then
@@ -826,15 +828,11 @@ var
   cell: TXMLCell;
   idx: Integer;
   HasCells: boolean;
-  mmfirst, mmlast: DWORD;
-  difmilis: int64;
   DefaultFontName: string;
   DefaultFontSize: Integer;
 begin
   DefaultFontName := 'Calibri';
   DefaultFontSize := 11;
-  
-  mmfirst := TimeGetTime;
   
   if allpages then
   begin
@@ -925,14 +923,12 @@ begin
           
           FormatType := 0;
           isanumber := VarTryStrToFloat(aansitext, number);
-          isadate := False;
           adate := 0;
           if isanumber then
             FormatType := GetDecimalPlaces(aansitext)
           else
           begin
-            isadate := VarTryStrToDate(aansitext, adate);
-            if isadate then
+            if VarTryStrToDate(aansitext, adate) then
               FormatType := 100;
           end;
             
@@ -1251,7 +1247,6 @@ var
   ExcelApp: Variant;
   bAberto: Boolean;
 begin
-  bAberto := False;
   try
     ExcelApp := CreateOleObject('Excel.Application');
     ExcelApp.Workbooks.Open(pCaminho);
