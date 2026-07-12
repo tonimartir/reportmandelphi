@@ -508,6 +508,7 @@ begin
     maxWidth := 0;
     lineWidthLimit := Rect.Right - Rect.Left;
     TempFont := TRpPDFFont.Create;
+    fontDataCache := nil;
     try
       TempFont.Name := pdfFont.Name;
       TempFont.Size := pdfFont.Size;
@@ -888,12 +889,15 @@ begin
     finally
       TempFont.Free;
       // Free cached font data objects (except adata which is not owned)
-      for cachedData in fontDataCache.Values do
+      if Assigned(fontDataCache) then
       begin
-        if cachedData <> adata then
-          cachedData.Free;
+        for cachedData in fontDataCache.Values do
+        begin
+          if cachedData <> adata then
+            cachedData.Free;
+        end;
+        fontDataCache.Free;
       end;
-      fontDataCache.Free;
     end;
     if Length(Result) > 0 then Result[High(Result)].lastline := True;
   finally

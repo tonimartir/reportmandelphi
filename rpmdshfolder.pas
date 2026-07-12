@@ -31,6 +31,7 @@ uses
 {$IFDEF LINUX}
   {$IFNDEF FPC}
 //   Libc,
+  System.AnsiStrings,
   {$ENDIF}
 {$ENDIF}
 {$IFDEF MSWINDOWS}
@@ -140,8 +141,13 @@ begin
 {$ENDIF}
   if assigned(ap) then
   begin
+{$IFDEF FPC}
     StrPCopy(szAppDataA, AnsiString(String(ap)));
     Result := String(StrPas(szAppDataA)) + '/.';
+{$ELSE}
+    System.AnsiStrings.StrPCopy(szAppDataA, AnsiString(String(ap)));
+    Result := String(System.AnsiStrings.StrPas(szAppDataA)) + '/.';
+{$ENDIF}
   end
   else
     Result := './.';
@@ -220,8 +226,13 @@ begin
 {$ENDIF}
  if assigned(ap) then
  begin
+{$IFDEF FPC}
   StrPCopy(szAppdata,AnsiString(String(ap)));
   Result:=String(StrPas(szAppdata))+'/.'
+{$ELSE}
+  System.AnsiStrings.StrPCopy(szAppdata,AnsiString(String(ap)));
+  Result:=String(System.AnsiStrings.StrPas(szAppdata))+'/.'
+{$ENDIF}
  end
  else
   Result:='./.';
@@ -252,8 +263,13 @@ begin
  ap:=PChar(System.SysUtils.GetEnvironmentVariable('HOME'));
  if assigned(ap) then
  begin
+{$IFDEF FPC}
   StrPCopy(szAppdataA,AnsiString(String(ap)));
   Result:=String(StrPas(szAppdataA))+'/.'
+{$ELSE}
+  System.AnsiStrings.StrPCopy(szAppdataA,AnsiString(String(ap)));
+  Result:=String(System.AnsiStrings.StrPas(szAppdataA))+'/.'
+{$ENDIF}
  end
  else
   Result:='./.';
