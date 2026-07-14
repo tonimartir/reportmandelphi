@@ -110,11 +110,53 @@ procedure SwitchToPrinterIndex(index:integer);
 function CreateICFromCurrentPrinter:HDC;
 function PrinterDuplexSupport:boolean;
 procedure SetPrinterOrientation(landscape:boolean);
+// Backward-compatible wrappers around TPrinter.GetPrinter / TPrinter.SetPrinter.
+// Delphi 12 Athens replaced the legacy PChar signatures with string overloads
+// (the PChar GetPrinter overload is now marked deprecated). Delphi 11 Alexandria
+// and earlier only expose the PChar signatures, so passing string variables
+// there fails with "E2010 Incompatible types: 'PWideChar' and 'string'". Route
+// every call through these helpers, gated on the DELPHI12UP switch (rpconf.inc).
+procedure RpGetPrinter(var Device, Driver, Port: string; var DeviceMode: THandle);
+procedure RpSetPrinter(const Device, Driver, Port: string; DeviceMode: THandle);
 
 implementation
 
 var
  FPrinters:TStringList;
+
+
+procedure RpGetPrinter(var Device, Driver, Port: string; var DeviceMode: THandle);
+{$IFDEF DELPHI12UP}
+// Delphi 12 Athens and later: TPrinter.GetPrinter has a native string overload.
+begin
+ Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+end;
+{$ELSE}
+// Delphi 11 Alexandria and earlier: only the PChar overload exists, and it
+// needs caller-owned buffers. Fill them and copy the results back to strings.
+var
+ bDevice, bDriver, bPort: array[0..1023] of Char;
+begin
+ bDevice[0]:=#0;
+ bDriver[0]:=#0;
+ bPort[0]:=#0;
+ Printer.GetPrinter(bDevice, bDriver, bPort, DeviceMode);
+ Device:=bDevice;
+ Driver:=bDriver;
+ Port:=bPort;
+end;
+{$ENDIF}
+
+procedure RpSetPrinter(const Device, Driver, Port: string; DeviceMode: THandle);
+begin
+{$IFDEF DELPHI12UP}
+ // Delphi 12 Athens and later: native string overload of TPrinter.SetPrinter.
+ Printer.SetPrinter(Device, Driver, Port, DeviceMode);
+{$ELSE}
+ // Delphi 11 Alexandria and earlier: PChar overload only.
+ Printer.SetPrinter(PChar(Device), PChar(Driver), PChar(Port), DeviceMode);
+{$ENDIF}
+end;
 
 
 function GetFontData(Font:TFont):TMemoryStream;
@@ -1114,7 +1156,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
   PrinterName := Format('%s', [Device]);
  except
   printererror:=true;
@@ -1223,7 +1265,7 @@ var
  PrinterName: string;
  lbuf:Cardinal;
 begin
- Printer.GetPrinter(Device, Driver, Port, hDeviceMode);
+ RpGetPrinter(Device, Driver, Port, hDeviceMode);
  PrinterName := Format('%s', [Device]);
  if not OpenPrinter(PChar(PrinterName), Handle, nil) then
    RaiseLastOSError;
@@ -1381,7 +1423,7 @@ begin
   Raise Exception.Create(SRpMustInstall);
  // Printer selected not valid error
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   on E:Exception do
   begin
@@ -1430,7 +1472,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1586,7 +1628,7 @@ begin
  begin
 //  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
 //        PDevMode^, DM_MODIFY);
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode);
+  RpSetPrinter(Device, Driver, Port, DeviceMode);
  end
  else
  begin
@@ -1766,7 +1808,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1798,7 +1840,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1847,7 +1889,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2093,7 +2135,7 @@ begin
   end;
   exit;
  end;
- Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+ RpGetPrinter(Device, Driver, Port, DeviceMode);
  if DeviceMode=0 then
   exit;
  //if not OpenPrinter(Device,nhan, nil) then
@@ -2186,7 +2228,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2218,7 +2260,7 @@ begin
  end;
  if not printer.Printing then
  begin
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  RpSetPrinter(Device, Driver, Port, DeviceMode)
  end
  else
  begin
@@ -2243,7 +2285,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2278,7 +2320,7 @@ begin
  end;
  if not printer.Printing then
  begin
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  RpSetPrinter(Device, Driver, Port, DeviceMode)
  end
  else
  begin
@@ -2378,7 +2420,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2408,7 +2450,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2438,7 +2480,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2566,7 +2608,7 @@ var
  aresult:THandle;
  amode:THandle;
 begin
- Printer.GetPrinter(ADevice,ADriver,APort,amode);
+ RpGetPrinter(ADevice,ADriver,APort,amode);
  XDevice:=ADevice;
  XDriver:=ADriver;
  XPort:=APort;
