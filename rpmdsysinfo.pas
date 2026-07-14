@@ -217,7 +217,7 @@ begin
   try
    dc:=Printer.Handle;
    if (dc <> 0) then
-    Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+    RpGetPrinter(Device, Driver, Port, DeviceMode);
   except
    on E:Exception do
    begin
