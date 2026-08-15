@@ -3147,22 +3147,28 @@ begin
       FTop:=FTop+(dif*QRCode.Rows) div 2;
       squareHeight:=squareWidth;
     end;
+    // El fondo, UNA SOLA VEZ. Antes se pintaba un rectangulo blanco por cada modulo
+    // claro: un QR de 40x40 mm emitia unos 930, la mayor parte del peso del objeto en
+    // el PDF, y ademas cada uno se dibuja con pluma, asi que los claros mordian medio
+    // trazo a los oscuros ya dibujados y el codigo se veia lavado en pantalla. Con un
+    // solo fondo detras, a los modulos oscuros no les pinta nadie encima.
+    // (Con Transparent no hay fondo, como antes: es lo que se pide para poner el codigo
+    // sobre un color propio.)
+    if (Not Transparent) then
+    begin
+      meta.Pages[meta.CurrentPage].NewDrawObject(
+          FTop,FLeft,squareWidth*QRCode.Columns,squareHeight*QRCode.Rows,
+          integer(rpsRectangle),0,BackColor,0,PenWidth,BackColor,'');
+    end;
+    PenColor := BColor;
+    BrushColor := PenColor;
     for Row := 0 to QRCode.Rows - 1 do
     begin
       for Column := 0 to QRCode.Columns - 1 do
       begin
         isBlack := QRCode.IsBlack[Row, Column];
+        // Solo los oscuros: el fondo ya esta puesto.
         if (isBlack) then
-        begin
- 				 PenColor := BColor;
-         BrushColor := PenColor;
-        end
-        else
-        begin
-         PenColor := BackColor;
-         BrushColor := PenColor;
-        end;
-        if (isBlack OR (Not Transparent)) then
         begin
           meta.Pages[meta.CurrentPage].NewDrawObject(
               FTop+Row*squareHeight,FLeft+Column*squareWidth,squareWidth,squareHeight,
