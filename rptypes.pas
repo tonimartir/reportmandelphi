@@ -5322,6 +5322,8 @@ var
  alist:TRpWideStrings;
 begin
  if index<0 then
+  index:=0
+ else if index>256 then
   index:=0;
  if Length(astring)<0 then
  begin
@@ -5346,6 +5348,8 @@ var
  alist:TRpWideStrings;
  defvalue:widestring;
 begin
+ if index > 256 then
+  index := 0;
  defvalue:=astring;
  alist:=TRPWideStrings.Create;
  try

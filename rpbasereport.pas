@@ -2571,6 +2571,8 @@ end;
 procedure TRpBaseReport.SetLanguage(index:integer);
 begin
  AssertCanModify('Language');
+ if index > 256 then
+  index := -1;
  FLanguage:=index;
  Params.Language:=index;
  if Assigned(FEvaluator) then
