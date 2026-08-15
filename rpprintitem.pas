@@ -592,6 +592,8 @@ begin
  Result:=rpBidiNo;
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  if BidiModes.Count>langindex then
  begin
@@ -609,6 +611,8 @@ var
 begin
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  while (BidiModes.Count<=langindex) do
  begin

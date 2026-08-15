@@ -395,6 +395,8 @@ begin
  AssertCanModify(ClassName+'.Text');
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  acopy:='';
  if FAllStrings.Count>0 then
@@ -415,6 +417,8 @@ var
 begin
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  acopy:='';
  if FAllStrings.Count>0 then

@@ -231,6 +231,8 @@ end;
 
 procedure TCBaseReport.SetLanguage(Value:Integer);
 begin
+ if Value > 256 then
+  Value := -1;
  FLanguage:=Value;
  if Assigned(FReport) then
   if FLanguage>=0 then

@@ -1372,6 +1372,8 @@ end;
 procedure TRpParamList.SetLanguage(ALang:integer);
 begin
  if (ALang<0) then
+  ALang:=0
+ else if (ALang>256) then
   ALang:=0;
  FLanguage:=ALang;
 end;
