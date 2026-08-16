@@ -947,6 +947,11 @@ begin
    SetLength(Result, 0);
    maxWidth := 0;
    lineWidthLimit := Rect.Right - Rect.Left;
+   // Relative rectangle on return (Left/Top 0, Right/Bottom = size), the contract of the
+   // DirectWrite TextExtent above and of TextExtentSimple; TextRect reads Bottom as the
+   // height when it centres or bottom-aligns. Same fix as rpinfoprovft.pas.
+   Rect.Left := 0;
+   Rect.Top := 0;
 
    try
     for lineSubText in lineSubTexts do

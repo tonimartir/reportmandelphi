@@ -1025,6 +1025,16 @@ begin
     SetLength(Result, 0);
     maxWidth := 0;
     lineWidthLimit := Rect.Right - Rect.Left;
+    // The rectangle comes back RELATIVE, like TextExtentSimple and the DirectWrite
+    // provider (rpinfoprovgdi.pas TextExtent) return it: Left/Top at 0, Right/Bottom the
+    // measured width and height. The caller (rppdffile.pas TextRect) reads recsize.Bottom
+    // as the height when it centres or bottom-aligns; with the item's absolute Top left in
+    // here, every vertically centred shaped text landed Top/2 twips too high (a 10 pt line
+    // in a box 782 twips down the page came out 168 twips above its own clip and vanished)
+    // and a bottom-aligned one a whole Top too high. Only this provider did it, which is
+    // why the same .rep was right on Windows (GDI) and wrong on Linux.
+    Rect.Left := 0;
+    Rect.Top := 0;
     TempFont := TRpPDFFont.Create;
     fontDataCache := nil;
     try
