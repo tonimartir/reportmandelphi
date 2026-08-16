@@ -1747,6 +1747,12 @@ begin
           currentfont.data.fontdata:=TAdvFontData.Create;
           FillFontDataInt(currentfont.data);
         end;
+        // La cara que dijo fontconfig, hasta el subsetter. data.FontIndex estaba declarado
+        // y no se asignaba en ningun sitio, asi que hb_face_create(blob, data.FontIndex)
+        // trabajaba SIEMPRE sobre la cara 0: en una coleccion (.ttc) se media una cara y se
+        // subseteaba otra. El LogFont ya esta cacheado por fichero|indice, asi que el indice
+        // de esta ficha es el de esta cara.
+        currentfont.data.FontIndex:=FontIndex;
        end;
       end;
    end;

@@ -935,9 +935,15 @@ begin
   end
   else
   begin
+  // ProcName seguia valiendo 'hb_subset_input_create_or_fail' de la linea de arriba: a
+  // hb_subset_input_glyph_set se le enlazaba la funcion equivocada, y luego hb_set_add
+  // escribia glifos dentro de un hb_subset_input_t creyendolo un hb_set_t. El set de
+  // glifos real se quedaba vacio.
+  ProcName:='hb_subset_input_glyph_set';
   hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_glyph_set) then
-    raise Exception.CreateFmt('Falta funci�n: %s', [ProcName]);  ProcName:='hb_subset_input_destroy';
+    raise Exception.CreateFmt('Falta funci�n: %s', [ProcName]);
+  ProcName:='hb_subset_input_destroy';
   hb_subset_input_destroy:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_destroy) then
     raise Exception.CreateFmt('Falta funci�n: %s', [ProcName]);
