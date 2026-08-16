@@ -390,6 +390,10 @@ type
 
 const
   HB_SUBSET_FLAGS_DEFAULT = 0; // valor por defecto, HarfBuzz define otros flags como bits individuales
+  // Conserva los numeros de glifo originales. El PDF escribe los indices que devuelve la
+  // conformacion sobre la fuente ENTERA; si el subset los renumera -que es lo que hace por
+  // omision- cada <gid> Tj del contenido acaba apuntando a otro glifo.
+  HB_SUBSET_FLAGS_RETAIN_GIDS = 2;
 
   type
 
