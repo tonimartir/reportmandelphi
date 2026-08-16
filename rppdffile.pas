@@ -189,6 +189,7 @@ type
     FontSize: integer;lInfo:TRpLineInfo):String;
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
+   procedure PromoteToUnicodeFontIfNeeded(const Text:WideString);
   public
    function TextExtent(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
@@ -1951,6 +1952,9 @@ begin
   if (RightToLeft) or (IsHtml) then
    Text:=InfoProvider.NFCNormalize(Text);
  end;
+ // Text outside WinAnsi (Greek, Cyrillic, CJK...) can not be written with a PDF standard
+ // font: it would come out as '?'. Promote it to an embedded TrueType font, as RTL does.
+ PromoteToUnicodeFontIfNeeded(Text);
 
  // Rotated text keeps the legacy pipeline on both PDF and GDI (the GDI exact-metrics
  // path excludes rotation), so forced shaping is suspended to keep measurement and
@@ -2834,6 +2838,7 @@ end;
 function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
  wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
 begin
+ PromoteToUnicodeFontIfNeeded(Text);
  if (rightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
@@ -4386,6 +4391,52 @@ begin
   exit;
  end;
  Result:=UpdateFonts;
+end;
+
+// True when the text has a character WinAnsiEncoding (Windows-1252) can not
+// represent, so a PDF standard font (Helvetica, Courier, Times) would print '?'.
+function NeedsUnicodeFont(const Text:WideString):Boolean;
+var
+ i:integer;
+ c:Word;
+begin
+ Result:=false;
+ for i:=1 to Length(Text) do
+ begin
+  c:=Word(Text[i]);
+  if c<$100 then
+   continue;
+  case c of
+   // The 27 characters Windows-1252 places at $80-$9F
+   $20AC,$201A,$0192,$201E,$2026,$2020,$2021,$02C6,$2030,$0160,
+   $2039,$0152,$017D,$2018,$2019,$201C,$201D,$2022,$2013,$2014,
+   $02DC,$2122,$0161,$203A,$0153,$017E,$0178:
+    continue;
+  else
+   begin
+    Result:=true;
+    break;
+   end;
+  end;
+ end;
+end;
+
+// A PDF standard font only has WinAnsi glyphs; when the text carries characters
+// outside that set (Greek, Cyrillic, CJK...) the current font is promoted to an
+// embedded TrueType font, as right-to-left text is, so it is written with glyph
+// ids instead of turning into '?'. Linked and Embedded fonts, and canvases
+// without a font provider, are left as they are.
+procedure TRpPDFCanvas.PromoteToUnicodeFontIfNeeded(const Text:WideString);
+begin
+ if Font.Name in [poLinked,poEmbedded] then
+  exit;
+ if Not Assigned(InfoProvider) then
+  exit;
+ if NeedsUnicodeFont(Text) then
+ begin
+  Font.Name:=poEmbedded;
+  GetTTFontData;
+ end;
 end;
 
 
