@@ -82,6 +82,9 @@ type
   crit:TCriticalSection;
   procedure InitLibrary;
   procedure SelectFont(pdffont:TRpPDFFOnt;content: string;ignoreFamily: boolean);
+  procedure SelectFontPorNombre(pdffont:TRpPDFFOnt);
+  function ReservaPorContenido(pdffont:TRpPDFFont;const texto:WideString;
+    fuenteactual:TRpLogFont;var familia:string):boolean;
   function NFCNormalize(astring:WideString):WideString;override;
 
   function CalcGlyphPositions(astring:WideString;
@@ -136,6 +139,10 @@ implementation
 
 var
   fontlist:TStringList;
+  // La reserva ya buscada, por juego de caracteres y estilo: el barrido por cobertura se
+  // paga una vez por script, no una por linea de texto. Guarda referencias a fichas de
+  // fontlist, no es duenya de ellas.
+  reservaporcobertura:TDictionary<string,TRpLogFont>;
   fontpaths:TStringList;
   fontfiles:TStringList;
   ftlibrary:FT_Library;
@@ -238,6 +245,10 @@ begin
        aobj.widthmult:=1;
       end;
       aobj.filename:=filename;
+      // La cara de la que salen estos datos. El campo estaba declarado y no se rellenaba en
+      // ningun sitio, asi que valia 0 siempre: en una coleccion (.ttc) la ficha decia una cara
+      // y todo lo que despues usara este indice trabajaba sobre otra.
+      aobj.fontIndex:=fontIndex;
       aobj.postcriptname:='';
       aobj.familyname:='';
       if (aface.family_name<>nil) then
@@ -409,6 +420,512 @@ begin
   end;
 end;
 
+// Un tramo de un trozo que se dibuja con UNA fuente: la pedida o la de reserva.
+type
+ TTramo = record
+  Inicio:integer;      // desplazamiento en base 0 dentro del trozo
+  Longitud:integer;
+  NecesitaReserva:boolean;
+ end;
+ TTramoArray = array of TTramo;
+
+// Recorre los puntos de codigo de un texto, juntando los pares subrogados y dejando fuera
+// blancos y controles: una fuente no se cambia por un espacio que si dibuja igual.
+function CodigosDelTexto(const texto:WideString):TArray<Integer>;
+var
+ i,n,cp:integer;
+begin
+ SetLength(Result,Length(texto));
+ n:=0;
+ i:=1;
+ while (i<=Length(texto)) do
+ begin
+  cp:=Ord(texto[i]);
+  if ((cp>=$D800) and (cp<=$DBFF) and (i<Length(texto))
+      and (Ord(texto[i+1])>=$DC00) and (Ord(texto[i+1])<=$DFFF)) then
+  begin
+   cp:=$10000+((cp-$D800) shl 10)+(Ord(texto[i+1])-$DC00);
+   inc(i);
+  end;
+  if ((cp>32) and (cp<>$A0)) then
+  begin
+   Result[n]:=cp;
+   inc(n);
+  end;
+  inc(i);
+ end;
+ SetLength(Result,n);
+end;
+
+// Cuantos de esos puntos de codigo tiene glifo esta fuente. La cara se abre aparte y se
+// vuelve a cerrar si no estaba abierta: un barrido no puede dejar residentes todas las
+// fuentes de la maquina porque una linea de texto llevara un script raro.
+function CuantosCubre(afont:TRpLogFont;const cps:TArray<Integer>):integer;
+var
+ aface:FT_Face;
+ prestada:boolean;
+ filename2:AnsiString;
+ j:integer;
+begin
+ Result:=0;
+ if ((not Assigned(afont)) or (Length(cps)=0)) then
+  exit;
+ prestada:=afont.faceinit;
+ if prestada then
+  aface:=afont.ftface
+ else
+ begin
+  aface:=nil;
+  filename2:=AnsiString(afont.filename);
+  if (FT_New_Face(ftlibrary,PAnsiChar(filename2),afont.fontIndex,aface)<>0) then
+   exit;
+ end;
+ try
+  for j:=0 to High(cps) do
+   if (FT_Get_Char_Index(aface,FT_ULong(cps[j]))<>0) then
+    inc(Result);
+ finally
+  if (not prestada) then
+   FT_Done_Face(aface);
+ end;
+end;
+
+// Los puntos de codigo distintos de un texto para los que esta fuente no tiene glifo.
+function CodigosSinGlifo(afont:TRpLogFont;const content:WideString):TArray<Integer>;
+var
+ cps:TArray<Integer>;
+ aface:FT_Face;
+ prestada:boolean;
+ filename2:AnsiString;
+ j,k,n:integer;
+ yaesta:boolean;
+begin
+ SetLength(Result,0);
+ if ((not Assigned(afont)) or (Length(content)=0)) then
+  exit;
+ cps:=CodigosDelTexto(content);
+ if (Length(cps)=0) then
+  exit;
+ prestada:=afont.faceinit;
+ if prestada then
+  aface:=afont.ftface
+ else
+ begin
+  aface:=nil;
+  filename2:=AnsiString(afont.filename);
+  // Una fuente que no se deja abrir no es motivo para dejar de dibujar: se sigue con la
+  // que se habia elegido, con sus huecos, que es lo que pasaba antes de esto.
+  if (FT_New_Face(ftlibrary,PAnsiChar(filename2),afont.fontIndex,aface)<>0) then
+   exit;
+ end;
+ try
+  SetLength(Result,Length(cps));
+  n:=0;
+  for j:=0 to High(cps) do
+  begin
+   yaesta:=false;
+   for k:=0 to n-1 do
+    if (Result[k]=cps[j]) then
+    begin
+     yaesta:=true;
+     break;
+    end;
+   if yaesta then
+    continue;
+   if (FT_Get_Char_Index(aface,FT_ULong(cps[j]))=0) then
+   begin
+    Result[n]:=cps[j];
+    inc(n);
+   end;
+  end;
+  SetLength(Result,n);
+ finally
+  if (not prestada) then
+   FT_Done_Face(aface);
+ end;
+end;
+
+// Bit de OS/2 ulCodePageRange1 que una fuente tiene que reclamar para ser la eleccion
+// idiomatica de estos caracteres, o -1 cuando no dicen nada de ningun idioma. El Han se
+// escribe igual en japones, chino y coreano, asi que una fuente que lo cubra no es por
+// fuerza la que toca: lo que los distingue es la compania que lleva el Han -kana quiere
+// decir japones, hangul quiere decir coreano- y la pagina de codigo que el propio fichero
+// dice servir.
+function PaginaDeCodigoQueTocaria(const cps:TArray<Integer>):integer;
+var
+ i,cp:integer;
+ han:boolean;
+begin
+ han:=false;
+ for i:=0 to High(cps) do
+ begin
+  cp:=cps[i];
+  // Kana: solo el japones las usa.
+  if (((cp>=$3040) and (cp<=$30FF)) or ((cp>=$31F0) and (cp<=$31FF))) then
+  begin
+   Result:=17;   // 932, JIS/Japon
+   exit;
+  end;
+  // Hangul, en cualquiera de sus tres bloques.
+  if (((cp>=$1100) and (cp<=$11FF)) or ((cp>=$A960) and (cp<=$A97F))
+      or ((cp>=$AC00) and (cp<=$D7FF))) then
+  begin
+   Result:=19;   // 949, Wansung/Corea
+   exit;
+  end;
+  if (((cp>=$4E00) and (cp<=$9FFF)) or ((cp>=$3400) and (cp<=$4DBF))
+      or ((cp>=$F900) and (cp<=$FAFF))) then
+   han:=true;
+ end;
+ // Han a secas, sin nada que lo acompañe: chino.
+ if han then
+  Result:=18    // 936, chino simplificado
+ else
+  Result:=-1;
+end;
+
+// Lee ulCodePageRange1 directamente de la tabla OS/2 de un fichero de fuente, abriendolo
+// solo para llevarse esos cuatro bytes. Entiende las colecciones, asi que la cara que se
+// pide es la cara que se lee. Devuelve cero cuando el fichero no tiene nada que decir.
+function LeePaginasDeCodigo(const filename:string;nfaceindex:integer):Cardinal;
+var
+ st:TFileStream;
+ cab:array[0..11] of Byte;
+ dir:array[0..3] of Byte;
+ reg:array[0..15] of Byte;
+ ver:array[0..1] of Byte;
+ cp1:array[0..3] of Byte;
+ inicio,donde:Int64;
+ ncaras,ntablas,i:integer;
+begin
+ Result:=0;
+ try
+  st:=TFileStream.Create(filename,fmOpenRead or fmShareDenyNone);
+  try
+   if (st.Read(cab[0],12)<12) then
+    exit;
+   inicio:=0;
+   if ((cab[0]=Ord('t')) and (cab[1]=Ord('t')) and (cab[2]=Ord('c'))
+       and (cab[3]=Ord('f'))) then
+   begin
+    ncaras:=Integer((Cardinal(cab[8]) shl 24) or (Cardinal(cab[9]) shl 16)
+                    or (Cardinal(cab[10]) shl 8) or Cardinal(cab[11]));
+    if ((nfaceindex<0) or (nfaceindex>=ncaras)) then
+     exit;
+    st.Position:=12+4*nfaceindex;
+    if (st.Read(dir[0],4)<4) then
+     exit;
+    inicio:=(Cardinal(dir[0]) shl 24) or (Cardinal(dir[1]) shl 16)
+            or (Cardinal(dir[2]) shl 8) or Cardinal(dir[3]);
+    st.Position:=inicio;
+    if (st.Read(cab[0],12)<12) then
+     exit;
+   end;
+   ntablas:=(Integer(cab[4]) shl 8) or Integer(cab[5]);
+   for i:=0 to ntablas-1 do
+   begin
+    st.Position:=inicio+12+i*16;
+    if (st.Read(reg[0],16)<16) then
+     exit;
+    if ((reg[0]<>Ord('O')) or (reg[1]<>Ord('S')) or (reg[2]<>Ord('/'))
+        or (reg[3]<>Ord('2'))) then
+     continue;
+    donde:=(Cardinal(reg[8]) shl 24) or (Cardinal(reg[9]) shl 16)
+           or (Cardinal(reg[10]) shl 8) or Cardinal(reg[11]);
+    // ulCodePageRange1 esta en el byte 78 de la tabla, y solo existe a partir de la
+    // version 1 de OS/2; la version son los dos primeros bytes.
+    st.Position:=donde;
+    if (st.Read(ver[0],2)<2) then
+     exit;
+    if (((Integer(ver[0]) shl 8) or Integer(ver[1]))<1) then
+     exit;
+    st.Position:=donde+78;
+    if (st.Read(cp1[0],4)<4) then
+     exit;
+    Result:=(Cardinal(cp1[0]) shl 24) or (Cardinal(cp1[1]) shl 16)
+            or (Cardinal(cp1[2]) shl 8) or Cardinal(cp1[3]);
+    exit;
+   end;
+  finally
+   st.Free;
+  end;
+ except
+  // Un fichero que no se deja leer no decide nada; se queda sin voto.
+  Result:=0;
+ end;
+end;
+
+// Si este motor sabe meter esta cara dentro del PDF.
+//
+// Con hb-subset vale cualquiera: recorta CFF, colecciones y variables. Sin el, el subsetter
+// propio recorta TrueType llano y de un fichero CFF suelto entrega el fichero entero, que
+// tambien es una fuente valida; pero de una COLECCION no sabe sacar una cara CFF, y lo que
+// escribiria seria el .ttc completo, que no es ninguna fuente. Una candidata asi no se
+// elige: mas vale el hueco que un PDF con una fuente que no lo es.
+function SePuedeIncrustar(const filename:string;nfaceindex:integer):boolean;
+var
+ st:TFileStream;
+ cab:array[0..11] of Byte;
+ dir:array[0..3] of Byte;
+ inicio:Int64;
+ ncaras:integer;
+begin
+ Result:=true;
+{$IFDEF LINUX_USEHARFBUZZ_SUBSETFONT}
+ if HarfBuzzSubSetImplementation then
+  exit;
+{$ENDIF}
+{$IFDEF WINDOWS_USEHARFBUZZ_SUBSETFONT}
+ if HarfBuzzSubSetImplementation then
+  exit;
+{$ENDIF}
+ try
+  st:=TFileStream.Create(filename,fmOpenRead or fmShareDenyNone);
+  try
+   if (st.Read(cab[0],12)<12) then
+    exit;
+   // Un fichero suelto -no coleccion- lo sabe tratar entero.
+   if ((cab[0]<>Ord('t')) or (cab[1]<>Ord('t')) or (cab[2]<>Ord('c'))
+       or (cab[3]<>Ord('f'))) then
+    exit;
+   ncaras:=Integer((Cardinal(cab[8]) shl 24) or (Cardinal(cab[9]) shl 16)
+                   or (Cardinal(cab[10]) shl 8) or Cardinal(cab[11]));
+   if ((nfaceindex<0) or (nfaceindex>=ncaras)) then
+   begin
+    Result:=false;
+    exit;
+   end;
+   st.Position:=12+4*nfaceindex;
+   if (st.Read(dir[0],4)<4) then
+    exit;
+   inicio:=(Cardinal(dir[0]) shl 24) or (Cardinal(dir[1]) shl 16)
+           or (Cardinal(dir[2]) shl 8) or Cardinal(dir[3]);
+   st.Position:=inicio;
+   if (st.Read(cab[0],4)<4) then
+    exit;
+   // Dentro de una coleccion, solo la cara TrueType llana (version sfnt 1.0).
+   Result:=(cab[0]=0) and (cab[1]=1) and (cab[2]=0) and (cab[3]=0);
+  finally
+   st.Free;
+  end;
+ except
+  // Un fichero que no se deja leer no se propone como reserva.
+  Result:=false;
+ end;
+end;
+
+// Busca en la lista enumerada una fuente que sepa dibujar los puntos de codigo que le
+// faltan a la elegida, primero entre las del mismo estilo. La respuesta se recuerda por
+// juego de caracteres y estilo, para que el barrido pase una vez por script y no una vez
+// por linea de texto. Devuelve nil cuando no hay ninguna que cubra ni uno.
+//
+function BuscaPorCobertura(const faltan:TArray<Integer>;bold,italic:boolean):TRpLogFont;
+var
+ ordenados:TArray<Integer>;
+ i,j,tmp,vuelta:integer;
+ nkey:string;
+ bitquetoca,cubre,mejorcubre:integer;
+ mejor,candidata:TRpLogFont;
+ mejoridiomatica,idiomatica,mismoestilo,ganamejor:boolean;
+begin
+ Result:=nil;
+ if ((not Assigned(fontlist)) or (Length(faltan)=0)) then
+  exit;
+ ordenados:=Copy(faltan);
+ for i:=0 to High(ordenados)-1 do
+  for j:=i+1 to High(ordenados) do
+   if (ordenados[j]<ordenados[i]) then
+   begin
+    tmp:=ordenados[i];
+    ordenados[i]:=ordenados[j];
+    ordenados[j]:=tmp;
+   end;
+ nkey:='';
+ for i:=0 to High(ordenados) do
+  nkey:=nkey+IntToStr(ordenados[i])+',';
+ if bold then
+  nkey:=nkey+'B1'
+ else
+  nkey:=nkey+'B0';
+ if italic then
+  nkey:=nkey+'I1'
+ else
+  nkey:=nkey+'I0';
+ critSection.Enter;
+ try
+  if (not Assigned(reservaporcobertura)) then
+   reservaporcobertura:=TDictionary<string,TRpLogFont>.Create;
+  if (reservaporcobertura.TryGetValue(nkey,mejor)) then
+  begin
+   Result:=mejor;
+   exit;
+  end;
+  bitquetoca:=PaginaDeCodigoQueTocaria(faltan);
+  mejor:=nil;
+  mejorcubre:=0;
+  mejoridiomatica:=false;
+  // Dos vueltas: primero las del mismo estilo, para que un texto en negrita no acabe en
+  // redonda solo porque la redonda va antes en la lista.
+  for vuelta:=0 to 1 do
+  begin
+   for i:=0 to fontlist.Count-1 do
+   begin
+    candidata:=TRpLogFont(fontlist.Objects[i]);
+    if (not Assigned(candidata)) then
+     continue;
+    mismoestilo:=(candidata.bold=bold) and (candidata.italic=italic);
+    if ((vuelta=0)<>mismoestilo) then
+     continue;
+    if ((not candidata.scalable) or candidata.type1) then
+     continue;
+    if (not SePuedeIncrustar(candidata.filename,candidata.fontIndex)) then
+     continue;
+    cubre:=CuantosCubre(candidata,faltan);
+    if (cubre=0) then
+     continue;
+    // Solo se pregunta por el idioma a las que ya cubren todo: leer la OS/2 de las que no
+    // sirven de nada seria pagar por una respuesta que no se usa.
+    idiomatica:=(bitquetoca>=0) and (cubre=Length(faltan))
+      and ((LeePaginasDeCodigo(candidata.filename,candidata.fontIndex)
+            and (Cardinal(1) shl bitquetoca))<>0);
+    if (idiomatica<>mejoridiomatica) then
+     ganamejor:=idiomatica
+    else
+     ganamejor:=cubre>mejorcubre;
+    if ganamejor then
+    begin
+     mejorcubre:=cubre;
+     mejor:=candidata;
+     mejoridiomatica:=idiomatica;
+     // Cubre todo y ademas dice servir a ese idioma: no hay nada mejor que buscar. Si
+     // nadie lo dice, se sigue mirando por si aparece.
+     if ((cubre=Length(faltan)) and ((bitquetoca<0) or idiomatica)) then
+      break;
+    end;
+   end;
+   if ((mejorcubre=Length(faltan)) and ((bitquetoca<0) or mejoridiomatica)) then
+    break;
+  end;
+  reservaporcobertura.AddOrSetValue(nkey,mejor);
+  Result:=mejor;
+ finally
+  critSection.Leave;
+ end;
+end;
+
+// Trocea un trozo por cobertura, para que la reserva sustituya a la fuente solo donde
+// faltan de verdad los glifos y el texto vuelva a la pedida en cuanto los haya.
+//
+// Mezclar arabe con español nunca necesito esto: caen en tramos bidi distintos, asi que
+// cada uno ya pedia su fuente. El japones y el español son los dos de izquierda a derecha
+// y comparten tramo, y cambiar la fuente del tramo entero dibujaba "Gracias" con una
+// japonesa monoespaciada, todas las letras del mismo ancho.
+//
+// Los blancos no cortan nunca un tramo: los dibujan igual las dos fuentes, y cortar por
+// ellos partiria una frase en trozos y conformaria cada uno aparte para nada.
+//
+// Un tramo de derecha a izquierda no se trocea a proposito: sus glifos vuelven en orden
+// visual y coser tramos en orden logico los dejaria del reves.
+function TroceaPorCobertura(const texto:WideString;fuente:TRpLogFont;
+  rToL:boolean):TTramoArray;
+var
+ i,largo,cp,inicio,n:integer;
+ reservaactual,empezado,falta:boolean;
+ uno:TArray<Integer>;
+
+ procedure Anade(ini,lon:integer;reserva:boolean);
+ begin
+  SetLength(Result,n+1);
+  Result[n].Inicio:=ini;
+  Result[n].Longitud:=lon;
+  Result[n].NecesitaReserva:=reserva;
+  inc(n);
+ end;
+
+begin
+ SetLength(Result,0);
+ n:=0;
+ if (rToL or (not Assigned(fuente)) or (Length(texto)=0)) then
+ begin
+  Anade(0,Length(texto),true);
+  exit;
+ end;
+ // Se abre una vez la cara de la fuente elegida: si no, se abriria y cerraria por letra.
+ try
+  fuente.OpenFont;
+ except
+ end;
+ SetLength(uno,1);
+ reservaactual:=false;
+ empezado:=false;
+ inicio:=0;
+ i:=0;
+ while (i<Length(texto)) do
+ begin
+  largo:=1;
+  cp:=Ord(texto[i+1]);
+  if ((cp>=$D800) and (cp<=$DBFF) and ((i+1)<Length(texto))
+      and (Ord(texto[i+2])>=$DC00) and (Ord(texto[i+2])<=$DFFF)) then
+  begin
+   cp:=$10000+((cp-$D800) shl 10)+(Ord(texto[i+2])-$DC00);
+   largo:=2;
+  end;
+  if ((cp>32) and (cp<>$A0)) then
+  begin
+   uno[0]:=cp;
+   falta:=CuantosCubre(fuente,uno)=0;
+   if (not empezado) then
+   begin
+    reservaactual:=falta;
+    empezado:=true;
+   end
+   else
+   if (falta<>reservaactual) then
+   begin
+    Anade(inicio,i-inicio,reservaactual);
+    inicio:=i;
+    reservaactual:=falta;
+   end;
+  end;
+  inc(i,largo);
+ end;
+ Anade(inicio,Length(texto)-inicio,reservaactual);
+end;
+
+// El script de un tramo. El del run lo da ICU mirando el trozo ENTERO, y de una mezcla de
+// japones y latino contesta 'Zyyy' (comun); un tramo, en cambio, es de un solo script por
+// construccion, asi que se mira el suyo. Mismos rangos que el port .NET, para que los dos
+// motores conformen cada tramo con la misma etiqueta.
+function DetectaScript(const texto:WideString):string;
+var
+ i,cp:integer;
+begin
+ for i:=1 to Length(texto) do
+ begin
+  cp:=Ord(texto[i]);
+  if (cp<=32) then
+   continue;
+  if (((cp>=$0600) and (cp<=$06FF)) or ((cp>=$0750) and (cp<=$077F))
+      or ((cp>=$08A0) and (cp<=$08FF)) or ((cp>=$FB50) and (cp<=$FDFF))
+      or ((cp>=$FE70) and (cp<=$FEFF))) then
+   exit('Arab');
+  if (((cp>=$0590) and (cp<=$05FF)) or ((cp>=$FB1D) and (cp<=$FB4F))) then
+   exit('Hebr');
+  if ((cp>=$0E00) and (cp<=$0E7F)) then
+   exit('Thai');
+  if ((cp>=$0900) and (cp<=$097F)) then
+   exit('Deva');
+  if (((cp>=$4E00) and (cp<=$9FFF)) or ((cp>=$3400) and (cp<=$4DBF))
+      or ((cp>=$3000) and (cp<=$303F))) then
+   exit('Hani');
+  if (((cp>=$AC00) and (cp<=$D7AF)) or ((cp>=$1100) and (cp<=$11FF))) then
+   exit('Hang');
+  if ((cp>=$0020) and (cp<=$024F)) then
+   exit('Latn');
+ end;
+ Result:='Latn';
+end;
+
 function TRpFTInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -458,6 +975,7 @@ var
   visualGlyphs:TList<TGlyphPos>;
   runOffset:integer;
   originalFont: TRpLogFont;
+  fuenteDelTramo: TRpLogFont;
   Segments: THtmlSegmentList;
   PlainText: WideString;
   TempFont: TRpPDFFont;
@@ -574,6 +1092,10 @@ begin
                  activeSize := FontSize;
                TempFont.Size := Round(activeSize);
                SelectFont(TempFont, '', false);
+               // Con QUE fuente se ha quedado la pedida: es contra ella contra la que se
+               // mide la cobertura para trocear, y es la que dice si una reserva es de
+               // verdad otra fuente o el mismo fichero con otro nombre.
+               fuenteDelTramo := currentfont;
 
                // Cache font data for per-line spacing calculation (key by family name only)
                fontCacheKey := UpperCase(TempFont.WFontName);
@@ -645,22 +1167,42 @@ begin
                end;
                if (doFallback) then
                begin
-                 SelectFont(TempFont, ChunkText, false);
-                 positions := CalcGlyphPositions(ChunkText, direction, String(logicalRun.ScriptString), activeSize);
-                 // Second fallback: ignore family
-                 var secondFallback := false;
-                 for k:=0 to Length(positions)-1 do
-                 begin
-                   if (positions[k].GlyphIndex = 0) then
+                 // POR TRAMOS, no por trozo entero: la reserva entra donde faltan los
+                 // glifos y el texto vuelve a la fuente pedida en cuanto vuelve a haberlos.
+                 var acumuladas := TList<TGlyphPos>.Create;
+                 try
+                  var tramos := TroceaPorCobertura(ChunkText,fuenteDelTramo,
+                    direction = RP_UBIDI_RTL);
+                  for var t:=0 to High(tramos) do
+                  begin
+                   if (tramos[t].Longitud<=0) then
+                    continue;
+                   var textoTramo := Copy(ChunkText,tramos[t].Inicio+1,tramos[t].Longitud);
+                   var familiaTramo: string := TempFont.WFontName;
+                   var hayReserva := false;
+                   if (tramos[t].NecesitaReserva) then
+                    hayReserva := ReservaPorContenido(TempFont,textoTramo,fuenteDelTramo,
+                      familiaTramo);
+                   if (not hayReserva) then
                    begin
-                     secondFallback := true;
-                     break;
+                    // Sin reserva que valga se dibuja con la pedida, con sus huecos, que es
+                    // lo que pasaba antes de todo esto.
+                    SelectFont(TempFont,'',false);
+                    familiaTramo := TempFont.WFontName;
                    end;
-                 end;
-                 if (secondFallback) then
-                 begin
-                   SelectFont(TempFont, ChunkText, true);
-                   positions := CalcGlyphPositions(ChunkText, direction, String(logicalRun.ScriptString), activeSize);
+                   var posTramo := CalcGlyphPositions(textoTramo, direction,
+                     DetectaScript(textoTramo), activeSize);
+                   for k:=0 to Length(posTramo)-1 do
+                   begin
+                    posTramo[k].Cluster := posTramo[k].Cluster + Cardinal(tramos[t].Inicio);
+                    posTramo[k].FontFamily := familiaTramo;
+                    acumuladas.Add(posTramo[k]);
+                   end;
+                  end;
+                  if (acumuladas.Count>0) then
+                   positions := TGlyphPosArray(acumuladas.ToArray);
+                 finally
+                  acumuladas.Free;
                  end;
                end;
 
@@ -674,7 +1216,11 @@ begin
                  if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
                  if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
                  if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
-                 positions[k].FontFamily := TempFont.WFontName;
+                 // Cuando se ha troceado, cada posicion ya trae la familia con la que se
+                 // dibujo su tramo, y esa manda: es el nombre que hace que el escritor de
+                 // PDF cambie de recurso al llegar a esos glifos.
+                 if (Length(positions[k].FontFamily)=0) then
+                  positions[k].FontFamily := TempFont.WFontName;
                  positions[k].FontSize := activeSize;
                  positions[k].HasFontSize := Seg.HasFontSize;
                  positions[k].Color := Seg.Color;
@@ -1127,8 +1673,8 @@ var
  retvalue:integer;
  aobj:TRpLogFont;
  afilename:string;
- errorface:FT_Error;
  aface:FT_Face;
+ ncara,ncaras:integer;
 // afaceRec:FT_FaceRec;
  fontpaths1:TStrings;
  direc:string;
@@ -1306,6 +1852,25 @@ begin
     SysUtils.FindClose(F);
    end;
   end;
+  // Las colecciones. Sin esto, en Windows no habia ni una fuente japonesa en la lista:
+  // YuGothR.ttc, msgothic.ttc, meiryo.ttc... todas vienen en coleccion.
+  retvalue:=SysUtils.FindFirst(fontpaths.strings[i]+C_DIRSEPARATOR+'*.ttc',faAnyFile,F);
+  if 0=retvalue then
+  begin
+   try
+    while retvalue=0 do
+    begin
+     if ((F.Name<>'.') AND (F.Name<>'..')) then
+     begin
+      if (f.Attr AND faDirectory)=0 then
+       fontfiles.Add(fontpaths.strings[i]+C_DIRSEPARATOR+F.Name);
+     end;
+     retvalue:=SysUtils.FindNext(F);
+    end;
+   finally
+    SysUtils.FindClose(F);
+   end;
+  end;
   retvalue:=SysUtils.FindFirst(fontpaths.strings[i]+C_DIRSEPARATOR+'*.t1',faAnyFile,F);
   if 0=retvalue then
   begin
@@ -1324,6 +1889,27 @@ begin
    end;
   end;
 {$IFDEF LINUX}
+  direc:=fontpaths.strings[i]+C_DIRSEPARATOR+'*.TTC';
+  retvalue:=SysUtils.FindFirst(direc,faAnyFile,F);
+  if 0=retvalue then
+  begin
+   try
+    while retvalue=0 do
+    begin
+     if ((F.Name<>'.') AND (F.Name<>'..')) then
+     begin
+      if (f.Attr AND faDirectory)=0 then
+      begin
+       direc:=fontpaths.strings[i]+C_DIRSEPARATOR+F.Name;
+       fontfiles.Add(direc);
+      end;
+     end;
+     retvalue:=SysUtils.FindNext(F);
+    end;
+   finally
+    SysUtils.FindClose(F);
+   end;
+  end;
   direc:=fontpaths.strings[i]+C_DIRSEPARATOR+'*.TTF';
   retvalue:=SysUtils.FindFirst(direc,faAnyFile,F);
   if 0=retvalue then
@@ -1405,30 +1991,39 @@ begin
   afilename:=fontfiles.strings[i];
   afilename2:=AnsiString(afilename);
 //  FileToBytes(afileName,bytes);
+  // Cuantas caras trae el fichero. Con indice -1 FreeType no abre ninguna: solo cuenta.
+  ncaras:=1;
   aface:=nil;
-  FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
-  if (aface.num_faces>1) then
+  if (FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface)=0) then
   begin
-    FT_New_Face(ftlibrary,PAnsichar(afilename2),-1,aface);
+   ncaras:=aface.num_faces;
+   FT_Done_Face(aface);
+   aface:=nil;
   end;
-
-//  if errorface=0 then
+  if (ncaras<1) then
+   ncaras:=1;
+  // CARA POR CARA, no solo la primera. Una coleccion lleva varias fuentes distintas en un
+  // mismo fichero y hasta aqui la lista se quedaba con la primera de cada una.
+  for ncara:=0 to ncaras-1 do
   begin
-
-   errorface:=FT_New_Face(ftlibrary,PAnsichar(afilename2),0,aface);
-   //errorface:=FT_New_Memory_Face(ftlibrary,bytes,Length(bytes),0,aface);
-
-   if (errorface = 0) then
-   begin
-
+   aobj:=nil;
    try
     // Add it only if it's a TrueType or OpenType font
     // Type1 fonts also supported
     // Some truetype do not set scalable, so add all
-    aobj:=FillLogFont(String(afilename2),0);
-    // NOn scalable fonts not supported
-    if (not aobj.scalable) then
-     continue;
+    aobj:=FillLogFont(afilename,ncara);
+   except
+    // Un fichero que no se deja abrir no es motivo para dejar de enumerar los demas.
+    aobj:=nil;
+   end;
+   if (not Assigned(aobj)) then
+    continue;
+   // NOn scalable fonts not supported
+   if (not aobj.scalable) then
+   begin
+    aobj.Free;
+    continue;
+   end;
 
     if  Assigned(aobj) then
     begin
@@ -1516,10 +2111,6 @@ begin
       end;
       fontlist.AddObject(UpperCase(aobj.familyname),aobj);
     end;
-   finally
-    FT_Done_Face(aface);
-   end;
-   end;
   end;
  end;
  if (defaultfontb=nil) then
@@ -1580,6 +2171,13 @@ procedure FreeFontList;
 var
  i:integer;
 begin
+ // El diccionario solo guarda referencias a fichas de fontlist: se suelta antes de que
+ // esas fichas dejen de existir, y no libera nada el mismo.
+ if assigned(reservaporcobertura) then
+ begin
+  reservaporcobertura.Free;
+  reservaporcobertura:=nil;
+ end;
  if assigned(fontlist) then
  begin
   for i:=0 to fontlist.count-1 do
@@ -1765,6 +2363,127 @@ end;
 
 procedure TRpFtInfoProvider.SelectFont(pdffont:TRpPDFFOnt;content: string;ignoreFamily: boolean);
 var
+ faltan:TArray<Integer>;
+ cubre:TRpLogFont;
+begin
+ crit.Enter;
+ try
+  InitLibrary;
+{$IFDEF USEFONTCONFIG}
+  if (FontConfigAvailable) then
+  begin
+   if (ignoreFamily) then
+   begin
+     SelectFontFontConfigInt(pdffont,content,true);
+   end
+   else
+     SelectFontFontConfig(pdffont,content);
+
+   exit;
+  end;
+{$ENDIF}
+  SelectFontPorNombre(pdffont);
+  // LA MISMA RESERVA QUE HACE FONTCONFIG, PERO A MANO. Donde hay fontconfig se le manda el
+  // texto y contesta con una fuente que lo cubre; donde no lo hay -Windows- no existe base
+  // de datos de fuentes que sepa de scripts, y hasta aqui el `content` se tiraba a la
+  // basura: un informe con japones acababa pidiendo glifos que Arial no tiene y el PDF
+  // salia con huecos. Se busca a mano sobre la lista ya enumerada, que es barata de
+  // recorrer porque el escaneo inicial ya abrio todos los ficheros una vez.
+  if (Length(content)>0) then
+  begin
+   faltan:=CodigosSinGlifo(currentfont,content);
+   if (Length(faltan)>0) then
+   begin
+    cubre:=BuscaPorCobertura(faltan,pdffont.bold,pdffont.italic);
+    if (Assigned(cubre) and (cubre<>currentfont)) then
+    begin
+     currentfont:=cubre;
+     // El atajo de SelectFontPorNombre se acuerda de la ULTIMA familia pedida y sale sin
+     // tocar currentfont. Si se deja puesto, la siguiente peticion de esa misma familia
+     // -el tramo latino que viene detras del japones- se quedaria con la reserva.
+     currentname:='';
+     currentstyle:=-1;
+    end;
+   end;
+  end;
+ finally
+  crit.Leave;
+ end;
+end;
+
+// Busca la fuente de reserva para un texto y deja currentfont puesta en ella. Devuelve
+// false cuando no hay reserva que valga y hay que dibujar con la pedida, con sus huecos.
+//
+// Se le manda el TEXTO a fontconfig -o, donde no lo hay, se barre la lista enumerada-: eso
+// es lo que hace que conteste con una fuente que si lleva el script. Pero el escritor de
+// PDF no recibe ficheros, recibe NOMBRES: elige el recurso con g.FontFamily (TrpPDFCanvas,
+// WriteGlyphs) y vuelve a pedir esa familia. Asi que antes de fiarse se COMPRUEBA que
+// pedir ese nombre cae en el mismo fichero y la misma cara. Si no cae, no se usa la
+// reserva: se dibuja como antes -con sus huecos- en vez de escribir los glifos de una
+// fuente bajo el recurso de otra, que es basura silenciosa y peor que un hueco.
+function TRpFtInfoProvider.ReservaPorContenido(pdffont:TRpPDFFont;
+  const texto:WideString;fuenteactual:TRpLogFont;var familia:string):boolean;
+var
+ encontrada:TRpLogFont;
+ porNombre:TRpPDFFont;
+ faltan:TArray<Integer>;
+begin
+ Result:=false;
+ SetLength(faltan,0);
+ if Assigned(fuenteactual) then
+  faltan:=CodigosSinGlifo(fuenteactual,texto);
+ SelectFont(pdffont,texto,false);
+ encontrada:=currentfont;
+ // Segundo intento sin familia, el que ya hacia el camino de antes: si la que ha salido no
+ // aporta ni uno de los glifos que faltaban, se pide cualquiera que si los lleve.
+ if (Assigned(encontrada) and (Length(faltan)>0)
+     and (CuantosCubre(encontrada,faltan)=0)) then
+ begin
+  SelectFont(pdffont,texto,true);
+  encontrada:=currentfont;
+ end;
+ if ((not Assigned(encontrada)) or (Length(encontrada.familyname)=0)) then
+  exit;
+ // Si la reserva es el MISMO fichero que ya se tenia, no hay reserva ninguna: los glifos
+ // van a seguir faltando igual, y renombrarla mete en el PDF un segundo recurso con la
+ // misma fuente dentro. Pasa cuando en la maquina no hay ninguna que lleve ese script.
+ if (Assigned(fuenteactual) and (encontrada.filename=fuenteactual.filename)
+     and (encontrada.fontIndex=fuenteactual.fontIndex)) then
+  exit;
+ // Y si no aporta NI UN glifo de los que faltaban tampoco es reserva: renombrar el tramo
+ // a una fuente que tampoco lo dibuja deja los mismos huecos y ademas incrusta otra fuente
+ // entera para nada. Es lo que pasa con el arabe en una maquina que no tiene ninguna
+ // arabe: fontconfig contesta lo que sea, y lo que sea no vale.
+ if ((Length(faltan)>0) and (CuantosCubre(encontrada,faltan)=0)) then
+  exit;
+ // Y tiene que caber en el PDF: fontconfig no sabe nada de lo que este motor sabe
+ // incrustar, asi que puede contestar una cara CFF de una coleccion.
+ if (not SePuedeIncrustar(encontrada.filename,encontrada.fontIndex)) then
+  exit;
+ porNombre:=TRpPDFFont.Create;
+ try
+  porNombre.Name:=pdffont.Name;
+  porNombre.Size:=pdffont.Size;
+  porNombre.Color:=pdffont.Color;
+  porNombre.Bold:=pdffont.Bold;
+  porNombre.Italic:=pdffont.Italic;
+  porNombre.WFontName:=encontrada.familyname;
+  porNombre.LFontName:=encontrada.familyname;
+  SelectFont(porNombre,'',false);
+  if ((not Assigned(currentfont)) or (currentfont.filename<>encontrada.filename)
+      or (currentfont.fontIndex<>encontrada.fontIndex)) then
+   exit;
+ finally
+  porNombre.Free;
+ end;
+ familia:=encontrada.familyname;
+ Result:=true;
+end;
+
+// Elige la fuente de una peticion en la lista enumerada, por familia y estilo, tal como
+// este motor lo ha hecho siempre cuando no hay fontconfig a quien preguntar.
+procedure TRpFtInfoProvider.SelectFontPorNombre(pdffont:TRpPDFFOnt);
+var
  afontname:string;
  isbold:boolean;
  isitalic:boolean;
@@ -1774,9 +2493,6 @@ var
  currentFontName:string;
  stylestring:string;
 begin
- crit.Enter;
- try
-  InitLibrary;
 (*{$IFDEF MSWINDOWS}
  afontname:=UpperCase(pdffont.WFontName);
 {$ENDIF}
@@ -1790,20 +2506,6 @@ begin
 {$IFDEF LINUX}
  if (Length(afontname)=0) then
   afontname:='Helvetica';
-{$ENDIF}
-
-{$IFDEF USEFONTCONFIG}
- if (FontConfigAvailable) then
- begin
-  if (ignoreFamily) then
-  begin
-    SelectFontFontConfigInt(pdffont,content,true);
-  end
-  else
-    SelectFontFontConfig(pdffont,content);
-
-  exit;
- end;
 {$ENDIF}
  if (pdffont.bold and not pdffont.italic) then
  begin
@@ -1980,9 +2682,6 @@ begin
 
  if not assigned(currentfont) then
   Raise Exception.Create('No active font');
- finally
-  crit.Leave;
- end;
 end;
 
 
@@ -2038,6 +2737,7 @@ var
   subsetInput: Phb_subset_input_t;
   glyphsSet: Phb_set_t;
   glyphInfo: TGlyphInfo;
+  outBlob: Phb_blob_t;
   outData: PByte;
   outSize: Cardinal;
   isVariable: boolean;
@@ -2071,7 +2771,7 @@ begin
      end
      else
      begin
-       hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_DEFAULT);
+       hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_RETAIN_GIDS);
 
        // --- Obtener set de glifos y añadirlos ---
        glyphsSet := hb_subset_input_glyph_set(subsetInput);
@@ -2082,14 +2782,23 @@ begin
        newFace := hb_subset_or_fail(face, subsetInput);
        try
          // --- Obtener puntero a los datos de la fuente subset ---
-         outData := hb_face_reference_blob(newFace); // referencia interna a blob
-         outSize := hb_blob_get_length(hb_face_reference_blob(newFace));
-
-         // --- Copiar a MemoryStream ---
-         Result := TMemoryStream.Create;
-         Result.SetSize(LongInt(outSize));
-         Move(outData^, Result.Memory^, outSize);
-         Result.Position := 0;
+         // hb_face_reference_blob devuelve el BLOB, no los bytes: lo que se copiaba antes
+         // era la estructura interna de harfbuzz, del tamaño correcto y con basura dentro,
+         // asi que toda fuente incrustada por este camino salia invalida. Ademas se pedia
+         // la referencia dos veces y no se soltaba ninguna.
+         outBlob := hb_face_reference_blob(newFace);
+         try
+           outData := hb_blob_get_data(outBlob, outSize);
+           Result := TMemoryStream.Create;
+           if (Assigned(outData) and (outSize > 0)) then
+           begin
+             Result.SetSize(LongInt(outSize));
+             Move(outData^, Result.Memory^, outSize);
+           end;
+           Result.Position := 0;
+         finally
+           hb_blob_destroy(outBlob);
+         end;
 
        finally
          hb_face_destroy(newFace);
@@ -2176,6 +2885,9 @@ begin
   // See if data can be embedded
   data.fontdata.FontData.Clear;
   data.filename:=currentfont.filename;
+  // Que cara del fichero es esta, para el subsetter. Por el camino de fontconfig ya lo ponia
+  // SelectFontFontConfigInt; por el de la lista enumerada no lo ponia nadie.
+  data.FontIndex:=currentfont.fontIndex;
   //if not currentfont.type1 then
   data.fontdata.FontData.LoadFromFile(currentfont.filename);
   data.postcriptname:=currentfont.postcriptname;
@@ -2425,7 +3137,9 @@ begin
  if faceinit then
   exit;
  filename2:=AnsiString(filename);
- CheckFreeType(FT_New_Face(ftlibrary,PAnsiChar(filename2),0,ftface));
+ // La cara de esta ficha, no la primera del fichero: en una coleccion pedir la 0 devuelve
+ // otra fuente distinta, y de esta cara salen los anchos y el kerning.
+ CheckFreeType(FT_New_Face(ftlibrary,PAnsiChar(filename2),fontIndex,ftface));
  faceinit:=true;
  if type1 then
  begin
