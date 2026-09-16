@@ -22,7 +22,7 @@ interface
 
 
 uses Classes,sysutils,
- rpmdconsts,rptypeval, System.Character;
+ rpmdconsts,rptypeval{$IFNDEF FPC}, System.Character{$ENDIF};
 type
 
 
@@ -385,12 +385,10 @@ begin
   else
     // Check for identifier
     Result := Char(FBuffer[P]);
-    if (Result.IsLetterOrDigit or (Result = '_')) then
+    if (Pos(Result, ParserSetChars) > 0) or (Result = '_') then
     begin
       Inc(P);
-      while (FBuffer[P].IsLetterOrDigit or CharInSet(FBuffer[P], ['_','.'])) do
-      // while FBuffer[P] in ['A'..'Z', 'a'..'z','á','à','é','è','í','ó','ò','ú', 'Ñ','ñ','0'..'9','_','.',
-      //  'ä','Ä','ö','Ö','ü','Ü','Á','À','É','È','Í','Ó','Ò','Ú','ß'] do
+      while (Pos(FBuffer[P], ParserSetChars) > 0) or (FBuffer[P] = '_') or (FBuffer[P] = '.') do
         Inc(P);
       Result := toSymbol;
     end
@@ -542,7 +540,12 @@ begin
    ParseBufSize:=Length(Value)*2;
    SetLength(FBuffer, ParseBufSize);
   end;
+{$IFDEF FPC}
+  if Length(FNewExpression) > 0 then
+    Move(FNewExpression[1], FBuffer[0], Length(FNewExpression));
+{$ELSE}
   StringToWideChar(FNewExpression,PChar(FBuffer),ParseBufSize);
+{$ENDIF}
   FBuffer[Length(Value)] := Char(0);
   FBufPtr := 0;
   FBufEnd := ParseBufSize;

@@ -93,7 +93,7 @@
       </Item1>
     </RequiredPkgs>
     <UsageOptions>
-      <UnitPath Value="$(PkgOutDir)"/>
+      <UnitPath Value="$(PkgOutDir);."/>
     </UsageOptions>
     <PublishOptions>
       <Version Value="2"/>

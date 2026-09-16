@@ -253,3 +253,15 @@ webactivex/WebReportManX.res
 # Type library de ActiveX (contrato COM). Se deja fuera del control de versiones como artefacto;
 # si algun dia quieres volver a versionar los GUIDs COM publicados, borra esta linea y re-anade el fichero.
 webactivex/WebReportManX.tlb
+
+# Lazarus / Free Pascal build artifacts and package files
+lib/
+**/lib/
+*.ppu
+*.rsj
+*.or
+*.compiled
+reportman.pas
+reportman_lcl.pas
+packagefiles.xml
+

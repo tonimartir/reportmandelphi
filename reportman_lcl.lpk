@@ -15,8 +15,8 @@
         <UnitName Value="rppreviewcontrol"/>
       </Item1>
       <Item2>
-        <Filename Value="rppreviewmetalcl.pas"/>
-        <UnitName Value="rppreviewmetalcl"/>
+        <Filename Value="rppreviewmeta.pas"/>
+        <UnitName Value="rppreviewmeta"/>
       </Item2>
       <Item3>
         <Filename Value="rpmaskedit.pas"/>
@@ -58,7 +58,7 @@
       </Item5>
     </RequiredPkgs>
     <UsageOptions>
-      <UnitPath Value="$(PkgOutDir)"/>
+      <UnitPath Value="$(PkgOutDir);."/>
     </UsageOptions>
     <PublishOptions>
       <Version Value="2"/>

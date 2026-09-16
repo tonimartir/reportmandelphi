@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -17,12 +17,13 @@
 {*******************************************************}
 
 unit rppreviewcontrol;
+{$I rpconf.inc}
 
 interface
 
 uses Classes,SysUtils,Graphics,Controls,Forms,rpbasereport,
 {$IFDEF FPC}
-rplcldriver,  rppreviewmetalcl,rpgraphutilslcl,
+rplcldriver, rppreviewmeta,rpgraphutilslcl,
 {$ELSE}
 rpgdidriver,
 rppreviewmeta,rpgraphutilsvcl,

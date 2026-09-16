@@ -83,7 +83,12 @@ uses Classes,Sysutils,rpinfoprovid,
  rpinfoprovft,
 {$ENDIF}
 
- rpmdconsts,rptypes,rpmunits,dateutils, System.Generics.Collections;
+ rpmdconsts,rptypes,rpmunits,dateutils,
+{$IFDEF FPC}
+ Generics.Collections;
+{$ELSE}
+ System.Generics.Collections;
+{$ENDIF}
 
 
 const
@@ -553,7 +558,11 @@ constructor TRpPDFFile.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
 
+{$IFDEF FPC}
+ NumberFormatSettings:=DefaultFormatSettings;
+{$ELSE}
  NumberFormatSettings:=TFormatSettings.Create;
+{$ENDIF}
  NumberFormatSettings.DecimalSeparator:='.';
  FInternalFDocCreationDate:=now;
  FPageInfos:=TStringList.create;
@@ -1640,11 +1649,11 @@ begin
  SWriteLine(FTempStream,'/Info 1 0 R');
  if (PDFConformance = PDF_A_3) then
  begin
-  System.SysUtils.CreateGUID(guid);
-  guidString:=System.SysUtils.GUIDToString(guid);
-  guidString:=guidstring.Replace('-','');
-  guidString:=guidstring.Replace('{','');
-  guidString:=guidstring.Replace('}','');
+  CreateGUID(guid);
+  guidString:=GUIDToString(guid);
+  guidString:=StringReplace(guidstring,'-','',[rfReplaceAll]);
+  guidString:=StringReplace(guidstring,'{','',[rfReplaceAll]);
+  guidString:=StringReplace(guidstring,'}','',[rfReplaceAll]);
   SWriteLine(FTempStream,'/ID [<'+guidstring+'> <1234567890abcdef1234567890abcdef>]');
  end;
  SWriteLine(FTempStream,'>>');
@@ -1942,6 +1951,7 @@ var
  lwordinfos:TRpLineInfoArray;
  winfos:TRpLineInfoArray;
  forceSuspended:boolean;
+ dojustifyline:boolean;
 begin
  FFile.CheckPrinting;
 
@@ -2014,7 +2024,7 @@ begin
 
 
    astring:=Copy(Text,linfo[i].Position,lInfo[i].Size);
-   var dojustifyline: Boolean := (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft));
+   dojustifyline := (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft));
    if dojustifyline then
    begin
     // Calculate the sizes of the words, then
@@ -2190,6 +2200,13 @@ var
  ascent:integer;
  shapedOutput:boolean;
  nliney:integer;
+ decCursor: Double;
+ inUnderline: Boolean;
+ inStrikeOutDec: Boolean;
+ ulStartX, soStartX, ulEndX, soEndX: Double;
+ ulFontSz, soFontSz, gFontSz: Single;
+ fontSizeOffset, gCount, gi: Integer;
+ isLast, gUnderline, gStrikeOutDec: Boolean;
 begin
  /// Add Font leading
  adata:=GetTTFontData;
@@ -2306,22 +2323,22 @@ begin
  // Per-glyph decorators for HTML text (grouped segments)
  if (IsHtml) and (Length(lInfo.Glyphs) > 0) then
  begin
-  var decCursor: Double := 0.0;
-  var inUnderline: Boolean := False;
-  var inStrikeOutDec: Boolean := False;
-  var ulStartX: Double := 0;
-  var soStartX: Double := 0;
-  var ulFontSz: Single := FFont.Size;
-  var soFontSz: Single := FFont.Size;
-  var fontSizeOffset: Integer := Round(FFont.Size / CONS_PDFRES * FResolution);
-  var gCount: Integer := Length(lInfo.Glyphs);
+  decCursor := 0.0;
+  inUnderline := False;
+  inStrikeOutDec := False;
+  ulStartX := 0;
+  soStartX := 0;
+  ulFontSz := FFont.Size;
+  soFontSz := FFont.Size;
+  fontSizeOffset := Round(FFont.Size / CONS_PDFRES * FResolution);
+  gCount := Length(lInfo.Glyphs);
 
-  for var gi := 0 to gCount do
+  for gi := 0 to gCount do
   begin
-   var isLast: Boolean := (gi = gCount);
-   var gUnderline: Boolean := False;
-   var gStrikeOutDec: Boolean := False;
-   var gFontSz: Single := FFont.Size;
+   isLast := (gi = gCount);
+   gUnderline := False;
+   gStrikeOutDec := False;
+   gFontSz := FFont.Size;
 
    if not isLast then
    begin
@@ -2340,7 +2357,7 @@ begin
    end
    else if ((not gUnderline) or isLast) and inUnderline then
    begin
-    var ulEndX: Double := X + decCursor;
+    ulEndX := X + decCursor;
     if gUnderline and isLast then
      ulEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
     PenStyle:=0;
@@ -2365,7 +2382,7 @@ begin
    end
    else if ((not gStrikeOutDec) or isLast) and inStrikeOutDec then
    begin
-    var soEndX: Double := X + decCursor;
+    soEndX := X + decCursor;
     if gStrikeOutDec and isLast then
      soEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
     PenStyle:=0;
@@ -4476,6 +4493,10 @@ var
   newBold: Boolean;
   newItalic: Boolean;
   newFontSize: Single;
+  actualColor: Integer;
+  originalColor: Integer;
+  newColor: Integer;
+  newHasColor: Boolean;
 begin
   EOL := FFile.EndOfLine;
   Result := '';
@@ -4488,8 +4509,8 @@ begin
   originalItalic := Font.Italic;
   actualFontSize := FontSize;
   originalFontSize := FontSize;
-  var actualColor: Integer := Font.Color;
-  var originalColor: Integer := Font.Color;
+  actualColor := Font.Color;
+  originalColor := Font.Color;
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4529,8 +4550,7 @@ begin
     end;
 
     // Color change via rg operator (valid inside BT/ET)
-    var newColor: Integer;
-    var newHasColor: Boolean := g.HasColor;
+    newHasColor := g.HasColor;
     if newHasColor then
       newColor := g.Color
     else
@@ -4553,7 +4573,7 @@ begin
     // Emitir la instrucción Tm y Tj SIN q/Q
     // Matriz: 1 0 0 1 tx ty Tm   seguido de <gid> Tj
     Result := Result + Format('1 0 0 1 %s %s Tm <%s> Tj' + EOL,
-      [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);
+      [UnitsToTextX(absX), UnitsToTextY(absY), gidHex]);
 
     // avanzar cursor
     cursor := cursor + g.XAdvance;

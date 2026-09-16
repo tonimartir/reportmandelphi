@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -17,11 +17,17 @@
 {*******************************************************}
 
 unit rppreviewmeta;
+{$I rpconf.inc}
 
 interface
 
+{$IFDEF FPC}
+uses Windows,Messages,Classes,Graphics,Controls,Forms,rpmetafile,extctrls,rptypes,
+ rpgraphutilslcl,rplcldriver,SysUtils,rptextdriver,LMessages,LCLType;
+{$ELSE}
 uses Windows,Messages,Classes,Graphics,Controls,Forms,rpmetafile,extctrls,rptypes,
  rpgraphutilsvcl,rpgdidriver,SysUtils,rptextdriver;
+{$ENDIF}
 
 const
  MAXENTIREPAGES=128;

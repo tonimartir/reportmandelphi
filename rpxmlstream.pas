@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -28,7 +28,11 @@ uses Classes,sysutils,rptypes,rpreport,rpdatainfo,rpsubreport,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
- rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue,rpbasereport;
+ rpdrawitem,rpmdconsts,rpmdcharttypes,
+{$IFNDEF FPC}
+ rpmdundocue,
+{$ENDIF}
+ rpbasereport;
 
 
 const
@@ -91,10 +95,14 @@ end;
 
 function RpIsAlphaW(achar:Widechar):Boolean;
 begin
+{$IFDEF FPC}
+ Result:=(Ord(achar) < 128) and (AnsiChar(achar) in ['0'..'9','A'..'Z','a'..'z','_',' ','.','(',')','=',';',':']);
+{$ELSE}
  Result:=CharInSet(achar,[WideChar('0')..WideChar('9'),WideChar('_'),WideChar(' '),
   WideChar('.'),WideChar('('),WideChar(')'),
   WideChar('='),WideChar(';'),WideChar(':'),
   WideChar('A')..WideChar('Z'),WideChar('a')..WideChar('z')]);
+{$ENDIF}
 end;
 
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
@@ -147,28 +155,34 @@ begin
 end;
 
 procedure WriteReportPropsXML(report:TRpReport;Stream:TStream);
+{$IFNDEF FPC}
 var
  undocue:TUndoCue;
  memstream:TMemoryStream;
  jsonBytes:TBytes;
+{$ENDIF}
 begin
+{$IFNDEF FPC}
  // Write UndoCue if present (only for XML format)
  if Assigned(report.UndoCue) then
  begin
-  undocue:=TUndoCue(report.UndoCue);
-  if (undocue.UndoOperations.Count > 0) or (undocue.RedoOperations.Count > 0) then
+  undocue:=report.UndoCue as TUndoCue;
+  if undocue.Count>0 then
   begin
-   memstream:=TMemoryStream.Create;
-   try
-    jsonBytes:=TEncoding.UTF8.GetBytes(undocue.ToJSON);
-    memstream.Write(jsonBytes[0], Length(jsonBytes));
-    memstream.Position:=0;
-    WritePropertyB('BINCUE',memstream,Stream);
-   finally
-    memstream.Free;
+   jsonBytes:=undocue.ToBytes;
+   if Length(jsonBytes)>0 then
+   begin
+    memstream:=TMemoryStream.Create;
+    try
+     memstream.WriteBuffer(jsonBytes[0],Length(jsonBytes));
+     WritePropertyB('BINCUE',memstream,Stream);
+    finally
+     memstream.Free;
+    end;
    end;
   end;
  end;
+{$ENDIF}
  WritePropertyW('WFONTNAME',report.WFontName,Stream);
  WritePropertyW('LFONTNAME',report.LFontName,Stream);
  WritePropertyBool('GRIDVISIBLE',report.GridVisible,Stream);
@@ -1535,6 +1549,7 @@ begin
  else
  if propname='DOCXMPCONTENT' then
   report.DocXMPContent:=String(RpStringToString(AnsiString(propValue)))
+{$IFNDEF FPC}
  else
  if propname='BINCUE' then
  begin
@@ -1558,6 +1573,9 @@ begin
    end;
   end;
  end;
+{$ELSE}
+ ;
+{$ENDIF}
 
  report.ReportAction:=actions;
 end;
