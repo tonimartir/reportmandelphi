@@ -20,6 +20,7 @@
 {*******************************************************}
 
 unit rppdfreport;
+{$I rpconf.inc}
 
 interface
 

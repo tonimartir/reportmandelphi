@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -27,7 +27,7 @@ uses Classes,Sysutils,rpreport,rpmdconsts,rpcompobase,
  rpalias,dialogs,rppreviewcontrol,
  rptextdriver,rppdfdriver,
  {$IFDEF FPC}
- rplclgraphutils,rplcldriver,PrintersDlgs,rprflclparams,rplclpreview,
+ rpgraphutilslcl,rplcldriver,PrintersDlgs,rprflclparams,rplclpreview,
  {$ELSE}
  rpvgraphutils,rppreviewcontrol,rprfvparams,rpvpreview,
  rpexceldriver,rpgdidriver,

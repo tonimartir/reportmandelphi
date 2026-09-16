@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -96,7 +96,11 @@ type
     procedure Assign(Source:TPersistent);override;
     destructor Destroy;override;
     { IInterface }
+{$IFDEF FPC}
+    function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
     { IPropertiesItem }
@@ -287,7 +291,11 @@ end;
 
 { TRpParam - IInterface }
 
-function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$IFDEF FPC}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
+function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
 begin
  if GetInterface(IID, Obj) then
   Result := 0
@@ -295,12 +303,12 @@ begin
   Result := E_NOINTERFACE;
 end;
 
-function TRpParam._AddRef: Integer;
+function TRpParam._AddRef: Integer; stdcall;
 begin
  Result := -1;
 end;
 
-function TRpParam._Release: Integer;
+function TRpParam._Release: Integer; stdcall;
 begin
  Result := -1;
 end;

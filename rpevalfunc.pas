@@ -1085,7 +1085,11 @@ begin
   cadenaw:='';
   cadena:=String(Params[0]);
 {$IFDEF USEVARIANTS}
+{$IFDEF FPC}
+  Result:=UTF8Decode(RawByteString(cadena));
+{$ELSE}
   Result:=UTF8ToWideString(RawByteString(cadena));
+{$ENDIF}
 {$ENDIF}
 {$IFNDEF USEVARIANTS}
   Result:=cadena;

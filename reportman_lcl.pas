@@ -4,10 +4,11 @@
 
 unit reportman_lcl;
 
+{$warn 5023 off : no warning about unused units}
 interface
 
 uses
-  rppreviewcontrol, rppreviewmetalcl, rpmaskedit, rpreglcl, rplclpreview, 
+  rppreviewcontrol, rppreviewmeta, rpmaskedit, rpreglcl, rplclpreview, 
   rppagesetuplcl, rplclreport, LazarusPackageIntf;
 
 implementation

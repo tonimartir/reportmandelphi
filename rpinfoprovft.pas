@@ -30,7 +30,13 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,System.Math,
 {$IFDEF USEFONTCONFIG}
     rpfontconfig,
 {$ENDIF}
-    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU, rphtmlparser;
+    rpmdconsts,rpfreetype2,
+{$IFDEF FPC}
+    Generics.Collections,
+{$ELSE}
+    System.Generics.Collections,
+{$ENDIF}
+    rpHarfbuzz,rpICU, rphtmlparser;
 
 
 type

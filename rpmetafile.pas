@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -1968,7 +1968,7 @@ function isadelimiter(achar:WideChar):Boolean;
 const
  delimiters:string=' .,-/\=)(*,-'+#10;
 begin
- Result:=delimiters.IndexOf(achar)>=0;
+ Result:=delimiters.IndexOf(Char(achar))>=0;
 end;
 
 function CalcTextExtent(adriver:TRpPrintDriver;maxextent:TPoint;obj:TRpTextObject):integer;

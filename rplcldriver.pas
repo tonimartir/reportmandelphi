@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -34,7 +34,7 @@ uses
 {$IFDEF USEVARIANTS}
  types,Variants,
 {$ENDIF}
- rptypes,rplclgraphutils,
+ rptypes,
 {$IFNDEF FORWEBAX}
  rpbasereport,rpreport,
 {$IFDEF USETEECHART}
@@ -1165,6 +1165,7 @@ var
  aintdpix,aintdpiy:integer;
  lastword:boolean;
  textstyle:TTextStyle;
+ larray:TRpLineInfoArray;
 begin
  try
   if drawbackground then
@@ -1201,7 +1202,7 @@ begin
   npdfdriver.PDFFile.Canvas.Font.Italic:=fsItalic in Canvas.Font.Style;
   npdfdriver.PDFFile.Canvas.Font.Bold:=fsBold in Canvas.Font.Style;
 
-  npdfdriver.PDFFile.Canvas.TextExtent(Text,recsize,wordbreak,singleline);
+  larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text,recsize,wordbreak,singleline,RightToLeft);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -1213,22 +1214,22 @@ begin
    PosY:=ARect.Top+(((ARect.Bottom-ARect.Top)-recsize.Bottom) div 2);
   end;
 
-  for i:=0 to npdfdriver.pdffile.Canvas.LineInfoCount-1 do
+  for i:=0 to Length(larray)-1 do
   begin
    posX:=ARect.Left;
    // Aligns horz.
    if  ((Alignment AND AlignmentFlags_AlignRight)>0) then
    begin
     // recsize.right contains the width of the full text
-    PosX:=ARect.Right-npdfdriver.pdffile.Canvas.LineInfo[i].Width;
+    PosX:=ARect.Right-larray[i].Width;
    end;
    // Aligns horz.
    if (Alignment AND AlignmentFlags_AlignHCenter)>0 then
    begin
-    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-npdfdriver.pdffile.Canvas.LineInfo[i].Width) div 2);
+    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-larray[i].Width) div 2);
    end;
-   astring:=Copy(Text,npdfdriver.pdffile.Canvas.LineInfo[i].Position,npdfdriver.pdffile.Canvas.LineInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT npdfdriver.pdffile.Canvas.LineInfo[i].LastLine)) then
+   astring:=Copy(Text,larray[i].Position,larray[i].Size);
+   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT larray[i].LastLine)) then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -1259,7 +1260,7 @@ begin
       for index:=0 to lwords.Count-1 do
       begin
        arec:=ARect;
-       npdfdriver.pdffile.Canvas.TextExtent(lwords.Strings[index],arec,false,true);
+       npdfdriver.pdffile.Canvas.TextExtent(lwords.Strings[index],arec,false,true,RightToLeft);
        if RightToLeft then
         lwidths.Add(IntToStr(-(arec.Right-arec.Left)))
        else
@@ -1281,12 +1282,12 @@ begin
        for index:=0 to lwords.Count-1 do
        begin
         nposx:=currpos;
-        nposy:=PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos;
+        nposy:=PosY+larray[i].TopPos;
         nposx:=Round(nposx*aintdpix/1440);
         nposy:=Round(nposy*aintdpiy/1440);
         arec2.Left:=nposx;
         arec2.Top:=nposy;
-        arec2.Bottom:=arec.Top+Round(npdfdriver.pdffile.Canvas.LineInfo[i].Height*aintdpiy/1440);
+        arec2.Bottom:=arec.Top+Round(larray[i].Height*aintdpiy/1440);
         arec2.Right:=Round(arect.Right*aintdpix/1440);
         textstyle.ShowPrefix:=false;
         textstyle.Clipping:=false;
@@ -1300,8 +1301,8 @@ begin
 //         DrawTextW(Canvas.Handle,PWideChar(aatext),Length(aatext),arec2,aalign);
 //        TextOutW(Canvas.Handle,nposx,nposy,PWideChar(lwords.strings[index]),
 //         Length(lwords.strings[index]));
-//        TextOut(currpos,PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos,lwords.strings[index],
-//         npdfdriver.pdffile.Canvas.LineInfo[i].Width,Rotation,RightToLeft);
+//        TextOut(currpos,PosY+larray[i].TopPos,lwords.strings[index],
+//         larray[i].Width,Rotation,RightToLeft);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
         //if (drawbackground) then
 //        begin
@@ -1344,7 +1345,7 @@ begin
     textstyle.Alignment:=taLeftJustify;
     textstyle.ShowPrefix:=false;
     nposx:=Posx;
-    nposy:=PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos;
+    nposy:=PosY+larray[i].TopPos;
     nposx:=Round(nposx*aintdpix/1440);
     nposy:=Round(nposy*aintdpiy/1440);
     arec2.Left:=nposx;
@@ -1357,7 +1358,7 @@ begin
    end
 //     TextOutW(Canvas.Handle,nposx,nposy,PWideChar(astring),
 //       Length(astring))
-//    TextOut(PosX,PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos,astring,npdfdriver.pdffile.Canvas.LineInfo[i].Width,Rotation,RightToLeft);
+//    TextOut(PosX,PosY+larray[i].TopPos,astring,larray[i].Width,Rotation,RightToLeft);
   end;
  finally
  end;
@@ -1414,7 +1415,7 @@ begin
     //Draw page margins
     if (showpagemargins) then
     begin
-     rec:=rplclgraphutils.GetPageMarginsTWIPS;
+     rec:=GetPageMarginsTWIPS;
      // transform to dpi device
      dpix:=Screen.PixelsPerInch;
      dpiy:=Screen.PixelsPerInch;
@@ -2637,13 +2638,10 @@ procedure OrientationSelection(neworientation:TRpOrientation);
 begin
  if Printer.Printers.Count<1 then
   exit;
- SetPrinterOrientation(neworientation=rpOrientationLandscape);
-// if neworientation=rpOrientationDefault then
-//  exit;
-// if neworientation=rpOrientationPortrait then
-//  Printer.Orientation:=poPortrait
-// else
-//  Printer.Orientation:=poLandscape;
+ if neworientation=rpOrientationLandscape then
+  Printer.Orientation:=poLandscape
+ else if neworientation=rpOrientationPortrait then
+  Printer.Orientation:=poPortrait;
 end;
 
 

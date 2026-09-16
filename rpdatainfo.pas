@@ -144,16 +144,13 @@ uses Classes,SysUtils,
   Memds,
  {$ENDIF}
 {$ENDIF}
- rpdatahttp, rpauthmanager, rpdatatext
-{$IFDEF MSWINDOWS}
- // Promotes Direct Channel from "plugin" to default Windows. Without
- // this line each .dpr (activex, repwebexe, repmandxp...) would have
- // to add `uses rpdcintegration` to install the hook. rpdcintegration
- // is itself fully {$IFDEF MSWINDOWS}-wrapped so Linux/FPC builds get
- // a no-op unit and keep the HTTP-only path.
- , rpdcintegration
+{$IFNDEF FPC}
+  rpdatahttp, rpauthmanager,
+  {$IFDEF MSWINDOWS}
+  rpdcintegration,
+  {$ENDIF}
 {$ENDIF}
- ;
+  rpdatatext;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}
@@ -268,7 +265,9 @@ type
 {$IFDEF USEIBO}
    FIBODatabase: TIB_Database;
 {$ENDIF}
+{$IFNDEF FPC}
    FHttpDatabase: TRpDatabaseHttp;
+{$ENDIF}
    FDriver:TRpDbDriver;
    function GetHttpHubDatabaseId: Int64;
    procedure SetAlias(Value:string);
@@ -297,7 +296,11 @@ type
    procedure DisConnect;
    constructor Create(Collection:TCollection);override;
    { IInterface }
+{$IFDEF FPC}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
    function _AddRef: Integer; stdcall;
    function _Release: Integer; stdcall;
    { IPropertiesItem }
@@ -452,7 +455,11 @@ type
    destructor Destroy;override;
    constructor Create(Collection:TCollection);override;
    { IInterface }
+{$IFDEF FPC}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
    function _AddRef: Integer; stdcall;
    function _Release: Integer; stdcall;
    { IPropertiesItem }
@@ -1286,7 +1293,11 @@ end;
 
 { TRpDataInfoItem - IInterface }
 
-function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$IFDEF FPC}
+function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
+function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
 begin
  if GetInterface(IID, Obj) then
   Result := 0
@@ -1294,12 +1305,12 @@ begin
   Result := E_NOINTERFACE;
 end;
 
-function TRpDataInfoItem._AddRef: Integer;
+function TRpDataInfoItem._AddRef: Integer; stdcall;
 begin
  Result := -1;
 end;
 
-function TRpDataInfoItem._Release: Integer;
+function TRpDataInfoItem._Release: Integer; stdcall;
 begin
  Result := -1;
 end;
@@ -1514,9 +1525,11 @@ end;
 
 function TRpDatabaseInfoItem.GetHttpHubDatabaseId: Int64;
 begin
+{$IFNDEF FPC}
   if (FDriver = rpdbHttp) and Assigned(FHttpDatabase) then
     Result := FHttpDatabase.HubDatabaseId
   else
+{$ENDIF}
     Result := 0;
 end;
 
@@ -1583,11 +1596,13 @@ begin
   ConAdmin.free;
   ConAdmin:=nil;
  end;
+{$IFNDEF FPC}
  if Assigned(FHttpDatabase) then
  begin
   FHttpDatabase.Free;
   FHttpDatabase:=nil;
  end;
+{$ENDIF}
  inherited Destroy;
 end;
 
@@ -1623,7 +1638,11 @@ end;
 
 { TRpDatabaseInfoItem - IInterface }
 
-function TRpDatabaseInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$IFDEF FPC}
+function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
+function TRpDatabaseInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
 begin
  if GetInterface(IID, Obj) then
   Result := 0
@@ -1631,12 +1650,12 @@ begin
   Result := E_NOINTERFACE;
 end;
 
-function TRpDatabaseInfoItem._AddRef: Integer;
+function TRpDatabaseInfoItem._AddRef: Integer; stdcall;
 begin
  Result := -1;
 end;
 
-function TRpDatabaseInfoItem._Release: Integer;
+function TRpDatabaseInfoItem._Release: Integer; stdcall;
 begin
  Result := -1;
 end;
@@ -2424,6 +2443,7 @@ begin
      end;
     rpdbHttp:
      begin
+{$IFNDEF FPC}
        if Not Assigned(FHttpDatabase) then
          FHttpDatabase := TRpDatabaseHttp.Create;
        
@@ -2453,6 +2473,9 @@ begin
          end;
        end;
        FHttpDatabase.Connected := True;
+{$ELSE}
+       Raise Exception.Create(SRpDriverNotSupported+' - HTTP');
+{$ENDIF}
      end;
        end;
  finally
@@ -2553,8 +2576,10 @@ begin
  // Reportman Agent (rpdbHttp) driver: drop the live connection so the next
  // Connect re-reads ApiKey / HubDatabaseId from the (possibly changed)
  // configuration instead of exiting early because FConnected is still True.
+{$IFNDEF FPC}
  if Assigned(FHttpDatabase) then
   FHttpDatabase.Connected:=False;
+{$ENDIF}
 end;
 
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -2640,7 +2665,9 @@ ndataset:TMemDataset;
 {$ELSE}
 ndataset:TRpMemDataSet;
 {$ENDIF}
+{$IFNDEF FPC}
  LHttpDataset: TRpDatasetHttp;
+{$ENDIF}
 begin
  if connecting then
   Raise Exception.Create(SRpCircularDatalink+' - '+alias);
@@ -3270,6 +3297,7 @@ begin
       end;
      rpdbHttp:
       begin
+{$IFNDEF FPC}
         // Use the new HTTP driver to fill the ClientDataSet
         if not Assigned(baseinfo.FHttpDatabase) then
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
@@ -3284,6 +3312,9 @@ begin
         finally
           LHttpDataset.Free;
         end;
+{$ELSE}
+        Raise Exception.Create(SRpDriverNotSupported+' - HTTP');
+{$ENDIF}
       end;
     end;
    // Assigns parameters
@@ -3545,8 +3576,10 @@ begin
       end;
      rpdbHttp:
       begin
+{$IFNDEF FPC}
 {$IFNDEF USERPFDMEM}
         TRpMemDataSet(FSQLInternalQuery).RemoteServer := nil;
+{$ENDIF}
 {$ENDIF}
       end;
     end;

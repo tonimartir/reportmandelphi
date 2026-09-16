@@ -1,4 +1,4 @@
-// This is enabled by the make webx command
+﻿// This is enabled by the make webx command
 // to make the plugin, this is already done by makefile
 // and the dpr also defines it
 //{$DEFINE FORWEBAX}
@@ -54,7 +54,9 @@
 // May be you want to enable TEECHART under Kylix
 // but take care it needs an X server running
 {$IFDEF MSWINDOWS}
- {$DEFINE USETEECHART}
+ {$IFNDEF FPC}
+  {$DEFINE USETEECHART}
+ {$ENDIF}
 {$ENDIF}
 
 {$IFNDEF WIN64}

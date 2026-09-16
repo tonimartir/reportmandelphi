@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -28,11 +28,30 @@ uses
 {$ENDIF}
   rptranslator,
   Graphics, Forms,Buttons, ExtCtrls,
-  Controls, StdCtrls,ImgList,ComCtrls,LCLType,
+  Controls, StdCtrls,ImgList,ComCtrls,LCLType,Printers,
   rpmdconsts,rpmunits;
 
 
 type
+  TGDIPageSize = record
+    PageIndex: integer;
+    Width: integer;
+    Height: integer;
+    papername: string;
+    papersource: integer;
+    duplex: integer;
+    ForcePaperName: String;
+    FormWidth, FormHeight: Integer;
+    landscape: boolean;
+  end;
+
+  TPrinterConfig = record
+    Changed: boolean;
+    Index: integer;
+    PageSize: TGDIPageSize;
+    Orientation: TPrinterOrientation;
+  end;
+
   TMessageButton = (smbOK, smbCancel, smbYes, smbNo, smbAbort, smbRetry, smbIgnore);
   TMessageButtons = set of TMessageButton;
   TMessageStyle = (smsInformation, smsWarning, smsCritical);
@@ -79,15 +98,53 @@ function CLXColorToVCLColor (CLXColor:integer):integer;
 procedure RpShowMessage(const Text: WideString);
 procedure ScaleToolBar(ntoolbar:TToolBar);
 function  ScaleDpi(value:integer):integer;
+procedure DrawBitmap(Destination: TCanvas; Bitmap: TBitmap; Rec, RecSrc: TRect);
+procedure SetPrinterOrientation(landscape: Boolean);
+function GetPageMarginsTWIPS: TRect;
 
 implementation
 
 {$R *.lfm}
 
+procedure DrawBitmap(Destination: TCanvas; Bitmap: TBitmap; Rec, RecSrc: TRect);
+begin
+  if (Destination = nil) or (Bitmap = nil) then exit;
+  Destination.CopyRect(Rec, Bitmap.Canvas, RecSrc);
+end;
+
+procedure SetPrinterOrientation(landscape: Boolean);
+begin
+  if Printer.Printers.Count < 1 then exit;
+  if landscape then
+    Printer.Orientation := poLandscape
+  else
+    Printer.Orientation := poPortrait;
+end;
+
+function GetPageMarginsTWIPS: TRect;
+begin
+  Result.Left := 0;
+  Result.Top := 0;
+  Result.Right := 12047;
+  Result.Bottom := 16637;
+  if Printer.Printers.Count < 1 then exit;
+  try
+    if (Printer.XDPI > 0) and (Printer.YDPI > 0) then
+    begin
+      Result.Left := Round(Printer.PaperSize.PaperRect.WorkRect.Left * 1440 / Printer.XDPI);
+      Result.Top := Round(Printer.PaperSize.PaperRect.WorkRect.Top * 1440 / Printer.YDPI);
+      Result.Right := Round((Printer.PaperSize.PaperRect.PhysicalRect.Right - Printer.PaperSize.PaperRect.WorkRect.Right) * 1440 / Printer.XDPI);
+      Result.Bottom := Round((Printer.PaperSize.PaperRect.PhysicalRect.Bottom - Printer.PaperSize.PaperRect.WorkRect.Bottom) * 1440 / Printer.YDPI);
+    end;
+  except
+  end;
+end;
+
 
 {$IFDEF MSWINDOWS}
 const
   kernel = 'kernel32.dll';
+  advapi32 = 'advapi32.dll';
   OldLocaleOverrideKey = 'Software\Borland\Delphi\Locales';
   NewLocaleOverrideKey = 'Software\Borland\Locales';
 

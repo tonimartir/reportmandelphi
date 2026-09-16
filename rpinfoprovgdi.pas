@@ -28,7 +28,13 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,System.Math
  ActiveX,
  WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
-    rpmdconsts, rptruetype, System.Generics.Collections, rphtmlparser;
+    rpmdconsts, rptruetype,
+{$IFDEF FPC}
+    Generics.Collections,
+{$ELSE}
+    System.Generics.Collections,
+{$ENDIF}
+    rphtmlparser;
 
 const
  MAXKERNINGS=10000;

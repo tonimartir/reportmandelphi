@@ -20,6 +20,7 @@
 
 
 unit rpsecutil;
+{$I rpconf.inc}
 
 interface
 
