@@ -4,7 +4,12 @@ unit rptruetype;
 interface
 
 uses
-  SysUtils, Classes, Generics.Collections;
+  SysUtils, Classes,
+{$IFDEF FPC}
+  Generics.Collections;
+{$ELSE}
+  System.Generics.Collections;
+{$ENDIF}
 
 type
   TTableData = class
@@ -491,7 +496,11 @@ var
 begin
   SetLength(FNewLocaTable, Length(FLocaTable));
   ActiveGlyphs := FGlyphsInList.ToArray;
+{$IFDEF FPC}
+  TArrayHelper<Integer>.Sort(ActiveGlyphs);
+{$ELSE}
   TArray.Sort<Integer>(ActiveGlyphs);
+{$ENDIF}
 
   GlyfSize := 0;
   for K := 0 to High(ActiveGlyphs) do

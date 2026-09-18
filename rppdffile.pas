@@ -67,15 +67,10 @@ uses Classes,Sysutils,rpinfoprovid,
 {$ENDIF}
 {$ENDIF}
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
 {$IFDEF WINDOWS_USEFREETYPE}
  rpinfoprovft,
 {$ELSE}
  rpinfoprovgdi,
-{$ENDIF}
-{$ENDIF}
-{$IFDEF FPC}
- rpinfoprovfpc,
 {$ENDIF}
  Windows,
 {$ENDIF}
@@ -127,6 +122,9 @@ type
   public
    APageWidth,APageHeight:integer;
    PageAnnotations: array of TPDFAnnotation;
+{$IFDEF FPC}
+   destructor Destroy; override;
+{$ENDIF}
  end;
 
  TRpPDFCanvas=class(TObject)
@@ -140,16 +138,11 @@ type
    FFontTTData:TStringList;
    FImageIndexes:TStringList;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
   {$IFDEF WINDOWS_USEFREETYPE}
   FFtInfoProvider:TRpFtInfoProvider;
   {$ELSE}
-   FGDIInfoProvider:TRpGDIInfoProvider;
+  FGDIInfoProvider:TRpGDIInfoProvider;
   {$ENDIF}
-{$ENDIF}
-{$IFDEF FPC}
-  FFpcInfoProvider:TRpFpcInfoProvider;
-{$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
   FFtInfoProvider:TRpFtInfoProvider;
@@ -504,6 +497,18 @@ end;
 
 
 
+{$IFDEF FPC}
+destructor TRpPageInfo.Destroy;
+var
+  i: integer;
+begin
+  for i := 0 to High(PageAnnotations) do
+    PageAnnotations[i].Free;
+  SetLength(PageAnnotations, 0);
+  inherited Destroy;
+end;
+{$ENDIF}
+
 constructor TrpPDFCanvas.Create(AFile:TRpPDFFile);
 begin
  inherited Create;
@@ -511,57 +516,46 @@ begin
  FImageIndexes:=TStringList.Create;
  FImageIndexes.Sorted:=true;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
-{$IFDEF WINDOWS_USEFREETYPE}
- FFtInfoProvider:=TRpFtInfoProvider.Create;
- FInfoProvider:=FFtInfoProvider;
-{$ELSE}
- FGDIInfoProvider:=TRpGDIInfoProvider.Create;
- FInfoProvider:=FGDIInfoProvider;
-{$ENDIF}
-{$ENDIF}
-{$IFDEF FPC}
- FFpcInfoProvider:=TRpFpcInfoProvider.Create;
- FInfoProvider:=FFpcInfoProvider;
-{$ENDIF}
+  {$IFDEF WINDOWS_USEFREETYPE}
+  FFtInfoProvider:=TRpFtInfoProvider.Create;
+  FInfoProvider:=FFtInfoProvider;
+  {$ELSE}
+  FGDIInfoProvider:=TRpGDIInfoProvider.Create;
+  FInfoProvider:=FGDIInfoProvider;
+  {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
- FFtInfoProvider:=TRpFtInfoProvider.Create;
- FInfoProvider:=FFtInfoProvider;
+  FFtInfoProvider:=TRpFtInfoProvider.Create;
+  FInfoProvider:=FFtInfoProvider;
 {$ENDIF}
- FDefInfoProvider:=FInfoProvider;
- FFont:=TRpPDFFont.Create;
- FFile:=AFile;
- FFontTTData:=TStringList.Create;
- FFontTTData.Sorted:=true;
+  FDefInfoProvider:=FInfoProvider;
+  FFont:=TRpPDFFont.Create;
+  FFile:=AFile;
+  FFontTTData:=TStringList.Create;
+  FFontTTData.Sorted:=true;
 end;
 
 
 destructor TrpPDFCanvas.Destroy;
 begin
- FImageIndexes.free;
- FreeFonts;
- FFont.free;
- FFontTTData.free;
+  FImageIndexes.free;
+  FreeFonts;
+  FFont.free;
+  FFontTTData.free;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
   {$IFDEF WINDOWS_USEFREETYPE}
- FFtInfoProvider.free;
+  FFtInfoProvider.free;
   {$ELSE}
- FGDIInfoProvider.free;
+  FGDIInfoProvider.free;
   {$ENDIF}
 {$ENDIF}
-{$IFDEF FPC}
- FFpcInfoProvider.free;
-{$ENDIF}
-{$ENDIF}
 {$IFDEF LINUX}
- FFtInfoProvider.free;
+  FFtInfoProvider.free;
 {$ENDIF}
- FInfoProvider:=nil;
- FDefInfoProvider:=nil;
- FFont:=nil;
- inherited Destroy;
+  FInfoProvider:=nil;
+  FDefInfoProvider:=nil;
+  FFont:=nil;
+  inherited Destroy;
 end;
 
 
@@ -602,6 +596,9 @@ destructor TRpPDFFile.Destroy;
 begin
  FreePageInfos;
  FPageInfos.Free;
+{$IFDEF FPC}
+ FPageInfos := nil;
+{$ENDIF}
  FCanvas.free;
  FMainPDF.Free;
  FTempStream.Free;
@@ -4111,10 +4108,25 @@ end;
 procedure TRpPDFCanvas.FreeFonts;
 var
  i:integer;
+{$IFDEF FPC}
+ adata: TRpTTFontData;
+{$ENDIF}
 begin
  for i:=0 to FFontTTData.Count-1 do
  begin
+{$IFDEF FPC}
+  adata := TRpTTFontData(FFontTTData.Objects[i]);
+  if (adata <> nil) and (adata.fontdata <> nil) then
+  begin
+    try
+      adata.fontdata.free;
+    except
+    end;
+    adata.fontdata := nil;
+  end;
+{$ELSE}
   TRpTTFontData(FFontTTData.Objects[i]).fontdata.free;
+{$ENDIF}
   FFontTTData.Objects[i].Free;
  end;
  FFontTTData.Clear;
@@ -4139,12 +4151,12 @@ begin
  index:=FFontTTData.IndexOf(searchname);
  if index<0 then
  begin
-  adata:=TRpTTFontData.Create;
-  adata.fontdata:=TAdvFontData.Create;
-  adata.embedded:=false;
-  adata.Objectname:=searchname;
-  FFontTTData.AddObject(searchname,adata);
-  InfoProvider.FillFontData(Font,adata,'');
+   adata:=TRpTTFontData.Create;
+   adata.fontdata:=TAdvFontData.Create;
+   adata.embedded:=false;
+   adata.Objectname:=searchname;
+   FFontTTData.AddObject(searchname,adata);
+   InfoProvider.FillFontData(Font,adata,'');
   if adata.fontdata.FontData.size>0 then
   begin
     // In PDF_A_3 all fonts must be embedded
@@ -4889,9 +4901,15 @@ procedure TRpPDFFile.FreePageInfos;
 var
  i:integer;
 begin
+ if FPageInfos = nil then
+   Exit;
  for i:=0 to FPageInfos.Count-1 do
  begin
-  FPageInfos.Objects[i].free;
+  if FPageInfos.Objects[i] <> nil then
+  begin
+    FPageInfos.Objects[i].free;
+    FPageInfos.Objects[i] := nil;
+  end;
  end;
  FPageInfos.Clear;
 end;

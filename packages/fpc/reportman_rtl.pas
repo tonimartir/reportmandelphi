@@ -17,7 +17,8 @@ uses
   rpdatatext, rpevalfunc, rplabelitem, rpmdbarcode, rpbarcodecons, 
   rpxmlstream, rpdrawitem, rpmdchart, rppdfdriver, rppdffile, rpinfoprovid, 
   rpcompobase, rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, 
-  rptextdriver, rplastsav, rpinfoprovfpc;
+  rptextdriver, rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, 
+  rpinfoprovft, rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi;
 
 implementation
 

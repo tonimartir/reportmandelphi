@@ -19,7 +19,12 @@ interface
 
 {$I rpconf.inc}
 
-uses Classes,SysUtils,rptruetype,rptypes,rpmunits,System.Math,
+uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
+{$IFDEF FPC}
+  Math,
+{$ELSE}
+  System.Math,
+{$ENDIF}
 {$IFDEF USEVARIANTS}
     Types,
 {$ENDIF}
@@ -30,7 +35,13 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,System.Math,
 {$IFDEF USEFONTCONFIG}
     rpfontconfig,
 {$ENDIF}
-    rpmdconsts,rpfreetype2,System.Generics.Collections,rpHarfbuzz,rpICU, rphtmlparser;
+    rpmdconsts,rpfreetype2,
+{$IFDEF FPC}
+    Generics.Collections,
+{$ELSE}
+    System.Generics.Collections,
+{$ENDIF}
+    rpHarfbuzz,rpICU, rphtmlparser;
 
 
 type
@@ -1001,6 +1012,24 @@ var
   gFontSize, gAscentTwips, gHeightTwips, gBaselineTwips: double;
   currentLineSpacing, lineBaseline: integer;
   lw: double;
+{$IFDEF FPC}
+  textOffset: Integer;
+  fontStream: TMemoryStream;
+  os2: TOS2Metrics;
+  cf: Double;
+  dwA, dwD, dwG: SmallInt;
+  doFallback: Boolean;
+  acumuladas: TList<TGlyphPos>;
+  tramos: TTramoArray;
+  t: Integer;
+  textoTramo: WideString;
+  familiaTramo: string;
+  hayReserva: Boolean;
+  posTramo: TGlyphPosArray;
+  lineIdx: Integer;
+  isParaRTL: Boolean;
+  ch: WideChar;
+{$ENDIF}
 begin
   InitICU;
   InitHarfBuzz;
@@ -1065,7 +1094,11 @@ begin
         end;
 
         remaining:=lineWidthLimit;
+{$IFDEF FPC}
+        textOffset:=lineSubtext.Position-1;
+{$ELSE}
         var textOffset:=lineSubtext.Position-1;
+{$ENDIF}
         currentChunk:=TLineGlyphs.Create(textOffset);
 
         for logicalRun in logicalRuns do
@@ -1123,19 +1156,35 @@ begin
                  // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
                  if FileExists(currentfont.filename) then
                  begin
-                   var fontStream := TMemoryStream.Create;
+{$IFDEF FPC}
+                    fontStream := TMemoryStream.Create;
+{$ELSE}
+                    var fontStream := TMemoryStream.Create;
+{$ENDIF}
                    try
                      fontStream.LoadFromFile(currentfont.filename);
-                     var os2: TOS2Metrics;
+{$IFNDEF FPC}
+                      var os2: TOS2Metrics;
+{$ENDIF}
                      ReadOS2Metrics(fontStream, os2);
                      if os2.Found then
                      begin
-                       var cf := currentfont.convfactor;
+{$IFDEF FPC}
+                        cf := currentfont.convfactor;
+{$ELSE}
+                        var cf := currentfont.convfactor;
+{$ENDIF}
                        if os2.UseTypoMetrics then
                        begin
-                         var dwA := os2.sTypoAscender;
-                         var dwD := -os2.sTypoDescender;
-                         var dwG := os2.sTypoLineGap;
+{$IFDEF FPC}
+                          dwA := os2.sTypoAscender;
+                          dwD := -os2.sTypoDescender;
+                          dwG := os2.sTypoLineGap;
+{$ELSE}
+                          var dwA := os2.sTypoAscender;
+                          var dwD := -os2.sTypoDescender;
+                          var dwG := os2.sTypoLineGap;
+{$ENDIF}
                          cachedData.Ascent := Round(cf * dwA);
                          cachedData.Descent := -Round(cf * dwD);
                          cachedData.Height := Round(cf * (dwA + dwD + dwG));
@@ -1166,7 +1215,11 @@ begin
                // Font fallback: if any glyph has GlyphIndex=0, the current font
                // doesn't support these characters. Try re-selecting with content.
                // This matches the old TextExtent fallback logic.
-               var doFallback := false;
+{$IFDEF FPC}
+                doFallback := false;
+{$ELSE}
+                var doFallback := false;
+{$ENDIF}
                for k:=0 to Length(positions)-1 do
                begin
                  if (positions[k].GlyphIndex = 0) then
@@ -1179,17 +1232,41 @@ begin
                begin
                  // POR TRAMOS, no por trozo entero: la reserva entra donde faltan los
                  // glifos y el texto vuelve a la fuente pedida en cuanto vuelve a haberlos.
-                 var acumuladas := TList<TGlyphPos>.Create;
+{$IFDEF FPC}
+                  acumuladas := TList<TGlyphPos>.Create;
+{$ELSE}
+                  var acumuladas := TList<TGlyphPos>.Create;
+{$ENDIF}
                  try
-                  var tramos := TroceaPorCobertura(ChunkText,fuenteDelTramo,
+{$IFDEF FPC}
+                   tramos := TroceaPorCobertura(
+{$ELSE}
+                   var tramos := TroceaPorCobertura(
+{$ENDIF}ChunkText,fuenteDelTramo,
                     direction = RP_UBIDI_RTL);
-                  for var t:=0 to High(tramos) do
+{$IFDEF FPC}
+                   for t:=0 to High(tramos) do
+{$ELSE}
+                   for var t:=0 to High(tramos) do
+{$ENDIF}
                   begin
                    if (tramos[t].Longitud<=0) then
                     continue;
-                   var textoTramo := Copy(ChunkText,tramos[t].Inicio+1,tramos[t].Longitud);
-                   var familiaTramo: string := TempFont.WFontName;
-                   var hayReserva := false;
+{$IFDEF FPC}
+                    textoTramo := Copy(ChunkText,tramos[t].Inicio+1,tramos[t].Longitud);
+{$ELSE}
+                    var textoTramo := Copy(ChunkText,tramos[t].Inicio+1,tramos[t].Longitud);
+{$ENDIF}
+{$IFDEF FPC}
+                    familiaTramo := TempFont.WFontName;
+{$ELSE}
+                    var familiaTramo: string := TempFont.WFontName;
+{$ENDIF}
+{$IFDEF FPC}
+                    hayReserva := false;
+{$ELSE}
+                    var hayReserva := false;
+{$ENDIF}
                    if (tramos[t].NecesitaReserva) then
                     hayReserva := ReservaPorContenido(TempFont,textoTramo,fuenteDelTramo,
                       familiaTramo);
@@ -1200,7 +1277,11 @@ begin
                     SelectFont(TempFont,'',false);
                     familiaTramo := TempFont.WFontName;
                    end;
-                   var posTramo := CalcGlyphPositions(textoTramo, direction,
+{$IFDEF FPC}
+                    posTramo := CalcGlyphPositions(textoTramo, direction,
+{$ELSE}
+                    var posTramo := CalcGlyphPositions(textoTramo, direction,
+{$ENDIF}
                      DetectaScript(textoTramo), activeSize);
                    for k:=0 to Length(posTramo)-1 do
                    begin
@@ -1293,7 +1374,11 @@ begin
           Bidi.Free;
         end;
 
+{$IFDEF FPC}
+        lineIdx := 0;
+{$ELSE}
         var lineIdx := 0;
+{$ENDIF}
         for calculatedLine in calculatedLines do
         begin
           minCluster:=calculatedline.MinClusterText;
@@ -1326,13 +1411,21 @@ begin
           end;
 
           // Trim whitespace at word-wrap boundaries (matching C# FontInfoFt / DirectWrite AdjustLineSpaces)
+{$IFDEF FPC}
+          isParaRTL := (visualRuns.Count > 0) and (visualRuns[0].Direction = UBIDI_RTL);
+{$ELSE}
           var isParaRTL := (visualRuns.Count > 0) and (visualRuns[0].Direction = UBIDI_RTL);
+{$ENDIF}
           if not isParaRTL then
           begin
             // LTR: remove trailing whitespace from END of list (visual right)
             while visualGlyphs.Count > 0 do
             begin
+{$IFDEF FPC}
+              ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+{$ELSE}
               var ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+{$ENDIF}
               if (ch = ' ') or (ch = #9) or (ch = #10) or (ch = #13) then
                 visualGlyphs.Delete(visualGlyphs.Count - 1)
               else
@@ -1343,7 +1436,11 @@ begin
             begin
               while visualGlyphs.Count > 0 do
               begin
+{$IFDEF FPC}
+                ch := visualGlyphs[0].CharCode;
+{$ELSE}
                 var ch := visualGlyphs[0].CharCode;
+{$ENDIF}
                 if (ch = ' ') or (ch = #9) then
                   visualGlyphs.Delete(0)
                 else
@@ -1356,7 +1453,11 @@ begin
             // RTL: remove trailing whitespace from BEGINNING of list (visual left)
             while visualGlyphs.Count > 0 do
             begin
+{$IFDEF FPC}
+              ch := visualGlyphs[0].CharCode;
+{$ELSE}
               var ch := visualGlyphs[0].CharCode;
+{$ENDIF}
               if (ch = ' ') or (ch = #9) or (ch = #10) or (ch = #13) then
                 visualGlyphs.Delete(0)
               else
@@ -1367,7 +1468,11 @@ begin
             begin
               while visualGlyphs.Count > 0 do
               begin
+{$IFDEF FPC}
+                ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+{$ELSE}
                 var ch := visualGlyphs[visualGlyphs.Count - 1].CharCode;
+{$ENDIF}
                 if (ch = ' ') or (ch = #9) then
                   visualGlyphs.Delete(visualGlyphs.Count - 1)
                 else
@@ -2123,12 +2228,14 @@ begin
     end;
   end;
  end;
- if (defaultfontb=nil) then
-  defaultfontb:=defaultfont;
- if (defaultfontit=nil) then
-  defaultfontit:=defaultfont;
- if (defaultfontbit=nil) then
-  defaultfontbit:=defaultfont;
+  if (defaultfont = nil) and (fontlist.Count > 0) then
+    defaultfont := TRpLogFont(fontlist.Objects[0]);
+  if (defaultfontb=nil) then
+   defaultfontb:=defaultfont;
+  if (defaultfontit=nil) then
+   defaultfontit:=defaultfont;
+  if (defaultfontbit=nil) then
+   defaultfontbit:=defaultfont;
  if (defaultfontb_arabic = nil) then
  begin
   if (defaultfont_arabic = nil) then
@@ -2690,8 +2797,11 @@ begin
 //  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
  end;
 
- if not assigned(currentfont) then
-  Raise Exception.Create('No active font');
+  if not assigned(currentfont) and (fontlist.Count > 0) then
+    currentfont := TRpLogFont(fontlist.Objects[0]);
+
+  if not assigned(currentfont) then
+   Raise Exception.Create('No active font');
 end;
 
 

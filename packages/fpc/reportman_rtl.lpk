@@ -18,7 +18,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="53">
+    <Files Count="60">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -231,6 +231,34 @@
         <Filename Value="..\..\rpinfoprovfpc.pas"/>
         <UnitName Value="rpinfoprovfpc"/>
       </Item53>
+      <Item54>
+        <Filename Value="..\..\rpfreetype2.pas"/>
+        <UnitName Value="rpfreetype2"/>
+      </Item54>
+      <Item55>
+        <Filename Value="..\..\rpharfbuzz.pas"/>
+        <UnitName Value="rpharfbuzz"/>
+      </Item55>
+      <Item56>
+        <Filename Value="..\..\rpicu.pas"/>
+        <UnitName Value="rpicu"/>
+      </Item56>
+      <Item57>
+        <Filename Value="..\..\rpinfoprovft.pas"/>
+        <UnitName Value="rpinfoprovft"/>
+      </Item57>
+      <Item58>
+        <Filename Value="..\..\rpdirectwrite.pas"/>
+        <UnitName Value="rpdirectwrite"/>
+      </Item58>
+      <Item59>
+        <Filename Value="..\..\RpDirectWriteRenderer.pas"/>
+        <UnitName Value="RpDirectWriteRenderer"/>
+      </Item59>
+      <Item60>
+        <Filename Value="..\..\rpinfoprovgdi.pas"/>
+        <UnitName Value="rpinfoprovgdi"/>
+      </Item60>
     </Files>
     <RequiredPkgs Count="1">
       <Item1>

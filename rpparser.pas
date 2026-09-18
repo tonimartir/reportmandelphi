@@ -557,7 +557,8 @@ begin
    SetLength(FBuffer, ParseBufSize);
   end;
 {$IFDEF FPC}
-  StringToWideChar(FNewExpression, PWideChar(Pointer(FBuffer)), ParseBufSize);
+  if Length(Value) > 0 then
+    Move(Value[1], FBuffer[0], Length(Value));
 {$ELSE}
   StringToWideChar(FNewExpression, PChar(FBuffer), ParseBufSize);
 {$ENDIF}

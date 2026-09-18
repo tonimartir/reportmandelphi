@@ -7,7 +7,11 @@ uses SysUtils,
 {$IFDEF MSWINDOWS}
  Windows,
 {$ENDIF}
-Generics.Collections;
+{$IFDEF FPC}
+ Generics.Collections;
+{$ELSE}
+ System.Generics.Collections;
+{$ENDIF}
 
 
 const
@@ -686,7 +690,11 @@ var
   function GetProcAddr(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+    Result := GetProcAddress(ICUlib, PAnsiChar(AnsiString(ProcName)));
+{$ELSE}
     Result := GetProcAddress(ICUlib, PWideChar(ProcName));
+{$ENDIF}
     if not Assigned(Result) then RaiseLastOSError;
 {$ENDIF}
 {$IFDEF LINUX}
@@ -707,7 +715,7 @@ begin
   ICUlib := 0;
   ICUSuffix := '';
 
-  // Intentar cargar la versi�n de ICU desde 60 hasta 90
+  // Intentar cargar la versin de ICU desde 60 hasta 90
   for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
   begin
 {$IFDEF MSWINDOWS}
@@ -717,15 +725,32 @@ begin
 {$ENDIF}
 
     {$IFDEF MSWINDOWS}
-    ICUlib :=LoadLibrary(PWideChar(libName));
+    {$IFDEF FPC}
+    ICUlib := LoadLibrary(PChar(libName));
     {$ELSE}
-    ICUlib :=SysUtils.SafeLoadLibrary(libName)
+    ICUlib := LoadLibrary(PWideChar(libName));
+    {$ENDIF}
+    {$ELSE}
+    ICUlib := SysUtils.SafeLoadLibrary(libName)
     {$ENDIF};
     if ICUlib <> 0 then
     begin
       ICUSuffix := '_' + IntToStr(version);
       Break;
     end;
+  end;
+
+  if ICUlib = 0 then
+  begin
+{$IFDEF MSWINDOWS}
+    {$IFDEF FPC}
+    ICUlib := LoadLibrary(PChar('icu.dll'));
+    {$ELSE}
+    ICUlib := LoadLibrary(PWideChar('icu.dll'));
+    {$ENDIF}
+    if ICUlib <> 0 then
+      ICUSuffix := '';
+{$ENDIF}
   end;
 
   if ICUlib = 0 then

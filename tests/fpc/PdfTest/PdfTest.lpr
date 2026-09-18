@@ -1,50 +1,48 @@
 program PdfTest;
 
-{ delphi}
+{$mode objfpc}{$H+}
 
 uses
   Classes, SysUtils,
   rpreport, rppdfdriver, rppdfreport;
 
+function FindReportFile(const AFileName: string): string;
+begin
+  if FileExists(AFileName) then
+    Result := AFileName
+  else if FileExists('..\..\..\repman\repsamples\' + AFileName) then
+    Result := '..\..\..\repman\repsamples\' + AFileName
+  else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName) then
+    Result := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName
+  else
+    Result := AFileName;
+end;
+
+function TestOneReport(const ARepFileName, APdfFileName: string): Boolean;
 var
-  repFile, pdfFile: string;
+  repFile: string;
   report: TRpReport;
-  success: Boolean;
   f: file of Byte;
   sz: Int64;
 begin
-  WriteLn('==================================================');
-  WriteLn('Report Manager FPC PDF Test');
-  WriteLn('==================================================');
+  Result := False;
+  repFile := FindReportFile(ARepFileName);
 
-  // Determine report file path
-  if ParamCount >= 1 then
-    repFile := ParamStr(1)
-  else
-  begin
-    if FileExists('..\..\..\repman\repsamples\htmltest.rep') then
-      repFile := '..\..\..\repman\repsamples\htmltest.rep'
-    else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\htmltest.rep') then
-      repFile := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\htmltest.rep'
-    else if FileExists('htmltest.rep') then
-      repFile := 'htmltest.rep'
-    else
-      repFile := 'htmltest.rep';
-  end;
-
-  if ParamCount >= 2 then
-    pdfFile := ParamStr(2)
-  else
-    pdfFile := 'htmltest.pdf';
-
-  WriteLn('Input report : ', repFile);
-  WriteLn('Output PDF   : ', pdfFile);
+  WriteLn('--------------------------------------------------');
+  WriteLn('Testing Report: ', ARepFileName);
+  WriteLn('Input path    : ', repFile);
+  WriteLn('Output PDF    : ', APdfFileName);
+  WriteLn('--------------------------------------------------');
 
   if not FileExists(repFile) then
   begin
     WriteLn('ERROR: Report file does not exist: ', repFile);
-    Halt(1);
+    Exit;
   end;
+
+  // Delete previous output if present
+  if FileExists(APdfFileName) then
+    DeleteFile(APdfFileName);
 
   try
     WriteLn('1. Instantiating TRpReport...');
@@ -55,14 +53,14 @@ begin
       WriteLn('   Report loaded. Title: ', report.DocTitle, ', Page size: ', report.PageWidth, 'x', report.PageHeight);
 
       WriteLn('3. Generating PDF with PrintReportPDF...');
-      success := PrintReportPDF(report, '', False, True, 1, 99999, 1, pdfFile, True, False, False);
+      Result := PrintReportPDF(report, '', False, True, 1, 99999, 1, APdfFileName, True, False, False);
 
-      if success then
+      if Result then
       begin
-        WriteLn('4. SUCCESS! PDF generated: ', pdfFile);
-        if FileExists(pdfFile) then
+        WriteLn('4. SUCCESS! PDF generated: ', APdfFileName);
+        if FileExists(APdfFileName) then
         begin
-          AssignFile(f, pdfFile);
+          AssignFile(f, APdfFileName);
           Reset(f);
           sz := FileSize(f);
           CloseFile(f);
@@ -72,7 +70,6 @@ begin
       else
       begin
         WriteLn('4. FAILED: PrintReportPDF returned False.');
-        Halt(2);
       end;
     finally
       report.Free;
@@ -82,11 +79,49 @@ begin
     begin
       WriteLn('EXCEPTION: ', E.ClassName, ': ', E.Message);
       DumpExceptionBackTrace(Output);
-      Halt(3);
+      Result := False;
     end;
+  end;
+  WriteLn;
+end;
+
+var
+  allOk: Boolean;
+begin
+  WriteLn('==================================================');
+  WriteLn('Report Manager FPC PDF Test Suite');
+  WriteLn('==================================================');
+
+  if ParamCount >= 1 then
+  begin
+    if ParamCount >= 2 then
+      allOk := TestOneReport(ParamStr(1), ParamStr(2))
+    else
+      allOk := TestOneReport(ParamStr(1), ChangeFileExt(ExtractFileName(ParamStr(1)), '.pdf'));
+  end
+  else
+  begin
+    allOk := True;
+    if not TestOneReport('htmltest.rep', 'htmltest.pdf') then
+      allOk := False;
+
+    if not TestOneReport('arab2wordwrap.rep', 'arab2wordwrap.pdf') then
+      allOk := False;
+
+    if not TestOneReport('bold.rep', 'bold.pdf') then
+      allOk := False;
   end;
 
   WriteLn('==================================================');
-  WriteLn('PDF Test finished successfully!');
+  if allOk then
+  begin
+    WriteLn('ALL TESTS FINISHED SUCCESSFULLY!');
+    ExitCode := 0;
+  end
+  else
+  begin
+    WriteLn('TEST SUITE FAILED!');
+    ExitCode := 1;
+  end;
   WriteLn('==================================================');
 end.

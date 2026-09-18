@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -18,7 +18,11 @@ unit rpinfoprovgdi;
 
 interface
 
-uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,System.Math,
+uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
+{$IFDEF FPC}
+ Math, ActiveX, ComObj, rpdirectwrite, Generics.Collections,
+{$ELSE}
+ System.Math,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
@@ -26,9 +30,20 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,System.Math
  rpICU,rpHarfBuzz,rpfreetype2,
 {$ELSE}
  ActiveX,
- WinAPi.D2D1,ComObj,rpdirectwriterenderer,
+ WinAPi.D2D1,ComObj,
 {$ENDIF}
-    rpmdconsts, rptruetype, System.Generics.Collections, rphtmlparser;
+ System.Generics.Collections,
+{$ENDIF}
+ rpdirectwriterenderer,
+ rpmdconsts, rptruetype, rphtmlparser;
+
+{$IFDEF FPC}
+const
+  GGI_MARK_NONEXISTING_GLYPHS = 1;
+  GGO_GLYPH_INDEX = $0080;
+
+function GetGlyphIndicesW(hdc: HDC; lpstr: LPCWSTR; c: Integer; pgi: LPWORD; fl: DWORD): DWORD; stdcall; external 'gdi32.dll' name 'GetGlyphIndicesW';
+{$ENDIF}
 
 const
  MAXKERNINGS=10000;
@@ -380,6 +395,18 @@ var
   charFontSizes: array of Single;
   charHasFontSize: array of Boolean;
   charStyles: array of Integer;
+  inTag: Boolean;
+  firstStrongRTL: Boolean;
+  ci: Integer;
+  cp: Integer;
+  Segments: TList<THtmlSegment>;
+  Seg: THtmlSegment;
+  MapPos: Integer;
+  SegLen: Integer;
+  StyleVal: Integer;
+  CurrentPos: Integer;
+  Range: DWRITE_TEXT_RANGE;
+  StyleVal2: Integer;
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -437,19 +464,19 @@ begin
     FontStyle,
     DWRITE_FONT_STRETCH_NORMAL,
     FontSizeInDips,
-    '',
+    PWideChar(WideString('en-us')),
     TextFormat
   );
 
   // Detect paragraph direction from first strong character (skip HTML tags)
-  var inTag: Boolean := False;
-  var firstStrongRTL: Boolean := False;
-  for var ci := 1 to Length(Text) do
+  inTag := False;
+  firstStrongRTL := False;
+  for ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
     if Text[ci] = '>' then begin inTag := False; Continue; end;
     if inTag then Continue;
-    var cp: Integer := Ord(Text[ci]);
+    cp := Ord(Text[ci]);
     if cp <= $40 then Continue; // skip whitespace, control, digits, punctuation
     // Arabic
     if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
@@ -477,10 +504,10 @@ begin
 
   if IsHtml then
   begin
-    var Segments := ParseHtml(Text);
+    Segments := ParseHtml(Text);
     try
       PlainText := '';
-      for var Seg in Segments do
+      for Seg in Segments do
         PlainText := PlainText + Seg.Text;
 
       // Build per-character font info map
@@ -488,16 +515,16 @@ begin
       SetLength(charFontSizes, Length(PlainText));
       SetLength(charHasFontSize, Length(PlainText));
       SetLength(charStyles, Length(PlainText));
-      var MapPos: Integer := 0;
-      for var Seg in Segments do
+      MapPos := 0;
+      for Seg in Segments do
       begin
-        var SegLen := Length(Seg.Text);
-        var StyleVal: Integer := 0;
+        SegLen := Length(Seg.Text);
+        StyleVal := 0;
         if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
         if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
         if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
         if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
-        for var ci := MapPos to MapPos + SegLen - 1 do
+        for ci := MapPos to MapPos + SegLen - 1 do
         begin
           if Seg.FontFamily <> '' then
             charFontFamilies[ci] := Seg.FontFamily
@@ -523,11 +550,10 @@ begin
         TextLayout
       );
 
-      var CurrentPos: Integer := 0;
-      for var Seg in Segments do
+      CurrentPos := 0;
+      for Seg in Segments do
       begin
-        var SegLen := Length(Seg.Text);
-        var Range: DWRITE_TEXT_RANGE;
+        SegLen := Length(Seg.Text);
         Range.startPosition := CurrentPos;
         Range.length := SegLen;
 
@@ -552,7 +578,7 @@ begin
         if Seg.HasFontSize then
           TextLayout.SetFontSize(Seg.FontSize * POINTS_TO_DIPS_FACTOR, Range);
 
-        var StyleVal2: Integer := 0;
+        StyleVal2 := 0;
         if hsBold in Seg.Styles then StyleVal2 := StyleVal2 or 1;
         if hsItalic in Seg.Styles then StyleVal2 := StyleVal2 or 2;
         if hsUnderline in Seg.Styles then StyleVal2 := StyleVal2 or 4;
@@ -1332,12 +1358,16 @@ begin
  StrPCopy(LogFont.lffACEnAME,Copy(pdffont.WFontName,1,LF_FACESIZE));
 
  Fonthandle:= CreateFontIndirect(LogFont);
- if (FontHandle=0) then
- begin
-  lasterror:=System.GetLastError();
-  raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
-   ' System Error Code: ' + IntToStr(lasterror));
- end;
+  if (FontHandle=0) then
+  begin
+{$IFDEF FPC}
+   lasterror:=Windows.GetLastError();
+{$ELSE}
+   lasterror:=System.GetLastError();
+{$ENDIF}
+   raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
+    ' System Error Code: ' + IntToStr(lasterror));
+  end;
 
  SelectObject(adc,fonthandle);
 end;
@@ -1500,7 +1530,11 @@ end;
 {$IFNDEF DOTNETD}
 procedure TRpGDIInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content:string);
 var
+{$IFDEF FPC}
+ potm:POUTLINETEXTMETRICW;
+{$ELSE}
  potm:POUTLINETEXTMETRIC;
+{$ENDIF}
  asize:integer;
  embeddable:boolean;
  logx:integer;
@@ -1815,7 +1849,7 @@ begin
   end;
   glyphIndex:=glyphindexes[0];
   data.loadedglyphs[aint]:=WideChar(glyphIndex);
-  data.glyphs.Add(charcode, glyphIndex);
+  data.glyphs.AddOrSetValue(charcode, glyphIndex);
   data.loadedg[aint]:=true;
 
 //    if not GetCharABCWidthsI(adc,glyphindexes[0],1,nil,aabc[1]) then
@@ -1824,7 +1858,7 @@ begin
  Result:=
    (aabc[1].abcA+aabc[1].abcB+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
- data.widths.Add(charcode, Result);
+ data.widths.AddOrSetValue(charcode, Result);
 
  data.loaded[aint]:=true;
  if data.firstloaded>aint then
@@ -1856,7 +1890,7 @@ var
 // gcp:windows.tagGCP_RESULTSA;
 {$ENDIF}
 {$ENDIF}
-{$IFDEF DELPHI2009UP}
+{$IF defined(DELPHI2009UP) or defined(FPC)}
  gcp:windows.tagGCP_RESULTSW;
 {$ENDIF}
  astring:WideString;
@@ -1895,7 +1929,11 @@ begin
   astring:=astring+charcode+Widechar(0);
 //  if GetCharPlac(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC)=0 then
 //   RaiseLastOSError;
+{$IFDEF FPC}
+  if GetCharacterPlacementW(adc,PWideChar(astring),1,0,@gcp,GCP_DIACRITIC or GCP_GLYPHSHAPE)=0 then
+{$ELSE}
   if GetCharacterPlacementW(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC or GCP_GLYPHSHAPE)=0 then
+{$ENDIF}
   begin
    glyphindexes2[0] := 0;
    glyphindexes2[1] := 0;
@@ -1925,7 +1963,7 @@ begin
   end;
   data.loadedglyphs[aint]:=WideChar(glyphIndex);
   data.loadedg[aint]:=true;
-  data.glyphs.Add(charcode, glyphindexes[0]);
+  data.glyphs.AddOrSetValue(charcode, glyphindexes[0]);
 
   data.loaded[aint]:=true;
 
@@ -1935,7 +1973,7 @@ begin
  Result:=
    (aabc[1].abcA+Int64(aabc[1].abcB)+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
- data.widths.Add(charcode, Result);
+ data.widths.AddOrSetValue(charcode, Result);
 
  data.loaded[aint]:=true;
  if data.firstloaded>aint then
