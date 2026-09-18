@@ -3,7 +3,12 @@ unit rphtmlparser;
 interface
 
 uses
-  Classes, SysUtils, System.Generics.Collections;
+  Classes, SysUtils,
+{$IFDEF FPC}
+  Generics.Collections;
+{$ELSE}
+  System.Generics.Collections;
+{$ENDIF}
 
 type
   { Supported HTML styles }

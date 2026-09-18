@@ -28,7 +28,11 @@ uses Classes,sysutils,rptypes,rpreport,rpdatainfo,rpsubreport,
 {$IFDEF USEVARIANTS}
  Variants,
 {$ENDIF}
- rpdrawitem,rpmdconsts,rpmdcharttypes,rpmdundocue,rpbasereport;
+ rpdrawitem,rpmdconsts,rpmdcharttypes,
+{$IFNDEF FPC}
+ rpmdundocue,
+{$ENDIF}
+ rpbasereport;
 
 
 const
@@ -147,11 +151,14 @@ begin
 end;
 
 procedure WriteReportPropsXML(report:TRpReport;Stream:TStream);
+{$IFNDEF FPC}
 var
  undocue:TUndoCue;
  memstream:TMemoryStream;
  jsonBytes:TBytes;
+{$ENDIF}
 begin
+{$IFNDEF FPC}
  // Write UndoCue if present (only for XML format)
  if Assigned(report.UndoCue) then
  begin
@@ -169,6 +176,7 @@ begin
    end;
   end;
  end;
+{$ENDIF}
  WritePropertyW('WFONTNAME',report.WFontName,Stream);
  WritePropertyW('LFONTNAME',report.LFontName,Stream);
  WritePropertyBool('GRIDVISIBLE',report.GridVisible,Stream);
@@ -1538,6 +1546,7 @@ begin
  else
  if propname='BINCUE' then
  begin
+{$IFNDEF FPC}
   // Read undo cue from binary JSON
   if not Assigned(report.UndoCue) then
    report.UndoCue:=TUndoCue.Create(TRpReport(report));
@@ -1557,6 +1566,7 @@ begin
     memstream.Free;
    end;
   end;
+{$ENDIF}
  end;
 
  report.ReportAction:=actions;

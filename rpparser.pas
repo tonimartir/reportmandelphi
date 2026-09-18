@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Rptparser                                       }
 {       Expression parser for TRpEvaluator              }
@@ -22,7 +22,11 @@ interface
 
 
 uses Classes,sysutils,
- rpmdconsts,rptypeval, System.Character;
+ rpmdconsts,rptypeval
+{$IFNDEF FPC}
+ , System.Character
+{$ENDIF}
+ ;
 type
 
 
@@ -385,6 +389,15 @@ begin
   else
     // Check for identifier
     Result := Char(FBuffer[P]);
+{$IFDEF FPC}
+    if ((Result in ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(Result) >= 128)) then
+    begin
+      Inc(P);
+      while ((FBuffer[P] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or (Ord(FBuffer[P]) >= 128)) do
+        Inc(P);
+      Result := toSymbol;
+    end
+{$ELSE}
     if (Result.IsLetterOrDigit or (Result = '_')) then
     begin
       Inc(P);
@@ -394,6 +407,7 @@ begin
         Inc(P);
       Result := toSymbol;
     end
+{$ENDIF}
     else
     begin
       if Result <> toEOF then
@@ -542,7 +556,11 @@ begin
    ParseBufSize:=Length(Value)*2;
    SetLength(FBuffer, ParseBufSize);
   end;
-  StringToWideChar(FNewExpression,PChar(FBuffer),ParseBufSize);
+{$IFDEF FPC}
+  StringToWideChar(FNewExpression, PWideChar(Pointer(FBuffer)), ParseBufSize);
+{$ELSE}
+  StringToWideChar(FNewExpression, PChar(FBuffer), ParseBufSize);
+{$ENDIF}
   FBuffer[Length(Value)] := Char(0);
   FBufPtr := 0;
   FBufEnd := ParseBufSize;
