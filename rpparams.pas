@@ -96,7 +96,11 @@ type
     procedure Assign(Source:TPersistent);override;
     destructor Destroy;override;
     { IInterface }
+{$IFDEF FPC}
+    function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+{$ELSE}
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+{$ENDIF}
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
     { IPropertiesItem }
@@ -287,7 +291,11 @@ end;
 
 { TRpParam - IInterface }
 
+{$IFDEF FPC}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult;
+{$ELSE}
 function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$ENDIF}
 begin
  if GetInterface(IID, Obj) then
   Result := 0

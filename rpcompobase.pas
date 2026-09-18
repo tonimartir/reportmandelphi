@@ -29,7 +29,13 @@ uses Classes,Sysutils,rpreport,rpmdconsts,
 {$IFDEF USEINDY}
  rpmdrepclient,rpparams,SyncObjs,
 {$ENDIF}
- rpmetafile,System.NetEncoding;
+ rpmetafile
+{$IFDEF FPC}
+ ,base64
+{$ELSE}
+ ,System.NetEncoding
+{$ENDIF}
+ ;
 
 type
  TCBaseReport=class(TComponent)
@@ -126,7 +132,11 @@ end;
 procedure TCBaseReport.AddEmbeddedFile(const fileName, mimeType, base64Stream,
    description: string; AFRelationShip: TPDFAFRelationShip; ISOCreationDate, ISOModificationDate: string);
 var embedded: TEmbeddedFile;
+{$IFDEF FPC}
+ sDecoded: string;
+{$ELSE}
  bytes: TBytes;
+{$ENDIF}
 begin
  CheckLoaded;
  embedded:=TEmbeddedFile.Create;
@@ -137,8 +147,14 @@ begin
  embedded.AFRelationShip:=AFRelationShip;
  embedded.Description:=Description;
  embedded.Stream:=TMemoryStream.Create;
+{$IFDEF FPC}
+ sDecoded:=DecodeStringBase64(base64Stream);
+ if Length(sDecoded)>0 then
+  embedded.Stream.Write(sDecoded[1],Length(sDecoded));
+{$ELSE}
  bytes:=System.NetEncoding.TNetEncoding.Base64.DecodeStringToBytes(base64Stream);
  embedded.Stream.Write(bytes,Length(bytes));
+{$ENDIF}
  embedded.Stream.Position:=0;
  SetLength(Report.EmbeddedFiles,Length(Report.EmbeddedFiles)+1);
  Report.EmbeddedFiles[Length(Report.EmbeddedFiles)-1]:=embedded;

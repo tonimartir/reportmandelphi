@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                      }
 {       Report Manager                                  }
 {                                                       }
@@ -25,7 +25,12 @@ uses Classes,SysUtils,
 {$IFNDEF USEVARIANTS}
  Windows,
 {$ENDIF}
- rptypes, System.Generics.Collections;
+ rptypes,
+{$IFDEF FPC}
+ Generics.Collections;
+{$ELSE}
+ System.Generics.Collections;
+{$ENDIF}
 
 type
  TWinAnsiWidthsArray=array [32..255] of integer;

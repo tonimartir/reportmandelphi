@@ -1,0 +1,415 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE REPORT_MANAGER_2>
+<REPORT>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<GRIDVISIBLE type="Boolean">True</GRIDVISIBLE>
+<GRIDLINES type="Boolean">False</GRIDLINES>
+<GRIDENABLED type="Boolean">True</GRIDENABLED>
+<GRIDCOLOR type="Integer">16711680</GRIDCOLOR>
+<GRIDWIDTH type="Integer">115</GRIDWIDTH>
+<GRIDHEIGHT type="Integer">115</GRIDHEIGHT>
+<PAGEORIENTATION type="Integer">0</PAGEORIENTATION>
+<PAGESIZE type="Integer">0</PAGESIZE>
+<PAGESIZEQT type="Integer">0</PAGESIZEQT>
+<PAGEHEIGHT type="Integer">8120</PAGEHEIGHT>
+<PAGEWIDTH type="Integer">5742</PAGEWIDTH>
+<CUSTOMPAGEHEIGHT type="Integer">16837</CUSTOMPAGEHEIGHT>
+<CUSTOMPAGEWIDTH type="Integer">11906</CUSTOMPAGEWIDTH>
+<PAGEBACKCOLOR type="Integer">16777215</PAGEBACKCOLOR>
+<PREVIEWSTYLE type="Integer">0</PREVIEWSTYLE>
+<PREVIEWMARGINS type="Boolean">False</PREVIEWMARGINS>
+<PREVIEWWINDOW type="Integer">0</PREVIEWWINDOW>
+<LEFTMARGIN type="Integer">574</LEFTMARGIN>
+<TOPMARGIN type="Integer">574</TOPMARGIN>
+<RIGHTMARGIN type="Integer">574</RIGHTMARGIN>
+<BOTTOMMARGIN type="Integer">861</BOTTOMMARGIN>
+<PRINTERSELECT type="Integer">0</PRINTERSELECT>
+<LANGUAGE type="Integer">-1</LANGUAGE>
+<COPIES type="Integer">1</COPIES>
+<COLLATECOPIES type="Boolean">False</COLLATECOPIES>
+<TWOPASS type="Boolean">False</TWOPASS>
+<PRINTERFONTS type="Integer">0</PRINTERFONTS>
+<PRINTONLYIFDATAAVAILABLE type="Boolean">False</PRINTONLYIFDATAAVAILABLE>
+<STREAMFORMAT type="Integer">3</STREAMFORMAT>
+<REPORTACTIONDRAWERBEFORE type="Boolean">False</REPORTACTIONDRAWERBEFORE>
+<REPORTACTIONDRAWERAFTER type="Boolean">False</REPORTACTIONDRAWERAFTER>
+<PREVIEWABOUT type="Boolean">True</PREVIEWABOUT>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">10</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">0</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">0</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<WORDWRAP type="Boolean">False</WORDWRAP>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<BIDIMODES type="String"></BIDIMODES>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<PAPERSOURCE type="Integer">0</PAPERSOURCE>
+<DUPLEX type="Integer">0</DUPLEX>
+<FORCEPAPERNAME type="String"></FORCEPAPERNAME>
+<LINESPERINCH type="Integer">600</LINESPERINCH>
+<PDFCONFORMANCE type="Integer">0</PDFCONFORMANCE>
+<PDFCOMPRESSED type="Boolean">False</PDFCOMPRESSED>
+<DOCAUTHOR type="String"></DOCAUTHOR>
+<DOCCREATOR type="String"></DOCCREATOR>
+<DOCPRODUCER type="String"></DOCPRODUCER>
+<DOCSUBJECT type="String"></DOCSUBJECT>
+<DOCTITLE type="String"></DOCTITLE>
+<DOCCREATIONDATE type="String"></DOCCREATIONDATE>
+<DOCMODIFICATIONDATE type="String"></DOCMODIFICATIONDATE>
+<DOCKEYWORDS type="String"></DOCKEYWORDS>
+<DOCXMPCONTENT type="String"></DOCXMPCONTENT>
+<SUBREPORT>
+<NAME type="String">TRpSubReport0</NAME>
+<ALIAS type="String"></ALIAS>
+<PRINTONLYIFDATAAVAILABLE type="Boolean">True</PRINTONLYIFDATAAVAILABLE>
+<REOPENONPRINT type="Boolean">True</REOPENONPRINT>
+<SECTION>
+<NAME type="String"></NAME>
+<WIDTH type="Integer">10772</WIDTH>
+<HEIGHT type="Integer">9768</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<SUBREPORT type="String">TRpSubReport0</SUBREPORT>
+<GROUPNAME type="String"></GROUPNAME>
+<CHANGEEXPRESSION type="WideString"></CHANGEEXPRESSION>
+<BEGINPAGEEXPRESSION type="WideString"></BEGINPAGEEXPRESSION>
+<SKIPEXPREV type="WideString"></SKIPEXPREV>
+<SKIPEXPREH type="WideString"></SKIPEXPREH>
+<SKIPTOPAGEEXPRE type="WideString"></SKIPTOPAGEEXPRE>
+<BACKEXPRESSION type="WideString"></BACKEXPRESSION>
+<CHANGEBOOL type="Boolean">False</CHANGEBOOL>
+<PAGEREPEAT type="Boolean">False</PAGEREPEAT>
+<FORCEPRINT type="Boolean">False</FORCEPRINT>
+<SKIPPAGE type="Boolean">False</SKIPPAGE>
+<ALIGNBOTTOM type="Boolean">False</ALIGNBOTTOM>
+<SECTIONTYPE type="Integer">2</SECTIONTYPE>
+<AUTOEXPAND type="Boolean">False</AUTOEXPAND>
+<AUTOCONTRACT type="Boolean">False</AUTOCONTRACT>
+<HORZDESP type="Boolean">False</HORZDESP>
+<VERTDESP type="Boolean">False</VERTDESP>
+<EXTERNALFILENAME type="String"></EXTERNALFILENAME>
+<EXTERNALCONNECTION type="String"></EXTERNALCONNECTION>
+<EXTERNALTABLE type="String">REPMAN_REPORTS</EXTERNALTABLE>
+<EXTERNALFIELD type="String">REPORT</EXTERNALFIELD>
+<EXTERNALSEARCHFIELD type="String">REPORT_NAME</EXTERNALSEARCHFIELD>
+<EXTERNALSEARCHVALUE type="String"></EXTERNALSEARCHVALUE>
+<STREAMFORMAT type="Integer">1</STREAMFORMAT>
+<SKIPRELATIVEH type="Boolean">False</SKIPRELATIVEH>
+<SKIPRELATIVEV type="Boolean">False</SKIPRELATIVEV>
+<SKIPTYPE type="Integer">0</SKIPTYPE>
+<ININUMPAGE type="Boolean">False</ININUMPAGE>
+<GLOBAL type="Boolean">False</GLOBAL>
+<DPIRES type="Integer">100</DPIRES>
+<CACHEDIMAGE type="Integer">0</CACHEDIMAGE>
+<BACKSTYLE type="Integer">0</BACKSTYLE>
+<DRAWSTYLE type="Integer">2</DRAWSTYLE>
+<COMPONENT>
+<NAME type="String">TRpShape2</NAME>
+<CLASSNAME type="String">TRPSHAPE</CLASSNAME>
+<WIDTH type="Integer">5520</WIDTH>
+<HEIGHT type="Integer">4140</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">4944</POSX>
+<POSY type="Integer">5172</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<SHAPE type="Integer">0</SHAPE>
+<BRUSHSTYLE type="Integer">0</BRUSHSTYLE>
+<BRUSHCOLOR type="Integer">16777215</BRUSHCOLOR>
+<PENSTYLE type="Integer">0</PENSTYLE>
+<PENCOLOR type="Integer">0</PENCOLOR>
+<PENWIDTH type="Integer">0</PENWIDTH>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel2</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">5520</WIDTH>
+<HEIGHT type="Integer">4140</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">4944</POSX>
+<POSY type="Integer">5172</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Noto Sans Arabic</WFONTNAME>
+<LFONTNAME type="WideString">Noto Nask Arabic</LFONTNAME>
+<BIDIMODE type="Integer">1</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">10</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">0</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">2</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<BIDIMODES type="String">BidiPartial#13##10#</BIDIMODES>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<WIDETEXT type="WideString">#1610##1587##1605##1581# #1605##1581##1585#
+#1603# Reportman.AI #1575##1604##1580##1583#
+#1610##1583# #123##123##39#1#39##43##39#.
+0#39##125##125# #1576##1578##1581##1587##1610#
+#1606# #1605##1578##1602##1583##1605#. #1576#
+#1601##1590##1604# #1575##1604##1575##1587#
+#1578##1583##1604##1575##1604# #1575##1604#
+#1605##1581##1604##1610##1548# #1604##1575#
+ #1578##1594##1575##1583##1585# #1575##1604#
+#1576##1610##1575##1606##1575##1578# #1575#
+#1604##1603##1605##1576##1610##1608##1578#
+#1585# #1571##1576##1583##1611##1575#. #1605#
+#1606# #1575##1604##1590##1585##1608##1585#
+#1610# #1590##1605##1575##1606# #60#u#62#
+#1575##1604##1582##1589##1608##1589##1610#
+#1577# #1575##1604##1603##1575##1605##1604#
+#1577##60##47#u#62# #1604##1604##1578##1602#
+#1575##1585##1610##1585# #1575##1604##1578#
+#1606##1601##1610##1584##1610##1577#. #60#
+span style=#34#font#45#family: #39#Courie
+r New#39#; font#45#size: 6pt;#34##62##91#
+LOG: 0x80040154 #45# TensorCore_Initializ
+ed_DirectX12_Mode#93##60##47#span#62# #1578#
+#1587##1578##1601##1610##1583# #1576##1606#
+#1610##1577# #60#b#62#C#35##60##47#b#62# 
+#1605##1606# #60#b#62#Tensor Cores#60##47#
+b#62# #1601##1610# #1608##1581##1583##1575#
+#1578# #1575##1604##1605##1593##1575##1604#
+#1580##1577# #1575##1604##1605##1585##1603#
+#1586##1610##1577# #1575##1604##1580##1583#
+#1610##1583##1577#. #60#span style=#34#fo
+nt#45#family: #39#Arial#39#; font#45#size
+: 24pt;#34##62#Texto Arial #60#i#62#SQL#60#
+#47#i#62#.#60##47#span#62# #60#s#62##1575#
+#1606##1578##1607##1609# #1593##1589##1585#
+ #1575##1604##1587##1581##1575##1576##1577#
+ #1576##1575##1604##1606##1587##1576##1577#
+ #1604##1604##1576##1610##1575##1606##1575#
+#1578# #1575##1604##1581##1587##1575##1587#
+#1577#.#60##47#s#62##10##10##60#font face
+=#34#Courier New#34# size=#34#6pt#34##62#
+#91#LOG: 0x80040154 #45# TensorCore_Initi
+alized_DirectX12_Mode#93##60##47#font#62#
+#10##10#La arquitectura en #60#b#62#C#35#
+#60##47#b#62# aprovecha los #60#b#62#Tens
+or Cores#60##47#b#62# de las nuevas CPU.#10#
+#10##60#font face=#34#Times New Roman#34#
+ size=#34#24pt#34##62#Este avance marca e
+l inicio de una nueva era en el an#225#li
+sis de #60#i#62#SQL#60##47#i#62#.#60##47#
+font#62##10##10##60#s#62#La era de la nub
+e ha terminado para los datos sensibles.#60#
+#47#s#62#</WIDETEXT>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpShape1</NAME>
+<CLASSNAME type="String">TRPSHAPE</CLASSNAME>
+<WIDTH type="Integer">5520</WIDTH>
+<HEIGHT type="Integer">4140</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">4944</POSX>
+<POSY type="Integer">456</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<SHAPE type="Integer">0</SHAPE>
+<BRUSHSTYLE type="Integer">0</BRUSHSTYLE>
+<BRUSHCOLOR type="Integer">16777215</BRUSHCOLOR>
+<PENSTYLE type="Integer">0</PENSTYLE>
+<PENCOLOR type="Integer">0</PENCOLOR>
+<PENWIDTH type="Integer">0</PENWIDTH>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel1</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">5520</WIDTH>
+<HEIGHT type="Integer">4140</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">4944</POSX>
+<POSY type="Integer">456</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Noto Sans Arabic</WFONTNAME>
+<LFONTNAME type="WideString">Noto Nask Arabic</LFONTNAME>
+<BIDIMODE type="Integer">1</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">10</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">0</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">2</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<BIDIMODES type="String">BidiPartial#13##10#</BIDIMODES>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<ISHTML type="Boolean">True</ISHTML>
+<WIDETEXT type="WideString">#1610##1587##1605##1581# #1605##1581##1585#
+#1603# Reportman.AI #1575##1604##1580##1583#
+#1610##1583# #123##123##39#1#39##43##39#.
+0#39##125##125# #1576##1578##1581##1587##1610#
+#1606# #1605##1578##1602##1583##1605#. #1576#
+#1601##1590##1604# #1575##1604##1575##1587#
+#1578##1583##1604##1575##1604# #1575##1604#
+#1605##1581##1604##1610##1548# #1604##1575#
+ #1578##1594##1575##1583##1585# #1575##1604#
+#1576##1610##1575##1606##1575##1578# #1575#
+#1604##1603##1605##1576##1610##1608##1578#
+#1585# #1571##1576##1583##1611##1575#. #1605#
+#1606# #1575##1604##1590##1585##1608##1585#
+#1610# #1590##1605##1575##1606# #60#u#62#
+#1575##1604##1582##1589##1608##1589##1610#
+#1577# #1575##1604##1603##1575##1605##1604#
+#1577##60##47#u#62# #1604##1604##1578##1602#
+#1575##1585##1610##1585# #1575##1604##1578#
+#1606##1601##1610##1584##1610##1577#. #60#
+span style=#34#font#45#family: #39#Courie
+r New#39#; font#45#size: 6pt;#34##62##91#
+LOG: 0x80040154 #45# TensorCore_Initializ
+ed_DirectX12_Mode#93##60##47#span#62# #1578#
+#1587##1578##1601##1610##1583# #1576##1606#
+#1610##1577# #60#b#62#C#35##60##47#b#62# 
+#1605##1606# #60#b#62#Tensor Cores#60##47#
+b#62# #1601##1610# #1608##1581##1583##1575#
+#1578# #1575##1604##1605##1593##1575##1604#
+#1580##1577# #1575##1604##1605##1585##1603#
+#1586##1610##1577# #1575##1604##1580##1583#
+#1610##1583##1577#. #60#span style=#34#fo
+nt#45#family: #39#Arial#39#; font#45#size
+: 24pt;#34##62#Texto Arial #60#i#62#SQL#60#
+#47#i#62#.#60##47#span#62# #60#s#62##1575#
+#1606##1578##1607##1609# #1593##1589##1585#
+ #1575##1604##1587##1581##1575##1576##1577#
+ #1576##1575##1604##1606##1587##1576##1577#
+ #1604##1604##1576##1610##1575##1606##1575#
+#1578# #1575##1604##1581##1587##1575##1587#
+#1577#.#60##47#s#62##10##10##60#font face
+=#34#Courier New#34# size=#34#6pt#34##62#
+#91#LOG: 0x80040154 #45# TensorCore_Initi
+alized_DirectX12_Mode#93##60##47#font#62#
+#10##10#La arquitectura en #60#b#62#C#35#
+#60##47#b#62# aprovecha los #60#b#62#Tens
+or Cores#60##47#b#62# de las nuevas CPU.#10#
+#10##60#font face=#34#Times New Roman#34#
+ size=#34#24pt#34##62#Este avance marca e
+l inicio de una nueva era en el an#225#li
+sis de #60#i#62#SQL#60##47#i#62#.#60##47#
+font#62##10##10##60#s#62#La era de la nub
+e ha terminado para los datos sensibles.#60#
+#47#s#62#</WIDETEXT>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpShape0</NAME>
+<CLASSNAME type="String">TRPSHAPE</CLASSNAME>
+<WIDTH type="Integer">4368</WIDTH>
+<HEIGHT type="Integer">2424</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">348</POSX>
+<POSY type="Integer">456</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<SHAPE type="Integer">0</SHAPE>
+<BRUSHSTYLE type="Integer">0</BRUSHSTYLE>
+<BRUSHCOLOR type="Integer">16777215</BRUSHCOLOR>
+<PENSTYLE type="Integer">0</PENSTYLE>
+<PENCOLOR type="Integer">0</PENCOLOR>
+<PENWIDTH type="Integer">0</PENWIDTH>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel0</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">4368</WIDTH>
+<HEIGHT type="Integer">2424</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">348</POSX>
+<POSY type="Integer">456</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<BIDIMODE type="Integer">0</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">10</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">0</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">1</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<BIDIMODES type="String"></BIDIMODES>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<ISHTML type="Boolean">True</ISHTML>
+<WIDETEXT type="WideString">El nuevo motor de Reportman.AI #123##123#
+#39#1#39##43##39#.0#39##125##125# permite
+ una optimizaci#243#n avanzada. Gracias a
+ la #60#i#62#inferencia local#60##47#i#62#
+#44# los datos nunca abandonan el PC. Es 
+fundamental asegurar la #60#u#62#privacid
+ad total#60##47#u#62# de los informes dir
+ectivos. #60#span style=#34#font#45#famil
+y: #39#Courier New#39#; font#45#size: 6pt
+;color:red#34##62##91#LOG: 0x80040154 #45#
+ TensorCore_Initialized_DirectX12_Mode#93#
+#60##47#span#62# La arquitectura en #60#b
+#62#C#35##60##47#b#62# aprovecha los #60#
+b#62#Tensor Cores#60##47#b#62# de las nue
+vas CPU. #60#span style=#34#font#45#famil
+y: #39#Times New Roman#39#; font#45#size:
+ 24pt;#34##62#Este avance marca el inicio
+ de una nueva era en el an#225#lisis de #60#
+i#62#SQL#60##47#i#62#.#60##47#span#62# #60#
+s#62#La era de la #60#span style=#34#colo
+r: #35#00ff00#34##62#nube#60##47#span#62#
+ ha terminado para los datos sensibles.#60#
+#47#s#62##10##10##60#font face=#34#Courie
+r New#34# size=#34#6pt#34##62##91#LOG: 0x
+80040154 #45# TensorCore_Initialized_Dire
+ctX12_Mode#93##60##47#font#62##10##10#La 
+arquitectura en #60#b#62#C#35##60##47#b#62#
+ aprovecha los #60#b#62#Tensor Cores#60##47#
+b#62# de las nuevas CPU.#10##10##60#font 
+face=#34#Times New Roman#34# size=#34#24p
+t#34##62#Este avance marca el inicio de u
+na nueva era en el an#225#lisis de #60#i#62#
+SQL#60##47#i#62#.#60##47#font#62##10##10#
+#60#s#62#La era de la nube ha terminado p
+ara los datos sensibles.#60##47#s#62#</WIDETEXT>
+</COMPONENT>
+</SECTION>
+</SUBREPORT>
+</REPORT>

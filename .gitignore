@@ -253,3 +253,8 @@ webactivex/WebReportManX.res
 # Type library de ActiveX (contrato COM). Se deja fuera del control de versiones como artefacto;
 # si algun dia quieres volver a versionar los GUIDs COM publicados, borra esta linea y re-anade el fichero.
 webactivex/WebReportManX.tlb
+lib/x86_64-win64/
+packages/fpc/lib/x86_64-win64/rpdatainfo.ppu
+packages/fpc/lib/x86_64-win64/
+*.ppu
+tests/fpc/PdfTest/lib/x86_64-win64/

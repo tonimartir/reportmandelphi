@@ -176,7 +176,11 @@ end;
 
 
 
+{$IFDEF FPC}
+function zlibAllocMem(AppData: Pointer; Items, Size: uInt): Pointer;
+{$ELSE}
 function zlibAllocMem(AppData: Pointer; Items, Size: Cardinal): Pointer;
+{$ENDIF}
 begin
   GetMem(Result, Items*Size);
 end;
