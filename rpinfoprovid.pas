@@ -105,9 +105,15 @@ type
   loadedk:array [0..65535] of boolean;
   loadedwidths:array [0..65535] of double;
   loaded:array [0..65535] of boolean;
-	glyphs:TDictionary<char, integer>;
-	glyphsInfo:TDictionary<integer, TGlyphInfo>;
-	widths:TDictionary<char, double>;
+{$IFDEF FPC}
+  glyphs:TDictionary<WideChar, integer>;
+  glyphsInfo:TDictionary<integer, TGlyphInfo>;
+  widths:TDictionary<WideChar, double>;
+{$ELSE}
+  glyphs:TDictionary<char, integer>;
+  glyphsInfo:TDictionary<integer, TGlyphInfo>;
+  widths:TDictionary<char, double>;
+{$ENDIF}
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
@@ -281,8 +287,13 @@ begin
  kerningsadded.sorted:=true;
  firstloaded:=65536;
  lastloaded:=-1;
+{$IFDEF FPC}
+ glyphs:=TDictionary<WideChar, integer>.Create;
+ widths:=TDictionary<WideChar, double>.Create;
+{$ELSE}
  glyphs:=TDictionary<char, integer>.Create;
  widths:=TDictionary<char, double>.Create;
+{$ENDIF}
  glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
 end;
 
@@ -382,7 +393,19 @@ end;
 
 destructor TAdvFontData.Destroy;
 begin
+{$IFDEF FPC}
+ if Fontdata <> nil then
+ begin
+   try
+     Fontdata.Free;
+   except
+   end;
+   Fontdata := nil;
+ end;
+ inherited Destroy;
+{$ELSE}
  Fontdata.free;
+{$ENDIF}
 end;
 
 
@@ -416,7 +439,7 @@ var
     charIdx := positions[j].LineCluster;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
-    if (not Result) then
+    if (not Result AND (Length(Text)>charIdx)) then
     begin
      Result:=(Text[charIdx+1]=' ') or (Text[charIdx+1]=chr(10));
     end;

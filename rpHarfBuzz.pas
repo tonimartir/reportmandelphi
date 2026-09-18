@@ -3,7 +3,7 @@ Unit rpHarfBuzz;
 
 Interface
 
-Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF},
+Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
@@ -299,7 +299,11 @@ Type
       hbsKhitanSmallScript = $4B697473 { Kits } , // 13.0
       hbsYezidi = $59657A69 { Yezi } ,            // 13.0
       // No script set.
+{$IFDEF FPC}
+      hbsInvalid = $00000000);
+{$ELSE}
       hbsInvalid = THBTag.None);
+{$ENDIF}
 
 
    THBScriptHelper = Record Helper For THBScript
@@ -432,13 +436,23 @@ const
                          const ANumFeatures: Cardinal); cdecl;
   T_hb_ft_font_create_referenced = function(FTFace: TFTFace): THBFont; cdecl;
     T_hb_ft_font_set_funcs = procedure(font: THBFont); cdecl;
-     T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
-  T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
-    T_hb_font_destroy = procedure(font: THBFont); cdecl;
-    T_hb_font_set_ptem = procedure (Font: THBFont; Const APtEM: Single); cdecl;
-    T_hb_font_get_ptem = function (Const AFont: THBFont): Single; Cdecl;
-    T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
-    T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
+  {$IFDEF FPC}
+   T_hb_buffer_get_glyph_infos = function(ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
+   T_hb_buffer_get_glyph_positions = function(ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
+   T_hb_font_destroy = procedure(font: THBFont); cdecl;
+   T_hb_font_set_ptem = procedure (Font: THBFont; const APtEM: Single); cdecl;
+   T_hb_font_get_ptem = function (AFont: THBFont): Single; cdecl;
+   T_hb_font_set_scale = procedure (Font: THBFont; const AXScale, AYScale: Integer); cdecl;
+   T_hb_font_get_scale = procedure (AFont: THBFont; out OXScale, OYScale: Integer); cdecl;
+{$ELSE}
+   T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
+   T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
+   T_hb_font_destroy = procedure(font: THBFont); cdecl;
+   T_hb_font_set_ptem = procedure (Font: THBFont; Const APtEM: Single); cdecl;
+   T_hb_font_get_ptem = function (Const AFont: THBFont): Single; Cdecl;
+   T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
+   T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
+{$ENDIF}
 
     T_hb_subset_input_create_or_fail = function : Phb_subset_input_t; cdecl;
     t_hb_subset_input_destroy = procedure (input: Phb_subset_input_t); cdecl;
@@ -565,18 +579,22 @@ Var
    Buf: PHBGlyphInfo;
    Len: Cardinal;
 Begin
+   Len := 0;
    Buf := hb_buffer_get_glyph_infos(Self, Len);
    System.SetLength(Result, Len);
-   Move(Buf^, Result[0], Len * SizeOf(THBGlyphInfo));
+   if (Len > 0) and (Buf <> nil) then
+     Move(Buf^, Result[0], Len * SizeOf(THBGlyphInfo));
 End;
 Function THBBuffer.GetGlyphPositions: TArray<THBGlyphPosition>;
 Var
    Buf: PHBGlyphPosition;
    Len: Cardinal;
 Begin
+   Len := 0;
    Buf := hb_buffer_get_glyph_positions(Self, Len);
    System.SetLength(Result, Len);
-   Move(Buf^, Result[0], Len * SizeOf(THBGlyphPosition));
+   if (Len > 0) and (Buf <> nil) then
+     Move(Buf^, Result[0], Len * SizeOf(THBGlyphPosition));
 End;
 
 
@@ -592,7 +610,11 @@ End;
 Function THBTagHelper.ToString: THBTagString;
 Begin
    hb_tag_to_string(Self, @Result[1]);
+{$IFDEF FPC}
+   SetLength(Result, SysUtils.StrLen(PAnsiChar(@Result[1])));
+{$ELSE}
    SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Result[1])));
+{$ENDIF}
 End;
 
 Class Function THBFace.CreateReferenced(FTFace: TFTFace): THBFace;
@@ -616,7 +638,11 @@ Var
    Buf: Packed Array [0 .. 127] Of AnsiChar; // doc says 128 bytes are more than enough
 Begin
    hb_feature_to_string(Self, @Buf[0], 128);
+{$IFDEF FPC}
+   SetLength(Result, SysUtils.StrLen(PAnsiChar(@Buf[0])));
+{$ELSE}
    SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Buf[0])));
+{$ENDIF}
    Move(Buf, Result[1], Length(Result));
 End;
 
@@ -706,7 +732,11 @@ var
   function GetProcAddr(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+    Result := GetProcAddress(HarfBuzzlib, PAnsiChar(AnsiString(ProcName)));
+{$ELSE}
     Result := GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
+{$ENDIF}
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
@@ -723,7 +753,11 @@ var
   function GetProcAddrSubset(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+    Result := GetProcAddress(HarfBuzzlibSubset, PAnsiChar(AnsiString(ProcName)));
+{$ELSE}
     Result := GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
+{$ENDIF}
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
