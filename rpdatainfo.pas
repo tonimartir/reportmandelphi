@@ -147,6 +147,10 @@ uses Classes,SysUtils,
  {$IFDEF FPC}
   Memds,
  {$ENDIF}
+{$ELSE}
+ {$IFDEF FPC}
+  rpdataset,
+ {$ENDIF}
 {$ENDIF}
 {$IFNDEF FPC}
   rpdatahttp, rpauthmanager,
@@ -175,7 +179,7 @@ type
   TRpMemDataSet = TFDMemTable;
 {$ELSE}
  {$IFDEF FPC}
-  TRpMemDataSet = TMemDataset;
+  TRpMemDataSet = rpdataset.TRpMemDataSet;
  {$ELSE}
   TRpMemDataSet = TClientDataSet;
  {$ENDIF}
@@ -563,14 +567,10 @@ type
   end;
 procedure GetRpDatabaseDrivers(alist:TStrings);
 {$IFDEF USERPDATASET}
-{$IFDEF FPC}
-procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
-function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
-{$ENDIF}
-{$IFNDEF FPC}
 procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
 function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 {$IFDEF USEIBX}
+{$IFNDEF FPC}
 procedure ConvertParamsFromDBXToIBX(base:TIBDatabase);
 {$ENDIF}
 {$ENDIF}
@@ -2727,10 +2727,8 @@ var
 {$ENDIF}
  datasetname:string;
  originalfields,commonfields:TStrings;
-{$IFDEF FPC}
- ndataset:TMemDataset;
-{$ELSE}
  ndataset:TRpMemDataSet;
+{$IFNDEF FPC}
  LHttpDataset: TRpDatasetHttp;
 {$ENDIF}
 begin
@@ -2865,12 +2863,7 @@ begin
      rpdatamybase:
       begin
 {$IFDEF USERPDATASET}
- {$IFDEF FPC}
-       FSQLInternalQuery:=TMemDataset.Create(nil);
- {$ENDIF}
- {$IFNDEF FPC}
        FSQLInternalQuery:=TRpMemDataSet.Create(nil);
- {$ENDIF}
 {$ENDIF}
 {$IFNDEF USERPDATASET}
        Raise Exception.Create(SRpClientDatasetNotSupported);
@@ -3118,24 +3111,17 @@ begin
 {$ENDIF}
 {$IFDEF USERPDATASET}
       try
-{$IFNDEF FPC}
        TRpMemDataSet(FSQLInternalQuery).IndexName:='';
        TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:='';
-{$ENDIF}
        if Length(FMyBaseFileName)>0 then
        begin
         // Adds the path
         afilename:=baseinfo.FMyBasePath+FMyBaseFilename;
         if Length(FMyBaseFields)>0 then
         begin
-{$IFNDEF FPC}
          TRpMemDataSet(FSQLInternalQuery).IndexDefs.Clear;
          TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
          FillClientDatasetFromFile(TRpMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
-{$ENDIF}
-{$IFDEF FPC}
-         FillClientDatasetFromFile(TMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
-{$ENDIF}
         end
         else
         begin
@@ -3151,11 +3137,26 @@ begin
 {$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
-         TMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
-        end;
-       end;
+          if not FileExists(afilename) then
+          begin
+            if FileExists(ChangeFileExt(afilename, '.xml')) then
+              afilename := ChangeFileExt(afilename, '.xml')
+            else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename) then
+              afilename := baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename
+            else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('repman' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := 'repman' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml');
+          end;
+          if FileExists(ChangeFileExt(afilename, '.xml')) and (LowerCase(ExtractFileExt(afilename)) = '.cds') then
+            afilename := ChangeFileExt(afilename, '.xml');
+          FDMemLoadFromMidasFile(TRpMemDataSet(FSQLInternalQuery), afilename);
+          TRpMemDataSet(FSQLInternalQuery).IndexFieldNames := FMyBaseIndexFields;
 {$ENDIF}
-{$IFNDEF FPC}
         end;
        end
        else
@@ -3165,7 +3166,6 @@ begin
         TRpMemDataSet(FSQLInternalQuery).IndexDefs.Add('IPRIM',FMyBaseIndexFields,[]);
         TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
        end;
-{$ENDIF}
        commonfields:=TStringList.Create;
        originalfields:=TStringList.Create;
        try
@@ -3179,17 +3179,11 @@ begin
          TRpDatainfolist(Collection).Items[index].Connect(databaseinfo,params);
          if ((i=0) or (not FParallelUnion)) then
          begin
-{$IFNDEF FPC}
-         CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
-{$ENDIF}
-{$IFDEF FPC}
-         CombineAddDataset(TMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
-{$ENDIF}
+          CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
           originalfields.Assign(commonfields);
          end
          else
          begin
-          {$IFNDEF FPC}
           ndataset:=CombineParallel(TRpMemDataSet(FSQLInternalQuery),
            TRpDatainfolist(Collection).Items[index].Dataset,'Q'+FormatFloat('00',i+1)+'_',commonfields,originalfields);
           try
@@ -3199,18 +3193,6 @@ begin
           finally
            ndataset.free;
           end;
-          {$ENDIF}
-          {$IFDEF FPC}
-          ndataset:=CombineParallel(TMemDataset(FSQLInternalQuery),
-           TRpDatainfolist(Collection).Items[index].Dataset,'Q'+FormatFloat('00',i+1)+'_',commonfields,originalfields);
-          try
-           FSQLInternalQuery.Close;
-           TMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
-           CombineAddDataset(TMemDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
-          finally
-           ndataset.free;
-          end;
-          {$ENDIF}
          end;
         end;
        finally
@@ -4968,15 +4950,9 @@ end;
 
 
 
-{$IFNDEF FPC}
 function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 var
  aresult:TRpMemDataSet;
-{$ELSE}
-function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
-var
- aresult:TMemDataset;
-{$ENDIF}
  lfields1:TStringList;
  lfields2:TStringList;
  i,index:integer;
@@ -4984,7 +4960,6 @@ var
  fdef:TFieldDef;
  indexfieldnames:string;
 begin
- {$IFNDEF FPC}
  aresult:=TRpMemDataSet.Create(nil);
  lfields1:=TStringList.Create;
  lfields2:=TStringList.Create;
@@ -5044,6 +5019,9 @@ begin
   begin
    if aresult.Indexfieldnames<>'' then
    begin
+{$IFDEF FPC}
+    aresult.Append;
+{$ELSE}
     aresult.SetKey;
     for i:=0 to commonfields.Count-1 do
     begin
@@ -5054,6 +5032,7 @@ begin
      aresult.Edit
     else
      aresult.Append;
+{$ENDIF}
    end
    else
    begin
@@ -5083,19 +5062,11 @@ begin
  end;
  aresult.first;
  Result:=aresult;
- {$ELSE}
-  raise Exception.Create('Combineparallel not implemented');
- {$ENDIF}
 end;
 
 
 {$IFDEF USERPDATASET}
-{$IFDEF FPC}
-procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
-{$ENDIF}
-{$IFNDEF FPC}
 procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
-{$ENDIF}
 var
  i,index:integer;
  groupfields:TStringList;
@@ -5122,12 +5093,7 @@ begin
      fielddef.Attributes := attributes;
     end
   end;
-{$IFNDEF FPC}
    client.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-   client.CreateTable;
-{$ENDIF}
   end;
   if (data.fields.Count>client.Fields.Count) then
   begin
@@ -5135,16 +5101,11 @@ begin
   end;
   if group then
   begin
-{$IFNDEF FPC}
    ParseFields(client.IndexFieldNames,groupfields);
    for i:=0 to groupfields.count-1 do
    begin
     groupfieldindex.Add(IntToStr(client.FieldByName(groupfields.strings[i]).index));
    end;
-{$ENDIF}
-{$IFDEF FPC}
-   Raise Exception.Create('TMemDataset does not implement indexes');
-{$ENDIF}
   end;
   while not data.eof do
   begin
@@ -5152,7 +5113,7 @@ begin
    if Group then
    begin
 {$IFDEF FPC}
-    Raise Exception.Create('TMemDataset does not implement indexes');
+    Raise Exception.Create('Group union not implemented in TRpMemDataSet');
 {$ENDIF}
 {$IFNDEF FPC}
     client.SetKey;

@@ -1640,6 +1640,11 @@ end;
 
 
 procedure WriteWideString(Writer:TWriter;Value:WideString);
+{$IFDEF FPC}
+begin
+ Writer.WriteWideString(Value);
+end;
+{$ELSE}
 {$IFDEF DOTNETD}
 var
   L: Integer;
@@ -1667,26 +1672,18 @@ begin
  Writer.Write(L, SizeOf(Integer));
  Writer.Write(Utf8Bytes, L);
 end;
-{$ENDIF}
-{$IFNDEF DOTNETD}
+{$ELSE}
 var
   L: Integer;
   aval:TValueType;
 begin
  aval:=vaWString;
-{$IFDEF FPC}
-// Writer.Write(aval);
-// L := Length(Value);
-// Writer.Write(L, SizeOf(Integer));
-// Writer.Write(Pointer(Value)^, L * 2);
-{$ENDIF}
-{$IFNDEF FPC}
  Writer.Write(aval,SizeOf(aval));
  L := Length(Value);
  Writer.Write(L, SizeOf(Integer));
  Writer.Write(Pointer(Value)^, L * 2);
-{$ENDIF}
 end;
+{$ENDIF}
 {$ENDIF}
 
 
@@ -1786,18 +1783,21 @@ end;
 {$ENDIF}
 
 function ReadWideString(Reader:TReader):WideString;
+{$IFDEF FPC}
+begin
+ Result:=Reader.ReadWideString;
+end;
+{$ELSE}
 {$IFDEF DELPHI2009UP}
 begin
  Result:=Reader.ReadString;
 end;
-{$ENDIF}
-{$IFNDEF DELPHI2009UP}
+{$ELSE}
 var
   L: Integer;
   aResult:String;
   avalue:TValueType;
 begin
-{$IFNDEF FPC}
   L := 0;
   avalue:=Reader.ReadValue;
   if  avalue<> vaWString then
@@ -1841,8 +1841,8 @@ begin
    SetLength(Result, L);
    Reader.Read(Pointer(Result)^, L * 2);
   end;
-{$ENDIF}
 end;
+{$ENDIF}
 {$ENDIF}
 
 

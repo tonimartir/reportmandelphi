@@ -27,7 +27,7 @@ interface
 
 uses Sysutils,Classes,
 {$IFDEF FPC}
- memds,
+ memds, bufdataset,
 {$ENDIF}
 {$IFDEF USERPFDMEM}
  FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
@@ -52,7 +52,10 @@ type
   TRpMemDataSet = TFDMemTable;
 {$ELSE}
  {$IFDEF FPC}
-  TRpMemDataSet = TMemDataset;
+  TRpMemDataSet = class(TBufDataset)
+  protected
+    procedure LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField); override;
+  end;
  {$ELSE}
   TRpMemDataSet = TClientDataSet;
  {$ENDIF}
@@ -78,6 +81,13 @@ type
  end;
 
 implementation
+
+{$IFDEF FPC}
+procedure TRpMemDataSet.LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField);
+begin
+  // Blobs in TRpMemDataSet reside in memory buffers; no external loading needed
+end;
+{$ENDIF}
 
 // Assign field source to destinaton (Assign not works well in Delphi 7)
 // The bug appears when you edit a already assigned record and assign
@@ -217,19 +227,11 @@ begin
        adef.Precision:=TBCDField(FDataset.Fields[i]).Precision;
    {$ENDIF}
      end;
-{$IFDEF FPC}
-     CreateTable;
-{$ENDIF}
-{$IFNDEF FPC}
      CreateDataset;
-{$ENDIF}
      FCopyDataset.Close;
      FCopyDataset.FieldDefs.Assign(FieldDefs);
-{$IFDEF FPC}
-     FCopyDataset.CreateTable;
-{$ENDIF}
-{$IFNDEF FPC}
      FCopyDataset.CreateDataSet;
+{$IFNDEF FPC}
  {$IFNDEF USERPFDMEM}
      FCopyDataset.LogChanges:=false;
  {$ENDIF}

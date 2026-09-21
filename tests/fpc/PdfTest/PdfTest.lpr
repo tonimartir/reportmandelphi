@@ -122,6 +122,9 @@ begin
 
     if not TestOneReport('boldold.rep', 'boldold.pdf') then
       allOk := False;
+
+    if not TestOneReport('sample4.rep', 'sample4.pdf') then
+      allOk := False;
   end;
 
   WriteLn('==================================================');

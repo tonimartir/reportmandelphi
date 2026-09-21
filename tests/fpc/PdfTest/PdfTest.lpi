@@ -54,9 +54,6 @@
       </SyntaxOptions>
     </Parsing>
     <Other>
-      <Verbosity>
-        <ShowDebugInfo Value="True"/>
-      </Verbosity>
       <CustomOptions Value="-gl"/>
     </Other>
   </CompilerOptions>

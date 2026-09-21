@@ -80,14 +80,14 @@ procedure SaveFieldObjListToFile(lfields:TStringList;fieldsfile:String;
  recordseparator:char;
  ignoreafterrecordseparator:char);
 
-{$IFDEF USERPFDMEM}
-// MIDAS / MyBase "DATAPACKET 2.0" XML read-write for a FireDAC TFDMemTable,
-// so the Linux/Delphi build can interchange the same data files that
+{$IF defined(USERPFDMEM) or defined(FPC)}
+// MIDAS / MyBase "DATAPACKET 2.0" XML read-write for FireDAC TFDMemTable / FPC TRpMemDataSet,
+// so the Linux/Delphi/FPC build can interchange the same data files that
 // TClientDataSet produces/consumes on Windows (impl in rpfdmidas.inc).
-procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
-procedure FDMemSaveToMidasStream(mem: TFDMemTable; Stream: TStream);
-procedure FDMemLoadFromMidasFile(mem: TFDMemTable; const FileName: string);
-procedure FDMemSaveToMidasFile(mem: TFDMemTable; const FileName: string);
+procedure FDMemLoadFromMidasStream(mem: TRpMemDataSet; Stream: TStream);
+procedure FDMemSaveToMidasStream(mem: TRpMemDataSet; Stream: TStream);
+procedure FDMemLoadFromMidasFile(mem: TRpMemDataSet; const FileName: string);
+procedure FDMemSaveToMidasFile(mem: TRpMemDataSet; const FileName: string);
 {$ENDIF}
 
 implementation
@@ -96,6 +96,13 @@ implementation
 uses
  System.Generics.Collections, System.StrUtils, Data.FmtBcd, System.DateUtils,
  System.NetEncoding;
+
+{$I rpfdmidas.inc}
+{$ENDIF}
+
+{$IFDEF FPC}
+uses
+ Generics.Collections, StrUtils, FmtBcd, DateUtils, base64;
 
 {$I rpfdmidas.inc}
 {$ENDIF}
@@ -341,7 +348,6 @@ begin
       begin
        data.FieldDefs.Add('FIELD'+IntToStr(i+1),ftString,255,false);
       end;
-{$IFNDEF FPC}
       if Length(Trim(IndexFields))<1 then
       begin
        data.IndexDefs.Clear;
@@ -355,10 +361,6 @@ begin
        data.IndexFieldNames:=IndexFields;
       end;
       data.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-      data.CreateTable;
-{$ENDIF}
      end;
      data.Append;
      try
@@ -432,7 +434,6 @@ begin
      fdef.Size:=fobj.fieldsize;
     fdef.Precision:=fobj.Precision;
    end;
-{$IFNDEF FPC}
    if Length(Trim(IndexFields))<1 then
    begin
     data.IndexDefs.Clear;
@@ -446,10 +447,6 @@ begin
     data.IndexFieldNames:=IndexFields;
    end;
    data.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-   data.CreateTable;
-{$ENDIF}
    reccount:=0;
    // Load the file inside the dataset
    memstream:=TMemoryStream.Create;

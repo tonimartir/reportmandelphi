@@ -264,7 +264,6 @@ tests/fpc/PdfTest/*.pdf
 tests/fpc/PdfTest/PdfTest
 tests/fpc/PdfTest/lib/
 packages/fpc/lib/
-/arab2wordwrap.pdf
-/bold.pdf
-/boldold.pdf
-/htmltest.pdf
+*.pdf
+tests/fpc/PdfTest/PdfTest.exe
+

@@ -27,10 +27,40 @@ resourcestring
 
 function RpMidasInv: TFormatSettings;
 begin
+{$IFDEF FPC}
+  Result := DefaultFormatSettings;
+  Result.DecimalSeparator := '.';
+  Result.ThousandSeparator := ',';
+  Result.DateSeparator := '-';
+  Result.TimeSeparator := ':';
+  Result.ShortDateFormat := 'yyyy-mm-dd';
+{$ELSE}
   Result := TFormatSettings.Invariant;
+{$ENDIF}
 end;
 
 // ---------- base64 (no line breaks, matching TClientDataSet) --------------
+{$IFDEF FPC}
+function RpMidasB64Encode(const B: TBytes): string;
+var
+  s: ansistring;
+begin
+  if Length(B) = 0 then Exit('');
+  SetString(s, PAnsiChar(@B[0]), Length(B));
+  Result := EncodeStringBase64(s);
+end;
+
+function RpMidasB64Decode(const S: string): TBytes;
+var
+  decoded: ansistring;
+begin
+  if S = '' then Exit(nil);
+  decoded := DecodeStringBase64(S);
+  SetLength(Result, Length(decoded));
+  if Length(decoded) > 0 then
+    Move(decoded[1], Result[0], Length(decoded));
+end;
+{$ELSE}
 function RpMidasB64Encode(const B: TBytes): string;
 var
   enc: TBase64Encoding;
@@ -56,6 +86,7 @@ begin
     enc.Free;
   end;
 end;
+{$ENDIF}
 
 // ---------- stream -> string (BOM / encoding aware) ----------------------
 // Lenient UTF-8 decode: valid sequences decode normally; any byte that is not
@@ -242,6 +273,18 @@ begin
   // emit them upper-case (R8, I4) -- normalise before matching, otherwise the
   // numeric types silently fall through to ftString.
   t := LowerCase(Trim(AType));
+{$IFDEF FPC}
+  if (t = 'i1') or (t = 'i2') then Result := ftSmallint
+  else if t = 'i4' then Result := ftInteger
+  else if t = 'i8' then Result := ftLargeint
+  else if (t = 'ui1') or (t = 'ui2') then Result := ftWord
+  else if t = 'ui4' then Result := ftLargeint
+  else if (t = 'r4') or (t = 'r8') then
+  begin
+    if SameText(ASubType, 'Money') then Result := ftCurrency
+    else Result := ftFloat;
+  end
+{$ELSE}
   if (t = 'i1') or (t = 'i2') then Result := ftSmallint
   else if t = 'i4' then Result := ftInteger
   else if t = 'i8' then Result := ftLargeint
@@ -254,6 +297,7 @@ begin
     if SameText(ASubType, 'Money') then Result := ftCurrency
     else Result := ftFloat;
   end
+{$ENDIF}
   else if t = 'fixed' then Result := ftBCD
   else if t = 'fixedfmt' then Result := ftFMTBcd
   else if t = 'boolean' then Result := ftBoolean
@@ -287,20 +331,28 @@ end;
 
 function RpMidasParseTime(const S: string): TDateTime;
 var
-  parts: TArray<string>;
+  p1, p2: Integer;
   hh, mm, ss, ms: Word;
   sp: string;
 begin
-  parts := S.Split([':']);
   hh := 0; mm := 0; ss := 0; ms := 0;
-  if Length(parts) > 0 then hh := StrToIntDef(parts[0], 0);
-  if Length(parts) > 1 then mm := StrToIntDef(parts[1], 0);
-  if Length(parts) > 2 then
+  p1 := Pos(':', S);
+  if p1 > 0 then
   begin
-    sp := parts[2];
-    ss := StrToIntDef(Copy(sp, 1, 2), 0);
-    if Length(sp) > 2 then ms := StrToIntDef(Copy(sp, 3, MaxInt), 0);
-  end;
+    hh := StrToIntDef(Copy(S, 1, p1 - 1), 0);
+    p2 := PosEx(':', S, p1 + 1);
+    if p2 > 0 then
+    begin
+      mm := StrToIntDef(Copy(S, p1 + 1, p2 - p1 - 1), 0);
+      sp := Copy(S, p2 + 1, MaxInt);
+      ss := StrToIntDef(Copy(sp, 1, 2), 0);
+      if Length(sp) > 2 then ms := StrToIntDef(Copy(sp, 3, MaxInt), 0);
+    end
+    else
+      mm := StrToIntDef(Copy(S, p1 + 1, MaxInt), 0);
+  end
+  else
+    hh := StrToIntDef(S, 0);
   Result := EncodeTime(hh, mm, ss, ms);
 end;
 
@@ -317,10 +369,22 @@ begin
 end;
 
 procedure RpMidasSetValue(F: TField; const S: string);
+{$IFNDEF FPC}
 var
   i64: Int64;
+{$ENDIF}
 begin
   case F.DataType of
+{$IFDEF FPC}
+    ftSmallint, ftInteger, ftAutoInc:
+      F.AsInteger := StrToInt(S);
+    ftWord:
+      F.AsInteger := Word(StrToInt(S));
+    ftLargeint:
+      F.AsLargeInt := StrToInt64(S);
+    ftFloat:
+      F.AsFloat := StrToFloat(S, RpMidasInv);
+{$ELSE}
     ftShortint, ftSmallint, ftInteger, ftAutoInc:
       F.AsInteger := StrToInt(S);
     ftByte:
@@ -333,6 +397,7 @@ begin
       F.AsLargeInt := StrToInt64(S);
     ftSingle, ftFloat:
       F.AsFloat := StrToFloat(S, RpMidasInv);
+{$ENDIF}
     ftCurrency:
       F.AsCurrency := StrToFloat(S, RpMidasInv);
     ftBCD, ftFMTBcd:
@@ -360,6 +425,13 @@ begin
   AWidth := 0;
   ADec := -1;
   case F.DataType of
+{$IFDEF FPC}
+    ftSmallint: Result := 'i2';
+    ftWord: Result := 'ui2';
+    ftInteger, ftAutoInc: Result := 'i4';
+    ftLargeint: Result := 'i8';
+    ftFloat: Result := 'r8';
+{$ELSE}
     ftShortint, ftSmallint: Result := 'i2';
     ftByte: Result := 'ui1';
     ftWord: Result := 'ui2';
@@ -368,6 +440,7 @@ begin
     ftLargeint: Result := 'i8';
     ftSingle: Result := 'r4';
     ftFloat: Result := 'r8';
+{$ENDIF}
     ftCurrency: begin Result := 'r8'; ASub := 'Money'; end;
     ftBCD:
       begin
@@ -407,14 +480,27 @@ begin
       Result := FormatDateTime('hh":"nn":"sszzz', F.AsDateTime);
     ftDateTime, ftTimeStamp:
       Result := FormatDateTime('yyyymmdd"T"hh":"nn":"sszzz', F.AsDateTime);
+{$IFDEF FPC}
+    ftFloat:
+      Result := FloatToStrF(F.AsFloat, ffGeneral, 17, 0, RpMidasInv);
+{$ELSE}
     ftSingle:
       Result := FloatToStrF(F.AsFloat, ffGeneral, 9, 0, RpMidasInv);
     ftFloat:
       Result := FloatToStrF(F.AsFloat, ffGeneral, 17, 0, RpMidasInv);
+{$ENDIF}
     ftCurrency:
       Result := FloatToStr(F.AsCurrency, RpMidasInv);
     ftBCD, ftFMTBcd:
       Result := BcdToStr(F.AsBcd, RpMidasInv);
+{$IFDEF FPC}
+    ftSmallint, ftInteger, ftAutoInc:
+      Result := IntToStr(F.AsInteger);
+    ftWord:
+      Result := IntToStr(SmallInt(F.AsInteger));    // ui2 as a signed pattern
+    ftLargeint:
+      Result := IntToStr(F.AsLargeInt);
+{$ELSE}
     ftShortint, ftSmallint, ftInteger, ftAutoInc:
       Result := IntToStr(F.AsInteger);
     ftByte:
@@ -425,6 +511,7 @@ begin
       Result := IntToStr(Integer(F.AsLargeInt));    // ui4 as a signed pattern
     ftLargeint:
       Result := IntToStr(F.AsLargeInt);
+{$ENDIF}
     ftBlob, ftGraphic, ftVarBytes, ftBytes:
       Result := RpMidasB64Encode(F.AsBytes);
   else
@@ -486,7 +573,7 @@ end;
 
 // ======================= public procedures ===============================
 
-procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemLoadFromMidasStream(mem: TRpMemDataSet; Stream: TStream);
 var
   xml, inner, attrName, fieldName, ftype, fsub, realName: string;
   p, tagEnd, fieldsB, fieldsE, rowsB, rowsE, fwidth, fdec, fsize, k: Integer;
@@ -595,14 +682,14 @@ begin
   end;
 end;
 
-procedure FDMemSaveToMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemSaveToMidasStream(mem: TRpMemDataSet; Stream: TStream);
 var
   sb: TStringBuilder;
   i: Integer;
   F: TField;
   t, sub: string;
   w, dec: Integer;
-  attrs: TArray<string>;
+  attrs: array of string;
   bm: TBookmark;
   bytes: TBytes;
 begin
@@ -660,7 +747,7 @@ begin
   end;
 end;
 
-procedure FDMemLoadFromMidasFile(mem: TFDMemTable; const FileName: string);
+procedure FDMemLoadFromMidasFile(mem: TRpMemDataSet; const FileName: string);
 var
   fs: TFileStream;
 begin
@@ -672,7 +759,7 @@ begin
   end;
 end;
 
-procedure FDMemSaveToMidasFile(mem: TFDMemTable; const FileName: string);
+procedure FDMemSaveToMidasFile(mem: TRpMemDataSet; const FileName: string);
 var
   fs: TFileStream;
 begin
