@@ -20,6 +20,7 @@ unit rpdirectwrite;
 {$PACKRECORDS C}
 {$ENDIF}
 
+{$IFDEF MSWINDOWS}
 interface
 
 uses
@@ -799,5 +800,10 @@ finalization
     FreeLibrary(hDWriteDll);
     hDWriteDll := 0;
   end;
+{$ELSE}
+interface
 
+implementation
+
+{$ENDIF}
 end.

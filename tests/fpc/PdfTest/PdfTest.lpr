@@ -3,19 +3,28 @@ program PdfTest;
 {$mode objfpc}{$H+}
 
 uses
+{$IFDEF UNIX}
+  cwstring,
+{$ENDIF}
   Classes, SysUtils,
   rpreport, rppdfdriver, rppdfreport;
 
 function FindReportFile(const AFileName: string): string;
+var
+  candidates: array[0..3] of string;
+  i: Integer;
 begin
-  if FileExists(AFileName) then
-    Result := AFileName
-  else if FileExists('..\..\..\repman\repsamples\' + AFileName) then
-    Result := '..\..\..\repman\repsamples\' + AFileName
-  else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName) then
-    Result := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName
-  else
-    Result := AFileName;
+  candidates[0] := AFileName;
+  candidates[1] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + AFileName;
+  candidates[2] := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName;
+  candidates[3] := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + AFileName;
+
+  for i := 0 to High(candidates) do
+  begin
+    if (candidates[i] <> '') and FileExists(candidates[i]) then
+      Exit(candidates[i]);
+  end;
+  Result := AFileName;
 end;
 
 function TestOneReport(const ARepFileName, APdfFileName: string): Boolean;
@@ -109,6 +118,9 @@ begin
       allOk := False;
 
     if not TestOneReport('bold.rep', 'bold.pdf') then
+      allOk := False;
+
+    if not TestOneReport('boldold.rep', 'boldold.pdf') then
       allOk := False;
   end;
 

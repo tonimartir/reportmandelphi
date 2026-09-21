@@ -3,8 +3,14 @@ unit rpfontconfig;
 interface
 
 uses
+{$IFDEF FPC}
+  SysUtils,
+  Classes,
+  dynlibs;
+{$ELSE}
   System.SysUtils,
   System.Classes;
+{$ENDIF}
 
 // --- 1. Tipos de Datos Opcacos de Fontconfig ---
 
@@ -19,8 +25,8 @@ type
   PFcPatternArray = ^TPFcPatternArray;
 
   TFcFontSet = record
-    nfont: Integer;        // n˙mero de fuentes devueltas
-    sfont: Integer;        // tamaÒo del array asignado
+    nfont: Integer;        // n√∫mero de fuentes devueltas
+    sfont: Integer;        // tama√±o del array asignado
     fonts:  PFcPatternArray;    // puntero a array de PFcPattern
   end;
   PFcFontSet = ^TFcFontSet;
@@ -38,7 +44,7 @@ const
   FC_TEXT = 'text';
   FC_WEIGHT = 'weight';
   FC_SLANT = 'slant';
-  FC_INDEX = 'index'; // La propiedad que almacena el Ìndice de fuente (Integer)
+  FC_INDEX = 'index'; // La propiedad que almacena el √≠ndice de fuente (Integer)
 
   FC_WEIGHT_NORMAL = 80;
   FC_WEIGHT_BOLD = 200;
@@ -49,7 +55,7 @@ const
   FC_EMBEDDEDBITMAP = 'embeddedbitmap';
 
 const
-  FC_MATCH_PATTERN = 0; // Tipo de objeto: PatrÛn (Familia)
+  FC_MATCH_PATTERN = 0; // Tipo de objeto: Patr√≥n (Familia)
   FC_MATCH_FONT = 1;   // Tipo de objeto: Fuente (Estilo, etc.)
   FC_FALLBACK = 'fallback';
 
@@ -69,7 +75,7 @@ type
     FcResultTypeMismatch = 2,
     FcResultNoId = 3
   );
-  // NUEVA FUNCI”N: Crea un nuevo patrÛn (sin argumentos variables)
+  // NUEVA FUNCI√ìN: Crea un nuevo patr√≥n (sin argumentos variables)
   T_FcPatternCreate = function: PFcPattern; cdecl;
   T_FcPatternDestroy = procedure(p: PFcPattern); cdecl;
   T_FcFontMatch = function(config: PFcConfig; p: PFcPattern; out result: PFcPattern): PFcPattern; cdecl;
@@ -81,7 +87,7 @@ type
     out result: FcResult;
     csp: Pointer // normalmente nil
   ): PFcFontSet; cdecl;
-  // Funciones de AdiciÛn (par·metros fijos)
+  // Funciones de Adici√≥n (par√°metros fijos)
   T_FcPatternAddString = function(p: PFcPattern; const pcObject: PChar; s: PChar): Boolean; cdecl;
   T_FcPatternAddInteger = function(p: PFcPattern; const pcObject: PChar; i: Integer): Boolean; cdecl;
   T_FcDefaultSubstitute = procedure(p: PFcPattern); cdecl;
@@ -126,7 +132,11 @@ implementation
 
 function GetProc(const FuncName: string): Pointer;
 begin
+{$IFDEF FPC}
+  Result := dynlibs.GetProcAddress(FontConfigLibHandle, FuncName);
+{$ELSE}
   Result := GetProcAddress(FontConfigLibHandle, PWideChar(FuncName));
+{$ENDIF}
 end;
 
 procedure InitFontConfig;
@@ -146,8 +156,8 @@ begin
   ProcPtr := GetProc('FcFini'); @FcFini := ProcPtr;
   ProcPtr := GetProc('FcConfigGetCurrent'); @FcConfigGetCurrent := ProcPtr;
 
-  // Enlace de las nuevas funciones de creaciÛn y adiciÛn
-  ProcPtr := GetProc('FcPatternCreate'); @FcPatternCreate := ProcPtr; // NUEVA FUNCI”N
+  // Enlace de las nuevas funciones de creaci√≥n y adici√≥n
+  ProcPtr := GetProc('FcPatternCreate'); @FcPatternCreate := ProcPtr; // NUEVA FUNCI√ìN
   ProcPtr := GetProc('FcPatternDestroy'); @FcPatternDestroy := ProcPtr;
   ProcPtr := GetProc('FcFontMatch'); @FcFontMatch := ProcPtr;
   ProcPtr := GetProc('FcPatternGetString'); @FcPatternGetString := ProcPtr;
@@ -171,13 +181,13 @@ begin
       FontConfigAvailable := True
     else
     begin
-      System.SysUtils.FreeLibrary(FontConfigLibHandle);
+      FreeLibrary(FontConfigLibHandle);
       FontConfigLibHandle := 0;
     end;
   end
   else
   begin
-    System.SysUtils.FreeLibrary(FontConfigLibHandle);
+    FreeLibrary(FontConfigLibHandle);
     FontConfigLibHandle := 0;
   end;
 end;
@@ -209,13 +219,13 @@ begin
     SlantValue := FC_SLANT_ITALIC
   else
     SlantValue := FC_SLANT_ROMAN;
-  // 3. Crear el patrÛn
+  // 3. Crear el patr√≥n
   Pattern := FcPatternCreate();
   if not Assigned(Pattern) then
     Exit;
   try
-    // 4. AÒadir la familia de fuente (usando PAnsiChar(UTF8String))
-    // 5. AÒadir Peso e InclinaciÛn
+    // 4. A√±adir la familia de fuente (usando PAnsiChar(UTF8String))
+    // 5. A√±adir Peso e Inclinaci√≥n
     FcPatternAddInteger(Pattern, PChar(FC_WEIGHT), WeightValue);
     FcPatternAddInteger(Pattern, PChar(FC_SLANT), SlantValue);
 
@@ -223,7 +233,7 @@ begin
      raise Exception.Create('Error setting FC_SCALABLE');
 
     FcPatternAddBool(Pattern,PChar(FC_EMBEDDEDBITMAP),FcFalse);
-    // EXCLUSI”N DE VARIABLE FONTS
+    // EXCLUSI√ìN DE VARIABLE FONTS
     FcPatternAddString(Pattern, Pchar('fontvariations'), '');    // No admitir ejes
     FcPatternAddBool(Pattern, PChar(FC_VARIABLE), FcFalse);
     if Length(UTF8Family)>0 then
@@ -232,19 +242,19 @@ begin
     begin
     // 1. CREAR el conjunto de caracteres
     CharSet := FcCharSetCreate();
-    // 2. RELLENAR el conjunto de caracteres con los cÛdigos Unicode de la cadena
-    // (Asumimos que la iteraciÛn por WideString funciona directamente para obtener FcChar32)
+    // 2. RELLENAR el conjunto de caracteres con los c√≥digos Unicode de la cadena
+    // (Asumimos que la iteraci√≥n por WideString funciona directamente para obtener FcChar32)
     for i := 1 to Length(unicodeContent) do
     begin
       // Usamos runText[i] que es Word/WideChar, y lo casteamos a Cardinal (FcChar32)
-      // para asegurar el tipo de par·metro correcto para el C API.
+      // para asegurar el tipo de par√°metro correcto para el C API.
       FcCharSetAddChar(CharSet, Cardinal(unicodeContent[i]));
     end;
-    // 3. PASAR el conjunto de caracteres al patrÛn con la propiedad FC_CHARSET
-    // Esto informa a Fontconfig quÈ glifos faltan (el requisito de script).
-    // Nota: El par·metro PChar(FC_CHARSET) debe ser la constante definida como 'charset'
+    // 3. PASAR el conjunto de caracteres al patr√≥n con la propiedad FC_CHARSET
+    // Esto informa a Fontconfig qu√© glifos faltan (el requisito de script).
+    // Nota: El par√°metro PChar(FC_CHARSET) debe ser la constante definida como 'charset'
     FcPatternAddCharSet(Pattern, PChar(FC_CHARSET), CharSet);
-    // 4. LIBERAR el objeto CharSet (el patrÛn hace una copia interna)
+    // 4. LIBERAR el objeto CharSet (el patr√≥n hace una copia interna)
     FcCharSetDestroy(CharSet);
     end;
 
@@ -261,6 +271,6 @@ initialization
 finalization
   if FontConfigAvailable and (FontConfigLibHandle <> 0) and Assigned(FcFini) then
   begin
-    System.SysUtils.FreeLibrary(FontConfigLibHandle);
+    FreeLibrary(FontConfigLibHandle);
   end;
 end.

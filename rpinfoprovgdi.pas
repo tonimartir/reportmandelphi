@@ -15,6 +15,7 @@ unit rpinfoprovgdi;
 
 {$I rpconf.inc}
 
+{$IFDEF MSWINDOWS}
 
 interface
 
@@ -2026,4 +2027,10 @@ finalization
     FreeLibrary(HKernel32);
     HKernel32 := 0;
   end;
+{$ELSE}
+interface
+
+implementation
+
+{$ENDIF}
 end.

@@ -22,8 +22,11 @@ interface
 
 {$I rpconf.inc}
 
-uses SysUtils,rptypes,
-  Windows;
+uses SysUtils,rptypes
+{$IFDEF MSWINDOWS}
+  , Windows
+{$ENDIF}
+  ;
 
 procedure ReportFileToExe(filename,destinationexe:String;
  showparams,preview,metafile,compress:Boolean);
@@ -31,6 +34,7 @@ procedure ReportFileToExe(filename,destinationexe:String;
 
 implementation
 
+{$IFDEF MSWINDOWS}
 {$IFNDEF USEVARIANTS}
 procedure RaiseLastOSError;
 begin
@@ -111,5 +115,12 @@ begin
    WinExec(PAnsiChar(AnsiString('"upx" '+'"'+destinationexe+'"')),SW_HIDE);
  end;
 end;
+{$ELSE}
+procedure ReportFileToExe(filename,destinationexe:String;
+ showparams,preview,metafile,compress:Boolean);
+begin
+ raise Exception.Create('ReportFileToExe is only supported on Windows');
+end;
+{$ENDIF}
 
 end.

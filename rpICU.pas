@@ -6,6 +6,10 @@ interface
 uses SysUtils,
 {$IFDEF MSWINDOWS}
  Windows,
+{$ELSE}
+ {$IFDEF FPC}
+ dynlibs,
+ {$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
  Generics.Collections;

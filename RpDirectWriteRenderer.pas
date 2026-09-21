@@ -9,6 +9,8 @@ interface
 {$PACKRECORDS C}
 {$ENDIF}
 
+{$IFDEF MSWINDOWS}
+
 uses
 {$IFDEF FPC}
   Classes, SysUtils, Types, Generics.Collections,
@@ -576,6 +578,12 @@ function TStyleEffect.GetHasColor: Boolean;
 begin
   Result := FHasColor;
 end;
+
+{$ELSE}
+
+implementation
+
+{$ENDIF}
 
 end.
 

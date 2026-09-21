@@ -1,4 +1,4 @@
-unit rpDelphiZXingQRCode;
+unit rpDelphiZXIngQRCode;
 
 // ZXing QRCode port to Delphi, by Debenu Pty Ltd
 // www.debenu.com

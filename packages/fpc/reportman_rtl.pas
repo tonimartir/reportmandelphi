@@ -18,7 +18,8 @@ uses
   rpxmlstream, rpdrawitem, rpmdchart, rppdfdriver, rppdffile, rpinfoprovid, 
   rpcompobase, rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, 
   rptextdriver, rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, 
-  rpinfoprovft, rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi;
+  rpinfoprovft, rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, 
+  rpfontconfig, rpDelphiZXIngQRCode;
 
 implementation
 

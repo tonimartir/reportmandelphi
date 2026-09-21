@@ -260,3 +260,11 @@ packages/fpc/lib/x86_64-win64/
 tests/fpc/PdfTest/lib/x86_64-win64/
 tests/fpc/PdfTest/freetype.dll
 tests/fpc/PdfTest/libharfbuzz-0.dll
+tests/fpc/PdfTest/*.pdf
+tests/fpc/PdfTest/PdfTest
+tests/fpc/PdfTest/lib/
+packages/fpc/lib/
+/arab2wordwrap.pdf
+/bold.pdf
+/boldold.pdf
+/htmltest.pdf

@@ -6,6 +6,8 @@ Interface
 Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
 {$IFDEF MSWINDOWS}
   Windows,
+{$ELSE}
+  dynlibs,
 {$ENDIF}
   rpfreetype2;
 
