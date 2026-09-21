@@ -4277,7 +4277,11 @@ begin
 end;
 {$ELSE}
 begin
+{$IFDEF FPC}
+ Result := SysUtils.GetTempDir;
+{$ELSE}
  Result:=System.IOUtils.TPath.GetTempPath;
+{$ENDIF}
 end;
 {$ENDIF}
 
@@ -4301,7 +4305,11 @@ begin
 end;
 {$ELSE}
 begin
+{$IFDEF FPC}
+ Result := SysUtils.GetTempFileName('', 'REP');
+{$ELSE}
  Result:=System.IOUtils.TPath.GetTempFileName();
+{$ENDIF}
 end;
 {$ENDIF}
 

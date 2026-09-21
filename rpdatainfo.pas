@@ -24,7 +24,11 @@ interface
 
 {$I rpconf.inc}
 
+{$IFDEF LINUX}
+{$R dbxdrivers.RES}
+{$ELSE}
 {$R dbxdrivers.res}
+{$ENDIF}
 
 
 uses Classes,SysUtils,
@@ -305,12 +309,20 @@ type
    constructor Create(Collection:TCollection);override;
    { IInterface }
 {$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
    function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
-{$ELSE}
-   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-{$ENDIF}
    function _AddRef: Integer; stdcall;
    function _Release: Integer; stdcall;
+  {$ELSE}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+   function _AddRef: Integer; cdecl;
+   function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+{$ENDIF}
    { IPropertiesItem }
    procedure SetItemProperty(const propName: string; const value: Variant);
    function GetItemProperty(const propName: string): Variant;
@@ -464,12 +476,20 @@ type
    constructor Create(Collection:TCollection);override;
    { IInterface }
 {$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
    function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
-{$ELSE}
-   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-{$ENDIF}
    function _AddRef: Integer; stdcall;
    function _Release: Integer; stdcall;
+  {$ELSE}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+   function _AddRef: Integer; cdecl;
+   function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+{$ENDIF}
    { IPropertiesItem }
    procedure SetItemProperty(const propName: string; const value: Variant);
    function GetItemProperty(const propName: string): Variant;
@@ -1302,7 +1322,11 @@ end;
 { TRpDataInfoItem - IInterface }
 
 {$IFDEF FPC}
-function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult;
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
 {$ELSE}
 function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
 {$ENDIF}
@@ -1313,12 +1337,28 @@ begin
   Result := E_NOINTERFACE;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpDataInfoItem._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpDataInfoItem._AddRef: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem._Release: Integer; stdcall;
+  {$ELSE}
+function TRpDataInfoItem._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpDataInfoItem._Release: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;
@@ -1646,7 +1686,11 @@ end;
 { TRpDatabaseInfoItem - IInterface }
 
 {$IFDEF FPC}
-function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult;
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
 {$ELSE}
 function TRpDatabaseInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
 {$ENDIF}
@@ -1657,12 +1701,28 @@ begin
   Result := E_NOINTERFACE;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpDatabaseInfoItem._AddRef: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem._Release: Integer; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpDatabaseInfoItem._Release: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;

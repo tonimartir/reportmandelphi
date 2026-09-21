@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -41,7 +41,7 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 {$ELSE}
     System.Generics.Collections,
 {$ENDIF}
-    rpHarfbuzz,rpICU, rphtmlparser;
+    rpHarfBuzz,rpICU, rphtmlparser;
 
 
 type

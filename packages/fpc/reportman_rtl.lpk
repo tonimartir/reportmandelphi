@@ -18,7 +18,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="60">
+    <Files Count="62">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -259,6 +259,14 @@
         <Filename Value="..\..\rpinfoprovgdi.pas"/>
         <UnitName Value="rpinfoprovgdi"/>
       </Item60>
+      <Item61>
+        <Filename Value="..\..\rpfontconfig.pas"/>
+        <UnitName Value="rpfontconfig"/>
+      </Item61>
+      <Item62>
+        <Filename Value="..\..\rpDelphiZXIngQRCode.pas"/>
+        <UnitName Value="rpDelphiZXIngQRCode"/>
+      </Item62>
     </Files>
     <RequiredPkgs Count="1">
       <Item1>

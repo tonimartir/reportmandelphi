@@ -97,12 +97,20 @@ type
     destructor Destroy;override;
     { IInterface }
 {$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
     function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
-{$ELSE}
-    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-{$ENDIF}
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
+  {$ELSE}
+    function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+    function _AddRef: Integer; cdecl;
+    function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+{$ENDIF}
     { IPropertiesItem }
     procedure SetItemProperty(const propName: string; const value: Variant);
     function GetItemProperty(const propName: string): Variant;
@@ -292,7 +300,11 @@ end;
 { TRpParam - IInterface }
 
 {$IFDEF FPC}
-function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult;
+  {$IFDEF MSWINDOWS}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
 {$ELSE}
 function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult;
 {$ENDIF}
@@ -303,12 +315,28 @@ begin
   Result := E_NOINTERFACE;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpParam._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpParam._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpParam._AddRef: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;
 
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpParam._Release: Integer; stdcall;
+  {$ELSE}
+function TRpParam._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
 function TRpParam._Release: Integer;
+{$ENDIF}
 begin
  Result := -1;
 end;

@@ -40,7 +40,11 @@ const
 {$ENDIF}
 
 
+{$IFDEF LINUX}
+{$R REPORTMANRES.RES}
+{$ELSE}
 {$R reportmanres.RES}
+{$ENDIF}
 
 
 const

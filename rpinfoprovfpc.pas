@@ -15,6 +15,7 @@
 unit rpinfoprovfpc;
 
 {$IFDEF FPC}
+{$IFDEF MSWINDOWS}
 
 interface
 
@@ -515,6 +516,13 @@ begin
   Result := GetFontStream(data);
 end;
 
+{$ENDIF MSWINDOWS}
 {$ENDIF FPC}
+
+{$IFNDEF MSWINDOWS}
+interface
+
+implementation
+{$ENDIF}
 
 end.

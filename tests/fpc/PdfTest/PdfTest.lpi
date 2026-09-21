@@ -44,9 +44,9 @@
       <Filename Value="PdfTest"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\..\"/>
-      <OtherUnitFiles Value="..\..\..\"/>
-      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      <IncludeFiles Value="../../.."/>
+      <OtherUnitFiles Value="../../.."/>
+      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>

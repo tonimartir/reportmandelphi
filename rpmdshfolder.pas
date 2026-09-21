@@ -260,7 +260,11 @@ var
 begin
 
 {$IFDEF LINUX}
+{$IFDEF FPC}
+ ap:=PChar(SysUtils.GetEnvironmentVariable('HOME'));
+{$ELSE}
  ap:=PChar(System.SysUtils.GetEnvironmentVariable('HOME'));
+{$ENDIF}
  if assigned(ap) then
  begin
 {$IFDEF FPC}
