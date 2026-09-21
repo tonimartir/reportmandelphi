@@ -51,7 +51,7 @@ type
   // The parser
   Rpparser:TRpparser;
   // The expresion to evaluate
-  FExpression:string;
+  FExpression:WideString;
   // Result of the evaluation
   FEvalResult:TRpValue;
 {$IFDEF USEEVALHASH}
@@ -75,7 +75,7 @@ type
   FOnNewLanguage:TRpNewLanguage;
   FOnGetSQLValue:TRpOnGetSQLValue;
   FOnParamInfo:TRpParamInfoProc;
-  procedure SetExpression(Value:string);
+  procedure SetExpression(Value:WideString);
   // Recursive functions to evaluate the expresion
   procedure variables(var Value:TRpValue);
   procedure separator(var Value:TRpValue);
@@ -115,12 +115,12 @@ type
   // The evaluation procedure
   procedure Evaluate;
   // The evaluation procedure without Expression property
-  function EvaluateText(text:string):TRpValue;
+  function EvaluateText(text:WideString):TRpValue;
   function GetStreamFromExpression(atext:WideString):TMemoryStream;
 
   // Checking Syntax
   procedure CheckSyntax;
-  property Expression:string Read FExpression write SetExpression;
+  property Expression:WideString Read FExpression write SetExpression;
   property EvalResult:TRpValue Read FEvalResult;
   // The identifiers including functions
 {$IFDEF USEEVALHASH}
@@ -191,7 +191,7 @@ constructor TRpCustomEvaluator.CreateWithoutiden(AOwner:TComponent;AddIdens:bool
 begin
  inherited Create(AOwner);
  Evaluating:=false;
- FExpression:=String(chr(0));
+ FExpression:='';
  // Creates de parser
  Rpparser:=TRpparser.Create;
  // The identifiers list
@@ -212,7 +212,7 @@ begin
  inherited Create(AOwner);
  InitRpFunctions;
  Evaluating:=false;
- FExpression:=String(chr(0));
+ FExpression:='';
  // The parser
  Rpparser:=TRpparser.Create;
  // The identifiers
@@ -430,7 +430,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TRpCustomEvaluator.SetExpression(Value:string);
+procedure TRpCustomEvaluator.SetExpression(Value:WideString);
 begin
  if Evaluating then
   Raise Exception.Create(SRpsetexpression);
@@ -438,7 +438,7 @@ begin
 end;
 
 // To evaluate a text we must create another evaluator
-function TRpCustomEvaluator.EvaluateText(text:string):TRpValue;
+function TRpCustomEvaluator.EvaluateText(text:WideString):TRpValue;
 var eval:TRpCustomEvaluator;
 {$IFDEF USEEVALHASH}
     oldiden:TStringHash;

@@ -321,7 +321,7 @@ type
 
 function PDFCompatibleText (astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 function NumberToText (Value:double):string;
-function EncodePDFText(const text: string): string;
+function EncodePDFText(const text: WideString): string;
 
 procedure GetBitmapInfo (stream:TStream; var width, height, imagesize:integer;FMemBits:TMemoryStream;
  var indexed:boolean;var bitsperpixel,usedcolors:integer;var palette:string);
@@ -4846,7 +4846,7 @@ begin
  end;
 end;
 
-function EncodePDFText(const text: string): string;
+function EncodePDFText(const text: WideString): string;
 var
   UTF16BEBytes: TBytes;
   i: Integer;
@@ -4872,9 +4872,9 @@ begin
       // Escape special chars
       case text[i] of
         '(', ')', '\':
-          Result := Result + '\' + text[i];
+          Result := Result + '\' + Char(text[i]);
       else
-        Result := Result + text[i];
+        Result := Result + Char(text[i]);
       end;
     end;
     Result := Result + ')';
