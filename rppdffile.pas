@@ -838,7 +838,7 @@ begin
  else
 {$ENDIF}
  begin
-  SWriteLine(dest,' /Length ' + IntToStr(stream.Size));
+   SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + ' /Length1 ' + IntToStr(stream.Size));
   SWriteLine(dest,'>>');
   SWriteLine(dest,'stream');
   stream.SaveToStream(dest);
@@ -4457,7 +4457,7 @@ begin
    end
    else
    begin
-    SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+    SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
    end;
 
 

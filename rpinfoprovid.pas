@@ -66,7 +66,7 @@ type
  end;
   TGlyphInfo=record
    Glyph: Integer;
-   Char:char;
+   Char:WideChar;
    Width: double;
  end;
 
