@@ -1,0 +1,252 @@
+object TRpReport
+  PageHeight = 11906
+  PageWidth = 8390
+  PageBackColor = 16777215
+  SubReports = <
+    item
+      SubReport = TRpSubReport0
+    end>
+  DataInfo = <
+    item
+      Alias = 'TEST'
+      DatabaseAlias = 'SQLITETEST'
+      SQL = 'SELECT CODIGO, NOMBRE, FECHA_ALTA FROM CLIENTES ORDER BY CODIGO'
+    end>
+  DatabaseInfo = <
+    item
+      Alias = 'SQLITETEST'
+      LoadParams = True
+      LoadDriverParams = True
+      LoginPrompt = False
+      Driver = rpfiredac
+      ReportTable = 'REPMAN_REPORTS'
+      ReportSearchField = 'REPORT_NAME'
+      ReportField = 'REPORT'
+      ReportGroupsTable = 'REPMAN_GROUPS'
+      ADOConnectionString = ''
+    end>
+  Params = <>
+  StreamFormat = rpStreamText
+  ReportAction = []
+  Type1Font = poHelvetica
+  WFontName = 'Arial'
+  LFontName = 'Helvetica'
+  object TRpSubReport0: TRpSubReport
+    Sections = <
+      item
+        Section = TRpSectionHeader
+      end
+      item
+        Section = TRpSectionDetail
+      end
+      item
+        Section = TRpSectionFooter
+      end>
+    Alias = 'TEST'
+  end
+  object TRpSectionHeader: TRpSection
+    Width = 10772
+    Height = 1200
+    SubReport = TRpSubReport0
+    ChangeBool = False
+    PageRepeat = False
+    SkipPage = False
+    AlignBottom = False
+    SectionType = rpsecpheader
+    Components = <
+      item
+        Component = TRpExprTitle
+      end
+      item
+        Component = TRpExprCol1
+      end
+      item
+        Component = TRpExprCol2
+      end
+      item
+        Component = TRpExprCol3
+      end>
+  end
+  object TRpExprTitle: TRpExpression
+    Width = 10000
+    Height = 400
+    PosX = 200
+    PosY = 200
+    Type1Font = poHelvetica
+    FontSize = 14
+    FontStyle = 1
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = '''LISTADO DE CLIENTES (SQLITE - FPC FIREDAC)'''
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpExprCol1: TRpExpression
+    Width = 1200
+    Height = 300
+    PosX = 200
+    PosY = 800
+    Type1Font = poHelvetica
+    FontSize = 10
+    FontStyle = 1
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = '''CODIGO'''
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpExprCol2: TRpExpression
+    Width = 5000
+    Height = 300
+    PosX = 1800
+    PosY = 800
+    Type1Font = poHelvetica
+    FontSize = 10
+    FontStyle = 1
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = '''NOMBRE DEL CLIENTE'''
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpExprCol3: TRpExpression
+    Width = 2500
+    Height = 300
+    PosX = 7200
+    PosY = 800
+    Type1Font = poHelvetica
+    FontSize = 10
+    FontStyle = 1
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = '''FECHA ALTA'''
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpSectionDetail: TRpSection
+    Width = 10772
+    Height = 350
+    SubReport = TRpSubReport0
+    ChangeBool = False
+    PageRepeat = False
+    SkipPage = False
+    AlignBottom = False
+    SectionType = rpsecdetail
+    Components = <
+      item
+        Component = TRpExprCodigo
+      end
+      item
+        Component = TRpExprNombre
+      end
+      item
+        Component = TRpExprFecha
+      end>
+  end
+  object TRpExprCodigo: TRpExpression
+    Width = 1200
+    Height = 264
+    PosX = 200
+    PosY = 0
+    Type1Font = poHelvetica
+    FontSize = 10
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = 'TEST.CODIGO'
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpExprNombre: TRpExpression
+    Width = 5000
+    Height = 264
+    PosX = 1800
+    PosY = 0
+    Type1Font = poHelvetica
+    FontSize = 10
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = 'TEST.NOMBRE'
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpExprFecha: TRpExpression
+    Width = 2500
+    Height = 264
+    PosX = 7200
+    PosY = 0
+    Type1Font = poHelvetica
+    FontSize = 10
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = 'TEST.FECHA_ALTA'
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+  object TRpSectionFooter: TRpSection
+    Width = 10772
+    Height = 400
+    SubReport = TRpSubReport0
+    ChangeBool = False
+    PageRepeat = False
+    SkipPage = False
+    AlignBottom = False
+    SectionType = rpsecpfooter
+    Components = <
+      item
+        Component = TRpExprPage
+      end>
+  end
+  object TRpExprPage: TRpExpression
+    Width = 3000
+    Height = 264
+    PosX = 200
+    PosY = 100
+    Type1Font = poHelvetica
+    FontSize = 9
+    PrintCondition = ''
+    DoBeforePrint = ''
+    DoAfterPrint = ''
+    WFontName = 'Arial'
+    LFontName = 'Helvetica'
+    Expression = '''Pagina '' + str(PAGENUM)'
+    DisplayFormat = ''
+    ExportDisplayFormat = ''
+    AgIniValue = '0'
+    ExportExpression = ''
+  end
+end

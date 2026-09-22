@@ -145,11 +145,11 @@ uses Classes,SysUtils,
 {$IFDEF USERPDATASET}
  rpdataset,
  {$IFDEF FPC}
-  Memds,
+  Memds, sqldb, sqlite3conn, sqlite3dyn,
  {$ENDIF}
 {$ELSE}
  {$IFDEF FPC}
-  rpdataset,
+  rpdataset, sqldb, sqlite3conn, sqlite3dyn,
  {$ENDIF}
 {$ENDIF}
 {$IFNDEF FPC}
@@ -265,6 +265,12 @@ type
    FFDTransaction:TFDTransaction;
    FFDInternalTransaction:TFDTransaction;
 {$ENDIF}
+{$IFDEF FPC}
+   FSQLDBInternalConnection: TSQLConnection;
+   FSQLDBConnection: TSQLConnection;
+   FSQLDBTransaction: TSQLTransaction;
+   FSQLDBInternalTransaction: TSQLTransaction;
+{$ENDIF}
 {$IFDEF USEZEOS}
    FZInternalDatabase:TZConnection;
    FZConnection:TZConnection;
@@ -344,6 +350,10 @@ type
     write FFDConnection;
    property FDTransaction:TFDTransaction read FFDTransaction
     write FFDTransaction;
+{$ENDIF}
+{$IFDEF FPC}
+   property SQLDBConnection: TSQLConnection read FSQLDBConnection write FSQLDBConnection;
+   property SQLDBTransaction: TSQLTransaction read FSQLDBTransaction write FSQLDBTransaction;
 {$ENDIF}
 
 {$IFDEF USEZEOS}
@@ -890,7 +900,7 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF USESQLEXPRESS}
+{$IF defined(USESQLEXPRESS) or defined(FPC)}
 procedure  AssignParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset);
 var
  i:integer;
@@ -1619,6 +1629,18 @@ begin
   FFDInternalTransaction.Free;
  end;
 {$ENDIF}
+{$IFDEF FPC}
+ if Assigned(FSQLDBInternalConnection) then
+ begin
+  FSQLDBInternalConnection.Free;
+  FSQLDBInternalConnection := nil;
+ end;
+ if Assigned(FSQLDBInternalTransaction) then
+ begin
+  FSQLDBInternalTransaction.Free;
+  FSQLDBInternalTransaction := nil;
+ end;
+{$ENDIF}
 {$IFDEF USEZEOS}
  if Assigned(FZInternalDatabase) then
  begin
@@ -2030,6 +2052,11 @@ var
  FOpenedDatabase:TDatabase;
  ASession:TSession;
  adparams:TStrings;
+{$ENDIF}
+{$IFDEF FPC}
+ driverId, dbName, dbNameAlt: string;
+ candidatesIni: array[0..3] of string;
+ iniLocal: TMemIniFile;
 {$ENDIF}
 begin
  paramlist:=TStringList.Create;
@@ -2505,7 +2532,102 @@ begin
          FFDInternalTransaction.StartTransaction;
        end;
   {$ELSE}
-      Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
+    {$IFDEF FPC}
+       if FSQLDBConnection = nil then
+       begin
+         conname := alias;
+         alist := TStringList.Create;
+         try
+           if (FLoadParams) then
+           begin
+             if Not Assigned(ConAdmin) then
+               UpdateConAdmin;
+             ConAdmin.GetConnectionParams(conname, alist);
+           end;
+           MergeList(paramlist, alist);
+
+           if (alist.Count = 0) or (alist.Values['Database'] = '') then
+           begin
+             candidatesIni[0] := 'dbxconnections.ini';
+             candidatesIni[1] := 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+             candidatesIni[2] := 'repman' + PathDelim + 'bin32' + PathDelim + 'dbxconnections_test.ini';
+             candidatesIni[3] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'bin32' + PathDelim + 'dbxconnections_test.ini';
+             for i := 0 to High(candidatesIni) do
+             begin
+               if FileExists(candidatesIni[i]) then
+               begin
+                 iniLocal := TMemIniFile.Create(candidatesIni[i]);
+                 try
+                   if iniLocal.SectionExists(conname) then
+                   begin
+                     iniLocal.ReadSectionValues(conname, alist);
+                     MergeList(paramlist, alist);
+                     Break;
+                   end;
+                 finally
+                   iniLocal.Free;
+                 end;
+               end;
+             end;
+           end;
+
+           driverId := UpperCase(alist.Values['DriverName']);
+           if driverId = '' then
+             driverId := UpperCase(alist.Values['DriverID']);
+
+           dbName := alist.Values['Database'];
+           if dbName = '' then
+             dbName := alist.Values['DatabaseName'];
+
+           if (dbName <> '') and (not FileExists(dbName)) then
+           begin
+             {$IFDEF UNIX}
+             dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
+             {$ELSE}
+             dbNameAlt := StringReplace(dbName, '/', '\', [rfReplaceAll]);
+             {$ENDIF}
+             if FileExists(dbNameAlt) then
+               dbName := dbNameAlt
+             else if FileExists(ExtractFileName(dbName)) then
+               dbName := ExtractFileName(dbName)
+             else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+               dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+             else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+               dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+             else if FileExists('/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)) then
+               dbName := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)
+             else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName)) then
+               dbName := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName);
+           end;
+
+           {$IFDEF UNIX}
+           if not FileExists('/usr/lib/x86_64-linux-gnu/libsqlite3.so') and not FileExists('/usr/lib/libsqlite3.so') then
+           begin
+             if FileExists('/lib/x86_64-linux-gnu/libsqlite3.so.0') or FileExists('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0') then
+               sqlite3dyn.SQLiteDefaultLibrary := 'libsqlite3.so.0';
+           end;
+           {$ENDIF}
+
+           FSQLDBInternalConnection := TSQLite3Connection.Create(nil);
+           FSQLDBInternalConnection.DatabaseName := dbName;
+
+           FSQLDBInternalTransaction := TSQLTransaction.Create(nil);
+           FSQLDBInternalTransaction.DataBase := FSQLDBInternalConnection;
+           FSQLDBInternalConnection.Transaction := FSQLDBInternalTransaction;
+
+           FSQLDBConnection := FSQLDBInternalConnection;
+           FSQLDBTransaction := FSQLDBInternalTransaction;
+         finally
+           alist.Free;
+         end;
+       end;
+       if not FSQLDBConnection.Connected then
+         FSQLDBConnection.Connected := True;
+       if Assigned(FSQLDBTransaction) and (not FSQLDBTransaction.Active) then
+         FSQLDBTransaction.StartTransaction;
+    {$ELSE}
+       Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+    {$ENDIF}
   {$ENDIF}
      end;
     rpdbHttp:
@@ -2618,6 +2740,15 @@ begin
  if Assigned(FFDInternalConnection) then
  begin
   FFDInternalConnection.Connected:=False;
+ end;
+{$ENDIF}
+{$IFDEF FPC}
+ if Assigned(FSQLDBInternalTransaction) then
+   if FSQLDBInternalTransaction.Active then
+     FSQLDBInternalTransaction.Commit;
+ if Assigned(FSQLDBInternalConnection) then
+ begin
+   FSQLDBInternalConnection.Connected := False;
  end;
 {$ENDIF}
 {$IFDEF USEZEOS}
@@ -2940,7 +3071,11 @@ begin
        TFDCustomQuery(FSQLInternalQuery).ResourceOptions.EscapeExpand:=false;
 
 {$ELSE}
+  {$IFDEF FPC}
+       FSQLInternalQuery := TSQLQuery.Create(nil);
+  {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+  {$ENDIF}
 {$ENDIF}
       end;
     end;
@@ -3054,6 +3189,14 @@ begin
          FSQLInternalQuery:=TFDTable.Create(nil);
         end;
        end
+{$ENDIF}
+{$IFDEF FPC}
+        if Not (FSQLInternalQuery is TSQLQuery) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TSQLQuery.Create(nil);
+        end;
 {$ENDIF}
       end;
      rpdbHttp:
@@ -3339,7 +3482,14 @@ begin
       //TFDQuery(FSQLInternalQuery).UniDirectional:=true;
       TFDCustomQuery(FSQLInternalQuery).DataSource:=nil;
 {$ELSE}
+  {$IFDEF FPC}
+       TSQLQuery(FSQLInternalQuery).DataBase:=baseinfo.FSQLDBConnection;
+       TSQLQuery(FSQLInternalQuery).Transaction:=baseinfo.FSQLDBTransaction;
+       TSQLQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
+       TSQLQuery(FSQLInternalQuery).DataSource:=nil;
+  {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+  {$ENDIF}
 {$ENDIF}
       end;
      rpdbHttp:
@@ -3450,10 +3600,14 @@ begin
        end;
       rpfiredac:
        begin
-  {$IFDEF FIREDAC}
-         TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+   {$IFDEF FIREDAC}
+          TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
           TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
-  {$ENDIF}
+   {$ENDIF}
+   {$IFDEF FPC}
+          TSQLQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+          TSQLQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+   {$ENDIF}
        end;
       rpdbHttp:
        begin
@@ -3619,6 +3773,20 @@ begin
 {$ENDIF}
         FMasterSource.DataSet:=datainfosource.Dataset;
        AssignParamValuesFiredac(TFDCustomQuery(FSQLInternalQuery),datainfosource.Dataset);
+{$ENDIF}
+{$IFDEF FPC}
+       FDataLink:=TRpDataLink.Create;
+       FDataLink.databaseinfo:=databaseinfo;
+       FDataLink.datainfo:=TRpDataInfoList(collection);
+       FDataLink.datainfoitem:=self;
+       FDataLink.DataSource:=FMasterSource;
+       FDataLink.dbinfoitem:=databaseinfo.ItemByName(FDatabaseAlias);
+       TSQLQuery(FSQLInternalQuery).DataSource:=FMasterSource;
+       if datainfosource.cached then
+        FMasterSource.DataSet:=datainfosource.CachedDataset
+       else
+        FMasterSource.DataSet:=datainfosource.Dataset;
+       AssignParamValuesS(TSQLQuery(FSQLInternalQuery),datainfosource.Dataset);
 {$ENDIF}
       end;
      rpdbHttp:
@@ -4543,7 +4711,14 @@ begin
     TFDQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
 
 {$ELSE}
+  {$IFDEF FPC}
+    FSQLInternalQuery := TSQLQuery.Create(nil);
+    TSQLQuery(FSQLInternalQuery).DataBase := FSQLDBConnection;
+    TSQLQuery(FSQLInternalQuery).Transaction := FSQLDBTransaction;
+    TSQLQuery(FSQLInternalQuery).SQL.Text := SQLsentence;
+  {$ELSE}
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverDBX);
+  {$ENDIF}
 {$ENDIF}
    end;
   rpdataibx:
@@ -4659,6 +4834,19 @@ begin
        TFDQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=
           VariantTypeToDataType(avariant);
        TFDQuery(FSQLInternalQuery).ParamByName(paramName).Value:=avariant;
+      end;
+{$ENDIF}
+{$IFDEF FPC}
+      if assigned(astream) then
+      begin
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=ftBlob;
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).LoadFromStream(astream,ftBlob);
+      end
+      else
+      begin
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=
+          VariantTypeToDataType(avariant);
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).Value:=avariant;
       end;
 {$ENDIF}
      end;
@@ -4804,6 +4992,9 @@ begin
     begin
  {$IFDEF FIREDAC}
      TFDQuery(FSQLInternalQuery).ExecSQL;
+ {$ENDIF}
+ {$IFDEF FPC}
+     TSQLQuery(FSQLInternalQuery).ExecSQL;
  {$ENDIF}
     end;
   end;
@@ -5844,6 +6035,10 @@ begin
 {$IFDEF FIREDAC}
   if dtype=rpfiredac then
    AssignParamValuesFiredac(TFDCustomQuery(datainfoitem.dataset),DataSource.Dataset);
+{$ENDIF}
+{$IFDEF FPC}
+  if dtype=rpfiredac then
+   AssignParamValuesS(TSQLQuery(datainfoitem.dataset),DataSource.Dataset);
 {$ENDIF}
 {$IFDEF USESQLEXPRESS}
  if dtype=rpdatadbexpress then

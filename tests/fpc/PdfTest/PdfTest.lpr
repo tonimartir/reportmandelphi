@@ -125,6 +125,9 @@ begin
 
     if not TestOneReport('sample4.rep', 'sample4.pdf') then
       allOk := False;
+
+    if not TestOneReport('sqlite_clientes.rep', 'sqlite_clientes.pdf') then
+      allOk := False;
   end;
 
   WriteLn('==================================================');
