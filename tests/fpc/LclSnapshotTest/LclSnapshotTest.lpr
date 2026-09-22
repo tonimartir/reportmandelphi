@@ -25,7 +25,7 @@ begin
   Result := AFileName;
 end;
 
-function TestSnapshot(const ARepFileName, AOutPng: string): Boolean;
+function TestSnapshot(const ARepFileName, AOutPng: string; AScale: Double = 1.0): Boolean;
 var
   repPath: string;
   report: TRpReport;
@@ -37,7 +37,7 @@ begin
   repPath := FindReportFile(ARepFileName);
 
   WriteLn('--------------------------------------------------');
-  WriteLn('Testing LCL Snapshot for: ', ARepFileName);
+  WriteLn('Testing LCL Snapshot for: ', ARepFileName, ' Scale: ', AScale:0:2);
   WriteLn('Report path             : ', repPath);
   WriteLn('Output snapshot PNG     : ', AOutPng);
   WriteLn('--------------------------------------------------');
@@ -60,7 +60,7 @@ begin
     WriteLn('2. Initializing TRpGDIDriver (LCL engine)...');
     driver := TRpGDIDriver.Create;
     try
-      driver.Scale := 1.0;
+      driver.Scale := AScale;
       WriteLn('3. Calling report.BeginPrint...');
       report.BeginPrint(driver);
 
@@ -185,7 +185,27 @@ begin
     Inc(passed);
 
   Inc(total);
-  if TestSnapshot('boldold.rep', 'snapshot_boldold.png') then
+  if TestSnapshot('boldold.rep', 'snapshot_boldold.png', 1.0) then
+    Inc(passed);
+
+  Inc(total);
+  if TestSnapshot('boldold.rep', 'snapshot_boldold_110.png', 1.1) then
+    Inc(passed);
+
+  Inc(total);
+  if TestSnapshot('boldold.rep', 'snapshot_boldold_090.png', 0.9) then
+    Inc(passed);
+
+  Inc(total);
+  if TestSnapshot('boldold.rep', 'snapshot_boldold_050.png', 0.5) then
+    Inc(passed);
+
+  Inc(total);
+  if TestSnapshot('boldold.rep', 'snapshot_boldold_150.png', 1.5) then
+    Inc(passed);
+
+  Inc(total);
+  if TestSnapshot('boldold.rep', 'snapshot_boldold_200.png', 2.0) then
     Inc(passed);
 
   Inc(total);
