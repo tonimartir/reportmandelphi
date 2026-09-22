@@ -2054,7 +2054,7 @@ var
  adparams:TStrings;
 {$ENDIF}
 {$IFDEF FPC}
- driverId, dbName, dbNameAlt: string;
+ driverId, dbName, dbNameAlt, prot, iniPath: string;
  candidatesIni: array[0..3] of string;
  iniLocal: TMemIniFile;
 {$ENDIF}
@@ -2266,6 +2266,69 @@ begin
          ConAdmin.GetConnectionParams(conname,alist);
         end;
         MergeList(paramlist,alist);
+
+        {$IFDEF FPC}
+        if (alist.Count = 0) and (conname <> '') then
+        begin
+          candidatesIni[0] := 'dbxconnections.ini';
+          candidatesIni[1] := 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+          candidatesIni[2] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+          candidatesIni[3] := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/dbxconnections.ini';
+          for iniPath in candidatesIni do
+          begin
+            if (iniPath <> '') and FileExists(iniPath) then
+            begin
+              iniLocal := TMemIniFile.Create(iniPath);
+              if iniLocal.SectionExists(conname) then
+              begin
+                iniLocal.ReadSectionValues(conname, alist);
+                iniLocal.Free;
+                break;
+              end;
+              iniLocal.Free;
+            end;
+          end;
+        end;
+
+        dbName := alist.Values['Database'];
+        if dbName = '' then
+          dbName := alist.Values['DatabaseName'];
+
+        if (dbName <> '') and (not FileExists(dbName)) then
+        begin
+          {$IFDEF UNIX}
+          dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
+          {$ELSE}
+          dbNameAlt := StringReplace(dbName, '/', '\', [rfReplaceAll]);
+          {$ENDIF}
+          if FileExists(dbNameAlt) then
+            dbName := dbNameAlt
+          else if FileExists(ExtractFileName(dbName)) then
+            dbName := ExtractFileName(dbName)
+          else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+            dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+          else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+            dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+          else if FileExists('/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)) then
+            dbName := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)
+          else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName)) then
+            dbName := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName);
+          alist.Values['Database'] := dbName;
+        end;
+
+        prot := alist.Values['Database Protocol'];
+        if prot = '' then
+          prot := alist.Values['Protocol'];
+        if prot = '' then
+          prot := alist.Values['DriverName'];
+        if (prot = '') and ((UpperCase(alist.Values['DriverID']) = 'SQLITE') or (UpperCase(alist.Values['DriverName']) = 'SQLITE')) then
+          prot := 'sqlite';
+        if (LowerCase(prot) = 'sqlite-3') then
+          prot := 'sqlite';
+        if prot <> '' then
+          alist.Values['Database Protocol'] := prot;
+        {$ENDIF}
+
         FZConnection.User:=alist.Values['User_Name'];
         FZConnection.Password:=alist.Values['Password'];
         if length(alist.Values['Port'])>0 then

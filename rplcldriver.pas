@@ -34,7 +34,7 @@ uses
 {$IFDEF USEVARIANTS}
  types,Variants,
 {$ENDIF}
- rptypes,rplclgraphutils,
+ rptypes,
 {$IFNDEF FORWEBAX}
  rpbasereport,rpreport,
 {$IFDEF USETEECHART}
@@ -138,6 +138,9 @@ type
    selectedprinter:TRpPrinterSelect;
    DrawerBefore,DrawerAfter:Boolean;
    npdfdriver:TRpPDFDriver;
+   FPageWidth,FPageHeight:integer;
+   PageQt:Integer;
+   FOrientation:TRpOrientation;
    procedure PrintObject(Canvas:TCanvas;page:TRpMetafilePage;obj:TRpMetaObject;dpix,dpiy:integer;toprinter:boolean;pagemargins:TRect;devicefonts:boolean;offset:TPoint;selected:boolean);
    procedure SendAfterPrintOperations;
    function DoNewPage(aorientation:TRpOrientation;apagesizeqt:TPageSizeQt):Boolean;
@@ -172,9 +175,7 @@ type
    procedure IntDrawObject(page:TRpMetaFilePage;obj:TRpMetaObject;selected:boolean);
    procedure DrawChart(Series:TRpSeries;ametafile:TRpMetaFileReport;posx,posy:integer;achart:TObject);override;
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
    procedure FilterImage(memstream:TMemoryStream);override;
-{$ENDIF}
 {$ENDIF}
 {$IFNDEF FORWEBAX}
 {$IFDEF USETEECHART}
@@ -188,24 +189,29 @@ type
    function SetPagesize(PagesizeQt:TPageSizeQt):TPoint;override;
    procedure TextExtent(atext:TRpTextObject;var extent:TPoint);override;
   function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
-   procedure TextRectJustify(Canvas:TCanvas;ARect: TRect; Text: Widestring;
-                       Alignment: integer; Clipping: boolean;Wordbreak:boolean;
-                       Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor);
-   procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
-   procedure SetOrientation(Orientation:TRpOrientation);  override;
-   procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
-   function SupportsCopies(maxcopies:integer):boolean;override;
-   function SupportsCollation:boolean;override;
-   constructor Create;
-   destructor Destroy;override;
-   function GetFontDriver:TRpPrintDriver;override;
+    procedure TextRectJustify(Canvas:TCanvas;ARect: TRect; Text: Widestring;
+                        Alignment: integer; Clipping: boolean;Wordbreak:boolean;
+                        Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor;
+                        adpix: integer = 0; adpiy: integer = 0);
+    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
+    procedure SetOrientation(Orientation:TRpOrientation);  override;
+    procedure RestoreOrientation;override;
+    function GetOrientation():TRpOrientation;override;
+    procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
+    function SupportsCopies(maxcopies:integer):boolean;override;
+    function SupportsCollation:boolean;override;
+    constructor Create;
+    destructor Destroy;override;
+    function GetFontDriver:TRpPrintDriver;override;
   end;
 
 function PrintMetafile(metafile:TRpMetafileReport; tittle:string;
  showprogress,allpages:boolean; frompage,topage,copies:integer;
   collate:boolean; devicefonts:boolean; printerindex:TRpPrinterSelect=pRpDefaultPrinter;nobegindoc:boolean=false):boolean;
-//function MetafileToBitmap(metafile:TRpMetafileReport;ShowProgress:Boolean;
-// Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
+function MetafileToBitmap(metafile:TRpMetafileReport;ShowProgress:Boolean;
+ Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
+function DoMetafileToBitmap(metafile:TRpMetafileReport;aform:TFRpVCLProgress;
+ Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
 function AskBitmapProps(var HorzRes,VertRes:Integer;var Mono:Boolean):Boolean;
 
 {$IFNDEF FORWEBAX}
@@ -227,9 +233,7 @@ procedure PageSizeSelection (rpPageSize:TPageSizeQt);
 procedure OrientationSelection (neworientation:TRpOrientation);
 
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
-   procedure ExFilterImage(memstream:TMemoryStream);
-{$ENDIF}
+procedure ExFilterImage(memstream:TMemoryStream);
 {$ENDIF}
 
 
@@ -385,6 +389,10 @@ begin
  drawclippingregion:=false;
  oldpagesize.PageIndex:=-1;
  scale:=1;
+ FPageWidth:=0;
+ FPageHeight:=0;
+ PageQt:=0;
+ FOrientation:=rpOrientationPortrait;
 end;
 
 destructor TRpGDIDriver.Destroy;
@@ -435,14 +443,17 @@ begin
  offset.X:=0;
  offset.Y:=0;
  // Sets Orientation
- BackColor:=report.BackColor;
+ if Assigned(report) then
+  BackColor:=report.BackColor
+ else
+  BackColor:=$00FFFFFF;
  frompage:=false;
  if assigned(apage) then
   if apage.UpdatedPageSize then
    frompage:=true;
  if not frompage then
  begin
-  if drawclippingregion then
+  if drawclippingregion and Assigned(report) then
   begin
    SetOrientation(report.Orientation);
    // Gets pagesize
@@ -452,8 +463,26 @@ begin
   end
   else
   begin
-   asize.X:=report.CustomX;
-   asize.Y:=report.CustomY;
+   if Assigned(report) then
+   begin
+    asize.X:=report.CustomX;
+    asize.Y:=report.CustomY;
+   end
+   else if Assigned(apage) then
+   begin
+    asize.X:=apage.PageSizeqt.PhysicWidth;
+    asize.Y:=apage.PageSizeqt.PhysicHeight;
+    if (asize.X = 0) or (asize.Y = 0) then
+    begin
+     asize.X := 11906;
+     asize.Y := 16838;
+    end;
+   end
+   else
+   begin
+    asize.X := 11906;
+    asize.Y := 16838;
+   end;
   end;
  end
  else
@@ -507,7 +536,7 @@ begin
   begin
    bitmap:=TBitmap.Create;
 {$IFNDEF DOTNETDBUGS}
-   bitmap.PixelFormat:=pf32bit;
+   bitmap.PixelFormat:=pf24bit;
    bitmap.HandleType:=bmDIB;
 {$ENDIF}
   end;
@@ -842,6 +871,61 @@ begin
  Result:=npdfdriver.TextExtentLineInfo(atext,extent);
 end;
 
+function CleanGraphicStream(Src: TStream): TStream;
+var
+  buf: array[0..63] of Byte;
+  readLen, i: Integer;
+  foundPos: Int64;
+  mem: TMemoryStream;
+begin
+  Result := Src;
+  if (Src = nil) or (Src.Size < 4) then
+    Exit;
+
+  Src.Position := 0;
+  readLen := Src.Read(buf[0], SizeOf(buf));
+  Src.Position := 0;
+  if readLen < 2 then
+    Exit;
+
+  // Direct match at 0: BMP, JPEG, PNG
+  if ((buf[0] = $42) and (buf[1] = $4D)) or
+     ((buf[0] = $FF) and (buf[1] = $D8)) or
+     ((readLen >= 4) and (buf[0] = $89) and (buf[1] = $50) and (buf[2] = $4E) and (buf[3] = $47)) then
+    Exit;
+
+  // Search first 64 bytes for BM, JPEG, or PNG headers
+  foundPos := -1;
+  for i := 0 to readLen - 2 do
+  begin
+    if (buf[i] = $42) and (buf[i+1] = $4D) then
+    begin
+      foundPos := i;
+      Break;
+    end
+    else if (buf[i] = $FF) and (buf[i+1] = $D8) then
+    begin
+      foundPos := i;
+      Break;
+    end
+    else if (i + 3 < readLen) and (buf[i] = $89) and (buf[i+1] = $50) and (buf[i+2] = $4E) and (buf[i+3] = $47) then
+    begin
+      foundPos := i;
+      Break;
+    end;
+  end;
+
+  if foundPos > 0 then
+  begin
+    mem := TMemoryStream.Create;
+    Src.Position := foundPos;
+    mem.CopyFrom(Src, Src.Size - foundPos);
+    mem.Position := 0;
+    Src.Position := 0;
+    Result := mem;
+  end;
+end;
+
 procedure TRpGDIDriver.PrintObject(Canvas:TCanvas;page:TRpMetafilePage;obj:TRpMetaObject;dpix,dpiy:integer;toprinter:boolean;
  pagemargins:TRect;devicefonts:boolean;offset:TPoint;selected:boolean);
 var
@@ -850,6 +934,7 @@ var
  X, Y, W, H, S: Integer;
  Width,Height:integer;
  stream:TMemoryStream;
+ cleanStream:TStream;
  bitmap:TBitmap;
  aalign:Cardinal;
  abrushstyle:integer;
@@ -862,6 +947,8 @@ var
  aresult:integer;
 {$IFNDEF DOTNETD}
  jpegimage:TJPegImage;
+ pngimage:TPortableNetworkGraphic;
+ gpicture:TPicture;
 {$ENDIF}
  bitmapwidth,bitmapheight:integer;
  astring:WideString;
@@ -892,7 +979,7 @@ begin
     Canvas.Font.Name:=page.GetWFontName(Obj);
     Canvas.Font.Color:=CLXColorToVCLColor(Obj.FontColor);
     Canvas.Font.Style:=CLXIntegerToFontStyle(obj.FontStyle);
-    Canvas.Font.Size:=Obj.FontSize;
+    Canvas.Font.Height:=-Round(Obj.FontSize * dpiy / 72);
     try
     if obj.FontRotation<>0 then
     begin
@@ -918,10 +1005,15 @@ begin
 //    if true then
     begin
      astring:=page.GetText(Obj);
-     rec.Left:=Round(posx/dpix*TWIPS_PER_INCHESS);
-     rec.Top:=Round(posy/dpix*TWIPS_PER_INCHESS);
-     rec.Right:=Rec.Left+obj.Width;
-     rec.Bottom:=rec.TOp+obj.Height;
+     rec.Left:=obj.Left+offset.X;
+     rec.Top:=obj.Top+offset.Y;
+     if toprinter then
+     begin
+      rec.Left:=rec.Left-pagemargins.Left;
+      rec.Top:=rec.Top-pagemargins.Top;
+     end;
+     rec.Right:=rec.Left+obj.Width;
+     rec.Bottom:=rec.Top+obj.Height;
      if ((obj.Transparent) and (not selected)) then
      begin
       //SetBkMode(Canvas.Handle,TRANSPARENT);
@@ -938,7 +1030,7 @@ begin
       Canvas.Font.Color:=clHighlightText;
      end;
      TextRectJustify(Canvas,rec,astring,obj.AlignMent,obj.CutText,obj.WordWrap,
-      obj.FontRotation,obj.RightToLeft,drawbackground,CLXColorToVCLColor(obj.BackColor));
+      obj.FontRotation,obj.RightToLeft,drawbackground,CLXColorToVCLColor(obj.BackColor),dpix,dpiy);
 
     end;
     finally
@@ -1008,6 +1100,7 @@ begin
        Canvas.LineTo(X+PosX+W, Y+PosY);
       end;
     end;
+    Canvas.Brush.Style := bsClear;
    end;
   rpMetaImage:
    begin
@@ -1023,52 +1116,58 @@ begin
     stream:=page.GetStream(obj);
     bitmap:=TBitmap.Create;
     try
-{$IFNDEF DOTNETDBUGS}
-     bitmap.PixelFormat:=pf32bit;
-     bitmap.HandleType:=bmDIB;
-{$ENDIF}
-     format:='';
-     GetJPegInfo(stream,bitmapwidth,bitmapheight,format);
-     if (format='JPEG') then
-     begin
-{$IFNDEF DOTNETD}
-      jpegimage:=TJPegImage.Create;
+     bitmap.PixelFormat:=pf24bit;
+     cleanStream:=CleanGraphicStream(stream);
+     try
+      format:='';
+      GetJPegInfo(cleanStream,bitmapwidth,bitmapheight,format);
+      cleanStream.Position:=0;
       try
-       jpegimage.LoadFromStream(stream);
-       bitmap.Assign(jpegimage);
-      finally
-       jpegimage.free;
-      end;
-{$ENDIF}
-{$IFDEF DOTNETD}
-      bitmap.LoadFromStream(stream);
-{$ENDIF}
-     end
-     else
-     // Looks if it's a jpeg image
-{$IFDEF DELPHI2009UP}
-      if (format = 'PNG') then
-      begin
-       npng:=TPngImage.Create;
-       npng.LoadFromStream(stream);
-       bitmap.Assign(npng);
-       npng.Free;
-      end
-      else
-{$ENDIF}
-      if (format='BMP') then
-        bitmap.LoadFromStream(stream)
-      else
-      begin
-       FilterImage(stream);
-       jpegimage:=TJPegImage.Create;
-       try
-        jpegimage.LoadFromStream(stream);
-        bitmap.Assign(jpegimage);
-       finally
-        jpegimage.free;
+       if (format='JPEG') then
+       begin
+        jpegimage:=TJPegImage.Create;
+        try
+         jpegimage.LoadFromStream(cleanStream);
+         bitmap.Assign(jpegimage);
+        finally
+         jpegimage.free;
+        end;
+       end
+       else if (format='PNG') then
+       begin
+        pngimage:=TPortableNetworkGraphic.Create;
+        try
+         pngimage.LoadFromStream(cleanStream);
+         bitmap.Assign(pngimage);
+        finally
+         pngimage.Free;
+        end;
+       end
+       else if (format='BMP') then
+       begin
+        bitmap.LoadFromStream(cleanStream);
+        bitmap.PixelFormat:=pf24bit;
+       end
+       else
+       begin
+        gpicture:=TPicture.Create;
+        try
+         gpicture.LoadFromStream(cleanStream);
+         bitmap.PixelFormat:=pf24bit;
+         bitmap.Width:=gpicture.Width;
+         bitmap.Height:=gpicture.Height;
+         bitmap.Canvas.Draw(0,0,gpicture.Graphic);
+        finally
+         gpicture.Free;
+        end;
        end;
+      except
+       // Keep rendering even if individual image blob is damaged
       end;
+     finally
+      if cleanStream<>stream then
+       cleanStream.Free;
+     end;
 //     Copy mode does not work for StretDIBBits
 //     Canvas.CopyMode:=CLXCopyModeToCopyMode(obj.CopyMode);
 
@@ -1146,7 +1245,8 @@ end;
 
 procedure TRpGDIDriver.TextRectJustify(Canvas:TCanvas;ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;Wordbreak:boolean;
-                       Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor);
+                       Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor;
+                       adpix: integer = 0; adpiy: integer = 0);
 var
  recsize:TRect;
  i,index:integer;
@@ -1165,17 +1265,33 @@ var
  aintdpix,aintdpiy:integer;
  lastword:boolean;
  textstyle:TTextStyle;
+ larray:TRpLineInfoArray;
+ ascent:integer;
 begin
  try
+  textstyle := Canvas.TextStyle;
+  textstyle.Opaque := drawbackground;
+  textstyle.Clipping := false;
+  textstyle.ShowPrefix := false;
   if drawbackground then
   begin
-   Canvas.Pen.COlor:=backcolor;
-   Canvas.Brush.COlor:=backcolor;
+   Canvas.Brush.Style := bsSolid;
+   Canvas.Pen.Color := backcolor;
+   Canvas.Brush.Color := backcolor;
+  end
+  else
+  begin
+   Canvas.Brush.Style := bsClear;
   end;
   singleline:=(Alignment AND AlignmentFlags_SingleLine)>0;
   if singleline then
    wordbreak:=false;
-  if toprinter then
+  if adpix > 0 then
+  begin
+   aintdpix := adpix;
+   aintdpiy := adpiy;
+  end
+  else if toprinter then
   begin
    if intdpix=0 then
    begin
@@ -1201,7 +1317,7 @@ begin
   npdfdriver.PDFFile.Canvas.Font.Italic:=fsItalic in Canvas.Font.Style;
   npdfdriver.PDFFile.Canvas.Font.Bold:=fsBold in Canvas.Font.Style;
 
-  npdfdriver.PDFFile.Canvas.TextExtent(Text,recsize,wordbreak,singleline);
+  larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text,recsize,wordbreak,singleline,RightToLeft);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -1213,22 +1329,25 @@ begin
    PosY:=ARect.Top+(((ARect.Bottom-ARect.Top)-recsize.Bottom) div 2);
   end;
 
-  for i:=0 to npdfdriver.pdffile.Canvas.LineInfoCount-1 do
+  ascent := 0;
+  for i:=0 to Length(larray)-1 do
   begin
+   if i = 0 then
+    ascent := larray[0].TopPos;
    posX:=ARect.Left;
    // Aligns horz.
    if  ((Alignment AND AlignmentFlags_AlignRight)>0) then
    begin
     // recsize.right contains the width of the full text
-    PosX:=ARect.Right-npdfdriver.pdffile.Canvas.LineInfo[i].Width;
+    PosX:=ARect.Right-larray[i].Width;
    end;
    // Aligns horz.
    if (Alignment AND AlignmentFlags_AlignHCenter)>0 then
    begin
-    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-npdfdriver.pdffile.Canvas.LineInfo[i].Width) div 2);
+    PosX:=ARect.Left+(((Arect.Right-Arect.Left)-larray[i].Width) div 2);
    end;
-   astring:=Copy(Text,npdfdriver.pdffile.Canvas.LineInfo[i].Position,npdfdriver.pdffile.Canvas.LineInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT npdfdriver.pdffile.Canvas.LineInfo[i].LastLine)) then
+   astring:=Copy(Text,larray[i].Position,larray[i].Size);
+   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT larray[i].LastLine)) then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -1259,7 +1378,7 @@ begin
       for index:=0 to lwords.Count-1 do
       begin
        arec:=ARect;
-       npdfdriver.pdffile.Canvas.TextExtent(lwords.Strings[index],arec,false,true);
+       npdfdriver.pdffile.Canvas.TextExtent(lwords.Strings[index],arec,false,true,RightToLeft);
        if RightToLeft then
         lwidths.Add(IntToStr(-(arec.Right-arec.Left)))
        else
@@ -1267,69 +1386,38 @@ begin
        alinesize:=alinesize+arec.Right-arec.Left;
       end;
       alinedif:=ARect.Right-ARect.Left-alinesize;
-      if alinedif>0 then
+      if alinedif<0 then
+       alinedif:=0;
+      if lwords.count>1 then
+       alinedif:=alinedif div (lwords.count-1);
+      if RightToLeft then
       begin
-       if lwords.count>1 then
-        alinedif:=alinedif div (lwords.count-1);
-       if RightToLeft then
-       begin
-        currpos:=ARect.Right;
-        alinedif:=-alinedif;
-       end
+       currpos:=ARect.Right;
+       alinedif:=-alinedif;
+      end
+      else
+       currpos:=PosX;
+      for index:=0 to lwords.Count-1 do
+      begin
+       nposx:=currpos;
+       nposy:=PosY+larray[i].TopPos-ascent;
+       nposx:=Round(nposx*aintdpix/1440);
+       nposy:=Round(nposy*aintdpiy/1440);
+       arec2.Left:=nposx;
+       arec2.Top:=nposy;
+       arec2.Right:=Round(ARect.Right*aintdpix/1440);
+       arec2.Bottom:=arec2.Top+Round(larray[i].Height*aintdpiy/1440);
+       textstyle.Opaque:=drawbackground;
+       textstyle.ShowPrefix:=false;
+       textstyle.Clipping:=false;
+       lastword:=((index=lwords.Count-1) AND (lwords.count>1));
+       if lastword then
+        textstyle.Alignment:=taRightJustify
        else
-        currpos:=PosX;
-       for index:=0 to lwords.Count-1 do
-       begin
-        nposx:=currpos;
-        nposy:=PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos;
-        nposx:=Round(nposx*aintdpix/1440);
-        nposy:=Round(nposy*aintdpiy/1440);
-        arec2.Left:=nposx;
-        arec2.Top:=nposy;
-        arec2.Bottom:=arec.Top+Round(npdfdriver.pdffile.Canvas.LineInfo[i].Height*aintdpiy/1440);
-        arec2.Right:=Round(arect.Right*aintdpix/1440);
-        textstyle.ShowPrefix:=false;
-        textstyle.Clipping:=false;
-        lastword:=((index=lwords.Count-1) AND (lwords.count>1));
-        if lastword then
-         textstyle.Alignment:=taRightJustify
-        else
-         textstyle.Alignment:=taLeftJustify;
-         aatext:=lwords.strings[index];
-        Canvas.TextRect(arec2,arec.Left,arec.Top,aatext,textstyle);
-//         DrawTextW(Canvas.Handle,PWideChar(aatext),Length(aatext),arec2,aalign);
-//        TextOutW(Canvas.Handle,nposx,nposy,PWideChar(lwords.strings[index]),
-//         Length(lwords.strings[index]));
-//        TextOut(currpos,PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos,lwords.strings[index],
-//         npdfdriver.pdffile.Canvas.LineInfo[i].Width,Rotation,RightToLeft);
-        currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
-        //if (drawbackground) then
-//        begin
-//         if lastword then
-//          aalign:=(aalign AND (NOT DT_RIGHT)) OR DT_LEFT;
-//         if IsWindowsNT then
-//         begin
-//          DrawTextW(Canvas.Handle,PWideChar(aatext),Length(aatext),arec2,aalign or DT_CALCRECT);
-//         end
-//         else
-//         begin
-//          DrawTextA(Canvas.Handle,PChar(aansitext),Length(aansitext),arec2,aalign or DT_CALCRECT);
-//         end;
-//         arec2.Top:=nposy;
-//         arec2.Bottom:=nposy+Round(npdfdriver.pdffile.Canvas.LineInfo[i].Height*aintdpiy/1440);
-//         if (lastword) then
-//         begin
-//          arec2.Left:=nposx-1;
-//          arec2.Right:=Round(arect.Right*aintdpix/1440)-(arec2.Right-arec2.Left)+1;
-//         end
-//         else
-//         begin
-//          arec2.Left:=arec2.Right-1;
-//          arec2.Right:=Round(currpos*aintdpix/1440)+1;
-//         end;
-//         Canvas.Rectangle(arec2.Left,arec2.Top,arec2.Right,arec2.Bottom);
-//        end;
-       end;
+        textstyle.Alignment:=taLeftJustify;
+       aatext:=lwords.strings[index];
+       Canvas.TextRect(arec2,arec2.Left,arec2.Top,aatext,textstyle);
+       currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
       end;
      finally
       lwidths.Free;
@@ -1340,24 +1428,20 @@ begin
    end
    else
    begin
+    textstyle.Opaque:=drawbackground;
     textstyle.Clipping:=false;
-    textstyle.Alignment:=taLeftJustify;
     textstyle.ShowPrefix:=false;
+    textstyle.Alignment:=taLeftJustify;
     nposx:=Posx;
-    nposy:=PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos;
+    nposy:=PosY+larray[i].TopPos-ascent;
     nposx:=Round(nposx*aintdpix/1440);
     nposy:=Round(nposy*aintdpiy/1440);
     arec2.Left:=nposx;
     arec2.Top:=nposy;
-    arec2.Bottom:=arec.Bottom+100;
-    arec2.Right:=Round(arect.Right*aintdpix/1440);
-    //if IsWindowsNT then
-    // DrawTextW(Canvas.Handle,PWideChar(astring),Length(astring),arec2,aalign)
+    arec2.Right:=Round(ARect.Right*aintdpix/1440);
+    arec2.Bottom:=arec2.Top+Round(larray[i].Height*aintdpiy/1440);
     Canvas.TextRect(arec2,arec2.Left,arec2.Top,astring,textstyle);
-   end
-//     TextOutW(Canvas.Handle,nposx,nposy,PWideChar(astring),
-//       Length(astring))
-//    TextOut(PosX,PosY+npdfdriver.pdffile.Canvas.LineInfo[i].TopPos,astring,npdfdriver.pdffile.Canvas.LineInfo[i].Width,Rotation,RightToLeft);
+   end;
   end;
  finally
  end;
@@ -1370,6 +1454,7 @@ var
  rec:TRect;
  dpix,dpiy:integer;
  selected:boolean;
+ pmargins:TRect;
 begin
  if toprinter then
  begin
@@ -1381,75 +1466,49 @@ begin
  else
  begin
   UpdateBitmapSize(FReport,apage);
-  if assigned(metacanvas) then
+  if not Assigned(bitmap) then
+    exit;
+
+  rec.Top:=0;
+  rec.Left:=0;
+  rec.Right:=bitmap.Width;
+  rec.Bottom:=bitmap.Height;
+
+  bitmap.Canvas.Brush.Style:=bsSolid;
+  bitmap.Canvas.Brush.Color:=CLXColorToVCLColor(BackColor);
+  bitmap.Canvas.FillRect(rec);
+
+  dpix := Round(Screen.PixelsPerInch * scale);
+  dpiy := Round(Screen.PixelsPerInch * scale);
+  if dpix < 1 then dpix := 1;
+  if dpiy < 1 then dpiy := 1;
+
+  pmargins.Left := 0;
+  pmargins.Top := 0;
+  pmargins.Right := 0;
+  pmargins.Bottom := 0;
+
+  for j:=0 to apage.ObjectCount-1 do
   begin
-//   metacanvas.free;
-   metacanvas:=nil;
-  end;
-  if assigned(meta) then
-  begin
-   meta.free;
-   meta:=nil;
-  end;
-  meta:=TBitmap.Create;
-  try
-   meta.Width:=bitmapwidth;
-   meta.Height:=bitmapheight;
-
-   rec.Top:=0;
-   rec.Left:=0;
-   rec.Right:=meta.Width+1;
-   rec.Bottom:=meta.Height+1;
-
-   metacanvas:=meta.Canvas;
-   try
-    metacanvas.Brush.Style:=bsSolid;
-    metacanvas.Brush.Color:=CLXColorToVCLColor(BackColor);
-    metacanvas.FillRect(rec);
-    for j:=0 to apage.ObjectCount-1 do
-    begin
-     selected:=FReport.IsFound(apage,j);
-     IntDrawObject(apage,apage.Objects[j],selected);
-    end;
-    //Draw page margins
-    if (showpagemargins) then
-    begin
-     rec:=rplclgraphutils.GetPageMarginsTWIPS;
-     // transform to dpi device
-     dpix:=Screen.PixelsPerInch;
-     dpiy:=Screen.PixelsPerInch;
-
-     rec.Left:=round(rec.Left*dpix/TWIPS_PER_INCHESS);
-     rec.Top:=round(rec.Top*dpiy/TWIPS_PER_INCHESS);
-     rec.Right:=round(rec.Right*dpix/TWIPS_PER_INCHESS);
-     rec.Bottom:=round(rec.Bottom*dpiy/TWIPS_PER_INCHESS);
-     metacanvas.Brush.Style:=bsClear;
-     metacanvas.Pen.Color:=clBlack;
-     metacanvas.Pen.Style:=psSolid;
-
-     metacanvas.Rectangle(rec);
-    end;
-   finally
-//    metacanvas.free;
-//    metacanvas:=nil;
-   end;
-   //meta.SaveToFile('/home/toni/prog/reportman/lazarus/test2.bmp');
-   // Draws the metafile scaled
-   if Round(scale*1000)=1000 then
-   begin
-    Bitmap.Canvas.Draw(0,0,Meta);
-   end
+   if Assigned(FReport) then
+     selected:=FReport.IsFound(apage,j)
    else
-   begin
-    rec.Top:=0;
-    rec.Left:=0;
-    rec.Right:=bitmap.Width-1;
-    rec.Bottom:=bitmap.Height-1;
-    Bitmap.Canvas.StretchDraw(rec,Meta);
-   end;
-  finally
-   meta.free;
-   meta:=nil;
+     selected:=false;
+   PrintObject(bitmap.Canvas, apage, apage.Objects[j], dpix, dpiy, false, pmargins, false, offset, selected);
+  end;
+
+  // Draw page margins
+  if (showpagemargins) then
+  begin
+   rec:=GetPageMarginsTWIPS;
+   rec.Left:=Round(rec.Left*dpix/TWIPS_PER_INCHESS);
+   rec.Top:=Round(rec.Top*dpiy/TWIPS_PER_INCHESS);
+   rec.Right:=Round(rec.Right*dpix/TWIPS_PER_INCHESS);
+   rec.Bottom:=Round(rec.Bottom*dpiy/TWIPS_PER_INCHESS);
+   bitmap.Canvas.Brush.Style:=bsClear;
+   bitmap.Canvas.Pen.Color:=clBlack;
+   bitmap.Canvas.Pen.Style:=psSolid;
+   bitmap.Canvas.Rectangle(rec);
   end;
  end;
 end;
@@ -1478,11 +1537,11 @@ begin
  begin
   if not Assigned(bitmap) then
    Raise Exception.Create(SRpGDIDriverNotInit);
-  if not Assigned(metacanvas) then
-   Raise Exception.Create(SRpGDIDriverNotInit);
-  Canvas:=metacanvas;
-  dpix:=Screen.PixelsPerInch;
-  dpiy:=Screen.PixelsPerInch;
+  Canvas:=bitmap.Canvas;
+  dpix:=Round(Screen.PixelsPerInch * scale);
+  dpiy:=Round(Screen.PixelsPerInch * scale);
+  if dpix < 1 then dpix := 1;
+  if dpiy < 1 then dpiy := 1;
  end;
  PrintObject(Canvas,page,obj,dpix,dpiy,toprinter,pagemargins,devicefonts,offset,selected);
 end;
@@ -1494,88 +1553,160 @@ end;
 
 function TRpGDIDriver.GetPageSize(var PageSizeQt:Integer):TPoint;
 var
- gdisize:TGDIPageSize;
- qtsize:TPageSizeQt;
- asize:TPoint;
+  prect: TPaperRect;
+  physW, physH: Integer;
 begin
- Result.X:=Printer.PageWidth;
- Result.Y:=Printer.PageHeight;
- if (Result.X = 0) then
+ PageSizeQt:=PageQt;
+ if (FPageWidth = 0) or (FPageHeight = 0) then
  begin
-  result.y:=16637;
-  result.x:=12047;
- end
- //gdisize:=GetCurrentPaper;
- //qtsize:=GDIPageSizeToQtPageSize(gdisize);
- //PageSizeQt:=qtsize.Indexqt;
- //asize:=GetPhysicPageSizeTwips;
-{ if ((asize.x<1) or (asize.y<1)) then
- begin
-  gdisize.Width:=Round(gdisize.Width/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
-  gdisize.Height:=Round(gdisize.Height/100/CMS_PER_INCHESS*TWIPS_PER_INCHESS);
-
-  if Printer.Orientation=poLandscape then
+  if (Printer.Printers.Count > 0) and (Printer.XDPI > 0) and (Printer.YDPI > 0) then
   begin
-   asize.x:=gdisize.Height;
-   asize.y:=gdisize.Width;
+   prect := Printer.PaperSize.PaperRect;
+   physW := prect.PhysicalRect.Right - prect.PhysicalRect.Left;
+   physH := prect.PhysicalRect.Bottom - prect.PhysicalRect.Top;
+   if (physW > 0) and (physH > 0) then
+   begin
+    if Printer.Orientation = poLandscape then
+    begin
+     Result.X := Round(physH * TWIPS_PER_INCHESS / Printer.YDPI);
+     Result.Y := Round(physW * TWIPS_PER_INCHESS / Printer.XDPI);
+    end
+    else
+    begin
+     Result.X := Round(physW * TWIPS_PER_INCHESS / Printer.XDPI);
+     Result.Y := Round(physH * TWIPS_PER_INCHESS / Printer.YDPI);
+    end;
+   end
+   else
+   begin
+    Result.X := Round(PageSizeArray[0].Width / 1000 * TWIPS_PER_INCHESS);
+    Result.Y := Round(PageSizeArray[0].Height / 1000 * TWIPS_PER_INCHESS);
+   end;
   end
   else
   begin
-   asize.x:=gdisize.Width;
-   asize.y:=gdisize.Height;
+   // Default to A4: 11906 x 16838 twips
+   Result.X := Round(PageSizeArray[0].Width / 1000 * TWIPS_PER_INCHESS);
+   Result.Y := Round(PageSizeArray[0].Height / 1000 * TWIPS_PER_INCHESS);
   end;
+  FPageWidth := Result.X;
+  FPageHeight := Result.Y;
+ end
+ else
+ begin
+  Result.X := FPageWidth;
+  Result.Y := FPageHeight;
  end;
-} //Result:=asize;
 end;
 
 function TRpGDIDriver.SetPagesize(PagesizeQt:TPageSizeQt):TPoint;
 var
- qtsize:integer;
+ newwidth,newheight:integer;
 begin
-// pagesize:=QtPageSizeToGDIPageSize(PagesizeQT);
-// oldpagesize:=GetCurrentPaper;
-// SetCurrentPaper(pagesize);
-
- Result:=GetPageSize(qtsize);
+ PageQt:=PagesizeQt.Indexqt;
+ if PagesizeQt.Custom then
+ begin
+  PageQt:=-1;
+  newwidth:=PagesizeQt.CustomWidth;
+  newheight:=PagesizeQt.CustomHeight;
+ end
+ else
+ begin
+  if (PagesizeQt.Indexqt >= 0) and (PagesizeQt.Indexqt <= High(PageSizeArray)) then
+  begin
+   newWidth:=Round(PageSizeArray[PagesizeQt.Indexqt].Width/1000*TWIPS_PER_INCHESS);
+   newheight:=Round(PageSizeArray[PagesizeQt.Indexqt].Height/1000*TWIPS_PER_INCHESS);
+  end
+  else
+  begin
+   newWidth:=Round(PageSizeArray[0].Width/1000*TWIPS_PER_INCHESS);
+   newheight:=Round(PageSizeArray[0].Height/1000*TWIPS_PER_INCHESS);
+  end;
+ end;
+ if FOrientation=rpOrientationLandscape then
+ begin
+  FPageWidth:=NewHeight;
+  FPageHeight:=NewWidth;
+ end
+ else
+ begin
+  FPageWidth:=NewWidth;
+  FPageHeight:=NewHeight;
+ end;
+ Result.X:=FPageWidth;
+ Result.Y:=FPageHeight;
 end;
 
 procedure TRpGDIDriver.SetOrientation(Orientation:TRpOrientation);
 var
- currentorientation:TPrinterOrientation;
+ atemp:integer;
 begin
- currentorientation:=Printer.Orientation;
-// if Orientation=rpOrientationPortrait then
- if Orientation<>rpOrientationLandscape then
+ if Orientation<>FOrientation then
  begin
-  if currentorientation<>poPortrait then
+  if Orientation<>rpOrientationDefault then
   begin
-   if not orientationset then
+   if (Orientation=rpOrientationLandscape) and (FOrientation<>rpOrientationLandscape) then
    begin
-    orientationset:=true;
-    oldorientation:=currentorientation;
-   end;
-   if printer.Printing then
-    SetPrinterOrientation(false)
-   else
-    Printer.Orientation:=poPortrait;
-  end;
- end
- else
-// if Orientation=rpOrientationLandscape then
- begin
-  if currentorientation<>poLandscape then
-  begin
-   if not orientationset then
+    atemp:=FPageWidth;
+    FPageWidth:=FPageHeight;
+    FPageHeight:=atemp;
+    FOrientation:=Orientation;
+   end
+   else if (Orientation=rpOrientationPortrait) and (FOrientation<>rpOrientationPortrait) then
    begin
-    orientationset:=true;
-    oldorientation:=currentorientation;
+    atemp:=FPageWidth;
+    FPageWidth:=FPageHeight;
+    FPageHeight:=atemp;
+    FOrientation:=Orientation;
    end;
-   if printer.Printing then
-    SetPrinterOrientation(true)
-   else
-    Printer.Orientation:=poLandscape;
   end;
  end;
+ if Orientation=rpOrientationLandscape then
+ begin
+  if Printer.Orientation<>poLandscape then
+  begin
+   if not orientationset then
+   begin
+    orientationset:=true;
+    oldorientation:=Printer.Orientation;
+   end;
+   if not Printer.Printing then
+    Printer.Orientation:=poLandscape;
+  end;
+ end
+ else if Orientation=rpOrientationPortrait then
+ begin
+  if Printer.Orientation<>poPortrait then
+  begin
+   if not orientationset then
+   begin
+    orientationset:=true;
+    oldorientation:=Printer.Orientation;
+   end;
+   if not Printer.Printing then
+    Printer.Orientation:=poPortrait;
+  end;
+ end;
+end;
+
+procedure TRpGDIDriver.RestoreOrientation;
+begin
+ if orientationset then
+ begin
+  if not Printer.Printing then
+   Printer.Orientation := oldorientation;
+  orientationset := false;
+ end;
+end;
+
+function TRpGDIDriver.GetOrientation():TRpOrientation;
+begin
+ if FOrientation <> rpOrientationDefault then
+  Result := FOrientation
+ else if (Printer.Orientation = poPortrait) then
+  Result := rpOrientationPortrait
+ else
+  Result := rpOrientationLandscape;
 end;
 
 procedure DoPrintMetafile(metafile:TRpMetafileReport;tittle:string;
@@ -1875,6 +2006,136 @@ begin
  Close;
 end;
 
+function DoMetafileToBitmap(metafile:TRpMetafileReport;aform:TFRpVCLProgress;
+ Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
+var
+  gdidriver: TRpGDIDriver;
+  apage: TRpMetafilePage;
+  i, j: integer;
+  offset: TPoint;
+  pagemargins: TRect;
+  pageheight, pagewidth: integer;
+  arec: TRect;
+  aobj: TRpMetaObject;
+  rgbintensity: integer;
+  mmfirst, mmlast: DWORD;
+  difmilis: int64;
+begin
+  if resx > MAX_RES_BITMAP then resx := MAX_RES_BITMAP;
+  if resy > MAX_RES_BITMAP then resy := MAX_RES_BITMAP;
+  if resx < 1 then resx := 1;
+  if resy < 1 then resy := 1;
+
+  offset.X := 0;
+  offset.Y := 0;
+  pagemargins.Left := 0;
+  pagemargins.Top := 0;
+  pagemargins.Right := 0;
+  pagemargins.Bottom := 0;
+  mmfirst := GetTickCount;
+
+  Result := TBitmap.Create;
+  try
+    Result.HandleType := bmDIB;
+    if Mono then
+      Result.PixelFormat := pf1bit
+    else
+      Result.PixelFormat := pf24bit;
+
+    pagewidth := (metafile.CustomX * resx) div TWIPS_PER_INCHESS;
+    pageheight := (metafile.CustomY * resy) div TWIPS_PER_INCHESS;
+    metafile.RequestPage(MAX_PAGECOUNT);
+
+    Result.Width := pagewidth;
+    Result.Height := pageheight * metafile.CurrentPageCount;
+
+    arec.Top := 0;
+    arec.Left := 0;
+    arec.Right := Result.Width;
+    arec.Bottom := Result.Height;
+    Result.Canvas.Brush.Style := bsSolid;
+    Result.Canvas.Brush.Color := CLXColorToVCLColor(metafile.BackColor);
+    Result.Canvas.FillRect(arec);
+
+    gdidriver := TRpGDIDriver.Create;
+    try
+      for i := 0 to metafile.CurrentPageCount - 1 do
+      begin
+        apage := metafile.Pages[i];
+        offset.X := 0;
+        offset.Y := pageheight * i;
+        for j := 0 to apage.ObjectCount - 1 do
+        begin
+          aobj := apage.Objects[j];
+          if Mono and (aobj.Metatype = rpMetaText) then
+          begin
+            rgbintensity := (aobj.FontColor and $FF) +
+              ((aobj.FontColor and $FF00) shr 8) +
+              ((aobj.FontColor and $FF0000) shr 16);
+            if rgbintensity > 128 * 3 then
+              aobj.FontColor := clWhite
+            else
+              aobj.FontColor := clBlack;
+          end;
+          gdidriver.PrintObject(Result.Canvas, apage, aobj, resx, resy,
+            false, pagemargins, false, offset, false);
+          if Assigned(aform) then
+          begin
+            mmlast := GetTickCount;
+            difmilis := (mmlast - mmfirst);
+            if difmilis > 50 then
+            begin
+              mmfirst := GetTickCount;
+              aform.LRecordCount.Caption := SRpPage + ':' + IntToStr(i + 1)
+                + ' - ' + SRpItem + ':' + IntToStr(j + 1);
+              Application.ProcessMessages;
+              if aform.cancelled then
+                raise Exception.Create(SRpOperationAborted);
+            end;
+          end;
+        end;
+      end;
+    finally
+      gdidriver.Free;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function MetafileToBitmap(metafile:TRpMetafileReport;ShowProgress:Boolean;
+ Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
+var
+  dia: TFRpVCLProgress;
+begin
+  if not ShowProgress then
+  begin
+    Result := DoMetafileToBitmap(metafile, nil, Mono, resx, resy);
+    exit;
+  end;
+  dia := TFRpVCLProgress.Create(Application);
+  try
+    dia.oldonidle := Application.OnIdle;
+    try
+      dia.metafile := metafile;
+      dia.tittle := SRpPrinting;
+      dia.bitmono := Mono;
+      dia.bitresx := resx;
+      dia.bitresy := resy;
+      Application.OnIdle := dia.AppIdleBitmap;
+      dia.ShowModal;
+      if dia.errorproces then
+        raise Exception.Create(dia.ErrorMessage);
+      Result := dia.MetaBitmap;
+    finally
+      Application.OnIdle := dia.oldonidle;
+    end;
+  finally
+    dia.Free;
+  end;
+end;
+
 procedure TFRpVCLProgress.AppIdleBitmap(Sender:TObject;var done:boolean);
 begin
  cancelled:=false;
@@ -1884,7 +2145,7 @@ begin
  try
   LTittle.Caption:=tittle;
   LProcessing.Visible:=true;
-  //MetaBitmap:=DoMetafileToBitmap(metafile,self,bitmono,bitresx,bitresy);
+  MetaBitmap:=DoMetafileToBitmap(metafile,self,bitmono,bitresx,bitresy);
  except
   on E:Exception do
   begin
@@ -2648,8 +2909,6 @@ end;
 
 
 {$IFNDEF FORWEBAX}
-
-{$IFDEF EXTENDEDGRAPHICS}
 procedure TRpGDIDriver.FilterImage(memstream:TMemoryStream);
 begin
  inherited FilterImage(memstream);
@@ -2854,7 +3113,6 @@ begin
  end;
 end;
 {$ENDIF}
-{$ENDIF}
 
 procedure TRpGDIDriver.DrawChart(Series:TRpSeries;ametafile:TRpMetaFileReport;posx,posy:integer;achart:TObject);
 begin
@@ -2912,45 +3170,71 @@ begin
 end;
 
 {$IFNDEF FORWEBAX}
-{$IFDEF EXTENDEDGRAPHICS}
 procedure ExFilterImage(memstream:TMemoryStream);
 var
- gclass:TGraphicExGraphicClass;
- bitmap:TBitmap;
- gpicture:TGraphicExGraphic;
- jpegimage:TJPegImage;
+ format:string;
+ w,h:integer;
+ pic:TPicture;
+ bmp:TBitmap;
+ jpg:TJpegImage;
+ cleanMem:TStream;
 begin
- // Use graphicex library to obtain type and convert it to jpeg
- gclass:=rpgraphicex.FileFormatList.GraphicFromContent(memstream);
- if (gclass=nil) then
+ if (memstream=nil) or (memstream.Size<4) then
   exit;
- memstream.Seek(0,soFromBeginning);
- gpicture:=gclass.Create;
+
+ cleanMem:=CleanGraphicStream(memstream);
  try
-  try
-   gpicture.LoadFromStream(memstream);
-   bitmap:=TBitmap.Create;
-   bitmap.PixelFormat:=pf24bit;
-   bitmap.Height:=gpicture.Height;
-   bitmap.Width:=gpicture.Width;
-   bitmap.Canvas.Draw(0,0,gpicture);
-   jpegimage:=TJPegImage.Create;
-   try
-    jpegimage.CompressionQuality:=100;
-    jpegimage.Assign(bitmap);
-    memstream.Clear;
-    jpegimage.SaveToStream(memstream);
-   finally
-    jpegimage.Free;
-   end;
-  finally
-   memstream.Seek(0,soFromBeginning);
+  if cleanMem<>memstream then
+  begin
+   memstream.Clear;
+   cleanMem.Position:=0;
+   memstream.CopyFrom(cleanMem,cleanMem.Size);
+   memstream.Position:=0;
   end;
  finally
-  gpicture.free;
+  if cleanMem<>memstream then
+   cleanMem.Free;
+ end;
+
+ memstream.Position:=0;
+ format:='';
+ GetJPegInfo(memstream,w,h,format);
+ memstream.Position:=0;
+
+ if (format='JPEG') or (format='BMP') or (format='PNG') then
+  exit;
+
+ try
+  pic:=TPicture.Create;
+  try
+   pic.LoadFromStream(memstream);
+   bmp:=TBitmap.Create;
+   try
+    bmp.PixelFormat:=pf24bit;
+    bmp.Width:=pic.Width;
+    bmp.Height:=pic.Height;
+    bmp.Canvas.Draw(0,0,pic.Graphic);
+
+    jpg:=TJpegImage.Create;
+    try
+     jpg.CompressionQuality:=90;
+     jpg.Assign(bmp);
+     memstream.Clear;
+     jpg.SaveToStream(memstream);
+     memstream.Position:=0;
+    finally
+     jpg.Free;
+    end;
+   finally
+    bmp.Free;
+   end;
+  finally
+   pic.Free;
+  end;
+ except
+  memstream.Position:=0;
  end;
 end;
-{$ENDIF}
 {$ENDIF}
 
 

@@ -268,10 +268,13 @@
         <UnitName Value="rpDelphiZXIngQRCode"/>
       </Item62>
     </Files>
-    <RequiredPkgs Count="1">
+    <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="FCL"/>
       </Item1>
+      <Item2>
+        <PackageName Value="zcomponent"/>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

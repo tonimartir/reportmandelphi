@@ -917,6 +917,7 @@ begin
  OpenDrawerAfter:=false;
  CollateCopies:=true;
  LinesPerInch:=6;
+ FBackColor:=$00FFFFFF;
 
  FPages:=TList.Create;
 end;

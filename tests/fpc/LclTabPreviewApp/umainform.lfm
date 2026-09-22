@@ -1,0 +1,254 @@
+object MainForm: TMainForm
+  Left = 320
+  Height = 650
+  Top = 150
+  Width = 900
+  Caption = 'Report Manager - Lazarus LCL Preview Demo'
+  ClientHeight = 650
+  ClientWidth = 900
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Position = poScreenCenter
+  LCLVersion = '3.0.0.3'
+  object PageControl1: TPageControl
+    Left = 0
+    Height = 650
+    Top = 0
+    Width = 900
+    ActivePage = TabSheet1
+    Align = alClient
+    TabIndex = 0
+    TabOrder = 0
+    object TabSheet1: TTabSheet
+      Caption = '1. Selección de Informe'
+      ClientHeight = 622
+      ClientWidth = 892
+      object pnlSetup: TPanel
+        Left = 40
+        Height = 400
+        Top = 30
+        Width = 600
+        BevelOuter = bvNone
+        ClientHeight = 400
+        ClientWidth = 600
+        TabOrder = 0
+        object lblTitle: TLabel
+          Left = 0
+          Height = 28
+          Top = 0
+          Width = 478
+          Caption = 'Demostración de Previsualización LCL de Report Manager'
+          Font.Height = -20
+          Font.Style = [fsBold]
+          ParentColor = False
+          ParentFont = False
+        end
+        object lblSubtitle: TLabel
+          Left = 0
+          Height = 15
+          Top = 40
+          Width = 485
+          Caption = 'Seleccione un informe y pulse "Preview" para visualizarlo con el control visual de la LCL.'
+          ParentColor = False
+        end
+        object lblReport: TLabel
+          Left = 0
+          Height = 15
+          Top = 90
+          Width = 111
+          Caption = 'Informe a ejecutar:'
+          Font.Style = [fsBold]
+          ParentColor = False
+          ParentFont = False
+        end
+        object cbReports: TComboBox
+          Left = 0
+          Height = 28
+          Top = 112
+          Width = 380
+          ItemHeight = 20
+          ItemIndex = 0
+          Items.Strings = (
+            'sample4.rep'
+            'bold.rep'
+            'boldold.rep'
+            'arab2wordwrap.rep'
+            'htmltest.rep'
+            'firedactest.rep'
+          )
+          Style = csDropDownList
+          TabOrder = 0
+          Text = 'sample4.rep'
+        end
+        object btnPreview: TButton
+          Left = 0
+          Height = 42
+          Top = 160
+          Width = 180
+          Caption = 'Preview'
+          Font.Height = -16
+          Font.Style = [fsBold]
+          OnClick = btnPreviewClick
+          ParentFont = False
+          TabOrder = 1
+        end
+        object memoInfo: TMemo
+          Left = 0
+          Height = 160
+          Top = 225
+          Width = 580
+          Color = clInfoBk
+          Lines.Strings = (
+            'Información técnica:'
+            '- Este ejemplo utiliza el paquete reportman_lcl (Lazarus Component Library).'
+            '- Al pulsar "Preview", el informe se compila en memoria mediante TRpReport'
+            '  y se vincula al TRpPreviewControl embebido en la segunda pestaña.'
+            ''
+            'Informes de prueba sin acceso a datos externos:'
+            '- sample4.rep: Catálogo de peces (dataset en memoria biolife.cds con imágenes).'
+            '- bold.rep: Fuentes TrueType incrustadas, recuadros y alineaciones.'
+            '- boldold.rep: Estilos de fuente, interlineado y texto multilínea.'
+            '- arab2wordwrap.rep: Texto bidi y árabe con ajuste de línea (wordwrap).'
+            '- htmltest.rep: Texto con etiquetas de formato HTML enriquecido.'
+            ''
+            'Informe de prueba con conexión a datos:'
+            '- firedactest.rep: Listado de clientes conectando a clientes.db (SQLite vía dbxconnections.ini).'
+          )
+          ReadOnly = True
+          TabOrder = 2
+        end
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = '2. Vista Previa'
+      ClientHeight = 622
+      ClientWidth = 892
+      object pnlToolbar: TPanel
+        Left = 0
+        Height = 40
+        Top = 0
+        Width = 892
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 40
+        ClientWidth = 892
+        Color = clMenuBar
+        ParentColor = False
+        TabOrder = 0
+        object btnBack: TButton
+          Left = 8
+          Height = 28
+          Top = 6
+          Width = 90
+          Caption = '<< Volver'
+          OnClick = btnBackClick
+          TabOrder = 0
+        end
+        object btnFirst: TButton
+          Left = 115
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '|<<'
+          OnClick = btnFirstClick
+          TabOrder = 1
+        end
+        object btnPrior: TButton
+          Left = 155
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '<'
+          OnClick = btnPriorClick
+          TabOrder = 2
+        end
+        object lblPage: TLabel
+          Left = 202
+          Height = 15
+          Top = 12
+          Width = 75
+          Caption = 'Página: 1 / 1'
+          Font.Style = [fsBold]
+          ParentColor = False
+          ParentFont = False
+        end
+        object btnNext: TButton
+          Left = 290
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '>'
+          OnClick = btnNextClick
+          TabOrder = 3
+        end
+        object btnLast: TButton
+          Left = 330
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '>>|'
+          OnClick = btnLastClick
+          TabOrder = 4
+        end
+        object btnFitWidth: TButton
+          Left = 385
+          Height = 28
+          Top = 6
+          Width = 100
+          Caption = 'Ajustar Ancho'
+          OnClick = btnFitWidthClick
+          TabOrder = 5
+        end
+        object btnFitPage: TButton
+          Left = 490
+          Height = 28
+          Top = 6
+          Width = 100
+          Caption = 'Pág. Completa'
+          OnClick = btnFitPageClick
+          TabOrder = 6
+        end
+        object btnRealSize: TButton
+          Left = 595
+          Height = 28
+          Top = 6
+          Width = 65
+          Caption = '100%'
+          OnClick = btnRealSizeClick
+          TabOrder = 7
+        end
+        object btnZoomIn: TButton
+          Left = 670
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '+'
+          Font.Style = [fsBold]
+          OnClick = btnZoomInClick
+          ParentFont = False
+          TabOrder = 8
+        end
+        object btnZoomOut: TButton
+          Left = 710
+          Height = 28
+          Top = 6
+          Width = 35
+          Caption = '-'
+          Font.Style = [fsBold]
+          OnClick = btnZoomOutClick
+          ParentFont = False
+          TabOrder = 9
+        end
+      end
+      object pnlPreviewHost: TPanel
+        Left = 0
+        Height = 582
+        Top = 40
+        Width = 892
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 1
+      end
+    end
+  end
+end

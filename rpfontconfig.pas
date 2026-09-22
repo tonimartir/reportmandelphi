@@ -62,7 +62,11 @@ const
   // Propiedad para el script (aunque se usa FC_LANG o se deriva, es bueno tener el concepto)
   FC_CHARSET = 'charset';
 var
+{$IFDEF FPC}
+  FontConfigLibHandle: TLibHandle;
+{$ELSE}
   FontConfigLibHandle: THandle;
+{$ENDIF}
   FontConfigAvailable: Boolean;
 // --- 3. Firmas de Funciones (T_Prefix) ---
 type
@@ -144,12 +148,17 @@ var
   ProcPtr: Pointer;
 begin
   FontConfigAvailable := False;
-  FontConfigLibHandle := 0;
-
+{$IFDEF FPC}
+  FontConfigLibHandle := dynlibs.NilHandle;
   FontConfigLibHandle := SafeLoadLibrary(FONTCONFIG_LIB_NAME);
-
+  if FontConfigLibHandle = dynlibs.NilHandle then
+    Exit;
+{$ELSE}
+  FontConfigLibHandle := 0;
+  FontConfigLibHandle := SafeLoadLibrary(FONTCONFIG_LIB_NAME);
   if FontConfigLibHandle = 0 then
     Exit;
+{$ENDIF}
 
   // Enlace de funciones de bajo nivel
   ProcPtr := GetProc('FcInit'); @FcInit := ProcPtr;
@@ -182,13 +191,21 @@ begin
     else
     begin
       FreeLibrary(FontConfigLibHandle);
+{$IFDEF FPC}
+      FontConfigLibHandle := dynlibs.NilHandle;
+{$ELSE}
       FontConfigLibHandle := 0;
+{$ENDIF}
     end;
   end
   else
   begin
     FreeLibrary(FontConfigLibHandle);
+{$IFDEF FPC}
+    FontConfigLibHandle := dynlibs.NilHandle;
+{$ELSE}
     FontConfigLibHandle := 0;
+{$ENDIF}
   end;
 end;
 
@@ -269,8 +286,15 @@ initialization
   FontConfigAvailable := False;
 
 finalization
+{$IFDEF FPC}
+  if FontConfigAvailable and (FontConfigLibHandle <> dynlibs.NilHandle) and Assigned(FcFini) then
+  begin
+    FreeLibrary(FontConfigLibHandle);
+  end;
+{$ELSE}
   if FontConfigAvailable and (FontConfigLibHandle <> 0) and Assigned(FcFini) then
   begin
     FreeLibrary(FontConfigLibHandle);
   end;
+{$ENDIF}
 end.

@@ -26,6 +26,9 @@ interface
 
 uses
   SysUtils,
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
 {$IFDEF USEVARIANTS}
   Types,
 {$ENDIF}
@@ -33,7 +36,7 @@ uses
  System.Actions, System.ImageList,
 {$ELSE}
 {$ENDIF}
-  Classes, Graphics, Controls, Forms, Dialogs,LCLType,
+  Classes, Graphics, Controls, Forms, Dialogs,LCLType,LCLIntf,
   StdCtrls,rpmetafile, ComCtrls,rphtmldriver,rppreviewcontrol,
   rplcldriver, ExtCtrls,Menus,rptypes,rptextdriver,rpsvgdriver,
   rpcsvdriver,rpgraphutilslcl,rppreviewmetalcl,rpbasereport,rpreport,rppagesetuplcl,
@@ -465,14 +468,14 @@ begin
           areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
           TRpPreviewControl(previewcontrol).Report:=nil;
           previewcontrol.Parent:=nil;
-          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false);
+          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false,false);
           TRpPreviewControl(previewcontrol).Report:=areport;
           AppIdle(Self,adone);
         end
         else
         begin
           ALastExecute(Self);
-          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,SaveDialog1.FilterIndex=2);
+          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false);
         end;
       end;
      4,5:
@@ -916,7 +919,7 @@ begin
  if Length(afilename)<1 then
   afilename:=RpTempFileName;
 
- SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true);
+ SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true,false);
  try
   if Length(subject)<1 then
    subject:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));

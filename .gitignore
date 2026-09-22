@@ -266,4 +266,13 @@ tests/fpc/PdfTest/lib/
 packages/fpc/lib/
 *.pdf
 tests/fpc/PdfTest/PdfTest.exe
-
+snapshot_*.png
+tests/fpc/LclSnapshotTest/lib/
+tests/fpc/LclSnapshotTest/LclSnapshotTest
+tests/fpc/LclSnapshotTest/LclSnapshotTest.exe
+packages/fpc_lcl/lib/
+tests/fpc/LclTabPreviewApp/lib/
+tests/fpc/LclTabPreviewApp/LclTabPreviewApp
+tests/fpc/LclTabPreviewApp/LclTabPreviewApp.exe
+*.lps
+backup/

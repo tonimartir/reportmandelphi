@@ -29,10 +29,32 @@ uses
   rptranslator,
   Graphics, Forms,Buttons, ExtCtrls,
   Controls, StdCtrls,ImgList,ComCtrls,LCLType,
-  rpmdconsts,rpmunits;
+  rpmdconsts,rpmunits,Printers;
 
 
 type
+  TGDIPageSize=record
+   // -1 default, 0 user defined, 1 A4...
+   PageIndex:integer;
+   // Custom size in user defined type
+   // 1000 units = 1 Inch
+   Width:integer;
+   Height:integer;
+   papername:string;
+   papersource:integer;
+   duplex:integer;
+   ForcePaperName:String;
+   FormWidth,FormHeight:Integer;
+   landscape:boolean;
+  end;
+
+  TPrinterConfig=record
+    Changed:boolean;
+    Index:integer;
+    PageSize:TGDIPageSize;
+    Orientation:TPrinterOrientation;
+  end;
+
   TMessageButton = (smbOK, smbCancel, smbYes, smbNo, smbAbort, smbRetry, smbIgnore);
   TMessageButtons = set of TMessageButton;
   TMessageStyle = (smsInformation, smsWarning, smsCritical);
@@ -79,15 +101,74 @@ function CLXColorToVCLColor (CLXColor:integer):integer;
 procedure RpShowMessage(const Text: WideString);
 procedure ScaleToolBar(ntoolbar:TToolBar);
 function  ScaleDpi(value:integer):integer;
+procedure SetPrinterOrientation(landscape:boolean);
+function GetPrinterOrientation:TPrinterOrientation;
+function GetPageMarginsTWIPS:TRect;
+procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
 
 implementation
 
 {$R *.lfm}
 
+procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
+begin
+  Destination.CopyRect(Rec, Bitmap.Canvas, RecSrc);
+end;
+
+function GetPageMarginsTWIPS:TRect;
+var
+  dpix, dpiy: integer;
+  prect: TPaperRect;
+begin
+  if Printer.Printers.Count < 1 then
+  begin
+    Result.Left := 0;
+    Result.Top := 0;
+    Result.Right := 12047;
+    Result.Bottom := 16637;
+    Exit;
+  end;
+  try
+    dpix := Printer.XDPI;
+    dpiy := Printer.YDPI;
+    if dpix <= 0 then dpix := 600;
+    if dpiy <= 0 then dpiy := 600;
+    prect := Printer.PaperSize.PaperRect;
+    Result.Left := Round(prect.WorkRect.Left / dpix * TWIPS_PER_INCHESS);
+    Result.Top := Round(prect.WorkRect.Top / dpiy * TWIPS_PER_INCHESS);
+    Result.Right := Round(prect.WorkRect.Right / dpix * TWIPS_PER_INCHESS);
+    Result.Bottom := Round(prect.WorkRect.Bottom / dpiy * TWIPS_PER_INCHESS);
+  except
+    Result.Left := 0;
+    Result.Top := 0;
+    Result.Right := 12047;
+    Result.Bottom := 16637;
+  end;
+end;
+
+procedure SetPrinterOrientation(landscape:boolean);
+begin
+  if Printer.Printers.Count > 0 then
+  begin
+    if landscape then
+      Printer.Orientation := poLandscape
+    else
+      Printer.Orientation := poPortrait;
+  end;
+end;
+
+function GetPrinterOrientation:TPrinterOrientation;
+begin
+  Result := poPortrait;
+  if Printer.Printers.Count > 0 then
+    Result := Printer.Orientation;
+end;
+
 
 {$IFDEF MSWINDOWS}
 const
   kernel = 'kernel32.dll';
+  advapi32 = 'advapi32.dll';
   OldLocaleOverrideKey = 'Software\Borland\Delphi\Locales';
   NewLocaleOverrideKey = 'Software\Borland\Locales';
 

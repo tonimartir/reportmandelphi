@@ -475,8 +475,18 @@ const
     t_hb_blob_get_length = function (blob: Phb_blob_t): Cardinal; cdecl;
 
 var
+{$IFNDEF MSWINDOWS}
+{$IFDEF FPC}
+  HarfBuzzlib: TLibHandle = dynlibs.NilHandle;
+  HarfBuzzlibSubSet: TLibHandle = dynlibs.NilHandle;
+{$ELSE}
   HarfBuzzlib: THandle;
   HarfBuzzlibSubSet: THandle;
+{$ENDIF}
+{$ELSE}
+  HarfBuzzlib: THandle;
+  HarfBuzzlibSubSet: THandle;
+{$ENDIF}
   hb_buffer_set_direction: T_hb_buffer_set_direction = nil;
   hb_buffer_get_direction: T_hb_buffer_get_direction = nil;
   hb_buffer_set_script: T_hb_buffer_set_script = nil;
@@ -775,24 +785,51 @@ var
   end;
 
 begin
+{$IFNDEF MSWINDOWS}
+{$IFDEF FPC}
+  if (HarfBuzzlib <> dynlibs.NilHandle) then
+    exit;
+  HarfBuzzlib := dynlibs.NilHandle;
+
+  HarfBuzzlib := SysUtils.SafeLoadLibrary(HarfbuzzDLL);
+  if HarfBuzzlib = dynlibs.NilHandle then
+    raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzSubSetImplementation:=true;
+  HarfBuzzLibSubset := SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL);
+  if (HarfBuzzLibSubset = dynlibs.NilHandle) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end;
+{$ELSE}
   if (HarfBuzzlib <> 0) then
     exit;
   HarfBuzzlib := 0;
 
-  HarfBuzzlib :=
-  {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzDLL)
-    ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzDLL){$ENDIF};
-
+  HarfBuzzlib := SysUtils.SafeLoadLibrary(HarfbuzzDLL);
   if HarfBuzzlib = 0 then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
   HarfBuzzSubSetImplementation:=true;
-  HarfBuzzLibSubset :=
-  {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzSubsetDLL)
-    ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL){$ENDIF};
+  HarfBuzzLibSubset := SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL);
   if (HarfBuzzLibSubset = 0) then
   begin
    HarfBuzzSubSetImplementation:=false;
   end;
+{$ENDIF}
+{$ELSE}
+  if (HarfBuzzlib <> 0) then
+    exit;
+  HarfBuzzlib := 0;
+
+  HarfBuzzlib := LoadLibrary(PChar(HarfbuzzDLL));
+  if HarfBuzzlib = 0 then
+    raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzSubSetImplementation:=true;
+  HarfBuzzLibSubset := LoadLibrary(PChar(HarfbuzzSubsetDLL));
+  if (HarfBuzzLibSubset = 0) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end;
+{$ENDIF}
 
   ProcName:='hb_buffer_set_direction';
   hb_buffer_set_direction:= GetProcAddr(ProcName);
