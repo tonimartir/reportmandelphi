@@ -163,6 +163,7 @@ type
    orientationset:boolean;
    devicefonts:boolean;
    neverdevicefonts:boolean;
+   UsePdfFonts: boolean;
    bitmapwidth,bitmapheight:integer;
    PreviewStyle:TRpPreviewStyle;
    clientwidth,clientheight:integer;
@@ -192,15 +193,20 @@ type
    function SetPagesize(PagesizeQt:TPageSizeQt):TPoint;override;
    procedure TextExtent(atext:TRpTextObject;var extent:TPoint);override;
   function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
+    function UseExactPdfText: boolean;
     procedure ComputeGlyphPixPositions(const linfo: TRpLineInfo; Alignment: Integer;
       ARect: TRect; aintdpix: Integer; out allPixPos, allDx: TIntegerDynArray);
     procedure DrawGlyphRuns(Canvas: TCanvas; const linfo: TRpLineInfo;
       const allPixPos, allDx: TIntegerDynArray; nposy: Integer; aintdpiy: Integer;
       BaseFontStyle: Integer);
+    procedure TextRectJustifyGlyphs(Canvas: TCanvas; const ARect: TRect; Text: WideString;
+      const larray: TRpLineInfoArray; Alignment: integer; posy: integer;
+      aintdpix, aintdpiy: integer; RightToLeft: Boolean = False);
     procedure TextRectHtml(Canvas: TCanvas; ARect: TRect; Text: Widestring;
       Alignment: integer; Clipping: boolean; Wordbreak: boolean;
       Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
-      BackColor: TColor; IsHtml: Boolean = True; RightToLeft: Boolean = False);
+      BackColor: TColor; adpix: integer = 0; adpiy: integer = 0;
+      IsHtml: Boolean = True; RightToLeft: Boolean = False);
     procedure TextRectJustify(Canvas:TCanvas;ARect: TRect; Text: Widestring;
                         Alignment: integer; Clipping: boolean;Wordbreak:boolean;
                         Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor;
@@ -405,6 +411,7 @@ begin
  FPageHeight:=0;
  PageQt:=0;
  FOrientation:=rpOrientationPortrait;
+ UsePdfFonts:=false;
 end;
 
 destructor TRpGDIDriver.Destroy;
@@ -427,6 +434,14 @@ begin
  if assigned(npdfdriver) then
   npdfdriver.free;
  inherited Destroy;
+end;
+
+function TRpGDIDriver.UseExactPdfText: boolean;
+begin
+  Result := UsePdfFonts;
+  if (not Result) and Assigned(FReport) then
+    Result := (FReport.PrinterFonts = rppfontsrecalculate) or
+              (FReport.PDFConformance = TPDFConformanceType.PDF_A_3);
 end;
 
 function TRpGDIDriver.SupportsCopies(maxcopies:integer):boolean;
@@ -788,13 +803,18 @@ begin
  // Allways use pdf driver
 // if (atext.AlignMent AND AlignmentFlags_AlignHJustify)>0 then
 // if true then
- begin
-  if not assigned(npdfdriver) then
-    npdfdriver:=TRpPDFDriver.Create;
-  atext.Type1Font:=integer(poLinked);
-  npdfdriver.TextExtent(atext,extent);
-  exit;
- end;
+  begin
+   if not assigned(npdfdriver) then
+   begin
+     npdfdriver:=TRpPDFDriver.Create;
+     if assigned(FReport) then
+       npdfdriver.PDFConformance := FReport.PDFConformance;
+   end;
+   npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
+   atext.Type1Font:=integer(poLinked);
+   npdfdriver.TextExtent(atext,extent);
+   exit;
+  end;
 
 
  if atext.CutText then
@@ -878,7 +898,12 @@ end;
 function TRpGDIDriver.TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;
 begin
  if not assigned(npdfdriver) then
-  npdfdriver:=TRpPDFDriver.Create;
+ begin
+   npdfdriver:=TRpPDFDriver.Create;
+   if assigned(FReport) then
+     npdfdriver.PDFConformance := FReport.PDFConformance;
+ end;
+ npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
  atext.Type1Font:=integer(poLinked);
  Result:=npdfdriver.TextExtentLineInfo(atext,extent);
 end;
@@ -991,6 +1016,7 @@ begin
     Canvas.Font.Name:=page.GetWFontName(Obj);
     Canvas.Font.Color:=CLXColorToVCLColor(Obj.FontColor);
     Canvas.Font.Style:=CLXIntegerToFontStyle(obj.FontStyle);
+    Canvas.Font.Size:=Obj.FontSize;
     Canvas.Font.Height:=-Round(Obj.FontSize * dpiy / 72);
     try
     if obj.FontRotation<>0 then
@@ -1041,17 +1067,33 @@ begin
       Canvas.Brush.Color:=clHighlight;
       Canvas.Font.Color:=clHighlightText;
      end;
-     if (obj.IsHtml or obj.RightToLeft or (Assigned(FReport) and (FReport.PDFConformance = TPDFConformanceType.PDF_A_3))) then
+     if obj.IsHtml then
      begin
-      TextRectHtml(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-        obj.FontRotation, obj.FontStyle, drawbackground, CLXColorToVCLColor(obj.BackColor),
-        obj.IsHtml, obj.RightToLeft);
+       TextRectHtml(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
+         obj.FontRotation, obj.FontStyle, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         dpix, dpiy, true, obj.RightToLeft);
+     end
+     else if (UseExactPdfText and (obj.FontRotation = 0) and
+              ((obj.Alignment and AlignmentFlags_AlignHJustify) = 0)) then
+     begin
+       TextRectHtml(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
+         obj.FontRotation, obj.FontStyle, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         dpix, dpiy, false, obj.RightToLeft);
+     end
+     else if (((obj.Alignment and AlignmentFlags_AlignHJustify) > 0) or
+              (Assigned(FReport) and (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)) or
+              (obj.Type1Font >= Integer(poLinked))) and
+             ((not obj.RightToLeft) or UseExactPdfText) then
+     begin
+       TextRectJustify(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
+         obj.FontRotation, obj.RightToLeft, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         dpix, dpiy, false);
      end
      else
      begin
-      TextRectJustify(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-        obj.FontRotation, obj.RightToLeft, drawbackground, CLXColorToVCLColor(obj.BackColor),
-        dpix, dpiy, obj.IsHtml);
+       TextRectJustify(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
+         obj.FontRotation, obj.RightToLeft, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         dpix, dpiy, false);
      end;
 
     end;
@@ -1334,6 +1376,7 @@ var
   origFontName: string;
   origFontSize: Integer;
   origFontColor: TColor;
+  origFontStyle: TFontStyles;
   runFirstGlyph: Integer;
 {$IFDEF MSWINDOWS}
   baseTM, runTM: TTextMetric;
@@ -1361,6 +1404,7 @@ begin
   origFontName := Canvas.Font.Name;
   origFontSize := Canvas.Font.Size;
   origFontColor := Canvas.Font.Color;
+  origFontStyle := Canvas.Font.Style;
   if not linfo.Glyphs[0].HasFontSize then
     runFontSize := origFontSize;
 
@@ -1371,6 +1415,10 @@ begin
 {$IFDEF MSWINDOWS}
   Canvas.Font.Name := origFontName;
   Canvas.Font.Size := origFontSize;
+  Canvas.Font.Height := -Round(origFontSize * aintdpiy / 72);
+  SelectObject(Canvas.Handle, Canvas.Font.Handle);
+  SetTextColor(Canvas.Handle, ColorToRGB(Canvas.Font.Color));
+  SetBkMode(Canvas.Handle, TRANSPARENT);
   GetTextMetrics(Canvas.Handle, baseTM);
   baseAscent := baseTM.tmAscent;
 {$ENDIF}
@@ -1400,14 +1448,20 @@ begin
       if baseStrikeOut or ((runStyle and 8) > 0) then
         Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
       if runFontFamily <> '' then
-        Canvas.Font.Name := runFontFamily;
+        Canvas.Font.Name := runFontFamily
+      else
+        Canvas.Font.Name := origFontName;
       Canvas.Font.Size := Round(runFontSize);
+      Canvas.Font.Height := -Round(runFontSize * aintdpiy / 72);
       if runHasColor then
         Canvas.Font.Color := runColor
       else
         Canvas.Font.Color := origFontColor;
 
 {$IFDEF MSWINDOWS}
+      SelectObject(Canvas.Handle, Canvas.Font.Handle);
+      SetTextColor(Canvas.Handle, ColorToRGB(Canvas.Font.Color));
+      SetBkMode(Canvas.Handle, TRANSPARENT);
       GetTextMetrics(Canvas.Handle, runTM);
       baselineOffset := runTM.tmAscent - baseAscent;
       pixY := Round(nposy * aintdpiy / 1440) - baselineOffset;
@@ -1443,14 +1497,20 @@ begin
     if baseStrikeOut or ((runStyle and 8) > 0) then
       Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
     if runFontFamily <> '' then
-      Canvas.Font.Name := runFontFamily;
+      Canvas.Font.Name := runFontFamily
+    else
+      Canvas.Font.Name := origFontName;
     Canvas.Font.Size := Round(runFontSize);
+    Canvas.Font.Height := -Round(runFontSize * aintdpiy / 72);
     if runHasColor then
       Canvas.Font.Color := runColor
     else
       Canvas.Font.Color := origFontColor;
 
 {$IFDEF MSWINDOWS}
+    SelectObject(Canvas.Handle, Canvas.Font.Handle);
+    SetTextColor(Canvas.Handle, ColorToRGB(Canvas.Font.Color));
+    SetBkMode(Canvas.Handle, TRANSPARENT);
     GetTextMetrics(Canvas.Handle, runTM);
     baselineOffset := runTM.tmAscent - baseAscent;
     pixY := Round(nposy * aintdpiy / 1440) - baselineOffset;
@@ -1461,13 +1521,151 @@ begin
 
   Canvas.Font.Name := origFontName;
   Canvas.Font.Size := origFontSize;
+  Canvas.Font.Height := -Round(origFontSize * aintdpiy / 72);
   Canvas.Font.Color := origFontColor;
+  Canvas.Font.Style := origFontStyle;
+{$IFDEF MSWINDOWS}
+  SelectObject(Canvas.Handle, Canvas.Font.Handle);
+{$ENDIF}
+end;
+
+procedure TRpGDIDriver.TextRectJustifyGlyphs(Canvas: TCanvas; const ARect: TRect; Text: WideString;
+  const larray: TRpLineInfoArray; Alignment: integer; posy: integer;
+  aintdpix, aintdpiy: integer; RightToLeft: Boolean);
+var
+  i, index: integer;
+  posx, currpos, alinedif, alinesize: integer;
+  astring, aword: WideString;
+  lwords: TRpWideStrings;
+  lwidths: TStringList;
+  lwordinfos: array of TRpLineInfo;
+  winfos: TRpLineInfoArray;
+  arec, wordrect: TRect;
+  ascent, nposy: integer;
+  basestyle: integer;
+  allPixPos, allDx: TIntegerDynArray;
+  dojustify: boolean;
+begin
+  basestyle := 0;
+  if fsBold in Canvas.Font.Style then
+    basestyle := basestyle or 1;
+  if fsItalic in Canvas.Font.Style then
+    basestyle := basestyle or 2;
+  if fsUnderline in Canvas.Font.Style then
+    basestyle := basestyle or 4;
+  if fsStrikeOut in Canvas.Font.Style then
+    basestyle := basestyle or 8;
+  ascent := 0;
+  for i := 0 to Length(larray) - 1 do
+  begin
+    if (i = 0) then
+      ascent := larray[0].TopPos;
+    if Length(larray[i].Glyphs) = 0 then
+      continue;
+    astring := Copy(Text, larray[i].Position, larray[i].Size);
+    nposy := posy + larray[i].TopPos - ascent;
+    // Line start with horizontal alignment, same expressions as the PDF canvas
+    posx := ARect.Left;
+    if ((Alignment AND AlignmentFlags_AlignRight) > 0) then
+      posx := ARect.Right - larray[i].Width;
+    if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
+      posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
+    dojustify := ((Alignment AND AlignmentFlags_AlignHJustify) > 0) and
+      (not larray[i].LastLine) and (not RightToLeft);
+    if dojustify then
+    begin
+      // Word splitting, same criteria the PDF canvas uses (ASCII space)
+      lwords := TRpWideStrings.Create;
+      try
+        aword := '';
+        index := 1;
+        while index <= Length(astring) do
+        begin
+          if astring[index] <> ' ' then
+            aword := aword + astring[index]
+          else
+          begin
+            if Length(aword) > 0 then
+              lwords.Add(aword);
+            aword := '';
+          end;
+          Inc(index);
+        end;
+        if Length(aword) > 0 then
+          lwords.Add(aword);
+        // Measure every word with the shaper, keeping its glyphs
+        alinesize := 0;
+        lwidths := TStringList.Create;
+        try
+          SetLength(lwordinfos, lwords.Count);
+          for index := 0 to lwords.Count - 1 do
+          begin
+            arec := ARect;
+            winfos := npdfdriver.PDFFile.Canvas.TextExtent(lwords.Strings[index], arec,
+              false, true, RightToLeft);
+            if Length(winfos) > 0 then
+              lwordinfos[index] := winfos[0]
+            else
+              lwordinfos[index] := larray[i];
+            if RightToLeft then
+              lwidths.Add(IntToStr(-(arec.Right - arec.Left)))
+            else
+              lwidths.Add(IntToStr(arec.Right - arec.Left));
+            alinesize := alinesize + arec.Right - arec.Left;
+          end;
+          // Same integer space-distribution arithmetic as TRpPDFCanvas.TextRect
+          alinedif := ARect.Right - ARect.Left - alinesize;
+          if alinedif > 0 then
+          begin
+            if lwords.Count > 1 then
+              alinedif := alinedif div (lwords.Count - 1);
+            if RightToLeft then
+            begin
+              currpos := ARect.Right;
+              alinedif := -alinedif;
+            end
+            else
+              currpos := posx;
+            for index := 0 to lwords.Count - 1 do
+            begin
+              if Length(lwordinfos[index].Glyphs) > 0 then
+              begin
+                wordrect.Left := currpos;
+                wordrect.Top := 0;
+                wordrect.Right := currpos;
+                wordrect.Bottom := 0;
+                ComputeGlyphPixPositions(lwordinfos[index], 0, wordrect, aintdpix,
+                  allPixPos, allDx);
+                DrawGlyphRuns(Canvas, lwordinfos[index], allPixPos, allDx, nposy,
+                  aintdpiy, basestyle);
+              end;
+              currpos := currpos + StrToInt(lwidths.Strings[index]) + alinedif;
+            end;
+          end
+          else
+            dojustify := false;
+        finally
+          lwidths.Free;
+        end;
+      finally
+        lwords.Free;
+      end;
+    end;
+    if not dojustify then
+    begin
+      // Whole line at its aligned position (last paragraph line or lines where
+      // the space cannot be distributed)
+      ComputeGlyphPixPositions(larray[i], Alignment, ARect, aintdpix, allPixPos, allDx);
+      DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpiy, basestyle);
+    end;
+  end;
 end;
 
 procedure TRpGDIDriver.TextRectHtml(Canvas: TCanvas; ARect: TRect; Text: Widestring;
   Alignment: integer; Clipping: boolean; Wordbreak: boolean;
   Rotation: integer; BaseFontStyle: integer; drawbackground: boolean;
-  BackColor: TColor; IsHtml: Boolean = True; RightToLeft: Boolean = False);
+  BackColor: TColor; adpix: integer = 0; adpiy: integer = 0;
+  IsHtml: Boolean = True; RightToLeft: Boolean = False);
 var
   recsize: TRect;
   i: integer;
@@ -1514,7 +1712,12 @@ begin
     if singleline then
       Wordbreak := false;
 
-    if toprinter then
+    if adpix > 0 then
+    begin
+      aintdpix := adpix;
+      aintdpiy := adpiy;
+    end
+    else if toprinter then
     begin
       if intdpix = 0 then
       begin
@@ -1648,7 +1851,16 @@ var
  textstyle:TTextStyle;
  larray:TRpLineInfoArray;
  ascent:integer;
+{$IFDEF MSWINDOWS}
+ clipRgn: HRGN;
+ clipRect: TRect;
+ savedDC: Integer;
+{$ENDIF}
 begin
+{$IFDEF MSWINDOWS}
+ savedDC := 0;
+ clipRgn := 0;
+{$ENDIF}
  try
   textstyle := Canvas.TextStyle;
   textstyle.Opaque := drawbackground;
@@ -1687,6 +1899,18 @@ begin
    aintdpix:=dpi;
    aintdpiy:=dpi;
   end;
+{$IFDEF MSWINDOWS}
+  if Clipping then
+  begin
+    clipRect.Left   := Round(ARect.Left   * aintdpix / 1440);
+    clipRect.Right  := Round(ARect.Right  * aintdpix / 1440);
+    clipRect.Top    := Round(ARect.Top    * aintdpiy / 1440);
+    clipRect.Bottom := Round(ARect.Bottom * aintdpiy / 1440);
+    savedDC := SaveDC(Canvas.Handle);
+    clipRgn := CreateRectRgn(clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
+    SelectClipRgn(Canvas.Handle, clipRgn);
+  end;
+{$ENDIF}
   // Calculates text extent and apply alignment
   recsize:=ARect;
   if not assigned(npdfdriver) then
@@ -1706,6 +1930,10 @@ begin
   npdfdriver.PDFFile.Canvas.Font.Underline:=fsUnderline in Canvas.Font.Style;
   npdfdriver.PDFFile.Canvas.Font.StrikeOut:=fsStrikeOut in Canvas.Font.Style;
 
+  npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
+  if RightToLeft and UseExactPdfText and Assigned(npdfdriver.PDFFile.Canvas.InfoProvider) then
+    Text := npdfdriver.PDFFile.Canvas.InfoProvider.NFCNormalize(Text);
+
   larray:=npdfdriver.PDFFile.Canvas.TextExtent(Text,recsize,wordbreak,singleline,RightToLeft,IsHtml);
   // Align bottom or center
   PosY:=ARect.Top;
@@ -1717,6 +1945,15 @@ begin
   begin
    PosY:=ARect.Top+(((ARect.Bottom-ARect.Top)-recsize.Bottom) div 2);
   end;
+
+{$IFDEF MSWINDOWS}
+  if UseExactPdfText and (Rotation = 0) then
+  begin
+    TextRectJustifyGlyphs(Canvas, ARect, Text, larray, Alignment, posy,
+      aintdpix, aintdpiy, RightToLeft);
+    exit;
+  end;
+{$ENDIF}
 
   ascent := 0;
   for i:=0 to Length(larray)-1 do
@@ -1832,8 +2069,15 @@ begin
     Canvas.TextRect(arec2,arec2.Left,arec2.Top,astring,textstyle);
    end;
   end;
- finally
- end;
+  finally
+{$IFDEF MSWINDOWS}
+    if Clipping then
+    begin
+      RestoreDC(Canvas.Handle, savedDC);
+      DeleteObject(clipRgn);
+    end;
+{$ENDIF}
+  end;
 end;
 
 
