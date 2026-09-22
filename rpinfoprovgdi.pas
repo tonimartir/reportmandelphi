@@ -509,7 +509,7 @@ begin
     try
       PlainText := '';
       for Seg in Segments do
-        PlainText := PlainText + Seg.Text;
+        PlainText := PlainText + WideString(Seg.Text);
 
       // Build per-character font info map
       SetLength(charFontFamilies, Length(PlainText));
@@ -519,7 +519,7 @@ begin
       MapPos := 0;
       for Seg in Segments do
       begin
-        SegLen := Length(Seg.Text);
+        SegLen := Length(WideString(Seg.Text));
         StyleVal := 0;
         if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
         if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
@@ -529,8 +529,10 @@ begin
         begin
           if Seg.FontFamily <> '' then
             charFontFamilies[ci] := Seg.FontFamily
+          else if Assigned(adata) then
+            charFontFamilies[ci] := adata.FamilyName
           else
-            charFontFamilies[ci] := adata.FamilyName;
+            charFontFamilies[ci] := pdfFont.WFontName;
           if Seg.HasFontSize then
             charFontSizes[ci] := Seg.FontSize
           else
@@ -554,7 +556,7 @@ begin
       CurrentPos := 0;
       for Seg in Segments do
       begin
-        SegLen := Length(Seg.Text);
+        SegLen := Length(WideString(Seg.Text));
         Range.startPosition := CurrentPos;
         Range.length := SegLen;
 

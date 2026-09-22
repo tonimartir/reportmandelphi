@@ -53,6 +53,7 @@ begin
 
   report := TRpReport.Create(nil);
   try
+    try
     WriteLn('1. Loading report definition...');
     report.LoadFromFile(repPath);
 
@@ -124,6 +125,15 @@ begin
     else
       WriteLn('ERROR: File was not created: ', AOutPng);
 
+    except
+      on E: Exception do
+      begin
+        WriteLn('ERROR in TestSnapshot(', ARepFileName, '): [', E.ClassName, '] ', E.Message);
+        WriteLn(BackTraceStrFunc(ExceptAddr));
+        for i := 0 to ExceptFrameCount - 1 do
+          WriteLn(BackTraceStrFunc(ExceptFrames[i]));
+      end;
+    end;
   finally
     report.Free;
   end;

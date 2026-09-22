@@ -23,6 +23,9 @@ interface
 
 uses
   SysUtils,Classes,
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
 {$IFDEF USEVARIANTS}
   Types,Variants,
 {$ENDIF}
@@ -112,6 +115,10 @@ implementation
 
 procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
 begin
+{$IFDEF MSWINDOWS}
+  SetStretchBltMode(Destination.Handle, 4); // 4 = HALFTONE
+  SetBrushOrgEx(Destination.Handle, 0, 0, nil);
+{$ENDIF}
   Destination.CopyRect(Rec, Bitmap.Canvas, RecSrc);
 end;
 
