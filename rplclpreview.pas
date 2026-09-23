@@ -247,6 +247,9 @@ begin
   SaveDialog1.Filter:=SRpRepMetafile+'|*.rpmf|'+
    SRpPDFFile+'|*.pdf|'+
    SRpPDFFileUn+'|*.pdf|'+
+   SRpPDFFile+' A/3|*.pdf|'+
+   SRpPDFFileUn+' A/3|*.pdf|'+
+   'PNG Images (multiple files)|*.png|'+
    SRpExcelFile+'|*.xls|'+
    SRpExcelFileNoMulti+'|*.xls|'+
    SRpPlainFile+'|*.txt|'+
@@ -437,6 +440,8 @@ var
  oldpagesize:TRpPageSize;
  oldheight:integer;
  oldwidth:integer;
+ compressed: boolean;
+ pdfA3: boolean;
 begin
  areport:=nil;
  if not Assigned(PreviewControl) then
@@ -452,8 +457,10 @@ begin
       ALastExecute(Self);
       PreviewControl.Metafile.SaveToFile(SaveDialog1.Filename)
      end;
-     2,3:
+     2,3,4,5:
       begin
+        compressed:=(SaveDialog1.FilterIndex=2) or (SaveDialog1.FilterIndex=4);
+        pdfA3:=(SaveDialog1.FilterIndex=4) or (SaveDialog1.FilterIndex=5);
         recalcreport:=false;
         if (previewcontrol is TRpPreviewControl) then
         begin
@@ -468,17 +475,23 @@ begin
           areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
           TRpPreviewControl(previewcontrol).Report:=nil;
           previewcontrol.Parent:=nil;
-          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false,false);
+          rppdfdriver.PrintReportPDF(areport,Caption,true,true,1,99999,1,SaveDialog1.FileName,compressed,false,pdfA3);
           TRpPreviewControl(previewcontrol).Report:=areport;
           AppIdle(Self,adone);
         end
         else
         begin
           ALastExecute(Self);
-          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,SaveDialog1.FilterIndex=2,false);
+          SaveMetafileToPDF(PreviewControl.Metafile,SaveDialog1.FileName,compressed,pdfA3);
         end;
       end;
-     4,5:
+     6:
+      begin
+        ALastExecute(Self);
+        SaveMetafileToPNG(PreviewControl.Metafile,SaveDialog1.FileName);
+        AppIdle(Self,adone);
+      end;
+     7,8:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -535,7 +548,7 @@ begin
         AppIdle(Self,adone);
         end;
       end;
-     7:
+     10:
       begin
        horzres:=100;
        vertres:=100;
@@ -552,7 +565,7 @@ begin
         end;
        end;
       end;
-     8:
+     11:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -611,7 +624,7 @@ begin
 //        true,true,1,9999);
 //       AppIdle(Self,adone);
       end;
-     9:
+     12:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -667,34 +680,34 @@ begin
         TRpPreviewControl(previewcontrol).Report:=areport;
        AppIdle(Self,adone);
       end;
-     10:
+     13:
       begin
        ALastExecute(Self);
        ExportMetafileToSVG(PreviewControl.Metafile,Caption,SaveDialog1.FileName,
         true,true,1,9999);
        AppIdle(Self,adone);
       end;
-     11:
+     14:
       begin
        ALastExecute(Self);
        ExportMetafileToCSV(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999,',');
        AppIdle(Self,adone);
       end;
-     12:
+     15:
       begin
        ALastExecute(Self);
        ExportMetafileToTextPro(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999);
        AppIdle(Self,adone);
       end;
-     13:
+     16:
      begin
       ALastExecute(Self);
       PreviewControl.Metafile.SaveToFile(SaveDialog1.Filename,false);
      end;
 {$IFNDEF DOTNETD}
-     14:
+     17:
       begin
        ALastExecute(Self);
        //MetafileToExe(PreviewControl.metafile,SaveDialog1.Filename);

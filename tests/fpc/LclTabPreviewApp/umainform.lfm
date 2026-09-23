@@ -239,6 +239,15 @@ object MainForm: TMainForm
           ParentFont = False
           TabOrder = 9
         end
+        object btnExport: TButton
+          Left = 760
+          Height = 28
+          Top = 6
+          Width = 100
+          Caption = 'Exportar...'
+          OnClick = btnExportClick
+          TabOrder = 10
+        end
       end
       object pnlPreviewHost: TPanel
         Left = 0
@@ -250,5 +259,15 @@ object MainForm: TMainForm
         TabOrder = 1
       end
     end
+  end
+  object SaveDialog1: TSaveDialog
+    Title = 'Exportar informe'
+    Filter = 'Documento PDF (*.pdf)|*.pdf|Documento PDF/A-3 (*.pdf)|*.pdf|Imágenes PNG (múltiples archivos) (*.png)|*.png'
+    DefaultExt = 'pdf'
+    FilterIndex = 2
+    Options = [ofOverwritePrompt, ofPathMustExist, ofEnableSizing]
+    OnTypeChange = SaveDialog1TypeChange
+    Left = 400
+    Top = 200
   end
 end

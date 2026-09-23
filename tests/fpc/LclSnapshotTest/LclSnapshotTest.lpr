@@ -5,7 +5,7 @@ program LclSnapshotTest;
 uses
   Interfaces, // LCL widgetset initialization
   Classes, SysUtils, Graphics, Forms,
-  rpreport, rpmetafile, rplcldriver, rppreviewcontrol, rppreviewmetalcl, rplclpreview;
+  rpreport, rpmetafile, rplcldriver, rppreviewcontrol, rppreviewmetalcl, rplclpreview, rppdfdriver;
 
 function FindReportFile(const AFileName: string): string;
 var
@@ -164,6 +164,154 @@ begin
   end;
 end;
 
+function TestMetafileExportPDFAndPNG: Boolean;
+var
+  repPath: string;
+  report: TRpReport;
+  driver: TRpGDIDriver;
+  pdfFile, pngFile: string;
+  count: Integer;
+  fs: TFileStream;
+  buf: array[0..3] of Byte;
+  sr: TSearchRec;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Testing Metafile Export to PDF A/3 and PNG');
+  WriteLn('--------------------------------------------------');
+  repPath := FindReportFile('boldold.rep');
+  if not FileExists(repPath) then
+  begin
+    WriteLn('ERROR: Report file not found: ', repPath);
+    Exit;
+  end;
+
+  report := TRpReport.Create(nil);
+  try
+    report.LoadFromFile(repPath);
+    driver := TRpGDIDriver.Create;
+    try
+      report.BeginPrint(driver);
+      report.Metafile.RequestPage(1);
+
+      pdfFile := 'test_export_boldold_a3.pdf';
+      if FileExists(pdfFile) then DeleteFile(pdfFile);
+
+      WriteLn('1. Exporting metafile to PDF A/3 via SaveMetafileToPDF...');
+      SaveMetafileToPDF(report.Metafile, pdfFile, True, True);
+      if not FileExists(pdfFile) then
+      begin
+        WriteLn('ERROR: PDF A/3 file was not generated: ', pdfFile);
+        Exit;
+      end;
+
+      if FindFirst(pdfFile, faAnyFile, sr) = 0 then
+      begin
+        WriteLn('   PDF A/3 generated: ', pdfFile, ' (size: ', sr.Size, ' bytes)');
+        FindClose(sr);
+      end;
+
+      pngFile := 'test_export_boldold.png';
+      if FileExists(pngFile) then DeleteFile(pngFile);
+
+      WriteLn('2. Exporting metafile to PNG via SaveMetafileToPNG...');
+      count := SaveMetafileToPNG(report.Metafile, pngFile);
+      WriteLn('   Exported pages count: ', count);
+      if count < 1 then
+      begin
+        WriteLn('ERROR: SaveMetafileToPNG returned 0 pages.');
+        Exit;
+      end;
+
+      if not FileExists(pngFile) then
+      begin
+        WriteLn('ERROR: PNG file not found: ', pngFile);
+        Exit;
+      end;
+
+      // Verify PNG magic header ($89, 'P', 'N', 'G')
+      FillChar(buf, SizeOf(buf), 0);
+      fs := TFileStream.Create(pngFile, fmOpenRead);
+      try
+        fs.ReadBuffer(buf, 4);
+        if (buf[0] <> $89) or (buf[1] <> Ord('P')) or (buf[2] <> Ord('N')) or (buf[3] <> Ord('G')) then
+        begin
+          WriteLn('ERROR: Generated file does not have valid PNG header.');
+          Exit;
+        end;
+      finally
+        fs.Free;
+      end;
+
+      if FindFirst(pngFile, faAnyFile, sr) = 0 then
+      begin
+        WriteLn('   PNG verified successfully (size: ', sr.Size, ' bytes)');
+        FindClose(sr);
+      end;
+
+      report.EndPrint;
+    finally
+      driver.Free;
+    end;
+  finally
+    report.Free;
+  end;
+
+  // Test multi-page export with sample4.rep
+  repPath := FindReportFile('sample4.rep');
+  if FileExists(repPath) then
+  begin
+    WriteLn('3. Testing multi-page export with sample4.rep...');
+    report := TRpReport.Create(nil);
+    try
+      report.LoadFromFile(repPath);
+      driver := TRpGDIDriver.Create;
+      try
+        report.BeginPrint(driver);
+        report.Metafile.RequestPage(100);
+        WriteLn('   sample4 total pages = ', report.Metafile.CurrentPageCount);
+
+        pdfFile := 'test_export_sample4_a3.pdf';
+        if FileExists(pdfFile) then DeleteFile(pdfFile);
+        SaveMetafileToPDF(report.Metafile, pdfFile, True, True);
+        if not FileExists(pdfFile) then
+        begin
+          WriteLn('ERROR: sample4 PDF A/3 was not generated.');
+          Exit;
+        end;
+        WriteLn('   sample4 PDF A/3 created successfully.');
+
+        pngFile := 'test_export_sample4.png';
+        count := SaveMetafileToPNG(report.Metafile, pngFile);
+        WriteLn('   sample4 PNG exported pages = ', count);
+        if count <> report.Metafile.CurrentPageCount then
+        begin
+          WriteLn('ERROR: Exported page count mismatch: expected ', report.Metafile.CurrentPageCount, ', got ', count);
+          Exit;
+        end;
+
+        if count > 1 then
+        begin
+          if not FileExists('test_export_sample4_1.png') then
+          begin
+            WriteLn('ERROR: test_export_sample4_1.png was not found.');
+            Exit;
+          end;
+          WriteLn('   Multi-page naming pattern verified: test_export_sample4_1.png exists.');
+        end;
+
+        report.EndPrint;
+      finally
+        driver.Free;
+      end;
+    finally
+      report.Free;
+    end;
+  end;
+
+  Result := True;
+end;
+
 var
   passed, total: Integer;
 begin
@@ -218,6 +366,10 @@ begin
 
   Inc(total);
   if TestPreviewFormInstantiation then
+    Inc(passed);
+
+  Inc(total);
+  if TestMetafileExportPDFAndPNG then
     Inc(passed);
 
   WriteLn('==================================================');

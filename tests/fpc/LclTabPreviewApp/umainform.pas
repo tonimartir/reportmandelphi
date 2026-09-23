@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ComCtrls, StdCtrls,
-  ExtCtrls, rpreport, rpmetafile, rppreviewcontrol, rppreviewmetalcl;
+  ExtCtrls, rpreport, rpmetafile, rppreviewcontrol, rppreviewmetalcl,
+  rppdfdriver, rplcldriver;
 
 type
 
@@ -35,6 +36,8 @@ type
     btnRealSize: TButton;
     btnZoomIn: TButton;
     btnZoomOut: TButton;
+    btnExport: TButton;
+    SaveDialog1: TSaveDialog;
     pnlPreviewHost: TPanel;
 
     procedure FormCreate(Sender: TObject);
@@ -50,6 +53,8 @@ type
     procedure btnRealSizeClick(Sender: TObject);
     procedure btnZoomInClick(Sender: TObject);
     procedure btnZoomOutClick(Sender: TObject);
+    procedure btnExportClick(Sender: TObject);
+    procedure SaveDialog1TypeChange(Sender: TObject);
   private
     FReport: TRpReport;
     FPreview: TRpPreviewControl;
@@ -128,6 +133,7 @@ begin
     btnPrior.Enabled := (curPage > 1);
     btnNext.Enabled := (curPage < totalPages);
     btnLast.Enabled := (curPage < totalPages);
+    btnExport.Enabled := (FPreview.Metafile.CurrentPageCount > 0);
   end
   else
   begin
@@ -136,6 +142,7 @@ begin
     btnPrior.Enabled := False;
     btnNext.Enabled := False;
     btnLast.Enabled := False;
+    btnExport.Enabled := False;
   end;
 end;
 
@@ -252,6 +259,56 @@ procedure TMainForm.btnZoomOutClick(Sender: TObject);
 begin
   if Assigned(FPreview) then
     FPreview.PreviewScale := FPreview.PreviewScale * 0.8;
+end;
+
+procedure TMainForm.SaveDialog1TypeChange(Sender: TObject);
+begin
+  if SaveDialog1.FilterIndex = 3 then
+    SaveDialog1.DefaultExt := 'png'
+  else
+    SaveDialog1.DefaultExt := 'pdf';
+end;
+
+procedure TMainForm.btnExportClick(Sender: TObject);
+var
+  exportedCount: Integer;
+  targetFile: string;
+begin
+  if (not Assigned(FPreview)) or (not Assigned(FPreview.Metafile)) or (FPreview.Metafile.CurrentPageCount < 1) then
+  begin
+    ShowMessage('No hay ningún informe cargado para exportar.');
+    Exit;
+  end;
+
+  SaveDialog1.FileName := ChangeFileExt(ExtractFileName(cbReports.Text), '');
+  if not SaveDialog1.Execute then
+    Exit;
+
+  Screen.Cursor := crHourGlass;
+  try
+    case SaveDialog1.FilterIndex of
+      1: // PDF Estándar
+      begin
+        targetFile := ChangeFileExt(SaveDialog1.FileName, '.pdf');
+        SaveMetafileToPDF(FPreview.Metafile, targetFile, True, False);
+        ShowMessage('Informe exportado con éxito a PDF:' + sLineBreak + targetFile);
+      end;
+      2: // PDF A/3
+      begin
+        targetFile := ChangeFileExt(SaveDialog1.FileName, '.pdf');
+        SaveMetafileToPDF(FPreview.Metafile, targetFile, True, True);
+        ShowMessage('Informe exportado con éxito a PDF A/3:' + sLineBreak + targetFile);
+      end;
+      3: // PNG (múltiples archivos)
+      begin
+        targetFile := ChangeFileExt(SaveDialog1.FileName, '.png');
+        exportedCount := SaveMetafileToPNG(FPreview.Metafile, targetFile);
+        ShowMessage(Format('Informe exportado con éxito en %d archivo(s) PNG:' + sLineBreak + '%s', [exportedCount, targetFile]));
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
 end;
 
 end.

@@ -230,6 +230,8 @@ function MetafileToBitmap(metafile:TRpMetafileReport;ShowProgress:Boolean;
  Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
 function DoMetafileToBitmap(metafile:TRpMetafileReport;aform:TFRpVCLProgress;
  Mono:Boolean;resx:integer=200;resy:integer=100):TBitmap;
+function SaveMetafileToPNG(metafile:TRpMetafileReport; const baseFilename:string;
+ dpi:integer=0; alwaysNumberPages:boolean=false):integer;
 function AskBitmapProps(var HorzRes,VertRes:Integer;var Mono:Boolean):Boolean;
 
 {$IFNDEF FORWEBAX}
@@ -3765,6 +3767,60 @@ begin
   posx,posy,achart);
 {$ENDIF}
 {$ENDIF}
+end;
+
+function SaveMetafileToPNG(metafile: TRpMetafileReport; const baseFilename: string;
+  dpi: integer = 0; alwaysNumberPages: boolean = false): integer;
+var
+  driver: TRpGDIDriver;
+  png: TPortableNetworkGraphic;
+  i, totalPages: integer;
+  dir, nameNoExt, ext, pageFilename: string;
+begin
+  Result := 0;
+  if not Assigned(metafile) then
+    Exit;
+  metafile.RequestPage(MAX_PAGECOUNT);
+  totalPages := metafile.CurrentPageCount;
+  if totalPages < 1 then
+    Exit;
+
+  dir := ExtractFilePath(baseFilename);
+  ext := ExtractFileExt(baseFilename);
+  if SameText(ext, '.png') then
+    nameNoExt := ChangeFileExt(ExtractFileName(baseFilename), '')
+  else
+    nameNoExt := ExtractFileName(baseFilename);
+
+  driver := TRpGDIDriver.Create;
+  try
+    if dpi > 0 then
+      driver.dpi := dpi;
+    driver.scale := 1.0;
+    driver.NewDocument(metafile, 1, false);
+    for i := 0 to totalPages - 1 do
+    begin
+      if (totalPages > 1) or alwaysNumberPages then
+        pageFilename := dir + nameNoExt + '_' + IntToStr(i + 1) + '.png'
+      else
+        pageFilename := dir + nameNoExt + '.png';
+
+      driver.DrawPage(metafile.Pages[i]);
+      if Assigned(driver.bitmap) then
+      begin
+        png := TPortableNetworkGraphic.Create;
+        try
+          png.Assign(driver.bitmap);
+          png.SaveToFile(pageFilename);
+          Inc(Result);
+        finally
+          png.Free;
+        end;
+      end;
+    end;
+  finally
+    driver.Free;
+  end;
 end;
 
 function AskBitmapProps(var HorzRes,VertRes:Integer;var Mono:Boolean):Boolean;
