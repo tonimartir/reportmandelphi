@@ -281,5 +281,6 @@ tests/fpc/LclMonacoTest/*.log
 tests/fpc/LclDesignerTest/lib/
 tests/fpc/LclDesignerTest/LclDesignerTest
 tests/fpc/LclDesignerTest/LclDesignerTest.exe
+tests/fpc/LclDesignerTest/*.log
 *.lps
 backup/

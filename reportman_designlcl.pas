@@ -8,10 +8,10 @@ unit reportman_designlcl;
 interface
 
 uses
-  rpwebview2, rplclwebview, rpfrmmonacoeditorlcl, rprulerlcl, 
-  rpmdobinsintlcl, rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, 
-  rpmdfchartintlcl, rpmdfsectionintlcl, rpmdfdesignlcl, rpmdesignerlcl, 
-  rpmregdesignlcl, LazarusPackageIntf;
+  rpwebview2, rplclwebview, rpfrmmonacoeditorlcl, rprulerlcl, rpmdobinsintlcl, 
+  rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, rpmdfchartintlcl, 
+  rpmdfsectionintlcl, rpmdfdesignlcl, rpmdesignerlcl, rpmregdesignlcl, 
+  rpmdimageslcl, LazarusPackageIntf;
 
 implementation
 

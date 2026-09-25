@@ -9,38 +9,53 @@ uses
   ExtCtrls, StdCtrls, ComCtrls, Buttons, LCLType,
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
-  rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes;
+  rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
+  rpmdimageslcl;
 
 type
   TMainForm = class(TForm)
+    MainToolBar: TToolBar;
+    ImageList1: TImageList;
+    BtnNew: TToolButton;
+    BtnOpen: TToolButton;
+    BtnSave: TToolButton;
+    Sep1: TToolButton;
+    BtnPrint: TToolButton;
+    BtnPreview: TToolButton;
+    Sep2: TToolButton;
+    BtnUndo: TToolButton;
+    BtnRedo: TToolButton;
+    Sep3: TToolButton;
+    BtnToolArrow: TToolButton;
+    BtnToolLabel: TToolButton;
+    BtnToolExpr: TToolButton;
+    BtnToolShape: TToolButton;
+    BtnToolImage: TToolButton;
+    BtnToolChart: TToolButton;
+    BtnToolBarcode: TToolButton;
+    Sep4: TToolButton;
+    ComboScale: TComboBox;
+    Sep5: TToolButton;
+    BtnDelete: TToolButton;
+    BtnCut: TToolButton;
+    BtnCopy: TToolButton;
+    BtnPaste: TToolButton;
+    Sep6: TToolButton;
+    BtnToFront: TToolButton;
+    BtnToBack: TToolButton;
+    BtnSelectAll: TToolButton;
     PTop: TPanel;
-    PToolbar: TPanel;
-    BtnToolArrow: TSpeedButton;
-    BtnToolLabel: TSpeedButton;
-    BtnToolExpr: TSpeedButton;
-    BtnToolShape: TSpeedButton;
-    BtnToolImage: TSpeedButton;
-    BtnToolBarcode: TSpeedButton;
-    BtnToolChart: TSpeedButton;
-    BtnDelete: TButton;
-    BtnToFront: TButton;
-    BtnToBack: TButton;
-    BtnSelectAll: TButton;
-    PClient: TPanel;
-    StatusBar: TStatusBar;
-    BtnOpen: TButton;
     BtnSample4: TButton;
     BtnBold: TButton;
     BtnHtml: TButton;
     LblSubrep: TLabel;
     CbSubreport: TComboBox;
-    LblZoom: TLabel;
-    BtnZoom50: TButton;
-    BtnZoom75: TButton;
-    BtnZoom100: TButton;
-    BtnZoom150: TButton;
     ChkGrid: TCheckBox;
     CbUnits: TComboBox;
+    BtnZoom50: TButton;
+    BtnZoom100: TButton;
+    PClient: TPanel;
+    StatusBar: TStatusBar;
     OpenDialog: TOpenDialog;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -59,6 +74,16 @@ type
     procedure BtnToBackClick(Sender: TObject);
     procedure BtnSelectAllClick(Sender: TObject);
     procedure DesignerToolChange(Sender: TObject);
+    procedure BtnNewClick(Sender: TObject);
+    procedure BtnSaveClick(Sender: TObject);
+    procedure BtnPrintClick(Sender: TObject);
+    procedure BtnPreviewClick(Sender: TObject);
+    procedure BtnUndoClick(Sender: TObject);
+    procedure BtnRedoClick(Sender: TObject);
+    procedure BtnCutClick(Sender: TObject);
+    procedure BtnCopyClick(Sender: TObject);
+    procedure BtnPasteClick(Sender: TObject);
+    procedure ComboScaleChange(Sender: TObject);
   private
     FReport: TRpReport;
     FDesignerFrame: TFRpDesignFrameLCL;
@@ -153,6 +178,11 @@ begin
   LogMsg('FormCreate: linking ObjInsp');
   FDesignerFrame.ObjInsp := FObjInsp;
   FDesignerFrame.OnToolChange := DesignerToolChange;
+
+  LogMsg('FormCreate: loading icons into ImageList1');
+  LoadDesignerImageList(ImageList1);
+  MainToolBar.Images := ImageList1;
+
   Application.OnException := AppException;
   LogMsg('TMainForm.FormCreate completed');
 end;
@@ -281,6 +311,7 @@ begin
     StatusBar.Panels[1].Text := subName;
     StatusBar.Panels[2].Text := 'Zoom: ' + IntToStr(Round(FDesignerFrame.Scale * 100)) + '%';
     StatusBar.Panels[3].Text := 'Listo';
+    ComboScale.Text := IntToStr(Round(FDesignerFrame.Scale * 100)) + '%';
   end
   else
   begin
@@ -288,6 +319,7 @@ begin
     StatusBar.Panels[1].Text := '-';
     StatusBar.Panels[2].Text := 'Zoom: 100%';
     StatusBar.Panels[3].Text := 'Listo';
+    ComboScale.Text := '100%';
   end;
 end;
 
@@ -430,6 +462,76 @@ end;
 procedure TMainForm.BtnSelectAllClick(Sender: TObject);
 begin
   FDesignerFrame.SelectAll;
+end;
+
+procedure TMainForm.BtnNewClick(Sender: TObject);
+begin
+  FDesignerFrame.Report := nil;
+  FreeAndNil(FReport);
+  FReport := TRpReport.Create(Self);
+  FReport.SubReports.Add;
+  FCurrentFileName := 'Nuevo Reporte.rep';
+  FDesignerFrame.Report := FReport;
+  RefreshSubreportList;
+  UpdateStatus;
+end;
+
+procedure TMainForm.BtnSaveClick(Sender: TObject);
+begin
+  if Assigned(FReport) and (Length(FCurrentFileName) > 0) then
+    ShowMessage('Guardar: ' + FCurrentFileName)
+  else
+    ShowMessage('No hay reporte cargado para guardar');
+end;
+
+procedure TMainForm.BtnPrintClick(Sender: TObject);
+begin
+  ShowMessage('Imprimir: función disponible en previsualizador');
+end;
+
+procedure TMainForm.BtnPreviewClick(Sender: TObject);
+begin
+  ShowMessage('Vista previa: función de previsualización');
+end;
+
+procedure TMainForm.BtnUndoClick(Sender: TObject);
+begin
+  LogMsg('Undo clicked');
+end;
+
+procedure TMainForm.BtnRedoClick(Sender: TObject);
+begin
+  LogMsg('Redo clicked');
+end;
+
+procedure TMainForm.BtnCutClick(Sender: TObject);
+begin
+  LogMsg('Cut clicked');
+end;
+
+procedure TMainForm.BtnCopyClick(Sender: TObject);
+begin
+  LogMsg('Copy clicked');
+end;
+
+procedure TMainForm.BtnPasteClick(Sender: TObject);
+begin
+  LogMsg('Paste clicked');
+end;
+
+procedure TMainForm.ComboScaleChange(Sender: TObject);
+var
+  s: string;
+  val: Integer;
+begin
+  s := ComboScale.Text;
+  s := StringReplace(s, '%', '', [rfReplaceAll]);
+  val := StrToIntDef(Trim(s), 100);
+  if val > 0 then
+  begin
+    FDesignerFrame.Scale := val / 100.0;
+    UpdateStatus;
+  end;
 end;
 
 procedure TMainForm.RunSelfTest(Data: PtrInt);
@@ -885,6 +987,27 @@ begin
     if secInt.childlist.Count <> initialChildCount then
     begin
       LogMsg('[TEST_FAILED] Clean up after interactive placement failed');
+      Halt(1);
+    end;
+
+    // 5.7 Test toolbar ImageList and ComboScale zoom
+    if ImageList1.Count < 36 then
+    begin
+      LogMsg(Format('[TEST_FAILED] ImageList1 should contain 36 icons, got %d', [ImageList1.Count]));
+      Halt(1);
+    end;
+    ComboScale.Text := '150%';
+    ComboScale.OnChange(ComboScale);
+    if Abs(FDesignerFrame.Scale - 1.5) > 0.001 then
+    begin
+      LogMsg(Format('[TEST_FAILED] ComboScale zoom failed: expected 1.5, got %f', [FDesignerFrame.Scale]));
+      Halt(1);
+    end;
+    ComboScale.Text := '100%';
+    ComboScale.OnChange(ComboScale);
+    if Abs(FDesignerFrame.Scale - 1.0) > 0.001 then
+    begin
+      LogMsg(Format('[TEST_FAILED] ComboScale reset zoom failed: expected 1.0, got %f', [FDesignerFrame.Scale]));
       Halt(1);
     end;
 

@@ -14,133 +14,313 @@ object MainForm: TMainForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  object PTop: TPanel
+  object MainToolBar: TToolBar
     Left = 0
-    Height = 44
+    Height = 32
     Top = 0
     Width = 960
     Align = alTop
-    BevelOuter = bvNone
-    ClientHeight = 44
-    ClientWidth = 960
-    ParentBackground = False
+    ButtonHeight = 26
+    ButtonWidth = 26
+    Caption = 'MainToolBar'
+    EdgeBorders = [ebBottom]
+    Flat = True
+    Images = ImageList1
+    ShowHint = True
     TabOrder = 0
-    object BtnOpen: TButton
-      Left = 8
-      Height = 28
-      Top = 8
-      Width = 80
-      Caption = 'Abrir...'
-      TabOrder = 0
+    object BtnNew: TToolButton
+      Left = 1
+      Top = 0
+      Hint = 'Nuevo reporte'
+      ImageIndex = 0
+      OnClick = BtnNewClick
+    end
+    object BtnOpen: TToolButton
+      Left = 27
+      Top = 0
+      Hint = 'Abrir reporte...'
+      ImageIndex = 1
       OnClick = BtnOpenClick
     end
+    object BtnSave: TToolButton
+      Left = 53
+      Top = 0
+      Hint = 'Guardar reporte'
+      ImageIndex = 3
+      OnClick = BtnSaveClick
+    end
+    object Sep1: TToolButton
+      Left = 79
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnPrint: TToolButton
+      Left = 87
+      Top = 0
+      Hint = 'Imprimir...'
+      ImageIndex = 6
+      OnClick = BtnPrintClick
+    end
+    object BtnPreview: TToolButton
+      Left = 113
+      Top = 0
+      Hint = 'Vista previa'
+      ImageIndex = 7
+      OnClick = BtnPreviewClick
+    end
+    object Sep2: TToolButton
+      Left = 139
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnUndo: TToolButton
+      Left = 147
+      Top = 0
+      Hint = 'Deshacer'
+      ImageIndex = 34
+      OnClick = BtnUndoClick
+    end
+    object BtnRedo: TToolButton
+      Left = 173
+      Top = 0
+      Hint = 'Rehacer'
+      ImageIndex = 33
+      OnClick = BtnRedoClick
+    end
+    object Sep3: TToolButton
+      Left = 199
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnToolArrow: TToolButton
+      Left = 207
+      Top = 0
+      Down = True
+      Grouped = True
+      Hint = 'Puntero / Seleccionar objetos (Esc)'
+      ImageIndex = 8
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolLabel: TToolButton
+      Left = 233
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar texto (Label)'
+      ImageIndex = 9
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolExpr: TToolButton
+      Left = 259
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar expresión'
+      ImageIndex = 10
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolShape: TToolButton
+      Left = 285
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar figura'
+      ImageIndex = 11
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolImage: TToolButton
+      Left = 311
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar imagen'
+      ImageIndex = 12
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolChart: TToolButton
+      Left = 337
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar gráfico'
+      ImageIndex = 13
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object BtnToolBarcode: TToolButton
+      Left = 363
+      Top = 0
+      Grouped = True
+      Hint = 'Insertar código de barras'
+      ImageIndex = 31
+      Style = tbsCheck
+      OnClick = BtnToolClick
+    end
+    object Sep4: TToolButton
+      Left = 389
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object ComboScale: TComboBox
+      Left = 397
+      Top = 2
+      Width = 72
+      Height = 23
+      DropDownCount = 10
+      ItemHeight = 15
+      ItemIndex = 2
+      Items.Strings = (
+        '50%'
+        '75%'
+        '100%'
+        '125%'
+        '150%'
+        '200%'
+        '300%'
+        '400%'
+      )
+      Style = csDropDownList
+      TabOrder = 0
+      Text = '100%'
+      OnChange = ComboScaleChange
+    end
+    object Sep5: TToolButton
+      Left = 469
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnDelete: TToolButton
+      Left = 477
+      Top = 0
+      Hint = 'Eliminar selección (Supr)'
+      ImageIndex = 15
+      OnClick = BtnDeleteClick
+    end
+    object BtnCut: TToolButton
+      Left = 503
+      Top = 0
+      Hint = 'Cortar'
+      ImageIndex = 16
+      OnClick = BtnCutClick
+    end
+    object BtnCopy: TToolButton
+      Left = 529
+      Top = 0
+      Hint = 'Copiar'
+      ImageIndex = 17
+      OnClick = BtnCopyClick
+    end
+    object BtnPaste: TToolButton
+      Left = 555
+      Top = 0
+      Hint = 'Pegar'
+      ImageIndex = 18
+      OnClick = BtnPasteClick
+    end
+    object Sep6: TToolButton
+      Left = 581
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnToFront: TToolButton
+      Left = 589
+      Top = 0
+      Hint = 'Traer al frente'
+      ImageIndex = 27
+      OnClick = BtnToFrontClick
+    end
+    object BtnToBack: TToolButton
+      Left = 615
+      Top = 0
+      Hint = 'Enviar al fondo'
+      ImageIndex = 28
+      OnClick = BtnToBackClick
+    end
+    object BtnSelectAll: TToolButton
+      Left = 641
+      Top = 0
+      Hint = 'Seleccionar todo'
+      ImageIndex = 25
+      OnClick = BtnSelectAllClick
+    end
+  end
+  object PTop: TPanel
+    Left = 0
+    Height = 32
+    Top = 32
+    Width = 960
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 32
+    ClientWidth = 960
+    ParentBackground = False
+    TabOrder = 1
     object BtnSample4: TButton
-      Left = 94
-      Height = 28
-      Top = 8
-      Width = 90
+      Left = 8
+      Height = 24
+      Top = 4
+      Width = 85
       Caption = 'sample4.rep'
-      TabOrder = 1
+      TabOrder = 0
       OnClick = BtnSample4Click
     end
     object BtnBold: TButton
-      Left = 190
-      Height = 28
-      Top = 8
-      Width = 80
+      Left = 98
+      Height = 24
+      Top = 4
+      Width = 75
       Caption = 'bold.rep'
-      TabOrder = 2
+      TabOrder = 1
       OnClick = BtnBoldClick
     end
     object BtnHtml: TButton
-      Left = 276
-      Height = 28
-      Top = 8
-      Width = 84
+      Left = 178
+      Height = 24
+      Top = 4
+      Width = 80
       Caption = 'htmltest.rep'
-      TabOrder = 3
+      TabOrder = 2
       OnClick = BtnHtmlClick
     end
     object LblSubrep: TLabel
-      Left = 370
+      Left = 268
       Height = 15
-      Top = 14
+      Top = 8
       Width = 60
       Caption = 'Subreport:'
     end
     object CbSubreport: TComboBox
-      Left = 434
+      Left = 332
       Height = 23
-      Top = 10
-      Width = 120
+      Top = 4
+      Width = 130
       ItemHeight = 15
       Style = csDropDownList
-      TabOrder = 4
+      TabOrder = 3
       OnChange = CbSubreportChange
     end
-    object LblZoom: TLabel
-      Left = 566
-      Height = 15
-      Top = 14
-      Width = 35
-      Caption = 'Zoom:'
-    end
-    object BtnZoom50: TButton
-      Tag = 50
-      Left = 606
-      Height = 28
-      Top = 8
-      Width = 44
-      Caption = '50%'
-      TabOrder = 5
-      OnClick = BtnZoomClick
-    end
-    object BtnZoom75: TButton
-      Tag = 75
-      Left = 654
-      Height = 28
-      Top = 8
-      Width = 44
-      Caption = '75%'
-      TabOrder = 6
-      OnClick = BtnZoomClick
-    end
-    object BtnZoom100: TButton
-      Tag = 100
-      Left = 702
-      Height = 28
-      Top = 8
-      Width = 48
-      Caption = '100%'
-      TabOrder = 7
-      OnClick = BtnZoomClick
-    end
-    object BtnZoom150: TButton
-      Tag = 150
-      Left = 754
-      Height = 28
-      Top = 8
-      Width = 48
-      Caption = '150%'
-      TabOrder = 8
-      OnClick = BtnZoomClick
-    end
     object ChkGrid: TCheckBox
-      Left = 812
+      Left = 475
       Height = 19
-      Top = 13
+      Top = 6
       Width = 48
       Caption = 'Grid'
       Checked = True
       State = cbChecked
-      TabOrder = 9
+      TabOrder = 4
       OnChange = ChkGridChange
     end
     object CbUnits: TComboBox
-      Left = 870
+      Left = 535
       Height = 23
-      Top = 10
-      Width = 76
+      Top = 4
+      Width = 70
       ItemHeight = 15
       ItemIndex = 0
       Items.Strings = (
@@ -148,132 +328,48 @@ object MainForm: TMainForm
         'inch'
       )
       Style = csDropDownList
-      TabOrder = 10
+      TabOrder = 5
       Text = 'cm'
       OnChange = CbUnitsChange
     end
-  end
-  object PToolbar: TPanel
-    Left = 0
-    Height = 36
-    Top = 44
-    Width = 960
-    Align = alTop
-    BevelOuter = bvNone
-    ClientHeight = 36
-    ClientWidth = 960
-    ParentBackground = False
-    TabOrder = 1
-    object BtnToolArrow: TSpeedButton
-      Left = 8
-      Height = 28
+    object BtnZoom50: TButton
+      Tag = 50
+      Left = 620
+      Height = 24
       Top = 4
-      Width = 65
-      Caption = 'Puntero'
-      Down = True
-      GroupIndex = 1
-      OnClick = BtnToolClick
+      Width = 40
+      Caption = '50%'
+      TabOrder = 6
+      Visible = False
+      OnClick = BtnZoomClick
     end
-    object BtnToolLabel: TSpeedButton
-      Left = 76
-      Height = 28
+    object BtnZoom100: TButton
+      Tag = 100
+      Left = 665
+      Height = 24
       Top = 4
-      Width = 55
-      Caption = 'Texto'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnToolExpr: TSpeedButton
-      Left = 134
-      Height = 28
-      Top = 4
-      Width = 75
-      Caption = 'Expresión'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnToolShape: TSpeedButton
-      Left = 212
-      Height = 28
-      Top = 4
-      Width = 55
-      Caption = 'Figura'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnToolImage: TSpeedButton
-      Left = 270
-      Height = 28
-      Top = 4
-      Width = 60
-      Caption = 'Imagen'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnToolBarcode: TSpeedButton
-      Left = 333
-      Height = 28
-      Top = 4
-      Width = 85
-      Caption = 'Cód. Barras'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnToolChart: TSpeedButton
-      Left = 421
-      Height = 28
-      Top = 4
-      Width = 60
-      Caption = 'Gráfico'
-      GroupIndex = 1
-      OnClick = BtnToolClick
-    end
-    object BtnDelete: TButton
-      Left = 490
-      Height = 28
-      Top = 4
-      Width = 75
-      Caption = 'Eliminar'
-      TabOrder = 0
-      OnClick = BtnDeleteClick
-    end
-    object BtnToFront: TButton
-      Left = 569
-      Height = 28
-      Top = 4
-      Width = 75
-      Caption = 'Al Frente'
-      TabOrder = 1
-      OnClick = BtnToFrontClick
-    end
-    object BtnToBack: TButton
-      Left = 648
-      Height = 28
-      Top = 4
-      Width = 75
-      Caption = 'Al Fondo'
-      TabOrder = 2
-      OnClick = BtnToBackClick
-    end
-    object BtnSelectAll: TButton
-      Left = 727
-      Height = 28
-      Top = 4
-      Width = 75
-      Caption = 'Sel. Todo'
-      TabOrder = 3
-      OnClick = BtnSelectAllClick
+      Width = 45
+      Caption = '100%'
+      TabOrder = 7
+      Visible = False
+      OnClick = BtnZoomClick
     end
   end
   object PClient: TPanel
     Left = 0
-    Height = 576
-    Top = 80
+    Height = 592
+    Top = 64
     Width = 960
     Align = alClient
     BevelOuter = bvNone
     ParentBackground = False
     TabOrder = 2
+  end
+  object ImageList1: TImageList
+    Height = 20
+    Width = 20
+    Left = 120
+    Top = 120
   end
   object StatusBar: TStatusBar
     Left = 0
