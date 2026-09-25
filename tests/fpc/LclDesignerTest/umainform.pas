@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, ComCtrls,
-  rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits,
+  rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
   rpmdobinsintlcl, rpmdfsectionintlcl;
 
 type
@@ -59,6 +59,9 @@ var
 implementation
 
 {$R *.lfm}
+
+type
+  TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
 
 procedure LogMsg(const S: string);
 var
@@ -147,6 +150,7 @@ begin
     Exit;
   end;
 
+  FDesignerFrame.Report := nil;
   FreeAndNil(FReport);
   FReport := TRpReport.Create(Self);
   try
@@ -300,6 +304,7 @@ var
   comp1, comp2: TRpSizePosInterface;
   ruler0: TRpRulerLCL;
   expectedTop: Integer;
+  origX1, origY1, origX2, origY2, deltaTwipsX, deltaTwipsY: Integer;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -393,6 +398,49 @@ begin
             LogMsg('[TEST_FAILED] SizeModifier.Control must be nil during multi-select');
             Halt(1);
           end;
+
+          // 2.5 Multi-selection move test: drag comp1, comp2 moves with it
+          origX1 := TRpCommonPosComponent(comp1.printitem).PosX;
+          origY1 := TRpCommonPosComponent(comp1.printitem).PosY;
+          origX2 := TRpCommonPosComponent(comp2.printitem).PosX;
+          origY2 := TRpCommonPosComponent(comp2.printitem).PosY;
+
+          TRpSizePosInterfaceAccess(comp1).MouseDown(mbLeft, [], 10, 10);
+          TRpSizePosInterfaceAccess(comp1).FBlocked := False;
+          TRpSizePosInterfaceAccess(comp1).MouseUp(mbLeft, [], 60, 30);
+
+          deltaTwipsX := TRpCommonPosComponent(comp1.printitem).PosX - origX1;
+          deltaTwipsY := TRpCommonPosComponent(comp1.printitem).PosY - origY1;
+
+          if (deltaTwipsX = 0) and (deltaTwipsY = 0) then
+          begin
+            LogMsg('[TEST_FAILED] Drag did not move leader component');
+            Halt(1);
+          end;
+
+          if (TRpCommonPosComponent(comp2.printitem).PosX - origX2 <> deltaTwipsX) or
+             (TRpCommonPosComponent(comp2.printitem).PosY - origY2 <> deltaTwipsY) then
+          begin
+            LogMsg('[TEST_FAILED] Multi-move did not move comp2 by identical delta');
+            Halt(1);
+          end;
+
+          if FDesignerFrame.SelectedItems.Count <> 2 then
+          begin
+            LogMsg('[TEST_FAILED] Multi-selection should be preserved after moving');
+            Halt(1);
+          end;
+
+          // Also test MoveSelectedComponents clamping to 0,0
+          FDesignerFrame.MoveSelectedComponents(comp1, -999999, -999999);
+          if (TRpCommonPosComponent(comp1.printitem).PosX < 0) or
+             (TRpCommonPosComponent(comp1.printitem).PosY < 0) or
+             (TRpCommonPosComponent(comp2.printitem).PosX < 0) or
+             (TRpCommonPosComponent(comp2.printitem).PosY < 0) then
+          begin
+            LogMsg('[TEST_FAILED] MoveSelectedComponents allowed negative position');
+            Halt(1);
+          end;
         end;
 
         // 3. Clear selection -> nothing selected, no black handles
@@ -433,7 +481,7 @@ begin
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
   except
     on E: Exception do
-      LogMsg('[TEST_FAILED] Exception: ' + E.Message);
+      LogMsg('[TEST_FAILED] Exception (' + E.ClassName + '): ' + E.Message);
   end;
 
   if ok then

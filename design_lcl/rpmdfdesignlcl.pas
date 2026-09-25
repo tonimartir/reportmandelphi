@@ -23,7 +23,7 @@ uses
   SysUtils, Classes, Types,
   Graphics, Controls, Forms, Dialogs, Menus, ExtCtrls, LMessages,
   rprulerlcl, rpmdobinsintlcl, rpmdfsectionintlcl,
-  rpgraphutilslcl, rpsubreport, rpsection, rpreport, rpmunits, rptypes;
+  rpgraphutilslcl, rpsubreport, rpsection, rpreport, rpmunits, rptypes, rpcompobase, rpprintitem;
 
 type
   TFRpDesignFrameLCL = class;
@@ -133,6 +133,8 @@ type
     procedure SelectSubReport(subreport: TRpSubReport);
     procedure SelectComponent(AComp: TRpSizeInterface; AddToSelection: Boolean);
     procedure ClearSelection;
+    function GetSelectedItemsList: TList;
+    procedure MoveSelectedComponents(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer);
     property Report: TRpReport read FReport write SetReport;
     property ObjInsp: TComponent read FObjInsp write FObjInsp;
     property Scale: Double read FScale write SetScale;
@@ -566,16 +568,12 @@ end;
 
 procedure TFRpDesignFrameLCL.SetReport(Value: TRpReport);
 begin
+  SelectSubReport(nil);
   FReport := Value;
   if not Assigned(FReport) then
-  begin
-    SelectSubReport(nil);
     Exit;
-  end;
   if FReport.SubReports.Count > 0 then
-    SelectSubReport(FReport.SubReports[0].SubReport)
-  else
-    SelectSubReport(nil);
+    SelectSubReport(FReport.SubReports[0].SubReport);
 end;
 
 procedure TFRpDesignFrameLCL.SelectSubReport(subreport: TRpSubReport);
@@ -648,6 +646,8 @@ begin
     asecint.Top := posx;
     asecint.OnSelectComponent := SelectComponent;
     asecint.OnClearSelection := ClearSelectionEvent;
+    asecint.OnMoveComponent := MoveSelectedComponents;
+    asecint.OnGetSelectedList := GetSelectedItemsList;
     asecint.CreateChilds;
     asecint.UpdatePos;
     asecint.OnPosChange := SecPosChange;
@@ -947,6 +947,60 @@ end;
 procedure TFRpDesignFrameLCL.UpdateSelection(force: Boolean);
 begin
   if Assigned(FSizeModifier) then
+    FSizeModifier.UpdatePos;
+end;
+
+function TFRpDesignFrameLCL.GetSelectedItemsList: TList;
+begin
+  Result := FSelectedItems;
+end;
+
+procedure TFRpDesignFrameLCL.MoveSelectedComponents(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer);
+var
+  i: Integer;
+  item: TRpSizePosInterface;
+  positem: TRpCommonPosComponent;
+  newX, newY, minX, minY: Integer;
+begin
+  if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then
+    Exit;
+
+  // Prevent any component from moving past (0, 0)
+  minX := MaxInt;
+  minY := MaxInt;
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    item := TRpSizePosInterface(FSelectedItems[i]);
+    if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
+    begin
+      positem := TRpCommonPosComponent(item.printitem);
+      if positem.PosX < minX then minX := positem.PosX;
+      if positem.PosY < minY then minY := positem.PosY;
+    end;
+  end;
+
+  if (ADeltaXTwips < 0) and (-ADeltaXTwips > minX) then
+    ADeltaXTwips := -minX;
+  if (ADeltaYTwips < 0) and (-ADeltaYTwips > minY) then
+    ADeltaYTwips := -minY;
+
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    item := TRpSizePosInterface(FSelectedItems[i]);
+    if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
+    begin
+      positem := TRpCommonPosComponent(item.printitem);
+      newX := positem.PosX + ADeltaXTwips;
+      if newX < 0 then newX := 0;
+      newY := positem.PosY + ADeltaYTwips;
+      if newY < 0 then newY := 0;
+      positem.PosX := newX;
+      positem.PosY := newY;
+      item.UpdatePos;
+    end;
+  end;
+
+  if Assigned(FSizeModifier) and (FSelectedItems.Count = 1) then
     FSizeModifier.UpdatePos;
 end;
 

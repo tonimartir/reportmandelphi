@@ -52,6 +52,8 @@ type
   TRpSizePosInterfaceClass = class of TRpSizePosInterface;
 
   TRpSelectCompEvent = procedure(AComp: TRpSizeInterface; AddToSelection: Boolean) of object;
+  TRpMoveCompEvent = procedure(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer) of object;
+  TRpGetSelectedListEvent = function: TList of object;
 
   // The base visual interface for size (width/height)
   TRpSizeInterface = class(TGraphicControl)
@@ -62,6 +64,8 @@ type
   protected
     fprintitem: TRpCommonComponent;
     FOnSelectComponent: TRpSelectCompEvent;
+    FOnMoveComponent: TRpMoveCompEvent;
+    FOnGetSelectedList: TRpGetSelectedListEvent;
     procedure Paint; override;
     procedure DrawSelected; virtual;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -82,6 +86,8 @@ type
     property Selected: Boolean read FSelected write SetSelected;
     property Scale: Double read FScale write SetScale;
     property OnSelectComponent: TRpSelectCompEvent read FOnSelectComponent write FOnSelectComponent;
+    property OnMoveComponent: TRpMoveCompEvent read FOnMoveComponent write FOnMoveComponent;
+    property OnGetSelectedList: TRpGetSelectedListEvent read FOnGetSelectedList write FOnGetSelectedList;
   end;
 
   // Dragging / sizing outline box
@@ -96,15 +102,14 @@ type
   // The visual interface for size and position
   TRpSizePosInterface = class(TRpSizeInterface)
   private
-    FXOrigin, FYOrigin: Integer;
-    FBlocked: Boolean;
     FRectangle: TRpRectangle;
     FRectangle2: TRpRectangle;
     FRectangle3: TRpRectangle;
     FRectangle4: TRpRectangle;
     insertingelement: Boolean;
-    procedure ClearRectangles;
   protected
+    FXOrigin, FYOrigin: Integer;
+    FBlocked: Boolean;
     FContextMenu: TPopupMenu;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -114,6 +119,8 @@ type
     procedure PopUpContextMenu; virtual;
   public
     SectionInt: TRpSizeInterface;
+    procedure ClearRectangles;
+    procedure InitRectangles;
     procedure DoSelect;
     procedure UpdatePos; override;
     procedure GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings); override;
@@ -452,6 +459,25 @@ begin
   FreeAndNil(FRectangle4);
 end;
 
+procedure TRpSizePosInterface.InitRectangles;
+begin
+  if not Assigned(FRectangle) and Assigned(Parent) then
+  begin
+    FRectangle := TRpRectangle.Create(Self);
+    FRectangle2 := TRpRectangle.Create(Self);
+    FRectangle3 := TRpRectangle.Create(Self);
+    FRectangle4 := TRpRectangle.Create(Self);
+    FRectangle.Parent := Parent;
+    FRectangle2.Parent := Parent;
+    FRectangle3.Parent := Parent;
+    FRectangle4.Parent := Parent;
+    FRectangle.SetBounds(Left, Top, Width, 1);
+    FRectangle2.SetBounds(Left, Top + Height, Width, 1);
+    FRectangle3.SetBounds(Left, Top, 1, Height);
+    FRectangle4.SetBounds(Left + Width, Top, 1, Height);
+  end;
+end;
+
 procedure TRpSizePosInterface.InitPopUpMenu;
 begin
   // Context menu stub
@@ -494,35 +520,59 @@ begin
 end;
 
 procedure TRpSizePosInterface.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  selList: TList;
+  i: Integer;
+  item: TRpSizePosInterface;
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if Button <> mbLeft then
     Exit;
 
-  if not Assigned(FRectangle) and Assigned(Parent) then
-  begin
-    FRectangle := TRpRectangle.Create(Self);
-    FRectangle2 := TRpRectangle.Create(Self);
-    FRectangle3 := TRpRectangle.Create(Self);
-    FRectangle4 := TRpRectangle.Create(Self);
-    FRectangle.Parent := Parent;
-    FRectangle2.Parent := Parent;
-    FRectangle3.Parent := Parent;
-    FRectangle4.Parent := Parent;
-    FRectangle.SetBounds(Left, Top, Width, 1);
-    FRectangle2.SetBounds(Left, Top + Height, Width, 1);
-    FRectangle3.SetBounds(Left, Top, 1, Height);
-    FRectangle4.SetBounds(Left + Width, Top, 1, Height);
-  end;
-
   FXOrigin := X;
   FYOrigin := Y;
   FBlocked := True;
+
+  selList := nil;
+  if Assigned(OnGetSelectedList) then
+    selList := OnGetSelectedList()
+  else if Assigned(SectionInt) and Assigned(SectionInt.OnGetSelectedList) then
+    selList := SectionInt.OnGetSelectedList();
+
+  // If this item is NOT in the current selection, and Shift/Ctrl is NOT pressed:
+  if Assigned(selList) and (selList.IndexOf(Self) < 0) and
+     not ((ssShift in Shift) or (ssCtrl in Shift)) then
+  begin
+    if Assigned(OnSelectComponent) then
+      OnSelectComponent(Self, False)
+    else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+      SectionInt.OnSelectComponent(Self, False);
+
+    if Assigned(OnGetSelectedList) then
+      selList := OnGetSelectedList()
+    else if Assigned(SectionInt) and Assigned(SectionInt.OnGetSelectedList) then
+      selList := SectionInt.OnGetSelectedList();
+  end;
+
+  // Initialize drag outline rectangles
+  if Assigned(selList) and (selList.IndexOf(Self) >= 0) and (selList.Count > 1) then
+  begin
+    for i := 0 to selList.Count - 1 do
+    begin
+      item := TRpSizePosInterface(selList[i]);
+      item.InitRectangles;
+    end;
+  end
+  else
+    InitRectangles;
 end;
 
 procedure TRpSizePosInterface.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  NewLeft, NewTop: Integer;
+  NewLeft, NewTop, deltaX, deltaY: Integer;
+  selList: TList;
+  i: Integer;
+  item: TRpSizePosInterface;
 begin
   inherited MouseMove(Shift, X, Y);
   if MouseCapture and Assigned(Parent) then
@@ -536,8 +586,11 @@ begin
       NewTop := Top - FYOrigin + Y;
       if NewLeft < 0 then NewLeft := 0;
       if NewTop < 0 then NewTop := 0;
-      if NewLeft + Width > Parent.Width then NewLeft := Parent.Width - Width;
-      if NewTop + Height > Parent.Height then NewTop := Parent.Height - Height;
+      if Assigned(Parent) then
+      begin
+        if NewLeft + Width > Parent.Width then NewLeft := Parent.Width - Width;
+        if NewTop + Height > Parent.Height then NewTop := Parent.Height - Height;
+      end;
       if NewLeft < 0 then NewLeft := 0;
       if NewTop < 0 then NewTop := 0;
 
@@ -548,28 +601,78 @@ begin
         NewTop := AlignToGridPixels(NewTop, TRpReport(printitem.Report).GridHeight, Scale);
       end;
 
-      FRectangle.SetBounds(NewLeft, NewTop, Width, 1);
-      FRectangle2.SetBounds(NewLeft, NewTop + Height, Width, 1);
-      FRectangle3.SetBounds(NewLeft, NewTop, 1, Height);
-      FRectangle4.SetBounds(NewLeft + Width, NewTop, 1, Height);
-      Parent.Update;
+      deltaX := NewLeft - Left;
+      deltaY := NewTop - Top;
+
+      selList := nil;
+      if Assigned(OnGetSelectedList) then
+        selList := OnGetSelectedList()
+      else if Assigned(SectionInt) and Assigned(SectionInt.OnGetSelectedList) then
+        selList := SectionInt.OnGetSelectedList();
+
+      if Assigned(selList) and (selList.IndexOf(Self) >= 0) and (selList.Count > 1) then
+      begin
+        for i := 0 to selList.Count - 1 do
+        begin
+          item := TRpSizePosInterface(selList[i]);
+          if Assigned(item.FRectangle) then
+          begin
+            item.FRectangle.SetBounds(item.Left + deltaX, item.Top + deltaY, item.Width, 1);
+            item.FRectangle2.SetBounds(item.Left + deltaX, item.Top + deltaY + item.Height, item.Width, 1);
+            item.FRectangle3.SetBounds(item.Left + deltaX, item.Top + deltaY, 1, item.Height);
+            item.FRectangle4.SetBounds(item.Left + deltaX + item.Width, item.Top + deltaY, 1, item.Height);
+            if Assigned(item.Parent) then item.Parent.Update;
+          end;
+        end;
+      end
+      else
+      begin
+        FRectangle.SetBounds(NewLeft, NewTop, Width, 1);
+        FRectangle2.SetBounds(NewLeft, NewTop + Height, Width, 1);
+        FRectangle3.SetBounds(NewLeft, NewTop, 1, Height);
+        FRectangle4.SetBounds(NewLeft + Width, NewTop, 1, Height);
+        Parent.Update;
+      end;
     end;
   end;
 end;
 
 procedure TRpSizePosInterface.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  NewLeft, NewTop: Integer;
+  NewLeft, NewTop, deltaTwipsX, deltaTwipsY: Integer;
   positem: TRpCommonPosComponent;
+  selList: TList;
+  i: Integer;
+  item: TRpSizePosInterface;
+  wasMulti: Boolean;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button <> mbLeft then
     Exit;
 
-  if Assigned(FRectangle) then
+  selList := nil;
+  if Assigned(OnGetSelectedList) then
+    selList := OnGetSelectedList()
+  else if Assigned(SectionInt) and Assigned(SectionInt.OnGetSelectedList) then
+    selList := SectionInt.OnGetSelectedList();
+
+  wasMulti := Assigned(selList) and (selList.Count > 1) and (selList.IndexOf(Self) >= 0);
+
+  // Clear outline rectangles for all items
+  if Assigned(selList) and (selList.IndexOf(Self) >= 0) and (selList.Count > 1) then
   begin
+    for i := 0 to selList.Count - 1 do
+    begin
+      item := TRpSizePosInterface(selList[i]);
+      item.ClearRectangles;
+    end;
+  end
+  else
     ClearRectangles;
 
+  if not FBlocked then
+  begin
+    // Item(s) were dragged!
     NewLeft := Left - FXOrigin + X;
     NewTop := Top - FYOrigin + Y;
     if NewLeft < 0 then NewLeft := 0;
@@ -583,25 +686,58 @@ begin
     if NewTop < 0 then NewTop := 0;
 
     if Assigned(printitem) and Assigned(printitem.Report) and
+      (printitem.Report is TRpReport) and
       TRpReport(printitem.Report).GridEnabled then
     begin
       NewLeft := AlignToGridPixels(NewLeft, TRpReport(printitem.Report).GridWidth, Scale);
       NewTop := AlignToGridPixels(NewTop, TRpReport(printitem.Report).GridHeight, Scale);
     end;
 
-    if not FBlocked and (fprintitem is TRpCommonPosComponent) then
+    if fprintitem is TRpCommonPosComponent then
     begin
       positem := TRpCommonPosComponent(fprintitem);
-      positem.PosX := pixelstotwips(NewLeft, Scale);
-      positem.PosY := pixelstotwips(NewTop, Scale);
-      UpdatePos;
-    end;
-  end;
+      deltaTwipsX := pixelstotwips(NewLeft, Scale) - positem.PosX;
+      deltaTwipsY := pixelstotwips(NewTop, Scale) - positem.PosY;
 
-  if Assigned(OnSelectComponent) then
-    OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift))
-  else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
-    SectionInt.OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift));
+      if wasMulti then
+      begin
+        if Assigned(OnMoveComponent) then
+          OnMoveComponent(Self, deltaTwipsX, deltaTwipsY)
+        else if Assigned(SectionInt) and Assigned(SectionInt.OnMoveComponent) then
+          SectionInt.OnMoveComponent(Self, deltaTwipsX, deltaTwipsY);
+
+        // If Shift/Ctrl is held, toggle Self out of selection
+        if (ssShift in Shift) or (ssCtrl in Shift) then
+        begin
+          if Assigned(OnSelectComponent) then
+            OnSelectComponent(Self, True)
+          else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+            SectionInt.OnSelectComponent(Self, True);
+        end;
+        // If Shift/Ctrl is NOT held, multi-selection remains intact!
+      end
+      else
+      begin
+        // Single item move
+        positem.PosX := pixelstotwips(NewLeft, Scale);
+        positem.PosY := pixelstotwips(NewTop, Scale);
+        UpdatePos;
+
+        if Assigned(OnSelectComponent) then
+          OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift))
+        else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+          SectionInt.OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift));
+      end;
+    end;
+  end
+  else
+  begin
+    // Simple click without move
+    if Assigned(OnSelectComponent) then
+      OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift))
+    else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+      SectionInt.OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift));
+  end;
 end;
 
 procedure TRpSizePosInterface.Paint;

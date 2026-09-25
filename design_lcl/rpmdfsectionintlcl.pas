@@ -273,6 +273,8 @@ begin
     labelint.Visible := compo.Visible;
     labelint.fobjinsp := fobjinsp;
     labelint.OnSelectComponent := OnSelectComponent;
+    labelint.OnMoveComponent := OnMoveComponent;
+    labelint.OnGetSelectedList := OnGetSelectedList;
     labelint.UpdatePos;
     childlist.Add(labelint);
   end;
