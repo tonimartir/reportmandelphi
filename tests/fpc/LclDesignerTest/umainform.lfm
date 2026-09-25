@@ -7,8 +7,8 @@ object MainForm: TMainForm
   ClientHeight = 680
   ClientWidth = 960
   Color = clBtnFace
-  DesignTimePPI = 120
-  Font.Height = -15
+  DesignTimePPI = 96
+  Font.Height = -12
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
@@ -366,8 +366,8 @@ object MainForm: TMainForm
     TabOrder = 2
   end
   object ImageList1: TImageList
-    Height = 20
-    Width = 20
+    Height = 19
+    Width = 19
     Left = 120
     Top = 120
   end

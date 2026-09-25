@@ -150,6 +150,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure UpdateSelection(force: Boolean);
+    procedure SelectDataItem(data: TObject);
     procedure SelectSubReport(subreport: TRpSubReport);
     procedure SelectComponent(AComp: TRpSizeInterface; AddToSelection: Boolean);
     procedure ClearSelection;
@@ -174,7 +175,7 @@ type
 implementation
 
 uses
-  rpmdobjinsplcl;
+  rpmdobjinsplcl, rpmdfstruclcl;
 
 {$R *.lfm}
 
@@ -286,7 +287,11 @@ procedure TRpPaintEventPanel.MouseDown(Button: TMouseButton; Shift: TShiftState;
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if Assigned(FFrame) then
+  begin
     FFrame.ClearSelection;
+    if Assigned(Section) then
+      FFrame.SelectDataItem(Section);
+  end;
 
   if (Cursor <> crSizeNS) or (Button <> mbLeft) then
     Exit;
@@ -778,6 +783,7 @@ begin
     // 2. Section interface (canvas + child items)
     asecint := TRpSectionInterface.Create(Self, sec);
     asecint.fobjinsp := FObjInsp;
+    asecint.freportstructure := freportstructure;
     asecint.DesignFrame := Self;
     asecint.ActiveTool := FActiveTool;
     asecint.OnToolDone := SectionToolDone;
@@ -1104,9 +1110,59 @@ begin
 end;
 
 procedure TFRpDesignFrameLCL.UpdateSelection(force: Boolean);
+var
+  struct: TFRpStructureLCL;
+  dataobj: TObject;
+  asubreport: TRpSubReport;
+  i: Integer;
+  FSectionInterface: TRpSectionInterface;
 begin
   if Assigned(FSizeModifier) then
     FSizeModifier.UpdatePos;
+
+  if not Assigned(freportstructure) then Exit;
+  if not (freportstructure is TFRpStructureLCL) then Exit;
+  struct := TFRpStructureLCL(freportstructure);
+  if not Assigned(struct.RView.Selected) then Exit;
+  if not Assigned(struct.RView.Selected.Data) then Exit;
+
+  if force then
+    SelectSubReport(nil);
+
+  dataobj := TObject(struct.RView.Selected.Data);
+  asubreport := struct.FindSelectedSubreport;
+  if asubreport <> FSubReport then
+    SelectSubReport(asubreport);
+
+  if dataobj is TRpSubReport then
+  begin
+    if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+      TFRpObjInspLCL(FObjInsp).AddCompItem(nil, True);
+    Exit;
+  end;
+
+  if dataobj is TRpSection then
+  begin
+    i := 0;
+    FSectionInterface := nil;
+    while i < secinterfaces.Count do
+    begin
+      if TRpSectionInterface(secinterfaces[i]).printitem = dataobj then
+      begin
+        FSectionInterface := TRpSectionInterface(secinterfaces[i]);
+        break;
+      end;
+      Inc(i);
+    end;
+    if Assigned(FSectionInterface) and Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+      TFRpObjInspLCL(FObjInsp).AddCompItem(FSectionInterface, True);
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.SelectDataItem(data: TObject);
+begin
+  if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+    TFRpStructureLCL(freportstructure).SelectDataItem(data);
 end;
 
 function TFRpDesignFrameLCL.GetSelectedItemsList: TList;

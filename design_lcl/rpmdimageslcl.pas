@@ -1,10 +1,39 @@
-{*******************************************************}
-{                                                       }
-{       Report Manager Designer - LCL Icons             }
-{                                                       }
-{       Embedded original 19x19 PNG icons from DFM      }
-{                                                       }
-{*******************************************************}
+{******************************************************************************}
+{                                                                              }
+{       Report Manager Designer - LCL Icons & Rendering Pipeline               }
+{                                                                              }
+{  ENGINEERING RULES FOR SHARP, CRISP ICONS (NO BLUR):                         }
+{                                                                              }
+{  1. BASELINE RESOLUTION (96 DPI / 100% SCALE):                               }
+{     - The canonical icon dimension is 19x19 px.                              }
+{     - Always set ImageList.Width := 19 and ImageList.Height := 19 at 96 DPI. }
+{     - Forms must define DesignTimePPI = 96. Never use 120 (Delphi artifact). }
+{                                                                              }
+{  2. 1:1 PIXEL-PERFECT MAPPING:                                               }
+{     - When source dimensions match target dimensions (19x19), icons are      }
+{       injected directly without any interpolation or scaling.                }
+{     - LCL ScaleImage skips resampling when SourceRect = TargetRect.          }
+{                                                                              }
+{  3. HIGH-QUALITY DOWNSAMPLING FOR LARGER SOURCES:                            }
+{     - Source icons larger than target (e.g. 32x32, 24x24) MUST NOT be        }
+{       stretched with naive nearest-neighbor or LCL TFPImageCanvas.StretchDraw.}
+{     - They must be downsampled using an area-average box filter with         }
+{       PREMULTIPLIED ALPHA (R*A, G*A, B*A, A) and un-premultiplied output.   }
+{       This avoids dark halos, pixel skipping, and jagged curves.             }
+{                                                                              }
+{  4. CENTERED PADDING FOR SMALLER ICONS:                                      }
+{     - Icons smaller than target canvas (e.g. 16x16 inside 19x19) MUST NOT    }
+{       be stretched. They must be centered 1:1 with transparent margins.      }
+{                                                                              }
+{  5. HIGH-DPI / INTEGER SCALING:                                              }
+{     - For 200% displays (192 DPI), use exact integer doubling (38x38)        }
+{       so pixel art remains sharp and crisp.                                  }
+{                                                                              }
+{  6. 32-BIT RGBA ALPHA TRANSPARENCY:                                          }
+{     - All icons must be 32-bit RGBA PNGs with true 8-bit alpha channels.     }
+{     - Never convert through 1-bit or masked palettes.                        }
+{                                                                              }
+{******************************************************************************}
 
 unit rpmdimageslcl;
 
@@ -48,8 +77,14 @@ const
   IMG_CHAT_IA = 35;
 
 procedure LoadDesignerImageList(AImageList: TImageList);
+procedure LoadDBBrowserImageList(AImageList: TImageList);
+function ResamplePngToTarget(APng: TPortableNetworkGraphic; TargetW, TargetH: Integer): TBitmap;
+procedure AddPngToImageList(AImageList: TImageList; APng: TPortableNetworkGraphic);
 
 implementation
+
+uses
+  IntfGraphics, FPimage, Math;
 
 const
   ICON_COUNT = 36;
@@ -164,34 +199,246 @@ begin
   Result.Position := 0;
 end;
 
+function ResamplePngToTarget(APng: TPortableNetworkGraphic; TargetW, TargetH: Integer): TBitmap;
+var
+  SrcImg, DstImg: TLazIntfImage;
+  dx, dy, ix, iy: Integer;
+  srcX0, srcX1, srcY0, srcY1: Double;
+  ix0, ix1, iy0, iy1: Integer;
+  xStart, xEnd, yStart, yEnd: Double;
+  weight, totalWeight: Double;
+  sumR, sumG, sumB, sumA: Double;
+  a, r, g, b: Double;
+  finalR, finalG, finalB, finalAlpha: Double;
+  C: TFPColor;
+  offX, offY: Integer;
+begin
+  Result := nil;
+  if (APng = nil) or (APng.Width <= 0) or (APng.Height <= 0) or
+     (TargetW <= 0) or (TargetH <= 0) then
+    Exit;
+
+  // Case 1: Exact match -> direct 1:1 copy
+  if (APng.Width = TargetW) and (APng.Height = TargetH) then
+  begin
+    Result := TBitmap.Create;
+    Result.Assign(APng);
+    Exit;
+  end;
+
+  SrcImg := APng.CreateIntfImage;
+  try
+    DstImg := TLazIntfImage.CreateCompatible(SrcImg, TargetW, TargetH);
+    try
+      // Case 2: Source smaller than target -> Center 1:1 with transparent padding
+      if (APng.Width <= TargetW) and (APng.Height <= TargetH) then
+      begin
+        FillChar(C, SizeOf(C), 0);
+        for dy := 0 to TargetH - 1 do
+          for dx := 0 to TargetW - 1 do
+            DstImg.Colors[dx, dy] := C;
+
+        offX := (TargetW - APng.Width) div 2;
+        offY := (TargetH - APng.Height) div 2;
+        for iy := 0 to APng.Height - 1 do
+          for ix := 0 to APng.Width - 1 do
+            DstImg.Colors[offX + ix, offY + iy] := SrcImg.Colors[ix, iy];
+      end
+      else
+      // Case 3: Downsampling -> Area-average box filter with premultiplied alpha
+      begin
+        for dy := 0 to TargetH - 1 do
+        begin
+          srcY0 := dy * SrcImg.Height / TargetH;
+          srcY1 := (dy + 1) * SrcImg.Height / TargetH;
+          iy0 := Trunc(srcY0);
+          iy1 := Trunc(srcY1);
+          if iy1 >= SrcImg.Height then iy1 := SrcImg.Height - 1;
+
+          for dx := 0 to TargetW - 1 do
+          begin
+            srcX0 := dx * SrcImg.Width / TargetW;
+            srcX1 := (dx + 1) * SrcImg.Width / TargetW;
+            ix0 := Trunc(srcX0);
+            ix1 := Trunc(srcX1);
+            if ix1 >= SrcImg.Width then ix1 := SrcImg.Width - 1;
+
+            sumR := 0.0;
+            sumG := 0.0;
+            sumB := 0.0;
+            sumA := 0.0;
+            totalWeight := 0.0;
+
+            for iy := iy0 to iy1 do
+            begin
+              yStart := iy;
+              if yStart < srcY0 then yStart := srcY0;
+              yEnd := iy + 1.0;
+              if yEnd > srcY1 then yEnd := srcY1;
+
+              for ix := ix0 to ix1 do
+              begin
+                xStart := ix;
+                if xStart < srcX0 then xStart := srcX0;
+                xEnd := ix + 1.0;
+                if xEnd > srcX1 then xEnd := srcX1;
+
+                weight := (xEnd - xStart) * (yEnd - yStart);
+                if weight > 0.0 then
+                begin
+                  C := SrcImg.Colors[ix, iy];
+                  a := C.Alpha / 65535.0;
+                  r := (C.Red / 65535.0) * a;
+                  g := (C.Green / 65535.0) * a;
+                  b := (C.Blue / 65535.0) * a;
+
+                  sumA := sumA + a * weight;
+                  sumR := sumR + r * weight;
+                  sumG := sumG + g * weight;
+                  sumB := sumB + b * weight;
+                  totalWeight := totalWeight + weight;
+                end;
+              end;
+            end;
+
+            if totalWeight > 0.0 then
+              finalAlpha := sumA / totalWeight
+            else
+              finalAlpha := 0.0;
+
+            if sumA > 0.000001 then
+            begin
+              finalR := sumR / sumA;
+              finalG := sumG / sumA;
+              finalB := sumB / sumA;
+            end
+            else
+            begin
+              finalR := 0.0;
+              finalG := 0.0;
+              finalB := 0.0;
+            end;
+
+            if finalAlpha > 1.0 then finalAlpha := 1.0;
+            if finalR > 1.0 then finalR := 1.0;
+            if finalG > 1.0 then finalG := 1.0;
+            if finalB > 1.0 then finalB := 1.0;
+
+            C.Alpha := Round(finalAlpha * 65535.0);
+            C.Red   := Round(finalR * 65535.0);
+            C.Green := Round(finalG * 65535.0);
+            C.Blue  := Round(finalB * 65535.0);
+            DstImg.Colors[dx, dy] := C;
+          end;
+        end;
+      end;
+
+      Result := TBitmap.Create;
+      Result.LoadFromIntfImage(DstImg);
+    finally
+      DstImg.Free;
+    end;
+  finally
+    SrcImg.Free;
+  end;
+end;
+
+procedure AddPngToImageList(AImageList: TImageList; APng: TPortableNetworkGraphic);
+var
+  resBmp: TBitmap;
+begin
+  if not Assigned(AImageList) or not Assigned(APng) then Exit;
+  if (APng.Width = AImageList.Width) and (APng.Height = AImageList.Height) then
+  begin
+    resBmp := TBitmap.Create;
+    try
+      resBmp.Assign(APng);
+      AImageList.Add(resBmp, nil);
+    finally
+      resBmp.Free;
+    end;
+  end
+  else
+  begin
+    resBmp := ResamplePngToTarget(APng, AImageList.Width, AImageList.Height);
+    try
+      if Assigned(resBmp) then
+        AImageList.Add(resBmp, nil);
+    finally
+      resBmp.Free;
+    end;
+  end;
+end;
+
 procedure LoadDesignerImageList(AImageList: TImageList);
 var
   i: Integer;
   ms: TMemoryStream;
   png: TPortableNetworkGraphic;
-  bmp: TBitmap;
 begin
   if not Assigned(AImageList) then Exit;
   AImageList.Clear;
-  AImageList.Width := 20;
-  AImageList.Height := 20;
+  // Standard 96 DPI baseline is 19x19 px
+  if (AImageList.Width <= 0) or (AImageList.Height <= 0) or
+     ((AImageList.Width = 20) and (AImageList.Height = 20)) then
+  begin
+    AImageList.Width := 19;
+    AImageList.Height := 19;
+  end;
   png := TPortableNetworkGraphic.Create;
-  bmp := TBitmap.Create;
   try
-    bmp.PixelFormat := pf32bit;
     for i := 0 to ICON_COUNT - 1 do
     begin
       ms := HexToStream(ICON_HEX[i]);
       try
         png.LoadFromStream(ms);
-        bmp.Assign(png);
-        AImageList.Add(bmp, nil);
+        AddPngToImageList(AImageList, png);
       finally
         ms.Free;
       end;
     end;
   finally
-    bmp.Free;
+    png.Free;
+  end;
+end;
+
+procedure LoadDBBrowserImageList(AImageList: TImageList);
+const
+  DB_ICON_COUNT = 3;
+  DB_ICON_HEX: array[0..DB_ICON_COUNT - 1] of string = (
+    // 0: Database
+    '89504E470D0A1A0A0000000D4948445200000013000000130806000000725036CC000000934944415478DAE5915D12C0100C843727E366B819274B1B9DAA76FCB5BC352F06D9CF661183B1AA6814467BEBDE4BD3B003242BD002DE6022CA2F4FE1048CD34E8427E8EAA90387604FD10B585FF4F903A69DE5C1830B8F111581091683E6D45BCDABE5AE0BB3D6426B0DA5149C73F15ECE9AB0DA98229432C6208400EFFD18AC14FE676735D81267F9E8BDF087606FEA27B00D35BB8DEE261663900000000049454E44AE426082',
+    // 1: Dataset / Table
+    '89504E470D0A1A0A0000000D4948445200000013000000130806000000725036CC0000008B4944415478DACD914B0EC020084499933B9EDC521335B5587F5DC86A92CAEB031024C85F856360B8DBB594812DD80D4A906DB3DA6A1916ADB4CD7B0AC9F79890192AA40BD384046DE504D24ED47B5B30B3AD4CB3915D5956F1BBD283A34319B35CC9CC0DAB25B3946B50E300DF661965FC787E67116CBF7DC0483F744FD2F5CD864879D00FD81F752EEC02EC8B8CEED1550B290000000049454E44AE426082',
+    // 2: Field / Variable
+    '89504E470D0A1A0A0000000D4948445200000013000000130806000000725036CC0000006D4944415478DAE592E10A80300884BDE76E3FF5B98D46132362361705F96737E13E4F362829CD2A7C1B56969226B2300CC6CCB1E9403D55D574BD93F66140D9CD7C826E40D38FC29AD19B7DEFD80F26F369AEF58D6429984804F006ACB7E6F003A43FADB43D07CB60B3EA27B015114FC3EE15B832C70000000049454E44AE426082'
+  );
+var
+  i: Integer;
+  ms: TMemoryStream;
+  png: TPortableNetworkGraphic;
+begin
+  if not Assigned(AImageList) then Exit;
+  AImageList.Clear;
+  if (AImageList.Width <= 0) or (AImageList.Height <= 0) or
+     ((AImageList.Width = 20) and (AImageList.Height = 20)) then
+  begin
+    AImageList.Width := 19;
+    AImageList.Height := 19;
+  end;
+  png := TPortableNetworkGraphic.Create;
+  try
+    for i := 0 to DB_ICON_COUNT - 1 do
+    begin
+      ms := HexToStream(DB_ICON_HEX[i]);
+      try
+        png.LoadFromStream(ms);
+        AddPngToImageList(AImageList, png);
+      finally
+        ms.Free;
+      end;
+    end;
+  finally
     png.Free;
   end;
 end;

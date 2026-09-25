@@ -10,7 +10,7 @@ uses
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
-  rpmdimageslcl;
+  rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl;
 
 type
   TMainForm = class(TForm)
@@ -88,8 +88,10 @@ type
     FReport: TRpReport;
     FDesignerFrame: TFRpDesignFrameLCL;
     FObjInsp: TFRpObjInspLCL;
+    FStructure: TFRpStructureLCL;
     PInspPanel: TPanel;
     SplitterInsp: TSplitter;
+    SplitterStruct: TSplitter;
     FCurrentFileName: string;
     FAutoTestMode: Boolean;
     procedure AppException(Sender: TObject; E: Exception);
@@ -155,13 +157,13 @@ begin
   LogMsg('FormCreate: creating PInspPanel');
   PInspPanel := TPanel.Create(Self);
   PInspPanel.Width := 300;
-  PInspPanel.Align := alRight;
+  PInspPanel.Align := alLeft;
   PInspPanel.BevelOuter := bvNone;
   PInspPanel.Parent := PClient;
 
   LogMsg('FormCreate: creating SplitterInsp');
   SplitterInsp := TSplitter.Create(Self);
-  SplitterInsp.Align := alRight;
+  SplitterInsp.Align := alLeft;
   SplitterInsp.Width := 5;
   SplitterInsp.Parent := PClient;
 
@@ -170,13 +172,28 @@ begin
   FDesignerFrame.Align := alClient;
   FDesignerFrame.Parent := PClient;
 
+  LogMsg('FormCreate: creating FStructure');
+  FStructure := TFRpStructureLCL.Create(Self);
+  FStructure.Height := 260;
+  FStructure.Align := alTop;
+  FStructure.Parent := PInspPanel;
+
+  LogMsg('FormCreate: creating SplitterStruct');
+  SplitterStruct := TSplitter.Create(Self);
+  SplitterStruct.Align := alTop;
+  SplitterStruct.Height := 5;
+  SplitterStruct.Parent := PInspPanel;
+
   LogMsg('FormCreate: creating FObjInsp');
   FObjInsp := TFRpObjInspLCL.Create(Self);
   FObjInsp.Align := alClient;
   FObjInsp.Parent := PInspPanel;
 
-  LogMsg('FormCreate: linking ObjInsp');
+  LogMsg('FormCreate: linking ObjInsp and Structure');
   FDesignerFrame.ObjInsp := FObjInsp;
+  FDesignerFrame.freportstructure := FStructure;
+  FStructure.designframe := FDesignerFrame;
+  FStructure.ObjInsp := FObjInsp;
   FDesignerFrame.OnToolChange := DesignerToolChange;
 
   LogMsg('FormCreate: loading icons into ImageList1');
@@ -252,6 +269,7 @@ begin
   end;
 
   LogMsg('LoadReportFile: setting Report to nil');
+  FStructure.Report := nil;
   FDesignerFrame.Report := nil;
   LogMsg('LoadReportFile: freeing FReport');
   FreeAndNil(FReport);
@@ -263,6 +281,7 @@ begin
     FCurrentFileName := AFileName;
     LogMsg('LoadReportFile: setting Report to FReport');
     FDesignerFrame.Report := FReport;
+    FStructure.Report := FReport;
     LogMsg('LoadReportFile: refreshing subreport list');
     RefreshSubreportList;
     LogMsg('LoadReportFile: updating status');
@@ -549,6 +568,8 @@ var
   cnt, i: Integer;
   initialChildCount, initialCompCount: Integer;
   fakeKey: Word;
+  testSubrep: TRpSubReport;
+  testSec: TRpSection;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -996,6 +1017,11 @@ begin
       LogMsg(Format('[TEST_FAILED] ImageList1 should contain 36 icons, got %d', [ImageList1.Count]));
       Halt(1);
     end;
+    if (ImageList1.Width <> 19) or (ImageList1.Height <> 19) then
+    begin
+      LogMsg(Format('[TEST_FAILED] ImageList1 dimensions must be 19x19, got %dx%d', [ImageList1.Width, ImageList1.Height]));
+      Halt(1);
+    end;
     ComboScale.Text := '150%';
     ComboScale.OnChange(ComboScale);
     if Abs(FDesignerFrame.Scale - 1.5) > 0.001 then
@@ -1010,6 +1036,93 @@ begin
       LogMsg(Format('[TEST_FAILED] ComboScale reset zoom failed: expected 1.0, got %f', [FDesignerFrame.Scale]));
       Halt(1);
     end;
+
+    // 5.8 Test Subphase 3.3 Structure Tree and Browser
+    LogMsg('Testing Subphase 3.3: Structure Tree & Data Browser...');
+    if not Assigned(FStructure) or not Assigned(FStructure.RView) then
+    begin
+      LogMsg('[TEST_FAILED] FStructure or RView not assigned');
+      Halt(1);
+    end;
+    if FStructure.RView.Items.Count = 0 then
+    begin
+      LogMsg('[TEST_FAILED] RView has 0 nodes after loading report');
+      Halt(1);
+    end;
+    if not (TObject(FStructure.RView.Items[0].Data) is TRpSubReport) then
+    begin
+      LogMsg('[TEST_FAILED] RView root node is not TRpSubReport');
+      Halt(1);
+    end;
+    if (FStructure.RView.Items.Count < 2) or not (TObject(FStructure.RView.Items[1].Data) is TRpSection) then
+    begin
+      LogMsg('[TEST_FAILED] RView child node is not TRpSection');
+      Halt(1);
+    end;
+    // Test SelectDataItem
+    secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+    FStructure.SelectDataItem(secInt.printitem);
+    if not Assigned(FStructure.RView.Selected) or (FStructure.RView.Selected.Data <> secInt.printitem) then
+    begin
+      LogMsg('[TEST_FAILED] SelectDataItem did not select section node');
+      Halt(1);
+    end;
+    // Test browser (Data tab)
+    if not Assigned(FStructure.browser) or not Assigned(FStructure.browser.ATree) then
+    begin
+      LogMsg('[TEST_FAILED] FStructure.browser not assigned');
+      Halt(1);
+    end;
+    if FStructure.browser.ATree.Items.Count = 0 then
+    begin
+      LogMsg('[TEST_FAILED] browser.ATree has 0 nodes after setting report');
+      Halt(1);
+    end;
+
+    // Test dynamic section addition and moving via Structure Frame
+    testSubrep := FStructure.FindSelectedSubreport;
+    testSec := testSubrep.AddDetail;
+    FStructure.CreateInterface;
+    if FStructure.RView.Items.Count <> 3 then
+    begin
+      LogMsg(Format('[TEST_FAILED] Expected 3 tree nodes after AddDetail, got %d', [FStructure.RView.Items.Count]));
+      Halt(1);
+    end;
+    FStructure.SelectDataItem(testSec);
+    if FStructure.RView.Selected.Data <> testSec then
+    begin
+      LogMsg('[TEST_FAILED] SelectDataItem did not select newly added testSec');
+      Halt(1);
+    end;
+    FStructure.BUpClick(FStructure.BUp);
+    if testSubrep.Sections.Items[0].Section <> testSec then
+    begin
+      LogMsg('[TEST_FAILED] BUpClick did not move testSec up');
+      Halt(1);
+    end;
+    FStructure.BDownClick(FStructure.BDown);
+    if testSubrep.Sections.Items[1].Section <> testSec then
+    begin
+      LogMsg('[TEST_FAILED] BDownClick did not move testSec down');
+      Halt(1);
+    end;
+    testSubrep.FreeSection(testSec);
+    FStructure.CreateInterface;
+    if FStructure.RView.Items.Count <> 2 then
+    begin
+      LogMsg('[TEST_FAILED] FreeSection did not restore node count to 2');
+      Halt(1);
+    end;
+
+    // Reload sample4.rep and verify all 9 tree nodes (1 subrep + 8 sections)
+    samplePath := FindSampleFile('sample4.rep');
+    LoadReportFile(samplePath);
+    if FStructure.RView.Items.Count <> 9 then
+    begin
+      LogMsg(Format('[TEST_FAILED] Expected 9 tree nodes for sample4.rep, got %d', [FStructure.RView.Items.Count]));
+      Halt(1);
+    end;
+    LogMsg(Format('Structure Tree OK: %d tree nodes, %d browser nodes', [FStructure.RView.Items.Count, FStructure.browser.ATree.Items.Count]));
 
     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

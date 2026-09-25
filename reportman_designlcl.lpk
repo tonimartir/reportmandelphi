@@ -15,7 +15,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="14">
+    <Files Count="17">
       <Item1>
         <Filename Value="design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -73,6 +73,18 @@
         <Filename Value="design_lcl\rpmdimageslcl.pas"/>
         <UnitName Value="rpmdimageslcl"/>
       </Item14>
+      <Item15>
+        <Filename Value="design_lcl\rpmdobjinsplcl.pas"/>
+        <UnitName Value="rpmdobjinsplcl"/>
+      </Item15>
+      <Item16>
+        <Filename Value="design_lcl\rpdbbrowserlcl.pas"/>
+        <UnitName Value="rpdbbrowserlcl"/>
+      </Item16>
+      <Item17>
+        <Filename Value="design_lcl\rpmdfstruclcl.pas"/>
+        <UnitName Value="rpmdfstruclcl"/>
+      </Item17>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>
