@@ -24,10 +24,13 @@ uses
   rpmdobinsintlcl, rpprintitem, rpdrawitem, rplabelitem,
   rpmdbarcode, rpmdchart, rpsection, rpreport, rptypes,
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, rpmdfchartintlcl,
-  rpmdconsts, rpgraphutilslcl, rpmunits;
+  rpmdconsts, rpgraphutilslcl, rpmunits, LCLType;
 
 type
   TRpSectionInterface = class;
+
+  // Tools for inserting components into sections
+  TRpDesignTool = (dtArrow, dtLabel, dtExpression, dtShape, dtImage, dtBarcode, dtChart);
 
   // The custom control hosting the section canvas and its child items
   TRpSectionIntf = class(TCustomControl)
@@ -38,6 +41,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
     OnPosChange: TNotifyEvent;
     procedure ExecuteMouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -51,6 +55,10 @@ type
   private
     FOnDestroy: TNotifyEvent;
     FInterface: TRpSectionIntf;
+    FDesignFrame: TObject;
+    FActiveTool: TRpDesignTool;
+    FOnToolDone: TNotifyEvent;
+    FOnKeyDown: TKeyEvent;
     FOnPosChange: TNotifyEvent;
     FOnClearSelection: TNotifyEvent;
     FXOrigin, FYOrigin: Integer;
@@ -59,6 +67,7 @@ type
     FRectangle3: TRpRectangle;
     FRectangle4: TRpRectangle;
     procedure ClearRectangles;
+    procedure SetActiveTool(Value: TRpDesignTool);
     procedure SetOnPosChange(AValue: TNotifyEvent);
     procedure CalcNewCoords(var NewLeft, NewTop, NewWidth, NewHeight, X, Y: Integer);
     function DoSelectControls(NewLeft, NewTop, NewWidth, NewHeight: Integer): Boolean;
@@ -74,6 +83,10 @@ type
     procedure UpdateBack;
     procedure UpdatePos; override;
     property SectionControl: TRpSectionIntf read FInterface;
+    property DesignFrame: TObject read FDesignFrame write FDesignFrame;
+    property ActiveTool: TRpDesignTool read FActiveTool write SetActiveTool;
+    property OnToolDone: TNotifyEvent read FOnToolDone write FOnToolDone;
+    property OnKeyDown: TKeyEvent read FOnKeyDown write FOnKeyDown;
     property OnDestroy: TNotifyEvent read FOnDestroy write FOnDestroy;
     constructor Create(AOwner: TComponent; pritem: TRpCommonComponent); override;
     destructor Destroy; override;
@@ -81,6 +94,7 @@ type
     procedure SetProperty(pname: string; value: WideString); override;
     function GetProperty(pname: string): WideString; override;
     function CreateChild(compo: TRpCommonPosComponent): TRpSizePosInterface;
+    function CreateNewComponent(ATool: TRpDesignTool; ALeft, ATop, AWidth, AHeight: Integer): TRpSizePosInterface;
     procedure CreateChilds;
     procedure DeleteChild(achild: TRpSizePosInterface);
     property OnPosChange: TNotifyEvent read FOnPosChange write SetOnPosChange;
@@ -98,6 +112,7 @@ constructor TRpSectionIntf.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Color := clWhite;
+  TabStop := True;
 end;
 
 procedure TRpSectionIntf.Paint;
@@ -128,6 +143,8 @@ end;
 procedure TRpSectionIntf.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
+  if CanFocus then
+    SetFocus;
   if Assigned(secint) then
     secint.MouseDown(Button, Shift, X, Y);
 end;
@@ -159,6 +176,13 @@ end;
 procedure TRpSectionIntf.ExecuteMouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   MouseUp(Button, Shift, X, Y);
+end;
+
+procedure TRpSectionIntf.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyDown(Key, Shift);
+  if Assigned(secint) and Assigned(secint.FOnKeyDown) then
+    secint.FOnKeyDown(Self, Key, Shift);
 end;
 
 { TRpSectionInterface }
@@ -275,6 +299,8 @@ begin
     labelint.OnSelectComponent := OnSelectComponent;
     labelint.OnMoveComponent := OnMoveComponent;
     labelint.OnGetSelectedList := OnGetSelectedList;
+    if Assigned(FInterface) and Assigned(FInterface.PopupMenu) then
+      labelint.PopupMenu := FInterface.PopupMenu;
     labelint.UpdatePos;
     childlist.Add(labelint);
   end;
@@ -308,6 +334,143 @@ begin
     TObject(childlist[idx]).Free;
     childlist.Delete(idx);
   end;
+end;
+
+procedure TRpSectionInterface.SetActiveTool(Value: TRpDesignTool);
+begin
+  FActiveTool := Value;
+  if Assigned(FInterface) then
+  begin
+    if FActiveTool = dtArrow then
+      FInterface.Cursor := crDefault
+    else
+      FInterface.Cursor := crCross;
+  end;
+end;
+
+function TRpSectionInterface.CreateNewComponent(ATool: TRpDesignTool; ALeft, ATop, AWidth, AHeight: Integer): TRpSizePosInterface;
+var
+  theowner: TComponent;
+  compo: TRpCommonPosComponent;
+  asizeposint: TRpSizePosInterface;
+  aitem: TRpCommonListItem;
+  sec: TRpSection;
+  posx, posy, w, h: Integer;
+begin
+  Result := nil;
+  if not Assigned(printitem) or not (printitem is TRpSection) then
+    Exit;
+  sec := TRpSection(printitem);
+
+  if sec.IsExternal then
+    theowner := sec
+  else if Assigned(sec.Report) then
+    theowner := sec.Report
+  else
+    theowner := Self;
+
+  if (AWidth < 15) or (AHeight < 10) then
+  begin
+    case ATool of
+      dtLabel, dtExpression:
+        begin
+          w := 1500;
+          h := 350;
+        end;
+      dtShape:
+        begin
+          w := 1500;
+          h := 500;
+        end;
+      dtImage:
+        begin
+          w := 1500;
+          h := 1500;
+        end;
+      dtBarcode:
+        begin
+          w := 2000;
+          h := 800;
+        end;
+      dtChart:
+        begin
+          w := 3000;
+          h := 2000;
+        end;
+      else
+        begin
+          w := 1500;
+          h := 350;
+        end;
+    end;
+  end
+  else
+  begin
+    w := pixelstotwips(AWidth, Scale);
+    h := pixelstotwips(AHeight, Scale);
+  end;
+
+  posx := pixelstotwips(ALeft, Scale);
+  posy := pixelstotwips(ATop, Scale);
+  if posx < 0 then posx := 0;
+  if posy < 0 then posy := 0;
+
+  compo := nil;
+  case ATool of
+    dtLabel:
+      begin
+        compo := TRpLabel.Create(theowner);
+        TRpLabel(compo).Text := SRpSampleTextToLabels;
+      end;
+    dtExpression:
+      begin
+        compo := TRpExpression.Create(theowner);
+        TRpExpression(compo).Expression := QuotedStr('Texto');
+      end;
+    dtShape:
+      begin
+        compo := TRpShape.Create(theowner);
+        TRpShape(compo).Shape := rpsRectangle;
+      end;
+    dtImage:
+      begin
+        compo := TRpImage.Create(theowner);
+      end;
+    dtBarcode:
+      begin
+        compo := TRpBarcode.Create(theowner);
+        TRpBarcode(compo).Expression := QuotedStr(SRpSampleBarCode);
+      end;
+    dtChart:
+      begin
+        compo := TRpChart.Create(theowner);
+        TRpChart(compo).ValueExpression := '10';
+      end;
+  end;
+
+  if not Assigned(compo) then
+    Exit;
+
+  if (compo is TRpGenTextComponent) and Assigned(sec.Report) then
+    TRpReport(sec.Report).AssignDefaultFontTo(TRpGenTextComponent(compo));
+
+  compo.PosX := posx;
+  compo.PosY := posy;
+  compo.Width := w;
+  compo.Height := h;
+  GenerateNewName(compo);
+
+  aitem := sec.ReportComponents.Add;
+  aitem.Component := compo;
+
+  asizeposint := CreateChild(compo);
+  if Assigned(asizeposint) then
+  begin
+    if Assigned(FOnSelectComponent) then
+      FOnSelectComponent(asizeposint, False);
+  end;
+
+  Result := asizeposint;
 end;
 
 procedure TRpSectionInterface.CalcNewCoords(var NewLeft, NewTop, NewWidth, NewHeight, X, Y: Integer);
@@ -395,6 +558,20 @@ var
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button <> mbLeft then Exit;
+
+  if FActiveTool <> dtArrow then
+  begin
+    ClearRectangles;
+    CalcNewCoords(NewLeft, NewTop, NewWidth, NewHeight, X, Y);
+    CreateNewComponent(FActiveTool, NewLeft, NewTop, NewWidth, NewHeight);
+    if not (ssShift in Shift) then
+    begin
+      SetActiveTool(dtArrow);
+      if Assigned(FOnToolDone) then
+        FOnToolDone(Self);
+    end;
+    Exit;
+  end;
 
   if Assigned(FRectangle) then
   begin

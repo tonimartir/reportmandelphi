@@ -530,6 +530,27 @@ var
   item: TRpSizePosInterface;
 begin
   inherited MouseDown(Button, Shift, X, Y);
+  if (Parent is TWinControl) and TWinControl(Parent).CanFocus then
+    TWinControl(Parent).SetFocus;
+
+  if Button = mbRight then
+  begin
+    selList := nil;
+    if Assigned(OnGetSelectedList) then
+      selList := OnGetSelectedList()
+    else if Assigned(SectionInt) and Assigned(SectionInt.OnGetSelectedList) then
+      selList := SectionInt.OnGetSelectedList();
+
+    if not Assigned(selList) or (selList.IndexOf(Self) < 0) then
+    begin
+      if Assigned(OnSelectComponent) then
+        OnSelectComponent(Self, False)
+      else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+        SectionInt.OnSelectComponent(Self, False);
+    end;
+    Exit;
+  end;
+
   if Button <> mbLeft then
     Exit;
 

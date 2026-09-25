@@ -153,15 +153,127 @@ object MainForm: TMainForm
       OnChange = CbUnitsChange
     end
   end
+  object PToolbar: TPanel
+    Left = 0
+    Height = 36
+    Top = 44
+    Width = 960
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 36
+    ClientWidth = 960
+    ParentBackground = False
+    TabOrder = 1
+    object BtnToolArrow: TSpeedButton
+      Left = 8
+      Height = 28
+      Top = 4
+      Width = 65
+      Caption = 'Puntero'
+      Down = True
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolLabel: TSpeedButton
+      Left = 76
+      Height = 28
+      Top = 4
+      Width = 55
+      Caption = 'Texto'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolExpr: TSpeedButton
+      Left = 134
+      Height = 28
+      Top = 4
+      Width = 75
+      Caption = 'Expresión'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolShape: TSpeedButton
+      Left = 212
+      Height = 28
+      Top = 4
+      Width = 55
+      Caption = 'Figura'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolImage: TSpeedButton
+      Left = 270
+      Height = 28
+      Top = 4
+      Width = 60
+      Caption = 'Imagen'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolBarcode: TSpeedButton
+      Left = 333
+      Height = 28
+      Top = 4
+      Width = 85
+      Caption = 'Cód. Barras'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnToolChart: TSpeedButton
+      Left = 421
+      Height = 28
+      Top = 4
+      Width = 60
+      Caption = 'Gráfico'
+      GroupIndex = 1
+      OnClick = BtnToolClick
+    end
+    object BtnDelete: TButton
+      Left = 490
+      Height = 28
+      Top = 4
+      Width = 75
+      Caption = 'Eliminar'
+      TabOrder = 0
+      OnClick = BtnDeleteClick
+    end
+    object BtnToFront: TButton
+      Left = 569
+      Height = 28
+      Top = 4
+      Width = 75
+      Caption = 'Al Frente'
+      TabOrder = 1
+      OnClick = BtnToFrontClick
+    end
+    object BtnToBack: TButton
+      Left = 648
+      Height = 28
+      Top = 4
+      Width = 75
+      Caption = 'Al Fondo'
+      TabOrder = 2
+      OnClick = BtnToBackClick
+    end
+    object BtnSelectAll: TButton
+      Left = 727
+      Height = 28
+      Top = 4
+      Width = 75
+      Caption = 'Sel. Todo'
+      TabOrder = 3
+      OnClick = BtnSelectAllClick
+    end
+  end
   object PClient: TPanel
     Left = 0
-    Height = 612
-    Top = 44
+    Height = 576
+    Top = 80
     Width = 960
     Align = alClient
     BevelOuter = bvNone
     ParentBackground = False
-    TabOrder = 1
+    TabOrder = 2
   end
   object StatusBar: TStatusBar
     Left = 0

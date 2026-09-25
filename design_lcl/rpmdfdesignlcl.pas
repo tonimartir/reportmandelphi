@@ -21,9 +21,10 @@ interface
 
 uses
   SysUtils, Classes, Types,
-  Graphics, Controls, Forms, Dialogs, Menus, ExtCtrls, LMessages,
+  Graphics, Controls, Forms, Dialogs, Menus, ExtCtrls, LMessages, LCLType,
   rprulerlcl, rpmdobinsintlcl, rpmdfsectionintlcl,
-  rpgraphutilslcl, rpsubreport, rpsection, rpreport, rpmunits, rptypes, rpcompobase, rpprintitem;
+  rpgraphutilslcl, rpsubreport, rpsection, rpreport, rpmunits, rptypes, rpcompobase, rpprintitem,
+  rpmdconsts;
 
 type
   TFRpDesignFrameLCL = class;
@@ -110,15 +111,30 @@ type
     FSizeModifier: TRpSizeModifier;
     FSelectedItems: TList;
     FUpdatingSubreport: Boolean;
+    FActiveTool: TRpDesignTool;
+    FOnToolChange: TNotifyEvent;
+    FPopupMenu: TPopupMenu;
+    MDelete: TMenuItem;
+    MBringToFront: TMenuItem;
+    MSendToBack: TMenuItem;
+    MSelectAll: TMenuItem;
     procedure SetReport(Value: TRpReport);
     procedure SetObjInsp(Value: TComponent);
     procedure SecPosChange(Sender: TObject);
     procedure SetScale(nvalue: Double);
+    procedure SetActiveTool(Value: TRpDesignTool);
+    procedure SectionToolDone(Sender: TObject);
     procedure SizeModifierChange(Sender: TObject);
     procedure ClearSelectionEvent(Sender: TObject);
+    procedure PopupMenuPopup(Sender: TObject);
+    procedure PopupDeleteClick(Sender: TObject);
+    procedure PopupBringToFrontClick(Sender: TObject);
+    procedure PopupSendToBackClick(Sender: TObject);
+    procedure PopupSelectAllClick(Sender: TObject);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Resize; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
     freportstructure: TComponent;
     SectionScrollBox: TRpScrollBox;
@@ -127,6 +143,7 @@ type
     toptitles: TList;
     righttitles: TList;
     TopRuler: TRpRulerLCL;
+    procedure SectionKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure InvalidateCaptions;
     procedure UpdateInterface(refreshobjinsp: Boolean);
     procedure ShowAllHidden;
@@ -138,6 +155,10 @@ type
     procedure ClearSelection;
     function GetSelectedItemsList: TList;
     procedure MoveSelectedComponents(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer);
+    procedure DeleteSelection;
+    procedure BringSelectionToFront;
+    procedure SendSelectionToBack;
+    procedure SelectAll;
     property Report: TRpReport read FReport write SetReport;
     property ObjInsp: TComponent read FObjInsp write SetObjInsp;
     property Scale: Double read FScale write SetScale;
@@ -145,6 +166,9 @@ type
     property SubReport: TRpSubReport read FSubReport;
     property SizeModifier: TRpSizeModifier read FSizeModifier;
     property SelectedItems: TList read FSelectedItems;
+    property ActiveTool: TRpDesignTool read FActiveTool write SetActiveTool;
+    property OnToolChange: TNotifyEvent read FOnToolChange write FOnToolChange;
+    property DesignPopupMenu: TPopupMenu read FPopupMenu;
   end;
 
 implementation
@@ -481,6 +505,8 @@ end;
 { TFRpDesignFrameLCL }
 
 constructor TFRpDesignFrameLCL.Create(AOwner: TComponent);
+var
+  itemSep: TMenuItem;
 begin
   inherited Create(AOwner);
 
@@ -526,11 +552,48 @@ begin
   FSizeModifier.OnSizeChange := SizeModifierChange;
   FSelectedItems := TList.Create;
 
+  FActiveTool := dtArrow;
+
+  // Create context popup menu
+  FPopupMenu := TPopupMenu.Create(Self);
+  FPopupMenu.OnPopup := PopupMenuPopup;
+
+  MDelete := TMenuItem.Create(FPopupMenu);
+  MDelete.Caption := SRpDelete;
+  MDelete.ShortCut := ShortCut(VK_DELETE, []);
+  MDelete.OnClick := PopupDeleteClick;
+  FPopupMenu.Items.Add(MDelete);
+
+  itemSep := TMenuItem.Create(FPopupMenu);
+  itemSep.Caption := '-';
+  FPopupMenu.Items.Add(itemSep);
+
+  MBringToFront := TMenuItem.Create(FPopupMenu);
+  MBringToFront.Caption := SRpBringToFront;
+  MBringToFront.OnClick := PopupBringToFrontClick;
+  FPopupMenu.Items.Add(MBringToFront);
+
+  MSendToBack := TMenuItem.Create(FPopupMenu);
+  MSendToBack.Caption := SRpSendToBack;
+  MSendToBack.OnClick := PopupSendToBackClick;
+  FPopupMenu.Items.Add(MSendToBack);
+
+  itemSep := TMenuItem.Create(FPopupMenu);
+  itemSep.Caption := '-';
+  FPopupMenu.Items.Add(itemSep);
+
+  MSelectAll := TMenuItem.Create(FPopupMenu);
+  MSelectAll.Caption := SRpSelectAll;
+  MSelectAll.ShortCut := ShortCut(Ord('A'), [ssCtrl]);
+  MSelectAll.OnClick := PopupSelectAllClick;
+  FPopupMenu.Items.Add(MSelectAll);
+
   PSection := TRpPaintEventPanel.Create(Self);
   PSection.allowselect := False;
   PSection.FFrame := Self;
   PSection.Color := clAppWorkSpace;
   PSection.Parent := SectionScrollBox;
+  PSection.PopupMenu := FPopupMenu;
   PSection.OnPosChange := SecPosChange;
 end;
 
@@ -715,7 +778,12 @@ begin
     // 2. Section interface (canvas + child items)
     asecint := TRpSectionInterface.Create(Self, sec);
     asecint.fobjinsp := FObjInsp;
+    asecint.DesignFrame := Self;
+    asecint.ActiveTool := FActiveTool;
+    asecint.OnToolDone := SectionToolDone;
+    asecint.OnKeyDown := SectionKeyDown;
     asecint.Parent := PSection;
+    asecint.SectionControl.PopupMenu := FPopupMenu;
     asecint.Scale := Scale;
     asecint.Left := 0;
     asecint.Top := posx;
@@ -950,6 +1018,7 @@ begin
   end;
 
   posComp := TRpSizePosInterface(AComp);
+  posComp.PopupMenu := FPopupMenu;
 
   if not AddToSelection then
   begin
@@ -1095,6 +1164,228 @@ begin
 
   if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
     TFRpObjInspLCL(FObjInsp).UpdatePosValues;
+end;
+
+procedure TFRpDesignFrameLCL.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyDown(Key, Shift);
+  if Key = VK_DELETE then
+  begin
+    DeleteSelection;
+    Key := 0;
+  end
+  else if Key = VK_ESCAPE then
+  begin
+    ActiveTool := dtArrow;
+    Key := 0;
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.SetActiveTool(Value: TRpDesignTool);
+var
+  i: Integer;
+begin
+  if FActiveTool <> Value then
+  begin
+    FActiveTool := Value;
+    if Assigned(secinterfaces) then
+    begin
+      for i := 0 to secinterfaces.Count - 1 do
+      begin
+        if Assigned(secinterfaces[i]) then
+          TRpSectionInterface(secinterfaces[i]).ActiveTool := FActiveTool;
+      end;
+    end;
+    if Assigned(FOnToolChange) then
+      FOnToolChange(Self);
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.SectionToolDone(Sender: TObject);
+begin
+  ActiveTool := dtArrow;
+end;
+
+procedure TFRpDesignFrameLCL.SectionKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_DELETE then
+  begin
+    DeleteSelection;
+    Key := 0;
+  end
+  else if Key = VK_ESCAPE then
+  begin
+    ActiveTool := dtArrow;
+    Key := 0;
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.PopupMenuPopup(Sender: TObject);
+var
+  hasSel: Boolean;
+begin
+  hasSel := Assigned(FSelectedItems) and (FSelectedItems.Count > 0);
+  if Assigned(MDelete) then
+    MDelete.Enabled := hasSel;
+  if Assigned(MBringToFront) then
+    MBringToFront.Enabled := hasSel;
+  if Assigned(MSendToBack) then
+    MSendToBack.Enabled := hasSel;
+end;
+
+procedure TFRpDesignFrameLCL.PopupDeleteClick(Sender: TObject);
+begin
+  DeleteSelection;
+end;
+
+procedure TFRpDesignFrameLCL.PopupBringToFrontClick(Sender: TObject);
+begin
+  BringSelectionToFront;
+end;
+
+procedure TFRpDesignFrameLCL.PopupSendToBackClick(Sender: TObject);
+begin
+  SendSelectionToBack;
+end;
+
+procedure TFRpDesignFrameLCL.PopupSelectAllClick(Sender: TObject);
+begin
+  SelectAll;
+end;
+
+procedure TFRpDesignFrameLCL.DeleteSelection;
+var
+  i: Integer;
+  item: TRpSizePosInterface;
+  secint: TRpSectionInterface;
+  pitem: TRpCommonPosComponent;
+  selectedList: TList;
+begin
+  if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then
+    Exit;
+
+  selectedList := TList.Create;
+  try
+    for i := 0 to FSelectedItems.Count - 1 do
+      selectedList.Add(FSelectedItems[i]);
+
+    ClearSelection;
+
+    for i := 0 to selectedList.Count - 1 do
+    begin
+      item := TRpSizePosInterface(selectedList[i]);
+      secint := TRpSectionInterface(item.SectionInt);
+      pitem := TRpCommonPosComponent(item.PrintItem);
+      if Assigned(secint) and Assigned(secint.PrintItem) and Assigned(pitem) then
+      begin
+        TRpSection(secint.PrintItem).DeleteComponent(pitem);
+        secint.DeleteChild(item);
+      end;
+    end;
+  finally
+    selectedList.Free;
+  end;
+
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+  begin
+    TFRpObjInspLCL(FObjInsp).ClearCompItemRefs;
+    TFRpObjInspLCL(FObjInsp).AddCompItem(nil, True);
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.BringSelectionToFront;
+var
+  i, idx: Integer;
+  item: TRpSizePosInterface;
+  sec: TRpSection;
+  pitem: TRpCommonComponent;
+  citem: TRpCommonListItem;
+begin
+  if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    item := TRpSizePosInterface(FSelectedItems[i]);
+    item.BringToFront;
+    pitem := item.PrintItem;
+    if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
+    begin
+      sec := TRpSection(item.SectionInt.PrintItem);
+      idx := sec.ReportComponents.IndexOf(pitem);
+      if (idx >= 0) and (idx < sec.ReportComponents.Count - 1) then
+      begin
+        sec.ReportComponents.Delete(idx);
+        citem := sec.ReportComponents.Add;
+        citem.Component := pitem;
+      end;
+    end;
+  end;
+  if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
+    FSizeModifier.UpdatePos;
+end;
+
+procedure TFRpDesignFrameLCL.SendSelectionToBack;
+var
+  i, idx: Integer;
+  item: TRpSizePosInterface;
+  sec: TRpSection;
+  pitem: TRpCommonComponent;
+  citem: TRpCommonListItem;
+begin
+  if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    item := TRpSizePosInterface(FSelectedItems[i]);
+    item.SendToBack;
+    pitem := item.PrintItem;
+    if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
+    begin
+      sec := TRpSection(item.SectionInt.PrintItem);
+      idx := sec.ReportComponents.IndexOf(pitem);
+      if idx > 0 then
+      begin
+        sec.ReportComponents.Delete(idx);
+        citem := sec.ReportComponents.Insert(0);
+        citem.Component := pitem;
+      end;
+    end;
+  end;
+  if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
+    FSizeModifier.UpdatePos;
+end;
+
+procedure TFRpDesignFrameLCL.SelectAll;
+var
+  i, j: Integer;
+  secint: TRpSectionInterface;
+  item: TRpSizePosInterface;
+begin
+  ClearSelection;
+  if not Assigned(secinterfaces) then Exit;
+  for i := 0 to secinterfaces.Count - 1 do
+  begin
+    secint := TRpSectionInterface(secinterfaces[i]);
+    if Assigned(secint) and Assigned(secint.childlist) then
+    begin
+      for j := 0 to secint.childlist.Count - 1 do
+      begin
+        item := TRpSizePosInterface(secint.childlist[j]);
+        if item.Visible then
+        begin
+          item.Selected := True;
+          item.Invalidate;
+          FSelectedItems.Add(item);
+        end;
+      end;
+    end;
+  end;
+  if Assigned(FSizeModifier) then
+    FSizeModifier.Control := nil;
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+  begin
+    TFRpObjInspLCL(FObjInsp).ClearMultiSelect;
+    for i := 0 to FSelectedItems.Count - 1 do
+      TFRpObjInspLCL(FObjInsp).AddCompItem(TRpSizeInterface(FSelectedItems[i]), False);
+  end;
 end;
 
 end.

@@ -6,13 +6,26 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, StdCtrls, ComCtrls,
+  ExtCtrls, StdCtrls, ComCtrls, Buttons, LCLType,
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
-  rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts;
+  rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
+  rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes;
 
 type
   TMainForm = class(TForm)
     PTop: TPanel;
+    PToolbar: TPanel;
+    BtnToolArrow: TSpeedButton;
+    BtnToolLabel: TSpeedButton;
+    BtnToolExpr: TSpeedButton;
+    BtnToolShape: TSpeedButton;
+    BtnToolImage: TSpeedButton;
+    BtnToolBarcode: TSpeedButton;
+    BtnToolChart: TSpeedButton;
+    BtnDelete: TButton;
+    BtnToFront: TButton;
+    BtnToBack: TButton;
+    BtnSelectAll: TButton;
     PClient: TPanel;
     StatusBar: TStatusBar;
     BtnOpen: TButton;
@@ -40,6 +53,12 @@ type
     procedure BtnZoomClick(Sender: TObject);
     procedure ChkGridChange(Sender: TObject);
     procedure CbUnitsChange(Sender: TObject);
+    procedure BtnToolClick(Sender: TObject);
+    procedure BtnDeleteClick(Sender: TObject);
+    procedure BtnToFrontClick(Sender: TObject);
+    procedure BtnToBackClick(Sender: TObject);
+    procedure BtnSelectAllClick(Sender: TObject);
+    procedure DesignerToolChange(Sender: TObject);
   private
     FReport: TRpReport;
     FDesignerFrame: TFRpDesignFrameLCL;
@@ -133,6 +152,7 @@ begin
 
   LogMsg('FormCreate: linking ObjInsp');
   FDesignerFrame.ObjInsp := FObjInsp;
+  FDesignerFrame.OnToolChange := DesignerToolChange;
   Application.OnException := AppException;
   LogMsg('TMainForm.FormCreate completed');
 end;
@@ -361,12 +381,63 @@ begin
   FDesignerFrame.UpdateInterface(False);
 end;
 
+procedure TMainForm.BtnToolClick(Sender: TObject);
+begin
+  if Sender = BtnToolArrow then
+    FDesignerFrame.ActiveTool := dtArrow
+  else if Sender = BtnToolLabel then
+    FDesignerFrame.ActiveTool := dtLabel
+  else if Sender = BtnToolExpr then
+    FDesignerFrame.ActiveTool := dtExpression
+  else if Sender = BtnToolShape then
+    FDesignerFrame.ActiveTool := dtShape
+  else if Sender = BtnToolImage then
+    FDesignerFrame.ActiveTool := dtImage
+  else if Sender = BtnToolBarcode then
+    FDesignerFrame.ActiveTool := dtBarcode
+  else if Sender = BtnToolChart then
+    FDesignerFrame.ActiveTool := dtChart;
+end;
+
+procedure TMainForm.DesignerToolChange(Sender: TObject);
+begin
+  case FDesignerFrame.ActiveTool of
+    dtArrow: BtnToolArrow.Down := True;
+    dtLabel: BtnToolLabel.Down := True;
+    dtExpression: BtnToolExpr.Down := True;
+    dtShape: BtnToolShape.Down := True;
+    dtImage: BtnToolImage.Down := True;
+    dtBarcode: BtnToolBarcode.Down := True;
+    dtChart: BtnToolChart.Down := True;
+  end;
+end;
+
+procedure TMainForm.BtnDeleteClick(Sender: TObject);
+begin
+  FDesignerFrame.DeleteSelection;
+end;
+
+procedure TMainForm.BtnToFrontClick(Sender: TObject);
+begin
+  FDesignerFrame.BringSelectionToFront;
+end;
+
+procedure TMainForm.BtnToBackClick(Sender: TObject);
+begin
+  FDesignerFrame.SendSelectionToBack;
+end;
+
+procedure TMainForm.BtnSelectAllClick(Sender: TObject);
+begin
+  FDesignerFrame.SelectAll;
+end;
+
 procedure TMainForm.RunSelfTest(Data: PtrInt);
 var
   samplePath: string;
   ok: Boolean;
   secInt: TRpSectionInterface;
-  comp1, comp2: TRpSizePosInterface;
+  comp1, comp2, newComp, newComp2, newComp3: TRpSizePosInterface;
   ruler0: TRpRulerLCL;
   expectedTop: Integer;
   origX1, origY1, origX2, origY2, deltaTwipsX, deltaTwipsY: Integer;
@@ -374,6 +445,8 @@ var
   wStr, newWStr: string;
   frames: PPointer;
   cnt, i: Integer;
+  initialChildCount, initialCompCount: Integer;
+  fakeKey: Word;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -619,6 +692,200 @@ begin
           Halt(1);
         end;
       end;
+    end;
+
+    // 5. Test Subphase 3.2: Tool palette, Component creation, Z-order, and Deletion
+    LogMsg('Testing Subphase 3.2 features...');
+    // 5.1 Tool switching and Esc shortcut
+    FDesignerFrame.ActiveTool := dtLabel;
+    if (FDesignerFrame.ActiveTool <> dtLabel) or not BtnToolLabel.Down then
+    begin
+      LogMsg('[TEST_FAILED] ActiveTool := dtLabel did not update tool or button');
+      Halt(1);
+    end;
+
+    // Simulate Escape key in SectionKeyDown
+    fakeKey := VK_ESCAPE;
+    FDesignerFrame.SectionKeyDown(Self, fakeKey, []);
+    if (FDesignerFrame.ActiveTool <> dtArrow) or not BtnToolArrow.Down then
+    begin
+      LogMsg('[TEST_FAILED] Escape did not reset ActiveTool to dtArrow');
+      Halt(1);
+    end;
+
+    // 5.2 Component creation via secInt.CreateNewComponent
+    secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+    initialChildCount := secInt.childlist.Count;
+    initialCompCount := TRpSection(secInt.printitem).ReportComponents.Count;
+
+    newComp := secInt.CreateNewComponent(dtLabel, 30, 30, 100, 25);
+    if not Assigned(newComp) or not (newComp.printitem is TRpLabel) then
+    begin
+      LogMsg('[TEST_FAILED] CreateNewComponent(dtLabel) failed');
+      Halt(1);
+    end;
+    if Length(newComp.printitem.Name) = 0 then
+    begin
+      LogMsg('[TEST_FAILED] New component has empty name');
+      Halt(1);
+    end;
+    if TRpLabel(newComp.printitem).Text <> SRpSampleTextToLabels then
+    begin
+      LogMsg('[TEST_FAILED] New label text mismatch');
+      Halt(1);
+    end;
+    if secInt.childlist.Count <> initialChildCount + 1 then
+    begin
+      LogMsg('[TEST_FAILED] Section childlist count did not increase by 1');
+      Halt(1);
+    end;
+    if TRpSection(secInt.printitem).ReportComponents.Count <> initialCompCount + 1 then
+    begin
+      LogMsg('[TEST_FAILED] Section ReportComponents count did not increase by 1');
+      Halt(1);
+    end;
+    if (FDesignerFrame.SelectedItems.Count <> 1) or (FDesignerFrame.SelectedItems[0] <> newComp) then
+    begin
+      LogMsg('[TEST_FAILED] New component was not automatically selected');
+      Halt(1);
+    end;
+    if FObjInsp.CompItem <> newComp then
+    begin
+      LogMsg('[TEST_FAILED] Object Inspector not inspecting new component');
+      Halt(1);
+    end;
+
+    // Insert an expression
+    newComp2 := secInt.CreateNewComponent(dtExpression, 140, 30, 100, 25);
+    if not Assigned(newComp2) or not (newComp2.printitem is TRpExpression) then
+    begin
+      LogMsg('[TEST_FAILED] CreateNewComponent(dtExpression) failed');
+      Halt(1);
+    end;
+    if secInt.childlist.Count <> initialChildCount + 2 then
+    begin
+      LogMsg('[TEST_FAILED] Section childlist count did not increase to +2');
+      Halt(1);
+    end;
+
+    // Insert a shape
+    newComp3 := secInt.CreateNewComponent(dtShape, 30, 65, 80, 40);
+    if not Assigned(newComp3) or not (newComp3.printitem is TRpShape) then
+    begin
+      LogMsg('[TEST_FAILED] CreateNewComponent(dtShape) failed');
+      Halt(1);
+    end;
+    if TRpShape(newComp3.printitem).Shape <> rpsRectangle then
+    begin
+      LogMsg('[TEST_FAILED] New shape is not rpsRectangle');
+      Halt(1);
+    end;
+    if secInt.childlist.Count <> initialChildCount + 3 then
+    begin
+      LogMsg('[TEST_FAILED] Section childlist count did not increase to +3');
+      Halt(1);
+    end;
+
+    // 5.3 Z-Order: SendSelectionToBack and BringSelectionToFront
+    // newComp3 is currently selected
+    FDesignerFrame.SendSelectionToBack;
+    if TRpSection(secInt.printitem).ReportComponents[0].Component <> newComp3.printitem then
+    begin
+      LogMsg('[TEST_FAILED] SendSelectionToBack did not move component to index 0');
+      Halt(1);
+    end;
+
+    FDesignerFrame.BringSelectionToFront;
+    if TRpSection(secInt.printitem).ReportComponents[TRpSection(secInt.printitem).ReportComponents.Count - 1].Component <> newComp3.printitem then
+    begin
+      LogMsg('[TEST_FAILED] BringSelectionToFront did not move component to last index');
+      Halt(1);
+    end;
+
+    // 5.4 SelectAll
+    FDesignerFrame.SelectAll;
+    if FDesignerFrame.SelectedItems.Count < initialChildCount + 3 then
+    begin
+      LogMsg('[TEST_FAILED] SelectAll did not select all components');
+      Halt(1);
+    end;
+
+    // 5.5 DeleteSelection
+    // Select newComp and newComp2
+    FDesignerFrame.ClearSelection;
+    FDesignerFrame.SelectComponent(newComp, False);
+    FDesignerFrame.SelectComponent(newComp2, True);
+    if FDesignerFrame.SelectedItems.Count <> 2 then
+    begin
+      LogMsg('[TEST_FAILED] Could not select newComp and newComp2');
+      Halt(1);
+    end;
+
+    FDesignerFrame.DeleteSelection;
+    if FDesignerFrame.SelectedItems.Count <> 0 then
+    begin
+      LogMsg('[TEST_FAILED] DeleteSelection should clear selected items');
+      Halt(1);
+    end;
+    if (secInt.childlist.IndexOf(newComp) >= 0) or (secInt.childlist.IndexOf(newComp2) >= 0) then
+    begin
+      LogMsg('[TEST_FAILED] Deleted items still found in childlist');
+      Halt(1);
+    end;
+    if (TRpSection(secInt.printitem).ReportComponents.IndexOf(newComp.printitem) >= 0) or
+       (TRpSection(secInt.printitem).ReportComponents.IndexOf(newComp2.printitem) >= 0) then
+    begin
+      LogMsg('[TEST_FAILED] Deleted items still found in section components');
+      Halt(1);
+    end;
+    if secInt.childlist.Count <> initialChildCount + 1 then
+    begin
+      LogMsg('[TEST_FAILED] childlist count mismatch after deleting 2 components');
+      Halt(1);
+    end;
+
+    // Delete newComp3 via SectionKeyDown VK_DELETE
+    FDesignerFrame.SelectComponent(newComp3, False);
+    fakeKey := VK_DELETE;
+    FDesignerFrame.SectionKeyDown(Self, fakeKey, []);
+    if secInt.childlist.Count <> initialChildCount then
+    begin
+      LogMsg('[TEST_FAILED] childlist count should be back to initial after deleting newComp3');
+      Halt(1);
+    end;
+    if TRpSection(secInt.printitem).ReportComponents.Count <> initialCompCount then
+    begin
+      LogMsg('[TEST_FAILED] ReportComponents count should be back to initial');
+      Halt(1);
+    end;
+
+    // 5.6 Interactive mouse placement test
+    FDesignerFrame.ActiveTool := dtBarcode;
+    secInt.SectionControl.ExecuteMouseDown(mbLeft, [], 40, 40);
+    secInt.SectionControl.ExecuteMouseUp(mbLeft, [], 40, 40);
+    if FDesignerFrame.ActiveTool <> dtArrow then
+    begin
+      LogMsg('[TEST_FAILED] Mouse placement should reset ActiveTool to dtArrow');
+      Halt(1);
+    end;
+    if secInt.childlist.Count <> initialChildCount + 1 then
+    begin
+      LogMsg('[TEST_FAILED] Mouse placement did not create a new component');
+      Halt(1);
+    end;
+    newComp := TRpSizePosInterface(secInt.childlist[secInt.childlist.Count - 1]);
+    if not (newComp.printitem is TRpBarcode) then
+    begin
+      LogMsg('[TEST_FAILED] Interactive component is not a TRpBarcode');
+      Halt(1);
+    end;
+    // Clean up created barcode
+    FDesignerFrame.SelectComponent(newComp, False);
+    FDesignerFrame.DeleteSelection;
+    if secInt.childlist.Count <> initialChildCount then
+    begin
+      LogMsg('[TEST_FAILED] Clean up after interactive placement failed');
+      Halt(1);
     end;
 
     ok := True;
