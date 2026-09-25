@@ -9,10 +9,8 @@ interface
 
 uses
   rppreviewcontrol, rppreviewmetalcl, rpmaskedit, rpreglcl, rplclpreview, 
-  rppagesetuplcl, rplclreport, rpwebview2, rplclwebview, rpfrmmonacoeditorlcl, 
-  rprulerlcl, rpmdobinsintlcl, rpmdflabelintlcl, rpmdfdrawintlcl, 
-  rpmdfbarcodeintlcl, rpmdfchartintlcl, rpmdfsectionintlcl, rpmdfdesignlcl, 
-  rpmdesignerlcl, LazarusPackageIntf;
+  rppagesetuplcl, rplclreport, rplcldriver, rplclfonts, rpgraphutilslcl, 
+  LazarusPackageIntf;
 
 implementation
 

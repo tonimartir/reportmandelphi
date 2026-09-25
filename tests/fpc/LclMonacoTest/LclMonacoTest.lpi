@@ -21,6 +21,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="reportman_designlcl"/>
+      </Item>
+      <Item>
         <PackageName Value="reportman_lcl"/>
       </Item>
       <Item>

@@ -14,7 +14,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="19">
+    <Files Count="10">
       <Item1>
         <Filename Value="rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
@@ -45,53 +45,17 @@
         <UnitName Value="rplclreport"/>
       </Item7>
       <Item8>
-        <Filename Value="rpwebview2.pas"/>
-        <UnitName Value="rpwebview2"/>
+        <Filename Value="rplcldriver.pas"/>
+        <UnitName Value="rplcldriver"/>
       </Item8>
       <Item9>
-        <Filename Value="rplclwebview.pas"/>
-        <UnitName Value="rplclwebview"/>
+        <Filename Value="rplclfonts.pas"/>
+        <UnitName Value="rplclfonts"/>
       </Item9>
       <Item10>
-        <Filename Value="rpfrmmonacoeditorlcl.pas"/>
-        <UnitName Value="rpfrmmonacoeditorlcl"/>
+        <Filename Value="rpgraphutilslcl.pas"/>
+        <UnitName Value="rpgraphutilslcl"/>
       </Item10>
-      <Item11>
-        <Filename Value="rprulerlcl.pas"/>
-        <UnitName Value="rprulerlcl"/>
-      </Item11>
-      <Item12>
-        <Filename Value="rpmdobinsintlcl.pas"/>
-        <UnitName Value="rpmdobinsintlcl"/>
-      </Item12>
-      <Item13>
-        <Filename Value="rpmdflabelintlcl.pas"/>
-        <UnitName Value="rpmdflabelintlcl"/>
-      </Item13>
-      <Item14>
-        <Filename Value="rpmdfdrawintlcl.pas"/>
-        <UnitName Value="rpmdfdrawintlcl"/>
-      </Item14>
-      <Item15>
-        <Filename Value="rpmdfbarcodeintlcl.pas"/>
-        <UnitName Value="rpmdfbarcodeintlcl"/>
-      </Item15>
-      <Item16>
-        <Filename Value="rpmdfchartintlcl.pas"/>
-        <UnitName Value="rpmdfchartintlcl"/>
-      </Item16>
-      <Item17>
-        <Filename Value="rpmdfsectionintlcl.pas"/>
-        <UnitName Value="rpmdfsectionintlcl"/>
-      </Item17>
-      <Item18>
-        <Filename Value="rpmdfdesignlcl.pas"/>
-        <UnitName Value="rpmdfdesignlcl"/>
-      </Item18>
-      <Item19>
-        <Filename Value="rpmdesignerlcl.pas"/>
-        <UnitName Value="rpmdesignerlcl"/>
-      </Item19>
     </Files>
     <RequiredPkgs Count="5">
       <Item1>

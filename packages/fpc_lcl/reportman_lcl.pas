@@ -10,10 +10,7 @@ interface
 uses
   rplcldriver, rplclfonts, rpgraphutilslcl, rprflclparams, rppreviewmetalcl, 
   rppreviewcontrol, rpmaskedit, rplclpreview, rppagesetuplcl, rplclreport, 
-  rpreglcl, rpwebview2, rplclwebview, rpfrmmonacoeditorlcl, rprulerlcl, 
-  rpmdobinsintlcl, rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, 
-  rpmdfchartintlcl, rpmdfsectionintlcl, rpmdfdesignlcl, rpmdesignerlcl, 
-  LazarusPackageIntf;
+  rpreglcl, LazarusPackageIntf;
 
 implementation
 

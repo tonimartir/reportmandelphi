@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="reportman_designlcl"/>
+    <Type Value="RunAndDesignTime"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <IncludeFiles Value="..\.."/>
+        <OtherUnitFiles Value="..\.."/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <SyntaxMode Value="Delphi"/>
+        </SyntaxOptions>
+      </Parsing>
+    </CompilerOptions>
+    <Files Count="13">
+      <Item1>
+        <Filename Value="..\..\rpwebview2.pas"/>
+        <UnitName Value="rpwebview2"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\rplclwebview.pas"/>
+        <UnitName Value="rplclwebview"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\rpfrmmonacoeditorlcl.pas"/>
+        <UnitName Value="rpfrmmonacoeditorlcl"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\rprulerlcl.pas"/>
+        <UnitName Value="rprulerlcl"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\rpmdobinsintlcl.pas"/>
+        <UnitName Value="rpmdobinsintlcl"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\rpmdflabelintlcl.pas"/>
+        <UnitName Value="rpmdflabelintlcl"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\rpmdfdrawintlcl.pas"/>
+        <UnitName Value="rpmdfdrawintlcl"/>
+      </Item7>
+      <Item8>
+        <Filename Value="..\..\rpmdfbarcodeintlcl.pas"/>
+        <UnitName Value="rpmdfbarcodeintlcl"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\rpmdfchartintlcl.pas"/>
+        <UnitName Value="rpmdfchartintlcl"/>
+      </Item9>
+      <Item10>
+        <Filename Value="..\..\rpmdfsectionintlcl.pas"/>
+        <UnitName Value="rpmdfsectionintlcl"/>
+      </Item10>
+      <Item11>
+        <Filename Value="..\..\rpmdfdesignlcl.pas"/>
+        <UnitName Value="rpmdfdesignlcl"/>
+      </Item11>
+      <Item12>
+        <Filename Value="..\..\rpmdesignerlcl.pas"/>
+        <UnitName Value="rpmdesignerlcl"/>
+      </Item12>
+      <Item13>
+        <Filename Value="..\..\rpmregdesignlcl.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="rpmregdesignlcl"/>
+      </Item13>
+    </Files>
+    <RequiredPkgs Count="4">
+      <Item1>
+        <PackageName Value="reportman_rtl"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="reportman_lcl"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="LCL"/>
+      </Item3>
+      <Item4>
+        <PackageName Value="FCL"/>
+      </Item4>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
