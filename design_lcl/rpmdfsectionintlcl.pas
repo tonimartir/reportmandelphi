@@ -93,6 +93,7 @@ type
     procedure GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings); override;
     procedure SetProperty(pname: string; value: WideString); override;
     function GetProperty(pname: string): WideString; override;
+    procedure GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings); override;
     function CreateChild(compo: TRpCommonPosComponent): TRpSizePosInterface;
     function CreateNewComponent(ATool: TRpDesignTool; ALeft, ATop, AWidth, AHeight: Integer): TRpSizePosInterface;
     procedure CreateChilds;
@@ -667,11 +668,141 @@ var
 begin
   inherited GetProperties(lnames, ltypes, lvalues, lhints, lcat);
   sec := TRpSection(printitem);
-  lnames.Add(SrpSGroupName);
-  ltypes.Add(SRpSString);
-  lhints.Add('refsection.html');
-  lcat.Add(SRpSection);
-  if Assigned(lvalues) and Assigned(sec) then lvalues.Add(sec.GroupName);
+  if not Assigned(sec) then Exit;
+
+  if sec.SectionType in [rpsecpfooter, rpsecpheader, rpsecgheader, rpsecgfooter] then
+  begin
+    lnames.Add(SRpGeneralPageHeader);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.Global, True));
+  end;
+
+  if sec.SectionType <> rpsecpfooter then
+  begin
+    lnames.Add(SRpSAutoExpand);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.AutoExpand, True));
+
+    lnames.Add(SRpSAutoContract);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.AutoContract, True));
+  end;
+
+  if sec.SectionType in [rpsecgheader, rpsecgfooter] then
+  begin
+    lnames.Add(SRpIniNumPage);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.IniNumPage, True));
+
+    lnames.Add(SRpSGroupName);
+    ltypes.Add(SRpSString);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(sec.GroupName);
+
+    lnames.Add(SRpSGroupExpression);
+    ltypes.Add(SRpSExpression);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(sec.ChangeExpression);
+
+    lnames.Add(SRpSChangeBool);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.ChangeBool, True));
+
+    if sec.SectionType = rpsecgheader then
+    begin
+      lnames.Add(SRpSPageRepeat);
+      ltypes.Add(SRpSBool);
+      lhints.Add('refsection.html');
+      lcat.Add(SRpSection);
+      if Assigned(lvalues) then
+        lvalues.Add(BoolToStr(sec.PageRepeat, True));
+
+      lnames.Add(SRpSForcePrint);
+      ltypes.Add(SRpSBool);
+      lhints.Add('refsection.html');
+      lcat.Add(SRpSection);
+      if Assigned(lvalues) then
+        lvalues.Add(BoolToStr(sec.FooterAtReportEnd, True));
+    end;
+  end;
+
+  if sec.SectionType in [rpsecgheader, rpsecgfooter, rpsecdetail] then
+  begin
+    lnames.Add(SRpSBeginPage);
+    ltypes.Add(SRpSExpression);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(sec.BeginPageExpression);
+
+    lnames.Add(SRpSkipPage);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.SkipPage, True));
+
+    lnames.Add(SRPAlignBottom);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.AlignBottom, True));
+
+    lnames.Add(SRPHorzDesp);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.HorzDesp, True));
+
+    lnames.Add(SRPVertDesp);
+    ltypes.Add(SRpSBool);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(BoolToStr(sec.VertDesp, True));
+
+    lnames.Add(SRpSSkipType);
+    ltypes.Add(SRpSList);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(RpSkipTypeToText(sec.SkipType));
+
+    lnames.Add(SRpSSkipToPage);
+    ltypes.Add(SRpSExpression);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(sec.SkipToPageExpre);
+
+    lnames.Add(SRpChildSubRep);
+    ltypes.Add(SRpSList);
+    lhints.Add('refsection.html');
+    lcat.Add(SRpSection);
+    if Assigned(lvalues) then
+      lvalues.Add(sec.GetChildSubReportName);
+  end;
 end;
 
 procedure TRpSectionInterface.SetProperty(pname: string; value: WideString);
@@ -684,11 +815,93 @@ begin
     inherited SetProperty(pname, value);
     Exit;
   end;
-  if pname = SrpSGroupName then
+
+  if pname = SRpGeneralPageHeader then
+  begin
+    sec.Global := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSAutoExpand then
+  begin
+    sec.AutoExpand := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSAutoContract then
+  begin
+    sec.AutoContract := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpIniNumPage then
+  begin
+    sec.IniNumPage := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSGroupName then
   begin
     sec.GroupName := value;
     Exit;
   end;
+  if pname = SRpSGroupExpression then
+  begin
+    sec.ChangeExpression := value;
+    Exit;
+  end;
+  if pname = SRpSChangeBool then
+  begin
+    sec.ChangeBool := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSPageRepeat then
+  begin
+    sec.PageRepeat := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSForcePrint then
+  begin
+    sec.FooterAtReportEnd := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSBeginPage then
+  begin
+    sec.BeginPageExpression := value;
+    Exit;
+  end;
+  if pname = SRpSkipPage then
+  begin
+    sec.SkipPage := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRPAlignBottom then
+  begin
+    sec.AlignBottom := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpHorzDesp then
+  begin
+    sec.HorzDesp := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRPVertDesp then
+  begin
+    sec.VertDesp := StrToBool(value);
+    Exit;
+  end;
+  if pname = SRpSSkipType then
+  begin
+    sec.SkipType := StringToRpSkipType(value);
+    Exit;
+  end;
+  if pname = SRpSSkipToPage then
+  begin
+    sec.SkipToPageExpre := value;
+    Exit;
+  end;
+  if pname = SRpChildSubRep then
+  begin
+    sec.SetChildSubReportByName(value);
+    Exit;
+  end;
+
   inherited SetProperty(pname, value);
 end;
 
@@ -702,8 +915,45 @@ begin
     Result := inherited GetProperty(pname);
     Exit;
   end;
-  if pname = SrpSGroupName then Result := sec.GroupName
+
+  if pname = SRpGeneralPageHeader then Result := BoolToStr(sec.Global, True)
+  else if pname = SRpSAutoExpand then Result := BoolToStr(sec.AutoExpand, True)
+  else if pname = SRpSAutoContract then Result := BoolToStr(sec.AutoContract, True)
+  else if pname = SRpIniNumPage then Result := BoolToStr(sec.IniNumPage, True)
+  else if pname = SRpSGroupName then Result := sec.GroupName
+  else if pname = SRpSGroupExpression then Result := sec.ChangeExpression
+  else if pname = SRpSChangeBool then Result := BoolToStr(sec.ChangeBool, True)
+  else if pname = SRpSPageRepeat then Result := BoolToStr(sec.PageRepeat, True)
+  else if pname = SRpSForcePrint then Result := BoolToStr(sec.FooterAtReportEnd, True)
+  else if pname = SRpSBeginPage then Result := sec.BeginPageExpression
+  else if pname = SRpSkipPage then Result := BoolToStr(sec.SkipPage, True)
+  else if pname = SRPAlignBottom then Result := BoolToStr(sec.AlignBottom, True)
+  else if pname = SRpHorzDesp then Result := BoolToStr(sec.HorzDesp, True)
+  else if pname = SRPVertDesp then Result := BoolToStr(sec.VertDesp, True)
+  else if pname = SRpSSkipType then Result := RpSkipTypeToText(sec.SkipType)
+  else if pname = SRpSSkipToPage then Result := sec.SkipToPageExpre
+  else if pname = SRpChildSubRep then Result := sec.GetChildSubReportName
   else Result := inherited GetProperty(pname);
+end;
+
+procedure TRpSectionInterface.GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings);
+var
+  sec: TRpSection;
+begin
+  inherited GetPropertyValues(pname, lpossiblevalues);
+  sec := TRpSection(printitem);
+  if not Assigned(sec) then Exit;
+
+  if pname = SRpSSkipType then
+  begin
+    GetSkipTypePossibleValues(lpossiblevalues);
+    Exit;
+  end;
+  if pname = SRpChildSubRep then
+  begin
+    sec.GetChildSubReportPossibleValues(lpossiblevalues);
+    Exit;
+  end;
 end;
 
 end.

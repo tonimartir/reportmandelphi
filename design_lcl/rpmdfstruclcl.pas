@@ -29,6 +29,7 @@ type
     BDelete: TToolButton;
     BUp: TToolButton;
     BDown: TToolButton;
+    BDataConfig: TToolButton;
     RView: TTreeView;
     PopupMenu1: TPopupMenu;
     MDetail: TMenuItem;
@@ -43,6 +44,7 @@ type
     procedure BDownClick(Sender: TObject);
     procedure BDeleteClick(Sender: TObject);
     procedure BNewClick(Sender: TObject);
+    procedure BDataConfigClick(Sender: TObject);
     procedure MNewSectionClick(Sender: TObject);
   private
     FReport: TRpReport;
@@ -78,7 +80,7 @@ implementation
 {$R *.lfm}
 
 uses
-  rpmdfdesignlcl;
+  rpmdfdesignlcl, rpmdfdinfolcl;
 
 function FindDataInTree(nodes: TTreeNodes; data: TObject): TTreeNode;
 var
@@ -181,6 +183,12 @@ begin
   BDown.ImageIndex := IMG_NAV_DOWN;
   BDown.Hint := TranslateStr(140, 'Moves the section down');
   BDown.OnClick := BDownClick;
+
+  BDataConfig := TToolButton.Create(Panel1);
+  BDataConfig.Parent := Panel1;
+  BDataConfig.ImageIndex := IMG_DATACONFIG;
+  BDataConfig.Hint := TranslateStr(131, 'Configure database connections and datasets');
+  BDataConfig.OnClick := BDataConfigClick;
 
   // TreeView
   RView := TTreeView.Create(TabStructure);
@@ -599,6 +607,16 @@ begin
   apoint.y := BNew.Top + BNew.Height;
   apoint := Panel1.ClientToScreen(apoint);
   PopupMenu1.Popup(apoint.x, apoint.y);
+end;
+
+procedure TFRpStructureLCL.BDataConfigClick(Sender: TObject);
+begin
+  if not Assigned(FReport) then Exit;
+  ShowDataConfig(FReport);
+  if Assigned(browser) then
+    browser.Report := FReport;
+  if Assigned(designframe) and (designframe is TFRpDesignFrameLCL) then
+    TFRpDesignFrameLCL(designframe).UpdateSelection(False);
 end;
 
 procedure TFRpStructureLCL.MNewSectionClick(Sender: TObject);

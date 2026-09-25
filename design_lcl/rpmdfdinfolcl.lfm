@@ -1,0 +1,13 @@
+object FRpDInfoLCL: TFRpDInfoLCL
+  Left = 280
+  Height = 520
+  Top = 150
+  Width = 720
+  Caption = 'Database Connections and Datasets'
+  ClientHeight = 520
+  ClientWidth = 720
+  DesignTimePPI = 96
+  Position = poScreenCenter
+  ShowHint = True
+  LCLVersion = '3.2.0.0'
+end

@@ -10,7 +10,7 @@ uses
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
-  rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl;
+  rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo;
 
 type
   TMainForm = class(TForm)
@@ -19,6 +19,7 @@ type
     BtnNew: TToolButton;
     BtnOpen: TToolButton;
     BtnSave: TToolButton;
+    BtnDataConfig: TToolButton;
     Sep1: TToolButton;
     BtnPrint: TToolButton;
     BtnPreview: TToolButton;
@@ -76,6 +77,7 @@ type
     procedure DesignerToolChange(Sender: TObject);
     procedure BtnNewClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
+    procedure BtnDataConfigClick(Sender: TObject);
     procedure BtnPrintClick(Sender: TObject);
     procedure BtnPreviewClick(Sender: TObject);
     procedure BtnUndoClick(Sender: TObject);
@@ -503,6 +505,16 @@ begin
     ShowMessage('No hay reporte cargado para guardar');
 end;
 
+procedure TMainForm.BtnDataConfigClick(Sender: TObject);
+begin
+  if not Assigned(FReport) then Exit;
+  ShowDataConfig(FReport);
+  if Assigned(FStructure) and Assigned(FStructure.browser) then
+    FStructure.browser.Report := FReport;
+  if Assigned(FDesignerFrame) then
+    FDesignerFrame.UpdateSelection(False);
+end;
+
 procedure TMainForm.BtnPrintClick(Sender: TObject);
 begin
   ShowMessage('Imprimir: función disponible en previsualizador');
@@ -570,6 +582,11 @@ var
   fakeKey: Word;
   testSubrep: TRpSubReport;
   testSec: TRpSection;
+  propVal: string;
+  initialBrowserCount: Integer;
+  testDB: TRpDatabaseInfoItem;
+  testDS: TRpDataInfoItem;
+  testDlg: TFRpDInfoLCL;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1123,6 +1140,113 @@ begin
       Halt(1);
     end;
     LogMsg(Format('Structure Tree OK: %d tree nodes, %d browser nodes', [FStructure.RView.Items.Count, FStructure.browser.ATree.Items.Count]));
+
+    // -----------------------------------------------------------------
+    // Testing Subphase 3.4: Report & Data Structure Configuration Interface
+    // -----------------------------------------------------------------
+    LogMsg('Testing Subphase 3.4: Report & Data Structure Configuration...');
+
+    // 1. Verify section properties in Object Inspector
+    secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+    FStructure.SelectDataItem(secInt.printitem);
+    if not Assigned(FObjInsp.CompItem) then
+    begin
+      LogMsg('[TEST_FAILED] FObjInsp has no active CompItem for section');
+      Halt(1);
+    end;
+    propVal := secInt.GetProperty(SRpSAutoExpand);
+    LogMsg('Section AutoExpand=' + propVal);
+    secInt.SetProperty(SRpSAutoExpand, BoolToStr(not StrToBool(propVal), True));
+    if secInt.GetProperty(SRpSAutoExpand) = propVal then
+    begin
+      LogMsg('[TEST_FAILED] SetProperty failed to change AutoExpand');
+      Halt(1);
+    end;
+    // Restore
+    secInt.SetProperty(SRpSAutoExpand, propVal);
+
+    // 2. Test group section properties
+    testSec := nil;
+    for i := 0 to FReport.SubReports[0].SubReport.Sections.Count - 1 do
+    begin
+      if FReport.SubReports[0].SubReport.Sections[i].Section.SectionType = rpsecgheader then
+      begin
+        testSec := FReport.SubReports[0].SubReport.Sections[i].Section;
+        break;
+      end;
+    end;
+    if Assigned(testSec) then
+    begin
+      FStructure.SelectDataItem(testSec);
+      secInt := nil;
+      for i := 0 to FDesignerFrame.secinterfaces.Count - 1 do
+      begin
+        if TRpSectionInterface(FDesignerFrame.secinterfaces[i]).printitem = testSec then
+        begin
+          secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[i]);
+          break;
+        end;
+      end;
+      if Assigned(secInt) then
+      begin
+        secInt.SetProperty(SRpSGroupExpression, 'TEST_CHANGE_EXPR');
+        if secInt.GetProperty(SRpSGroupExpression) <> 'TEST_CHANGE_EXPR' then
+        begin
+          LogMsg('[TEST_FAILED] SetProperty failed to change ChangeExpression on group section');
+          Halt(1);
+        end;
+        LogMsg('Group ChangeExpression verified: ' + secInt.GetProperty(SRpSGroupExpression));
+      end;
+    end;
+
+    // 3. Test SubReport selection in Structure Tree
+    testSubrep := FReport.SubReports[0].SubReport;
+    FStructure.SelectDataItem(testSubrep);
+    if FStructure.RView.Selected.Data <> testSubrep then
+    begin
+      LogMsg('[TEST_FAILED] SelectDataItem failed to select subreport');
+      Halt(1);
+    end;
+    LogMsg('Subreport display name: ' + testSubrep.GetDisplayName(True));
+
+    // 4. Test Data access configuration & programmatic addition of Connections/Datasets
+    initialBrowserCount := FStructure.browser.ATree.Items.Count;
+    testDB := FReport.DatabaseInfo.Add('TEST_DB_AUTO');
+    testDB.Driver := rpdatadriver;
+    testDS := FReport.DataInfo.Add('TEST_DS_AUTO');
+    testDS.DatabaseAlias := 'TEST_DB_AUTO';
+    testDS.SQL := 'SELECT 1 AS COL1;';
+    testDS.OpenOnStart := True;
+
+    FStructure.browser.Report := FReport;
+    if FStructure.browser.ATree.Items.Count <= initialBrowserCount then
+    begin
+      LogMsg(Format('[TEST_FAILED] Expected browser node count > %d, got %d',
+        [initialBrowserCount, FStructure.browser.ATree.Items.Count]));
+      Halt(1);
+    end;
+    LogMsg(Format('Data structure updated: browser nodes went from %d to %d',
+      [initialBrowserCount, FStructure.browser.ATree.Items.Count]));
+
+    // Test TFRpDInfoLCL form instantiation and data loading
+    testDlg := TFRpDInfoLCL.Create(nil);
+    try
+      testDlg.Report := FReport;
+      LogMsg('TFRpDInfoLCL successfully loaded report data info');
+    finally
+      testDlg.Free;
+    end;
+
+    // Clean up test database and dataset
+    FReport.DataInfo.Delete(FReport.DataInfo.IndexOf('TEST_DS_AUTO'));
+    FReport.DatabaseInfo.Delete(FReport.DatabaseInfo.IndexOf('TEST_DB_AUTO'));
+    FStructure.browser.Report := FReport;
+    if FStructure.browser.ATree.Items.Count <> initialBrowserCount then
+    begin
+      LogMsg('[TEST_FAILED] Browser node count did not restore after deleting test items');
+      Halt(1);
+    end;
+    LogMsg('Subphase 3.4 verification completed successfully');
 
     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

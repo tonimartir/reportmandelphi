@@ -15,7 +15,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="17">
+    <Files Count="18">
       <Item1>
         <Filename Value="design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -85,6 +85,10 @@
         <Filename Value="design_lcl\rpmdfstruclcl.pas"/>
         <UnitName Value="rpmdfstruclcl"/>
       </Item17>
+      <Item18>
+        <Filename Value="design_lcl\rpmdfdinfolcl.pas"/>
+        <UnitName Value="rpmdfdinfolcl"/>
+      </Item18>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>

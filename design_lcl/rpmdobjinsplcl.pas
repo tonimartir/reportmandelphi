@@ -144,7 +144,7 @@ implementation
 {$R *.lfm}
 
 uses
-  rpmdfdesignlcl;
+  rpmdfdesignlcl, rpmdfstruclcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
 var
@@ -869,6 +869,17 @@ begin
           if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
              (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
             TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).UpdateInterface(False);
+        end
+        else if (aname = SRpSGroupName) then
+        begin
+          if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+             (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+          begin
+            desframe := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame);
+            desframe.InvalidateCaptions;
+            if Assigned(desframe.freportstructure) and (desframe.freportstructure is TFRpStructureLCL) then
+              TFRpStructureLCL(desframe.freportstructure).UpdateCaptions;
+          end;
         end;
       end;
       FCompItem.Invalidate;
@@ -1006,9 +1017,21 @@ begin
 end;
 
 procedure TRpPanelObjLCL.ComboAliasChange(Sender: TObject);
+var
+  desframe: TFRpDesignFrameLCL;
 begin
   if Assigned(subrep) and Assigned(comboalias) then
+  begin
     subrep.Alias := comboalias.Text;
+    if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+       (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    begin
+      desframe := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame);
+      desframe.InvalidateCaptions;
+      if Assigned(desframe.freportstructure) and (desframe.freportstructure is TFRpStructureLCL) then
+        TFRpStructureLCL(desframe.freportstructure).UpdateCaptions;
+    end;
+  end;
 end;
 
 procedure TRpPanelObjLCL.ComboPrintOnlyChange(Sender: TObject);
