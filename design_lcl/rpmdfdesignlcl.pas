@@ -21,7 +21,7 @@ interface
 
 uses
   SysUtils, Classes, Types,
-  Graphics, Controls, Forms, Dialogs, Menus, ExtCtrls,
+  Graphics, Controls, Forms, Dialogs, Menus, ExtCtrls, LMessages,
   rprulerlcl, rpmdobinsintlcl, rpmdfsectionintlcl,
   rpgraphutilslcl, rpsubreport, rpsection, rpreport, rpmunits, rptypes;
 
@@ -29,8 +29,17 @@ type
   TFRpDesignFrameLCL = class;
   TRpPaintEventPanel = class;
 
-  // A ScrollBox for sections
+  // A ScrollBox for sections with continuous scroll tracking
   TRpScrollBox = class(TScrollBox)
+  private
+    FOnScroll: TNotifyEvent;
+  protected
+    procedure WMVScroll(var Message: TLMScroll); message LM_VSCROLL;
+    procedure WMHScroll(var Message: TLMScroll); message LM_HSCROLL;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+  public
+    procedure ScrollBy(DeltaX, DeltaY: Integer); override;
+    property OnScroll: TNotifyEvent read FOnScroll write FOnScroll;
   end;
 
   // Right edge panel for adjusting section width
@@ -94,20 +103,26 @@ type
     PSection: TRpPaintEventPanel;
     FReport: TRpReport;
     FObjInsp: TComponent;
-    leftrulers: TList;
     FSubReport: TRpSubreport;
-    toptitles: TList;
-    righttitles: TList;
     FScale: Double;
     CONS_RULER_LEFT: Integer;
     CONS_RIGHTPWIDTH: Integer;
+    FSizeModifier: TRpSizeModifier;
+    FSelectedItems: TList;
     procedure SetReport(Value: TRpReport);
     procedure SecPosChange(Sender: TObject);
     procedure SetScale(nvalue: Double);
+    procedure SizeModifierChange(Sender: TObject);
+    procedure ClearSelectionEvent(Sender: TObject);
+  protected
+    procedure Resize; override;
   public
     freportstructure: TComponent;
     SectionScrollBox: TRpScrollBox;
     secinterfaces: TList;
+    leftrulers: TList;
+    toptitles: TList;
+    righttitles: TList;
     TopRuler: TRpRulerLCL;
     procedure InvalidateCaptions;
     procedure UpdateInterface(refreshobjinsp: Boolean);
@@ -116,17 +131,49 @@ type
     destructor Destroy; override;
     procedure UpdateSelection(force: Boolean);
     procedure SelectSubReport(subreport: TRpSubReport);
+    procedure SelectComponent(AComp: TRpSizeInterface; AddToSelection: Boolean);
+    procedure ClearSelection;
     property Report: TRpReport read FReport write SetReport;
     property ObjInsp: TComponent read FObjInsp write FObjInsp;
     property Scale: Double read FScale write SetScale;
     property CurrentSubreport: TRpSubReport read FSubReport;
+    property SizeModifier: TRpSizeModifier read FSizeModifier;
+    property SelectedItems: TList read FSelectedItems;
   end;
 
 implementation
 
 {$R *.lfm}
 
+{ TRpScrollBox }
 
+procedure TRpScrollBox.WMVScroll(var Message: TLMScroll);
+begin
+  inherited WMVScroll(Message);
+  if Assigned(FOnScroll) then
+    FOnScroll(Self);
+end;
+
+procedure TRpScrollBox.WMHScroll(var Message: TLMScroll);
+begin
+  inherited WMHScroll(Message);
+  if Assigned(FOnScroll) then
+    FOnScroll(Self);
+end;
+
+function TRpScrollBox.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
+  if Assigned(FOnScroll) then
+    FOnScroll(Self);
+end;
+
+procedure TRpScrollBox.ScrollBy(DeltaX, DeltaY: Integer);
+begin
+  inherited ScrollBy(DeltaX, DeltaY);
+  if Assigned(FOnScroll) then
+    FOnScroll(Self);
+end;
 
 { TRpPaintEventPanel }
 
@@ -205,6 +252,9 @@ end;
 procedure TRpPaintEventPanel.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
+  if Assigned(FFrame) then
+    FFrame.ClearSelection;
+
   if (Cursor <> crSizeNS) or (Button <> mbLeft) then
     Exit;
 
@@ -427,13 +477,19 @@ begin
 
   FScale := 1.0;
   CONS_RIGHTPWIDTH := ScaleDPI(5);
-  CONS_RULER_LEFT := ScaleDPI(20);
+  PLeft.Width := ScaleDpi(20);
+  PTop.Height := ScaleDpi(20);
+  CONS_RULER_LEFT := PLeft.Width;
+
+  PTop.DoubleBuffered := True;
+  PLeft.DoubleBuffered := True;
 
   TopRuler := TRpRulerLCL.Create(Self);
   TopRuler.RType := rHorizontal;
   TopRuler.Left := CONS_RULER_LEFT;
   TopRuler.Width := ScaleDpi(389);
-  TopRuler.Height := ScaleDpi(20);
+  TopRuler.Height := PTop.Height;
+  TopRuler.Top := 0;
   TopRuler.Parent := PTop;
   TopRuler.Scale := FScale;
 
@@ -445,12 +501,17 @@ begin
   SectionScrollBox.Align := alClient;
   SectionScrollBox.HorzScrollBar.Tracking := True;
   SectionScrollBox.VertScrollBar.Tracking := True;
+  SectionScrollBox.OnScroll := SecPosChange;
   SectionScrollBox.Parent := Self;
 
   leftrulers := TList.Create;
   toptitles := TList.Create;
   righttitles := TList.Create;
   secinterfaces := TList.Create;
+
+  FSizeModifier := TRpSizeModifier.Create(Self);
+  FSizeModifier.OnSizeChange := SizeModifierChange;
+  FSelectedItems := TList.Create;
 
   PSection := TRpPaintEventPanel.Create(Self);
   PSection.allowselect := False;
@@ -462,12 +523,25 @@ end;
 
 destructor TFRpDesignFrameLCL.Destroy;
 begin
+  ClearSelection;
   SelectSubReport(nil);
   FreeAndNil(leftrulers);
   FreeAndNil(toptitles);
   FreeAndNil(righttitles);
   FreeAndNil(secinterfaces);
+  if Assigned(FSizeModifier) then
+  begin
+    FSizeModifier.Control := nil;
+    FreeAndNil(FSizeModifier);
+  end;
+  FreeAndNil(FSelectedItems);
   inherited Destroy;
+end;
+
+procedure TFRpDesignFrameLCL.Resize;
+begin
+  inherited Resize;
+  SecPosChange(Self);
 end;
 
 procedure TFRpDesignFrameLCL.SetScale(nvalue: Double);
@@ -520,6 +594,7 @@ begin
     Exit;
 
   // Clear existing items
+  ClearSelection;
   for i := 0 to secinterfaces.Count - 1 do
   begin
     TObject(secinterfaces[i]).Free;
@@ -571,6 +646,8 @@ begin
     asecint.Scale := Scale;
     asecint.Left := 0;
     asecint.Top := posx;
+    asecint.OnSelectComponent := SelectComponent;
+    asecint.OnClearSelection := ClearSelectionEvent;
     asecint.CreateChilds;
     asecint.UpdatePos;
     asecint.OnPosChange := SecPosChange;
@@ -706,13 +783,16 @@ var
   i, despy: Integer;
   aruler: TRpRulerLCL;
 begin
+  if not Assigned(TopRuler) or not Assigned(SectionScrollBox) or not Assigned(leftrulers) or not Assigned(secinterfaces) then
+    Exit;
+
   TopRuler.Left := CONS_RULER_LEFT - SectionScrollBox.HorzScrollBar.Position;
   despy := SectionScrollBox.VertScrollBar.Position;
 
   for i := 0 to leftrulers.Count - 1 do
   begin
     aruler := TRpRulerLCL(leftrulers[i]);
-    if i < secinterfaces.Count then
+    if (i < secinterfaces.Count) and Assigned(aruler) and Assigned(secinterfaces[i]) then
       aruler.Top := TRpSectionInterface(secinterfaces[i]).Top - despy;
   end;
 end;
@@ -737,9 +817,137 @@ begin
   UpdateInterface(True);
 end;
 
+procedure TFRpDesignFrameLCL.SizeModifierChange(Sender: TObject);
+begin
+  // SizeModifier finished resizing or moving component
+end;
+
+procedure TFRpDesignFrameLCL.ClearSelectionEvent(Sender: TObject);
+begin
+  ClearSelection;
+end;
+
+procedure TFRpDesignFrameLCL.ClearSelection;
+var
+  i: Integer;
+  item: TRpSizePosInterface;
+begin
+  if Assigned(FSizeModifier) then
+    FSizeModifier.Control := nil;
+
+  if Assigned(FSelectedItems) then
+  begin
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      item := TRpSizePosInterface(FSelectedItems[i]);
+      if item.Selected then
+      begin
+        item.Selected := False;
+        item.Invalidate;
+      end;
+    end;
+    FSelectedItems.Clear;
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.SelectComponent(AComp: TRpSizeInterface; AddToSelection: Boolean);
+var
+  i, idx: Integer;
+  posComp: TRpSizePosInterface;
+  item: TRpSizePosInterface;
+begin
+  if not Assigned(AComp) or not (AComp is TRpSizePosInterface) then
+  begin
+    ClearSelection;
+    Exit;
+  end;
+
+  posComp := TRpSizePosInterface(AComp);
+
+  if not AddToSelection then
+  begin
+    ClearSelection;
+    FSelectedItems.Add(posComp);
+    posComp.Selected := False; // Single selection uses black handles, not grey squares
+    posComp.Invalidate;
+
+    if Assigned(FReport) then
+    begin
+      FSizeModifier.GridEnabled := FReport.GridEnabled;
+      FSizeModifier.GridX := FReport.GridWidth;
+      FSizeModifier.GridY := FReport.GridHeight;
+    end;
+    FSizeModifier.Control := posComp;
+    FSizeModifier.UpdatePos;
+  end
+  else
+  begin
+    idx := FSelectedItems.IndexOf(posComp);
+    if idx >= 0 then
+    begin
+      // Toggle off
+      FSelectedItems.Delete(idx);
+      posComp.Selected := False;
+      posComp.Invalidate;
+
+      if FSelectedItems.Count = 1 then
+      begin
+        item := TRpSizePosInterface(FSelectedItems[0]);
+        item.Selected := False;
+        item.Invalidate;
+        if Assigned(FReport) then
+        begin
+          FSizeModifier.GridEnabled := FReport.GridEnabled;
+          FSizeModifier.GridX := FReport.GridWidth;
+          FSizeModifier.GridY := FReport.GridHeight;
+        end;
+        FSizeModifier.Control := item;
+        FSizeModifier.UpdatePos;
+      end
+      else if FSelectedItems.Count = 0 then
+      begin
+        FSizeModifier.Control := nil;
+      end;
+    end
+    else
+    begin
+      // Add to multi-selection
+      FSelectedItems.Add(posComp);
+      if FSelectedItems.Count = 1 then
+      begin
+        posComp.Selected := False;
+        posComp.Invalidate;
+        if Assigned(FReport) then
+        begin
+          FSizeModifier.GridEnabled := FReport.GridEnabled;
+          FSizeModifier.GridX := FReport.GridWidth;
+          FSizeModifier.GridY := FReport.GridHeight;
+        end;
+        FSizeModifier.Control := posComp;
+        FSizeModifier.UpdatePos;
+      end
+      else
+      begin
+        // Multi-selection: remove black handles, paint grey selection squares on all
+        FSizeModifier.Control := nil;
+        for i := 0 to FSelectedItems.Count - 1 do
+        begin
+          item := TRpSizePosInterface(FSelectedItems[i]);
+          if not item.Selected then
+          begin
+            item.Selected := True;
+            item.Invalidate;
+          end;
+        end;
+      end;
+    end;
+  end;
+end;
+
 procedure TFRpDesignFrameLCL.UpdateSelection(force: Boolean);
 begin
-  // Selection synchronization stub
+  if Assigned(FSizeModifier) then
+    FSizeModifier.UpdatePos;
 end;
 
 end.

@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, ComCtrls,
-  rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits;
+  rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits,
+  rpmdobinsintlcl, rpmdfsectionintlcl;
 
 type
   TMainForm = class(TForm)
@@ -47,9 +48,9 @@ type
     function FindSampleFile(const AName: string): string;
     procedure RefreshSubreportList;
     procedure UpdateStatus;
-    procedure RunSelfTest(Data: PtrInt);
   public
     procedure LoadReportFile(const AFileName: string);
+    procedure RunSelfTest(Data: PtrInt);
   end;
 
 var
@@ -59,15 +60,41 @@ implementation
 
 {$R *.lfm}
 
+procedure LogMsg(const S: string);
+var
+  f: TextFile;
+  logPath: string;
+begin
+  logPath := ExtractFilePath(Application.ExeName) + 'selftest.log';
+  try
+    AssignFile(f, logPath);
+    if FileExists(logPath) then
+      Append(f)
+    else
+      Rewrite(f);
+    WriteLn(f, S);
+    Flush(f);
+    CloseFile(f);
+  except
+  end;
+  if IsConsole then
+  begin
+    try
+      WriteLn(S);
+    except
+    end;
+  end;
+end;
+
 procedure TMainForm.FormCreate(Sender: TObject);
 var
   i: Integer;
 begin
   FAutoTestMode := False;
-  for i := 1 to Application.ParamCount do
+  for i := 1 to ParamCount do
   begin
-    if (Application.Params[i] = '--selftest') or
-       (Application.Params[i] = '--run-and-exit') then
+    if (ParamStr(i) = '--selftest') or
+       (ParamStr(i) = '--run-and-exit') then
       FAutoTestMode := True;
   end;
 
@@ -85,9 +112,8 @@ procedure TMainForm.FormShow(Sender: TObject);
 var
   samplePath: string;
 begin
-  if FAutoTestMode then
-    Application.QueueAsyncCall(RunSelfTest, 0)
-  else
+  LogMsg('FormShow called. FAutoTestMode=' + BoolToStr(FAutoTestMode, True));
+  if not FAutoTestMode then
   begin
     samplePath := FindSampleFile('sample4.rep');
     if FileExists(samplePath) then
@@ -270,13 +296,18 @@ procedure TMainForm.RunSelfTest(Data: PtrInt);
 var
   samplePath: string;
   ok: Boolean;
+  secInt: TRpSectionInterface;
+  comp1, comp2: TRpSizePosInterface;
+  ruler0: TRpRulerLCL;
+  expectedTop: Integer;
 begin
+  LogMsg('RunSelfTest started');
   ok := False;
   try
     samplePath := FindSampleFile('sample4.rep');
     if not FileExists(samplePath) then
     begin
-      WriteLn('[TEST_FAILED] sample4.rep not found');
+      LogMsg('[TEST_FAILED] sample4.rep not found');
       Halt(1);
     end;
 
@@ -284,13 +315,13 @@ begin
 
     if not Assigned(FReport) then
     begin
-      WriteLn('[TEST_FAILED] Failed to load FReport');
+      LogMsg('[TEST_FAILED] Failed to load FReport');
       Halt(1);
     end;
 
     if FDesignerFrame.secinterfaces.Count = 0 then
     begin
-      WriteLn('[TEST_FAILED] No section interfaces created in designer frame');
+      LogMsg('[TEST_FAILED] No section interfaces created in designer frame');
       Halt(1);
     end;
 
@@ -311,16 +342,98 @@ begin
       LoadReportFile(samplePath);
       if FDesignerFrame.secinterfaces.Count = 0 then
       begin
-        WriteLn('[TEST_FAILED] Failed on bold.rep');
+        LogMsg('[TEST_FAILED] Failed on bold.rep');
         Halt(1);
       end;
     end;
 
+    // Test component selection and resizing
+    if FDesignerFrame.secinterfaces.Count > 0 then
+    begin
+      secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+      if secInt.childlist.Count > 0 then
+      begin
+        comp1 := TRpSizePosInterface(secInt.childlist[0]);
+
+        // 1. Single selection -> black handles shown, Selected is False
+        FDesignerFrame.SelectComponent(comp1, False);
+        if FDesignerFrame.SelectedItems.Count <> 1 then
+        begin
+          LogMsg('[TEST_FAILED] SelectedItems.Count should be 1');
+          Halt(1);
+        end;
+        if comp1.Selected then
+        begin
+          LogMsg('[TEST_FAILED] Single-selected component should not have Selected=True');
+          Halt(1);
+        end;
+        if FDesignerFrame.SizeModifier.Control <> comp1 then
+        begin
+          LogMsg('[TEST_FAILED] SizeModifier.Control not assigned to selected component');
+          Halt(1);
+        end;
+
+        // 2. Multi-selection (Shift) -> grey corners, black handles hidden
+        if secInt.childlist.Count > 1 then
+        begin
+          comp2 := TRpSizePosInterface(secInt.childlist[1]);
+          FDesignerFrame.SelectComponent(comp2, True);
+          if FDesignerFrame.SelectedItems.Count <> 2 then
+          begin
+            LogMsg('[TEST_FAILED] SelectedItems.Count should be 2 after Shift-select');
+            Halt(1);
+          end;
+          if not comp1.Selected or not comp2.Selected then
+          begin
+            LogMsg('[TEST_FAILED] Multi-selected components must have Selected=True');
+            Halt(1);
+          end;
+          if FDesignerFrame.SizeModifier.Control <> nil then
+          begin
+            LogMsg('[TEST_FAILED] SizeModifier.Control must be nil during multi-select');
+            Halt(1);
+          end;
+        end;
+
+        // 3. Clear selection -> nothing selected, no black handles
+        FDesignerFrame.ClearSelection;
+        if FDesignerFrame.SelectedItems.Count <> 0 then
+        begin
+          LogMsg('[TEST_FAILED] SelectedItems.Count should be 0 after ClearSelection');
+          Halt(1);
+        end;
+        if comp1.Selected then
+        begin
+          LogMsg('[TEST_FAILED] Component should have Selected=False after ClearSelection');
+          Halt(1);
+        end;
+        if FDesignerFrame.SizeModifier.Control <> nil then
+        begin
+          LogMsg('[TEST_FAILED] SizeModifier.Control must be nil after ClearSelection');
+          Halt(1);
+        end;
+      end;
+
+      // 4. Test ruler vertical scrolling synchronization
+      FDesignerFrame.SectionScrollBox.VertScrollBar.Position := 80;
+      FDesignerFrame.SectionScrollBox.ScrollBy(0, -80);
+      if FDesignerFrame.leftrulers.Count > 0 then
+      begin
+        ruler0 := TRpRulerLCL(FDesignerFrame.leftrulers[0]);
+        expectedTop := TRpSectionInterface(FDesignerFrame.secinterfaces[0]).Top - FDesignerFrame.SectionScrollBox.VertScrollBar.Position;
+        if ruler0.Top <> expectedTop then
+        begin
+          LogMsg(Format('[TEST_FAILED] Ruler Top mismatch: got %d, expected %d', [ruler0.Top, expectedTop]));
+          Halt(1);
+        end;
+      end;
+    end;
+
     ok := True;
-    WriteLn('[TEST_PASSED] LCL Designer Test OK');
+    LogMsg('[TEST_PASSED] LCL Designer Test OK');
   except
     on E: Exception do
-      WriteLn('[TEST_FAILED] Exception: ' + E.Message);
+      LogMsg('[TEST_FAILED] Exception: ' + E.Message);
   end;
 
   if ok then

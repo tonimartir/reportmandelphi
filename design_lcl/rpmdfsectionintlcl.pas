@@ -52,6 +52,7 @@ type
     FOnDestroy: TNotifyEvent;
     FInterface: TRpSectionIntf;
     FOnPosChange: TNotifyEvent;
+    FOnClearSelection: TNotifyEvent;
     FXOrigin, FYOrigin: Integer;
     FRectangle: TRpRectangle;
     FRectangle2: TRpRectangle;
@@ -83,6 +84,7 @@ type
     procedure CreateChilds;
     procedure DeleteChild(achild: TRpSizePosInterface);
     property OnPosChange: TNotifyEvent read FOnPosChange write SetOnPosChange;
+    property OnClearSelection: TNotifyEvent read FOnClearSelection write FOnClearSelection;
     procedure ExecuteMouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure ExecuteMouseMove(Shift: TShiftState; X, Y: Integer);
     procedure ExecuteMouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -270,6 +272,7 @@ begin
     labelint.SectionInt := Self;
     labelint.Visible := compo.Visible;
     labelint.fobjinsp := fobjinsp;
+    labelint.OnSelectComponent := OnSelectComponent;
     labelint.UpdatePos;
     childlist.Add(labelint);
   end;
@@ -396,6 +399,15 @@ begin
     ClearRectangles;
     CalcNewCoords(NewLeft, NewTop, NewWidth, NewHeight, X, Y);
     DoSelectControls(NewLeft, NewTop, NewWidth, NewHeight);
+  end
+  else
+  begin
+    // Simple click on section background -> deselect items if not Shift
+    if not ((ssShift in Shift) or (ssCtrl in Shift)) then
+    begin
+      if Assigned(FOnClearSelection) then
+        FOnClearSelection(Self);
+    end;
   end;
 end;
 
@@ -404,6 +416,7 @@ var
   i: Integer;
   aitem: TRpSizePosInterface;
   rec1, rec2, arec: TRect;
+  selectedList: TList;
 begin
   Result := False;
   rec1.Left := NewLeft;
@@ -411,23 +424,46 @@ begin
   rec1.Right := NewLeft + NewWidth;
   rec1.Bottom := NewTop + NewHeight;
 
-  for i := 0 to childlist.Count - 1 do
-  begin
-    aitem := TRpSizePosInterface(childlist[i]);
-    if aitem.Visible then
+  selectedList := TList.Create;
+  try
+    for i := 0 to childlist.Count - 1 do
     begin
-      rec2.Left := aitem.Left;
-      rec2.Top := aitem.Top;
-      rec2.Right := aitem.Left + aitem.Width;
-      rec2.Bottom := aitem.Top + aitem.Height;
-      if IntersectRect(arec, rec1, rec2) then
+      aitem := TRpSizePosInterface(childlist[i]);
+      if aitem.Visible then
       begin
-        aitem.Selected := True;
-        Result := True;
-      end
-      else
-        aitem.Selected := False;
+        rec2.Left := aitem.Left;
+        rec2.Top := aitem.Top;
+        rec2.Right := aitem.Left + aitem.Width;
+        rec2.Bottom := aitem.Top + aitem.Height;
+        if IntersectRect(arec, rec1, rec2) then
+          selectedList.Add(aitem);
+      end;
     end;
+
+    if selectedList.Count = 0 then
+    begin
+      if Assigned(FOnClearSelection) then
+        FOnClearSelection(Self);
+    end
+    else if selectedList.Count = 1 then
+    begin
+      Result := True;
+      if Assigned(OnSelectComponent) then
+        OnSelectComponent(TRpSizePosInterface(selectedList[0]), False);
+    end
+    else
+    begin
+      Result := True;
+      if Assigned(FOnClearSelection) then
+        FOnClearSelection(Self);
+      for i := 0 to selectedList.Count - 1 do
+      begin
+        if Assigned(OnSelectComponent) then
+          OnSelectComponent(TRpSizePosInterface(selectedList[i]), True);
+      end;
+    end;
+  finally
+    selectedList.Free;
   end;
 end;
 

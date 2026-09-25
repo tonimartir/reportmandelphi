@@ -27,7 +27,7 @@ uses
   rpsection, rpreport, rptypes;
 
 const
-  CONS_MODIWIDTH = 5;
+  CONS_MODIWIDTH = 7;
   CONS_MINIMUMMOVE = 2;
   CONS_SELWIDTH = 7;
   CONS_MINWIDTH = 5;
@@ -47,8 +47,11 @@ const
 type
   TRpPropertytype = (rppinteger, rppcurrency, rppstring, rpplist, rpcustom);
 
+  TRpSizeInterface = class;
   TRpSizePosInterface = class;
   TRpSizePosInterfaceClass = class of TRpSizePosInterface;
+
+  TRpSelectCompEvent = procedure(AComp: TRpSizeInterface; AddToSelection: Boolean) of object;
 
   // The base visual interface for size (width/height)
   TRpSizeInterface = class(TGraphicControl)
@@ -58,6 +61,7 @@ type
     procedure SetSelected(Value: Boolean);
   protected
     fprintitem: TRpCommonComponent;
+    FOnSelectComponent: TRpSelectCompEvent;
     procedure Paint; override;
     procedure DrawSelected; virtual;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -77,6 +81,7 @@ type
     property printitem: TRpCommonComponent read fprintitem;
     property Selected: Boolean read FSelected write SetSelected;
     property Scale: Double read FScale write SetScale;
+    property OnSelectComponent: TRpSelectCompEvent read FOnSelectComponent write FOnSelectComponent;
   end;
 
   // Dragging / sizing outline box
@@ -465,7 +470,10 @@ end;
 
 procedure TRpSizePosInterface.DoSelect;
 begin
-  Selected := True;
+  if Assigned(OnSelectComponent) then
+    OnSelectComponent(Self, False)
+  else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+    SectionInt.OnSelectComponent(Self, False);
 end;
 
 procedure TRpSizePosInterface.UpdatePos;
@@ -590,7 +598,10 @@ begin
     end;
   end;
 
-  Selected := True;
+  if Assigned(OnSelectComponent) then
+    OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift))
+  else if Assigned(SectionInt) and Assigned(SectionInt.OnSelectComponent) then
+    SectionInt.OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift));
 end;
 
 procedure TRpSizePosInterface.Paint;
@@ -835,6 +846,10 @@ begin
 end;
 
 procedure TRpBlackControl.CalcNewCoords(var NewLeft, NewTop, NewWidth, NewHeight, X, Y: Integer);
+var
+  gridX, gridY: Integer;
+  gridOn: Boolean;
+  cScale: Double;
 begin
   if not Assigned(Control) then Exit;
   NewLeft := Control.Left;
@@ -842,11 +857,29 @@ begin
   NewWidth := Control.Width;
   NewHeight := Control.Height;
 
+  gridOn := False;
+  gridX := 1;
+  gridY := 1;
+  cScale := 1.0;
+  if Assigned(Owner) and (Owner is TRpSizeModifier) then
+  begin
+    gridOn := TRpSizeModifier(Owner).GridEnabled;
+    gridX := TRpSizeModifier(Owner).GridX;
+    gridY := TRpSizeModifier(Owner).GridY;
+  end;
+  if Assigned(Control) and (Control is TRpSizeInterface) then
+    cScale := TRpSizeInterface(Control).Scale;
+
   case Tag of
     0: // Top-Left
     begin
       NewLeft := Control.Left - FXOrigin + X;
       NewTop := Control.Top - FYOrigin + Y;
+      if gridOn then
+      begin
+        NewLeft := AlignToGridPixels(NewLeft, gridX, cScale);
+        NewTop := AlignToGridPixels(NewTop, gridY, cScale);
+      end;
       if NewLeft < 0 then NewLeft := 0;
       if NewTop < 0 then NewTop := 0;
       NewWidth := Control.Width + (Control.Left - NewLeft);
@@ -855,22 +888,45 @@ begin
     1: // Top-Right
     begin
       NewTop := Control.Top - FYOrigin + Y;
-      if NewTop < 0 then NewTop := 0;
       NewWidth := Control.Width - FXOrigin + X;
+      if gridOn then
+      begin
+        NewWidth := AlignToGridPixels(NewLeft + NewWidth, gridX, cScale) - NewLeft;
+        NewTop := AlignToGridPixels(NewTop, gridY, cScale);
+      end;
+      if NewTop < 0 then NewTop := 0;
       NewHeight := Control.Height + (Control.Top - NewTop);
     end;
     2: // Bottom-Left
     begin
       NewLeft := Control.Left - FXOrigin + X;
+      NewHeight := Control.Height - FYOrigin + Y;
+      if gridOn then
+      begin
+        NewLeft := AlignToGridPixels(NewLeft, gridX, cScale);
+        NewHeight := AlignToGridPixels(NewTop + NewHeight, gridY, cScale) - NewTop;
+      end;
       if NewLeft < 0 then NewLeft := 0;
       NewWidth := Control.Width + (Control.Left - NewLeft);
-      NewHeight := Control.Height - FYOrigin + Y;
     end;
     3: // Bottom-Right
     begin
       NewWidth := Control.Width - FXOrigin + X;
       NewHeight := Control.Height - FYOrigin + Y;
+      if gridOn then
+      begin
+        NewWidth := AlignToGridPixels(NewLeft + NewWidth, gridX, cScale) - NewLeft;
+        NewHeight := AlignToGridPixels(NewTop + NewHeight, gridY, cScale) - NewTop;
+      end;
     end;
+  end;
+
+  if Assigned(Control) and Assigned(Control.Parent) then
+  begin
+    if NewLeft + NewWidth > Control.Parent.Width then
+      NewWidth := Control.Parent.Width - NewLeft;
+    if NewTop + NewHeight > Control.Parent.Height then
+      NewHeight := Control.Parent.Height - NewTop;
   end;
 
   if NewWidth < CONS_MINWIDTH then NewWidth := CONS_MINWIDTH;
@@ -946,7 +1002,11 @@ begin
     end;
 
     if Assigned(Owner) and (Owner is TRpSizeModifier) then
+    begin
       TRpSizeModifier(Owner).UpdatePos;
+      if Assigned(TRpSizeModifier(Owner).OnSizeChange) then
+        TRpSizeModifier(Owner).OnSizeChange(Owner);
+    end;
   end;
 end;
 
