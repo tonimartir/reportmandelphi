@@ -40,11 +40,11 @@
         <UnitName Value="rppreviewmetalcl"/>
       </Item5>
       <Item6>
-        <Filename Value="..\..\lcl\rppreviewcontrol.pas"/>
+        <Filename Value="..\..\rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
       </Item6>
       <Item7>
-        <Filename Value="..\..\lcl\rpmaskedit.pas"/>
+        <Filename Value="..\..\rpmaskedit.pas"/>
         <UnitName Value="rpmaskedit"/>
       </Item7>
       <Item8>
