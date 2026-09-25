@@ -48,6 +48,7 @@ type
     SplitterInsp: TSplitter;
     FCurrentFileName: string;
     FAutoTestMode: Boolean;
+    procedure AppException(Sender: TObject; E: Exception);
     function FindSampleFile(const AName: string): string;
     procedure RefreshSubreportList;
     procedure UpdateStatus;
@@ -132,12 +133,33 @@ begin
 
   LogMsg('FormCreate: linking ObjInsp');
   FDesignerFrame.ObjInsp := FObjInsp;
+  Application.OnException := AppException;
   LogMsg('TMainForm.FormCreate completed');
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FreeAndNil(FReport);
+end;
+
+procedure TMainForm.AppException(Sender: TObject; E: Exception);
+var
+  frames: PPointer;
+  i, cnt: Integer;
+begin
+  LogMsg('[EXCEPTION] ' + E.ClassName + ': ' + E.Message);
+  LogMsg('[EXCEPTION] At: ' + BackTraceStrFunc(ExceptAddr));
+  frames := ExceptFrames;
+  cnt := ExceptFrameCount;
+  for i := 0 to cnt - 1 do
+    LogMsg('[EXCEPTION] Frame ' + IntToStr(i) + ': ' + BackTraceStrFunc(frames[i]));
+  if FAutoTestMode then
+  begin
+    LogMsg('[TEST_FAILED] Exception (' + E.ClassName + '): ' + E.Message);
+    Halt(1);
+  end
+  else
+    ShowMessage('Exception: ' + E.ClassName + #13#10 + E.Message);
 end;
 
 procedure TMainForm.FormShow(Sender: TObject);
@@ -179,18 +201,27 @@ begin
     Exit;
   end;
 
+  LogMsg('LoadReportFile: setting Report to nil');
   FDesignerFrame.Report := nil;
+  LogMsg('LoadReportFile: freeing FReport');
   FreeAndNil(FReport);
+  LogMsg('LoadReportFile: creating TRpReport');
   FReport := TRpReport.Create(Self);
+  LogMsg('LoadReportFile: calling LoadFromFile');
   try
     FReport.LoadFromFile(AFileName);
     FCurrentFileName := AFileName;
+    LogMsg('LoadReportFile: setting Report to FReport');
     FDesignerFrame.Report := FReport;
+    LogMsg('LoadReportFile: refreshing subreport list');
     RefreshSubreportList;
+    LogMsg('LoadReportFile: updating status');
     UpdateStatus;
+    LogMsg('LoadReportFile: done');
   except
     on E: Exception do
     begin
+      LogMsg('LoadReportFile exception: ' + E.ClassName + ': ' + E.Message);
       FreeAndNil(FReport);
       FDesignerFrame.Report := nil;
       ShowMessage('Error cargando reporte: ' + E.Message);
@@ -293,11 +324,16 @@ procedure TMainForm.BtnZoomClick(Sender: TObject);
 var
   nScale: Double;
 begin
+  LogMsg('BtnZoomClick: started');
   nScale := TButton(Sender).Tag / 100.0;
+  LogMsg('BtnZoomClick: scale=' + FloatToStr(nScale));
   if nScale > 0 then
   begin
+    LogMsg('BtnZoomClick: calling FDesignerFrame.Scale := nScale');
     FDesignerFrame.Scale := nScale;
+    LogMsg('BtnZoomClick: calling UpdateStatus');
     UpdateStatus;
+    LogMsg('BtnZoomClick: completed');
   end;
 end;
 
@@ -336,6 +372,8 @@ var
   origX1, origY1, origX2, origY2, deltaTwipsX, deltaTwipsY: Integer;
   origWidth: Integer;
   wStr, newWStr: string;
+  frames: PPointer;
+  cnt, i: Integer;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -347,7 +385,13 @@ begin
       Halt(1);
     end;
 
+    LogMsg('RunSelfTest: loading sample4.rep');
     LoadReportFile(samplePath);
+    LogMsg('RunSelfTest: LoadReportFile done');
+    Show;
+    LogMsg('RunSelfTest: Show done');
+    Application.ProcessMessages;
+    LogMsg('RunSelfTest: ProcessMessages done');
 
     if not Assigned(FReport) then
     begin
@@ -361,11 +405,38 @@ begin
       Halt(1);
     end;
 
-    // Test Zoom / Scale
-    FDesignerFrame.Scale := 1.5;
-    FDesignerFrame.UpdateInterface(True);
-    FDesignerFrame.Scale := 1.0;
-    FDesignerFrame.UpdateInterface(True);
+    LogMsg('Testing components in sample4.rep');
+    for expectedTop := 0 to FDesignerFrame.secinterfaces.Count - 1 do
+    begin
+      secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[expectedTop]);
+      LogMsg(Format('Section %d child count: %d', [expectedTop, secInt.childlist.Count]));
+      for origX1 := 0 to secInt.childlist.Count - 1 do
+      begin
+        comp1 := TRpSizePosInterface(secInt.childlist[origX1]);
+        LogMsg(Format('Selecting section %d child %d: class %s', [expectedTop, origX1, comp1.ClassName]));
+        FDesignerFrame.SelectComponent(comp1, False);
+        Application.ProcessMessages;
+      end;
+    end;
+
+    LogMsg('Testing Zoom with component selected');
+    try
+      BtnZoom50.Click;
+      LogMsg('Zoom 50% clicked');
+    except
+      on E: Exception do
+      begin
+        LogMsg('Exception during BtnZoom50.Click: ' + E.ClassName + ': ' + E.Message);
+        LogMsg('At: ' + BackTraceStrFunc(ExceptAddr));
+        frames := ExceptFrames;
+        cnt := ExceptFrameCount;
+        for i := 0 to cnt - 1 do
+          LogMsg('Frame ' + IntToStr(i) + ': ' + BackTraceStrFunc(frames[i]));
+        raise;
+      end;
+    end;
+    BtnZoom100.Click;
+    LogMsg('Zoom 100% clicked');
 
     // Test Units
     FDesignerFrame.TopRuler.Metrics := rInchess;
@@ -554,7 +625,10 @@ begin
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
   except
     on E: Exception do
+    begin
       LogMsg('[TEST_FAILED] Exception (' + E.ClassName + '): ' + E.Message);
+      LogMsg('[TEST_FAILED] At: ' + BackTraceStrFunc(ExceptAddr));
+    end;
   end;
 
   if ok then

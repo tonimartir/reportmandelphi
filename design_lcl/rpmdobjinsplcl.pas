@@ -68,6 +68,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ClearMultiSelect;
+    procedure ClearCompItemRefs;
     procedure InvalidatePanels;
     procedure SelectProperty(propname: string);
     procedure SelectAllClass(classname: string);
@@ -174,6 +175,22 @@ begin
   end
   else
     Result := acompo.ClassName;
+end;
+
+function GetFalseBoolStr: string;
+begin
+  if Length(FalseBoolStrs) > 0 then
+    Result := FalseBoolStrs[0]
+  else
+    Result := 'False';
+end;
+
+function GetTrueBoolStr: string;
+begin
+  if Length(TrueBoolStrs) > 0 then
+    Result := TrueBoolStrs[0]
+  else
+    Result := 'True';
 end;
 
 { TRpPanelObjLCL }
@@ -288,8 +305,8 @@ begin
 
   ComboPrintOnly := TComboBox.Create(Self);
   ComboPrintOnly.Style := csDropDownList;
-  ComboPrintOnly.Items.Add(FalseBoolStrs[0]);
-  ComboPrintOnly.Items.Add(TrueBoolStrs[0]);
+  ComboPrintOnly.Items.Add(GetFalseBoolStr);
+  ComboPrintOnly.Items.Add(GetTrueBoolStr);
   ComboPrintOnly.Top := posy;
   ComboPrintOnly.Left := CONS_LEFTGAP;
   ComboPrintOnly.Width := PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
@@ -470,14 +487,14 @@ begin
     if typename = SRpSBool then
     begin
       control := TComboBox.Create(Self);
-      TComboBox(control).Items.Add(FalseBoolStrs[0]);
-      TComboBox(control).Items.Add(TrueBoolStrs[0]);
+      TComboBox(control).Items.Add(GetFalseBoolStr);
+      TComboBox(control).Items.Add(GetTrueBoolStr);
       TComboBox(control).Style := csDropDownList;
       TComboBox(control).OnChange := EditChange;
 
       NControl := TComboBox.Create(Self);
-      TComboBox(NControl).Items.Add(FalseBoolStrs[0]);
-      TComboBox(NControl).Items.Add(TrueBoolStrs[0]);
+      TComboBox(NControl).Items.Add(GetFalseBoolStr);
+      TComboBox(NControl).Items.Add(GetTrueBoolStr);
       TComboBox(NControl).Style := csDropDownList;
       TComboBox(NControl).OnChange := EditChange;
     end
@@ -588,7 +605,8 @@ var
   asecitem: TRpSizePosInterface;
   rep: TRpReport;
 begin
-  if FUpdatingValues then Exit;
+  if FUpdatingValues then
+    Exit;
   FUpdatingValues := True;
   try
     if not Assigned(FCompItem) then
@@ -1361,6 +1379,23 @@ begin
     end;
   end;
   FSelectedItems.Clear;
+end;
+
+procedure TFRpObjInspLCL.ClearCompItemRefs;
+var
+  i: Integer;
+  panel: TRpPanelObjLCL;
+begin
+  for i := 0 to FPropPanels.Count - 1 do
+  begin
+    panel := TRpPanelObjLCL(FPropPanels.Objects[i]);
+    panel.CompItem := nil;
+    if Assigned(panel.Combo) then
+    begin
+      panel.Combo.OnChange := nil;
+      panel.Combo.Clear;
+    end;
+  end;
 end;
 
 procedure TFRpObjInspLCL.InvalidatePanels;

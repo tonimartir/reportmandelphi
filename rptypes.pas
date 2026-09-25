@@ -463,6 +463,7 @@ function StrToBool(const S: string): Boolean;
 function StrToBoolDef(const S: string; const Default: Boolean): Boolean;
 function TryStrToBool(const S: string; out Value: Boolean): Boolean;
 function TryStrToFloat(const S: string; out Value: Double): Boolean;
+procedure VerifyBoolStrArray;
 var
   TrueBoolStrs: array of String;
   FalseBoolStrs: array of String;
@@ -5627,6 +5628,10 @@ begin
 end;
 
 initialization
+
+{$IFDEF FPC}
+VerifyBoolStrArray;
+{$ENDIF}
 
 {$IFNDEF DOTNETD}
 {$IFDEF MSWINDOWS}

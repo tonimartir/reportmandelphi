@@ -109,6 +109,7 @@ type
     CONS_RIGHTPWIDTH: Integer;
     FSizeModifier: TRpSizeModifier;
     FSelectedItems: TList;
+    FUpdatingSubreport: Boolean;
     procedure SetReport(Value: TRpReport);
     procedure SetObjInsp(Value: TComponent);
     procedure SecPosChange(Sender: TObject);
@@ -116,6 +117,7 @@ type
     procedure SizeModifierChange(Sender: TObject);
     procedure ClearSelectionEvent(Sender: TObject);
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Resize; override;
   public
     freportstructure: TComponent;
@@ -534,6 +536,12 @@ end;
 
 destructor TFRpDesignFrameLCL.Destroy;
 begin
+  FUpdatingSubreport := True;
+  if Assigned(FObjInsp) then
+  begin
+    FObjInsp.RemoveFreeNotification(Self);
+    FObjInsp := nil;
+  end;
   ClearSelection;
   SelectSubReport(nil);
   FreeAndNil(leftrulers);
@@ -549,10 +557,18 @@ begin
   inherited Destroy;
 end;
 
+procedure TFRpDesignFrameLCL.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FObjInsp) then
+    FObjInsp := nil;
+end;
+
 procedure TFRpDesignFrameLCL.Resize;
 begin
   inherited Resize;
-  SecPosChange(Self);
+  if not FUpdatingSubreport then
+    SecPosChange(Self);
 end;
 
 procedure TFRpDesignFrameLCL.SetScale(nvalue: Double);
@@ -591,7 +607,11 @@ var
 begin
   if FObjInsp <> Value then
   begin
+    if Assigned(FObjInsp) then
+      FObjInsp.RemoveFreeNotification(Self);
     FObjInsp := Value;
+    if Assigned(FObjInsp) then
+      FObjInsp.FreeNotification(Self);
     if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
       TFRpObjInspLCL(FObjInsp).DesignFrame := Self;
     if Assigned(secinterfaces) then
@@ -617,26 +637,54 @@ begin
   if (FSubReport = subreport) and Assigned(subreport) then
     Exit;
 
-  // Clear existing items
-  ClearSelection;
-  for i := 0 to secinterfaces.Count - 1 do
-  begin
-    TObject(secinterfaces[i]).Free;
-    TObject(toptitles[i]).Free;
-    TObject(righttitles[i]).Free;
-    TObject(leftrulers[i]).Free;
-  end;
-  if toptitles.Count > secinterfaces.Count then
-    TObject(toptitles[secinterfaces.Count]).Free;
+  FUpdatingSubreport := True;
+  try
+    // Clear existing items
+    ClearSelection;
+    // Clear inspector CompItem references BEFORE freeing section interfaces
+    // to prevent dangling pointers in cached property panels
+    if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    begin
+      TFRpObjInspLCL(FObjInsp).ClearCompItemRefs;
+      TFRpObjInspLCL(FObjInsp).AddCompItem(nil, True);
+    end;
 
-  secinterfaces.Clear;
-  toptitles.Clear;
-  righttitles.Clear;
-  leftrulers.Clear;
+    // First detach parents to avoid cascaded resize/paint events during destroy
+    for i := 0 to secinterfaces.Count - 1 do
+    begin
+      if Assigned(secinterfaces[i]) then
+        TControl(secinterfaces[i]).Parent := nil;
+      if Assigned(toptitles[i]) then
+        TControl(toptitles[i]).Parent := nil;
+      if Assigned(righttitles[i]) then
+        TControl(righttitles[i]).Parent := nil;
+      if Assigned(leftrulers[i]) then
+        TControl(leftrulers[i]).Parent := nil;
+    end;
+    if toptitles.Count > secinterfaces.Count then
+    begin
+      if Assigned(toptitles[secinterfaces.Count]) then
+        TControl(toptitles[secinterfaces.Count]).Parent := nil;
+    end;
 
-  FSubReport := subreport;
-  if not Assigned(FSubReport) then
-    Exit;
+    for i := 0 to secinterfaces.Count - 1 do
+    begin
+      TObject(secinterfaces[i]).Free;
+      TObject(toptitles[i]).Free;
+      TObject(righttitles[i]).Free;
+      TObject(leftrulers[i]).Free;
+    end;
+    if toptitles.Count > secinterfaces.Count then
+      TObject(toptitles[secinterfaces.Count]).Free;
+
+    secinterfaces.Clear;
+    toptitles.Clear;
+    righttitles.Clear;
+    leftrulers.Clear;
+
+    FSubReport := subreport;
+    if not Assigned(FSubReport) then
+      Exit;
 
   maxwidth := 0;
   posx := 0;
@@ -742,6 +790,10 @@ begin
 
   SectionScrollBox.VertScrollBar.Position := 0;
   SectionScrollBox.HorzScrollBar.Position := 0;
+  finally
+    FUpdatingSubreport := False;
+  end;
+  SecPosChange(Self);
 end;
 
 procedure TFRpDesignFrameLCL.UpdateInterface(refreshobjinsp: Boolean);
@@ -810,6 +862,8 @@ var
   i, despy: Integer;
   aruler: TRpRulerLCL;
 begin
+  if FUpdatingSubreport then
+    Exit;
   if not Assigned(TopRuler) or not Assigned(SectionScrollBox) or not Assigned(leftrulers) or not Assigned(secinterfaces) then
     Exit;
 
