@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
-  <UserPkgLinks Version="3" Count="7">
+  <UserPkgLinks Version="3" Count="8">
     <Item1>
       <Name Value="reportman_lcl"/>
       <Filename Value="C:\desarrollo\prog\toni\reportman\packages\fpc_lcl\reportman_lcl.lpk"/>
@@ -12,35 +12,40 @@
       <LastUsed Value="2026/09/22 21:36:34"/>
     </Item2>
     <Item3>
+      <Name Value="reportman_designlcl"/>
+      <Filename Value="C:\desarrollo\prog\toni\reportman\packages\fpc_lcl\reportman_designlcl.lpk"/>
+      <LastUsed Value="2026/09/25 12:00:00"/>
+    </Item3>
+    <Item4>
       <Name Value="zcomponent"/>
       <Version Major="8"/>
       <Filename Value="C:\desarrollo\tools\delphicomponents\zeosxe10\packages\lazarus\zcomponent.lpk"/>
       <LastUsed Value="2026/09/22 21:36:34"/>
-    </Item3>
-    <Item4>
+    </Item4>
+    <Item5>
       <Name Value="zcore"/>
       <Version Major="8"/>
       <Filename Value="C:\desarrollo\tools\delphicomponents\zeosxe10\packages\lazarus\zcore.lpk"/>
       <LastUsed Value="2026/09/22 21:36:34"/>
-    </Item4>
-    <Item5>
+    </Item5>
+    <Item6>
       <Name Value="zdbc"/>
       <Version Major="8"/>
       <Filename Value="C:\desarrollo\tools\delphicomponents\zeosxe10\packages\lazarus\zdbc.lpk"/>
       <LastUsed Value="2026/09/22 21:36:34"/>
-    </Item5>
-    <Item6>
+    </Item6>
+    <Item7>
       <Name Value="zparsesql"/>
       <Version Major="8"/>
       <Filename Value="C:\desarrollo\tools\delphicomponents\zeosxe10\packages\lazarus\zparsesql.lpk"/>
       <LastUsed Value="2026/09/22 21:36:34"/>
-    </Item6>
-    <Item7>
+    </Item7>
+    <Item8>
       <Name Value="zplain"/>
       <Version Major="8"/>
       <Filename Value="C:\desarrollo\tools\delphicomponents\zeosxe10\packages\lazarus\zplain.lpk"/>
       <LastUsed Value="2026/09/22 21:36:34"/>
-    </Item7>
+    </Item8>
   </UserPkgLinks>
   <GlobalPkgLinks Version="3" Count="64">
     <Item1>

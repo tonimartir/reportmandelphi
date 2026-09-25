@@ -27,9 +27,11 @@
     <RequiredPackages>
       <Item>
         <PackageName Value="reportman_lcl"/>
+        <DefaultFilename Value="..\..\..\packages\fpc_lcl\reportman_lcl.lpk"/>
       </Item>
       <Item>
         <PackageName Value="reportman_rtl"/>
+        <DefaultFilename Value="..\..\..\packages\fpc\reportman_rtl.lpk"/>
       </Item>
       <Item>
         <PackageName Value="LCL"/>
