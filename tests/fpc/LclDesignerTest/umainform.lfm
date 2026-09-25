@@ -1,142 +1,146 @@
 object MainForm: TMainForm
   Left = 180
+  Height = 680
   Top = 120
   Width = 960
-  Height = 680
   Caption = 'Report Manager LCL - Visual Designer Test (Phase 2)'
   ClientHeight = 680
   ClientWidth = 960
   Color = clBtnFace
+  DesignTimePPI = 120
+  Font.Height = -15
   Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   object PTop: TPanel
     Left = 0
+    Height = 44
     Top = 0
     Width = 960
-    Height = 44
     Align = alTop
     BevelOuter = bvNone
     ClientHeight = 44
     ClientWidth = 960
+    ParentBackground = False
     TabOrder = 0
     object BtnOpen: TButton
       Left = 8
+      Height = 28
       Top = 8
       Width = 80
-      Height = 28
       Caption = 'Abrir...'
-      OnClick = BtnOpenClick
       TabOrder = 0
+      OnClick = BtnOpenClick
     end
     object BtnSample4: TButton
       Left = 94
+      Height = 28
       Top = 8
       Width = 90
-      Height = 28
       Caption = 'sample4.rep'
-      OnClick = BtnSample4Click
       TabOrder = 1
+      OnClick = BtnSample4Click
     end
     object BtnBold: TButton
       Left = 190
+      Height = 28
       Top = 8
       Width = 80
-      Height = 28
       Caption = 'bold.rep'
-      OnClick = BtnBoldClick
       TabOrder = 2
+      OnClick = BtnBoldClick
     end
     object BtnHtml: TButton
       Left = 276
+      Height = 28
       Top = 8
       Width = 84
-      Height = 28
       Caption = 'htmltest.rep'
-      OnClick = BtnHtmlClick
       TabOrder = 3
+      OnClick = BtnHtmlClick
     end
     object LblSubrep: TLabel
       Left = 370
+      Height = 15
       Top = 14
       Width = 60
-      Height = 15
       Caption = 'Subreport:'
     end
     object CbSubreport: TComboBox
       Left = 434
+      Height = 23
       Top = 10
       Width = 120
-      Height = 23
       ItemHeight = 15
       Style = csDropDownList
-      OnChange = CbSubreportChange
       TabOrder = 4
+      OnChange = CbSubreportChange
     end
     object LblZoom: TLabel
       Left = 566
+      Height = 15
       Top = 14
       Width = 35
-      Height = 15
       Caption = 'Zoom:'
     end
     object BtnZoom50: TButton
+      Tag = 50
       Left = 606
+      Height = 28
       Top = 8
       Width = 44
-      Height = 28
       Caption = '50%'
-      OnClick = BtnZoomClick
-      Tag = 50
       TabOrder = 5
+      OnClick = BtnZoomClick
     end
     object BtnZoom75: TButton
+      Tag = 75
       Left = 654
+      Height = 28
       Top = 8
       Width = 44
-      Height = 28
       Caption = '75%'
-      OnClick = BtnZoomClick
-      Tag = 75
       TabOrder = 6
+      OnClick = BtnZoomClick
     end
     object BtnZoom100: TButton
+      Tag = 100
       Left = 702
+      Height = 28
       Top = 8
       Width = 48
-      Height = 28
       Caption = '100%'
-      OnClick = BtnZoomClick
-      Tag = 100
       TabOrder = 7
+      OnClick = BtnZoomClick
     end
     object BtnZoom150: TButton
+      Tag = 150
       Left = 754
+      Height = 28
       Top = 8
       Width = 48
-      Height = 28
       Caption = '150%'
-      OnClick = BtnZoomClick
-      Tag = 150
       TabOrder = 8
+      OnClick = BtnZoomClick
     end
     object ChkGrid: TCheckBox
       Left = 812
+      Height = 19
       Top = 13
       Width = 48
-      Height = 19
       Caption = 'Grid'
       Checked = True
       State = cbChecked
-      OnChange = ChkGridChange
       TabOrder = 9
+      OnChange = ChkGridChange
     end
     object CbUnits: TComboBox
       Left = 870
+      Height = 23
       Top = 10
       Width = 76
-      Height = 23
       ItemHeight = 15
       ItemIndex = 0
       Items.Strings = (
@@ -144,25 +148,26 @@ object MainForm: TMainForm
         'inch'
       )
       Style = csDropDownList
+      TabOrder = 10
       Text = 'cm'
       OnChange = CbUnitsChange
-      TabOrder = 10
     end
   end
   object PClient: TPanel
     Left = 0
+    Height = 612
     Top = 44
     Width = 960
-    Height = 612
     Align = alClient
     BevelOuter = bvNone
+    ParentBackground = False
     TabOrder = 1
   end
   object StatusBar: TStatusBar
     Left = 0
+    Height = 24
     Top = 656
     Width = 960
-    Height = 24
     Panels = <    
       item
         Text = 'Reporte: Ninguno'
@@ -184,7 +189,7 @@ object MainForm: TMainForm
   end
   object OpenDialog: TOpenDialog
     Filter = 'Report Manager files (*.rep;*.xml)|*.rep;*.xml|All files (*.*)|*.*'
-    Left = 40
-    Top = 80
+    Left = 50
+    Top = 100
   end
 end

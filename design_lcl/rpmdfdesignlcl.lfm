@@ -16,6 +16,8 @@ object FRpDesignFrameLCL: TFRpDesignFrameLCL
     Height = 25
     Align = alTop
     BevelOuter = bvNone
+    Color = clBtnFace
+    ParentColor = False
     TabOrder = 0
   end
   object PLeft: TPanel
@@ -25,6 +27,8 @@ object FRpDesignFrameLCL: TFRpDesignFrameLCL
     Height = 313
     Align = alLeft
     BevelOuter = bvNone
+    Color = clBtnFace
+    ParentColor = False
     TabOrder = 1
   end
 end

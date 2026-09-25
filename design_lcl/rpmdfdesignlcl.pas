@@ -484,7 +484,11 @@ begin
   CONS_RULER_LEFT := PLeft.Width;
 
   PTop.DoubleBuffered := True;
+  PTop.ParentColor := False;
+  PTop.Color := clBtnFace;
   PLeft.DoubleBuffered := True;
+  PLeft.ParentColor := False;
+  PLeft.Color := clBtnFace;
 
   TopRuler := TRpRulerLCL.Create(Self);
   TopRuler.RType := rHorizontal;
