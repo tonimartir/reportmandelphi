@@ -133,7 +133,7 @@ end;
 procedure TRpSectionIntf.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseMove(Shift, X, Y);
-  if Assigned(secint) then
+  if MouseCapture and Assigned(secint) then
     secint.MouseMove(Shift, X, Y);
 end;
 
@@ -357,6 +357,7 @@ var
   NewLeft, NewTop, NewWidth, NewHeight: Integer;
 begin
   inherited MouseMove(Shift, X, Y);
+  if not (ssLeft in Shift) then Exit;
   if not Assigned(FInterface) then Exit;
 
   if not Assigned(FRectangle) then
