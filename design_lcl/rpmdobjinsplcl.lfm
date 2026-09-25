@@ -1,0 +1,36 @@
+object FRpObjInspLCL: TFRpObjInspLCL
+  Left = 0
+  Top = 0
+  Width = 260
+  Height = 400
+  Align = alClient
+  Color = clBtnFace
+  ParentColor = False
+  ParentShowHint = False
+  ShowHint = True
+  TabOrder = 0
+  object ColorDialog1: TColorDialog
+    Left = 24
+    Top = 24
+  end
+  object FontDialog1: TFontDialog
+    Left = 88
+    Top = 24
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 152
+    Top = 24
+  end
+  object PopUpSection: TPopupMenu
+    Left = 208
+    Top = 24
+    object MLoadExternal: TMenuItem
+      Caption = 'Load section'
+      OnClick = MLoadExternalClick
+    end
+    object MSaveExternal: TMenuItem
+      Caption = 'Save section'
+      OnClick = MSaveExternalClick
+    end
+  end
+end

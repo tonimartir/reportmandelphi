@@ -57,7 +57,7 @@ implementation
 
 constructor TRpDrawInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpShape) then
+  if Assigned(pritem) and not (pritem is TRpShape) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -79,19 +79,19 @@ begin
   ltypes.Add(SRpSList);
   lhints.Add('refdraw.html');
   lcat.Add(SRpShape);
-  if Assigned(lvalues) then lvalues.Add(IntToStr(Integer(ashape.Shape)));
+  if Assigned(lvalues) and Assigned(ashape) then lvalues.Add(IntToStr(Integer(ashape.Shape)));
 
   lnames.Add(SrpSPenColor);
   ltypes.Add(SRpSColor);
   lhints.Add('refdraw.html');
   lcat.Add(SRpShape);
-  if Assigned(lvalues) then lvalues.Add(IntToStr(ashape.PenColor));
+  if Assigned(lvalues) and Assigned(ashape) then lvalues.Add(IntToStr(ashape.PenColor));
 
   lnames.Add(SrpSBrushColor);
   ltypes.Add(SRpSColor);
   lhints.Add('refdraw.html');
   lcat.Add(SRpShape);
-  if Assigned(lvalues) then lvalues.Add(IntToStr(ashape.BrushColor));
+  if Assigned(lvalues) and Assigned(ashape) then lvalues.Add(IntToStr(ashape.BrushColor));
 end;
 
 procedure TRpDrawInterface.SetProperty(pname: string; value: WideString);
@@ -99,6 +99,11 @@ var
   ashape: TRpShape;
 begin
   ashape := TRpShape(printitem);
+  if not Assigned(ashape) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSPenColor then
   begin
     ashape.PenColor := StrToIntDef(value, 0);
@@ -119,6 +124,11 @@ var
   ashape: TRpShape;
 begin
   ashape := TRpShape(printitem);
+  if not Assigned(ashape) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSPenColor then Result := IntToStr(ashape.PenColor)
   else if pname = SrpSBrushColor then Result := IntToStr(ashape.BrushColor)
   else Result := inherited GetProperty(pname);
@@ -203,7 +213,7 @@ end;
 
 constructor TRpImageInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpImage) then
+  if Assigned(pritem) and not (pritem is TRpImage) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -230,7 +240,7 @@ begin
   ltypes.Add(SRpSExpression);
   lhints.Add('refimage.html');
   lcat.Add(SRpImage);
-  if Assigned(lvalues) then lvalues.Add(aimage.Expression);
+  if Assigned(lvalues) and Assigned(aimage) then lvalues.Add(aimage.Expression);
 end;
 
 procedure TRpImageInterface.SetProperty(pname: string; value: WideString);
@@ -238,6 +248,11 @@ var
   aimage: TRpImage;
 begin
   aimage := TRpImage(printitem);
+  if not Assigned(aimage) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSExpression then
   begin
     aimage.Expression := value;
@@ -252,6 +267,11 @@ var
   aimage: TRpImage;
 begin
   aimage := TRpImage(printitem);
+  if not Assigned(aimage) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSExpression then Result := aimage.Expression
   else Result := inherited GetProperty(pname);
 end;

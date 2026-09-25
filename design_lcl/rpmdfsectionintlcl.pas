@@ -167,7 +167,7 @@ constructor TRpSectionInterface.Create(AOwner: TComponent; pritem: TRpCommonComp
 var
   opts: TControlStyle;
 begin
-  if not (pritem is TRpSection) then
+  if Assigned(pritem) and not (pritem is TRpSection) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 
@@ -494,7 +494,7 @@ begin
   ltypes.Add(SRpSString);
   lhints.Add('refsection.html');
   lcat.Add(SRpSection);
-  if Assigned(lvalues) then lvalues.Add(sec.GroupName);
+  if Assigned(lvalues) and Assigned(sec) then lvalues.Add(sec.GroupName);
 end;
 
 procedure TRpSectionInterface.SetProperty(pname: string; value: WideString);
@@ -502,6 +502,11 @@ var
   sec: TRpSection;
 begin
   sec := TRpSection(printitem);
+  if not Assigned(sec) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSGroupName then
   begin
     sec.GroupName := value;
@@ -515,6 +520,11 @@ var
   sec: TRpSection;
 begin
   sec := TRpSection(printitem);
+  if not Assigned(sec) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSGroupName then Result := sec.GroupName
   else Result := inherited GetProperty(pname);
 end;

@@ -40,7 +40,7 @@ implementation
 
 constructor TRpBarcodeInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpBarcode) then
+  if Assigned(pritem) and not (pritem is TRpBarcode) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -61,7 +61,7 @@ begin
   ltypes.Add(SRpSExpression);
   lhints.Add('refbarcode.html');
   lcat.Add(SRpBarcode);
-  if Assigned(lvalues) then lvalues.Add(abar.Expression);
+  if Assigned(lvalues) and Assigned(abar) then lvalues.Add(abar.Expression);
 end;
 
 procedure TRpBarcodeInterface.SetProperty(pname: string; value: WideString);
@@ -69,6 +69,11 @@ var
   abar: TRpBarcode;
 begin
   abar := TRpBarcode(printitem);
+  if not Assigned(abar) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSExpression then
   begin
     abar.Expression := value;
@@ -83,6 +88,11 @@ var
   abar: TRpBarcode;
 begin
   abar := TRpBarcode(printitem);
+  if not Assigned(abar) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSExpression then Result := abar.Expression
   else Result := inherited GetProperty(pname);
 end;

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, ComCtrls,
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
-  rpmdobinsintlcl, rpmdfsectionintlcl;
+  rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts;
 
 type
   TMainForm = class(TForm)
@@ -43,6 +43,9 @@ type
   private
     FReport: TRpReport;
     FDesignerFrame: TFRpDesignFrameLCL;
+    FObjInsp: TFRpObjInspLCL;
+    PInspPanel: TPanel;
+    SplitterInsp: TSplitter;
     FCurrentFileName: string;
     FAutoTestMode: Boolean;
     function FindSampleFile(const AName: string): string;
@@ -55,6 +58,8 @@ type
 
 var
   MainForm: TMainForm;
+
+procedure LogMsg(const S: string);
 
 implementation
 
@@ -93,6 +98,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
 var
   i: Integer;
 begin
+  LogMsg('TMainForm.FormCreate started');
   FAutoTestMode := False;
   for i := 1 to ParamCount do
   begin
@@ -101,9 +107,32 @@ begin
       FAutoTestMode := True;
   end;
 
+  LogMsg('FormCreate: creating PInspPanel');
+  PInspPanel := TPanel.Create(Self);
+  PInspPanel.Width := 300;
+  PInspPanel.Align := alRight;
+  PInspPanel.BevelOuter := bvNone;
+  PInspPanel.Parent := PClient;
+
+  LogMsg('FormCreate: creating SplitterInsp');
+  SplitterInsp := TSplitter.Create(Self);
+  SplitterInsp.Align := alRight;
+  SplitterInsp.Width := 5;
+  SplitterInsp.Parent := PClient;
+
+  LogMsg('FormCreate: creating FDesignerFrame');
   FDesignerFrame := TFRpDesignFrameLCL.Create(Self);
-  FDesignerFrame.Parent := PClient;
   FDesignerFrame.Align := alClient;
+  FDesignerFrame.Parent := PClient;
+
+  LogMsg('FormCreate: creating FObjInsp');
+  FObjInsp := TFRpObjInspLCL.Create(Self);
+  FObjInsp.Align := alClient;
+  FObjInsp.Parent := PInspPanel;
+
+  LogMsg('FormCreate: linking ObjInsp');
+  FDesignerFrame.ObjInsp := FObjInsp;
+  LogMsg('TMainForm.FormCreate completed');
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
@@ -305,6 +334,8 @@ var
   ruler0: TRpRulerLCL;
   expectedTop: Integer;
   origX1, origY1, origX2, origY2, deltaTwipsX, deltaTwipsY: Integer;
+  origWidth: Integer;
+  wStr, newWStr: string;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -378,6 +409,37 @@ begin
           Halt(1);
         end;
 
+        // 1.1 Object Inspector verification for single selection
+        if FObjInsp.CompItem <> comp1 then
+        begin
+          LogMsg('[TEST_FAILED] ObjInsp.CompItem should be comp1');
+          Halt(1);
+        end;
+        if FObjInsp.SelectedItems.Count <> 1 then
+        begin
+          LogMsg('[TEST_FAILED] ObjInsp.SelectedItems.Count should be 1');
+          Halt(1);
+        end;
+
+        // 1.2 Test reading and setting property through inspector
+        origWidth := TRpCommonPosComponent(comp1.printitem).Width;
+        wStr := FObjInsp.CompItem.GetProperty(SRpSWidth);
+        if Length(wStr) = 0 then
+        begin
+          LogMsg('[TEST_FAILED] ObjInsp could not get Width property');
+          Halt(1);
+        end;
+
+        newWStr := gettextfromtwips(origWidth + 720);
+        FObjInsp.CompItem.SetProperty(SRpSWidth, newWStr);
+        if TRpCommonPosComponent(comp1.printitem).Width <> (origWidth + 720) then
+        begin
+          LogMsg('[TEST_FAILED] Setting Width via ObjInsp did not update printitem');
+          Halt(1);
+        end;
+        // Restore width
+        FObjInsp.CompItem.SetProperty(SRpSWidth, gettextfromtwips(origWidth));
+
         // 2. Multi-selection (Shift) -> grey corners, black handles hidden
         if secInt.childlist.Count > 1 then
         begin
@@ -386,6 +448,12 @@ begin
           if FDesignerFrame.SelectedItems.Count <> 2 then
           begin
             LogMsg('[TEST_FAILED] SelectedItems.Count should be 2 after Shift-select');
+            Halt(1);
+          end;
+          // Verify ObjInsp multi-selection
+          if FObjInsp.SelectedItems.Count <> 2 then
+          begin
+            LogMsg('[TEST_FAILED] ObjInsp.SelectedItems.Count should be 2 after Shift-select');
             Halt(1);
           end;
           if not comp1.Selected or not comp2.Selected then
@@ -448,6 +516,11 @@ begin
         if FDesignerFrame.SelectedItems.Count <> 0 then
         begin
           LogMsg('[TEST_FAILED] SelectedItems.Count should be 0 after ClearSelection');
+          Halt(1);
+        end;
+        if FObjInsp.SelectedItems.Count <> 0 then
+        begin
+          LogMsg('[TEST_FAILED] ObjInsp.SelectedItems.Count should be 0 after ClearSelection');
           Halt(1);
         end;
         if comp1.Selected then

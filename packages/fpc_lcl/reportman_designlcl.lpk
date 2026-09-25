@@ -18,7 +18,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="13">
+    <Files Count="14">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -64,14 +64,18 @@
         <UnitName Value="rpmdfdesignlcl"/>
       </Item11>
       <Item12>
-        <Filename Value="..\..\design_lcl\rpmdesignerlcl.pas"/>
-        <UnitName Value="rpmdesignerlcl"/>
+        <Filename Value="..\..\design_lcl\rpmdobjinsplcl.pas"/>
+        <UnitName Value="rpmdobjinsplcl"/>
       </Item12>
       <Item13>
+        <Filename Value="..\..\design_lcl\rpmdesignerlcl.pas"/>
+        <UnitName Value="rpmdesignerlcl"/>
+      </Item13>
+      <Item14>
         <Filename Value="..\..\design_lcl\rpmregdesignlcl.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="rpmregdesignlcl"/>
-      </Item13>
+      </Item14>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>

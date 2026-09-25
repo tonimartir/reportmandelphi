@@ -366,6 +366,8 @@ end;
 
 procedure TRpSizeInterface.SetProperty(pname: string; value: WideString);
 begin
+  if not Assigned(fprintitem) then
+    Exit;
   if pname = SrpSPrintCondition then
   begin
     fprintitem.PrintCondition := value;
@@ -406,6 +408,8 @@ end;
 function TRpSizeInterface.GetProperty(pname: string): WideString;
 begin
   Result := '';
+  if not Assigned(fprintitem) then
+    Exit;
   if pname = SrpSPrintCondition then Result := fprintitem.PrintCondition
   else if pname = SrpSBeforePrint then Result := fprintitem.DoBeforePrint
   else if pname = SrpSAfterPrint then Result := fprintitem.DoAfterPrint
@@ -436,7 +440,7 @@ constructor TRpSizePosInterface.Create(AOwner: TComponent; pritem: TRpCommonComp
 var
   opts: TControlStyle;
 begin
-  if not (pritem is TRpCommonPosComponent) then
+  if Assigned(pritem) and not (pritem is TRpCommonPosComponent) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
   opts := ControlStyle;
@@ -773,6 +777,11 @@ var
   positem: TRpCommonPosComponent;
 begin
   positem := TRpCommonPosComponent(printitem);
+  if not Assigned(positem) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSTop then
   begin
     positem.PosY := gettwipsfromtext(value);
@@ -799,6 +808,11 @@ var
   positem: TRpCommonPosComponent;
 begin
   positem := TRpCommonPosComponent(printitem);
+  if not Assigned(positem) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSTop then Result := gettextfromtwips(positem.PosY)
   else if pname = SrpSLeft then Result := gettextfromtwips(positem.PosX)
   else if pname = SRPAlign then Result := AlignToStr(positem.Align)
@@ -826,7 +840,7 @@ end;
 
 constructor TRpGenTextInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpGenTextComponent) then
+  if Assigned(pritem) and not (pritem is TRpGenTextComponent) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -853,31 +867,31 @@ begin
   ltypes.Add(SRpSList);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(HAlignmentToText(titem.Alignment));
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(HAlignmentToText(titem.Alignment));
 
   lnames.Add(SrpSWFontName);
   ltypes.Add(SRpSWFontName);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(titem.WFontName);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(titem.WFontName);
 
   lnames.Add(SrpSFontSize);
   ltypes.Add(SRpSFontSize);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(IntToStr(titem.FontSize));
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.FontSize));
 
   lnames.Add(SrpSFontColor);
   ltypes.Add(SRpSColor);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(IntToStr(titem.FontColor));
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.FontColor));
 
   lnames.Add(SrpSTransparent);
   ltypes.Add(SRpSBool);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(BoolToStr(titem.Transparent, True));
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(BoolToStr(titem.Transparent, True));
 end;
 
 procedure TRpGenTextInterface.SetProperty(pname: string; value: WideString);
@@ -885,6 +899,11 @@ var
   titem: TRpGenTextComponent;
 begin
   titem := TRpGenTextComponent(printitem);
+  if not Assigned(titem) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSAlignment then
   begin
     titem.Alignment := StringHAlignmentToInt(value);
@@ -923,6 +942,11 @@ var
   titem: TRpGenTextComponent;
 begin
   titem := TRpGenTextComponent(printitem);
+  if not Assigned(titem) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSWFontName then Result := titem.WFontName
   else if pname = SrpSFontSize then Result := IntToStr(titem.FontSize)
   else if pname = SrpSFontColor then Result := IntToStr(titem.FontColor)

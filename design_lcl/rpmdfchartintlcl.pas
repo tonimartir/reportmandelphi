@@ -40,7 +40,7 @@ implementation
 
 constructor TRpChartInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpChart) then
+  if Assigned(pritem) and not (pritem is TRpChart) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -61,7 +61,7 @@ begin
   ltypes.Add(SRpSExpression);
   lhints.Add('refchart.html');
   lcat.Add(SRpChartData);
-  if Assigned(lvalues) then lvalues.Add(achart.ValueExpression);
+  if Assigned(lvalues) and Assigned(achart) then lvalues.Add(achart.ValueExpression);
 end;
 
 procedure TRpChartInterface.SetProperty(pname: string; value: WideString);
@@ -69,6 +69,11 @@ var
   achart: TRpChart;
 begin
   achart := TRpChart(printitem);
+  if not Assigned(achart) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSExpression then
   begin
     achart.ValueExpression := value;
@@ -83,6 +88,11 @@ var
   achart: TRpChart;
 begin
   achart := TRpChart(printitem);
+  if not Assigned(achart) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSExpression then Result := achart.ValueExpression
   else Result := inherited GetProperty(pname);
 end;

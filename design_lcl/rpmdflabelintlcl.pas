@@ -54,7 +54,7 @@ implementation
 
 constructor TRpLabelInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpLabel) then
+  if Assigned(pritem) and not (pritem is TRpLabel) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -75,7 +75,7 @@ begin
   ltypes.Add(SRpSMemo);
   lhints.Add('reflabel.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(alabel.Text);
+  if Assigned(lvalues) and Assigned(alabel) then lvalues.Add(alabel.Text);
 end;
 
 procedure TRpLabelInterface.SetProperty(pname: string; value: WideString);
@@ -83,6 +83,11 @@ var
   alabel: TRpLabel;
 begin
   alabel := TRpLabel(printitem);
+  if not Assigned(alabel) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSText then
   begin
     alabel.Text := value;
@@ -97,6 +102,11 @@ var
   alabel: TRpLabel;
 begin
   alabel := TRpLabel(printitem);
+  if not Assigned(alabel) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSText then Result := alabel.Text
   else Result := inherited GetProperty(pname);
 end;
@@ -214,7 +224,7 @@ end;
 
 constructor TRpExpressionInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 begin
-  if not (pritem is TRpExpression) then
+  if Assigned(pritem) and not (pritem is TRpExpression) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
   inherited Create(AOwner, pritem);
 end;
@@ -235,13 +245,13 @@ begin
   ltypes.Add(SRpSExpression);
   lhints.Add('refexpression.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(aexp.Expression);
+  if Assigned(lvalues) and Assigned(aexp) then lvalues.Add(aexp.Expression);
 
   lnames.Add(SrpSDisplayFormat);
   ltypes.Add(SRpSString);
   lhints.Add('refexpression.html');
   lcat.Add(SRpText);
-  if Assigned(lvalues) then lvalues.Add(aexp.DisplayFormat);
+  if Assigned(lvalues) and Assigned(aexp) then lvalues.Add(aexp.DisplayFormat);
 end;
 
 procedure TRpExpressionInterface.SetProperty(pname: string; value: WideString);
@@ -249,6 +259,11 @@ var
   aexp: TRpExpression;
 begin
   aexp := TRpExpression(printitem);
+  if not Assigned(aexp) then
+  begin
+    inherited SetProperty(pname, value);
+    Exit;
+  end;
   if pname = SrpSExpression then
   begin
     aexp.Expression := value;
@@ -269,6 +284,11 @@ var
   aexp: TRpExpression;
 begin
   aexp := TRpExpression(printitem);
+  if not Assigned(aexp) then
+  begin
+    Result := inherited GetProperty(pname);
+    Exit;
+  end;
   if pname = SrpSExpression then Result := aexp.Expression
   else if pname = SrpSDisplayFormat then Result := aexp.DisplayFormat
   else Result := inherited GetProperty(pname);

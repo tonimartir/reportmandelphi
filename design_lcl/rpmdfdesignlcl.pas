@@ -110,6 +110,7 @@ type
     FSizeModifier: TRpSizeModifier;
     FSelectedItems: TList;
     procedure SetReport(Value: TRpReport);
+    procedure SetObjInsp(Value: TComponent);
     procedure SecPosChange(Sender: TObject);
     procedure SetScale(nvalue: Double);
     procedure SizeModifierChange(Sender: TObject);
@@ -136,14 +137,18 @@ type
     function GetSelectedItemsList: TList;
     procedure MoveSelectedComponents(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer);
     property Report: TRpReport read FReport write SetReport;
-    property ObjInsp: TComponent read FObjInsp write FObjInsp;
+    property ObjInsp: TComponent read FObjInsp write SetObjInsp;
     property Scale: Double read FScale write SetScale;
     property CurrentSubreport: TRpSubReport read FSubReport;
+    property SubReport: TRpSubReport read FSubReport;
     property SizeModifier: TRpSizeModifier read FSizeModifier;
     property SelectedItems: TList read FSelectedItems;
   end;
 
 implementation
+
+uses
+  rpmdobjinsplcl;
 
 {$R *.lfm}
 
@@ -580,6 +585,23 @@ begin
     SelectSubReport(FReport.SubReports[0].SubReport);
 end;
 
+procedure TFRpDesignFrameLCL.SetObjInsp(Value: TComponent);
+var
+  i: Integer;
+begin
+  if FObjInsp <> Value then
+  begin
+    FObjInsp := Value;
+    if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+      TFRpObjInspLCL(FObjInsp).DesignFrame := Self;
+    if Assigned(secinterfaces) then
+    begin
+      for i := 0 to secinterfaces.Count - 1 do
+        TRpSectionInterface(secinterfaces[i]).fobjinsp := FObjInsp;
+    end;
+  end;
+end;
+
 procedure TFRpDesignFrameLCL.SelectSubReport(subreport: TRpSubReport);
 var
   i: Integer;
@@ -644,6 +666,7 @@ begin
 
     // 2. Section interface (canvas + child items)
     asecint := TRpSectionInterface.Create(Self, sec);
+    asecint.fobjinsp := FObjInsp;
     asecint.Parent := PSection;
     asecint.Scale := Scale;
     asecint.Left := 0;
@@ -823,7 +846,8 @@ end;
 
 procedure TFRpDesignFrameLCL.SizeModifierChange(Sender: TObject);
 begin
-  // SizeModifier finished resizing or moving component
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    TFRpObjInspLCL(FObjInsp).UpdatePosValues;
 end;
 
 procedure TFRpDesignFrameLCL.ClearSelectionEvent(Sender: TObject);
@@ -852,6 +876,9 @@ begin
     end;
     FSelectedItems.Clear;
   end;
+
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    TFRpObjInspLCL(FObjInsp).ClearMultiSelect;
 end;
 
 procedure TFRpDesignFrameLCL.SelectComponent(AComp: TRpSizeInterface; AddToSelection: Boolean);
@@ -863,6 +890,8 @@ begin
   if not Assigned(AComp) or not (AComp is TRpSizePosInterface) then
   begin
     ClearSelection;
+    if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+      TFRpObjInspLCL(FObjInsp).AddCompItem(nil, True);
     Exit;
   end;
 
@@ -946,6 +975,9 @@ begin
       end;
     end;
   end;
+
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    TFRpObjInspLCL(FObjInsp).AddCompItem(posComp, not AddToSelection);
 end;
 
 procedure TFRpDesignFrameLCL.UpdateSelection(force: Boolean);
@@ -1006,6 +1038,9 @@ begin
 
   if Assigned(FSizeModifier) and (FSelectedItems.Count = 1) then
     FSizeModifier.UpdatePos;
+
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    TFRpObjInspLCL(FObjInsp).UpdatePosValues;
 end;
 
 end.
