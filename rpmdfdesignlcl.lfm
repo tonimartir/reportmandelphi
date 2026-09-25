@@ -1,0 +1,30 @@
+object FRpDesignFrameLCL: TFRpDesignFrameLCL
+  Left = 0
+  Top = 0
+  Width = 554
+  Height = 338
+  Align = alClient
+  Color = clAppWorkSpace
+  ParentColor = False
+  ParentShowHint = False
+  ShowHint = True
+  TabOrder = 0
+  object PTop: TPanel
+    Left = 0
+    Top = 0
+    Width = 554
+    Height = 25
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 0
+  end
+  object PLeft: TPanel
+    Left = 0
+    Top = 25
+    Width = 25
+    Height = 313
+    Align = alLeft
+    BevelOuter = bvNone
+    TabOrder = 1
+  end
+end

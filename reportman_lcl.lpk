@@ -8,8 +8,13 @@
       <SearchPaths>
         <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <SyntaxMode Value="Delphi"/>
+        </SyntaxOptions>
+      </Parsing>
     </CompilerOptions>
-    <Files Count="10">
+    <Files Count="19">
       <Item1>
         <Filename Value="rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
@@ -51,6 +56,42 @@
         <Filename Value="rpfrmmonacoeditorlcl.pas"/>
         <UnitName Value="rpfrmmonacoeditorlcl"/>
       </Item10>
+      <Item11>
+        <Filename Value="rprulerlcl.pas"/>
+        <UnitName Value="rprulerlcl"/>
+      </Item11>
+      <Item12>
+        <Filename Value="rpmdobinsintlcl.pas"/>
+        <UnitName Value="rpmdobinsintlcl"/>
+      </Item12>
+      <Item13>
+        <Filename Value="rpmdflabelintlcl.pas"/>
+        <UnitName Value="rpmdflabelintlcl"/>
+      </Item13>
+      <Item14>
+        <Filename Value="rpmdfdrawintlcl.pas"/>
+        <UnitName Value="rpmdfdrawintlcl"/>
+      </Item14>
+      <Item15>
+        <Filename Value="rpmdfbarcodeintlcl.pas"/>
+        <UnitName Value="rpmdfbarcodeintlcl"/>
+      </Item15>
+      <Item16>
+        <Filename Value="rpmdfchartintlcl.pas"/>
+        <UnitName Value="rpmdfchartintlcl"/>
+      </Item16>
+      <Item17>
+        <Filename Value="rpmdfsectionintlcl.pas"/>
+        <UnitName Value="rpmdfsectionintlcl"/>
+      </Item17>
+      <Item18>
+        <Filename Value="rpmdfdesignlcl.pas"/>
+        <UnitName Value="rpmdfdesignlcl"/>
+      </Item18>
+      <Item19>
+        <Filename Value="rpmdesignerlcl.pas"/>
+        <UnitName Value="rpmdesignerlcl"/>
+      </Item19>
     </Files>
     <RequiredPkgs Count="5">
       <Item1>
@@ -63,7 +104,7 @@
         <PackageName Value="LCL"/>
       </Item3>
       <Item4>
-        <PackageName Value="reportman"/>
+        <PackageName Value="reportman_rtl"/>
       </Item4>
       <Item5>
         <PackageName Value="FCL"/>

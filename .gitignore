@@ -278,5 +278,8 @@ tests/fpc/LclMonacoTest/lib/
 tests/fpc/LclMonacoTest/LclMonacoTest
 tests/fpc/LclMonacoTest/LclMonacoTest.exe
 tests/fpc/LclMonacoTest/*.log
+tests/fpc/LclDesignerTest/lib/
+tests/fpc/LclDesignerTest/LclDesignerTest
+tests/fpc/LclDesignerTest/LclDesignerTest.exe
 *.lps
 backup/
