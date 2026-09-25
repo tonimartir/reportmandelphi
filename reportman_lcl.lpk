@@ -9,7 +9,7 @@
         <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Files Count="7">
+    <Files Count="10">
       <Item1>
         <Filename Value="rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
@@ -39,6 +39,18 @@
         <Filename Value="rplclreport.pas"/>
         <UnitName Value="rplclreport"/>
       </Item7>
+      <Item8>
+        <Filename Value="rpwebview2.pas"/>
+        <UnitName Value="rpwebview2"/>
+      </Item8>
+      <Item9>
+        <Filename Value="rplclwebview.pas"/>
+        <UnitName Value="rplclwebview"/>
+      </Item9>
+      <Item10>
+        <Filename Value="rpfrmmonacoeditorlcl.pas"/>
+        <UnitName Value="rpfrmmonacoeditorlcl"/>
+      </Item10>
     </Files>
     <RequiredPkgs Count="5">
       <Item1>

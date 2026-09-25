@@ -1,0 +1,159 @@
+object MainForm: TMainForm
+  Left = 240
+  Height = 700
+  Top = 150
+  Width = 1040
+  Caption = 'Report Manager - Monaco SQL Editor (LCL / Free Pascal Test)'
+  ClientHeight = 700
+  ClientWidth = 1040
+  Color = clBtnFace
+  Font.Color = clWindowText
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object PanelToolbar: TPanel
+    Left = 0
+    Height = 44
+    Top = 0
+    Width = 1040
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 1040
+    TabOrder = 0
+    object BtnLoadSample: TButton
+      Left = 8
+      Height = 30
+      Top = 7
+      Width = 140
+      Caption = 'Cargar SQL Ejemplo'
+      OnClick = BtnLoadSampleClick
+      TabOrder = 0
+    end
+    object BtnGetSQL: TButton
+      Left = 154
+      Height = 30
+      Top = 7
+      Width = 110
+      Caption = 'Obtener SQL'
+      OnClick = BtnGetSQLClick
+      TabOrder = 1
+    end
+    object BtnToggleTheme: TButton
+      Left = 270
+      Height = 30
+      Top = 7
+      Width = 150
+      Caption = 'Tema Claro / Oscuro'
+      OnClick = BtnToggleThemeClick
+      TabOrder = 2
+    end
+    object BtnToggleFallback: TButton
+      Left = 426
+      Height = 30
+      Top = 7
+      Width = 150
+      Caption = 'Alternar Fallback TMemo'
+      OnClick = BtnToggleFallbackClick
+      TabOrder = 3
+    end
+    object BtnClear: TButton
+      Left = 582
+      Height = 30
+      Top = 7
+      Width = 100
+      Caption = 'Limpiar'
+      OnClick = BtnClearClick
+      TabOrder = 4
+    end
+    object BtnClearLog: TButton
+      Left = 688
+      Height = 30
+      Top = 7
+      Width = 100
+      Caption = 'Limpiar Log'
+      OnClick = BtnClearLogClick
+      TabOrder = 5
+    end
+  end
+  object PanelCenter: TPanel
+    Left = 0
+    Height = 473
+    Top = 44
+    Width = 1040
+    Align = alClient
+    BevelOuter = bvNone
+    TabOrder = 1
+  end
+  object SplitterLog: TSplitter
+    Cursor = crVSplit
+    Left = 0
+    Height = 5
+    Top = 517
+    Width = 1040
+    Align = alBottom
+    ResizeAnchor = akBottom
+  end
+  object PanelLog: TPanel
+    Left = 0
+    Height = 160
+    Top = 522
+    Width = 1040
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 160
+    ClientWidth = 1040
+    TabOrder = 3
+    object LabelLogTitle: TLabel
+      Left = 8
+      Height = 20
+      Top = 4
+      Width = 350
+      Caption = 'Diagnóstico y Mensajes IPC (Pascal <-> Monaco Editor):'
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Segoe UI Semibold'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object MemoLog: TMemo
+      Left = 0
+      Height = 132
+      Top = 28
+      Width = 1040
+      Align = alBottom
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Consolas'
+      ParentFont = False
+      ReadOnly = True
+      ScrollBars = ssBoth
+      TabOrder = 0
+      WordWrap = False
+    end
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 682
+    Width = 1040
+    Panels = <    
+      item
+        Text = 'Estado: Inicializando...'
+        Width = 220
+      end    
+      item
+        Text = 'SQL: 0 caracteres'
+        Width = 200
+      end    
+      item
+        Text = 'WebView2: Esperando inicialización'
+        Width = 600
+      end>
+    SimplePanel = False
+  end
+end
