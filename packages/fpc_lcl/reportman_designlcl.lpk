@@ -9,7 +9,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <IncludeFiles Value="..\.."/>
-        <OtherUnitFiles Value="..\.."/>
+        <OtherUnitFiles Value="..\..;..\..\design_lcl"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -20,55 +20,55 @@
     </CompilerOptions>
     <Files Count="13">
       <Item1>
-        <Filename Value="..\..\rpwebview2.pas"/>
+        <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\rplclwebview.pas"/>
+        <Filename Value="..\..\design_lcl\rplclwebview.pas"/>
         <UnitName Value="rplclwebview"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\rpfrmmonacoeditorlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpfrmmonacoeditorlcl.pas"/>
         <UnitName Value="rpfrmmonacoeditorlcl"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\rprulerlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rprulerlcl.pas"/>
         <UnitName Value="rprulerlcl"/>
       </Item4>
       <Item5>
-        <Filename Value="..\..\rpmdobinsintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdobinsintlcl.pas"/>
         <UnitName Value="rpmdobinsintlcl"/>
       </Item5>
       <Item6>
-        <Filename Value="..\..\rpmdflabelintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdflabelintlcl.pas"/>
         <UnitName Value="rpmdflabelintlcl"/>
       </Item6>
       <Item7>
-        <Filename Value="..\..\rpmdfdrawintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdfdrawintlcl.pas"/>
         <UnitName Value="rpmdfdrawintlcl"/>
       </Item7>
       <Item8>
-        <Filename Value="..\..\rpmdfbarcodeintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdfbarcodeintlcl.pas"/>
         <UnitName Value="rpmdfbarcodeintlcl"/>
       </Item8>
       <Item9>
-        <Filename Value="..\..\rpmdfchartintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdfchartintlcl.pas"/>
         <UnitName Value="rpmdfchartintlcl"/>
       </Item9>
       <Item10>
-        <Filename Value="..\..\rpmdfsectionintlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdfsectionintlcl.pas"/>
         <UnitName Value="rpmdfsectionintlcl"/>
       </Item10>
       <Item11>
-        <Filename Value="..\..\rpmdfdesignlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdfdesignlcl.pas"/>
         <UnitName Value="rpmdfdesignlcl"/>
       </Item11>
       <Item12>
-        <Filename Value="..\..\rpmdesignerlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmdesignerlcl.pas"/>
         <UnitName Value="rpmdesignerlcl"/>
       </Item12>
       <Item13>
-        <Filename Value="..\..\rpmregdesignlcl.pas"/>
+        <Filename Value="..\..\design_lcl\rpmregdesignlcl.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="rpmregdesignlcl"/>
       </Item13>

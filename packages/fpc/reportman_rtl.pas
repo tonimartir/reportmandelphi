@@ -19,7 +19,7 @@ uses
   rpcompobase, rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, 
   rptextdriver, rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, 
   rpinfoprovft, rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, 
-  rpfontconfig, rpDelphiZXIngQRCode;
+  rpfontconfig, rpDelphiZXIngQRCode, rpfpcutils;
 
 implementation
 

@@ -9,7 +9,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <IncludeFiles Value="..\.."/>
-        <OtherUnitFiles Value="..\.."/>
+        <OtherUnitFiles Value="..\..;..\..\lcl"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -20,47 +20,47 @@
     </CompilerOptions>
     <Files Count="11">
       <Item1>
-        <Filename Value="..\..\rplcldriver.pas"/>
+        <Filename Value="..\..\lcl\rplcldriver.pas"/>
         <UnitName Value="rplcldriver"/>
       </Item1>
       <Item2>
-        <Filename Value="..\..\rplclfonts.pas"/>
+        <Filename Value="..\..\lcl\rplclfonts.pas"/>
         <UnitName Value="rplclfonts"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\rpgraphutilslcl.pas"/>
+        <Filename Value="..\..\lcl\rpgraphutilslcl.pas"/>
         <UnitName Value="rpgraphutilslcl"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\rprflclparams.pas"/>
+        <Filename Value="..\..\lcl\rprflclparams.pas"/>
         <UnitName Value="rprflclparams"/>
       </Item4>
       <Item5>
-        <Filename Value="..\..\rppreviewmetalcl.pas"/>
+        <Filename Value="..\..\lcl\rppreviewmetalcl.pas"/>
         <UnitName Value="rppreviewmetalcl"/>
       </Item5>
       <Item6>
-        <Filename Value="..\..\rppreviewcontrol.pas"/>
+        <Filename Value="..\..\lcl\rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
       </Item6>
       <Item7>
-        <Filename Value="..\..\rpmaskedit.pas"/>
+        <Filename Value="..\..\lcl\rpmaskedit.pas"/>
         <UnitName Value="rpmaskedit"/>
       </Item7>
       <Item8>
-        <Filename Value="..\..\rplclpreview.pas"/>
+        <Filename Value="..\..\lcl\rplclpreview.pas"/>
         <UnitName Value="rplclpreview"/>
       </Item8>
       <Item9>
-        <Filename Value="..\..\rppagesetuplcl.pas"/>
+        <Filename Value="..\..\lcl\rppagesetuplcl.pas"/>
         <UnitName Value="rppagesetuplcl"/>
       </Item9>
       <Item10>
-        <Filename Value="..\..\rplclreport.pas"/>
+        <Filename Value="..\..\lcl\rplclreport.pas"/>
         <UnitName Value="rplclreport"/>
       </Item10>
       <Item11>
-        <Filename Value="..\..\rpreglcl.pas"/>
+        <Filename Value="..\..\lcl\rpreglcl.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="rpreglcl"/>
       </Item11>

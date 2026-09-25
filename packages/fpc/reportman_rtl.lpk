@@ -9,7 +9,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <IncludeFiles Value="..\.."/>
-        <OtherUnitFiles Value="..\.."/>
+        <OtherUnitFiles Value="..\..;..\..\rtl_fpc"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -18,7 +18,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="62">
+    <Files Count="63">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -228,31 +228,31 @@
         <UnitName Value="rplastsav"/>
       </Item52>
       <Item53>
-        <Filename Value="..\..\rpinfoprovfpc.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpinfoprovfpc.pas"/>
         <UnitName Value="rpinfoprovfpc"/>
       </Item53>
       <Item54>
-        <Filename Value="..\..\rpfreetype2.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpfreetype2.pas"/>
         <UnitName Value="rpfreetype2"/>
       </Item54>
       <Item55>
-        <Filename Value="..\..\rpharfbuzz.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpHarfBuzz.pas"/>
         <UnitName Value="rpharfbuzz"/>
       </Item55>
       <Item56>
-        <Filename Value="..\..\rpicu.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpICU.pas"/>
         <UnitName Value="rpicu"/>
       </Item56>
       <Item57>
-        <Filename Value="..\..\rpinfoprovft.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpinfoprovft.pas"/>
         <UnitName Value="rpinfoprovft"/>
       </Item57>
       <Item58>
-        <Filename Value="..\..\rpdirectwrite.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpdirectwrite.pas"/>
         <UnitName Value="rpdirectwrite"/>
       </Item58>
       <Item59>
-        <Filename Value="..\..\RpDirectWriteRenderer.pas"/>
+        <Filename Value="..\..\rtl_fpc\RpDirectWriteRenderer.pas"/>
         <UnitName Value="RpDirectWriteRenderer"/>
       </Item59>
       <Item60>
@@ -260,13 +260,17 @@
         <UnitName Value="rpinfoprovgdi"/>
       </Item60>
       <Item61>
-        <Filename Value="..\..\rpfontconfig.pas"/>
+        <Filename Value="..\..\rtl_fpc\rpfontconfig.pas"/>
         <UnitName Value="rpfontconfig"/>
       </Item61>
       <Item62>
         <Filename Value="..\..\rpDelphiZXIngQRCode.pas"/>
         <UnitName Value="rpDelphiZXIngQRCode"/>
       </Item62>
+      <Item63>
+        <Filename Value="..\..\rtl_fpc\rpfpcutils.pas"/>
+        <UnitName Value="rpfpcutils"/>
+      </Item63>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

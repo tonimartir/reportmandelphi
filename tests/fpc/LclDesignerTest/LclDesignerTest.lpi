@@ -60,8 +60,8 @@
       <Filename Value="LclDesignerTest"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\.."/>
-      <OtherUnitFiles Value="..\..\.."/>
+      <IncludeFiles Value="..\..\..;..\..\..\lcl;..\..\..\design_lcl"/>
+      <OtherUnitFiles Value="..\..\..;..\..\..\lcl;..\..\..\design_lcl;..\..\..\rtl_fpc"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>

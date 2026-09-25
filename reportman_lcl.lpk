@@ -6,6 +6,7 @@
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
+        <OtherUnitFiles Value=".;lcl"/>
         <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -16,44 +17,44 @@
     </CompilerOptions>
     <Files Count="10">
       <Item1>
-        <Filename Value="rppreviewcontrol.pas"/>
+        <Filename Value="lcl\rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
       </Item1>
       <Item2>
-        <Filename Value="rppreviewmetalcl.pas"/>
+        <Filename Value="lcl\rppreviewmetalcl.pas"/>
         <UnitName Value="rppreviewmetalcl"/>
       </Item2>
       <Item3>
-        <Filename Value="rpmaskedit.pas"/>
+        <Filename Value="lcl\rpmaskedit.pas"/>
         <UnitName Value="rpmaskedit"/>
       </Item3>
       <Item4>
-        <Filename Value="rpreglcl.pas"/>
+        <Filename Value="lcl\rpreglcl.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="rpreglcl"/>
       </Item4>
       <Item5>
-        <Filename Value="rplclpreview.pas"/>
+        <Filename Value="lcl\rplclpreview.pas"/>
         <UnitName Value="rplclpreview"/>
       </Item5>
       <Item6>
-        <Filename Value="rppagesetuplcl.pas"/>
+        <Filename Value="lcl\rppagesetuplcl.pas"/>
         <UnitName Value="rppagesetuplcl"/>
       </Item6>
       <Item7>
-        <Filename Value="rplclreport.pas"/>
+        <Filename Value="lcl\rplclreport.pas"/>
         <UnitName Value="rplclreport"/>
       </Item7>
       <Item8>
-        <Filename Value="rplcldriver.pas"/>
+        <Filename Value="lcl\rplcldriver.pas"/>
         <UnitName Value="rplcldriver"/>
       </Item8>
       <Item9>
-        <Filename Value="rplclfonts.pas"/>
+        <Filename Value="lcl\rplclfonts.pas"/>
         <UnitName Value="rplclfonts"/>
       </Item9>
       <Item10>
-        <Filename Value="rpgraphutilslcl.pas"/>
+        <Filename Value="lcl\rpgraphutilslcl.pas"/>
         <UnitName Value="rpgraphutilslcl"/>
       </Item10>
     </Files>
