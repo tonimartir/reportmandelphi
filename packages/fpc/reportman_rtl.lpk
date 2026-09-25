@@ -232,27 +232,27 @@
         <UnitName Value="rpinfoprovfpc"/>
       </Item53>
       <Item54>
-        <Filename Value="..\..\rtl_fpc\rpfreetype2.pas"/>
+        <Filename Value="..\..\rpfreetype2.pas"/>
         <UnitName Value="rpfreetype2"/>
       </Item54>
       <Item55>
-        <Filename Value="..\..\rtl_fpc\rpHarfBuzz.pas"/>
+        <Filename Value="..\..\rpHarfBuzz.pas"/>
         <UnitName Value="rpharfbuzz"/>
       </Item55>
       <Item56>
-        <Filename Value="..\..\rtl_fpc\rpICU.pas"/>
+        <Filename Value="..\..\rpICU.pas"/>
         <UnitName Value="rpicu"/>
       </Item56>
       <Item57>
-        <Filename Value="..\..\rtl_fpc\rpinfoprovft.pas"/>
+        <Filename Value="..\..\rpinfoprovft.pas"/>
         <UnitName Value="rpinfoprovft"/>
       </Item57>
       <Item58>
-        <Filename Value="..\..\rtl_fpc\rpdirectwrite.pas"/>
+        <Filename Value="..\..\rpdirectwrite.pas"/>
         <UnitName Value="rpdirectwrite"/>
       </Item58>
       <Item59>
-        <Filename Value="..\..\rtl_fpc\RpDirectWriteRenderer.pas"/>
+        <Filename Value="..\..\RpDirectWriteRenderer.pas"/>
         <UnitName Value="RpDirectWriteRenderer"/>
       </Item59>
       <Item60>
@@ -260,7 +260,7 @@
         <UnitName Value="rpinfoprovgdi"/>
       </Item60>
       <Item61>
-        <Filename Value="..\..\rtl_fpc\rpfontconfig.pas"/>
+        <Filename Value="..\..\rpfontconfig.pas"/>
         <UnitName Value="rpfontconfig"/>
       </Item61>
       <Item62>

@@ -10,7 +10,7 @@
       <SearchPaths>
         <IncludeFiles Value="..\.."/>
         <OtherUnitFiles Value="..\..;..\..\design_lcl"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <UnitOutputDirectory Value="lib\reportman_designlcl\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
         <SyntaxOptions>
