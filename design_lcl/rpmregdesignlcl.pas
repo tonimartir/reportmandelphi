@@ -21,7 +21,9 @@ interface
 
 uses
   Classes, SysUtils,
-  rpmdesignerlcl, rprulerlcl;
+  rpmdesignerlcl, rprulerlcl,
+  { Non-visual components from reportman_rtl }
+  rppdfreport, rpeval, rpalias, rplastsav, rptranslator;
 
 procedure Register;
 
@@ -31,6 +33,12 @@ procedure Register;
 begin
   RegisterComponents('Reportman', [TRpDesignerLCL]);
   RegisterComponents('Reportman', [TRpRulerLCL]);
+  { Non-visual components }
+  RegisterComponents('Reportman', [TPDFReport]);
+  RegisterComponents('Reportman', [TRpEvaluator]);
+  RegisterComponents('Reportman', [TRpAlias]);
+  RegisterComponents('Reportman', [TRpLastUsedStrings]);
+  RegisterComponents('Reportman', [TRpTranslator]);
 end;
 
 end.

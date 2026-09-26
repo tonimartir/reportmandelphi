@@ -3,7 +3,7 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="reportman_rtl"/>
-    <Type Value="RunAndDesignTime"/>
+    <Type Value="RunTimeOnly"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -21,7 +21,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Files Count="64">
+    <Files Count="63">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -274,11 +274,6 @@
         <Filename Value="..\..\rtl_fpc\rpfpcutils.pas"/>
         <UnitName Value="rpfpcutils"/>
       </Item63>
-      <Item64>
-        <Filename Value="..\..\rpmreg.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="rpmreg"/>
-      </Item64>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>
