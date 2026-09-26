@@ -49,6 +49,7 @@ const
   IMG_OPEN = 1;
   IMG_SAVE = 3;
   IMG_DATACONFIG = 4;
+  IMG_PAGESETUP = 5;
   IMG_PRINT = 6;
   IMG_PREVIEW = 7;
   IMG_ARROW = 8;

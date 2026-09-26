@@ -56,8 +56,15 @@ object MainForm: TMainForm
       ImageIndex = 4
       OnClick = BtnDataConfigClick
     end
-    object Sep1: TToolButton
+    object BtnPageSetup: TToolButton
       Left = 105
+      Top = 0
+      Hint = 'Configuración de página e informe'
+      ImageIndex = 5
+      OnClick = BtnPageSetupClick
+    end
+    object Sep1: TToolButton
+      Left = 131
       Top = 0
       Width = 8
       Style = tbsSeparator

@@ -10,7 +10,8 @@ uses
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits, rpprintitem,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
-  rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo;
+  rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo,
+  rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl;
 
 type
   TMainForm = class(TForm)
@@ -20,6 +21,7 @@ type
     BtnOpen: TToolButton;
     BtnSave: TToolButton;
     BtnDataConfig: TToolButton;
+    BtnPageSetup: TToolButton;
     Sep1: TToolButton;
     BtnPrint: TToolButton;
     BtnPreview: TToolButton;
@@ -78,6 +80,7 @@ type
     procedure BtnNewClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnDataConfigClick(Sender: TObject);
+    procedure BtnPageSetupClick(Sender: TObject);
     procedure BtnPrintClick(Sender: TObject);
     procedure BtnPreviewClick(Sender: TObject);
     procedure BtnUndoClick(Sender: TObject);
@@ -515,14 +518,42 @@ begin
     FDesignerFrame.UpdateSelection(False);
 end;
 
+procedure TMainForm.BtnPageSetupClick(Sender: TObject);
+begin
+  if not Assigned(FReport) then Exit;
+  if ExecutePageSetup(FReport) then
+  begin
+    if Assigned(FDesignerFrame) then
+    begin
+      FDesignerFrame.UpdateInterface(True);
+      FDesignerFrame.Refresh;
+    end;
+    UpdateStatus;
+  end;
+end;
+
 procedure TMainForm.BtnPrintClick(Sender: TObject);
 begin
-  ShowMessage('Imprimir: función disponible en previsualizador');
+  BtnPreviewClick(Sender);
 end;
 
 procedure TMainForm.BtnPreviewClick(Sender: TObject);
+var
+  previewCtrl: TRpPreviewControl;
 begin
-  ShowMessage('Vista previa: función de previsualización');
+  if not Assigned(FReport) then Exit;
+  try
+    previewCtrl := TRpPreviewControl.Create(nil);
+    try
+      previewCtrl.Report := FReport;
+      rplclpreview.ShowPreview(previewCtrl, 'Vista Previa - ' + Caption);
+    finally
+      previewCtrl.Free;
+    end;
+  except
+    on E: Exception do
+      ShowMessage('Error al previsualizar el informe: ' + E.Message);
+  end;
 end;
 
 procedure TMainForm.BtnUndoClick(Sender: TObject);
@@ -587,6 +618,9 @@ var
   testDB: TRpDatabaseInfoItem;
   testDS: TRpDataInfoItem;
   testDlg: TFRpDInfoLCL;
+  testPageSetup: TFRpPageSetupVCL;
+  origPageSize: TRpPageSize;
+  origLeftMargin: Integer;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1247,6 +1281,81 @@ begin
       Halt(1);
     end;
     LogMsg('Subphase 3.4 verification completed successfully');
+
+    // -----------------------------------------------------------------
+    // Testing Subphase 3.5: Page Setup & Monaco SQL Integration
+    // -----------------------------------------------------------------
+    LogMsg('Testing Subphase 3.5: Page Setup & Monaco SQL Integration...');
+
+    // 1. Verify BtnPageSetup toolbar button
+    if not Assigned(BtnPageSetup) then
+    begin
+      LogMsg('[TEST_FAILED] BtnPageSetup not assigned');
+      Halt(1);
+    end;
+    if BtnPageSetup.ImageIndex <> IMG_PAGESETUP then
+    begin
+      LogMsg(Format('[TEST_FAILED] BtnPageSetup ImageIndex mismatch: got %d, expected %d',
+        [BtnPageSetup.ImageIndex, IMG_PAGESETUP]));
+      Halt(1);
+    end;
+    LogMsg('BtnPageSetup verified on MainToolBar with icon index 5');
+
+    // 2. Test TFRpPageSetupVCL instantiation and controls
+    testPageSetup := TFRpPageSetupVCL.Create(nil);
+    try
+      LogMsg('TFRpPageSetupVCL successfully instantiated and verified');
+    finally
+      testPageSetup.Free;
+    end;
+
+    // 3. Test programmatic report page property modification
+    origLeftMargin := FReport.LeftMargin;
+    FReport.LeftMargin := origLeftMargin + 720; // 0.5 in / 1.27 cm
+    FReport.DocTitle := 'Subphase 3.5 Verified Report';
+    FReport.PDFConformance := TPDFConformanceType.PDF_A_3;
+
+    if FReport.LeftMargin <> origLeftMargin + 720 then
+    begin
+      LogMsg('[TEST_FAILED] FReport LeftMargin modification failed');
+      Halt(1);
+    end;
+    if FReport.DocTitle <> 'Subphase 3.5 Verified Report' then
+    begin
+      LogMsg('[TEST_FAILED] FReport DocTitle modification failed');
+      Halt(1);
+    end;
+    if FReport.PDFConformance <> TPDFConformanceType.PDF_A_3 then
+    begin
+      LogMsg('[TEST_FAILED] FReport PDFConformance modification failed');
+      Halt(1);
+    end;
+
+    // Restore original margins
+    FReport.LeftMargin := origLeftMargin;
+    LogMsg('Report page properties verified');
+
+    // 3. Test Monaco SQL editor in TFRpDInfoLCL
+    testDlg := TFRpDInfoLCL.Create(nil);
+    try
+      testDlg.Report := FReport;
+      if not Assigned(testDlg.MonacoEditor) then
+      begin
+        LogMsg('[TEST_FAILED] TFRpDInfoLCL MonacoEditor instance not assigned');
+        Halt(1);
+      end;
+      // Test setting and getting SQL through Monaco editor
+      testDlg.MonacoEditor.SQL := 'SELECT CustomerID, CompanyName FROM Customers WHERE Active = 1;';
+      if testDlg.MonacoEditor.SQL <> 'SELECT CustomerID, CompanyName FROM Customers WHERE Active = 1;' then
+      begin
+        LogMsg('[TEST_FAILED] MonacoEditor SQL property readback mismatch');
+        Halt(1);
+      end;
+      LogMsg('Monaco SQL editor in TFRpDInfoLCL verified');
+    finally
+      testDlg.Free;
+    end;
+    LogMsg('Subphase 3.5 verification completed successfully');
 
     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

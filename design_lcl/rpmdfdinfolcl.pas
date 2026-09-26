@@ -16,7 +16,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls,
-  rpreport, rpdatainfo, rpmdconsts, rptypes;
+  rpreport, rpdatainfo, rpmdconsts, rptypes, rpfrmmonacoeditorlcl;
 
 type
   TFRpDInfoLCL = class(TForm)
@@ -72,8 +72,13 @@ type
     CheckOpenOnStart: TCheckBox;
     SplitterSQL: TSplitter;
     PSQLArea: TPanel;
+    PSQLTop: TPanel;
     LabelSQL: TLabel;
+    BMonacoToggle: TButton;
+    BThemeToggle: TButton;
     MSQL: TMemo;
+    FMonacoEditor: TFRpMonacoEditorLCL;
+    FIsDarkTheme: Boolean;
 
     procedure BuildControls;
     procedure SetReport(Value: TRpReport);
@@ -92,12 +97,16 @@ type
     procedure BBrowseFileClick(Sender: TObject);
     procedure BNewDSClick(Sender: TObject);
     procedure BDelDSClick(Sender: TObject);
+    procedure BMonacoToggleClick(Sender: TObject);
+    procedure BThemeToggleClick(Sender: TObject);
+    procedure MonacoContentChanged(Sender: TObject);
     procedure BOkClick(Sender: TObject);
     procedure BCancelClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     property Report: TRpReport read FReport write SetReport;
+    property MonacoEditor: TFRpMonacoEditorLCL read FMonacoEditor;
   end;
 
 procedure ShowDataConfig(report: TRpReport);
@@ -377,11 +386,29 @@ begin
   PSQLArea.BorderWidth := 4;
   PSQLArea.Parent := PDSClient;
 
-  LabelSQL := TLabel.Create(PSQLArea);
-  LabelSQL.Align := alTop;
-  LabelSQL.Caption := ' SQL Query:';
-  LabelSQL.Height := 20;
-  LabelSQL.Parent := PSQLArea;
+  PSQLTop := TPanel.Create(PSQLArea);
+  PSQLTop.Align := alTop;
+  PSQLTop.Height := 28;
+  PSQLTop.BevelOuter := bvNone;
+  PSQLTop.Parent := PSQLArea;
+
+  LabelSQL := TLabel.Create(PSQLTop);
+  LabelSQL.Caption := ' Consulta SQL:';
+  LabelSQL.SetBounds(4, 6, 100, 18);
+  LabelSQL.Parent := PSQLTop;
+
+  BMonacoToggle := TButton.Create(PSQLTop);
+  BMonacoToggle.Parent := PSQLTop;
+  BMonacoToggle.Caption := 'Alternar Monaco / Texto';
+  BMonacoToggle.SetBounds(110, 2, 160, 24);
+  BMonacoToggle.OnClick := BMonacoToggleClick;
+
+  BThemeToggle := TButton.Create(PSQLTop);
+  BThemeToggle.Parent := PSQLTop;
+  BThemeToggle.Caption := 'Tema Claro / Oscuro';
+  BThemeToggle.SetBounds(276, 2, 140, 24);
+  BThemeToggle.OnClick := BThemeToggleClick;
+  FIsDarkTheme := False;
 
   MSQL := TMemo.Create(PSQLArea);
   MSQL.Align := alClient;
@@ -389,7 +416,14 @@ begin
   MSQL.Font.Size := 9;
   MSQL.ScrollBars := ssBoth;
   MSQL.WordWrap := False;
+  MSQL.Visible := False;
   MSQL.Parent := PSQLArea;
+
+  FMonacoEditor := TFRpMonacoEditorLCL.Create(PSQLArea);
+  FMonacoEditor.Align := alClient;
+  FMonacoEditor.Parent := PSQLArea;
+  FMonacoEditor.Visible := True;
+  FMonacoEditor.OnContentChanged := MonacoContentChanged;
 end;
 
 procedure TFRpDInfoLCL.SetReport(Value: TRpReport);
@@ -545,7 +579,47 @@ begin
   item.DatabaseAlias := ComboDSConn.Text;
   item.DataSource := ComboDSMaster.Text;
   item.OpenOnStart := CheckOpenOnStart.Checked;
-  item.SQL := MSQL.Text;
+  if Assigned(FMonacoEditor) and FMonacoEditor.Visible then
+    item.SQL := FMonacoEditor.SQL
+  else
+    item.SQL := MSQL.Text;
+end;
+
+procedure TFRpDInfoLCL.MonacoContentChanged(Sender: TObject);
+begin
+  if FUpdatingControls then Exit;
+  if Assigned(FMonacoEditor) then
+    MSQL.Text := FMonacoEditor.SQL;
+end;
+
+procedure TFRpDInfoLCL.BMonacoToggleClick(Sender: TObject);
+begin
+  if Assigned(FMonacoEditor) and FMonacoEditor.Visible then
+  begin
+    MSQL.Text := FMonacoEditor.SQL;
+    FMonacoEditor.Visible := False;
+    MSQL.Visible := True;
+  end
+  else
+  begin
+    if Assigned(FMonacoEditor) then
+      FMonacoEditor.SQL := MSQL.Text;
+    MSQL.Visible := False;
+    if Assigned(FMonacoEditor) then
+      FMonacoEditor.Visible := True;
+  end;
+end;
+
+procedure TFRpDInfoLCL.BThemeToggleClick(Sender: TObject);
+begin
+  FIsDarkTheme := not FIsDarkTheme;
+  if Assigned(FMonacoEditor) then
+  begin
+    if FIsDarkTheme then
+      FMonacoEditor.SetTheme('vs-dark')
+    else
+      FMonacoEditor.SetTheme('vs');
+  end;
 end;
 
 procedure TFRpDInfoLCL.LoadConnDetails(Index: Integer);
@@ -594,6 +668,8 @@ begin
       ComboDSMaster.ItemIndex := -1;
       CheckOpenOnStart.Checked := True;
       MSQL.Clear;
+      if Assigned(FMonacoEditor) then
+        FMonacoEditor.SQL := '';
       PDSProps.Enabled := False;
       PSQLArea.Enabled := False;
       BDelDS.Enabled := False;
@@ -609,6 +685,8 @@ begin
     ComboDSMaster.ItemIndex := ComboDSMaster.Items.IndexOf(item.DataSource);
     CheckOpenOnStart.Checked := item.OpenOnStart;
     MSQL.Text := item.SQL;
+    if Assigned(FMonacoEditor) then
+      FMonacoEditor.SQL := item.SQL;
   finally
     FUpdatingControls := False;
   end;
