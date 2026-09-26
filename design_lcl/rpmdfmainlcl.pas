@@ -465,17 +465,17 @@ begin
   BtnSave.Hint := 'Guardar reporte';
   BtnSave.OnClick := BtnSaveClick;
 
-  BtnDataConfig := TToolButton.Create(MainToolBar);
-  BtnDataConfig.Parent := MainToolBar;
-  BtnDataConfig.ImageIndex := IMG_DATACONFIG;
-  BtnDataConfig.Hint := 'Configuración de acceso a datos';
-  BtnDataConfig.OnClick := BtnDataConfigClick;
-
   BtnPageSetup := TToolButton.Create(MainToolBar);
   BtnPageSetup.Parent := MainToolBar;
   BtnPageSetup.ImageIndex := IMG_PAGESETUP;
   BtnPageSetup.Hint := 'Configuración de página e informe';
   BtnPageSetup.OnClick := BtnPageSetupClick;
+
+  BtnDataConfig := TToolButton.Create(MainToolBar);
+  BtnDataConfig.Parent := MainToolBar;
+  BtnDataConfig.ImageIndex := IMG_DATACONFIG;
+  BtnDataConfig.Hint := 'Configuración de acceso a datos';
+  BtnDataConfig.OnClick := BtnDataConfigClick;
 
   Sep1 := TToolButton.Create(MainToolBar);
   Sep1.Parent := MainToolBar;

@@ -49,19 +49,19 @@ object MainForm: TMainForm
       ImageIndex = 3
       OnClick = BtnSaveClick
     end
-    object BtnDataConfig: TToolButton
-      Left = 79
-      Top = 0
-      Hint = 'Configuración de acceso a datos'
-      ImageIndex = 4
-      OnClick = BtnDataConfigClick
-    end
     object BtnPageSetup: TToolButton
-      Left = 105
+      Left = 79
       Top = 0
       Hint = 'Configuración de página e informe'
       ImageIndex = 32
       OnClick = BtnPageSetupClick
+    end
+    object BtnDataConfig: TToolButton
+      Left = 105
+      Top = 0
+      Hint = 'Configuración de acceso a datos'
+      ImageIndex = 4
+      OnClick = BtnDataConfigClick
     end
     object Sep1: TToolButton
       Left = 131
