@@ -25,7 +25,8 @@ uses
   rpprintitem,
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl,
   rppagesetuplcl, rplclpreview, rppreviewcontrol,
-  rpmdfgridlcl, rpmdfaboutlcl;
+  rpmdfgridlcl, rpmdfaboutlcl,
+  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -51,6 +52,7 @@ type
 
     // Toolbar buttons
     BtnNew: TToolButton;
+    BtnNewWizard: TToolButton;
     BtnOpen: TToolButton;
     Sep1: TToolButton;
     BtnSave: TToolButton;
@@ -101,6 +103,7 @@ type
     // Menu items
     MenuFile: TMenuItem;
     MenuFileNew: TMenuItem;
+    MenuFileNewWizard: TMenuItem;
     MenuFileOpen: TMenuItem;
     MenuFileSave: TMenuItem;
     MenuFileSaveAs: TMenuItem;
@@ -130,6 +133,7 @@ type
     MenuReportDataConfig: TMenuItem;
     MenuReportPageSetup: TMenuItem;
     MenuReportGridOptions: TMenuItem;
+    MenuReportWizard: TMenuItem;
     MenuHelp: TMenuItem;
     MenuHelpAbout: TMenuItem;
 
@@ -140,6 +144,8 @@ type
 
     // Event handlers
     procedure BtnNewClick(Sender: TObject);
+    procedure BtnNewWizardClick(Sender: TObject);
+    procedure MenuReportWizardClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnSaveAsClick(Sender: TObject);
@@ -246,6 +252,12 @@ begin
   MenuFileNew.ShortCut := ShortCut(VK_N, [ssCtrl]);
   MenuFileNew.OnClick := BtnNewClick;
   MenuFile.Add(MenuFileNew);
+
+  MenuFileNewWizard := TMenuItem.Create(MenuFile);
+  MenuFileNewWizard.Caption := 'Nuevo con &asistente...';
+  MenuFileNewWizard.ShortCut := ShortCut(VK_N, [ssCtrl, ssShift]);
+  MenuFileNewWizard.OnClick := BtnNewWizardClick;
+  MenuFile.Add(MenuFileNewWizard);
 
   MenuFileOpen := TMenuItem.Create(MenuFile);
   MenuFileOpen.Caption := '&Abrir...';
@@ -431,6 +443,11 @@ begin
   MenuReportGridOptions.OnClick := MenuReportGridClick;
   MenuReport.Add(MenuReportGridOptions);
 
+  MenuReportWizard := TMenuItem.Create(MenuReport);
+  MenuReportWizard.Caption := '&Asistente de columnas...';
+  MenuReportWizard.OnClick := MenuReportWizardClick;
+  MenuReport.Add(MenuReportWizard);
+
   // Help Menu
   MenuHelp := TMenuItem.Create(MainMenu1);
   MenuHelp.Caption := 'A&yuda';
@@ -464,8 +481,14 @@ begin
   BtnNew := TToolButton.Create(MainToolBar);
   BtnNew.Parent := MainToolBar;
   BtnNew.ImageIndex := IMG_NEW;
-  BtnNew.Hint := 'Nuevo reporte';
+  BtnNew.Hint := 'Nuevo reporte (Ctrl+N)';
   BtnNew.OnClick := BtnNewClick;
+
+  BtnNewWizard := TToolButton.Create(MainToolBar);
+  BtnNewWizard.Parent := MainToolBar;
+  BtnNewWizard.ImageIndex := IMG_NEW;
+  BtnNewWizard.Hint := 'Nuevo informe con asistente... (Ctrl+Shift+N)';
+  BtnNewWizard.OnClick := BtnNewWizardClick;
 
   BtnOpen := TToolButton.Create(MainToolBar);
   BtnOpen.Parent := MainToolBar;
@@ -913,6 +936,39 @@ end;
 procedure TFRpMainFLCL.BtnNewClick(Sender: TObject);
 begin
   NewReport;
+end;
+
+procedure TFRpMainFLCL.BtnNewWizardClick(Sender: TObject);
+var
+  newRep: TRpReport;
+begin
+  newRep := TRpReport.Create(Self);
+  try
+    if NewReportWizard(newRep, False) then
+    begin
+      if Assigned(FDesignerFrame) then FDesignerFrame.Report := nil;
+      if Assigned(FStructure) then FStructure.Report := nil;
+      if FOwnsReport and Assigned(FReport) then FreeAndNil(FReport);
+      FReport := newRep;
+      FOwnsReport := True;
+      FileName := '';
+      RefreshInterface;
+    end
+    else
+      newRep.Free;
+  except
+    newRep.Free;
+    raise;
+  end;
+end;
+
+procedure TFRpMainFLCL.MenuReportWizardClick(Sender: TObject);
+begin
+  if Assigned(FReport) then
+  begin
+    if NewReportWizard(FReport, True) then
+      RefreshInterface;
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnOpenClick(Sender: TObject);

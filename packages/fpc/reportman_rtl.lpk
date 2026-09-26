@@ -21,7 +21,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Files Count="64">
+    <Files Count="65">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -279,6 +279,10 @@
         <HasRegisterProc Value="True"/>
         <UnitName Value="rpmreg"/>
       </Item64>
+      <Item65>
+        <Filename Value="..\..\rpcolumnar.pas"/>
+        <UnitName Value="rpcolumnar"/>
+      </Item65>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

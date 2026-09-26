@@ -19,7 +19,7 @@ uses
   rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, rptextdriver, 
   rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, rpinfoprovft, 
   rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, rpfontconfig, 
-  rpDelphiZXIngQRCode, rpfpcutils, rpmreg, LazarusPackageIntf;
+  rpDelphiZXIngQRCode, rpfpcutils, rpmreg, rpcolumnar, LazarusPackageIntf;
 
 implementation
 

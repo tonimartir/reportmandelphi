@@ -117,6 +117,7 @@ type
     procedure ShapeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FontClick(Sender: TObject);
     procedure ExpressionClick(Sender: TObject);
+    procedure ExtClick(Sender: TObject);
     procedure ImageClick(Sender: TObject);
     procedure ImageKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ComboAliasChange(Sender: TObject);
@@ -145,7 +146,7 @@ implementation
 {$R *.lfm}
 
 uses
-  rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl;
+  rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl, rpmdfextseclcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
 var
@@ -571,6 +572,20 @@ begin
       NControl := TEdit.Create(Self);
       TEdit(NControl).OnChange := EditChange;
       TEdit(NControl).OnDblClick := ExpressionClick;
+    end
+    else if typename = SRpSExternalData then
+    begin
+      control := TEdit.Create(Self);
+      TEdit(control).ReadOnly := True;
+      TEdit(control).Color := clInfoBk;
+      TEdit(control).OnClick := ExtClick;
+      TEdit(control).OnDblClick := ExtClick;
+
+      NControl := TEdit.Create(Self);
+      TEdit(NControl).ReadOnly := True;
+      TEdit(NControl).Color := clInfoBk;
+      TEdit(NControl).OnClick := ExtClick;
+      TEdit(NControl).OnDblClick := ExtClick;
     end
     else
     begin
@@ -1059,6 +1074,37 @@ begin
     end;
   finally
     expredia.Free;
+  end;
+end;
+
+procedure TRpPanelObjLCL.ExtClick(Sender: TObject);
+var
+  areport: TRpReport;
+  sec: TRpSection;
+  desframe: TFRpDesignFrameLCL;
+begin
+  if not Assigned(FCompItem) or not Assigned(FCompItem.PrintItem) or
+     not (FCompItem.PrintItem is TRpSection) then Exit;
+
+  sec := TRpSection(FCompItem.PrintItem);
+  areport := nil;
+  if Assigned(sec.Report) and (sec.Report is TRpReport) then
+    areport := TRpReport(sec.Report)
+  else if Assigned(Owner) and (Owner is TFRpObjInspLCL) and Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+          (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    areport := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).Report;
+
+  if ChangeExternalSectionProps(areport, sec) then
+  begin
+    TEdit(Sender).Text := sec.GetExternalDataDescription;
+    DupValue(TControl(Sender));
+    if Assigned(Owner) and (Owner is TFRpObjInspLCL) and Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+       (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    begin
+      desframe := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame);
+      if Assigned(desframe.freportstructure) and (desframe.freportstructure is TFRpStructureLCL) then
+        TFRpStructureLCL(desframe.freportstructure).RefreshInterface;
+    end;
   end;
 end;
 

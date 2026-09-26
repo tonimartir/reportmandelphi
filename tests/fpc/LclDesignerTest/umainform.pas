@@ -12,7 +12,8 @@ uses
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo,
   rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl,
-  rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl;
+  rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl,
+  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpcolumnar;
 
 type
   TMainForm = class(TForm)
@@ -577,6 +578,13 @@ var
   testExpreComp: TRpExpreDialogLCL;
   testGrid: TFRpGridOptionsLCL;
   testAbout: TFRpAboutBoxLCL;
+  testSelFields: TFRpSelectFieldsLCL;
+  testWizard: TFRpWizardLCL;
+  testExtSec: TFRpExtSectionLCL;
+  testColRep: TRpReport;
+  testColSub: TRpSubReport;
+  testColHdr, testColDet: TRpSection;
+  colGen: TRpColumnar;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1377,6 +1385,98 @@ begin
       testAbout.Free;
     end;
     LogMsg('Subphase 4.1 verification completed successfully');
+
+    // -----------------------------------------------------------------
+    // Testing Subphase 4.2: Wizards & Section Dialogs
+    // -----------------------------------------------------------------
+    LogMsg('Testing Subphase 4.2: Wizards & Section Dialogs...');
+
+    // 1. Columnar Layout Generator
+    testColRep := TRpReport.Create(nil);
+    try
+      testColSub := testColRep.AddSubReport;
+      testColHdr := testColSub.AddPageHeader;
+      testColDet := testColSub.Sections.Items[testColSub.FirstDetail].Section;
+      colGen := TRpColumnar.Create;
+      try
+        colGen.Report := testColRep;
+        colGen.AddColumn(10, 'TEST_EXPR', '', 'Test Header', '', '', '');
+        if testColDet.ReportComponents.Count = 0 then
+        begin
+          LogMsg('[TEST_FAILED] TRpColumnar did not create expression component in detail section');
+          Halt(1);
+        end;
+        if testColHdr.ReportComponents.Count = 0 then
+        begin
+          LogMsg('[TEST_FAILED] TRpColumnar did not create label component in header section');
+          Halt(1);
+        end;
+        LogMsg('TRpColumnar columnar layout generation verified');
+      finally
+        colGen.Free;
+      end;
+    finally
+      testColRep.Free;
+    end;
+
+    // 2. Field Selection Panel
+    testSelFields := TFRpSelectFieldsLCL.Create(nil);
+    try
+      testSelFields.Report := FReport;
+      testSelFields.UpdateDatasets;
+      if testSelFields.ComboDataset.Items.Count = 0 then
+      begin
+        LogMsg('[TEST_FAILED] TFRpSelectFieldsLCL ComboDataset is empty for sample report');
+        Halt(1);
+      end;
+      testSelFields.fieldlist.Add('CUSTOMER_NAME');
+      testSelFields.LSelected.Items.Add('CUSTOMER_NAME');
+      testSelFields.LSelected.Checked[0] := True;
+      if (testSelFields.LSelected.Items.Count <> 1) or not testSelFields.LSelected.Checked[0] then
+      begin
+        LogMsg('[TEST_FAILED] TFRpSelectFieldsLCL selected field list failed');
+        Halt(1);
+      end;
+      LogMsg('TFRpSelectFieldsLCL panel verified');
+    finally
+      testSelFields.Free;
+    end;
+
+    // 3. Report Wizard Dialog
+    testWizard := TFRpWizardLCL.Create(nil);
+    try
+      testWizard.Report := FReport;
+      if testWizard.FromTemplate then
+      begin
+        LogMsg('[TEST_FAILED] TFRpWizardLCL FromTemplate should be False initially');
+        Halt(1);
+      end;
+      testWizard.FromTemplate := True;
+      if not testWizard.FromTemplate then
+      begin
+        LogMsg('[TEST_FAILED] TFRpWizardLCL FromTemplate property assignment failed');
+        Halt(1);
+      end;
+      LogMsg('TFRpWizardLCL report wizard form verified');
+    finally
+      testWizard.Free;
+    end;
+
+    // 4. External Section Dialog
+    testExtSec := TFRpExtSectionLCL.Create(nil);
+    try
+      testExtSec.Report := FReport;
+      testExtSec.Section := TRpSection(TRpSectionInterface(FDesignerFrame.secinterfaces[0]).printitem);
+      if (testExtSec.Report <> FReport) or not Assigned(testExtSec.Section) then
+      begin
+        LogMsg('[TEST_FAILED] TFRpExtSectionLCL Report or Section property assignment failed');
+        Halt(1);
+      end;
+      LogMsg('TFRpExtSectionLCL external section form verified');
+    finally
+      testExtSec.Free;
+    end;
+    LogMsg('Subphase 4.2 verification completed successfully');
 
     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
