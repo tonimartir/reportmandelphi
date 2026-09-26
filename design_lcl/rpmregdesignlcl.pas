@@ -20,7 +20,7 @@ unit rpmregdesignlcl;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, LResources,
   rpmdesignerlcl, rprulerlcl;
 
 procedure Register;
@@ -32,5 +32,8 @@ begin
   RegisterComponents('Reportman', [TRpDesignerLCL]);
   RegisterComponents('Reportman', [TRpRulerLCL]);
 end;
+
+initialization
+  {$I rpmregdesignlcl.lrs}
 
 end.

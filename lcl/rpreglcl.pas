@@ -21,7 +21,7 @@ interface
 {$I rpconf.inc}
 
 uses
-  Classes,Graphics,rpmaskedit,
+  Classes,Graphics,LResources,rpmaskedit,
   rppreviewcontrol,rplclreport;
 
 
@@ -41,5 +41,8 @@ begin
   // TRpActiveXReport is a Wrapper to generate the ActiveX version
   // with Delphi 6 Active X Control Wizard
 end;
+
+initialization
+  {$I rpreglcl.lrs}
 
 end.
