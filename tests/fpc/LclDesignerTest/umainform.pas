@@ -13,7 +13,8 @@ uses
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo,
   rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl,
   rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl,
-  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpcolumnar;
+  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpcolumnar,
+  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams, rpparams;
 
 type
   TMainForm = class(TForm)
@@ -585,6 +586,10 @@ var
   testColSub: TRpSubReport;
   testColHdr, testColDet: TRpSection;
   colGen: TRpColumnar;
+  testParamsDlg: TFRpParamsLCL;
+  testSearchDlg: TFRpSearchParamLCL;
+  testOpenLibDlg: TFRpOpenLibLCL;
+  testParamItem: TRpParam;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1477,8 +1482,75 @@ begin
       testExtSec.Free;
     end;
     LogMsg('Subphase 4.2 verification completed successfully');
+ 
+     // -----------------------------------------------------------------
+     // Testing Subphase 4.3: Parameters, Search & Report Library Dialogs
+     // -----------------------------------------------------------------
+     LogMsg('Testing Subphase 4.3: Parameters, Search & Report Library Dialogs...');
 
-    ok := True;
+     // 1. Parameter definition dialog (TFRpParamsLCL)
+     LogMsg('4.3.1 Creating TFRpParamsLCL');
+     testParamsDlg := TFRpParamsLCL.Create(nil);
+     LogMsg('4.3.1 TFRpParamsLCL Created');
+     try
+       testParamsDlg.Report := FReport;
+       LogMsg('4.3.1 Calling FillParamList 1');
+       testParamsDlg.FillParamList;
+       LogMsg('4.3.1 FillParamList 1 done');
+       // Add a test parameter to report
+       testParamItem := FReport.Params.Add('SUBPHASE43_TEST');
+       testParamItem.Value := 'TestVal123';
+       testParamsDlg.Params.Assign(FReport.Params);
+       LogMsg('4.3.1 Calling FillParamList 2');
+       testParamsDlg.FillParamList;
+       LogMsg('4.3.1 FillParamList 2 done');
+       if testParamsDlg.LParams.Items.IndexOf('SUBPHASE43_TEST') < 0 then
+       begin
+         LogMsg('[TEST_FAILED] TFRpParamsLCL did not find added parameter in list');
+         Halt(1);
+       end;
+       LogMsg('TFRpParamsLCL parameter definition form verified');
+     finally
+       testParamsDlg.Free;
+     end;
+
+     // 2. Parameter value search dialog (TFRpSearchParamLCL)
+     testSearchDlg := TFRpSearchParamLCL.Create(nil);
+     try
+       if (testSearchDlg.GridData = nil) or (testSearchDlg.ESearch = nil) then
+       begin
+         LogMsg('[TEST_FAILED] TFRpSearchParamLCL controls not initialized');
+         Halt(1);
+       end;
+       LogMsg('TFRpSearchParamLCL parameter search dialog verified');
+     finally
+       testSearchDlg.Free;
+     end;
+
+     // 3. Database report library dialog (TFRpOpenLibLCL)
+     testOpenLibDlg := TFRpOpenLibLCL.Create(nil);
+     try
+       if (testOpenLibDlg.ComboLibrary = nil) or (testOpenLibDlg.ATree = nil) then
+       begin
+         LogMsg('[TEST_FAILED] TFRpOpenLibLCL controls not initialized');
+         Halt(1);
+       end;
+       LogMsg('TFRpOpenLibLCL report library dialog verified');
+     finally
+       testOpenLibDlg.Free;
+     end;
+
+     // 4. Verify GlobalParamValueSearch hook registration
+     if not Assigned(rprflclparams.GlobalParamValueSearch) then
+     begin
+       LogMsg('[TEST_FAILED] rprflclparams.GlobalParamValueSearch not registered');
+       Halt(1);
+     end;
+     LogMsg('GlobalParamValueSearch hook registration verified');
+
+     LogMsg('Subphase 4.3 verification completed successfully');
+
+     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
   except
     on E: Exception do

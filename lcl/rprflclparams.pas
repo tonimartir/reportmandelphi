@@ -76,6 +76,12 @@ type
   end;
 
 
+type
+  TParamValueSearchProc = procedure(aparam: TRpParam; report: TComponent);
+
+var
+  GlobalParamValueSearch: TParamValueSearchProc = nil;
+
 function ShowUserParams(params:TRpParamList):boolean;
 
 implementation
@@ -707,11 +713,13 @@ end;
 
 procedure TFRpRTParams.BSearchClick(Sender: TObject);
 begin
- // Lookup using a dataset
-{$IFNDEF FORWEBAX}
-  //rpmdfsearchvcl.ParamValueSearch(params.Items[TComponent(Sender).Tag],TRpReport(report));
-  //TEdit(LControls.Objects[TComponent(Sender).Tag]).Text:=params.Items[TComponent(Sender).Tag].AsString;
-{$ENDIF}
+  if Assigned(GlobalParamValueSearch) and (Sender is TComponent) then
+  begin
+    GlobalParamValueSearch(params.Items[TComponent(Sender).Tag], report);
+    if Assigned(LControls) and (TComponent(Sender).Tag < LControls.Count) and
+       (LControls.Objects[TComponent(Sender).Tag] is TEdit) then
+      TEdit(LControls.Objects[TComponent(Sender).Tag]).Text := params.Items[TComponent(Sender).Tag].AsString;
+  end;
 end;
 
 end.

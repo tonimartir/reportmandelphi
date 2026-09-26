@@ -13,7 +13,8 @@ uses
   rpmdfsectionintlcl, rpmdfdesignlcl, rpmdobjinsplcl, rpmdesignerlcl, 
   rpmregdesignlcl, rpmdimageslcl, rpdbbrowserlcl, rpmdfstruclcl, 
   rpmdfdinfolcl, rpmdfmainlcl, rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl, 
-  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, LazarusPackageIntf;
+  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpmdfsearchlcl, 
+  rpmdfopenliblcl, rpmdfparamslcl, LazarusPackageIntf;
 
 implementation
 

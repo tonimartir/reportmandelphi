@@ -26,7 +26,8 @@ uses
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl,
   rppagesetuplcl, rplclpreview, rppreviewcontrol,
   rpmdfgridlcl, rpmdfaboutlcl,
-  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl;
+  rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
+  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -57,6 +58,7 @@ type
     Sep1: TToolButton;
     BtnSave: TToolButton;
     BtnDataConfig: TToolButton;
+    BtnParams: TToolButton;
     BtnPageSetup: TToolButton;
     Sep2: TToolButton;
     BtnPrint: TToolButton;
@@ -105,6 +107,7 @@ type
     MenuFileNew: TMenuItem;
     MenuFileNewWizard: TMenuItem;
     MenuFileOpen: TMenuItem;
+    MenuFileOpenLib: TMenuItem;
     MenuFileSave: TMenuItem;
     MenuFileSaveAs: TMenuItem;
     MenuFilePageSetup: TMenuItem;
@@ -134,6 +137,8 @@ type
     MenuReportPageSetup: TMenuItem;
     MenuReportGridOptions: TMenuItem;
     MenuReportWizard: TMenuItem;
+    MenuReportParams: TMenuItem;
+    MenuReportUserParams: TMenuItem;
     MenuHelp: TMenuItem;
     MenuHelpAbout: TMenuItem;
 
@@ -147,9 +152,12 @@ type
     procedure BtnNewWizardClick(Sender: TObject);
     procedure MenuReportWizardClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
+    procedure MenuFileOpenLibClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnSaveAsClick(Sender: TObject);
     procedure BtnDataConfigClick(Sender: TObject);
+    procedure BtnParamsClick(Sender: TObject);
+    procedure MenuReportUserParamsClick(Sender: TObject);
     procedure BtnPageSetupClick(Sender: TObject);
     procedure BtnPrintClick(Sender: TObject);
     procedure BtnPreviewClick(Sender: TObject);
@@ -264,6 +272,11 @@ begin
   MenuFileOpen.ShortCut := ShortCut(VK_O, [ssCtrl]);
   MenuFileOpen.OnClick := BtnOpenClick;
   MenuFile.Add(MenuFileOpen);
+
+  MenuFileOpenLib := TMenuItem.Create(MenuFile);
+  MenuFileOpenLib.Caption := 'Abrir desde &librería...';
+  MenuFileOpenLib.OnClick := MenuFileOpenLibClick;
+  MenuFile.Add(MenuFileOpenLib);
 
   MenuFileSave := TMenuItem.Create(MenuFile);
   MenuFileSave.Caption := '&Guardar';
@@ -448,6 +461,16 @@ begin
   MenuReportWizard.OnClick := MenuReportWizardClick;
   MenuReport.Add(MenuReportWizard);
 
+  MenuReportParams := TMenuItem.Create(MenuReport);
+  MenuReportParams.Caption := '&Definición de parámetros...';
+  MenuReportParams.OnClick := BtnParamsClick;
+  MenuReport.Add(MenuReportParams);
+
+  MenuReportUserParams := TMenuItem.Create(MenuReport);
+  MenuReportUserParams.Caption := '&Valores de parámetros de usuario...';
+  MenuReportUserParams.OnClick := MenuReportUserParamsClick;
+  MenuReport.Add(MenuReportUserParams);
+
   // Help Menu
   MenuHelp := TMenuItem.Create(MainMenu1);
   MenuHelp.Caption := 'A&yuda';
@@ -513,6 +536,12 @@ begin
   BtnDataConfig.ImageIndex := IMG_DATACONFIG;
   BtnDataConfig.Hint := 'Configuración de acceso a datos';
   BtnDataConfig.OnClick := BtnDataConfigClick;
+
+  BtnParams := TToolButton.Create(MainToolBar);
+  BtnParams.Parent := MainToolBar;
+  BtnParams.ImageIndex := IMG_USERPARAMS;
+  BtnParams.Hint := 'Definición de parámetros';
+  BtnParams.OnClick := BtnParamsClick;
 
   Sep1 := TToolButton.Create(MainToolBar);
   Sep1.Parent := MainToolBar;
@@ -977,6 +1006,21 @@ begin
     OpenReportFile(OpenDialog1.FileName);
 end;
 
+procedure TFRpMainFLCL.MenuFileOpenLibClick(Sender: TObject);
+var
+  libName, repName: string;
+begin
+  if not Assigned(FReport) or (FReport.DatabaseInfo.Count = 0) then
+  begin
+    ShowMessage(TranslateStr(123, 'No hay conexiones de base de datos disponibles para abrir desde librería'));
+    Exit;
+  end;
+  libName := '';
+  repName := SelectReportFromLibrary(FReport.DatabaseInfo, libName);
+  if Length(repName) > 0 then
+    ShowMessage(TranslateStr(124, 'Informe seleccionado') + ': ' + repName);
+end;
+
 procedure TFRpMainFLCL.BtnSaveClick(Sender: TObject);
 begin
   if Length(FFileName) > 0 then
@@ -999,6 +1043,20 @@ begin
     FStructure.browser.Report := FReport;
   if Assigned(FDesignerFrame) then
     FDesignerFrame.UpdateSelection(False);
+end;
+
+procedure TFRpMainFLCL.BtnParamsClick(Sender: TObject);
+begin
+  if not Assigned(FReport) then Exit;
+  ShowParamDef(FReport.Params, FReport.DataInfo, FReport);
+  if Assigned(FStructure) and Assigned(FStructure.browser) then
+    FStructure.browser.Report := FReport;
+end;
+
+procedure TFRpMainFLCL.MenuReportUserParamsClick(Sender: TObject);
+begin
+  if not Assigned(FReport) then Exit;
+  rprflclparams.ShowUserParams(FReport.Params);
 end;
 
 procedure TFRpMainFLCL.BtnPageSetupClick(Sender: TObject);
