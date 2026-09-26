@@ -17,13 +17,15 @@ uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   ComCtrls, Menus, ImgList, Buttons, ExtCtrls,
   rpreport, rpsubreport, rpmdconsts, rpdbbrowserlcl, rpgraphutilslcl,
-  rpsection, rpmdobjinsplcl, rpprintitem, rptypes, rpmdimageslcl;
+  rpsection, rpmdobjinsplcl, rpprintitem, rptypes, rpmdimageslcl,
+  rpmdcueviewlcl, rpmdundocuelcl;
 
 type
   TFRpStructureLCL = class(TFrame)
     PControl: TPageControl;
     TabStructure: TTabSheet;
     TabData: TTabSheet;
+    TabHistory: TTabSheet;
     Panel1: TToolBar;
     BNew: TToolButton;
     BDelete: TToolButton;
@@ -49,6 +51,7 @@ type
   private
     FReport: TRpReport;
     FObjInsp: TFRpObjInspLCL;
+    FOnUndoRedo: TNotifyEvent;
     procedure SetReport(Value: TRpReport);
     procedure DisableRView;
     procedure EnableRView;
@@ -60,6 +63,7 @@ type
   public
     designframe: TControl;
     browser: TFRpBrowserLCL;
+    cueview: TFRpCueViewLCL;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure CreateInterface;
@@ -69,8 +73,10 @@ type
     procedure DeleteSelectedNode;
     procedure SelectDataItem(data: TObject);
     procedure RefreshInterface;
+    procedure CueUndoRedo(Sender: TObject);
     property Report: TRpReport read FReport write SetReport;
     property ObjInsp: TFRpObjInspLCL read FObjInsp write FObjInsp;
+    property OnUndoRedo: TNotifyEvent read FOnUndoRedo write FOnUndoRedo;
   end;
 
 function FindDataInTree(nodes: TTreeNodes; data: TObject): TTreeNode;
@@ -209,12 +215,48 @@ begin
   browser.Align := alClient;
   browser.Parent := TabData;
 
+  // History Tab
+  TabHistory := TTabSheet.Create(PControl);
+  TabHistory.PageControl := PControl;
+  TabHistory.Caption := 'Historial';
+
+  cueview := TFRpCueViewLCL.Create(Self);
+  cueview.Align := alClient;
+  cueview.Parent := TabHistory;
+  cueview.OnUndoRedo := CueUndoRedo;
+
   PControl.ActivePageIndex := 0;
 end;
 
 destructor TFRpStructureLCL.Destroy;
 begin
   inherited Destroy;
+end;
+
+procedure TFRpStructureLCL.CueUndoRedo(Sender: TObject);
+var
+  subrep: TRpSubReport;
+begin
+  CreateInterface;
+  RView.FullExpand;
+  if Assigned(designframe) and (designframe is TFRpDesignFrameLCL) then
+  begin
+    subrep := nil;
+    try
+      subrep := FindSelectedSubreport;
+    except
+      subrep := nil;
+    end;
+    TFRpDesignFrameLCL(designframe).SelectSubReport(nil);
+    if Assigned(subrep) then
+      TFRpDesignFrameLCL(designframe).SelectSubReport(subrep);
+    TFRpDesignFrameLCL(designframe).UpdateSelection(True);
+  end;
+  if Assigned(FObjInsp) then
+    FObjInsp.AddCompItem(nil, True);
+
+  if Assigned(FOnUndoRedo) then
+    FOnUndoRedo(Self);
 end;
 
 procedure TFRpStructureLCL.SetReport(Value: TRpReport);
@@ -224,12 +266,16 @@ begin
   begin
     RView.Items.Clear;
     browser.Report := nil;
+    if Assigned(cueview) then
+      cueview.Report := nil;
     Exit;
   end;
 
   CreateInterface;
   RView.FullExpand;
   browser.Report := FReport;
+  if Assigned(cueview) then
+    cueview.Report := FReport;
   if Assigned(designframe) and (designframe is TFRpDesignFrameLCL) then
     TFRpDesignFrameLCL(designframe).UpdateSelection(True);
 end;

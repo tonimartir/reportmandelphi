@@ -27,7 +27,8 @@ uses
   rppagesetuplcl, rplclpreview, rppreviewcontrol,
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
-  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams;
+  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
+  rpmdundocuelcl;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -51,6 +52,96 @@ type
     FObjInsp: TFRpObjInspLCL;
     FStructure: TFRpStructureLCL;
 
+    // Menu items
+    MenuFile: TMenuItem;
+    MenuFileNew: TMenuItem;
+    MenuFileNewWizard: TMenuItem;
+    MenuFileOpen: TMenuItem;
+    MenuFileOpenLib: TMenuItem;
+    MenuFileSave: TMenuItem;
+    MenuFileSaveAs: TMenuItem;
+    MenuFilePageSetup: TMenuItem;
+    MenuFilePreview: TMenuItem;
+    MenuFilePrint: TMenuItem;
+    MenuFileExit: TMenuItem;
+    MenuEdit: TMenuItem;
+    MenuEditUndo: TMenuItem;
+    MenuEditRedo: TMenuItem;
+    MenuEditCut: TMenuItem;
+    MenuEditCopy: TMenuItem;
+    MenuEditPaste: TMenuItem;
+    MenuEditDelete: TMenuItem;
+    MenuEditSelectAll: TMenuItem;
+    MenuView: TMenuItem;
+    MenuViewGrid: TMenuItem;
+    MenuViewGridConfig: TMenuItem;
+    MenuViewRulers: TMenuItem;
+    MenuViewUnitsCm: TMenuItem;
+    MenuViewUnitsInches: TMenuItem;
+    MenuViewScale50: TMenuItem;
+    MenuViewScale100: TMenuItem;
+    MenuViewScale150: TMenuItem;
+    MenuViewScale200: TMenuItem;
+    MenuReport: TMenuItem;
+    MenuReportDataConfig: TMenuItem;
+    MenuReportPageSetup: TMenuItem;
+    MenuReportGridOptions: TMenuItem;
+    MenuReportWizard: TMenuItem;
+    MenuReportParams: TMenuItem;
+    MenuReportUserParams: TMenuItem;
+    MenuHelp: TMenuItem;
+    MenuHelpAbout: TMenuItem;
+
+    procedure BuildMenus;
+    procedure BuildControls;
+    procedure EnsureUndoCue;
+    procedure SetReport(Value: TRpReport);
+    procedure SetFileName(const Value: string);
+
+    // Event handlers
+    procedure BtnNewClick(Sender: TObject);
+    procedure BtnNewWizardClick(Sender: TObject);
+    procedure MenuReportWizardClick(Sender: TObject);
+    procedure BtnOpenClick(Sender: TObject);
+    procedure MenuFileOpenLibClick(Sender: TObject);
+    procedure BtnSaveClick(Sender: TObject);
+    procedure BtnSaveAsClick(Sender: TObject);
+    procedure BtnDataConfigClick(Sender: TObject);
+    procedure BtnParamsClick(Sender: TObject);
+    procedure MenuReportUserParamsClick(Sender: TObject);
+    procedure BtnPageSetupClick(Sender: TObject);
+    procedure BtnPrintClick(Sender: TObject);
+    procedure BtnPreviewClick(Sender: TObject);
+    procedure BtnUndoClick(Sender: TObject);
+    procedure BtnRedoClick(Sender: TObject);
+    procedure BtnToolClick(Sender: TObject);
+    procedure BtnDeleteClick(Sender: TObject);
+    procedure BtnCutClick(Sender: TObject);
+    procedure BtnCopyClick(Sender: TObject);
+    procedure BtnPasteClick(Sender: TObject);
+    procedure BtnNudgeLeftClick(Sender: TObject);
+    procedure BtnNudgeRightClick(Sender: TObject);
+    procedure BtnNudgeUpClick(Sender: TObject);
+    procedure BtnNudgeDownClick(Sender: TObject);
+    procedure BtnAlignLeftClick(Sender: TObject);
+    procedure BtnAlignRightClick(Sender: TObject);
+    procedure BtnAlignUpClick(Sender: TObject);
+    procedure BtnAlignDownClick(Sender: TObject);
+    procedure BtnAlignHorzClick(Sender: TObject);
+    procedure BtnAlignVertClick(Sender: TObject);
+    procedure BtnToFrontClick(Sender: TObject);
+    procedure BtnToBackClick(Sender: TObject);
+    procedure BtnSelectAllClick(Sender: TObject);
+    procedure ComboScaleChange(Sender: TObject);
+    procedure MenuViewGridClick(Sender: TObject);
+    procedure MenuReportGridClick(Sender: TObject);
+    procedure MenuViewUnitsClick(Sender: TObject);
+    procedure MenuViewScaleClick(Sender: TObject);
+    procedure MenuHelpAboutClick(Sender: TObject);
+    procedure MenuFileExitClick(Sender: TObject);
+    procedure DesignerToolChange(Sender: TObject);
+    procedure StructureUndoRedo(Sender: TObject);
+  public
     // Toolbar buttons
     BtnNew: TToolButton;
     BtnNewWizard: TToolButton;
@@ -102,94 +193,6 @@ type
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
 
-    // Menu items
-    MenuFile: TMenuItem;
-    MenuFileNew: TMenuItem;
-    MenuFileNewWizard: TMenuItem;
-    MenuFileOpen: TMenuItem;
-    MenuFileOpenLib: TMenuItem;
-    MenuFileSave: TMenuItem;
-    MenuFileSaveAs: TMenuItem;
-    MenuFilePageSetup: TMenuItem;
-    MenuFilePreview: TMenuItem;
-    MenuFilePrint: TMenuItem;
-    MenuFileExit: TMenuItem;
-    MenuEdit: TMenuItem;
-    MenuEditUndo: TMenuItem;
-    MenuEditRedo: TMenuItem;
-    MenuEditCut: TMenuItem;
-    MenuEditCopy: TMenuItem;
-    MenuEditPaste: TMenuItem;
-    MenuEditDelete: TMenuItem;
-    MenuEditSelectAll: TMenuItem;
-    MenuView: TMenuItem;
-    MenuViewGrid: TMenuItem;
-    MenuViewGridConfig: TMenuItem;
-    MenuViewRulers: TMenuItem;
-    MenuViewUnitsCm: TMenuItem;
-    MenuViewUnitsInches: TMenuItem;
-    MenuViewScale50: TMenuItem;
-    MenuViewScale100: TMenuItem;
-    MenuViewScale150: TMenuItem;
-    MenuViewScale200: TMenuItem;
-    MenuReport: TMenuItem;
-    MenuReportDataConfig: TMenuItem;
-    MenuReportPageSetup: TMenuItem;
-    MenuReportGridOptions: TMenuItem;
-    MenuReportWizard: TMenuItem;
-    MenuReportParams: TMenuItem;
-    MenuReportUserParams: TMenuItem;
-    MenuHelp: TMenuItem;
-    MenuHelpAbout: TMenuItem;
-
-    procedure BuildMenus;
-    procedure BuildControls;
-    procedure SetReport(Value: TRpReport);
-    procedure SetFileName(const Value: string);
-
-    // Event handlers
-    procedure BtnNewClick(Sender: TObject);
-    procedure BtnNewWizardClick(Sender: TObject);
-    procedure MenuReportWizardClick(Sender: TObject);
-    procedure BtnOpenClick(Sender: TObject);
-    procedure MenuFileOpenLibClick(Sender: TObject);
-    procedure BtnSaveClick(Sender: TObject);
-    procedure BtnSaveAsClick(Sender: TObject);
-    procedure BtnDataConfigClick(Sender: TObject);
-    procedure BtnParamsClick(Sender: TObject);
-    procedure MenuReportUserParamsClick(Sender: TObject);
-    procedure BtnPageSetupClick(Sender: TObject);
-    procedure BtnPrintClick(Sender: TObject);
-    procedure BtnPreviewClick(Sender: TObject);
-    procedure BtnUndoClick(Sender: TObject);
-    procedure BtnRedoClick(Sender: TObject);
-    procedure BtnToolClick(Sender: TObject);
-    procedure BtnDeleteClick(Sender: TObject);
-    procedure BtnCutClick(Sender: TObject);
-    procedure BtnCopyClick(Sender: TObject);
-    procedure BtnPasteClick(Sender: TObject);
-    procedure BtnNudgeLeftClick(Sender: TObject);
-    procedure BtnNudgeRightClick(Sender: TObject);
-    procedure BtnNudgeUpClick(Sender: TObject);
-    procedure BtnNudgeDownClick(Sender: TObject);
-    procedure BtnAlignLeftClick(Sender: TObject);
-    procedure BtnAlignRightClick(Sender: TObject);
-    procedure BtnAlignUpClick(Sender: TObject);
-    procedure BtnAlignDownClick(Sender: TObject);
-    procedure BtnAlignHorzClick(Sender: TObject);
-    procedure BtnAlignVertClick(Sender: TObject);
-    procedure BtnToFrontClick(Sender: TObject);
-    procedure BtnToBackClick(Sender: TObject);
-    procedure BtnSelectAllClick(Sender: TObject);
-    procedure ComboScaleChange(Sender: TObject);
-    procedure MenuViewGridClick(Sender: TObject);
-    procedure MenuReportGridClick(Sender: TObject);
-    procedure MenuViewUnitsClick(Sender: TObject);
-    procedure MenuViewScaleClick(Sender: TObject);
-    procedure MenuHelpAboutClick(Sender: TObject);
-    procedure MenuFileExitClick(Sender: TObject);
-    procedure DesignerToolChange(Sender: TObject);
-  public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
@@ -830,6 +833,7 @@ begin
 
   FObjInsp.DesignFrame := FDesignerFrame;
   FStructure.designframe := FDesignerFrame;
+  FStructure.OnUndoRedo := StructureUndoRedo;
 
   // 7. Dialogs
   OpenDialog1 := TOpenDialog.Create(Self);
@@ -838,6 +842,12 @@ begin
   SaveDialog1 := TSaveDialog.Create(Self);
   SaveDialog1.Filter := 'Report Manager Files (*.rep)|*.rep|All Files (*.*)|*.*';
   SaveDialog1.DefaultExt := 'rep';
+end;
+
+procedure TFRpMainFLCL.EnsureUndoCue;
+begin
+  if Assigned(FReport) and (not Assigned(FReport.UndoCue)) then
+    FReport.UndoCue := TUndoCue.Create(FReport);
 end;
 
 procedure TFRpMainFLCL.SetReport(Value: TRpReport);
@@ -920,6 +930,8 @@ procedure TFRpMainFLCL.RefreshInterface;
 begin
   if not Assigned(FReport) then Exit;
 
+  EnsureUndoCue;
+
   if Assigned(FDesignerFrame) then
   begin
     FDesignerFrame.Report := FReport;
@@ -940,10 +952,15 @@ end;
 procedure TFRpMainFLCL.UpdateStatus;
 var
   sInfo: string;
+  cue: TUndoCue;
 begin
   if not Assigned(FReport) then
   begin
     StatusBar.SimpleText := 'Sin informe cargado';
+    BtnUndo.Enabled := False;
+    BtnRedo.Enabled := False;
+    MenuEditUndo.Enabled := False;
+    MenuEditRedo.Enabled := False;
     Exit;
   end;
 
@@ -952,6 +969,22 @@ begin
   if Length(FFileName) > 0 then
     sInfo := sInfo + ' | ' + ExtractFileName(FFileName);
   StatusBar.SimpleText := sInfo;
+
+  if Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    BtnUndo.Enabled := cue.CanUndo;
+    BtnRedo.Enabled := cue.CanRedo;
+    MenuEditUndo.Enabled := cue.CanUndo;
+    MenuEditRedo.Enabled := cue.CanRedo;
+  end
+  else
+  begin
+    BtnUndo.Enabled := False;
+    BtnRedo.Enabled := False;
+    MenuEditUndo.Enabled := False;
+    MenuEditRedo.Enabled := False;
+  end;
 end;
 
 procedure TFRpMainFLCL.EmbedInControl(AParent: TWinControl);
@@ -1098,13 +1131,50 @@ begin
 end;
 
 procedure TFRpMainFLCL.BtnUndoClick(Sender: TObject);
+var
+  cue: TUndoCue;
 begin
-  // Undo cue integration
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    if cue.CanUndo then
+    begin
+      cue.Undo;
+      if Assigned(FStructure) then
+      begin
+        if Assigned(FStructure.cueview) then
+          FStructure.cueview.RefreshList;
+        FStructure.CueUndoRedo(Self);
+      end;
+      UpdateStatus;
+    end;
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnRedoClick(Sender: TObject);
+var
+  cue: TUndoCue;
 begin
-  // Redo cue integration
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    if cue.CanRedo then
+    begin
+      cue.Redo;
+      if Assigned(FStructure) then
+      begin
+        if Assigned(FStructure.cueview) then
+          FStructure.cueview.RefreshList;
+        FStructure.CueUndoRedo(Self);
+      end;
+      UpdateStatus;
+    end;
+  end;
+end;
+
+procedure TFRpMainFLCL.StructureUndoRedo(Sender: TObject);
+begin
+  UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.BtnToolClick(Sender: TObject);

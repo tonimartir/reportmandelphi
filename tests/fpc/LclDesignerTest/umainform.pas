@@ -15,7 +15,7 @@ uses
   rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpcolumnar,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams, rpparams,
-  rpmdundocuelcl;
+  rpmdundocuelcl, rpmdcueviewlcl, rpmdfmainlcl;
 
 type
   TMainForm = class(TForm)
@@ -599,6 +599,7 @@ var
   testAddLabel: TRpLabel;
   testSecItemCount: Integer;
   testTargetSec: TRpSection;
+  testMainFLcl: TFRpMainFLCL;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1723,6 +1724,132 @@ begin
      end;
 
      LogMsg('Subphase 5.1 verification completed successfully');
+
+     // Subphase 5.2: TFRpCueViewLCL & Structure TabHistory integration
+     LogMsg('Testing Subphase 5.2: TFRpCueViewLCL and Visual Undo Cue Panel');
+     if not Assigned(FStructure.TabHistory) then
+     begin
+       LogMsg('[TEST_FAILED] FStructure.TabHistory is nil');
+       Halt(1);
+     end;
+     if not Assigned(FStructure.cueview) then
+     begin
+       LogMsg('[TEST_FAILED] FStructure.cueview is nil');
+       Halt(1);
+     end;
+     if not Assigned(FStructure.cueview.ListViewCue) then
+     begin
+       LogMsg('[TEST_FAILED] FStructure.cueview.ListViewCue is nil');
+       Halt(1);
+     end;
+     if FStructure.cueview.ListViewCue.Columns.Count < 4 then
+     begin
+       LogMsg('[TEST_FAILED] FStructure.cueview.ListViewCue expected at least 4 columns');
+       Halt(1);
+     end;
+
+     // Ensure report has an undo cue
+     if not Assigned(FReport.UndoCue) then
+       FReport.UndoCue := TUndoCue.Create(FReport);
+
+     testCue := TUndoCue(FReport.UndoCue);
+     testCue.Clear;
+     FStructure.cueview.RefreshList;
+
+     if FStructure.cueview.ListViewCue.Items.Count <> 0 then
+     begin
+       LogMsg('[TEST_FAILED] cueview ListViewCue not empty after Clear');
+       Halt(1);
+     end;
+     if FStructure.cueview.BUndo.Enabled or FStructure.cueview.BRedo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BUndo/BRedo should be disabled when empty');
+       Halt(1);
+     end;
+
+     // Add an operation on a real component
+     secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+     testTargetSec := TRpSection(secInt.printitem);
+     testTargetComp := TRpCommonPosComponent(TRpSizePosInterface(secInt.childlist[0]).printitem);
+     origCompPosX := testTargetComp.PosX;
+     testOp := TChangeObjectOperation.Create(otModify, testCue.GetGroupId);
+     testOp.componentName := testTargetComp.Name;
+     testOp.componentClass := testTargetComp.ClassName;
+     testOp.parentName := testTargetSec.Name;
+     testOp.AddProperty('posX', ptInteger, origCompPosX, origCompPosX + 200);
+     testTargetComp.PosX := origCompPosX + 200;
+     testCue.AddOperation(testOp);
+
+     FStructure.cueview.RefreshList;
+     if FStructure.cueview.ListViewCue.Items.Count <> 1 then
+     begin
+       LogMsg(Format('[TEST_FAILED] cueview expected 1 item, got %d', [FStructure.cueview.ListViewCue.Items.Count]));
+       Halt(1);
+     end;
+     if not FStructure.cueview.BUndo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BUndo should be enabled after AddOperation');
+       Halt(1);
+     end;
+     if FStructure.cueview.BRedo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BRedo should be disabled after AddOperation');
+       Halt(1);
+     end;
+
+     // Undo via cueview BUndo click
+     FStructure.cueview.BUndoClick(nil);
+     if FStructure.cueview.BUndo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BUndo should be disabled after Undo');
+       Halt(1);
+     end;
+     if not FStructure.cueview.BRedo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BRedo should be enabled after Undo');
+       Halt(1);
+     end;
+
+     // Redo via cueview BRedo click
+     FStructure.cueview.BRedoClick(nil);
+     if not FStructure.cueview.BUndo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BUndo should be enabled after Redo');
+       Halt(1);
+     end;
+     if FStructure.cueview.BRedo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview BRedo should be disabled after Redo');
+       Halt(1);
+     end;
+
+     // Undo again to restore original PosX
+     FStructure.cueview.BUndoClick(nil);
+
+     // Clear via cueview BClear click
+     FStructure.cueview.BClearClick(nil);
+     if (FStructure.cueview.ListViewCue.Items.Count <> 0) or
+        FStructure.cueview.BUndo.Enabled or FStructure.cueview.BRedo.Enabled then
+     begin
+       LogMsg('[TEST_FAILED] cueview state invalid after BClearClick');
+       Halt(1);
+     end;
+
+     // Test TFRpMainFLCL instantiation & cue integration
+     testMainFLcl := TFRpMainFLCL.Create(nil);
+     try
+       testMainFLcl.Report := FReport;
+       testMainFLcl.UpdateStatus;
+       if testMainFLcl.BtnUndo.Enabled or testMainFLcl.BtnRedo.Enabled then
+       begin
+         LogMsg('[TEST_FAILED] TFRpMainFLCL BtnUndo/BtnRedo should be disabled with empty cue');
+         Halt(1);
+       end;
+     finally
+       testMainFLcl.Free;
+     end;
+
+     LogMsg('Subphase 5.2 verification completed successfully');
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

@@ -97,6 +97,8 @@ type
     procedure AddSubreportProperties(subrep: TRpSubReport; op: TChangeObjectOperation);
     function Undo: TObjectList<TChangeObjectOperation>;
     function Redo: TObjectList<TChangeObjectOperation>;
+    function CanUndo: Boolean;
+    function CanRedo: Boolean;
     procedure Clear;
     function ToJSON: string;
     procedure FromJSON(const jsonStr: string);
@@ -829,6 +831,16 @@ procedure TUndoCue.Clear;
 begin
   UndoOperations.Clear;
   RedoOperations.Clear;
+end;
+
+function TUndoCue.CanUndo: Boolean;
+begin
+  Result := Assigned(UndoOperations) and (UndoOperations.Count > 0);
+end;
+
+function TUndoCue.CanRedo: Boolean;
+begin
+  Result := Assigned(RedoOperations) and (RedoOperations.Count > 0);
 end;
 
 function TUndoCue.Undo: TObjectList<TChangeObjectOperation>;
