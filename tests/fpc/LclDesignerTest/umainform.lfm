@@ -264,120 +264,15 @@ object MainForm: TMainForm
       OnClick = BtnSelectAllClick
     end
   end
-  object PTop: TPanel
-    Left = 0
-    Height = 32
-    Top = 32
-    Width = 960
-    Align = alTop
-    BevelOuter = bvNone
-    ClientHeight = 32
-    ClientWidth = 960
-    ParentBackground = False
-    TabOrder = 1
-    object BtnSample4: TButton
-      Left = 8
-      Height = 24
-      Top = 4
-      Width = 85
-      Caption = 'sample4.rep'
-      TabOrder = 0
-      OnClick = BtnSample4Click
-    end
-    object BtnBold: TButton
-      Left = 98
-      Height = 24
-      Top = 4
-      Width = 75
-      Caption = 'bold.rep'
-      TabOrder = 1
-      OnClick = BtnBoldClick
-    end
-    object BtnHtml: TButton
-      Left = 178
-      Height = 24
-      Top = 4
-      Width = 80
-      Caption = 'htmltest.rep'
-      TabOrder = 2
-      OnClick = BtnHtmlClick
-    end
-    object LblSubrep: TLabel
-      Left = 268
-      Height = 15
-      Top = 8
-      Width = 60
-      Caption = 'Subreport:'
-    end
-    object CbSubreport: TComboBox
-      Left = 332
-      Height = 23
-      Top = 4
-      Width = 130
-      ItemHeight = 15
-      Style = csDropDownList
-      TabOrder = 3
-      OnChange = CbSubreportChange
-    end
-    object ChkGrid: TCheckBox
-      Left = 475
-      Height = 19
-      Top = 6
-      Width = 48
-      Caption = 'Grid'
-      Checked = True
-      State = cbChecked
-      TabOrder = 4
-      OnChange = ChkGridChange
-    end
-    object CbUnits: TComboBox
-      Left = 535
-      Height = 23
-      Top = 4
-      Width = 70
-      ItemHeight = 15
-      ItemIndex = 0
-      Items.Strings = (
-        'cm'
-        'inch'
-      )
-      Style = csDropDownList
-      TabOrder = 5
-      Text = 'cm'
-      OnChange = CbUnitsChange
-    end
-    object BtnZoom50: TButton
-      Tag = 50
-      Left = 620
-      Height = 24
-      Top = 4
-      Width = 40
-      Caption = '50%'
-      TabOrder = 6
-      Visible = False
-      OnClick = BtnZoomClick
-    end
-    object BtnZoom100: TButton
-      Tag = 100
-      Left = 665
-      Height = 24
-      Top = 4
-      Width = 45
-      Caption = '100%'
-      TabOrder = 7
-      Visible = False
-      OnClick = BtnZoomClick
-    end
-  end
   object PClient: TPanel
     Left = 0
-    Height = 592
-    Top = 64
+    Height = 616
+    Top = 32
     Width = 960
     Align = alClient
     BevelOuter = bvNone
     ParentBackground = False
-    TabOrder = 2
+    TabOrder = 1
   end
   object ImageList1: TImageList
     Height = 19

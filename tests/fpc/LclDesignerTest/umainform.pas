@@ -47,16 +47,6 @@ type
     BtnToFront: TToolButton;
     BtnToBack: TToolButton;
     BtnSelectAll: TToolButton;
-    PTop: TPanel;
-    BtnSample4: TButton;
-    BtnBold: TButton;
-    BtnHtml: TButton;
-    LblSubrep: TLabel;
-    CbSubreport: TComboBox;
-    ChkGrid: TCheckBox;
-    CbUnits: TComboBox;
-    BtnZoom50: TButton;
-    BtnZoom100: TButton;
     PClient: TPanel;
     StatusBar: TStatusBar;
     OpenDialog: TOpenDialog;
@@ -64,13 +54,6 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
-    procedure BtnSample4Click(Sender: TObject);
-    procedure BtnBoldClick(Sender: TObject);
-    procedure BtnHtmlClick(Sender: TObject);
-    procedure CbSubreportChange(Sender: TObject);
-    procedure BtnZoomClick(Sender: TObject);
-    procedure ChkGridChange(Sender: TObject);
-    procedure CbUnitsChange(Sender: TObject);
     procedure BtnToolClick(Sender: TObject);
     procedure BtnDeleteClick(Sender: TObject);
     procedure BtnToFrontClick(Sender: TObject);
@@ -101,7 +84,6 @@ type
     FAutoTestMode: Boolean;
     procedure AppException(Sender: TObject; E: Exception);
     function FindSampleFile(const AName: string): string;
-    procedure RefreshSubreportList;
     procedure UpdateStatus;
   public
     procedure LoadReportFile(const AFileName: string);
@@ -287,8 +269,6 @@ begin
     LogMsg('LoadReportFile: setting Report to FReport');
     FDesignerFrame.Report := FReport;
     FStructure.Report := FReport;
-    LogMsg('LoadReportFile: refreshing subreport list');
-    RefreshSubreportList;
     LogMsg('LoadReportFile: updating status');
     UpdateStatus;
     LogMsg('LoadReportFile: done');
@@ -300,20 +280,6 @@ begin
       FDesignerFrame.Report := nil;
       ShowMessage('Error cargando reporte: ' + E.Message);
     end;
-  end;
-end;
-
-procedure TMainForm.RefreshSubreportList;
-var
-  i: Integer;
-begin
-  CbSubreport.Items.Clear;
-  if Assigned(FReport) then
-  begin
-    for i := 0 to FReport.SubReports.Count - 1 do
-      CbSubreport.Items.Add('SubReport ' + IntToStr(i + 1));
-    if CbSubreport.Items.Count > 0 then
-      CbSubreport.ItemIndex := 0;
   end;
 end;
 
@@ -353,89 +319,7 @@ begin
     LoadReportFile(OpenDialog.FileName);
 end;
 
-procedure TMainForm.BtnSample4Click(Sender: TObject);
-var
-  p: string;
-begin
-  p := FindSampleFile('sample4.rep');
-  if Length(p) > 0 then
-    LoadReportFile(p)
-  else
-    ShowMessage('No se pudo encontrar sample4.rep');
-end;
 
-procedure TMainForm.BtnBoldClick(Sender: TObject);
-var
-  p: string;
-begin
-  p := FindSampleFile('bold.rep');
-  if Length(p) > 0 then
-    LoadReportFile(p)
-  else
-    ShowMessage('No se pudo encontrar bold.rep');
-end;
-
-procedure TMainForm.BtnHtmlClick(Sender: TObject);
-var
-  p: string;
-begin
-  p := FindSampleFile('htmltest.rep');
-  if Length(p) > 0 then
-    LoadReportFile(p)
-  else
-    ShowMessage('No se pudo encontrar htmltest.rep');
-end;
-
-procedure TMainForm.CbSubreportChange(Sender: TObject);
-begin
-  if Assigned(FReport) and (CbSubreport.ItemIndex >= 0) and
-     (CbSubreport.ItemIndex < FReport.SubReports.Count) then
-  begin
-    FDesignerFrame.SelectSubReport(FReport.SubReports[CbSubreport.ItemIndex].SubReport);
-    UpdateStatus;
-  end;
-end;
-
-procedure TMainForm.BtnZoomClick(Sender: TObject);
-var
-  nScale: Double;
-begin
-  LogMsg('BtnZoomClick: started');
-  nScale := TButton(Sender).Tag / 100.0;
-  LogMsg('BtnZoomClick: scale=' + FloatToStr(nScale));
-  if nScale > 0 then
-  begin
-    LogMsg('BtnZoomClick: calling FDesignerFrame.Scale := nScale');
-    FDesignerFrame.Scale := nScale;
-    LogMsg('BtnZoomClick: calling UpdateStatus');
-    UpdateStatus;
-    LogMsg('BtnZoomClick: completed');
-  end;
-end;
-
-procedure TMainForm.ChkGridChange(Sender: TObject);
-begin
-  if Assigned(FReport) then
-  begin
-    FReport.GridVisible := ChkGrid.Checked;
-    FDesignerFrame.UpdateInterface(False);
-  end;
-end;
-
-procedure TMainForm.CbUnitsChange(Sender: TObject);
-begin
-  if CbUnits.ItemIndex = 0 then
-  begin
-    rpmunits.defaultunit := rpUnitCms;
-    FDesignerFrame.TopRuler.Metrics := rCms;
-  end
-  else
-  begin
-    rpmunits.defaultunit := rpUnitInchess;
-    FDesignerFrame.TopRuler.Metrics := rInchess;
-  end;
-  FDesignerFrame.UpdateInterface(False);
-end;
 
 procedure TMainForm.BtnToolClick(Sender: TObject);
 begin
@@ -496,7 +380,6 @@ begin
   FReport.SubReports.Add;
   FCurrentFileName := 'Nuevo Reporte.rep';
   FDesignerFrame.Report := FReport;
-  RefreshSubreportList;
   UpdateStatus;
 end;
 
@@ -668,12 +551,13 @@ begin
 
     LogMsg('Testing Zoom with component selected');
     try
-      BtnZoom50.Click;
-      LogMsg('Zoom 50% clicked');
+      ComboScale.Text := '50%';
+      ComboScaleChange(ComboScale);
+      LogMsg('Zoom 50% applied');
     except
       on E: Exception do
       begin
-        LogMsg('Exception during BtnZoom50.Click: ' + E.ClassName + ': ' + E.Message);
+        LogMsg('Exception during Zoom 50%: ' + E.ClassName + ': ' + E.Message);
         LogMsg('At: ' + BackTraceStrFunc(ExceptAddr));
         frames := ExceptFrames;
         cnt := ExceptFrameCount;
@@ -682,8 +566,9 @@ begin
         raise;
       end;
     end;
-    BtnZoom100.Click;
-    LogMsg('Zoom 100% clicked');
+    ComboScale.Text := '100%';
+    ComboScaleChange(ComboScale);
+    LogMsg('Zoom 100% applied');
 
     // Test Units
     FDesignerFrame.TopRuler.Metrics := rInchess;

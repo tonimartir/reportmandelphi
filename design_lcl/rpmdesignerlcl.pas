@@ -41,6 +41,7 @@ type
     procedure LoadFromFile(AFilename: string);
     procedure SaveToStream(stream: TStream);
     procedure SaveToFile(AFilename: string);
+    function Execute: Boolean;
     property Report: TRpReport read FReport write FReport;
   published
     property Filename: string read FFilename write FFilename;
@@ -52,6 +53,9 @@ type
   TRpDesigner = TRpDesignerLCL;
 
 implementation
+
+uses
+  rpmdfmainlcl;
 
 constructor TRpDesignerLCL.Create(AOwner: TComponent);
 begin
@@ -110,6 +114,42 @@ begin
   CheckLoaded;
   FReport.SaveToFile(AFilename);
   FFilename := AFilename;
+end;
+
+function TRpDesignerLCL.Execute: Boolean;
+var
+  handled: Boolean;
+  stream: TStream;
+  dia: TFRpMainFLCL;
+begin
+  Result := False;
+  CheckLoaded;
+  dia := TFRpMainFLCL.Create(nil);
+  try
+    dia.Report := FReport;
+    if Length(FFilename) > 0 then
+      dia.FileName := FFilename;
+    dia.RefreshInterface;
+    dia.ShowModal;
+    if FReadOnly then Exit;
+    handled := False;
+    stream := nil;
+    if Assigned(FOnSave) then
+      FOnSave(stream, FReport, handled);
+    if not handled then
+    begin
+      if not Assigned(stream) then
+      begin
+        if Length(FFilename) > 0 then
+          FReport.SaveToFile(FFilename);
+      end
+      else
+        FReport.SaveToStream(stream);
+    end;
+    Result := True;
+  finally
+    dia.Free;
+  end;
 end;
 
 end.

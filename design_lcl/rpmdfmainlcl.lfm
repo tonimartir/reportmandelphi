@@ -1,0 +1,12 @@
+object FRpMainFLCL: TFRpMainFLCL
+  Left = 180
+  Height = 680
+  Top = 120
+  Width = 960
+  Caption = 'Report Manager Designer'
+  ClientHeight = 680
+  ClientWidth = 960
+  Color = clBtnFace
+  DesignTimePPI = 96
+  Position = poScreenCenter
+end

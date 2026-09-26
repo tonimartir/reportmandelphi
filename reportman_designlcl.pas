@@ -12,7 +12,7 @@ uses
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, rpmdfchartintlcl, 
   rpmdfsectionintlcl, rpmdfdesignlcl, rpmdesignerlcl, rpmregdesignlcl, 
   rpmdimageslcl, rpmdobjinsplcl, rpdbbrowserlcl, rpmdfstruclcl, rpmdfdinfolcl, 
-  LazarusPackageIntf;
+  rpmdfmainlcl, LazarusPackageIntf;
 
 implementation
 

@@ -8,9 +8,9 @@ unit reportman_lcl;
 interface
 
 uses
-  rplcldriver, rplclfonts, rpgraphutilslcl, rprflclparams, rppreviewmetalcl, 
-  rppreviewcontrol, rpmaskedit, rplclpreview, rppagesetuplcl, rplclreport, 
-  rpreglcl, LazarusPackageIntf;
+  rplclfonts, rpgraphutilslcl, rpmaskedit, rplcldriver, rprflclparams, 
+  rppreviewmetalcl, rppreviewcontrol, rppagesetuplcl, rplclpreview, 
+  rplclreport, rpreglcl, LazarusPackageIntf;
 
 implementation
 

@@ -6,7 +6,8 @@
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
-        <OtherUnitFiles Value=".;design_lcl"/>
+        <IncludeFiles Value=".;lcl;design_lcl"/>
+        <OtherUnitFiles Value=".;lcl;design_lcl"/>
         <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -15,7 +16,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Files Count="18">
+    <Files Count="19">
       <Item1>
         <Filename Value="design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -89,6 +90,10 @@
         <Filename Value="design_lcl\rpmdfdinfolcl.pas"/>
         <UnitName Value="rpmdfdinfolcl"/>
       </Item18>
+      <Item19>
+        <Filename Value="design_lcl\rpmdfmainlcl.pas"/>
+        <UnitName Value="rpmdfmainlcl"/>
+      </Item19>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>

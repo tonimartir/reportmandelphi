@@ -20,40 +20,40 @@
     </CompilerOptions>
     <Files Count="11">
       <Item1>
-        <Filename Value="..\..\lcl\rplcldriver.pas"/>
-        <UnitName Value="rplcldriver"/>
-      </Item1>
-      <Item2>
         <Filename Value="..\..\lcl\rplclfonts.pas"/>
         <UnitName Value="rplclfonts"/>
-      </Item2>
-      <Item3>
+      </Item1>
+      <Item2>
         <Filename Value="..\..\lcl\rpgraphutilslcl.pas"/>
         <UnitName Value="rpgraphutilslcl"/>
-      </Item3>
-      <Item4>
-        <Filename Value="..\..\lcl\rprflclparams.pas"/>
-        <UnitName Value="rprflclparams"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\lcl\rppreviewmetalcl.pas"/>
-        <UnitName Value="rppreviewmetalcl"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\rppreviewcontrol.pas"/>
-        <UnitName Value="rppreviewcontrol"/>
-      </Item6>
-      <Item7>
+      </Item2>
+      <Item3>
         <Filename Value="..\..\rpmaskedit.pas"/>
         <UnitName Value="rpmaskedit"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\lcl\rplcldriver.pas"/>
+        <UnitName Value="rplcldriver"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\lcl\rprflclparams.pas"/>
+        <UnitName Value="rprflclparams"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\lcl\rppreviewmetalcl.pas"/>
+        <UnitName Value="rppreviewmetalcl"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\rppreviewcontrol.pas"/>
+        <UnitName Value="rppreviewcontrol"/>
       </Item7>
       <Item8>
-        <Filename Value="..\..\lcl\rplclpreview.pas"/>
-        <UnitName Value="rplclpreview"/>
-      </Item8>
-      <Item9>
         <Filename Value="..\..\lcl\rppagesetuplcl.pas"/>
         <UnitName Value="rppagesetuplcl"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\lcl\rplclpreview.pas"/>
+        <UnitName Value="rplclpreview"/>
       </Item9>
       <Item10>
         <Filename Value="..\..\lcl\rplclreport.pas"/>
