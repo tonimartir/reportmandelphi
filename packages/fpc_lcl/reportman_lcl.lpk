@@ -9,7 +9,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <IncludeFiles Value="..\.."/>
-        <OtherUnitFiles Value="..\..;..\..\lcl"/>
+        <OtherUnitFiles Value="..\..\lcl"/>
         <UnitOutputDirectory Value="lib\reportman_lcl\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -17,6 +17,9 @@
           <SyntaxMode Value="Delphi"/>
         </SyntaxOptions>
       </Parsing>
+      <Other>
+        <CustomOptions Value="-dLCL"/>
+      </Other>
     </CompilerOptions>
     <Files Count="11">
       <Item1>
@@ -28,7 +31,7 @@
         <UnitName Value="rpgraphutilslcl"/>
       </Item2>
       <Item3>
-        <Filename Value="..\..\rpmaskedit.pas"/>
+        <Filename Value="..\..\lcl\rpmaskedit.pas"/>
         <UnitName Value="rpmaskedit"/>
       </Item3>
       <Item4>
@@ -44,7 +47,7 @@
         <UnitName Value="rppreviewmetalcl"/>
       </Item6>
       <Item7>
-        <Filename Value="..\..\rppreviewcontrol.pas"/>
+        <Filename Value="..\..\lcl\rppreviewcontrol.pas"/>
         <UnitName Value="rppreviewcontrol"/>
       </Item7>
       <Item8>

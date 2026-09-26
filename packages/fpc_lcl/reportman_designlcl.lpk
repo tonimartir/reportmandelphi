@@ -9,7 +9,7 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <IncludeFiles Value="..\..;..\..\lcl;..\..\design_lcl"/>
-        <OtherUnitFiles Value="..\..;..\..\lcl;..\..\design_lcl"/>
+        <OtherUnitFiles Value="..\..\design_lcl"/>
         <UnitOutputDirectory Value="lib\reportman_designlcl\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
