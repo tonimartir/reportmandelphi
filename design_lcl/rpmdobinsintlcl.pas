@@ -201,6 +201,9 @@ function VAlignmentToText(Value: Integer): string;
 
 implementation
 
+uses
+  rpmdundocuelcl;
+
 function StringHAlignmentToInt(Value: WideString): Integer;
 begin
   Result := 0;
@@ -670,6 +673,9 @@ var
   i: Integer;
   item: TRpSizePosInterface;
   wasMulti: Boolean;
+  oldPosX, oldPosY: Integer;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button <> mbLeft then
@@ -744,9 +750,28 @@ begin
       else
       begin
         // Single item move
+        oldPosX := positem.PosX;
+        oldPosY := positem.PosY;
         positem.PosX := pixelstotwips(NewLeft, Scale);
         positem.PosY := pixelstotwips(NewTop, Scale);
         UpdatePos;
+
+        if (oldPosX <> positem.PosX) or (oldPosY <> positem.PosY) then
+        begin
+          if Assigned(positem.Report) and (positem.Report is TRpReport) and
+             Assigned(TRpReport(positem.Report).UndoCue) then
+          begin
+            cue := TUndoCue(TRpReport(positem.Report).UndoCue);
+            op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+            op.componentName := positem.Name;
+            op.componentClass := UpperCase(positem.ClassName);
+            if Assigned(SectionInt) and Assigned(SectionInt.PrintItem) then
+              op.parentName := TRpSection(SectionInt.PrintItem).Name;
+            op.AddProperty('posX', ptInteger, oldPosX, positem.PosX);
+            op.AddProperty('posY', ptInteger, oldPosY, positem.PosY);
+            cue.AddOperation(op);
+          end;
+        end;
 
         if Assigned(OnSelectComponent) then
           OnSelectComponent(Self, (ssShift in Shift) or (ssCtrl in Shift))
@@ -1159,8 +1184,11 @@ end;
 procedure TRpBlackControl.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   NewLeft, NewTop, NewWidth, NewHeight: Integer;
+  oldX, oldY, oldW, oldH: Integer;
   sint: TRpSizeInterface;
   positem: TRpCommonPosComponent;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Assigned(FRectangle) then
@@ -1174,11 +1202,38 @@ begin
       if Assigned(sint.printitem) and (sint.printitem is TRpCommonPosComponent) then
       begin
         positem := TRpCommonPosComponent(sint.printitem);
+        oldX := positem.PosX;
+        oldY := positem.PosY;
+        oldW := positem.Width;
+        oldH := positem.Height;
+
         positem.PosX := pixelstotwips(NewLeft, sint.Scale);
         positem.PosY := pixelstotwips(NewTop, sint.Scale);
         positem.Width := pixelstotwips(NewWidth, sint.Scale);
         positem.Height := pixelstotwips(NewHeight, sint.Scale);
         sint.UpdatePos;
+
+        if (oldX <> positem.PosX) or (oldY <> positem.PosY) or
+           (oldW <> positem.Width) or (oldH <> positem.Height) then
+        begin
+          if Assigned(positem.Report) and (positem.Report is TRpReport) and
+             Assigned(TRpReport(positem.Report).UndoCue) then
+          begin
+            cue := TUndoCue(TRpReport(positem.Report).UndoCue);
+            op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+            op.componentName := positem.Name;
+            op.componentClass := UpperCase(positem.ClassName);
+            if (sint is TRpSizePosInterface) and
+               Assigned(TRpSizePosInterface(sint).SectionInt) and
+               Assigned(TRpSizePosInterface(sint).SectionInt.printitem) then
+              op.parentName := TRpSizePosInterface(sint).SectionInt.printitem.Name;
+            if oldX <> positem.PosX then op.AddProperty('posX', ptInteger, oldX, positem.PosX);
+            if oldY <> positem.PosY then op.AddProperty('posY', ptInteger, oldY, positem.PosY);
+            if oldW <> positem.Width then op.AddProperty('width', ptInteger, oldW, positem.Width);
+            if oldH <> positem.Height then op.AddProperty('height', ptInteger, oldH, positem.Height);
+            cue.AddOperation(op);
+          end;
+        end;
       end;
     end;
 

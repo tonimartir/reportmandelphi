@@ -1174,6 +1174,13 @@ end;
 
 procedure TFRpMainFLCL.StructureUndoRedo(Sender: TObject);
 begin
+  if Assigned(FDesignerFrame) then
+  begin
+    FDesignerFrame.UpdateInterface(True);
+    FDesignerFrame.UpdateSelection(False);
+  end;
+  if Assigned(FStructure) and Assigned(FReport) then
+    FStructure.Report := FReport;
   UpdateStatus;
 end;
 

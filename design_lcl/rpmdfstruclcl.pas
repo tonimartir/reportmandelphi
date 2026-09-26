@@ -58,12 +58,12 @@ type
     function FindSectionIndex(ASubReport: TRpSubReport; ASection: TRpSection): Integer;
     function FindGroupSection(ASubReport: TRpSubReport; const AGroupName: string;
       ASectionType: TRpSectionType): TRpSection;
-    function MoveSection(ASection: TRpSection; MoveUp, SecondStep: Boolean;
-      AGroupId: Integer): Boolean;
   public
     designframe: TControl;
     browser: TFRpBrowserLCL;
     cueview: TFRpCueViewLCL;
+    function MoveSection(ASection: TRpSection; MoveUp, SecondStep: Boolean;
+      AGroupId: Integer): Boolean;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure CreateInterface;
@@ -455,6 +455,7 @@ var
   oldIndex, newIndex: Integer;
   swapSection, otherSection, asec: TRpSection;
   canSwap: Boolean;
+  op: TChangeObjectOperation;
 begin
   Result := False;
   if not Assigned(ASection) then Exit;
@@ -511,6 +512,24 @@ begin
   asec := subrep.Sections.Items[newIndex].Section;
   subrep.Sections.Items[newIndex].Section := subrep.Sections.Items[oldIndex].Section;
   subrep.Sections.Items[oldIndex].Section := asec;
+
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    if AGroupId <= 0 then
+      AGroupId := TUndoCue(FReport.UndoCue).GetGroupId;
+    if MoveUp then
+      op := TChangeObjectOperation.Create(otSwapUp, AGroupId)
+    else
+      op := TChangeObjectOperation.Create(otSwapDown, AGroupId);
+    op.componentName := ASection.Name;
+    op.componentClass := 'TRPSECTION';
+    op.parentName := subrep.Name;
+    op.oldItemIndex := oldIndex;
+    TUndoCue(FReport.UndoCue).AddOperation(op);
+    if Assigned(cueview) then
+      cueview.RefreshList;
+  end;
+
   Result := True;
 end;
 
@@ -520,6 +539,7 @@ var
   aobject: TObject;
   changesubrep, i: Integer;
   swapped: Boolean;
+  op: TChangeObjectOperation;
 begin
   swapped := False;
   aobject := FindSelectedObject;
@@ -536,6 +556,16 @@ begin
         FReport.SubReports.Items[changesubrep].SubReport := subrep;
         FReport.SubReports.Items[i].SubReport := arep;
         swapped := True;
+        if Assigned(FReport) and Assigned(FReport.UndoCue) then
+        begin
+          op := TChangeObjectOperation.Create(otSwapUp, TUndoCue(FReport.UndoCue).GetGroupId);
+          op.componentName := subrep.Name;
+          op.componentClass := 'TRPSUBREPORT';
+          op.oldItemIndex := i;
+          TUndoCue(FReport.UndoCue).AddOperation(op);
+          if Assigned(cueview) then
+            cueview.RefreshList;
+        end;
         break;
       end;
       changesubrep := i;
@@ -567,6 +597,7 @@ var
   aobject: TObject;
   changesubrep, i: Integer;
   swapped: Boolean;
+  op: TChangeObjectOperation;
 begin
   swapped := False;
   aobject := FindSelectedObject;
@@ -584,6 +615,16 @@ begin
         FReport.SubReports.Items[i].SubReport := subrep;
         FReport.SubReports.Items[changesubrep].SubReport := arep;
         swapped := True;
+        if Assigned(FReport) and Assigned(FReport.UndoCue) then
+        begin
+          op := TChangeObjectOperation.Create(otSwapDown, TUndoCue(FReport.UndoCue).GetGroupId);
+          op.componentName := subrep.Name;
+          op.componentClass := 'TRPSUBREPORT';
+          op.oldItemIndex := changesubrep;
+          TUndoCue(FReport.UndoCue).AddOperation(op);
+          if Assigned(cueview) then
+            cueview.RefreshList;
+        end;
         break;
       end;
     end;
@@ -617,6 +658,34 @@ procedure TFRpStructureLCL.DeleteSelectedNode;
 var
   secorsub: TObject;
   selsubreport: TRpSubReport;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  gid, i, j, sectionIndex, removedSections, subrepIndex: Integer;
+  sec: TRpSection;
+  asec, refSection: TRpSection;
+  refSubrep: TRpSubReport;
+  secToDelete: TList;
+
+  procedure DeleteSectionComponentsWithUndo(ASection: TRpSection);
+  var
+    cp: TRpCommonPosComponent;
+    cop: TChangeObjectOperation;
+  begin
+    while ASection.ReportComponents.Count > 0 do
+    begin
+      cp := TRpCommonPosComponent(ASection.ReportComponents.Items[0].Component);
+      cop := TChangeObjectOperation.Create(otRemove, gid);
+      cop.componentName := cp.Name;
+      cop.componentClass := UpperCase(cp.ClassName);
+      cop.parentName := ASection.Name;
+      cop.oldParentName := ASection.Name;
+      cop.oldItemIndex := 0;
+      cue.AddAllComponentProperties(cp, cop);
+      cue.AddOperation(cop);
+      ASection.DeleteComponent(cp);
+    end;
+  end;
+
 begin
   if not Assigned(FReport) then Exit;
   secorsub := FindSelectedObject;
@@ -625,6 +694,14 @@ begin
   if RpMessageBox(SRpSureDeleteSection, SRpWarning, [smbOk, smbCancel], smsWarning, smbCancel) <> smbOk then
     Exit;
 
+  cue := nil;
+  gid := 0;
+  if Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    gid := cue.GetGroupId;
+  end;
+
   if (secorsub is TRpSubReport) then
   begin
     if FReport.SubReports.Count <= 1 then
@@ -632,12 +709,132 @@ begin
       RpShowMessage('Cannot delete the only subreport');
       Exit;
     end;
+
+    if Assigned(cue) then
+    begin
+      subrepIndex := -1;
+      for i := 0 to FReport.SubReports.Count - 1 do
+      begin
+        if FReport.SubReports.Items[i].SubReport = TRpSubReport(secorsub) then
+        begin
+          subrepIndex := i;
+          Break;
+        end;
+      end;
+
+      for i := 0 to FReport.SubReports.Count - 1 do
+      begin
+        refSubrep := FReport.SubReports.Items[i].SubReport;
+        for j := 0 to refSubrep.Sections.Count - 1 do
+        begin
+          refSection := refSubrep.Sections.Items[j].Section;
+          if Assigned(refSection) and (refSection.ChildSubReport = TRpSubReport(secorsub)) then
+          begin
+            op := TChangeObjectOperation.Create(otModify, gid);
+            op.componentName := refSection.Name;
+            op.componentClass := 'TRPSECTION';
+            op.AddProperty('childSubreportName', ptString, TRpSubReport(secorsub).Name, '');
+            cue.AddOperation(op);
+            refSection.ChildSubReport := nil;
+          end;
+        end;
+      end;
+
+      for i := 0 to TRpSubReport(secorsub).Sections.Count - 1 do
+      begin
+        asec := TRpSubReport(secorsub).Sections.Items[i].Section;
+        if not Assigned(asec) then Continue;
+        DeleteSectionComponentsWithUndo(asec);
+        op := TChangeObjectOperation.Create(otRemove, gid);
+        op.componentName := asec.Name;
+        op.componentClass := 'TRPSECTION';
+        op.parentName := TRpSubReport(secorsub).Name;
+        op.oldItemIndex := 0;
+        cue.AddSectionProperties(asec, op);
+        cue.AddOperation(op);
+      end;
+
+      op := TChangeObjectOperation.Create(otRemove, gid);
+      op.componentName := TRpSubReport(secorsub).Name;
+      op.componentClass := 'TRPSUBREPORT';
+      op.oldItemIndex := subrepIndex;
+      cue.AddSubreportProperties(TRpSubReport(secorsub), op);
+      cue.AddOperation(op);
+      if Assigned(cueview) then
+        cueview.RefreshList;
+    end;
+
     FReport.DeleteSubreport(TRpSubReport(secorsub));
   end
   else if (secorsub is TRpSection) then
   begin
+    sec := TRpSection(secorsub);
     selsubreport := FindSelectedSubreport;
-    selsubreport.FreeSection(TRpSection(secorsub));
+    if Assigned(selsubreport) then
+    begin
+      if Assigned(cue) then
+      begin
+        if sec.SectionType in [rpsecgheader, rpsecgfooter] then
+        begin
+          secToDelete := TList.Create;
+          try
+            for i := 0 to selsubreport.Sections.Count - 1 do
+            begin
+              asec := selsubreport.Sections.Items[i].Section;
+              if Assigned(asec) and SameText(asec.GroupName, sec.GroupName) and
+                 (asec.SectionType in [rpsecgheader, rpsecgfooter]) then
+                secToDelete.Add(asec);
+            end;
+            removedSections := 0;
+            for i := 0 to secToDelete.Count - 1 do
+            begin
+              sectionIndex := -1;
+              for j := 0 to selsubreport.Sections.Count - 1 do
+              begin
+                if selsubreport.Sections.Items[j].Section = secToDelete[i] then
+                begin
+                  sectionIndex := j - removedSections;
+                  Break;
+                end;
+              end;
+              if sectionIndex < 0 then Continue;
+              DeleteSectionComponentsWithUndo(TRpSection(secToDelete[i]));
+              op := TChangeObjectOperation.Create(otRemove, gid);
+              op.componentName := TRpSection(secToDelete[i]).Name;
+              op.componentClass := 'TRPSECTION';
+              op.parentName := selsubreport.Name;
+              op.oldItemIndex := sectionIndex;
+              cue.AddSectionProperties(TRpSection(secToDelete[i]), op);
+              cue.AddOperation(op);
+              Inc(removedSections);
+            end;
+          finally
+            secToDelete.Free;
+          end;
+        end
+        else
+        begin
+          for i := 0 to selsubreport.Sections.Count - 1 do
+          begin
+            if selsubreport.Sections.Items[i].Section = sec then
+            begin
+              DeleteSectionComponentsWithUndo(sec);
+              op := TChangeObjectOperation.Create(otRemove, gid);
+              op.componentName := sec.Name;
+              op.componentClass := 'TRPSECTION';
+              op.parentName := selsubreport.Name;
+              op.oldItemIndex := i;
+              cue.AddSectionProperties(sec, op);
+              cue.AddOperation(op);
+              Break;
+            end;
+          end;
+        end;
+        if Assigned(cueview) then
+          cueview.RefreshList;
+      end;
+      selsubreport.FreeSection(sec);
+    end;
   end;
 
   CreateInterface;
@@ -668,8 +865,11 @@ end;
 procedure TFRpStructureLCL.MNewSectionClick(Sender: TObject);
 var
   subrep: TRpSubReport;
-  asection: TRpSection;
+  asection, footersec: TRpSection;
   newgroupname: string;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  gid, i, headerIndex, footerIndex: Integer;
 begin
   if not Assigned(FReport) then Exit;
   subrep := FindSelectedSubreport;
@@ -679,6 +879,17 @@ begin
   if Sender = MSubReport then
   begin
     subrep := FReport.AddSubReport;
+    if Assigned(FReport.UndoCue) then
+    begin
+      cue := TUndoCue(FReport.UndoCue);
+      op := TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+      op.componentName := subrep.Name;
+      op.componentClass := 'TRPSUBREPORT';
+      cue.AddSubreportProperties(subrep, op);
+      cue.AddOperation(op);
+      if Assigned(cueview) then
+        cueview.RefreshList;
+    end;
     CreateInterface;
     SelectDataItem(subrep);
     if Assigned(designframe) and (designframe is TFRpDesignFrameLCL) then
@@ -698,7 +909,71 @@ begin
   begin
     newgroupname := UpperCase(Trim(RpInputBox(SRpNewGroup, SRpSGroupName, '')));
     if Length(newgroupname) > 0 then
+    begin
       asection := subrep.AddGroup(newgroupname);
+      headerIndex := -1;
+      footerIndex := -1;
+      footersec := nil;
+      for i := 0 to subrep.Sections.Count - 1 do
+      begin
+        if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
+           SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname) then
+        begin
+          headerIndex := i;
+          asection := subrep.Sections.Items[i].Section;
+        end;
+        if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
+           SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname) then
+        begin
+          footerIndex := i;
+          footersec := subrep.Sections.Items[i].Section;
+        end;
+      end;
+      if Assigned(FReport.UndoCue) then
+      begin
+        cue := TUndoCue(FReport.UndoCue);
+        gid := cue.GetGroupId;
+        if (headerIndex >= 0) and Assigned(asection) then
+        begin
+          op := TChangeObjectOperation.Create(otAdd, gid);
+          op.componentName := asection.Name;
+          op.componentClass := 'TRPSECTION';
+          op.parentName := subrep.Name;
+          op.oldItemIndex := headerIndex;
+          cue.AddSectionProperties(asection, op);
+          cue.AddOperation(op);
+        end;
+        if (footerIndex >= 0) and Assigned(footersec) then
+        begin
+          op := TChangeObjectOperation.Create(otAdd, gid);
+          op.componentName := footersec.Name;
+          op.componentClass := 'TRPSECTION';
+          op.parentName := subrep.Name;
+          op.oldItemIndex := footerIndex;
+          cue.AddSectionProperties(footersec, op);
+          cue.AddOperation(op);
+        end;
+        if Assigned(cueview) then
+          cueview.RefreshList;
+      end;
+    end;
+  end;
+
+  if Assigned(asection) and (Sender <> MGHeader) then
+  begin
+    if Assigned(FReport.UndoCue) then
+    begin
+      cue := TUndoCue(FReport.UndoCue);
+      op := TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+      op.componentName := asection.Name;
+      op.componentClass := 'TRPSECTION';
+      op.parentName := subrep.Name;
+      op.oldItemIndex := subrep.Sections.IndexOf(asection);
+      cue.AddSectionProperties(asection, op);
+      cue.AddOperation(op);
+      if Assigned(cueview) then
+        cueview.RefreshList;
+    end;
   end;
 
   if Assigned(asection) then

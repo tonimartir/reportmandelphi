@@ -97,6 +97,7 @@ type
     function CreateChild(compo: TRpCommonPosComponent): TRpSizePosInterface;
     function CreateNewComponent(ATool: TRpDesignTool; ALeft, ATop, AWidth, AHeight: Integer): TRpSizePosInterface;
     procedure CreateChilds;
+    procedure SyncChilds;
     procedure DeleteChild(achild: TRpSizePosInterface);
     property OnPosChange: TNotifyEvent read FOnPosChange write SetOnPosChange;
     property OnClearSelection: TNotifyEvent read FOnClearSelection write FOnClearSelection;
@@ -106,6 +107,9 @@ type
   end;
 
 implementation
+
+uses
+  rpmdundocuelcl, rpmdfstruclcl;
 
 { TRpSectionIntf }
 
@@ -325,6 +329,59 @@ begin
   end;
 end;
 
+procedure TRpSectionInterface.SyncChilds;
+var
+  sec: TRpSection;
+  i, j: Integer;
+  compo: TRpCommonPosComponent;
+  found: Boolean;
+  child: TRpSizePosInterface;
+begin
+  sec := TRpSection(printitem);
+  if not Assigned(sec) then Exit;
+
+  // 1. Remove visual children whose model component is no longer in sec.ReportComponents
+  for i := childlist.Count - 1 downto 0 do
+  begin
+    child := TRpSizePosInterface(childlist[i]);
+    found := False;
+    for j := 0 to sec.ReportComponents.Count - 1 do
+    begin
+      if sec.ReportComponents.Items[j].Component = child.printitem then
+      begin
+        found := True;
+        Break;
+      end;
+    end;
+    if not found then
+    begin
+      child.Parent := nil;
+      child.Free;
+      childlist.Delete(i);
+    end;
+  end;
+
+  // 2. Add visual children that are in sec.ReportComponents but not yet in childlist
+  for i := 0 to sec.ReportComponents.Count - 1 do
+  begin
+    if sec.ReportComponents.Items[i].Component is TRpCommonPosComponent then
+    begin
+      compo := TRpCommonPosComponent(sec.ReportComponents.Items[i].Component);
+      found := False;
+      for j := 0 to childlist.Count - 1 do
+      begin
+        if TRpSizePosInterface(childlist[j]).printitem = compo then
+        begin
+          found := True;
+          Break;
+        end;
+      end;
+      if not found then
+        CreateChild(compo);
+    end;
+  end;
+end;
+
 procedure TRpSectionInterface.DeleteChild(achild: TRpSizePosInterface);
 var
   idx: Integer;
@@ -357,6 +414,8 @@ var
   aitem: TRpCommonListItem;
   sec: TRpSection;
   posx, posy, w, h: Integer;
+  cue: TUndoCue;
+  undoop: TChangeObjectOperation;
 begin
   Result := nil;
   if not Assigned(printitem) or not (printitem is TRpSection) then
@@ -469,6 +528,21 @@ begin
   begin
     if Assigned(FOnSelectComponent) then
       FOnSelectComponent(asizeposint, False);
+  end;
+
+  // Record Undo otAdd
+  if Assigned(sec.Report) and (sec.Report is TRpReport) and Assigned(TRpReport(sec.Report).UndoCue) then
+  begin
+    cue := TUndoCue(TRpReport(sec.Report).UndoCue);
+    undoop := TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+    undoop.componentName := compo.Name;
+    undoop.componentClass := UpperCase(compo.ClassName);
+    undoop.parentName := sec.Name;
+    cue.AddAllComponentProperties(compo, undoop);
+    cue.AddOperation(undoop);
+    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+        TFRpStructureLCL(freportstructure).cueview.RefreshList;
   end;
 
   Result := asizeposint;

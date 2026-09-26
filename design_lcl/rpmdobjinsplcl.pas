@@ -57,7 +57,6 @@ type
     FClassAncestors: TStringList;
     procedure AddCompItemPos(aitem: TRpSizePosInterface; onlyone: Boolean);
     procedure SetCompItem(Value: TRpSizeInterface);
-    function FindPanelForClass(acompo: TRpSizeInterface): TRpPanelObjLCL;
     function CreatePanel(acompo: TRpSizeInterface): TRpPanelObjLCL;
     function GetComboBox: TComboBox;
     function GetCompItem: TRpSizeInterface;
@@ -67,6 +66,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function FindPanelForClass(acompo: TRpSizeInterface): TRpPanelObjLCL;
     procedure ClearMultiSelect;
     procedure ClearCompItemRefs;
     procedure InvalidatePanels;
@@ -77,6 +77,7 @@ type
     procedure MoveSelected(direction: Integer; fast: Boolean);
     procedure UpdatePosValues;
     property CompItem: TRpSizeInterface read GetCompItem;
+    property CurrentPanel: TRpPanelObjLCL read GetCurrentPanel;
     property DesignFrame: TObject read FDesignFrame write FDesignFrame;
     property Combo: TComboBox read GetComboBox;
     property SelectedItems: TStringList read FSelectedItems;
@@ -124,15 +125,16 @@ type
     procedure ComboPrintOnlyChange(Sender: TObject);
     procedure UpdatePosValues;
     procedure CreateControlsSubReport;
-    procedure SelectProperty(propname: string);
-    procedure SetPropertyFull(propname: string; value: WideString); overload;
-    procedure SetPropertyFull(propname: string; stream: TMemoryStream); overload;
     procedure DupValue(Sender: TControl);
+    procedure RefreshCueView;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure CreateControls(acompo: TRpSizeInterface);
     procedure AssignPropertyValues;
+    procedure SelectProperty(propname: string);
+    procedure SetPropertyFull(propname: string; value: WideString); overload;
+    procedure SetPropertyFull(propname: string; stream: TMemoryStream); overload;
     property CompItem: TRpSizeInterface read FCompItem write FCompItem;
     property SubReport: TRpSubreport read subrep write subrep;
     property Combo: TComboBox read FCombo;
@@ -146,7 +148,7 @@ implementation
 {$R *.lfm}
 
 uses
-  rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl, rpmdfextseclcl;
+  rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl, rpmdfextseclcl, rpmdundocuelcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
 var
@@ -893,6 +895,9 @@ var
   index: Integer;
   aname, avalue: string;
   desframe: TFRpDesignFrameLCL;
+  oldValue: WideString;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if FUpdatingValues then Exit;
   DupValue(TControl(Sender));
@@ -911,12 +916,32 @@ begin
   begin
     if Assigned(FCompItem) then
     begin
+      oldValue := FCompItem.GetProperty(aname);
       FCompItem.SetProperty(aname, avalue);
       if (aname = SRpSWidth) or (aname = SRpSHeight) or
          (aname = SRpSTop) or (aname = SRpSLeft) then
       begin
         FCompItem.UpdatePos;
       end;
+
+      if (oldValue <> avalue) and Assigned(FCompItem.PrintItem) and
+         Assigned(FCompItem.PrintItem.Report) and (FCompItem.PrintItem.Report is TRpReport) and
+         Assigned(TRpReport(FCompItem.PrintItem.Report).UndoCue) then
+      begin
+        cue := TUndoCue(TRpReport(FCompItem.PrintItem.Report).UndoCue);
+        op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+        op.componentName := FCompItem.PrintItem.Name;
+        op.componentClass := UpperCase(FCompItem.PrintItem.ClassName);
+        if (FCompItem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(FCompItem).SectionInt) and
+           Assigned(TRpSizePosInterface(FCompItem).SectionInt.PrintItem) then
+          op.parentName := TRpSizePosInterface(FCompItem).SectionInt.PrintItem.Name
+        else if (FCompItem is TRpSectionInterface) and Assigned(TRpSection(FCompItem.PrintItem).SubReport) then
+          op.parentName := TRpSection(FCompItem.PrintItem).SubReport.Name;
+        op.AddProperty(aname, ptString, oldValue, avalue);
+        cue.AddOperation(op);
+        RefreshCueView;
+      end;
+
       if FCompItem is TRpSectionInterface then
       begin
         if (aname = SRpSWidth) or (aname = SRpSHeight) then
@@ -981,6 +1006,11 @@ var
   insp: TFRpObjInspLCL;
   aitem: TRpSizeInterface;
   index: Integer;
+  oldFontName, oldFontSize, oldFontColor, oldFontStyle: WideString;
+  newFontName, newFontSize, newFontColor, newFontStyle: WideString;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  gid: Integer;
 begin
   insp := TFRpObjInspLCL(Owner);
   if FSelectedItems.Count < 2 then
@@ -990,45 +1020,80 @@ begin
 
   if not Assigned(aitem) then Exit;
 
-  insp.FontDialog1.Font.Name := aitem.GetProperty(SRpSWFontName);
-  insp.FontDialog1.Font.Size := StrToIntDef(aitem.GetProperty(SRpSFontSize), 10);
-  insp.FontDialog1.Font.Color := StrToIntDef(aitem.GetProperty(SRpSFontColor), clBlack);
-  insp.FontDialog1.Font.Style := CLXIntegerToFontStyle(StrToIntDef(aitem.GetProperty(SRpSFontStyle), 0));
+  oldFontName := aitem.GetProperty(SRpSWFontName);
+  oldFontSize := aitem.GetProperty(SRpSFontSize);
+  oldFontColor := aitem.GetProperty(SRpSFontColor);
+  oldFontStyle := aitem.GetProperty(SRpSFontStyle);
+
+  insp.FontDialog1.Font.Name := oldFontName;
+  insp.FontDialog1.Font.Size := StrToIntDef(oldFontSize, 10);
+  insp.FontDialog1.Font.Color := StrToIntDef(oldFontColor, clBlack);
+  insp.FontDialog1.Font.Style := CLXIntegerToFontStyle(StrToIntDef(oldFontStyle, 0));
 
   if insp.FontDialog1.Execute then
   begin
-    // Font Name
+    newFontName := insp.FontDialog1.Font.Name;
+    newFontSize := IntToStr(insp.FontDialog1.Font.Size);
+    newFontColor := IntToStr(insp.FontDialog1.Font.Color);
+    newFontStyle := IntToStr(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
+
+    // Update UI controls
     index := LNames.IndexOf(SRpSWFontName);
     if index >= 0 then
     begin
-      TEdit(LControls.Objects[index]).Text := insp.FontDialog1.Font.Name;
-      TEdit(LControls2.Objects[index]).Text := insp.FontDialog1.Font.Name;
-      SetPropertyFull(SRpSWFontName, insp.FontDialog1.Font.Name);
+      TEdit(LControls.Objects[index]).Text := newFontName;
+      TEdit(LControls2.Objects[index]).Text := newFontName;
     end;
-    // Font Size
     index := LNames.IndexOf(SRpSFontSize);
     if index >= 0 then
     begin
-      TEdit(LControls.Objects[index]).Text := IntToStr(insp.FontDialog1.Font.Size);
-      TEdit(LControls2.Objects[index]).Text := IntToStr(insp.FontDialog1.Font.Size);
-      SetPropertyFull(SRpSFontSize, IntToStr(insp.FontDialog1.Font.Size));
+      TEdit(LControls.Objects[index]).Text := newFontSize;
+      TEdit(LControls2.Objects[index]).Text := newFontSize;
     end;
-    // Font Color
     index := LNames.IndexOf(SRpSFontColor);
     if index >= 0 then
     begin
       TShape(LControls.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
       TShape(LControls2.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
-      SetPropertyFull(SRpSFontColor, IntToStr(insp.FontDialog1.Font.Color));
     end;
-    // Font Style
     index := LNames.IndexOf(SRpSFontStyle);
     if index >= 0 then
     begin
       TEdit(LControls.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
       TEdit(LControls2.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
-      SetPropertyFull(SRpSFontStyle, IntToStr(FontStyleToCLXInteger(insp.FontDialog1.Font.Style)));
     end;
+
+    // Apply values directly to items
+    aitem.SetProperty(SRpSWFontName, newFontName);
+    aitem.SetProperty(SRpSFontSize, newFontSize);
+    aitem.SetProperty(SRpSFontColor, newFontColor);
+    aitem.SetProperty(SRpSFontStyle, newFontStyle);
+
+    // Record single undo operation with all modified font properties
+    if Assigned(aitem.PrintItem) and Assigned(aitem.PrintItem.Report) and
+       (aitem.PrintItem.Report is TRpReport) and Assigned(TRpReport(aitem.PrintItem.Report).UndoCue) then
+    begin
+      cue := TUndoCue(TRpReport(aitem.PrintItem.Report).UndoCue);
+      gid := cue.GetGroupId;
+      op := TChangeObjectOperation.Create(otModify, gid);
+      op.componentName := aitem.PrintItem.Name;
+      op.componentClass := UpperCase(aitem.PrintItem.ClassName);
+      if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
+         Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
+        op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name;
+      if oldFontName <> newFontName then op.AddProperty(SRpSWFontName, ptString, oldFontName, newFontName);
+      if oldFontSize <> newFontSize then op.AddProperty(SRpSFontSize, ptString, oldFontSize, newFontSize);
+      if oldFontColor <> newFontColor then op.AddProperty(SRpSFontColor, ptString, oldFontColor, newFontColor);
+      if oldFontStyle <> newFontStyle then op.AddProperty(SRpSFontStyle, ptString, oldFontStyle, newFontStyle);
+      if op.properties.Count > 0 then
+      begin
+        cue.AddOperation(op);
+        RefreshCueView;
+      end
+      else
+        op.Free;
+    end;
+
     if Assigned(FCompItem) then
       FCompItem.Invalidate;
   end;
@@ -1148,10 +1213,27 @@ end;
 procedure TRpPanelObjLCL.ComboAliasChange(Sender: TObject);
 var
   desframe: TFRpDesignFrameLCL;
+  oldVal: string;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if Assigned(subrep) and Assigned(comboalias) then
   begin
+    oldVal := subrep.Alias;
     subrep.Alias := comboalias.Text;
+
+    if (oldVal <> subrep.Alias) and Assigned(subrep.Owner) and
+       (subrep.Owner is TRpReport) and Assigned(TRpReport(subrep.Owner).UndoCue) then
+    begin
+      cue := TUndoCue(TRpReport(subrep.Owner).UndoCue);
+      op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+      op.componentName := subrep.Name;
+      op.componentClass := 'TRPSUBREPORT';
+      op.AddProperty('alias', ptString, oldVal, subrep.Alias);
+      cue.AddOperation(op);
+      RefreshCueView;
+    end;
+
     if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
        (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
     begin
@@ -1164,13 +1246,32 @@ begin
 end;
 
 procedure TRpPanelObjLCL.ComboPrintOnlyChange(Sender: TObject);
+var
+  oldVal, newVal: Boolean;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if Assigned(subrep) and Assigned(comboprintonly) then
   begin
+    oldVal := subrep.PrintOnlyIfDataAvailable;
     if comboprintonly.ItemIndex = 0 then
-      subrep.PrintOnlyIfDataAvailable := False
+      newVal := False
     else
-      subrep.PrintOnlyIfDataAvailable := True;
+      newVal := True;
+
+    subrep.PrintOnlyIfDataAvailable := newVal;
+
+    if (oldVal <> newVal) and Assigned(subrep.Owner) and
+       (subrep.Owner is TRpReport) and Assigned(TRpReport(subrep.Owner).UndoCue) then
+    begin
+      cue := TUndoCue(TRpReport(subrep.Owner).UndoCue);
+      op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+      op.componentName := subrep.Name;
+      op.componentClass := 'TRPSUBREPORT';
+      op.AddProperty('printOnlyIfDataAvailable', ptBoolean, oldVal, newVal);
+      cue.AddOperation(op);
+      RefreshCueView;
+    end;
   end;
 end;
 
@@ -1280,21 +1381,81 @@ begin
   end;
 end;
 
+procedure TRpPanelObjLCL.RefreshCueView;
+var
+  desframe: TFRpDesignFrameLCL;
+begin
+  if Assigned(Owner) and (Owner is TFRpObjInspLCL) and
+     Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+     (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+  begin
+    desframe := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame);
+    if Assigned(desframe.freportstructure) and (desframe.freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(desframe.freportstructure).cueview) then
+        TFRpStructureLCL(desframe.freportstructure).cueview.RefreshList;
+  end;
+end;
+
 procedure TRpPanelObjLCL.SetPropertyFull(propname: string; value: WideString);
 var
-  i: Integer;
+  i, gid: Integer;
   aitem: TRpSizeInterface;
+  oldVal: WideString;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  reportObj: TRpReport;
+  itemsToProcess: TList;
 begin
-  for i := 0 to FSelectedItems.Count - 1 do
-  begin
-    aitem := TRpSizeInterface(FSelectedItems.Objects[i]);
-    aitem.SetProperty(propname, value);
-    if (propname = SRpSWidth) or (propname = SRpSHeight) or
-       (propname = SRpSTop) or (propname = SRpSLeft) then
+  itemsToProcess := TList.Create;
+  try
+    if FSelectedItems.Count > 0 then
     begin
-      aitem.UpdatePos;
+      for i := 0 to FSelectedItems.Count - 1 do
+        itemsToProcess.Add(FSelectedItems.Objects[i]);
+    end
+    else if Assigned(FCompItem) then
+      itemsToProcess.Add(FCompItem);
+
+    cue := nil;
+    gid := 0;
+
+    for i := 0 to itemsToProcess.Count - 1 do
+    begin
+      aitem := TRpSizeInterface(itemsToProcess[i]);
+      oldVal := aitem.GetProperty(propname);
+      aitem.SetProperty(propname, value);
+      if (propname = SRpSWidth) or (propname = SRpSHeight) or
+         (propname = SRpSTop) or (propname = SRpSLeft) then
+      begin
+        aitem.UpdatePos;
+      end;
+      aitem.Invalidate;
+
+      if (oldVal <> value) and Assigned(aitem.PrintItem) and Assigned(aitem.PrintItem.Report) and
+         (aitem.PrintItem.Report is TRpReport) and Assigned(TRpReport(aitem.PrintItem.Report).UndoCue) then
+      begin
+        if not Assigned(cue) then
+        begin
+          reportObj := TRpReport(aitem.PrintItem.Report);
+          cue := TUndoCue(reportObj.UndoCue);
+          gid := cue.GetGroupId;
+        end;
+        op := TChangeObjectOperation.Create(otModify, gid);
+        op.componentName := aitem.PrintItem.Name;
+        op.componentClass := UpperCase(aitem.PrintItem.ClassName);
+        if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
+           Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
+          op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name
+        else if (aitem is TRpSectionInterface) and Assigned(TRpSection(aitem.PrintItem).SubReport) then
+          op.parentName := TRpSection(aitem.PrintItem).SubReport.Name;
+        op.AddProperty(propname, ptString, oldVal, value);
+        cue.AddOperation(op);
+      end;
     end;
-    aitem.Invalidate;
+    if Assigned(cue) then
+      RefreshCueView;
+  finally
+    itemsToProcess.Free;
   end;
 end;
 

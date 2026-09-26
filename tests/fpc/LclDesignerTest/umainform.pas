@@ -600,6 +600,9 @@ var
   testSecItemCount: Integer;
   testTargetSec: TRpSection;
   testMainFLcl: TFRpMainFLCL;
+  testCreatedComp: TRpSizePosInterface;
+  testLastOp: TChangeObjectOperation;
+  restoredComp: TRpCommonPosComponent;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1850,6 +1853,182 @@ begin
      end;
 
      LogMsg('Subphase 5.2 verification completed successfully');
+
+     // -----------------------------------------------------------------
+     // Subphase 5.3: Action Instrumentation (Move, Resize, Add, Remove, Swap, Insp)
+     // -----------------------------------------------------------------
+     LogMsg('Testing Subphase 5.3: Action Instrumentation...');
+
+     testCue := TUndoCue(FReport.UndoCue);
+     testCue.Clear;
+     FStructure.cueview.RefreshList;
+
+     // 1. Test Component Creation on Canvas records otAdd
+     secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+     testCreatedComp := secInt.CreateNewComponent(dtLabel, 50, 50, 1500, 350);
+     if not Assigned(testCreatedComp) then
+     begin
+       LogMsg('[TEST_FAILED] CreateNewComponent returned nil');
+       Halt(1);
+     end;
+     if not testCue.CanUndo or (testCue.UndoOperations.Count <> 1) then
+     begin
+       LogMsg('[TEST_FAILED] CreateNewComponent did not record undo operation in cue');
+       Halt(1);
+     end;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otAdd then
+     begin
+       LogMsg('[TEST_FAILED] CreateNewComponent expected otAdd operation');
+       Halt(1);
+     end;
+     if testLastOp.componentName <> testCreatedComp.printitem.Name then
+     begin
+       LogMsg('[TEST_FAILED] CreateNewComponent operation componentName mismatch');
+       Halt(1);
+     end;
+     if FStructure.cueview.ListViewCue.Items.Count <> 1 then
+     begin
+       LogMsg('[TEST_FAILED] cueview ListViewCue not updated after CreateNewComponent');
+       Halt(1);
+     end;
+     LogMsg('CreateNewComponent otAdd undo recording verified: ' + testLastOp.componentName);
+
+     // 2. Test Component Move records otModify
+     origCompPosX := TRpCommonPosComponent(testCreatedComp.printitem).PosX;
+     FDesignerFrame.SelectComponent(testCreatedComp, False);
+     FDesignerFrame.MoveSelectedComponents(testCreatedComp, 250, 150);
+     if testCue.UndoOperations.Count <> 2 then
+     begin
+       LogMsg('[TEST_FAILED] MoveSelectedComponents did not record undo operation');
+       Halt(1);
+     end;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otModify then
+     begin
+       LogMsg('[TEST_FAILED] MoveSelectedComponents expected otModify operation');
+       Halt(1);
+     end;
+     if TRpCommonPosComponent(testCreatedComp.printitem).PosX = origCompPosX then
+     begin
+       LogMsg('[TEST_FAILED] MoveSelectedComponents did not change component PosX');
+       Halt(1);
+     end;
+     LogMsg('MoveSelectedComponents otModify undo recording verified');
+
+     // 3. Test Object Inspector SetPropertyFull records otModify
+     FObjInsp.AddCompItem(testCreatedComp, True);
+     TRpPanelObjLCL(FObjInsp.FindPanelForClass(testCreatedComp)).SetPropertyFull('Text', 'ModifiedByInspector');
+     if testCue.UndoOperations.Count <> 3 then
+     begin
+       LogMsg('[TEST_FAILED] SetPropertyFull did not record undo operation');
+       Halt(1);
+     end;
+     testLastOp := testCue.UndoOperations.Last;
+     if (testLastOp.operation <> otModify) or (testLastOp.properties.Count = 0) or
+        (testLastOp.properties[0].propertyName <> 'Text') then
+     begin
+       LogMsg('[TEST_FAILED] SetPropertyFull undo operation mismatch');
+       Halt(1);
+     end;
+     LogMsg('Object Inspector SetPropertyFull otModify undo recording verified');
+
+     // 4. Test Component Deletion records otRemove
+     wStr := testCreatedComp.printitem.Name;
+     FDesignerFrame.SelectComponent(testCreatedComp, False);
+     FDesignerFrame.DeleteSelection;
+     if testCue.UndoOperations.Count <> 4 then
+     begin
+       LogMsg('[TEST_FAILED] DeleteSelection did not record undo operation');
+       Halt(1);
+     end;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otRemove then
+     begin
+       LogMsg('[TEST_FAILED] DeleteSelection expected otRemove operation');
+       Halt(1);
+     end;
+     LogMsg('DeleteSelection otRemove undo recording verified');
+
+     // 5. Test Undo restores deleted component
+     testCue.Undo;
+     restoredComp := nil;
+     for i := 0 to TRpSection(secInt.printitem).ReportComponents.Count - 1 do
+     begin
+       if TRpSection(secInt.printitem).ReportComponents[i].Component.Name = wStr then
+       begin
+         restoredComp := TRpCommonPosComponent(TRpSection(secInt.printitem).ReportComponents[i].Component);
+         break;
+       end;
+     end;
+     if not Assigned(restoredComp) then
+     begin
+       LogMsg('[TEST_FAILED] Undo did not restore deleted component to section');
+       Halt(1);
+     end;
+     LogMsg('Undo restore component verified');
+
+     // Recreate visual wrappers so FDesignerFrame has visual interfaces for the restored component
+     FDesignerFrame.UpdateInterface(True);
+     secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+     testCreatedComp := nil;
+     for i := 0 to secInt.childlist.Count - 1 do
+     begin
+       if TRpSizePosInterface(secInt.childlist[i]).printitem.Name = wStr then
+       begin
+         testCreatedComp := TRpSizePosInterface(secInt.childlist[i]);
+         break;
+       end;
+     end;
+     if not Assigned(testCreatedComp) then
+     begin
+       LogMsg('[TEST_FAILED] Visual wrapper not found for restored component');
+       Halt(1);
+     end;
+
+     // 6. Test BringSelectionToFront / SendSelectionToBack records swap
+     FDesignerFrame.SelectComponent(testCreatedComp, False);
+     FDesignerFrame.BringSelectionToFront;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otSwapUp then
+     begin
+       LogMsg('[TEST_FAILED] BringSelectionToFront expected otSwapUp');
+       Halt(1);
+     end;
+     FDesignerFrame.SendSelectionToBack;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otSwapDown then
+     begin
+       LogMsg('[TEST_FAILED] SendSelectionToBack expected otSwapDown');
+       Halt(1);
+     end;
+     LogMsg('BringSelectionToFront / SendSelectionToBack undo recording verified');
+
+     // 7. Test Section Swap via MoveSection
+     testSubrep := FReport.SubReports[0].SubReport;
+     testColDet := testSubrep.AddDetail;
+     testColDet.Name := 'TEST_DET_UNDO';
+     FStructure.CreateInterface;
+     testCue.Clear;
+     FStructure.MoveSection(testColDet, True, False, -1);
+     if testCue.UndoOperations.Count = 0 then
+     begin
+       LogMsg('[TEST_FAILED] MoveSection did not record undo operation');
+       Halt(1);
+     end;
+     testLastOp := testCue.UndoOperations.Last;
+     if testLastOp.operation <> otSwapUp then
+     begin
+       LogMsg('[TEST_FAILED] MoveSection expected otSwapUp');
+       Halt(1);
+     end;
+     testCue.Undo;
+     LogMsg('MoveSection swap undo/redo recording verified');
+     // Clean up added test detail section
+     testSubrep.FreeSection(testColDet);
+     FStructure.CreateInterface;
+
+     LogMsg('Subphase 5.3 verification completed successfully');
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

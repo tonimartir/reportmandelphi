@@ -175,7 +175,7 @@ type
 implementation
 
 uses
-  rpmdobjinsplcl, rpmdfstruclcl;
+  rpmdobjinsplcl, rpmdfstruclcl, rpmdundocuelcl;
 
 {$R *.lfm}
 
@@ -356,8 +356,10 @@ end;
 
 procedure TRpPaintEventPanel.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  NewTop, MaxY, i: Integer;
+  NewTop, MaxY, i, oldHeight: Integer;
   asection: TRpSection;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Assigned(FRectangle) and Assigned(FFrame) then
@@ -390,8 +392,23 @@ begin
 
     if (NewTop <> Top) and Assigned(asection) then
     begin
+      oldHeight := asection.Height;
       asection.Height := pixelstotwips(NewTop - MaxY, FFrame.Scale);
       if asection.Height < 0 then asection.Height := 0;
+
+      if Assigned(FFrame.Report) and Assigned(FFrame.Report.UndoCue) and (oldHeight <> asection.Height) then
+      begin
+        cue := TUndoCue(FFrame.Report.UndoCue);
+        op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+        op.componentName := asection.Name;
+        op.componentClass := UpperCase(asection.ClassName);
+        op.AddProperty('height', ptInteger, oldHeight, asection.Height);
+        cue.AddOperation(op);
+        if Assigned(FFrame.freportstructure) and (FFrame.freportstructure is TFRpStructureLCL) then
+          if Assigned(TFRpStructureLCL(FFrame.freportstructure).cueview) then
+            TFRpStructureLCL(FFrame.freportstructure).cueview.RefreshList;
+      end;
+
       FFrame.UpdateInterface(True);
     end;
   end;
@@ -490,7 +507,9 @@ end;
 
 procedure TRpPanelRight.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  NewLeft: Integer;
+  NewLeft, oldWidth: Integer;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Assigned(FRectangle) then
@@ -501,7 +520,22 @@ begin
 
     if Assigned(Section) and Assigned(FFrame) then
     begin
+      oldWidth := Section.Width;
       Section.Width := pixelstotwips(NewLeft, FFrame.Scale);
+
+      if Assigned(FFrame.Report) and Assigned(FFrame.Report.UndoCue) and (oldWidth <> Section.Width) then
+      begin
+        cue := TUndoCue(FFrame.Report.UndoCue);
+        op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+        op.componentName := Section.Name;
+        op.componentClass := UpperCase(Section.ClassName);
+        op.AddProperty('width', ptInteger, oldWidth, Section.Width);
+        cue.AddOperation(op);
+        if Assigned(FFrame.freportstructure) and (FFrame.freportstructure is TFRpStructureLCL) then
+          if Assigned(TFRpStructureLCL(FFrame.freportstructure).cueview) then
+            TFRpStructureLCL(FFrame.freportstructure).cueview.RefreshList;
+      end;
+
       FFrame.UpdateInterface(True);
     end;
   end;
@@ -889,6 +923,7 @@ begin
   begin
     apanel := TRpPaintEventPanel(toptitles[i]);
     asecint := TRpSectionInterface(secinterfaces[i]);
+    asecint.SyncChilds;
     asecint.UpdateBack;
     rpanel := TRpPanelRight(righttitles[i]);
 
@@ -1176,6 +1211,10 @@ var
   item: TRpSizePosInterface;
   positem: TRpCommonPosComponent;
   newX, newY, minX, minY: Integer;
+  oldPosXArr, oldPosYArr: array of Integer;
+  cue: TUndoCue;
+  gid: Integer;
+  op: TChangeObjectOperation;
 begin
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then
     Exit;
@@ -1199,12 +1238,20 @@ begin
   if (ADeltaYTwips < 0) and (-ADeltaYTwips > minY) then
     ADeltaYTwips := -minY;
 
+  if (ADeltaXTwips = 0) and (ADeltaYTwips = 0) then
+    Exit;
+
+  SetLength(oldPosXArr, FSelectedItems.Count);
+  SetLength(oldPosYArr, FSelectedItems.Count);
+
   for i := 0 to FSelectedItems.Count - 1 do
   begin
     item := TRpSizePosInterface(FSelectedItems[i]);
     if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
     begin
       positem := TRpCommonPosComponent(item.printitem);
+      oldPosXArr[i] := positem.PosX;
+      oldPosYArr[i] := positem.PosY;
       newX := positem.PosX + ADeltaXTwips;
       if newX < 0 then newX := 0;
       newY := positem.PosY + ADeltaYTwips;
@@ -1213,6 +1260,31 @@ begin
       positem.PosY := newY;
       item.UpdatePos;
     end;
+  end;
+
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    gid := cue.GetGroupId;
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      item := TRpSizePosInterface(FSelectedItems[i]);
+      if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
+      begin
+        positem := TRpCommonPosComponent(item.printitem);
+        op := TChangeObjectOperation.Create(otModify, gid);
+        op.componentName := positem.Name;
+        op.componentClass := UpperCase(positem.ClassName);
+        if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) then
+          op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
+        op.AddProperty('posX', ptInteger, oldPosXArr[i], positem.PosX);
+        op.AddProperty('posY', ptInteger, oldPosYArr[i], positem.PosY);
+        cue.AddOperation(op);
+      end;
+    end;
+    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+        TFRpStructureLCL(freportstructure).cueview.RefreshList;
   end;
 
   if Assigned(FSizeModifier) and (FSelectedItems.Count = 1) then
@@ -1316,6 +1388,9 @@ var
   secint: TRpSectionInterface;
   pitem: TRpCommonPosComponent;
   selectedList: TList;
+  cue: TUndoCue;
+  gid: Integer;
+  op: TChangeObjectOperation;
 begin
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then
     Exit;
@@ -1326,6 +1401,32 @@ begin
       selectedList.Add(FSelectedItems[i]);
 
     ClearSelection;
+
+    // Record Undo otRemove before deleting
+    if Assigned(FReport) and Assigned(FReport.UndoCue) then
+    begin
+      cue := TUndoCue(FReport.UndoCue);
+      gid := cue.GetGroupId;
+      for i := 0 to selectedList.Count - 1 do
+      begin
+        item := TRpSizePosInterface(selectedList[i]);
+        secint := TRpSectionInterface(item.SectionInt);
+        pitem := TRpCommonPosComponent(item.PrintItem);
+        if Assigned(secint) and Assigned(secint.PrintItem) and Assigned(pitem) then
+        begin
+          op := TChangeObjectOperation.Create(otRemove, gid);
+          op.componentName := pitem.Name;
+          op.componentClass := UpperCase(pitem.ClassName);
+          op.parentName := TRpSection(secint.PrintItem).Name;
+          op.oldItemIndex := TRpSection(secint.PrintItem).ReportComponents.IndexOf(pitem);
+          cue.AddAllComponentProperties(pitem, op);
+          cue.AddOperation(op);
+        end;
+      end;
+      if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+        if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+          TFRpStructureLCL(freportstructure).cueview.RefreshList;
+    end;
 
     for i := 0 to selectedList.Count - 1 do
     begin
@@ -1351,11 +1452,13 @@ end;
 
 procedure TFRpDesignFrameLCL.BringSelectionToFront;
 var
-  i, idx: Integer;
+  i, idx, gid: Integer;
   item: TRpSizePosInterface;
   sec: TRpSection;
   pitem: TRpCommonComponent;
   citem: TRpCommonListItem;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
   for i := 0 to FSelectedItems.Count - 1 do
@@ -1375,17 +1478,39 @@ begin
       end;
     end;
   end;
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    gid := cue.GetGroupId;
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      item := TRpSizePosInterface(FSelectedItems[i]);
+      if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
+      begin
+        op := TChangeObjectOperation.Create(otSwapUp, gid);
+        op.componentName := item.PrintItem.Name;
+        op.componentClass := UpperCase(item.PrintItem.ClassName);
+        op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
+        cue.AddOperation(op);
+      end;
+    end;
+    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+        TFRpStructureLCL(freportstructure).cueview.RefreshList;
+  end;
   if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
     FSizeModifier.UpdatePos;
 end;
 
 procedure TFRpDesignFrameLCL.SendSelectionToBack;
 var
-  i, idx: Integer;
+  i, idx, gid: Integer;
   item: TRpSizePosInterface;
   sec: TRpSection;
   pitem: TRpCommonComponent;
   citem: TRpCommonListItem;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
   for i := 0 to FSelectedItems.Count - 1 do
@@ -1404,6 +1529,26 @@ begin
         citem.Component := pitem;
       end;
     end;
+  end;
+  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  begin
+    cue := TUndoCue(FReport.UndoCue);
+    gid := cue.GetGroupId;
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      item := TRpSizePosInterface(FSelectedItems[i]);
+      if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
+      begin
+        op := TChangeObjectOperation.Create(otSwapDown, gid);
+        op.componentName := item.PrintItem.Name;
+        op.componentClass := UpperCase(item.PrintItem.ClassName);
+        op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
+        cue.AddOperation(op);
+      end;
+    end;
+    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+        TFRpStructureLCL(freportstructure).cueview.RefreshList;
   end;
   if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
     FSizeModifier.UpdatePos;

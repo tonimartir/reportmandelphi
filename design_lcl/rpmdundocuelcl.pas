@@ -1001,12 +1001,20 @@ begin
   case operation.operation of
     otSwapDown, otSwapUp:
       begin
-        ApplySwapOperation(
-          operation.componentClass,
-          operation.operation = otSwapDown,
-          operation.oldItemIndex,
-          operation.parentName
-        );
+        if isUndo then
+        begin
+          if operation.operation = otSwapDown then
+            ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex + 1, operation.parentName)
+          else
+            ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex - 1, operation.parentName);
+        end
+        else
+        begin
+          if operation.operation = otSwapDown then
+            ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex, operation.parentName)
+          else
+            ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex, operation.parentName);
+        end;
         Exit;
       end;
 
@@ -1038,15 +1046,23 @@ begin
             if parentItem is TRpSection then
             begin
               parentSection := TRpSection(parentItem);
-              compItem := parentSection.ReportComponents.Insert(operation.oldItemIndex);
+              if (operation.oldItemIndex >= 0) and
+                 (operation.oldItemIndex <= parentSection.ReportComponents.Count) then
+                compItem := parentSection.ReportComponents.Insert(operation.oldItemIndex)
+              else
+                compItem := parentSection.ReportComponents.Add;
               compItem.Component := TRpCommonPosComponent(target);
             end
             else if parentItem is TRpSubReport then
             begin
-              secItem := TRpSectionListItem(
-                TRpSubReport(parentItem).Sections.Insert(operation.oldItemIndex));
+              parentSubreport := TRpSubReport(parentItem);
+              if (operation.oldItemIndex >= 0) and
+                 (operation.oldItemIndex <= parentSubreport.Sections.Count) then
+                secItem := TRpSectionListItem(parentSubreport.Sections.Insert(operation.oldItemIndex))
+              else
+                secItem := TRpSectionListItem(parentSubreport.Sections.Add);
               secItem.Section := TRpSection(target);
-              TRpSection(target).SubReport := TRpSubReport(parentItem);
+              TRpSection(target).SubReport := parentSubreport;
             end;
           end
           else
