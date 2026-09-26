@@ -1219,7 +1219,18 @@ begin
     testDlg := TFRpDInfoLCL.Create(nil);
     try
       testDlg.Report := FReport;
-      LogMsg('TFRpDInfoLCL successfully loaded report data info');
+      if (testDlg.BNewConn.ImageIndex <> IMG_DC_NEW) or
+         (testDlg.BDelConn.ImageIndex <> IMG_DC_DELETE) or
+         (testDlg.BNewDS.ImageIndex <> IMG_DC_NEW) or
+         (testDlg.BtnUpDS.ImageIndex <> IMG_DC_UP) or
+         (testDlg.BtnDownDS.ImageIndex <> IMG_DC_DOWN) or
+         (testDlg.BDelDS.ImageIndex <> IMG_DC_DELETE) or
+         (testDlg.BtnRenameDS.ImageIndex <> IMG_DC_RENAME) then
+      begin
+        LogMsg('[TEST_FAILED] TFRpDInfoLCL toolbar button ImageIndex mismatch');
+        Halt(1);
+      end;
+      LogMsg('TFRpDInfoLCL successfully loaded report data info and verified toolbar icons');
     finally
       testDlg.Free;
     end;

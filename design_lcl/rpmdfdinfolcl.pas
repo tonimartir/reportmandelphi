@@ -16,7 +16,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls,
-  rpreport, rpdatainfo, rpmdconsts, rptypes, rpfrmmonacoeditorlcl;
+  rpreport, rpdatainfo, rpmdconsts, rptypes, rpfrmmonacoeditorlcl, rpmdimageslcl;
 
 type
   TFRpDInfoLCL = class(TForm)
@@ -25,6 +25,8 @@ type
     FActiveConnIndex: Integer;
     FActiveDSIndex: Integer;
     FUpdatingControls: Boolean;
+    FImageList: TImageList;
+    FTabImageList: TImageList;
 
     // Bottom controls
     PBottom: TPanel;
@@ -37,9 +39,6 @@ type
     TabDatasets: TTabSheet;
 
     // Connection controls
-    PanelConnTop: TPanel;
-    BNewConn: TButton;
-    BDelConn: TButton;
     PConnClient: TPanel;
     LConnections: TListBox;
     SplitterConn: TSplitter;
@@ -54,10 +53,6 @@ type
     CheckLoginPrompt: TCheckBox;
     OpenDialog1: TOpenDialog;
 
-    // Dataset controls
-    PanelDSTop: TPanel;
-    BNewDS: TButton;
-    BDelDS: TButton;
     PDSClient: TPanel;
     PDSTopArea: TPanel;
     LDatasets: TListBox;
@@ -96,13 +91,31 @@ type
     procedure BDelConnClick(Sender: TObject);
     procedure BBrowseFileClick(Sender: TObject);
     procedure BNewDSClick(Sender: TObject);
+    procedure BtnUpDSClick(Sender: TObject);
+    procedure BtnDownDSClick(Sender: TObject);
     procedure BDelDSClick(Sender: TObject);
+    procedure BtnRenameDSClick(Sender: TObject);
     procedure BMonacoToggleClick(Sender: TObject);
     procedure BThemeToggleClick(Sender: TObject);
     procedure MonacoContentChanged(Sender: TObject);
     procedure BOkClick(Sender: TObject);
     procedure BCancelClick(Sender: TObject);
   public
+    // Toolbar controls
+    ToolBarConn: TToolBar;
+    BNewConn: TToolButton;
+    SepConn: TToolButton;
+    BDelConn: TToolButton;
+
+    ToolBarDS: TToolBar;
+    BNewDS: TToolButton;
+    BtnUpDS: TToolButton;
+    BtnDownDS: TToolButton;
+    SepDS1: TToolButton;
+    BDelDS: TToolButton;
+    SepDS2: TToolButton;
+    BtnRenameDS: TToolButton;
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     property Report: TRpReport read FReport write SetReport;
@@ -184,29 +197,46 @@ begin
   PControl.Align := alClient;
   PControl.Parent := Self;
 
+  FTabImageList := TImageList.Create(Self);
+  LoadDBBrowserImageList(FTabImageList);
+  PControl.Images := FTabImageList;
+
+  FImageList := TImageList.Create(Self);
+  LoadDataConfigImageList(FImageList);
+
   // -------------------------------------------------------------
   // TAB 1: Connections
   // -------------------------------------------------------------
   TabConnections := TTabSheet.Create(PControl);
   TabConnections.PageControl := PControl;
   TabConnections.Caption := TranslateStr(142, 'Connections');
+  TabConnections.ImageIndex := 0;
 
-  PanelConnTop := TPanel.Create(TabConnections);
-  PanelConnTop.Align := alTop;
-  PanelConnTop.Height := 34;
-  PanelConnTop.BevelOuter := bvNone;
-  PanelConnTop.Parent := TabConnections;
+  ToolBarConn := TToolBar.Create(TabConnections);
+  ToolBarConn.Parent := TabConnections;
+  ToolBarConn.Align := alTop;
+  ToolBarConn.Height := 28;
+  ToolBarConn.ButtonWidth := 26;
+  ToolBarConn.ButtonHeight := 26;
+  ToolBarConn.Flat := True;
+  ToolBarConn.ShowHint := True;
+  ToolBarConn.Images := FImageList;
 
-  BNewConn := TButton.Create(PanelConnTop);
-  BNewConn.Parent := PanelConnTop;
-  BNewConn.Caption := TranslateStr(734, 'New Connection');
-  BNewConn.SetBounds(6, 4, 120, 26);
+  BNewConn := TToolButton.Create(ToolBarConn);
+  BNewConn.Parent := ToolBarConn;
+  BNewConn.ImageIndex := IMG_DC_NEW;
+  BNewConn.Hint := TranslateStr(734, 'New Connection');
   BNewConn.OnClick := BNewConnClick;
 
-  BDelConn := TButton.Create(PanelConnTop);
-  BDelConn.Parent := PanelConnTop;
-  BDelConn.Caption := TranslateStr(138, 'Delete');
-  BDelConn.SetBounds(132, 4, 80, 26);
+  SepConn := TToolButton.Create(ToolBarConn);
+  SepConn.Parent := ToolBarConn;
+  SepConn.Style := tbsSeparator;
+  SepConn.Width := 8;
+
+  BDelConn := TToolButton.Create(ToolBarConn);
+  BDelConn.Parent := ToolBarConn;
+  BDelConn.ImageIndex := IMG_DC_DELETE;
+  BDelConn.Hint := TranslateStr(138, 'Delete');
   BDelConn.OnClick := BDelConnClick;
 
   PConnClient := TPanel.Create(TabConnections);
@@ -291,24 +321,57 @@ begin
   TabDatasets := TTabSheet.Create(PControl);
   TabDatasets.PageControl := PControl;
   TabDatasets.Caption := TranslateStr(148, 'Datasets');
+  TabDatasets.ImageIndex := 1;
 
-  PanelDSTop := TPanel.Create(TabDatasets);
-  PanelDSTop.Align := alTop;
-  PanelDSTop.Height := 34;
-  PanelDSTop.BevelOuter := bvNone;
-  PanelDSTop.Parent := TabDatasets;
+  ToolBarDS := TToolBar.Create(TabDatasets);
+  ToolBarDS.Parent := TabDatasets;
+  ToolBarDS.Align := alTop;
+  ToolBarDS.Height := 28;
+  ToolBarDS.ButtonWidth := 26;
+  ToolBarDS.ButtonHeight := 26;
+  ToolBarDS.Flat := True;
+  ToolBarDS.ShowHint := True;
+  ToolBarDS.Images := FImageList;
 
-  BNewDS := TButton.Create(PanelDSTop);
-  BNewDS.Parent := PanelDSTop;
-  BNewDS.Caption := TranslateStr(734, 'New Dataset');
-  BNewDS.SetBounds(6, 4, 110, 26);
+  BNewDS := TToolButton.Create(ToolBarDS);
+  BNewDS.Parent := ToolBarDS;
+  BNewDS.ImageIndex := IMG_DC_NEW;
+  BNewDS.Hint := TranslateStr(734, 'New Dataset');
   BNewDS.OnClick := BNewDSClick;
 
-  BDelDS := TButton.Create(PanelDSTop);
-  BDelDS.Parent := PanelDSTop;
-  BDelDS.Caption := TranslateStr(138, 'Delete');
-  BDelDS.SetBounds(122, 4, 80, 26);
+  BtnUpDS := TToolButton.Create(ToolBarDS);
+  BtnUpDS.Parent := ToolBarDS;
+  BtnUpDS.ImageIndex := IMG_DC_UP;
+  BtnUpDS.Hint := TranslateStr(139, 'Up');
+  BtnUpDS.OnClick := BtnUpDSClick;
+
+  BtnDownDS := TToolButton.Create(ToolBarDS);
+  BtnDownDS.Parent := ToolBarDS;
+  BtnDownDS.ImageIndex := IMG_DC_DOWN;
+  BtnDownDS.Hint := TranslateStr(140, 'Down');
+  BtnDownDS.OnClick := BtnDownDSClick;
+
+  SepDS1 := TToolButton.Create(ToolBarDS);
+  SepDS1.Parent := ToolBarDS;
+  SepDS1.Style := tbsSeparator;
+  SepDS1.Width := 8;
+
+  BDelDS := TToolButton.Create(ToolBarDS);
+  BDelDS.Parent := ToolBarDS;
+  BDelDS.ImageIndex := IMG_DC_DELETE;
+  BDelDS.Hint := TranslateStr(138, 'Delete');
   BDelDS.OnClick := BDelDSClick;
+
+  SepDS2 := TToolButton.Create(ToolBarDS);
+  SepDS2.Parent := ToolBarDS;
+  SepDS2.Style := tbsSeparator;
+  SepDS2.Width := 8;
+
+  BtnRenameDS := TToolButton.Create(ToolBarDS);
+  BtnRenameDS.Parent := ToolBarDS;
+  BtnRenameDS.ImageIndex := IMG_DC_RENAME;
+  BtnRenameDS.Hint := TranslateStr(141, 'Rename');
+  BtnRenameDS.OnClick := BtnRenameDSClick;
 
   PDSClient := TPanel.Create(TabDatasets);
   PDSClient.Align := alClient;
@@ -673,12 +736,18 @@ begin
       PDSProps.Enabled := False;
       PSQLArea.Enabled := False;
       BDelDS.Enabled := False;
+      BtnUpDS.Enabled := False;
+      BtnDownDS.Enabled := False;
+      BtnRenameDS.Enabled := False;
       Exit;
     end;
 
     PDSProps.Enabled := True;
     PSQLArea.Enabled := True;
     BDelDS.Enabled := True;
+    BtnUpDS.Enabled := (Index > 0);
+    BtnDownDS.Enabled := (Index < FReport.DataInfo.Count - 1);
+    BtnRenameDS.Enabled := True;
     item := FReport.DataInfo[Index];
     EDSAlias.Text := item.Alias;
     ComboDSConn.ItemIndex := ComboDSConn.Items.IndexOf(item.DatabaseAlias);
@@ -802,6 +871,60 @@ begin
   if idx >= 0 then
     LDatasets.ItemIndex := idx;
   LoadDSDetails(idx);
+end;
+
+procedure TFRpDInfoLCL.BtnUpDSClick(Sender: TObject);
+var
+  idx: Integer;
+begin
+  if not Assigned(FReport) or (FActiveDSIndex <= 0) or (FActiveDSIndex >= FReport.DataInfo.Count) then Exit;
+  SaveActiveDS;
+  idx := FActiveDSIndex;
+  FReport.DataInfo.Swap(idx, idx - 1);
+  RefreshDSList;
+  if idx - 1 < LDatasets.Items.Count then
+  begin
+    LDatasets.ItemIndex := idx - 1;
+    LoadDSDetails(idx - 1);
+  end;
+end;
+
+procedure TFRpDInfoLCL.BtnDownDSClick(Sender: TObject);
+var
+  idx: Integer;
+begin
+  if not Assigned(FReport) or (FActiveDSIndex < 0) or (FActiveDSIndex >= FReport.DataInfo.Count - 1) then Exit;
+  SaveActiveDS;
+  idx := FActiveDSIndex;
+  FReport.DataInfo.Swap(idx, idx + 1);
+  RefreshDSList;
+  if idx + 1 < LDatasets.Items.Count then
+  begin
+    LDatasets.ItemIndex := idx + 1;
+    LoadDSDetails(idx + 1);
+  end;
+end;
+
+procedure TFRpDInfoLCL.BtnRenameDSClick(Sender: TObject);
+var
+  oldAlias, newAlias: string;
+  item: TRpDataInfoItem;
+begin
+  if not Assigned(FReport) or (FActiveDSIndex < 0) or (FActiveDSIndex >= FReport.DataInfo.Count) then Exit;
+  item := FReport.DataInfo[FActiveDSIndex];
+  oldAlias := item.Alias;
+  newAlias := Trim(InputBox(TranslateStr(141, 'Rename dataset'), TranslateStr(137, 'Alias:'), oldAlias));
+  if (newAlias = '') or (newAlias = oldAlias) then Exit;
+  if FReport.DataInfo.IndexOf(newAlias) >= 0 then
+  begin
+    ShowMessage(TranslateStr(143, 'Alias already exists'));
+    Exit;
+  end;
+  item.Alias := newAlias;
+  EDSAlias.Text := newAlias;
+  RefreshDSList;
+  LDatasets.ItemIndex := FReport.DataInfo.IndexOf(newAlias);
+  LoadDSDetails(LDatasets.ItemIndex);
 end;
 
 procedure TFRpDInfoLCL.BOkClick(Sender: TObject);
