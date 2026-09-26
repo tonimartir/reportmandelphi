@@ -21,7 +21,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Files Count="63">
+    <Files Count="64">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -274,6 +274,11 @@
         <Filename Value="..\..\rtl_fpc\rpfpcutils.pas"/>
         <UnitName Value="rpfpcutils"/>
       </Item63>
+      <Item64>
+        <Filename Value="..\..\rpmreg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="rpmreg"/>
+      </Item64>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

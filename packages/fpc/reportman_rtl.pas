@@ -19,12 +19,13 @@ uses
   rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, rptextdriver, 
   rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, rpinfoprovft, 
   rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, rpfontconfig, 
-  rpDelphiZXIngQRCode, rpfpcutils, LazarusPackageIntf;
+  rpDelphiZXIngQRCode, rpfpcutils, rpmreg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
+  RegisterUnit('rpmreg', @rpmreg.Register);
 end;
 
 initialization
