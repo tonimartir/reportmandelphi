@@ -19,8 +19,14 @@ uses
   rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, rptextdriver, 
   rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, rpinfoprovft, 
   rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, rpfontconfig, 
-  rpDelphiZXIngQRCode, rpfpcutils;
+  rpDelphiZXIngQRCode, rpfpcutils, LazarusPackageIntf;
 
 implementation
 
+procedure Register;
+begin
+end;
+
+initialization
+  RegisterPackage('reportman_rtl', @Register);
 end.
