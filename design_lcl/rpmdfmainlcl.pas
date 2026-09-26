@@ -18,10 +18,11 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, StdCtrls, ComCtrls, Menus, LCLType,
+  ExtCtrls, StdCtrls, ComCtrls, Menus, LCLType, Clipbrd,
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
+  rpprintitem,
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl,
   rppagesetuplcl, rplclpreview, rppreviewcontrol;
 
@@ -50,16 +51,17 @@ type
     // Toolbar buttons
     BtnNew: TToolButton;
     BtnOpen: TToolButton;
+    Sep1: TToolButton;
     BtnSave: TToolButton;
     BtnDataConfig: TToolButton;
     BtnPageSetup: TToolButton;
-    Sep1: TToolButton;
+    Sep2: TToolButton;
     BtnPrint: TToolButton;
     BtnPreview: TToolButton;
-    Sep2: TToolButton;
+    Sep3: TToolButton;
     BtnUndo: TToolButton;
     BtnRedo: TToolButton;
-    Sep3: TToolButton;
+    Sep4: TToolButton;
     BtnToolArrow: TToolButton;
     BtnToolLabel: TToolButton;
     BtnToolExpr: TToolButton;
@@ -67,14 +69,26 @@ type
     BtnToolImage: TToolButton;
     BtnToolChart: TToolButton;
     BtnToolBarcode: TToolButton;
-    Sep4: TToolButton;
-    ComboScale: TComboBox;
     Sep5: TToolButton;
+    ComboScale: TComboBox;
+    Sep6: TToolButton;
     BtnDelete: TToolButton;
     BtnCut: TToolButton;
     BtnCopy: TToolButton;
     BtnPaste: TToolButton;
-    Sep6: TToolButton;
+    Sep7: TToolButton;
+    BtnNudgeLeft: TToolButton;
+    BtnNudgeRight: TToolButton;
+    BtnNudgeUp: TToolButton;
+    BtnNudgeDown: TToolButton;
+    Sep8: TToolButton;
+    BtnAlignLeft: TToolButton;
+    BtnAlignRight: TToolButton;
+    BtnAlignUp: TToolButton;
+    BtnAlignDown: TToolButton;
+    BtnAlignHorz: TToolButton;
+    BtnAlignVert: TToolButton;
+    Sep9: TToolButton;
     BtnToFront: TToolButton;
     BtnToBack: TToolButton;
     BtnSelectAll: TToolButton;
@@ -137,6 +151,16 @@ type
     procedure BtnCutClick(Sender: TObject);
     procedure BtnCopyClick(Sender: TObject);
     procedure BtnPasteClick(Sender: TObject);
+    procedure BtnNudgeLeftClick(Sender: TObject);
+    procedure BtnNudgeRightClick(Sender: TObject);
+    procedure BtnNudgeUpClick(Sender: TObject);
+    procedure BtnNudgeDownClick(Sender: TObject);
+    procedure BtnAlignLeftClick(Sender: TObject);
+    procedure BtnAlignRightClick(Sender: TObject);
+    procedure BtnAlignUpClick(Sender: TObject);
+    procedure BtnAlignDownClick(Sender: TObject);
+    procedure BtnAlignHorzClick(Sender: TObject);
+    procedure BtnAlignVertClick(Sender: TObject);
     procedure BtnToFrontClick(Sender: TObject);
     procedure BtnToBackClick(Sender: TObject);
     procedure BtnSelectAllClick(Sender: TObject);
@@ -602,6 +626,76 @@ begin
   Sep6.Style := tbsSeparator;
   Sep6.Width := 8;
 
+  BtnNudgeLeft := TToolButton.Create(MainToolBar);
+  BtnNudgeLeft.Parent := MainToolBar;
+  BtnNudgeLeft.ImageIndex := IMG_NAV_LEFT;
+  BtnNudgeLeft.Hint := 'Mover hacia la izquierda';
+  BtnNudgeLeft.OnClick := BtnNudgeLeftClick;
+
+  BtnNudgeRight := TToolButton.Create(MainToolBar);
+  BtnNudgeRight.Parent := MainToolBar;
+  BtnNudgeRight.ImageIndex := IMG_NAV_RIGHT;
+  BtnNudgeRight.Hint := 'Mover hacia la derecha';
+  BtnNudgeRight.OnClick := BtnNudgeRightClick;
+
+  BtnNudgeUp := TToolButton.Create(MainToolBar);
+  BtnNudgeUp.Parent := MainToolBar;
+  BtnNudgeUp.ImageIndex := IMG_NAV_UP;
+  BtnNudgeUp.Hint := 'Mover hacia arriba';
+  BtnNudgeUp.OnClick := BtnNudgeUpClick;
+
+  BtnNudgeDown := TToolButton.Create(MainToolBar);
+  BtnNudgeDown.Parent := MainToolBar;
+  BtnNudgeDown.ImageIndex := IMG_NAV_DOWN;
+  BtnNudgeDown.Hint := 'Mover hacia abajo';
+  BtnNudgeDown.OnClick := BtnNudgeDownClick;
+
+  Sep7 := TToolButton.Create(MainToolBar);
+  Sep7.Parent := MainToolBar;
+  Sep7.Style := tbsSeparator;
+  Sep7.Width := 8;
+
+  BtnAlignLeft := TToolButton.Create(MainToolBar);
+  BtnAlignLeft.Parent := MainToolBar;
+  BtnAlignLeft.ImageIndex := IMG_ALIGN_LEFT;
+  BtnAlignLeft.Hint := 'Alinear a la izquierda';
+  BtnAlignLeft.OnClick := BtnAlignLeftClick;
+
+  BtnAlignRight := TToolButton.Create(MainToolBar);
+  BtnAlignRight.Parent := MainToolBar;
+  BtnAlignRight.ImageIndex := IMG_ALIGN_RIGHT;
+  BtnAlignRight.Hint := 'Alinear a la derecha';
+  BtnAlignRight.OnClick := BtnAlignRightClick;
+
+  BtnAlignUp := TToolButton.Create(MainToolBar);
+  BtnAlignUp.Parent := MainToolBar;
+  BtnAlignUp.ImageIndex := IMG_ALIGN_TOP;
+  BtnAlignUp.Hint := 'Alinear arriba';
+  BtnAlignUp.OnClick := BtnAlignUpClick;
+
+  BtnAlignDown := TToolButton.Create(MainToolBar);
+  BtnAlignDown.Parent := MainToolBar;
+  BtnAlignDown.ImageIndex := IMG_ALIGN_BOTTOM;
+  BtnAlignDown.Hint := 'Alinear abajo';
+  BtnAlignDown.OnClick := BtnAlignDownClick;
+
+  BtnAlignHorz := TToolButton.Create(MainToolBar);
+  BtnAlignHorz.Parent := MainToolBar;
+  BtnAlignHorz.ImageIndex := IMG_ALIGN_HCENTER;
+  BtnAlignHorz.Hint := 'Distribuir espacio horizontal';
+  BtnAlignHorz.OnClick := BtnAlignHorzClick;
+
+  BtnAlignVert := TToolButton.Create(MainToolBar);
+  BtnAlignVert.Parent := MainToolBar;
+  BtnAlignVert.ImageIndex := IMG_ALIGN_VCENTER;
+  BtnAlignVert.Hint := 'Distribuir espacio vertical';
+  BtnAlignVert.OnClick := BtnAlignVertClick;
+
+  Sep8 := TToolButton.Create(MainToolBar);
+  Sep8.Parent := MainToolBar;
+  Sep8.Style := tbsSeparator;
+  Sep8.Width := 8;
+
   BtnToFront := TToolButton.Create(MainToolBar);
   BtnToFront.Parent := MainToolBar;
   BtnToFront.ImageIndex := IMG_NAV_UP;
@@ -918,22 +1012,153 @@ end;
 
 procedure TFRpMainFLCL.BtnDeleteClick(Sender: TObject);
 begin
-  FDesignerFrame.DeleteSelection;
+  if Assigned(FDesignerFrame) then
+    FDesignerFrame.DeleteSelection;
 end;
 
 procedure TFRpMainFLCL.BtnCutClick(Sender: TObject);
 begin
-  // Cut selection
+  BtnCopyClick(Sender);
+  BtnDeleteClick(Sender);
 end;
 
 procedure TFRpMainFLCL.BtnCopyClick(Sender: TObject);
+var
+  acompo: TComponent;
+  pitem: TRpCommonComponent;
+  i: Integer;
 begin
-  // Copy selection
+  if not Assigned(FObjInsp) or (FObjInsp.SelectedItems.Count < 1) then Exit;
+  if not (FObjInsp.SelectedItems.Objects[0] is TRpSizePosInterface) then Exit;
+  acompo := TRpReport.Create(nil);
+  try
+    acompo.Name := 'TheOwner';
+    for i := 0 to FObjInsp.SelectedItems.Count - 1 do
+    begin
+      pitem := TRpSizePosInterface(FObjInsp.SelectedItems.Objects[i]).printitem;
+      pitem.oldowner := pitem.Owner;
+      pitem.Owner.RemoveComponent(pitem);
+      acompo.InsertComponent(pitem);
+    end;
+    Clipboard.SetComponent(acompo);
+    for i := 0 to FObjInsp.SelectedItems.Count - 1 do
+    begin
+      pitem := TRpSizePosInterface(FObjInsp.SelectedItems.Objects[i]).printitem;
+      acompo.RemoveComponent(pitem);
+      pitem.oldowner.InsertComponent(pitem);
+    end;
+  finally
+    acompo.Free;
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnPasteClick(Sender: TObject);
+var
+  section: TRpSection;
+  secint: TRpSectionInterface;
+  compo, acompo: TComponent;
+  i: Integer;
+  alist: TList;
+  pitem: TRpCommonPosComponent;
+  ident: string;
 begin
-  // Paste selection
+  if not Assigned(FObjInsp) or (FObjInsp.SelectedItems.Count < 1) then Exit;
+  if (FObjInsp.SelectedItems.Objects[0] is TRpSectionInterface) then
+    secint := TRpSectionInterface(FObjInsp.CompItem)
+  else
+    secint := TRpSectionInterface(TRpSizePosInterface(FObjInsp.SelectedItems.Objects[0]).SectionInt);
+  if not Assigned(secint) then Exit;
+  FObjInsp.ClearMultiSelect;
+  section := TRpSection(secint.printitem);
+  acompo := TRpReport.Create(nil);
+  try
+    acompo.Name := 'AOwner';
+    compo := Clipboard.GetComponent(acompo, acompo);
+    if not Assigned(compo) then Exit;
+    alist := TList.Create;
+    try
+      for i := 0 to compo.ComponentCount - 1 do
+      begin
+        alist.Add(compo.Components[i]);
+        if compo.Components[i] is TRpExpression then
+        begin
+          ident := TRpExpression(compo.Components[i]).Identifier;
+          if (Length(ident) > 0) and Assigned(FReport) and (FReport.Identifiers.IndexOf(ident) >= 0) then
+            TRpExpression(compo.Components[i]).Identifier := '';
+        end;
+      end;
+      for i := 0 to alist.Count - 1 do
+      begin
+        if not (TObject(alist[i]) is TRpCommonPosComponent) then Continue;
+        pitem := TRpCommonPosComponent(alist[i]);
+        compo.RemoveComponent(pitem);
+        pitem.Name := '';
+        section.ReportComponents.Add.Component := pitem;
+        if section.IsExternal then
+          section.InsertComponent(pitem)
+        else if Assigned(FReport) then
+          FReport.InsertComponent(pitem);
+        GenerateNewName(pitem);
+        FObjInsp.AddCompItem(secint.CreateChild(pitem), False);
+      end;
+      if Assigned(FDesignerFrame) then
+        FDesignerFrame.UpdateInterface(True);
+    finally
+      alist.Free;
+    end;
+  finally
+    acompo.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.BtnNudgeLeftClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(1, False);
+end;
+
+procedure TFRpMainFLCL.BtnNudgeRightClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(2, False);
+end;
+
+procedure TFRpMainFLCL.BtnNudgeUpClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(3, False);
+end;
+
+procedure TFRpMainFLCL.BtnNudgeDownClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(4, False);
+end;
+
+procedure TFRpMainFLCL.BtnAlignLeftClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(1);
+end;
+
+procedure TFRpMainFLCL.BtnAlignRightClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(2);
+end;
+
+procedure TFRpMainFLCL.BtnAlignUpClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(3);
+end;
+
+procedure TFRpMainFLCL.BtnAlignDownClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(4);
+end;
+
+procedure TFRpMainFLCL.BtnAlignHorzClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(5);
+end;
+
+procedure TFRpMainFLCL.BtnAlignVertClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(6);
 end;
 
 procedure TFRpMainFLCL.BtnToFrontClick(Sender: TObject);

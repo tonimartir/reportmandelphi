@@ -44,9 +44,17 @@ type
     BtnCopy: TToolButton;
     BtnPaste: TToolButton;
     Sep6: TToolButton;
-    BtnToFront: TToolButton;
-    BtnToBack: TToolButton;
-    BtnSelectAll: TToolButton;
+    BtnNudgeLeft: TToolButton;
+    BtnNudgeRight: TToolButton;
+    BtnNudgeUp: TToolButton;
+    BtnNudgeDown: TToolButton;
+    Sep7: TToolButton;
+    BtnAlignLeft: TToolButton;
+    BtnAlignRight: TToolButton;
+    BtnAlignUp: TToolButton;
+    BtnAlignDown: TToolButton;
+    BtnAlignHorz: TToolButton;
+    BtnAlignVert: TToolButton;
     PClient: TPanel;
     StatusBar: TStatusBar;
     OpenDialog: TOpenDialog;
@@ -71,6 +79,16 @@ type
     procedure BtnCutClick(Sender: TObject);
     procedure BtnCopyClick(Sender: TObject);
     procedure BtnPasteClick(Sender: TObject);
+    procedure BtnNudgeLeftClick(Sender: TObject);
+    procedure BtnNudgeRightClick(Sender: TObject);
+    procedure BtnNudgeUpClick(Sender: TObject);
+    procedure BtnNudgeDownClick(Sender: TObject);
+    procedure BtnAlignLeftClick(Sender: TObject);
+    procedure BtnAlignRightClick(Sender: TObject);
+    procedure BtnAlignUpClick(Sender: TObject);
+    procedure BtnAlignDownClick(Sender: TObject);
+    procedure BtnAlignHorzClick(Sender: TObject);
+    procedure BtnAlignVertClick(Sender: TObject);
     procedure ComboScaleChange(Sender: TObject);
   private
     FReport: TRpReport;
@@ -462,6 +480,56 @@ end;
 procedure TMainForm.BtnPasteClick(Sender: TObject);
 begin
   LogMsg('Paste clicked');
+end;
+
+procedure TMainForm.BtnNudgeLeftClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(1, False);
+end;
+
+procedure TMainForm.BtnNudgeRightClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(2, False);
+end;
+
+procedure TMainForm.BtnNudgeUpClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(3, False);
+end;
+
+procedure TMainForm.BtnNudgeDownClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.MoveSelected(4, False);
+end;
+
+procedure TMainForm.BtnAlignLeftClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(1);
+end;
+
+procedure TMainForm.BtnAlignRightClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(2);
+end;
+
+procedure TMainForm.BtnAlignUpClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(3);
+end;
+
+procedure TMainForm.BtnAlignDownClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(4);
+end;
+
+procedure TMainForm.BtnAlignHorzClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(5);
+end;
+
+procedure TMainForm.BtnAlignVertClick(Sender: TObject);
+begin
+  if Assigned(FObjInsp) then FObjInsp.AlignSelected(6);
 end;
 
 procedure TMainForm.ComboScaleChange(Sender: TObject);
@@ -1184,7 +1252,7 @@ begin
         [BtnPageSetup.ImageIndex, IMG_PAGESETUP]));
       Halt(1);
     end;
-    LogMsg('BtnPageSetup verified on MainToolBar with icon index 5');
+    LogMsg(Format('BtnPageSetup verified on MainToolBar with icon index %d', [IMG_PAGESETUP]));
 
     // 2. Test TFRpPageSetupVCL instantiation and controls
     testPageSetup := TFRpPageSetupVCL.Create(nil);

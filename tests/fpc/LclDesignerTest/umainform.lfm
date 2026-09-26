@@ -60,7 +60,7 @@ object MainForm: TMainForm
       Left = 105
       Top = 0
       Hint = 'Configuración de página e informe'
-      ImageIndex = 5
+      ImageIndex = 32
       OnClick = BtnPageSetupClick
     end
     object Sep1: TToolButton
@@ -70,17 +70,17 @@ object MainForm: TMainForm
       Style = tbsSeparator
     end
     object BtnPrint: TToolButton
-      Left = 87
+      Left = 139
       Top = 0
       Hint = 'Imprimir...'
-      ImageIndex = 6
+      ImageIndex = 5
       OnClick = BtnPrintClick
     end
     object BtnPreview: TToolButton
-      Left = 113
+      Left = 165
       Top = 0
       Hint = 'Vista previa'
-      ImageIndex = 7
+      ImageIndex = 6
       OnClick = BtnPreviewClick
     end
     object Sep2: TToolButton
@@ -212,28 +212,28 @@ object MainForm: TMainForm
       Left = 477
       Top = 0
       Hint = 'Eliminar selección (Supr)'
-      ImageIndex = 15
+      ImageIndex = 20
       OnClick = BtnDeleteClick
     end
     object BtnCut: TToolButton
       Left = 503
       Top = 0
-      Hint = 'Cortar'
-      ImageIndex = 16
+      Hint = 'Cortar (Ctrl+X)'
+      ImageIndex = 14
       OnClick = BtnCutClick
     end
     object BtnCopy: TToolButton
       Left = 529
       Top = 0
-      Hint = 'Copiar'
-      ImageIndex = 17
+      Hint = 'Copiar (Ctrl+C)'
+      ImageIndex = 15
       OnClick = BtnCopyClick
     end
     object BtnPaste: TToolButton
       Left = 555
       Top = 0
-      Hint = 'Pegar'
-      ImageIndex = 18
+      Hint = 'Pegar (Ctrl+V)'
+      ImageIndex = 16
       OnClick = BtnPasteClick
     end
     object Sep6: TToolButton
@@ -242,26 +242,81 @@ object MainForm: TMainForm
       Width = 8
       Style = tbsSeparator
     end
-    object BtnToFront: TToolButton
+    object BtnNudgeLeft: TToolButton
       Left = 589
       Top = 0
-      Hint = 'Traer al frente'
-      ImageIndex = 27
-      OnClick = BtnToFrontClick
+      Hint = 'Mover hacia la izquierda'
+      ImageIndex = 21
+      OnClick = BtnNudgeLeftClick
     end
-    object BtnToBack: TToolButton
+    object BtnNudgeRight: TToolButton
       Left = 615
       Top = 0
-      Hint = 'Enviar al fondo'
-      ImageIndex = 28
-      OnClick = BtnToBackClick
+      Hint = 'Mover hacia la derecha'
+      ImageIndex = 22
+      OnClick = BtnNudgeRightClick
     end
-    object BtnSelectAll: TToolButton
+    object BtnNudgeUp: TToolButton
       Left = 641
       Top = 0
-      Hint = 'Seleccionar todo'
+      Hint = 'Mover hacia arriba'
+      ImageIndex = 23
+      OnClick = BtnNudgeUpClick
+    end
+    object BtnNudgeDown: TToolButton
+      Left = 667
+      Top = 0
+      Hint = 'Mover hacia abajo'
+      ImageIndex = 24
+      OnClick = BtnNudgeDownClick
+    end
+    object Sep7: TToolButton
+      Left = 693
+      Top = 0
+      Width = 8
+      Style = tbsSeparator
+    end
+    object BtnAlignLeft: TToolButton
+      Left = 701
+      Top = 0
+      Hint = 'Alinear a la izquierda'
       ImageIndex = 25
-      OnClick = BtnSelectAllClick
+      OnClick = BtnAlignLeftClick
+    end
+    object BtnAlignRight: TToolButton
+      Left = 727
+      Top = 0
+      Hint = 'Alinear a la derecha'
+      ImageIndex = 26
+      OnClick = BtnAlignRightClick
+    end
+    object BtnAlignUp: TToolButton
+      Left = 753
+      Top = 0
+      Hint = 'Alinear arriba'
+      ImageIndex = 27
+      OnClick = BtnAlignUpClick
+    end
+    object BtnAlignDown: TToolButton
+      Left = 779
+      Top = 0
+      Hint = 'Alinear abajo'
+      ImageIndex = 28
+      OnClick = BtnAlignDownClick
+    end
+    object BtnAlignHorz: TToolButton
+      Left = 805
+      Top = 0
+      Hint = 'Distribuir espacio horizontal'
+      ImageIndex = 29
+      OnClick = BtnAlignHorzClick
+    end
+    object BtnAlignVert: TToolButton
+      Left = 831
+      Top = 0
+      Hint = 'Distribuir espacio vertical'
+      ImageIndex = 30
+      OnClick = BtnAlignVertClick
     end
   end
   object PClient: TPanel
