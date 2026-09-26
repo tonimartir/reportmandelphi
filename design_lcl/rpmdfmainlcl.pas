@@ -24,7 +24,8 @@ uses
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
   rpprintitem,
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl,
-  rppagesetuplcl, rplclpreview, rppreviewcontrol;
+  rppagesetuplcl, rplclpreview, rppreviewcontrol,
+  rpmdfgridlcl, rpmdfaboutlcl;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -117,6 +118,7 @@ type
     MenuEditSelectAll: TMenuItem;
     MenuView: TMenuItem;
     MenuViewGrid: TMenuItem;
+    MenuViewGridConfig: TMenuItem;
     MenuViewRulers: TMenuItem;
     MenuViewUnitsCm: TMenuItem;
     MenuViewUnitsInches: TMenuItem;
@@ -127,6 +129,7 @@ type
     MenuReport: TMenuItem;
     MenuReportDataConfig: TMenuItem;
     MenuReportPageSetup: TMenuItem;
+    MenuReportGridOptions: TMenuItem;
     MenuHelp: TMenuItem;
     MenuHelpAbout: TMenuItem;
 
@@ -166,6 +169,7 @@ type
     procedure BtnSelectAllClick(Sender: TObject);
     procedure ComboScaleChange(Sender: TObject);
     procedure MenuViewGridClick(Sender: TObject);
+    procedure MenuReportGridClick(Sender: TObject);
     procedure MenuViewUnitsClick(Sender: TObject);
     procedure MenuViewScaleClick(Sender: TObject);
     procedure MenuHelpAboutClick(Sender: TObject);
@@ -359,6 +363,11 @@ begin
   MenuViewGrid.OnClick := MenuViewGridClick;
   MenuView.Add(MenuViewGrid);
 
+  MenuViewGridConfig := TMenuItem.Create(MenuView);
+  MenuViewGridConfig.Caption := 'Configurar c&uadrícula...';
+  MenuViewGridConfig.OnClick := MenuReportGridClick;
+  MenuView.Add(MenuViewGridConfig);
+
   MenuViewUnitsCm := TMenuItem.Create(MenuView);
   MenuViewUnitsCm.Caption := 'Unidades: Centímetros (cm)';
   MenuViewUnitsCm.Checked := True;
@@ -416,6 +425,11 @@ begin
   MenuReportPageSetup.Caption := '&Configuración de página...';
   MenuReportPageSetup.OnClick := BtnPageSetupClick;
   MenuReport.Add(MenuReportPageSetup);
+
+  MenuReportGridOptions := TMenuItem.Create(MenuReport);
+  MenuReportGridOptions.Caption := 'Opciones de &cuadrícula...';
+  MenuReportGridOptions.OnClick := MenuReportGridClick;
+  MenuReport.Add(MenuReportGridOptions);
 
   // Help Menu
   MenuHelp := TMenuItem.Create(MainMenu1);
@@ -1201,6 +1215,17 @@ begin
   end;
 end;
 
+procedure TFRpMainFLCL.MenuReportGridClick(Sender: TObject);
+begin
+  if Assigned(FReport) then
+  begin
+    ModifyGridProperties(FReport);
+    MenuViewGrid.Checked := FReport.GridVisible;
+    if Assigned(FDesignerFrame) then
+      FDesignerFrame.UpdateInterface(True);
+  end;
+end;
+
 procedure TFRpMainFLCL.MenuViewUnitsClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Tag = 0 then
@@ -1228,10 +1253,7 @@ end;
 
 procedure TFRpMainFLCL.MenuHelpAboutClick(Sender: TObject);
 begin
-  ShowMessage('Report Manager Designer LCL' + LineEnding +
-              'Versión 4.0 (Free Pascal / Lazarus LCL)' + LineEnding +
-              'Copyright (c) 1994-2026 Toni Martir' + LineEnding +
-              'https://reportman.es');
+  ShowAbout;
 end;
 
 procedure TFRpMainFLCL.MenuFileExitClick(Sender: TObject);

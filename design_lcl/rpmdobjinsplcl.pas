@@ -116,6 +116,7 @@ type
     procedure EditChange(Sender: TObject);
     procedure ShapeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FontClick(Sender: TObject);
+    procedure ExpressionClick(Sender: TObject);
     procedure ImageClick(Sender: TObject);
     procedure ImageKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ComboAliasChange(Sender: TObject);
@@ -144,7 +145,7 @@ implementation
 {$R *.lfm}
 
 uses
-  rpmdfdesignlcl, rpmdfstruclcl;
+  rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
 var
@@ -324,6 +325,7 @@ var
   ALabel: TLabel;
   control, NControl: TControl;
   typename: string;
+  btn1, btn2: TButton;
   APanelTop: TPanel;
   APControl: TPageControl;
   pageall, apage: TRpPageObjLCL;
@@ -560,6 +562,16 @@ begin
       TEdit(NControl).OnClick := FontClick;
       TEdit(NControl).OnDblClick := FontClick;
     end
+    else if typename = SRpSExpression then
+    begin
+      control := TEdit.Create(Self);
+      TEdit(control).OnChange := EditChange;
+      TEdit(control).OnDblClick := ExpressionClick;
+
+      NControl := TEdit.Create(Self);
+      TEdit(NControl).OnChange := EditChange;
+      TEdit(NControl).OnDblClick := ExpressionClick;
+    end
     else
     begin
       control := TEdit.Create(Self);
@@ -580,6 +592,34 @@ begin
     NControl.Width := apage.PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
     NControl.Anchors := [akLeft, akTop, akRight];
     NControl.Parent := apage.PRight;
+
+    if typename = SRpSExpression then
+    begin
+      control.Width := control.Width - 26;
+      NControl.Width := NControl.Width - 26;
+
+      btn1 := TButton.Create(Self);
+      btn1.Parent := PRight;
+      btn1.Width := 24;
+      btn1.Height := control.Height;
+      btn1.Top := posy;
+      btn1.Left := PRight.Width - CONS_RIGHTBARGAP - 24;
+      btn1.Caption := '...';
+      btn1.Tag := i;
+      btn1.OnClick := ExpressionClick;
+      btn1.Anchors := [akTop, akRight];
+
+      btn2 := TButton.Create(Self);
+      btn2.Parent := apage.PRight;
+      btn2.Width := 24;
+      btn2.Height := NControl.Height;
+      btn2.Top := apage.PosY;
+      btn2.Left := apage.PRight.Width - CONS_RIGHTBARGAP - 24;
+      btn2.Caption := '...';
+      btn2.Tag := i;
+      btn2.OnClick := ExpressionClick;
+      btn2.Anchors := [akTop, akRight];
+    end;
 
     control.Tag := i;
     NControl.Tag := i;
@@ -976,6 +1016,49 @@ begin
     end;
     if Assigned(FCompItem) then
       FCompItem.Invalidate;
+  end;
+end;
+
+procedure TRpPanelObjLCL.ExpressionClick(Sender: TObject);
+var
+  expredia: TRpExpreDialogLCL;
+  ed1, ed2: TEdit;
+  tagIdx: Integer;
+  areport: TRpReport;
+begin
+  tagIdx := TComponent(Sender).Tag;
+  areport := nil;
+  if Assigned(FCompItem) and Assigned(FCompItem.PrintItem) and (FCompItem.PrintItem.Report is TRpReport) then
+    areport := TRpReport(FCompItem.PrintItem.Report)
+  else if Assigned(Owner) and (Owner is TFRpObjInspLCL) and Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+          (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    areport := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).Report;
+
+  expredia := TRpExpreDialogLCL.Create(Application);
+  try
+    if Assigned(areport) then
+    begin
+      expredia.Evaluator := areport.Evaluator;
+      expredia.RpAlias := areport.AliasList;
+    end;
+    if (tagIdx >= 0) and (tagIdx < LControls.Count) then
+    begin
+      ed1 := TEdit(LControls.Objects[tagIdx]);
+      expredia.Expression.Text := ed1.Text;
+      if expredia.Execute then
+      begin
+        ed1.Text := Trim(expredia.Expression.Text);
+        if tagIdx < LControls2.Count then
+        begin
+          ed2 := TEdit(LControls2.Objects[tagIdx]);
+          if Assigned(ed2) then
+            ed2.Text := ed1.Text;
+        end;
+        EditChange(ed1);
+      end;
+    end;
+  finally
+    expredia.Free;
   end;
 end;
 

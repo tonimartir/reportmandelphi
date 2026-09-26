@@ -11,8 +11,9 @@ uses
   rpwebview2, rplclwebview, rpfrmmonacoeditorlcl, rprulerlcl, rpmdobinsintlcl, 
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl, rpmdfchartintlcl, 
   rpmdfsectionintlcl, rpmdfdesignlcl, rpmdobjinsplcl, rpmdesignerlcl, 
-  rpmregdesignlcl, rpmdimageslcl, rpdbbrowserlcl, rpmdfstruclcl, rpmdfdinfolcl, 
-  rpmdfmainlcl, LazarusPackageIntf;
+  rpmregdesignlcl, rpmdimageslcl, rpdbbrowserlcl, rpmdfstruclcl, 
+  rpmdfdinfolcl, rpmdfmainlcl, rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl, 
+  LazarusPackageIntf;
 
 implementation
 

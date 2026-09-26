@@ -21,7 +21,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Files Count="19">
+    <Files Count="22">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -99,6 +99,18 @@
         <Filename Value="..\..\design_lcl\rpmdfmainlcl.pas"/>
         <UnitName Value="rpmdfmainlcl"/>
       </Item19>
+      <Item20>
+        <Filename Value="..\..\design_lcl\rpexpredlglcl.pas"/>
+        <UnitName Value="rpexpredlglcl"/>
+      </Item20>
+      <Item21>
+        <Filename Value="..\..\design_lcl\rpmdfgridlcl.pas"/>
+        <UnitName Value="rpmdfgridlcl"/>
+      </Item21>
+      <Item22>
+        <Filename Value="..\..\design_lcl\rpmdfaboutlcl.pas"/>
+        <UnitName Value="rpmdfaboutlcl"/>
+      </Item22>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>

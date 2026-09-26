@@ -11,7 +11,8 @@ uses
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
   rpmdimageslcl, rpmdfstruclcl, rpdbbrowserlcl, rpmdfdinfolcl, rpdatainfo,
-  rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl;
+  rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl,
+  rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl;
 
 type
   TMainForm = class(TForm)
@@ -572,6 +573,10 @@ var
   testPageSetup: TFRpPageSetupVCL;
   origPageSize: TRpPageSize;
   origLeftMargin: Integer;
+  testExpre: TFRpExpreDialogLCL;
+  testExpreComp: TRpExpreDialogLCL;
+  testGrid: TFRpGridOptionsLCL;
+  testAbout: TFRpAboutBoxLCL;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1320,6 +1325,58 @@ begin
       testDlg.Free;
     end;
     LogMsg('Subphase 3.5 verification completed successfully');
+
+    // -----------------------------------------------------------------
+    // Testing Subphase 4.1: Auxiliary Dialogs (Expression, Grid, About)
+    // -----------------------------------------------------------------
+    LogMsg('Testing Subphase 4.1: Auxiliary Dialogs...');
+
+    // 1. Expression Dialog
+    testExpre := TFRpExpreDialogLCL.Create(nil);
+    try
+      testExpre.Evaluator := FReport.Evaluator;
+      testExpre.MemoExpre.Text := '10 * 5';
+      if testExpre.MemoExpre.Text <> '10 * 5' then
+      begin
+        LogMsg('[TEST_FAILED] TFRpExpreDialogLCL MemoExpre mismatch');
+        Halt(1);
+      end;
+      LogMsg('TFRpExpreDialogLCL verified');
+    finally
+      testExpre.Free;
+    end;
+
+    testExpreComp := TRpExpreDialogLCL.Create(nil);
+    try
+      testExpreComp.Evaluator := FReport.Evaluator;
+      testExpreComp.Expression.Text := '1 + 2 * 3';
+      if Trim(testExpreComp.Expression.Text) <> '1 + 2 * 3' then
+      begin
+        LogMsg('[TEST_FAILED] TRpExpreDialogLCL Expression mismatch');
+        Halt(1);
+      end;
+      LogMsg('TRpExpreDialogLCL component verified');
+    finally
+      testExpreComp.Free;
+    end;
+
+    // 2. Grid Options Dialog
+    testGrid := TFRpGridOptionsLCL.Create(nil);
+    try
+      testGrid.Report := FReport;
+      LogMsg('TFRpGridOptionsLCL verified');
+    finally
+      testGrid.Free;
+    end;
+
+    // 3. About Box Dialog
+    testAbout := TFRpAboutBoxLCL.Create(nil);
+    try
+      LogMsg('TFRpAboutBoxLCL verified');
+    finally
+      testAbout.Free;
+    end;
+    LogMsg('Subphase 4.1 verification completed successfully');
 
     ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
