@@ -21,7 +21,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Files Count="28">
+    <Files Count="29">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -135,6 +135,10 @@
         <Filename Value="..\..\design_lcl\rpmdfparamslcl.pas"/>
         <UnitName Value="rpmdfparamslcl"/>
       </Item28>
+      <Item29>
+        <Filename Value="..\..\design_lcl\rpmdundocuelcl.pas"/>
+        <UnitName Value="rpmdundocuelcl"/>
+      </Item29>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>

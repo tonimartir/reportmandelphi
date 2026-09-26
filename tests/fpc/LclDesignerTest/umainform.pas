@@ -14,7 +14,8 @@ uses
   rppagesetuplcl, rplclpreview, rppreviewcontrol, rpfrmmonacoeditorlcl,
   rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpcolumnar,
-  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams, rpparams;
+  rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams, rpparams,
+  rpmdundocuelcl;
 
 type
   TMainForm = class(TForm)
@@ -590,6 +591,14 @@ var
   testSearchDlg: TFRpSearchParamLCL;
   testOpenLibDlg: TFRpOpenLibLCL;
   testParamItem: TRpParam;
+  testCue, testCue2: TUndoCue;
+  testOp: TChangeObjectOperation;
+  testTargetComp: TRpCommonPosComponent;
+  origCompPosX: Integer;
+  cueJson: string;
+  testAddLabel: TRpLabel;
+  testSecItemCount: Integer;
+  testTargetSec: TRpSection;
 begin
   LogMsg('RunSelfTest started');
   ok := False;
@@ -1549,6 +1558,171 @@ begin
      LogMsg('GlobalParamValueSearch hook registration verified');
 
      LogMsg('Subphase 4.3 verification completed successfully');
+
+     // -----------------------------------------------------------------
+     // Testing Subphase 5.1: Undo Cue Engine in FPC/LCL
+     // -----------------------------------------------------------------
+     LogMsg('Testing Subphase 5.1: Undo Cue Engine in FPC/LCL...');
+
+     testCue := TUndoCue.Create(FReport);
+     try
+       // 1. Initial state and group ID generation
+       if (testCue.UndoOperations.Count <> 0) or (testCue.RedoOperations.Count <> 0) then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue operations not empty initially');
+         Halt(1);
+       end;
+       if testCue.GetGroupId <> 1 then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue initial GetGroupId should be 1');
+         Halt(1);
+       end;
+       if testCue.GetGroupId <> 2 then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue subsequent GetGroupId should be 2');
+         Halt(1);
+       end;
+
+       // 2. Test otModify on a report component
+       secInt := TRpSectionInterface(FDesignerFrame.secinterfaces[0]);
+       testTargetSec := TRpSection(secInt.printitem);
+       testTargetComp := TRpCommonPosComponent(TRpSizePosInterface(secInt.childlist[0]).printitem);
+       origCompPosX := testTargetComp.PosX;
+
+       testOp := TChangeObjectOperation.Create(otModify, testCue.GetGroupId);
+       testOp.componentName := testTargetComp.Name;
+       testOp.componentClass := testTargetComp.ClassName;
+       testOp.parentName := testTargetSec.Name;
+       testOp.AddProperty('posX', ptInteger, origCompPosX, origCompPosX + 500);
+
+       // Apply modification directly to component
+       testTargetComp.PosX := origCompPosX + 500;
+       testCue.AddOperation(testOp);
+
+       if (testCue.UndoOperations.Count <> 1) or (testCue.RedoOperations.Count <> 0) then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue AddOperation state incorrect');
+         Halt(1);
+       end;
+
+       // Test Undo
+       testCue.Undo;
+       if testTargetComp.PosX <> origCompPosX then
+       begin
+         LogMsg(Format('[TEST_FAILED] TUndoCue Undo did not restore PosX: got %d, expected %d',
+           [testTargetComp.PosX, origCompPosX]));
+         Halt(1);
+       end;
+       if (testCue.UndoOperations.Count <> 0) or (testCue.RedoOperations.Count <> 1) then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue state after Undo incorrect');
+         Halt(1);
+       end;
+
+       // Test Redo
+       testCue.Redo;
+       if testTargetComp.PosX <> origCompPosX + 500 then
+       begin
+         LogMsg(Format('[TEST_FAILED] TUndoCue Redo did not re-apply PosX: got %d, expected %d',
+           [testTargetComp.PosX, origCompPosX + 500]));
+         Halt(1);
+       end;
+       if (testCue.UndoOperations.Count <> 1) or (testCue.RedoOperations.Count <> 0) then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue state after Redo incorrect');
+         Halt(1);
+       end;
+
+       // Restore position via Undo
+       testCue.Undo;
+       if testTargetComp.PosX <> origCompPosX then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue second Undo failed to restore PosX');
+         Halt(1);
+       end;
+
+       // 3. Test otAdd and otRemove
+       testSecItemCount := testTargetSec.ReportComponents.Count;
+
+       testAddLabel := TRpLabel.Create(FReport);
+       testAddLabel.Name := 'TEST_UNDO_LABEL';
+       testAddLabel.Text := 'UndoTestContent';
+       testAddLabel.PosX := 100;
+       testAddLabel.PosY := 100;
+       testAddLabel.Width := 1000;
+       testAddLabel.Height := 300;
+       testTargetSec.ReportComponents.Add.Component := testAddLabel;
+
+       testOp := TChangeObjectOperation.Create(otAdd, testCue.GetGroupId);
+       testOp.componentName := testAddLabel.Name;
+       testOp.componentClass := 'TRPLABEL';
+       testOp.parentName := testTargetSec.Name;
+       testCue.AddAllComponentProperties(testAddLabel, testOp);
+       testCue.AddOperation(testOp);
+
+       if testTargetSec.ReportComponents.Count <> testSecItemCount + 1 then
+       begin
+         LogMsg('[TEST_FAILED] Added component not in section');
+         Halt(1);
+       end;
+
+       // Undo Add -> removes component from section
+       testCue.Undo;
+       if testTargetSec.ReportComponents.Count <> testSecItemCount then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue Undo otAdd did not remove component from section');
+         Halt(1);
+       end;
+
+       // Redo Add -> re-creates component in section
+       testCue.Redo;
+       if testTargetSec.ReportComponents.Count <> testSecItemCount + 1 then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue Redo otAdd did not re-create component in section');
+         Halt(1);
+       end;
+
+       // Undo Add again to clean up
+       testCue.Undo;
+       if testTargetSec.ReportComponents.Count <> testSecItemCount then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue cleanup Undo otAdd failed');
+         Halt(1);
+       end;
+
+       // 4. Test JSON serialization and deserialization
+       cueJson := testCue.ToJSON;
+       if (Length(cueJson) = 0) or (Pos('groupId', cueJson) = 0) then
+       begin
+         LogMsg('[TEST_FAILED] TUndoCue ToJSON produced invalid output');
+         Halt(1);
+       end;
+
+       testCue2 := TUndoCue.Create(FReport);
+       try
+         testCue2.FromJSON(cueJson);
+         if testCue2.GroupId <> testCue.GroupId then
+         begin
+          LogMsg(Format('[TEST_FAILED] TUndoCue FromJSON GroupId mismatch: got %d, expected %d',
+             [testCue2.GroupId, testCue.GroupId]));
+           Halt(1);
+         end;
+         if testCue2.RedoOperations.Count <> testCue.RedoOperations.Count then
+         begin
+           LogMsg('[TEST_FAILED] TUndoCue FromJSON RedoOperations count mismatch');
+           Halt(1);
+         end;
+         LogMsg('TUndoCue JSON roundtrip serialization verified');
+       finally
+         testCue2.Free;
+       end;
+
+       LogMsg('TUndoCue property modification, component addition/removal and serialization verified');
+     finally
+       testCue.Free;
+     end;
+
+     LogMsg('Subphase 5.1 verification completed successfully');
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

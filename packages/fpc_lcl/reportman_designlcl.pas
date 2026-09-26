@@ -14,7 +14,7 @@ uses
   rpmregdesignlcl, rpmdimageslcl, rpdbbrowserlcl, rpmdfstruclcl, 
   rpmdfdinfolcl, rpmdfmainlcl, rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl, 
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpmdfsearchlcl, 
-  rpmdfopenliblcl, rpmdfparamslcl, LazarusPackageIntf;
+  rpmdfopenliblcl, rpmdfparamslcl, rpmdundocuelcl, LazarusPackageIntf;
 
 implementation
 
