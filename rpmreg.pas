@@ -28,6 +28,7 @@ uses
   rpclientdataset,
 {$ENDIF}
 {$ENDIF}
+{$IFNDEF FPC}
 {$IFNDEF USEVARIANTS}
   rpvclreport,rpmaskedit,rppreviewcontrol,rpdbdatetimepicker,
   {$IFNDEF BUILDER4}
@@ -37,6 +38,7 @@ uses
 {$ENDIF}
   {$ENDIF}
    DsgnIntf,
+{$ENDIF}
 {$ENDIF}
   rplastsav;
 
@@ -56,6 +58,7 @@ begin
   RegisterComponents('Reportman', [TRpClientDataset]);
 {$ENDIF}
 {$ENDIF}
+{$IFNDEF FPC}
 {$IFNDEF USEVARIANTS}
   RegisterComponents('Reportman', [TVCLReport]);
   RegisterComponents('Reportman', [TRpDateTimePicker]);
@@ -69,6 +72,7 @@ begin
    RegisterComponents('Reportman', [TRpTwainWeb]);
   {$ENDIF}
   {$ENDIF}
+{$ENDIF}
 {$ENDIF}
 
 
