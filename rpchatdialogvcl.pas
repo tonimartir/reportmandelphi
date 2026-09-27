@@ -47,6 +47,15 @@ const
 type
   TRpChatMode = (rcmExpression, rcmDesign);
 
+  // Set by a report refresh worker when it ends; the dialog waits for it
+  // before preparing a report again (two workers must not prepare the same
+  // report at the same time)
+  IRpRefreshDone = interface
+    ['{5E0B6F7A-2C4D-4E8B-9A31-7C2D8E4F1A06}']
+    function Done: Boolean;
+    procedure SetDone;
+  end;
+
   TRpQueuedExpressionChatPayloadKind = (
     rpqecUpdateStreamingResponse,
     rpqecBeginRetry,
@@ -61,6 +70,8 @@ type
   public
     Kind: TRpQueuedExpressionChatPayloadKind;
     RequestVersion: Integer;
+    // Expression request that posted it (0: not an expression request)
+    ExpressionVersion: Integer;
     Actor1: string;
     ProgressId1: string;
     ChunkType1: string;
@@ -167,8 +178,10 @@ type
     FCancelExpressionRequest: Boolean;
     FChat: TFRpChatFrame;
     FExpressionCursorPosition: Integer;
-    FExpressionStreamError: string;
-    FExpressionStreamResult: TJSONObject;
+    // Current expression request; a new request or a new showing of the
+    // dialog replaces it (its payloads are dropped, its stream stops)
+    FExpressionRequestVersion: Integer;
+    FCancelledExpressionVersion: Integer;
     FRefreshReport: TRpReport;
     FRefreshPrintDriver: TRpPrintDriver;
     FRefreshAlias: TRpAlias;
@@ -177,6 +190,7 @@ type
     FSchemaOnlyErrors: TStringList;
     FRefreshVersion: Integer;
     FRefreshRunning: Boolean;
+    FRefreshDone: IRpRefreshDone;
     FAliasReady: Boolean;
     FDesignRequestVersion: Integer;
     llistes:array[0..FMaxlisthelp-1] of TStringlist;
@@ -192,19 +206,17 @@ type
     procedure AssignEmptyAlias;
     function BuildExpressionSemanticContextJson: string;
     function ExpressionStreamCancelRequested(Sender: TObject): Boolean;
-    procedure ExpressionStreamProgress(Sender: TObject; const AActor, AStage,
+    procedure ExpressionStreamProgress(AVersion: Integer; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
       const AProgressId: string; APrefillPercent: Integer);
-    procedure ExpressionStreamResult(Sender: TObject; AResultJson: TJSONObject;
-      const AErrorMessage: string);
     function ExtractExpressionFromApiResult(AResultJson: TJSONObject;
+      const AStreamError: string;
       out AExpression, AExplanation, AErrorMessage: string): Boolean;
     function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     function GetExpressionPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure DesignStreamProgress(Sender: TObject; const AActor, AStage,
       AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
       const AProgressId: string; APrefillPercent: Integer);
-    procedure ResetExpressionStreamState;
     procedure StopExpressionRequest(Sender: TObject);
     function BuildDesignChatRequestForFrame(Sender: TObject;
       const APrompt: string): TRpApiModifyReportRequest;
@@ -237,7 +249,10 @@ type
     procedure WMStartOnlineInitialization(var Message: TMessage); message WM_USER + 201;
     procedure PopulateAliasFromReport(ATargetAlias: TRpAlias);
     procedure PostExpressionChatPayload(APayload: TRpQueuedExpressionChatPayload);
+    procedure PostExpressionChatPayloadFor(AVersion: Integer;
+      APayload: TRpQueuedExpressionChatPayload);
     procedure StartReportRefresh;
+    procedure WaitForReportRefresh;
     procedure SetSchemaOnlyContext(AFields, AErrors: TStrings);
     procedure SetChatMode(AMode: TRpChatMode);
     procedure UpdateRefreshUIState;
@@ -288,6 +303,95 @@ begin
  if SchemaOnlyErrors <> nil then
   SchemaOnlyErrors.Free;
  inherited Destroy;
+end;
+
+// The connection of a dataset, nil when it does not exist (deleted, or the
+// dataset has none): TRpDatabaseInfoList.ItemByName raises instead
+function FindDatabaseInfo(AList: TRpDatabaseInfoList;
+  const AAlias: string): TRpDatabaseInfoItem;
+var
+ LIndex: Integer;
+begin
+ LIndex := AList.IndexOf(AAlias);
+ if LIndex >= 0 then
+  Result := AList.Items[LIndex]
+ else
+  Result := nil;
+end;
+
+type
+  TRpRefreshDone = class(TInterfacedObject, IRpRefreshDone)
+  private
+    FDone: Boolean;
+  public
+    function Done: Boolean;
+    procedure SetDone;
+  end;
+
+  // One expression request: its stream result, and whether it was stopped
+  // or replaced (read from the worker thread)
+  TRpExpressionRequestContext = class(TObject)
+  public
+    Owner: TFRpExpredialogVCL;
+    Version: Integer;
+    StreamResult: TJSONObject;
+    StreamError: string;
+    destructor Destroy; override;
+    procedure Reset;
+    function CancelRequested(Sender: TObject): Boolean;
+    procedure StreamProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure StreamResultReceived(Sender: TObject; AResultJson: TJSONObject;
+      const AErrorMessage: string);
+  end;
+
+function TRpRefreshDone.Done: Boolean;
+begin
+ Result := FDone;
+end;
+
+procedure TRpRefreshDone.SetDone;
+begin
+ FDone := True;
+end;
+
+destructor TRpExpressionRequestContext.Destroy;
+begin
+ StreamResult.Free;
+ inherited Destroy;
+end;
+
+procedure TRpExpressionRequestContext.Reset;
+begin
+ FreeAndNil(StreamResult);
+ StreamError := '';
+end;
+
+function TRpExpressionRequestContext.CancelRequested(Sender: TObject): Boolean;
+begin
+ Result := (Owner.FExpressionRequestVersion <> Version) or
+   (Owner.FCancelledExpressionVersion = Version);
+end;
+
+procedure TRpExpressionRequestContext.StreamProgress(Sender: TObject;
+  const AActor, AStage, AChunkType, AChunk: string; AInputTokens,
+  AOutputTokens: Integer; const AProgressId: string; APrefillPercent: Integer);
+begin
+ Owner.ExpressionStreamProgress(Version, AActor, AStage, AChunkType, AChunk,
+   AInputTokens, AOutputTokens, AProgressId, APrefillPercent);
+end;
+
+procedure TRpExpressionRequestContext.StreamResultReceived(Sender: TObject;
+  AResultJson: TJSONObject; const AErrorMessage: string);
+begin
+ if AErrorMessage <> '' then
+  StreamError := AErrorMessage;
+ if AResultJson <> nil then
+ begin
+  StreamResult.Free;
+  StreamResult := AResultJson;
+ end;
 end;
 
 function EncodeSchemaFieldEntry(const ADatasetAlias, AFieldName,
@@ -438,7 +542,7 @@ begin
    if Trim(LDataInfo.SQL) = '' then
     Continue;
 
-   LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+   LDatabaseInfo := FindDatabaseInfo(AReport.DatabaseInfo, LDataInfo.DatabaseAlias);
    if (LDatabaseInfo = nil) or (LDatabaseInfo.Driver <> rpdbHttp) then
     Continue;
 
@@ -709,7 +813,7 @@ begin
       LRuntimeDatasetColumns.Duplicates := dupIgnore;
       LRuntimeDatasetColumns.CaseSensitive := False;
       LIssues := TJSONArray.Create;
-      LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      LDatabaseInfo := FindDatabaseInfo(AReport.DatabaseInfo, LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
         LRuntimeSourceName := 'agent_schema_only'
       else
@@ -838,8 +942,8 @@ begin
  FCancelExpressionRequest := False;
  FChatMode := rcmExpression;
  FExpressionCursorPosition := MemoExpre.SelStart;
- FExpressionStreamError := '';
- FExpressionStreamResult := nil;
+ FExpressionRequestVersion := 0;
+ FCancelledExpressionVersion := -1;
  FOwnsEvaluator := False;
  FRefreshReport := nil;
  FRefreshPrintDriver := nil;
@@ -886,6 +990,9 @@ end;
 procedure TFRpExpredialogVCL.ConfigureReportRefresh(AReport: TRpReport;
   APrintDriver: TRpPrintDriver; ATargetAlias: TRpAlias);
 begin
+ // A refresh of the previous showing is not left running: two workers
+ // would prepare the same report at the same time. Its answer is dropped.
+ WaitForReportRefresh;
  FRefreshReport := AReport;
  FRefreshPrintDriver := APrintDriver;
  FRefreshAlias := ATargetAlias;
@@ -893,7 +1000,7 @@ begin
   FSchemaOnlyFields.Clear;
  if FSchemaOnlyErrors <> nil then
   FSchemaOnlyErrors.Clear;
- FRefreshVersion := 0;
+ Inc(FRefreshVersion);
  FRefreshRunning := False;
  if FRefreshReport <> nil then
  begin
@@ -955,7 +1062,8 @@ begin
  SetChatMode(AChatMode);
  MemoExpre.WantReturns:=AWantReturns;
  FCancelExpressionRequest:=False;
- ResetExpressionStreamState;
+ // A request of the previous showing that is still running is dropped
+ Inc(FExpressionRequestVersion);
  if (Fevaluator<>AEvaluator) and FOwnsEvaluator then
   ReleaseOwnedEvaluator;
  FOwnsEvaluator:=AOwnsEvaluator;
@@ -1202,8 +1310,6 @@ var
 begin
   inherited;
  ReleaseOwnedEvaluator;
- if FExpressionStreamResult <> nil then
-  FExpressionStreamResult.Free;
  ClearHelpLists;
  for i:=0 to FMaxlisthelp-1 do
   llistes[i].free;
@@ -1248,6 +1354,14 @@ begin
     FChat.StartOnlineInitialization;
 end;
 
+procedure TFRpExpredialogVCL.PostExpressionChatPayloadFor(AVersion: Integer;
+  APayload: TRpQueuedExpressionChatPayload);
+begin
+  if APayload <> nil then
+    APayload.ExpressionVersion := AVersion;
+  PostExpressionChatPayload(APayload);
+end;
+
 procedure TFRpExpredialogVCL.PostExpressionChatPayload(
   APayload: TRpQueuedExpressionChatPayload);
 begin
@@ -1266,6 +1380,11 @@ begin
   LPayload := TRpQueuedExpressionChatPayload(Message.WParam);
   try
     if (LPayload = nil) or (FChat = nil) then
+      Exit;
+    // Payloads of a replaced expression request (a later request or a new
+    // showing of the dialog) are dropped
+    if (LPayload.ExpressionVersion <> 0) and
+      (LPayload.ExpressionVersion <> FExpressionRequestVersion) then
       Exit;
 
     case LPayload.Kind of
@@ -1440,6 +1559,7 @@ var
  LWorker: TThread;
  LRequestVersion: Integer;
  LReport: TRpReport;
+ LDone: IRpRefreshDone;
 begin
  if FRefreshRunning then
   Exit;
@@ -1455,6 +1575,8 @@ begin
   FOwnsEvaluator := True;
  end;
  FRefreshRunning := True;
+ LDone := TRpRefreshDone.Create;
+ FRefreshDone := LDone;
  UpdateRefreshUIState;
 
  LWorker := TThread.CreateAnonymousThread(
@@ -1495,10 +1617,21 @@ begin
       LSchemaOnlyFields.Free;
       LOpenErrors.Free;
       LPayload.Free;
+      LDone.SetDone;
     end;
    end);
  LWorker.FreeOnTerminate := True;
  LWorker.Start;
+end;
+
+procedure TFRpExpredialogVCL.WaitForReportRefresh;
+begin
+ if FRefreshDone = nil then
+  Exit;
+ // The worker posts its answer, but may also wait for the main thread
+ while not FRefreshDone.Done do
+  CheckSynchronize(10);
+ FRefreshDone := nil;
 end;
 
 procedure TFRpExpredialogVCL.WMHandleExpressionRefresh(var Message: TMessage);
@@ -1569,16 +1702,6 @@ begin
  UpdateExpressionCursorPosition;
 end;
 
-procedure TFRpExpredialogVCL.ResetExpressionStreamState;
-begin
- if FExpressionStreamResult <> nil then
- begin
-  FExpressionStreamResult.Free;
-  FExpressionStreamResult := nil;
- end;
- FExpressionStreamError := '';
-end;
-
 function TFRpExpredialogVCL.ExpressionStreamCancelRequested(Sender: TObject): Boolean;
 begin
  Result := FCancelExpressionRequest;
@@ -1622,7 +1745,7 @@ end;
       Result := 100;
   end;
 
-procedure TFRpExpredialogVCL.ExpressionStreamProgress(Sender: TObject; const AActor,
+procedure TFRpExpredialogVCL.ExpressionStreamProgress(AVersion: Integer; const AActor,
   AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
   const AProgressId: string; APrefillPercent: Integer);
 var
@@ -1652,7 +1775,7 @@ begin
  LPayload.PrefillPercent := LPrefill;
  LPayload.InputTokens := AInputTokens;
  LPayload.OutputTokens := AOutputTokens;
- PostExpressionChatPayload(LPayload);
+ PostExpressionChatPayloadFor(AVersion, LPayload);
 end;
 
 procedure TFRpExpredialogVCL.DesignStreamProgress(Sender: TObject; const AActor,
@@ -1688,29 +1811,16 @@ begin
   PostExpressionChatPayload(LPayload);
 end;
 
-procedure TFRpExpredialogVCL.ExpressionStreamResult(Sender: TObject;
-  AResultJson: TJSONObject; const AErrorMessage: string);
-begin
- if AErrorMessage <> '' then
-  FExpressionStreamError := AErrorMessage;
- if AResultJson <> nil then
- begin
-  if FExpressionStreamResult <> nil then
-   FExpressionStreamResult.Free;
-  FExpressionStreamResult := AResultJson;
- end;
-end;
-
 function TFRpExpredialogVCL.ExtractExpressionFromApiResult(
-  AResultJson: TJSONObject; out AExpression, AExplanation,
-  AErrorMessage: string): Boolean;
+  AResultJson: TJSONObject; const AStreamError: string; out AExpression,
+  AExplanation, AErrorMessage: string): Boolean;
 var
  LResultObj: TJSONObject;
 begin
  Result := False;
  AExpression := '';
  AExplanation := '';
- AErrorMessage := FExpressionStreamError;
+ AErrorMessage := AStreamError;
  if AErrorMessage <> '' then
   Exit;
  if AResultJson = nil then
@@ -1794,7 +1904,10 @@ end;
 procedure TFRpExpredialogVCL.StopExpressionRequest(Sender: TObject);
 begin
  if FChatMode <> rcmDesign then
+ begin
   FCancelExpressionRequest := True;
+  FCancelledExpressionVersion := FExpressionRequestVersion;
+ end;
 end;
 
 function TFRpExpredialogVCL.BuildDesignChatRequestForFrame(Sender: TObject;
@@ -1915,7 +2028,7 @@ end;
      LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
      LDataSource.Sql := LDataInfo.SQL;
 
-     LDatabaseInfo := FRefreshReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+     LDatabaseInfo := FindDatabaseInfo(FRefreshReport.DatabaseInfo, LDataInfo.DatabaseAlias);
      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
      begin
       LConnectionParams.Clear;
@@ -2406,6 +2519,8 @@ var
  LPrompt: string;
  LSemanticContext: string;
  LWorker: TThread;
+ LContext: TRpExpressionRequestContext;
+ LVersion: Integer;
 begin
  if FChat = nil then
   Exit;
@@ -2423,7 +2538,11 @@ begin
  LSemanticContext := BuildExpressionSemanticContextJson;
 
  FCancelExpressionRequest := False;
- ResetExpressionStreamState;
+ Inc(FExpressionRequestVersion);
+ LVersion := FExpressionRequestVersion;
+ LContext := TRpExpressionRequestContext.Create;
+ LContext.Owner := Self;
+ LContext.Version := LVersion;
  FChat.BeginStreamingResponse;
 
  LWorker := TThread.CreateAnonymousThread(
@@ -2438,6 +2557,7 @@ begin
     LNeedRetry: Boolean;
     LRetryMessage: string;
     LUserProfile: TJSONObject;
+    LValid: Boolean;
    begin
     LCurrentExpression := AExpression;
     LNeedRetry := False;
@@ -2452,55 +2572,63 @@ begin
           LHttp.AgentAiId := LAgentAiId;
 
           repeat
-            ResetExpressionStreamState;
+            LContext.Reset;
             if LNeedRetry then
             begin
               LChatPayload := TRpQueuedExpressionChatPayload.Create;
               LChatPayload.Kind := rpqecBeginRetry;
-              PostExpressionChatPayload(LChatPayload);
+              PostExpressionChatPayloadFor(LVersion, LChatPayload);
             end;
 
             LHttp.SuggestExpressionStream(LPrompt, LCurrentExpression, LCursorPosition,
-              LAIMode, LNeedRetry, LSemanticContext, Self, ExpressionStreamProgress,
-              ExpressionStreamResult, ExpressionStreamCancelRequested);
+              LAIMode, LNeedRetry, LSemanticContext, LContext, LContext.StreamProgress,
+              LContext.StreamResultReceived, LContext.CancelRequested);
 
-            if FCancelExpressionRequest then
+            if LContext.CancelRequested(nil) then
             begin
               LChatPayload := TRpQueuedExpressionChatPayload.Create;
               LChatPayload.Kind := rpqecGenerationStopped;
-              PostExpressionChatPayload(LChatPayload);
+              PostExpressionChatPayloadFor(LVersion, LChatPayload);
               Exit;
             end;
 
-            if not ExtractExpressionFromApiResult(FExpressionStreamResult,
-              LExpression, LExplanation, LErrorMessage) then
+            if not ExtractExpressionFromApiResult(LContext.StreamResult,
+              LContext.StreamError, LExpression, LExplanation, LErrorMessage) then
             begin
               LChatPayload := TRpQueuedExpressionChatPayload.Create;
               LChatPayload.Kind := rpqecAddAssistantMessage;
               LChatPayload.Text1 := LErrorMessage;
-              PostExpressionChatPayload(LChatPayload);
+              PostExpressionChatPayloadFor(LVersion, LChatPayload);
               Exit;
             end;
 
             LUserProfile := nil;
-            if (FExpressionStreamResult <> nil) and (FExpressionStreamResult.Values['userProfile'] is TJSONObject) then
-              LUserProfile := TJSONObject((FExpressionStreamResult.Values['userProfile'] as TJSONObject).Clone);
+            if (LContext.StreamResult <> nil) and (LContext.StreamResult.Values['userProfile'] is TJSONObject) then
+              LUserProfile := TJSONObject((LContext.StreamResult.Values['userProfile'] as TJSONObject).Clone);
             if LUserProfile <> nil then
             begin
               LChatPayload := TRpQueuedExpressionChatPayload.Create;
               LChatPayload.Kind := rpqecUpdateUserProfile;
               LChatPayload.UserProfile := LUserProfile;
-              PostExpressionChatPayload(LChatPayload);
+              PostExpressionChatPayloadFor(LVersion, LChatPayload);
             end;
 
-            if (not LNeedRetry) and (not ValidateExpressionText(LExpression, LErrorMessage)) then
+            // The evaluator belongs to the main thread (a report refresh
+            // replaces or frees it)
+            TThread.Synchronize(nil,
+              procedure
+              begin
+                LValid := ValidateExpressionText(LExpression, LErrorMessage);
+              end);
+
+            if (not LNeedRetry) and (not LValid) then
             begin
               LCurrentExpression := LExpression;
               LNeedRetry := True;
               Continue;
             end;
 
-            if LNeedRetry and (not ValidateExpressionText(LExpression, LErrorMessage)) then
+            if LNeedRetry and (not LValid) then
             begin
               if Trim(LExplanation) <> '' then
                 LRetryMessage := 'Generated expression is still invalid after one automatic fix: ' +
@@ -2515,7 +2643,7 @@ begin
               LChatPayload.Kind := rpqecSetSuggestedExpression;
               LChatPayload.Text1 := LExpression;
               LChatPayload.Text2 := LRetryMessage;
-              PostExpressionChatPayload(LChatPayload);
+              PostExpressionChatPayloadFor(LVersion, LChatPayload);
               Exit;
             end;
 
@@ -2539,7 +2667,7 @@ begin
             LChatPayload.Kind := rpqecSetSuggestedExpression;
             LChatPayload.Text1 := LExpression;
             LChatPayload.Text2 := LRetryMessage;
-            PostExpressionChatPayload(LChatPayload);
+            PostExpressionChatPayloadFor(LVersion, LChatPayload);
             Break;
           until False;
         except
@@ -2548,11 +2676,12 @@ begin
             LChatPayload := TRpQueuedExpressionChatPayload.Create;
             LChatPayload.Kind := rpqecAddAssistantMessage;
             LChatPayload.Text1 := E.Message;
-            PostExpressionChatPayload(LChatPayload);
+            PostExpressionChatPayloadFor(LVersion, LChatPayload);
           end;
         end;
     finally
       LHttp.Free;
+      LContext.Free;
     end;
   end);
  LWorker.FreeOnTerminate := True;

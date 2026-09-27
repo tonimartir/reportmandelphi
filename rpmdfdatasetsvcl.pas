@@ -828,6 +828,11 @@ procedure TFRpDatasetsVCL.ChatSchemaChange(Sender: TObject);
 begin
   if FSyncingSchemaContext or (FChat = nil) then
     Exit;
+  // The chat also calls this after loading its list; an empty list (not
+  // logged in, logged out, no network) is not a choice of the user and must
+  // not reset the schema of the dataset
+  if (FChat.ComboSchema.Items.Count <= 1) and (FChat.GetHubSchemaId = 0) then
+    Exit;
   SyncActiveSchemaContext(FChat.GetHubDatabaseId, FChat.GetHubSchemaId,
     FChat.GetSchemaApiKey);
 end;
@@ -948,7 +953,8 @@ procedure TFRpDatasetsVCL.ChatApplySuggestion(Sender: TObject;
 begin
   AssertCanModify('Dataset SQL');
   EnsureAdvancedEditors;
-  FMonaco.SQL := AExpression;
+  // As an edit of the editor: Ctrl+Z there restores the previous SQL
+  FMonaco.ApplySQL(AExpression);
   MSQLChange(FMonaco);
   if FChat <> nil then
     FChat.AddAssistantMessage('SQL applied to the editor.');
@@ -1169,6 +1175,7 @@ var
   LAgentAiId: Int64;
   LLanguage: string;
   LRuntimeDb: string;
+  LAlias: string;
 begin
   if FMonaco = nil then
     Exit;
@@ -1176,6 +1183,8 @@ begin
   LDataInfo := FindDataInfoItem;
   if LDataInfo = nil then
     Exit;
+  // The answer goes to this dataset, not to the one selected when it arrives
+  LAlias := LDataInfo.Alias;
 
   LSql := FMonaco.SQL;
   if Trim(LSql) = '' then
@@ -1214,6 +1223,8 @@ begin
       LTokenUsage: TJSONObject;
       LVal: TJSONValue;
       LSyncProc: TThreadProcedure;
+      LIndex: Integer;
+      LSelected: Boolean;
     begin
       LHttp := TRpDatabaseHttp.Create;
       LResponse := nil;
@@ -1278,14 +1289,25 @@ begin
           procedure
           begin
             try
-              LDataInfo := FindDataInfoItem;
+              // The audited dataset, if it still exists with the audited SQL
+              // (the selection may have changed meanwhile, or the dialog
+              // may have been reopened with another working copy)
+              LIndex := datainfo.IndexOf(LAlias);
+              if LIndex >= 0 then
+                LDataInfo := datainfo.Items[LIndex]
+              else
+                LDataInfo := nil;
+              if (LDataInfo <> nil) and (LDataInfo.SQL <> LSql) then
+                LDataInfo := nil;
+              LSelected := (LDataInfo <> nil) and (LDataInfo = FindDataInfoItem);
               if LDataInfo <> nil then
               begin
                 if Trim(LErrorMessage) = '' then
                 begin
                   LDataInfo.SQLExplanation := LExplanation;
                   LDataInfo.SQLExplanationError := '';
-                  FMonaco.AuditText := LExplanation;
+                  if LSelected then
+                    FMonaco.AuditText := LExplanation;
                   if LInputTokens > 0 then
                     FMonaco.AppendLog('Audit SQL complete. Input Tokens: ' +
                       IntToStr(LInputTokens) + ' Output Tokens: ' + IntToStr(LOutputTokens))
@@ -1296,7 +1318,8 @@ begin
                 begin
                   LDataInfo.SQLExplanation := '';
                   LDataInfo.SQLExplanationError := LErrorMessage;
-                  FMonaco.AuditText := '';
+                  if LSelected then
+                    FMonaco.AuditText := '';
                   FMonaco.AppendLog('Audit SQL error: ' + LErrorMessage);
                 end;
               end;

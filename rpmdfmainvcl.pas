@@ -517,6 +517,20 @@ uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs;
 
 {$R *.dfm}
 
+// The connection of a dataset, nil when it does not exist (deleted, or the
+// dataset has none): TRpDatabaseInfoList.ItemByName raises instead
+function FindDatabaseInfo(AList: TRpDatabaseInfoList;
+  const AAlias: string): TRpDatabaseInfoItem;
+var
+ LIndex: Integer;
+begin
+ LIndex := AList.IndexOf(AAlias);
+ if LIndex >= 0 then
+  Result := AList.Items[LIndex]
+ else
+  Result := nil;
+end;
+
 destructor TRpQueuedDesignContextPayload.Destroy;
 begin
  OpenErrors.Free;
@@ -1093,7 +1107,7 @@ begin
     begin
       LHasPersistedSchema := True;
       AHubSchemaId := LDataInfo.HubSchemaId;
-      LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
       begin
         LConnectionParams := TStringList.Create;
@@ -3270,7 +3284,7 @@ end;
      LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
      LDataSource.Sql := LDataInfo.SQL;
 
-     LDatabaseInfo := report.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+     LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
      begin
       LConnectionParams.Clear;
@@ -3534,15 +3548,43 @@ procedure TFRpMainFVCL.ApplyModifiedReportDocument(
   const AModifiedReportDocument: string);
 var
  LStream: TStringStream;
+ LOldItems: TObjectList;
+ LOldFiles: TList;
+ I: Integer;
+ LApplied: Boolean;
 begin
  if (not Assigned(report)) or (Trim(AModifiedReportDocument) = '') then
   Exit;
+ LApplied := False;
 
  report.BlockChanges:=False;
+ // Clear takes the sections and items out of the report without freeing
+ // them, and the design frame, the structure and the inspector show them
+ // until they are pointed to the loaded report below: they are freed at the
+ // end. The XML reader appends the embedded files of the document (the Hub
+ // returns them): the report keeps its own ones only if it brings none.
+ LOldItems := TObjectList.Create(True);
+ LOldFiles := TList.Create;
  LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
  try
-  report.Clear();
-  report.LoadFromStream(LStream);
+  for I := 0 to report.ComponentCount - 1 do
+   if report.Components[I] is TRpCommonComponent then
+    LOldItems.Add(report.Components[I]);
+  for I := 0 to Length(report.EmbeddedFiles) - 1 do
+   LOldFiles.Add(report.EmbeddedFiles[I]);
+  SetLength(report.EmbeddedFiles, 0);
+  try
+   report.Clear();
+   report.LoadFromStream(LStream);
+  finally
+   if (LOldFiles.Count > 0) and (Length(report.EmbeddedFiles) = 0) then
+   begin
+    SetLength(report.EmbeddedFiles, LOldFiles.Count);
+    for I := 0 to LOldFiles.Count - 1 do
+     report.EmbeddedFiles[I] := TEmbeddedFile(LOldFiles[I]);
+    LOldFiles.Clear;
+   end;
+  end;
   report.AsyncExecution := MAsync.Checked;
   report.IsDesignTime := True;
   report.OnReadError := OnReadError;
@@ -3564,8 +3606,16 @@ begin
 
   RefreshCueView;
   FormResize(Self);
+  LApplied := True;
  finally
   LStream.Free;
+  for I := 0 to LOldFiles.Count - 1 do
+   TObject(LOldFiles[I]).Free;
+  LOldFiles.Free;
+  // If the load failed the interface still shows the old items: keep them
+  if not LApplied then
+   LOldItems.OwnsObjects := False;
+  LOldItems.Free;
  end;
 end;
 

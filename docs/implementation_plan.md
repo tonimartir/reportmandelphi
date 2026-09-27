@@ -366,14 +366,27 @@ llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
   06) y enviar el zip OPM (`build/opm`) al Online Package Manager.
 - **Prueba real de la IA** contra `api.reportman.es` (los tres asistentes y el
   completado de IA del editor SQL en Linux), a mano.
-- **Candidatos a bug en el VCL y en código común** anotados en `fase7_3.md`,
-  `fase7_4.md` y `fase7_5.md` ("Encontrado"): verificar cada uno con el ciclo
-  completo antes de tocar Delphi (regla de aislamiento). Ya corregidos
-  (28-09-2026): las fugas de `EmbeddedFiles` (`TRpBaseReport.Destroy`,
+- **Candidatos a bug en el VCL y en código común** de `fase7_3.md`,
+  `fase7_4.md` y `fase7_5.md` ("Encontrado"): verificados el 28-09-2026 con
+  el ciclo completo (código Delphi y, para los ficheros incrustados, el
+  servidor C#). Corregidos: fugas de `EmbeddedFiles` (`TRpBaseReport.Destroy`,
   `TRpMetafileReport.Clear`, `TRpPDFFile.Destroy`), `TBytes` en `TStream` con
-  FPC, y la carrera al crear `~/.borland` en `TRpConnAdmin.LoadConfig` (Linux:
-  dos hilos o procesos a la vez en una instalación nueva; la vio el Docker con
-  el hilo de contexto del asistente de diseño).
+  FPC, carrera al crear `~/.borland` (Linux), y en el diseñador VCL:
+  `ItemByName` con conexión inexistente, ficheros incrustados duplicados y
+  fuga de secciones al aplicar un cambio de la IA, esquema del dataset
+  borrado con la lista vacía, auditoría guardada en otro dataset, aplicar SQL
+  del chat sin deshacer en Monaco, Stop de Monaco sin conectar, y peticiones y
+  refrescos del asistente de expresiones que se cruzaban entre aperturas del
+  diálogo. Descartados: alias nulo (inalcanzable), `null` del JSON (el
+  servidor no lo envía), lecturas de enteros entre hilos (benignas), el
+  molde de `rpdatainfo.pas:2009` (mismo desplazamiento) y
+  `WMHandleDesignChatPayload` (código muerto). Quedan, sin tocar: una lista
+  de esquemas que no contiene el del dataset puede sustituirlo por otro (el
+  anfitrión no distingue la carga de una elección del usuario; hay que
+  cambiar la API del chat); cerrar el diálogo de expresiones no espera a su
+  refresco (si luego se abre otro informe, el hilo usa el informe liberado);
+  el refresco de contexto del asistente de diseño y el del diálogo de
+  expresiones no se coordinan; la auditoría de SQL no se puede parar.
 - **Traducciones solo junto al ejecutable**: `rptranslator` busca los
   `reportmanres.*` al lado del binario; por eso los paquetes Linux instalan en
   `/opt/reportman-designer`.

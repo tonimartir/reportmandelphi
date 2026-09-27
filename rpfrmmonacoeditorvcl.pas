@@ -114,6 +114,7 @@ type
     FOnAuditSql: TAuditSqlEvent;
     FOnInferenceLog: TInferenceLogEvent;
     procedure AIToggleClick(Sender: TObject);
+    procedure AISelectionStopRequest(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ClearSchemaItems;
@@ -157,6 +158,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure LoadSQL(const ASQL: string);
+    // Replaces the SQL as an edit the user can undo in the editor (Ctrl+Z);
+    // SQL/LoadSQL reset the editor and its undo history instead
+    procedure ApplySQL(const ASQL: string);
     procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
       const ASchemaApiKey: string = '');
     procedure SetSchema(const ASchema: string);
@@ -366,6 +370,7 @@ begin
   FAISelection.Parent := PAISelectionHost;
   FAISelection.Align := alTop;
   FAISelection.ShowGauge := False;
+  FAISelection.OnStopRequest := AISelectionStopRequest;
 
   TRpAuthManager.Instance.RegisterAuthListener(AuthChanged);
   UpdateAuthUI;
@@ -705,6 +710,47 @@ begin
     finally
       LJSON.Free;
     end;
+  end;
+end;
+
+procedure TFRpMonacoEditorVCL.ApplySQL(const ASQL: string);
+var
+  LJSON: TJSONString;
+begin
+  if FUpdatingFromBrowser then
+    Exit;
+  if FUseFallback then
+  begin
+    FSQL := ASQL;
+    if FMemoFallback <> nil then
+    begin
+      // Replacing the selection can be undone (Lines.Text can not)
+      FUpdatingFromBrowser := True;
+      try
+        FMemoFallback.SelectAll;
+        FMemoFallback.SelText := FSQL;
+      finally
+        FUpdatingFromBrowser := False;
+      end;
+    end;
+    Exit;
+  end;
+  if not Edge.WebViewCreated then
+  begin
+    SetSQL(ASQL);
+    Exit;
+  end;
+  FSQL := ASQL;
+  // executeEdits keeps the undo stack of Monaco (setValue clears it)
+  LJSON := TJSONString.Create(FSQL);
+  try
+    Edge.ExecuteScript('if (window.editor) { var m = window.editor.getModel();' +
+      ' window.editor.pushUndoStop();' +
+      ' window.editor.executeEdits("reportman-ai", [{ range: m.getFullModelRange(), text: ' +
+      LJSON.ToJSON + ', forceMoveMarkers: true }]);' +
+      ' window.editor.pushUndoStop(); }');
+  finally
+    LJSON.Free;
   end;
 end;
 
@@ -1286,6 +1332,26 @@ begin
   UpdateAuthUI;
 end;
 
+procedure TFRpMonacoEditorVCL.AISelectionStopRequest(Sender: TObject);
+var
+  LInlineItems, LCompletionItems: TJSONArray;
+  LRequestId: string;
+begin
+  // Stop of the model selection: the running AI completion stream ends
+  // (SuggestSqlStreamCancelRequested) and the page gets an empty answer.
+  // The audit can not be stopped.
+  FDebounceTimer.Enabled := False;
+  LRequestId := FActiveInferenceRequestId;
+  FPendingRequestId := '';
+  FRestartPendingInference := False;
+  if LRequestId <> '' then
+  begin
+    LInlineItems := TJSONArray.Create;
+    LCompletionItems := TJSONArray.Create;
+    SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
+  end;
+end;
+
 procedure TFRpMonacoEditorVCL.SchemaConfigClick(Sender: TObject);
 begin
   TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
@@ -1367,6 +1433,8 @@ var
   LStartSql: string;
   LStartPos: Integer;
   LTaskProc: TProc;
+  LApiKey, LToken, LInstallId, LRuntimeDb, LAITier, LAgentSecret, LAIMode: string;
+  LHubDatabaseId, LHubSchemaId, LAgentAiId: Int64;
 begin
   if FUseFallback then
     Exit; // no AI autocomplete in plain-text fallback
@@ -1387,6 +1455,18 @@ begin
   FInferenceRunning := True;
   FRestartPendingInference := False;
   LGuard := FGuard;
+  // Read here, not in the task: the schema combo and the model selection are
+  // controls of the main thread (a schema reload frees the combo objects)
+  LApiKey := GetSchemaApiKey;
+  LToken := TRpAuthManager.Instance.Token;
+  LInstallId := TRpAuthManager.Instance.InstallId;
+  LHubDatabaseId := FHubDatabaseId;
+  LHubSchemaId := FHubSchemaId;
+  LRuntimeDb := FRuntimeDb;
+  LAITier := FAISelection.AITier;
+  LAgentSecret := FAISelection.AgentSecret;
+  LAgentAiId := FAISelection.AgentAiId;
+  LAIMode := FAISelection.AIMode;
 
   // Create AI completion task (asynchronous)
   LTaskProc := procedure
@@ -1425,16 +1505,16 @@ begin
 
       LHttp := TRpDatabaseHttp.Create;
       try
-        LHttp.ApiKey := GetSchemaApiKey;
-        LHttp.Token := TRpAuthManager.Instance.Token;
-        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-        LHttp.HubDatabaseId := FHubDatabaseId;
-        LHttp.HubSchemaId := FHubSchemaId;
-        LHttp.RuntimeDb := FRuntimeDb;
-        LHttp.AITier := FAISelection.AITier;
-        LHttp.AgentSecret := FAISelection.AgentSecret;
-        LHttp.AgentAiId := FAISelection.AgentAiId;
-        LUAIMode := FAISelection.AIMode;
+        LHttp.ApiKey := LApiKey;
+        LHttp.Token := LToken;
+        LHttp.InstallId := LInstallId;
+        LHttp.HubDatabaseId := LHubDatabaseId;
+        LHttp.HubSchemaId := LHubSchemaId;
+        LHttp.RuntimeDb := LRuntimeDb;
+        LHttp.AITier := LAITier;
+        LHttp.AgentSecret := LAgentSecret;
+        LHttp.AgentAiId := LAgentAiId;
+        LUAIMode := LAIMode;
 
         try
           LResponse := LHttp.SuggestSql(LSql, LPos, LUAIMode, Self,
