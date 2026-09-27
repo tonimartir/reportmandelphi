@@ -1155,7 +1155,6 @@ begin
     FAnswerer.Free;
     FHub.Free;
     FHubHandler.Free;
-    RpDesignerLCLConfigFile := '';
   end;
   Pump(100);
 end;
@@ -1172,4 +1171,10 @@ begin
   end;
 end;
 
+initialization
+  // Every designer window of the run (also the 7.2 tests) reads the
+  // preferences of the sandbox, never the ones of the user (View > AI chat)
+  if GetEnvironmentVariable('RPAICHATTEST_CHILD') <> '' then
+    RpDesignerLCLConfigFile := IncludeTrailingPathDelimiter(
+      GetEnvironmentVariable('LOCALAPPDATA')) + 'repmand_tests.ini';
 end.

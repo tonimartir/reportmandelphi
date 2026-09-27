@@ -2857,4 +2857,9 @@ begin
   LogMsg('Subphase 5.5 regression tests completed successfully');
 end;
 
+initialization
+  // The designer windows of the tests do not read the preferences of the
+  // user (View > AI chat, shared with the VCL designer)
+  RpDesignerLCLConfigFile := IncludeTrailingPathDelimiter(GetTempDir) +
+    'rp_lcldesignertest_' + IntToStr(GetProcessID) + '.ini';
 end.
