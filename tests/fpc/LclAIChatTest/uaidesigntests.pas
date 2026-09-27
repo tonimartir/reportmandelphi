@@ -781,16 +781,6 @@ begin
   end;
 end;
 
-// Embedded files are not freed by TRpBaseReport.Destroy: the tests free them
-procedure FreeEmbeddedFiles(AReport: TRpReport);
-var
-  I: Integer;
-begin
-  for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
-    AReport.EmbeddedFiles[I].Free;
-  SetLength(AReport.EmbeddedFiles, 0);
-end;
-
 procedure TAIDesignTests.TestPreprocessSqlContext;
 var
   LMain: TFRpMainFLCL;
@@ -856,8 +846,7 @@ begin
     CheckEquals(2, FHubHandler.ModifyCount, 'second design request');
     CheckEquals(1, Length(LRep.EmbeddedFiles), 'embedded file still once');
   finally
-    if Assigned(LMain) and Assigned(LMain.Report) then
-      FreeEmbeddedFiles(LMain.Report);
+    // The report frees its embedded file (heaptrc checks it)
     FreeDesigner(LMain);
   end;
 end;

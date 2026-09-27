@@ -158,18 +158,23 @@ máquinas limpias.
 3. `rpmdfmainvcl.pas:3572` `WMHandleDesignChatPayload` es código muerto
    (nadie envía `WM_USER + 206`); por eso `FDesignChatValidatedPrompt` no se
    limpia tras una petición.
-4. Solo FPC: `TRpBaseReport.ReadEmbeddedFiles`/`WriteEmbeddedFiles`
-   (`rpbasereport.pas:2051-2069` y `2109-2126`) pasan una variable `TBytes` a
-   `TStream.Read/Write`, que en FPC no tiene sobrecarga `TBytes`: se lee y
-   escribe sobre la propia variable (corrupción de memoria al cargar y datos
-   basura al guardar un `.rep` con ficheros incrustados en formato
-   texto/binario). Arreglo válido para los dos compiladores:
-   `if ssize > 0 then memStream.Read(bytes[0], ssize)` (y lo mismo con
-   `Write`).
-5. `TRpBaseReport.Destroy` (`rpbasereport.pas:790-843`) no libera los
-   `TEmbeddedFile` de `EmbeddedFiles`: fuga de cada informe con ficheros
-   incrustados (el diseñador LCL los libera en su informe temporal de
-   validación). Arreglo: liberarlos en el destructor.
+4. **Corregido (28-09-2026).** Solo FPC: `TRpBaseReport.ReadEmbeddedFiles`/
+   `WriteEmbeddedFiles` pasaban una variable `TBytes` a `TStream.Read/Write`,
+   que en FPC 3.2.2 no tiene sobrecarga `TBytes`: se leía y escribía sobre la
+   propia variable (acceso inválido al cargar y basura al guardar un `.rep`
+   con ficheros incrustados). Lo mismo en `rpmetafile`
+   `WriteStringToStream`/`WriteRawStringToStream` (firma, metadatos y
+   ficheros del metafile nativo guardado desde FPC) y en `rptypes`
+   `WriteToStdError`. Arreglo bajo `{$IFDEF FPC}` con `Pointer(bytes)^`;
+   Delphi ve el código de antes. Prueba: `tests/fpc/PdfTest/uembeddedtests.pas`
+   (ida y vuelta en los formatos texto, binario, zlib y XML, y el metafile con
+   y sin compresión; antes del arreglo, acceso inválido).
+5. **Corregido (28-09-2026).** `TRpBaseReport.Destroy` no liberaba los
+   `TEmbeddedFile` de `EmbeddedFiles`; tampoco `TRpMetafileReport.Clear`
+   (liberaba solo el stream) ni `TRpPDFFile.Destroy` (sus envoltorios, que
+   comparten el stream del metafile). Arreglado en los tres (visible en
+   Delphi: son fugas reales); se quitaron los rodeos del diseñador LCL y de
+   las pruebas, y heaptrc da 0 bloques sin liberar.
 6. `rpchatdialogvcl.pas:671-683`: con `ARpAlias = nil`,
    `BuildDesignExpressionContextJson` deja el evaluador del informe
    apuntando a un alias que libera al terminar (el diseñador VCL pasa

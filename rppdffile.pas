@@ -594,7 +594,16 @@ begin
 end;
 
 destructor TRpPDFFile.Destroy;
+var
+ i:integer;
 begin
+ // The streams of the embedded files belong to the metafile (NewEmbeddedFile)
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  EmbeddedFiles[i].Stream:=nil;
+  EmbeddedFiles[i].Free;
+ end;
+ SetLength(EmbeddedFiles,0);
  FreePageInfos;
  FPageInfos.Free;
 {$IFDEF FPC}

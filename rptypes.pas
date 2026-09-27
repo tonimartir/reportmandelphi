@@ -4228,7 +4228,12 @@ begin
  astream:=TMemoryStream.Create;
  try
   Bytes:=BytesOf(UTF8String(astring));
+{$IFDEF FPC}
+  // FPC TStream.Write has no TBytes overload
+  astream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
   astream.Write(bytes,Length(bytes));
+{$ENDIF}
   WriteStreamToHandle(astream,handle);
  finally
   astream.free;

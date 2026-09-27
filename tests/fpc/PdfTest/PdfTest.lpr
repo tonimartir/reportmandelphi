@@ -7,7 +7,7 @@ uses
   cwstring,
 {$ENDIF}
   Classes, SysUtils,
-  rpreport, rppdfdriver, rppdfreport;
+  rpreport, rppdfdriver, rppdfreport, uembeddedtests;
 
 function FindReportFile(const AFileName: string): string;
 var
@@ -127,6 +127,9 @@ begin
       allOk := False;
 
     if not TestOneReport('firedactest.rep', 'firedactest.pdf') then
+      allOk := False;
+
+    if not RunEmbeddedTests then
       allOk := False;
   end;
 

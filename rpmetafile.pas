@@ -935,9 +935,10 @@ begin
   TRpMetafilePage(Fpages.Items[i]).Free;
  end;
  FPages.clear;
+ // TEmbeddedFile.Destroy frees its stream
  for i:=0 to Length(EmbeddedFiles) -1 do
  begin
-  EmbeddedFiles[i].Stream.Free;
+  EmbeddedFiles[i].Free;
  end;
  SetLength(EmbeddedFiles,0);
 
@@ -1003,7 +1004,12 @@ begin
  bytes := TEncoding.UTF8.GetBytes(astring);
  strLength:=Length(bytes);
  deststream.Write(strLength,sizeof(strLength));
+{$IFDEF FPC}
+ // FPC TStream.Write has no TBytes overload
+ deststream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
  deststream.Write(bytes,Length(bytes));
+{$ENDIF}
 end;
 
 procedure WriteRawStringToStream(astring:String;deststream:TStream);
@@ -1011,7 +1017,12 @@ var
  bytes:TBytes;
 begin
  bytes := TEncoding.UTF8.GetBytes(astring);
+{$IFDEF FPC}
+ // FPC TStream.Write has no TBytes overload
+ deststream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
  deststream.Write(bytes,Length(bytes));
+{$ENDIF}
 end;
 
 function ReadStringFromStream(stream:TStream): string;

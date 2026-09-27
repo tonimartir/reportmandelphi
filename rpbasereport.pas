@@ -793,6 +793,8 @@ end;
 
 
 destructor TRpBaseReport.Destroy;
+var
+ i:integer;
 begin
  if (FExecuting) then
  begin
@@ -839,6 +841,10 @@ begin
   FEvaluator.free;
   FEvaluator:=nil;
  end;
+ // The report owns its embedded files (and their streams)
+ for i:=0 to Length(EmbeddedFiles)-1 do
+  EmbeddedFiles[i].Free;
+ SetLength(EmbeddedFiles,0);
  inherited destroy;
 end;
 
@@ -2048,25 +2054,50 @@ begin
    efile:=TEmbeddedFile.Create;
    memStream.Read(ssize,sizeof(ssize));
    SetLength(bytes,ssize);
+{$IFDEF FPC}
+   // FPC TStream.Read has no TBytes overload
+   memStream.Read(Pointer(bytes)^,ssize);
+{$ELSE}
    memStream.Read(bytes,ssize);
+{$ENDIF}
    efile.FileName:=TEncoding.UTF8.GetString(bytes);
 
    memStream.Read(ssize,sizeof(ssize));
    SetLength(bytes,ssize);
+{$IFDEF FPC}
+   // FPC TStream.Read has no TBytes overload
+   memStream.Read(Pointer(bytes)^,ssize);
+{$ELSE}
    memStream.Read(bytes,ssize);
+{$ENDIF}
    efile.MimeType:=TEncoding.UTF8.GetString(bytes);
 
    memStream.Read(ssize,sizeof(ssize));
    SetLength(bytes,ssize);
+{$IFDEF FPC}
+   // FPC TStream.Read has no TBytes overload
+   memStream.Read(Pointer(bytes)^,ssize);
+{$ELSE}
    memStream.Read(bytes,ssize);
+{$ENDIF}
    efile.Description:=TEncoding.UTF8.GetString(bytes);
    memStream.Read(ssize,sizeof(ssize));
    SetLength(bytes,ssize);
+{$IFDEF FPC}
+   // FPC TStream.Read has no TBytes overload
+   memStream.Read(Pointer(bytes)^,ssize);
+{$ELSE}
    memStream.Read(bytes,ssize);
+{$ENDIF}
    efile.CreationDate:=TEncoding.UTF8.GetString(bytes);
    memStream.Read(ssize,sizeof(ssize));
    SetLength(bytes,ssize);
+{$IFDEF FPC}
+   // FPC TStream.Read has no TBytes overload
+   memStream.Read(Pointer(bytes)^,ssize);
+{$ELSE}
    memStream.Read(bytes,ssize);
+{$ENDIF}
    efile.ModificationDate:=TEncoding.UTF8.GetString(bytes);
 
    memStream.Read(ssize,sizeof(ssize));
@@ -2106,24 +2137,49 @@ begin
    bytes:=TEncoding.UTF8.GetBytes(efile.FileName);
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
+{$IFDEF FPC}
+   // FPC TStream.Write has no TBytes overload
+   memStream.Write(Pointer(bytes)^,asize);
+{$ELSE}
    memStream.Write(bytes,asize);
+{$ENDIF}
    bytes:=TEncoding.UTF8.GetBytes(efile.MimeType);
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
+{$IFDEF FPC}
+   // FPC TStream.Write has no TBytes overload
+   memStream.Write(Pointer(bytes)^,asize);
+{$ELSE}
    memStream.Write(bytes,asize);
+{$ENDIF}
 
    bytes:=TEncoding.UTF8.GetBytes(efile.Description);
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
+{$IFDEF FPC}
+   // FPC TStream.Write has no TBytes overload
+   memStream.Write(Pointer(bytes)^,asize);
+{$ELSE}
    memStream.Write(bytes,asize);
+{$ENDIF}
    bytes:=TEncoding.UTF8.GetBytes(efile.CreationDate);
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
+{$IFDEF FPC}
+   // FPC TStream.Write has no TBytes overload
+   memStream.Write(Pointer(bytes)^,asize);
+{$ELSE}
    memStream.Write(bytes,asize);
+{$ENDIF}
    bytes:=TEncoding.UTF8.GetBytes(efile.ModificationDate);
    asize:=Length(bytes);
    memStream.Write(asize,sizeOf(asize));
+{$IFDEF FPC}
+   // FPC TStream.Write has no TBytes overload
+   memStream.Write(Pointer(bytes)^,asize);
+{$ELSE}
    memStream.Write(bytes,asize);
+{$ENDIF}
    asize:=Integer(efile.AFRelationShip);
    memStream.Write(asize,sizeOf(asize));
 
