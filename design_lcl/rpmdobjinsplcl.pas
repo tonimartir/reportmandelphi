@@ -1113,11 +1113,11 @@ begin
 
   expredia := TRpExpreDialogLCL.Create(Application);
   try
+    // As the VCL inspector: with the report the dialog opens its datasets
+    // for the fields and the AI assistant (RpAlias would be filled with
+    // them, so the external AliasList of the report is not passed)
     if Assigned(areport) then
-    begin
-      expredia.Evaluator := areport.Evaluator;
-      expredia.RpAlias := areport.AliasList;
-    end;
+      expredia.Report := areport;
     if (tagIdx >= 0) and (tagIdx < LControls.Count) then
     begin
       ed1 := TEdit(LControls.Objects[tagIdx]);
