@@ -71,7 +71,7 @@ param(
   [string]$ExternalDependencies = 'Nothing extra is needed to compile. At run time some features load optional native libraries on demand: FreeType, HarfBuzz and ICU for advanced text shaping in PDF/SVG output, fontconfig on Linux, the client library of the database used through Zeos and, on Windows, WebView2Loader.dll plus the Microsoft Edge WebView2 Runtime for the Monaco SQL editor of the designer.',
   [string]$LazCompatibility = '4.8.0, 4.6.0, 4.4.0, 4.2.0, 4.0.0, 3.8.0, 3.6.0, 3.4.0, 3.2.0, 3.0.0',
   [string]$FPCCompatibility = '3.2.2',
-  [string]$SupportedWidgetSet = 'gtk2, win32/win64',
+  [string]$SupportedWidgetSet = 'win32/win64, gtk2, qt5, qt6',
   [switch]$ForceNotify,
   [int]$InternalVersion = 1,
   [switch]$Validate,

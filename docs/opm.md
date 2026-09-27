@@ -55,12 +55,15 @@ OPM se rellenan a mano; aquí son parámetros del script):
 | `CommunityDescription`, `ExternalDependecies` | textos en inglés | `-CommunityDescription`, `-ExternalDependencies` |
 | `LazCompatibility` | `4.8.0, 4.6.0, …, 3.0.0` | `-LazCompatibility` |
 | `FPCCompatibility` | `3.2.2` | `-FPCCompatibility` |
-| `SupportedWidgetSet` | `gtk2, win32/win64` | `-SupportedWidgetSet` |
+| `SupportedWidgetSet` | `win32/win64, gtk2, qt5, qt6` | `-SupportedWidgetSet` |
 | `PackageBaseDir` | `reportman` | `-BaseDir` |
 
 Las compatibilidades solo se muestran y sirven para filtrar en OPM; no
 bloquean la instalación. Probado: Lazarus 4.8 (Windows, win32) y Lazarus 3.0
-(Linux, gtk2), ambos con FPC 3.2.2.
+(Linux, gtk2), ambos con FPC 3.2.2; con Lazarus 4.8 en Linux los tres
+paquetes y el selftest del diseñador pasan también con `--ws=qt5` y
+`--ws=qt6` (con `--ws=gtk3`, alfa en Lazarus 4.8, compilan pero el selftest
+falla, por eso no se declara).
 
 ### Ficheros
 

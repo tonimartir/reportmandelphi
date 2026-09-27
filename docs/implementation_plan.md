@@ -105,6 +105,62 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | Compilar solo `reportman_designlcl.lpk` | Se compilan los tres paquetes con `build_fpc.bat` (el motor también cambia) |
 | Textos con IDs de `TranslateStr` | Varios IDs eran inventados; se sustituyeron por los de la VCL |
 
+## Fase 7: diseño con IA y Hub en FPC/LCL (planificada)
+
+El diseñador Delphi tiene tres asistentes de IA, todos a través de
+`api.reportman.es` y con los esquemas (tablas, columnas, relaciones) que el
+usuario define en `app.reportman.es`:
+
+1. **Asistente SQL con esquema**: chat que escribe y corrige las consultas de
+   los datasets (`TFRpChatFrame` de `rpfrmchatvcl` en modo SQL, selector de
+   esquema `rpfrmaischemaselectorvcl`) y autocompletado del editor SQL Monaco
+   con el esquema (`rpfrmmonacoeditorvcl`).
+2. **Asistente de expresiones**: chat dentro del editor de expresiones
+   (`rpchatdialogvcl`).
+3. **Asistente de diseño**: chat que crea y modifica el informe completo
+   (`TFRpChatFrame` en modo diseño, `ShowAIChat` del diseñador), aplicando
+   los contratos de `rpreportdesignercontracts`.
+
+Además está el driver de datos del Agente (`rpdbHttp`, `rpdatahttp`). Nada de
+esto está en los paquetes FPC: sus unidades usan `System.JSON`,
+`System.Net.HttpClient`, `System.NetEncoding`/`DateUtils`, VCL y WebView2. En
+FPC solo existe el editor Monaco del diseñador LCL (WebView2, solo Windows; en
+Linux cae a un `TMemo`), sin autocompletado de esquema.
+
+| Subfase | Contenido |
+|---|---|
+| 7.1 Base portable | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON (`fpjson`), HTTP/TLS (`fphttpclient` + `opensslsockets`), codificación y fechas, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus |
+| 7.2 Sesión y esquemas | Login (OAuth con la redirección local), selección de modelo (`rpfrmaiselectionvcl`) y selector de esquema en LCL; estilo común de los chats (`rpchatmodernstyle`). Markdown de las respuestas: WebView2 en Windows (ya hay `rpwebview2`/`rplclwebview` en LCL) y un visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux |
+| 7.3 Asistente SQL | `TFRpChatFrame` en modo SQL dentro de la configuración de datos LCL, y autocompletado con el esquema en Monaco (Windows); en Linux, completado sobre el editor alternativo |
+| 7.4 Asistente de expresiones | Port del chat de `rpchatdialogvcl` al editor de expresiones LCL (`rpexpredlglcl`) |
+| 7.5 Asistente de diseño | `TFRpChatFrame` en modo diseño en el diseñador LCL; aplicar los contratos al modelo con deshacer y refresco del diseñador, igual que la VCL |
+| 7.6 Pruebas | Tests de regresión de los tres asistentes con respuestas del Hub simuladas (sin red), en Windows y Linux; prueba real contra `api.reportman.es` a mano |
+
+El chat común (`TFRpChatFrame`) se porta en 7.3 y se reutiliza en 7.5; el
+orden sigue la dependencia (el esquema sirve al SQL y al diseño) y deja el
+asistente más grande, el de diseño, para el final.
+
+**La inteligencia está en el servidor** (`api.reportman.es`): el cliente solo
+habla HTTP/JSON, muestra el chat y aplica lo que devuelve. En Windows la
+interfaz rica es web y se reutiliza tal cual: Monaco (`MonacoEditorAssets`) y
+WebMarkdown (`WebMarkdownAssets`) sobre el WebView2 que ya aloja el diseñador
+LCL (`rpwebview2`, `rplclwebview`). Falta en Pascal el puente de Monaco con el
+esquema y la IA (el Monaco VCL tiene ~1.300 líneas de eso; el LCL, ninguna),
+alojar WebMarkdown en LCL y los marcos de chat nativos.
+
+**Linux no tiene WebView2** (hoy el Monaco LCL cae a un `TMemo`). Opciones:
+(a) nativa: SynEdit con completado por esquema en Pascal y un visor HTML de
+Lazarus para el markdown; (b) Chromium embebido (CEF4Delphi, compatible con
+Lazarus) para usar el mismo Monaco/WebMarkdown, a costa de ~150–200 MB por
+instalación (sin comprobar con Qt6); (c) WebKit del sistema, que exige GTK3.
+Plan: Windows completo primero; en Linux la opción (a), y (b) solo si hace
+falta.
+
+Tamaño aproximado: unas 9.000 líneas de interfaz VCL a portar más la capa
+JSON/HTTP. Riesgos: OpenSSL en Windows con FPC (DLL a distribuir), la
+redirección OAuth local, `System.Threading` (pasar a `TThread`) y el render
+de markdown sin WebView2 en Linux.
+
 ## Pendiente
 
 - **Traducción del diseñador LCL**: menús y varios formularios tienen el texto
