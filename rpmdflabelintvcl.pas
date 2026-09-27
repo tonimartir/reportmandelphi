@@ -350,7 +350,7 @@ begin
  lhints.Add('refexpression.html');
  lcat.Add(SRpExpression);
  if Assigned(lvalues) then
-  ParamTypeToString(TRpExpression(printitem).DataType);
+  lvalues.Add(ParamTypeToString(TRpExpression(printitem).DataType));
 
  // Display format
  lnames.Add(SrpSDisplayFOrmat);

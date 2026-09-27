@@ -446,7 +446,7 @@ begin
  lhints.Add('refcommontext.html');
  lcat.Add(SRpPosition);
  if Assigned(lvalues) then
-  lvalues.Add(TRpGenTextComponent(printitem).WFontName);
+  lvalues.Add(TRpCommonPosComponent(printitem).AnnotationExpression);
 end;
 
 

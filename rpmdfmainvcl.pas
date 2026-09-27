@@ -1288,10 +1288,11 @@ begin
  AAlignRight.Hint:=TranslateStr(33,AAlignRight.Hint);
  AAlignUp.Hint:=TranslateStr(34,AAlignUp.Hint);
  AAlignDown.Hint:=TranslateStr(35,AAlignDown.Hint);
- AAlignHorz.Caption:=TranslateStr(36,AAlignHorz.Caption);
- AAlignHorz.Hint:=TranslateStr(37,AAlignHorz.Hint);
- AAlignVert.Caption:=TranslateStr(38,AAlignVert.Caption);
- AAlignVert.Hint:=TranslateStr(39,AAlignVert.Hint);
+ // 36/37 are the vertical space texts and 38/39 the horizontal ones
+ AAlignHorz.Caption:=TranslateStr(38,AAlignHorz.Caption);
+ AAlignHorz.Hint:=TranslateStr(39,AAlignHorz.Hint);
+ AAlignVert.Caption:=TranslateStr(36,AAlignVert.Caption);
+ AAlignVert.Hint:=TranslateStr(37,AAlignVert.Hint);
  ANew.Caption:=TranslateStr(40,ANew.Caption);
  ANew.Hint:=TranslateStr(41,ANew.Hint);
  AOpen.Caption:=TranslateStr(42,AOpen.Caption);

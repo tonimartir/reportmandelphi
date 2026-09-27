@@ -447,6 +447,8 @@ begin
  ltypes.Add(SRpSList);
  lhints.Add('refsection.html');
  lcat.Add(SRpSection);
+ if Assigned(lvalues) then
+  lvalues.Add(BackStyleToStr(TRpSection(printitem).BackStyle));
  // DrawStyle
  lnames.Add(SRpDrawStyle);
  ltypes.Add(SRpSList);
