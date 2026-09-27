@@ -675,6 +675,7 @@ end;
 procedure TAIExprTests.TestNoSession;
 var
   LDia: TFRpExpreDialogLCL;
+  LExternal: TRpEvaluator;
   LError: string;
   LValid, LInvalid: Boolean;
 begin
@@ -723,6 +724,22 @@ begin
     CheckEquals(0, FHubHandler.SuggestCount, 'nothing answered without a session');
     LDia.BOKClick(nil);
     Check(LDia.DoOk, 'OK accepted');
+
+    // An evaluator set by the caller replaces (and frees) the owned one and
+    // is not freed with the dialog
+    LExternal := TRpEvaluator.Create(nil);
+    try
+      Check(LDia.OwnsEvaluator, 'the dialog owns the evaluator of InitializeDialog');
+      LDia.Evaluator := LExternal;
+      Check(not LDia.OwnsEvaluator, 'an evaluator of the caller is not owned');
+      Check(LDia.HelpList(1).IndexOf('UPPERCASE') >= 0, 'lists of the new evaluator');
+      FreeAndNil(LDia);
+      LExternal.Expression := '1 + 1';
+      LExternal.Evaluate;
+      CheckEquals('2', LExternal.EvalResultString, 'the evaluator of the caller survives the dialog');
+    finally
+      LExternal.Free;
+    end;
   finally
     LDia.Free;
   end;

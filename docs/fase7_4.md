@@ -168,12 +168,28 @@ dataset del Agente (`rpdbHttp`) que no abre y cuyas columnas da el Hub.
 - Hub inaccesible (puerto local cerrado): el editor sigue funcionando,
   Detener libera el chat y cerrar el diálogo no espera a la petición.
 
-En Windows, además, una captura del editor con el chat en WebView2.
+- Un evaluador asignado desde fuera sustituye (y libera) el propio del
+  diálogo y no se libera con él.
 
-Resultados (27-09-2026): Windows, `LclAIChatTest` 361 comprobaciones (167
-de la 7.4) sin fugas, `LclDesignerTest --selftest`, `HubClientTest` (469) y
-el diseñador autónomo compilan y pasan; WSL (Lazarus 3.0, GTK2) y Docker
-(Qt6 y GTK2) en el apartado de verificación del commit.
+En Windows, además, una captura del editor con el chat en WebView2; con
+`--shots` se guardan `expression_editor_fields.png`,
+`expression_editor_assistant.png`, `expression_dialog_modal.png` y, en
+Windows, `expression_editor_webview2.png`.
+
+Resultados (27-09-2026):
+
+- Windows (Lazarus 4.8): paquetes limpios, `LclAIChatTest` 365
+  comprobaciones (171 de la 7.4) y 0 bloques sin liberar,
+  `LclDesignerTest --selftest`, `HubClientTest` (469) y el diseñador
+  autónomo (`repmandesigner_lcl`, Release) compilado.
+- WSL (Lazarus 3.0, GTK2): `build_fpc.sh clean`, `LclAIChatTest` 347 (164
+  de la 7.4) sin fugas, `LclDesignerTest --selftest` y `HubClientTest`
+  (470).
+- Docker (`build-linux.ps1 -SkipImage`): selftest y `LclAIChatTest` con Qt6
+  y GTK2, lintian sin avisos nuevos, los dos `.deb` y la AppImage, y las 15
+  pruebas en máquinas limpias.
+
+La prueba del Hub inaccesible tarda unos 60 s en Windows (hallazgo 1).
 
 ## Encontrado
 

@@ -125,6 +125,7 @@ type
     FAliasReady: Boolean;
 
     procedure SetEvaluator(const Value: TRpCustomEvaluator);
+    procedure AssignEvaluator(const Value: TRpCustomEvaluator);
     procedure BuildControls;
     procedure ClearHelpLists;
     procedure ReleaseOwnedEvaluator;
@@ -1706,7 +1707,7 @@ begin
   if (FEvaluator <> AEvaluator) and FOwnsEvaluator then
     ReleaseOwnedEvaluator;
   FOwnsEvaluator := AOwnsEvaluator;
-  SetEvaluator(AEvaluator);
+  AssignEvaluator(AEvaluator);
   FMemoExpre.Text := AExpression;
   if FChat <> nil then
     FChat.Initialize(FMemoExpre.Text, TranslateStr(1600, SExpressionChatInitialMessage));
@@ -1772,7 +1773,7 @@ begin
   Inc(FRefreshVersion);
   if not FOwnsEvaluator then
   begin
-    SetEvaluator(BuildRefreshSnapshotEvaluator);
+    AssignEvaluator(BuildRefreshSnapshotEvaluator);
     FOwnsEvaluator := True;
   end;
   FRefreshRunning := True;
@@ -1828,7 +1829,7 @@ begin
     // PrepareLiveContext fills with the open datasets)
     if (FRefreshReport.Evaluator <> nil) and (FRefreshAlias <> nil) then
       FRefreshReport.Evaluator.Rpalias := FRefreshAlias;
-    SetEvaluator(FRefreshReport.Evaluator);
+    AssignEvaluator(FRefreshReport.Evaluator);
   end;
   FAliasReady := True;
   UpdateRefreshUIState;
@@ -1854,6 +1855,14 @@ begin
 end;
 
 procedure TFRpExpreDialogLCL.SetEvaluator(const Value: TRpCustomEvaluator);
+begin
+  // An evaluator given by the caller is not owned by the dialog
+  if Value <> FEvaluator then
+    ReleaseOwnedEvaluator;
+  AssignEvaluator(Value);
+end;
+
+procedure TFRpExpreDialogLCL.AssignEvaluator(const Value: TRpCustomEvaluator);
 var
   list: TStringList;
   i: Integer;
