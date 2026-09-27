@@ -271,6 +271,7 @@ tests/fpc/*/*.exe
 tests/fpc/*/*.log
 tests/fpc/*/*.pdf
 tests/fpc/*/snapshot_*.png
+tests/fpc/LclSnapshotTest/test_export_*.png
 tests/fpc/PdfTest/PdfTest
 tests/fpc/PdfTest/freetype.dll
 tests/fpc/PdfTest/libharfbuzz-0.dll

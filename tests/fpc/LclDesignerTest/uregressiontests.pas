@@ -1,0 +1,1662 @@
+unit uregressiontests;
+
+{ Subphase 5.5 regression tests for the LCL designer: undo engine, design
+  surface, inspector, main form, dialogs and the hosted designer component.
+
+  Every test drives the product code directly (no user interaction). The
+  few product paths that always ask for confirmation through a modal
+  TFRpMessageDlgVCL (deleting a node of the structure tree) or show the
+  designer modally (TRpDesignerLCL.Execute) are answered automatically by
+  the modal guard installed for the whole suite. The guard also turns any
+  unexpected LCL modal form into an immediate [TEST_FAILED] instead of a
+  hang. }
+
+{$mode delphi}
+
+interface
+
+// Installs the modal guard (answers the expected modal forms, fails fast on
+// any other one). Call it before running any test.
+procedure InstallModalGuard;
+procedure RunRegressionTests(const ASamplePath: string);
+
+implementation
+
+uses
+  Classes, SysUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
+  Generics.Collections, sqldb, sqlite3conn,
+  rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
+  rpprintitem, rplabelitem, rpparams, rpdatainfo, rpgraphutilslcl,
+  rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
+  rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
+  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl,
+  umainform;
+
+const
+  GUARD_HANDLED_TAG = $5EC7;
+
+type
+  TGuardFormAction = procedure(AForm: TCustomForm) of object;
+
+  { TModalGuard }
+
+  TModalGuard = class
+  public
+    // Message boxes (TFRpMessageDlgVCL) still expected and the answer
+    ExpectMsgBoxes: Integer;
+    MsgBoxAnswer: TMessageButton;
+    MsgBoxesAnswered: Integer;
+    LastMsgBoxText: string;
+    // Designer form (TFRpMainFLCL) shown modally by TRpDesignerLCL.Execute
+    ExpectDesigner: Boolean;
+    DesignerAction: TGuardFormAction;
+    DesignersHandled: Integer;
+    procedure HandleForm(AForm: TCustomForm);
+    procedure FormVisibleChanged(Sender: TObject; Form: TCustomForm);
+    procedure AppIdle(Sender: TObject; var Done: Boolean);
+  end;
+
+  { TRegressionTests }
+
+  TRegressionTests = class
+  private
+    FChangeCount: Integer;
+    FSaveCalls: Integer;
+    FSavedReportHasParam: Boolean;
+    procedure CueChanged(Sender: TObject);
+    procedure ExecOnSave(var Stream: TStream; report: TRpReport; var handled: Boolean);
+    procedure DesignerCheckHostedAction(AForm: TCustomForm);
+    procedure DesignerModifyAction(AForm: TCustomForm);
+    // L1: undo engine
+    procedure TestUndoCap;
+    procedure TestDirtyState;
+    procedure TestFailingOperation;
+    // L1 + L2: designer (TFRpMainFLCL)
+    procedure TestDesigner(const ASamplePath: string);
+    // L2: dialogs
+    procedure TestParamsDialog;
+    procedure TestDataConfig;
+    procedure TestLibraryTree;
+    procedure TestUserParams;
+    procedure TestDesignerExecute(const ASamplePath: string);
+  end;
+
+var
+  Guard: TModalGuard = nil;
+  FakeSearchCalls: Integer = 0;
+
+{ Assertions }
+
+procedure Fail(const Msg: string);
+begin
+  LogMsg('[TEST_FAILED] ' + Msg);
+  Halt(1);
+end;
+
+procedure Check(Cond: Boolean; const Msg: string);
+begin
+  if not Cond then
+    Fail(Msg);
+end;
+
+procedure CheckInt(Expected, Actual: Integer; const What: string);
+begin
+  if Expected <> Actual then
+    Fail(Format('%s: expected %d, got %d', [What, Expected, Actual]));
+end;
+
+procedure CheckStr(const Expected, Actual: string; const What: string);
+begin
+  if Expected <> Actual then
+    Fail(Format('%s: expected "%s", got "%s"', [What, Expected, Actual]));
+end;
+
+{ Model / design surface helpers }
+
+function CompNames(sec: TRpSection): string;
+var
+  i: Integer;
+begin
+  Result := '';
+  for i := 0 to sec.ReportComponents.Count - 1 do
+  begin
+    if i > 0 then
+      Result := Result + ',';
+    if Assigned(sec.ReportComponents[i].Component) then
+      Result := Result + sec.ReportComponents[i].Component.Name
+    else
+      Result := Result + '<nil>';
+  end;
+end;
+
+function Join4(const A, B, C, D: string): string;
+begin
+  Result := A + ',' + B + ',' + C + ',' + D;
+end;
+
+function FindSectionOfType(sub: TRpSubReport; st: TRpSectionType): TRpSection;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to sub.Sections.Count - 1 do
+  begin
+    if sub.Sections[i].Section.SectionType = st then
+    begin
+      Result := sub.Sections[i].Section;
+      Exit;
+    end;
+  end;
+end;
+
+function SecIntOf(frame: TFRpDesignFrameLCL; sec: TObject): TRpSectionInterface;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to frame.secinterfaces.Count - 1 do
+  begin
+    if TRpSectionInterface(frame.secinterfaces[i]).printitem = sec then
+    begin
+      Result := TRpSectionInterface(frame.secinterfaces[i]);
+      Exit;
+    end;
+  end;
+end;
+
+function ChildInt(frame: TFRpDesignFrameLCL; const AName: string): TRpSizePosInterface;
+var
+  i, j: Integer;
+  secint: TRpSectionInterface;
+begin
+  Result := nil;
+  for i := 0 to frame.secinterfaces.Count - 1 do
+  begin
+    secint := TRpSectionInterface(frame.secinterfaces[i]);
+    for j := 0 to secint.childlist.Count - 1 do
+    begin
+      if SameText(TRpSizePosInterface(secint.childlist[j]).printitem.Name, AName) then
+      begin
+        Result := TRpSizePosInterface(secint.childlist[j]);
+        Exit;
+      end;
+    end;
+  end;
+  if Result = nil then
+    Fail('No design interface found for component ' + AName);
+end;
+
+function FindItem(rep: TRpReport; const AName: string): TObject;
+begin
+  Result := rep.FindReporItemByName(AName);
+end;
+
+// The design frame must show exactly the sections and components of its
+// subreport (no interface of a freed or missing item)
+procedure CheckFrameInSync(frame: TFRpDesignFrameLCL; const Context: string);
+var
+  sub: TRpSubReport;
+  sec: TRpSection;
+  secint: TRpSectionInterface;
+  i, j, n: Integer;
+begin
+  Application.ProcessMessages;
+  sub := frame.CurrentSubreport;
+  Check(Assigned(sub), Context + ': the design frame shows no subreport');
+  Check(frame.Report.SubReports.IndexOf(sub) >= 0,
+    Context + ': the displayed subreport is not in the report');
+  CheckInt(sub.Sections.Count, frame.secinterfaces.Count, Context + ': section interfaces');
+  CheckInt(sub.Sections.Count, frame.leftrulers.Count, Context + ': left rulers');
+  CheckInt(sub.Sections.Count, frame.righttitles.Count, Context + ': right handles');
+  for i := 0 to sub.Sections.Count - 1 do
+  begin
+    sec := sub.Sections[i].Section;
+    secint := TRpSectionInterface(frame.secinterfaces[i]);
+    Check(secint.printitem = sec, Format('%s: section interface %d does not show section %s',
+      [Context, i, sec.Name]));
+    n := 0;
+    for j := 0 to sec.ReportComponents.Count - 1 do
+      if sec.ReportComponents[j].Component is TRpCommonPosComponent then
+        Inc(n);
+    CheckInt(n, secint.childlist.Count, Format('%s: component interfaces of section %s',
+      [Context, sec.Name]));
+    for j := 0 to secint.childlist.Count - 1 do
+      Check(sec.ReportComponents.IndexOf(TRpSizePosInterface(secint.childlist[j]).printitem) >= 0,
+        Format('%s: interface %d of section %s shows a component that is not in the section',
+          [Context, j, sec.Name]));
+  end;
+end;
+
+procedure CheckLastOpsGroup(cue: TUndoCue; ACount: Integer; AOperation: TOperationType;
+  const Context: string);
+var
+  i, gid: Integer;
+begin
+  Check(cue.UndoOperations.Count >= ACount, Context + ': not enough undo operations');
+  gid := cue.UndoOperations[cue.UndoOperations.Count - ACount].groupId;
+  for i := cue.UndoOperations.Count - ACount to cue.UndoOperations.Count - 1 do
+  begin
+    Check(cue.UndoOperations[i].groupId = gid, Context + ': operations are not in one undo group');
+    Check(cue.UndoOperations[i].operation = AOperation,
+      Format('%s: operation %d expected type %d, got %d', [Context, i, Ord(AOperation),
+        Ord(cue.UndoOperations[i].operation)]));
+  end;
+  if cue.UndoOperations.Count > ACount then
+    Check(cue.UndoOperations[cue.UndoOperations.Count - ACount - 1].groupId <> gid,
+      Context + ': the group contains more operations than expected');
+end;
+
+function FileBytes(const AFileName: string): TMemoryStream;
+begin
+  Result := TMemoryStream.Create;
+  Result.LoadFromFile(AFileName);
+end;
+
+procedure CheckFileUnchanged(const AFileName: string; Original: TMemoryStream; const Context: string);
+var
+  cur: TMemoryStream;
+begin
+  cur := FileBytes(AFileName);
+  try
+    Check((cur.Size = Original.Size) and CompareMem(cur.Memory, Original.Memory, cur.Size),
+      Context + ': the report file was modified');
+  finally
+    cur.Free;
+  end;
+end;
+
+procedure CopyFileBytes(const Source, Dest: string);
+var
+  ms: TMemoryStream;
+begin
+  ms := FileBytes(Source);
+  try
+    ms.SaveToFile(Dest);
+  finally
+    ms.Free;
+  end;
+end;
+
+procedure WriteTextFile(const AFileName, AText: string);
+var
+  sl: TStringList;
+begin
+  sl := TStringList.Create;
+  try
+    sl.Text := AText;
+    sl.SaveToFile(AFileName);
+  finally
+    sl.Free;
+  end;
+end;
+
+{ Engine report helpers }
+
+function NewEngineReport(out sec: TRpSection): TRpReport;
+var
+  sub: TRpSubReport;
+begin
+  Result := TRpReport.Create(nil);
+  sub := Result.AddSubReport;
+  sec := sub.Sections[sub.FirstDetail].Section;
+  Result.UndoCue := TUndoCue.Create(Result);
+end;
+
+function AddEngineLabel(rep: TRpReport; sec: TRpSection; const AName: string): TRpLabel;
+begin
+  Result := TRpLabel.Create(rep);
+  Result.Name := AName;
+  sec.ReportComponents.Add.Component := Result;
+end;
+
+// Applies PosX := ANewX to the label and returns the operation recording it
+function NewPosXOp(gid: Integer; lab: TRpLabel; sec: TRpSection; ANewX: Integer): TChangeObjectOperation;
+begin
+  Result := TChangeObjectOperation.Create(otModify, gid);
+  Result.componentName := lab.Name;
+  Result.componentClass := 'TRPLABEL';
+  Result.parentName := sec.Name;
+  Result.AddProperty('posX', ptInteger, lab.PosX, ANewX);
+  lab.PosX := ANewX;
+end;
+
+{ TModalGuard }
+
+procedure TModalGuard.HandleForm(AForm: TCustomForm);
+var
+  dlg: TFRpMessageDlgVCL;
+  btn: TButton;
+begin
+  if not Assigned(AForm) or not AForm.Visible or not (fsModal in AForm.FormState) then
+    Exit;
+  if AForm.Tag = GUARD_HANDLED_TAG then
+    Exit;
+  AForm.Tag := GUARD_HANDLED_TAG;
+
+  if AForm is TFRpMessageDlgVCL then
+  begin
+    dlg := TFRpMessageDlgVCL(AForm);
+    if ExpectMsgBoxes <= 0 then
+      Fail('Unexpected modal message box: "' + dlg.LMessage.Caption + '"');
+    Dec(ExpectMsgBoxes);
+    Inc(MsgBoxesAnswered);
+    LastMsgBoxText := dlg.LMessage.Caption;
+    case MsgBoxAnswer of
+      smbYes: btn := dlg.BYes;
+      smbNo: btn := dlg.BNo;
+      smbCancel: btn := dlg.BCancel;
+    else
+      btn := dlg.BOk;
+    end;
+    if not btn.Visible then
+      Fail('Message box "' + dlg.LMessage.Caption + '" has no button for the planned answer');
+    LogMsg('ModalGuard: answering "' + dlg.LMessage.Caption + '" with ' + btn.Caption);
+    dlg.BYesClick(btn);
+    Exit;
+  end;
+
+  if (AForm is TFRpMainFLCL) and ExpectDesigner then
+  begin
+    ExpectDesigner := False;
+    Inc(DesignersHandled);
+    LogMsg('ModalGuard: closing the modal designer form');
+    if Assigned(DesignerAction) then
+      DesignerAction(AForm);
+    AForm.Close;
+    Exit;
+  end;
+
+  Fail('Unexpected modal dialog ' + AForm.ClassName + ' "' + AForm.Caption + '"');
+end;
+
+procedure TModalGuard.FormVisibleChanged(Sender: TObject; Form: TCustomForm);
+begin
+  HandleForm(Form);
+end;
+
+procedure TModalGuard.AppIdle(Sender: TObject; var Done: Boolean);
+var
+  i: Integer;
+  f: TCustomForm;
+begin
+  // Idle only runs inside modal loops here: a modal form still open at this
+  // point was not answered (or refused to close)
+  for i := 0 to Screen.CustomFormCount - 1 do
+  begin
+    f := Screen.CustomForms[i];
+    if f.Visible and (fsModal in f.FormState) then
+    begin
+      if f.Tag = GUARD_HANDLED_TAG then
+        Fail('Modal dialog ' + f.ClassName + ' "' + f.Caption +
+          '" did not close after the automatic answer');
+      HandleForm(f);
+      Done := False;
+      Exit;
+    end;
+  end;
+end;
+
+procedure InstallModalGuard;
+begin
+  if Assigned(Guard) then
+    Exit;
+  Guard := TModalGuard.Create;
+  Guard.MsgBoxAnswer := smbCancel;
+  Screen.AddHandlerFormVisibleChanged(Guard.FormVisibleChanged);
+  Application.AddOnIdleHandler(Guard.AppIdle);
+end;
+
+procedure FakeParamValueSearch(aparam: TRpParam; report: TComponent);
+begin
+  Inc(FakeSearchCalls);
+  aparam.Value := 'PICKED';
+end;
+
+{ TRegressionTests }
+
+procedure TRegressionTests.CueChanged(Sender: TObject);
+begin
+  Inc(FChangeCount);
+end;
+
+procedure TRegressionTests.ExecOnSave(var Stream: TStream; report: TRpReport;
+  var handled: Boolean);
+begin
+  Inc(FSaveCalls);
+  FSavedReportHasParam := report.Params.IndexOf('EXEC_TEST_PARAM') >= 0;
+  handled := True;
+end;
+
+procedure TRegressionTests.DesignerCheckHostedAction(AForm: TCustomForm);
+var
+  f: TFRpMainFLCL;
+begin
+  f := TFRpMainFLCL(AForm);
+  Check(f.HostedMode, 'TRpDesignerLCL.Execute must show the designer in hosted mode');
+  Check(not f.BtnSave.Visible and not f.BtnOpen.Visible and not f.BtnNew.Visible,
+    'Hosted designer must hide New/Open/Save');
+  Check(not f.Report.Modified, 'Hosted designer: freshly loaded report must be unmodified');
+end;
+
+procedure TRegressionTests.DesignerModifyAction(AForm: TCustomForm);
+var
+  f: TFRpMainFLCL;
+begin
+  DesignerCheckHostedAction(AForm);
+  f := TFRpMainFLCL(AForm);
+  f.Report.Params.Add('EXEC_TEST_PARAM');
+  f.MarkExternalChange;
+  Check(f.Report.Modified, 'MarkExternalChange must mark the hosted report modified');
+end;
+
+{ L1: undo engine }
+
+procedure TRegressionTests.TestUndoCap;
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  lab: TRpLabel;
+  cue: TUndoCue;
+  gA, gB, i: Integer;
+begin
+  LogMsg('5.5 L1: undo history cap (MaxOperations)');
+
+  // Default: unlimited (VCL parity)
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    CheckInt(0, cue.MaxOperations, 'Default TUndoCue.MaxOperations (0 = unlimited)');
+    lab := AddEngineLabel(rep, sec, 'CAP_LAB0');
+    for i := 1 to 150 do
+      cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, i));
+    CheckInt(150, cue.UndoOperations.Count, 'Unlimited cue: operations kept');
+  finally
+    rep.Free;
+  end;
+
+  // Clean point at the start, lost when its group is trimmed: -1
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    cue.MaxOperations := 10;
+    lab := AddEngineLabel(rep, sec, 'CAP_LAB1');
+    cue.MarkClean;
+    gA := cue.GetGroupId;
+    for i := 1 to 5 do
+      cue.AddOperation(NewPosXOp(gA, lab, sec, i * 10));
+    CheckInt(5, cue.UndoOperations.Count, 'Cap: group A kept');
+    CheckInt(0, cue.CleanOpIndex, 'Cap: clean point before trimming');
+    gB := cue.GetGroupId;
+    Check(gB <> gA, 'Cap: GetGroupId must start a new group');
+    for i := 1 to 8 do
+      cue.AddOperation(NewPosXOp(gB, lab, sec, 1000 + i));
+    CheckInt(8, cue.UndoOperations.Count, 'Cap 10, groups of 5 then 8: operations kept');
+    for i := 0 to cue.UndoOperations.Count - 1 do
+      CheckInt(gB, cue.UndoOperations[i].groupId, 'Cap: only the whole newest group is kept');
+    CheckInt(-1, cue.CleanOpIndex, 'Cap: clean point inside the trimmed group is forgotten');
+    Check(cue.IsDirty and rep.Modified, 'Cap: report must be dirty after trimming the clean point');
+    cue.Undo.Free;
+    CheckInt(0, cue.UndoOperations.Count, 'Cap: undo takes the whole group B');
+    CheckInt(8, cue.RedoOperations.Count, 'Cap: redo holds the whole group B');
+    CheckInt(50, lab.PosX, 'Cap: undo of group B restores the state after group A');
+    Check(cue.IsDirty and rep.Modified,
+      'Cap: the saved state (before group A) is unreachable, the report stays dirty');
+  finally
+    rep.Free;
+  end;
+
+  // Clean point after group A: shifted to 0 when A is trimmed
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    cue.MaxOperations := 10;
+    lab := AddEngineLabel(rep, sec, 'CAP_LAB2');
+    gA := cue.GetGroupId;
+    for i := 1 to 5 do
+      cue.AddOperation(NewPosXOp(gA, lab, sec, i * 10));
+    cue.MarkClean;
+    CheckInt(5, cue.CleanOpIndex, 'Cap: clean point after group A');
+    gB := cue.GetGroupId;
+    for i := 1 to 8 do
+      cue.AddOperation(NewPosXOp(gB, lab, sec, 1000 + i));
+    CheckInt(8, cue.UndoOperations.Count, 'Cap (clean after A): operations kept');
+    CheckInt(0, cue.CleanOpIndex, 'Cap: clean point shifted by the trimmed operations');
+    Check(cue.IsDirty and rep.Modified, 'Cap: group B pending, report dirty');
+    cue.Undo.Free;
+    CheckInt(50, lab.PosX, 'Cap: undo of group B');
+    Check(not cue.IsDirty and not rep.Modified,
+      'Cap: undoing group B returns to the saved state (clean point 0)');
+    cue.Redo.Free;
+    CheckInt(1008, lab.PosX, 'Cap: redo of group B');
+    Check(cue.IsDirty and rep.Modified, 'Cap: redo makes the report dirty again');
+  finally
+    rep.Free;
+  end;
+
+  // A single group bigger than the cap is never split
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    cue.MaxOperations := 10;
+    lab := AddEngineLabel(rep, sec, 'CAP_LAB3');
+    gA := cue.GetGroupId;
+    for i := 1 to 15 do
+      cue.AddOperation(NewPosXOp(gA, lab, sec, i));
+    CheckInt(15, cue.UndoOperations.Count, 'Cap 10, single group of 15: kept whole');
+    cue.Undo.Free;
+    CheckInt(0, cue.UndoOperations.Count, 'Cap: single big group undone at once');
+    CheckInt(15, cue.RedoOperations.Count, 'Cap: single big group in redo');
+    CheckInt(0, lab.PosX, 'Cap: single big group fully undone');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Undo cap verified');
+end;
+
+procedure TRegressionTests.TestDirtyState;
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  lab: TRpLabel;
+  cue: TUndoCue;
+  gid: Integer;
+begin
+  LogMsg('5.5 L1: dirty state and OnChange contract');
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    lab := AddEngineLabel(rep, sec, 'DIRTY_LAB');
+    cue.OnChange := CueChanged;
+    FChangeCount := 0;
+
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, 100));
+    CheckInt(1, FChangeCount, 'OnChange calls after AddOperation');
+    Check(cue.IsDirty and rep.Modified, 'Dirty after the first edit');
+    cue.MarkClean;
+    CheckInt(2, FChangeCount, 'OnChange calls after MarkClean');
+    Check(not cue.IsDirty and not rep.Modified, 'Clean after MarkClean');
+    CheckInt(1, cue.CleanOpIndex, 'Clean point after one operation');
+
+    // Original data-loss bug: save, undo, new edit -> must be dirty
+    cue.Undo.Free;
+    CheckInt(3, FChangeCount, 'OnChange calls after Undo');
+    CheckInt(0, lab.PosX, 'Undo restored PosX');
+    Check(cue.IsDirty and rep.Modified, 'Dirty after undoing past the save point');
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, 200));
+    CheckInt(4, FChangeCount, 'OnChange calls after the new edit');
+    Check(cue.IsDirty, 'Save point -> undo -> new edit: IsDirty must be True');
+    Check(rep.Modified, 'Save point -> undo -> new edit: Report.Modified must be True');
+    CheckInt(-1, cue.CleanOpIndex, 'The saved state lay in the discarded redo branch');
+    CheckInt(0, cue.RedoOperations.Count, 'A new edit discards the redo branch');
+    cue.Undo.Free;
+    Check(cue.IsDirty and rep.Modified,
+      'The discarded saved state can not be reached again: still dirty after undo');
+    cue.Redo.Free;
+
+    // MarkExternalChange survives Undo/Redo/Clear until MarkClean
+    cue.MarkClean;
+    Check(not cue.IsDirty and not rep.Modified, 'Clean before the external change');
+    FChangeCount := 0;
+    cue.MarkExternalChange;
+    CheckInt(1, FChangeCount, 'OnChange calls after MarkExternalChange');
+    Check(cue.IsDirty and rep.Modified, 'MarkExternalChange marks the report dirty');
+    cue.Undo.Free;
+    Check(cue.IsDirty and rep.Modified, 'External change survives Undo');
+    cue.Redo.Free;
+    Check(cue.IsDirty and rep.Modified,
+      'External change survives Redo (back at the clean point of the history)');
+    cue.Clear;
+    CheckInt(4, FChangeCount, 'OnChange calls after Undo, Redo and Clear');
+    CheckInt(0, cue.UndoOperations.Count + cue.RedoOperations.Count, 'Clear empties the history');
+    Check(cue.IsDirty and rep.Modified, 'External change survives Clear');
+    cue.MarkClean;
+    Check(not cue.IsDirty and not rep.Modified, 'Only MarkClean resets the external change');
+
+    // Clear keeps unsaved (recorded) changes as dirty
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, 300));
+    cue.Clear;
+    Check(cue.IsDirty and rep.Modified, 'Clear must not hide unsaved changes');
+    cue.MarkClean;
+
+    // BeginUpdate/EndUpdate: one notification for a multi-operation action
+    FChangeCount := 0;
+    cue.BeginUpdate;
+    try
+      gid := cue.GetGroupId;
+      cue.AddOperation(NewPosXOp(gid, lab, sec, 400));
+      cue.AddOperation(NewPosXOp(gid, lab, sec, 500));
+      cue.AddOperation(NewPosXOp(gid, lab, sec, 600));
+      CheckInt(0, FChangeCount, 'No OnChange inside BeginUpdate/EndUpdate');
+    finally
+      cue.EndUpdate;
+    end;
+    CheckInt(1, FChangeCount, 'One OnChange for the grouped action');
+    cue.OnChange := nil;
+  finally
+    rep.Free;
+  end;
+  LogMsg('Dirty state verified');
+end;
+
+procedure TRegressionTests.TestFailingOperation;
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  labA, labB, labC: TRpLabel;
+  cue: TUndoCue;
+  gid: Integer;
+  raised: Boolean;
+  msg: string;
+begin
+  LogMsg('5.5 L1: failing operation in the middle of an undo group');
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    labA := AddEngineLabel(rep, sec, 'FAIL_A');
+    labB := AddEngineLabel(rep, sec, 'FAIL_B');
+    labC := AddEngineLabel(rep, sec, 'FAIL_C');
+    gid := cue.GetGroupId;
+    cue.AddOperation(NewPosXOp(gid, labA, sec, 10));
+    cue.AddOperation(NewPosXOp(gid, labB, sec, 20));
+    cue.AddOperation(NewPosXOp(gid, labC, sec, 30));
+    cue.MarkClean;
+
+    // The middle operation can not find its component
+    labB.Name := 'FAIL_B_RENAMED';
+    raised := False;
+    msg := '';
+    try
+      cue.Undo.Free;
+    except
+      on E: Exception do
+      begin
+        raised := True;
+        msg := E.Message;
+      end;
+    end;
+    Check(raised, 'Undo of a group with a failing operation must raise');
+    Check(Pos('undo of', msg) > 0, 'Undo failure message must name the operation: ' + msg);
+    CheckInt(2, cue.UndoOperations.Count, 'Failed undo: the failing op and the rest stay in undo');
+    CheckInt(1, cue.RedoOperations.Count, 'Failed undo: the undone op is in redo');
+    Check(cue.RedoOperations[0].componentName = 'FAIL_C', 'Failed undo: C was undone first');
+    CheckInt(0, labC.PosX, 'Failed undo: C restored');
+    CheckInt(20, labB.PosX, 'Failed undo: B untouched');
+    CheckInt(10, labA.PosX, 'Failed undo: A untouched');
+    Check(cue.IsDirty and rep.Modified, 'Failed undo changed the report: dirty');
+
+    // Redo recovers the partially undone group
+    cue.Redo.Free;
+    CheckInt(3, cue.UndoOperations.Count, 'Redo after a failed undo: whole group back in undo');
+    CheckInt(0, cue.RedoOperations.Count, 'Redo after a failed undo: redo empty');
+    CheckInt(30, labC.PosX, 'Redo after a failed undo: C re-applied');
+    Check(not cue.IsDirty and not rep.Modified, 'Redo recovered the saved state');
+
+    // Once the cause is fixed the whole group undoes and redoes
+    labB.Name := 'FAIL_B';
+    cue.Undo.Free;
+    CheckInt(0, cue.UndoOperations.Count, 'Undo after the fix: whole group undone');
+    Check((labA.PosX = 0) and (labB.PosX = 0) and (labC.PosX = 0), 'Undo after the fix: all restored');
+    cue.Redo.Free;
+    Check((labA.PosX = 10) and (labB.PosX = 20) and (labC.PosX = 30), 'Redo after the fix: all re-applied');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Failing operation handling verified');
+end;
+
+{ L1 + L2: designer }
+
+procedure TRegressionTests.TestDesigner(const ASamplePath: string);
+var
+  mf: TFRpMainFLCL;
+  rep: TRpReport;
+  cue, oldCue: TUndoCue;
+  frame: TFRpDesignFrameLCL;
+  sub, sub2: TRpSubReport;
+  detail, ph: TRpSection;
+  secint: TRpSectionInterface;
+  panel: TRpPanelObjLCL;
+  nA, nB, nC, nD, p1, p2, p3, pasted1, pasted2, phName, name2, secName2, oldFile, tmp: string;
+  labA, labB: TRpLabel;
+  nOps, cnt, origW, origX, origStyleA, origStyleB, phIndex, secCount, answered, i, k: Integer;
+  origAutoExpand, raised: Boolean;
+  op: TChangeObjectOperation;
+  lst: TObjectList<TChangeObjectOperation>;
+  saveUnit: TRpmUnits;
+  oldRep: TRpReport;
+  ms: TMemoryStream;
+  garbage: AnsiString;
+begin
+  LogMsg('5.5: designer regression tests on TFRpMainFLCL');
+  mf := TFRpMainFLCL.Create(nil);
+  try
+    mf.Show;
+    Application.ProcessMessages;
+    rep := mf.Report;
+    Check(Assigned(rep) and (rep.UndoCue is TUndoCue), 'TFRpMainFLCL must start with a report and an undo cue');
+    cue := TUndoCue(rep.UndoCue);
+    Check(not rep.Modified and not cue.CanUndo, 'New designer report must be clean');
+    frame := mf.DesignerFrame;
+    sub := rep.SubReports[0].SubReport;
+    detail := FindSectionOfType(sub, rpsecdetail);
+    ph := FindSectionOfType(sub, rpsecpheader);
+    Check(Assigned(detail) and Assigned(ph), 'New report must have a page header and a detail');
+    CheckFrameInSync(frame, 'new report');
+
+    // Components A, B, C, D in the detail section
+    secint := SecIntOf(frame, detail);
+    Check(Assigned(secint), 'No interface for the detail section');
+    nA := secint.CreateNewComponent(dtLabel, 10, 5, 0, 0).printitem.Name;
+    nB := secint.CreateNewComponent(dtLabel, 10, 30, 0, 0).printitem.Name;
+    nC := secint.CreateNewComponent(dtLabel, 150, 5, 0, 0).printitem.Name;
+    nD := secint.CreateNewComponent(dtLabel, 150, 30, 0, 0).printitem.Name;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Initial component order');
+    labA := TRpLabel(FindItem(rep, nA));
+    labB := TRpLabel(FindItem(rep, nB));
+
+    // ---- L2: every change updates Modified, Undo/Redo actions and history panel
+    LogMsg('5.5 L2: undo cue OnChange updates the designer UI');
+    mf.Structure.cueview.ClearHistory;
+    Check(rep.Modified, 'Clearing the history must keep unsaved changes dirty');
+    cue.MarkClean;
+    Check(not rep.Modified, 'MarkClean resets Report.Modified');
+    Check(not mf.BtnUndo.Enabled and not mf.BtnRedo.Enabled, 'Undo/Redo disabled with an empty clean history');
+    CheckInt(0, mf.Structure.cueview.ListViewCue.Items.Count, 'History panel empty');
+    Check(Copy(mf.Caption, Length(mf.Caption) - 1, 2) <> ' *', 'Title must not show * when clean');
+    origX := labA.PosX;
+    // Recorded directly in the cue: nothing else refreshes the UI
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, labA, detail, origX + 300));
+    Check(rep.Modified, 'AddOperation marks Report.Modified');
+    Check(mf.BtnUndo.Enabled and not mf.BtnRedo.Enabled, 'AddOperation enables Undo (OnChange)');
+    CheckInt(1, mf.Structure.cueview.ListViewCue.Items.Count, 'History panel refreshed by OnChange');
+    Check(mf.Structure.cueview.BUndo.Enabled, 'History panel undo button enabled');
+    Check(Copy(mf.Caption, Length(mf.Caption) - 1, 2) = ' *', 'Title shows * when modified: ' + mf.Caption);
+    mf.DoUndo;
+    CheckInt(origX, labA.PosX, 'DoUndo restored PosX');
+    Check(not rep.Modified, 'Undo back to the clean point: not modified');
+    Check(not mf.BtnUndo.Enabled and mf.BtnRedo.Enabled, 'After undo: Undo disabled, Redo enabled');
+    CheckInt(1, mf.Structure.cueview.ListViewCue.Items.Count, 'History panel shows the redo operation');
+    mf.DoRedo;
+    CheckInt(origX + 300, labA.PosX, 'DoRedo re-applied PosX');
+    Check(rep.Modified and mf.BtnUndo.Enabled and not mf.BtnRedo.Enabled, 'After redo: modified, Undo enabled');
+    // A designer action
+    frame.SelectComponent(ChildInt(frame, nA), False);
+    frame.MoveSelectedComponents(ChildInt(frame, nA), 100, 0);
+    CheckInt(2, mf.Structure.cueview.ListViewCue.Items.Count, 'History panel after a move');
+    // Undo/Redo called on the cue: the caller frees the returned list
+    lst := cue.Undo;
+    try
+      Check(Assigned(lst) and (lst.Count = 1) and not lst.OwnsObjects,
+        'Undo returns a non owning list with the undone operations');
+    finally
+      lst.Free;
+    end;
+    CheckInt(3, mf.Structure.cueview.ListViewCue.Items.Count, 'History panel: undo, separator and redo rows');
+    Check(mf.BtnUndo.Enabled and mf.BtnRedo.Enabled, 'Both Undo and Redo enabled');
+    lst := cue.Redo;
+    try
+      Check(Assigned(lst) and (lst.Count = 1), 'Redo returns the redone operations');
+    finally
+      lst.Free;
+    end;
+    frame.UpdateInterface(True);
+    CheckFrameInSync(frame, 'after the UI integration test');
+
+    // ---- L1: Z-order, separate actions: bring B, then D to front
+    LogMsg('5.5 L1: Z-order undo/redo');
+    frame.SelectComponent(ChildInt(frame, nB), False);
+    frame.BringSelectionToFront;
+    CheckStr(Join4(nA, nC, nD, nB), CompNames(detail), 'Bring B to front');
+    frame.SelectComponent(ChildInt(frame, nD), False);
+    frame.BringSelectionToFront;
+    CheckStr(Join4(nA, nC, nB, nD), CompNames(detail), 'Then bring D to front');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nC, nD, nB), CompNames(detail), 'Undo of bring D to front');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Undo of bring B to front');
+    CheckFrameInSync(frame, 'after Z-order undo');
+    mf.DoRedo;
+    mf.DoRedo;
+    CheckStr(Join4(nA, nC, nB, nD), CompNames(detail), 'Redo of both Z-order moves');
+    mf.DoUndo;
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Z-order restored');
+    // Same with one multiple selection: one undo group
+    frame.SelectComponent(ChildInt(frame, nB), False);
+    frame.SelectComponent(ChildInt(frame, nD), True);
+    nOps := cue.UndoOperations.Count;
+    frame.BringSelectionToFront;
+    CheckInt(nOps + 2, cue.UndoOperations.Count, 'Bring B,D to front: operations');
+    CheckLastOpsGroup(cue, 2, otSwapUp, 'Bring B,D to front');
+    CheckStr(Join4(nA, nC, nB, nD), CompNames(detail), 'Bring B,D to front order');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'One undo restores A,B,C,D');
+    CheckFrameInSync(frame, 'after multi Z-order undo');
+    mf.DoRedo;
+    CheckStr(Join4(nA, nC, nB, nD), CompNames(detail), 'Redo of the multi Z-order move');
+    mf.DoUndo;
+
+    // ---- L1: delete D then B, undo restores A,B,C,D
+    LogMsg('5.5 L1: multi-delete undo order');
+    origX := labB.PosY;
+    frame.SelectComponent(ChildInt(frame, nD), False);
+    frame.SelectComponent(ChildInt(frame, nB), True);
+    nOps := cue.UndoOperations.Count;
+    frame.DeleteSelection;
+    CheckStr(nA + ',' + nC, CompNames(detail), 'Delete D then B');
+    CheckInt(nOps + 2, cue.UndoOperations.Count, 'Delete D, B: operations');
+    CheckLastOpsGroup(cue, 2, otRemove, 'Delete D, B');
+    CheckInt(3, cue.UndoOperations[nOps].oldItemIndex, 'Delete: D recorded at index 3');
+    CheckInt(1, cue.UndoOperations[nOps + 1].oldItemIndex, 'Delete: B recorded at index 1');
+    CheckFrameInSync(frame, 'after deleting two components');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Undo of the delete restores the order');
+    labB := TRpLabel(FindItem(rep, nB));
+    CheckInt(origX, labB.PosY, 'Undo of the delete restores the component properties');
+    CheckFrameInSync(frame, 'after undo of the delete');
+    mf.DoRedo;
+    CheckStr(nA + ',' + nC, CompNames(detail), 'Redo of the delete');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Components restored again');
+    labA := TRpLabel(FindItem(rep, nA));
+    labB := TRpLabel(FindItem(rep, nB));
+
+    // ---- L1: inspector edits restore the model values
+    LogMsg('5.5 L1: inspector edits undo/redo');
+    saveUnit := rpmunits.defaultunit;
+    rpmunits.defaultunit := rpUnitcms;
+    try
+      frame.SelectComponent(ChildInt(frame, nA), False);
+      panel := mf.ObjInsp.CurrentPanel;
+      Check(Assigned(panel) and (panel.CompItem = ChildInt(frame, nA)), 'Inspector shows label A');
+      origW := labA.Width;
+      Check(origW <> 1440, 'Label A must not already be 1440 twips wide');
+      nOps := cue.UndoOperations.Count;
+      panel.SetPropertyFull(SRpSWidth, '2' + DefaultFormatSettings.DecimalSeparator + '540');
+      CheckInt(1440, labA.Width, 'Width "2.540" cm in twips');
+      CheckInt(nOps + 1, cue.UndoOperations.Count, 'Width edit: one operation');
+      op := cue.UndoOperations.Last;
+      Check((op.properties.Count = 1) and (op.properties[0].propertyName = 'width') and
+        (op.properties[0].oldValue = origW) and (op.properties[0].newValue = 1440),
+        'Width edit recorded as model twips (width old -> 1440)');
+      mf.DoUndo;
+      CheckInt(origW, labA.Width, 'Undo of Width');
+      mf.DoRedo;
+      CheckInt(1440, labA.Width, 'Redo of Width');
+
+      frame.SelectComponent(ChildInt(frame, nA), False);
+      panel := mf.ObjInsp.CurrentPanel;
+      origX := labA.PosX;
+      Check(origX <> 567, 'Label A must not already be at 1 cm');
+      panel.SetPropertyFull(SRpSLeft, '1' + DefaultFormatSettings.DecimalSeparator + '000');
+      CheckInt(567, labA.PosX, 'Left "1.000" cm in twips');
+      CheckStr('posX', cue.UndoOperations.Last.properties[0].propertyName, 'Left recorded as posX');
+      mf.DoUndo;
+      CheckInt(origX, labA.PosX, 'Undo of Left');
+      mf.DoRedo;
+      CheckInt(567, labA.PosX, 'Redo of Left');
+
+      frame.SelectComponent(ChildInt(frame, nA), False);
+      panel := mf.ObjInsp.CurrentPanel;
+      Check(labA.Align = rpalnone, 'Label A starts without alignment');
+      panel.SetPropertyFull(SRPAlign, AlignToStr(rpalbottom));
+      Check(labA.Align = rpalbottom, 'Align set through the inspector');
+      CheckStr('align', cue.UndoOperations.Last.properties[0].propertyName, 'Align recorded as align');
+      mf.DoUndo;
+      Check(labA.Align = rpalnone, 'Undo of Align');
+      mf.DoRedo;
+      Check(labA.Align = rpalbottom, 'Redo of Align');
+      mf.DoUndo;
+
+      // A boolean property of a section
+      secint := SecIntOf(frame, detail);
+      mf.ObjInsp.AddCompItem(secint, True);
+      panel := mf.ObjInsp.CurrentPanel;
+      Check(Assigned(panel) and (panel.CompItem = secint), 'Inspector shows the detail section');
+      origAutoExpand := detail.AutoExpand;
+      nOps := cue.UndoOperations.Count;
+      panel.SetPropertyFull(SRpSAutoExpand, BoolToStr(not origAutoExpand, True));
+      Check(detail.AutoExpand = not origAutoExpand, 'Section AutoExpand set through the inspector');
+      CheckInt(nOps + 1, cue.UndoOperations.Count, 'Section boolean edit: one operation');
+      op := cue.UndoOperations.Last;
+      Check((op.componentName = detail.Name) and (op.properties[0].propertyName = 'autoExpand'),
+        'Section edit recorded as autoExpand of the section');
+      mf.DoUndo;
+      Check(detail.AutoExpand = origAutoExpand, 'Undo of the section boolean');
+      mf.DoRedo;
+      Check(detail.AutoExpand = not origAutoExpand, 'Redo of the section boolean');
+      mf.DoUndo;
+    finally
+      rpmunits.defaultunit := saveUnit;
+    end;
+
+    // ---- L1: font style (font dialog path) on two labels is one group
+    LogMsg('5.5 L1: bold on two selected labels');
+    frame.SelectComponent(ChildInt(frame, nA), False);
+    frame.SelectComponent(ChildInt(frame, nB), True);
+    CheckInt(2, mf.ObjInsp.SelectedItems.Count, 'Inspector multiple selection');
+    panel := mf.ObjInsp.CurrentPanel;
+    origStyleA := labA.FontStyle;
+    origStyleB := labB.FontStyle;
+    Check(((origStyleA and 1) = 0) and ((origStyleB and 1) = 0), 'Labels start without bold');
+    nOps := cue.UndoOperations.Count;
+    panel.SetPropertyFull(SrpSFontStyle, '1');
+    Check((labA.FontStyle = 1) and (labB.FontStyle = 1), 'Bold applied to both selected labels');
+    CheckInt(nOps + 2, cue.UndoOperations.Count, 'Bold on two labels: operations');
+    CheckLastOpsGroup(cue, 2, otModify, 'Bold on two labels');
+    CheckStr('fontStyle', cue.UndoOperations.Last.properties[0].propertyName, 'Bold recorded as fontStyle');
+    mf.DoUndo;
+    Check((labA.FontStyle = origStyleA) and (labB.FontStyle = origStyleB), 'One undo restores both styles');
+    CheckInt(nOps, cue.UndoOperations.Count, 'Both style operations undone together');
+    mf.DoRedo;
+    Check((labA.FontStyle = 1) and (labB.FontStyle = 1), 'One redo applies bold to both');
+    mf.DoUndo;
+
+    // ---- L1: paste two items, one undo removes both, redo restores them
+    LogMsg('5.5 L1: paste undo/redo');
+    frame.SelectComponent(ChildInt(frame, nA), False);
+    frame.SelectComponent(ChildInt(frame, nB), True);
+    mf.BtnCopy.OnClick(mf.BtnCopy);
+    cnt := detail.ReportComponents.Count;
+    nOps := cue.UndoOperations.Count;
+    mf.BtnPaste.OnClick(mf.BtnPaste);
+    CheckInt(cnt + 2, detail.ReportComponents.Count, 'Paste of two components');
+    pasted1 := detail.ReportComponents[cnt].Component.Name;
+    pasted2 := detail.ReportComponents[cnt + 1].Component.Name;
+    Check((pasted1 <> nA) and (pasted1 <> nB) and (pasted2 <> nA) and (pasted2 <> nB) and
+      (pasted1 <> pasted2), 'Pasted components get new unique names');
+    CheckInt(nOps + 2, cue.UndoOperations.Count, 'Paste: operations');
+    CheckLastOpsGroup(cue, 2, otAdd, 'Paste');
+    CheckFrameInSync(frame, 'after paste');
+    mf.DoUndo;
+    CheckInt(cnt, detail.ReportComponents.Count, 'One undo removes both pasted components');
+    Check((FindItem(rep, pasted1) = nil) and (FindItem(rep, pasted2) = nil), 'Pasted components freed');
+    CheckFrameInSync(frame, 'after undo of the paste');
+    mf.DoRedo;
+    CheckInt(cnt + 2, detail.ReportComponents.Count, 'Redo restores both pasted components');
+    Check((FindItem(rep, pasted1) is TRpLabel) and (FindItem(rep, pasted2) is TRpLabel),
+      'Redo restores the pasted components with their names');
+    CheckFrameInSync(frame, 'after redo of the paste');
+    mf.DoUndo;
+    CheckStr(Join4(nA, nB, nC, nD), CompNames(detail), 'Detail back to A,B,C,D');
+
+    // ---- L1: delete the displayed page header (with 3 components) from the tree
+    LogMsg('5.5 L1: delete a displayed section from the structure tree');
+    secint := SecIntOf(frame, ph);
+    p1 := secint.CreateNewComponent(dtLabel, 10, 2, 0, 0).printitem.Name;
+    p2 := secint.CreateNewComponent(dtLabel, 120, 2, 0, 0).printitem.Name;
+    p3 := secint.CreateNewComponent(dtLabel, 230, 2, 0, 0).printitem.Name;
+    CheckStr(p1 + ',' + p2 + ',' + p3, CompNames(ph), 'Page header components');
+    phName := ph.Name;
+    phIndex := sub.Sections.IndexOf(ph);
+    secCount := sub.Sections.Count;
+    mf.Structure.SelectDataItem(ph);
+    Check(frame.CurrentSubreport = sub, 'The subreport of the page header is displayed');
+    nOps := cue.UndoOperations.Count;
+    answered := Guard.MsgBoxesAnswered;
+    Guard.ExpectMsgBoxes := 1;
+    Guard.MsgBoxAnswer := smbOK;
+    mf.Structure.DeleteSelectedNode;
+    CheckInt(answered + 1, Guard.MsgBoxesAnswered, 'The delete confirmation was asked');
+    CheckInt(0, Guard.ExpectMsgBoxes, 'No other confirmation pending');
+    ph := nil;
+    CheckInt(secCount - 1, sub.Sections.Count, 'Page header deleted');
+    Check(FindItem(rep, phName) = nil, 'Page header freed');
+    CheckInt(nOps + 4, cue.UndoOperations.Count, 'Section delete: 3 components + section');
+    CheckLastOpsGroup(cue, 4, otRemove, 'Section delete');
+    for i := 0 to 2 do
+      CheckInt(0, cue.UndoOperations[nOps + i].oldItemIndex, 'Section delete: components recorded at index 0');
+    CheckStr(phName, cue.UndoOperations.Last.componentName, 'Section delete: section recorded last');
+    CheckFrameInSync(frame, 'after deleting the displayed page header');
+    CheckInt(1 + sub.Sections.Count, mf.Structure.RView.Items.Count, 'Structure tree after the delete');
+    mf.DoUndo;
+    CheckInt(secCount, sub.Sections.Count, 'Undo restores the page header');
+    ph := sub.Sections[phIndex].Section;
+    CheckStr(phName, ph.Name, 'Page header restored at its index');
+    Check(ph.SectionType = rpsecpheader, 'Restored section is a page header');
+    CheckStr(p1 + ',' + p2 + ',' + p3, CompNames(ph), 'Undo keeps the component order of the section');
+    CheckFrameInSync(frame, 'after undo of the section delete');
+    secint := SecIntOf(frame, ph);
+    Check(Assigned(secint), 'Restored section has a design interface');
+    for i := 0 to 2 do
+      Check(TRpSizePosInterface(secint.childlist[i]).printitem = ph.ReportComponents[i].Component,
+        'Design interfaces of the restored section follow the component order');
+    mf.DoRedo;
+    CheckInt(secCount - 1, sub.Sections.Count, 'Redo deletes the page header again');
+    CheckFrameInSync(frame, 'after redo of the section delete');
+    mf.DoUndo;
+    ph := sub.Sections[phIndex].Section;
+    CheckStr(p1 + ',' + p2 + ',' + p3, CompNames(ph), 'Page header components restored again');
+
+    // ---- L1: add subreport, undo, redo (1 detail), delete it while displayed
+    LogMsg('5.5 L1: subreport add/delete undo/redo');
+    mf.Structure.SelectDataItem(sub);
+    nOps := cue.UndoOperations.Count;
+    mf.Structure.MNewSectionClick(mf.Structure.MSubReport);
+    CheckInt(2, rep.SubReports.Count, 'Add subreport');
+    sub2 := rep.SubReports[1].SubReport;
+    name2 := sub2.Name;
+    CheckInt(nOps + 1, cue.UndoOperations.Count, 'Add subreport: one operation');
+    Check((cue.UndoOperations.Last.operation = otAdd) and (cue.UndoOperations.Last.componentName = name2),
+      'Add subreport recorded as otAdd');
+    Check(frame.CurrentSubreport = sub2, 'The new subreport is displayed');
+    CheckFrameInSync(frame, 'after adding a subreport');
+    mf.DoUndo;
+    sub2 := nil;
+    CheckInt(1, rep.SubReports.Count, 'Undo of add subreport');
+    Check(FindItem(rep, name2) = nil, 'Undo of add subreport frees it');
+    CheckFrameInSync(frame, 'after undo of add subreport (the displayed subreport was freed)');
+    mf.DoRedo;
+    CheckInt(2, rep.SubReports.Count, 'Redo of add subreport');
+    Check(FindItem(rep, name2) is TRpSubReport, 'Redo recreates the subreport with its name');
+    sub2 := TRpSubReport(FindItem(rep, name2));
+    CheckInt(1, sub2.Sections.Count, 'Redo of add subreport: one section');
+    Check(sub2.Sections[0].Section.SectionType = rpsecdetail, 'Redo of add subreport: a detail section');
+    secName2 := sub2.Sections[0].Section.Name;
+    CheckFrameInSync(frame, 'after redo of add subreport');
+    // Delete it while it is displayed
+    mf.Structure.SelectDataItem(sub2);
+    Check(frame.CurrentSubreport = sub2, 'Selecting the subreport node displays it');
+    answered := Guard.MsgBoxesAnswered;
+    Guard.ExpectMsgBoxes := 1;
+    Guard.MsgBoxAnswer := smbOK;
+    mf.Structure.DeleteSelectedNode;
+    CheckInt(answered + 1, Guard.MsgBoxesAnswered, 'The subreport delete confirmation was asked');
+    sub2 := nil;
+    CheckInt(1, rep.SubReports.Count, 'Displayed subreport deleted');
+    Check(frame.CurrentSubreport = rep.SubReports[0].SubReport, 'The remaining subreport is displayed');
+    CheckFrameInSync(frame, 'after deleting the displayed subreport');
+    mf.DoUndo;
+    CheckInt(2, rep.SubReports.Count, 'Undo restores the deleted subreport');
+    CheckStr(name2, rep.SubReports[1].SubReport.Name, 'Subreport restored at its index');
+    sub2 := rep.SubReports[1].SubReport;
+    CheckInt(1, sub2.Sections.Count, 'Restored subreport has its section');
+    CheckStr(secName2, sub2.Sections[0].Section.Name, 'Restored subreport section name');
+    CheckFrameInSync(frame, 'after undo of the subreport delete');
+    k := 0;
+    for i := 0 to rep.SubReports.Count - 1 do
+      k := k + 1 + rep.SubReports[i].SubReport.Sections.Count;
+    CheckInt(k, mf.Structure.RView.Items.Count, 'Structure tree after the subreport undo');
+    mf.DoRedo;
+    CheckInt(1, rep.SubReports.Count, 'Redo deletes the subreport again');
+    CheckFrameInSync(frame, 'after redo of the subreport delete');
+
+    // ---- L2: opening an invalid file keeps the current report
+    LogMsg('5.5 L2: OpenReportFile with an invalid file');
+    mf.FileName := 'C:\regression\original_name.rep';
+    cue.MarkClean;
+    Check(cue.CanUndo, 'There must be history before the failed open');
+    oldRep := mf.Report;
+    oldCue := cue;
+    oldFile := mf.FileName;
+    nOps := cue.UndoOperations.Count;
+    tmp := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_corrupt_test.rep';
+    for k := 0 to 1 do
+    begin
+      ms := TMemoryStream.Create;
+      try
+        if k = 0 then
+        begin
+          garbage := 'ZZZZ this is not a report' + #0#1#2#3#255#254;
+          ms.WriteBuffer(garbage[1], Length(garbage));
+        end;
+        ms.SaveToFile(tmp);
+      finally
+        ms.Free;
+      end;
+      raised := False;
+      try
+        mf.OpenReportFile(tmp);
+      except
+        on E: Exception do
+        begin
+          raised := True;
+          LogMsg('OpenReportFile raised as expected: ' + E.ClassName + ': ' + E.Message);
+        end;
+      end;
+      Check(raised, 'OpenReportFile of an invalid file must raise');
+      Check(mf.Report = oldRep, 'Failed open: the current report object survives');
+      CheckStr(oldFile, mf.FileName, 'Failed open: FileName survives');
+      Check(mf.Report.UndoCue = oldCue, 'Failed open: the undo cue survives');
+      CheckInt(nOps, oldCue.UndoOperations.Count, 'Failed open: the history survives');
+      Check(Assigned(oldCue.OnChange), 'Failed open: the cue is still hooked to the designer');
+      Check(frame.Report = oldRep, 'Failed open: the design frame still shows the report');
+      CheckFrameInSync(frame, 'after a failed open');
+      Check(mf.BtnUndo.Enabled, 'Failed open: Undo still available');
+    end;
+    DeleteFile(tmp);
+    // A valid file replaces report, file name and history
+    mf.OpenReportFile(ASamplePath);
+    Check(mf.Report <> nil, 'Valid open: report loaded');
+    CheckStr(ASamplePath, mf.FileName, 'Valid open: FileName');
+    Check((mf.Report.UndoCue is TUndoCue) and not TUndoCue(mf.Report.UndoCue).CanUndo,
+      'Valid open: history starts empty');
+    Check(not mf.Report.Modified and not mf.BtnUndo.Enabled, 'Valid open: clean and no Undo');
+    CheckFrameInSync(frame, 'after opening a valid file');
+  finally
+    mf.Hide;
+    mf.Free;
+  end;
+  LogMsg('Designer regression tests verified');
+end;
+
+{ L2: dialogs }
+
+procedure TRegressionTests.TestParamsDialog;
+var
+  rep: TRpReport;
+  cue: TUndoCue;
+  dlg: TFRpParamsLCL;
+  p: TRpParam;
+  nOps, idx: Integer;
+  raised: Boolean;
+begin
+  LogMsg('5.5 L2: parameter definition dialog (without ShowModal)');
+  rep := TRpReport.Create(nil);
+  try
+    rep.AddSubReport;
+    rep.UndoCue := TUndoCue.Create(rep);
+    cue := TUndoCue(rep.UndoCue);
+    p := rep.Params.Add('PSTR');
+    p.Description := 'Desc1';
+    p.Value := 'abc';
+    p := rep.Params.Add('PINT');
+    p.ParamType := rpParamInteger;
+    p.Value := 5;
+
+    // OK path: edits in the working copy, recorded and applied on OK
+    dlg := TFRpParamsLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      dlg.Params.Assign(rep.Params);
+      dlg.DataInfo := rep.DataInfo;
+      dlg.FillParamList;
+      CheckInt(2, dlg.LParams.Items.Count, 'Params dialog: parameter list');
+      CheckInt(0, dlg.LParams.ItemIndex, 'Params dialog: first parameter selected');
+      Check(dlg.PageControl1.Visible, 'Params dialog: property pages visible');
+      CheckStr('Desc1', dlg.EDescription.Text, 'Params dialog: description shown');
+      dlg.EDescription.Text := 'Desc changed';
+      dlg.EDescription.OnChange(dlg.EDescription);
+      CheckStr('Desc changed', dlg.Params.ParamByName('PSTR').Description, 'Description edited in the working copy');
+      CheckStr('Desc1', rep.Params.ParamByName('PSTR').Description, 'Report untouched before OK');
+      dlg.LParams.ItemIndex := 1;
+      dlg.LParams.OnClick(dlg.LParams);
+      CheckStr('5', dlg.EValue.Text, 'Integer value shown');
+      dlg.EValue.Text := '42';
+      dlg.EValue.OnExit(dlg.EValue);
+      CheckStr('42', VarToStr(dlg.Params.ParamByName('PINT').Value), 'Value edited in the working copy');
+      dlg.BOK.OnClick(dlg.BOK);
+      Check(dlg.DoOk, 'OK accepted');
+      // What ShowParamDef does after the dialog is accepted
+      nOps := cue.UndoOperations.Count;
+      RecordParamUndoChanges(rep.Params, dlg.Params, rep);
+      rep.Params.Assign(dlg.Params);
+      CheckInt(nOps + 2, cue.UndoOperations.Count, 'Params OK: one modify per changed parameter');
+      CheckLastOpsGroup(cue, 2, otModify, 'Params OK');
+      CheckStr('Desc changed', rep.Params.ParamByName('PSTR').Description, 'Params OK applied the description');
+      CheckStr('42', VarToStr(rep.Params.ParamByName('PINT').Value), 'Params OK applied the value');
+      Check(rep.Modified, 'Params OK marks the report modified');
+      cue.Undo.Free;
+      CheckStr('Desc1', rep.Params.ParamByName('PSTR').Description, 'Undo restores the description');
+      CheckStr('5', VarToStr(rep.Params.ParamByName('PINT').Value), 'Undo restores the value');
+      cue.Redo.Free;
+      CheckStr('Desc changed', rep.Params.ParamByName('PSTR').Description, 'Redo re-applies the description');
+      CheckStr('42', VarToStr(rep.Params.ParamByName('PINT').Value), 'Redo re-applies the value');
+    finally
+      dlg.Free;
+    end;
+
+    // Type change resets the value, invalid integer blocks OK
+    dlg := TFRpParamsLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      dlg.Params.Assign(rep.Params);
+      dlg.FillParamList;
+      CheckStr('abc', dlg.EValue.Text, 'String value shown');
+      idx := dlg.ComboDataType.Items.IndexOf(ParamTypeToString(rpParamInteger));
+      Check(idx >= 0, 'Integer type in the data type combo');
+      dlg.ComboDataType.ItemIndex := idx;
+      dlg.ComboDataType.OnChange(dlg.ComboDataType);
+      p := dlg.Params.ParamByName('PSTR');
+      Check(p.ParamType = rpParamInteger, 'Type changed to integer');
+      CheckStr('0', VarToStr(p.Value), 'Changing the type resets the value to the type default');
+      CheckStr('0', dlg.EValue.Text, 'Value edit shows the reset value');
+      dlg.EValue.Text := 'abc';
+      raised := False;
+      try
+        dlg.BOK.OnClick(dlg.BOK);
+      except
+        on E: EConvertError do
+          raised := True;
+      end;
+      Check(raised, 'An invalid integer value must raise on OK');
+      Check(not dlg.DoOk, 'An invalid integer value must block OK');
+      Check(dlg.ModalResult <> mrOk, 'An invalid integer value must keep the dialog open');
+    finally
+      dlg.Free;
+    end;
+
+    // Deleting the last parameter hides the property pages
+    dlg := TFRpParamsLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      dlg.Params.Assign(rep.Params);
+      dlg.FillParamList;
+      dlg.BDelete.OnClick(dlg.BDelete);
+      dlg.BDelete.OnClick(dlg.BDelete);
+      CheckInt(0, dlg.Params.Count, 'All parameters deleted');
+      CheckInt(0, dlg.LParams.Items.Count, 'Parameter list empty');
+      Check(not dlg.PageControl1.Visible, 'Deleting the last parameter hides the property pages');
+      Check(not dlg.BDelete.Enabled and not dlg.BRename.Enabled, 'Delete/Rename disabled without parameters');
+      dlg.BOK.OnClick(dlg.BOK);
+      Check(dlg.DoOk, 'OK with no parameters');
+      nOps := cue.UndoOperations.Count;
+      RecordParamUndoChanges(rep.Params, dlg.Params, rep);
+      rep.Params.Assign(dlg.Params);
+      CheckInt(nOps + 2, cue.UndoOperations.Count, 'Removing both parameters: two operations');
+      CheckLastOpsGroup(cue, 2, otRemove, 'Remove parameters');
+      CheckInt(0, rep.Params.Count, 'Parameters removed from the report');
+      // Regression: removed parameters used to be recorded with their values in
+      // oldValue, while otRemove is restored from newValue, so undo recreated
+      // them empty (and the second one raised "parameter already exists")
+      cue.Undo.Free;
+      CheckInt(2, rep.Params.Count, 'Undo restores the removed parameters');
+      CheckStr('PSTR', rep.Params.Items[0].Name, 'Undo restores the parameter order (0)');
+      CheckStr('PINT', rep.Params.Items[1].Name, 'Undo restores the parameter order (1)');
+      CheckStr('Desc changed', rep.Params.ParamByName('PSTR').Description, 'Undo restores parameter properties');
+      Check(rep.Params.ParamByName('PINT').ParamType = rpParamInteger, 'Undo restores the parameter type');
+    finally
+      dlg.Free;
+    end;
+  finally
+    rep.Free;
+  end;
+  LogMsg('Parameter dialog verified');
+end;
+
+procedure TRegressionTests.TestDataConfig;
+var
+  rep: TRpReport;
+  cue: TUndoCue;
+  dlg: TFRpDInfoLCL;
+  ds: TRpDataInfoItem;
+  nOps: Integer;
+begin
+  LogMsg('5.5 L2: data configuration dialog working copies');
+  rep := TRpReport.Create(nil);
+  try
+    rep.AddSubReport;
+    rep.UndoCue := TUndoCue.Create(rep);
+    cue := TUndoCue(rep.UndoCue);
+    rep.DatabaseInfo.Add('CONN1');
+    ds := rep.DataInfo.Add('DS1');
+    ds.DatabaseAlias := 'CONN1';
+    ds.SQL := 'SELECT 1';
+    ds := rep.DataInfo.Add('DS2');
+    ds.DatabaseAlias := 'CONN1';
+    ds.SQL := 'SELECT 2';
+    cue.MarkClean;
+
+    // Cancel: working copies are discarded
+    dlg := TFRpDInfoLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      Check(dlg.WorkReport.DataInfo <> rep.DataInfo, 'The dialog edits working copies');
+      dlg.MonacoEditor.SQL := 'SELECT 99';
+      dlg.BNewDS.OnClick(dlg.BNewDS);
+      CheckInt(3, dlg.WorkReport.DataInfo.Count, 'New dataset in the working copy');
+      CheckStr('SELECT 99', dlg.WorkReport.DataInfo[0].SQL, 'SQL edit saved into the working copy');
+      CheckInt(2, rep.DataInfo.Count, 'Cancel: report datasets untouched');
+      CheckStr('SELECT 1', rep.DataInfo[0].SQL, 'Cancel: report SQL untouched');
+      Check(not dlg.Applied, 'Cancel: nothing applied');
+    finally
+      dlg.Free;
+    end;
+    CheckInt(2, rep.DataInfo.Count, 'After cancel: report unchanged');
+    CheckInt(0, cue.UndoOperations.Count, 'After cancel: nothing recorded');
+    Check(not cue.IsDirty and not rep.Modified, 'After cancel: report clean');
+
+    // OK: applied and recorded as one undo group
+    dlg := TFRpDInfoLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      dlg.MonacoEditor.SQL := 'SELECT 99';
+      dlg.BNewDS.OnClick(dlg.BNewDS);
+      nOps := cue.UndoOperations.Count;
+      Check(dlg.ApplyChanges, 'OK applies the changes');
+      Check(dlg.Applied, 'Applied flag after OK');
+      CheckInt(3, rep.DataInfo.Count, 'OK: new dataset in the report');
+      CheckStr('SELECT 99', rep.DataInfo[0].SQL, 'OK: SQL applied');
+      CheckStr('CONN1', rep.DataInfo[0].DatabaseAlias, 'OK: connection kept');
+      CheckInt(nOps + 2, cue.UndoOperations.Count, 'OK: one add and one modify');
+      Check(cue.UndoOperations[nOps].groupId = cue.UndoOperations[nOps + 1].groupId,
+        'OK: data changes recorded in one undo group');
+      Check(rep.Modified, 'OK marks the report modified');
+    finally
+      dlg.Free;
+    end;
+    cue.Undo.Free;
+    CheckInt(2, rep.DataInfo.Count, 'Undo of the data configuration removes the new dataset');
+    CheckStr('SELECT 1', rep.DataInfo[0].SQL, 'Undo of the data configuration restores the SQL');
+    Check(not rep.Modified, 'Undo back to the clean state');
+    cue.Redo.Free;
+    CheckInt(3, rep.DataInfo.Count, 'Redo of the data configuration');
+    CheckStr('SELECT 99', rep.DataInfo[0].SQL, 'Redo restores the SQL change');
+
+    // Reorder only: nothing to record, but the report is dirty
+    cue.MarkClean;
+    nOps := cue.UndoOperations.Count;
+    dlg := TFRpDInfoLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      dlg.BtnDownDS.OnClick(dlg.BtnDownDS);
+      CheckStr('DS2', dlg.WorkReport.DataInfo[0].Alias, 'Reorder in the working copy');
+      Check(dlg.ApplyChanges, 'OK applies the reorder');
+    finally
+      dlg.Free;
+    end;
+    CheckStr('DS2', rep.DataInfo[0].Alias, 'Reorder applied (0)');
+    CheckStr('DS1', rep.DataInfo[1].Alias, 'Reorder applied (1)');
+    CheckInt(nOps, cue.UndoOperations.Count, 'Reorder only: no undo operation');
+    Check(cue.IsDirty and rep.Modified, 'Reorder only must mark the report dirty');
+
+    // Removing a dataset is recorded and undo restores it with its values
+    cue.MarkClean;
+    nOps := cue.UndoOperations.Count;
+    dlg := TFRpDInfoLCL.Create(nil);
+    try
+      dlg.Report := rep;
+      // The active dataset is the first one: DS2 after the reorder
+      dlg.BDelDS.OnClick(dlg.BDelDS);
+      CheckInt(2, dlg.WorkReport.DataInfo.Count, 'Dataset removed from the working copy');
+      Check(dlg.ApplyChanges, 'OK applies the removal');
+    finally
+      dlg.Free;
+    end;
+    CheckInt(2, rep.DataInfo.Count, 'Dataset removal applied');
+    Check(rep.DataInfo.IndexOf('DS2') < 0, 'DS2 removed from the report');
+    CheckInt(nOps + 1, cue.UndoOperations.Count, 'Dataset removal: one operation');
+    Check(cue.UndoOperations.Last.operation = otRemove, 'Dataset removal recorded as otRemove');
+    // Regression: same oldValue/newValue mismatch as the removed parameters
+    cue.Undo.Free;
+    CheckInt(3, rep.DataInfo.Count, 'Undo restores the removed dataset');
+    CheckInt(0, rep.DataInfo.IndexOf('DS2'), 'Removed dataset restored with its alias at its index');
+    CheckStr('SELECT 2', rep.DataInfo[0].SQL, 'Removed dataset restored with its SQL');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Data configuration dialog verified');
+end;
+
+procedure TRegressionTests.TestLibraryTree;
+const
+  LIB_ALIAS = 'RPLIBTEST';
+var
+  iniPath, dbPath: string;
+  conn: TSQLite3Connection;
+  tr: TSQLTransaction;
+  list: TRpDatabaseInfoList;
+  item: TRpDatabaseInfoItem;
+  dia: TFRpOpenLibLCL;
+  root, nSales, nMonthly, nHR: TTreeNode;
+begin
+  LogMsg('5.5 L2: report library tree (EditTree on a SQLite library)');
+  iniPath := IncludeTrailingPathDelimiter(GetCurrentDir) + 'dbxconnections.ini';
+  if FileExists(iniPath) then
+  begin
+    LogMsg('[TEST_SKIPPED] library tree: ' + iniPath + ' already exists, not overwritten');
+    Exit;
+  end;
+  dbPath := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_libtree_test.db';
+  if FileExists(dbPath) then
+    DeleteFile(dbPath);
+
+  conn := TSQLite3Connection.Create(nil);
+  tr := TSQLTransaction.Create(nil);
+  try
+    conn.DatabaseName := dbPath;
+    conn.Transaction := tr;
+    tr.DataBase := conn;
+    try
+      conn.Open;
+    except
+      on E: Exception do
+      begin
+        LogMsg('[TEST_SKIPPED] library tree: SQLite client library not available: ' + E.Message);
+        Exit;
+      end;
+    end;
+    tr.StartTransaction;
+    conn.ExecuteDirect('CREATE TABLE REPMAN_GROUPS (GROUP_CODE INTEGER, GROUP_NAME VARCHAR(50), PARENT_GROUP INTEGER)');
+    conn.ExecuteDirect('CREATE TABLE REPMAN_REPORTS (REPORT_NAME VARCHAR(50), REPORT_GROUP INTEGER, REPORT BLOB)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_GROUPS VALUES (1, ''Sales'', 0)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_GROUPS VALUES (2, ''Monthly'', 1)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_GROUPS VALUES (3, ''HR'', 0)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_REPORTS (REPORT_NAME, REPORT_GROUP) VALUES (''R_ROOT'', NULL)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_REPORTS (REPORT_NAME, REPORT_GROUP) VALUES (''R_SALES1'', 1)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_REPORTS (REPORT_NAME, REPORT_GROUP) VALUES (''R_MONTH1'', 2)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_REPORTS (REPORT_NAME, REPORT_GROUP) VALUES (''R_HR1'', 3)');
+    conn.ExecuteDirect('INSERT INTO REPMAN_REPORTS (REPORT_NAME, REPORT_GROUP) VALUES (''R_ORPHAN'', 99)');
+    tr.Commit;
+    conn.Close;
+  finally
+    tr.Free;
+    conn.Free;
+  end;
+
+  // The FPC build reads the connection from dbxconnections.ini (working dir)
+  WriteTextFile(iniPath, '[' + LIB_ALIAS + ']' + LineEnding +
+    'DriverName=SQLite' + LineEnding + 'Database=' + dbPath + LineEnding);
+  list := TRpDatabaseInfoList.Create(nil);
+  try
+    item := list.Add(LIB_ALIAS);
+    item.Driver := rpfiredac;
+    item.LoadParams := False;
+    dia := TFRpOpenLibLCL.Create(nil);
+    try
+      dia.EditTree(item);
+      CheckInt(9, dia.ATree.Items.Count, 'Library tree nodes (root, 3 groups, 5 reports)');
+      root := dia.ATree.Items.GetFirstNode;
+      CheckStr(LIB_ALIAS, root.Text, 'Library tree root is the connection alias');
+      CheckInt(4, root.Count, 'Root: 2 top groups and 2 reports without a known group');
+      nSales := root.Items[0];
+      nHR := root.Items[1];
+      CheckStr('Sales', nSales.Text, 'Top group 1');
+      CheckStr('HR', nHR.Text, 'Top group 2');
+      CheckStr('R_ORPHAN', root.Items[2].Text, 'Report of an unknown group goes to the root');
+      CheckStr('R_ROOT', root.Items[3].Text, 'Report without group at the root');
+      CheckInt(2, nSales.Count, 'Sales: subgroup and report');
+      nMonthly := nSales.Items[0];
+      CheckStr('Monthly', nMonthly.Text, 'Nested group');
+      CheckStr('R_SALES1', nSales.Items[1].Text, 'Report of the Sales group');
+      CheckInt(1, nMonthly.Count, 'Monthly group reports');
+      CheckStr('R_MONTH1', nMonthly.Items[0].Text, 'Report of the nested group');
+      CheckInt(1, nHR.Count, 'HR group reports');
+      CheckStr('R_HR1', nHR.Items[0].Text, 'Report of the HR group');
+      CheckInt(1, TRpLibNodeInfo(nSales.Data).GroupCode, 'Group node data');
+      dia.ATree.Selected := nMonthly.Items[0];
+      CheckStr('R_MONTH1', dia.SelectedNodeReportName, 'Selected report name');
+      dia.ATree.Selected := nSales;
+      CheckStr('', dia.SelectedNodeReportName, 'A group node is not a report');
+    finally
+      dia.Free;
+    end;
+  finally
+    list.Free;
+    DeleteFile(iniPath);
+    if not DeleteFile(dbPath) then
+      LogMsg('Note: could not delete ' + dbPath);
+  end;
+  LogMsg('Library tree verified');
+end;
+
+procedure TRegressionTests.TestUserParams;
+var
+  rep: TRpReport;
+  p: TRpParam;
+  dia: TFRpRTParams;
+  saved: TParamValueSearchProc;
+
+  function FindCtrl(AClass: TClass; ATag: Integer; const ACaption: string): TControl;
+  var
+    i: Integer;
+    c: TControl;
+  begin
+    Result := nil;
+    for i := 0 to dia.PRight.ControlCount - 1 do
+    begin
+      c := dia.PRight.Controls[i];
+      if (c.ClassType = AClass) and (c.Tag = ATag) and
+         ((ACaption = '') or (c.Caption = ACaption)) then
+      begin
+        Result := c;
+        Exit;
+      end;
+    end;
+    Fail(Format('User params: control %s with tag %d not found', [AClass.ClassName, ATag]));
+  end;
+
+begin
+  LogMsg('5.5 L2: user parameters form (search button and null check)');
+  saved := GlobalParamValueSearch;
+  rep := TRpReport.Create(nil);
+  try
+    rep.AddSubReport;
+    p := rep.Params.Add('PSEARCH');
+    p.Description := 'Search param';
+    p.AllowNulls := True;
+    p.Value := Null;
+    p.SearchDataset := 'DSSEARCH';
+    p := rep.Params.Add('PPLAIN');
+    p.Description := 'Plain param';
+    p.Value := 'x';
+
+    // Without a search implementation the "..." button is hidden
+    GlobalParamValueSearch := nil;
+    dia := TFRpRTParams.Create(nil);
+    try
+      dia.params := rep.Params;
+      Check(not FindCtrl(TButton, 0, '...').Visible, 'Search button hidden when the search hook is not assigned');
+    finally
+      dia.Free;
+    end;
+
+    GlobalParamValueSearch := FakeParamValueSearch;
+    dia := TFRpRTParams.Create(nil);
+    try
+      dia.params := rep.Params;
+      Check(FindCtrl(TButton, 0, '...').Visible, 'Search button visible with a search dataset and the hook');
+      Check(not FindCtrl(TButton, 1, '...').Visible, 'No search button without a search dataset');
+      Check(TCheckBox(FindCtrl(TCheckBox, 0, SRpNull)).Checked, 'Null value: null check set');
+      Check(not FindCtrl(TEdit, 0, '').Visible, 'Null value: edit hidden');
+      FakeSearchCalls := 0;
+      dia.BSearchClick(FindCtrl(TButton, 0, '...'));
+      CheckInt(1, FakeSearchCalls, 'Search hook called');
+      CheckStr('PICKED', TEdit(FindCtrl(TEdit, 0, '')).Text, 'Picked value shown');
+      Check(not TCheckBox(FindCtrl(TCheckBox, 0, SRpNull)).Checked, 'After a search pick the null check is cleared');
+      Check(FindCtrl(TEdit, 0, '').Visible, 'After a search pick the edit is visible');
+    finally
+      dia.Free;
+    end;
+  finally
+    GlobalParamValueSearch := saved;
+    rep.Free;
+  end;
+  LogMsg('User parameters form verified');
+end;
+
+procedure TRegressionTests.TestDesignerExecute(const ASamplePath: string);
+var
+  des: TRpDesignerLCL;
+  tmp: string;
+  original: TMemoryStream;
+  repBefore: TRpReport;
+  res: Boolean;
+  handled: Integer;
+begin
+  LogMsg('5.5 L2: TRpDesignerLCL.Execute (hosted designer)');
+  tmp := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_execute_test.rep';
+  CopyFileBytes(ASamplePath, tmp);
+  original := FileBytes(tmp);
+  des := TRpDesignerLCL.Create(nil);
+  try
+    des.LoadFromFile(tmp);
+    des.OnSave := ExecOnSave;
+
+    // Unmodified: returns False, nothing saved, report kept
+    repBefore := des.Report;
+    FSaveCalls := 0;
+    handled := Guard.DesignersHandled;
+    Guard.ExpectDesigner := True;
+    Guard.DesignerAction := DesignerCheckHostedAction;
+    res := des.Execute;
+    CheckInt(handled + 1, Guard.DesignersHandled, 'Execute showed the designer');
+    Check(not res, 'Execute of an unmodified report must return False');
+    CheckInt(0, FSaveCalls, 'Unmodified report: OnSave not called');
+    Check(des.Report = repBefore, 'Unmodified report: the report object is kept');
+    CheckFileUnchanged(tmp, original, 'Unmodified report');
+
+    // Modified, changes discarded: returns False, report restored
+    FSaveCalls := 0;
+    Guard.ExpectDesigner := True;
+    Guard.DesignerAction := DesignerModifyAction;
+    Guard.ExpectMsgBoxes := 1;
+    Guard.MsgBoxAnswer := smbNo;
+    res := des.Execute;
+    CheckInt(0, Guard.ExpectMsgBoxes, 'Modified report: the save question was asked');
+    Check(not res, 'Discarded changes: Execute returns False');
+    CheckInt(0, FSaveCalls, 'Discarded changes: OnSave not called');
+    Check(des.Report.Params.IndexOf('EXEC_TEST_PARAM') < 0, 'Discarded changes: report restored');
+    Check(not des.Report.Modified, 'Discarded changes: restored report unmodified');
+    CheckFileUnchanged(tmp, original, 'Discarded changes');
+
+    // Modified, changes accepted: saved through OnSave
+    FSaveCalls := 0;
+    FSavedReportHasParam := False;
+    Guard.ExpectDesigner := True;
+    Guard.DesignerAction := DesignerModifyAction;
+    Guard.ExpectMsgBoxes := 1;
+    Guard.MsgBoxAnswer := smbYes;
+    res := des.Execute;
+    CheckInt(0, Guard.ExpectMsgBoxes, 'Accepted changes: the save question was asked');
+    Check(res, 'Accepted changes: Execute returns True');
+    CheckInt(1, FSaveCalls, 'Accepted changes: OnSave called once');
+    Check(FSavedReportHasParam, 'Accepted changes: OnSave receives the modified report');
+    Check(des.Report.Params.IndexOf('EXEC_TEST_PARAM') >= 0, 'Accepted changes: modified report kept');
+    CheckFileUnchanged(tmp, original, 'Accepted changes handled by OnSave');
+  finally
+    Guard.DesignerAction := nil;
+    Guard.ExpectDesigner := False;
+    des.Free;
+    original.Free;
+    DeleteFile(tmp);
+  end;
+  LogMsg('TRpDesignerLCL.Execute verified');
+end;
+
+procedure RunRegressionTests(const ASamplePath: string);
+var
+  t: TRegressionTests;
+begin
+  InstallModalGuard;
+  LogMsg('Testing Subphase 5.5: regression tests (undo engine, designer, dialogs)');
+  t := TRegressionTests.Create;
+  try
+    t.TestUndoCap;
+    t.TestDirtyState;
+    t.TestFailingOperation;
+    t.TestDesigner(ASamplePath);
+    t.TestParamsDialog;
+    t.TestDataConfig;
+    t.TestLibraryTree;
+    t.TestUserParams;
+    t.TestDesignerExecute(ASamplePath);
+  finally
+    t.Free;
+  end;
+  Check(Guard.ExpectMsgBoxes = 0, 'Expected confirmations that were never shown');
+  Check(not Guard.ExpectDesigner, 'Expected designer form that was never shown');
+  LogMsg('Subphase 5.5 regression tests completed successfully');
+end;
+
+end.
