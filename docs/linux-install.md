@@ -203,9 +203,12 @@ Wayland nativo si está instalado `qt6-wayland`.
   HTTP a través del Hub (`api.reportman.es`), con los mismos resultados y algo
   más de latencia.
 - **Versión GTK2** (`reportman-designer-gtk2`): aspecto clásico y escalado
-  HiDPI limitado (solo factores enteros, por ejemplo
-  `GDK_SCALE=2 reportman-designer`). Es transitoria: GTK2 ya no se mantiene y
-  el paquete desaparecerá en una o dos versiones; usa la versión Qt 6.
+  HiDPI limitado: textos y ventanas crecen con el DPI del escritorio
+  (`Xft.dpi`, que GNOME ajusta al escalar), pero los iconos y lo que dibuja
+  GTK2 (barras de desplazamiento, casillas) se quedan pequeños, y
+  `GDK_SCALE` no tiene efecto en GTK2. Es transitoria: GTK2 ya no se
+  mantiene y el paquete desaparecerá en una o dos versiones; usa la versión
+  Qt 6.
 - **Wayland**: la versión Qt 6 va por XWayland salvo que se pida el Wayland
   nativo (ver [Wayland](#wayland)).
 - **Vista previa**: el texto que desborda su caja no se recorta y el HTML en
