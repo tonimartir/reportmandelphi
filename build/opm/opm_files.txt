@@ -105,6 +105,7 @@ rppdfreport.dcr
 rptranslator.dcr
 
 # --- reportman_rtl: unidades solo FPC ---
+rtl_fpc/rpbase64fpc.pas
 rtl_fpc/rpfpcutils.pas
 rtl_fpc/rpinfoprovfpc.pas
 

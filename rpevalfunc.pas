@@ -596,7 +596,7 @@ type
 
 implementation
 
-uses rpeval,Math,IniFiles;
+uses rpeval,Math,IniFiles{$IFDEF FPC},rpbase64fpc{$ENDIF};
 
 
 {**************************************************************************}
@@ -3049,7 +3049,12 @@ begin
  if Not VarIsString(Params[0]) then
    Raise TRpNamedException.Create(SRpEvalType,
          IdenName);
+{$IFDEF FPC}
+ // FPC 3.2.2 TNetEncoding.Base64 corrupts bytes >= $80 (rpbase64fpc)
+ Result:=RpBase64DecodeBytes(Params[0]);
+{$ELSE}
  Result:=TNetEncoding.Base64.DecodeStringToBytes(Params[0]);
+{$ENDIF}
  (*astring:=AnsiString(Params[0]);
  TNetEncoding.Base64.DecodeStringToBytes(...);
  amemStream:=TMemoryStream.Create;

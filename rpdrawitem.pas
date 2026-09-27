@@ -121,7 +121,7 @@ type
 
 implementation
 
-uses rpbasereport{$IFNDEF FPC}, System.NetEncoding{$ENDIF};
+uses rpbasereport{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc{$ENDIF};
 
 function StreamToBase64String(stream: TMemoryStream): string;
 var
@@ -140,7 +140,11 @@ begin
   finally
     stream.Position := oldPosition;
   end;
+{$IFDEF FPC}
+  Result := RpBase64EncodeBytes(bytes);
+{$ELSE}
   Result := TNetEncoding.Base64.EncodeBytesToString(bytes);
+{$ENDIF}
 end;
 
 procedure Base64StringToStream(const value: string; stream: TMemoryStream);
@@ -154,7 +158,11 @@ begin
     Exit;
   end;
 
+{$IFDEF FPC}
+  bytes := RpBase64DecodeBytes(value);
+{$ELSE}
   bytes := TNetEncoding.Base64.DecodeStringToBytes(value);
+{$ENDIF}
   if Length(bytes) > 0 then
     stream.WriteBuffer(bytes[0], Length(bytes));
   stream.Position := 0;
