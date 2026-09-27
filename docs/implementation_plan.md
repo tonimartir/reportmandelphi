@@ -105,7 +105,7 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | Compilar solo `reportman_designlcl.lpk` | Se compilan los tres paquetes con `build_fpc.bat` (el motor también cambia) |
 | Textos con IDs de `TranslateStr` | Varios IDs eran inventados; se sustituyeron por los de la VCL |
 
-## Fase 7: diseño con IA y Hub en FPC/LCL (planificada)
+## Fase 7: diseño con IA y Hub en FPC/LCL (en curso: 7.1 hecha)
 
 El diseñador Delphi tiene tres asistentes de IA, todos a través de
 `api.reportman.es` y con los esquemas (tablas, columnas, relaciones) que el
@@ -121,15 +121,15 @@ usuario define en `app.reportman.es`:
    (`TFRpChatFrame` en modo diseño, `ShowAIChat` del diseñador), aplicando
    los contratos de `rpreportdesignercontracts`.
 
-Además está el driver de datos del Agente (`rpdbHttp`, `rpdatahttp`). Nada de
-esto está en los paquetes FPC: sus unidades usan `System.JSON`,
+Además está el driver de datos del Agente (`rpdbHttp`, `rpdatahttp`). Antes de
+7.1 nada de esto estaba en los paquetes FPC: sus unidades usan `System.JSON`,
 `System.Net.HttpClient`, `System.NetEncoding`/`DateUtils`, VCL y WebView2. En
 FPC solo existe el editor Monaco del diseñador LCL (WebView2, solo Windows; en
 Linux cae a un `TMemo`), sin autocompletado de esquema.
 
 | Subfase | Contenido |
 |---|---|
-| 7.1 Base portable | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON (`fpjson`), HTTP/TLS (`fphttpclient` + `opensslsockets`), codificación y fechas, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus |
+| 7.1 Base portable (hecha) | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON, HTTP/TLS (`fphttpclient` + OpenSSL), codificación y fechas con equivalentes de la API de Delphi en `rtl_fpc/`, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus. Detalle abajo |
 | 7.2 Sesión y esquemas | Login (OAuth con la redirección local), selección de modelo (`rpfrmaiselectionvcl`) y selector de esquema en LCL; estilo común de los chats (`rpchatmodernstyle`). Markdown de las respuestas: WebView2 en Windows (ya hay `rpwebview2`/`rplclwebview` en LCL) y un visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux |
 | 7.3 Asistente SQL | `TFRpChatFrame` en modo SQL dentro de la configuración de datos LCL, y autocompletado con el esquema en Monaco (Windows); en Linux, completado sobre el editor alternativo |
 | 7.4 Asistente de expresiones | Port del chat de `rpchatdialogvcl` al editor de expresiones LCL (`rpexpredlglcl`) |
@@ -160,6 +160,71 @@ Tamaño aproximado: unas 9.000 líneas de interfaz VCL a portar más la capa
 JSON/HTTP. Riesgos: OpenSSL en Windows con FPC (DLL a distribuir), la
 redirección OAuth local, `System.Threading` (pasar a `TThread`) y el render
 de markdown sin WebView2 en Linux.
+
+### Subfase 7.1: qué se hizo
+
+**Unidades compartidas.** `rpaireportcontracts`, `rpreportdesignercontracts`,
+`rpauthmanager` y `rpdatahttp` entran en `reportman_rtl.lpk` y compilan con
+FPC 3.2.2 en Windows y Linux (Lazarus 3.0 y 4.8, gtk2 y qt6). Solo cambian
+los `uses` y unos pocos bloques bajo `{$IFDEF FPC}`: Delphi ve exactamente el
+código anterior (comprobado con el código tal como lo ve Delphi). En
+`rpauthmanager` la ventana oculta (`AllocateHWnd`) que pasa los eventos del
+hilo de escucha al hilo principal se sustituye en FPC por `TThread.Queue`, y
+el login OAuth (Google, Microsoft) funciona también en Linux con la
+redirección local. `rpdatainfo` activa `rpdbHttp` en FPC (las conexiones
+`RemoteServer` siguen siendo solo Delphi) y trae el único cambio que ve
+Delphi, un bug común: si la primera consulta `rpdbHttp` de un dataset fallaba,
+el dataset en memoria que crea `Open` no lo liberaba nadie.
+
+**Equivalentes de la API de Delphi** (`rtl_fpc/`, `{$mode delphi}`), con los
+mismos nombres para que las unidades compartidas solo cambien los `uses`:
+
+| Unidad | Sustituye a | Notas |
+|---|---|---|
+| `rpjsonfpc` | `System.JSON` | Parser y serialización propios con las reglas de Delphi (`ToJSON`, `ToString`, `Format`, escapes, números, `TJSONBool` que devuelve `TJSONTrue`/`TJSONFalse`, propiedad `Owned`). Se compara con la salida real de Delphi (229 casos). Diferencias: no hay `GetValue<T>`/`TryGetValue<T>`/`AsType<T>` genéricos (las unidades compartidas no los usan) y un `\uD800` suelto se convierte en U+FFFD (Delphi lo guarda en UTF-16; un `string` UTF-8 no puede) |
+| `rphttpclientfpc` | `System.Net.HttpClient`, `System.Net.HttpClientComponent` | `TNetHTTPClient`/`THTTPClient`/`IHTTPResponse` sobre `fphttpclient` con un manejador OpenSSL propio que verifica el certificado y el nombre del servidor (almacén del sistema en Linux; almacenes ROOT y CA de Windows; `cacert.pem` junto al ejecutable o `RpHttpCAFile`) y respeta `OnValidateServerCertificate`. `OnReceiveData` llega a medida que llegan los datos (respuestas `chunked` y de larga duración, las del chat de IA) y `Abort := True` corta la petición al momento. Diferencias: un solo tiempo de espera de E/S (`ResponseTimeout`, entre dos lecturas: no corta un stream activo; `SendTimeout` no se usa), sin proxy y sin gzip. En Unix ignora SIGPIPE si la aplicación no lo trata: OpenSSL escribe en el socket sin `MSG_NOSIGNAL` y un servidor que cierra la conexión terminaría el proceso. También `RpOpenUrlInBrowser` y `RpWaitForLoopbackRequest`, el receptor HTTP en 127.0.0.1 de la redirección OAuth |
+| `rpnetencodingfpc` | `System.NetEncoding` | Base64 (líneas de 76 como Delphi), Base64String, URL y HTML |
+| `rpioutilsfpc` | `System.IOUtils` | Lo que usan las unidades: `TPath`, `TFile`, `TDirectory` |
+| `rpsysutilsfpc` | `TFormatSettings.Invariant`, ISO 8601 de `DateUtils` | FPC 3.2.2 no tiene `Invariant`; sus funciones ISO 8601 no leen lo mismo que las de Delphi |
+
+**OpenSSL** (solo lo necesita el HTTPS de FPC; Delphi usa el cliente HTTP del
+sistema). Se carga en tiempo de ejecución; sin ella solo fallan las
+conexiones HTTPS, con una excepción que lo dice.
+
+- Windows: `libssl-3-x64.dll` + `libcrypto-3-x64.dll` (64 bits) o
+  `libssl-3.dll` + `libcrypto-3.dll` (32 bits), o las de la 1.1, junto al
+  ejecutable o en el `PATH`. No están en git: una aplicación Lazarus que use
+  `rpdbHttp` o el Hub debe distribuirlas. Confianza: almacenes ROOT y CA de
+  Windows.
+- Linux: `libssl.so.3` (o la 1.1) y los certificados de CA del sistema. El
+  `.deb` depende de `libssl3 | libssl3t64` y `ca-certificates`; la AppImage
+  usa las del sistema (no se incluyen, para que reciban las actualizaciones de
+  seguridad).
+
+**Pruebas** (`tests/fpc/HubClientTest`, sin red): JSON contra la salida de
+Delphi (`golden/json_delphi.txt`, generada con `delphi/JsonGolden.dpr`),
+propiedad y fugas; cliente HTTP contra un servidor local (streaming
+`chunked`, cancelar a mitad, tiempos de espera, TLS con un certificado de
+prueba, redirección OAuth); un Hub simulado para el login, `rpdbHttp` a través
+de `TRpDatabaseInfoItem`, los métodos de IA (`SuggestSql`, `ExplainSql`,
+`GetTableSchema`, `PreprocessSqlContext`, `ModifyReport`, `SubmitAIReport`,
+`SuggestExpressionStream` con cancelación, `GetUserSchemas`,
+`GetUserAgents`), respuestas 401 y OAuth con un navegador simulado. Todo con
+heaptrc sin fugas, en un directorio de configuración temporal. 457
+comprobaciones en Windows y 458 en Linux. `HubClientTest --smoke` hace a mano una
+petición anónima real a `api.reportman.es`.
+
+**Encontrado y sin corregir** (también en Delphi): `TRpConnAdmin.LoadConfig`
+ignora `DBXConnectionsOverride` si no existe el fichero de drivers;
+`TRpDatabaseHttp.GetSchemas` (no se usa) falla con un acceso a nil porque
+envía un cuerpo nil; los precios de `ParseTiers` usan `StrToFloatDef` con la
+configuración regional; el puerto aleatorio de la redirección OAuth puede
+caer en un rango reservado de Windows; no se comprueba el parámetro `state`
+de OAuth.
+
+**Queda para 7.2 y siguientes**: interfaz LCL de login, selección de modelo y
+de esquema, marcos de chat, puente Monaco–esquema; si hace falta, proxy HTTP
+y, en Windows, un cliente sobre WinHTTP para no distribuir OpenSSL.
 
 ## Pendiente
 

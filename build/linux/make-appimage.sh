@@ -25,6 +25,13 @@
 #    para las fuentes y el motor por dlopen); asi libharfbuzz-subset.so.0 del
 #    sistema casa con su libharfbuzz.so.0.
 #  - libcups.so.2 (impresion): la del sistema, como con GTK2.
+#  - OpenSSL (libssl.so.3/libcrypto.so.3, o 1.1): la del sistema, que recibe
+#    las actualizaciones de seguridad. El motor la abre con dlopen() para el
+#    Hub y el driver rpdbHttp por HTTPS (rphttpclientfpc prueba .so, .so.3 y
+#    .so.1.1) y verifica el certificado con el almacen de CA del sistema
+#    (rutas por defecto de esa OpenSSL y los bundles habituales:
+#    /etc/ssl/certs/ca-certificates.crt, /etc/pki/tls/certs/ca-bundle.crt...).
+#    Sin OpenSSL el disenador funciona; solo fallan las conexiones HTTPS.
 # Si se incluyen, aunque esten en la excludelist, libgpg-error.so.0 y
 # libcom_err.so.2: las necesitan libgcrypt/libkrb5 (incluidas) y faltan en
 # instalaciones minimas (Debian 13).
