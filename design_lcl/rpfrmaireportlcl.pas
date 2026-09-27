@@ -158,7 +158,7 @@ var
 begin
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
-  Caption := TranslateStr(1543, 'Report AI-generated content');
+  Caption := TranslateStr(1541, 'Report AI-generated content');
   ClientWidth := Scale(520);
   ClientHeight := Scale(470);
   LLeft := Scale(16);
@@ -174,20 +174,20 @@ begin
   LProblem := TLabel.Create(Self);
   LProblem.Parent := Self;
   LProblem.SetBounds(LLeft, Scale(44), LWidth, Scale(18));
-  LProblem.Caption := TranslateStr(1544, 'Issue detected:');
+  LProblem.Caption := TranslateStr(1542, 'Issue detected:');
 
   ComboProblem := TComboBox.Create(Self);
   ComboProblem.Parent := Self;
   ComboProblem.Style := csDropDownList;
   ComboProblem.SetBounds(LLeft, Scale(64), LWidth, Scale(26));
-  ComboProblem.Items.Add(TranslateStr(1548, 'Inappropriate or offensive content'));
-  ComboProblem.Items.Add(TranslateStr(1549, 'Inaccurate content'));
+  ComboProblem.Items.Add(TranslateStr(1546, 'Inappropriate or offensive content'));
+  ComboProblem.Items.Add(TranslateStr(1547, 'Inaccurate content'));
   ComboProblem.ItemIndex := 0;
 
   LDetails := TLabel.Create(Self);
   LDetails.Parent := Self;
   LDetails.SetBounds(LLeft, Scale(100), LWidth, Scale(18));
-  LDetails.Caption := TranslateStr(1545, 'Details:');
+  LDetails.Caption := TranslateStr(1543, 'Details:');
 
   MemoDetails := TMemo.Create(Self);
   MemoDetails.Parent := Self;
@@ -197,7 +197,7 @@ begin
   LAIContent := TLabel.Create(Self);
   LAIContent.Parent := Self;
   LAIContent.SetBounds(LLeft, Scale(210), LWidth, Scale(18));
-  LAIContent.Caption := TranslateStr(1546, 'AI-generated text:');
+  LAIContent.Caption := TranslateStr(1544, 'AI-generated text:');
 
   MemoAIContent := TMemo.Create(Self);
   MemoAIContent.Parent := Self;
@@ -218,13 +218,13 @@ begin
   LDisclaimer.AutoSize := False;
   LDisclaimer.WordWrap := True;
   LDisclaimer.SetBounds(Scale(8), Scale(6), LWidth - Scale(16), Scale(40));
-  LDisclaimer.Caption := TranslateStr(1547, 'This report will be sent anonymously to our servers. ' +
+  LDisclaimer.Caption := TranslateStr(1545, 'This report will be sent anonymously to our servers. ' +
     'It will only be used to reduce incorrect, offensive, or inappropriate responses.');
 
   BSend := TButton.Create(Self);
   BSend.Parent := Self;
   BSend.SetBounds(ClientWidth - LLeft - Scale(220), Scale(424), Scale(104), Scale(30));
-  BSend.Caption := TranslateStr(1536, 'Send');
+  BSend.Caption := TranslateStr(1534, 'Send');
   BSend.Default := True;
   BSend.OnClick := BSendClick;
 
@@ -284,7 +284,7 @@ begin
   LResult := TRpAIReportResult(AMessage);
   if LResult.Ok then
   begin
-    BSend.Caption := TranslateStr(1550, 'Report sent');
+    BSend.Caption := TranslateStr(1548, 'Report sent');
     BSend.Enabled := False;
     // Shown for a moment, as the VCL does
     FCloseTimer := TTimer.Create(Self);
@@ -299,7 +299,7 @@ begin
     if LResult.ErrorText <> '' then
       RpShowMessage(LResult.ErrorText)
     else
-      RpShowMessage(TranslateStr(1551, 'The report could not be sent.'));
+      RpShowMessage(TranslateStr(1549, 'The report could not be sent.'));
   end;
 end;
 

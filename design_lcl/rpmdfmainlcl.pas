@@ -514,8 +514,8 @@ begin
 
   // AChatIA of the VCL designer: shows or hides the AI panel
   MenuViewAIChat := TMenuItem.Create(MenuView);
-  MenuViewAIChat.Caption := TranslateStr(1552, 'AI chat');
-  MenuViewAIChat.Hint := TranslateStr(1553, 'Show or hide the AI chat panel');
+  MenuViewAIChat.Caption := TranslateStr(1550, 'AI chat');
+  MenuViewAIChat.Hint := TranslateStr(1551, 'Show or hide the AI chat panel');
   MenuViewAIChat.Checked := True;
   MenuViewAIChat.OnClick := MenuViewAIChatClick;
   MenuView.Add(MenuViewAIChat);

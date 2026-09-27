@@ -1007,15 +1007,15 @@ begin
   PButtons := NewPanel(PBottom, alRight);
   PButtons.Width := Scale(103);
   PButtons.BorderSpacing.Left := Scale(8);
-  BSend := NewButton(PButtons, TranslateStr(1536, 'Send'), BSendClick);
+  BSend := NewButton(PButtons, TranslateStr(1534, 'Send'), BSendClick);
   BSend.Align := alTop;
   BSend.Height := Scale(30);
-  BApply := NewButton(PButtons, TranslateStr(1537, 'Apply'), BApplyClick);
+  BApply := NewButton(PButtons, TranslateStr(1535, 'Apply'), BApplyClick);
   BApply.Top := Scale(30);
   BApply.Align := alTop;
   BApply.Height := Scale(30);
   BApply.BorderSpacing.Top := Scale(2);
-  BClear := NewButton(PButtons, TranslateStr(1534, 'Clear'), BClearClick);
+  BClear := NewButton(PButtons, TranslateStr(1532, 'Clear'), BClearClick);
   BClear.Top := Scale(62);
   BClear.Align := alTop;
   BClear.Height := Scale(30);
@@ -1036,31 +1036,31 @@ begin
 
   TabChat := TTabSheet.Create(PControl);
   TabChat.PageControl := PControl;
-  TabChat.Caption := TranslateStr(1531, 'Chat');
+  TabChat.Caption := TranslateStr(1529, 'Chat');
 
   TabLog := TTabSheet.Create(PControl);
   TabLog.PageControl := PControl;
-  TabLog.Caption := TranslateStr(1532, 'AI Log');
+  TabLog.Caption := TranslateStr(1530, 'AI Log');
   PLogTop := NewPanel(TabLog, alTop);
   PLogTop.Height := Scale(38);
   PLogTop.ChildSizing.LeftRightSpacing := Scale(8);
   PLogTop.ChildSizing.TopBottomSpacing := Scale(4);
   PLogTop.ChildSizing.HorizontalSpacing := Scale(8);
   PLogTop.ChildSizing.Layout := cclLeftToRightThenTopToBottom;
-  BClearLog := NewButton(PLogTop, TranslateStr(1534, 'Clear'), BClearLogClick);
+  BClearLog := NewButton(PLogTop, TranslateStr(1532, 'Clear'), BClearLogClick);
   BClearLog.AutoSize := True;
-  BReportAI := NewButton(PLogTop, TranslateStr(1535, 'Report content'), BReportAIClick);
+  BReportAI := NewButton(PLogTop, TranslateStr(1533, 'Report content'), BReportAIClick);
   BReportAI.AutoSize := True;
 
   TabNetLog := TTabSheet.Create(PControl);
   TabNetLog.PageControl := PControl;
-  TabNetLog.Caption := TranslateStr(1533, 'Net Log');
+  TabNetLog.Caption := TranslateStr(1531, 'Net Log');
   PNetLogTop := NewPanel(TabNetLog, alTop);
   PNetLogTop.Height := Scale(38);
   PNetLogTop.ChildSizing.LeftRightSpacing := Scale(8);
   PNetLogTop.ChildSizing.TopBottomSpacing := Scale(4);
   PNetLogTop.ChildSizing.Layout := cclLeftToRightThenTopToBottom;
-  BClearNetLog := NewButton(PNetLogTop, TranslateStr(1534, 'Clear'), BClearNetLogClick);
+  BClearNetLog := NewButton(PNetLogTop, TranslateStr(1532, 'Clear'), BClearNetLogClick);
   BClearNetLog.AutoSize := True;
 
   PControl.ActivePage := TabChat;
@@ -1779,7 +1779,7 @@ begin
     FDesignCancel.Cancel;
   FinishStreamingResponse;
   SetBusy(False);
-  AddAssistantMessage(TranslateStr(1538, 'Generation stopped.'));
+  AddAssistantMessage(TranslateStr(1536, 'Generation stopped.'));
 end;
 
 procedure TFRpChatFrame.SetBusy(AValue: Boolean);
@@ -1791,7 +1791,7 @@ begin
   if FBusy then
     BClear.Caption := TranslateStr(1522, 'Stop')
   else
-    BClear.Caption := TranslateStr(1534, 'Clear');
+    BClear.Caption := TranslateStr(1532, 'Clear');
   UpdateButtons;
 end;
 
@@ -1920,13 +1920,13 @@ begin
   if FUseRefreshAction then
     BApply.Caption := TranslateStr(1149, 'Refresh')
   else
-    BApply.Caption := TranslateStr(1537, 'Apply');
+    BApply.Caption := TranslateStr(1535, 'Apply');
   UpdateButtons;
 end;
 
 procedure TFRpChatFrame.SetSuggestedExpression(const AExpression, AMessage: string);
 begin
-  SetSuggestedContent(AExpression, AMessage, TranslateStr(1540, 'Suggested expression'));
+  SetSuggestedContent(AExpression, AMessage, TranslateStr(1538, 'Suggested expression'));
 end;
 
 procedure TFRpChatFrame.UpdateButtons;
@@ -2055,9 +2055,9 @@ begin
   if LMessage = '' then
   begin
     if Trim(LPayload.Text1) <> '' then
-      LMessage := TranslateStr(1541, 'Report updated.')
+      LMessage := TranslateStr(1539, 'Report updated.')
     else
-      LMessage := TranslateStr(1542, 'No report changes were returned.');
+      LMessage := TranslateStr(1540, 'No report changes were returned.');
   end;
   AddAssistantMessage(LMessage);
 end;
@@ -2158,7 +2158,7 @@ begin
   else if Assigned(FOnSendPrompt) then
     FOnSendPrompt(Self, LPrompt, FCurrentExpression)
   else
-    AddAssistantMessage(TranslateStr(1539, 'Chat UI is ready, but no AI handler is connected yet.'));
+    AddAssistantMessage(TranslateStr(1537, 'Chat UI is ready, but no AI handler is connected yet.'));
 end;
 
 procedure TFRpChatFrame.MemoPromptChange(Sender: TObject);

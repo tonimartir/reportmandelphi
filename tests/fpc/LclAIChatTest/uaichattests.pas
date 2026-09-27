@@ -1261,7 +1261,7 @@ begin
     CheckEquals('Hecho ' + U_NTILDE + ': **title** added', LChat.LastAssistantMessage,
       'last assistant message');
     Check(LChat.PControl.ActivePage = LChat.TabChat, 'back to the chat tab');
-    CheckEquals(T(1534, 'Clear'), LChat.BClear.Caption, 'Stop becomes Clear');
+    CheckEquals(T(1532, 'Clear'), LChat.BClear.Caption, 'Stop becomes Clear');
     Check(not LChat.AISelection.InferenceActive, 'progress hidden');
     Check(LChat.BReportAI.Enabled, 'report content enabled with an answer');
     CheckEquals(300, TRpAuthManager.Instance.Profile.DailyConsumed,
@@ -1314,7 +1314,7 @@ begin
     LChat.BClearClick(nil);
     Check(not LChat.Busy, 'Stop ends the busy state at once');
     CheckEquals(1, FStopCount, 'OnStopRequest');
-    CheckContains(T(1538, 'Generation stopped.'), LChat.ConversationText, 'stop message');
+    CheckContains(T(1536, 'Generation stopped.'), LChat.ConversationText, 'stop message');
     LChunks := Length(LChat.LogView.PlainText);
     LStart := GetTickCount64;
     Check(RpAsyncWaitIdle(3000), 'the worker ends soon after the stop');
@@ -1370,7 +1370,7 @@ begin
     Check(not FHostChat.Busy, 'not busy after the suggestion');
     CheckEquals('SUM(CLIENTS.BALANCE)', FHostChat.SuggestedExpression, 'suggested expression');
     CheckContains('SUM(', FHostChat.LogView.PlainText, 'stream in the AI log');
-    CheckContains(T(1540, 'Suggested expression') + ':', FHostChat.ConversationText, 'suggestion in the chat');
+    CheckContains(T(1538, 'Suggested expression') + ':', FHostChat.ConversationText, 'suggestion in the chat');
     Check(FHostChat.BApply.Enabled, 'Apply enabled');
     FHostChat.BApplyClick(nil);
     CheckEquals('SUM(CLIENTS.BALANCE)', FSuggestion, 'OnApplySuggestion');
@@ -1410,11 +1410,11 @@ begin
     CheckEquals(T(1149, 'Refresh'), LChat.BApply.Caption, 'refresh action caption');
     Check(not LChat.BApply.Enabled, 'refresh disabled without OnRefreshContext');
     LChat.SetRefreshAction(False);
-    CheckEquals(T(1537, 'Apply'), LChat.BApply.Caption, 'apply caption');
+    CheckEquals(T(1535, 'Apply'), LChat.BApply.Caption, 'apply caption');
 
     LChat.MemoPrompt.Text := 'hello';
     LChat.BSendClick(nil);
-    CheckContains(T(1539, 'Chat UI is ready, but no AI handler is connected yet.'), LChat.ConversationText,
+    CheckContains(T(1537, 'Chat UI is ready, but no AI handler is connected yet.'), LChat.ConversationText,
       'message when no handler is connected');
     LChat.BClearClick(nil);
     CheckEquals('', Trim(LChat.ConversationText), 'Clear empties the conversation');
