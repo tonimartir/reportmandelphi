@@ -4227,7 +4227,8 @@ begin
  begin
   if Not DirectoryExists(configdir) then
   begin
-   if not CreateDir(configdir) then
+   // Another thread (or process) may create it at the same time
+   if (not CreateDir(configdir)) and (not DirectoryExists(configdir)) then
     Raise Exception.Create(SRpDirCantBeCreated+'-'+configdir);
   end;
  end
