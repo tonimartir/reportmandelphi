@@ -105,6 +105,28 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | Compilar solo `reportman_designlcl.lpk` | Se compilan los tres paquetes con `build_fpc.bat` (el motor también cambia) |
 | Textos con IDs de `TranslateStr` | Varios IDs eran inventados; se sustituyeron por los de la VCL |
 
+## Fase 7: diseño con IA y Hub en FPC/LCL (planificada)
+
+El diseñador Delphi tiene el chat de diseño de informes, el chat de SQL y
+expresiones, el autocompletado SQL (Monaco) y el driver de datos del Agente
+(`rpdbHttp`), todo a través de `api.reportman.es`. Nada de eso está en los
+paquetes FPC: sus unidades usan `System.JSON`, `System.Net.HttpClient`,
+`System.NetEncoding`/`DateUtils`, VCL y WebView2. En FPC solo existe el editor
+Monaco del diseñador LCL (WebView2, solo Windows; en Linux cae a un `TMemo`).
+
+| Subfase | Contenido |
+|---|---|
+| 7.1 Base portable | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON (`fpjson`), HTTP/TLS (`fphttpclient` + `opensslsockets`), codificación y fechas, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus |
+| 7.2 Sesión y esquemas | Login (OAuth con la redirección local) y selector de esquema de `app.reportman.es` en LCL |
+| 7.3 Chat de diseño | Port de `rpfrmchatvcl`, `rpfrmaiselectionvcl` y `rpchatmodernstyle`; aplicar las respuestas (contratos) al modelo con deshacer, igual que la VCL. Markdown: WebView2 en Windows (ya hay `rpwebview2`/`rplclwebview` en LCL) y un visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux |
+| 7.4 SQL y expresiones | Port de `rpchatdialogvcl` (chat de SQL/expresiones) y del autocompletado; en Linux con editor sin Monaco |
+| 7.5 Pruebas | Tests de regresión con respuestas del Hub simuladas (sin red), en Windows y Linux; prueba real contra `api.reportman.es` a mano |
+
+Tamaño aproximado: unas 9.000 líneas de interfaz VCL a portar más la capa
+JSON/HTTP. Riesgos: OpenSSL en Windows con FPC (DLL a distribuir), la
+redirección OAuth local, `System.Threading` (pasar a `TThread`) y el render
+de markdown sin WebView2 en Linux.
+
 ## Pendiente
 
 - **Traducción del diseñador LCL**: menús y varios formularios tienen el texto
