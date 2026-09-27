@@ -79,6 +79,20 @@ procedure WriteComponentXML(comp:TRpCommonPosComponent;Stream:TStream);
 function RpIsAlpha(achar:Ansichar):Boolean;
 function RpIsAlphaW(achar:Widechar):Boolean;
 
+{$IFDEF FPC}
+type
+ // The designer undo cue travels with the report as BINCUE (JSON), as in
+ // Delphi: the AI design request sends it and the server returns it with the
+ // operations of its changes. The engine package can not use the designer
+ // unit (design_lcl/rpmdundocuelcl), which registers these hooks.
+ // RpUndoCueToJson returns '' when there is nothing to save.
+ TRpUndoCueToJsonFunc=function(AUndoCue:TObject):string;
+ TRpUndoCueFromJsonProc=procedure(AReport:TComponent;const AJson:string);
+var
+ RpUndoCueToJson:TRpUndoCueToJsonFunc=nil;
+ RpUndoCueFromJson:TRpUndoCueFromJsonProc=nil;
+{$ENDIF}
+
 implementation
 
 // Implement it based on FindNextName procedure
@@ -156,8 +170,30 @@ var
  undocue:TUndoCue;
  memstream:TMemoryStream;
  jsonBytes:TBytes;
+{$ELSE}
+var
+ cuejson:string;
+ memstream:TMemoryStream;
 {$ENDIF}
 begin
+{$IFDEF FPC}
+ // Same BINCUE as Delphi (UTF-8 JSON bytes), through the designer hook
+ if Assigned(report.UndoCue) and Assigned(RpUndoCueToJson) then
+ begin
+  cuejson:=RpUndoCueToJson(report.UndoCue);
+  if Length(cuejson)>0 then
+  begin
+   memstream:=TMemoryStream.Create;
+   try
+    memstream.Write(cuejson[1],Length(cuejson));
+    memstream.Position:=0;
+    WritePropertyB('BINCUE',memstream,Stream);
+   finally
+    memstream.Free;
+   end;
+  end;
+ end;
+{$ENDIF}
 {$IFNDEF FPC}
  // Write UndoCue if present (only for XML format)
  if Assigned(report.UndoCue) then
@@ -882,6 +918,30 @@ begin
  end;
 end;
 
+{$IFDEF FPC}
+// BINCUE (UTF-8 JSON bytes, the same as Delphi writes) -> the designer undo
+// cue, through RpUndoCueFromJson
+procedure ReadBinCueFPC(report:TComponent;const propvalue,propsize:AnsiString);
+var
+ memstream:TMemoryStream;
+ cuejson:string;
+begin
+ memstream:=TMemoryStream.Create;
+ try
+  BinToStream(memstream,RpStringToString(propvalue),propsize);
+  if memstream.Size>0 then
+  begin
+   SetLength(cuejson,memstream.Size);
+   memstream.Position:=0;
+   memstream.Read(cuejson[1],memstream.Size);
+   RpUndoCueFromJson(report,cuejson);
+  end;
+ finally
+  memstream.Free;
+ end;
+end;
+{$ENDIF}
+
 
 procedure WritePropertyB(propname:Ansistring;propvalue:TStream;stream:TStream);
 var
@@ -1565,6 +1625,12 @@ begin
    finally
     memstream.Free;
    end;
+  end;
+{$ELSE}
+  // The designer restores its undo cue (the hook creates it if needed)
+  if Assigned(RpUndoCueFromJson) then
+  begin
+   ReadBinCueFPC(TComponent(report),AnsiString(propvalue),AnsiString(propsize));
   end;
 {$ENDIF}
  end;
