@@ -32,9 +32,9 @@ type
 
   TRpParser = class(TObject)
   private
-    FNewExpression:WideString;
+    FNewExpression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF};
     FOrigin: Longint;
-    FBuffer: array of WideChar;
+    FBuffer: array of {$IFDEF FPC}WideChar{$ELSE}char{$ENDIF};
     FBufPtr: Integer;
     FBufEnd: Integer;
     FSourcePtr: Integer;
@@ -42,20 +42,20 @@ type
     FTokenPtr: Integer;
     FStringPtr: Integer;
     FSourceLine: Integer;
-    FToken: WideChar;
-    FFloatType: WideChar;
+    FToken: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
+    FFloatType: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
     FWideStr: WideString;
     ParseBufSize :integer;
     procedure SkipBlanks;
-    procedure SetExpression(Value:WideString);
+    procedure SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
   public
     constructor Create;
     destructor Destroy;override;
-    procedure CheckToken(T: WideChar);
+    procedure CheckToken(T: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF});
     procedure CheckTokenSymbol(const S: string);
     procedure Error(MessageID:WideString);
     procedure HexToBinaryStream(Stream: TStream);
-    function NextToken: WideChar;
+    function NextToken: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
     function SourcePos: Longint;
     function TokenComponentIdent: string;
     function TokenFloat: Double;
@@ -66,14 +66,40 @@ type
     function TokenSymbolIs(const S: string): Boolean;
     // Ask for the next token
     function NextTokenIs(Value:string):Boolean;
-    property FloatType: WideChar read FFloatType;
+    property FloatType: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF} read FFloatType;
     property SourceLine: Integer read FSourceLine;
-    property Token: WideChar read FToken;
-    property Expression:WideString read FNewExpression write SetExpression;
+    property Token: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF} read FToken;
+    property Expression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF} read FNewExpression write SetExpression;
   end;
 
+// This unit must stay pure ASCII and without BOM: FPC and Delphi read
+// non-ASCII literals differently, so accented chars are written by code.
 const
-  ParserSetChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáàéèíóòúÑñ0123456789_.äÄöÖüÜÁÀÉÈÍÓÒÚß';
+{$IFDEF FPC}
+  // FPC compiles this unit without a codepage: keep the UTF-8 byte sequence
+  ParserSetChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' +
+    // a acute, a grave, e acute, e grave, i acute, o acute, o grave, u acute, N tilde, n tilde
+    #$C3#$A1 + #$C3#$A0 + #$C3#$A9 + #$C3#$A8 + #$C3#$AD +
+    #$C3#$B3 + #$C3#$B2 + #$C3#$BA + #$C3#$91 + #$C3#$B1 +
+    '0123456789_.' +
+    // a/A umlaut, o/O umlaut, u/U umlaut
+    #$C3#$A4 + #$C3#$84 + #$C3#$B6 + #$C3#$96 + #$C3#$BC + #$C3#$9C +
+    // A acute, A grave, E acute, E grave, I acute, O acute, O grave, U acute, sharp s
+    #$C3#$81 + #$C3#$80 + #$C3#$89 + #$C3#$88 + #$C3#$8D +
+    #$C3#$93 + #$C3#$92 + #$C3#$9A + #$C3#$9F;
+{$ELSE}
+  // Same characters Delphi read from the original UTF-8 (BOM) source
+  ParserSetChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' +
+    // a acute, a grave, e acute, e grave, i acute, o acute, o grave, u acute, N tilde, n tilde
+    Char($E1) + Char($E0) + Char($E9) + Char($E8) + Char($ED) +
+    Char($F3) + Char($F2) + Char($FA) + Char($D1) + Char($F1) +
+    '0123456789_.' +
+    // a/A umlaut, o/O umlaut, u/U umlaut
+    Char($E4) + Char($C4) + Char($F6) + Char($D6) + Char($FC) + Char($DC) +
+    // A acute, A grave, E acute, E grave, I acute, O acute, O grave, U acute, sharp s
+    Char($C1) + Char($C0) + Char($C9) + Char($C8) + Char($CD) +
+    Char($D3) + Char($D2) + Char($DA) + Char($DF);
+{$ENDIF}
 
 implementation
 
@@ -110,7 +136,7 @@ begin
   Result := C;
 end;
 
-function HexToBinChar(const Text: array of WideChar; TextOffset: Integer;
+function HexToBinChar(const Text: array of {$IFDEF FPC}WideChar{$ELSE}char{$ENDIF}; TextOffset: Integer;
   Buffer: array of Byte; BufOffset: Integer; Count: Integer): Integer;
 var
   I, C: Integer;
@@ -129,7 +155,7 @@ begin
   Result := C;
 end;
 
-function ALineStart(Buffer: array of WideChar; BufPos: Integer): Integer;
+function ALineStart(Buffer: array of {$IFDEF FPC}WideChar{$ELSE}char{$ENDIF}; BufPos: Integer): Integer;
 begin
   while (Ord(BufPos) > 0) and (Ord(Buffer[BufPos]) <> 10) do
     Dec(BufPos);
@@ -147,7 +173,7 @@ begin
 end;
 
 
-procedure TRpParser.CheckToken(T: WideChar);
+procedure TRpParser.CheckToken(T: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF});
 begin
   if Token <> T then
     case T of
@@ -183,7 +209,7 @@ var
   Buffer: array[0..255] of Byte;
 begin
   SkipBlanks;
-  while WideChar(FBuffer[FSourcePtr]) <> '}' do
+  while {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[FSourcePtr]) <> '}' do
   begin
     Count := HexToBinChar(FBuffer, FSourcePtr, Buffer, 0, SizeOf(Buffer));
     if Count = 0 then
@@ -196,14 +222,14 @@ begin
 end;
 
 
-function TRpParser.NextToken: WideChar;
+function TRpParser.NextToken: {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
 var
   I, J: Integer;
   IsWideStr: Boolean;
   P, S: Integer;
-  achar:WideChar;
+  achar:{$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
   operadors:string;
-  operador:WideChar;
+  operador:{$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF};
 begin
   SkipBlanks;
   P := FSourcePtr;
@@ -214,7 +240,7 @@ begin
       begin
         Inc(P);
         achar:=FBuffer[P];
-        while ((achar<>WideChar(0)) AND (achar<>']')) do
+        while ((achar<>{$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(0)) AND (achar<>']')) do
         begin
          Inc(P);
          achar:=FBuffer[P];
@@ -229,9 +255,9 @@ begin
     '*','+','-','/','(',')',',','=','>','<',':',';':
       begin
        Result:=toOperator;
-       operador:=WideChar(FBuffer[P]);
+       operador:={$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]);
        Inc(P);
-       case WideChar(FBuffer[P]) of
+       case {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]) of
         '=':
          if CharInSet(operador, [':','!','<','>','=']) then
           Inc(P);
@@ -250,7 +276,7 @@ begin
         J := 0;
         S := P;
         while True do
-          case WideChar(FBuffer[P]) of
+          case {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]) of
             '#':
               begin
                 Inc(P);
@@ -279,8 +305,10 @@ begin
                           Break;
                       end;
                   end;
+{$IFDEF FPC}
                   if Ord(FBuffer[P]) > 127 then
                     IsWideStr := True;
+{$ENDIF}
                   Inc(J);
                   Inc(P);
                 end;
@@ -293,7 +321,7 @@ begin
           SetLength(FWideStr, J);
         J := 1;
         while True do
-          case WideChar(FBuffer[P]) of
+          case {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]) of
             '#':
               begin
                 Inc(P);
@@ -305,12 +333,12 @@ begin
                 end;
                 if IsWideStr then
                 begin
-                  FWideStr[J] := WideChar(Word(I));
+                  FWideStr[J] := WideChar({$IFDEF FPC}Word{$ELSE}SmallInt{$ENDIF}(I));
                   Inc(J);
                 end
                 else
                 begin
-                  FBuffer[S] := WideChar(I);
+                  FBuffer[S] := {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(I);
                   Inc(S);
                 end;
               end;
@@ -325,7 +353,7 @@ begin
                     Ord(''''):
                       begin
                         Inc(P);
-                        if WideChar(FBuffer[P]) <> '''' then
+                        if {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]) <> '''' then
                           Break;
                       end;
                   end;
@@ -382,7 +410,7 @@ begin
         if CharInSet(FBuffer[P], ['c', 'C', 'd', 'D', 's', 'S', 'f', 'F']) then
         begin
           Result := toFloat;
-          FFloatType := WideChar(FBuffer[P]);
+          FFloatType := {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]);
           Inc(P);
         end
         else
@@ -390,7 +418,7 @@ begin
       end;
   else
     // Check for identifier
-    Result := WideChar(FBuffer[P]);
+    Result := {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(FBuffer[P]);
 {$IFDEF FPC}
     if (CharInSet(Result, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(Result) >= 128)) then
     begin
@@ -404,8 +432,8 @@ begin
     begin
       Inc(P);
       while (FBuffer[P].IsLetterOrDigit or CharInSet(FBuffer[P], ['_','.'])) do
-      // while FBuffer[P] in ['A'..'Z', 'a'..'z','á','à','é','è','í','ó','ò','ú', 'Ñ','ñ','0'..'9','_','.',
-      //  'ä','Ä','ö','Ö','ü','Ü','Á','À','É','È','Í','Ó','Ò','Ú','ß'] do
+      // while FBuffer[P] in ['A'..'Z', 'a'..'z',#$E1,#$E0,#$E9,#$E8,#$ED,#$F3,#$F2,#$FA, #$D1,#$F1,'0'..'9','_','.',
+      //  #$E4,#$C4,#$F6,#$D6,#$FC,#$DC,#$C1,#$C0,#$C9,#$C8,#$CD,#$D3,#$D2,#$DA,#$DF] do
         Inc(P);
       Result := toSymbol;
     end
@@ -443,7 +471,7 @@ begin
       0:
         begin
           //ReadBuffer;
-          if FBuffer[FSourcePtr] = WideChar(0) then
+          if FBuffer[FSourcePtr] = {$IFDEF FPC}WideChar{$ELSE}Char{$ENDIF}(0) then
             Exit;
           Continue;
         end;
@@ -506,6 +534,7 @@ begin
 end;
 
 function TRpParser.TokenWideString: WideString;
+{$IFDEF FPC}
 var
   L: Integer;
 begin
@@ -519,6 +548,14 @@ begin
   else
     Result := FWideStr;
 end;
+{$ELSE}
+begin
+  if FToken = tkString then
+    Result := TokenString
+  else
+    Result := FWideStr;
+end;
+{$ENDIF}
 
 function TRpParser.TokenSymbolIs(const S:string): Boolean;
 begin
@@ -566,7 +603,7 @@ begin
   end;
 end;
 
-procedure TRpParser.SetExpression(Value:WideString);
+procedure TRpParser.SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
 begin
   FNewExpression:=Value;
   if (Length(Value)>(ParseBufSize-1)) then
@@ -577,10 +614,11 @@ begin
 {$IFDEF FPC}
   if Length(Value) > 0 then
     Move(Value[1], FBuffer[0], Length(Value) * SizeOf(WideChar));
-{$ELSE}
-  StringToWideChar(FNewExpression, PChar(FBuffer), ParseBufSize);
-{$ENDIF}
   FBuffer[Length(Value)] := WideChar(0);
+{$ELSE}
+  StringToWideChar(FNewExpression,PChar(FBuffer),ParseBufSize);
+  FBuffer[Length(Value)] := Char(0);
+{$ENDIF}
   FBufPtr := 0;
   FBufEnd := ParseBufSize;
   FSourcePtr := 0;

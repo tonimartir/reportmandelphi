@@ -190,20 +190,22 @@ begin
       FontConfigAvailable := True
     else
     begin
-      FreeLibrary(FontConfigLibHandle);
 {$IFDEF FPC}
+      FreeLibrary(FontConfigLibHandle);
       FontConfigLibHandle := dynlibs.NilHandle;
 {$ELSE}
+      System.SysUtils.FreeLibrary(FontConfigLibHandle);
       FontConfigLibHandle := 0;
 {$ENDIF}
     end;
   end
   else
   begin
-    FreeLibrary(FontConfigLibHandle);
 {$IFDEF FPC}
+    FreeLibrary(FontConfigLibHandle);
     FontConfigLibHandle := dynlibs.NilHandle;
 {$ELSE}
+    System.SysUtils.FreeLibrary(FontConfigLibHandle);
     FontConfigLibHandle := 0;
 {$ENDIF}
   end;
@@ -294,7 +296,7 @@ finalization
 {$ELSE}
   if FontConfigAvailable and (FontConfigLibHandle <> 0) and Assigned(FcFini) then
   begin
-    FreeLibrary(FontConfigLibHandle);
+    System.SysUtils.FreeLibrary(FontConfigLibHandle);
   end;
 {$ENDIF}
 end.

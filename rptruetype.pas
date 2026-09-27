@@ -4,12 +4,7 @@ unit rptruetype;
 interface
 
 uses
-  SysUtils, Classes,
-{$IFDEF FPC}
-  Generics.Collections;
-{$ELSE}
-  System.Generics.Collections;
-{$ENDIF}
+  SysUtils, Classes, Generics.Collections;
 
 type
   TTableData = class

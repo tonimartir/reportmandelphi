@@ -22,11 +22,16 @@ interface
 
 {$I rpconf.inc}
 
+{$IFDEF FPC}
 uses SysUtils,rptypes
 {$IFDEF MSWINDOWS}
   , Windows
 {$ENDIF}
   ;
+{$ELSE}
+uses SysUtils,rptypes,
+  Windows;
+{$ENDIF}
 
 procedure ReportFileToExe(filename,destinationexe:String;
  showparams,preview,metafile,compress:Boolean);
@@ -34,6 +39,9 @@ procedure ReportFileToExe(filename,destinationexe:String;
 
 implementation
 
+// FPC: Windows implementation plus a stub for other targets.
+// Delphi: original implementation, unchanged on every platform.
+{$IFDEF FPC}
 {$IFDEF MSWINDOWS}
 {$IFNDEF USEVARIANTS}
 procedure RaiseLastOSError;
@@ -120,6 +128,88 @@ procedure ReportFileToExe(filename,destinationexe:String;
  showparams,preview,metafile,compress:Boolean);
 begin
  raise Exception.Create('ReportFileToExe is only supported on Windows');
+end;
+{$ENDIF}
+{$ELSE}
+{$IFNDEF USEVARIANTS}
+procedure RaiseLastOSError;
+begin
+ RaiseLastWin32Error;
+end;
+{$ENDIF}
+
+procedure ReportFileToExe(filename,destinationexe:String;
+ showparams,preview,metafile,compress:Boolean);
+var
+ amem:PChar;
+ han:THandle;
+ afile:integer;
+ readed:integer;
+ isok:Boolean;
+ haninfo:BY_HANDLE_FILE_INFORMATION;
+ filesize:INteger;
+ path:String;
+begin
+ // Find the path to the executable module
+ amem:=AllocMem(MAX_PATH+1);
+ try
+  if GetModuleFileName(HInstance,amem,MAX_PATH)=0 then
+   RaiseLastOsError;
+  path:=StrPas(amem);
+ finally
+   FreeMem(amem);
+ end;
+ path:=ExtractFilePath(path);
+ // Duplicates printrepxp.exe or metaprintxp
+ if metafile then
+  isok:=CopyFile(PChar(path+'\'+'metaprintxp.exe'),PChar(destinationexe),false)
+ else
+  isok:=CopyFile(PChar(path+'\'+'printrepxp.exe'),PChar(destinationexe),false);
+ if not isok then
+  RaiseLastOsError;
+ afile:=FileOpen(filename,fmOpenRead or fmShareDenyNone);
+ if afile=-1 then
+  RaiseLastOsError;
+ try
+  if Not GetFileInformationByHandle(afile,haninfo) then
+   RaiseLastOsError;
+  filesize:=haninfo.nFileSizeLow;
+  amem:=AllocMem(filesize);
+  try
+   readed:=FileRead(afile,amem^,filesize);
+   if readed<>filesize then
+    RaiseLastOsError;
+   han:=BeginUpdateResource(PChar(destinationexe),false);
+   if han=0 then
+    RaiseLastOsError;
+   try
+    if Not UpdateResource(han,RT_RCDATA,PCHAR(100),0,amem,readed) then
+     RaiseLastOSError;
+    if preview then
+     if Not UpdateResource(han,RT_RCDATA,PCHAR(101),0,amem,2) then
+      RaiseLastOSError;
+    if showparams then
+     if Not UpdateResource(han,RT_RCDATA,PCHAR(102),0,amem,2) then
+      RaiseLastOSError;
+   finally
+    EndUpdateResource(han,False);
+   end;
+  finally
+   FreeMem(amem);
+  end;
+ finally
+  FileClose(afile);
+ end;
+ // CHeck for UPX
+ if compress then
+ begin
+  if FileExists(path+'\upx.exe') then
+  begin
+   WinExec(PAnsiChar(AnsiString('"'+path+'\'+'upx" '+'"'+destinationexe+'"')),SW_HIDE);
+  end
+  else
+   WinExec(PAnsiChar(AnsiString('"upx" '+'"'+destinationexe+'"')),SW_HIDE);
+ end;
 end;
 {$ENDIF}
 

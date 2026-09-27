@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -2228,8 +2228,10 @@ begin
     end;
   end;
  end;
+{$IFDEF FPC}
   if (defaultfont = nil) and (fontlist.Count > 0) then
     defaultfont := TRpLogFont(fontlist.Objects[0]);
+{$ENDIF}
   if (defaultfontb=nil) then
    defaultfontb:=defaultfont;
   if (defaultfontit=nil) then
@@ -2797,8 +2799,10 @@ begin
 //  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
  end;
 
+{$IFDEF FPC}
   if not assigned(currentfont) and (fontlist.Count > 0) then
     currentfont := TRpLogFont(fontlist.Objects[0]);
+{$ENDIF}
 
   if not assigned(currentfont) then
    Raise Exception.Create('No active font');

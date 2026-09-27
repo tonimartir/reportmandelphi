@@ -4,17 +4,18 @@ unit rpICU;
 interface
 
 uses SysUtils,
+{$IFDEF FPC}
 {$IFDEF MSWINDOWS}
  Windows,
 {$ELSE}
- {$IFDEF FPC}
  dynlibs,
- {$ENDIF}
 {$ENDIF}
-{$IFDEF FPC}
  Generics.Collections;
 {$ELSE}
- System.Generics.Collections;
+{$IFDEF MSWINDOWS}
+ Windows,
+{$ENDIF}
+Generics.Collections;
 {$ENDIF}
 
 
@@ -225,8 +226,8 @@ var
     ubidi_getVisualRun: T_ubidi_getVisualRun = nil;
   ubidi_getVisualMap: T_ubidi_getVisualMap = nil;
   ubidi_getLength:    T_ubidi_getLength    = nil;
-{$IFNDEF MSWINDOWS}
 {$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
   ICUlib: TLibHandle = dynlibs.NilHandle;
 {$ELSE}
   ICUlib: THandle = 0;
@@ -722,8 +723,8 @@ var
   end;
 
 begin
-{$IFNDEF MSWINDOWS}
 {$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
  if (ICUlib <> dynlibs.NilHandle) then
    exit;
   ICUlib := dynlibs.NilHandle;
@@ -749,26 +750,6 @@ begin
   ICUlib := 0;
   ICUSuffix := '';
 
-  for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
-  begin
-    libName := Format('libicuuc.so.%d', [version]);
-    ICUlib := SysUtils.SafeLoadLibrary(libName);
-    if ICUlib <> 0 then
-    begin
-      ICUSuffix := '_' + IntToStr(version);
-      Break;
-    end;
-  end;
-
-  if ICUlib = 0 then
-    raise Exception.Create('No ICU library found from version 60 to 80');
-{$ENDIF}
-{$ELSE}
- if (ICUlib <>0) then
-   exit;
-  ICUlib := 0;
-  ICUSuffix := '';
-
   // Intentar cargar la version de ICU desde 60 hasta 90
   for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
   begin
@@ -786,6 +767,36 @@ begin
     ICUlib := LoadLibrary(PChar('icu.dll'));
     if ICUlib <> 0 then
       ICUSuffix := '';
+  end;
+
+  if ICUlib = 0 then
+    raise Exception.Create('No ICU library found from version 60 to 80');
+{$ENDIF}
+{$ELSE}
+ if (ICUlib <>0) then
+   exit;
+  ICUlib := 0;
+  ICUSuffix := '';
+
+  // Intentar cargar la versi�n de ICU desde 60 hasta 90
+  for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
+  begin
+{$IFDEF MSWINDOWS}
+    libName := Format('icuuc%d.dll', [version]);
+{$ELSE}
+    libName := Format('libicuuc.so.%d', [version]);
+{$ENDIF}
+
+    {$IFDEF MSWINDOWS}
+    ICUlib :=LoadLibrary(PWideChar(libName));
+    {$ELSE}
+    ICUlib :=SysUtils.SafeLoadLibrary(libName)
+    {$ENDIF};
+    if ICUlib <> 0 then
+    begin
+      ICUSuffix := '_' + IntToStr(version);
+      Break;
+    end;
   end;
 
   if ICUlib = 0 then

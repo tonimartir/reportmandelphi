@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -24,8 +24,12 @@ interface
 
 {$I rpconf.inc}
 
+{$IFDEF FPC}
 {$IFDEF LINUX}
 {$R dbxdrivers.RES}
+{$ELSE}
+{$R dbxdrivers.res}
+{$ENDIF}
 {$ELSE}
 {$R dbxdrivers.res}
 {$ENDIF}
@@ -142,15 +146,17 @@ uses Classes,SysUtils,
   DBClient,
  {$ENDIF}
  {$ENDIF}
+{$IFDEF FPC}
 {$IFDEF USERPDATASET}
  rpdataset,
- {$IFDEF FPC}
   Memds, sqldb, sqlite3conn, sqlite3dyn,
- {$ENDIF}
 {$ELSE}
- {$IFDEF FPC}
   rpdataset, sqldb, sqlite3conn, sqlite3dyn,
- {$ENDIF}
+{$ENDIF}
+{$ELSE}
+{$IFDEF USERPDATASET}
+ rpdataset,
+{$ENDIF}
 {$ENDIF}
 {$IFNDEF FPC}
   rpdatahttp, rpauthmanager,
@@ -900,6 +906,9 @@ begin
 end;
 {$ENDIF}
 
+// FPC (sqldb TSQLQuery) always needs these helpers; Delphi compiles the
+// original USESQLEXPRESS-only block below.
+{$IFDEF FPC}
 {$IF defined(USESQLEXPRESS) or defined(FPC)}
 procedure  AssignParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset);
 var
@@ -946,6 +955,55 @@ begin
   end;
  end;
 end;
+{$ENDIF}
+{$ELSE}
+{$IFDEF USESQLEXPRESS}
+procedure  AssignParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset);
+var
+ i:integer;
+ afield:TField;
+begin
+
+ for i:=0 to ZQuery.Params.Count-1 do
+ begin
+  afield:=Dataset.FindField(ZQuery.Params.Items[i].Name);
+  if Assigned(afield) then
+  begin
+   ZQuery.Params.Items[i].Clear;
+   ZQuery.Params.Items[i].DataType:=afield.DataType;
+   if Not afield.IsNull then
+    ZQuery.Params.Items[i].Value:=afield.Value;
+  end
+ end;
+end;
+
+function  EqualParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset):Boolean;
+var
+ i:integer;
+ afield:TField;
+ qvalue:Variant;
+begin
+ Result:=true;
+ for i:=0 to ZQuery.Params.Count-1 do
+ begin
+  afield:=Dataset.FindField(ZQuery.Params.Items[i].Name);
+  if Assigned(afield) then
+  begin
+   qvalue:=ZQuery.Params.Items[i].Value;
+   if VarType(qvalue)=varEmpty then
+   begin
+    Result:=false;
+    break;
+   end;
+   if Not (qvalue=afield.AsVariant) then
+   begin
+    Result:=false;
+    break;
+   end;
+  end;
+ end;
+end;
+{$ENDIF}
 {$ENDIF}
 
 {$IFDEF USEIBX}
@@ -1583,10 +1641,13 @@ end;
 
 function TRpDatabaseInfoItem.GetHttpHubDatabaseId: Int64;
 begin
+{$IFDEF FPC}
   Result := 0;
-{$IFNDEF FPC}
+{$ELSE}
   if (FDriver = rpdbHttp) and Assigned(FHttpDatabase) then
-    Result := FHttpDatabase.HubDatabaseId;
+    Result := FHttpDatabase.HubDatabaseId
+  else
+    Result := 0;
 {$ENDIF}
 end;
 
@@ -2273,7 +2334,7 @@ begin
           candidatesIni[0] := 'dbxconnections.ini';
           candidatesIni[1] := 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
           candidatesIni[2] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
-          candidatesIni[3] := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/dbxconnections.ini';
+          candidatesIni[3] := ExtractFilePath(ParamStr(0)) + 'dbxconnections.ini';
           for iniPath in candidatesIni do
           begin
             if (iniPath <> '') and FileExists(iniPath) then
@@ -2308,11 +2369,7 @@ begin
           else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
             dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
           else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
-            dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
-          else if FileExists('/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)) then
-            dbName := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)
-          else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName)) then
-            dbName := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName);
+            dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
           alist.Values['Database'] := dbName;
         end;
 
@@ -2656,12 +2713,13 @@ begin
              else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
                dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
              else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
-               dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
-             else if FileExists('/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)) then
-               dbName := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + ExtractFileName(dbName)
-             else if FileExists('C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName)) then
-               dbName := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + ExtractFileName(dbName);
+               dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
            end;
+
+           // The FPC build maps FireDAC connections to SQLdb and only supports
+           // SQLite so far: never open another driver's database as SQLite
+           if (driverId <> '') and (driverId <> 'SQLITE') then
+             Raise Exception.Create(SRpDriverNotSupported + ' - FireDac (FPC): ' + driverId);
 
            {$IFDEF UNIX}
            if not FileExists('/usr/lib/x86_64-linux-gnu/libsqlite3.so') and not FileExists('/usr/lib/libsqlite3.so') then
@@ -5213,6 +5271,10 @@ var
  fname:string;
  fdef:TFieldDef;
  indexfieldnames:string;
+{$IFDEF FPC}
+ keynames:string;
+ keyvalues:Variant;
+{$ENDIF}
 begin
  aresult:=TRpMemDataSet.Create(nil);
  lfields1:=TStringList.Create;
@@ -5274,7 +5336,20 @@ begin
    if aresult.Indexfieldnames<>'' then
    begin
 {$IFDEF FPC}
-    aresult.Append;
+    // TBufDataset has no SetKey/GotoKey: locate the first still unmatched row
+    // (prefix=0) with the same key values, as GotoKey does in Delphi
+    keynames:=prefix;
+    keyvalues:=VarArrayCreate([0,commonfields.Count],varVariant);
+    keyvalues[0]:=0;
+    for i:=0 to commonfields.Count-1 do
+    begin
+     keynames:=keynames+';'+originalfields[i];
+     keyvalues[i+1]:=data2.FieldByName(commonfields.Strings[i]).AsVariant;
+    end;
+    if aresult.Locate(keynames,keyvalues,[]) then
+     aresult.Edit
+    else
+     aresult.Append;
 {$ELSE}
     aresult.SetKey;
     for i:=0 to commonfields.Count-1 do

@@ -4,10 +4,16 @@ Unit rpHarfBuzz;
 Interface
 
 Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
+{$IFDEF FPC}
 {$IFDEF MSWINDOWS}
   Windows,
 {$ELSE}
   dynlibs,
+{$ENDIF}
+{$ELSE}
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
 {$ENDIF}
   rpfreetype2;
 
@@ -475,8 +481,8 @@ const
     t_hb_blob_get_length = function (blob: Phb_blob_t): Cardinal; cdecl;
 
 var
-{$IFNDEF MSWINDOWS}
 {$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
   HarfBuzzlib: TLibHandle = dynlibs.NilHandle;
   HarfBuzzlibSubSet: TLibHandle = dynlibs.NilHandle;
 {$ELSE}
@@ -785,8 +791,8 @@ var
   end;
 
 begin
-{$IFNDEF MSWINDOWS}
 {$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
   if (HarfBuzzlib <> dynlibs.NilHandle) then
     exit;
   HarfBuzzlib := dynlibs.NilHandle;
@@ -805,11 +811,11 @@ begin
     exit;
   HarfBuzzlib := 0;
 
-  HarfBuzzlib := SysUtils.SafeLoadLibrary(HarfbuzzDLL);
+  HarfBuzzlib := LoadLibrary(PChar(HarfbuzzDLL));
   if HarfBuzzlib = 0 then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
   HarfBuzzSubSetImplementation:=true;
-  HarfBuzzLibSubset := SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL);
+  HarfBuzzLibSubset := LoadLibrary(PChar(HarfbuzzSubsetDLL));
   if (HarfBuzzLibSubset = 0) then
   begin
    HarfBuzzSubSetImplementation:=false;
@@ -820,11 +826,16 @@ begin
     exit;
   HarfBuzzlib := 0;
 
-  HarfBuzzlib := LoadLibrary(PChar(HarfbuzzDLL));
+  HarfBuzzlib :=
+  {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzDLL)
+    ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzDLL){$ENDIF};
+
   if HarfBuzzlib = 0 then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
   HarfBuzzSubSetImplementation:=true;
-  HarfBuzzLibSubset := LoadLibrary(PChar(HarfbuzzSubsetDLL));
+  HarfBuzzLibSubset :=
+  {$IFDEF MSWINDOWS}LoadLibrary(PChar(HarfbuzzSubsetDLL)
+    ){$ELSE}SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL){$ENDIF};
   if (HarfBuzzLibSubset = 0) then
   begin
    HarfBuzzSubSetImplementation:=false;

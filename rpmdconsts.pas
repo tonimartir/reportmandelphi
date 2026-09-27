@@ -40,8 +40,12 @@ const
 {$ENDIF}
 
 
+{$IFDEF FPC}
 {$IFDEF LINUX}
 {$R REPORTMANRES.RES}
+{$ELSE}
+{$R reportmanres.RES}
+{$ENDIF}
 {$ELSE}
 {$R reportmanres.RES}
 {$ENDIF}

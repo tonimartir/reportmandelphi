@@ -463,7 +463,9 @@ function StrToBool(const S: string): Boolean;
 function StrToBoolDef(const S: string; const Default: Boolean): Boolean;
 function TryStrToBool(const S: string; out Value: Boolean): Boolean;
 function TryStrToFloat(const S: string; out Value: Double): Boolean;
+{$IFDEF FPC}
 procedure VerifyBoolStrArray;
+{$ENDIF}
 var
   TrueBoolStrs: array of String;
   FalseBoolStrs: array of String;
@@ -1673,7 +1675,8 @@ begin
  Writer.Write(L, SizeOf(Integer));
  Writer.Write(Utf8Bytes, L);
 end;
-{$ELSE}
+{$ENDIF}
+{$IFNDEF DOTNETD}
 var
   L: Integer;
   aval:TValueType;
@@ -1793,7 +1796,8 @@ end;
 begin
  Result:=Reader.ReadString;
 end;
-{$ELSE}
+{$ENDIF}
+{$IFNDEF DELPHI2009UP}
 var
   L: Integer;
   aResult:String;

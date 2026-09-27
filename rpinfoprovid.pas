@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                      }
 {       Report Manager                                  }
 {                                                       }
@@ -66,7 +66,11 @@ type
  end;
   TGlyphInfo=record
    Glyph: Integer;
+{$IFDEF FPC}
    Char:WideChar;
+{$ELSE}
+   Char:char;
+{$ENDIF}
    Width: double;
  end;
 

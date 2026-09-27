@@ -571,7 +571,7 @@
 // Database drivers to be used by default
 {$DEFINE USESQLEXPRESS}
 {$DEFINE USEADO}
-{$DEFINE USEZEOS}
+//{$DEFINE USEZEOS}
 //{$DEFINE USEIBO}
 
 
@@ -581,6 +581,8 @@
  {$UNDEF USEIBX}
  {$UNDEF USEADO}
  {$UNDEF USETEECHART}
+ // The FPC packages (reportman_rtl.lpk) require Zeos
+ {$DEFINE USEZEOS}
 {$ENDIF}
 
 

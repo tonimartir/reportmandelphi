@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -22,6 +22,8 @@ interface
 uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
 {$IFDEF FPC}
  Math, ActiveX, ComObj, rpdirectwrite, Generics.Collections,
+ rpdirectwriterenderer,
+ rpmdconsts, rptruetype, rphtmlparser;
 {$ELSE}
  System.Math,
 {$IFDEF DOTNETD}
@@ -31,12 +33,10 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
  rpICU,rpHarfBuzz,rpfreetype2,
 {$ELSE}
  ActiveX,
- WinAPi.D2D1,ComObj,
+ WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
- System.Generics.Collections,
+    rpmdconsts, rptruetype, System.Generics.Collections, rphtmlparser;
 {$ENDIF}
- rpdirectwriterenderer,
- rpmdconsts, rptruetype, rphtmlparser;
 
 {$IFDEF FPC}
 const
@@ -396,6 +396,7 @@ var
   charFontSizes: array of Single;
   charHasFontSize: array of Boolean;
   charStyles: array of Integer;
+{$IFDEF FPC}
   inTag: Boolean;
   firstStrongRTL: Boolean;
   ci: Integer;
@@ -408,6 +409,7 @@ var
   CurrentPos: Integer;
   Range: DWRITE_TEXT_RANGE;
   StyleVal2: Integer;
+{$ENDIF}
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
@@ -465,11 +467,16 @@ begin
     FontStyle,
     DWRITE_FONT_STRETCH_NORMAL,
     FontSizeInDips,
+{$IFDEF FPC}
     PWideChar(WideString('en-us')),
+{$ELSE}
+    '',
+{$ENDIF}
     TextFormat
   );
 
   // Detect paragraph direction from first strong character (skip HTML tags)
+{$IFDEF FPC}
   inTag := False;
   firstStrongRTL := False;
   for ci := 1 to Length(Text) do
@@ -478,6 +485,16 @@ begin
     if Text[ci] = '>' then begin inTag := False; Continue; end;
     if inTag then Continue;
     cp := Ord(Text[ci]);
+{$ELSE}
+  var inTag: Boolean := False;
+  var firstStrongRTL: Boolean := False;
+  for var ci := 1 to Length(Text) do
+  begin
+    if Text[ci] = '<' then begin inTag := True; Continue; end;
+    if Text[ci] = '>' then begin inTag := False; Continue; end;
+    if inTag then Continue;
+    var cp: Integer := Ord(Text[ci]);
+{$ENDIF}
     if cp <= $40 then Continue; // skip whitespace, control, digits, punctuation
     // Arabic
     if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
@@ -505,17 +522,26 @@ begin
 
   if IsHtml then
   begin
+{$IFDEF FPC}
     Segments := ParseHtml(Text);
     try
       PlainText := '';
       for Seg in Segments do
         PlainText := PlainText + WideString(Seg.Text);
+{$ELSE}
+    var Segments := ParseHtml(Text);
+    try
+      PlainText := '';
+      for var Seg in Segments do
+        PlainText := PlainText + Seg.Text;
+{$ENDIF}
 
       // Build per-character font info map
       SetLength(charFontFamilies, Length(PlainText));
       SetLength(charFontSizes, Length(PlainText));
       SetLength(charHasFontSize, Length(PlainText));
       SetLength(charStyles, Length(PlainText));
+{$IFDEF FPC}
       MapPos := 0;
       for Seg in Segments do
       begin
@@ -533,6 +559,23 @@ begin
             charFontFamilies[ci] := adata.FamilyName
           else
             charFontFamilies[ci] := pdfFont.WFontName;
+{$ELSE}
+      var MapPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var StyleVal: Integer := 0;
+        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+        for var ci := MapPos to MapPos + SegLen - 1 do
+        begin
+          if Seg.FontFamily <> '' then
+            charFontFamilies[ci] := Seg.FontFamily
+          else
+            charFontFamilies[ci] := adata.FamilyName;
+{$ENDIF}
           if Seg.HasFontSize then
             charFontSizes[ci] := Seg.FontSize
           else
@@ -553,10 +596,18 @@ begin
         TextLayout
       );
 
+{$IFDEF FPC}
       CurrentPos := 0;
       for Seg in Segments do
       begin
         SegLen := Length(WideString(Seg.Text));
+{$ELSE}
+      var CurrentPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var Range: DWRITE_TEXT_RANGE;
+{$ENDIF}
         Range.startPosition := CurrentPos;
         Range.length := SegLen;
 
@@ -581,7 +632,11 @@ begin
         if Seg.HasFontSize then
           TextLayout.SetFontSize(Seg.FontSize * POINTS_TO_DIPS_FACTOR, Range);
 
+{$IFDEF FPC}
         StyleVal2 := 0;
+{$ELSE}
+        var StyleVal2: Integer := 0;
+{$ENDIF}
         if hsBold in Seg.Styles then StyleVal2 := StyleVal2 or 1;
         if hsItalic in Seg.Styles then StyleVal2 := StyleVal2 or 2;
         if hsUnderline in Seg.Styles then StyleVal2 := StyleVal2 or 4;
@@ -1893,8 +1948,14 @@ var
 // gcp:windows.tagGCP_RESULTSA;
 {$ENDIF}
 {$ENDIF}
+{$IFDEF FPC}
 {$IF defined(DELPHI2009UP) or defined(FPC)}
  gcp:windows.tagGCP_RESULTSW;
+{$ENDIF}
+{$ELSE}
+{$IFDEF DELPHI2009UP}
+ gcp:windows.tagGCP_RESULTSW;
+{$ENDIF}
 {$ENDIF}
  astring:WideString;
  ginfo: TGlyphInfo;
@@ -1966,7 +2027,11 @@ begin
   end;
   data.loadedglyphs[aint]:=WideChar(glyphIndex);
   data.loadedg[aint]:=true;
+{$IFDEF FPC}
   data.glyphs.AddOrSetValue(charcode, glyphindexes[0]);
+{$ELSE}
+  data.glyphs.Add(charcode, glyphindexes[0]);
+{$ENDIF}
 
   data.loaded[aint]:=true;
 
@@ -1976,7 +2041,11 @@ begin
  Result:=
    (aabc[1].abcA+Int64(aabc[1].abcB)+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
+{$IFDEF FPC}
  data.widths.AddOrSetValue(charcode, Result);
+{$ELSE}
+ data.widths.Add(charcode, Result);
+{$ENDIF}
 
  data.loaded[aint]:=true;
  if data.firstloaded>aint then

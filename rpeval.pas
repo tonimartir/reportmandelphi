@@ -51,7 +51,7 @@ type
   // The parser
   Rpparser:TRpparser;
   // The expresion to evaluate
-  FExpression:WideString;
+  FExpression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF};
   // Result of the evaluation
   FEvalResult:TRpValue;
 {$IFDEF USEEVALHASH}
@@ -75,7 +75,7 @@ type
   FOnNewLanguage:TRpNewLanguage;
   FOnGetSQLValue:TRpOnGetSQLValue;
   FOnParamInfo:TRpParamInfoProc;
-  procedure SetExpression(Value:WideString);
+  procedure SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
   // Recursive functions to evaluate the expresion
   procedure variables(var Value:TRpValue);
   procedure separator(var Value:TRpValue);
@@ -115,12 +115,12 @@ type
   // The evaluation procedure
   procedure Evaluate;
   // The evaluation procedure without Expression property
-  function EvaluateText(text:WideString):TRpValue;
+  function EvaluateText(text:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF}):TRpValue;
   function GetStreamFromExpression(atext:WideString):TMemoryStream;
 
   // Checking Syntax
   procedure CheckSyntax;
-  property Expression:WideString Read FExpression write SetExpression;
+  property Expression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF} Read FExpression write SetExpression;
   property EvalResult:TRpValue Read FEvalResult;
   // The identifiers including functions
 {$IFDEF USEEVALHASH}
@@ -191,7 +191,11 @@ constructor TRpCustomEvaluator.CreateWithoutiden(AOwner:TComponent;AddIdens:bool
 begin
  inherited Create(AOwner);
  Evaluating:=false;
+{$IFDEF FPC}
  FExpression:='';
+{$ELSE}
+ FExpression:=String(chr(0));
+{$ENDIF}
  // Creates de parser
  Rpparser:=TRpparser.Create;
  // The identifiers list
@@ -212,7 +216,11 @@ begin
  inherited Create(AOwner);
  InitRpFunctions;
  Evaluating:=false;
+{$IFDEF FPC}
  FExpression:='';
+{$ELSE}
+ FExpression:=String(chr(0));
+{$ENDIF}
  // The parser
  Rpparser:=TRpparser.Create;
  // The identifiers
@@ -430,7 +438,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TRpCustomEvaluator.SetExpression(Value:WideString);
+procedure TRpCustomEvaluator.SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
 begin
  if Evaluating then
   Raise Exception.Create(SRpsetexpression);
@@ -438,7 +446,7 @@ begin
 end;
 
 // To evaluate a text we must create another evaluator
-function TRpCustomEvaluator.EvaluateText(text:WideString):TRpValue;
+function TRpCustomEvaluator.EvaluateText(text:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF}):TRpValue;
 var eval:TRpCustomEvaluator;
 {$IFDEF USEEVALHASH}
     oldiden:TStringHash;

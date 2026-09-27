@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -122,9 +122,7 @@ type
   public
    APageWidth,APageHeight:integer;
    PageAnnotations: array of TPDFAnnotation;
-{$IFDEF FPC}
    destructor Destroy; override;
-{$ENDIF}
  end;
 
  TRpPDFCanvas=class(TObject)
@@ -321,7 +319,11 @@ type
 
 function PDFCompatibleText (astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 function NumberToText (Value:double):string;
+{$IFDEF FPC}
 function EncodePDFText(const text: WideString): string;
+{$ELSE}
+function EncodePDFText(const text: string): string;
+{$ENDIF}
 
 procedure GetBitmapInfo (stream:TStream; var width, height, imagesize:integer;FMemBits:TMemoryStream;
  var indexed:boolean;var bitsperpixel,usedcolors:integer;var palette:string);
@@ -497,7 +499,7 @@ end;
 
 
 
-{$IFDEF FPC}
+// Page annotations are created by NewAnnotation and only owned here
 destructor TRpPageInfo.Destroy;
 var
   i: integer;
@@ -507,7 +509,6 @@ begin
   SetLength(PageAnnotations, 0);
   inherited Destroy;
 end;
-{$ENDIF}
 
 constructor TrpPDFCanvas.Create(AFile:TRpPDFFile);
 begin
@@ -838,7 +839,7 @@ begin
  else
 {$ENDIF}
  begin
-   SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + ' /Length1 ' + IntToStr(stream.Size));
+  SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + ' /Length1 ' + IntToStr(stream.Size));
   SWriteLine(dest,'>>');
   SWriteLine(dest,'stream');
   stream.SaveToStream(dest);
@@ -4846,7 +4847,11 @@ begin
  end;
 end;
 
+{$IFDEF FPC}
 function EncodePDFText(const text: WideString): string;
+{$ELSE}
+function EncodePDFText(const text: string): string;
+{$ENDIF}
 var
   UTF16BEBytes: TBytes;
   i: Integer;
@@ -4870,12 +4875,21 @@ begin
     for i := 1 to Length(text) do
     begin
       // Escape special chars
+{$IFDEF FPC}
       case text[i] of
         '(', ')', '\':
           Result := Result + '\' + Char(text[i]);
       else
         Result := Result + Char(text[i]);
       end;
+{$ELSE}
+      case text[i] of
+        '(', ')', '\':
+          Result := Result + '\' + text[i];
+      else
+        Result := Result + text[i];
+      end;
+{$ENDIF}
     end;
     Result := Result + ')';
   end
@@ -4901,6 +4915,7 @@ procedure TRpPDFFile.FreePageInfos;
 var
  i:integer;
 begin
+{$IFDEF FPC}
  if FPageInfos = nil then
    Exit;
  for i:=0 to FPageInfos.Count-1 do
@@ -4911,6 +4926,12 @@ begin
     FPageInfos.Objects[i] := nil;
   end;
  end;
+{$ELSE}
+ for i:=0 to FPageInfos.Count-1 do
+ begin
+  FPageInfos.Objects[i].free;
+ end;
+{$ENDIF}
  FPageInfos.Clear;
 end;
 

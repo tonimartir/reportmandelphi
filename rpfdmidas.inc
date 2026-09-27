@@ -329,6 +329,7 @@ begin
     StrToIntDef(Copy(S, 5, 2), 1), StrToIntDef(Copy(S, 7, 2), 1));
 end;
 
+{$IFDEF FPC}
 function RpMidasParseTime(const S: string): TDateTime;
 var
   p1, p2: Integer;
@@ -355,6 +356,26 @@ begin
     hh := StrToIntDef(S, 0);
   Result := EncodeTime(hh, mm, ss, ms);
 end;
+{$ELSE}
+function RpMidasParseTime(const S: string): TDateTime;
+var
+  parts: TArray<string>;
+  hh, mm, ss, ms: Word;
+  sp: string;
+begin
+  parts := S.Split([':']);
+  hh := 0; mm := 0; ss := 0; ms := 0;
+  if Length(parts) > 0 then hh := StrToIntDef(parts[0], 0);
+  if Length(parts) > 1 then mm := StrToIntDef(parts[1], 0);
+  if Length(parts) > 2 then
+  begin
+    sp := parts[2];
+    ss := StrToIntDef(Copy(sp, 1, 2), 0);
+    if Length(sp) > 2 then ms := StrToIntDef(Copy(sp, 3, MaxInt), 0);
+  end;
+  Result := EncodeTime(hh, mm, ss, ms);
+end;
+{$ENDIF}
 
 function RpMidasParseDateTime(const S: string): TDateTime;
 var
@@ -573,7 +594,11 @@ end;
 
 // ======================= public procedures ===============================
 
+{$IFDEF FPC}
 procedure FDMemLoadFromMidasStream(mem: TRpMemDataSet; Stream: TStream);
+{$ELSE}
+procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
+{$ENDIF}
 var
   xml, inner, attrName, fieldName, ftype, fsub, realName: string;
   p, tagEnd, fieldsB, fieldsE, rowsB, rowsE, fwidth, fdec, fsize, k: Integer;
@@ -682,14 +707,22 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
 procedure FDMemSaveToMidasStream(mem: TRpMemDataSet; Stream: TStream);
+{$ELSE}
+procedure FDMemSaveToMidasStream(mem: TFDMemTable; Stream: TStream);
+{$ENDIF}
 var
   sb: TStringBuilder;
   i: Integer;
   F: TField;
   t, sub: string;
   w, dec: Integer;
+{$IFDEF FPC}
   attrs: array of string;
+{$ELSE}
+  attrs: TArray<string>;
+{$ENDIF}
   bm: TBookmark;
   bytes: TBytes;
 begin
@@ -747,7 +780,11 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
 procedure FDMemLoadFromMidasFile(mem: TRpMemDataSet; const FileName: string);
+{$ELSE}
+procedure FDMemLoadFromMidasFile(mem: TFDMemTable; const FileName: string);
+{$ENDIF}
 var
   fs: TFileStream;
 begin
@@ -759,7 +796,11 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
 procedure FDMemSaveToMidasFile(mem: TRpMemDataSet; const FileName: string);
+{$ELSE}
+procedure FDMemSaveToMidasFile(mem: TFDMemTable; const FileName: string);
+{$ENDIF}
 var
   fs: TFileStream;
 begin

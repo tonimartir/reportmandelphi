@@ -1,4 +1,4 @@
-unit RpDirectWriteRenderer;
+﻿unit RpDirectWriteRenderer;
 
 interface
 
@@ -119,6 +119,7 @@ type
       baselineOriginX: Single; baselineOriginY: Single;
       var strikethrough: TDwriteStrikethrough;
       const clientDrawingEffect: IUnknown): HResult; stdcall;
+{$IFDEF FPC}
 {$IF defined(DELPHI12UP) or defined(FPC)}
         function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
       originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
@@ -127,6 +128,17 @@ type
      function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
         originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
         isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult;stdcall;
+{$ENDIF}
+{$ELSE}
+{$IFDEF DELPHI12UP}
+        function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
+      isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
+{$ELSE}
+     function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+       originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
+       isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult;stdcall;
+{$ENDIF}
 {$ENDIF}
 
   end;
@@ -387,9 +399,11 @@ var
   clusterIndexCount: integer;
   clusterDic: TDictionary<integer,integer>;
   currentCluster:integer;
+{$IFDEF FPC}
   firstGlyph: Word;
   Offset: DWRITE_GLYPH_OFFSET;
   Effect: ISimpleStyleEffect;
+{$ENDIF}
 begin
   Result := S_OK;
   TextPosition := glyphRunDescription.textPosition;
@@ -418,7 +432,11 @@ begin
   try
     for i:= 0 to clusterIndexCount-1 do
     begin
+{$IFDEF FPC}
      firstGlyph:=clusterMapArray[i];
+{$ELSE}
+     var firstGlyph:=clusterMapArray[i];
+{$ENDIF}
      if (not clusterDic.ContainsKey(firstGlyph)) then
        clusterDic.Add(firstGlyph,i);
     end;
@@ -430,7 +448,11 @@ begin
       GlyphPos.YAdvance := 0;
       if Assigned(OffArray) then
       begin
+{$IFDEF FPC}
         Offset := OffArray[i];
+{$ELSE}
+        var Offset := OffArray[i];
+{$ENDIF}
         GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
@@ -452,6 +474,9 @@ begin
 
       if Assigned(clientDrawingEffect) then
       begin
+{$IFNDEF FPC}
+        var Effect: ISimpleStyleEffect;
+{$ENDIF}
         if Supports(clientDrawingEffect, ISimpleStyleEffect, Effect) then
         begin
           GlyphPos.Style := Effect.GetStyle;
@@ -516,6 +541,7 @@ begin
 end;
 
 
+{$IFDEF FPC}
 {$IF defined(DELPHI12UP) or defined(FPC)}
 function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
       originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
@@ -530,6 +556,23 @@ function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
 begin
   Result := S_OK;
 end;
+{$ENDIF}
+{$ELSE}
+{$IFDEF DELPHI12UP}
+function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
+      isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
+begin
+  Result := S_OK;
+end;
+{$ELSE}
+function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
+  originX, originY: Single; var inlineObject: IDWriteInlineObject; isSideways, isRightToLeft: BOOL;
+  const clientDrawingEffect: IUnknown): HResult;
+begin
+  Result := S_OK;
+end;
+{$ENDIF}
 {$ENDIF}
 
 
