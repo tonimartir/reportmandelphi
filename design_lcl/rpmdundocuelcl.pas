@@ -77,6 +77,8 @@ type
   private
     FGroupId: Integer;
     FReport: TRpReport;
+    FCleanOpIndex: Integer;
+    FMaxOperations: Integer;
     procedure ApplySwapOperation(const className: string; down: Boolean;
       aOldIndex: Integer; const aParentName: string);
     procedure ApplyOperation(operation: TChangeObjectOperation; isUndo: Boolean);
@@ -100,11 +102,16 @@ type
     function CanUndo: Boolean;
     function CanRedo: Boolean;
     procedure Clear;
+    procedure MarkClean;
+    function IsDirty: Boolean;
+    procedure TruncateHistory(MaxCount: Integer);
     function ToJSON: string;
     procedure FromJSON(const jsonStr: string);
 
     property GroupId: Integer read FGroupId;
     property Report: TRpReport read FReport write FReport;
+    property MaxOperations: Integer read FMaxOperations write FMaxOperations;
+    property CleanOpIndex: Integer read FCleanOpIndex;
   end;
 
 implementation
@@ -770,6 +777,8 @@ begin
   inherited Create;
   FReport := AReport;
   FGroupId := 0;
+  FCleanOpIndex := 0;
+  FMaxOperations := 100;
   UndoOperations := TObjectList<TChangeObjectOperation>.Create(True);
   RedoOperations := TObjectList<TChangeObjectOperation>.Create(True);
 end;
@@ -821,16 +830,56 @@ begin
     if isPosComp and (op.parentName = '') then
       raise Exception.Create('UndoCue: La sección del componente no tiene nombre');
   end;
-  if Assigned(FReport) then
-    FReport.Modified := True;
+
   UndoOperations.Add(op);
   RedoOperations.Clear;
+
+  if (FMaxOperations > 0) and (UndoOperations.Count > FMaxOperations) then
+  begin
+    UndoOperations.Delete(0);
+    if FCleanOpIndex > 0 then
+      Dec(FCleanOpIndex)
+    else if FCleanOpIndex = 0 then
+      FCleanOpIndex := -1;
+  end;
+
+  if Assigned(FReport) then
+    FReport.Modified := IsDirty;
 end;
 
 procedure TUndoCue.Clear;
 begin
   UndoOperations.Clear;
   RedoOperations.Clear;
+  FCleanOpIndex := 0;
+  if Assigned(FReport) then
+    FReport.Modified := False;
+end;
+
+procedure TUndoCue.MarkClean;
+begin
+  FCleanOpIndex := UndoOperations.Count;
+  if Assigned(FReport) then
+    FReport.Modified := False;
+end;
+
+function TUndoCue.IsDirty: Boolean;
+begin
+  Result := (FCleanOpIndex < 0) or (UndoOperations.Count <> FCleanOpIndex);
+end;
+
+procedure TUndoCue.TruncateHistory(MaxCount: Integer);
+begin
+  if MaxCount <= 0 then Exit;
+  FMaxOperations := MaxCount;
+  while UndoOperations.Count > FMaxOperations do
+  begin
+    UndoOperations.Delete(0);
+    if FCleanOpIndex > 0 then
+      Dec(FCleanOpIndex)
+    else if FCleanOpIndex = 0 then
+      FCleanOpIndex := -1;
+  end;
 end;
 
 function TUndoCue.CanUndo: Boolean;
@@ -875,7 +924,7 @@ begin
   end;
 
   if Assigned(FReport) and (Result.Count > 0) then
-    FReport.Modified := True;
+    FReport.Modified := IsDirty;
 end;
 
 function TUndoCue.Redo: TObjectList<TChangeObjectOperation>;
@@ -910,7 +959,7 @@ begin
   end;
 
   if Assigned(FReport) and (Result.Count > 0) then
-    FReport.Modified := True;
+    FReport.Modified := IsDirty;
 end;
 
 function TUndoCue.GetComponentByName(const name: string): TObject;

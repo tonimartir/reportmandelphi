@@ -28,7 +28,7 @@ uses
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
-  rpmdundocuelcl;
+  rpmdundocuelcl, rpgraphutilslcl;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -141,6 +141,11 @@ type
     procedure MenuFileExitClick(Sender: TObject);
     procedure DesignerToolChange(Sender: TObject);
     procedure StructureUndoRedo(Sender: TObject);
+    function GetShortcutFocusedControl: TWinControl;
+    function IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+    function ShouldHandleDesignerUndoShortcut: Boolean;
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
   public
     // Toolbar buttons
     BtnNew: TToolButton;
@@ -201,6 +206,11 @@ type
     procedure NewReport;
     procedure RefreshInterface;
     procedure UpdateStatus;
+    procedure UpdateTitle;
+    function CheckModified: Boolean;
+    function CheckSave: Boolean;
+    procedure DoUndo;
+    procedure DoRedo;
     procedure EmbedInControl(AParent: TWinControl);
 
     property Report: TRpReport read FReport write SetReport;
@@ -229,6 +239,10 @@ begin
 
   BuildMenus;
   BuildControls;
+
+  KeyPreview := True;
+  OnKeyDown := FormKeyDown;
+  OnCloseQuery := FormCloseQuery;
 
   // Initialize with a blank report
   NewReport;
@@ -861,13 +875,64 @@ begin
   RefreshInterface;
 end;
 
+procedure TFRpMainFLCL.UpdateTitle;
+var
+  sTitle: string;
+begin
+  if Length(FFileName) > 0 then
+    sTitle := 'Report Manager Designer - [' + ExtractFileName(FFileName) + ']'
+  else
+    sTitle := 'Report Manager Designer - [Sin título]';
+  if Assigned(FReport) and FReport.Modified then
+    sTitle := sTitle + ' *';
+  Caption := sTitle;
+end;
+
 procedure TFRpMainFLCL.SetFileName(const Value: string);
 begin
   FFileName := Value;
-  if Length(FFileName) > 0 then
-    Caption := 'Report Manager Designer - [' + ExtractFileName(FFileName) + ']'
-  else
-    Caption := 'Report Manager Designer - [Sin título]';
+  UpdateTitle;
+end;
+
+function TFRpMainFLCL.CheckModified: Boolean;
+begin
+  Result := Assigned(FReport) and FReport.Modified;
+end;
+
+function TFRpMainFLCL.CheckSave: Boolean;
+var
+  res: TMessageButton;
+begin
+  Result := True;
+  if not CheckModified then
+    Exit;
+
+  res := RpMessageBox(SRpReportChanged, SRpWarning, [smbYes, smbNo, smbCancel],
+    smsWarning, smbYes, smbCancel);
+
+  case res of
+    smbYes:
+      begin
+        if Length(FFileName) > 0 then
+          SaveReportFile(FFileName)
+        else
+        begin
+          if SaveDialog1.Execute then
+            SaveReportFile(SaveDialog1.FileName)
+          else
+            Result := False;
+        end;
+      end;
+    smbNo:
+      Result := True;
+    smbCancel:
+      Result := False;
+  end;
+end;
+
+procedure TFRpMainFLCL.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  CanClose := CheckSave;
 end;
 
 procedure TFRpMainFLCL.OpenReportFile(const AFileName: string);
@@ -877,6 +942,9 @@ begin
     ShowMessage('El archivo no existe: ' + AFileName);
     Exit;
   end;
+
+  if not CheckSave then
+    Exit;
 
   if Assigned(FDesignerFrame) then
     FDesignerFrame.Report := nil;
@@ -889,16 +957,24 @@ begin
   FReport := TRpReport.Create(Self);
   FOwnsReport := True;
   FReport.LoadFromFile(AFileName);
+  FReport.Modified := False;
   FileName := AFileName;
 
   RefreshInterface;
+  EnsureUndoCue;
+  TUndoCue(FReport.UndoCue).Clear;
+  TUndoCue(FReport.UndoCue).MarkClean;
+  UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.SaveReportFile(const AFileName: string);
 begin
   if not Assigned(FReport) then Exit;
   FReport.SaveToFile(AFileName);
+  FReport.Modified := False;
   FileName := AFileName;
+  if Assigned(FReport.UndoCue) then
+    TUndoCue(FReport.UndoCue).MarkClean;
   UpdateStatus;
 end;
 
@@ -906,6 +982,9 @@ procedure TFRpMainFLCL.NewReport;
 var
   subrep: TRpSubReport;
 begin
+  if not CheckSave then
+    Exit;
+
   if Assigned(FDesignerFrame) then
     FDesignerFrame.Report := nil;
   if Assigned(FStructure) then
@@ -922,8 +1001,13 @@ begin
   subrep.AddDetail;
   subrep.AddPageFooter;
 
+  FReport.Modified := False;
   FileName := '';
   RefreshInterface;
+  EnsureUndoCue;
+  TUndoCue(FReport.UndoCue).Clear;
+  TUndoCue(FReport.UndoCue).MarkClean;
+  UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.RefreshInterface;
@@ -954,6 +1038,8 @@ var
   sInfo: string;
   cue: TUndoCue;
 begin
+  UpdateTitle;
+
   if not Assigned(FReport) then
   begin
     StatusBar.SimpleText := 'Sin informe cargado';
@@ -968,6 +1054,8 @@ begin
     [FReport.SubReports.Count, Round(FDesignerFrame.Scale * 100)]);
   if Length(FFileName) > 0 then
     sInfo := sInfo + ' | ' + ExtractFileName(FFileName);
+  if FReport.Modified then
+    sInfo := sInfo + ' | [Modificado]';
   StatusBar.SimpleText := sInfo;
 
   if Assigned(FReport.UndoCue) then
@@ -1130,46 +1218,96 @@ begin
   end;
 end;
 
-procedure TFRpMainFLCL.BtnUndoClick(Sender: TObject);
-var
-  cue: TUndoCue;
+function TFRpMainFLCL.GetShortcutFocusedControl: TWinControl;
 begin
-  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  Result := nil;
+  if Assigned(Screen.ActiveCustomForm) then
+    Result := Screen.ActiveCustomForm.ActiveControl;
+  if (Result = nil) and Assigned(Screen.ActiveForm) then
+    Result := Screen.ActiveForm.ActiveControl;
+  if Result = nil then
+    Result := ActiveControl;
+end;
+
+function TFRpMainFLCL.IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+begin
+  Result := False;
+  if not Assigned(AControl) then
+    Exit;
+  if AControl is TCustomEdit then
   begin
-    cue := TUndoCue(FReport.UndoCue);
-    if cue.CanUndo then
-    begin
-      cue.Undo;
-      if Assigned(FStructure) then
-      begin
-        if Assigned(FStructure.cueview) then
-          FStructure.cueview.RefreshList;
-        FStructure.CueUndoRedo(Self);
-      end;
-      UpdateStatus;
-    end;
+    Result := not TCustomEdit(AControl).ReadOnly;
+    Exit;
+  end;
+  if AControl is TComboBox then
+    Result := TComboBox(AControl).Style <> csDropDownList;
+end;
+
+function TFRpMainFLCL.ShouldHandleDesignerUndoShortcut: Boolean;
+begin
+  Result := not IsEditableTextShortcutTarget(GetShortcutFocusedControl);
+end;
+
+procedure TFRpMainFLCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Shift = [ssCtrl]) and (Key = VK_Z) and ShouldHandleDesignerUndoShortcut then
+  begin
+    Key := 0;
+    DoUndo;
+  end
+  else if ((Shift = [ssCtrl]) and (Key = VK_Y) or (Shift = [ssCtrl, ssShift]) and (Key = VK_Z)) and ShouldHandleDesignerUndoShortcut then
+  begin
+    Key := 0;
+    DoRedo;
   end;
 end;
 
-procedure TFRpMainFLCL.BtnRedoClick(Sender: TObject);
+procedure TFRpMainFLCL.DoUndo;
 var
   cue: TUndoCue;
 begin
-  if Assigned(FReport) and Assigned(FReport.UndoCue) then
+  if not Assigned(FReport) or not Assigned(FReport.UndoCue) then Exit;
+  cue := TUndoCue(FReport.UndoCue);
+  if not cue.CanUndo then Exit;
+  cue.Undo;
+  if Assigned(FStructure) then
   begin
-    cue := TUndoCue(FReport.UndoCue);
-    if cue.CanRedo then
-    begin
-      cue.Redo;
-      if Assigned(FStructure) then
-      begin
-        if Assigned(FStructure.cueview) then
-          FStructure.cueview.RefreshList;
-        FStructure.CueUndoRedo(Self);
-      end;
-      UpdateStatus;
-    end;
+    if Assigned(FStructure.cueview) then
+      FStructure.cueview.RefreshList;
+    FStructure.CueUndoRedo(Self);
   end;
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.DoRedo;
+var
+  cue: TUndoCue;
+begin
+  if not Assigned(FReport) or not Assigned(FReport.UndoCue) then Exit;
+  cue := TUndoCue(FReport.UndoCue);
+  if not cue.CanRedo then Exit;
+  cue.Redo;
+  if Assigned(FStructure) then
+  begin
+    if Assigned(FStructure.cueview) then
+      FStructure.cueview.RefreshList;
+    FStructure.CueUndoRedo(Self);
+  end;
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.BtnUndoClick(Sender: TObject);
+begin
+  if (Sender = MenuEditUndo) and not ShouldHandleDesignerUndoShortcut then
+    Exit;
+  DoUndo;
+end;
+
+procedure TFRpMainFLCL.BtnRedoClick(Sender: TObject);
+begin
+  if (Sender = MenuEditRedo) and not ShouldHandleDesignerUndoShortcut then
+    Exit;
+  DoRedo;
 end;
 
 procedure TFRpMainFLCL.StructureUndoRedo(Sender: TObject);
