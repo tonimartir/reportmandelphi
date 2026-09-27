@@ -180,7 +180,10 @@ de markdown sin WebView2 en Linux.
   Ubuntu 22.04 y Debian 12. GTK3 se volverá a evaluar con Lazarus 5, donde
   será el widgetset por defecto.
 - **Pruebas manuales** en una VM Ubuntu con escritorio (lista en
-  `fase6_plan.md`, 6.6).
+  `fase6_plan.md`, 6.6 y 6.8): aplazadas por decisión de Toni (27-09-2026)
+  hasta después de la Fase 7. Cubren lo que las pruebas automáticas no ven:
+  HiDPI real, impresión con CUPS, portapapeles/arrastre y Wayland con
+  entrada real en la versión Qt6.
 - **Publicación**: subir los paquetes del release (`build/sourceforge`, tarea
   06) y enviar el zip OPM (`build/opm`) al Online Package Manager.
 - **Traducciones solo junto al ejecutable**: `rptranslator` busca los
