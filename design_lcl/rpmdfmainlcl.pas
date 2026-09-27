@@ -30,7 +30,7 @@ uses
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
-  rpmdundocuelcl, rpgraphutilslcl;
+  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -55,11 +55,15 @@ type
     SplitterMain: TSplitter;
     PClient: TPanel;
     StatusBar: TStatusBar;
+    // AI panel at the right (the chat tab of rpmdfmainvcl)
+    PAIPanel: TPanel;
+    SplitterAI: TSplitter;
 
     // Frames
     FDesignerFrame: TFRpDesignFrameLCL;
     FObjInsp: TFRpObjInspLCL;
     FStructure: TFRpStructureLCL;
+    FChatFrame: TFRpChatFrame;
 
     // Menu items
     MenuFile: TMenuItem;
@@ -92,6 +96,7 @@ type
     MenuViewScale100: TMenuItem;
     MenuViewScale150: TMenuItem;
     MenuViewScale200: TMenuItem;
+    MenuViewAIChat: TMenuItem;
     MenuReport: TMenuItem;
     MenuReportDataConfig: TMenuItem;
     MenuReportPageSetup: TMenuItem;
@@ -160,6 +165,11 @@ type
     procedure MenuViewUnitsClick(Sender: TObject);
     procedure MenuViewScaleClick(Sender: TObject);
     procedure MenuHelpAboutClick(Sender: TObject);
+    procedure MenuViewAIChatClick(Sender: TObject);
+    procedure ApplyChatPanelVisibility;
+    procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
+      AHubSchemaId: Int64; out ASchemaApiKey: string);
+    procedure InitializeDesignChatSchemaSelection;
     procedure MenuFileExitClick(Sender: TObject);
     procedure DesignerToolChange(Sender: TObject);
     procedure StructureUndoRedo(Sender: TObject);
@@ -250,6 +260,10 @@ type
     property DesignerFrame: TFRpDesignFrameLCL read FDesignerFrame;
     property ObjInsp: TFRpObjInspLCL read FObjInsp;
     property Structure: TFRpStructureLCL read FStructure;
+    // AI chat panel (account, model, schema and chat), as in rpmdfmainvcl.
+    // The design assistant is connected to it in phase 7.5.
+    property ChatFrame: TFRpChatFrame read FChatFrame;
+    property AIChatPanel: TPanel read PAIPanel;
     // Hides New/Open/Save/Save as (TRpDesignerLCL, as rpmdesignervcl does);
     // closing a modified report then asks whether the changes are accepted
     property HostedMode: Boolean read FHostedMode write SetHostedMode;
@@ -493,6 +507,18 @@ begin
   MenuViewScale200.Tag := 200;
   MenuViewScale200.OnClick := MenuViewScaleClick;
   MenuView.Add(MenuViewScale200);
+
+  sep := TMenuItem.Create(MenuView);
+  sep.Caption := '-';
+  MenuView.Add(sep);
+
+  // AChatIA of the VCL designer: shows or hides the AI panel
+  MenuViewAIChat := TMenuItem.Create(MenuView);
+  MenuViewAIChat.Caption := TranslateStr(1552, 'AI chat');
+  MenuViewAIChat.Hint := TranslateStr(1553, 'Show or hide the AI chat panel');
+  MenuViewAIChat.Checked := True;
+  MenuViewAIChat.OnClick := MenuViewAIChatClick;
+  MenuView.Add(MenuViewAIChat);
 
   // Report Menu
   MenuReport := TMenuItem.Create(MainMenu1);
@@ -874,7 +900,27 @@ begin
   SplitterMain.Align := alLeft;
   SplitterMain.Width := 5;
 
-  // 6. Client Area (Canvas Frame)
+  // 6. AI panel at the right: account card, model, schema and chat (the
+  // chat tab of the VCL designer). alRight controls are ordered by Left.
+  PAIPanel := TPanel.Create(Self);
+  PAIPanel.Parent := Self;
+  PAIPanel.BevelOuter := bvNone;
+  PAIPanel.Caption := '';
+  PAIPanel.SetBounds(20000, 0, Scale96ToScreen(380), 100);
+  PAIPanel.Align := alRight;
+
+  SplitterAI := TSplitter.Create(Self);
+  SplitterAI.Parent := Self;
+  SplitterAI.SetBounds(19000, 0, 5, 100);
+  SplitterAI.Align := alRight;
+  SplitterAI.ResizeAnchor := akRight;
+
+  FChatFrame := TFRpChatFrame.Create(Self);
+  FChatFrame.Parent := PAIPanel;
+  FChatFrame.Align := alClient;
+  FChatFrame.SetRefreshAction(True);
+
+  // 7. Client Area (Canvas Frame)
   PClient := TPanel.Create(Self);
   PClient.Parent := Self;
   PClient.Align := alClient;
@@ -895,7 +941,7 @@ begin
   FStructure.designframe := FDesignerFrame;
   FStructure.OnUndoRedo := StructureUndoRedo;
 
-  // 7. Dialogs
+  // 8. Dialogs
   OpenDialog1 := TOpenDialog.Create(Self);
   OpenDialog1.Title := TranslateStr(214, 'Open report');
   OpenDialog1.Filter := TranslateStr(704, 'Report File') + ' (*.rep)|*.rep|' +
@@ -1003,6 +1049,10 @@ begin
   cue.Clear;
   cue.MarkClean;
   RefreshInterface;
+  // The VCL designer creates a new chat for every report
+  if Assigned(FChatFrame) then
+    FChatFrame.Initialize('', '');
+  InitializeDesignChatSchemaSelection;
 end;
 
 procedure TFRpMainFLCL.SetReport(Value: TRpReport);
@@ -1014,9 +1064,109 @@ begin
   FLibraryName := '';
   FLibraryReportName := '';
   if Assigned(FReport) then
-    RefreshInterface
+  begin
+    RefreshInterface;
+    if Assigned(FChatFrame) then
+      FChatFrame.Initialize('', '');
+    InitializeDesignChatSchemaSelection;
+  end
   else
     UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.MenuViewAIChatClick(Sender: TObject);
+begin
+  MenuViewAIChat.Checked := not MenuViewAIChat.Checked;
+  ApplyChatPanelVisibility;
+end;
+
+procedure TFRpMainFLCL.ApplyChatPanelVisibility;
+begin
+  PAIPanel.Visible := MenuViewAIChat.Checked;
+  SplitterAI.Visible := MenuViewAIChat.Checked;
+  if PAIPanel.Visible then
+  begin
+    // The splitter must stay at the left of the panel
+    SplitterAI.Left := PAIPanel.Left - SplitterAI.Width;
+    FChatFrame.RefreshLayout;
+  end;
+end;
+
+// The Hub database and schema of the report for the chat: the schema saved
+// in the first dataset and its Reportman Agent (rpdbHttp) connection, or the
+// first Agent connection (as rpmdfmainvcl)
+procedure TFRpMainFLCL.ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
+  AHubSchemaId: Int64; out ASchemaApiKey: string);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LConnectionParams: TStringList;
+  I: Integer;
+  LHasPersistedSchema: Boolean;
+begin
+  AHubDatabaseId := 0;
+  AHubSchemaId := 0;
+  ASchemaApiKey := '';
+  LHasPersistedSchema := False;
+  if not Assigned(FReport) then
+    Exit;
+  if FReport.DataInfo.Count > 0 then
+  begin
+    LDataInfo := FReport.DataInfo.Items[0];
+    if (LDataInfo <> nil) and (LDataInfo.HubSchemaId > 0) then
+    begin
+      LHasPersistedSchema := True;
+      AHubSchemaId := LDataInfo.HubSchemaId;
+      LDatabaseInfo := FReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+      begin
+        LConnectionParams := TStringList.Create;
+        try
+          LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+          AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+          ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+        finally
+          LConnectionParams.Free;
+        end;
+        if AHubDatabaseId > 0 then
+          Exit;
+      end;
+    end;
+  end;
+  for I := 0 to FReport.DatabaseInfo.Count - 1 do
+  begin
+    LDatabaseInfo := FReport.DatabaseInfo.Items[I];
+    if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+    begin
+      LConnectionParams := TStringList.Create;
+      try
+        LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+        AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+        ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+      finally
+        LConnectionParams.Free;
+      end;
+      if AHubDatabaseId > 0 then
+      begin
+        // Let the chat pick the first schema only when none is saved
+        if not LHasPersistedSchema then
+          AHubSchemaId := 0;
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+procedure TFRpMainFLCL.InitializeDesignChatSchemaSelection;
+var
+  LHubDatabaseId, LHubSchemaId: Int64;
+  LSchemaApiKey: string;
+begin
+  if not Assigned(FChatFrame) then
+    Exit;
+  ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  FChatFrame.StartOnlineInitialization;
 end;
 
 procedure TFRpMainFLCL.SetHostedMode(Value: Boolean);

@@ -283,6 +283,7 @@ tests/fpc/LclMonacoTest/LclMonacoTest
 tests/fpc/LclDesignerTest/LclDesignerTest
 tests/fpc/HubClientTest/HubClientTest
 tests/fpc/HubClientTest/delphi/out/
+tests/fpc/LclAIChatTest/LclAIChatTest
 # Output the FPC test apps wrote when run from the repo root / sample folder
 # (root-level only: PDFs under doc/ must stay visible)
 /*.pdf
