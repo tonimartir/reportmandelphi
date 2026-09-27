@@ -30,12 +30,34 @@ begin
   end;
 end;
 
-// Non ASCII text (n with tilde, e acute) built from code points, so the test
-// does not depend on the source code page
-function Accented(const APrefix: string): string;
+function HexOf(const S: RawByteString): string;
+var
+  I: Integer;
 begin
-  Result := APrefix + string(UnicodeString(WideChar($00F1)) +
-    UnicodeString(WideChar($00E9)));
+  Result := '';
+  for I := 1 to Length(S) do
+    Result := Result + IntToHex(Ord(S[I]), 2);
+  Result := Result + ' (cp ' + IntToStr(StringCodePage(S)) + ')';
+end;
+
+procedure CheckText(const AExpected, AActual, AWhat: string);
+begin
+  Check(AActual = AExpected, AWhat);
+  if AActual <> AExpected then
+    WriteLn('        expected ', HexOf(AExpected), ' got ', HexOf(AActual));
+end;
+
+// Non ASCII text (n with tilde, e acute) built from code points at run time,
+// so the test does not depend on the source code page (a constant expression
+// is converted by the compiler, byte by byte, not to the system code page)
+function Accented(const APrefix: string): string;
+var
+  LText: UnicodeString;
+begin
+  SetLength(LText, 2);
+  LText[1] := WideChar($00F1);
+  LText[2] := WideChar($00E9);
+  Result := APrefix + string(LText);
 end;
 
 const
@@ -73,9 +95,9 @@ end;
 procedure CheckSameFile(AExpected, AActual: TEmbeddedFile; const AWhere: string;
   ACheckCreation: Boolean);
 begin
-  Check(AActual.FileName = AExpected.FileName, AWhere + ' FileName');
+  CheckText(AExpected.FileName, AActual.FileName, AWhere + ' FileName');
   Check(AActual.MimeType = AExpected.MimeType, AWhere + ' MimeType');
-  Check(AActual.Description = AExpected.Description, AWhere + ' Description');
+  CheckText(AExpected.Description, AActual.Description, AWhere + ' Description');
   if ACheckCreation then
     Check(AActual.CreationDate = AExpected.CreationDate, AWhere + ' CreationDate');
   Check(AActual.ModificationDate = AExpected.ModificationDate, AWhere + ' ModificationDate');
@@ -145,8 +167,8 @@ begin
       LSource.SaveToStream(LStream, ACompressed);
       LStream.Position := 0;
       LTarget.LoadFromStream(LStream);
-      Check(LTarget.DocAuthor = LSource.DocAuthor, LName + ' DocAuthor');
-      Check(LTarget.DocTitle = LSource.DocTitle, LName + ' DocTitle');
+      CheckText(LSource.DocAuthor, LTarget.DocAuthor, LName + ' DocAuthor');
+      CheckText(LSource.DocTitle, LTarget.DocTitle, LName + ' DocTitle');
       Check(Length(LTarget.EmbeddedFiles) = 1, LName + ' embedded file count');
       // The metafile format does not store the creation date
       if Length(LTarget.EmbeddedFiles) = 1 then
@@ -177,6 +199,8 @@ begin
     LStream.Read(LLen, SizeOf(LLen));
     // 'ab' + two 2 byte UTF-8 sequences
     Check(LLen = 6, 'WriteStringToStream length prefix');
+    if LLen <> 6 then
+      WriteLn('        length ', LLen, ' of ', HexOf(Accented('ab')));
     SetLength(LBytes, LStream.Size - SizeOf(LLen));
     if Length(LBytes) > 0 then
       LStream.Read(LBytes[1], Length(LBytes));
