@@ -134,6 +134,14 @@ reutilizan los ids del chat de 7.2 (1536 "Generation stopped.", 1539, 1540,
   `HistoryExtendedFrom`, e historial conservado por el diseñador al abrir
   el `.rep` de Delphi y al guardar y reabrir (XML sí, texto no).
 
+Resultados (tras fusionar 7.3 y 7.4): Windows, `LclAIChatTest` 739
+comprobaciones (las cuatro series) sin fugas, `LclDesignerTest --selftest`,
+`LclSnapshotTest` 19/19, `HubClientTest` 469 y el diseñador autónomo; WSL
+(Lazarus 3.0, GTK2), `LclAIChatTest` 699 sin fugas y `--selftest`; Docker
+(`build-linux.ps1 -SkipImage`), `LclAIChatTest` 705 en Qt6 y GTK2 sin
+fugas, `--selftest` en los dos, lintian sin errores y las 15 pruebas en
+máquinas limpias.
+
 ## Encontrado en código común o VCL (sin cambiar)
 
 1. `TRpBaseReport.Clear` (`rpbasereport.pas:1018`) quita los componentes
