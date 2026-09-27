@@ -17,7 +17,8 @@ uses
 {$IFDEF UNIX}
   cthreads,
 {$ENDIF}
-  Interfaces, SysUtils, Classes, Forms, process, utestutil, uaichattests;
+  Interfaces, SysUtils, Classes, Forms, process, utestutil, uaichattests,
+  uaiexprtests;
 
 function OptionValue(const AName: string): string;
 var
@@ -126,6 +127,7 @@ begin
   Application.Initialize;
   try
     RunAIChatTests(OptionValue('--shots'));
+    RunAIExprTests(OptionValue('--shots'));
   except
     on E: Exception do
       Fail('unexpected exception ' + E.ClassName + ': ' + E.Message);
