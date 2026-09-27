@@ -63,10 +63,11 @@
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html">Linux (deprecated)</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li class="has-sub"><details class="doc-sub">
 <summary>Other languages</summary>
@@ -229,13 +230,15 @@
 <h3>Hardware and software requirements</h3>
 <p>Report Manager runs on current <b>Microsoft Windows</b> (Windows 10/11 and Windows Server),
   and it also works on any <b>modern Linux distribution</b>.</p>
-<p>To compile Report Manager you need a current Delphi or C++Builder on Microsoft Windows.
-  Linux builds are produced with Lazarus/FPC; older versions used Kylix (legacy).
+<p>To compile Report Manager you need a current Delphi or C++Builder on Microsoft Windows,
+  or <a href="lazaruscomp.html">Lazarus 3.0 or later with Free Pascal 3.2.2</a> on Windows and
+  Linux; older versions used Kylix (legacy).
   <b>It has command line tools to allow</b> the use of the
   engine from <b>any development environment or language</b>.</p>
 <p><b>Hardware system requirements are relative to the use of the engine</b>, 
   the database engine performance etc... </p>
-<p>The Report Manager Designer is a Windows VCL application, so the
+<p>The Report Manager Designer runs on Windows and on the
+  <a href="installlin.html">Linux desktop</a> (Qt&nbsp;6), so the
   performance gain with a good machine will be noticeable.</p>
 <p>On the other way console processing of a report and exporting it to Adobe PDF 
   format (for example using printtopdf command line tool) will consume little 
@@ -258,7 +261,13 @@
     <td><b>Linux System Requirements</b></td>
   </tr>
   <tr> 
-    <td>A current glibc and the jpeg library</td>
+    <td>Designer: Ubuntu 22.04 or later, Debian 12 or later and derivatives
+      (<code>.deb</code> packages), or any x86_64 distribution with glibc 2.35 or
+      later (AppImage), see <a href="installlin.html">Linux desktop designer</a></td>
+  </tr>
+  <tr>
+    <td>FreeType, fontconfig, HarfBuzz and ICU for text layout and PDF output
+      (installed on any desktop)</td>
   </tr>
   <tr> 
     <td>To Design reports, print or preview a X Window Server is required</td>

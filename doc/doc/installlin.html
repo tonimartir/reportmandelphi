@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Install Report Manager Designer on Linux - Report Manager Docs</title>
-<meta name="description" content="Install the Report Manager Designer on Linux from RPM or tar.gz, set LD_LIBRARY_PATH, and configure database, printer and kprinter settings.">
+<meta name="description" content="Install the Report Manager Designer on the Linux desktop: Qt 6 .deb for Ubuntu 22.04+ and Debian 12+, AppImage or GTK2 package, dependencies and Wayland.">
 <link rel="canonical" href="https://reportman.es/doc/installlin.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -63,10 +63,11 @@
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html" class="current" aria-current="page">Linux (deprecated)</a></li>
+<li><a href="/doc/installlin.html" class="current" aria-current="page">Linux desktop designer</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li class="has-sub"><details class="doc-sub">
 <summary>Other languages</summary>
@@ -225,76 +226,213 @@
 <main class="doc-main">
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Install Report Manager Designer on Linux</span></nav>
 <h1>Install Report Manager Designer on Linux</h1>
-<p class="doc-note deprecated"><strong>Deprecated.</strong> There is no longer a Report Manager Designer for Linux: the Linux designer was built on the CLX library (legacy Qt), which has been discontinued. For Linux, use the <a href="/doc/linuxcomp.html">printreptopdf</a> command-line PDF tool. This page is kept for historical reference.</p>
-<h2>Installation</h2>
-<h3>Linux Installation</h3>
-<p>Installing Report Manager Designer in Linux is a easy process also, you must 
-  have <b>root rights if you want to install to allow all users to execute it 
-  or if rpm installation system is used</b>.</p>
-<p>See <a href="requirements.html">hardware and software requirements</a> before 
-  installing Report Manager designer.</p>
-<p>You must <b>download the latest Report Manager for Linux version</b> from sourceforge:</p>
-<p><a href="https://sourceforge.net/projects/reportman" target="_blank" rel="noopener">https://sourceforge.net/projects/reportman</a></p>
-<p><b>RPM Package Installation</b></p>
-<p>May be you distribution uses .rpm packages and a .rpm package is available 
-  for download, in this case use your own installation distribution procedure 
-  or go to the command line and write:</p>
-<p>rpm -U reportmand-1.0.i386.rpm</p>
-<p><b>tar.gz File Installation</b></p>
-<p>If you downloaded a .tar.gz file then you must create a directory and place 
-  the downloaded file there:</p>
-<p><code>mkdir /opt/repmand</code></p>
-<p><code>mv reportmand-1.0.tar.gz /opt/repmand</code></p>
-<p>Note: If you are not root you can place it in /home/youusername/repmand for 
-  example. </p>
-<p>Change to that directory and untar the files</p>
-<p><code>cd /opt/repmand</code></p>
-<p><code>tar zxvf repmand.tar.gz</code></p>
-<p>After that a number of files in the current dir will be created.</p>
-<p>Execute repmand.sh to start Report Manager designer:</p>
-<p><code>./repmand.sh</code></p>
-<p><b>System Libraries Issues</b></p>
-<p>When you execute a Linux application it searchs libraries using LD_LIBRARY_PATH 
-  variable, repmand.sh set this variable to search the current directory first. 
-  To call any command line tool you must set also this option or you can set it 
-  system wide. The launcher repmand.bin will set also the variable before calling 
-  the application repmand.</p>
-<p>On legacy Kylix-based builds there are issues with the Borland-provided Qt libraries, see <a href="knownissues.html">
-  known issues</a> if you have problems starting the application.</p>
-<p><b>Database configuration files</b></p>
-<p>Report Manager Designer will look for database configuration files, on legacy
-  Kylix-based builds it will look first at <b>/home/yourusername/.borland</b> directory, will search for
-  'dbxdrivers' and 'dbxconnections' files (legacy dbExpress configuration), if there are no files there it will
-  search at '/usr/local/etc' for files 'dbxdrivers.conf' and 'dbxconnections.conf', 
-  if this files does not exists it will search in the current executable directory 
-  and will copy them to /home/yourusername/.borland. So any user executing Report 
-  Manager Designer can own their database connections file or use system common 
-  configuration files.</p>
-<p>When you execute Report Manager command line tools or applications from other 
-  applications (like apache web server) you should copy the database configuration 
-  files to correct path following the above explanation.</p>
-<p><b>Printer configuration file</b></p>
-<p>Report Manager Designer will use a Printer configuration file, only used in 
-  printer selection, this file will be searched as /etc/reportman, if not found 
-  it will create or use /home/yourusername/.reportman</p>
-<p><strong>Environment variables</strong></p>
-<p>You can define a special environment variable to enable, by default, the use 
-  of kprinter to print reports, this will allow to select the different options
-  in the kprinter dialog.</p>
-<p>export REPMAN_USEKPRINTER=true</p>
-<p>Before showing print dialog, the report will be transformed to Adobe PDF, then 
-  converted to postscript using pdftops command line tool (so Xpdf package installation
-  is required), the resulting postscript file will be sent to kprinter command
-  line tool and the user will see the kprinter print dialog.</p>
-<p>The operations that the engine performs internally are:</p>
-<p>printreptopdf -u yourreport.rep pdffile.pdf</p>
-<p>pdftops pdffile.pdf postscriptfile.ps</p>
-<p>kprinter postscriptfile.ps</p>
-<p>The main difference is when you use kprinter the report must be calculated entirely
-  before showing the print dialog, and if the report is very long and you want 
-  to print only one page, a lot of processing time may be not really useful.</p>
-<p></p>
-<p>&nbsp;</p>
+<p>Report Manager Designer runs natively on the Linux desktop. It is the same designer as on
+  Windows, built with <a href="lazaruscomp.html">Lazarus</a> and the Qt&nbsp;6 toolkit: band-based
+  report design, data configuration, preview, PDF export, printing and the
+  <a href="https://ai.reportman.es" target="_blank" rel="noopener">AI assistants</a> (report design,
+  SQL and expressions). It opens and saves the same <code>.rep</code> files as the Windows designer.</p>
+<figure>
+<img src="images/linux-designer-qt6.webp" width="1260" height="720" alt="Report Manager Designer on Linux (Qt 6) with the AI design assistant" loading="lazy" decoding="async">
+<figcaption>Report Manager Designer on Linux (Qt&nbsp;6), with the AI design assistant.</figcaption>
+</figure>
+
+<h2>Downloads</h2>
+<p>Download the packages of the latest release from the
+  <a href="https://sourceforge.net/projects/reportman/files/" target="_blank" rel="noopener">SourceForge files page</a>
+  (<code>Linux</code> folder of the release). There are three files; the version (for example
+  <code>4.0.16</code>) is the same as the Windows designer:</p>
+<table>
+  <tr><th>File</th><th>What it is</th><th>For</th></tr>
+  <tr><td><code>reportman-designer_&lt;version&gt;_amd64.deb</code></td>
+    <td><b>Qt&nbsp;6 .deb package (recommended)</b></td>
+    <td>Ubuntu 22.04 or later, Debian 12 or later and derivatives (Linux Mint 21+, Pop!_OS, Zorin OS&hellip;).
+      <code>apt</code> installs the dependencies.</td></tr>
+  <tr><td><code>reportman-designer-gtk2_&lt;version&gt;_amd64.deb</code></td>
+    <td>GTK2 .deb package (transitional)</td>
+    <td>The same distributions, only if the Qt&nbsp;6 version does not suit you (see below).</td></tr>
+  <tr><td><code>ReportManDesigner-&lt;version&gt;-x86_64.AppImage</code></td>
+    <td>AppImage, Qt&nbsp;6</td>
+    <td>Any x86_64 distribution with glibc 2.35 or later. Download and run, nothing to install.</td></tr>
+</table>
+<p>Only 64-bit PCs (x86_64) are supported for now. The <code>SHA256SUMS</code> file next to the
+  packages verifies the download: <code>sha256sum -c SHA256SUMS --ignore-missing</code>.</p>
+<p>Every package is tested before release on clean Ubuntu 22.04, 24.04 and 26.04 and Debian 12
+  and 13 systems.</p>
+
+<h2>Qt 6 or GTK2?</h2>
+<ul>
+  <li><b>Qt&nbsp;6 (<code>reportman-designer</code>)</b> is the recommended package: current look and
+    automatic HiDPI scaling, also with fractional factors (it follows the desktop scale; it can be
+    forced with <code>QT_SCALE_FACTOR=1.5 reportman-designer</code>).</li>
+  <li><b>GTK2 (<code>reportman-designer-gtk2</code>)</b> is the same designer built with GTK2, published
+    for one or two releases as an alternative. GTK2 is no longer maintained and Debian plans to remove
+    it, so this package will be discontinued. Use it only if your system has no Qt&nbsp;6 packages or
+    something fails with the Qt&nbsp;6 version (and please report it).</li>
+</ul>
+<p>Both packages install the same files and cannot be installed at the same time: installing one
+  replaces the other. Your preferences, connections and reports are shared by both.
+  <code>reportman-designer --version</code> shows which one you have: <code>(LCL qt6)</code> or
+  <code>(LCL gtk2)</code>.</p>
+<pre><code>sudo apt install ./reportman-designer-gtk2_4.0.16_amd64.deb   # switch to GTK2
+sudo apt install ./reportman-designer_4.0.16_amd64.deb        # back to Qt 6</code></pre>
+
+<h2>Install the .deb package (recommended)</h2>
+<ol>
+  <li>Download <code>reportman-designer_&lt;version&gt;_amd64.deb</code> (Qt&nbsp;6).</li>
+  <li>Install it with a double click (the desktop software installer opens it) or from a terminal,
+    in the download folder:
+<pre><code>sudo apt install ./reportman-designer_4.0.16_amd64.deb</code></pre>
+    The <code>./</code> tells <code>apt</code> that it is a local file and not a repository package;
+    <code>apt</code> downloads and installs all the dependencies.</li>
+</ol>
+<p>After the installation:</p>
+<ul>
+  <li><b>Report Manager Designer</b> is in the applications menu (Office).</li>
+  <li><code>.rep</code> files open in the designer with a double click (MIME type
+    <code>application/x-reportman-report</code>).</li>
+  <li>It can be started from a terminal: <code>reportman-designer [report.rep]</code>.
+    <code>reportman-designer --version</code> shows the version and the folders it uses, and
+    <code>man reportman-designer</code> has the help.</li>
+</ul>
+<table>
+  <tr><th>Path</th><th>Contents</th></tr>
+  <tr><td><code>/opt/reportman-designer/</code></td><td>The program, its translations and the sample reports (<code>samples/</code>)</td></tr>
+  <tr><td><code>/opt/reportman-designer/lib/</code></td><td>Qt&nbsp;6 only: <code>libQt6Pas</code>, the Lazarus binding to Qt&nbsp;6 (not packaged by Ubuntu 22.04/24.04 or Debian 12); the rest of Qt&nbsp;6 comes from the distribution</td></tr>
+  <tr><td><code>/usr/bin/reportman-designer</code></td><td>Link to the program</td></tr>
+  <tr><td><code>/usr/share/applications/reportman-designer.desktop</code></td><td>Menu entry</td></tr>
+  <tr><td><code>/usr/share/mime/packages/reportman-designer.xml</code></td><td>MIME type of <code>*.rep</code></td></tr>
+  <tr><td><code>/usr/share/icons/hicolor/*/apps/reportman-designer.*</code></td><td>Icons (16 to 512&nbsp;px and SVG)</td></tr>
+</table>
+<h3>Update and uninstall</h3>
+<p>To update, install the <code>.deb</code> of the new version the same way; <code>apt</code> replaces
+  the previous one (there is no <code>apt</code> repository with automatic updates yet). To uninstall:</p>
+<pre><code>sudo apt remove reportman-designer        # Qt 6 version
+sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
+<p>This removes the program, the menu entry, the icons and the <code>*.rep</code> association. Your
+  files are not touched: preferences (<code>~/.config/reportman/</code>), connections
+  (<code>~/.borland/</code>) and reports.</p>
+
+<h2>Use the AppImage</h2>
+<pre><code>chmod +x ReportManDesigner-4.0.16-x86_64.AppImage
+./ReportManDesigner-4.0.16-x86_64.AppImage [report.rep]</code></pre>
+<p>(or, in the file manager: Properties &rarr; Allow executing as program, then double click).
+  The AppImage is the Qt&nbsp;6 version and carries Qt&nbsp;6.2, <code>libQt6Pas</code>, GLib, ICU and
+  SQLite. From the system it uses what any desktop has: X11 or XWayland, fontconfig, FreeType,
+  HarfBuzz, fonts, <code>libEGL.so.1</code> and <code>libOpenGL.so.0</code> (packages
+  <code>libegl1</code> and <code>libopengl0</code>), CUPS to print and OpenSSL with the CA certificates
+  for the HTTPS connections to the Hub.</p>
+<ul>
+  <li>If it fails with a <b>FUSE</b> error, run it without mounting:
+    <code>./ReportManDesigner-4.0.16-x86_64.AppImage --appimage-extract-and-run</code>
+    (or install the <code>fuse3</code>/<code>fuse</code> package of your distribution).</li>
+  <li>The AppImage does not add itself to the menu nor associate <code>*.rep</code> files; use the
+    <code>.deb</code> or a tool such as AppImageLauncher or Gear Lever for that. To remove it, delete
+    the file.</li>
+</ul>
+
+<h2 id="dependencies">Dependencies</h2>
+<p><code>apt</code> installs them automatically; they are listed in case you install on an
+  unsupported distribution or something fails.</p>
+<ul>
+  <li><b>Qt&nbsp;6 package</b>: Qt 6.2 or later (<code>libqt6core6</code>, <code>libqt6gui6</code>,
+    <code>libqt6widgets6</code>, <code>libqt6printsupport6</code>, or their <code>&hellip;t64</code> names on
+    Ubuntu 24.04), <code>qt6-qpa-plugins</code>, <code>libstdc++6</code>, X11 and glibc 2.35 or later.
+    <code>libQt6Pas</code> is included in the package.</li>
+  <li><b>GTK2 package</b>: GTK2 (<code>libgtk2.0-0</code> or <code>libgtk2.0-0t64</code>), GLib, ATK,
+    Pango, Cairo, GDK-Pixbuf, X11 and glibc 2.34 or later.</li>
+  <li><b>Both</b>, loaded by the engine at run time: <code>libfreetype6</code>,
+    <code>libfontconfig1</code>, <code>libharfbuzz0b</code>, <code>libsqlite3-0</code>, an ICU library
+    between versions 70 and 78 (<code>libicu70</code> on Ubuntu 22.04, <code>libicu72</code> on Debian 12,
+    <code>libicu74</code> on Ubuntu 24.04&hellip;) and the <code>fonts-dejavu-core</code> fonts; for
+    HTTPS (the AI assistants and the <code>rpdbHttp</code> Reportman Agent driver), OpenSSL 3
+    (<code>libssl3</code>, 1.1 is also accepted) and <code>ca-certificates</code>.</li>
+  <li><b>Recommended</b>: <code>fonts-liberation</code> (metrics compatible with Arial, Times and
+    Courier), <code>libharfbuzz-subset0</code> (the PDF embeds only the characters used from each font)
+    and <code>libcups2</code> to print.</li>
+</ul>
+<p>Font selection and complex text shaping (Arabic, Hebrew, Devanagari&hellip;) use fontconfig,
+  HarfBuzz and ICU, see <a href="bidi_behavior.html">bidirectional text and complex scripts</a>.</p>
+
+<h2>First steps</h2>
+<ul>
+  <li>The sample reports are in <code>/opt/reportman-designer/samples/</code>. That folder is
+    read-only; copy it to modify the samples:
+    <code>cp -r /opt/reportman-designer/samples ~/reportman-samples</code>. The samples with data need
+    their connection: the test connections (for example <code>SQLITETEST</code>, SQLite over
+    <code>clientes.db</code>) are in <code>samples/dbxconnections.ini</code>.</li>
+  <li>The designer language (menus, toolbars, dialogs and messages) follows <code>LC_ALL</code>,
+    <code>LC_MESSAGES</code> or <code>LANG</code>, in that order: English, Spanish, Catalan, French,
+    German, Italian, Portuguese, Czech and Lithuanian. For example
+    <code>LANG=fr_FR.UTF-8 reportman-designer</code>.</li>
+  <li>The AI assistants need a <a href="https://app.reportman.es" target="_blank" rel="noopener">Reportman</a>
+    account: sign in from the AI panel of the designer (with an e-mail code or through your web
+    browser).</li>
+</ul>
+
+<h2>Wayland</h2>
+<p>In a Wayland session (GNOME, KDE Plasma&hellip;) the designer runs through XWayland, as an X11
+  application. The Qt&nbsp;6 version chooses X11 (<code>xcb</code>) unless the
+  <code>QT_QPA_PLATFORM</code> variable is set: with native Wayland, the application cannot position its
+  windows (the protocol does not allow it), so the designer could not restore its position nor
+  center its dialogs. To try native Wayland with the <code>.deb</code>:
+  <code>sudo apt install qt6-wayland</code> and <code>QT_QPA_PLATFORM=wayland reportman-designer</code>.
+  The AppImage only carries the X11 plugin of Qt, and the GTK2 version only works on X11/XWayland.</p>
+
+<h2>Configuration files</h2>
+<table>
+  <tr><th>What</th><th>Where</th></tr>
+  <tr><td>Designer preferences (window position, last folder)</td><td><code>~/.config/reportman/designer_lcl.ini</code> (honors <code>XDG_CONFIG_HOME</code>)</td></tr>
+  <tr><td>Database connections and drivers</td><td><code>~/.borland/dbxconnections</code> and <code>~/.borland/dbxdrivers</code>, shared with the other Report Manager tools</td></tr>
+  <tr><td>Connection templates for all users</td><td><code>/usr/local/etc/dbxconnections.conf</code> and <code>/usr/local/etc/dbxdrivers.conf</code>, copied to <code>~/.borland/</code> the first time (the same convention as the <a href="webserverintro.html">web report server</a>)</td></tr>
+  <tr><td>Report library connections</td><td><code>~/.repmandlib</code></td></tr>
+</table>
+
+<h2>Differences with the Windows designer</h2>
+<ul>
+  <li><b>SQL editor</b>: the Windows designer uses the Monaco editor (WebView2, Windows only). On Linux
+    the SQL editor is a native editor with syntax highlighting, completion of the tables and columns of
+    the schema (<kbd>Ctrl+Space</kbd>, and automatically after <code>.</code> and after
+    <code>FROM</code>/<code>JOIN</code>) and the <b>AI inline suggestion</b>: write a comment in natural
+    language, for example <code>-- customers with a balance</code>, and the AI proposes the SQL that
+    implements it as grey text at the cursor; <kbd>Tab</kbd> accepts it (one undo step),
+    <kbd>Esc</kbd> dismisses it.</li>
+  <li><b>AI chat</b>: the answers are shown with the native HTML viewer instead of a web view.</li>
+  <li><b>Reportman Agent driver</b>: the direct WebRTC (peer-to-peer) channel is Windows only; on Linux
+    the queries always go over HTTPS through the Hub (<code>api.reportman.es</code>), with the same
+    results and slightly more latency.</li>
+  <li><b>GTK2 version</b>: limited HiDPI scaling (texts and windows grow with the desktop DPI, but the
+    icons and the GTK2 widgets do not); use the Qt&nbsp;6 version.</li>
+</ul>
+<figure>
+<img src="images/linux-sql-ai-suggestion.webp" width="760" height="420" alt="AI inline suggestion in the SQL editor of the Linux designer" loading="lazy" decoding="async">
+<figcaption>The SQL editor on Linux: a comment in natural language (here in Spanish) and the SQL the AI proposes, accepted with Tab.</figcaption>
+</figure>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><b><code>error while loading shared libraries: libXXX.so</code></b> with the AppImage: a basic
+    desktop library is missing; install it with the package manager (for example
+    <code>libegl1</code> and <code>libopengl0</code>, <code>libharfbuzz0b</code>,
+    <code>libfontconfig1</code>) or use the <code>.deb</code>.</li>
+  <li><b><code>Could not load the Qt platform plugin "xcb"</code></b>: the Qt X11 plugin or one of its
+    libraries is missing. Check that <code>qt6-qpa-plugins</code> and <code>libqt6gui6</code> (or
+    <code>libqt6gui6t64</code>) are installed or, as a quick workaround, try the GTK2 package.</li>
+  <li><b><code>No ICU library found</code></b> when exporting or previewing: install the ICU library of
+    your distribution (<code>apt install libicu74</code>, <code>libicu72</code>&hellip;).</li>
+  <li><b><code>cannot open the display</code></b>: the designer needs a graphical desktop (X11, XWayland
+    or, with Qt&nbsp;6, Wayland); over SSH use <code>ssh -X</code> or a remote desktop.
+    <code>reportman-designer --version</code> and <code>--help</code> work without a display.</li>
+</ul>
+
+<h2>Other Linux tools</h2>
+<ul>
+  <li><a href="linuxprintreptopdf.html">printreptopdf</a>: command line tool that runs a report and
+    exports it to PDF, without a graphical desktop.</li>
+  <li><a href="webserverintro.html">Web Report Server</a>: self-hosted report server for Linux, also as
+    a Docker image.</li>
+  <li><a href="lazaruscomp.html">Lazarus packages</a>: the engine, the preview and the designer as
+    components for your own Free Pascal applications.</li>
+</ul>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>

@@ -201,9 +201,13 @@ Wayland nativo si está instalado `qt6-wayland`.
 
 ## Limitaciones conocidas de la versión Linux
 
-- **Editor SQL sin Monaco**: el editor Monaco (autocompletado, resaltado) usa
-  WebView2, que solo existe en Windows. En Linux el SQL y las expresiones se
-  editan con el editor de texto simple.
+- **Editor SQL sin Monaco**: el editor Monaco usa WebView2, que solo existe en
+  Windows (no habrá Monaco en Linux hasta que la LCL GTK3 esté lista). En
+  Linux el SQL se edita con un SynEdit con resaltado, completado de las tablas
+  y columnas del esquema (Ctrl+Espacio, y solo tras `.` y `FROM`/`JOIN`) y la
+  sugerencia de IA de Monaco: se escribe un comentario en lenguaje natural y
+  la IA propone el SQL en gris en el cursor; Tab lo acepta, Esc lo descarta.
+  Las respuestas del chat de IA se muestran con el visor HTML nativo.
 - **DataDirect solo por HTTP**: el canal directo WebRTC (P2P) del controlador
   *Reportman Agent* solo está en Windows. En Linux las consultas van siempre por
   HTTP a través del Hub (`api.reportman.es`), con los mismos resultados y algo
@@ -217,11 +221,6 @@ Wayland nativo si está instalado `qt6-wayland`.
   Qt 6.
 - **Wayland**: la versión Qt 6 va por XWayland salvo que se pida el Wayland
   nativo (ver [Wayland](#wayland)).
-- **Vista previa**: el texto que desborda su caja no se recorta y el HTML en
-  línea se pinta sin formato (pendiente en el motor LCL).
-- **Inspector de objetos**: algunos editores específicos (gráfico, código de
-  barras, imagen, expresión) todavía no tienen la misma funcionalidad que en
-  Windows.
 - Solo x86_64; arm64 más adelante.
 
 ## Problemas frecuentes

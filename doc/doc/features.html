@@ -63,10 +63,11 @@
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html">Linux (deprecated)</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li class="has-sub"><details class="doc-sub">
 <summary>Other languages</summary>
@@ -236,8 +237,11 @@
       <ul>
         <li> Opensource under the MPL license model. So, free inclusive for use 
           in commercial applications</li>
-        <li> <b>Cross platform</b> supporting <b>Windows and Linux</b> (Delphi/C++Builder; Kylix legacy)
+        <li> <b>Cross platform</b> supporting <b>Windows and Linux</b> (Delphi/C++Builder and
+          <a href="lazaruscomp.html">Lazarus/Free Pascal</a>; Kylix legacy)
         </li>
+        <li><b>Report Manager Designer for Windows and the <a href="installlin.html">Linux
+          desktop</a></b> (Qt&nbsp;6 <code>.deb</code> packages and AppImage).</li>
         <li>Can be used from any <a href="internatsupport.html" target="_blank" rel="noopener">programming 
           language</a>.</li>
         <li>New Linux 64bit support for printreptopdf command line tool.</li>
@@ -264,7 +268,8 @@
           define a export line and position to build custom text output.</li>
         <li>Exports to Excel (Windows), CSV file or plain text file or ready to print formated 
           file for dot matrix printers (multiple output formats).</li>
-        <li>Supports modern Delphi and C++Builder; older versions (legacy): Delphi 5E-6PE-7PE-8-XE 10.4, Kylix 2-3, C++Builder 4E</li>
+        <li>Supports modern Delphi and C++Builder, and Lazarus 3.0 or later with Free Pascal 3.2.2
+          (packages in the Lazarus Online Package Manager); older versions (legacy): Delphi 5E-6PE-7PE-8-XE 10.4, Kylix 2-3, C++Builder 4E</li>
         <li>You can print <b>texts (multiline), images, shapes, lines, barcodes (including QR),charts</b>...</li>
         <li><b>Multilanguage</b> support <b>for the interface and the reports</b>, 
           runtime and designer. A <b>translation application</b> is provided, 
@@ -324,7 +329,7 @@
         <li>Driver selection when designing the report (Windows GDI driver)
           </li>
         <li>You can <b>embed Report Manager Designer in your application</b>, 
-          just drop a TRpDesigner, component and use it.</li>
+          just drop a TRpDesigner component (TRpDesignerLCL in Lazarus) and use it.</li>
         <li>You can <b>open any querys or tables you need</b>, you usually link 
           secondary datasets to the main dataset or to other dataset linked to 
           the main dataset. </li>

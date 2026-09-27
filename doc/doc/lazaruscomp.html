@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lazarus and Free Pascal - Report Manager Docs</title>
+<meta name="description" content="Report Manager for Lazarus: engine with PDF export, LCL preview and embeddable designer from the Online Package Manager, with components on the palette.">
+<link rel="canonical" href="https://reportman.es/doc/lazaruscomp.html">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/doc/docs.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://reportman.es/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://reportman.es/doc/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Lazarus and Free Pascal",
+      "item": "https://reportman.es/doc/lazaruscomp.html"
+    }
+  ]
+}
+</script>
+</head>
+<body class="doc">
+<header class="doc-top">
+<a class="doc-brand" href="/">Report Manager</a>
+<a class="doc-back" href="/">&larr; Back to site</a>
+</header>
+<div class="doc-layout">
+<div class="doc-nav-wrap">
+<input type="checkbox" id="docnav" class="doc-nav-cb">
+<label for="docnav" class="doc-nav-btn">Documentation menu</label>
+<nav class="doc-nav" aria-label="Documentation menu">
+<details class="doc-sec">
+<summary>Introduction</summary>
+<ul>
+<li><a href="/doc/index.html">Application description</a></li>
+<li><a href="/doc/requirements.html">Hardware and software requirements</a></li>
+<li><a href="/doc/features.html">Features</a></li>
+<li><a href="/docnet/index.html">.NET library</a></li>
+<li><a href="/doc/howitwork.html">Engine overview</a></li>
+<li><a href="/doc/interoperability.html">Interoperability and standards</a></li>
+<li><a href="/tutorial/index.html">Quick tutorial</a></li>
+<li><a href="/doc/success.html">Successful projects</a></li>
+</ul>
+</details>
+<details class="doc-sec" open>
+<summary>Installation</summary>
+<ul>
+<li><a href="/doc/installwin.html">Microsoft Windows</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
+<li><a href="/doc/compileropts.html">Compilation options</a></li>
+<li><a href="/doc/delphicomp.html">Delphi</a></li>
+<li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html" class="current" aria-current="page">Lazarus / Free Pascal</a></li>
+<li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Other languages</summary>
+<ul>
+<li><a href="/doc/otherlang.html">Other languages</a></li>
+<li><a href="/doc/gnuc.html">GNU C</a></li>
+<li><a href="/doc/php.html">PHP</a></li>
+<li><a href="/doc/python.html">Python</a></li>
+<li><a href="/doc/python_bind.html">Python binding (reportman.py)</a></li>
+<li><a href="/doc/javascript.html">JavaScript</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Linux printreptopdf</summary>
+<ul>
+<li><a href="/doc/linuxcomp.html">Linux printreptopdf</a></li>
+<li><a href="/doc/linuxprintreptopdf.html">printreptopdf command line</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/visualnetcomp.html">Visual Studio .NET</a></li>
+<li><a href="/doc/delphinetcomp.html">Delphi for .NET (deprecated)</a></li>
+<li><a href="/doc/kylixcomp.html">Kylix (deprecated)</a></li>
+<li><a href="/doc/installwebreport.html">ActiveX IE plugin (deprecated)</a></li>
+<li><a href="/doc/deploy.html">Deploying Report Manager</a></li>
+<li><a href="/doc/installserver.html">Report Manager Server</a></li>
+<li><a href="/doc/dotnetport.html">.NET library setup</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>TCP Report Server</summary>
+<ul>
+<li><a href="/doc/serverintro.html">Introduction</a></li>
+<li><a href="/doc/serverserver.html">Report server</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Report client</summary>
+<ul>
+<li><a href="/doc/serverclient.html">Report client</a></li>
+<li><a href="/doc/serverclientcustom.html">Custom client</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/serverconfig.html">Configuration</a></li>
+<li><a href="/doc/serversmp.html">Multiprocessor support</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Web Report Server</summary>
+<ul>
+<li><a href="/doc/webserverintro.html">Introduction</a></li>
+<li><a href="/doc/webserverinstall.html">Installation</a></li>
+<li><a href="/doc/webserveroperations.html">Operations</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Basic report design</summary>
+<ul>
+<li><a href="/doc/openingdata.html">Opening the dataset</a></li>
+<li><a href="/doc/droppingfields.html">Dropping fields</a></li>
+<li><a href="/doc/pageheader.html">Page header and footer</a></li>
+<li><a href="/doc/reportheader.html">Subreport header and summary</a></li>
+<li><a href="/doc/groupheader.html">Group header and footer</a></li>
+<li><a href="/doc/pagesetup.html">Page setup and print options</a></li>
+<li><a href="/doc/reportgrid.html">Report grid</a></li>
+<li><a href="/doc/preferences.html">Designer preferences</a></li>
+<li><a href="/doc/usingcompo.html">Components in Delphi/Kylix/Builder</a></li>
+<li><a href="/doc/commandline.html">Command line tools</a></li>
+<li><a href="/doc/replibraries.html">Report libraries</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Advanced report design</summary>
+<ul>
+<li><a href="/doc/repparams.html">Using report parameters</a></li>
+<li><a href="/doc/linkedquerys.html">Linked queries</a></li>
+<li><a href="/doc/childsubreports.html">Child subreports</a></li>
+<li><a href="/doc/labels.html">Printing labels</a></li>
+<li><a href="/doc/externalsec.html">Report files sharing sections</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Expression evaluator</summary>
+<ul>
+<li><a href="/doc/exevaluator.html">Expression evaluator</a></li>
+<li><a href="/doc/drawfunctions.html">Draw functions</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>HTML and interpolation</summary>
+<ul>
+<li><a href="/doc/htmlformat.html">HTML and interpolation</a></li>
+<li><a href="/doc/htmloutput.html">Export to HTML</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/barcodes.html">Barcode printing</a></li>
+<li><a href="/doc/teechart.html">TeeChart support</a></li>
+<li><a href="/doc/internatsupport.html">International support</a></li>
+<li><a href="/doc/bidi_behavior.html">Bidirectional text and complex scripts</a></li>
+<li><a href="/doc/compsiterep.html">Composite reports</a></li>
+<li><a href="/doc/dotmatrix.html">Dot matrix and POS devices</a></li>
+<li><a href="/doc/openingdatatrouble.html">Database access information</a></li>
+<li><a href="/doc/formfilling.html">Form filling</a></li>
+<li><a href="/doc/customoutput.html">Custom text output</a></li>
+<li><a href="/doc/inmemorydata.html">In memory datasets</a></li>
+<li><a href="/doc/parallel.html">Parallel unions</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Component reference</summary>
+<ul>
+<li><a href="/doc/refcommon.html">Common properties</a></li>
+<li><a href="/doc/refcommontext.html">Text components</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>TRpReport</summary>
+<ul>
+<li><a href="/doc/refreport.html">TRpReport</a></li>
+<li><a href="/doc/refparameters.html">Report parameters (TRpParamList)</a></li>
+<li><a href="/doc/refdatainfo.html">Connection &amp; dataset collections</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/refsubreport.html">TRpSubReport</a></li>
+<li><a href="/doc/refsection.html">TRpSection</a></li>
+<li><a href="/doc/reflabel.html">TRpLabel</a></li>
+<li><a href="/doc/refexpression.html">TRpExpression</a></li>
+<li><a href="/doc/refdraw.html">TRpShape</a></li>
+<li><a href="/doc/refimage.html">TRpImage</a></li>
+<li><a href="/doc/refchart.html">TRpChart</a></li>
+<li><a href="/doc/refbarcode.html">TRpBarcode</a></li>
+<li><a href="/doc/refdatabaseinfo.html">Database connections</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Developer</summary>
+<ul>
+<li class="has-sub"><details class="doc-sub">
+<summary>License questions</summary>
+<ul>
+<li><a href="/doc/licensequestions.html">License questions</a></li>
+<li><a href="/doc/license.html">MPL 1.1 full text</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/translation.html">Translating Report Manager</a></li>
+<li><a href="/doc/building.html">Building binaries and tools</a></li>
+<li><a href="/doc/devdriver.html">Driver architecture</a></li>
+<li><a href="/doc/pdfoutput.html">PDF output implementation</a></li>
+<li><a href="/doc/units.html">Source code units</a></li>
+<li><a href="/doc/devnotes.html">Developer notes</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Release notes</summary>
+<ul>
+<li><a href="/doc/whatisnew.html">What is new</a></li>
+<li><a href="/doc/faq.html">F.A.Q.</a></li>
+<li><a href="/doc/knownissues.html">Known issues (deprecated)</a></li>
+</ul>
+</details>
+</nav>
+</div>
+<main class="doc-main">
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Lazarus and Free Pascal</span></nav>
+<h1>Lazarus and Free Pascal</h1>
+<p>Report Manager is available for <b>Lazarus and Free Pascal</b> as three packages: the reporting
+  engine with PDF export, the LCL preview and printing, and the visual report designer, which you can
+  embed in your own applications. The components are installed on the <b>Reportman</b> page of the
+  component palette. The packages run on Windows and Linux and use the same <code>.rep</code> report
+  files as the Delphi components, the .NET libraries and the Report Manager Designer.</p>
+<ul>
+  <li>Run reports and export them to <b>PDF</b> (also PDF/A-3 with embedded files), SVG, HTML, CSV,
+    plain text and the native metafile format, with or without a graphical interface.</li>
+  <li>Preview and print from LCL applications, with the same page layout as the PDF output.</li>
+  <li>Embed the <b>report designer</b> (<code>TRpDesignerLCL</code>) so your users can change reports
+    without changing your application, including the
+    <a href="https://ai.reportman.es" target="_blank" rel="noopener">AI assistants</a> for report design,
+    SQL and expressions.</li>
+  <li>Complex text shaping and bidirectional text on both platforms, see
+    <a href="bidi_behavior.html">bidirectional text and complex scripts</a>.</li>
+</ul>
+<p>The <a href="installlin.html">Linux desktop designer</a> is built from these same packages.</p>
+
+<h2>Requirements</h2>
+<ul>
+  <li>Lazarus 3.0 or later with Free Pascal 3.2.2 (tested with Lazarus 3.0 and 4.8).</li>
+  <li>Windows (win32/win64 widgetset) or Linux (Qt&nbsp;6, Qt&nbsp;5 or GTK2 widgetset); tested on
+    64-bit systems.</li>
+  <li>The <b>ZeosDBO</b> package (<code>zcomponent</code> 8.0) for database access. The Online Package
+    Manager installs it for you.</li>
+  <li>From Lazarus itself: LCL, Printer4Lazarus, DateTimeCtrls, TurboPowerIPro and SynEdit.</li>
+  <li>On Linux, at run time: FreeType, fontconfig, HarfBuzz and ICU (installed on any desktop; see the
+    <a href="installlin.html#dependencies">dependencies of the Linux designer</a>).</li>
+</ul>
+
+<h2>The packages</h2>
+<table>
+  <tr><th>Package</th><th>Contents</th><th>Requires</th></tr>
+  <tr><td><code>reportman_rtl</code><br><small><code>packages/fpc/</code></small></td>
+    <td>Non-visual engine: report model, expression evaluator, data access and the PDF, SVG, HTML,
+      CSV, text and metafile output.</td>
+    <td>FCL, zcomponent</td></tr>
+  <tr><td><code>reportman_lcl</code><br><small><code>packages/fpc_lcl/</code></small></td>
+    <td>LCL runtime: <code>TLCLReport</code>, preview window, page setup, parameters and printing.</td>
+    <td>reportman_rtl, LCL, Printer4Lazarus, DateTimeCtrls</td></tr>
+  <tr><td><code>reportman_designlcl</code><br><small><code>packages/fpc_lcl/</code></small></td>
+    <td>The embeddable visual designer <code>TRpDesignerLCL</code>, with the AI assistants.</td>
+    <td>reportman_rtl, reportman_lcl, LCL, TurboPowerIPro, SynEdit</td></tr>
+</table>
+<p>The three packages are <i>run and design time</i>: they register their components on the palette
+  and your applications use the same units at run time.</p>
+
+<h2>Install from the Online Package Manager</h2>
+<ol>
+  <li>In Lazarus, open <b>Package &rarr; Online Package Manager</b>.</li>
+  <li>Find <b>Report Manager</b> (category <i>Reporting</i>), check it and click <b>Install</b>.</li>
+  <li>Accept the installation of <b>ZeosDBO</b> when the package manager asks for it.</li>
+  <li>Let Lazarus rebuild and restart the IDE. The components appear on the <b>Reportman</b> page of
+    the component palette.</li>
+</ol>
+
+<h2>Install from the source code</h2>
+<ol>
+  <li>Get the source code from <a href="https://github.com/tonimartir/reportmandelphi" target="_blank" rel="noopener">GitHub</a>
+    or <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>.</li>
+  <li>Install ZeosDBO 8.0 (from the Online Package Manager, or its <code>zcomponent.lpk</code>).</li>
+  <li>Open <code>packages/fpc/reportman_rtl.lpk</code> and click <b>Compile</b>.</li>
+  <li>Open <code>packages/fpc_lcl/reportman_lcl.lpk</code> and choose <b>Use &rarr; Install</b>.</li>
+  <li>Open <code>packages/fpc_lcl/reportman_designlcl.lpk</code> and choose <b>Use &rarr; Install</b>;
+    Lazarus rebuilds the IDE.</li>
+</ol>
+<p>The packages can also be built from the command line with <code>lazbuild</code>, in the same order
+  (<code>packages/fpc/build_fpc.bat</code> on Windows, <code>build_fpc.sh</code> on Linux).</p>
+
+<h2>Components on the palette</h2>
+<table>
+  <tr><th>Component</th><th>Package</th><th>Use</th></tr>
+  <tr><td><code>TLCLReport</code></td><td>reportman_lcl</td><td>Loads a report, previews or prints it, and saves it to PDF, text or metafile.</td></tr>
+  <tr><td><code>TRpPreviewControl</code></td><td>reportman_lcl</td><td>Preview control to place in your own forms.</td></tr>
+  <tr><td><code>TPDFReport</code></td><td>reportman_rtl</td><td>Runs a report and writes the PDF file, without any user interface (console programs, services, web servers).</td></tr>
+  <tr><td><code>TRpDesignerLCL</code></td><td>reportman_designlcl</td><td>Opens the report designer for a report and saves the result.</td></tr>
+  <tr><td><code>TRpRulerLCL</code></td><td>reportman_designlcl</td><td>The ruler control of the designer.</td></tr>
+  <tr><td><code>TRpEvaluator</code></td><td>reportman_rtl</td><td>The expression evaluator of the engine, see <a href="exevaluator.html">expression evaluator</a>.</td></tr>
+  <tr><td><code>TRpAlias</code></td><td>reportman_rtl</td><td>Assigns your own open datasets to the datasets of a report.</td></tr>
+  <tr><td><code>TRpTranslator</code>, <code>TRpLastUsedStrings</code>, <code>TRpMaskEdit</code></td><td>reportman_rtl, reportman_lcl</td><td>Helpers: translations, most recently used lists and masked input.</td></tr>
+</table>
+
+<h2>Examples</h2>
+<h3>Preview, print or export a report</h3>
+<p>Drop a <code>TLCLReport</code> on a form:</p>
+<pre><code>procedure TForm1.ButtonPreviewClick(Sender: TObject);
+begin
+  LCLReport1.Filename := 'sample4.rep';
+  LCLReport1.Preview := True;    // False prints the report
+  LCLReport1.Execute;
+end;
+
+procedure TForm1.ButtonPDFClick(Sender: TObject);
+begin
+  LCLReport1.Filename := 'sample4.rep';
+  LCLReport1.SaveToPDF('sample4.pdf');
+end;</code></pre>
+
+<h3>PDF from a program without user interface</h3>
+<p>A console program that only needs the <code>reportman_rtl</code> package (add it in
+  <b>Project &rarr; Project Inspector &rarr; Add &rarr; New Requirement</b>). On Linux,
+  <code>cthreads</code> and <code>cwstring</code> must be the first units, as in any Free Pascal
+  program that uses threads and Unicode strings:</p>
+<pre><code>program reptopdf;
+{$mode objfpc}{$H+}
+uses
+  {$IFDEF UNIX}cthreads, cwstring,{$ENDIF}
+  Classes, SysUtils, rppdfreport;
+var
+  Pdf: TPDFReport;
+begin
+  Pdf := TPDFReport.Create(nil);
+  try
+    Pdf.Filename := 'sample4.rep';
+    Pdf.PDFFilename := 'sample4.pdf';
+    Pdf.Execute;
+  finally
+    Pdf.Free;
+  end;
+end.</code></pre>
+
+<h3>Let your users edit the reports</h3>
+<p>Drop a <code>TRpDesignerLCL</code> on a form. <code>Execute</code> opens the designer and returns
+  <code>True</code> when the user accepts the changes, which are saved to the file (or, with the
+  <code>OnSave</code> event or <code>SaveToStream</code>, wherever you keep your reports, for example a
+  database):</p>
+<pre><code>procedure TForm1.ButtonDesignClick(Sender: TObject);
+begin
+  RpDesignerLCL1.Filename := 'sample4.rep';
+  if RpDesignerLCL1.Execute then
+    ShowMessage('The report has been saved');
+end;</code></pre>
+
+<h2>Data access</h2>
+<p>Reports connect to their databases with the same connection definitions as the designer
+  (<code>dbxconnections</code>, see <a href="refdatabaseinfo.html">database connections</a>): Zeos
+  connections for Firebird, PostgreSQL, MySQL/MariaDB, SQLite and other databases, and the
+  <b>Reportman DB Agent</b> driver, which runs the queries on a remote database through the Hub
+  (<code>api.reportman.es</code>) without opening ports or a VPN. You can also assign your own open
+  datasets to the report with <code>TRpAlias</code>.</p>
+
+<h2>Notes</h2>
+<ul>
+  <li><b>HTTPS</b> (the AI assistants and the Reportman DB Agent driver) uses OpenSSL, loaded at run
+    time. On Windows, distribute <code>libssl-3-x64.dll</code> and <code>libcrypto-3-x64.dll</code>
+    (<code>libssl-3.dll</code> and <code>libcrypto-3.dll</code> for 32 bits) next to your executable;
+    on Linux the system <code>libssl</code> and CA certificates are used. Without OpenSSL, only the
+    HTTPS connections fail.</li>
+  <li><b>SQL editor of the designer</b>: on Windows it is the Monaco editor (it needs the Microsoft Edge
+    WebView2 runtime, included in current Windows 10 and 11); on Linux, a native editor with schema completion
+    and the AI inline suggestion. See <a href="installlin.html">the Linux designer</a> for the
+    differences.</li>
+  <li>The engine source is shared with the Delphi components: bug fixes reach both.</li>
+</ul>
+</main>
+</div>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
+</body>
+</html>

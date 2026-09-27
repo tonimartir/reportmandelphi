@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release notes and version history - Report Manager Docs</title>
-<meta name="description" content="Version 4.0.10 release notes: AI Copilot, AI report generation, SQL autocomplete, DB Agent connections, undo/redo, plus the full version history.">
+<meta name="description" content="Version 4.0.16 release notes: Linux desktop designer, Lazarus packages with PDF export, preview and designer, AI assistants on Linux, plus version history.">
 <link rel="canonical" href="https://reportman.es/doc/whatisnew.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -63,10 +63,11 @@
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html">Linux (deprecated)</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li class="has-sub"><details class="doc-sub">
 <summary>Other languages</summary>
@@ -228,6 +229,35 @@
 <h2>Release notes</h2>
     <h3><b>What is new</b></h3>
     
+    <p>Version 4.0.16 include these new features (September 2026)</p>
+    <ul>
+      <li><b>Report Manager Designer for the Linux desktop</b> &mdash; the full
+        designer, built with Lazarus and Qt&nbsp;6: a <code>.deb</code> package for
+        Ubuntu 22.04+ and Debian 12+, an AppImage for other distributions and a
+        transitional GTK2 package. Menus and dialogs follow the language of the
+        desktop. See <a href="installlin.html">Linux desktop designer</a>.</li>
+      <li><b>Lazarus and Free Pascal packages</b> &mdash; the reporting engine with
+        PDF export, the LCL preview and printing, and the embeddable report
+        designer, for Windows and Linux. Install them from the Lazarus Online
+        Package Manager; the components appear on the <i>Reportman</i> page of
+        the component palette. See <a href="lazaruscomp.html">Lazarus / Free Pascal</a>.</li>
+      <li><b>AI assistants on Linux and in Lazarus</b> &mdash; report design, SQL
+        with your schema and expressions, as in the Windows designer. AI changes
+        to a report can be undone step by step.</li>
+      <li><b>AI SQL suggestion in the Linux SQL editor</b> &mdash; write a comment in
+        natural language and the AI proposes the SQL that implements it at the
+        cursor; <kbd>Tab</kbd> accepts it. The editor also completes the tables and
+        columns of your schema.</li>
+      <li>The Linux report server tools (Web Report Server, printreptopdf) no longer
+        need <code>libmidas.so</code>.</li>
+      <li>The ActiveX control registers again on Windows XP.</li>
+      <li>Fixes found while porting the engine to Free Pascal, which also reach the
+        Delphi engine: bold and italic of the base font in shaped text (right to
+        left and HTML) in PDF output, justification of right-to-left text,
+        memory leaks of embedded files, and the chart Y axis range saved only when
+        it is not the default.</li>
+    </ul>
+
     <p>Version 4.0.10 include this new features (June 2026)</p>
     <ul>
       <li><b>AI Copilot</b> in the Report Designer to help you edit, create,

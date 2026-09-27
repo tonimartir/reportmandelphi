@@ -3,28 +3,28 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://reportman.es/</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-09-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
   </url>
   <url>
     <loc>https://reportman.es/indexes.html</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-09-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
   </url>
   <url>
     <loc>https://reportman.es/download.html</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-09-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/download.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/downloades.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/download.html"/>
   </url>
   <url>
     <loc>https://reportman.es/downloades.html</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-09-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/download.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/downloades.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/download.html"/>
@@ -189,11 +189,11 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/faq.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/features.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/formfilling.html</loc>
@@ -217,15 +217,19 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/index.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/inmemorydata.html</loc>
     <lastmod>2026-05-23</lastmod>
   </url>
   <url>
+    <loc>https://reportman.es/doc/lazaruscomp.html</loc>
+    <lastmod>2026-09-28</lastmod>
+  </url>
+  <url>
     <loc>https://reportman.es/doc/installlin.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/installserver.html</loc>
@@ -237,7 +241,7 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/installwin.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/internatsupport.html</loc>
@@ -245,7 +249,7 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/interoperability.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/javascript.html</loc>
@@ -405,7 +409,7 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/requirements.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/serverclient.html</loc>
@@ -449,7 +453,7 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/usingcompo.html</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/visualnetcomp.html</loc>
@@ -469,7 +473,7 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/whatisnew.html</loc>
-    <lastmod>2026-06-17</lastmod>
+    <lastmod>2026-09-28</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/units/rpactivexreport.html</loc>

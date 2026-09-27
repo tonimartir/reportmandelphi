@@ -52,6 +52,11 @@
     },
     {
       "@type": "Question",
+      "name": "Is there a Report Manager Designer for Linux?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Since version 4.0.16 the full designer runs on the Linux desktop, built with Lazarus and Qt 6: a .deb package for Ubuntu 22.04 or later and Debian 12 or later, and an AppImage for other x86_64 distributions. It includes preview, PDF export, printing and the AI assistants." }
+    },
+    {
+      "@type": "Question",
       "name": "Can I contribute to the Report Manager project?",
       "acceptedAnswer": { "@type": "Answer", "text": "Yes. Enhancements and new modules for the engine are welcome, and you can report bugs and bug-fix ideas. You can also contract the author's services and pay for new features." }
     },
@@ -106,10 +111,11 @@
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
-<li><a href="/doc/installlin.html">Linux (deprecated)</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
 <li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
 <li class="has-sub"><details class="doc-sub">
 <summary>Other languages</summary>
@@ -285,7 +291,8 @@
 <p>a) <code>In <b>native mode</b> (linked inside the executable or as a package):<br>
   - Delphi and C++Builder (legacy versions 4 to 7 and later releases).<br>
   - Kylix 1,2,3 Desktop and Enterprise, Kylix 1,2,3 Open Edition-FreeCLX (legacy).<br>
-  - FreePascal/Lazarus.<br>
+  - Lazarus 3.0 or later with Free Pascal 3.2.2, on Windows and Linux (see
+  <a href="lazaruscomp.html">Lazarus / Free Pascal</a>).<br>
   b) . In <b>ActiveX mode</b> (distribution of Reportman.ocx-Windows only needed):<br>
   - Any Delphi/C++Builder version accepting ActiveX controls<br>
   - Any development environment accepting ActiveX controls, Visual C++, Visual
@@ -297,6 +304,11 @@
   - Any compiler or development environment capable of using standard C shared
   library functions, that is GCC compiler, FreePascal compiler..., distribution
   of reportmanapiqt.so/reportmanapi.so (Linux) and Reportman.ocx needed.</code>
+<p><b>Q. Is there a Report Manager Designer for Linux?</b></p>
+<p>A. Yes. Since version 4.0.16 the full designer runs on the Linux desktop, built with
+  Lazarus and Qt&nbsp;6: a <code>.deb</code> package for Ubuntu 22.04 or later and Debian 12 or
+  later, and an AppImage for other x86_64 distributions. It includes preview, PDF export,
+  printing and the AI assistants. See <a href="installlin.html">Linux desktop designer</a>.</p>
 <p><b>Q. How can I set report parameters at runtime?</b> </p>
 <p>A. <code>CLXReport1.Report.Params.ParamByName('CUSTOMERINI').Value:=2;</code></p>
 <p><b>Q. How can I show the parameters before executing?</b></p>
@@ -382,10 +394,10 @@ Note: When assigning text or expression properties declare the variables
   real hard work of printing, Report Manager only search for the best suited font 
   (a printer font) in Windows font list, select it and call Windows specific API 
   to draw the text (this is the behaviour for use device fonts option)</p>
-<p>For Linux, Report Manager uses the Kylix graphic engine that uses the Qt graphic
-  engine, the Qt graphics engine writes output usually in postscript and then the
-  printer filter transform it to a understandable language to the printer (usually
-  this work is done by ghostscript).</p>
+<p>On Linux, printing goes through the Lazarus printing support and CUPS: the output
+  is sent usually as PostScript or PDF and the printer filter transforms it to a language
+  the printer understands (usually this work is done by Ghostscript). Older versions used
+  the Kylix graphic engine (legacy) in the same way.</p>
 <p>So you can use a printer filter to convert postscript to text or better is the
   use of dot matrix and pos device feature, see documentation, the engine can 
   generate text output with printer escape codes in Windows and Linux. See documentation.</p>

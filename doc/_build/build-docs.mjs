@@ -36,10 +36,11 @@ const NAV = [
   ]],
   ['Installation', [
     ['Microsoft Windows', '/doc/installwin.html'],
-    ['Linux (deprecated)', '/doc/installlin.html'],
+    ['Linux desktop designer', '/doc/installlin.html'],
     ['Compilation options', '/doc/compileropts.html'],
     ['Delphi', '/doc/delphicomp.html'],
     ['C++Builder', '/doc/buildercomp.html'],
+    ['Lazarus / Free Pascal', '/doc/lazaruscomp.html'],
     ['ActiveX', '/doc/axtivexcomp.html'],
     ['Other languages', '/doc/otherlang.html', [
       ['GNU C', '/doc/gnuc.html'],
@@ -360,7 +361,11 @@ function buildIndex(dirAbs, webPath, title, desc, opts){
   const ov = META_OVERRIDES[webPath] || {};
   const ftitle = ov.title || title;
   const fdesc = ov.desc || desc;
-  const src = decode(fs.readFileSync(fs.existsSync(rightAbs) ? rightAbs : idxAbs));
+  // right.html is the old frame content only on the first run; afterwards it is
+  // the redirect stub written below and must not replace the index content
+  const rightIsContent = fs.existsSync(rightAbs) &&
+    !/http-equiv=["']?refresh/i.test(fs.readFileSync(rightAbs, 'latin1'));
+  const src = decode(fs.readFileSync(rightIsContent ? rightAbs : idxAbs));
   const content = transformContent(parsePage(src, ftitle).content, ftitle);
   const nav = navHtmlFrom(opts.sections, webPath, opts.menuLabel);
   const crumbs = opts.crumbs(ftitle, webPath);

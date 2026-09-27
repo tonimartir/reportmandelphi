@@ -102,7 +102,7 @@
   },
   "/doc/installlin.html": {
     "title": "Install Report Manager Designer on Linux",
-    "desc": "Install the Report Manager Designer on Linux from RPM or tar.gz, set LD_LIBRARY_PATH, and configure database, printer and kprinter settings."
+    "desc": "Install the Report Manager Designer on the Linux desktop: Qt 6 .deb for Ubuntu 22.04+ and Debian 12+, AppImage or GTK2 package, dependencies and Wayland."
   },
   "/doc/installserver.html": {
     "title": "Install the Report Manager server",
@@ -466,7 +466,7 @@
   },
   "/doc/whatisnew.html": {
     "title": "Release notes and version history",
-    "desc": "Version 4.0.10 release notes: AI Copilot, AI report generation, SQL autocomplete, DB Agent connections, undo/redo, plus the full version history."
+    "desc": "Version 4.0.16 release notes: Linux desktop designer, Lazarus packages with PDF export, preview and designer, AI assistants on Linux, plus version history."
   },
   "/tutorial/dropping.html": {
     "title": "Tutorial: dropping labels and fields",
@@ -482,5 +482,9 @@
   },
   "/tutorial/testing.html": {
     "desc": "Preview a report to repeat the detail per record, then print it, save it as a metafile for metaview.exe, or export to compressed or plain Adobe PDF."
+  },
+  "/doc/lazaruscomp.html": {
+    "title": "Lazarus and Free Pascal",
+    "desc": "Report Manager for Lazarus: engine with PDF export, LCL preview and embeddable designer from the Online Package Manager, with components on the palette."
   }
 }
