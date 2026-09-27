@@ -1406,7 +1406,7 @@ var
   SRpMetadata: WideString = 'Metadata';
   SRpEmbeddedFile: WideString = 'Embedded file';
   SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
-  SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModificationDateISO: WideString = 'Modification date (ISO8601)';
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
   SRpSAnnotation: WideString = 'Annotation Expression';
