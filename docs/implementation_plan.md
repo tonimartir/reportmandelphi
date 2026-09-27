@@ -14,8 +14,8 @@ de estabilización y la Fase 6, por Claude.
 
 - Motor de informes compilable con FPC 3.2.2 en Windows y Linux, con salida
   PDF/SVG/PNG/texto y el mismo resultado que la versión Delphi.
-- Vista previa y diseñador LCL (Lazarus 4.x; Linux con GTK2) equivalentes al
-  diseñador VCL de Delphi.
+- Vista previa y diseñador LCL (Lazarus 4.x; Linux con Qt6, y GTK2 como
+  paquete de transición) equivalentes al diseñador VCL de Delphi.
 - Todo ello **sin cambiar el producto Delphi**, que comparte las unidades del
   motor.
 
@@ -112,7 +112,8 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
   defecto en inglés) y traducir también los textos propios de la LCL
   (`LCLStrConsts`) con los `.po` de Lazarus. El idioma ya se detecta en
   Linux (`LC_ALL`/`LC_MESSAGES`/`LANG`).
-- **Widgetset de Linux** (decidido 27-09-2026, en implementación): Qt6 pasa a
+- **Widgetset de Linux** (decidido 27-09-2026; empaquetado hecho, ver
+  `fase6_plan.md` 6.8, falta probarlo en un escritorio real): Qt6 pasa a
   ser el principal (`.deb` `reportman-designer` y AppImage), con
   `libQt6Pas` 6.2.10 compilada en el builder e incluida en el paquete; GTK2 se
   mantiene como `.deb` de transición (`reportman-designer-gtk2`) hasta que

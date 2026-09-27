@@ -1,8 +1,9 @@
 # Fase 6: genera los paquetes Linux del disenador (Report Manager Designer,
-# LCL/GTK2) desde Windows, con el Docker que corre dentro de WSL.
+# LCL Qt6 y GTK2) desde Windows, con el Docker que corre dentro de WSL.
 #
-#   .\build-linux.ps1               # imagen + compilacion + selftest + .deb +
-#                                   # AppImage + pruebas en maquinas limpias
+#   .\build-linux.ps1               # imagen + compilacion Qt6 y GTK2 + selftest
+#                                   # de ambas + los dos .deb + AppImage +
+#                                   # pruebas en maquinas limpias
 #   .\build-linux.ps1 -SkipTests    # sin las pruebas en contenedores limpios (6.6)
 #   .\build-linux.ps1 -SkipImage    # reutiliza la imagen ya construida
 #   .\build-linux.ps1 -NoCache      # reconstruye la imagen desde cero
@@ -12,8 +13,11 @@
 # este script y copia los paquetes a release_<v>\Linux\ con SHA256SUMS.
 #
 # Salida (ignorada por git): build\linux\out\<version>\ con
-#   reportman-designer_<v>_amd64.deb, ReportManDesigner-<v>-x86_64.AppImage,
-#   build-info.txt, lintian.txt, selftest.log y tests\ (registros y capturas).
+#   reportman-designer_<v>_amd64.deb        (Qt6, el recomendado)
+#   reportman-designer-gtk2_<v>_amd64.deb   (GTK2, transitorio)
+#   ReportManDesigner-<v>-x86_64.AppImage   (Qt6)
+#   build-info.txt, lintian-<paquete>.txt, selftest-<ws>.log y tests\
+#   (registros y capturas).
 # La version sale de RM_VERSION en rpmdconsts.pas.
 [CmdletBinding()]
 param(
@@ -28,7 +32,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$Image    = 'reportman-linux-builder:fpc3.2.2-laz4.8'
+$Image    = 'reportman-linux-builder:fpc3.2.2-laz4.8-qt6'
 
 function Fail([string]$m) { Write-Host ""; Write-Host "ERROR: $m" -ForegroundColor Red; exit 1 }
 function Info([string]$m) { Write-Host $m -ForegroundColor Cyan }
@@ -127,7 +131,7 @@ if ($Qt5Spike) {
 }
 
 if (-not $SkipTests) {
-  Info "== Pruebas en maquinas limpias (test-packages.sh: ubuntu:22.04, ubuntu:24.04, debian:12)"
+  Info "== Pruebas en maquinas limpias (test-packages.sh: 3 paquetes en ubuntu:22.04, ubuntu:24.04, debian:12, debian:13, ubuntu:26.04)"
   Invoke-Wsl 'test-packages.sh' @('bash', "$WslRepo/build/linux/test-packages.sh", $WslOut)
 }
 

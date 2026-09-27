@@ -1,9 +1,12 @@
 # Overrides de lintian para reportman-designer (paquete de terceros, se
 # distribuye desde reportman.es; no esta pensado para el archivo de Debian).
+# make-deb.sh los instala tambien en reportman-designer-gtk2, cambiando el
+# nombre del paquete.
 
 # Decision de la Fase 6: programa autocontenido en /opt/reportman-designer
-# (binario, traducciones y ejemplos juntos), facil de desinstalar. El motor
-# busca las traducciones junto al ejecutable.
+# (binario, traducciones y ejemplos juntos, y en la variante Qt6 su libreria
+# privada lib/libQt6Pas.so.*), facil de desinstalar. El motor busca las
+# traducciones junto al ejecutable.
 reportman-designer: dir-or-file-in-opt
 
 # Free Pascal 3.2.2 enlaza con su propio codigo de arranque: no genera

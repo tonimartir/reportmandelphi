@@ -31,13 +31,14 @@ hoy `build/sourceforge/*.ps1` genera los instaladores de Windows.
 
 | Subfase | Estado | Resumen |
 |---|---|---|
-| 6.1 Ejecutable | Hecho; falta la verificación manual en VM | `repman/lcl_designer/repmandesigner_lcl.lpi` (ver nota); compila en Windows y en el contenedor; spike Qt5 hecho |
+| 6.1 Ejecutable | Hecho; falta la verificación manual en VM | `repman/lcl_designer/repmandesigner_lcl.lpi` (ver nota); compila en Windows y en el contenedor (GTK2 y Qt6); spike Qt5 hecho |
 | 6.2 Escritorio | Hecho; falta probarlo en un escritorio real | `.desktop`, iconos hicolor 16–512 + SVG, MIME `application/x-reportman-report` |
-| 6.3 Docker | Hecho | `build/linux/`: un comando (`build-linux.ps1`) compila, pasa el selftest, empaqueta y prueba |
-| 6.4 `.deb` | Hecho | `reportman-designer_4.0.16_amd64.deb` (≈4 MB), lintian sin avisos (overrides justificados) |
-| 6.5 AppImage | Hecho | `ReportManDesigner-4.0.16-x86_64.AppImage` (≈30 MB) |
-| 6.6 Pruebas | Automáticas hechas; manuales pendientes | `test-packages.sh`: `.deb` y AppImage en Ubuntu 22.04, 24.04 y Debian 12 en contenedores limpios |
-| 6.7 Publicación | Enganchada al release; subir a mano | Tarea `build/sourceforge/06-linux-designer.ps1` de `make-release.ps1`: paquetes + `SHA256SUMS` en `release_<v>\Linux\` |
+| 6.3 Docker | Hecho | `build/linux/`: un comando (`build-linux.ps1`) compila Qt6 y GTK2, pasa los dos selftest, empaqueta y prueba |
+| 6.4 `.deb` | Hecho | `reportman-designer_4.0.16_amd64.deb` (Qt6, ≈4,2 MB) y `reportman-designer-gtk2_4.0.16_amd64.deb` (GTK2, ≈3,9 MB); lintian sin avisos (overrides justificados) |
+| 6.5 AppImage | Hecho | `ReportManDesigner-4.0.16-x86_64.AppImage` (Qt6, ≈31 MB) |
+| 6.6 Pruebas | Automáticas hechas; manuales pendientes | `test-packages.sh`: los tres paquetes en Ubuntu 22.04, 24.04, 26.04 y Debian 12, 13 en contenedores limpios |
+| 6.7 Publicación | Enganchada al release; subir a mano | Tarea `build/sourceforge/06-linux-designer.ps1` de `make-release.ps1`: los tres paquetes + `SHA256SUMS` en `release_<v>\Linux\` |
+| 6.8 Qt6 | Hecho; falta probarlo en un escritorio real (X11 y Wayland) | Qt6 pasa a ser el paquete recomendado; GTK2 queda como transitorio (ver 6.8) |
 
 Guía de instalación para usuarios: `docs/linux-install.md`.
 
@@ -45,7 +46,7 @@ Guía de instalación para usuarios: `docs/linux-install.md`.
 
 | Decisión | Recomendación | Motivo |
 |---|---|---|
-| Widgetset | **GTK2 en la primera versión**; evaluar Qt5 en 6.1 | GTK2 ya funciona y está verificado. GTK2 está obsoleto a medio plazo (Qt5/Qt6 dan mejor HiDPI y aspecto moderno), pero cambiar ahora retrasa la entrega. El criterio para cambiar: HiDPI y aspecto en Ubuntu 24.04+ |
+| Widgetset | ~~GTK2 en la primera versión; evaluar Qt5 en 6.1~~ **Decidido (27-09-2026): Qt6 principal; GTK2 transitorio hasta Debian 14**; GTK3 y Qt5 no se distribuyen | GTK2 funcionaba y estaba verificado, pero está abandonado (Debian 14 prevé retirarlo) y su HiDPI solo admite factores enteros. Qt6 da aspecto actual y HiDPI fraccionario, y el spike de widgetsets lo validó (compila, selftest, Ubuntu 22.04–26.04 y Debian 12–13). Se publican `reportman-designer` (Qt6), `reportman-designer-gtk2` (GTK2, una o dos versiones más) y la AppImage Qt6 (ver 6.8) |
 | Distro mínima | **Ubuntu 22.04 / Debian 12** (glibc 2.35) | Lo compilado en la distro más antigua funciona en las nuevas. Coincide con la base de `repweb` |
 | Arquitecturas | **x86_64**; arm64 más adelante | FPC/Lazarus soportan aarch64, pero duplica pruebas |
 | Prefijo de instalación | **`/opt/reportman-designer`** + enlace en `/usr/bin` | Programa autocontenido con sus datos, fácil de desinstalar |
@@ -126,7 +127,8 @@ Guía de instalación para usuarios: `docs/linux-install.md`.
   `sample4.rep` igual que GTK2 (`build/linux/spike-qt5.sh`,
   `build-linux.ps1 -Qt5Spike`). Distribuir Qt5 obligaría a incluir
   `libQt5Pas.so.1` en los paquetes (las distros LTS traen versiones viejas).
-  Falta comparar HiDPI en un escritorio real; de momento se mantiene GTK2.
+  El spike posterior de widgetsets (GTK2, GTK3, Qt5, Qt6) llevó a elegir Qt6:
+  ver 6.8.
 - Pendiente: la verificación manual (WSLg y VM con xrdp; lista en 6.6).
 
 ### 6.2 Integración con el escritorio Linux
@@ -175,8 +177,11 @@ Carpeta `build/linux/`:
 
 - `Dockerfile.builder`: Ubuntu 22.04; FPC 3.2.2 y Lazarus 4.8 (la versión de
   Windows) desde los `.deb` oficiales de SourceForge; linuxdeploy
-  1-alpha-20251107-1, linuxdeploy-plugin-gtk (commit 7a3fbc3), appimagetool
-  1.9.1 y el runtime type2 20251108. Todo con sha256 en `ARG`.
+  1-alpha-20251107-1, appimagetool 1.9.1 y el runtime type2 20251108. Todo con
+  sha256 en `ARG`. Desde 6.8: Qt 6.2.4 de desarrollo (`qt6-base-dev`,
+  `qmake6`, `qt6-qpa-plugins`), `patchelf` y la libQt6Pas 6.2.10 compilada en
+  su propia capa (ver 6.8); ya no usa linuxdeploy-plugin-gtk. Etiqueta
+  `reportman-linux-builder:fpc3.2.2-laz4.8-qt6`.
 - **Zeos se fija dentro de la imagen** (decisión tomada): commit `c527f51a` de
   la rama 8.0-patches (Zeos 8.0.1-beta), el commit en el que se basa la copia
   local `zeosxe10`. La copia local lleva además 9 cambios propios (Delphi Linux,
@@ -185,9 +190,13 @@ Carpeta `build/linux/`:
   con `--add-package-link` (Zeos y los tres paquetes), `build_fpc.sh clean`
   (una pasada por paquete desde 57961c6), diseñador en Release,
   `LclDesignerTest --selftest` bajo `xvfb-run` (fallo = build roto), `.deb` +
-  lintian (un error = build roto) + AppImage, y `build-info.txt`. Tarda unos
-  75 s. `build-linux.ps1 -Qt5Spike` completo, con la imagen construida desde
-  cero (descarga ~250 MB) y las 6 pruebas de 6.6, tardó 12,5 min.
+  lintian (un error = build roto) + AppImage, y `build-info.txt`. Desde 6.8 lo
+  hace dos veces, Qt6 y GTK2, cada una en su copia (`/build/src-qt6`,
+  `/build/src-gtk2`: los paquetes no separan la salida por widgetset) y con su
+  `--pcp`; los dos selftest rompen la build. Tarda unos 145 s (antes 75 s).
+  `build-linux.ps1 -Qt5Spike` completo, con la imagen construida desde
+  cero (descarga ~250 MB) y las 6 pruebas de 6.6, tardó 12,5 min (antes de
+  6.8).
 - `build-linux.ps1`: un solo comando desde Windows (Docker dentro de WSL)
   construye la imagen, compila, empaqueta y ejecuta las pruebas de 6.6. Deja
   todo en `build\linux\out\<versión>\` (ignorado por git); `-Qt5Spike` repite
@@ -224,7 +233,10 @@ Carpeta `build/linux/`:
 - Verificación: `sudo apt install ./reportman-designer_<ver>_amd64.deb` en un
   Ubuntu limpio instala todo sin pasos manuales; `apt remove` lo deja limpio.
 
-**Estado (hecho):** `make-deb.sh`, unos 4 MB (xz). Diferencias con lo previsto:
+**Estado (hecho):** `make-deb.sh`, unos 4 MB (xz). Desde 6.8 arma dos
+variantes: `reportman-designer` (Qt6) y `reportman-designer-gtk2`; lo que
+sigue describe la GTK2 y lo común (las dependencias Qt6 están en 6.8).
+Diferencias con lo previsto:
 
 - `Depends` = lo que calcula `dpkg-shlibdeps` sobre el binario (GTK2, GLib,
   ATK, Pango, Cairo, GDK-Pixbuf, X11, libc6 ≥ 2.34), con alternativas `t64`
@@ -255,7 +267,9 @@ Carpeta `build/linux/`:
 - Nombre: `ReportManDesigner-<ver>-x86_64.AppImage`.
 - Verificación: arranca en Ubuntu 22.04, 24.04 y Debian 12 sin instalar nada.
 
-**Estado (hecho):** `make-appimage.sh`, unos 29 MB. El AppDir reutiliza el
+**Estado (hecho; desde 6.8 la AppImage es Qt6, ver 6.8).** Lo que sigue
+describe la AppImage GTK2 que se publicaba antes. `make-appimage.sh`, unos
+29 MB. El AppDir reutiliza el
 árbol del `.deb` (`opt/reportman-designer` + enlace `usr/bin`); linuxdeploy
 despliega las dependencias del binario (`--deploy-deps-only`, RUNPATH
 `$ORIGIN/../../usr/lib`) y el plugin GTK con `DEPLOY_GTK_VERSION=2`;
@@ -278,7 +292,8 @@ siempre presente). El plugin GTK está pensado para GTK3; un hook propio quita
 
 **Estado (automáticas hechas, manuales pendientes):** `build/linux/test-packages.sh`
 (lo llama `build-linux.ps1`) crea para cada imagen (`ubuntu:22.04`,
-`ubuntu:24.04`, `debian:12`) un contenedor nuevo y:
+`ubuntu:24.04`, `debian:12`; desde 6.8 también `debian:13` y `ubuntu:26.04`,
+y los tres paquetes: 15 contenedores, 5 a la vez) un contenedor nuevo y:
 
 - `.deb`: `apt install ./reportman-designer_<v>_amd64.deb` sin nada más
   instalado (apt trae 78–92 paquetes); `ldd` sin "not found"; presentes las
@@ -291,6 +306,15 @@ siempre presente). El plugin GTK está pensado para GTK3; un hook propio quita
 - AppImage: con solo X11, fontconfig, FreeType, HarfBuzz y fuentes del sistema,
   `ldd` de la AppImage extraída sin "not found", `--version` y la misma prueba
   de 15 s con `--appimage-extract-and-run`.
+- Desde 6.8, además: el `.deb` Qt6 resuelve `libQt6Pas` desde
+  `/opt/reportman-designer/lib` (RUNPATH) y tiene el plugin xcb de Qt; se
+  arranca también en una sesión Wayland simulada (`XDG_SESSION_TYPE=wayland`,
+  `WAYLAND_DISPLAY` sin compositor, `qt6-wayland` instalado) y debe abrir su
+  ventana en X11; instalar la otra variante sustituye a la probada (y al revés)
+  sin perder el menú ni la asociación; tras `purge` dpkg no ve ninguna de las
+  dos. La AppImage Qt6 se prueba con X11, fontconfig, FreeType, HarfBuzz,
+  fuentes, `libegl1` y `libopengl0`, y cada plugin de Qt incluido debe resolver
+  sus librerías (salvo `libcups.so.2`, que es la del sistema).
 - Deja registros y capturas de pantalla en `build\linux\out\<v>\tests\`.
 
 Lista de comprobación manual para cada release (VM Hyper-V Ubuntu con xrdp,
@@ -309,6 +333,12 @@ snapshot limpio; y WSLg):
 8. `LANG=es_ES.UTF-8` y `LANG=ca_ES.UTF-8`: textos traducidos.
 9. AppImage: `chmod +x` y doble clic en la misma VM (sin el `.deb`).
 10. `sudo apt remove reportman-designer`: desaparecen el menú y la asociación.
+11. Qt6 en un escritorio Wayland (Ubuntu 24.04 GNOME): arranca por XWayland,
+    HiDPI al 125/150/200 %, y una prueba con `QT_QPA_PLATFORM=wayland`
+    (posición de ventanas, menús contextuales, arrastrar componentes,
+    portapapeles).
+12. `sudo apt install ./reportman-designer-gtk2_<v>_amd64.deb` sustituye al
+    Qt6 y el diseñador GTK2 abre; volver a instalar el Qt6.
 
 ### 6.7 Publicación
 
@@ -322,18 +352,133 @@ snapshot limpio; y WSLg):
 **Estado (enganchada al release, 27-09-2026):** la tarea
 `build\sourceforge\06-linux-designer.ps1`, última de `make-release.ps1`, llama a
 `build-linux.ps1` (compilación, selftest, lintian y las pruebas de 6.6; un fallo
-para el release) y copia el `.deb` y la AppImage a `release_<v>\Linux\`, junto
-al zip de `printreptopdf`, con un `SHA256SUMS` de toda la carpeta
-(`sha256sum -c SHA256SUMS`). Con `-SkipBuild` reutiliza los paquetes de
-`build\linux\out\<v>\`. La tarea 05 ya no vacía `Linux\`. Falta subirlo
-(SourceForge, página de descargas de reportman.es, GitHub Releases); no hay
-workflow de GitHub Actions ni repositorio apt.
+para el release) y copia los paquetes a `release_<v>\Linux\`, junto al zip de
+`printreptopdf`, con un `SHA256SUMS` de toda la carpeta
+(`sha256sum -c SHA256SUMS`). Desde 6.8 son tres: `reportman-designer_<v>_amd64.deb`
+(Qt6), `reportman-designer-gtk2_<v>_amd64.deb` y la AppImage Qt6; antes de
+copiarlos borra de `Linux\` los paquetes del diseñador que hubiera. Con
+`-SkipBuild` reutiliza los de `build\linux\out\<v>\` si están los tres. La
+tarea 05 ya no vacía `Linux\`. Falta subirlo (SourceForge, página de descargas
+de reportman.es, GitHub Releases); no hay workflow de GitHub Actions ni
+repositorio apt.
+
+### 6.8 Qt6: paquete recomendado (GTK2 transitorio)
+
+Decisión de Toni (27-09-2026), tras el spike de widgetsets: en Linux se
+publican
+
+| Fichero | Widgetset | Papel |
+|---|---|---|
+| `reportman-designer_<v>_amd64.deb` | Qt6 | El recomendado |
+| `reportman-designer-gtk2_<v>_amd64.deb` | GTK2 | Transitorio, una o dos versiones (GTK2 está abandonado; Debian 14 prevé retirarlo) |
+| `ReportManDesigner-<v>-x86_64.AppImage` | Qt6 | Sustituye a la AppImage GTK2 |
+
+GTK3 y Qt5 no se distribuyen. Aún no se ha publicado nada, así que no hay
+actualización desde paquetes anteriores que conservar.
+
+**libQt6Pas.** La LCL de Lazarus 4.8 necesita la libQt6Pas 6.2.10 (el puente C
+de la LCL con Qt6, `lcl/interfaces/qt6/cbindings`, Qt ≥ 6.2.3). Ubuntu
+22.04/24.04 y Debian 12 no la empaquetan (`libqt6pas6` llega con Debian 13 y
+Ubuntu 26.04). La imagen de compilación la compila en su propia capa desde las
+cbindings del `.deb` de Lazarus (fijado por sha256; se comprueba que el `.pro`
+es la 6.2.10), con qmake6 contra la Qt 6.2.4 de Ubuntu 22.04, los flags de
+endurecimiento de `dpkg-buildflags` (sin LTO) y `strip`, y la instala en
+`/opt/libqt6pas` (fuera de las rutas del sistema; `sha256.txt` al lado, que
+copia `build-info.txt`). Tarda unos 4 min, solo al construir la imagen. El
+enlace del diseñador la encuentra con `lazbuild --opt=-Fl/opt/libqt6pas/lib`
+y el selftest con `LD_LIBRARY_PATH`. Compilada contra Qt 6.2.4 funciona con
+las Qt 6.2.4, 6.4.2, 6.8.2 y 6.10.2 de las distros probadas (Qt mantiene la
+compatibilidad binaria dentro de Qt 6).
+
+**`.deb` Qt6.** `libQt6Pas.so.6.2.10` va como librería privada en
+`/opt/reportman-designer/lib/` y el ejecutable la encuentra por su RUNPATH
+`$ORIGIN/lib` (patchelf al empaquetar). Se prefiere a un lanzador con
+`LD_LIBRARY_PATH` porque solo afecta al ejecutable (no lo heredan los programas
+que abre el diseñador), funciona igual desde `/usr/bin`, el menú o `/opt`, y
+`ldd`/`dpkg-shlibdeps` lo ven. Depends: lo que calcula `dpkg-shlibdeps` sobre
+el ejecutable y libQt6Pas (`libqt6core6`, `libqt6gui6`, `libqt6widgets6`,
+`libqt6printsupport6` ≥ 6.1/6.2, cada uno con su alternativa `…t64`: Ubuntu
+24.04 los renombró todos y Debian 13/Ubuntu 26.04 solo `libqt6core6t64`;
+`libstdc++6`, `libgcc-s1`, `libx11-6`, `libc6` ≥ 2.35), más `qt6-qpa-plugins`
+(en Ubuntu 22.04 trae el plugin xcb; en las demás está en `libqt6gui6`) y las
+mismas librerías que el motor carga en tiempo de ejecución y los mismos
+Recommends que GTK2. El plugin de CUPS de Qt viene con `libqt6printsupport6`.
+lintian: sin avisos nuevos; el override `dir-or-file-in-opt` ya cubría
+`lib/` (su motivo lo menciona). `dpkg-shlibdeps` trabaja sobre un árbol
+`debian/<paquete>` con `DEBIAN/` para resolver el `$ORIGIN`, y `shlibs.local`
+declara libQt6Pas sin dependencia (va en el propio paquete).
+
+**Las dos variantes.** Instalan los mismos ficheros:
+`reportman-designer-gtk2` tiene `Provides: reportman-designer (= <v>)`,
+`Conflicts:` y `Replaces: reportman-designer`, y `reportman-designer` tiene
+`Conflicts:` y `Replaces: reportman-designer-gtk2`: instalar una quita la otra
+(queda en estado `rc` hasta un `purge`, por su `postrm`). `apt remove
+reportman-designer` no quita la GTK2 (apt no quita paquetes virtuales): la
+guía da los dos nombres. `reportman-designer --version` dice `(LCL qt6)` o
+`(LCL gtk2)`.
+
+**Wayland.** Prueba con `weston --backend=headless --renderer=pixman` (sin
+pantalla) en Debian 13 (Qt 6.8.2), Ubuntu 24.04 (Qt 6.4.2) y Ubuntu 26.04
+(Qt 6.10.2), con `QT_QPA_PLATFORM=wayland`: el `LclDesignerTest --selftest`
+completo pasa y el diseñador abre `sample4.rep`, se pinta bien (decoración de
+ventana de Qt) y sigue vivo a los 15 s. Lo que no se puede comprobar sin un
+escritorio real (y que el protocolo Wayland limita): colocar ventanas (el
+diseñador recupera su posición y centra sus diálogos con
+`poScreenCenter`/`poMainFormCenter`), menús contextuales y arrastre con un
+puntero real, el portapapeles (weston sin asiento) y la decoración de ventana
+en GNOME (sin decoraciones del servidor, Qt dibuja las suyas). Por eso `rmdcmdline.SetupQtPlatform` (antes de crear la
+QApplication) pone `QT_QPA_PLATFORM=xcb` si hay `DISPLAY` (X11 o XWayland) y
+el usuario no ha elegido plataforma (variable o `-platform`); sin `DISPLAY`
+pero con `WAYLAND_DISPLAY` elige `wayland`; sin ninguno avisa ("cannot open
+the display") y sale con 1, como GTK2. Se hace en el propio programa y no en un
+lanzador para que valga igual desde `/usr/bin`, `/opt`, el menú y la AppImage.
+Hace falta porque Qt 6, según su versión y el escritorio, prefiere Wayland en
+una sesión Wayland si está `qt6-wayland`, que Ubuntu 24.04/26.04 y Debian 13
+instalan como Recommends de `libqt6gui6`. `test-packages.sh` lo comprueba con una sesión Wayland simulada.
+Documentado en `docs/linux-install.md` y en la página de manual
+(`QT_QPA_PLATFORM`).
+
+**AppImage Qt6.** linuxdeploy despliega las dependencias del ejecutable
+(libQt6Pas con `LD_LIBRARY_PATH`, Qt 6.2.4 de Ubuntu 22.04, ICU 70, GLib,
+libxcb-*, libxkbcommon…) y de los plugins de Qt que se copian a mano a
+`usr/plugins` (no hace falta linuxdeploy-plugin-qt): `platforms/libqxcb.so`,
+`platforminputcontexts` (compose/teclas muertas e IBus) y
+`printsupport/libcupsprintersupport.so`; este último se copia sin linuxdeploy
+(solo `patchelf`), porque linuxdeploy metería las dependencias de libcups
+(GnuTLS, Kerberos, Avahi, p11-kit), que solo usaría la libcups del sistema. Un
+`qt.conf` junto al ejecutable (`Prefix = ../../usr`) hace que Qt solo cargue
+los plugins del AppDir. No se incluyen `libEGL.so.1`/`libOpenGL.so.0` (glvnd,
+excludelist de AppImage; los tiene todo escritorio con Mesa), ni FreeType,
+fontconfig, HarfBuzz ni libcups; sí `libgpg-error.so.0` (la usa libgcrypt,
+dependencia de libsystemd/libdbus) y `libcom_err.so.2`, que faltan en
+instalaciones mínimas de Debian 13. Solo lleva el plugin X11 (sin Wayland
+nativo). Unos 31 MB (51 librerías, 70 MB sin comprimir; la ICU son 34 MB).
+
+**Pruebas.** Los dos selftest (Qt6 y GTK2) bajo Xvfb rompen la build; el
+de Qt6 con `QT_QPA_PLATFORM=xcb`. `test-packages.sh` prueba los tres paquetes
+en Ubuntu 22.04, 24.04, 26.04 y Debian 12, 13 (ver 6.6).
 
 ## Riesgos conocidos
 
-- **GTK2 obsoleto**: alguna distro futura puede retirarlo. Mitigación: spike Qt5
-  en 6.1 (compila y arranca; necesita una libqt5pas reciente, probada la 2.16,
-  que habría que incluir en el paquete) y AppImage con GTK2 incluido.
+- **GTK2 obsoleto**: Debian 14 prevé retirarlo. Mitigado en 6.8: Qt6 es el
+  paquete recomendado y la AppImage es Qt6; `reportman-designer-gtk2` se
+  publica una o dos versiones más y después se retira (quitar `gtk2` de
+  `WSLIST` en `build-in-container.sh`, su caso en `make-deb.sh`,
+  `test-packages.sh` y la tarea 06).
+- **libQt6Pas privada**: la mantenemos nosotros (versión fijada por la de
+  Lazarus). Al cambiar de Lazarus hay que revisar `QT6PAS_VERSION` en
+  `Dockerfile.builder` (la comprobación del `.pro` rompe la imagen si no
+  casa). Depende de la compatibilidad binaria de Qt 6 (probada de 6.2.4 a
+  6.10.2); una Qt 7 exigiría otro paquete. Si las distros con `libqt6pas6`
+  6.2.10 (Debian 13, Ubuntu 26.04) fueran las mínimas, se podría depender de
+  ella en vez de incluirla.
+- **Qt6 en Wayland nativo sin probar en un escritorio real**: por eso va por
+  XWayland salvo `QT_QPA_PLATFORM=wayland` (ver 6.8). Si XWayland
+  desapareciera de algún escritorio, el diseñador ya usa Wayland nativo sin
+  `DISPLAY`, pero habría que validar la colocación de ventanas y menús.
+- **AppImage con Qt 6.2.4**: la Qt de Ubuntu 22.04 (la más antigua soportada)
+  va dentro; es la versión LTS más vieja de Qt 6, sin plugin Wayland ni tema
+  GTK (estilo Fusion). CUPS es el del sistema: sin él no hay impresoras.
 - **FPC 3.2.2 y el ciclo de unidades del motor**: resuelto. `System.NetEncoding`
   en la implementación de `rpsection`/`rpdrawitem` cambiaba su CRC de interfaz
   y dejaba checksums obsoletos en el ciclo rpsection/rpsubreport/rpsecutil; con
@@ -366,7 +511,8 @@ workflow de GitHub Actions ni repositorio apt.
 1. Un usuario de Ubuntu 22.04+ instala el `.deb` con doble clic o `apt install`
    sin instalar nada a mano, y lo desinstala limpio.
 2. El diseñador aparece en el menú y abre los `.rep` con doble clic.
-3. La AppImage arranca en Ubuntu 22.04, 24.04 y Debian 12.
+3. La AppImage arranca en Ubuntu 22.04, 24.04 y Debian 12 (desde 6.8 también
+   Debian 13 y Ubuntu 26.04).
 4. Todo el empaquetado Linux se genera con un único comando desde Windows
    (`build/linux/build-linux.ps1`) en Docker, e incluye el selftest bajo Xvfb.
 5. El selftest del diseñador y el grupo Delphi siguen en verde (Delphi solo ve

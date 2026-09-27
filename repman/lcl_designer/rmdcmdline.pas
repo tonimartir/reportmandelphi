@@ -14,8 +14,10 @@ unit rmdcmdline;
 {*******************************************************}
 
 { The program lists this unit before Interfaces: its initialization answers
-  --help and --version, and reports a missing X display (GTK2), before the
-  LCL widgetset connects to the display (which would exit silently).
+  --help and --version, and reports a missing display (GTK2, Qt6), before the
+  LCL widgetset connects to the display (which would exit silently or, Qt,
+  abort). With Qt6 it also chooses the Qt platform: X11 (also XWayland)
+  unless the user sets QT_QPA_PLATFORM (see SetupQtPlatform).
 
   Runtime files:
   - Translations (reportmanres.*): the engine (rptranslator) reads them next
@@ -301,6 +303,42 @@ begin
   WriteStd('Preferences:  ' + ConfigFileName, False);
 end;
 
+{$IF DEFINED(UNIX) AND DEFINED(LCLQT6)}
+function setenv(const name, value: PAnsiChar; overwrite: LongInt): LongInt;
+  cdecl; external 'c' name 'setenv';
+
+{ Qt6 platform plugin. Qt reads QT_QPA_PLATFORM when the widgetset creates
+  the QApplication, after this unit's initialization. The default is xcb
+  (X11; in a Wayland session, XWayland): with the native Wayland backend the
+  LCL cannot place windows (the designer restores its position and centers
+  its dialogs, poScreenCenter/poMainFormCenter), and it has only been tested
+  headless. A value set by the user (QT_QPA_PLATFORM=wayland, or -platform)
+  is kept.
+  Wayland without XWayland (no DISPLAY): the native backend (qt6-wayland).
+  Without DISPLAY nor WAYLAND_DISPLAY Qt would abort with a long message. }
+procedure SetupQtPlatform;
+var
+  cl: string;
+begin
+  cl := LowerCase(string(CmdLine));
+  if (GetEnvironmentVariable('QT_QPA_PLATFORM') <> '') or
+     (Pos('-platform', cl) > 0) then
+    Exit;
+  // (an empty QT_QPA_PLATFORM counts as not set, as in Qt)
+  if (GetEnvironmentVariable('DISPLAY') <> '') or (Pos('-display', cl) > 0) then
+    setenv('QT_QPA_PLATFORM', 'xcb', 1)
+  else if GetEnvironmentVariable('WAYLAND_DISPLAY') <> '' then
+    setenv('QT_QPA_PLATFORM', 'wayland', 1)
+  else
+  begin
+    WriteStd(ExtractFileName(ParamStr(0)) + ': cannot open the display ' +
+      '(neither DISPLAY nor WAYLAND_DISPLAY is set). Run it from a graphical ' +
+      'session, with "ssh -X" or through a remote desktop.', True);
+    Halt(1);
+  end;
+end;
+{$IFEND}
+
 procedure HandleEarlyOptions;
 var
   i: Integer;
@@ -331,6 +369,9 @@ begin
       '"ssh -X" or through a remote desktop.', True);
     Halt(1);
   end;
+  {$IFEND}
+  {$IF DEFINED(UNIX) AND DEFINED(LCLQT6)}
+  SetupQtPlatform;
   {$IFEND}
 end;
 
