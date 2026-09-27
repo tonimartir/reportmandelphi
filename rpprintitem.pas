@@ -918,6 +918,13 @@ begin
    SetBidiMode(rpBidiNo);
   exit;
  end;
+ // All languages (BidiNo/BidiPartial/BidiFull per line); RightToLeft only
+ // covers the current language and cannot express BidiFull
+ if SameText(propName, 'BidiModes') then
+ begin
+  FBidiModes.Text := value;
+  exit;
+ end;
  if SameText(propName, 'IsHtml') then
  begin
   FIsHtml := value;
@@ -1021,6 +1028,11 @@ begin
  if SameText(propName, 'RightToLeft') then
  begin
   Result := GetRightToLeft;
+  exit;
+ end;
+ if SameText(propName, 'BidiModes') then
+ begin
+  Result := FBidiModes.Text;
   exit;
  end;
  if SameText(propName, 'IsHtml') then

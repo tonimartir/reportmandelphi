@@ -85,6 +85,8 @@ type
    procedure OnValueColor(color:Integer);
    procedure SetIdentifier(Value:string);
    procedure SetSeries(avalue:TRpSeries);
+   function GetSeriesColors:string;
+   procedure SetSeriesColors(const avalue:string);
    function CheckValueCondition:boolean;
    function EvaluateSerieExpression:Variant;
    function EvaluateSerieCaption:Variant;
@@ -796,8 +798,90 @@ end;
 
 { TRpChart - IPropertiesItem }
 
+// Colors of the Series items, comma separated: the only Series data saved with
+// the report (values are filled when the report runs)
+function TRpChart.GetSeriesColors:string;
+var
+ i:integer;
+begin
+ Result:='';
+ for i:=0 to FSeries.Count-1 do
+ begin
+  if i>0 then
+   Result:=Result+',';
+  Result:=Result+IntToStr(FSeries.Items[i].Color);
+ end;
+end;
+
+procedure TRpChart.SetSeriesColors(const avalue:string);
+var
+ alist:TStringList;
+ i:integer;
+begin
+ alist:=TStringList.Create;
+ try
+  alist.CommaText:=avalue;
+  FSeries.Clear;
+  for i:=0 to alist.Count-1 do
+   FSeries.Add.Color:=StrToInt(alist.Strings[i]);
+ finally
+  alist.Free;
+ end;
+end;
+
 procedure TRpChart.SetItemProperty(const propName: string; const value: Variant);
 begin
+ // Expressions saved through DefineProperties
+ if SameText(propName, 'GetValueCondition') then
+ begin
+  FGetValueCondition := value;
+  exit;
+ end;
+ if SameText(propName, 'ValueExpression') then
+ begin
+  FValueExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ValueXExpression') then
+ begin
+  FValueXExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieExpression') then
+ begin
+  FChangeSerieExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'CaptionExpression') then
+ begin
+  FCaptionExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SerieCaption') then
+ begin
+  FSerieCaption := value;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpression') then
+ begin
+  FClearExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ColorExpression') then
+ begin
+  FColorExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SerieColorExpression') then
+ begin
+  FSerieColorExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SeriesColors') then
+ begin
+  SetSeriesColors(value);
+  exit;
+ end;
  if SameText(propName, 'ChartType') then
  begin
   SetChartType(TRpChartType(Integer(value)));
@@ -923,6 +1007,56 @@ end;
 
 function TRpChart.GetItemProperty(const propName: string): Variant;
 begin
+ if SameText(propName, 'GetValueCondition') then
+ begin
+  Result := FGetValueCondition;
+  exit;
+ end;
+ if SameText(propName, 'ValueExpression') then
+ begin
+  Result := FValueExpression;
+  exit;
+ end;
+ if SameText(propName, 'ValueXExpression') then
+ begin
+  Result := FValueXExpression;
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieExpression') then
+ begin
+  Result := FChangeSerieExpression;
+  exit;
+ end;
+ if SameText(propName, 'CaptionExpression') then
+ begin
+  Result := FCaptionExpression;
+  exit;
+ end;
+ if SameText(propName, 'SerieCaption') then
+ begin
+  Result := FSerieCaption;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpression') then
+ begin
+  Result := FClearExpression;
+  exit;
+ end;
+ if SameText(propName, 'ColorExpression') then
+ begin
+  Result := FColorExpression;
+  exit;
+ end;
+ if SameText(propName, 'SerieColorExpression') then
+ begin
+  Result := FSerieColorExpression;
+  exit;
+ end;
+ if SameText(propName, 'SeriesColors') then
+ begin
+  Result := GetSeriesColors;
+  exit;
+ end;
  if SameText(propName, 'ChartType') then
  begin
   Result := Integer(FChartType);

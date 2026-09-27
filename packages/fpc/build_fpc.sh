@@ -1,6 +1,10 @@
 #!/bin/sh
 # Builds the three Free Pascal / Lazarus packages of Report Manager (Linux).
-# Usage: packages/fpc/build_fpc.sh [--ws=gtk2|qt5]   (lazbuild from PATH)
+# Usage: packages/fpc/build_fpc.sh [clean] [--ws=gtk2|qt5]   (lazbuild from PATH)
+#
+# Use "clean" if FPC stops with "Compilation raised exception internally":
+# incremental builds of the unit cycle below can crash FPC 3.2.2 after an
+# interface change in one of the engine units.
 #
 # FPC 3.2.2 needs a second, incremental pass over reportman_rtl: the unit
 # cycle rpsection (implementation) -> rpsubreport -> rpsecutil -> rpsection
@@ -12,9 +16,14 @@
 set -e
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 LAZBUILD=${LAZBUILD:-lazbuild}
+RTLCLEAN=
+if [ "$1" = "clean" ]; then
+  RTLCLEAN=-B
+  shift
+fi
 
 echo "Compiling reportman_rtl.lpk..."
-"$LAZBUILD" --no-write-project "$@" "$ROOT/packages/fpc/reportman_rtl.lpk"
+"$LAZBUILD" $RTLCLEAN --no-write-project "$@" "$ROOT/packages/fpc/reportman_rtl.lpk"
 sleep 3
 touch "$ROOT/rpsecutil.pas"
 "$LAZBUILD" --no-write-project "$@" "$ROOT/packages/fpc/reportman_rtl.lpk"

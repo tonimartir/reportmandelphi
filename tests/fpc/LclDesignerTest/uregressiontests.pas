@@ -26,7 +26,7 @@ uses
   Classes, SysUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
   Generics.Collections, sqldb, sqlite3conn,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
-  rpprintitem, rplabelitem, rpparams, rpdatainfo, rpgraphutilslcl,
+  rpprintitem, rplabelitem, rpmdchart, rpmdcharttypes, rpparams, rpdatainfo, rpgraphutilslcl,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
   rpmdfopenliblcl, rprflclparams, rpmdesignerlcl,
@@ -71,6 +71,7 @@ type
     procedure TestUndoCap;
     procedure TestDirtyState;
     procedure TestFailingOperation;
+    procedure TestDeleteRestoresAll;
     // L1 + L2: designer (TFRpMainFLCL)
     procedure TestDesigner(const ASamplePath: string);
     // L2: dialogs
@@ -702,6 +703,89 @@ begin
     rep.Free;
   end;
   LogMsg('Failing operation handling verified');
+end;
+
+// Undo of a delete must bring back everything the report saves: the chart
+// expressions and series colors, and the BidiModes of every language
+procedure TRegressionTests.TestDeleteRestoresAll;
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  lab: TRpLabel;
+  chart: TRpChart;
+  cue: TUndoCue;
+  gid: Integer;
+
+  procedure RecordRemove(comp: TRpCommonPosComponent);
+  var
+    op: TChangeObjectOperation;
+  begin
+    op := TChangeObjectOperation.Create(otRemove, gid);
+    op.componentName := comp.Name;
+    op.componentClass := UpperCase(comp.ClassName);
+    op.parentName := sec.Name;
+    op.oldItemIndex := sec.ReportComponents.IndexOf(comp);
+    cue.AddAllComponentProperties(comp, op);
+    cue.AddOperation(op);
+    sec.ReportComponents.Delete(op.oldItemIndex);
+    comp.Free;
+  end;
+
+begin
+  LogMsg('5.5: undo of a delete restores chart expressions, series colors and BidiModes');
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    lab := AddEngineLabel(rep, sec, 'BIDI_LABEL');
+    lab.BidiModes.Text := 'BidiNo' + LineEnding + 'BidiFull';
+    chart := TRpChart.Create(rep);
+    chart.Name := 'UNDO_CHART';
+    sec.ReportComponents.Add.Component := chart;
+    chart.GetValueCondition := 'COND';
+    chart.ValueExpression := 'VAL';
+    chart.ValueXExpression := 'VALX';
+    chart.ChangeSerieExpression := 'CHANGE';
+    chart.CaptionExpression := 'CAPTION';
+    chart.SerieCaption := 'SERIECAPTION';
+    chart.ClearExpression := 'CLEAR';
+    chart.ColorExpression := 'COLOR';
+    chart.SerieColorExpression := 'SERIECOLOR';
+    chart.Series.Add.Color := $FF0000;
+    chart.Series.Add.Color := $00FF00;
+
+    gid := cue.GetGroupId;
+    RecordRemove(chart);
+    RecordRemove(lab);
+    Check(FindItem(rep, 'UNDO_CHART') = nil, 'The chart was deleted');
+    CheckInt(0, sec.ReportComponents.Count, 'Both components deleted');
+
+    cue.Undo.Free;
+    CheckInt(2, sec.ReportComponents.Count, 'Undo restores both components');
+    chart := TRpChart(FindItem(rep, 'UNDO_CHART'));
+    Check(Assigned(chart), 'Undo recreates the chart');
+    CheckStr('COND', chart.GetValueCondition, 'Chart GetValueCondition restored');
+    CheckStr('VAL', chart.ValueExpression, 'Chart ValueExpression restored');
+    CheckStr('VALX', chart.ValueXExpression, 'Chart ValueXExpression restored');
+    CheckStr('CHANGE', chart.ChangeSerieExpression, 'Chart ChangeSerieExpression restored');
+    CheckStr('CAPTION', chart.CaptionExpression, 'Chart CaptionExpression restored');
+    CheckStr('SERIECAPTION', chart.SerieCaption, 'Chart SerieCaption restored');
+    CheckStr('CLEAR', chart.ClearExpression, 'Chart ClearExpression restored');
+    CheckStr('COLOR', chart.ColorExpression, 'Chart ColorExpression restored');
+    CheckStr('SERIECOLOR', chart.SerieColorExpression, 'Chart SerieColorExpression restored');
+    CheckInt(2, chart.Series.Count, 'Chart series restored');
+    CheckInt($FF0000, chart.Series[0].Color, 'Chart series 0 color restored');
+    CheckInt($00FF00, chart.Series[1].Color, 'Chart series 1 color restored');
+    lab := TRpLabel(FindItem(rep, 'BIDI_LABEL'));
+    Check(Assigned(lab), 'Undo recreates the label');
+    CheckInt(2, lab.BidiModes.Count, 'Label BidiModes of both languages restored');
+    CheckStr('BidiNo', lab.BidiModes[0], 'Label BidiModes language 0');
+    CheckStr('BidiFull', lab.BidiModes[1], 'Label BidiModes language 1 (BidiFull)');
+    CheckInt(0, sec.ReportComponents.IndexOf(lab), 'Label restored at its index');
+    CheckInt(1, sec.ReportComponents.IndexOf(chart), 'Chart restored at its index');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Undo of a delete restores chart and BidiModes verified');
 end;
 
 { L1 + L2: designer }
@@ -1645,6 +1729,7 @@ begin
     t.TestUndoCap;
     t.TestDirtyState;
     t.TestFailingOperation;
+    t.TestDeleteRestoresAll;
     t.TestDesigner(ASamplePath);
     t.TestParamsDialog;
     t.TestDataConfig;

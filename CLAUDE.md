@@ -79,7 +79,9 @@ the packages registered). The scripts compile `reportman_rtl` twice on purpose:
 FPC 3.2.2 leaves `rpsecutil.ppu` with a stale checksum after a clean build
 (unit cycle rpsection → rpsubreport → rpsecutil → rpsection), and dependent
 packages then fail with "Can't find unit rpsecutil". For the same reason never
-use `lazbuild -B` on a dependent package. The test projects take engine units
+use `lazbuild -B` on a dependent package. If FPC stops with "Compilation raised
+exception internally" after an interface change in an engine unit, run the
+script with `clean` (rebuilds `reportman_rtl` from scratch). The test projects take engine units
 from the packages only (no engine paths in their `.lpi`).
 
 `--selftest` exits 0 on success and 1 on the first `[TEST_FAILED]`; it appends

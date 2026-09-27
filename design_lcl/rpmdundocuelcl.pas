@@ -1794,6 +1794,9 @@ begin
     op.AddProperty('interLine', ptInteger, Null, pitem.GetItemProperty('InterLine'));
     op.AddProperty('multiPage', ptBoolean, Null, pitem.GetItemProperty('MultiPage'));
     op.AddProperty('rightToLeft', ptBoolean, Null, pitem.GetItemProperty('RightToLeft'));
+    // After rightToLeft: restores every language (and BidiFull), which
+    // rightToLeft alone cannot express
+    op.AddProperty('bidiModes', ptString, Null, pitem.GetItemProperty('BidiModes'));
     op.AddProperty('isHtml', ptBoolean, Null, pitem.GetItemProperty('IsHtml'));
     if pitem is TRpLabel then
     begin
@@ -1846,6 +1849,16 @@ begin
       op.AddProperty('vertFontSize', ptInteger, Null, pitem.GetItemProperty('VertFontSize'));
       op.AddProperty('horzFontRotation', ptInteger, Null, pitem.GetItemProperty('HorzFontRotation'));
       op.AddProperty('vertFontRotation', ptInteger, Null, pitem.GetItemProperty('VertFontRotation'));
+      op.AddProperty('getValueCondition', ptString, Null, pitem.GetItemProperty('GetValueCondition'));
+      op.AddProperty('valueExpression', ptString, Null, pitem.GetItemProperty('ValueExpression'));
+      op.AddProperty('valueXExpression', ptString, Null, pitem.GetItemProperty('ValueXExpression'));
+      op.AddProperty('changeSerieExpression', ptString, Null, pitem.GetItemProperty('ChangeSerieExpression'));
+      op.AddProperty('captionExpression', ptString, Null, pitem.GetItemProperty('CaptionExpression'));
+      op.AddProperty('serieCaption', ptString, Null, pitem.GetItemProperty('SerieCaption'));
+      op.AddProperty('clearExpression', ptString, Null, pitem.GetItemProperty('ClearExpression'));
+      op.AddProperty('colorExpression', ptString, Null, pitem.GetItemProperty('ColorExpression'));
+      op.AddProperty('serieColorExpression', ptString, Null, pitem.GetItemProperty('SerieColorExpression'));
+      op.AddProperty('seriesColors', ptString, Null, pitem.GetItemProperty('SeriesColors'));
     end;
   end
   else if pitem is TRpShape then
