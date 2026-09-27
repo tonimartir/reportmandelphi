@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Report Manager Designer
+GenericName=Report Designer
+GenericName[es]=Diseñador de informes
+GenericName[ca]=Dissenyador d'informes
+GenericName[fr]=Concepteur de rapports
+GenericName[de]=Berichtsdesigner
+GenericName[it]=Progettazione di report
+GenericName[pt]=Designer de relatórios
+Comment=Design database reports and export them to PDF
+Comment[es]=Diseña informes de bases de datos y expórtalos a PDF
+Exec=reportman-designer %f
+Icon=reportman-designer
+Terminal=false
+Categories=Office;Database;
+MimeType=application/x-reportman-report;
+Keywords=report;designer;PDF;database;
+Keywords[es]=informe;diseñador;PDF;base de datos;
+StartupNotify=true

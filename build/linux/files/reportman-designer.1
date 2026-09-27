@@ -1,0 +1,42 @@
+.TH REPORTMAN-DESIGNER 1 "2026" "Report Manager @VERSION@" "User Commands"
+.SH NAME
+reportman-designer \- Report Manager report designer (LCL/GTK2)
+.SH SYNOPSIS
+.B reportman-designer
+[\fB\-\-help\fR] [\fB\-\-version\fR] [\fIreport.rep\fR]
+.SH DESCRIPTION
+.B reportman-designer
+designs Report Manager reports (\fI.rep\fR files): bands, labels, expressions,
+charts, barcodes and images bound to database queries. Reports can be
+previewed, printed and exported to PDF and other formats.
+.PP
+When \fIreport.rep\fR is given (a path, relative to the current directory, or
+a file:// URI) it is opened at start.
+.SH OPTIONS
+.TP
+.B \-\-version
+Print the version and the folders used for translations, samples and
+preferences, then exit.
+.TP
+.B \-\-help
+Print a short usage message, then exit.
+.SH FILES
+.TP
+.I /opt/reportman-designer/
+Program, translations (reportmanres.*) and sample reports (samples/).
+.TP
+.I ~/.config/reportman/designer_lcl.ini
+Designer preferences (window position, last folder). Honours
+\fBXDG_CONFIG_HOME\fR.
+.TP
+.I ~/.borland/dbxconnections\fR, \fI~/.borland/dbxdrivers
+Database connections and drivers shared with the other Report Manager tools.
+When they do not exist yet, \fI/usr/local/etc/dbxconnections.conf\fR and
+\fI/usr/local/etc/dbxdrivers.conf\fR are copied as system-wide templates.
+.TP
+.I ~/.repmandlib
+Report library connections of the designer.
+.SH SEE ALSO
+https://reportman.es
+.SH AUTHOR
+Toni Martir <toni@reportman.es>
