@@ -992,10 +992,25 @@ end;
 function CreateContextReportCopy(AReport: TRpReport): TRpReport;
 var
   LStream: TMemoryStream;
+  LFiles: TList;
+  I: Integer;
 begin
+  LFiles := TList.Create;
   LStream := TMemoryStream.Create;
   try
-    LStream.WriteComponent(AReport);
+    // Without the embedded files: the context does not need them, and under
+    // FPC TRpBaseReport.WriteEmbeddedFiles/ReadEmbeddedFiles pass a TBytes
+    // variable to TStream.Write/Read (it has no TBytes overload in FPC)
+    for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
+      LFiles.Add(AReport.EmbeddedFiles[I]);
+    SetLength(AReport.EmbeddedFiles, 0);
+    try
+      LStream.WriteComponent(AReport);
+    finally
+      SetLength(AReport.EmbeddedFiles, LFiles.Count);
+      for I := 0 to LFiles.Count - 1 do
+        AReport.EmbeddedFiles[I] := TEmbeddedFile(LFiles[I]);
+    end;
     LStream.Position := 0;
     Result := TRpReport.Create(nil);
     try
@@ -1007,6 +1022,7 @@ begin
     end;
   finally
     LStream.Free;
+    LFiles.Free;
   end;
 end;
 
@@ -1015,6 +1031,7 @@ procedure CheckReportDocumentLoads(const ADocument: string);
 var
   LScratch: TRpReport;
   LStream: TStringStream;
+  I: Integer;
 begin
   LScratch := TRpReport.Create(nil);
   LStream := TStringStream.Create(ADocument);
@@ -1023,6 +1040,10 @@ begin
     LScratch.LoadFromStream(LStream);
   finally
     LStream.Free;
+    // TRpBaseReport.Destroy does not free the embedded files
+    for I := 0 to Length(LScratch.EmbeddedFiles) - 1 do
+      LScratch.EmbeddedFiles[I].Free;
+    SetLength(LScratch.EmbeddedFiles, 0);
     LScratch.Free;
   end;
 end;

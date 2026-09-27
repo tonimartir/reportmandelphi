@@ -32,6 +32,7 @@ uses
 
 const
   SLOW_MARKER = 'SLOWSTREAM';
+  ANSWERED_TAG = $7505;
   AI_EXPLANATION = 'Title added: **Sales report** in the page header';
 
 type
@@ -501,8 +502,12 @@ begin
   for I := 0 to Screen.CustomFormCount - 1 do
   begin
     LForm := Screen.CustomForms[I];
-    if (LForm is TFRpMessageDlgVCL) and LForm.Visible and (fsModal in LForm.FormState) then
+    // Tag: answered already (closing a modal form is not immediate on every
+    // widgetset)
+    if (LForm is TFRpMessageDlgVCL) and LForm.Visible and (fsModal in LForm.FormState) and
+       (LForm.Tag <> ANSWERED_TAG) then
     begin
+      LForm.Tag := ANSWERED_TAG;
       LDialog := TFRpMessageDlgVCL(LForm);
       LastText := LDialog.LMessage.Caption;
       Inc(Answered);
@@ -776,11 +781,23 @@ begin
   end;
 end;
 
+// Embedded files are not freed by TRpBaseReport.Destroy: the tests free them
+procedure FreeEmbeddedFiles(AReport: TRpReport);
+var
+  I: Integer;
+begin
+  for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
+    AReport.EmbeddedFiles[I].Free;
+  SetLength(AReport.EmbeddedFiles, 0);
+end;
+
 procedure TAIDesignTests.TestPreprocessSqlContext;
 var
   LMain: TFRpMainFLCL;
   LRep: TRpReport;
   LItem: TRpDataInfoItem;
+  LFile: TEmbeddedFile;
+  LData: string;
 
   function Applied1: Boolean;
   begin
@@ -804,6 +821,15 @@ begin
     // Not opened by the context refresh (no connection in the tests)
     LItem.OpenOnStart := False;
     Check(not LRep.Modified, 'dataset added without history: not modified yet');
+    // An embedded file: the context copy and the reload must keep it once
+    LFile := TEmbeddedFile.Create;
+    LFile.FileName := 'notes.txt';
+    LFile.MimeType := 'text/plain';
+    LFile.Stream := TMemoryStream.Create;
+    LData := 'embedded data';
+    LFile.Stream.Write(LData[1], Length(LData));
+    SetLength(LRep.EmbeddedFiles, 1);
+    LRep.EmbeddedFiles[0] := LFile;
     FHubHandler.ClearRequests;
     // The Hub returns the document it received (no operations of its own)
     FHubHandler.SetModifiedDocument('', True);
@@ -820,12 +846,18 @@ begin
     CheckEquals(0, TUndoCue(LRep.UndoCue).UndoOperations.Count,
       'a document without operations of its change adds no history');
     Check(LRep.Modified, 'a change without its operations marks the report modified');
+    CheckEquals(1, Length(LRep.EmbeddedFiles), 'embedded file kept once (not duplicated)');
+    CheckEquals('notes.txt', LRep.EmbeddedFiles[0].FileName, 'embedded file name');
+    CheckEquals(Length(LData), LRep.EmbeddedFiles[0].Stream.Size, 'embedded file data');
     // The explanation exists: the next prompt does not preprocess again
     SendPrompt(LMain, 'Explain the clients again');
     WaitUntil(Applied2, 20000, 'second design result applied');
     CheckEquals(1, FHubHandler.PreprocessCount, 'no second preprocess');
     CheckEquals(2, FHubHandler.ModifyCount, 'second design request');
+    CheckEquals(1, Length(LRep.EmbeddedFiles), 'embedded file still once');
   finally
+    if Assigned(LMain) and Assigned(LMain.Report) then
+      FreeEmbeddedFiles(LMain.Report);
     FreeDesigner(LMain);
   end;
 end;
