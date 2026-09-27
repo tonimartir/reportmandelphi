@@ -178,9 +178,34 @@ end;
 
 
 {$IFNDEF DOTNETD}
+{$IFDEF LINUX}
+// Some translation files keep the Windows language abbreviation
+// (reportmanres.cat, reportmanres.csy) instead of the ISO 639-1 code
+function LinuxLocaleAliasFile(const afilename:string;LangCode:PChar):string;
+var
+ P:PChar;
+ lang,alias:string;
+begin
+ Result:=afilename;
+ P:=LangCode;
+ while CharInSet(P^, ['a'..'z', 'A'..'Z']) do
+  Inc(P);
+ lang:=LowerCase(Copy(string(LangCode),1,P-LangCode));
+ alias:='';
+ if lang='ca' then
+  alias:='cat'
+ else
+ if lang='cs' then
+  alias:='csy';
+ if (Length(alias)>0) and FileExists(afilename+'.'+alias) then
+  Result:=afilename+'.'+alias;
+end;
+{$ENDIF}
+
 function AddLocaleSufix(afilename:string):string;
 {$IFDEF LINUX}
 var
+ LangStr:string;
  LangCode,P:PChar;
  I:Integer;
 {$ENDIF}
@@ -260,13 +285,23 @@ var
 begin
  Result:=afilename;
 {$IFDEF LINUX}
+ // POSIX order for messages: LC_ALL, then LC_MESSAGES, then LANG
 {$IFDEF FPC}
- LangCode := PChar(Sysutils.GetEnvironmentVariable('LANG'));
+ LangStr := Sysutils.GetEnvironmentVariable('LC_ALL');
+ if Length(LangStr)=0 then
+  LangStr := Sysutils.GetEnvironmentVariable('LC_MESSAGES');
+ if Length(LangStr)=0 then
+  LangStr := Sysutils.GetEnvironmentVariable('LANG');
 {$ELSE}
-  LangCode := PChar(System.SysUtils.GetEnvironmentVariable('LANG'));
+ LangStr := System.SysUtils.GetEnvironmentVariable('LC_ALL');
+ if Length(LangStr)=0 then
+  LangStr := System.SysUtils.GetEnvironmentVariable('LC_MESSAGES');
+ if Length(LangStr)=0 then
+  LangStr := System.SysUtils.GetEnvironmentVariable('LANG');
 {$ENDIF}
- if (LangCode = nil) or (LangCode^ = #0) then
+ if Length(LangStr)=0 then
   Exit;
+ LangCode := PChar(LangStr);
  // look for modulename.en_US
  P := LangCode;
  while CharInSet(P^, ['a'..'z', 'A'..'Z', '_']) do
@@ -289,7 +324,7 @@ begin
    begin
     if not FileExists(LowerCase(Result)) then
     begin
-     Result:=afilename;
+     Result:=LinuxLocaleAliasFile(afilename,LangCode);
      Exit;
     end
     else

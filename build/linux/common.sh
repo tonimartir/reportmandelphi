@@ -42,11 +42,8 @@ stage_app() {
     for f in "$src"/repman/reportmanres.*; do
         install -m 0644 "$f" "$app/"
     done
-    # En Linux el motor elige la traduccion por el idioma de LANG (ca_ES ->
-    # reportmanres.ca, cs_CZ -> reportmanres.cs); dos ficheros usan el
-    # codigo de Windows
-    if [ -f "$app/reportmanres.cat" ]; then ln -sf reportmanres.cat "$app/reportmanres.ca"; fi
-    if [ -f "$app/reportmanres.csy" ]; then ln -sf reportmanres.csy "$app/reportmanres.cs"; fi
+    # El motor elige la traduccion por LC_ALL/LC_MESSAGES/LANG y ya encuentra
+    # los dos ficheros con nombre de Windows (ca -> .cat, cs -> .csy)
     find "$src/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
         -exec install -m 0644 {} "$app/samples/" \;
 

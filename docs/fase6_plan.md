@@ -97,8 +97,9 @@ Guía de instalación para usuarios: `docs/linux-install.md`.
   `/usr/bin` funciona): por eso los paquetes las instalan con el binario en
   `/opt/reportman-designer/`. Leerlas de `share/` exigiría cambiar
   `rptranslator` (unidad compartida con Delphi); no se ha hecho.
-  `reportmanres.cat`/`.csy` usan códigos de Windows: los paquetes añaden los
-  enlaces `reportmanres.ca`/`.cs` para `LANG=ca_ES`/`cs_CZ`.
+  El idioma sale de `LC_ALL`, `LC_MESSAGES` o `LANG` (en ese orden, como
+  POSIX); `rptranslator` resuelve `ca`/`cs` a `reportmanres.cat`/`.csy`, que
+  usan códigos de Windows.
 - Preferencias propias del lanzador (posición, tamaño, maximizada, última
   carpeta) en `$XDG_CONFIG_HOME/reportman/designer_lcl.ini` (por defecto
   `~/.config/reportman/`; en Windows `%LOCALAPPDATA%\reportman\`). El
