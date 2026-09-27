@@ -114,10 +114,9 @@ type
     FActiveTool: TRpDesignTool;
     FOnToolChange: TNotifyEvent;
     FPopupMenu: TPopupMenu;
-    MDelete: TMenuItem;
-    MBringToFront: TMenuItem;
-    MSendToBack: TMenuItem;
-    MSelectAll: TMenuItem;
+    FOnCutSelection: TNotifyEvent;
+    FOnCopySelection: TNotifyEvent;
+    FOnPasteSelection: TNotifyEvent;
     procedure SetReport(Value: TRpReport);
     procedure SetObjInsp(Value: TComponent);
     procedure SecPosChange(Sender: TObject);
@@ -127,10 +126,7 @@ type
     procedure SizeModifierChange(Sender: TObject);
     procedure ClearSelectionEvent(Sender: TObject);
     procedure PopupMenuPopup(Sender: TObject);
-    procedure PopupDeleteClick(Sender: TObject);
-    procedure PopupBringToFrontClick(Sender: TObject);
-    procedure PopupSendToBackClick(Sender: TObject);
-    procedure PopupSelectAllClick(Sender: TObject);
+    procedure PopupCommandClick(Sender: TObject);
     function SectionsOutOfSync: Boolean;
     procedure RebuildSubReport;
     procedure MoveSelectionZOrder(ToFront: Boolean);
@@ -163,6 +159,9 @@ type
     procedure BringSelectionToFront;
     procedure SendSelectionToBack;
     procedure SelectAll;
+    // Designer commands of the context menus (section and components)
+    procedure ExecuteDesignCommand(ACommand: TRpDesignCommand);
+    function DesignCommandEnabled(ACommand: TRpDesignCommand): Boolean;
     property Report: TRpReport read FReport write SetReport;
     property ObjInsp: TComponent read FObjInsp write SetObjInsp;
     property Scale: Double read FScale write SetScale;
@@ -173,6 +172,11 @@ type
     property ActiveTool: TRpDesignTool read FActiveTool write SetActiveTool;
     property OnToolChange: TNotifyEvent read FOnToolChange write FOnToolChange;
     property DesignPopupMenu: TPopupMenu read FPopupMenu;
+    // Clipboard actions of the host (the main form): Cut, Copy and Paste of
+    // the context menu are disabled while they are not assigned
+    property OnCutSelection: TNotifyEvent read FOnCutSelection write FOnCutSelection;
+    property OnCopySelection: TNotifyEvent read FOnCopySelection write FOnCopySelection;
+    property OnPasteSelection: TNotifyEvent read FOnPasteSelection write FOnPasteSelection;
   end;
 
 implementation
@@ -548,7 +552,7 @@ end;
 
 constructor TFRpDesignFrameLCL.Create(AOwner: TComponent);
 var
-  itemSep: TMenuItem;
+  i: Integer;
 begin
   inherited Create(AOwner);
 
@@ -596,39 +600,18 @@ begin
 
   FActiveTool := dtArrow;
 
-  // Create context popup menu
+  // Context menu of the design surface (sections): the designer commands.
+  // Every component has its own menu with its actions and the same commands.
   FPopupMenu := TPopupMenu.Create(Self);
   FPopupMenu.OnPopup := PopupMenuPopup;
-
-  MDelete := TMenuItem.Create(FPopupMenu);
-  MDelete.Caption := SRpDelete;
-  MDelete.ShortCut := ShortCut(VK_DELETE, []);
-  MDelete.OnClick := PopupDeleteClick;
-  FPopupMenu.Items.Add(MDelete);
-
-  itemSep := TMenuItem.Create(FPopupMenu);
-  itemSep.Caption := '-';
-  FPopupMenu.Items.Add(itemSep);
-
-  MBringToFront := TMenuItem.Create(FPopupMenu);
-  MBringToFront.Caption := SRpBringToFront;
-  MBringToFront.OnClick := PopupBringToFrontClick;
-  FPopupMenu.Items.Add(MBringToFront);
-
-  MSendToBack := TMenuItem.Create(FPopupMenu);
-  MSendToBack.Caption := SRpSendToBack;
-  MSendToBack.OnClick := PopupSendToBackClick;
-  FPopupMenu.Items.Add(MSendToBack);
-
-  itemSep := TMenuItem.Create(FPopupMenu);
-  itemSep.Caption := '-';
-  FPopupMenu.Items.Add(itemSep);
-
-  MSelectAll := TMenuItem.Create(FPopupMenu);
-  MSelectAll.Caption := SRpSelectAll;
-  MSelectAll.ShortCut := ShortCut(Ord('A'), [ssCtrl]);
-  MSelectAll.OnClick := PopupSelectAllClick;
-  FPopupMenu.Items.Add(MSelectAll);
+  AddDesignCommandItems(FPopupMenu, FPopupMenu.Items, PopupCommandClick);
+  for i := 0 to FPopupMenu.Items.Count - 1 do
+  begin
+    case MenuItemDesignCommand(FPopupMenu.Items[i]) of
+      dcDelete: FPopupMenu.Items[i].ShortCut := ShortCut(VK_DELETE, []);
+      dcSelectAll: FPopupMenu.Items[i].ShortCut := ShortCut(Ord('A'), [ssCtrl]);
+    end;
+  end;
 
   PSection := TRpPaintEventPanel.Create(Self);
   PSection.allowselect := False;
@@ -837,6 +820,8 @@ begin
     asecint.OnClearSelection := ClearSelectionEvent;
     asecint.OnMoveComponent := MoveSelectedComponents;
     asecint.OnGetSelectedList := GetSelectedItemsList;
+    asecint.OnDesignCommand := ExecuteDesignCommand;
+    asecint.OnDesignCommandEnabled := DesignCommandEnabled;
     asecint.CreateChilds;
     asecint.UpdatePos;
     asecint.OnPosChange := SecPosChange;
@@ -1101,7 +1086,6 @@ begin
   end;
 
   posComp := TRpSizePosInterface(AComp);
-  posComp.PopupMenu := FPopupMenu;
 
   if not AddToSelection then
   begin
@@ -1398,36 +1382,70 @@ begin
 end;
 
 procedure TFRpDesignFrameLCL.PopupMenuPopup(Sender: TObject);
+begin
+  UpdateDesignCommandItems(FPopupMenu.Items, DesignCommandEnabled);
+end;
+
+procedure TFRpDesignFrameLCL.PopupCommandClick(Sender: TObject);
+begin
+  if Sender is TMenuItem then
+    ExecuteDesignCommand(MenuItemDesignCommand(TMenuItem(Sender)));
+end;
+
+function TFRpDesignFrameLCL.DesignCommandEnabled(ACommand: TRpDesignCommand): Boolean;
 var
   hasSel: Boolean;
+  inspCount: Integer;
 begin
   hasSel := Assigned(FSelectedItems) and (FSelectedItems.Count > 0);
-  if Assigned(MDelete) then
-    MDelete.Enabled := hasSel;
-  if Assigned(MBringToFront) then
-    MBringToFront.Enabled := hasSel;
-  if Assigned(MSendToBack) then
-    MSendToBack.Enabled := hasSel;
+  inspCount := 0;
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    inspCount := TFRpObjInspLCL(FObjInsp).SelectedItems.Count;
+  case ACommand of
+    dcCut: Result := hasSel and Assigned(FOnCutSelection);
+    dcCopy: Result := hasSel and Assigned(FOnCopySelection);
+    // Pasted in the section of the selected component or section
+    dcPaste: Result := Assigned(FOnPasteSelection) and (inspCount > 0);
+    dcDelete, dcBringToFront, dcSendToBack: Result := hasSel;
+    // As the VCL designer: align needs two components, spacing three
+    dcAlignLeft, dcAlignRight, dcAlignUp, dcAlignDown: Result := hasSel and (inspCount > 1);
+    dcAlignHorz, dcAlignVert: Result := hasSel and (inspCount > 2);
+    dcSelectAll: Result := Assigned(secinterfaces) and (secinterfaces.Count > 0);
+  else
+    Result := False;
+  end;
 end;
 
-procedure TFRpDesignFrameLCL.PopupDeleteClick(Sender: TObject);
+procedure TFRpDesignFrameLCL.ExecuteDesignCommand(ACommand: TRpDesignCommand);
+var
+  insp: TFRpObjInspLCL;
 begin
-  DeleteSelection;
-end;
-
-procedure TFRpDesignFrameLCL.PopupBringToFrontClick(Sender: TObject);
-begin
-  BringSelectionToFront;
-end;
-
-procedure TFRpDesignFrameLCL.PopupSendToBackClick(Sender: TObject);
-begin
-  SendSelectionToBack;
-end;
-
-procedure TFRpDesignFrameLCL.PopupSelectAllClick(Sender: TObject);
-begin
-  SelectAll;
+  insp := nil;
+  if Assigned(FObjInsp) and (FObjInsp is TFRpObjInspLCL) then
+    insp := TFRpObjInspLCL(FObjInsp);
+  case ACommand of
+    dcCut:
+      if Assigned(FOnCutSelection) then
+        FOnCutSelection(Self);
+    dcCopy:
+      if Assigned(FOnCopySelection) then
+        FOnCopySelection(Self);
+    dcPaste:
+      if Assigned(FOnPasteSelection) then
+        FOnPasteSelection(Self);
+    dcDelete:
+      DeleteSelection;
+    dcBringToFront:
+      BringSelectionToFront;
+    dcSendToBack:
+      SendSelectionToBack;
+    dcAlignLeft..dcAlignVert:
+      if Assigned(insp) then
+        // 1-Left, 2-Right, 3-Up, 4-Down, 5-HorzSpacing, 6-VertSpacing
+        insp.AlignSelected(Ord(ACommand) - Ord(dcAlignLeft) + 1);
+    dcSelectAll:
+      SelectAll;
+  end;
 end;
 
 procedure TFRpDesignFrameLCL.DeleteSelection;

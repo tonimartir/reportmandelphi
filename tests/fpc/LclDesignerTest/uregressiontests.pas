@@ -24,10 +24,12 @@ implementation
 
 uses
   Classes, SysUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
-  Generics.Collections, sqldb, sqlite3conn,
+  Graphics, Menus, Generics.Collections, sqldb, sqlite3conn,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
   rpprintitem, rplabelitem, rpmdchart, rpmdcharttypes, rpparams, rpdatainfo, rpgraphutilslcl,
+  rpdrawitem, rpmdbarcode, rptranslator,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
+  rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfchartintlcl, rpmdfbarcodeintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
   rpmdfopenliblcl, rprflclparams, rpmdesignerlcl,
   umainform;
@@ -74,6 +76,8 @@ type
     procedure TestDeleteRestoresAll;
     // L1 + L2: designer (TFRpMainFLCL)
     procedure TestDesigner(const ASamplePath: string);
+    // Parity with the VCL designer: item properties, context menu, painting
+    procedure TestItemInterfaces;
     // L2: dialogs
     procedure TestParamsDialog;
     procedure TestDataConfig;
@@ -1224,6 +1228,793 @@ begin
   LogMsg('Designer regression tests verified');
 end;
 
+{ Item interfaces: parity with the VCL designer }
+
+const
+  PROP_SEP = #9;
+
+// Name/type pairs, in order, of the VCL designer GetProperties
+// (rpmdobinsintvcl, rpmdflabelintvcl, rpmdfchartintvcl, rpmdfbarcodeintvcl,
+// rpmdfdrawintvcl, rpmdfsectionintvcl)
+procedure AddVCLProps(L: TStringList; const P: array of WideString);
+var
+  i: Integer;
+begin
+  i := 0;
+  while i < High(P) do
+  begin
+    L.Add(string(P[i]) + PROP_SEP + string(P[i + 1]));
+    Inc(i, 2);
+  end;
+end;
+
+procedure VCLCommonProps(L: TStringList);
+begin
+  // TRpSizeInterface
+  AddVCLProps(L, [SrpSPrintCondition, SRpSExpression, SrpSBeforePrint, SRpSExpression,
+    SrpSAfterPrint, SRpSExpression, SrpSWidth, SRpSCurrency, SrpSHeight, SRpSCurrency]);
+end;
+
+procedure VCLPosProps(L: TStringList);
+begin
+  VCLCommonProps(L);
+  // TRpSizePosInterface
+  AddVCLProps(L, [SrpSTop, SRpSCurrency, SrpSLeft, SRpSCurrency, SRPAlign, SRpSList,
+    SrpSAnnotation, SRpSExpression]);
+end;
+
+procedure VCLTextProps(L: TStringList);
+begin
+  VCLPosProps(L);
+  // TRpGenTextInterface
+  AddVCLProps(L, [SrpSAlignment, SRpSList, SrpSVAlignment, SRpSList,
+    SrpSWFontName, SRpSWFontName, SrpSLFontName, SRpSLFontName,
+    SRpSType1Font, SRpSList, SRpSFontStep, SRpSList, SrpSFontSize, SRpSFontSize,
+    SrpSFontColor, SRpSColor, SrpSFontStyle, SrpSFontStyle, SrpSRightToLeft, SRpSList,
+    SrpSBackColor, SRpSColor, SrpSTransparent, SRpSBool, SrpSCutText, SRpSBool,
+    SrpSWordwrap, SRpSBool, SrpSSingleLine, SRpSBool, SRpSFontRotation, SrpSString]);
+end;
+
+procedure VCLLabelProps(L: TStringList);
+begin
+  VCLTextProps(L);
+  AddVCLProps(L, [SrpSText, SRpSString, SRpIsHtml, SRpSBool]);
+end;
+
+procedure VCLExpressionProps(L: TStringList);
+begin
+  VCLTextProps(L);
+  AddVCLProps(L, [SrpSExpression, SRpSExpression, SRpIsHtml, SRpSBool,
+    SRpSDataType, SRpSList, SrpSDisplayFormat, SRpSString, SRpMultiPage, SRpSBool,
+    SRpPrintNulls, SRpSBool, SrpSIdentifier, SRpSString, SrpSAggregate, SRpSList,
+    SrpSAgeGroup, SRpGroup, SrpSAgeType, SRpSList, SrpSIniValue, SRpSExpression,
+    SRpSOnlyOne, SRpSBool, SRpSExportExpression, SRpSExpression,
+    SRpSExportFormat, SRpSString, SRpSExportLine, SRpSInteger,
+    SRpSExportPos, SRpSInteger, SRpSExportSize, SRpSInteger,
+    SRpSExportDoNewLine, SRpSBool]);
+end;
+
+procedure VCLChartProps(L: TStringList);
+begin
+  VCLTextProps(L);
+  AddVCLProps(L, [SrpSExpression, SRpSExpression, SrpSIdentifier, SRpSString,
+    SrpSChartType, SRpSList, SrpSGetValueCondition, SRpSExpression,
+    SrpSChangeSerieExp, SRpSExpression, SrpSChangeSerieBool, SRpSBool,
+    SrpSClearExpChart, SRpSExpression, SrpSBoolClearExp, SRpSBool,
+    SrpSCaptionExp, SRpSExpression, SrpSExpression + ' X', SRpSExpression,
+    SrpSSerieCaptionExp, SRpSExpression, SrpSDriver, SRpSList,
+    SRpSView3D, SRpSBool, SRpSView3DWalls, SRpSBool, SRpSPerspective, SRpSInteger,
+    SRpSElevation, SRpSInteger, SRpSRotation, SRpSInteger, SRpSOrthogonal, SRpSBool,
+    SRpSZoom, SRpSInteger, SRpSHOffset, SRpSInteger, SRpSVOffset, SRpSInteger,
+    SRpSTilt, SRpSInteger, SRpDPIRes, SRpSInteger, SRpSMultibar, SRpSList,
+    SrpChartHint, SRpSBool, SrpChartLegend, SRpSBool, SRpMarkType, SRpSList,
+    SRpSVertAxisFSize, SRpSInteger, SRpSHorzAxisFSize, SRpSInteger,
+    SRpSVertAxisFRot, SRpSInteger, SRpSHorzAxisFRot, SRpSInteger,
+    SrpSValueColor, SRpSExpression, SrpSSerieColor, SRpSExpression,
+    SRpAutoRange, SRpSList, SRpAutoRangeYMin, SRpSCurrency, SRpAutoRangeYMax, SRpSCurrency]);
+end;
+
+procedure VCLBarcodeProps(L: TStringList);
+begin
+  VCLPosProps(L);
+  AddVCLProps(L, [SRpSBarcodeType, SRpSList, SRpSChecksum, SRpSBool,
+    SrpSModul, SRpSCurrency, SrpSRatio, SRpSCurrency, SrpSExpression, SRpSExpression,
+    SrpSDisplayFormat, SRpSString, SRpSRotation, SrpSList, SrpSColor, SRpSColor,
+    SrpSBackColor, SRpSColor, SrpSTransparent, SRpSBool, SRpECCLevel, SRpSList,
+    SRpNumRows, SRpInteger, SRpNumCols, SRpInteger, SRpTruncatedPDF417, SRpSBool]);
+end;
+
+procedure VCLShapeProps(L: TStringList);
+begin
+  VCLPosProps(L);
+  AddVCLProps(L, [SrpSShape, SRpSList, SrpSPenStyle, SRpSList, SrpSPenColor, SRpSColor,
+    SrpSPenWidth, SRpSString, SrpSBrushStyle, SRpSList, SrpSBrushColor, SRpSColor]);
+end;
+
+procedure VCLImageProps(L: TStringList);
+begin
+  VCLPosProps(L);
+  AddVCLProps(L, [SRpDrawStyle, SRpSList, SrpSExpression, SRpSExpression,
+    SrpSImage, SRpSImage, SRpDPIRes, SRpSString, SRpCached, SRpSList]);
+end;
+
+procedure VCLDetailProps(L: TStringList);
+begin
+  VCLCommonProps(L);
+  // TRpSectionInterface of a detail section
+  AddVCLProps(L, [SRpSAutoExpand, SRpSBool, SRpSAutoContract, SRpSBool,
+    SRpSBeginPage, SRpSExpression, SRpSkipPage, SRpSBool, SRPAlignBottom, SRpSBool,
+    SRPHorzDesp, SRpSBool, SRPVertDesp, SRpSBool, SRpSSkipType, SRpSList,
+    SRpSSkipToPage, SRpSExpression, SRpSHSkipExpre, SRpSExpression,
+    SRpSHRelativeSkip, SRpSBool, SRpSVSkipExpre, SRpSExpression,
+    SRpSVRelativeSkip, SRpSBool, SRpChildSubRep, SRpSList,
+    SRpSExternalPath, SRpSExternalpath, SRpSExternalData, SRpSExternalData,
+    SrpSBackExpression, SRpSExpression, SrpSImage, SRpSImage, SRpDPIRes, SRpSString,
+    SRpSBackStyle, SRpSList, SRpDrawStyle, SRpSList, SRpCached, SRpSList]);
+end;
+
+// Properties that the model does not store or that are not edited as a value
+function PropertyWithoutUndo(const pname: WideString): Boolean;
+begin
+  Result := (pname = SRpAutoRange) or (pname = SRpAutoRangeYMin) or
+    (pname = SRpAutoRangeYMax) or (pname = SRpSExternalData);
+end;
+
+// The interface exposes exactly the VCL properties (names, types, order),
+// its values match GetProperty and every property has a model property for
+// undo with a value of the recorded type
+procedure CheckInterfaceProps(aint: TRpSizeInterface; expected: TStringList;
+  const Context: string);
+var
+  lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings;
+  i: Integer;
+  undoName: string;
+  ptype: TPropertyType;
+  v: Variant;
+  typeOk: Boolean;
+begin
+  lnames := TRpWideStrings.Create;
+  ltypes := TRpWideStrings.Create;
+  lvalues := TRpWideStrings.Create;
+  lhints := TRpWideStrings.Create;
+  lcat := TRpWideStrings.Create;
+  try
+    aint.GetProperties(lnames, ltypes, lvalues, lhints, lcat);
+    CheckInt(expected.Count, lnames.Count, Context + ': number of properties');
+    CheckInt(lnames.Count, ltypes.Count, Context + ': property types');
+    CheckInt(lnames.Count, lvalues.Count, Context + ': property values');
+    CheckInt(lnames.Count, lhints.Count, Context + ': property hints');
+    CheckInt(lnames.Count, lcat.Count, Context + ': property categories');
+    for i := 0 to lnames.Count - 1 do
+    begin
+      CheckStr(expected[i], string(lnames.Strings[i]) + PROP_SEP + string(ltypes.Strings[i]),
+        Format('%s: property %d (name/type)', [Context, i]));
+      CheckStr(string(lvalues.Strings[i]), string(aint.GetProperty(lnames.Strings[i])),
+        Context + ': GetProperties value of ' + string(lnames.Strings[i]));
+      undoName := InspectorUndoProperty(aint.printitem, lnames.Strings[i], ptype);
+      if PropertyWithoutUndo(lnames.Strings[i]) then
+        Continue;
+      Check(undoName <> '', Context + ': no undo property for ' + string(lnames.Strings[i]));
+      try
+        v := ReadUndoPropertyValue(aint.printitem, undoName);
+      except
+        on E: Exception do
+          Fail(Context + ': the model can not read the undo property ' + undoName +
+            ' of ' + string(lnames.Strings[i]) + ': ' + E.Message);
+      end;
+      case ptype of
+        ptInteger: typeOk := VarIsOrdinal(v);
+        ptNumber: typeOk := VarIsNumeric(v);
+        ptBoolean: typeOk := VarType(v) = varBoolean;
+      else
+        typeOk := VarIsStr(v) or VarIsEmpty(v);
+      end;
+      Check(typeOk, Format('%s: undo property %s of %s has the variant type %d',
+        [Context, undoName, string(lnames.Strings[i]), VarType(v)]));
+    end;
+  finally
+    lnames.Free;
+    ltypes.Free;
+    lvalues.Free;
+    lhints.Free;
+    lcat.Free;
+  end;
+end;
+
+function PossibleValue(aint: TRpSizeInterface; const pname: WideString; AIndex: Integer): WideString;
+var
+  l: TStringList;
+begin
+  l := TStringList.Create;
+  try
+    aint.GetPropertyValues(pname, l);
+    Check(l.Count > AIndex, Format('%s has less than %d possible values', [string(pname), AIndex + 1]));
+    Result := l[AIndex];
+  finally
+    l.Free;
+  end;
+end;
+
+procedure CheckRoundTrip(aint: TRpSizeInterface; const pname, value: WideString;
+  const Context: string);
+begin
+  aint.SetProperty(pname, value);
+  CheckStr(string(value), string(aint.GetProperty(pname)), Context + ': ' + string(pname) + ' round trip');
+end;
+
+function RedBitmapStream(W, H: Integer): TMemoryStream;
+var
+  bmp: TBitmap;
+begin
+  Result := TMemoryStream.Create;
+  bmp := TBitmap.Create;
+  try
+    bmp.PixelFormat := pf24bit;
+    bmp.SetSize(W, H);
+    bmp.Canvas.Brush.Color := clRed;
+    bmp.Canvas.Brush.Style := bsSolid;
+    bmp.Canvas.FillRect(0, 0, W, H);
+    bmp.SaveToStream(Result);
+  finally
+    bmp.Free;
+  end;
+  Result.Position := 0;
+end;
+
+function IsRedPixel(ACanvas: TCanvas; X, Y: Integer): Boolean;
+var
+  c: TColor;
+begin
+  c := ColorToRGB(ACanvas.Pixels[X, Y]);
+  Result := (Red(c) > 200) and (Green(c) < 80) and (Blue(c) < 80);
+end;
+
+// Paints the image item as the design surface does (the image, not a
+// placeholder) and looks at the middle pixel
+procedure CheckImagePainted(aint: TRpSizeInterface; AExpectImage: Boolean; const Context: string);
+var
+  bmp: TBitmap;
+  imgint: TRpImageInterface;
+begin
+  Check(aint is TRpImageInterface, Context + ': not an image interface');
+  imgint := TRpImageInterface(aint);
+  bmp := TBitmap.Create;
+  try
+    bmp.SetSize(60, 60);
+    bmp.Canvas.Brush.Color := clWhite;
+    bmp.Canvas.Brush.Style := bsSolid;
+    bmp.Canvas.FillRect(0, 0, 60, 60);
+    imgint.DrawImageTo(bmp.Canvas, 60, 60);
+    if AExpectImage then
+    begin
+      Check(Assigned(imgint.DesignBitmap), Context + ': the image stream must be decoded');
+      Check(IsRedPixel(bmp.Canvas, 30, 30), Format('%s: the image must be painted (pixel %x, style %d, bitmap %dx%d)',
+        [Context, ColorToRGB(bmp.Canvas.Pixels[30, 30]), Ord(TRpImage(imgint.printitem).DrawStyle),
+         imgint.DesignBitmap.Width, imgint.DesignBitmap.Height]));
+    end
+    else
+    begin
+      Check(not Assigned(imgint.DesignBitmap), Context + ': no image expected');
+      Check(not IsRedPixel(bmp.Canvas, 30, 30), Context + ': no image must be painted');
+    end;
+  finally
+    bmp.Free;
+  end;
+end;
+
+function MenuSignature(AItem: TMenuItem): string;
+var
+  i: Integer;
+  mi: TMenuItem;
+  cmd: TRpDesignCommand;
+begin
+  Result := '';
+  for i := 0 to AItem.Count - 1 do
+  begin
+    mi := AItem.Items[i];
+    if i > 0 then
+      Result := Result + '|';
+    cmd := MenuItemDesignCommand(mi);
+    if cmd <> dcNone then
+      Result := Result + '#' + IntToStr(Ord(cmd))
+    else
+      Result := Result + mi.Caption;
+    if mi.Count > 0 then
+      Result := Result + '[' + MenuSignature(mi) + ']';
+  end;
+end;
+
+function SearchCommandItem(AItem: TMenuItem; ACommand: TRpDesignCommand): TMenuItem;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to AItem.Count - 1 do
+  begin
+    if MenuItemDesignCommand(AItem.Items[i]) = ACommand then
+      Exit(AItem.Items[i]);
+    if AItem.Items[i].Count > 0 then
+    begin
+      Result := SearchCommandItem(AItem.Items[i], ACommand);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
+function FindCommandItem(AItem: TMenuItem; ACommand: TRpDesignCommand): TMenuItem;
+begin
+  Result := SearchCommandItem(AItem, ACommand);
+  if not Assigned(Result) then
+    Fail('Context menu without the designer command ' + IntToStr(Ord(ACommand)));
+end;
+
+function FindCaptionItem(AItem: TMenuItem; const ACaption: string): TMenuItem;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to AItem.Count - 1 do
+    if AItem.Items[i].Caption = ACaption then
+      Exit(AItem.Items[i]);
+  Fail('Context menu without the item ' + ACaption);
+end;
+
+procedure TRegressionTests.TestItemInterfaces;
+var
+  mf: TFRpMainFLCL;
+  rep: TRpReport;
+  cue: TUndoCue;
+  frame: TFRpDesignFrameLCL;
+  sub: TRpSubReport;
+  detail: TRpSection;
+  secint: TRpSectionInterface;
+  panel: TRpPanelObjLCL;
+  aint: TRpSizeInterface;
+  nLab, nLab2, nExp, nShape, nImage, nBar, nChart, dc, tmp, aval: string;
+  expected: TStringList;
+  op: TChangeObjectOperation;
+  ms: TMemoryStream;
+  bmp: TBitmap;
+  nOps, cnt, origW, oldSize, i: Integer;
+  raised: Boolean;
+  img: TRpImage;
+
+  procedure CheckUndoProp(const AName, pname, value, undoName: string;
+    AType: TPropertyType; const Context: string);
+  var
+    oldText: string;
+    item: TRpSizeInterface;
+    prop: TChangeOperationItem;
+  begin
+    // AName '' is the detail section
+    if AName = '' then
+    begin
+      item := SecIntOf(frame, FindSectionOfType(rep.SubReports[0].SubReport, rpsecdetail));
+      mf.ObjInsp.AddCompItem(item, True);
+    end
+    else
+    begin
+      item := ChildInt(frame, AName);
+      frame.SelectComponent(item, False);
+    end;
+    panel := mf.ObjInsp.CurrentPanel;
+    Check(Assigned(panel) and (panel.CompItem = item), Context + ': the inspector shows the item');
+    oldText := item.GetProperty(pname);
+    Check(oldText <> value, Context + ': the new value must be a change');
+    nOps := cue.UndoOperations.Count;
+    panel.SetPropertyFull(pname, value);
+    CheckStr(value, item.GetProperty(pname), Context + ': value set');
+    CheckInt(nOps + 1, cue.UndoOperations.Count, Context + ': one undo operation');
+    op := cue.UndoOperations.Last;
+    CheckStr(item.printitem.Name, op.componentName, Context + ': recorded component');
+    CheckInt(1, op.properties.Count, Context + ': recorded properties');
+    prop := op.properties[0];
+    CheckStr(undoName, prop.propertyName, Context + ': recorded model property');
+    Check(prop.propertyType = AType, Context + ': recorded property type');
+    case AType of
+      ptInteger: Check(VarIsOrdinal(prop.oldValue) and VarIsOrdinal(prop.newValue),
+        Context + ': integer model values');
+      ptBoolean: Check((VarType(prop.oldValue) = varBoolean) and (VarType(prop.newValue) = varBoolean),
+        Context + ': boolean model values');
+      ptNumber: Check(VarIsNumeric(prop.newValue), Context + ': number model value');
+    end;
+    mf.DoUndo;
+    if AName = '' then
+      item := SecIntOf(frame, FindSectionOfType(rep.SubReports[0].SubReport, rpsecdetail))
+    else
+      item := ChildInt(frame, AName);
+    CheckStr(oldText, item.GetProperty(pname), Context + ': undo restores the value');
+    mf.DoRedo;
+    if AName = '' then
+      item := SecIntOf(frame, FindSectionOfType(rep.SubReports[0].SubReport, rpsecdetail))
+    else
+      item := ChildInt(frame, AName);
+    CheckStr(value, item.GetProperty(pname), Context + ': redo applies the value');
+  end;
+
+begin
+  LogMsg('Item interfaces: properties, context menu and painting as the VCL designer');
+  mf := TFRpMainFLCL.Create(nil);
+  expected := TStringList.Create;
+  try
+    mf.Show;
+    Application.ProcessMessages;
+    rep := mf.Report;
+    cue := TUndoCue(rep.UndoCue);
+    frame := mf.DesignerFrame;
+    sub := rep.SubReports[0].SubReport;
+    detail := FindSectionOfType(sub, rpsecdetail);
+    secint := SecIntOf(frame, detail);
+    Check(Assigned(secint), 'No interface for the detail section');
+    nLab := secint.CreateNewComponent(dtLabel, 10, 5, 0, 0).printitem.Name;
+    nLab2 := secint.CreateNewComponent(dtLabel, 10, 40, 0, 0).printitem.Name;
+    nExp := secint.CreateNewComponent(dtExpression, 150, 5, 0, 0).printitem.Name;
+    nShape := secint.CreateNewComponent(dtShape, 300, 5, 0, 0).printitem.Name;
+    nImage := secint.CreateNewComponent(dtImage, 10, 70, 60, 60).printitem.Name;
+    nBar := secint.CreateNewComponent(dtBarcode, 150, 70, 0, 0).printitem.Name;
+    nChart := secint.CreateNewComponent(dtChart, 300, 70, 0, 0).printitem.Name;
+
+    // ---- Every item exposes the properties of the VCL designer
+    LogMsg('Items: property lists of the VCL designer');
+    VCLLabelProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nLab), expected, 'Label');
+    expected.Clear;
+    VCLExpressionProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nExp), expected, 'Expression');
+    expected.Clear;
+    VCLChartProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nChart), expected, 'Chart');
+    expected.Clear;
+    VCLBarcodeProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nBar), expected, 'Barcode');
+    expected.Clear;
+    VCLShapeProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nShape), expected, 'Shape');
+    expected.Clear;
+    VCLImageProps(expected);
+    CheckInterfaceProps(ChildInt(frame, nImage), expected, 'Image');
+    expected.Clear;
+    VCLDetailProps(expected);
+    CheckInterfaceProps(secint, expected, 'Detail section');
+    // The inspector builds an editor for each one
+    frame.SelectComponent(ChildInt(frame, nChart), False);
+    panel := mf.ObjInsp.CurrentPanel;
+    Check(Assigned(panel) and (panel.CompItem = ChildInt(frame, nChart)), 'Inspector shows the chart');
+    expected.Clear;
+    VCLChartProps(expected);
+    CheckInt(expected.Count, panel.ControlsList.Count, 'Chart inspector editors');
+    mf.ObjInsp.AddCompItem(secint, True);
+    expected.Clear;
+    VCLDetailProps(expected);
+    CheckInt(expected.Count, mf.ObjInsp.CurrentPanel.ControlsList.Count, 'Section inspector editors');
+    // A chart is a text item: common class with a label
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    frame.SelectComponent(ChildInt(frame, nChart), True);
+    CheckStr('TRpGenTextInterface', mf.ObjInsp.CurrentPanel.CompItem.ClassName,
+      'Common inspector class of a label and a chart');
+
+    // ---- Set/Get round trips
+    LogMsg('Items: property set/get round trips');
+    aint := ChildInt(frame, nLab);
+    CheckRoundTrip(aint, SrpSWordwrap, BoolToStr(True, True), 'Label');
+    Check(TRpLabel(aint.printitem).WordWrap, 'Label WordWrap in the model');
+    CheckRoundTrip(aint, SrpSVAlignment, SrpSAlignCenter, 'Label');
+    CheckInt(AlignmentFlags_AlignVCenter, TRpLabel(aint.printitem).VAlignment, 'Label VAlignment in the model');
+    CheckRoundTrip(aint, SrpSAlignment, SrpSAlignRight, 'Label');
+    CheckRoundTrip(aint, SRpSType1Font, PossibleValue(aint, SRpSType1Font, 1), 'Label');
+    CheckRoundTrip(aint, SRpSFontStep, PossibleValue(aint, SRpSFontStep, 1), 'Label');
+    CheckRoundTrip(aint, SrpSRightToLeft, PossibleValue(aint, SrpSRightToLeft, 1), 'Label');
+    CheckRoundTrip(aint, SrpSBackColor, '255', 'Label');
+    CheckRoundTrip(aint, SrpSLFontName, 'Courier New', 'Label');
+    CheckRoundTrip(aint, SRpSFontRotation, FormatCurr('#####0.0', 45.5), 'Label');
+    CheckInt(455, TRpLabel(aint.printitem).FontRotation, 'Label FontRotation in the model');
+    CheckRoundTrip(aint, SRpIsHtml, BoolToStr(True, True), 'Label');
+    CheckRoundTrip(aint, SrpSAnnotation, 'ANNOT', 'Label');
+    CheckStr('ANNOT', TRpLabel(aint.printitem).AnnotationExpression, 'Label annotation in the model');
+    aint.SetProperty(SRpIsHtml, BoolToStr(False, True));
+
+    aint := ChildInt(frame, nExp);
+    CheckRoundTrip(aint, SrpSAggregate, SRpGroup, 'Expression');
+    Check(TRpExpression(aint.printitem).Aggregate = rpAgGroup, 'Expression aggregate in the model');
+    CheckRoundTrip(aint, SrpSAgeType, PossibleValue(aint, SrpSAgeType, 2), 'Expression');
+    Check(TRpExpression(aint.printitem).AgType = rpagMax, 'Expression aggregate type in the model');
+    CheckRoundTrip(aint, SRpSDataType, PossibleValue(aint, SRpSDataType, 1), 'Expression');
+    CheckRoundTrip(aint, SRpSExportLine, '3', 'Expression');
+    CheckInt(3, TRpExpression(aint.printitem).ExportLine, 'Expression export line in the model');
+    CheckRoundTrip(aint, SRpMultiPage, BoolToStr(True, True), 'Expression');
+    CheckRoundTrip(aint, SRpPrintNulls, BoolToStr(True, True), 'Expression');
+    CheckRoundTrip(aint, SrpSIniValue, '5', 'Expression');
+    CheckRoundTrip(aint, SRpSExportFormat, '0.00', 'Expression');
+
+    aint := ChildInt(frame, nChart);
+    CheckRoundTrip(aint, SrpSChartType, PossibleValue(aint, SrpSChartType, 1), 'Chart');
+    CheckRoundTrip(aint, SRpSZoom, '150', 'Chart');
+    CheckInt(150, TRpChart(aint.printitem).Zoom, 'Chart zoom in the model');
+    CheckRoundTrip(aint, SRpSRotation, '30', 'Chart');
+    CheckInt(30, TRpChart(aint.printitem).Rotation, 'Chart rotation in the model');
+    CheckRoundTrip(aint, SrpSDriver, PossibleValue(aint, SrpSDriver, 1), 'Chart');
+    CheckRoundTrip(aint, SRpSMultibar, PossibleValue(aint, SRpSMultibar, 1), 'Chart');
+    CheckRoundTrip(aint, SRpMarkType, PossibleValue(aint, SRpMarkType, 1), 'Chart');
+    CheckRoundTrip(aint, SrpSExpression + ' X', 'X+1', 'Chart');
+    CheckStr('X+1', TRpChart(aint.printitem).ValueXExpression, 'Chart X expression in the model');
+    CheckRoundTrip(aint, SrpChartLegend, BoolToStr(True, True), 'Chart');
+    CheckRoundTrip(aint, SRpAutoRange, PossibleValue(aint, SRpAutoRange, 1), 'Chart');
+    CheckRoundTrip(aint, SRpAutoRangeYMax, FormatCurr('#####0.00', 12.5), 'Chart');
+    Check(TRpChart(aint.printitem).YMax = 12.5, 'Chart Y max in the model');
+    CheckRoundTrip(aint, SrpSFontSize, '14', 'Chart (text property)');
+
+    aint := ChildInt(frame, nBar);
+    CheckRoundTrip(aint, SRpSBarcodeType, 'QR', 'Barcode');
+    Check(TRpBarcode(aint.printitem).Typ = bcCodeQr, 'Barcode type in the model');
+    CheckRoundTrip(aint, SRpSChecksum, BoolToStr(True, True), 'Barcode');
+    CheckRoundTrip(aint, SrpSRatio, FormatCurr('#####0.00', 2.5), 'Barcode');
+    Check(TRpBarcode(aint.printitem).Ratio = 2.5, 'Barcode ratio in the model');
+    CheckRoundTrip(aint, SRpSRotation, PossibleValue(aint, SRpSRotation, 1), 'Barcode');
+    CheckInt(900, TRpBarcode(aint.printitem).Rotation, 'Barcode rotation in the model');
+    CheckRoundTrip(aint, SrpSColor, '255', 'Barcode');
+    CheckInt(255, TRpBarcode(aint.printitem).BColor, 'Barcode color in the model');
+    CheckRoundTrip(aint, SRpECCLevel, PossibleValue(aint, SRpECCLevel, 2), 'Barcode');
+    CheckRoundTrip(aint, SRpNumRows, '4', 'Barcode');
+    CheckRoundTrip(aint, SRpTruncatedPDF417, BoolToStr(True, True), 'Barcode');
+
+    aint := ChildInt(frame, nShape);
+    CheckRoundTrip(aint, SrpSShape, StringShapeType[rpsEllipse], 'Shape');
+    Check(TRpShape(aint.printitem).Shape = rpsEllipse, 'Shape type in the model');
+    CheckRoundTrip(aint, SrpSPenStyle, StringPenStyle[5], 'Shape');
+    CheckInt(5, TRpShape(aint.printitem).PenStyle, 'Shape pen style (VCL psClear) in the model');
+    Check(RpPenStyleToPenStyle(5) = psClear, 'Model pen style 5 is painted as psClear');
+    CheckRoundTrip(aint, SrpSBrushStyle, StringBrushStyle[rpbsCross], 'Shape');
+    CheckInt(Ord(rpbsCross), TRpShape(aint.printitem).BrushStyle, 'Shape brush style in the model');
+    CheckRoundTrip(aint, SrpSPenColor, '255', 'Shape');
+
+    aint := ChildInt(frame, nImage);
+    CheckRoundTrip(aint, SRpDrawStyle, PossibleValue(aint, SRpDrawStyle, 1), 'Image');
+    CheckRoundTrip(aint, SRpDPIRes, '200', 'Image');
+    CheckInt(200, TRpImage(aint.printitem).dpires, 'Image resolution in the model');
+    CheckRoundTrip(aint, SRpCached, PossibleValue(aint, SRpCached, 1), 'Image');
+
+    CheckRoundTrip(secint, SRpSHSkipExpre, 'HSKIP', 'Section');
+    CheckStr('HSKIP', detail.SkipExpreH, 'Section horizontal skip in the model');
+    CheckRoundTrip(secint, SRpSVRelativeSkip, BoolToStr(True, True), 'Section');
+    CheckRoundTrip(secint, SRpSBackStyle, PossibleValue(secint, SRpSBackStyle, 1), 'Section');
+    CheckRoundTrip(secint, SRpDrawStyle, PossibleValue(secint, SRpDrawStyle, 1), 'Section');
+    CheckRoundTrip(secint, SRpDPIRes, '150', 'Section');
+    CheckRoundTrip(secint, SRpSExternalPath, 'external_test.rep', 'Section');
+    secint.SetProperty(SRpSExternalPath, '');
+
+    // ---- Inspector edits of the new properties record model values
+    LogMsg('Items: undo/redo of the new inspector properties');
+    CheckUndoProp(nLab, SrpSWordwrap, BoolToStr(False, True), 'wordWrap', ptBoolean, 'Label word wrap');
+    CheckUndoProp(nLab, SrpSRightToLeft, PossibleValue(ChildInt(frame, nLab), SrpSRightToLeft, 2),
+      'bidiModes', ptString, 'Label BiDi mode');
+    CheckUndoProp(nLab, SrpSAnnotation, 'ANNOT2', 'annotationExpression', ptString, 'Label annotation');
+    CheckUndoProp(nLab, SRpSType1Font, PossibleValue(ChildInt(frame, nLab), SRpSType1Font, 2),
+      'type1Font', ptInteger, 'Label PDF font');
+    CheckUndoProp(nExp, SrpSAggregate, SRpPage, 'aggregate', ptInteger, 'Expression aggregate');
+    CheckUndoProp(nExp, SRpSExportDoNewLine, BoolToStr(True, True), 'exportDoNewLine', ptBoolean,
+      'Expression export new line');
+    CheckUndoProp(nExp, SrpSAgeGroup, 'GROUPTEST', 'groupName', ptString, 'Expression aggregate group');
+    CheckUndoProp(nChart, SRpSZoom, '175', 'zoom', ptInteger, 'Chart zoom');
+    CheckUndoProp(nChart, SrpSChartType, PossibleValue(ChildInt(frame, nChart), SrpSChartType, 2),
+      'chartStyle', ptInteger, 'Chart type');
+    CheckUndoProp(nChart, SrpSExpression, 'VALUE2', 'valueExpression', ptString, 'Chart value expression');
+    CheckUndoProp(nBar, SRpSBarcodeType, 'Code39', 'barType', ptInteger, 'Barcode type');
+    CheckUndoProp(nBar, SrpSRatio, FormatCurr('#####0.00', 3.25), 'ratio', ptNumber, 'Barcode ratio');
+    CheckUndoProp(nShape, SrpSPenStyle, StringPenStyle[2], 'penStyle', ptInteger, 'Shape pen style');
+    CheckUndoProp(nShape, SrpSBrushStyle, StringBrushStyle[rpbsDiagCross], 'brushStyle', ptInteger,
+      'Shape brush style');
+    CheckUndoProp(nImage, SRpDPIRes, '300', 'dpiRes', ptInteger, 'Image resolution');
+    CheckUndoProp('', SRpSHSkipExpre, 'HSKIP2', 'skipExpreH', ptString, 'Section horizontal skip');
+    CheckUndoProp('', SRpSBackStyle, PossibleValue(SecIntOf(frame, detail), SRpSBackStyle, 2),
+      'backStyle', ptInteger, 'Section back style');
+
+    // ---- Images: the inspector stream path, painting and undo of the stream
+    LogMsg('Items: image stream, painting and undo');
+    ms := RedBitmapStream(8, 8);
+    try
+      TRpImage(FindItem(rep, nImage)).DrawStyle := rpDrawStretch;
+      CheckImagePainted(ChildInt(frame, nImage), False, 'Image without stream');
+      frame.SelectComponent(ChildInt(frame, nImage), False);
+      panel := mf.ObjInsp.CurrentPanel;
+      nOps := cue.UndoOperations.Count;
+      panel.SetPropertyFull(SrpSImage, ms);
+      img := TRpImage(FindItem(rep, nImage));
+      CheckInt(ms.Size, img.Stream.Size, 'Image loaded through the inspector');
+      CheckInt(nOps + 1, cue.UndoOperations.Count, 'Image load: one undo operation');
+      CheckStr('streamBase64', cue.UndoOperations.Last.properties[0].propertyName,
+        'Image load recorded as streamBase64');
+      Check(ChildInt(frame, nImage).GetProperty(SrpSImage) <>
+        '[' + FormatFloat('###,###0.00', 0) + SRpKbytes + ']', 'Image size shown in the inspector');
+      CheckImagePainted(ChildInt(frame, nImage), True, 'Image loaded');
+      mf.DoUndo;
+      CheckInt(0, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Undo of the image load');
+      CheckImagePainted(ChildInt(frame, nImage), False, 'After undo of the image load');
+      mf.DoRedo;
+      CheckInt(ms.Size, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Redo of the image load');
+      CheckImagePainted(ChildInt(frame, nImage), True, 'After redo of the image load');
+      // An expression replaces the image: both recorded, stream first
+      frame.SelectComponent(ChildInt(frame, nImage), False);
+      panel := mf.ObjInsp.CurrentPanel;
+      panel.SetPropertyFull(SrpSExpression, 'IMGEXPR');
+      img := TRpImage(FindItem(rep, nImage));
+      Check((img.Stream.Size = 0) and (img.Expression = 'IMGEXPR'), 'An image expression clears the stream');
+      op := cue.UndoOperations.Last;
+      CheckInt(2, op.properties.Count, 'Image expression: stream and expression recorded');
+      CheckStr('streamBase64', op.properties[0].propertyName, 'Image expression: stream recorded first');
+      CheckStr('expression', op.properties[1].propertyName, 'Image expression: expression recorded');
+      mf.DoUndo;
+      img := TRpImage(FindItem(rep, nImage));
+      Check((img.Stream.Size = ms.Size) and (img.Expression = ''), 'Undo restores the image and the expression');
+      mf.DoRedo;
+      img := TRpImage(FindItem(rep, nImage));
+      Check((img.Stream.Size = 0) and (img.Expression = 'IMGEXPR'), 'Redo of the image expression');
+      mf.DoUndo;
+      // Context menu actions: open a file, clear
+      tmp := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_item_image_test.bmp';
+      ms.SaveToFile(tmp);
+      TRpImageInterface(ChildInt(frame, nImage)).ClearImage;
+      CheckInt(0, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Clear image');
+      TRpImageInterface(ChildInt(frame, nImage)).LoadImageFromFile(tmp);
+      CheckInt(ms.Size, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Load image from a file');
+      CheckStr('streamBase64', cue.UndoOperations.Last.properties[0].propertyName,
+        'Load image recorded as streamBase64');
+      mf.DoUndo;
+      CheckInt(0, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Undo of the image file load');
+      mf.DoUndo;
+      CheckInt(ms.Size, TRpImage(FindItem(rep, nImage)).Stream.Size, 'Undo of the image clear');
+      DeleteFile(tmp);
+      // Section background image
+      secint := SecIntOf(frame, detail);
+      secint.SetPropertyUndo(SrpSImage, ms);
+      CheckInt(ms.Size, detail.Stream.Size, 'Section background image');
+      bmp := TBitmap.Create;
+      try
+        bmp.SetSize(100, 40);
+        secint.DrawBackground(bmp.Canvas, 100, 40);
+        Check(IsRedPixel(bmp.Canvas, 2, 2), 'The section background image is painted');
+        mf.DoUndo;
+        CheckInt(0, detail.Stream.Size, 'Undo of the section background image');
+        secint := SecIntOf(frame, detail);
+        secint.DrawBackground(bmp.Canvas, 100, 40);
+        Check(not IsRedPixel(bmp.Canvas, 2, 2), 'No section background after the undo');
+      finally
+        bmp.Free;
+      end;
+    finally
+      ms.Free;
+    end;
+
+    // ---- Context menus: items of the VCL designer and designer commands
+    LogMsg('Items: context menus');
+    dc := '#1|#2|#3|#4|-|#5|#6|-|' + TranslateStr(31, 'Align') + '[#7|#8|#9|#10|#11|#12]|-|#13';
+    CheckStr(string(SRpRename) + '|' + string(SRpSetFontPropsAsDefault) + '|-|' + dc,
+      MenuSignature(ChildInt(frame, nLab).PopupMenu.Items), 'Label context menu');
+    Check(ChildInt(frame, nLab).PopupMenu = TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu,
+      'Components show their own context menu');
+    CheckStr(string(SRpRename) + '|' + string(SRpSetFontPropsAsDefault) + '|-|' + dc,
+      MenuSignature(TRpSizePosInterface(ChildInt(frame, nChart)).ContextMenu.Items), 'Chart context menu');
+    CheckStr(string(SRpRename) + '|-|' + dc,
+      MenuSignature(TRpSizePosInterface(ChildInt(frame, nShape)).ContextMenu.Items), 'Shape context menu');
+    CheckStr(string(SRpRename) + '|' + string(SrpSImage) + '[' + TranslateStr(9, 'Cut') + '|' +
+      TranslateStr(10, 'Copy') + '|' + TranslateStr(11, 'Paste') + '|' + TranslateStr(42, 'Open') +
+      ']|-|' + dc, MenuSignature(TRpSizePosInterface(ChildInt(frame, nImage)).ContextMenu.Items),
+      'Image context menu');
+    CheckStr(dc, MenuSignature(frame.DesignPopupMenu.Items), 'Design surface context menu');
+
+    // Enabled state follows the selection
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    TRpSizePosInterface(ChildInt(frame, nLab)).UpdateContextMenu;
+    with TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu do
+    begin
+      Check(FindCommandItem(Items, dcDelete).Enabled, 'Delete enabled with a selection');
+      Check(FindCommandItem(Items, dcCopy).Enabled, 'Copy enabled with a selection');
+      Check(not FindCommandItem(Items, dcAlignLeft).Enabled, 'Align needs two components');
+    end;
+    // Align left of two labels from the context menu
+    TRpLabel(FindItem(rep, nLab)).PosX := 500;
+    TRpLabel(FindItem(rep, nLab2)).PosX := 900;
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    frame.SelectComponent(ChildInt(frame, nLab2), True);
+    TRpSizePosInterface(ChildInt(frame, nLab2)).UpdateContextMenu;
+    Check(FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab2)).ContextMenu.Items, dcAlignLeft).Enabled,
+      'Align enabled with two components');
+    nOps := cue.UndoOperations.Count;
+    FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab2)).ContextMenu.Items, dcAlignLeft).Click;
+    CheckInt(500, TRpLabel(FindItem(rep, nLab2)).PosX, 'Align left from the context menu');
+    CheckInt(nOps + 1, cue.UndoOperations.Count, 'Align left: one undo operation');
+    mf.DoUndo;
+    CheckInt(900, TRpLabel(FindItem(rep, nLab2)).PosX, 'Undo of align left');
+    // Bring to front from the component menu
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    TRpSizePosInterface(ChildInt(frame, nLab)).UpdateContextMenu;
+    FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu.Items, dcBringToFront).Click;
+    CheckStr(nLab, detail.ReportComponents[detail.ReportComponents.Count - 1].Component.Name,
+      'Bring to front from the context menu');
+    mf.DoUndo;
+    CheckStr(nLab, detail.ReportComponents[0].Component.Name, 'Undo of bring to front');
+    // Delete from the design surface menu
+    frame.SelectComponent(ChildInt(frame, nShape), False);
+    frame.DesignPopupMenu.OnPopup(frame.DesignPopupMenu);
+    Check(FindCommandItem(frame.DesignPopupMenu.Items, dcDelete).Enabled, 'Surface menu: delete enabled');
+    FindCommandItem(frame.DesignPopupMenu.Items, dcDelete).Click;
+    Check(FindItem(rep, nShape) = nil, 'Delete from the context menu');
+    mf.DoUndo;
+    Check(FindItem(rep, nShape) is TRpShape, 'Undo of the delete');
+    CheckFrameInSync(frame, 'after the context menu delete');
+    // Copy and paste from the component menu
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    TRpSizePosInterface(ChildInt(frame, nLab)).UpdateContextMenu;
+    Check(FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu.Items, dcPaste).Enabled,
+      'Paste enabled');
+    FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu.Items, dcCopy).Click;
+    cnt := detail.ReportComponents.Count;
+    FindCommandItem(TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu.Items, dcPaste).Click;
+    CheckInt(cnt + 1, detail.ReportComponents.Count, 'Paste from the context menu');
+    mf.DoUndo;
+    CheckInt(cnt, detail.ReportComponents.Count, 'Undo of the paste');
+    // Select all from the design surface menu
+    frame.DesignPopupMenu.OnPopup(frame.DesignPopupMenu);
+    Check(FindCommandItem(frame.DesignPopupMenu.Items, dcSelectAll).Enabled, 'Surface menu: select all enabled');
+    FindCommandItem(frame.DesignPopupMenu.Items, dcSelectAll).Click;
+    cnt := 0;
+    for i := 0 to frame.secinterfaces.Count - 1 do
+      cnt := cnt + TRpSectionInterface(frame.secinterfaces[i]).childlist.Count;
+    CheckInt(cnt, frame.SelectedItems.Count, 'Select all from the context menu');
+
+    // Set font as default (menu item of text components)
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    mf.ObjInsp.CurrentPanel.SetPropertyFull(SrpSFontSize, '23');
+    oldSize := rep.FontSize;
+    Check(oldSize <> 23, 'The report font size must change');
+    FindCaptionItem(TRpSizePosInterface(ChildInt(frame, nLab)).ContextMenu.Items,
+      SRpSetFontPropsAsDefault).Click;
+    CheckInt(23, rep.FontSize, 'Set font as default');
+    CheckStr('REPORT', cue.UndoOperations.Last.componentName, 'Set font as default recorded on the report');
+    mf.DoUndo;
+    CheckInt(oldSize, rep.FontSize, 'Undo of set font as default');
+
+    // Rename: the history follows the new name
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    origW := TRpLabel(FindItem(rep, nLab)).Width;
+    mf.ObjInsp.CurrentPanel.SetPropertyFull(SrpSWidth, gettextfromtwips(origW + 300));
+    TRpSizePosInterface(ChildInt(frame, nLab)).RenameComponent('RENAMEDLABEL');
+    Check(FindItem(rep, 'RENAMEDLABEL') is TRpLabel, 'Rename');
+    Check(FindItem(rep, nLab) = nil, 'The old name is free');
+    CheckStr('RENAMEDLABEL', cue.UndoOperations.Last.componentName, 'The history follows the rename');
+    Check(rep.Modified, 'A rename marks the report modified');
+    mf.DoUndo;
+    CheckInt(origW, TRpLabel(FindItem(rep, 'RENAMEDLABEL')).Width, 'Undo after a rename');
+    nLab := 'RENAMEDLABEL';
+    raised := False;
+    try
+      TRpSizePosInterface(ChildInt(frame, nLab)).RenameComponent(nLab2);
+    except
+      raised := True;
+    end;
+    Check(raised, 'Rename to an existing name must fail');
+
+    // Multiple selection of text items: one undo group
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    frame.SelectComponent(ChildInt(frame, nExp), True);
+    panel := mf.ObjInsp.CurrentPanel;
+    CheckStr('TRpGenTextInterface', panel.CompItem.ClassName, 'Common class of a label and an expression');
+    aval := BoolToStr(not TRpLabel(FindItem(rep, nLab)).CutText, True);
+    nOps := cue.UndoOperations.Count;
+    panel.SetPropertyFull(SrpSCutText, aval);
+    CheckInt(nOps + 2, cue.UndoOperations.Count, 'Cut text on two items: operations');
+    CheckLastOpsGroup(cue, 2, otModify, 'Cut text on two items');
+    mf.DoUndo;
+    CheckInt(nOps, cue.UndoOperations.Count, 'Both cut text operations undone together');
+    CheckFrameInSync(frame, 'after the item interface tests');
+  finally
+    expected.Free;
+    mf.Hide;
+    mf.Free;
+  end;
+  LogMsg('Item interfaces verified');
+end;
+
 { L2: dialogs }
 
 procedure TRegressionTests.TestParamsDialog;
@@ -1731,6 +2522,7 @@ begin
     t.TestFailingOperation;
     t.TestDeleteRestoresAll;
     t.TestDesigner(ASamplePath);
+    t.TestItemInterfaces;
     t.TestParamsDialog;
     t.TestDataConfig;
     t.TestLibraryTree;

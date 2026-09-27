@@ -875,6 +875,10 @@ begin
   FDesignerFrame.ObjInsp := FObjInsp;
   FDesignerFrame.freportstructure := FStructure;
   FDesignerFrame.OnToolChange := DesignerToolChange;
+  // Clipboard commands of the design surface context menus
+  FDesignerFrame.OnCutSelection := BtnCutClick;
+  FDesignerFrame.OnCopySelection := BtnCopyClick;
+  FDesignerFrame.OnPasteSelection := BtnPasteClick;
 
   FObjInsp.DesignFrame := FDesignerFrame;
   FStructure.designframe := FDesignerFrame;

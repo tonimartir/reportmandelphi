@@ -131,8 +131,9 @@ type
     procedure RefreshCueView;
     function GetTargetItems: TList;
     procedure ApplyPropertyValues(items: TList; const propnames: array of string;
-      const values: array of WideString);
-    procedure MarkUnrecordedChange;
+      const values: array of WideString; stream: TMemoryStream = nil);
+    procedure SendToBackClick(Sender: TObject);
+    procedure BringToFrontClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -154,7 +155,6 @@ implementation
 {$R *.lfm}
 
 uses
-  Variants, rplabelitem, rpdrawitem, rpmdbarcode,
   rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl, rpmdfextseclcl, rpmdundocuelcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
@@ -204,122 +204,8 @@ begin
     Result := 'True';
 end;
 
-// Maps an inspector property (translated display name) of aitem to the model
-// property recorded in undo operations, whose value is read from the model
-// with its real type (twips, enum ordinal, boolean...). Returns '' when the
-// property has no model equivalent that TUndoCue can restore.
-function InspectorUndoProperty(aitem: TRpCommonComponent; const pname: string;
-  out ptype: TPropertyType): string;
-begin
-  Result := '';
-  ptype := ptString;
-  if not Assigned(aitem) then
-    Exit;
-
-  if pname = SrpSPrintCondition then Result := 'printCondition'
-  else if pname = SrpSBeforePrint then Result := 'doBeforePrint'
-  else if pname = SrpSAfterPrint then Result := 'doAfterPrint'
-  else if pname = SrpSWidth then
-  begin
-    Result := 'width';
-    ptype := ptInteger;
-  end
-  else if pname = SrpSHeight then
-  begin
-    Result := 'height';
-    ptype := ptInteger;
-  end;
-  if Result <> '' then
-    Exit;
-
-  if aitem is TRpCommonPosComponent then
-  begin
-    ptype := ptInteger;
-    if pname = SrpSTop then Result := 'posY'
-    else if pname = SrpSLeft then Result := 'posX'
-    else if pname = SRPAlign then Result := 'align';
-    if Result <> '' then
-      Exit;
-  end;
-
-  if aitem is TRpGenTextComponent then
-  begin
-    ptype := ptInteger;
-    if pname = SrpSAlignment then Result := 'alignment'
-    else if pname = SrpSVAlignment then Result := 'vAlignment'
-    else if pname = SrpSFontSize then Result := 'fontSize'
-    else if pname = SrpSFontColor then Result := 'fontColor'
-    else if pname = SrpSFontStyle then Result := 'fontStyle'
-    else if pname = SrpSBackColor then Result := 'backColor'
-    else if pname = SRpSFontRotation then Result := 'fontRotation'
-    else if pname = SRpSType1Font then Result := 'type1Font'
-    else if pname = SRpSFontStep then Result := 'printStep';
-    if Result <> '' then
-      Exit;
-    ptype := ptBoolean;
-    if pname = SrpSTransparent then Result := 'transparent'
-    else if pname = SrpSCutText then Result := 'cutText'
-    else if pname = SrpSWordWrap then Result := 'wordWrap'
-    else if pname = SrpSSingleLine then Result := 'singleLine';
-    if Result <> '' then
-      Exit;
-    ptype := ptString;
-    if pname = SrpSWFontName then Result := 'wFontName'
-    else if pname = SrpSLFontName then Result := 'lFontName'
-    else if (aitem is TRpLabel) and (pname = SrpSText) then Result := 'allStrings'
-    else if (aitem is TRpExpression) and (pname = SrpSExpression) then Result := 'expression'
-    else if (aitem is TRpExpression) and (pname = SrpSDisplayFormat) then Result := 'displayFormat';
-    // TRpChart value expression has no model property yet
-    Exit;
-  end;
-
-  if aitem is TRpShape then
-  begin
-    ptype := ptInteger;
-    if pname = SrpSShape then Result := 'shape'
-    else if pname = SrpSPenColor then Result := 'penColor'
-    else if pname = SrpSBrushColor then Result := 'brushColor'
-    else if pname = SrpSPenStyle then Result := 'penStyle'
-    else if pname = SrpSBrushStyle then Result := 'brushStyle'
-    else if pname = SrpSPenWidth then Result := 'penWidth';
-    Exit;
-  end;
-
-  if (aitem is TRpImage) or (aitem is TRpBarcode) then
-  begin
-    ptype := ptString;
-    if pname = SrpSExpression then Result := 'expression';
-    Exit;
-  end;
-
-  if aitem is TRpSection then
-  begin
-    ptype := ptBoolean;
-    if pname = SRpGeneralPageHeader then Result := 'global'
-    else if pname = SRpSAutoExpand then Result := 'autoExpand'
-    else if pname = SRpSAutoContract then Result := 'autoContract'
-    else if pname = SRpIniNumPage then Result := 'iniNumPage'
-    else if pname = SRpSChangeBool then Result := 'changeBool'
-    else if pname = SRpSPageRepeat then Result := 'pageRepeat'
-    else if pname = SRpSForcePrint then Result := 'forcePrint'
-    else if pname = SRpSkipPage then Result := 'skipPage'
-    else if pname = SRPAlignBottom then Result := 'alignBottom'
-    else if pname = SRPHorzDesp then Result := 'horzDesp'
-    else if pname = SRPVertDesp then Result := 'vertDesp';
-    if Result <> '' then
-      Exit;
-    ptype := ptInteger;
-    if pname = SRpSSkipType then Result := 'skipType';
-    if Result <> '' then
-      Exit;
-    ptype := ptString;
-    if pname = SRpSGroupName then Result := 'groupName'
-    else if pname = SRpSGroupExpression then Result := 'changeExpression'
-    else if pname = SRpSBeginPage then Result := 'beginPageExpression'
-    else if pname = SRpSSkipToPage then Result := 'skipToPageExpre'
-    else if pname = SRpChildSubRep then Result := 'childSubreportName';
-  end;
-end;
+// InspectorUndoProperty (inspector name -> model undo property) lives in
+// rpmdobinsintlcl, shared with the design items (context menu actions)
 
 { TRpPanelObjLCL }
 
@@ -453,7 +339,7 @@ var
   control, NControl: TControl;
   typename: string;
   btn1, btn2: TButton;
-  APanelTop: TPanel;
+  APanelTop, APanelBottom: TPanel;
   APControl: TPageControl;
   pageall, apage: TRpPageObjLCL;
   AScrollBox, NScrollBox: TScrollBox;
@@ -675,7 +561,9 @@ begin
       TComboBox(NControl).Style := csDropDownList;
       TComboBox(NControl).OnChange := EditChange;
     end
-    else if (typename = SRpSWFontName) or (typename = SRpSLFontName) or (typename = SRpSFontStyle) then
+    // The font dialog sets the (Windows) font name, size, color and style;
+    // the Linux font name is typed (a plain edit, as the VCL inspector)
+    else if (typename = SRpSWFontName) or (typename = SRpSFontStyle) then
     begin
       control := TEdit.Create(Self);
       TEdit(control).ReadOnly := True;
@@ -706,12 +594,14 @@ begin
       TEdit(control).Color := clInfoBk;
       TEdit(control).OnClick := ExtClick;
       TEdit(control).OnDblClick := ExtClick;
+      TEdit(control).PopupMenu := TFRpObjInspLCL(Owner).PopUpSection;
 
       NControl := TEdit.Create(Self);
       TEdit(NControl).ReadOnly := True;
       TEdit(NControl).Color := clInfoBk;
       TEdit(NControl).OnClick := ExtClick;
       TEdit(NControl).OnDblClick := ExtClick;
+      TEdit(NControl).PopupMenu := TFRpObjInspLCL(Owner).PopUpSection;
     end
     else
     begin
@@ -720,6 +610,12 @@ begin
 
       NControl := TEdit.Create(Self);
       TEdit(NControl).OnChange := EditChange;
+      // Load/save of the external section file (as the VCL inspector)
+      if typename = SRpSExternalpath then
+      begin
+        TEdit(control).PopupMenu := TFRpObjInspLCL(Owner).PopUpSection;
+        TEdit(NControl).PopupMenu := TFRpObjInspLCL(Owner).PopUpSection;
+      end;
     end;
 
     control.Top := posy;
@@ -774,6 +670,28 @@ begin
   pageall.PParent.Height := posy;
   for i := 1 to APControl.PageCount - 1 do
     TRpPageObjLCL(APControl.Pages[i]).PParent.Height := TRpPageObjLCL(APControl.Pages[i]).PosY;
+
+  // Send to back and bring to front buttons (as the VCL inspector)
+  if FCompItem is TRpSizePosInterface then
+  begin
+    APanelBottom := TPanel.Create(Self);
+    APanelBottom.BevelInner := bvNone;
+    APanelBottom.BevelOuter := bvNone;
+    APanelBottom.Height := aheight;
+    APanelBottom.Align := alBottom;
+    APanelBottom.Parent := Self;
+    btn1 := TButton.Create(Self);
+    btn1.Caption := SRpSendToBack;
+    btn1.OnClick := SendToBackClick;
+    btn1.Width := ScaleDpi(70);
+    btn1.Align := alLeft;
+    btn1.Parent := APanelBottom;
+    btn2 := TButton.Create(Self);
+    btn2.Caption := SRpBringToFront;
+    btn2.OnClick := BringToFrontClick;
+    btn2.Align := alClient;
+    btn2.Parent := APanelBottom;
+  end;
 end;
 
 procedure TRpPanelObjLCL.AssignPropertyValues;
@@ -1266,11 +1184,13 @@ var
   stream: TMemoryStream;
 begin
   insp := TFRpObjInspLCL(Owner);
+  insp.OpenDialog1.Filter := ImageFileFilter;
   if insp.OpenDialog1.Execute then
   begin
     stream := TMemoryStream.Create;
     try
-      stream.LoadFromFile(insp.OpenDialog1.FileName);
+      // Bitmaps, JPEG and PNG as they are, other formats as JPEG
+      LoadImageFileToStream(insp.OpenDialog1.FileName, stream);
       SetPropertyFull(LNames.Strings[TComponent(Sender).Tag], stream);
     finally
       stream.Free;
@@ -1502,114 +1422,16 @@ begin
 end;
 
 procedure TRpPanelObjLCL.ApplyPropertyValues(items: TList;
-  const propnames: array of string; const values: array of WideString);
-var
-  i, k, gid: Integer;
-  aitem: TRpSizeInterface;
-  pitem: TRpCommonComponent;
-  cue, itemcue: TUndoCue;
-  op, addop: TChangeObjectOperation;
-  undoName: string;
-  ptype: TPropertyType;
-  oldModel, newModel: Variant;
-  oldText: WideString;
-  unrecorded, positional: Boolean;
+  const propnames: array of string; const values: array of WideString;
+  stream: TMemoryStream);
 begin
-  // Applies inspector (display) values to the items and records one undo
-  // group with the model values before and after, read from the print item
-  // with their real types: Undo/Redo restore them with SetItemProperty.
-  // A change with no model equivalent only marks the report as modified.
-  cue := nil;
-  gid := 0;
-  op := nil;
-  unrecorded := False;
-  try
-    for i := 0 to items.Count - 1 do
-    begin
-      aitem := TRpSizeInterface(items[i]);
-      pitem := aitem.PrintItem;
-      itemcue := FindItemUndoCue(pitem);
-      if Assigned(itemcue) and not Assigned(cue) then
-      begin
-        cue := itemcue;
-        cue.BeginUpdate;
-      end;
-      positional := False;
-      for k := 0 to High(propnames) do
-      begin
-        undoName := '';
-        oldText := '';
-        if Assigned(itemcue) then
-          undoName := InspectorUndoProperty(pitem, propnames[k], ptype);
-        if undoName <> '' then
-          oldModel := ReadUndoPropertyValue(pitem, undoName)
-        else
-          oldText := aitem.GetProperty(propnames[k]);
-        aitem.SetProperty(propnames[k], values[k]);
-        if (propnames[k] = SRpSWidth) or (propnames[k] = SRpSHeight) or
-           (propnames[k] = SRpSTop) or (propnames[k] = SRpSLeft) then
-          positional := True;
-        if undoName <> '' then
-        begin
-          newModel := ReadUndoPropertyValue(pitem, undoName);
-          if not VarSameValue(oldModel, newModel) then
-          begin
-            if not Assigned(op) then
-            begin
-              if gid <= 0 then
-                gid := cue.GetGroupId;
-              op := TChangeObjectOperation.Create(otModify, gid);
-              op.componentName := pitem.Name;
-              op.componentClass := UpperCase(pitem.ClassName);
-              if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
-                 Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
-                op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name
-              else if (pitem is TRpSection) and Assigned(TRpSection(pitem).SubReport) then
-                op.parentName := TRpSection(pitem).SubReport.Name;
-            end;
-            op.AddProperty(undoName, ptype, oldModel, newModel);
-          end;
-        end
-        else if Assigned(itemcue) and (aitem.GetProperty(propnames[k]) <> oldText) then
-          unrecorded := True;
-      end;
-      if positional then
-        aitem.UpdatePos;
-      aitem.Invalidate;
-      if Assigned(op) then
-      begin
-        // The cue owns it from now on, also if AddOperation raises
-        addop := op;
-        op := nil;
-        cue.AddOperation(addop);
-      end;
-    end;
-  finally
-    op.Free;
-    if Assigned(cue) then
-    begin
-      if unrecorded then
-        cue.MarkExternalChange;
-      cue.EndUpdate;
-    end;
-  end;
-  if Assigned(cue) then
+  // Applies inspector (display) values (or the stream) to the items and
+  // records one undo group with the model values before and after, read
+  // from the print item with their real types: Undo/Redo restore them with
+  // SetItemProperty. A change with no model equivalent only marks the
+  // report as modified.
+  if Assigned(ApplyDesignPropertyValues(items, propnames, values, stream)) then
     RefreshCueView;
-end;
-
-procedure TRpPanelObjLCL.MarkUnrecordedChange;
-var
-  cue: TUndoCue;
-begin
-  // Changes without undo support (images, external section data) must
-  // still mark the report as modified
-  cue := nil;
-  if Assigned(FCompItem) then
-    cue := FindItemUndoCue(FCompItem.PrintItem);
-  if not Assigned(cue) and (FSelectedItems.Count > 0) then
-    cue := FindItemUndoCue(TRpSizeInterface(FSelectedItems.Objects[0]).PrintItem);
-  if Assigned(cue) then
-    cue.MarkExternalChange;
 end;
 
 procedure TRpPanelObjLCL.SetPropertyFull(propname: string; value: WideString);
@@ -1626,18 +1448,31 @@ end;
 
 procedure TRpPanelObjLCL.SetPropertyFull(propname: string; stream: TMemoryStream);
 var
-  i: Integer;
-  aitem: TRpSizeInterface;
+  items: TList;
 begin
-  for i := 0 to FSelectedItems.Count - 1 do
-  begin
-    aitem := TRpSizeInterface(FSelectedItems.Objects[i]);
-    aitem.SetProperty(propname, stream);
-    aitem.Invalidate;
+  // Images (item and section background) are recorded as streamBase64
+  items := GetTargetItems;
+  try
+    ApplyPropertyValues(items, [propname], [''], stream);
+  finally
+    items.Free;
   end;
-  // Images are not recorded in the undo cue
-  if FSelectedItems.Count > 0 then
-    MarkUnrecordedChange;
+  // Shows the new image size
+  AssignPropertyValues;
+end;
+
+procedure TRpPanelObjLCL.SendToBackClick(Sender: TObject);
+begin
+  if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+     (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).SendSelectionToBack;
+end;
+
+procedure TRpPanelObjLCL.BringToFrontClick(Sender: TObject);
+begin
+  if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
+     (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
+    TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).BringSelectionToFront;
 end;
 
 { TFRpObjInspLCL }

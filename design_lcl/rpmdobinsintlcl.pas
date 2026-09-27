@@ -24,7 +24,7 @@ uses
   Classes, SysUtils, Types,
   Graphics, Forms, Controls, Dialogs, Menus,
   rpmdconsts, rpmunits, rpprintitem, rpgraphutilslcl,
-  rpsection, rpreport, rptypes;
+  rpsection, rpreport, rptypes, rpmdundocuelcl;
 
 const
   CONS_MODIWIDTH = 7;
@@ -44,6 +44,9 @@ const
   AlignmentFlags_AlignLeft = 1;
   AlignmentFlags_AlignRight = 2;
 
+  // Tag of the designer command items of a context menu: base + command
+  DESIGN_COMMAND_TAG = 1000;
+
 type
   TRpPropertytype = (rppinteger, rppcurrency, rppstring, rpplist, rpcustom);
 
@@ -54,6 +57,14 @@ type
   TRpSelectCompEvent = procedure(AComp: TRpSizeInterface; AddToSelection: Boolean) of object;
   TRpMoveCompEvent = procedure(ALeader: TRpSizeInterface; ADeltaXTwips, ADeltaYTwips: Integer) of object;
   TRpGetSelectedListEvent = function: TList of object;
+
+  // Designer actions offered by the canvas context menu, executed by the
+  // design frame on the current selection (they record undo themselves)
+  TRpDesignCommand = (dcNone, dcCut, dcCopy, dcPaste, dcDelete,
+    dcBringToFront, dcSendToBack, dcAlignLeft, dcAlignRight, dcAlignUp,
+    dcAlignDown, dcAlignHorz, dcAlignVert, dcSelectAll);
+  TRpDesignCommandEvent = procedure(ACommand: TRpDesignCommand) of object;
+  TRpDesignCommandEnabledEvent = function(ACommand: TRpDesignCommand): Boolean of object;
 
   // The base visual interface for size (width/height)
   TRpSizeInterface = class(TGraphicControl)
@@ -66,6 +77,8 @@ type
     FOnSelectComponent: TRpSelectCompEvent;
     FOnMoveComponent: TRpMoveCompEvent;
     FOnGetSelectedList: TRpGetSelectedListEvent;
+    FOnDesignCommand: TRpDesignCommandEvent;
+    FOnDesignCommandEnabled: TRpDesignCommandEnabledEvent;
     procedure Paint; override;
     procedure DrawSelected; virtual;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -75,12 +88,18 @@ type
     fobjinsp: TComponent;
     procedure UpdatePos; virtual;
     procedure GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings); virtual;
-    procedure GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings); overload; virtual;
-    procedure GetPropertyValues(pname: string; lpossiblevalues: TStrings); overload;
-    procedure SetProperty(pname: string; value: WideString); overload; virtual;
-    procedure SetProperty(pname: string; stream: TMemoryStream); overload; virtual;
-    procedure GetProperty(pname: string; var Stream: TMemoryStream); overload; virtual;
-    function GetProperty(pname: string): WideString; overload; virtual;
+    procedure GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings); overload; virtual;
+    procedure GetPropertyValues(pname: WideString; lpossiblevalues: TStrings); overload;
+    procedure SetProperty(pname: WideString; value: WideString); overload; virtual;
+    procedure SetProperty(pname: WideString; stream: TMemoryStream); overload; virtual;
+    procedure GetProperty(pname: WideString; var Stream: TMemoryStream); overload; virtual;
+    function GetProperty(pname: WideString): WideString; overload; virtual;
+    // SetProperty recording the change (model values) in the undo cue
+    procedure SetPropertyUndo(const pname: WideString; const value: WideString); overload;
+    procedure SetPropertyUndo(const pname: WideString; stream: TMemoryStream); overload;
+    // Designer commands, forwarded to the design frame (see OnDesignCommand)
+    procedure DoDesignCommand(ACommand: TRpDesignCommand);
+    function DesignCommandEnabled(ACommand: TRpDesignCommand): Boolean;
     constructor Create(AOwner: TComponent; pritem: TRpCommonComponent); reintroduce; overload; virtual;
     property printitem: TRpCommonComponent read fprintitem;
     property Selected: Boolean read FSelected write SetSelected;
@@ -88,6 +107,8 @@ type
     property OnSelectComponent: TRpSelectCompEvent read FOnSelectComponent write FOnSelectComponent;
     property OnMoveComponent: TRpMoveCompEvent read FOnMoveComponent write FOnMoveComponent;
     property OnGetSelectedList: TRpGetSelectedListEvent read FOnGetSelectedList write FOnGetSelectedList;
+    property OnDesignCommand: TRpDesignCommandEvent read FOnDesignCommand write FOnDesignCommand;
+    property OnDesignCommandEnabled: TRpDesignCommandEnabledEvent read FOnDesignCommandEnabled write FOnDesignCommandEnabled;
   end;
 
   // Dragging / sizing outline box
@@ -107,6 +128,9 @@ type
     FRectangle3: TRpRectangle;
     FRectangle4: TRpRectangle;
     insertingelement: Boolean;
+    procedure RenameClick(Sender: TObject);
+    procedure DesignCommandClick(Sender: TObject);
+    procedure IntContextPopUp(Sender: TObject);
   protected
     FXOrigin, FYOrigin: Integer;
     FBlocked: Boolean;
@@ -124,25 +148,37 @@ type
     procedure DoSelect;
     procedure UpdatePos; override;
     procedure GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings); override;
-    procedure SetProperty(pname: string; value: WideString); override;
-    function GetProperty(pname: string): WideString; override;
-    procedure GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings); override;
+    procedure SetProperty(pname: WideString; value: WideString); override;
+    function GetProperty(pname: WideString): WideString; override;
+    procedure GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings); override;
     class procedure FillAncestors(alist: TStrings); virtual;
     constructor Create(AOwner: TComponent; pritem: TRpCommonComponent); override;
     destructor Destroy; override;
+    // Renames the component (Rename item of the context menu). Not an undo
+    // operation: the history is updated to the new name instead.
+    procedure RenameComponent(const newname: string);
+    // Updates the enabled state of the context menu items, as done before
+    // showing it
+    procedure UpdateContextMenu;
+    property ContextMenu: TPopupMenu read FContextMenu;
   end;
 
   // Base interface for text-based controls (labels, expressions)
   TRpGenTextInterface = class(TRpSizePosInterface)
+  private
+    procedure SetFontDefaultClick(Sender: TObject);
   protected
     procedure InitPopUpMenu; override;
   public
     class procedure FillAncestors(alist: TStrings); override;
     constructor Create(AOwner: TComponent; pritem: TRpCommonComponent); override;
     procedure GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings); override;
-    procedure SetProperty(pname: string; value: WideString); override;
-    function GetProperty(pname: string): WideString; override;
-    procedure GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings); override;
+    procedure SetProperty(pname: WideString; value: WideString); override;
+    function GetProperty(pname: WideString): WideString; override;
+    procedure GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings); override;
+    // Font properties of this component as the report default (Set font as
+    // default item of the context menu), recorded as one undo operation
+    procedure SetFontAsDefault;
   end;
 
   // Black handle box for resizing
@@ -199,10 +235,501 @@ function StringVAlignmentToInt(Value: WideString): Integer;
 function HAlignmentToText(Value: Integer): string;
 function VAlignmentToText(Value: Integer): string;
 
+// Adds the designer command items (Cut, Copy, Paste, Delete, To Front,
+// To Back, Align submenu, Select all) to AParent. Every command item has
+// Tag = DESIGN_COMMAND_TAG + Ord(command) and AOnClick as event.
+procedure AddDesignCommandItems(AOwner: TComponent; AParent: TMenuItem;
+  AOnClick: TNotifyEvent);
+// Command of a designer command menu item, dcNone for other items
+function MenuItemDesignCommand(AItem: TMenuItem): TRpDesignCommand;
+// Enables the designer command items under AParent (recursively)
+procedure UpdateDesignCommandItems(AParent: TMenuItem;
+  AEnabled: TRpDesignCommandEnabledEvent);
+
+// Maps an inspector property (translated display name) of aitem to the model
+// property recorded in undo operations, whose value is read from the model
+// with its real type (twips, enum ordinal, boolean...). Returns '' when the
+// property has no model equivalent that TUndoCue can restore.
+function InspectorUndoProperty(aitem: TRpCommonComponent; const pname: WideString;
+  out ptype: TPropertyType): string;
+// Model property changed as a side effect of pname (an image stream is
+// cleared by a non empty expression and the other way round). It is
+// recorded before the main one, '' if there is none.
+function InspectorUndoExtraProperty(aitem: TRpCommonComponent; const pname: WideString;
+  out ptype: TPropertyType): string;
+// Applies inspector (display) values, or the stream when stream is
+// assigned, to the design items and records one undo group with the model
+// values before and after. A change with no model equivalent only marks the
+// report as modified. Returns the undo cue used (nil if there is none).
+function ApplyDesignPropertyValues(items: TList; const propnames: array of string;
+  const values: array of WideString; stream: TMemoryStream): TUndoCue;
+
 implementation
 
 uses
-  rpmdundocuelcl;
+  Variants, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rptranslator;
+
+procedure AddDesignCommandItems(AOwner: TComponent; AParent: TMenuItem;
+  AOnClick: TNotifyEvent);
+
+  function AddItem(AMenu: TMenuItem; ACommand: TRpDesignCommand;
+    const ACaption, AHint: WideString): TMenuItem;
+  begin
+    Result := TMenuItem.Create(AOwner);
+    Result.Caption := string(ACaption);
+    Result.Hint := string(AHint);
+    Result.Tag := DESIGN_COMMAND_TAG + Ord(ACommand);
+    Result.OnClick := AOnClick;
+    AMenu.Add(Result);
+  end;
+
+  procedure AddSeparator(AMenu: TMenuItem);
+  var
+    sep: TMenuItem;
+  begin
+    sep := TMenuItem.Create(AOwner);
+    sep.Caption := '-';
+    AMenu.Add(sep);
+  end;
+
+var
+  malign: TMenuItem;
+begin
+  // Captions and hints of the Edit actions of the VCL designer (rpmdfmainvcl)
+  AddItem(AParent, dcCut, TranslateStr(9, 'Cut'), TranslateStr(12, 'Cut selected object'));
+  AddItem(AParent, dcCopy, TranslateStr(10, 'Copy'), TranslateStr(13, 'Copy selected object to clipboard'));
+  AddItem(AParent, dcPaste, TranslateStr(11, 'Paste'), TranslateStr(14, 'Paste from clipboard'));
+  AddItem(AParent, dcDelete, TranslateStr(150, 'Delete'), TranslateStr(1106, 'Delete selected object'));
+  AddSeparator(AParent);
+  AddItem(AParent, dcBringToFront, SRpBringToFront, '');
+  AddItem(AParent, dcSendToBack, SRpSendToBack, '');
+  AddSeparator(AParent);
+  malign := TMenuItem.Create(AOwner);
+  malign.Caption := string(TranslateStr(31, 'Align'));
+  AParent.Add(malign);
+  AddItem(malign, dcAlignLeft, TranslateStr(23, 'Left'), TranslateStr(32, 'Aligns selection to the left'));
+  AddItem(malign, dcAlignRight, TranslateStr(25, 'Right'), TranslateStr(33, 'Aligns selection to the right'));
+  AddItem(malign, dcAlignUp, TranslateStr(27, 'Up'), TranslateStr(34, 'Aligns selection up'));
+  AddItem(malign, dcAlignDown, TranslateStr(29, 'Down'), TranslateStr(35, 'Aligns selection down'));
+  AddItem(malign, dcAlignHorz, TranslateStr(38, 'Horizontal space'),
+    TranslateStr(39, 'Aligns selection distributing horizontal space'));
+  AddItem(malign, dcAlignVert, TranslateStr(36, 'Vertical space'),
+    TranslateStr(37, 'Aligns selection distributing vertical space'));
+  AddSeparator(AParent);
+  AddItem(AParent, dcSelectAll, SRpSelectAll, TranslateStr(20, 'Selects all components of the report'));
+end;
+
+function MenuItemDesignCommand(AItem: TMenuItem): TRpDesignCommand;
+begin
+  Result := dcNone;
+  if Assigned(AItem) and (AItem.Tag > DESIGN_COMMAND_TAG) and
+     (AItem.Tag <= DESIGN_COMMAND_TAG + Ord(High(TRpDesignCommand))) then
+    Result := TRpDesignCommand(AItem.Tag - DESIGN_COMMAND_TAG);
+end;
+
+procedure UpdateDesignCommandItems(AParent: TMenuItem;
+  AEnabled: TRpDesignCommandEnabledEvent);
+var
+  i: Integer;
+  cmd: TRpDesignCommand;
+  anyEnabled: Boolean;
+begin
+  anyEnabled := False;
+  for i := 0 to AParent.Count - 1 do
+  begin
+    if AParent.Items[i].Count > 0 then
+    begin
+      UpdateDesignCommandItems(AParent.Items[i], AEnabled);
+      continue;
+    end;
+    cmd := MenuItemDesignCommand(AParent.Items[i]);
+    if cmd = dcNone then
+      continue;
+    AParent.Items[i].Enabled := Assigned(AEnabled) and AEnabled(cmd);
+    anyEnabled := anyEnabled or AParent.Items[i].Enabled;
+  end;
+  // A submenu of commands (Align) is disabled when none of them is
+  if (AParent.Count > 0) and (MenuItemDesignCommand(AParent.Items[0]) <> dcNone) and
+     Assigned(AParent.Parent) then
+    AParent.Enabled := anyEnabled;
+end;
+
+function InspectorUndoProperty(aitem: TRpCommonComponent; const pname: WideString;
+  out ptype: TPropertyType): string;
+begin
+  Result := '';
+  ptype := ptString;
+  if not Assigned(aitem) then
+    Exit;
+
+  if pname = SrpSPrintCondition then Result := 'printCondition'
+  else if pname = SrpSBeforePrint then Result := 'doBeforePrint'
+  else if pname = SrpSAfterPrint then Result := 'doAfterPrint'
+  else if pname = SrpSWidth then
+  begin
+    Result := 'width';
+    ptype := ptInteger;
+  end
+  else if pname = SrpSHeight then
+  begin
+    Result := 'height';
+    ptype := ptInteger;
+  end;
+  if Result <> '' then
+    Exit;
+
+  if aitem is TRpCommonPosComponent then
+  begin
+    ptype := ptInteger;
+    if pname = SrpSTop then Result := 'posY'
+    else if pname = SrpSLeft then Result := 'posX'
+    else if pname = SRPAlign then Result := 'align';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SRpSAnnotation then Result := 'annotationExpression';
+    if Result <> '' then
+      Exit;
+  end;
+
+  if aitem is TRpGenTextComponent then
+  begin
+    // Properties of the chart first: some of its names are also common
+    // text names (Expression)
+    if aitem is TRpChart then
+    begin
+      ptype := ptString;
+      if pname = SrpSExpression then Result := 'valueExpression'
+      else if pname = SrpSExpression + ' X' then Result := 'valueXExpression'
+      else if pname = SrpSIdentifier then Result := 'identifier'
+      else if pname = SrpSGetValueCondition then Result := 'getValueCondition'
+      else if pname = SrpSChangeSerieExp then Result := 'changeSerieExpression'
+      else if pname = SrpSClearExpChart then Result := 'clearExpression'
+      else if pname = SrpSCaptionExp then Result := 'captionExpression'
+      else if pname = SrpSSerieCaptionExp then Result := 'serieCaption'
+      else if pname = SrpSValueColor then Result := 'colorExpression'
+      else if pname = SrpSSerieColor then Result := 'serieColorExpression';
+      if Result <> '' then
+        Exit;
+      ptype := ptBoolean;
+      if pname = SrpSChangeSerieBool then Result := 'changeSerieBool'
+      else if pname = SrpSBoolClearExp then Result := 'clearExpressionBool'
+      else if pname = SRpSView3D then Result := 'view3d'
+      else if pname = SRpSView3DWalls then Result := 'view3dWalls'
+      else if pname = SRpSOrthogonal then Result := 'orthogonal'
+      else if pname = SrpChartHint then Result := 'showHint'
+      else if pname = SrpChartLegend then Result := 'showLegend';
+      if Result <> '' then
+        Exit;
+      ptype := ptInteger;
+      if pname = SrpSChartType then Result := 'chartStyle'
+      else if pname = SrpSDriver then Result := 'driver'
+      else if pname = SRpSPerspective then Result := 'perspective'
+      else if pname = SRpSElevation then Result := 'elevation'
+      else if pname = SRpSRotation then Result := 'rotation'
+      else if pname = SRpSZoom then Result := 'zoom'
+      else if pname = SRpSHOffset then Result := 'horzOffset'
+      else if pname = SRpSVOffset then Result := 'vertOffset'
+      else if pname = SRpSTilt then Result := 'tilt'
+      else if pname = SRpDPIRes then Result := 'resolution'
+      else if pname = SRpSMultibar then Result := 'multiBar'
+      else if pname = SRpMarkType then Result := 'markStyle'
+      else if pname = SRpSVertAxisFSize then Result := 'vertFontSize'
+      else if pname = SRpSHorzAxisFSize then Result := 'horzFontSize'
+      else if pname = SRpSVertAxisFRot then Result := 'vertFontRotation'
+      else if pname = SRpSHorzAxisFRot then Result := 'horzFontRotation';
+      // Y axis auto range and limits have no model property (not stored)
+      if Result <> '' then
+        Exit;
+    end;
+    if aitem is TRpExpression then
+    begin
+      ptype := ptString;
+      if pname = SrpSExpression then Result := 'expression'
+      else if pname = SrpSDisplayFormat then Result := 'displayFormat'
+      else if pname = SrpSIdentifier then Result := 'identifier'
+      else if pname = SrpSAgeGroup then Result := 'groupName'
+      else if pname = SrpSIniValue then Result := 'agIniValue'
+      else if pname = SRpSExportExpression then Result := 'exportExpression'
+      else if pname = SRpSExportFormat then Result := 'exportDisplayFormat';
+      if Result <> '' then
+        Exit;
+      ptype := ptInteger;
+      if pname = SRpSDataType then Result := 'dataType'
+      else if pname = SrpSAggregate then Result := 'aggregate'
+      else if pname = SrpSAgeType then Result := 'agType'
+      else if pname = SRpSExportLine then Result := 'exportLine'
+      else if pname = SRpSExportPos then Result := 'exportPosition'
+      else if pname = SRpSExportSize then Result := 'exportSize';
+      if Result <> '' then
+        Exit;
+      ptype := ptBoolean;
+      if pname = SRpMultiPage then Result := 'multiPage'
+      else if pname = SRpPrintNulls then Result := 'printNulls'
+      else if pname = SrpSOnlyOne then Result := 'printOnlyOne'
+      else if pname = SRpSExportDoNewLine then Result := 'exportDoNewLine';
+      if Result <> '' then
+        Exit;
+    end;
+    if (aitem is TRpLabel) and (pname = SrpSText) then
+    begin
+      ptype := ptString;
+      Result := 'allStrings';
+      Exit;
+    end;
+    ptype := ptInteger;
+    if pname = SrpSAlignment then Result := 'alignment'
+    else if pname = SrpSVAlignment then Result := 'vAlignment'
+    else if pname = SrpSFontSize then Result := 'fontSize'
+    else if pname = SrpSFontColor then Result := 'fontColor'
+    else if pname = SrpSFontStyle then Result := 'fontStyle'
+    else if pname = SrpSBackColor then Result := 'backColor'
+    else if pname = SRpSFontRotation then Result := 'fontRotation'
+    else if pname = SRpSType1Font then Result := 'type1Font'
+    else if pname = SRpSFontStep then Result := 'printStep';
+    if Result <> '' then
+      Exit;
+    ptype := ptBoolean;
+    if pname = SrpSTransparent then Result := 'transparent'
+    else if pname = SrpSCutText then Result := 'cutText'
+    else if pname = SrpSWordWrap then Result := 'wordWrap'
+    else if pname = SrpSSingleLine then Result := 'singleLine'
+    else if pname = SRpIsHtml then Result := 'isHtml';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SrpSWFontName then Result := 'wFontName'
+    else if pname = SrpSLFontName then Result := 'lFontName'
+    // Every language (BidiNo/BidiPartial/BidiFull per line)
+    else if pname = SrpSRightToLeft then Result := 'bidiModes';
+    Exit;
+  end;
+
+  if aitem is TRpShape then
+  begin
+    ptype := ptInteger;
+    if pname = SrpSShape then Result := 'shape'
+    else if pname = SrpSPenColor then Result := 'penColor'
+    else if pname = SrpSBrushColor then Result := 'brushColor'
+    else if pname = SrpSPenStyle then Result := 'penStyle'
+    else if pname = SrpSBrushStyle then Result := 'brushStyle'
+    else if pname = SrpSPenWidth then Result := 'penWidth';
+    Exit;
+  end;
+
+  if aitem is TRpBarcode then
+  begin
+    ptype := ptInteger;
+    // The barcode color is shown as SrpSColor, the model only knows BColor
+    if pname = SrpSColor then Result := 'bColor'
+    else if pname = SrpSBackColor then Result := 'backColor'
+    else if pname = SRpSBarcodeType then Result := 'barType'
+    else if pname = SrpSModul then Result := 'modul'
+    else if pname = SRpSRotation then Result := 'rotation'
+    else if pname = SRpECCLevel then Result := 'eccLevel'
+    else if pname = SRpNumRows then Result := 'numRows'
+    else if pname = SRpNumCols then Result := 'numColumns';
+    if Result <> '' then
+      Exit;
+    ptype := ptNumber;
+    if pname = SrpSRatio then Result := 'ratio';
+    if Result <> '' then
+      Exit;
+    ptype := ptBoolean;
+    if pname = SRpSChecksum then Result := 'checksum'
+    else if pname = SrpSTransparent then Result := 'transparent'
+    else if pname = SRpTruncatedPDF417 then Result := 'truncated';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SrpSExpression then Result := 'expression'
+    else if pname = SrpSDisplayFormat then Result := 'displayFormat';
+    Exit;
+  end;
+
+  if aitem is TRpImage then
+  begin
+    ptype := ptInteger;
+    if pname = SRpDrawStyle then Result := 'drawStyle'
+    else if pname = SRpDPIRes then Result := 'dpiRes'
+    else if pname = SRpCached then Result := 'sharedImage';
+    if Result <> '' then
+      Exit;
+    // The stream is recorded as extra property (InspectorUndoExtraProperty)
+    ptype := ptString;
+    if (pname = SrpSExpression) or (pname = SrpSImage) then Result := 'expression';
+    Exit;
+  end;
+
+  if aitem is TRpSection then
+  begin
+    ptype := ptBoolean;
+    if pname = SRpGeneralPageHeader then Result := 'global'
+    else if pname = SRpSAutoExpand then Result := 'autoExpand'
+    else if pname = SRpSAutoContract then Result := 'autoContract'
+    else if pname = SRpIniNumPage then Result := 'iniNumPage'
+    else if pname = SRpSChangeBool then Result := 'changeBool'
+    else if pname = SRpSPageRepeat then Result := 'pageRepeat'
+    else if pname = SRpSForcePrint then Result := 'forcePrint'
+    else if pname = SRpSkipPage then Result := 'skipPage'
+    else if pname = SRPAlignBottom then Result := 'alignBottom'
+    else if pname = SRPHorzDesp then Result := 'horzDesp'
+    else if pname = SRPVertDesp then Result := 'vertDesp'
+    else if pname = SRpSHRelativeSkip then Result := 'skipRelativeH'
+    else if pname = SRpSVRelativeSkip then Result := 'skipRelativeV';
+    if Result <> '' then
+      Exit;
+    ptype := ptInteger;
+    if pname = SRpSSkipType then Result := 'skipType'
+    else if pname = SRpDPIRes then Result := 'dpiRes'
+    else if pname = SRpSBackStyle then Result := 'backStyle'
+    else if pname = SRpDrawStyle then Result := 'drawStyle'
+    else if pname = SRpCached then Result := 'sharedImage';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SRpSGroupName then Result := 'groupName'
+    else if pname = SRpSGroupExpression then Result := 'changeExpression'
+    else if pname = SRpSBeginPage then Result := 'beginPageExpression'
+    else if pname = SRpSSkipToPage then Result := 'skipToPageExpre'
+    else if pname = SRpChildSubRep then Result := 'childSubreportName'
+    else if pname = SRpSHSkipExpre then Result := 'skipExpreH'
+    else if pname = SRpSVSkipExpre then Result := 'skipExpreV'
+    else if pname = SRpSExternalPath then Result := 'externalFilename'
+    // The stream is recorded as extra property (InspectorUndoExtraProperty)
+    else if (pname = SrpSBackExpression) or (pname = SrpSImage) then Result := 'backExpression';
+  end;
+end;
+
+function InspectorUndoExtraProperty(aitem: TRpCommonComponent; const pname: WideString;
+  out ptype: TPropertyType): string;
+begin
+  Result := '';
+  ptype := ptString;
+  if not Assigned(aitem) then
+    Exit;
+  // Restoring the stream first: a TRpImage stream clears the expression, so
+  // the expression (main property) must be restored after it
+  if (aitem is TRpImage) and ((pname = SrpSExpression) or (pname = SrpSImage)) then
+    Result := 'streamBase64'
+  else if (aitem is TRpSection) and ((pname = SrpSBackExpression) or (pname = SrpSImage)) then
+    Result := 'streamBase64';
+end;
+
+function ApplyDesignPropertyValues(items: TList; const propnames: array of string;
+  const values: array of WideString; stream: TMemoryStream): TUndoCue;
+var
+  i, k, gid: Integer;
+  aitem: TRpSizeInterface;
+  pitem: TRpCommonComponent;
+  cue, itemcue: TUndoCue;
+  op, addop: TChangeObjectOperation;
+  undoName, extraName: string;
+  ptype, extraType: TPropertyType;
+  oldModel, newModel, oldExtra, newExtra: Variant;
+  oldText, pname: WideString;
+  unrecorded, positional: Boolean;
+
+  procedure AddChange(const AName: string; AType: TPropertyType;
+    const AOld, ANew: Variant);
+  begin
+    if not Assigned(op) then
+    begin
+      if gid <= 0 then
+        gid := cue.GetGroupId;
+      op := TChangeObjectOperation.Create(otModify, gid);
+      op.componentName := pitem.Name;
+      op.componentClass := UpperCase(pitem.ClassName);
+      if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
+         Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
+        op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name
+      else if (pitem is TRpSection) and Assigned(TRpSection(pitem).SubReport) then
+        op.parentName := TRpSection(pitem).SubReport.Name;
+    end;
+    op.AddProperty(AName, AType, AOld, ANew);
+  end;
+
+begin
+  // Undo/Redo restore the recorded model values (read from the print item
+  // with their real types) with SetItemProperty
+  Result := nil;
+  cue := nil;
+  gid := 0;
+  op := nil;
+  unrecorded := False;
+  try
+    for i := 0 to items.Count - 1 do
+    begin
+      aitem := TRpSizeInterface(items[i]);
+      pitem := aitem.PrintItem;
+      itemcue := FindItemUndoCue(pitem);
+      if Assigned(itemcue) and not Assigned(cue) then
+      begin
+        cue := itemcue;
+        cue.BeginUpdate;
+      end;
+      positional := False;
+      for k := 0 to High(propnames) do
+      begin
+        pname := WideString(propnames[k]);
+        undoName := '';
+        extraName := '';
+        oldText := '';
+        if Assigned(itemcue) then
+        begin
+          undoName := InspectorUndoProperty(pitem, pname, ptype);
+          extraName := InspectorUndoExtraProperty(pitem, pname, extraType);
+        end;
+        if undoName <> '' then
+          oldModel := ReadUndoPropertyValue(pitem, undoName)
+        else
+          oldText := aitem.GetProperty(pname);
+        if extraName <> '' then
+          oldExtra := ReadUndoPropertyValue(pitem, extraName);
+        if Assigned(stream) then
+          aitem.SetProperty(pname, stream)
+        else
+          aitem.SetProperty(pname, values[k]);
+        if (pname = SRpSWidth) or (pname = SRpSHeight) or
+           (pname = SRpSTop) or (pname = SRpSLeft) then
+          positional := True;
+        if extraName <> '' then
+        begin
+          newExtra := ReadUndoPropertyValue(pitem, extraName);
+          if not VarSameValue(oldExtra, newExtra) then
+            AddChange(extraName, extraType, oldExtra, newExtra);
+        end;
+        if undoName <> '' then
+        begin
+          newModel := ReadUndoPropertyValue(pitem, undoName);
+          if not VarSameValue(oldModel, newModel) then
+            AddChange(undoName, ptype, oldModel, newModel);
+        end
+        else if Assigned(itemcue) and (aitem.GetProperty(pname) <> oldText) then
+          unrecorded := True;
+      end;
+      if positional then
+        aitem.UpdatePos;
+      aitem.Invalidate;
+      if Assigned(op) then
+      begin
+        // The cue owns it from now on, also if AddOperation raises
+        addop := op;
+        op := nil;
+        cue.AddOperation(addop);
+      end;
+    end;
+  finally
+    op.Free;
+    if Assigned(cue) then
+    begin
+      if unrecorded then
+        cue.MarkExternalChange;
+      cue.EndUpdate;
+    end;
+  end;
+  Result := cue;
+end;
 
 function StringHAlignmentToInt(Value: WideString): Integer;
 begin
@@ -282,6 +809,7 @@ begin
   Canvas.Pen.Style := psDashDot;
   Canvas.Rectangle(0, 0, Width, Height);
   Canvas.TextOut(0, 0, SRpUndefinedPaintInterface);
+  Canvas.TextOut(0, Canvas.TextHeight('gW'), ClassName);
   DrawSelected;
 end;
 
@@ -346,12 +874,12 @@ begin
     lvalues.Add(gettextfromtwips(fprintitem.Height));
 end;
 
-procedure TRpSizeInterface.GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings);
+procedure TRpSizeInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings);
 begin
   // Override in descendants
 end;
 
-procedure TRpSizeInterface.GetPropertyValues(pname: string; lpossiblevalues: TStrings);
+procedure TRpSizeInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TStrings);
 var
   list: TRpWideStrings;
   i: Integer;
@@ -367,7 +895,7 @@ begin
   end;
 end;
 
-procedure TRpSizeInterface.SetProperty(pname: string; value: WideString);
+procedure TRpSizeInterface.SetProperty(pname: WideString; value: WideString);
 begin
   if not Assigned(fprintitem) then
     Exit;
@@ -389,26 +917,85 @@ begin
   if pname = SrpSWidth then
   begin
     fprintitem.Width := gettwipsfromtext(value);
+    if fprintitem.Width < 0 then
+      fprintitem.Width := 0;
+    if fprintitem.Width > MAX_CWIDTH then
+      fprintitem.Width := MAX_CWIDTH;
     UpdatePos;
     Exit;
   end;
   if pname = SrpSHeight then
   begin
     fprintitem.Height := gettwipsfromtext(value);
+    if fprintitem.Height < 0 then
+      fprintitem.Height := 0;
+    if fprintitem.Height > MAX_CHeight then
+      fprintitem.Height := MAX_CHeight;
     UpdatePos;
     Exit;
   end;
 end;
 
-procedure TRpSizeInterface.SetProperty(pname: string; stream: TMemoryStream);
+procedure TRpSizeInterface.SetProperty(pname: WideString; stream: TMemoryStream);
 begin
+  // No stream property
 end;
 
-procedure TRpSizeInterface.GetProperty(pname: string; var Stream: TMemoryStream);
+procedure TRpSizeInterface.GetProperty(pname: WideString; var Stream: TMemoryStream);
 begin
+  // No stream property
 end;
 
-function TRpSizeInterface.GetProperty(pname: string): WideString;
+procedure TRpSizeInterface.SetPropertyUndo(const pname: WideString; const value: WideString);
+var
+  items: TList;
+begin
+  items := TList.Create;
+  try
+    items.Add(Self);
+    ApplyDesignPropertyValues(items, [pname], [value], nil);
+  finally
+    items.Free;
+  end;
+end;
+
+procedure TRpSizeInterface.SetPropertyUndo(const pname: WideString; stream: TMemoryStream);
+var
+  items: TList;
+begin
+  items := TList.Create;
+  try
+    items.Add(Self);
+    ApplyDesignPropertyValues(items, [pname], [''], stream);
+  finally
+    items.Free;
+  end;
+end;
+
+procedure TRpSizeInterface.DoDesignCommand(ACommand: TRpDesignCommand);
+begin
+  if ACommand = dcNone then
+    Exit;
+  if Assigned(FOnDesignCommand) then
+    FOnDesignCommand(ACommand)
+  else if (Self is TRpSizePosInterface) and Assigned(TRpSizePosInterface(Self).SectionInt) and
+     Assigned(TRpSizePosInterface(Self).SectionInt.OnDesignCommand) then
+    TRpSizePosInterface(Self).SectionInt.OnDesignCommand(ACommand);
+end;
+
+function TRpSizeInterface.DesignCommandEnabled(ACommand: TRpDesignCommand): Boolean;
+begin
+  Result := False;
+  if ACommand = dcNone then
+    Exit;
+  if Assigned(FOnDesignCommandEnabled) then
+    Result := FOnDesignCommandEnabled(ACommand)
+  else if (Self is TRpSizePosInterface) and Assigned(TRpSizePosInterface(Self).SectionInt) and
+     Assigned(TRpSizePosInterface(Self).SectionInt.OnDesignCommandEnabled) then
+    Result := TRpSizePosInterface(Self).SectionInt.OnDesignCommandEnabled(ACommand);
+end;
+
+function TRpSizeInterface.GetProperty(pname: WideString): WideString;
 begin
   Result := '';
   if not Assigned(fprintitem) then
@@ -442,6 +1029,7 @@ end;
 constructor TRpSizePosInterface.Create(AOwner: TComponent; pritem: TRpCommonComponent);
 var
   opts: TControlStyle;
+  sep: TMenuItem;
 begin
   if Assigned(pritem) and not (pritem is TRpCommonPosComponent) then
     raise Exception.Create(SRpIncorrectComponentForInterface);
@@ -449,7 +1037,19 @@ begin
   opts := ControlStyle;
   Include(opts, csCaptureMouse);
   ControlStyle := opts;
+  FContextMenu := TPopupMenu.Create(Self);
+  FContextMenu.OnPopup := IntContextPopUp;
+  PopupMenu := FContextMenu;
+  // Items of the component (as the VCL designer), then the designer
+  // commands acting on the selection
   InitPopUpMenu;
+  if FContextMenu.Items.Count > 0 then
+  begin
+    sep := TMenuItem.Create(FContextMenu);
+    sep.Caption := '-';
+    FContextMenu.Items.Add(sep);
+  end;
+  AddDesignCommandItems(FContextMenu, FContextMenu.Items, DesignCommandClick);
 end;
 
 destructor TRpSizePosInterface.Destroy;
@@ -486,14 +1086,76 @@ begin
 end;
 
 procedure TRpSizePosInterface.InitPopUpMenu;
+var
+  aitem: TMenuItem;
 begin
-  // Context menu stub
+  // Rename
+  aitem := TMenuItem.Create(FContextMenu);
+  aitem.Caption := SRpRename;
+  aitem.Hint := SRpRenameHint;
+  aitem.OnClick := RenameClick;
+  FContextMenu.Items.Add(aitem);
 end;
 
 procedure TRpSizePosInterface.PopUpContextMenu;
 begin
-  if Assigned(FContextMenu) then
-    FContextMenu.PopUp(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+  // Enabled state of the items of the component (descendants)
+end;
+
+procedure TRpSizePosInterface.IntContextPopUp(Sender: TObject);
+begin
+  UpdateContextMenu;
+end;
+
+procedure TRpSizePosInterface.UpdateContextMenu;
+begin
+  PopUpContextMenu;
+  UpdateDesignCommandItems(FContextMenu.Items, DesignCommandEnabled);
+end;
+
+procedure TRpSizePosInterface.DesignCommandClick(Sender: TObject);
+begin
+  if Sender is TMenuItem then
+    DoDesignCommand(MenuItemDesignCommand(TMenuItem(Sender)));
+end;
+
+procedure TRpSizePosInterface.RenameClick(Sender: TObject);
+var
+  newname: string;
+begin
+  if not Assigned(fprintitem) then
+    Exit;
+  newname := Trim(RpInputBox(SRpRename, SRpNewName, fprintitem.Name));
+  if (Length(newname) < 1) or (newname = fprintitem.Name) then
+    Exit;
+  RenameComponent(newname);
+end;
+
+procedure TRpSizePosInterface.RenameComponent(const newname: string);
+var
+  oldname: string;
+  cue: TUndoCue;
+begin
+  if not Assigned(fprintitem) then
+    Exit;
+  oldname := fprintitem.Name;
+  if newname = oldname then
+    Exit;
+  if Assigned(fprintitem.Owner) and (fprintitem.Owner.FindComponent(newname) <> nil) then
+    raise Exception.Create(SRpAlreadyWithname);
+  cue := FindItemUndoCue(fprintitem);
+  // A removed component with that name would come back with it on undo
+  if Assigned(cue) and cue.HistoryUsesName(newname) then
+    raise Exception.Create(SRpAlreadyWithname);
+  fprintitem.Name := newname;
+  if Assigned(cue) then
+  begin
+    // The recorded operations follow the component with its new name
+    cue.RenameInHistory(oldname, newname);
+    cue.MarkExternalChange;
+  end;
+  // Refresh the inspector (component combo and values)
+  DoSelect;
 end;
 
 class procedure TRpSizePosInterface.FillAncestors(alist: TStrings);
@@ -816,9 +1478,15 @@ begin
   lhints.Add('refcommon.html');
   lcat.Add(SRpPosition);
   if Assigned(lvalues) then lvalues.Add(AlignToStr(positem.Align));
+  // Annotation
+  lnames.Add(SrpSAnnotation);
+  ltypes.Add(SRpSExpression);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpPosition);
+  if Assigned(lvalues) then lvalues.Add(positem.AnnotationExpression);
 end;
 
-procedure TRpSizePosInterface.SetProperty(pname: string; value: WideString);
+procedure TRpSizePosInterface.SetProperty(pname: WideString; value: WideString);
 var
   positem: TRpCommonPosComponent;
 begin
@@ -846,10 +1514,15 @@ begin
     UpdatePos;
     Exit;
   end;
+  if pname = SRpSAnnotation then
+  begin
+    positem.AnnotationExpression := value;
+    Exit;
+  end;
   inherited SetProperty(pname, value);
 end;
 
-function TRpSizePosInterface.GetProperty(pname: string): WideString;
+function TRpSizePosInterface.GetProperty(pname: WideString): WideString;
 var
   positem: TRpCommonPosComponent;
 begin
@@ -862,10 +1535,11 @@ begin
   if pname = SrpSTop then Result := gettextfromtwips(positem.PosY)
   else if pname = SrpSLeft then Result := gettextfromtwips(positem.PosX)
   else if pname = SRPAlign then Result := AlignToStr(positem.Align)
+  else if pname = SRpSAnnotation then Result := positem.AnnotationExpression
   else Result := inherited GetProperty(pname);
 end;
 
-procedure TRpSizePosInterface.GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings);
+procedure TRpSizePosInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings);
 begin
   if pname = SRPAlign then
   begin
@@ -898,8 +1572,71 @@ begin
 end;
 
 procedure TRpGenTextInterface.InitPopUpMenu;
+var
+  aitem: TMenuItem;
 begin
   inherited InitPopUpMenu;
+  // Set Font as Default
+  aitem := TMenuItem.Create(FContextMenu);
+  aitem.Caption := SRpSetFontPropsAsDefault;
+  aitem.Hint := SRpSetFontPropsAsDefaultHint;
+  aitem.OnClick := SetFontDefaultClick;
+  FContextMenu.Items.Add(aitem);
+end;
+
+procedure TRpGenTextInterface.SetFontDefaultClick(Sender: TObject);
+begin
+  SetFontAsDefault;
+end;
+
+procedure TRpGenTextInterface.SetFontAsDefault;
+const
+  // Report font properties changed by GetDefaultFontFrom (as the VCL designer)
+  FontProps: array[0..15] of string = ('wFontName', 'lFontName', 'type1Font',
+    'fontSize', 'fontRotation', 'fontStyle', 'fontColor', 'backColor',
+    'transparent', 'cutText', 'alignment', 'vAlignment', 'wordWrap',
+    'singleLine', 'multiPage', 'printStep');
+  FontTypes: array[0..15] of TPropertyType = (ptString, ptString, ptInteger,
+    ptInteger, ptInteger, ptInteger, ptInteger, ptInteger,
+    ptBoolean, ptBoolean, ptInteger, ptInteger, ptBoolean,
+    ptBoolean, ptBoolean, ptInteger);
+var
+  rep: TRpReport;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  oldValues: array[0..15] of Variant;
+  i: Integer;
+begin
+  if not Assigned(printitem) or not (printitem.Report is TRpReport) then
+    Exit;
+  rep := TRpReport(printitem.Report);
+  cue := FindItemUndoCue(printitem);
+  if Assigned(cue) then
+    for i := 0 to High(FontProps) do
+      oldValues[i] := rep.GetItemProperty(FontProps[i]);
+  rep.GetDefaultFontFrom(TRpGenTextComponent(printitem));
+  if not Assigned(cue) then
+    Exit;
+  op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+  try
+    op.componentName := 'REPORT';
+    op.componentClass := 'TRPREPORT';
+    op.parentName := '';
+    for i := 0 to High(FontProps) do
+      if not VarSameValue(oldValues[i], rep.GetItemProperty(FontProps[i])) then
+        op.AddProperty(FontProps[i], FontTypes[i], oldValues[i], rep.GetItemProperty(FontProps[i]));
+  except
+    op.Free;
+    raise;
+  end;
+  if op.properties.Count > 0 then
+    cue.AddOperation(op)
+  else
+  begin
+    op.Free;
+    // The BiDi modes have no report undo property: mark it as modified
+    cue.MarkExternalChange;
+  end;
 end;
 
 procedure TRpGenTextInterface.GetProperties(lnames, ltypes, lvalues, lhints, lcat: TRpWideStrings);
@@ -909,40 +1646,124 @@ begin
   inherited GetProperties(lnames, ltypes, lvalues, lhints, lcat);
   titem := TRpGenTextComponent(printitem);
 
+  // Alignment
   lnames.Add(SrpSAlignment);
   ltypes.Add(SRpSList);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
   if Assigned(lvalues) and Assigned(titem) then lvalues.Add(HAlignmentToText(titem.Alignment));
 
+  // VAlignment
+  lnames.Add(SrpSVAlignment);
+  ltypes.Add(SRpSList);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(VAlignmentToText(titem.VAlignment));
+
+  // Font Name
   lnames.Add(SrpSWFontName);
   ltypes.Add(SRpSWFontName);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
   if Assigned(lvalues) and Assigned(titem) then lvalues.Add(titem.WFontName);
 
+  // Linux Font Name
+  lnames.Add(SrpSLFontName);
+  ltypes.Add(SRpSLFontName);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(titem.LFontName);
+
+  // Type1 Font Name
+  lnames.Add(SRpSType1Font);
+  ltypes.Add(SRpSList);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(Type1FontToText(titem.Type1Font));
+
+  // Step
+  lnames.Add(SRpSFontStep);
+  ltypes.Add(SRpSList);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(FontStepToString(titem.PrintStep));
+
+  // Font Size
   lnames.Add(SrpSFontSize);
   ltypes.Add(SRpSFontSize);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
   if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.FontSize));
 
+  // Font Color
   lnames.Add(SrpSFontColor);
   ltypes.Add(SRpSColor);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
   if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.FontColor));
 
+  // Font Style
+  lnames.Add(SrpSFontStyle);
+  ltypes.Add(SrpSFontStyle);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.FontStyle));
+
+  // Right To Left
+  lnames.Add(SrpSRightToLeft);
+  ltypes.Add(SRpSList);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(RpBidiModeToString(titem.BidiMode));
+
+  // Back Color
+  lnames.Add(SrpSBackColor);
+  ltypes.Add(SRpSColor);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(IntToStr(titem.BackColor));
+
+  // Transparent
   lnames.Add(SrpSTransparent);
   ltypes.Add(SRpSBool);
   lhints.Add('refcommontext.html');
   lcat.Add(SRpText);
   if Assigned(lvalues) and Assigned(titem) then lvalues.Add(BoolToStr(titem.Transparent, True));
+
+  // Cut Text
+  lnames.Add(SrpSCutText);
+  ltypes.Add(SRpSBool);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(BoolToStr(titem.CutText, True));
+
+  // Word wrap
+  lnames.Add(SrpSWordwrap);
+  ltypes.Add(SRpSBool);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(BoolToStr(titem.WordWrap, True));
+
+  // Single line
+  lnames.Add(SrpSSingleLine);
+  ltypes.Add(SRpSBool);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then lvalues.Add(BoolToStr(titem.SingleLine, True));
+
+  // Font Rotation in degrees
+  lnames.Add(SRpSFontRotation);
+  ltypes.Add(SrpSString);
+  lhints.Add('refcommontext.html');
+  lcat.Add(SRpText);
+  if Assigned(lvalues) and Assigned(titem) then
+    lvalues.Add(FormatCurr('#####0.0', titem.FontRotation / 10));
 end;
 
-procedure TRpGenTextInterface.SetProperty(pname: string; value: WideString);
+procedure TRpGenTextInterface.SetProperty(pname: WideString; value: WideString);
 var
   titem: TRpGenTextComponent;
+  crot: Currency;
 begin
   titem := TRpGenTextComponent(printitem);
   if not Assigned(titem) then
@@ -950,9 +1771,16 @@ begin
     inherited SetProperty(pname, value);
     Exit;
   end;
+  // Numbers and booleans being typed keep the current value until valid
   if pname = SrpSAlignment then
   begin
     titem.Alignment := StringHAlignmentToInt(value);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSVAlignment then
+  begin
+    titem.VAlignment := StringVAlignmentToInt(value);
     Invalidate;
     Exit;
   end;
@@ -962,35 +1790,87 @@ begin
     Invalidate;
     Exit;
   end;
-  if pname = SrpSFontSize then
+  if pname = SrpSLFontName then
   begin
-    titem.FontSize := StrToIntDef(value, 10);
+    titem.LFontName := value;
     Invalidate;
     Exit;
   end;
-  if pname = SrpSFontColor then
+  if pname = SRpSType1Font then
   begin
-    titem.FontColor := StrToIntDef(value, 0);
+    titem.Type1Font := TextToType1Font(value);
+    Exit;
+  end;
+  if pname = SRpSFontStep then
+  begin
+    titem.PrintStep := StringToFontStep(value);
+    Exit;
+  end;
+  if pname = SrpSFontSize then
+  begin
+    titem.FontSize := StrToIntDef(value, titem.FontSize);
     Invalidate;
     Exit;
   end;
   if pname = SrpSFontStyle then
   begin
     // CLX integer style (bold, italic...), as set by the font dialog
-    titem.FontStyle := StrToInt(value);
+    titem.FontStyle := StrToIntDef(value, titem.FontStyle);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSFontColor then
+  begin
+    titem.FontColor := StrToIntDef(value, titem.FontColor);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSRightToLeft then
+  begin
+    titem.BidiMode := StringToRpBidiMode(value);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSBackColor then
+  begin
+    titem.BackColor := StrToIntDef(value, titem.BackColor);
     Invalidate;
     Exit;
   end;
   if pname = SrpSTransparent then
   begin
-    titem.Transparent := StrToBoolDef(value, True);
+    titem.Transparent := StrToBoolDef(value, titem.Transparent);
     Invalidate;
+    Exit;
+  end;
+  if pname = SrpSCutText then
+  begin
+    titem.CutText := StrToBoolDef(value, titem.CutText);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSWordWrap then
+  begin
+    titem.WordWrap := StrToBoolDef(value, titem.WordWrap);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SrpSSingleLine then
+  begin
+    titem.SingleLine := StrToBoolDef(value, titem.SingleLine);
+    Invalidate;
+    Exit;
+  end;
+  if pname = SRpSFontRotation then
+  begin
+    if TryStrToCurr(value, crot) then
+      titem.FontRotation := Round(crot * 10);
     Exit;
   end;
   inherited SetProperty(pname, value);
 end;
 
-function TRpGenTextInterface.GetProperty(pname: string): WideString;
+function TRpGenTextInterface.GetProperty(pname: WideString): WideString;
 var
   titem: TRpGenTextComponent;
 begin
@@ -1001,23 +1881,65 @@ begin
     Exit;
   end;
   if pname = SrpSAlignment then Result := HAlignmentToText(titem.Alignment)
+  else if pname = SrpSVAlignment then Result := VAlignmentToText(titem.VAlignment)
   else if pname = SrpSWFontName then Result := titem.WFontName
+  else if pname = SrpSLFontName then Result := titem.LFontName
+  else if pname = SRpSType1Font then Result := Type1FontToText(titem.Type1Font)
+  else if pname = SRpSFontStep then Result := FontStepToString(titem.PrintStep)
   else if pname = SrpSFontSize then Result := IntToStr(titem.FontSize)
-  else if pname = SrpSFontColor then Result := IntToStr(titem.FontColor)
   else if pname = SrpSFontStyle then Result := IntToStr(titem.FontStyle)
+  else if pname = SrpSFontColor then Result := IntToStr(titem.FontColor)
+  else if pname = SrpSRightToLeft then Result := RpBidiModeToString(titem.BidiMode)
+  else if pname = SrpSBackColor then Result := IntToStr(titem.BackColor)
   else if pname = SrpSTransparent then Result := BoolToStr(titem.Transparent, True)
+  else if pname = SrpSCutText then Result := BoolToStr(titem.CutText, True)
+  else if pname = SRpSFontRotation then Result := FormatCurr('#####0.0', titem.FontRotation / 10)
+  else if pname = SrpSWordWrap then Result := BoolToStr(titem.WordWrap, True)
+  else if pname = SrpSSingleLine then Result := BoolToStr(titem.SingleLine, True)
   else Result := inherited GetProperty(pname);
 end;
 
-procedure TRpGenTextInterface.GetPropertyValues(pname: string; lpossiblevalues: TRpWideStrings);
+procedure TRpGenTextInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings);
 begin
+  if pname = SrpSRightToLeft then
+  begin
+    GetBidiDescriptions(lpossiblevalues);
+    Exit;
+  end;
   if pname = SrpSAlignment then
   begin
     lpossiblevalues.Clear;
+    lpossiblevalues.Add(SrpSAlignNone);
     lpossiblevalues.Add(SrpSAlignLeft);
     lpossiblevalues.Add(SrpSAlignRight);
     lpossiblevalues.Add(SrpSAlignCenter);
     lpossiblevalues.Add(SrpSAlignJustify);
+    Exit;
+  end;
+  if pname = SrpSVAlignment then
+  begin
+    lpossiblevalues.Clear;
+    lpossiblevalues.Add(SrpSAlignNone);
+    lpossiblevalues.Add(SrpSAlignTop);
+    lpossiblevalues.Add(SrpSAlignBottom);
+    lpossiblevalues.Add(SrpSAlignCenter);
+    Exit;
+  end;
+  if pname = SRpSType1Font then
+  begin
+    lpossiblevalues.Clear;
+    lpossiblevalues.Add('Helvetica');
+    lpossiblevalues.Add('Courier');
+    lpossiblevalues.Add('Times Roman');
+    lpossiblevalues.Add('Symbol');
+    lpossiblevalues.Add('ZapfDingbats');
+    lpossiblevalues.Add('TrueType link');
+    lpossiblevalues.Add('TrueType Embedded');
+    Exit;
+  end;
+  if pname = SRpSFontStep then
+  begin
+    GetStepDescriptions(lpossiblevalues);
     Exit;
   end;
   inherited GetPropertyValues(pname, lpossiblevalues);

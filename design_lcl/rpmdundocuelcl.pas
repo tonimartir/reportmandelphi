@@ -135,6 +135,11 @@ type
     // Marks the report as modified by a change that is not recorded as an
     // undo operation (e.g. a dialog accepted with OK). Survives Undo/Redo/Clear.
     procedure MarkExternalChange;
+    // A component was renamed: the recorded operations (undo and redo) that
+    // reference OldName as component or parent use NewName from now on
+    procedure RenameInHistory(const OldName, NewName: string);
+    // True when an operation of the history references AName
+    function HistoryUsesName(const AName: string): Boolean;
     function IsDirty: Boolean;
     procedure TruncateHistory(MaxCount: Integer);
     function ToJSON: string;
@@ -1032,6 +1037,48 @@ begin
   if Assigned(FReport) then
     FReport.Modified := True;
   DoChange;
+end;
+
+procedure TUndoCue.RenameInHistory(const OldName, NewName: string);
+
+  procedure RenameOps(ops: TObjectList<TChangeObjectOperation>);
+  var
+    i: Integer;
+  begin
+    for i := 0 to ops.Count - 1 do
+    begin
+      if SameText(ops[i].componentName, OldName) then
+        ops[i].componentName := NewName;
+      if SameText(ops[i].parentName, OldName) then
+        ops[i].parentName := NewName;
+      if SameText(ops[i].oldParentName, OldName) then
+        ops[i].oldParentName := NewName;
+    end;
+  end;
+
+begin
+  if (OldName = '') or SameText(OldName, NewName) then
+    Exit;
+  RenameOps(UndoOperations);
+  RenameOps(RedoOperations);
+  DoChange;
+end;
+
+function TUndoCue.HistoryUsesName(const AName: string): Boolean;
+
+  function UsedIn(ops: TObjectList<TChangeObjectOperation>): Boolean;
+  var
+    i: Integer;
+  begin
+    Result := False;
+    for i := 0 to ops.Count - 1 do
+      if SameText(ops[i].componentName, AName) or SameText(ops[i].parentName, AName) or
+         SameText(ops[i].oldParentName, AName) then
+        Exit(True);
+  end;
+
+begin
+  Result := (AName <> '') and (UsedIn(UndoOperations) or UsedIn(RedoOperations));
 end;
 
 function TUndoCue.IsDirty: Boolean;
