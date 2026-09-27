@@ -246,6 +246,9 @@ function RpOpenUrlInBrowser(const AURL: string): Boolean;
 // set ADone; False on timeout or if the port cannot be opened (AError).
 function RpWaitForLoopbackRequest(APort: Word; ATimeoutMs: Cardinal;
   AOnRequest: TRpLoopbackRequestEvent; out AError: string): Boolean;
+// True when a listener can be opened on 127.0.0.1:APort now (the port is free
+// and not in a range reserved by the system, as Hyper-V/WSL do on Windows)
+function RpLoopbackPortAvailable(APort: Word): Boolean;
 
 implementation
 
@@ -1553,6 +1556,26 @@ begin
     end;
   finally
     LServer.FServer.Free;
+    LServer.Free;
+  end;
+end;
+
+function RpLoopbackPortAvailable(APort: Word): Boolean;
+var
+  LServer: TInetServer;
+begin
+  Result := False;
+  LServer := nil;
+  try
+    try
+      LServer := TInetServer.Create('127.0.0.1', APort);
+      LServer.ReuseAddress := False;
+      LServer.Bind;
+      Result := True;
+    except
+      Result := False;
+    end;
+  finally
     LServer.Free;
   end;
 end;

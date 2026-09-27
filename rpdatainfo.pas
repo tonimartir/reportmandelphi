@@ -4322,6 +4322,11 @@ begin
   {$ENDIF}
     end;
  end;
+ // An explicit connections file (DBXConnectionsOverride or the file override,
+ // e.g. -dbxconnectionfile) wins over the defaults chosen above when the
+ // drivers file was missing
+ if Length(dbxconpath)>0 then
+  configfilename:=dbxconpath;
  if FileExists(configfilename) then
  begin
   config:=TMemInifile.Create(configfilename);

@@ -1282,24 +1282,29 @@ begin
   AList.Clear;
   LResponseStream := TStringStream.Create;
   try
-    // api/agent/databases returns all schemas/databases
-    if InternalRequest('api/agent/databases', nil, LResponseStream) then
+    // api/agent/databases returns all schemas/databases (a GET, as in
+    // GetUserSchemas: InternalRequest needs a request body)
+    if InternalGetRequest('api/agent/databases', LResponseStream) then
     begin
        LResponseStream.Position := 0;
        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
        try
-         if LResponseJson <> nil then
+         // Same response as GetUserSchemas: the list is "databases" (there is
+         // no "data"), and the display name may be empty
+         if (LResponseJson <> nil) and (LResponseJson.Values['databases'] is TJSONArray) then
          begin
-            LDataArray := LResponseJson.Values['data'] as TJSONArray;
-            if LDataArray <> nil then
+            LDataArray := LResponseJson.Values['databases'] as TJSONArray;
+            for I := 0 to LDataArray.Count - 1 do
             begin
-               for I := 0 to LDataArray.Count - 1 do
-               begin
-                  LItem := LDataArray.Items[I] as TJSONObject;
-                  AList.Add(LItem.Values['displayName'].Value);
-               end;
-               Result := True;
+               LItem := LDataArray.Items[I] as TJSONObject;
+               if (LItem.Values['displayName'] <> nil) and
+                  (LItem.Values['displayName'].Value <> '') then
+                 AList.Add(LItem.Values['displayName'].Value)
+               else
+               if LItem.Values['name'] <> nil then
+                 AList.Add(LItem.Values['name'].Value);
             end;
+            Result := True;
          end;
        finally
          LResponseJson.Free;

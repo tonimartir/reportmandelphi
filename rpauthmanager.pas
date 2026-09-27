@@ -111,12 +111,16 @@ type
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
+    FOAuthState: string;
+    FOAuthExpectedState: string;
   {$ELSE}
   {$IFDEF MSWINDOWS}
     FDispatchHandle: HWND;
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
+    FOAuthState: string;
+    FOAuthExpectedState: string;
   {$ENDIF}
   {$ENDIF}
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
@@ -137,6 +141,9 @@ type
     procedure SetAILanguage(const Value: string);
   {$IFDEF FPC}
     function WaitForOAuthCallback(APort: Integer): Boolean;
+    function PickLoopbackPort: Integer;
+    function NewOAuthState: string;
+    function OAuthStateMatches: Boolean;
     procedure HandleOAuthLoopbackRequest(const APath, AQuery: string;
       var AStatusCode: Integer; var AContentType, AResponseBody: string;
       var ADone: Boolean);
@@ -145,6 +152,9 @@ type
   {$ELSE}
   {$IFDEF MSWINDOWS}
     function WaitForOAuthCallback(APort: Integer): Boolean;
+    function PickLoopbackPort: Integer;
+    function NewOAuthState: string;
+    function OAuthStateMatches: Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
   {$ENDIF}
@@ -695,11 +705,12 @@ begin
 
     LValue := TierObj.GetValue('monthlyPrice');
     if LValue = nil then LValue := TierObj.GetValue('MonthlyPrice');
-    if LValue <> nil then Self.FTiers[I].MonthlyPrice := StrToFloatDef(LValue.Value, 0);
+    // JSON numbers always use '.' as decimal separator, whatever the locale
+    if LValue <> nil then Self.FTiers[I].MonthlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
 
     LValue := TierObj.GetValue('yearlyPrice');
     if LValue = nil then LValue := TierObj.GetValue('YearlyPrice');
-    if LValue <> nil then Self.FTiers[I].YearlyPrice := StrToFloatDef(LValue.Value, 0);
+    if LValue <> nil then Self.FTiers[I].YearlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
 
     LValue := TierObj.GetValue('maxCreditsDay');
     if LValue = nil then LValue := TierObj.GetValue('MaxCreditsDay');
@@ -971,7 +982,49 @@ begin
   FLogListeners.Remove(AListener);
 end;
 
+{$IF DEFINED(FPC) OR DEFINED(MSWINDOWS)}
+// OAuth "state": an unpredictable value (CreateGUID uses the system random
+// generator; Random was never seeded, so it repeated on every start) that the
+// login page must send back unchanged, or the callback is rejected
+function TRpAuthManager.NewOAuthState: string;
+var
+  LGuid: TGUID;
+begin
+  CreateGUID(LGuid);
+  Result := GUIDToString(LGuid);
+  Result := StringReplace(Result, '{', '', []);
+  Result := StringReplace(Result, '}', '', []);
+  Result := StringReplace(Result, '-', '', [rfReplaceAll]);
+  FOAuthExpectedState := Result;
+end;
+
+function TRpAuthManager.OAuthStateMatches: Boolean;
+begin
+  Result := (FOAuthExpectedState <> '') and (FOAuthState = FOAuthExpectedState);
+  if not Result then
+    Log('OAuth: the state returned by the login page does not match the request, login rejected');
+end;
+{$IFEND}
+
 {$IFDEF FPC}
+// Loopback port for the OAuth redirect: a random one in the dynamic range that
+// can really be opened (Windows reserves ranges of it for Hyper-V, WSL...)
+function TRpAuthManager.PickLoopbackPort: Integer;
+var
+  I: Integer;
+  LGuid: TGUID;
+begin
+  Result := 0;
+  for I := 1 to 32 do
+  begin
+    CreateGUID(LGuid);
+    Result := 49152 + Integer(LGuid.D1 mod 16384);
+    if RpLoopbackPortAvailable(Result) then
+      Exit;
+  end;
+  Log('Auth: no free loopback port found, trying ' + IntToStr(Result));
+end;
+
 // Same flow as the Windows version below, with a portable loopback listener
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
 var
@@ -979,12 +1032,13 @@ var
 begin
   FOAuthCode := '';
   FOAuthError := '';
+  FOAuthState := '';
   FOAuthGotCallback := False;
   Log('Loopback server listening on port ' + IntToStr(APort) + '...');
   if not RpWaitForLoopbackRequest(APort, 5 * 60 * 1000, HandleOAuthLoopbackRequest, LError) then
     if LError <> '' then
       Log('Loopback server: ' + LError);
-  Result := FOAuthGotCallback and (FOAuthCode <> '');
+  Result := FOAuthGotCallback and (FOAuthCode <> '') and OAuthStateMatches;
 end;
 
 procedure TRpAuthManager.HandleOAuthLoopbackRequest(const APath, AQuery: string;
@@ -1005,16 +1059,21 @@ begin
     LPairs.DelimitedText := AQuery;
     FOAuthCode := '';
     FOAuthError := '';
+    FOAuthState := '';
     for I := 0 to LPairs.Count - 1 do
     begin
       if SameText(LPairs.Names[I], 'code') then
         FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
+      else if SameText(LPairs.Names[I], 'state') then
+        FOAuthState := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
       else if SameText(LPairs.Names[I], 'error') then
         FOAuthError := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I]);
     end;
   finally
     LPairs.Free;
   end;
+  if (FOAuthCode <> '') and (FOAuthError = '') and (FOAuthState <> FOAuthExpectedState) then
+    FOAuthError := 'The response does not belong to this login request (state)';
   if (FOAuthCode <> '') or (FOAuthError <> '') then
   begin
     FOAuthGotCallback := True;
@@ -1031,6 +1090,37 @@ begin
 end;
 {$ELSE}
 {$IFDEF MSWINDOWS}
+// Loopback port for the OAuth redirect: a random one in the dynamic range that
+// can really be opened (Windows reserves ranges of it for Hyper-V, WSL...).
+// WinSock is already started by the caller
+function TRpAuthManager.PickLoopbackPort: Integer;
+var
+  I: Integer;
+  LGuid: TGUID;
+  LSocket: TSocket;
+  LAddr: sockaddr_in;
+begin
+  for I := 1 to 32 do
+  begin
+    CreateGUID(LGuid);
+    Result := 49152 + Integer(LGuid.D1 mod 16384);
+    LSocket := Winapi.WinSock.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if LSocket = INVALID_SOCKET then
+      Exit;
+    try
+      FillChar(LAddr, SizeOf(LAddr), 0);
+      LAddr.sin_family := AF_INET;
+      LAddr.sin_addr.S_addr := htonl(INADDR_LOOPBACK);
+      LAddr.sin_port := htons(Result);
+      if bind(LSocket, TSockAddr(LAddr), SizeOf(LAddr)) <> SOCKET_ERROR then
+        Exit;
+    finally
+      closesocket(LSocket);
+    end;
+  end;
+  Log('Auth: no free loopback port found, trying ' + IntToStr(Result));
+end;
+
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
 var
   LListenSocket, LClientSocket: TSocket;
@@ -1048,6 +1138,7 @@ begin
   Result := False;
   FOAuthCode := '';
   FOAuthError := '';
+  FOAuthState := '';
   FOAuthGotCallback := False;
 
   LListenSocket := Winapi.WinSock.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -1059,8 +1150,12 @@ begin
     LAddr.sin_port := htons(APort);
 
     Log('Loopback server listening on port ' + IntToStr(APort) + '...');
-    if bind(LListenSocket, TSockAddr(LAddr), SizeOf(LAddr)) = SOCKET_ERROR then Exit;
-    if listen(LListenSocket, 1) = SOCKET_ERROR then Exit;
+    if (bind(LListenSocket, TSockAddr(LAddr), SizeOf(LAddr)) = SOCKET_ERROR) or
+      (listen(LListenSocket, 1) = SOCKET_ERROR) then
+    begin
+      Log('Loopback server: cannot listen on port ' + IntToStr(APort));
+      Exit;
+    end;
 
     LStartTime := Now;
     while (not FOAuthGotCallback) and ((Now - LStartTime) < (5 / 24 / 60)) do
@@ -1103,16 +1198,21 @@ begin
                 LPairs.DelimitedText := LQueryString;
                 FOAuthCode := '';
                 FOAuthError := '';
+                FOAuthState := '';
                 for i := 0 to LPairs.Count - 1 do
                 begin
                   if SameText(LPairs.Names[i], 'code') then
                     Self.FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
+                  else if SameText(LPairs.Names[i], 'state') then
+                    Self.FOAuthState := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
                   else if SameText(LPairs.Names[i], 'error') then
                     Self.FOAuthError := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i]);
                 end;
               finally
                 LPairs.Free;
               end;
+              if (FOAuthCode <> '') and (FOAuthError = '') and (FOAuthState <> FOAuthExpectedState) then
+                FOAuthError := 'The response does not belong to this login request (state)';
 
               if (FOAuthCode <> '') or (FOAuthError <> '') then
               begin
@@ -1137,7 +1237,7 @@ begin
         end;
       end;
     end; // end while
-    Result := FOAuthGotCallback and (FOAuthCode <> '');
+    Result := FOAuthGotCallback and (FOAuthCode <> '') and OAuthStateMatches;
   finally
     closesocket(LListenSocket);
   end;
@@ -1365,10 +1465,10 @@ var
   LRedirectUri, LState, LAuthUrl: string;
 begin
   Result := False;
-  LPort := 49152 + Random(16384);
+  LPort := PickLoopbackPort;
   LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
   Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
-  LState := IntToHex(Random(MaxInt), 8);
+  LState := NewOAuthState;
   LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
   if not RpOpenUrlInBrowser(LAuthUrl) then
     Log('Could not open the browser, open this URL: ' + LAuthUrl);
@@ -1383,10 +1483,10 @@ var
   LRedirectUri, LState, LAuthUrl: string;
 begin
   Result := False;
-  LPort := 49152 + Random(16384);
+  LPort := PickLoopbackPort;
   LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
   Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
-  LState := IntToHex(Random(MaxInt), 8);
+  LState := NewOAuthState;
   LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
   if not RpOpenUrlInBrowser(LAuthUrl) then
     Log('Could not open the browser, open this URL: ' + LAuthUrl);
@@ -1405,10 +1505,10 @@ begin
   Result := False;
   if WSAStartup(MakeWord(2, 2), LWSAData) <> 0 then Exit;
   try
-    LPort := 49152 + Random(16384);
+    LPort := PickLoopbackPort;
     LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
-    LState := IntToHex(Random(MaxInt), 8);
+    LState := NewOAuthState;
     LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
     ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
     if WaitForOAuthCallback(LPort) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
@@ -1435,10 +1535,10 @@ begin
   Result := False;
   if WSAStartup(MakeWord(2, 2), LWSAData) <> 0 then Exit;
   try
-    LPort := 49152 + Random(16384);
+    LPort := PickLoopbackPort;
     LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
-    LState := IntToHex(Random(MaxInt), 8);
+    LState := NewOAuthState;
     LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
     ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
     if WaitForOAuthCallback(LPort) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);

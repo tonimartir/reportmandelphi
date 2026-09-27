@@ -14,7 +14,7 @@ procedure RunHubTests;
 implementation
 
 uses
-  SysUtils, Classes, DB, DateUtils, fphttpserver, httpdefs, rpjsonfpc, rphttpclientfpc,
+  SysUtils, Classes, DB, DateUtils, fphttpserver, httpdefs, ssockets, rpjsonfpc, rphttpclientfpc,
   rpnetencodingfpc, rptypes, rpparams, rpdatainfo, rpdatahttp, rpauthmanager,
   rpreportdesignercontracts, rpaireportcontracts, utestutil, ufakeserver, ujsoncases;
 
@@ -58,6 +58,7 @@ type
   public
     Url: string;
     Status: Integer;
+    Body: string;
   protected
     procedure Execute; override;
   end;
@@ -66,6 +67,8 @@ var
   GHub: TFakeServer;
   GHubHandler: TFakeHub;
   GRedirect: TRedirectThread;
+  // The simulated browser returns a different OAuth state (forged redirect)
+  GTamperState: Boolean = False;
 
 function ProfileJson(const ATierName: string): string;
 begin
@@ -365,12 +368,15 @@ end;
 procedure TRedirectThread.Execute;
 var
   LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
 begin
   Sleep(300);
   LClient := TNetHTTPClient.Create(nil);
   try
     try
-      Status := LClient.Get(Url).StatusCode;
+      LResponse := LClient.Get(Url);
+      Status := LResponse.StatusCode;
+      Body := LResponse.ContentAsString;
     except
       Status := -1;
     end;
@@ -400,17 +406,20 @@ end;
 // Replaces the system browser: the identity provider "redirects" at once
 function FakeBrowser(const AURL: string): Boolean;
 var
-  LRedirectUri, LCode: string;
+  LRedirectUri, LCode, LState: string;
 begin
   LRedirectUri := QueryValue(AURL, 'redirect_uri');
   if Pos('accounts.google.com', AURL) > 0 then
     LCode := 'gcode%201'
   else
     LCode := 'mscode';
+  LState := QueryValue(AURL, 'state');
+  if GTamperState then
+    LState := 'X' + LState;
   FreeAndNil(GRedirect);
   GRedirect := TRedirectThread.Create(True);
   GRedirect.FreeOnTerminate := False;
-  GRedirect.Url := LRedirectUri + '?code=' + LCode + '&state=' + QueryValue(AURL, 'state');
+  GRedirect.Url := LRedirectUri + '?code=' + LCode + '&state=' + LState;
   GRedirect.Start;
   Result := LRedirectUri <> '';
 end;
@@ -422,6 +431,7 @@ var
   LAuth: TRpAuthManager;
   LIni: TStringList;
   LIniFile: string;
+  LOldSep: Char;
 begin
   Section('Hub authentication (rpauthmanager)');
   LAuth := TRpAuthManager.Instance;
@@ -458,7 +468,19 @@ begin
   CheckEquals('Pro+', LAuth.Profile.TierName, 'CheckStatus updates the profile');
   CheckEquals('Bearer tok123', GHub.LastHeader('Authorization') + '', 'CheckStatus sends the token');
   CheckContains('GET /avatar.png', GHub.RequestLog, 'CheckStatus downloads the avatar');
-  Check(LAuth.RefreshTiers, 'RefreshTiers');
+  // JSON prices use '.' whatever the decimal separator of the locale (they
+  // were read with StrToFloatDef and the locale, 0 with a ',' separator)
+  LOldSep := DefaultFormatSettings.DecimalSeparator;
+  DefaultFormatSettings.DecimalSeparator := ',';
+  try
+    Check(LAuth.RefreshTiers, 'RefreshTiers');
+    Check(Abs(LAuth.Tiers[1].MonthlyPrice - 19.99) < 0.0001,
+      'tier monthly price with a '','' decimal separator: ' + FloatToStr(LAuth.Tiers[1].MonthlyPrice));
+    Check(Abs(LAuth.Tiers[1].YearlyPrice - 199.9) < 0.0001,
+      'tier yearly price with a '','' decimal separator: ' + FloatToStr(LAuth.Tiers[1].YearlyPrice));
+  finally
+    DefaultFormatSettings.DecimalSeparator := LOldSep;
+  end;
   CheckEquals('https://checkout.example/session/3', LAuth.GetCheckoutUrl(3, True), 'GetCheckoutUrl');
   CheckContains('"isYearly":true', GHub.LastBody, 'GetCheckoutUrl body');
   CheckEquals('https://portal.example/', LAuth.GetPortalUrl, 'GetPortalUrl');
@@ -754,6 +776,12 @@ begin
     CheckEquals('Sales / Main=77|5', LList[0], 'GetUserSchemas display name');
     CheckEquals('stock=78|6', LList[1], 'GetUserSchemas name when there is no display name');
     CheckContains('GET /api/agent/databases', GHub.RequestLog, 'GetUserSchemas is a GET');
+    // GetSchemas sent a nil request body (access violation) and read a "data"
+    // list that the Hub does not return
+    Check(LHttp.GetSchemas(LList), 'GetSchemas');
+    CheckEquals(2, LList.Count, 'GetSchemas count');
+    CheckEquals('Sales - Main', LList[0], 'GetSchemas display name');
+    CheckEquals('stock', LList[1], 'GetSchemas name when there is no display name');
     Check(LHttp.GetUserAgents(LList), 'GetUserAgents');
     CheckEquals('Local (pc1)=3|s3|1', LList[0], 'GetUserAgents online');
     CheckEquals('Cloud (srv)=4|s4|0', LList[1], 'GetUserAgents offline');
@@ -796,6 +824,31 @@ begin
   end;
 end;
 
+// RpLoopbackPortAvailable: false while another listener holds the port (the
+// OAuth port is chosen with it, skipping ports reserved by Hyper-V/WSL)
+procedure PortCheckTest;
+var
+  LHolder: TInetServer;
+  LPort: Word;
+begin
+  LPort := 0;
+  LHolder := nil;
+  try
+    for LPort := 55301 to 55399 do
+      if RpLoopbackPortAvailable(LPort) then
+        Break;
+    Check(RpLoopbackPortAvailable(LPort), 'a free loopback port is available: ' + IntToStr(LPort));
+    LHolder := TInetServer.Create('127.0.0.1', LPort);
+    LHolder.ReuseAddress := False;
+    LHolder.Bind;
+    LHolder.Listen;
+    Check(not RpLoopbackPortAvailable(LPort), 'a port held by another listener is not available');
+  finally
+    LHolder.Free;
+  end;
+  Check(RpLoopbackPortAvailable(LPort), 'the port is available again after closing it');
+end;
+
 procedure OAuthTests;
 var
   LAuth: TRpAuthManager;
@@ -814,6 +867,19 @@ begin
     CheckContains('POST /mslogin/common/oauth2/v2.0/token', GHub.RequestLog, 'Microsoft token request');
     LAuth.Logout;
     Check(not LAuth.IsLoggedIn, 'logged out');
+    // A redirect whose state is not the one sent is rejected (the state was
+    // never checked)
+    GTamperState := True;
+    try
+      Check(not LAuth.LoginGoogle, 'LoginGoogle rejected when the state does not match');
+      Check(not LAuth.IsLoggedIn, 'not logged in after the forged redirect');
+      GRedirect.WaitFor;
+      CheckContains('Login failed', GRedirect.Body, 'the browser gets the "login failed" page');
+    finally
+      GTamperState := False;
+    end;
+    // The loopback port is checked before the browser is opened
+    PortCheckTest;
   finally
     RpOpenUrlHook := nil;
     if GRedirect <> nil then
