@@ -5,7 +5,12 @@ interface
 {$I rpconf.inc}
 
 uses
-  SysUtils, Classes, System.JSON;
+  SysUtils, Classes,
+{$IFDEF FPC}
+  rpjsonfpc;
+{$ELSE}
+  System.JSON;
+{$ENDIF}
 
 type
   TRpAIErrorType = (raetInappropriateContent, raetInaccurateContent);

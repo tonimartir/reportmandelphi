@@ -26,13 +26,16 @@ packages/fpc_lcl/reportman_designlcl.pas
 LICENSE.TXT
 
 # --- reportman_rtl: unidades del motor en la raiz ---
+rpaireportcontracts.pas
 rpalias.pas
+rpauthmanager.pas
 rpbarcodecons.pas
 rpbasereport.pas
 rpcolumnar.pas
 rpcompilerep.pas
 rpcompobase.pas
 rpcsvdriver.pas
+rpdatahttp.pas
 rpdatainfo.pas
 rpdataset.pas
 rpdatatext.pas
@@ -69,6 +72,7 @@ rppdffile.pas
 rppdfreport.pas
 rpprintitem.pas
 rpreport.pas
+rpreportdesignercontracts.pas
 rpsection.pas
 rpsecutil.pas
 rpsubreport.pas
@@ -107,7 +111,12 @@ rptranslator.dcr
 # --- reportman_rtl: unidades solo FPC ---
 rtl_fpc/rpbase64fpc.pas
 rtl_fpc/rpfpcutils.pas
+rtl_fpc/rphttpclientfpc.pas
 rtl_fpc/rpinfoprovfpc.pas
+rtl_fpc/rpioutilsfpc.pas
+rtl_fpc/rpjsonfpc.pas
+rtl_fpc/rpnetencodingfpc.pas
+rtl_fpc/rpsysutilsfpc.pas
 
 # --- reportman_lcl ---
 lcl/rpgraphutilslcl.lfm

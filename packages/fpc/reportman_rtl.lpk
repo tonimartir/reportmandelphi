@@ -25,7 +25,7 @@
     <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (SQLite) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="16"/>
-    <Files Count="66">
+    <Files Count="75">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -291,6 +291,42 @@
         <Filename Value="..\..\rtl_fpc\rpbase64fpc.pas"/>
         <UnitName Value="rpbase64fpc"/>
       </Item66>
+      <Item67>
+        <Filename Value="..\..\rtl_fpc\rpjsonfpc.pas"/>
+        <UnitName Value="rpjsonfpc"/>
+      </Item67>
+      <Item68>
+        <Filename Value="..\..\rtl_fpc\rphttpclientfpc.pas"/>
+        <UnitName Value="rphttpclientfpc"/>
+      </Item68>
+      <Item69>
+        <Filename Value="..\..\rtl_fpc\rpnetencodingfpc.pas"/>
+        <UnitName Value="rpnetencodingfpc"/>
+      </Item69>
+      <Item70>
+        <Filename Value="..\..\rtl_fpc\rpioutilsfpc.pas"/>
+        <UnitName Value="rpioutilsfpc"/>
+      </Item70>
+      <Item71>
+        <Filename Value="..\..\rtl_fpc\rpsysutilsfpc.pas"/>
+        <UnitName Value="rpsysutilsfpc"/>
+      </Item71>
+      <Item72>
+        <Filename Value="..\..\rpaireportcontracts.pas"/>
+        <UnitName Value="rpaireportcontracts"/>
+      </Item72>
+      <Item73>
+        <Filename Value="..\..\rpreportdesignercontracts.pas"/>
+        <UnitName Value="rpreportdesignercontracts"/>
+      </Item73>
+      <Item74>
+        <Filename Value="..\..\rpauthmanager.pas"/>
+        <UnitName Value="rpauthmanager"/>
+      </Item74>
+      <Item75>
+        <Filename Value="..\..\rpdatahttp.pas"/>
+        <UnitName Value="rpdatahttp"/>
+      </Item75>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

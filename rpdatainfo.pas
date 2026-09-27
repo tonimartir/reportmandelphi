@@ -158,9 +158,7 @@ uses Classes,SysUtils,
  rpdataset,
 {$ENDIF}
 {$ENDIF}
-{$IFNDEF FPC}
   rpdatahttp, rpauthmanager,
-{$ENDIF}
   rpdatatext
 {$IFDEF MSWINDOWS}
 {$IFNDEF FPC}
@@ -293,9 +291,7 @@ type
 {$IFDEF USEIBO}
    FIBODatabase: TIB_Database;
 {$ENDIF}
-{$IFNDEF FPC}
    FHttpDatabase: TRpDatabaseHttp;
-{$ENDIF}
    FDriver:TRpDbDriver;
    function GetHttpHubDatabaseId: Int64;
    procedure SetAlias(Value:string);
@@ -1641,14 +1637,10 @@ end;
 
 function TRpDatabaseInfoItem.GetHttpHubDatabaseId: Int64;
 begin
-{$IFDEF FPC}
-  Result := 0;
-{$ELSE}
   if (FDriver = rpdbHttp) and Assigned(FHttpDatabase) then
     Result := FHttpDatabase.HubDatabaseId
   else
     Result := 0;
-{$ENDIF}
 end;
 
 procedure TRpDatabaseInfoItem.SetAlias(Value:string);
@@ -1726,13 +1718,11 @@ begin
   ConAdmin.free;
   ConAdmin:=nil;
  end;
-{$IFNDEF FPC}
  if Assigned(FHttpDatabase) then
  begin
   FHttpDatabase.Free;
   FHttpDatabase:=nil;
  end;
-{$ENDIF}
  inherited Destroy;
 end;
 
@@ -2753,7 +2743,6 @@ begin
      end;
     rpdbHttp:
      begin
-{$IFNDEF FPC}
        if Not Assigned(FHttpDatabase) then
          FHttpDatabase := TRpDatabaseHttp.Create;
        
@@ -2783,9 +2772,6 @@ begin
          end;
        end;
        FHttpDatabase.Connected := True;
-{$ELSE}
-       Raise Exception.Create(SRpDriverNotSupported+' - HTTP');
-{$ENDIF}
      end;
        end;
  finally
@@ -2895,10 +2881,8 @@ begin
  // Reportman Agent (rpdbHttp) driver: drop the live connection so the next
  // Connect re-reads ApiKey / HubDatabaseId from the (possibly changed)
  // configuration instead of exiting early because FConnected is still True.
-{$IFNDEF FPC}
  if Assigned(FHttpDatabase) then
   FHttpDatabase.Connected:=False;
-{$ENDIF}
 end;
 
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -2980,9 +2964,7 @@ var
  datasetname:string;
  originalfields,commonfields:TStrings;
  ndataset:TRpMemDataSet;
-{$IFNDEF FPC}
  LHttpDataset: TRpDatasetHttp;
-{$ENDIF}
 begin
  if connecting then
   Raise Exception.Create(SRpCircularDatalink+' - '+alias);
@@ -3615,7 +3597,6 @@ begin
       end;
      rpdbHttp:
       begin
-{$IFNDEF FPC}
         // Use the new HTTP driver to fill the ClientDataSet
         if not Assigned(baseinfo.FHttpDatabase) then
            baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
@@ -3624,15 +3605,17 @@ begin
           TRpMemDataSet(FSQLInternalQuery), params);
         try
           LHttpDataset.Sql := SQLsentence;
-          LHttpDataset.Open;
-          FSQLInternalQuery := LHttpDataset.Dataset;
+          try
+            LHttpDataset.Open;
+          finally
+            // Open creates the dataset the first time: keep it even if the
+            // query fails, so that this item frees it (it leaked before)
+            FSQLInternalQuery := LHttpDataset.Dataset;
+          end;
           FDataset := FSQLInternalQuery;
         finally
           LHttpDataset.Free;
         end;
-{$ELSE}
-        Raise Exception.Create(SRpDriverNotSupported+' - HTTP');
-{$ENDIF}
       end;
     end;
    // Assigns parameters

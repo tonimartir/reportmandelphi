@@ -14,7 +14,13 @@ interface
 {$I rpconf.inc}
 
 uses
+{$IFDEF FPC}
+  // No generics used here; in FPC Generics.Collections.TObjectList<T> would
+  // hide Contnrs.TObjectList
+  SysUtils, Classes, Contnrs, rpjsonfpc;
+{$ELSE}
   SysUtils, Classes, Contnrs, System.Generics.Collections, System.JSON;
+{$ENDIF}
 
 type
   TRpReportDesignerMode = (rdmFast, rdmReasoning);

@@ -16,7 +16,20 @@ interface
 
 {$I rpconf.inc}
 
+{$IFDEF FPC}
+// In this unit FIREDAC selects the System.Net HTTP client code (Delphi
+// XE8 and later); in FPC rphttpclientfpc provides that client
+{$DEFINE FIREDAC}
+{$ENDIF}
+
 uses
+{$IFDEF FPC}
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
+  SysUtils, Classes, rpjsonfpc, rpnetencodingfpc, DateUtils, rpsysutilsfpc,
+  rphttpclientfpc, rptypes, Generics.Collections;
+{$ELSE}
 {$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Messages,
 {$ENDIF}
@@ -30,6 +43,7 @@ uses
   ShellAPI,
 {$ENDIF}
   rptypes, System.Generics.Collections;
+{$ENDIF}
 
 type
   { TRpTier }
@@ -72,6 +86,10 @@ type
   public
     Listener: TRpAuthEvent;
     Success: Boolean;
+{$IFDEF FPC}
+    // Runs in the main thread (TThread.Queue) and frees the payload
+    procedure Execute;
+{$ENDIF}
   end;
 
   { TRpAuthManager }
@@ -87,15 +105,25 @@ type
     FOnLog: TRpAuthLog;
     FLogListeners: TList<TRpAuthLog>;
     FAuthListeners: TList<TRpAuthEvent>;
+  {$IFDEF FPC}
+    // FPC: OAuth login on every platform; listeners are queued with
+    // TThread.Queue instead of a hidden window
+    FOAuthCode: string;
+    FOAuthError: string;
+    FOAuthGotCallback: Boolean;
+  {$ELSE}
   {$IFDEF MSWINDOWS}
     FDispatchHandle: HWND;
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
   {$ENDIF}
+  {$ENDIF}
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
   {$IFDEF MSWINDOWS}
+  {$IFNDEF FPC}
     procedure DispatchWndProc(var Msg: TMessage);
+  {$ENDIF}
   {$ENDIF}
 
     class var FInstance: TRpAuthManager;
@@ -107,10 +135,19 @@ type
     procedure SetIsLoggedIn(Value: Boolean);
     procedure SetAIEnabled(Value: Boolean);
     procedure SetAILanguage(const Value: string);
+  {$IFDEF FPC}
+    function WaitForOAuthCallback(APort: Integer): Boolean;
+    procedure HandleOAuthLoopbackRequest(const APath, AQuery: string;
+      var AStatusCode: Integer; var AContentType, AResponseBody: string;
+      var ADone: Boolean);
+    function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
+    function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
+  {$ELSE}
   {$IFDEF MSWINDOWS}
     function WaitForOAuthCallback(APort: Integer): Boolean;
     function ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
+  {$ENDIF}
   {$ENDIF}
 {$IFDEF FIREDAC}
 {$IFDEF DEBUG}
@@ -176,14 +213,34 @@ type
 implementation
 
 uses
+{$IFDEF FPC}
+  IniFiles, rpioutilsfpc;
+{$ELSE}
 {$IFDEF MSWINDOWS}
   Winapi.WinSock,
 {$ENDIF}
   IniFiles, IOUtils;
+{$ENDIF}
 
 {$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
 const
   WM_RP_AUTH_DISPATCH = WM_USER + 210;
+{$ENDIF}
+{$ENDIF}
+
+{$IFDEF FPC}
+{ TRpQueuedAuthListenerPayload }
+
+procedure TRpQueuedAuthListenerPayload.Execute;
+begin
+  try
+    if Assigned(Listener) then
+      Listener(Success);
+  finally
+    Free;
+  end;
+end;
 {$ENDIF}
 
 { TRpAuthManager }
@@ -197,7 +254,9 @@ begin
   FLogListeners := TList<TRpAuthLog>.Create;
   FAuthListeners := TList<TRpAuthEvent>.Create;
 {$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
   FDispatchHandle := AllocateHWnd(DispatchWndProc);
+{$ENDIF}
 {$ENDIF}
   FInstallId := GenerateInstallId;
   LoadConfig;
@@ -281,8 +340,10 @@ end;
 destructor TRpAuthManager.Destroy;
 begin
 {$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
   if FDispatchHandle <> 0 then
     DeallocateHWnd(FDispatchHandle);
+{$ENDIF}
 {$ENDIF}
   FLogListeners.Free;
   FAuthListeners.Free;
@@ -290,6 +351,7 @@ begin
 end;
 
 {$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
 procedure TRpAuthManager.DispatchWndProc(var Msg: TMessage);
 var
   LPayload: TRpQueuedAuthListenerPayload;
@@ -307,6 +369,7 @@ begin
   else
     Msg.Result := DefWindowProc(FDispatchHandle, Msg.Msg, Msg.WParam, Msg.LParam);
 end;
+{$ENDIF}
 {$ENDIF}
 
 procedure TRpAuthManager.Log(const AMsg: string);
@@ -561,6 +624,23 @@ begin
   NotifyListeners(True);
 end;
 
+{$IFDEF FPC}
+procedure TRpAuthManager.DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
+var
+  LPayload: TRpQueuedAuthListenerPayload;
+begin
+  // Listeners (usually forms) run in the main thread, as in Delphi/Windows
+  if GetCurrentThreadId = MainThreadID then
+    AListener(ASuccess)
+  else
+  begin
+    LPayload := TRpQueuedAuthListenerPayload.Create;
+    LPayload.Listener := AListener;
+    LPayload.Success := ASuccess;
+    TThread.Queue(nil, LPayload.Execute);
+  end;
+end;
+{$ELSE}
 procedure TRpAuthManager.DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
 {$IFDEF MSWINDOWS}
 var
@@ -582,6 +662,7 @@ begin
   AListener(ASuccess);
 {$ENDIF}
 end;
+{$ENDIF}
 
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
 var
@@ -890,6 +971,65 @@ begin
   FLogListeners.Remove(AListener);
 end;
 
+{$IFDEF FPC}
+// Same flow as the Windows version below, with a portable loopback listener
+function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
+var
+  LError: string;
+begin
+  FOAuthCode := '';
+  FOAuthError := '';
+  FOAuthGotCallback := False;
+  Log('Loopback server listening on port ' + IntToStr(APort) + '...');
+  if not RpWaitForLoopbackRequest(APort, 5 * 60 * 1000, HandleOAuthLoopbackRequest, LError) then
+    if LError <> '' then
+      Log('Loopback server: ' + LError);
+  Result := FOAuthGotCallback and (FOAuthCode <> '');
+end;
+
+procedure TRpAuthManager.HandleOAuthLoopbackRequest(const APath, AQuery: string;
+  var AStatusCode: Integer; var AContentType, AResponseBody: string;
+  var ADone: Boolean);
+var
+  LPairs: TStringList;
+  I: Integer;
+begin
+  AStatusCode := 400;
+  AResponseBody := '';
+  if AQuery = '' then
+    Exit;
+  LPairs := TStringList.Create;
+  try
+    LPairs.Delimiter := '&';
+    LPairs.StrictDelimiter := True;
+    LPairs.DelimitedText := AQuery;
+    FOAuthCode := '';
+    FOAuthError := '';
+    for I := 0 to LPairs.Count - 1 do
+    begin
+      if SameText(LPairs.Names[I], 'code') then
+        FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
+      else if SameText(LPairs.Names[I], 'error') then
+        FOAuthError := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I]);
+    end;
+  finally
+    LPairs.Free;
+  end;
+  if (FOAuthCode <> '') or (FOAuthError <> '') then
+  begin
+    FOAuthGotCallback := True;
+    ADone := True;
+    AStatusCode := 200;
+    AContentType := 'text/html; charset=utf-8';
+    if FOAuthError <> '' then
+      AResponseBody := '<html><body><h1>Login failed</h1><p>' +
+        TNetEncoding.HTML.Encode(FOAuthError) + '</p></body></html>'
+    else
+      AResponseBody := '<html><body><h1>Login successful!</h1><p>You can close this window.</p>' +
+        '<script>window.close();</script></body></html>';
+  end;
+end;
+{$ELSE}
 {$IFDEF MSWINDOWS}
 function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
 var
@@ -1003,7 +1143,17 @@ begin
   end;
 end;
 {$ENDIF}
+{$ENDIF}
 
+{$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
+// The two code exchanges below only use HTTP, so FPC compiles them on every
+// platform (Delphi only offers the OAuth login on Windows). MSWINDOWS is
+// defined just around them and removed right after.
+{$DEFINE MSWINDOWS}
+{$DEFINE RPAUTHOAUTHALLPLATFORMS}
+{$ENDIF}
+{$ENDIF}
 {$IFDEF MSWINDOWS}
 function TRpAuthManager.ExchangeGoogleCode(const ACode, ARedirectUri: string): Boolean;
 {$IFDEF FIREDAC}
@@ -1197,7 +1347,52 @@ begin
 end;
 {$ENDIF}
 {$ENDIF}
+{$IFDEF FPC}
+{$IFDEF RPAUTHOAUTHALLPLATFORMS}
+{$UNDEF MSWINDOWS}
+{$UNDEF RPAUTHOAUTHALLPLATFORMS}
+{$ENDIF}
+{$ENDIF}
 
+{$IFDEF FPC}
+// Same flow as the Windows version below: the browser is opened with
+// ShellExecute or xdg-open and the redirect is received on 127.0.0.1
+function TRpAuthManager.LoginGoogle: Boolean;
+const
+  GOOGLE_CLIENT_ID = '446365228848-pn415lkvsetqa7v7fi7ftg96m61ccl5p.apps.googleusercontent.com';
+var
+  LPort: Integer;
+  LRedirectUri, LState, LAuthUrl: string;
+begin
+  Result := False;
+  LPort := 49152 + Random(16384);
+  LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
+  Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
+  LState := IntToHex(Random(MaxInt), 8);
+  LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
+  if not RpOpenUrlInBrowser(LAuthUrl) then
+    Log('Could not open the browser, open this URL: ' + LAuthUrl);
+  if WaitForOAuthCallback(LPort) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
+end;
+
+function TRpAuthManager.LoginMicrosoft: Boolean;
+const
+  MS_CLIENT_ID = 'bc88d289-ded3-4389-a62b-2f12ad635dac';
+var
+  LPort: Integer;
+  LRedirectUri, LState, LAuthUrl: string;
+begin
+  Result := False;
+  LPort := 49152 + Random(16384);
+  LRedirectUri := 'http://localhost:' + IntToStr(LPort) + '/';
+  Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
+  LState := IntToHex(Random(MaxInt), 8);
+  LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
+  if not RpOpenUrlInBrowser(LAuthUrl) then
+    Log('Could not open the browser, open this URL: ' + LAuthUrl);
+  if WaitForOAuthCallback(LPort) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
+end;
+{$ELSE}
 function TRpAuthManager.LoginGoogle: Boolean;
 {$IFDEF MSWINDOWS}
 const
@@ -1256,6 +1451,7 @@ begin
   Result := False;
   Log('Microsoft OAuth login is not supported on this platform.');
 end;
+{$ENDIF}
 {$ENDIF}
 
 function TRpAuthManager.RefreshTiers: Boolean;
@@ -1376,11 +1572,17 @@ end;
 
 procedure TRpAuthManager.OpenUrl(const AUrl: string);
 begin
+{$IFDEF FPC}
+  if AUrl <> '' then
+    if not RpOpenUrlInBrowser(AUrl) then
+      Log('Could not open the browser: ' + AUrl);
+{$ELSE}
 {$IFDEF MSWINDOWS}
   if AUrl <> '' then ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
 {$ELSE}
   if AUrl <> '' then
     Log('OpenUrl is not supported on this platform: '+AUrl);
+{$ENDIF}
 {$ENDIF}
 end;
 

@@ -13,8 +13,22 @@ unit rpdatahttp;
 interface
 {$I rpconf.inc}
 
+{$IFDEF FPC}
+// In this unit FIREDAC selects the System.Net HTTP client code (Delphi
+// XE8 and later); in FPC rphttpclientfpc provides that client
+{$DEFINE FIREDAC}
+{$ENDIF}
 
 uses
+{$IFDEF FPC}
+  SysUtils, Classes, DB, StrUtils, Variants, rpioutilsfpc,
+  rphttpclientfpc, rpjsonfpc, DateUtils, rpsysutilsfpc, rpnetencodingfpc,
+  Generics.Collections,
+  rpdataset,
+  rpparams,
+  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpaireportcontracts;
+{$ELSE}
   SysUtils, Classes, DB, StrUtils, Variants, System.IOUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
@@ -40,6 +54,7 @@ uses
   rpparams,
   rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
   rpaireportcontracts;
+{$ENDIF}
 
 const
   DBTYPE_BOOLEAN = 3;
@@ -1663,12 +1678,23 @@ begin
                   Field.AsInteger := StrToIntDef(Val.Value, 0);
                 ftLargeint:
                   Field.AsLargeInt := StrToInt64Def(Val.Value, 0);
+{$IFDEF FPC}
+                // FPC has no ftSingle/ftExtended; rptypes' TryStrToFloat
+                // (BOOLFUNC) hides the SysUtils overloads
+                ftFloat, ftCurrency, ftBCD, ftFMTBcd:
+                  begin
+                    if Val is TJSONNumber then
+                      Field.AsFloat := TJSONNumber(Val).AsDouble
+                    else if SysUtils.TryStrToFloat(Val.Value, LFloatValue, LInvariantFormatSettings) then
+                      Field.AsFloat := LFloatValue
+{$ELSE}
                 ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftSingle, ftExtended:
                   begin
                     if Val is TJSONNumber then
                       Field.AsFloat := TJSONNumber(Val).AsDouble
                     else if TryStrToFloat(Val.Value, LFloatValue, LInvariantFormatSettings) then
                       Field.AsFloat := LFloatValue
+{$ENDIF}
                     else
                       raise Exception.CreateFmt('Invalid floating point value ''%s'' for field ''%s''', [Val.Value, Field.FieldName]);
                   end;

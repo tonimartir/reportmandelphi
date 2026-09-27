@@ -25,7 +25,9 @@
 #   libqt6gui6), libfreetype.so.6 (rpfreetype2), libfontconfig.so.1
 #   (rpfontconfig), libharfbuzz.so.0 (rpHarfBuzz), libsqlite3.so.0
 #   (SQLdb/Zeos), libicuuc.so.<60..90> (rpICU, prueba versiones: de ahi las
-#   alternativas).
+#   alternativas), libssl.so.3 + libcrypto.so.3 (Hub y driver rpdbHttp por
+#   HTTPS: rphttpclientfpc carga OpenSSL 3 o 1.1) y ca-certificates (la
+#   verificacion del certificado del servidor usa el almacen del sistema).
 # libharfbuzz-subset.so.0 es opcional para el motor (sin ella el PDF incrusta
 # la fuente entera) y Ubuntu 22.04 no la empaqueta: va en Recommends.
 # Los nombres t64 (Ubuntu 24.04; libqt6core6t64 tambien en Debian 13 y Ubuntu
@@ -186,6 +188,7 @@ done
 [ "$WS" = qt6 ] && add_dep qt6-qpa-plugins
 for p in libfreetype6 libfontconfig1 libharfbuzz0b libsqlite3-0 \
          "libicu70 | libicu71 | libicu72 | libicu73 | libicu74 | libicu75 | libicu76 | libicu77 | libicu78" \
+         "libssl3 | libssl3t64" ca-certificates \
          fonts-dejavu-core; do
     add_dep "$p"
 done

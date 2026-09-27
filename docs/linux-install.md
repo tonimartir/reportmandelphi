@@ -108,8 +108,10 @@ La AppImage es la versión Qt 6: lleva dentro Qt 6.2 (con su plugin X11),
 `libQt6Pas`, GLib, ICU y SQLite. Del sistema usa lo que tiene cualquier
 escritorio: X11 (o XWayland), fontconfig, FreeType, HarfBuzz, las fuentes,
 `libEGL.so.1` y `libOpenGL.so.0` (paquetes `libegl1` y `libopengl0`, los
-instala cualquier escritorio con Mesa) y CUPS para imprimir (sin CUPS no hay
-impresoras, pero el resto funciona). No hay AppImage GTK2.
+instala cualquier escritorio con Mesa), CUPS para imprimir (sin CUPS no hay
+impresoras, pero el resto funciona) y OpenSSL con los certificados de CA
+para las conexiones HTTPS al Hub (sin ellos solo fallan esas conexiones). No
+hay AppImage GTK2.
 
 - Si al abrirla aparece un error de **FUSE**, ejecútala sin montarla:
   `./ReportManDesigner-4.0.16-x86_64.AppImage --appimage-extract-and-run`
@@ -136,6 +138,10 @@ distribución no soportada o algo falla.
   `libfontconfig1`, `libharfbuzz0b`, `libsqlite3-0` y una ICU entre la 70 y la
   78 (`libicu70` en Ubuntu 22.04, `libicu72` en Debian 12, `libicu74` en
   Ubuntu 24.04…), más las fuentes `fonts-dejavu-core`.
+- Las dos, para HTTPS (Hub de `api.reportman.es` y driver `rpdbHttp` del
+  Agente): OpenSSL 3 (`libssl3` o `libssl3t64`; el motor también acepta la
+  1.1) y `ca-certificates`, porque el certificado del servidor se verifica con
+  el almacén de CA del sistema.
 - Recomendadas (se instalan salvo con `--no-install-recommends`):
   `fonts-liberation` (métricas compatibles con Arial/Times/Courier),
   `libharfbuzz-subset0` (el PDF incrusta solo los caracteres usados de cada
