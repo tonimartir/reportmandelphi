@@ -30,7 +30,13 @@ uses Sysutils,
   Variants,Types,
 {$ENDIF}
  Classes,rptypes,rpprintitem,rpmdconsts,rpmetafile,rpeval,
- rptypeval,db;
+ rptypeval,db
+{$IFDEF FPC}
+ // FPC 3.2.2: a System.* unit used only in the implementation changes the
+ // interface CRC after it was computed (see the note in rpsection.pas)
+ ,System.NetEncoding
+{$ENDIF}
+ ;
 
 const
  DEF_DRAWWIDTH=500;
@@ -115,7 +121,7 @@ type
 
 implementation
 
-uses rpbasereport, System.NetEncoding;
+uses rpbasereport{$IFNDEF FPC}, System.NetEncoding{$ENDIF};
 
 function StreamToBase64String(stream: TMemoryStream): string;
 var

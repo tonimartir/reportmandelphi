@@ -75,14 +75,18 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 ```
 
 On Linux use `packages/fpc/build_fpc.sh` (WSL Ubuntu has Lazarus 3.0/gtk2 with
-the packages registered). The scripts compile `reportman_rtl` twice on purpose:
-FPC 3.2.2 leaves `rpsecutil.ppu` with a stale checksum after a clean build
-(unit cycle rpsection → rpsubreport → rpsecutil → rpsection), and dependent
-packages then fail with "Can't find unit rpsecutil". For the same reason never
-use `lazbuild -B` on a dependent package. If FPC stops with "Compilation raised
-exception internally" after an interface change in an engine unit, run the
-script with `clean` (rebuilds `reportman_rtl` from scratch). The test projects take engine units
-from the packages only (no engine paths in their `.lpi`).
+the packages registered). Each package builds in a single pass, as in the IDE /
+Online Package Manager; `clean` rebuilds `reportman_rtl` from scratch. Keep it
+that way: with FPC 3.2.2 a `System.*` unit (e.g. `System.NetEncoding`) in the
+*implementation* uses of an engine unit hides the interface's `System` unit
+symbol (`$hiddenSYSTEM`) after the interface CRC was computed, so the units
+compiled meanwhile in a cycle (rpsection → rpsubreport → rpsecutil) keep a stale
+checksum and dependent packages fail with "Can't find unit rpsecutil" (or FPC
+crashes with "Compilation raised exception internally" on incremental builds).
+Put such units in the interface uses under `{$IFDEF FPC}` (see `rpsection.pas`,
+`rpdrawitem.pas`); `fpc -vu` shows the problem as "Interface CRC changed for
+unit". The test projects take engine units from the packages only (no engine
+paths in their `.lpi`).
 
 `--selftest` exits 0 on success and 1 on the first `[TEST_FAILED]`; it appends
 to `selftest.log`, so read only the last run.

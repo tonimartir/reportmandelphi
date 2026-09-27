@@ -147,9 +147,11 @@ Carpeta `build/linux/`:
 
 - **GTK2 obsoleto**: alguna distro futura puede retirarlo. Mitigación: spike Qt5
   en 6.1 y AppImage con las librerías incluidas.
-- **FPC 3.2.2 y el ciclo de unidades del motor**: exige la segunda pasada y, a
-  veces, `clean` (ya resuelto en `build_fpc.*`). En la imagen se compila siempre
-  en limpio.
+- **FPC 3.2.2 y el ciclo de unidades del motor**: resuelto. `System.NetEncoding`
+  en la implementación de `rpsection`/`rpdrawitem` cambiaba su CRC de interfaz
+  y dejaba checksums obsoletos en el ciclo rpsection/rpsubreport/rpsecutil; con
+  FPC ahora se usa en la interfaz y cada paquete compila en una sola pasada
+  (también desde el IDE/OPM). En la imagen se compila siempre en limpio.
 - **Zeos fuera del repo**: la build depende de una carpeta local; decidir en 6.3
   si se fija una versión dentro de la imagen.
 - **Funciones solo Windows**: Monaco (WebView2) cae al editor de texto simple;

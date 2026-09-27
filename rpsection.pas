@@ -40,7 +40,17 @@ uses Classes,
  Types,Variants,
 {$ENDIF}
  rptypes,rpmdconsts,rpmunits,rpprintitem,rplabelitem,db,
- sysutils,rpmetafile,rptypeval,rpeval;
+ sysutils,rpmetafile,rptypeval,rpeval
+{$IFDEF FPC}
+ // FPC 3.2.2: a System.* unit used only in the implementation makes the
+ // compiler hide this interface's implicit System unit symbol (renamed to
+ // $hiddenSYSTEM) after the interface CRC was computed. The units compiled
+ // meanwhile in the rpsection/rpsubreport/rpsecutil cycle then keep a stale
+ // checksum and packages using reportman_rtl fail with "Can't find unit
+ // rpsecutil". Using it in the interface keeps the interface CRC stable.
+ ,System.NetEncoding
+{$ENDIF}
+ ;
 
 const
  C_DEFAULT_SECTION_WIDTH=19;
@@ -237,7 +247,7 @@ procedure GetSkipTypePossibleValues(alist:TRpWideStrings);
 
 implementation
 
-uses rpsubreport,rpbasereport, Math,rpxmlstream, System.NetEncoding;
+uses rpsubreport,rpbasereport, Math,rpxmlstream{$IFNDEF FPC}, System.NetEncoding{$ENDIF};
 
 function StreamToBase64String(stream: TMemoryStream): string;
 var
