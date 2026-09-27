@@ -244,8 +244,12 @@ function RpOpenUrlInBrowser(const AURL: string): Boolean;
 // expires; each GET is passed to AOnRequest (path and raw query) and answered
 // with its status/body. /favicon.ico gets a 404. Returns True when a request
 // set ADone; False on timeout or if the port cannot be opened (AError).
+// AOnListening, if assigned, is called once the port is listening and before
+// the first accept: open the browser there, so that its redirect can not
+// arrive before the listener exists.
 function RpWaitForLoopbackRequest(APort: Word; ATimeoutMs: Cardinal;
-  AOnRequest: TRpLoopbackRequestEvent; out AError: string): Boolean;
+  AOnRequest: TRpLoopbackRequestEvent; out AError: string;
+  AOnListening: TNotifyEvent = nil): Boolean;
 // True when a listener can be opened on 127.0.0.1:APort now (the port is free
 // and not in a range reserved by the system, as Hyper-V/WSL do on Windows)
 function RpLoopbackPortAvailable(APort: Word): Boolean;
@@ -1527,7 +1531,8 @@ begin
 end;
 
 function RpWaitForLoopbackRequest(APort: Word; ATimeoutMs: Cardinal;
-  AOnRequest: TRpLoopbackRequestEvent; out AError: string): Boolean;
+  AOnRequest: TRpLoopbackRequestEvent; out AError: string;
+  AOnListening: TNotifyEvent): Boolean;
 var
   LServer: TRpLoopbackServer;
 begin
@@ -1546,6 +1551,9 @@ begin
       LServer.FServer.MaxConnections := -1;
       LServer.FStart := Now;
       LServer.FServer.Bind;
+      LServer.FServer.Listen;
+      if Assigned(AOnListening) then
+        AOnListening(nil);
       LServer.FServer.StartAccepting;
       Result := LServer.FDone;
       if not Result then

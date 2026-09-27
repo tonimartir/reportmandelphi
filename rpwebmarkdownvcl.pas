@@ -448,7 +448,9 @@ begin
     Exit;
   end;
 
-  LScript := 'window.appendStreamingChunk(''' + EscapeJSString(ARole) + ''', ''' +
+  // The page (WebMarkdown/index.html) names it appendMessageChunk; there is
+  // no appendStreamingChunk, so this call failed in the page
+  LScript := 'window.appendMessageChunk(''' + EscapeJSString(ARole) + ''', ''' +
     EscapeJSString(AChunk) + ''', ' + IntToStr(APrefillPercent) + ');';
   ExecuteOrQueue(LScript);
 end;

@@ -87,7 +87,7 @@ type
     Listener: TRpAuthEvent;
     Success: Boolean;
 {$IFDEF FPC}
-    // Runs in the main thread (TThread.Queue) and frees the payload
+    // Runs in the main thread (TThread.Synchronize) and frees the payload
     procedure Execute;
 {$ENDIF}
   end;
@@ -107,12 +107,13 @@ type
     FAuthListeners: TList<TRpAuthEvent>;
   {$IFDEF FPC}
     // FPC: OAuth login on every platform; listeners are queued with
-    // TThread.Queue instead of a hidden window
+    // TThread.Synchronize instead of a hidden window
     FOAuthCode: string;
     FOAuthError: string;
     FOAuthGotCallback: Boolean;
     FOAuthState: string;
     FOAuthExpectedState: string;
+    FPendingAuthUrl: string;
   {$ELSE}
   {$IFDEF MSWINDOWS}
     FDispatchHandle: HWND;
@@ -140,7 +141,8 @@ type
     procedure SetAIEnabled(Value: Boolean);
     procedure SetAILanguage(const Value: string);
   {$IFDEF FPC}
-    function WaitForOAuthCallback(APort: Integer): Boolean;
+    function WaitForOAuthCallback(APort: Integer; const AAuthUrl: string): Boolean;
+    procedure OpenPendingAuthUrl(Sender: TObject);
     function PickLoopbackPort: Integer;
     function NewOAuthState: string;
     function OAuthStateMatches: Boolean;
@@ -151,7 +153,7 @@ type
     function ExchangeMicrosoftCode(const ACode, ARedirectUri: string): Boolean;
   {$ELSE}
   {$IFDEF MSWINDOWS}
-    function WaitForOAuthCallback(APort: Integer): Boolean;
+    function WaitForOAuthCallback(APort: Integer; const AAuthUrl: string): Boolean;
     function PickLoopbackPort: Integer;
     function NewOAuthState: string;
     function OAuthStateMatches: Boolean;
@@ -647,7 +649,12 @@ begin
     LPayload := TRpQueuedAuthListenerPayload.Create;
     LPayload.Listener := AListener;
     LPayload.Success := ASuccess;
-    TThread.Queue(nil, LPayload.Execute);
+    // Synchronize, not Queue: FPC 3.2.2 TThread.Destroy removes the events
+    // queued from that thread (RemoveQueuedEvents compares the ThreadID), so a
+    // worker that ends right after logging in dropped the notification and
+    // leaked the payload. The main thread must process synchronizations
+    // (LCL message loop, or CheckSynchronize/WaitFor in console programs)
+    TThread.Synchronize(nil, LPayload.Execute);
   end;
 end;
 {$ELSE}
@@ -1025,8 +1032,16 @@ begin
   Log('Auth: no free loopback port found, trying ' + IntToStr(Result));
 end;
 
-// Same flow as the Windows version below, with a portable loopback listener
-function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
+// Called by RpWaitForLoopbackRequest once the port is listening
+procedure TRpAuthManager.OpenPendingAuthUrl(Sender: TObject);
+begin
+  if not RpOpenUrlInBrowser(FPendingAuthUrl) then
+    Log('Could not open the browser, open this URL: ' + FPendingAuthUrl);
+end;
+
+// Same flow as the Windows version below, with a portable loopback listener.
+// The browser is opened once the listener exists (its redirect may be fast)
+function TRpAuthManager.WaitForOAuthCallback(APort: Integer; const AAuthUrl: string): Boolean;
 var
   LError: string;
 begin
@@ -1034,8 +1049,10 @@ begin
   FOAuthError := '';
   FOAuthState := '';
   FOAuthGotCallback := False;
+  FPendingAuthUrl := AAuthUrl;
   Log('Loopback server listening on port ' + IntToStr(APort) + '...');
-  if not RpWaitForLoopbackRequest(APort, 5 * 60 * 1000, HandleOAuthLoopbackRequest, LError) then
+  if not RpWaitForLoopbackRequest(APort, 5 * 60 * 1000, HandleOAuthLoopbackRequest, LError,
+    OpenPendingAuthUrl) then
     if LError <> '' then
       Log('Loopback server: ' + LError);
   Result := FOAuthGotCallback and (FOAuthCode <> '') and OAuthStateMatches;
@@ -1121,7 +1138,9 @@ begin
   Log('Auth: no free loopback port found, trying ' + IntToStr(Result));
 end;
 
-function TRpAuthManager.WaitForOAuthCallback(APort: Integer): Boolean;
+// The browser is opened once the loopback socket listens: its redirect could
+// otherwise arrive before the listener exists and be refused
+function TRpAuthManager.WaitForOAuthCallback(APort: Integer; const AAuthUrl: string): Boolean;
 var
   LListenSocket, LClientSocket: TSocket;
   LAddr: sockaddr_in;
@@ -1156,6 +1175,7 @@ begin
       Log('Loopback server: cannot listen on port ' + IntToStr(APort));
       Exit;
     end;
+    ShellExecute(0, 'open', PChar(AAuthUrl), nil, nil, SW_SHOWNORMAL);
 
     LStartTime := Now;
     while (not FOAuthGotCallback) and ((Now - LStartTime) < (5 / 24 / 60)) do
@@ -1470,9 +1490,7 @@ begin
   Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
   LState := NewOAuthState;
   LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
-  if not RpOpenUrlInBrowser(LAuthUrl) then
-    Log('Could not open the browser, open this URL: ' + LAuthUrl);
-  if WaitForOAuthCallback(LPort) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
+  if WaitForOAuthCallback(LPort, LAuthUrl) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
 end;
 
 function TRpAuthManager.LoginMicrosoft: Boolean;
@@ -1488,9 +1506,7 @@ begin
   Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
   LState := NewOAuthState;
   LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
-  if not RpOpenUrlInBrowser(LAuthUrl) then
-    Log('Could not open the browser, open this URL: ' + LAuthUrl);
-  if WaitForOAuthCallback(LPort) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
+  if WaitForOAuthCallback(LPort, LAuthUrl) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
 end;
 {$ELSE}
 function TRpAuthManager.LoginGoogle: Boolean;
@@ -1510,8 +1526,7 @@ begin
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
     LState := NewOAuthState;
     LAuthUrl := 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20profile%20email&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + GOOGLE_CLIENT_ID + '&state=' + LState;
-    ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
-    if WaitForOAuthCallback(LPort) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
+    if WaitForOAuthCallback(LPort, LAuthUrl) then Result := ExchangeGoogleCode(FOAuthCode, LRedirectUri);
   finally
     WSACleanup;
   end;
@@ -1540,8 +1555,7 @@ begin
     Log('Auth: Port=' + IntToStr(LPort) + ' RedirectUri=' + LRedirectUri);
     LState := NewOAuthState;
     LAuthUrl := 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&scope=openid%20profile%20email%20user.read&redirect_uri=' + TURLEncoding.URL.Encode(LRedirectUri) + '&client_id=' + MS_CLIENT_ID + '&state=' + LState;
-    ShellExecute(0, 'open', PChar(LAuthUrl), nil, nil, SW_SHOWNORMAL);
-    if WaitForOAuthCallback(LPort) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
+    if WaitForOAuthCallback(LPort, LAuthUrl) then Result := ExchangeMicrosoftCode(FOAuthCode, LRedirectUri);
   finally
     WSACleanup;
   end;
