@@ -229,6 +229,7 @@
         </DCCReference>
         <DCCReference Include="..\..\rpcolumnar.pas"/>
         <DCCReference Include="..\..\rppanel.pas"/>
+        <DCCReference Include="..\..\server\web\rpwebdbxadmin.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
