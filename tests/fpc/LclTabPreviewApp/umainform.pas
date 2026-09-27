@@ -98,7 +98,7 @@ end;
 
 function TMainForm.FindReportFile(const AFileName: string): string;
 var
-  candidates: array[0..5] of string;
+  candidates: array[0..3] of string;
   appDir: string;
   i: Integer;
 begin
@@ -107,8 +107,6 @@ begin
   candidates[1] := appDir + AFileName;
   candidates[2] := appDir + '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + AFileName;
   candidates[3] := appDir + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + AFileName;
-  candidates[4] := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName;
-  candidates[5] := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + AFileName;
 
   for i := 0 to High(candidates) do
   begin

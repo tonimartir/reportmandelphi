@@ -62,8 +62,7 @@
       <Filename Value="LclTabPreviewApp"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);../../..;../../../lcl"/>
-      <OtherUnitFiles Value="../../..;../../../lcl;../../../rtl_fpc"/>
+      <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>

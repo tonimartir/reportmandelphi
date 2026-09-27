@@ -256,16 +256,14 @@ var
   p: string;
 begin
   Result := '';
-  p := ExtractFilePath(Application.ExeName) + '..\..\..\repman\repsamples\' + AName;
+  p := ExtractFilePath(Application.ExeName) + '..' + PathDelim + '..' + PathDelim + '..' + PathDelim +
+    'repman' + PathDelim + 'repsamples' + PathDelim + AName;
   if FileExists(p) then Exit(ExpandFileName(p));
 
-  p := ExtractFilePath(Application.ExeName) + '..\..\repsamples\' + AName;
+  p := ExtractFilePath(Application.ExeName) + '..' + PathDelim + '..' + PathDelim + 'repsamples' + PathDelim + AName;
   if FileExists(p) then Exit(ExpandFileName(p));
 
-  p := 'repman\repsamples\' + AName;
-  if FileExists(p) then Exit(ExpandFileName(p));
-
-  p := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AName;
+  p := 'repman' + PathDelim + 'repsamples' + PathDelim + AName;
   if FileExists(p) then Exit(ExpandFileName(p));
 end;
 

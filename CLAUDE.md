@@ -50,12 +50,48 @@ call "C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"
 - `Makefile` (legacy, dcc32 via Kylix `make`) and `GNUmakefile` (Kylix) drive
   command-line `dcc` builds of the packages and tools. These target very old
   toolchains; prefer the group project above for current work.
-- Lazarus/FPC: `reportman.lpk` (engine) and `reportman_lcl.lpk` (LCL/visual).
+- Lazarus/FPC: see "Free Pascal / Lazarus port" below. The root `reportman.lpk`
+  is the historic (pre-port) engine package and is not maintained.
 - Multiple per-version Delphi project variants exist
   (`repmandxp.dpr`, `repmandxe2.dpr`, `repmandxp2009.dpr`, …) and matching
   `.dpk` packages (`rppack_del.dpk`, `rppack_delxe2.dpk`, …). Match the one for
   the IDE you're targeting; `rppack_del.dpk` is the canonical non-visual RTL
   package and its `contains` list is the authoritative engine unit inventory.
+
+### Free Pascal / Lazarus port
+
+Three packages (Lazarus 4.x / FPC 3.2.2), all `RunAndDesignTime`:
+
+- `packages/fpc/reportman_rtl.lpk` — engine (root units + `rtl_fpc/`); requires Zeos.
+- `packages/fpc_lcl/reportman_lcl.lpk` — LCL runtime/preview (`lcl/`).
+- `packages/fpc_lcl/reportman_designlcl.lpk` — LCL designer (`design_lcl/`).
+
+Build and test from the repo root:
+
+```bat
+packages\fpc\build_fpc.bat
+C:\lazarus\lazbuild.exe --ws=win32 --no-write-project tests\fpc\LclDesignerTest\LclDesignerTest.lpi
+tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
+```
+
+On Linux use `packages/fpc/build_fpc.sh` (WSL Ubuntu has Lazarus 3.0/gtk2 with
+the packages registered). The scripts compile `reportman_rtl` twice on purpose:
+FPC 3.2.2 leaves `rpsecutil.ppu` with a stale checksum after a clean build
+(unit cycle rpsection → rpsubreport → rpsecutil → rpsection), and dependent
+packages then fail with "Can't find unit rpsecutil". For the same reason never
+use `lazbuild -B` on a dependent package. The test projects take engine units
+from the packages only (no engine paths in their `.lpi`).
+
+`--selftest` exits 0 on success and 1 on the first `[TEST_FAILED]`; it appends
+to `selftest.log`, so read only the last run.
+
+**Shared units rule:** the root `rp*.pas` units are also the Delphi product.
+Any change Delphi can see must be a genuine bug fix; all other port work goes
+inside `{$IFDEF FPC}` so Delphi compiles exactly the previous code. Watch for
+changes the Win32/Win64 build does not catch: global `{$DEFINE}`s in
+`rpconf.inc`, FPC-only units in the `{$ELSE}` of `{$IFDEF MSWINDOWS}` (breaks
+Delphi Linux64), and UTF-8 BOMs (Delphi projects set no source codepage, so a
+BOM-less file is read as cp1252; FPC treats a BOM as `{$codepage utf8}`).
 
 ### Server (Docker / Linux)
 

@@ -9,13 +9,13 @@ uses
 
 function FindReportFile(const AFileName: string): string;
 var
-  candidates: array[0..3] of string;
+  candidates: array[0..2] of string;
   i: Integer;
 begin
   candidates[0] := AFileName;
   candidates[1] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + AFileName;
-  candidates[2] := 'C:\desarrollo\prog\toni\reportman\repman\repsamples\' + AFileName;
-  candidates[3] := '/mnt/c/desarrollo/prog/toni/reportman/repman/repsamples/' + AFileName;
+  // tests/fpc/LclSnapshotTest/<exe> -> repo root is three levels up from the executable
+  candidates[2] := ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + AFileName;
 
   for i := 0 to High(candidates) do
   begin
