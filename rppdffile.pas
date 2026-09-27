@@ -4665,8 +4665,10 @@ begin
     else
       newFontFamily:=originalFontFamily;
 
-    newBold := (g.Style and 1) > 0;
-    newItalic := (g.Style and 2) > 0;
+    // g.Style solo trae el estilo del segmento HTML; los glifos se conformaron
+    // con el de la fuente base sumado (rpinfoprovft), igual que dibujan GDI y LCL
+    newBold := originalBold or ((g.Style and 1) > 0);
+    newItalic := originalItalic or ((g.Style and 2) > 0);
     if g.HasFontSize then
       newFontSize := g.FontSize
     else
