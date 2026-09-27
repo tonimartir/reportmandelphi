@@ -1819,6 +1819,9 @@ begin
       op.AddProperty('colorExpression', ptString, Null, pitem.GetItemProperty('ColorExpression'));
       op.AddProperty('serieColorExpression', ptString, Null, pitem.GetItemProperty('SerieColorExpression'));
       op.AddProperty('seriesColors', ptString, Null, pitem.GetItemProperty('SeriesColors'));
+      op.AddProperty('autoRange', ptInteger, Null, pitem.GetItemProperty('AutoRange'));
+      op.AddProperty('yMin', ptNumber, Null, pitem.GetItemProperty('YMin'));
+      op.AddProperty('yMax', ptNumber, Null, pitem.GetItemProperty('YMax'));
     end;
   end
   else if pitem is TRpShape then

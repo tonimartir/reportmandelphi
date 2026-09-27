@@ -735,6 +735,38 @@ var
     comp.Free;
   end;
 
+  procedure CheckChartRangeSaved(arep: TRpReport; aformat: TRpStreamFormat);
+  var
+    ms: TMemoryStream;
+    rep2: TRpReport;
+    c2: TRpChart;
+    what: string;
+  begin
+    if aformat = rpStreamXML then
+      what := 'XML'
+    else
+      what := 'DFM text';
+    ms := TMemoryStream.Create;
+    rep2 := TRpReport.Create(nil);
+    try
+      arep.StreamFormat := aformat;
+      arep.SaveToStream(ms);
+      ms.Position := 0;
+      rep2.LoadFromStream(ms);
+      c2 := TRpChart(FindItem(rep2, 'UNDO_CHART'));
+      Check(Assigned(c2), 'Chart loaded back from ' + what);
+      if Assigned(c2) then
+      begin
+        CheckInt(Ord(rpAutoRangeNone), Ord(c2.AutoRange), 'Chart Y axis auto range saved in ' + what);
+        Check(c2.YMin = -3.5, 'Chart Y min saved in ' + what);
+        Check(c2.YMax = 12.25, 'Chart Y max saved in ' + what);
+      end;
+    finally
+      rep2.Free;
+      ms.Free;
+    end;
+  end;
+
 begin
   LogMsg('5.5: undo of a delete restores chart expressions, series colors and BidiModes');
   rep := NewEngineReport(sec);
@@ -756,6 +788,9 @@ begin
     chart.SerieColorExpression := 'SERIECOLOR';
     chart.Series.Add.Color := $FF0000;
     chart.Series.Add.Color := $00FF00;
+    chart.AutoRange := rpAutoRangeNone;
+    chart.YMin := -3.5;
+    chart.YMax := 12.25;
 
     gid := cue.GetGroupId;
     RecordRemove(chart);
@@ -779,6 +814,9 @@ begin
     CheckInt(2, chart.Series.Count, 'Chart series restored');
     CheckInt($FF0000, chart.Series[0].Color, 'Chart series 0 color restored');
     CheckInt($00FF00, chart.Series[1].Color, 'Chart series 1 color restored');
+    CheckInt(Ord(rpAutoRangeNone), Ord(chart.AutoRange), 'Chart Y axis auto range restored');
+    Check(chart.YMin = -3.5, 'Chart Y min restored');
+    Check(chart.YMax = 12.25, 'Chart Y max restored');
     lab := TRpLabel(FindItem(rep, 'BIDI_LABEL'));
     Check(Assigned(lab), 'Undo recreates the label');
     CheckInt(2, lab.BidiModes.Count, 'Label BidiModes of both languages restored');
@@ -786,6 +824,11 @@ begin
     CheckStr('BidiFull', lab.BidiModes[1], 'Label BidiModes language 1 (BidiFull)');
     CheckInt(0, sec.ReportComponents.IndexOf(lab), 'Label restored at its index');
     CheckInt(1, sec.ReportComponents.IndexOf(chart), 'Chart restored at its index');
+
+    // The Y axis range survives saving in the DFM text format (it is only
+    // written when not default) as well as in XML
+    CheckChartRangeSaved(rep, rpStreamText);
+    CheckChartRangeSaved(rep, rpStreamXML);
   finally
     rep.Free;
   end;

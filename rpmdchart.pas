@@ -110,6 +110,12 @@ type
    procedure ReadColorExpression(Reader:TReader);
    procedure WriteSerieColorExpression(Writer:TWriter);
    procedure ReadSerieColorExpression(Reader:TReader);
+   procedure WriteAutoRange(Writer:TWriter);
+   procedure ReadAutoRange(Reader:TReader);
+   procedure WriteYMin(Writer:TWriter);
+   procedure ReadYMin(Reader:TReader);
+   procedure WriteYMax(Writer:TWriter);
+   procedure ReadYMax(Reader:TReader);
    function EvaluateText(atext:WideString):Variant;
   protected
    procedure DoPrint(adriver:TRpPrintDriver;
@@ -780,6 +786,54 @@ begin
  FSerieCaption:=ReadWideString(Reader);
 end;
 
+// Y axis limits are stored as text with '.' as decimal separator: the binary
+// Extended value of TWriter.WriteFloat differs between compilers and platforms
+function ChartFloatSettings:TFormatSettings;
+begin
+{$IFDEF FPC}
+ Result:=DefaultFormatSettings;
+ Result.DecimalSeparator:='.';
+ Result.ThousandSeparator:=',';
+{$ELSE}
+ Result:=TFormatSettings.Invariant;
+{$ENDIF}
+end;
+
+procedure TRpChart.WriteAutoRange(Writer:TWriter);
+begin
+ Writer.WriteInteger(Integer(FAutoRange));
+end;
+
+procedure TRpChart.ReadAutoRange(Reader:TReader);
+var
+ avalue:integer;
+begin
+ avalue:=Reader.ReadInteger;
+ if (avalue>=Integer(Low(TRpAutoRangeAxis))) and
+  (avalue<=Integer(High(TRpAutoRangeAxis))) then
+  FAutoRange:=TRpAutoRangeAxis(avalue);
+end;
+
+procedure TRpChart.WriteYMin(Writer:TWriter);
+begin
+ Writer.WriteString(FloatToStr(FYMin,ChartFloatSettings));
+end;
+
+procedure TRpChart.ReadYMin(Reader:TReader);
+begin
+ FYMin:=StrToFloat(Reader.ReadString,ChartFloatSettings);
+end;
+
+procedure TRpChart.WriteYMax(Writer:TWriter);
+begin
+ Writer.WriteString(FloatToStr(FYMax,ChartFloatSettings));
+end;
+
+procedure TRpChart.ReadYMax(Reader:TReader);
+begin
+ FYMax:=StrToFloat(Reader.ReadString,ChartFloatSettings);
+end;
+
 
 procedure TRpChart.DefineProperties(Filer:TFiler);
 begin
@@ -794,6 +848,11 @@ begin
  Filer.DefineProperty('ClearExpression',ReadClearExpression,WriteClearExpression,True);
  Filer.DefineProperty('ColorExpression',ReadColorExpression,WriteColorExpression,True);
  Filer.DefineProperty('SerieColorExpression',ReadSerieColorExpression,WriteSerieColorExpression,True);
+ // Only when not default, so reports that don't use them are written exactly
+ // as before and older versions can still open them
+ Filer.DefineProperty('AutoRange',ReadAutoRange,WriteAutoRange,FAutoRange<>rpAutoRangeDefault);
+ Filer.DefineProperty('YMin',ReadYMin,WriteYMin,FYMin<>0);
+ Filer.DefineProperty('YMax',ReadYMax,WriteYMax,FYMax<>0);
 end;
 
 { TRpChart - IPropertiesItem }
@@ -880,6 +939,21 @@ begin
  if SameText(propName, 'SeriesColors') then
  begin
   SetSeriesColors(value);
+  exit;
+ end;
+ if SameText(propName, 'AutoRange') or SameText(propName, SRpAutoRange) then
+ begin
+  FAutoRange := TRpAutoRangeAxis(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'YMin') or SameText(propName, SRpAutoRangeYMin) then
+ begin
+  FYMin := value;
+  exit;
+ end;
+ if SameText(propName, 'YMax') or SameText(propName, SRpAutoRangeYMax) then
+ begin
+  FYMax := value;
   exit;
  end;
  if SameText(propName, 'ChartType') then
@@ -1055,6 +1129,21 @@ begin
  if SameText(propName, 'SeriesColors') then
  begin
   Result := GetSeriesColors;
+  exit;
+ end;
+ if SameText(propName, 'AutoRange') or SameText(propName, SRpAutoRange) then
+ begin
+  Result := Integer(FAutoRange);
+  exit;
+ end;
+ if SameText(propName, 'YMin') or SameText(propName, SRpAutoRangeYMin) then
+ begin
+  Result := FYMin;
+  exit;
+ end;
+ if SameText(propName, 'YMax') or SameText(propName, SRpAutoRangeYMax) then
+ begin
+  Result := FYMax;
   exit;
  end;
  if SameText(propName, 'ChartType') then

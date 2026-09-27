@@ -437,8 +437,13 @@ begin
       else if pname = SRpSVertAxisFSize then Result := 'vertFontSize'
       else if pname = SRpSHorzAxisFSize then Result := 'horzFontSize'
       else if pname = SRpSVertAxisFRot then Result := 'vertFontRotation'
-      else if pname = SRpSHorzAxisFRot then Result := 'horzFontRotation';
-      // Y axis auto range and limits have no model property (not stored)
+      else if pname = SRpSHorzAxisFRot then Result := 'horzFontRotation'
+      else if pname = SRpAutoRange then Result := 'autoRange';
+      if Result <> '' then
+        Exit;
+      ptype := ptNumber;
+      if pname = SRpAutoRangeYMin then Result := 'yMin'
+      else if pname = SRpAutoRangeYMax then Result := 'yMax';
       if Result <> '' then
         Exit;
     end;
