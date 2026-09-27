@@ -1698,8 +1698,10 @@ begin
       posx := ARect.Right - larray[i].Width;
     if (Alignment AND AlignmentFlags_AlignHCenter) > 0 then
       posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
+    // Right to left lines are not justified, as in the PDF canvas: each one is
+    // drawn whole at its aligned position
     dojustify := ((Alignment AND AlignmentFlags_AlignHJustify) > 0) and
-      (not larray[i].LastLine);
+      (not larray[i].LastLine) and (not RightToLeft);
     if dojustify then
     begin
       // Word splitting, same criteria the PDF canvas uses (ASCII space)
