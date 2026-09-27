@@ -190,9 +190,20 @@ Contra un Hub simulado propio (sin red), con heaptrc (0 bloques sin liberar):
   `03:` y `02:` desde el JavaScript, el widget de sugerencias de Monaco con las
   tablas del esquema, y el diálogo con Monaco aplicando una sugerencia.
 
-Resultados: Windows 397 comprobaciones (0 omitidas), WSL GTK2 370,
-`LclDesignerTest --selftest`, `HubClientTest` (469) y el diseñador
-`repmandesigner_lcl` compilan y pasan. Docker: ver el informe de la fase.
+Resultados (todas con heaptrc sin fugas):
+
+- Windows: `LclAIChatTest` 397 comprobaciones, 0 omitidas (con WebView2);
+  `LclDesignerTest --selftest`, `HubClientTest` (469) y el diseñador
+  `repmandesigner_lcl` (Release) compilan y pasan.
+- WSL (Lazarus 3.0, GTK2): `LclAIChatTest` 370 comprobaciones (en una de
+  cinco ejecuciones se omite el popup automático porque la ventana no recibe
+  el foco; en otra, un error de E/S del servidor X de WSLg sin relación con
+  las pruebas).
+- Docker (`build-linux.ps1 -SkipImage`): Qt6 y GTK2 compilan, selftest y
+  `LclAIChatTest` (370, 0 omitidas) pasan, lintian limpio y las 15 pruebas de
+  paquetes en máquinas limpias pasan.
+- Zip OPM: `make_opm_package.ps1 -Validate -ValidateWsl` correcto (Windows
+  win32 y WSL gtk2, compilación limpia con la dependencia SynEdit).
 
 Capturas (`--shots`): `sql_assistant_dialog`, `sql_fallback_editor`,
 `sql_fallback_completion`, `sql_fallback_dark` y, en Windows,
