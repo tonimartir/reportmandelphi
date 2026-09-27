@@ -33,8 +33,13 @@ unit rpfrmmonacoeditorlcl;
   - Linux, Windows without WebView2 or RPM_FORCE_WEBVIEW_FALLBACK: a SynEdit
     with the SQL highlighter and a TSynCompletion that completes the tables
     and columns of the Hub schema and SQL keywords (Ctrl+Space, and on its
-    own after "." and after FROM/JOIN). The VCL falls back to a TMemo; as
-    there, no AI completion in the fallback editor.
+    own after "." and after FROM/JOIN). It also has the AI inline completion
+    of Monaco (the VCL falls back to a TMemo without it): after an edit of
+    the keyboard (not undo, redo or the accepted suggestion) the text and the
+    caret offset go to SuggestSql as a '02:' message would (a comment in
+    natural language becomes the SQL that implements it), and the
+    first inline item is painted as ghost text at the caret; Tab inserts it
+    (one undo step), Esc, typing or moving the caret dismiss it.
   - The tables and columns come from GET api/agent/databases (schemaTables of
     every schema, the list the user edits on app.reportman.es), loaded in a
     TRpAsyncWorker when the schema changes and kept per schema.
@@ -183,6 +188,12 @@ type
     FLastAutoCompleteSql: string;
     FInferenceCancel: IRpAsyncCancel;
     FAICompletionCount: Integer;
+    // AI inline completion of the fallback editor: FAISuggestion is inserted
+    // at FAISuggestionCaret (logical position) when accepted
+    FAISuggestion: string;
+    FAISuggestionCaret: TPoint;
+    FAIRequestSeq: Integer;
+    FCommandChangeStamp: Int64;
     // Tables of the schemas
     FSqlSchema: TRpSqlSchema;
     FSchemaCache: TObjectList<TRpSqlSchema>;
@@ -237,6 +248,7 @@ type
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
     // AI completion bridge
     procedure HandleAICompletionRequest(const APayload: string);
+    procedure QueueAICompletion(const ARequestId, ASql: string; APos: Integer);
     procedure SendAICompletions(const AInlineItemsJson, ACompletionItemsJson,
       ARequestId: string);
     procedure OnDebounceTimer(Sender: TObject);
@@ -261,6 +273,14 @@ type
       var Handled: Boolean; var Command: TSynEditorCommand;
       var AChar: TUTF8Char; Data: Pointer; HandlerData: Pointer);
     procedure AsyncAutoComplete(Data: PtrInt);
+    // AI inline completion of the fallback editor
+    procedure RequestFallbackAICompletion;
+    procedure ShowFallbackAISuggestion(const AInlineItemsJson: string);
+    procedure FallbackAfterPaint(Sender: TObject; EventType: TSynPaintEvent;
+      const rcClip: TRect);
+    procedure FallbackBeforeKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure FallbackStatusChanged(Sender: TObject; Changes: TSynStatusChanges);
   protected
     procedure CreateWnd; override;
     procedure Resize; override;
@@ -298,6 +318,10 @@ type
     procedure ExecuteFallbackCompletion(AExplicit: Boolean = True);
     // Loads the schema tables again from the Hub
     procedure ReloadSchemaTables;
+    // AI inline completion of the fallback editor (Tab and Esc call them)
+    function AISuggestionShown: Boolean;
+    function AcceptAISuggestion: Boolean;
+    procedure HideAISuggestion;
 
     property SQL: string read GetSQL write SetSQL;
     property Theme: string read FTheme write SetTheme;
@@ -330,8 +354,10 @@ type
     property AuditButton: TButton read FBAuditSQL;
     property MemoAudit: TMemo read FMemoAudit;
     property InferenceRunning: Boolean read FInferenceRunning;
-    // AI completion answers sent to the page
+    // AI completion answers sent to the page (or to the fallback editor)
     property AICompletionCount: Integer read FAICompletionCount;
+    // Ghost text of the fallback editor ('' when there is none)
+    property AISuggestion: string read FAISuggestion;
     // Delay before an AI completion request (VCL: 1 s)
     property DebounceTimer: TTimer read FDebounceTimer;
 
@@ -366,6 +392,7 @@ function RpSqlCompletionItems(ASchema: TRpSqlSchema; const ASql: string;
 function RpSqlCompletionPrefix(const ASql: string; ACursor: Integer): string;
 // Monaco offsets count UTF-16 code units; the strings are UTF-8
 function RpUtf16OffsetToByteOffset(const S: string; AOffset: Integer): Integer;
+function RpByteOffsetToUtf16Offset(const S: string; AByteOffset: Integer): Integer;
 
 implementation
 
@@ -1051,6 +1078,16 @@ begin
   Result := I - 1;
 end;
 
+function RpByteOffsetToUtf16Offset(const S: string; AByteOffset: Integer): Integer;
+begin
+  if AByteOffset > Length(S) then
+    AByteOffset := Length(S);
+  if AByteOffset <= 0 then
+    Result := 0
+  else
+    Result := Length(UTF8Decode(Copy(S, 1, AByteOffset)));
+end;
+
 { TRpSqlSchemaTable }
 
 constructor TRpSqlSchemaTable.Create;
@@ -1628,6 +1665,12 @@ begin
     FDebounceTimer.Enabled := False;
   if FCompletion <> nil then
     FCompletion.Deactivate;
+  if FFallbackEditor <> nil then
+  begin
+    FFallbackEditor.UnRegisterPaintEventHandler(FallbackAfterPaint);
+    FFallbackEditor.UnregisterBeforeKeyDownHandler(FallbackBeforeKeyDown);
+    FFallbackEditor.UnRegisterStatusChangedHandler(FallbackStatusChanged);
+  end;
   ClearSchemaItems;
   inherited Destroy;
   FSchemaCache.Free;
@@ -1736,7 +1779,13 @@ begin
   FFallbackEditor.TabWidth := 2;
   FFallbackEditor.RightEdge := -1;
   FFallbackEditor.OnChange := FallbackEditorChange;
-  FFallbackEditor.RegisterCommandHandler(FallbackCommandHandler, nil, [hcfPostExec]);
+  FFallbackEditor.RegisterCommandHandler(FallbackCommandHandler, nil,
+    [hcfPreExec, hcfPostExec]);
+  // AI inline completion: ghost text painted over the editor, Tab/Esc
+  FFallbackEditor.RegisterPaintEventHandler(FallbackAfterPaint, [peAfterPaint]);
+  FFallbackEditor.RegisterBeforeKeyDownHandler(FallbackBeforeKeyDown);
+  FFallbackEditor.RegisterStatusChangedHandler(FallbackStatusChanged,
+    [scCaretX, scCaretY, scFocus, scTopLine, scLeftChar]);
 
   FCompletion := TSynCompletion.Create(Self);
   FCompletion.Editor := FFallbackEditor;
@@ -2178,6 +2227,7 @@ var
 begin
   if (not FUseFallback) or FUpdatingFromBrowser then
     Exit;
+  HideAISuggestion;
   // \r\n as the text typed in Monaco ('01:')
   LNewSQL := FallbackTextAndCursor(False, LCursor);
   if FSQL <> LNewSQL then
@@ -2450,6 +2500,8 @@ end;
 
 procedure TFRpMonacoEditorLCL.AIToggleClick(Sender: TObject);
 begin
+  if not FAIButton.Down then
+    HideAISuggestion;
   TRpAuthManager.Instance.AIEnabled := FAIButton.Down;
   UpdateAuthUI;
 end;
@@ -2831,7 +2883,7 @@ var
   LHeader: string;
 begin
   if FUseFallback then
-    Exit; // no AI autocomplete in the fallback editor (as the VCL)
+    Exit; // the fallback editor asks itself (RequestFallbackAICompletion)
   FDebounceTimer.Enabled := False;
 
   FPendingRequestId := '';
@@ -2846,9 +2898,19 @@ begin
   if LOffsetSeparator <= 1 then
     Exit;
 
-  FPendingRequestId := Copy(LHeader, 1, LOffsetSeparator - 1);
-  FPendingPos := StrToIntDef(Copy(LHeader, LOffsetSeparator + 1, MaxInt), 0);
-  FPendingSql := Copy(APayload, LHeaderEnd + 1, MaxInt);
+  QueueAICompletion(Copy(LHeader, 1, LOffsetSeparator - 1),
+    Copy(APayload, LHeaderEnd + 1, MaxInt),
+    StrToIntDef(Copy(LHeader, LOffsetSeparator + 1, MaxInt), 0));
+end;
+
+// ASql and APos (UTF-16 offset of the caret) as a '02:' message of the page
+procedure TFRpMonacoEditorLCL.QueueAICompletion(const ARequestId, ASql: string;
+  APos: Integer);
+begin
+  FDebounceTimer.Enabled := False;
+  FPendingRequestId := ARequestId;
+  FPendingSql := ASql;
+  FPendingPos := APos;
   if FPendingRequestId = '' then
     Exit;
 
@@ -2893,7 +2955,7 @@ procedure TFRpMonacoEditorLCL.StartPendingInference;
 var
   LWorker: TRpMonacoSuggestWorker;
 begin
-  if FUseFallback or FInferenceRunning then
+  if FInferenceRunning then
     Exit;
   if not TRpAuthManager.Instance.AIEnabled then
     Exit;
@@ -3008,9 +3070,14 @@ end;
 procedure TFRpMonacoEditorLCL.SendAICompletions(const AInlineItemsJson,
   ACompletionItemsJson, ARequestId: string);
 begin
-  if FUseFallback then
-    Exit;
   Inc(FAICompletionCount);
+  if FUseFallback then
+  begin
+    // Only the inline items: the list of the dropdown is the schema one
+    if ARequestId = FPendingRequestId then
+      ShowFallbackAISuggestion(AInlineItemsJson);
+    Exit;
+  end;
   // As the VCL: receiveAICompletions(requestId, response)
   RunScript('window.receiveAICompletions(' + EscapeJsonString(ARequestId) +
     ', {"inlineItems":' + AInlineItemsJson + ',"completionItems":' +
@@ -3312,9 +3379,25 @@ procedure TFRpMonacoEditorLCL.FallbackCommandHandler(Sender: TObject;
   AfterProcessing: Boolean; var Handled: Boolean; var Command: TSynEditorCommand;
   var AChar: TUTF8Char; Data: Pointer; HandlerData: Pointer);
 begin
+  if not AfterProcessing then
+  begin
+    FCommandChangeStamp := FFallbackEditor.ChangeStamp;
+    Exit;
+  end;
+  // As Monaco while the user types: the AI inline completion after an edit
+  // of the keyboard (undo, redo and the accepted suggestion are no commands
+  // of this list)
+  if (FFallbackEditor.ChangeStamp <> FCommandChangeStamp) and
+    (not FFallbackEditor.ReadOnly) then
+    case Command of
+      ecChar, ecLineBreak, ecInsertLine, ecDeleteLastChar, ecDeleteChar,
+      ecDeleteWord, ecDeleteLastWord, ecDeleteBOL, ecDeleteEOL, ecDeleteLine,
+      ecTab, ecShiftTab, ecCut, ecPaste:
+        RequestFallbackAICompletion;
+    end;
   // As Monaco: the completion opens on its own after "." and after the
   // keywords followed by tables (the text decides it in AsyncAutoComplete)
-  if (not AfterProcessing) or (Command <> ecChar) then
+  if Command <> ecChar then
     Exit;
   if (AChar = '.') or (AChar = ' ') then
     Application.QueueAsyncCall(AsyncAutoComplete, 0);
@@ -3332,6 +3415,211 @@ begin
   if Length(RpSqlCompletionItems(FSqlSchema, LSql, LCursor, False, False)) = 0 then
     Exit;
   ExecuteFallbackCompletion(False);
+end;
+
+{ AI inline completion of the fallback editor }
+
+procedure TFRpMonacoEditorLCL.RequestFallbackAICompletion;
+var
+  LSql: string;
+  LCursor: Integer;
+begin
+  // What the page sends in '02:<id>:<offset>\n<text>': the text with CRLF and
+  // the offset of the caret in UTF-16 code units
+  LSql := FallbackTextAndCursor(False, LCursor);
+  Inc(FAIRequestSeq);
+  QueueAICompletion('se_' + IntToStr(FAIRequestSeq), LSql,
+    RpByteOffsetToUtf16Offset(LSql, LCursor));
+end;
+
+procedure TFRpMonacoEditorLCL.ShowFallbackAISuggestion(const AInlineItemsJson: string);
+var
+  LItems: TJSONValue;
+  LText, LSql: string;
+  LCursor: Integer;
+begin
+  HideAISuggestion;
+  if (FFallbackEditor = nil) or FFallbackEditor.ReadOnly then
+    Exit;
+  // The first inline item, as the ghost text Monaco shows
+  LText := '';
+  LItems := TJSONObject.ParseJSONValue(AInlineItemsJson);
+  try
+    if (LItems is TJSONArray) and (TJSONArray(LItems).Count > 0) and
+      (TJSONArray(LItems).Items[0] is TJSONObject) then
+      LText := JsonText(TJSONObject(TJSONArray(LItems).Items[0]), 'insertText');
+  finally
+    LItems.Free;
+  end;
+  if Trim(LText) = '' then
+    Exit;
+  // Only for the text and the caret it was asked for
+  LSql := FallbackTextAndCursor(False, LCursor);
+  if (LSql <> FPendingSql) or (RpByteOffsetToUtf16Offset(LSql, LCursor) <> FPendingPos) then
+    Exit;
+  FAISuggestion := StringReplace(StringReplace(LText, #13#10, #10, [rfReplaceAll]),
+    #10, LineEnding, [rfReplaceAll]);
+  FAISuggestionCaret := FFallbackEditor.LogicalCaretXY;
+  FFallbackEditor.Invalidate;
+end;
+
+function TFRpMonacoEditorLCL.AISuggestionShown: Boolean;
+var
+  LCaret: TPoint;
+begin
+  Result := False;
+  if (FAISuggestion = '') or (not FUseFallback) or (FFallbackEditor = nil) then
+    Exit;
+  LCaret := FFallbackEditor.LogicalCaretXY;
+  Result := (LCaret.X = FAISuggestionCaret.X) and (LCaret.Y = FAISuggestionCaret.Y);
+end;
+
+function TFRpMonacoEditorLCL.AcceptAISuggestion: Boolean;
+var
+  LText: string;
+begin
+  Result := AISuggestionShown and (not FFallbackEditor.ReadOnly);
+  LText := FAISuggestion;
+  HideAISuggestion;
+  if not Result then
+    Exit;
+  // One undo step, the caret after the text (no command: no new request)
+  FFallbackEditor.InsertTextAtCaret(LText, scamEnd);
+end;
+
+procedure TFRpMonacoEditorLCL.HideAISuggestion;
+begin
+  if FAISuggestion = '' then
+    Exit;
+  FAISuggestion := '';
+  if FFallbackEditor <> nil then
+    FFallbackEditor.Invalidate;
+end;
+
+procedure TFRpMonacoEditorLCL.FallbackBeforeKeyDown(Sender: TObject;
+  var Key: Word; Shift: TShiftState);
+begin
+  if FAISuggestion = '' then
+    Exit;
+  case Key of
+    VK_TAB:
+      if (Shift = []) and AISuggestionShown then
+      begin
+        AcceptAISuggestion;
+        Key := 0;
+      end
+      else
+        HideAISuggestion;
+    VK_ESCAPE:
+      begin
+        HideAISuggestion;
+        Key := 0;
+      end;
+    VK_SHIFT, VK_CONTROL, VK_MENU, VK_LSHIFT, VK_RSHIFT, VK_LCONTROL,
+    VK_RCONTROL, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN:
+      ;
+  else
+    HideAISuggestion;
+  end;
+end;
+
+procedure TFRpMonacoEditorLCL.FallbackStatusChanged(Sender: TObject;
+  Changes: TSynStatusChanges);
+begin
+  if FAISuggestion = '' then
+    Exit;
+  if ((scFocus in Changes) and (not FFallbackEditor.Focused)) or
+    (((Changes * [scCaretX, scCaretY]) <> []) and (not AISuggestionShown)) then
+    HideAISuggestion
+  else if (Changes * [scTopLine, scLeftChar]) <> [] then
+    FFallbackEditor.Invalidate;
+end;
+
+procedure TFRpMonacoEditorLCL.FallbackAfterPaint(Sender: TObject;
+  EventType: TSynPaintEvent; const rcClip: TRect);
+var
+  LCanvas: TCanvas;
+  LLines: TStringList;
+  LOldFont: TFont;
+  LOldBrush: TBrush;
+  LStyle: TTextStyle;
+  LDark: Boolean;
+  LTextLeft, LColumn1X, LRight, LLineHeight, X, Y, I: Integer;
+  LRect: TRect;
+  LHint: string;
+begin
+  if (EventType <> peAfterPaint) or (not AISuggestionShown) then
+    Exit;
+  LCanvas := FFallbackEditor.Canvas;
+  LLineHeight := FFallbackEditor.LineHeight;
+  LRight := FFallbackEditor.ClientWidth;
+  // The first visible column and column 1 (left of it when scrolled)
+  LTextLeft := FFallbackEditor.ScreenXYToPixels(Types.Point(FFallbackEditor.LeftChar, 1)).X;
+  LColumn1X := FFallbackEditor.ScreenXYToPixels(Types.Point(1, 1)).X;
+  LDark := Pos('dark', LowerCase(FTheme)) > 0;
+  LLines := TStringList.Create;
+  LOldFont := TFont.Create;
+  LOldBrush := TBrush.Create;
+  try
+    LOldFont.Assign(LCanvas.Font);
+    LOldBrush.Assign(LCanvas.Brush);
+    LLines.Text := StringReplace(FAISuggestion, #9,
+      StringOfChar(' ', FFallbackEditor.TabWidth), [rfReplaceAll]);
+    LStyle := LCanvas.TextStyle;
+    LStyle.Alignment := taLeftJustify;
+    LStyle.Layout := tlTop;
+    LStyle.SingleLine := True;
+    LStyle.Clipping := True;
+    LStyle.Opaque := False;
+    LStyle.ExpandTabs := False;
+    LCanvas.Font.Assign(FFallbackEditor.Font);
+    LCanvas.Font.Style := [fsItalic];
+    // The first line at the caret, the next ones from column 1 below it
+    X := FFallbackEditor.CaretXPix;
+    Y := FFallbackEditor.CaretYPix;
+    for I := 0 to LLines.Count - 1 do
+    begin
+      if I > 0 then
+      begin
+        X := LColumn1X;
+        Inc(Y, LLineHeight);
+      end;
+      if Y >= FFallbackEditor.ClientHeight then
+        Break;
+      // The ghost text covers the rest of the row (Monaco moves it down)
+      if X > LTextLeft then
+        LRect := Types.Rect(X, Y, LRight, Y + LLineHeight)
+      else
+        LRect := Types.Rect(LTextLeft, Y, LRight, Y + LLineHeight);
+      LCanvas.Brush.Style := bsSolid;
+      LCanvas.Brush.Color := FFallbackEditor.Color;
+      LCanvas.FillRect(LRect);
+      if LDark then
+        LCanvas.Font.Color := $8A8A8A
+      else
+        LCanvas.Font.Color := $8C8C8C;
+      LCanvas.TextRect(LRect, X, Y, LLines[I], LStyle);
+    end;
+    // How to accept it, after the last line
+    if (LLines.Count > 0) and (Y < FFallbackEditor.ClientHeight) then
+    begin
+      LHint := string(TranslateStr(1561, 'Tab to accept, Esc to dismiss'));
+      X := X + LCanvas.TextWidth(LLines[LLines.Count - 1]) + 2 * FFallbackEditor.CharWidth;
+      LCanvas.Font.Style := [];
+      if LDark then
+        LCanvas.Font.Color := $5A5A5A
+      else
+        LCanvas.Font.Color := $B4B4B4;
+      if X + LCanvas.TextWidth(LHint) <= LRight then
+        LCanvas.TextRect(Types.Rect(X, Y, LRight, Y + LLineHeight), X, Y, LHint, LStyle);
+    end;
+  finally
+    LCanvas.Font.Assign(LOldFont);
+    LCanvas.Brush.Assign(LOldBrush);
+    LOldBrush.Free;
+    LOldFont.Free;
+    LLines.Free;
+  end;
 end;
 
 end.

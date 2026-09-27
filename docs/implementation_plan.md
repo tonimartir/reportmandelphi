@@ -105,7 +105,7 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | Compilar solo `reportman_designlcl.lpk` | Se compilan los tres paquetes con `build_fpc.bat` (el motor también cambia) |
 | Textos con IDs de `TranslateStr` | Varios IDs eran inventados; se sustituyeron por los de la VCL |
 
-## Fase 7: diseño con IA y Hub en FPC/LCL (en curso: 7.1 y 7.2 hechas)
+## Fase 7: diseño con IA y Hub en FPC/LCL (hecha: 7.1–7.5; falta la prueba real contra el Hub)
 
 El diseñador Delphi tiene tres asistentes de IA, todos a través de
 `api.reportman.es` y con los esquemas (tablas, columnas, relaciones) que el
@@ -131,10 +131,10 @@ Linux cae a un `TMemo`), sin autocompletado de esquema.
 |---|---|
 | 7.1 Base portable (hecha) | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON, HTTP/TLS (`fphttpclient` + OpenSSL), codificación y fechas con equivalentes de la API de Delphi en `rtl_fpc/`, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus. Detalle abajo |
 | 7.2 Base de la interfaz (hecha) | Login (OAuth con la redirección local) y tarjeta de cuenta, selección de modelo (`rpfrmaiselectionvcl`), selectores de esquema, estilo común (`rpchatmodernstyle`) y el chat común `TFRpChatFrame` en LCL, con la misma API que el VCL. Markdown de las respuestas: WebMarkdown en WebView2 en Windows y el visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux o sin WebView2. Panel de IA en la ventana del diseñador LCL. Detalle abajo |
-| 7.3 Asistente SQL | `TFRpChatFrame` en modo SQL dentro de la configuración de datos LCL, y autocompletado con el esquema en Monaco (Windows); en Linux, completado sobre el editor alternativo |
-| 7.4 Asistente de expresiones | Port del chat de `rpchatdialogvcl` al editor de expresiones LCL (`rpexpredlglcl`) |
-| 7.5 Asistente de diseño | `TFRpChatFrame` en modo diseño en el diseñador LCL; aplicar los contratos al modelo con deshacer y refresco del diseñador, igual que la VCL |
-| 7.6 Pruebas | Tests de regresión de los tres asistentes con respuestas del Hub simuladas (sin red), en Windows y Linux; prueba real contra `api.reportman.es` a mano |
+| 7.3 Asistente SQL (hecha) | `TFRpChatFrame` en modo SQL dentro de la configuración de datos LCL; puente de Monaco con el esquema y la IA (Windows); en Linux, SynEdit con completado por esquema y el completado de IA de Monaco como texto fantasma (Tab/Esc). Detalle en `fase7_3.md` |
+| 7.4 Asistente de expresiones (hecha) | Port del chat de `rpchatdialogvcl` al editor de expresiones LCL (`rpexpredlglcl`). Detalle en `fase7_4.md` |
+| 7.5 Asistente de diseño (hecha) | `TFRpChatFrame` en modo diseño en el diseñador LCL; el informe va y vuelve del Hub en XML con el deshacer (`BINCUE`), así que los cambios de la IA se deshacen paso a paso, igual que en la VCL y en C#. Detalle en `fase7_5.md` |
+| 7.6 Pruebas | Hechas por subfase con el Hub simulado (sin red) en Windows, WSL y Docker (Qt6 y GTK2): `LclAIChatTest`, unas 790 comprobaciones con heaptrc sin fugas. Falta la prueba real contra `api.reportman.es` a mano |
 
 El chat común (`TFRpChatFrame`) se portó en 7.2 y lo usan 7.3, 7.4 y 7.5;
 el orden sigue la dependencia (el esquema sirve al SQL y al diseño) y deja
@@ -148,13 +148,17 @@ LCL (`rpwebview2`, `rplclwebview`). Falta en Pascal el puente de Monaco con el
 esquema y la IA (el Monaco VCL tiene ~1.300 líneas de eso; el LCL, ninguna),
 alojar WebMarkdown en LCL y los marcos de chat nativos.
 
-**Linux no tiene WebView2** (hoy el Monaco LCL cae a un `TMemo`). Opciones:
-(a) nativa: SynEdit con completado por esquema en Pascal y un visor HTML de
-Lazarus para el markdown; (b) Chromium embebido (CEF4Delphi, compatible con
-Lazarus) para usar el mismo Monaco/WebMarkdown, a costa de ~150–200 MB por
-instalación (sin comprobar con Qt6); (c) WebKit del sistema, que exige GTK3.
-Plan: Windows completo primero; en Linux la opción (a), y (b) solo si hace
-falta.
+**Linux no tiene WebView2.** Opciones: (a) nativa: SynEdit con completado
+por esquema en Pascal y un visor HTML de Lazarus para el markdown; (b)
+Chromium embebido (CEF4Delphi, compatible con Lazarus) para usar el mismo
+Monaco/WebMarkdown, a costa de ~150–200 MB por instalación; (c) WebKit del
+sistema, que exige GTK3; (d) Qt WebEngine, que `libQt6Pas` no expone (haría
+falta un puente propio en C++). Se hizo (a): SynEdit + IPro. **Decisión de
+Toni (28-09-2026): no habrá Monaco ni otro webview en Linux hasta que la
+LCL GTK3 esté lista**; mientras, SynEdit lleva también el completado de IA
+de Monaco (un comentario en lenguaje natural se convierte en el SQL que lo
+implementa, aceptado con Tab), que es la parte más útil de la IA en el
+editor.
 
 Tamaño aproximado: unas 9.000 líneas de interfaz VCL a portar más la capa
 JSON/HTTP. Riesgos: OpenSSL en Windows con FPC (DLL a distribuir), la
@@ -360,6 +364,16 @@ llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
   entrada real en la versión Qt6.
 - **Publicación**: subir los paquetes del release (`build/sourceforge`, tarea
   06) y enviar el zip OPM (`build/opm`) al Online Package Manager.
+- **Prueba real de la IA** contra `api.reportman.es` (los tres asistentes y el
+  completado de IA del editor SQL en Linux), a mano.
+- **Candidatos a bug en el VCL y en código común** anotados en `fase7_3.md`,
+  `fase7_4.md` y `fase7_5.md` ("Encontrado"): verificar cada uno con el ciclo
+  completo antes de tocar Delphi (regla de aislamiento). Ya corregidos
+  (28-09-2026): las fugas de `EmbeddedFiles` (`TRpBaseReport.Destroy`,
+  `TRpMetafileReport.Clear`, `TRpPDFFile.Destroy`), `TBytes` en `TStream` con
+  FPC, y la carrera al crear `~/.borland` en `TRpConnAdmin.LoadConfig` (Linux:
+  dos hilos o procesos a la vez en una instalación nueva; la vio el Docker con
+  el hilo de contexto del asistente de diseño).
 - **Traducciones solo junto al ejecutable**: `rptranslator` busca los
   `reportmanres.*` al lado del binario; por eso los paquetes Linux instalan en
   `/opt/reportman-designer`.

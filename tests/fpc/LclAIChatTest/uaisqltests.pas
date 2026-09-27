@@ -7,7 +7,10 @@
   without WebView2 (00:/01:/02:/03: messages and the scripts it answers
   with, AI completions superseded and cancelled), the SynEdit fallback editor
   (highlighter tables, completion popup, accepting an item, undoable apply,
-  theme), the SQL assistant of the data configuration dialog (a prompt
+  theme), the AI inline completion of the fallback editor (a comment turned
+  into SQL: request after the debounce with the UTF-16 caret offset, ghost
+  text, Tab, Esc, dismissed by typing or moving the caret, stale answers,
+  AI disabled), the SQL assistant of the data configuration dialog (a prompt
   streamed and applied to the editor and the working copy, an error, Stop,
   the audit, the schema of the dataset, OK recorded in the undo cue) and, on
   Windows, the real Monaco page in WebView2 (injected completion provider,
@@ -35,6 +38,10 @@ uses
 const
   BS = #92; // backslash
   SUGGESTED_SQL = 'SELECT NAME, BALANCE FROM CLIENTS WHERE BALANCE > 1000';
+  // Inline completion for a comment of the fallback editor
+  COMMENT_SQL1 = 'SELECT NAME, BALANCE';
+  COMMENT_SQL2 = 'FROM CLIENTS';
+  COMMENT_SQL3 = 'WHERE BALANCE > 1000';
   AUDIT_TEXT = 'Lists the clients with their balance.';
 
 type
@@ -81,6 +88,7 @@ type
     procedure TestEngine;
     procedure TestMonacoBridge;
     procedure TestFallbackEditor;
+    procedure TestFallbackAISuggestion;
     procedure TestDataDialog;
     procedure TestWebView2;
   public
@@ -257,6 +265,17 @@ begin
         for I := 0 to High(LEvents) do
           LEvents[I] := ProgressEvent('Partial', 'y' + IntToStr(I), 'a1');
         SendEvents(AResponse, LEvents, 100, True, True);
+      end
+      else if Pos('clientes con saldo', LContent) > 0 then
+      begin
+        // A comment in natural language: the SQL that implements it
+        SetLength(LEvents, 2);
+        LEvents[0] := ProgressEvent('End', 'SELECT', 'a3');
+        LEvents[1] := '{"result":{"autoComplete":{"inlineCompletions":["' + COMMENT_SQL1 +
+          BS + 'n' + COMMENT_SQL2 + BS + 'r' + BS + 'n' + COMMENT_SQL3 + '"],' +
+          '"listCompletions":[]},"tokenUsage":{"inputTokens":40,"outputTokens":15}},' +
+          '"errorMessage":""}';
+        SendEvents(AResponse, LEvents, 20, True, True);
       end
       else
       begin
@@ -602,6 +621,10 @@ begin
     CheckEquals(2, RpUtf16OffsetToByteOffset(#$C3#$91'A', 1), 'UTF-16 offset of a 2 byte letter');
     CheckEquals(4, RpUtf16OffsetToByteOffset(#$F0#$9F#$98#$80'A', 2), 'surrogate pair');
     CheckEquals(3, RpUtf16OffsetToByteOffset('ABC', 10), 'offset past the end');
+    CheckEquals(1, RpByteOffsetToUtf16Offset(#$C3#$91'A', 2), 'byte offset of a 2 byte letter');
+    CheckEquals(2, RpByteOffsetToUtf16Offset(#$F0#$9F#$98#$80'A', 4), 'byte offset: surrogate pair');
+    CheckEquals(3, RpByteOffsetToUtf16Offset('ABC', 10), 'byte offset past the end');
+    CheckEquals(0, RpByteOffsetToUtf16Offset('ABC', 0), 'byte offset 0');
   finally
     LSchema.Free;
   end;
@@ -903,6 +926,175 @@ begin
     LEditor.SetTheme('vs');
     CheckEquals(clWhite, LEditor.FallbackEditor.Color, 'light theme');
   finally
+    LForm.Free;
+  end;
+  Check(RpAsyncWaitIdle(10000), 'workers finished');
+end;
+
+type
+  // KeyDown of the editor (protected): the keys go through its handlers
+  TSynEditKeys = class(TSynEdit);
+
+procedure TAISqlTests.TestFallbackAISuggestion;
+var
+  LForm: TForm;
+  LEditor: TFRpMonacoEditorLCL;
+  LCalls, LAnswers: Integer;
+  LKey: Word;
+
+  function Suggested: Boolean;
+  begin
+    Result := LEditor.AISuggestion <> '';
+  end;
+
+  function AnsweredAgain: Boolean;
+  begin
+    Result := (LEditor.AICompletionCount > LAnswers) and (not LEditor.InferenceRunning) and
+      (not LEditor.DebounceTimer.Enabled);
+  end;
+
+  procedure TypeText(const AText: string);
+  var
+    I: Integer;
+  begin
+    for I := 1 to Length(AText) do
+      LEditor.FallbackEditor.CommandProcessor(ecChar, AText[I], nil);
+  end;
+
+  procedure PressKey(AKey: Word);
+  begin
+    LKey := AKey;
+    TSynEditKeys(LEditor.FallbackEditor).KeyDown(LKey, []);
+  end;
+
+  procedure WaitSuggestion(const AWhat: string);
+  begin
+    LCalls := FHubHandler.SuggestCalls;
+    WaitUntil(Suggested, 10000, AWhat);
+    CheckEquals(LCalls + 1, FHubHandler.SuggestCalls, AWhat + ': one request');
+  end;
+
+begin
+  Section('Fallback editor: AI inline completion (comment to SQL)');
+  TRpAuthManager.Instance.AIEnabled := True;
+  LForm := NewForm(760, 420);
+  try
+    LEditor := TFRpMonacoEditorLCL.Create(LForm);
+    LEditor.ActivateFallback('test');
+    LEditor.Parent := LForm;
+    LEditor.Align := alClient;
+    LEditor.DebounceTimer.Interval := 30;
+    LForm.Show;
+    LEditor.SetHubContext(77, 5, 'sql-key');
+    LEditor.RuntimeDb := 'ADO_Net';
+    Pump(100);
+    LEditor.FallbackEditor.SetFocus;
+    Pump(50);
+
+    // A comment and a line break: one request after the debounce
+    LEditor.SQL := '';
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 1);
+    LCalls := FHubHandler.SuggestCalls;
+    TypeText('-- clientes con saldo');
+    LEditor.FallbackEditor.CommandProcessor(ecLineBreak, '', nil);
+    Check(LEditor.DebounceTimer.Enabled, 'request debounced while typing');
+    WaitUntil(Suggested, 10000, 'AI suggestion shown');
+    CheckEquals(LCalls + 1, FHubHandler.SuggestCalls, 'one SuggestSqlCodeStream request');
+    CheckContains('"sql":"-- clientes con saldo' + BS + 'r' + BS + 'n"',
+      FHubHandler.LastSuggestBody, 'the text as the page sends it (CRLF)');
+    CheckContains('"cursorPosition":23', FHubHandler.LastSuggestBody,
+      'caret offset after the line break');
+    CheckContains('"hubSchemaId":5', FHubHandler.LastSuggestBody, 'schema of the editor');
+    CheckContains('"apiKey":"sql-key"', FHubHandler.LastSuggestBody, 'API key of the schema');
+    CheckEquals(COMMENT_SQL1 + LineEnding + COMMENT_SQL2 + LineEnding + COMMENT_SQL3,
+      LEditor.AISuggestion, 'first inline item, line breaks of the editor');
+    Check(LEditor.AISuggestionShown, 'ghost text at the caret');
+    CheckEquals('-- clientes con saldo' + #13#10, LEditor.SQL, 'the ghost text is not in the SQL');
+    LEditor.FallbackEditor.Repaint;
+    Shot(LForm, 'sql_fallback_ai_suggestion');
+
+    // Tab: inserted as one undo step, the caret after it, no new request
+    LCalls := FHubHandler.SuggestCalls;
+    PressKey(VK_TAB);
+    CheckEquals(0, LKey, 'Tab taken by the suggestion');
+    CheckEquals('', LEditor.AISuggestion, 'suggestion accepted');
+    CheckEquals('-- clientes con saldo' + #13#10 + COMMENT_SQL1 + #13#10 + COMMENT_SQL2 +
+      #13#10 + COMMENT_SQL3, LEditor.SQL, 'SQL inserted at the caret');
+    CheckEquals(Length(COMMENT_SQL3) + 1, LEditor.FallbackEditor.LogicalCaretXY.X, 'caret column after it');
+    CheckEquals(4, LEditor.FallbackEditor.LogicalCaretXY.Y, 'caret line after it');
+    Pump(200);
+    CheckEquals(LCalls, FHubHandler.SuggestCalls, 'no request for the accepted text');
+    Shot(LForm, 'sql_fallback_ai_accepted');
+    LEditor.FallbackEditor.Undo;
+    CheckEquals('-- clientes con saldo' + #13#10, LEditor.SQL, 'one Ctrl+Z removes it');
+    Pump(200);
+    CheckEquals(LCalls, FHubHandler.SuggestCalls, 'undo: no request');
+    LEditor.FallbackEditor.Redo;
+    Pump(200);
+    CheckEquals(LCalls, FHubHandler.SuggestCalls, 'redo: no request');
+    LEditor.FallbackEditor.Undo;
+    // Tab without a suggestion: the tab of the editor (two spaces)
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 2);
+    PressKey(VK_TAB);
+    CheckEquals(3, LEditor.FallbackEditor.LogicalCaretXY.X, 'Tab left to the editor without a suggestion');
+
+    // Esc dismisses it
+    LEditor.SQL := '-- clientes con saldo' + #13#10;
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 2);
+    TypeText('x');
+    WaitSuggestion('suggestion for the new text');
+    PressKey(VK_ESCAPE);
+    CheckEquals(0, LKey, 'Esc taken by the suggestion');
+    CheckEquals('', LEditor.AISuggestion, 'Esc dismisses the suggestion');
+    Check(Pos(COMMENT_SQL1, LEditor.SQL) = 0, 'nothing inserted');
+
+    // Moving the caret dismisses it
+    TypeText('y');
+    WaitSuggestion('suggestion again');
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 1);
+    CheckEquals('', LEditor.AISuggestion, 'caret moved: dismissed');
+    Check(not LEditor.AcceptAISuggestion, 'nothing to accept');
+
+    // Typing dismisses it and asks again
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(3, 2);
+    TypeText('z');
+    WaitSuggestion('suggestion for xyz');
+    TypeText('w');
+    CheckEquals('', LEditor.AISuggestion, 'typing dismisses it');
+    Check(LEditor.DebounceTimer.Enabled, 'and asks again');
+    WaitSuggestion('suggestion for xyzw');
+
+    // An answer for a caret that moved meanwhile is not shown
+    LAnswers := LEditor.AICompletionCount;
+    TypeText('v');
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 1);
+    WaitUntil(AnsweredAgain, 10000, 'answer of the moved caret');
+    CheckEquals('', LEditor.AISuggestion, 'stale answer not shown');
+
+    // Backspace is an edit of the user as well
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(6, 2);
+    LCalls := FHubHandler.SuggestCalls;
+    LEditor.FallbackEditor.CommandProcessor(ecDeleteLastChar, '', nil);
+    WaitUntil(Suggested, 10000, 'suggestion after a backspace');
+    CheckEquals(LCalls + 1, FHubHandler.SuggestCalls, 'backspace: one request');
+
+    // Non ASCII text: the offset counts UTF-16 units
+    LEditor.SQL := '';
+    LEditor.FallbackEditor.LogicalCaretXY := Types.Point(1, 1);
+    LAnswers := LEditor.AICompletionCount;
+    LEditor.FallbackEditor.CommandProcessor(ecChar, #$C3#$91, nil);
+    WaitUntil(AnsweredAgain, 10000, 'answer for a two byte letter');
+    CheckContains('"cursorPosition":1,', FHubHandler.LastSuggestBody, 'UTF-16 offset of the caret');
+
+    // AI disabled: no request, no suggestion
+    TRpAuthManager.Instance.AIEnabled := False;
+    LCalls := FHubHandler.SuggestCalls;
+    TypeText('-- clientes con saldo');
+    Pump(200);
+    CheckEquals(LCalls, FHubHandler.SuggestCalls, 'AI disabled: no request');
+    CheckEquals('', LEditor.AISuggestion, 'AI disabled: no suggestion');
+  finally
+    TRpAuthManager.Instance.AIEnabled := True;
     LForm.Free;
   end;
   Check(RpAsyncWaitIdle(10000), 'workers finished');
@@ -1276,6 +1468,7 @@ begin
       Pump(50);
       TestMonacoBridge;
       TestFallbackEditor;
+      TestFallbackAISuggestion;
       TestDataDialog;
       TestWebView2;
       TRpAuthManager.Instance.Logout;

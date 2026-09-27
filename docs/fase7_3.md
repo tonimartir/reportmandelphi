@@ -113,7 +113,22 @@ Linux, Windows sin WebView2 o `RPM_FORCE_WEBVIEW_FALLBACK`: en lugar del
 - `TSynCompletion` con el motor de arriba: Ctrl+Espacio, y solo al escribir
   `.` o un espacio tras `FROM`/`JOIN`... si hay algo que proponer; la lista
   se filtra al escribir y muestra el tipo de la columna o "table";
-- deshacer (también de una sugerencia aplicada) y números de línea.
+- deshacer (también de una sugerencia aplicada) y números de línea;
+- el completado de IA de Monaco (añadido tras 7.5, a petición de Toni: en
+  Linux no habrá Monaco hasta que la LCL GTK3 esté lista). Tras una edición
+  de teclado (escribir, Intro, borrar, cortar, pegar, tabular; no deshacer,
+  rehacer ni aceptar la sugerencia) el editor pide `SuggestSql` como lo haría
+  un mensaje `02:`: el texto con CRLF y el offset UTF-16 del cursor, con la
+  misma espera de 1 s, cancelación y "mismo texto" que Monaco. El primer
+  elemento `inlineCompletions` se pinta como texto fantasma (gris, cursiva)
+  en el cursor, con un gancho `peAfterPaint` de SynEdit; las líneas
+  siguientes tapan de momento las de debajo (Monaco las desplaza). **Tab** lo
+  inserta como un solo paso de deshacer; **Esc**, escribir o mover el cursor
+  lo descartan; una respuesta para un cursor que se ha movido no se muestra.
+  Tras la última línea, "Tab para aceptar, Esc para descartar" (id 1561).
+  Así, un comentario en lenguaje natural (`-- clientes con saldo`) se
+  convierte en el SQL que lo implementa. La lista `listCompletions` no se usa:
+  el desplegable es el del esquema.
 
 En Linux es el editor normal: ya no se intenta WebView2 ni se busca
 `MonacoEditor.zip`, y no se escriben los avisos de "fallback" en el registro
@@ -146,15 +161,15 @@ Docker Qt6 y GTK2.
 | Stop de la selección de modelo en el editor | Cancela el completado de IA (el VCL no hace nada) |
 | Completado por esquema (tablas/columnas) | Nuevo, en Monaco y en el editor alternativo |
 | Editor sin WebView2 | SynEdit con resaltado y completado (el VCL: `TMemo`) |
-| Completado de IA en el editor alternativo | No, como el VCL |
+| Completado de IA en el editor alternativo | Sí: texto fantasma en el cursor, Tab/Esc (el VCL, con `TMemo`, no lo tiene) |
 | Parar la auditoría | No, como el VCL (solo se descarta al cerrar el diálogo) |
 | Texto de la auditoría | `TMemo` de texto como el VCL, aunque venga en Markdown |
 
 ## Textos
 
-`TranslateStr` con los ids nuevos 1552–1560 (lista con las nueve
-traducciones en `docs/i18n/fase7_3_ids.txt`, para añadir a
-`repman/reportmanres.*`). Se reutilizan 1528 (Schema), 1496 (Configure DB
+`TranslateStr` con los ids nuevos 1552–1561 (lista con las nueve
+traducciones en `docs/i18n/fase7_3_ids.txt`, ya en `repman/reportmanres.*` y
+en `REPORTMANRES.RES`; 1561 es el aviso del texto fantasma). Se reutilizan 1528 (Schema), 1496 (Configure DB
 Schemas) y 1536 (Generation stopped.). Los mensajes de diagnóstico del
 registro siguen en inglés, como en 7.2.
 
@@ -178,6 +193,13 @@ Contra un Hub simulado propio (sin red), con heaptrc (0 bloques sin liberar):
   tablas tras `FROM`, filtro al escribir, elemento insertado, columnas de un
   alias sustituyendo lo escrito, lista completa al pedirlo, popup automático
   tras `.` y `FROM ` (no tras otras palabras), aplicar y Ctrl+Z, tema oscuro.
+- **Completado de IA del editor alternativo**: un comentario y un Intro dan
+  una sola petición tras la espera (texto con CRLF, offset UTF-16, esquema,
+  API key), texto fantasma de tres líneas que no entra en el SQL, Tab lo
+  inserta (cursor al final, un solo Ctrl+Z, sin petición nueva), deshacer y
+  rehacer no piden, Tab sin sugerencia tabula, Esc, mover el cursor y
+  escribir lo descartan, respuesta de un cursor movido descartada, retroceso
+  pide, offset de una letra de dos bytes, IA desactivada sin petición.
 - **Diálogo de datos**: chat creado y a la derecha, contexto del Hub (base,
   esquema, runtime), esquemas del chat y del editor cargados, prompt en
   streaming con el cuerpo de la petición comprobado, créditos, aplicar
@@ -206,7 +228,8 @@ Resultados (todas con heaptrc sin fugas):
   win32 y WSL gtk2, compilación limpia con la dependencia SynEdit).
 
 Capturas (`--shots`): `sql_assistant_dialog`, `sql_fallback_editor`,
-`sql_fallback_completion`, `sql_fallback_dark` y, en Windows,
+`sql_fallback_completion`, `sql_fallback_dark`, `sql_fallback_ai_suggestion`,
+`sql_fallback_ai_accepted` y, en Windows,
 `sql_monaco_completion` y `sql_assistant_monaco`.
 
 ## Encontrado y sin corregir (VCL y unidades compartidas)
