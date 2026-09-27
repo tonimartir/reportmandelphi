@@ -1,6 +1,6 @@
 .TH REPORTMAN-DESIGNER 1 "2026" "Report Manager @VERSION@" "User Commands"
 .SH NAME
-reportman-designer \- Report Manager report designer (LCL/GTK2)
+reportman-designer \- Report Manager report designer
 .SH SYNOPSIS
 .B reportman-designer
 [\fB\-\-help\fR] [\fB\-\-version\fR] [\fIreport.rep\fR]
@@ -12,6 +12,11 @@ previewed, printed and exported to PDF and other formats.
 .PP
 When \fIreport.rep\fR is given (a path, relative to the current directory, or
 a file:// URI) it is opened at start.
+.PP
+There are two builds with the same files: the Qt 6 one (package
+\fBreportman-designer\fR, recommended) and the GTK2 one (package
+\fBreportman-designer-gtk2\fR, transitional). Installing one replaces the
+other; \fBreportman-designer \-\-version\fR shows which one is installed.
 .SH OPTIONS
 .TP
 .B \-\-version
@@ -26,6 +31,12 @@ Print a short usage message, then exit.
 Language of the designer, looked up in this order: Spanish, English,
 Catalan, French, German, Italian, Portuguese, Czech or Lithuanian; any other
 language shows the English texts.
+.TP
+.B QT_QPA_PLATFORM
+Qt 6 build only. When it is not set the designer uses X11 (\fBxcb\fR), also
+in a Wayland session (through XWayland): with the native Wayland backend
+windows cannot be positioned. \fBQT_QPA_PLATFORM=wayland\fR runs it on native
+Wayland (needs the qt6-wayland package).
 .SH FILES
 .TP
 .I /opt/reportman-designer/

@@ -11,7 +11,7 @@ autonomo (exit != 0 si falla) y se puede ejecutar suelto.
 | `03-activex-zip.ps1` | Zipea el OCX por arquitectura | `release_<v>\ActiveX\reportman_ax_<v>_x64.zip` y `_x32.zip` |
 | `04-components.ps1` | Fuentes raiz + `packages\`, sin `*.o`/`*.dcu` | `release_<v>\Components\` (carpeta + `reportman_components_<v>.zip`) |
 | `05-linux-zip.ps1` | Zipea `printreptopdf` Linux64 | `release_<v>\Linux\printreptopdf_linux_<v>.zip` |
-| `06-linux-designer.ps1` | Paquetes Linux del **diseñador LCL** (FPC/Lazarus, GTK2) con `build\linux\build-linux.ps1`: compilación, selftest, lintian y pruebas en máquinas limpias | `release_<v>\Linux\reportman-designer_<v>_amd64.deb`, `ReportManDesigner-<v>-x86_64.AppImage` y `SHA256SUMS` |
+| `06-linux-designer.ps1` | Paquetes Linux del **diseñador LCL** (FPC/Lazarus; Qt6 recomendado y GTK2 transitorio) con `build\linux\build-linux.ps1`: compilación, selftest de los dos, lintian y pruebas en máquinas limpias | `release_<v>\Linux\reportman-designer_<v>_amd64.deb` (Qt6), `reportman-designer-gtk2_<v>_amd64.deb`, `ReportManDesigner-<v>-x86_64.AppImage` (Qt6) y `SHA256SUMS` |
 
 Orquestador: `make-release.ps1` (o `..\make-sourceforge.ps1`). `-SkipBuild` reusa
 binarios ya compilados y los paquetes Linux de `build\linux\out\<v>\` si existen.

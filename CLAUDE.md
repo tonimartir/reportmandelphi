@@ -96,9 +96,13 @@ Other FPC deliverables:
 - Standalone LCL designer: `repman/lcl_designer/repmandesigner_lcl.lpi` (own
   folder because `repman\TmSchema.pas` shadows the LCL unit; the exe is written
   to `repman\`). `lazbuild --ws=win32 --bm=Release …` on Windows.
-- Linux packages (`.deb` + AppImage, GTK2) are built in Docker inside WSL by
-  `build\linux\build-linux.ps1` (output `build\linux\out\<v>\`, gitignored);
-  see `docs/fase6_plan.md` and the user guide `docs/linux-install.md`.
+- Linux packages are built in Docker inside WSL by
+  `build\linux\build-linux.ps1` (output `build\linux\out\<v>\`, gitignored):
+  `reportman-designer` `.deb` + AppImage with Qt6 (recommended; ships a
+  private `libQt6Pas` built in the image) and a transitional
+  `reportman-designer-gtk2` `.deb`; both widgetsets must pass
+  `--selftest`. See `docs/fase6_plan.md` (6.8) and the user guide
+  `docs/linux-install.md`.
 - Lazarus Online Package Manager zip: `build\opm\make_opm_package.ps1`
   (`docs/opm.md`); it packs only the files in `build/opm/opm_files.txt`, so
   after adding a unit to a package run it with `-RefreshFileList`, then
