@@ -3,6 +3,7 @@
 #
 #   .\make-release.ps1              # build completo + empaquetado
 #   .\make-release.ps1 -SkipBuild   # salta la tarea 01 (reusa binarios ya compilados)
+#                                   # y reutiliza los paquetes Linux ya generados
 [CmdletBinding()]
 param([switch]$SkipBuild)
 . "$PSScriptRoot\_common.ps1"
@@ -20,9 +21,14 @@ $steps += '02-designer-innosetup.ps1'
 $steps += '03-activex-zip.ps1'
 $steps += '04-components.ps1'
 $steps += '05-linux-zip.ps1'
+$steps += '06-linux-designer.ps1'
 
 foreach ($s in $steps) {
-  & (Join-Path $PSScriptRoot $s)
+  if ($s -eq '06-linux-designer.ps1') {
+    & (Join-Path $PSScriptRoot $s) -SkipBuild:$SkipBuild
+  } else {
+    & (Join-Path $PSScriptRoot $s)
+  }
   if ($LASTEXITCODE -ne 0) { Fail "Subscript $s fallo (exit $LASTEXITCODE)" }
 }
 

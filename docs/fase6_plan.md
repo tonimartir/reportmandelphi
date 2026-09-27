@@ -37,7 +37,7 @@ hoy `build/sourceforge/*.ps1` genera los instaladores de Windows.
 | 6.4 `.deb` | Hecho | `reportman-designer_4.0.16_amd64.deb` (≈4 MB), lintian sin avisos (overrides justificados) |
 | 6.5 AppImage | Hecho | `ReportManDesigner-4.0.16-x86_64.AppImage` (≈30 MB) |
 | 6.6 Pruebas | Automáticas hechas; manuales pendientes | `test-packages.sh`: `.deb` y AppImage en Ubuntu 22.04, 24.04 y Debian 12 en contenedores limpios |
-| 6.7 Publicación | Preparada, no hecha | `build-linux.ps1 -ToRelease` copia los paquetes a `release_<v>\Linux\` |
+| 6.7 Publicación | Enganchada al release; subir a mano | Tarea `build/sourceforge/06-linux-designer.ps1` de `make-release.ps1`: paquetes + `SHA256SUMS` en `release_<v>\Linux\` |
 
 Guía de instalación para usuarios: `docs/linux-install.md`.
 
@@ -163,8 +163,8 @@ Carpeta `build/linux/`:
   `repmandesigner_lcl` en modo Release (sin información de depuración, `strip`)
   y ejecuta `LclDesignerTest --selftest` bajo `xvfb-run` (fallo = build roto).
 - `build-linux.ps1` (Windows): orquesta desde el flujo actual con
-  `wsl docker build` / `wsl docker run -v <repo>:/src:ro -v <out>:/out`, y deja
-  los artefactos en `release_<ver>\Linux\` junto a los de `build/sourceforge`.
+  `wsl docker build` / `wsl docker run -v <repo>:/src:ro -v <out>:/out`; el
+  release los deja en `release_<ver>\Linux\` junto a los de `build/sourceforge`.
 - Verificación: build limpia desde cero en la imagen; mismo resultado dos veces.
 
 **Estado (hecho):**
@@ -186,10 +186,9 @@ Carpeta `build/linux/`:
   cero (descarga ~250 MB) y las 6 pruebas de 6.6, tardó 12,5 min.
 - `build-linux.ps1`: un solo comando desde Windows (Docker dentro de WSL)
   construye la imagen, compila, empaqueta y ejecuta las pruebas de 6.6. Deja
-  todo en `build\linux\out\<versión>\` (ignorado por git); `-ToRelease` copia
-  el `.deb` y la AppImage a `build\sourceforge\release_<v>\Linux\`,
-  `-Qt5Spike` repite la compilación con Qt5, `-SkipTests`, `-SkipImage`,
-  `-NoCache`.
+  todo en `build\linux\out\<versión>\` (ignorado por git); `-Qt5Spike` repite
+  la compilación con Qt5, `-SkipTests`, `-SkipImage`, `-NoCache`. La copia al
+  release la hace la tarea 06 de `build\sourceforge` (ver 6.7).
 - Builds repetibles: las fechas de los ficheros empaquetados se fijan a
   `SOURCE_DATE_EPOCH` (la fecha del último commit, que pasa
   `build-linux.ps1`). Comprobado: dos compilaciones limpias de los mismos
@@ -316,12 +315,15 @@ snapshot limpio; y WSLg):
   imagen Docker en cada etiqueta de versión.
 - Más adelante: repositorio apt firmado para actualizaciones automáticas.
 
-**Estado (preparada, no hecha):** `build-linux.ps1 -ToRelease` copia el `.deb`
-y la AppImage a `build\sourceforge\release_<v>\Linux\`, pero no está enganchado
-a `make-release.ps1`. Al hacerlo, ojo: `05-linux-zip.ps1` empieza con
-`New-CleanDir $LinuxDir` y borraría lo copiado antes (ejecutar
-`build-linux.ps1 -ToRelease` después de la tarea 05, o quitar ese borrado).
-Tampoco hay workflow de GitHub Actions ni página de descargas.
+**Estado (enganchada al release, 27-09-2026):** la tarea
+`build\sourceforge\06-linux-designer.ps1`, última de `make-release.ps1`, llama a
+`build-linux.ps1` (compilación, selftest, lintian y las pruebas de 6.6; un fallo
+para el release) y copia el `.deb` y la AppImage a `release_<v>\Linux\`, junto
+al zip de `printreptopdf`, con un `SHA256SUMS` de toda la carpeta
+(`sha256sum -c SHA256SUMS`). Con `-SkipBuild` reutiliza los paquetes de
+`build\linux\out\<v>\`. La tarea 05 ya no vacía `Linux\`. Falta subirlo
+(SourceForge, página de descargas de reportman.es, GitHub Releases); no hay
+workflow de GitHub Actions ni repositorio apt.
 
 ## Riesgos conocidos
 

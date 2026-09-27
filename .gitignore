@@ -292,3 +292,5 @@ repman/repmandesigner_lcl
 repman/lcl_designer/repmandesigner_lcl.res
 # Linux packages (build/linux/build-linux.ps1): .deb, AppImage, logs
 build/linux/out/
+# Release de SourceForge (build/sourceforge/make-release.ps1): instaladores y zips
+build/sourceforge/release_*/

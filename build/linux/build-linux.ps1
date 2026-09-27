@@ -7,8 +7,9 @@
 #   .\build-linux.ps1 -SkipImage    # reutiliza la imagen ya construida
 #   .\build-linux.ps1 -NoCache      # reconstruye la imagen desde cero
 #   .\build-linux.ps1 -Qt5Spike     # ademas compila con --ws=qt5 (no se empaqueta)
-#   .\build-linux.ps1 -ToRelease    # copia .deb y AppImage a
-#                                   # build\sourceforge\release_<v>\Linux
+#
+# El release de SourceForge (build\sourceforge\06-linux-designer.ps1) llama a
+# este script y copia los paquetes a release_<v>\Linux\ con SHA256SUMS.
 #
 # Salida (ignorada por git): build\linux\out\<version>\ con
 #   reportman-designer_<v>_amd64.deb, ReportManDesigner-<v>-x86_64.AppImage,
@@ -21,8 +22,7 @@ param(
   [switch]$SkipImage,
   [switch]$NoCache,
   [switch]$SkipTests,
-  [switch]$Qt5Spike,
-  [switch]$ToRelease
+  [switch]$Qt5Spike
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -129,15 +129,6 @@ if ($Qt5Spike) {
 if (-not $SkipTests) {
   Info "== Pruebas en maquinas limpias (test-packages.sh: ubuntu:22.04, ubuntu:24.04, debian:12)"
   Invoke-Wsl 'test-packages.sh' @('bash', "$WslRepo/build/linux/test-packages.sh", $WslOut)
-}
-
-if ($ToRelease) {
-  $VerU = $Version -replace '\.', '_'
-  $rel = Join-Path $RepoRoot "build\sourceforge\release_$VerU\Linux"
-  New-Item -ItemType Directory -Path $rel -Force | Out-Null
-  Get-ChildItem $OutDir -File | Where-Object { $_.Name -match '\.(deb|AppImage)$' } |
-    Copy-Item -Destination $rel -Force
-  Info "Copiado a $rel"
 }
 
 $sw.Stop()

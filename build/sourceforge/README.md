@@ -11,12 +11,14 @@ autonomo (exit != 0 si falla) y se puede ejecutar suelto.
 | `03-activex-zip.ps1` | Zipea el OCX por arquitectura | `release_<v>\ActiveX\reportman_ax_<v>_x64.zip` y `_x32.zip` |
 | `04-components.ps1` | Fuentes raiz + `packages\`, sin `*.o`/`*.dcu` | `release_<v>\Components\` (carpeta + `reportman_components_<v>.zip`) |
 | `05-linux-zip.ps1` | Zipea `printreptopdf` Linux64 | `release_<v>\Linux\printreptopdf_linux_<v>.zip` |
+| `06-linux-designer.ps1` | Paquetes Linux del **diseñador LCL** (FPC/Lazarus, GTK2) con `build\linux\build-linux.ps1`: compilación, selftest, lintian y pruebas en máquinas limpias | `release_<v>\Linux\reportman-designer_<v>_amd64.deb`, `ReportManDesigner-<v>-x86_64.AppImage` y `SHA256SUMS` |
 
 Orquestador: `make-release.ps1` (o `..\make-sourceforge.ps1`). `-SkipBuild` reusa
-binarios ya compilados.
+binarios ya compilados y los paquetes Linux de `build\linux\out\<v>\` si existen.
 
 Requisitos: RAD Studio 37.0 (`rsvars.bat`), MSBuild .NET v4.0.30319,
-Inno Setup 6 (`ISCC.exe`).
+Inno Setup 6 (`ISCC.exe`); para la tarea 06, Docker dentro de WSL (la imagen
+del builder se crea sola la primera vez; ver `docs\fase6_plan.md`).
 
 ## Arquitectura de instaladores (definitiva)
 4 instaladores de **Designer**:
@@ -26,5 +28,8 @@ Inno Setup 6 (`ISCC.exe`).
 ## Notas
 - **net2**: `01b-build-net2.ps1` lo publica self-contained (win-x64 -> `binr64\net2`, win-x86 -> `binr32\net2`).
 - **Linux**: `binrl64\printreptopdf` debe estar compilado (PAServer) antes de la tarea 05.
+  La tarea 05 ya no vacía `release_<v>\Linux\` (lo hace `make-release.ps1` al
+  empezar), así que 05 y 06 pueden ejecutarse sueltas en cualquier orden.
+  `SHA256SUMS` cubre todo lo que haya en `Linux\` al ejecutar la 06.
 - **ActiveX**: el zip lleva solo el `Reportman.ocx`.
 - **Components**: fuentes Delphi; el Designer .NET no lo necesita (sus librerias van por NuGet).
