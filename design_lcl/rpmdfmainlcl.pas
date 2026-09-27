@@ -30,7 +30,7 @@ uses
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
-  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl, rpbasereport, rpdatahttp,
+  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl, rpbasereport,
   rpreportdesignercontracts, rpaithreadslcl;
 
 type
@@ -357,14 +357,14 @@ implementation
 {$R *.lfm}
 
 uses
-  IniFiles, DB, rpjsonfpc, rpauthmanager, rpxmlstream, rptypeval, rpeval,
-  rpalias;
+  // rpexpredlglcl: the dataset context of the assistants (ports of the
+  // rpchatdialogvcl CollectAgentSchemaOnlyContext and
+  // BuildDesignExpressionContextJson)
+  IniFiles, rpauthmanager, rpxmlstream, rpexpredlglcl;
 
 const
   SDesignChatInitialMessage =
     'Describe report changes here or ask for assistance. Any change can be undone.';
-  // Separator of the schema only field entries (alias, field, type)
-  CSchemaFieldSep = #1;
 
 type
   { Dataset context of the design requests (the payload of WM_USER + 207 in
@@ -389,6 +389,9 @@ type
   public
     RequestVersion: Integer;
     Report: TRpReport;
+    // Session of the Hub, read in the main thread
+    Token: string;
+    InstallId: string;
     destructor Destroy; override;
   protected
     procedure Run; override;
@@ -422,566 +425,6 @@ begin
   LIndex := AReport.DatabaseInfo.IndexOf(AAlias);
   if LIndex >= 0 then
     Result := AReport.DatabaseInfo.Items[LIndex];
-end;
-
-{ Dataset context (rpchatdialogvcl: CollectAgentSchemaOnlyContext and
-  BuildDesignExpressionContextJson, without the expression dialog) }
-
-function EncodeSchemaFieldEntry(const ADatasetAlias, AFieldName,
-  ADataType: string): string;
-begin
-  Result := Trim(ADatasetAlias) + CSchemaFieldSep + Trim(AFieldName) +
-    CSchemaFieldSep + Trim(ADataType);
-end;
-
-function SchemaFieldEntryAlias(const AEntry: string): string;
-var
-  LPos: Integer;
-begin
-  LPos := Pos(CSchemaFieldSep, AEntry);
-  if LPos > 0 then
-    Result := Copy(AEntry, 1, LPos - 1)
-  else
-    Result := '';
-end;
-
-// The part of AEntry after its first separator ('' when there is none)
-function SchemaFieldEntryRest(const AEntry: string): string;
-var
-  LPos: Integer;
-begin
-  LPos := Pos(CSchemaFieldSep, AEntry);
-  if LPos > 0 then
-    Result := Copy(AEntry, LPos + 1, MaxInt)
-  else
-    Result := '';
-end;
-
-function SchemaFieldEntryFieldName(const AEntry: string): string;
-var
-  LRest: string;
-  LPos: Integer;
-begin
-  Result := '';
-  if Pos(CSchemaFieldSep, AEntry) <= 0 then
-    Exit;
-  LRest := SchemaFieldEntryRest(AEntry);
-  LPos := Pos(CSchemaFieldSep, LRest);
-  if LPos > 0 then
-    Result := Copy(LRest, 1, LPos - 1)
-  else
-    Result := LRest;
-end;
-
-function SchemaFieldEntryDataType(const AEntry: string): string;
-var
-  LRest: string;
-begin
-  Result := '';
-  if Pos(CSchemaFieldSep, AEntry) <= 0 then
-    Exit;
-  LRest := SchemaFieldEntryRest(AEntry);
-  if Pos(CSchemaFieldSep, LRest) > 0 then
-    Result := SchemaFieldEntryRest(LRest);
-end;
-
-function MapSchemaTypeToSemanticType(const ADataType: string): string;
-var
-  LType: string;
-begin
-  LType := LowerCase(Trim(ADataType));
-  if (LType = 'system.int16') or (LType = 'system.int32') or
-    (LType = 'system.int64') or (LType = 'int16') or (LType = 'int32') or
-    (LType = 'int64') then
-    Result := 'integer'
-  else if (LType = 'system.decimal') or (LType = 'system.double') or
-    (LType = 'system.single') or (LType = 'decimal') or (LType = 'double') or
-    (LType = 'single') then
-    Result := 'float'
-  else if LType = 'system.boolean' then
-    Result := 'boolean'
-  else if LType = 'system.datetime' then
-    Result := 'datetime'
-  else if LType = 'system.byte[]' then
-    Result := 'blob'
-  else
-    Result := 'string';
-end;
-
-function GetMappedError(AErrors: TStrings; const AAlias, AName: string): string;
-var
-  LIndex: Integer;
-begin
-  Result := '';
-  if AErrors = nil then
-    Exit;
-  LIndex := AErrors.IndexOfName(Trim(AAlias));
-  if LIndex >= 0 then
-  begin
-    Result := Trim(AErrors.ValueFromIndex[LIndex]);
-    if Result <> '' then
-      Exit;
-  end;
-  if Trim(AName) <> '' then
-  begin
-    LIndex := AErrors.IndexOfName(Trim(AName));
-    if LIndex >= 0 then
-      Result := Trim(AErrors.ValueFromIndex[LIndex]);
-  end;
-end;
-
-// Fields of the Reportman Agent (rpdbHttp) datasets read from the Hub schema
-// (they are not opened): entries of EncodeSchemaFieldEntry, errors by alias
-procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
-  AErrors: TStrings);
-var
-  I, J: Integer;
-  LDataInfo: TRpDataInfoItem;
-  LDatabaseInfo: TRpDatabaseInfoItem;
-  LHttp: TRpDatabaseHttp;
-  LConnectionParams: TStringList;
-  LResponse, LRoot: TJSONObject;
-  LColumns, LRows: TJSONArray;
-  LColumnIndexes: TStringList;
-  LRow: TJSONArray;
-  LColIndex, LDataTypeIndex: Integer;
-  LFieldName, LDataType, LAlias: string;
-
-  function ReadCellString(ARow: TJSONArray; AIndex: Integer): string;
-  var
-    LValue: TJSONValue;
-  begin
-    Result := '';
-    if (ARow = nil) or (AIndex < 0) or (AIndex >= ARow.Count) then
-      Exit;
-    LValue := ARow.Items[AIndex];
-    if (LValue <> nil) and (not (LValue is TJSONNull)) then
-      Result := LValue.Value;
-  end;
-
-begin
-  if AFields <> nil then
-    AFields.Clear;
-  if AErrors <> nil then
-    AErrors.Clear;
-  if AReport = nil then
-    Exit;
-  LConnectionParams := TStringList.Create;
-  LColumnIndexes := TStringList.Create;
-  try
-    for I := 0 to AReport.DataInfo.Count - 1 do
-    begin
-      LDataInfo := AReport.DataInfo.Items[I];
-      if Trim(LDataInfo.SQL) = '' then
-        Continue;
-      LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
-      if (LDatabaseInfo = nil) or (LDatabaseInfo.Driver <> rpdbHttp) then
-        Continue;
-      LAlias := Trim(LDataInfo.Alias);
-      if LAlias = '' then
-        LAlias := Trim(LDataInfo.Name);
-      LHttp := TRpDatabaseHttp.Create;
-      LResponse := nil;
-      try
-        LConnectionParams.Clear;
-        LDatabaseInfo.LoadConnectionParams(LConnectionParams);
-        LHttp.ApiKey := LConnectionParams.Values['ApiKey'];
-        LHttp.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
-        LHttp.HubSchemaId := LDataInfo.HubSchemaId;
-        if (LHttp.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
-        begin
-          LHttp.Token := TRpAuthManager.Instance.Token;
-          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-        end;
-        LResponse := LHttp.GetTableSchema(LDataInfo.SQL);
-        if LResponse = nil then
-          raise Exception.Create('Empty schema response.');
-        LRoot := LResponse;
-        if (LRoot.Values['data'] <> nil) and (LRoot.Values['data'] is TJSONObject) then
-          LRoot := TJSONObject(LRoot.Values['data']);
-        if not ((LRoot.Values['columns'] is TJSONArray) and (LRoot.Values['rows'] is TJSONArray)) then
-          raise Exception.Create('Invalid schema response format.');
-        LColumns := TJSONArray(LRoot.Values['columns']);
-        LRows := TJSONArray(LRoot.Values['rows']);
-        LColumnIndexes.Clear;
-        for LColIndex := 0 to LColumns.Count - 1 do
-          LColumnIndexes.Add(LowerCase(TJSONObject(LColumns.Items[LColIndex]).Values['name'].Value));
-        LColIndex := LColumnIndexes.IndexOf('columnname');
-        LDataTypeIndex := LColumnIndexes.IndexOf('datatype');
-        for J := 0 to LRows.Count - 1 do
-        begin
-          if not (LRows.Items[J] is TJSONArray) then
-            Continue;
-          LRow := TJSONArray(LRows.Items[J]);
-          LFieldName := ReadCellString(LRow, LColIndex);
-          LDataType := MapSchemaTypeToSemanticType(ReadCellString(LRow, LDataTypeIndex));
-          if (Trim(LFieldName) <> '') and (AFields <> nil) then
-            AFields.Add(EncodeSchemaFieldEntry(LAlias, LFieldName, LDataType));
-        end;
-      except
-        on E: Exception do
-          if AErrors <> nil then
-            AErrors.Values[LAlias] := E.Message;
-      end;
-      LResponse.Free;
-      LHttp.Free;
-    end;
-  finally
-    LColumnIndexes.Free;
-    LConnectionParams.Free;
-  end;
-end;
-
-function GetSemanticFieldDataType(AFieldType: TFieldType): string;
-begin
-  case AFieldType of
-    ftString, ftWideString, ftFixedChar:
-      Result := 'string';
-    ftSmallint, ftInteger, ftWord, ftAutoInc, ftLargeint:
-      Result := 'integer';
-    ftFloat, ftBCD, ftFMTBcd:
-      Result := 'float';
-    ftCurrency:
-      Result := 'currency';
-    ftDate:
-      Result := 'date';
-    ftTime:
-      Result := 'time';
-    ftDateTime:
-      Result := 'datetime';
-    ftBoolean:
-      Result := 'boolean';
-    ftMemo, ftWideMemo:
-      Result := 'memo';
-    ftBlob, ftGraphic, ftBytes, ftVarBytes:
-      Result := 'blob';
-  else
-    Result := 'unknown';
-  end;
-end;
-
-function GetSemanticParamType(AParamType: TRpParamType): string;
-begin
-  case AParamType of
-    rpParamString: Result := 'string';
-    rpParamInteger: Result := 'integer';
-    rpParamDouble: Result := 'float';
-    rpParamDate: Result := 'date';
-    rpParamTime: Result := 'time';
-    rpParamDateTime: Result := 'datetime';
-    rpParamCurrency: Result := 'currency';
-    rpParamBool: Result := 'boolean';
-    rpParamExpreB: Result := 'expression_boolean';
-    rpParamExpreA: Result := 'expression_string';
-    rpParamSubst: Result := 'substitution';
-    rpParamList: Result := 'list';
-    rpParamMultiple: Result := 'multiple';
-    rpParamSubstE: Result := 'substitution_expression';
-    rpParamSubstList: Result := 'substitution_list';
-    rpParamInitialExpression: Result := 'initial_expression';
-  else
-    Result := 'unknown';
-  end;
-end;
-
-// '[DATASET_COLUMNS alias columns]' block of the AI context
-function BuildDatasetColumnsBlock(const ADatasetAlias: string;
-  AColumns: TStrings): string;
-var
-  K: Integer;
-begin
-  Result := '[DATASET_COLUMNS ' + ADatasetAlias + ' columns]' + sLineBreak;
-  for K := 0 to AColumns.Count - 1 do
-    Result := Result + AColumns[K] + sLineBreak;
-  Result := Result + '[/DATASET_COLUMNS]';
-end;
-
-// The expression semantic context of TFRpExpredialogVCL (chat mode
-// expression) for the evaluator of AReport after PrepareLiveContext: dataset
-// columns, report parameters and the documented functions and constants
-function BuildExpressionSemanticContext(AReport: TRpReport;
-  ASchemaOnlyFields: TStrings): TJSONObject;
-var
-  LEvaluator: TRpEvaluator;
-  LAliasItem: TRpAliasListItem;
-  LDataset: TDataSet;
-  LField: TField;
-  LParam: TRpParam;
-  LDatasetColumnsBlocks, LFunctions, LConstants: TJSONArray;
-  LDatasetColumnsMap, LMemoryVariables: TStringList;
-  LIdentifier: TRpIdentifier;
-  LBlock: string;
-  I, J: Integer;
-
-  function EnsureDatasetColumnList(const ADatasetAlias: string): TStringList;
-  var
-    LIndex: Integer;
-  begin
-    LIndex := LDatasetColumnsMap.IndexOf(ADatasetAlias);
-    if LIndex >= 0 then
-      Result := TStringList(LDatasetColumnsMap.Objects[LIndex])
-    else
-    begin
-      Result := TStringList.Create;
-      Result.CaseSensitive := False;
-      Result.Duplicates := dupIgnore;
-      LDatasetColumnsMap.AddObject(ADatasetAlias, Result);
-    end;
-  end;
-
-  procedure AddDatasetColumn(const ADatasetAlias, AFieldName, AFieldType: string);
-  var
-    LColumns: TStringList;
-    LEntry: string;
-  begin
-    if (Trim(ADatasetAlias) = '') or (Trim(AFieldName) = '') then
-      Exit;
-    LColumns := EnsureDatasetColumnList(ADatasetAlias);
-    LEntry := AFieldName + ':' + AFieldType;
-    if LColumns.IndexOf(LEntry) < 0 then
-      LColumns.Add(LEntry);
-  end;
-
-  function CreateCatalogEntry(const AModel, AHelp: string): TJSONObject;
-  begin
-    Result := TJSONObject.Create;
-    Result.AddPair('model', AModel);
-    if Trim(AHelp) <> '' then
-      Result.AddPair('help', AHelp);
-  end;
-
-begin
-  Result := TJSONObject.Create;
-  LDatasetColumnsMap := TStringList.Create;
-  LMemoryVariables := TStringList.Create;
-  try
-    LDatasetColumnsBlocks := TJSONArray.Create;
-    LFunctions := TJSONArray.Create;
-    LConstants := TJSONArray.Create;
-    Result.AddPair('datasetColumnsBlocks', LDatasetColumnsBlocks);
-    Result.AddPair('functions', LFunctions);
-    Result.AddPair('constants', LConstants);
-
-    LEvaluator := AReport.Evaluator;
-    if (LEvaluator <> nil) and (LEvaluator.Rpalias <> nil) then
-    begin
-      for I := 0 to LEvaluator.Rpalias.List.Count - 1 do
-      begin
-        LAliasItem := LEvaluator.Rpalias.List.Items[I];
-        if LAliasItem = nil then
-          Continue;
-        LDataset := LAliasItem.Dataset;
-        if LDataset = nil then
-          Continue;
-        for J := 0 to LDataset.FieldCount - 1 do
-        begin
-          LField := LDataset.Fields[J];
-          AddDatasetColumn(LAliasItem.Alias, LField.FieldName,
-            GetSemanticFieldDataType(LField.DataType));
-        end;
-      end;
-    end;
-
-    if ASchemaOnlyFields <> nil then
-      for I := 0 to ASchemaOnlyFields.Count - 1 do
-        if Trim(ASchemaOnlyFields[I]) <> '' then
-          AddDatasetColumn(SchemaFieldEntryAlias(ASchemaOnlyFields[I]),
-            SchemaFieldEntryFieldName(ASchemaOnlyFields[I]),
-            SchemaFieldEntryDataType(ASchemaOnlyFields[I]));
-
-    for I := 0 to AReport.Params.Count - 1 do
-    begin
-      LParam := AReport.Params[I];
-      if LParam <> nil then
-        LMemoryVariables.Add('M.' + LParam.Name + ':' +
-          GetSemanticParamType(LParam.ParamType));
-    end;
-
-    for I := 0 to LDatasetColumnsMap.Count - 1 do
-      LDatasetColumnsBlocks.Add(BuildDatasetColumnsBlock(LDatasetColumnsMap[I],
-        TStringList(LDatasetColumnsMap.Objects[I])));
-
-    if LMemoryVariables.Count > 0 then
-    begin
-      LBlock := '[MEMORY_VARIABLES]' + sLineBreak;
-      for I := 0 to LMemoryVariables.Count - 1 do
-        LBlock := LBlock + LMemoryVariables[I] + sLineBreak;
-      LBlock := LBlock + '[/MEMORY_VARIABLES]';
-      Result.AddPair('memoryVariablesBlock', LBlock);
-    end;
-
-    if LEvaluator <> nil then
-      for I := 0 to LEvaluator.Identifiers.Count - 1 do
-      begin
-        LIdentifier := TRpIdentifier(LEvaluator.Identifiers.Objects[I]);
-        if (LIdentifier = nil) or (LIdentifier is TIdenRpExpression) or
-           (Trim(LIdentifier.AIHelp) = '') then
-          Continue;
-        case LIdentifier.RType of
-          RTypeidenfunction:
-            LFunctions.AddElement(CreateCatalogEntry(LIdentifier.Model,
-              Trim(LIdentifier.AIHelp)));
-          RTypeidenconstant:
-            LConstants.AddElement(CreateCatalogEntry(LIdentifier.Model,
-              Trim(LIdentifier.AIHelp)));
-        end;
-      end;
-  finally
-    for I := 0 to LDatasetColumnsMap.Count - 1 do
-      LDatasetColumnsMap.Objects[I].Free;
-    LDatasetColumnsMap.Free;
-    LMemoryVariables.Free;
-  end;
-end;
-
-// ExistingContextJson of the design requests: the expression context and the
-// state of every data source (live fields, Agent schema, open errors)
-function BuildDesignExpressionContextJson(AReport: TRpReport;
-  AOpenErrors, ASchemaOnlyFields, ASchemaOnlyErrors: TStrings;
-  out AErrorMessage: string): string;
-var
-  LRoot, LExpressionContext, LRuntimeSource: TJSONObject;
-  LRuntimeDataSources, LIssues: TJSONArray;
-  LRuntimeDatasetColumns: TStringList;
-  LDataInfo: TRpDataInfoItem;
-  LDatabaseInfo: TRpDatabaseInfoItem;
-  LDataSourceName, LDataSourceError, LRuntimeSourceName: string;
-  I, K: Integer;
-  LEntry: string;
-
-  procedure AddIssue(AIssues: TJSONArray; const ASeverity, ACode, AMessage: string);
-  var
-    LIssue: TJSONObject;
-  begin
-    LIssue := TJSONObject.Create;
-    LIssue.AddPair('severity', ASeverity);
-    LIssue.AddPair('code', ACode);
-    LIssue.AddPair('message', AMessage);
-    AIssues.AddElement(LIssue);
-  end;
-
-  function BuildRuntimeSource(const AName, AAlias, AStatus, ASource: string;
-    ARefreshRequired: Boolean; const ADatasetColumnsBlock: string;
-    AIssues: TJSONArray): TJSONObject;
-  var
-    LRuntimeSchema: TJSONObject;
-  begin
-    Result := TJSONObject.Create;
-    Result.AddPair('name', AName);
-    if Trim(AAlias) <> '' then
-      Result.AddPair('alias', AAlias);
-    LRuntimeSchema := TJSONObject.Create;
-    LRuntimeSchema.AddPair('status', AStatus);
-    LRuntimeSchema.AddPair('source', ASource);
-    LRuntimeSchema.AddPair('refreshRequired', TJSONBool.Create(ARefreshRequired));
-    if Trim(ADatasetColumnsBlock) <> '' then
-      LRuntimeSchema.AddPair('datasetColumnsBlock', ADatasetColumnsBlock);
-    LRuntimeSchema.AddPair('issues', AIssues);
-    Result.AddPair('runtimeSchema', LRuntimeSchema);
-  end;
-
-  function ColumnsBlock(const AAlias: string): string;
-  begin
-    if LRuntimeDatasetColumns.Count = 0 then
-      Result := ''
-    else
-      Result := BuildDatasetColumnsBlock(AAlias, LRuntimeDatasetColumns);
-  end;
-
-begin
-  AErrorMessage := '';
-  Result := '{}';
-  if AReport = nil then
-    Exit;
-  LRoot := TJSONObject.Create;
-  try
-    try
-      if AReport.Evaluator = nil then
-        raise Exception.Create('The report evaluator is not available after dataset refresh.');
-      LExpressionContext := BuildExpressionSemanticContext(AReport, ASchemaOnlyFields);
-    except
-      on E: Exception do
-      begin
-        AErrorMessage := E.Message;
-        LExpressionContext := TJSONObject.Create;
-      end;
-    end;
-    LRuntimeDataSources := TJSONArray.Create;
-    LRoot.AddPair('expressionContext', LExpressionContext);
-    LRoot.AddPair('runtimeDataSources', LRuntimeDataSources);
-
-    for I := 0 to AReport.DataInfo.Count - 1 do
-    begin
-      LDataInfo := AReport.DataInfo.Items[I];
-      LDataSourceName := Trim(LDataInfo.Name);
-      if LDataSourceName = '' then
-        LDataSourceName := Trim(LDataInfo.Alias);
-      LRuntimeDatasetColumns := TStringList.Create;
-      try
-        LRuntimeDatasetColumns.Duplicates := dupIgnore;
-        LRuntimeDatasetColumns.CaseSensitive := False;
-        LIssues := TJSONArray.Create;
-        LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
-        if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
-          LRuntimeSourceName := 'agent_schema_only'
-        else
-          LRuntimeSourceName := 'delphi_evaluator';
-        LDataSourceError := GetMappedError(AOpenErrors, LDataInfo.Alias, LDataSourceName);
-        if LDataSourceError = '' then
-          LDataSourceError := GetMappedError(ASchemaOnlyErrors, LDataInfo.Alias, LDataSourceName);
-
-        if AErrorMessage = '' then
-        begin
-          if LRuntimeSourceName = 'agent_schema_only' then
-          begin
-            if ASchemaOnlyFields <> nil then
-              for K := 0 to ASchemaOnlyFields.Count - 1 do
-              begin
-                LEntry := Trim(ASchemaOnlyFields[K]);
-                if (LEntry <> '') and
-                   SameText(Trim(SchemaFieldEntryAlias(LEntry)), Trim(LDataInfo.Alias)) then
-                  LRuntimeDatasetColumns.Add(SchemaFieldEntryFieldName(LEntry) + ':' +
-                    SchemaFieldEntryDataType(LEntry));
-              end;
-          end
-          else if LDataInfo.Dataset <> nil then
-            for K := 0 to LDataInfo.Dataset.FieldCount - 1 do
-              LRuntimeDatasetColumns.Add(LDataInfo.Dataset.Fields[K].FieldName + ':' +
-                GetSemanticFieldDataType(LDataInfo.Dataset.Fields[K].DataType));
-
-          if Trim(LDataSourceError) <> '' then
-          begin
-            if LRuntimeSourceName = 'agent_schema_only' then
-              AddIssue(LIssues, 'error', 'datasource_schema_failed', LDataSourceError)
-            else
-              AddIssue(LIssues, 'error', 'datasource_open_failed', LDataSourceError);
-            LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
-              'refresh_failed', LRuntimeSourceName, True, ColumnsBlock(LDataInfo.Alias), LIssues);
-          end
-          else
-          begin
-            if LRuntimeDatasetColumns.Count = 0 then
-              AddIssue(LIssues, 'info', 'no_live_fields',
-                'No live fields were returned by the Delphi evaluator for this datasource.');
-            LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
-              'live_context', LRuntimeSourceName, False, ColumnsBlock(LDataInfo.Alias), LIssues);
-          end;
-        end
-        else
-        begin
-          AddIssue(LIssues, 'error', 'refresh_failed', AErrorMessage);
-          LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
-            'refresh_failed', LRuntimeSourceName, True, ColumnsBlock(LDataInfo.Alias), LIssues);
-        end;
-        LRuntimeDataSources.AddElement(LRuntimeSource);
-      finally
-        LRuntimeDatasetColumns.Free;
-      end;
-    end;
-    Result := LRoot.ToJSON;
-  finally
-    LRoot.Free;
-  end;
 end;
 
 { Report documents }
@@ -1131,7 +574,7 @@ begin
     try
       Report.PrepareLiveContext(LPayload.OpenErrors);
       CollectAgentSchemaOnlyContext(Report, LPayload.SchemaOnlyFields,
-        LPayload.SchemaOnlyErrors);
+        LPayload.SchemaOnlyErrors, Token, InstallId);
     except
       on E: Exception do
       begin
@@ -2563,6 +2006,8 @@ begin
   LWorker := TRpDesignContextWorker.Create(FDesignMailboxRef);
   LWorker.RequestVersion := FDesignContextRefreshVersion;
   LWorker.Report := LCopy;
+  LWorker.Token := TRpAuthManager.Instance.Token;
+  LWorker.InstallId := TRpAuthManager.Instance.InstallId;
   LWorker.Start;
 end;
 
@@ -2625,8 +2070,9 @@ begin
   end
   else
   begin
+    // No alias of the designer: the evaluator of the copy gets its own
     FDesignChatContextJson := BuildDesignExpressionContextJson(LPayload.ContextReport,
-      LPayload.OpenErrors, LPayload.SchemaOnlyFields, LPayload.SchemaOnlyErrors,
+      nil, LPayload.OpenErrors, LPayload.SchemaOnlyFields, LPayload.SchemaOnlyErrors,
       LErrorMessage);
     FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
   end;

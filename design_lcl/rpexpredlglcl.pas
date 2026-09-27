@@ -589,6 +589,19 @@ begin
   end;
 end;
 
+// The connection of a dataset, nil when it does not exist.
+// TRpDatabaseInfoList.ItemByName raises instead (the VCL code expects nil):
+// a dataset without a valid connection would stop the whole context.
+function FindDatabaseInfo(AReport: TRpReport; const AAlias: string): TRpDatabaseInfoItem;
+var
+  LIndex: Integer;
+begin
+  Result := nil;
+  LIndex := AReport.DatabaseInfo.IndexOf(AAlias);
+  if LIndex >= 0 then
+    Result := AReport.DatabaseInfo.Items[LIndex];
+end;
+
 { Agent datasets }
 
 procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
@@ -648,7 +661,7 @@ begin
       if Trim(LDataInfo.SQL) = '' then
         Continue;
 
-      LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
       if (LDatabaseInfo = nil) or (LDatabaseInfo.Driver <> rpdbHttp) then
         Continue;
 
@@ -1037,7 +1050,7 @@ begin
         LRuntimeDatasetColumns.Duplicates := dupIgnore;
         LRuntimeDatasetColumns.CaseSensitive := False;
         LIssues := TJSONArray.Create;
-        LDatabaseInfo := AReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+        LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
         if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
           LRuntimeSourceName := 'agent_schema_only'
         else
