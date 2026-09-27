@@ -307,7 +307,8 @@ begin
        TEdit(acontrol).Text:=aparam.Value;
       end;
 {$IFNDEF FORWEBAX}
-      bbutton.Visible:=Length(aparam.SearchDataset)>0;
+      // Only when a search implementation is installed (design package)
+      bbutton.Visible:=(Length(aparam.SearchDataset)>0) and Assigned(GlobalParamValueSearch);
 {$ENDIF}
      end;
    rpParamInteger,rpParamDouble,rpParamCurrency:
@@ -335,7 +336,8 @@ begin
        TEdit(acontrol).Text:=VarToStr(aparam.Value);
       end;
 {$IFNDEF FORWEBAX}
-      bbutton.Visible:=Length(aparam.SearchDataset)>0;
+      // Only when a search implementation is installed (design package)
+      bbutton.Visible:=(Length(aparam.SearchDataset)>0) and Assigned(GlobalParamValueSearch);
 {$ENDIF}
      end;
    rpParamDate:
@@ -712,13 +714,37 @@ end;
 
 
 procedure TFRpRTParams.BSearchClick(Sender: TObject);
+var
+  index: Integer;
+  aparam: TRpParam;
+  acontrol: TControl;
+  achecknull: TCheckBox;
 begin
-  if Assigned(GlobalParamValueSearch) and (Sender is TComponent) then
+  // Lookup using a dataset (VCL: rpmdfsearchvcl.ParamValueSearch)
+  if not Assigned(GlobalParamValueSearch) or not (Sender is TComponent) then
+    Exit;
+  index := TComponent(Sender).Tag;
+  aparam := params.Items[index];
+  GlobalParamValueSearch(aparam, report);
+  if not Assigned(LControls) or (index >= LControls.Count) then
+    Exit;
+  acontrol := TControl(LControls.Objects[index]);
+  // TEdit and TRpMaskEdit (TCustomMaskEdit) are both TCustomEdit
+  if acontrol is TCustomEdit then
   begin
-    GlobalParamValueSearch(params.Items[TComponent(Sender).Tag], report);
-    if Assigned(LControls) and (TComponent(Sender).Tag < LControls.Count) and
-       (LControls.Objects[TComponent(Sender).Tag] is TEdit) then
-      TEdit(LControls.Objects[TComponent(Sender).Tag]).Text := params.Items[TComponent(Sender).Tag].AsString;
+    if VarIsNull(aparam.Value) or VarIsEmpty(aparam.Value) then
+      Exit;
+    TCustomEdit(acontrol).Text := aparam.AsString;
+    // The selected value is not null: clear the null check and show the edit
+    if index < lnulls.Count then
+    begin
+      achecknull := TCheckBox(lnulls.Objects[index]);
+      if Assigned(achecknull) and achecknull.Checked then
+      begin
+        achecknull.Checked := False;
+        acontrol.Visible := True;
+      end;
+    end;
   end;
 end;
 

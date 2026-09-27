@@ -100,7 +100,7 @@ begin
   // Dataset selector
   FLabelDataset := TLabel.Create(Self);
   FLabelDataset.Parent := Self;
-  FLabelDataset.Caption := TranslateStr(282, 'Dataset:');
+  FLabelDataset.Caption := SRpDataset + ':';
   FLabelDataset.Left := 16;
   FLabelDataset.Top := 12;
 
@@ -114,7 +114,7 @@ begin
 
   FCheckProportional := TCheckBox.Create(Self);
   FCheckProportional.Parent := Self;
-  FCheckProportional.Caption := TranslateStr(880, 'Proportional column widths');
+  FCheckProportional.Caption := 'Proportional column widths';
   FCheckProportional.Checked := True;
   FCheckProportional.Left := 280;
   FCheckProportional.Top := 32;
@@ -122,7 +122,7 @@ begin
   // Available fields list
   FLabelAvailable := TLabel.Create(Self);
   FLabelAvailable.Parent := Self;
-  FLabelAvailable.Caption := TranslateStr(878, 'Available Fields:');
+  FLabelAvailable.Caption := 'Available Fields:';
   FLabelAvailable.Left := 16;
   FLabelAvailable.Top := 64;
 
@@ -157,7 +157,7 @@ begin
   // Selected fields checklistbox
   FLabelSelected := TLabel.Create(Self);
   FLabelSelected.Parent := Self;
-  FLabelSelected.Caption := TranslateStr(879, 'Selected Fields (Check to Calculate Total):');
+  FLabelSelected.Caption := 'Selected Fields (Check to Calculate Total):';
   FLabelSelected.Left := 282;
   FLabelSelected.Top := 64;
 

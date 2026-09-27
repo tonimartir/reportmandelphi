@@ -273,6 +273,9 @@ var
  acopies:integer;
  FReportAction:TRpReportActions;
  linch:integer;
+ apapersource:integer;
+ acustomwidth,acustomheight:integer;
+ aleft,aright,atop,abottom:integer;
 begin
  if CheckDefaultCopies.Checked then
   acopies:=0
@@ -285,6 +288,27 @@ begin
  linch:=Round(ELinesPerInch.AsFloat*100);
  if ((linch<100) OR (linch>3000)) then
   Raise Exception.Create(SRpSLinesInchError);
+ // Validate every typed value before touching the report: an invalid value
+ // must not leave the report half modified
+ apapersource:=StrToInt(EPaperSource.Text);
+ acustomwidth:=report.CustomPageWidth;
+ if EPageWidth.Text<>oldcustompagewidth then
+  acustomwidth:=gettwipsfromtext(EPageWidth.Text);
+ acustomheight:=report.CustomPageHeight;
+ if EPageHeight.Text<>oldcustompageheight then
+  acustomheight:=gettwipsfromtext(EPageHeight.Text);
+ aleft:=report.LeftMargin;
+ if ELeftMargin.Text<>oldleftmargin then
+  aleft:=gettwipsfromtext(ELeftMargin.Text);
+ aright:=report.RightMargin;
+ if ERightMargin.Text<>oldrightmargin then
+  aright:=gettwipsfromtext(ERightMargin.Text);
+ atop:=report.TopMargin;
+ if ETopMargin.Text<>oldtopmargin then
+  atop:=gettwipsfromtext(ETopMargin.Text);
+ abottom:=report.BottomMargin;
+ if EBottomMargin.Text<>oldbottommargin then
+  abottom:=gettwipsfromtext(EBottomMargin.Text);
  report.LinesPerInch:=linch;
  report.Copies:=acopies;
  report.CollateCopies:=CheckCollate.Checked;
@@ -303,18 +327,12 @@ begin
  report.PagesizeQt:=ComboPageSize.ItemIndex;
  report.PageHeight:=Round(PageSizeArray[report.PageSizeQt].Height*1000/TWIPS_PER_INCHESS);
  report.PageWidth:=Round(PageSizeArray[report.PageSizeQt].Width*1000/TWIPS_PER_INCHESS);
- if EPageWidth.Text<>oldcustompagewidth then
-  report.CustomPageWidth:=gettwipsfromtext(EPageWidth.Text);
- if EPageHeight.Text<>oldcustompageheight then
-  report.CustomPageHeight:=gettwipsfromtext(EPageHeight.Text);
- if ELeftMargin.Text<>oldleftmargin then
-  report.LeftMargin:=gettwipsfromtext(ELeftMargin.Text);
- if ERightMargin.Text<>oldrightmargin then
-  report.RightMargin:=gettwipsfromtext(ERightMargin.Text);
- if ETopMargin.Text<>oldtopmargin then
-  report.TopMargin:=gettwipsfromtext(ETopMargin.Text);
- if EBottomMargin.Text<>oldbottommargin then
-  report.BottomMargin:=gettwipsfromtext(EBottomMargin.Text);
+ report.CustomPageWidth:=acustomwidth;
+ report.CustomPageHeight:=acustomheight;
+ report.LeftMargin:=aleft;
+ report.RightMargin:=aright;
+ report.TopMargin:=atop;
+ report.BottomMargin:=abottom;
  report.PageOrientation:=rpOrientationDefault;
  report.PrinterSelect:=TRpPrinterSelect(ComboSelPrinter.ItemIndex);
  if RPageOrientation.itemindex=1 then
@@ -333,7 +351,7 @@ begin
  report.PreviewMargins:=CheckMargins.Checked;
  report.PreviewWindow:=TRpPreviewWindowStyle(ComboPreview.ItemIndex);
  report.StreamFormat:=TRpStreamFormat(ComboFormat.ItemIndex);
- report.PaperSOurce:=StrToInt(EPaperSource.Text);
+ report.PaperSOurce:=apapersource;
  report.Duplex:=ComboDuplex.ItemIndex;
  report.ForcePaperName:=EForceFormName.Text;
 

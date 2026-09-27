@@ -23,7 +23,7 @@ uses
   Buttons, ExtCtrls, Controls, StdCtrls, CheckLst,
   DB, Variants,
   rpmdconsts, rpdatainfo, rpreport, rpparams, rptypes, rpmaskedit,
-  rpbasereport, rpgraphutilslcl, rpxmlstream;
+  rpbasereport, rpgraphutilslcl, rpxmlstream, rpmdundocuelcl;
 
 type
   { TFRpParamsLCL }
@@ -130,10 +130,208 @@ type
     property DoOk: Boolean read FDoOk;
   end;
 
+// Variant comparison used to detect changed values: Null/Empty are equal,
+// values of incompatible types are compared as strings instead of raising.
+function ParamValuesEqual(const AValue, BValue: Variant): Boolean;
+// Records in the report undo cue the differences between origParams and
+// newParams (removed, added and modified parameters), all in one group.
+// Port of rpfparamsvcl.RecordParamUndoChanges.
+procedure RecordParamUndoChanges(origParams, newParams: TRpParamList; report: TRpReport;
+  groupId: Integer = -1);
 procedure ShowParamDef(params: TRpParamList; datainfo: TRpDataInfoList; report: TRpReport;
   deferUndoUntilAccept: Boolean = False);
 
 implementation
+
+function ParamStringListToVariant(strings: TStrings): Variant;
+var
+  index: Integer;
+begin
+  if strings.Count = 0 then
+  begin
+    Result := VarArrayCreate([0, -1], varVariant);
+    Exit;
+  end;
+  Result := VarArrayCreate([0, strings.Count - 1], varVariant);
+  for index := 0 to strings.Count - 1 do
+    Result[index] := strings[index];
+end;
+
+function ParamValuesEqual(const AValue, BValue: Variant): Boolean;
+begin
+  if VarIsEmpty(AValue) or VarIsNull(AValue) then
+  begin
+    Result := VarIsEmpty(BValue) or VarIsNull(BValue);
+    Exit;
+  end;
+  if VarIsEmpty(BValue) or VarIsNull(BValue) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if VarIsArray(AValue) or VarIsArray(BValue) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  try
+    Result := VarSameValue(AValue, BValue);
+  except
+    on EVariantError do
+      // Not comparable as values (e.g. string against number)
+      Result := VarToStr(AValue) = VarToStr(BValue);
+  end;
+end;
+
+function SameParamStringLists(list1, list2: TStrings): Boolean;
+begin
+  Result := list1.Text = list2.Text;
+end;
+
+function GetParamOperationName(param: TRpParam): string;
+begin
+  if not Assigned(param) then
+    raise Exception.Create('GetParamOperationName: parameter is nil');
+  if Trim(param.IntName) = '' then
+    raise Exception.Create('GetParamOperationName: parameter ' + param.Name + ' has empty IntName');
+  Result := param.IntName;
+end;
+
+procedure RecordParamUndoChanges(origParams, newParams: TRpParamList; report: TRpReport;
+  groupId: Integer = -1);
+var
+  undoCue: TUndoCue;
+  i: Integer;
+  origParam, newParam: TRpParam;
+  op: TChangeObjectOperation;
+begin
+  if not Assigned(report) then
+    Exit;
+  if not Assigned(report.UndoCue) then
+    report.UndoCue := TUndoCue.Create(report);
+  undoCue := TUndoCue(report.UndoCue);
+  if groupId < 0 then
+    groupId := undoCue.GetGroupId;
+  // Removed params (in the original list but not in the new one)
+  for i := 0 to origParams.Count - 1 do
+  begin
+    origParam := origParams.Items[i];
+    if newParams.FindParamByIntName(GetParamOperationName(origParam)) = nil then
+    begin
+      op := TChangeObjectOperation.Create(otRemove, groupId);
+      op.componentName := GetParamOperationName(origParam);
+      op.componentClass := 'TRPPARAM';
+      op.oldItemIndex := i;
+      op.AddProperty('alias', ptString, origParam.Name, Null);
+      op.AddProperty('description', ptString, origParam.Description, Null);
+      op.AddProperty('hint', ptString, origParam.Hint, Null);
+      op.AddProperty('validation', ptString, origParam.Validation, Null);
+      op.AddProperty('errorMessage', ptString, origParam.ErrorMessage, Null);
+      op.AddProperty('visible', ptBoolean, origParam.Visible, Null);
+      op.AddProperty('neverVisible', ptBoolean, origParam.NeverVisible, Null);
+      op.AddProperty('isReadOnly', ptBoolean, origParam.IsReadOnly, Null);
+      op.AddProperty('allowNulls', ptBoolean, origParam.AllowNulls, Null);
+      op.AddProperty('paramType', ptInteger, Integer(origParam.ParamType), Null);
+      op.AddProperty('lookupDataset', ptString, origParam.LookupDataset, Null);
+      op.AddProperty('searchDataset', ptString, origParam.SearchDataset, Null);
+      op.AddProperty('searchParam', ptString, origParam.SearchParam, Null);
+      op.AddProperty('value', ptVariant, origParam.Value, Null);
+      op.AddProperty('datasets', ptStringArray, ParamStringListToVariant(origParam.Datasets), Null);
+      op.AddProperty('items', ptStringArray, ParamStringListToVariant(origParam.Items), Null);
+      op.AddProperty('values', ptStringArray, ParamStringListToVariant(origParam.Values), Null);
+      op.AddProperty('selected', ptStringArray, ParamStringListToVariant(origParam.Selected), Null);
+      undoCue.AddOperation(op);
+    end;
+  end;
+  // Added params (in the new list but not in the original one)
+  for i := 0 to newParams.Count - 1 do
+  begin
+    newParam := newParams.Items[i];
+    if origParams.FindParamByIntName(GetParamOperationName(newParam)) = nil then
+    begin
+      op := TChangeObjectOperation.Create(otAdd, groupId);
+      op.componentName := GetParamOperationName(newParam);
+      op.componentClass := 'TRPPARAM';
+      op.oldItemIndex := i;
+      op.AddProperty('alias', ptString, Null, newParam.Name);
+      op.AddProperty('description', ptString, Null, newParam.Description);
+      op.AddProperty('hint', ptString, Null, newParam.Hint);
+      op.AddProperty('validation', ptString, Null, newParam.Validation);
+      op.AddProperty('errorMessage', ptString, Null, newParam.ErrorMessage);
+      op.AddProperty('visible', ptBoolean, Null, newParam.Visible);
+      op.AddProperty('neverVisible', ptBoolean, Null, newParam.NeverVisible);
+      op.AddProperty('isReadOnly', ptBoolean, Null, newParam.IsReadOnly);
+      op.AddProperty('allowNulls', ptBoolean, Null, newParam.AllowNulls);
+      op.AddProperty('paramType', ptInteger, Null, Integer(newParam.ParamType));
+      op.AddProperty('lookupDataset', ptString, Null, newParam.LookupDataset);
+      op.AddProperty('searchDataset', ptString, Null, newParam.SearchDataset);
+      op.AddProperty('searchParam', ptString, Null, newParam.SearchParam);
+      op.AddProperty('value', ptVariant, Null, newParam.Value);
+      op.AddProperty('datasets', ptStringArray, Null, ParamStringListToVariant(newParam.Datasets));
+      op.AddProperty('items', ptStringArray, Null, ParamStringListToVariant(newParam.Items));
+      op.AddProperty('values', ptStringArray, Null, ParamStringListToVariant(newParam.Values));
+      op.AddProperty('selected', ptStringArray, Null, ParamStringListToVariant(newParam.Selected));
+      undoCue.AddOperation(op);
+    end;
+  end;
+  // Modified params
+  for i := 0 to newParams.Count - 1 do
+  begin
+    newParam := newParams.Items[i];
+    origParam := origParams.FindParamByIntName(GetParamOperationName(newParam));
+    if Assigned(origParam) then
+    begin
+      op := TChangeObjectOperation.Create(otModify, groupId);
+      op.componentName := GetParamOperationName(newParam);
+      op.componentClass := 'TRPPARAM';
+      if origParam.Name <> newParam.Name then
+        op.AddProperty('alias', ptString, origParam.Name, newParam.Name);
+      if origParam.Description <> newParam.Description then
+        op.AddProperty('description', ptString, origParam.Description, newParam.Description);
+      if origParam.Hint <> newParam.Hint then
+        op.AddProperty('hint', ptString, origParam.Hint, newParam.Hint);
+      if origParam.Validation <> newParam.Validation then
+        op.AddProperty('validation', ptString, origParam.Validation, newParam.Validation);
+      if origParam.ErrorMessage <> newParam.ErrorMessage then
+        op.AddProperty('errorMessage', ptString, origParam.ErrorMessage, newParam.ErrorMessage);
+      if origParam.Visible <> newParam.Visible then
+        op.AddProperty('visible', ptBoolean, origParam.Visible, newParam.Visible);
+      if origParam.NeverVisible <> newParam.NeverVisible then
+        op.AddProperty('neverVisible', ptBoolean, origParam.NeverVisible, newParam.NeverVisible);
+      if origParam.IsReadOnly <> newParam.IsReadOnly then
+        op.AddProperty('isReadOnly', ptBoolean, origParam.IsReadOnly, newParam.IsReadOnly);
+      if origParam.AllowNulls <> newParam.AllowNulls then
+        op.AddProperty('allowNulls', ptBoolean, origParam.AllowNulls, newParam.AllowNulls);
+      if Integer(origParam.ParamType) <> Integer(newParam.ParamType) then
+        op.AddProperty('paramType', ptInteger, Integer(origParam.ParamType), Integer(newParam.ParamType));
+      if origParam.LookupDataset <> newParam.LookupDataset then
+        op.AddProperty('lookupDataset', ptString, origParam.LookupDataset, newParam.LookupDataset);
+      if origParam.SearchDataset <> newParam.SearchDataset then
+        op.AddProperty('searchDataset', ptString, origParam.SearchDataset, newParam.SearchDataset);
+      if origParam.SearchParam <> newParam.SearchParam then
+        op.AddProperty('searchParam', ptString, origParam.SearchParam, newParam.SearchParam);
+      if (Integer(origParam.ParamType) <> Integer(newParam.ParamType)) or
+        (not ParamValuesEqual(origParam.Value, newParam.Value)) then
+        op.AddProperty('value', ptVariant, origParam.Value, newParam.Value);
+      if not SameParamStringLists(origParam.Datasets, newParam.Datasets) then
+        op.AddProperty('datasets', ptStringArray, ParamStringListToVariant(origParam.Datasets),
+          ParamStringListToVariant(newParam.Datasets));
+      if not SameParamStringLists(origParam.Items, newParam.Items) then
+        op.AddProperty('items', ptStringArray, ParamStringListToVariant(origParam.Items),
+          ParamStringListToVariant(newParam.Items));
+      if not SameParamStringLists(origParam.Values, newParam.Values) then
+        op.AddProperty('values', ptStringArray, ParamStringListToVariant(origParam.Values),
+          ParamStringListToVariant(newParam.Values));
+      if not SameParamStringLists(origParam.Selected, newParam.Selected) then
+        op.AddProperty('selected', ptStringArray, ParamStringListToVariant(origParam.Selected),
+          ParamStringListToVariant(newParam.Selected));
+      if op.properties.Count > 0 then
+        undoCue.AddOperation(op)
+      else
+        op.Free;
+    end;
+  end;
+end;
 
 procedure ShowParamDef(params: TRpParamList; datainfo: TRpDataInfoList; report: TRpReport;
   deferUndoUntilAccept: Boolean = False);
@@ -149,8 +347,9 @@ begin
     dia.Report := report;
     dia.Params.Assign(params);
     dia.DataInfo := datainfo;
-    dia.FillParamList;
 
+    // Fill the combos before the parameter list so the first selected
+    // parameter shows its lookup/search values (VCL FormShow order)
     if Assigned(datainfo) then
     begin
       dia.ComboLookup.Items.Clear;
@@ -164,13 +363,22 @@ begin
         dia.ComboLookup.Items.Add(datainfo.Items[i].Alias);
         dia.ComboSearchDataset.Items.Add(datainfo.Items[i].Alias);
       end;
+      dia.ComboSearchParam.Items.Clear;
+      dia.ComboSearchParam.Items.Add('');
+      for i := 0 to dia.Params.Count - 1 do
+        dia.ComboSearchParam.Items.Add(dia.Params.Items[i].Name);
       if dia.ComboDatasets.Items.Count > 0 then
         dia.ComboDatasets.ItemIndex := 0;
     end;
+    dia.FillParamList;
 
     dia.ShowModal;
     if dia.DoOk then
+    begin
+      if not deferUndoUntilAccept then
+        RecordParamUndoChanges(params, dia.Params, report);
       params.Assign(dia.Params);
+    end;
   finally
     dia.Free;
   end;
@@ -182,7 +390,7 @@ constructor TFRpParamsLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(199, 'Definición de parámetros');
+  Caption := TranslateStr(199, 'Parameter definition');
   Position := poScreenCenter;
   Width := 760;
   Height := 520;
@@ -212,7 +420,7 @@ begin
   BOK.Top := 9;
   BOK.Width := 85;
   BOK.Height := 27;
-  BOK.Caption := TranslateStr(93, 'Aceptar');
+  BOK.Caption := TranslateStr(93, 'OK');
   BOK.Default := True;
   BOK.Anchors := [akTop, akRight];
   BOK.OnClick := BOKClick;
@@ -223,7 +431,7 @@ begin
   BCancel.Top := 9;
   BCancel.Width := 85;
   BCancel.Height := 27;
-  BCancel.Caption := TranslateStr(94, 'Cancelar');
+  BCancel.Caption := TranslateStr(94, 'Cancel');
   BCancel.Cancel := True;
   BCancel.Anchors := [akTop, akRight];
   BCancel.OnClick := BCancelClick;
@@ -248,7 +456,7 @@ begin
   BAdd.Width := 34;
   BAdd.Height := 26;
   BAdd.Caption := '+';
-  BAdd.Hint := TranslateStr(187, 'Añadir parámetro');
+  BAdd.Hint := TranslateStr(187, 'Adds a new parameter');
   BAdd.ShowHint := True;
   BAdd.OnClick := BAddClick;
 
@@ -259,7 +467,7 @@ begin
   BDelete.Width := 34;
   BDelete.Height := 26;
   BDelete.Caption := '-';
-  BDelete.Hint := TranslateStr(189, 'Eliminar parámetro');
+  BDelete.Hint := TranslateStr(189, 'Deletes the selected parameter');
   BDelete.ShowHint := True;
   BDelete.OnClick := BDeleteClick;
 
@@ -270,7 +478,7 @@ begin
   BUp.Width := 34;
   BUp.Height := 26;
   BUp.Caption := '▲';
-  BUp.Hint := TranslateStr(190, 'Subir');
+  BUp.Hint := TranslateStr(190, 'Moves the selected parameter up');
   BUp.ShowHint := True;
   BUp.OnClick := BUpClick;
 
@@ -281,7 +489,7 @@ begin
   BDown.Width := 34;
   BDown.Height := 26;
   BDown.Caption := '▼';
-  BDown.Hint := TranslateStr(191, 'Bajar');
+  BDown.Hint := TranslateStr(191, 'Moves the selected parameter down');
   BDown.ShowHint := True;
   BDown.OnClick := BDownClick;
 
@@ -292,7 +500,7 @@ begin
   BRename.Width := 38;
   BRename.Height := 26;
   BRename.Caption := 'Ren';
-  BRename.Hint := TranslateStr(192, 'Renombrar parámetro');
+  BRename.Hint := TranslateStr(192, 'Renames the selected parameter');
   BRename.ShowHint := True;
   BRename.OnClick := BRenameClick;
 
@@ -313,13 +521,13 @@ begin
 
   // Tab 1: General
   TabGeneral := PageControl1.AddTabSheet;
-  TabGeneral.Caption := TranslateStr(26, 'General');
+  TabGeneral.Caption := SRpGeneral;
 
   LDescription := TLabel.Create(Self);
   LDescription.Parent := TabGeneral;
   LDescription.Left := 16;
   LDescription.Top := 16;
-  LDescription.Caption := TranslateStr(197, 'Descripción') + ':';
+  LDescription.Caption := TranslateStr(197, 'Description') + ':';
 
   EDescription := TEdit.Create(Self);
   EDescription.Parent := TabGeneral;
@@ -332,7 +540,7 @@ begin
   LDataType.Parent := TabGeneral;
   LDataType.Left := 330;
   LDataType.Top := 16;
-  LDataType.Caption := TranslateStr(193, 'Tipo de dato') + ':';
+  LDataType.Caption := TranslateStr(193, 'Data type') + ':';
 
   ComboDataType := TComboBox.Create(Self);
   ComboDataType.Parent := TabGeneral;
@@ -347,7 +555,7 @@ begin
   LValue.Parent := TabGeneral;
   LValue.Left := 16;
   LValue.Top := 72;
-  LValue.Caption := TranslateStr(194, 'Valor por defecto') + ':';
+  LValue.Caption := TranslateStr(194, 'Value') + ':';
 
   EValue := TRpMaskEdit.Create(Self);
   EValue.Parent := TabGeneral;
@@ -360,28 +568,28 @@ begin
   CheckNull.Parent := TabGeneral;
   CheckNull.Left := 330;
   CheckNull.Top := 92;
-  CheckNull.Caption := TranslateStr(196, 'Valor nulo');
+  CheckNull.Caption := TranslateStr(196, 'Null Value');
   CheckNull.OnClick := PropChange;
 
   CheckVisible := TCheckBox.Create(Self);
   CheckVisible.Parent := TabGeneral;
   CheckVisible.Left := 16;
   CheckVisible.Top := 130;
-  CheckVisible.Caption := TranslateStr(195, 'Visible para el usuario');
+  CheckVisible.Caption := TranslateStr(195, 'User visible');
   CheckVisible.OnClick := PropChange;
 
   CheckNeverVisible := TCheckBox.Create(Self);
   CheckNeverVisible.Parent := TabGeneral;
   CheckNeverVisible.Left := 200;
   CheckNeverVisible.Top := 130;
-  CheckNeverVisible.Caption := TranslateStr(1381, 'Nunca visible');
+  CheckNeverVisible.Caption := TranslateStr(1381, 'Never visible');
   CheckNeverVisible.OnClick := PropChange;
 
   CheckReadOnly := TCheckBox.Create(Self);
   CheckReadOnly.Parent := TabGeneral;
   CheckReadOnly.Left := 330;
   CheckReadOnly.Top := 130;
-  CheckReadOnly.Caption := TranslateStr(1379, 'Solo lectura');
+  CheckReadOnly.Caption := TranslateStr(1379, 'Read only');
   CheckReadOnly.OnClick := PropChange;
 
   CheckAllowNulls := TCheckBox.Create(Self);
@@ -395,7 +603,7 @@ begin
   LHint.Parent := TabGeneral;
   LHint.Left := 16;
   LHint.Top := 194;
-  LHint.Caption := TranslateStr(1382, 'Texto de ayuda') + ':';
+  LHint.Caption := TranslateStr(1382, 'Hint') + ':';
 
   EHint := TEdit.Create(Self);
   EHint.Parent := TabGeneral;
@@ -408,7 +616,7 @@ begin
   LValidation.Parent := TabGeneral;
   LValidation.Left := 16;
   LValidation.Top := 248;
-  LValidation.Caption := TranslateStr(1401, 'Expresión de validación') + ':';
+  LValidation.Caption := TranslateStr(1401, 'Validation') + ':';
 
   EValidation := TEdit.Create(Self);
   EValidation.Parent := TabGeneral;
@@ -421,7 +629,7 @@ begin
   LErrorMessage.Parent := TabGeneral;
   LErrorMessage.Left := 16;
   LErrorMessage.Top := 302;
-  LErrorMessage.Caption := TranslateStr(1403, 'Mensaje de error') + ':';
+  LErrorMessage.Caption := TranslateStr(1403, 'Error message') + ':';
 
   EErrorMessage := TEdit.Create(Self);
   EErrorMessage.Parent := TabGeneral;
@@ -432,13 +640,13 @@ begin
 
   // Tab 2: Datasets
   TabDataSets := PageControl1.AddTabSheet;
-  TabDataSets.Caption := TranslateStr(198, 'Asignación a conjuntos de datos');
+  TabDataSets.Caption := TranslateStr(198, 'Assign to datasets');
 
   LAssign := TLabel.Create(Self);
   LAssign.Parent := TabDataSets;
   LAssign.Left := 16;
   LAssign.Top := 16;
-  LAssign.Caption := TranslateStr(27, 'Conjunto de datos') + ':';
+  LAssign.Caption := SRpDataset + ':';
 
   ComboDatasets := TComboBox.Create(Self);
   ComboDatasets.Parent := TabDataSets;
@@ -453,7 +661,7 @@ begin
   BAddData.Top := 32;
   BAddData.Width := 80;
   BAddData.Height := 27;
-  BAddData.Caption := TranslateStr(28, 'Añadir');
+  BAddData.Caption := SRpAdd;
   BAddData.OnClick := BAddDataClick;
 
   BDeleteData := TButton.Create(Self);
@@ -462,7 +670,7 @@ begin
   BDeleteData.Top := 32;
   BDeleteData.Width := 80;
   BDeleteData.Height := 27;
-  BDeleteData.Caption := TranslateStr(29, 'Quitar');
+  BDeleteData.Caption := SRpDelete;
   BDeleteData.OnClick := BDeleteDataClick;
 
   LDatasets := TListBox.Create(Self);
@@ -474,7 +682,7 @@ begin
 
   // Tab 3: Values & Search
   TabValuesSearch := PageControl1.AddTabSheet;
-  TabValuesSearch.Caption := TranslateStr(30, 'Valores y Búsqueda');
+  TabValuesSearch.Caption := 'Values and search';
 
   GValues := TGroupBox.Create(Self);
   GValues.Parent := TabValuesSearch;
@@ -488,7 +696,7 @@ begin
   LItems.Parent := GValues;
   LItems.Left := 10;
   LItems.Top := 18;
-  LItems.Caption := TranslateStr(31, 'Descripciones') + ':';
+  LItems.Caption := 'Descriptions:';
 
   MItems := TMemo.Create(Self);
   MItems.Parent := GValues;
@@ -502,7 +710,7 @@ begin
   LValues.Parent := GValues;
   LValues.Left := 255;
   LValues.Top := 18;
-  LValues.Caption := TranslateStr(32, 'Valores correspondientes') + ':';
+  LValues.Caption := 'Corresponding values:';
 
   MValues := TMemo.Create(Self);
   MValues.Parent := GValues;
@@ -561,7 +769,7 @@ begin
   LSearchParam.Parent := GSearch;
   LSearchParam.Left := 10;
   LSearchParam.Top := 74;
-  LSearchParam.Caption := TranslateStr(1380, 'Parámetro de búsqueda') + ':';
+  LSearchParam.Caption := TranslateStr(1380, 'Search parameter') + ':';
 
   ComboSearchParam := TComboBox.Create(Self);
   ComboSearchParam.Parent := GSearch;
@@ -576,7 +784,7 @@ begin
   LSearch.Parent := GSearch;
   LSearch.Left := 255;
   LSearch.Top := 74;
-  LSearch.Caption := TranslateStr(946, 'Texto de búsqueda') + ':';
+  LSearch.Caption := TranslateStr(946, 'Search for string') + ':';
 
   ESearch := TEdit.Create(Self);
   ESearch.Parent := GSearch;
@@ -595,17 +803,30 @@ begin
     LParams.Items.Add(FParams.Items[i].Name);
 
   if LParams.Items.Count > 0 then
-  begin
     LParams.ItemIndex := 0;
-    LParamsClick(Self);
-  end;
+  // Always refresh: with an empty list the property panel must be hidden
+  LParamsClick(Self);
 end;
 
 procedure TFRpParamsLCL.LParamsClick(Sender: TObject);
 var
   param: TRpParam;
 begin
-  if LParams.Items.Count < 1 then Exit;
+  if LParams.Items.Count < 1 then
+  begin
+    // Nothing to edit: hide the property pages (VCL hides GProperties)
+    PageControl1.Visible := False;
+    BDelete.Enabled := False;
+    BRename.Enabled := False;
+    BUp.Enabled := False;
+    BDown.Enabled := False;
+    Exit;
+  end;
+  PageControl1.Visible := True;
+  BDelete.Enabled := True;
+  BRename.Enabled := True;
+  BUp.Enabled := True;
+  BDown.Enabled := True;
 
   FUpdating := True;
   try
@@ -676,7 +897,8 @@ begin
     FUpdating := False;
   end;
 
-  UpdateValue(param);
+  // Same as VCL: EDescriptionChange(CheckNull)
+  PropChange(CheckNull);
 end;
 
 function TFRpParamsLCL.IsDotNet: Boolean;
@@ -722,6 +944,72 @@ begin
       if (idx >= 0) and (idx < ECheckList.Items.Count) then
         ECheckList.Checked[idx] := True;
     end;
+  end
+  else
+  begin
+    // Port of TFRpParamsVCL.UpdateValue: an empty text gets the default for
+    // the data type, then the text is converted into the parameter value.
+    // Conversion errors are raised (they block OK and are shown to the user).
+    case param.ParamType of
+      rpParamInteger:
+        EValue.EditType := teInteger;
+      rpParamDouble:
+        EValue.EditType := teFloat;
+      rpParamCurrency:
+        EValue.EditType := teCurrency;
+    else
+      EValue.EditType := teGeneral;
+    end;
+    if EValue.Text = '' then
+    begin
+      case param.ParamType of
+        rpParamString, rpParamExpreA, rpParamExpreB, rpParamSubst, rpParamSubstE,
+        rpParamList, rpParamSubstList, rpParamInitialExpression, rpParamUnknown:
+          EValue.Text := '';
+        rpParamInteger:
+          EValue.Text := IntToStr(0);
+        rpParamDouble:
+          EValue.Text := FloatToStr(0.0);
+        rpParamCurrency:
+          EValue.Text := CurrToStr(0.0);
+        rpParamDate:
+          EValue.Text := DateToStr(Date);
+        rpParamTime:
+          EValue.Text := TimeToStr(Time);
+        rpParamDateTime:
+          EValue.Text := DateTimeToStr(Now);
+        rpParamBool:
+          EValue.Text := BoolToStr(False);
+      end;
+    end;
+    if CheckNull.Checked then
+    begin
+      param.Value := Null;
+      EValue.Visible := False;
+    end
+    else
+    begin
+      EValue.Visible := True;
+      case param.ParamType of
+        rpParamString, rpParamExpreA, rpParamExpreB, rpParamSubst, rpParamSubstE,
+        rpParamList, rpParamSubstList, rpParamInitialExpression, rpParamUnknown:
+          param.Value := EValue.Text;
+        rpParamInteger:
+          param.Value := StrToInt(EValue.Text);
+        rpParamDouble:
+          param.Value := StrToFloat(EValue.Text);
+        rpParamCurrency:
+          param.Value := StrToCurr(EValue.Text);
+        rpParamDate:
+          param.Value := StrToDate(EValue.Text);
+        rpParamTime:
+          param.Value := StrToTime(EValue.Text);
+        rpParamDateTime:
+          param.Value := StrToDateTime(EValue.Text);
+        rpParamBool:
+          param.Value := StrToBool(EValue.Text);
+      end;
+    end;
   end;
 end;
 
@@ -731,42 +1019,8 @@ var
 begin
   if (LParams.ItemIndex < 0) or (LParams.ItemIndex >= FParams.Count) then Exit;
   param := FParams.ParamByName(LParams.Items[LParams.ItemIndex]);
-
-  if CheckNull.Checked then
-  begin
-    param.Value := Null;
-    EValue.Visible := False;
-  end
-  else
-  begin
-    EValue.Visible := True;
-    if Length(EValue.Text) > 0 then
-    begin
-      try
-        case param.ParamType of
-          rpParamString, rpParamExpreA, rpParamExpreB, rpParamSubst, rpParamSubstE,
-          rpParamList, rpParamSubstList, rpParamInitialExpression, rpParamUnknown:
-            param.Value := EValue.Text;
-          rpParamInteger:
-            param.Value := StrToInt(EValue.Text);
-          rpParamDouble:
-            param.Value := StrToFloat(EValue.Text);
-          rpParamCurrency:
-            param.Value := StrToCurr(EValue.Text);
-          rpParamDate:
-            param.Value := StrToDate(EValue.Text);
-          rpParamTime:
-            param.Value := StrToTime(EValue.Text);
-          rpParamDateTime:
-            param.Value := StrToDateTime(EValue.Text);
-          rpParamBool:
-            param.Value := StrToBool(EValue.Text);
-        end;
-      except
-        // On conversion error, leave as string or default
-      end;
-    end;
-  end;
+  // Raises on invalid input, like VCL (the value is not silently dropped)
+  UpdateValue(param);
 end;
 
 procedure TFRpParamsLCL.PropChange(Sender: TObject);
@@ -804,13 +1058,17 @@ begin
     param.AllowNulls := CheckAllowNulls.Checked
   else if Sender = CheckNull then
   begin
+    UpdateValue(param);
     if CheckNull.Checked then
       param.Value := Null;
-    UpdateValue(param);
   end
   else if Sender = ComboDataType then
   begin
+    if param.ParamType = StringToParamType(ComboDataType.Text) then
+      Exit;
+    // Changing the type resets the value to the default of the new type
     param.ParamType := StringToParamType(ComboDataType.Text);
+    EValue.Text := '';
     UpdateValue(param);
   end
   else if Sender = ECheckList then
@@ -840,15 +1098,12 @@ var
   paramname: string;
   aparam: TRpParam;
 begin
-  paramname := InputBox(TranslateStr(186, 'Nuevo parámetro'), TranslateStr(187, 'Nombre del parámetro:'), '');
+  paramname := RpInputBox(SRpNewParam, SRpParamName, '');
   paramname := AnsiUpperCase(Trim(paramname));
   if Length(paramname) < 1 then Exit;
 
   if FParams.IndexOf(paramname) >= 0 then
-  begin
-    ShowMessage(TranslateStr(33, 'Ya existe un parámetro con ese nombre'));
-    Exit;
-  end;
+    raise Exception.Create(SRpParamNameExists);
 
   aparam := FParams.Add(paramname);
   if Assigned(FReport) then
@@ -883,15 +1138,12 @@ begin
   oldname := LParams.Items[LParams.ItemIndex];
   param := FParams.ParamByName(oldname);
 
-  newname := InputBox(TranslateStr(192, 'Renombrar parámetro'), TranslateStr(187, 'Nuevo nombre:'), param.Name);
+  newname := RpInputBox(SRpRenameParam, SRpParamName, param.Name);
   newname := AnsiUpperCase(Trim(newname));
   if (Length(newname) = 0) or (newname = oldname) then Exit;
 
   if FParams.IndexOf(newname) >= 0 then
-  begin
-    ShowMessage(TranslateStr(33, 'Ya existe un parámetro con ese nombre'));
-    Exit;
-  end;
+    raise Exception.Create(SRpParamNameExists);
 
   param.Name := newname;
   LParams.Items[LParams.ItemIndex] := newname;
@@ -983,7 +1235,8 @@ end;
 
 procedure TFRpParamsLCL.BOKClick(Sender: TObject);
 begin
-  if EValue.Visible then
+  // A conversion error raises here and keeps the dialog open
+  if EValue.Visible and PageControl1.Visible then
     EValueExit(Self);
   FDoOk := True;
   ModalResult := mrOk;

@@ -121,35 +121,69 @@ var
   handled: Boolean;
   stream: TStream;
   dia: TFRpMainFLCL;
+  accepted, modified: Boolean;
+  snapshot: TMemoryStream;
+  restored: TRpReport;
 begin
+  // Returns True only when the modified report was accepted by the user and
+  // saved (OnSave handler, stream or file)
   Result := False;
+  accepted := False;
+  modified := False;
   CheckLoaded;
-  dia := TFRpMainFLCL.Create(nil);
+  snapshot := TMemoryStream.Create;
   try
-    dia.Report := FReport;
-    if Length(FFilename) > 0 then
-      dia.FileName := FFilename;
-    dia.RefreshInterface;
-    dia.ShowModal;
-    if FReadOnly then Exit;
-    handled := False;
-    stream := nil;
-    if Assigned(FOnSave) then
-      FOnSave(stream, FReport, handled);
-    if not handled then
-    begin
-      if not Assigned(stream) then
-      begin
-        if Length(FFilename) > 0 then
-          FReport.SaveToFile(FFilename);
-      end
-      else
-        FReport.SaveToStream(stream);
+    // State to restore when the user discards the changes
+    FReport.SaveToStream(snapshot);
+    dia := TFRpMainFLCL.Create(nil);
+    try
+      // As rpmdesignervcl: New/Open/Save/Save as are not available, the
+      // component saves the report
+      dia.HostedMode := True;
+      dia.Report := FReport;
+      if Length(FFilename) > 0 then
+        dia.FileName := FFilename;
+      dia.RefreshInterface;
+      dia.ShowModal;
+      accepted := dia.SaveAccepted;
+      modified := FReport.Modified;
+    finally
+      dia.Free;
     end;
-    Result := True;
+    if (not accepted) and modified then
+    begin
+      // Changes discarded: the report goes back to its initial state
+      snapshot.Seek(0, soFromBeginning);
+      restored := TRpReport.Create(Self);
+      try
+        restored.LoadFromStream(snapshot);
+      except
+        restored.Free;
+        raise;
+      end;
+      FReport.Free;
+      FReport := restored;
+    end;
   finally
-    dia.Free;
+    snapshot.Free;
   end;
+  if FReadOnly or (not accepted) then
+    Exit;
+  handled := False;
+  stream := nil;
+  if Assigned(FOnSave) then
+    FOnSave(stream, FReport, handled);
+  if not handled then
+  begin
+    if Assigned(stream) then
+      FReport.SaveToStream(stream)
+    else
+    if Length(FFilename) > 0 then
+      FReport.SaveToFile(FFilename)
+    else
+      raise Exception.Create(SRpNoStreamToSaveReport);
+  end;
+  Result := True;
 end;
 
 end.

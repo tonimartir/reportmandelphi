@@ -17,8 +17,10 @@ unit rpmdfmainlcl;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Variants,
+  Generics.Collections,
   ExtCtrls, StdCtrls, ComCtrls, Menus, LCLType, Clipbrd,
+  rpdatainfo, rpparams, rpmdshfolder,
   rpreport, rpsubreport, rpmdfdesignlcl, rprulerlcl, rpmunits,
   rpmdobinsintlcl, rpmdfsectionintlcl, rpmdobjinsplcl, rpmdconsts,
   rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpsection, rptypes,
@@ -36,6 +38,13 @@ type
     FReport: TRpReport;
     FFileName: string;
     FOwnsReport: Boolean;
+    // Report library (designer global connections, VCL RpAlias1.Connections)
+    FLibConnections: TRpDatabaseInfoList;
+    FLibraryName: string;
+    FLibraryReportName: WideString;
+    // Hosted by TRpDesignerLCL: no file actions, the host saves the report
+    FHostedMode: Boolean;
+    FSaveAccepted: Boolean;
 
     // Visual Controls
     MainMenu1: TMainMenu;
@@ -97,6 +106,18 @@ type
     procedure EnsureUndoCue;
     procedure SetReport(Value: TRpReport);
     procedure SetFileName(const Value: string);
+    procedure SetHostedMode(Value: Boolean);
+    procedure CueChanged(Sender: TObject);
+    procedure ReportReadError(Reader: TReader; const Message: string;
+      var Handled: Boolean);
+    function CreateDesignReport: TRpReport;
+    function LoadDesignReport(AStream: TStream): TRpReport;
+    procedure DetachReport;
+    procedure InstallReport(ANewReport: TRpReport; const AFileName: string);
+    function GetUndoCue: TUndoCue;
+    function GetLibraryConnections: TRpDatabaseInfoList;
+    function SaveCurrentReport: Boolean;
+    procedure SaveToLibrary;
 
     // Event handlers
     procedure BtnNewClick(Sender: TObject);
@@ -201,7 +222,12 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    // Loads the file into a new report; the current report is replaced only
+    // when the load succeeds (errors are raised, nothing is lost).
     procedure OpenReportFile(const AFileName: string);
+    // Same rollback-safe load from a stream (library reports)
+    procedure OpenReportStream(AStream: TStream);
+    procedure OpenReportFromLibrary(const ALibrary: string; const AReportName: WideString);
     procedure SaveReportFile(const AFileName: string);
     procedure NewReport;
     procedure RefreshInterface;
@@ -211,13 +237,23 @@ type
     function CheckSave: Boolean;
     procedure DoUndo;
     procedure DoRedo;
+    // Marks the report dirty for a change that is not recorded in the cue
+    procedure MarkExternalChange;
     procedure EmbedInControl(AParent: TWinControl);
 
     property Report: TRpReport read FReport write SetReport;
     property FileName: string read FFileName write SetFileName;
+    property LibraryName: string read FLibraryName;
+    property LibraryReportName: WideString read FLibraryReportName;
+    property LibraryConnections: TRpDatabaseInfoList read GetLibraryConnections;
     property DesignerFrame: TFRpDesignFrameLCL read FDesignerFrame;
     property ObjInsp: TFRpObjInspLCL read FObjInsp;
     property Structure: TFRpStructureLCL read FStructure;
+    // Hides New/Open/Save/Save as (TRpDesignerLCL, as rpmdesignervcl does);
+    // closing a modified report then asks whether the changes are accepted
+    property HostedMode: Boolean read FHostedMode write SetHostedMode;
+    // Hosted mode: True when the user accepted the changes on close
+    property SaveAccepted: Boolean read FSaveAccepted;
   end;
 
 implementation
@@ -250,14 +286,9 @@ end;
 
 destructor TFRpMainFLCL.Destroy;
 begin
-  if FOwnsReport and Assigned(FReport) then
-  begin
-    if Assigned(FDesignerFrame) then
-      FDesignerFrame.Report := nil;
-    if Assigned(FStructure) then
-      FStructure.Report := nil;
-    FreeAndNil(FReport);
-  end;
+  // Also unhooks the undo cue of a report owned by someone else
+  DetachReport;
+  FreeAndNil(FLibConnections);
   inherited Destroy;
 end;
 
@@ -860,19 +891,137 @@ end;
 
 procedure TFRpMainFLCL.EnsureUndoCue;
 begin
-  if Assigned(FReport) and (not Assigned(FReport.UndoCue)) then
+  if not Assigned(FReport) then
+    Exit;
+  if not Assigned(FReport.UndoCue) then
     FReport.UndoCue := TUndoCue.Create(FReport);
+  // Cues created elsewhere (dialogs) are hooked too
+  TUndoCue(FReport.UndoCue).OnChange := CueChanged;
+end;
+
+function TFRpMainFLCL.GetUndoCue: TUndoCue;
+begin
+  EnsureUndoCue;
+  if Assigned(FReport) then
+    Result := TUndoCue(FReport.UndoCue)
+  else
+    Result := nil;
+end;
+
+procedure TFRpMainFLCL.CueChanged(Sender: TObject);
+begin
+  // Any history or dirty state change: title '*', status bar, Undo/Redo
+  // buttons and the history panel
+  if csDestroying in ComponentState then
+    Exit;
+  UpdateStatus;
+  if Assigned(FStructure) and Assigned(FStructure.cueview) then
+    FStructure.cueview.RefreshList;
+end;
+
+procedure TFRpMainFLCL.MarkExternalChange;
+var
+  cue: TUndoCue;
+begin
+  cue := GetUndoCue;
+  if Assigned(cue) then
+    cue.MarkExternalChange;
+end;
+
+procedure TFRpMainFLCL.ReportReadError(Reader: TReader; const Message: string;
+  var Handled: Boolean);
+begin
+  // Same as TFRpMainFVCL.OnReadError
+  Handled := RpMessageBox(SRpErrorReadingReport + #10 + Message + #10 + SRpIgnoreError,
+    SRpWarning, [smbYes, smbNo], smsWarning, smbYes) = smbYes;
+end;
+
+function TFRpMainFLCL.CreateDesignReport: TRpReport;
+begin
+  // Same settings as the VCL designer (rpmdfmainvcl DoOpenStream/ANewExecute)
+  Result := TRpReport.Create(Self);
+  Result.IsDesignTime := True;
+  Result.OnReadError := ReportReadError;
+  Result.FailIfLoadExternalError := False;
+end;
+
+function TFRpMainFLCL.LoadDesignReport(AStream: TStream): TRpReport;
+begin
+  Result := CreateDesignReport;
+  try
+    Result.LoadFromStream(AStream);
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+procedure TFRpMainFLCL.DetachReport;
+begin
+  if Assigned(FReport) and Assigned(FReport.UndoCue) and (FReport.UndoCue is TUndoCue) then
+    TUndoCue(FReport.UndoCue).OnChange := nil;
+  if Assigned(FDesignerFrame) then
+    FDesignerFrame.Report := nil;
+  if Assigned(FStructure) then
+    FStructure.Report := nil;
+  if FOwnsReport and Assigned(FReport) then
+    FreeAndNil(FReport)
+  else
+    FReport := nil;
+end;
+
+procedure TFRpMainFLCL.InstallReport(ANewReport: TRpReport; const AFileName: string);
+var
+  cue: TUndoCue;
+begin
+  // The new report is complete: only now the current one is released
+  DetachReport;
+  FReport := ANewReport;
+  FOwnsReport := True;
+  FFileName := AFileName;
+  FLibraryName := '';
+  FLibraryReportName := '';
+  cue := GetUndoCue;
+  cue.Clear;
+  cue.MarkClean;
+  RefreshInterface;
 end;
 
 procedure TFRpMainFLCL.SetReport(Value: TRpReport);
 begin
   if FReport = Value then Exit;
-  if FOwnsReport and Assigned(FReport) then
-    FreeAndNil(FReport);
-
+  DetachReport;
   FReport := Value;
   FOwnsReport := False;
-  RefreshInterface;
+  FLibraryName := '';
+  FLibraryReportName := '';
+  if Assigned(FReport) then
+    RefreshInterface
+  else
+    UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.SetHostedMode(Value: Boolean);
+begin
+  FHostedMode := Value;
+  // rpmdesignervcl: ANew/AOpen/ASave/ASaveAs.Visible:=false. Disabled too, so
+  // their shortcuts do nothing
+  MenuFileNew.Visible := not Value;
+  MenuFileNew.Enabled := not Value;
+  MenuFileNewWizard.Visible := not Value;
+  MenuFileNewWizard.Enabled := not Value;
+  MenuFileOpen.Visible := not Value;
+  MenuFileOpen.Enabled := not Value;
+  MenuFileOpenLib.Visible := not Value;
+  MenuFileOpenLib.Enabled := not Value;
+  MenuFileSave.Visible := not Value;
+  MenuFileSave.Enabled := not Value;
+  MenuFileSaveAs.Visible := not Value;
+  MenuFileSaveAs.Enabled := not Value;
+  BtnNew.Visible := not Value;
+  BtnNewWizard.Visible := not Value;
+  BtnOpen.Visible := not Value;
+  BtnSave.Visible := not Value;
 end;
 
 procedure TFRpMainFLCL.UpdateTitle;
@@ -881,6 +1030,8 @@ var
 begin
   if Length(FFileName) > 0 then
     sTitle := 'Report Manager Designer - [' + ExtractFileName(FFileName) + ']'
+  else if Length(FLibraryReportName) > 0 then
+    sTitle := 'Report Manager Designer - [' + FLibraryName + '->' + FLibraryReportName + ']'
   else
     sTitle := 'Report Manager Designer - [Sin título]';
   if Assigned(FReport) and FReport.Modified then
@@ -913,29 +1064,76 @@ begin
   case res of
     smbYes:
       begin
-        if Length(FFileName) > 0 then
-          SaveReportFile(FFileName)
+        if FHostedMode then
+          // The host (TRpDesignerLCL.Execute) saves the report
+          FSaveAccepted := True
         else
-        begin
-          if SaveDialog1.Execute then
-            SaveReportFile(SaveDialog1.FileName)
-          else
-            Result := False;
-        end;
+          Result := SaveCurrentReport;
       end;
     smbNo:
-      Result := True;
-    smbCancel:
-      Result := False;
+      begin
+        if FHostedMode then
+          FSaveAccepted := False;
+        Result := True;
+      end;
+  else
+    Result := False;
   end;
+end;
+
+function TFRpMainFLCL.SaveCurrentReport: Boolean;
+begin
+  // VCL ASaveExecute: file, then library, then Save as
+  Result := True;
+  if Length(FFileName) > 0 then
+    SaveReportFile(FFileName)
+  else if Length(FLibraryReportName) > 0 then
+    SaveToLibrary
+  else if SaveDialog1.Execute then
+    SaveReportFile(SaveDialog1.FileName)
+  else
+    Result := False;
 end;
 
 procedure TFRpMainFLCL.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  CanClose := CheckSave;
+  try
+    CanClose := CheckSave;
+  except
+    // A failed save must not close the designer; the error is shown
+    CanClose := False;
+    raise;
+  end;
+end;
+
+function TFRpMainFLCL.GetLibraryConnections: TRpDatabaseInfoList;
+var
+  configfilelib: string;
+begin
+  if not Assigned(FLibConnections) then
+  begin
+    FLibConnections := TRpDatabaseInfoList.Create(nil);
+    // Same library configuration file as the VCL designer
+    configfilelib := Obtainininameuserconfig('', '', 'repmandlib');
+    if FileExists(configfilelib) then
+      FLibConnections.LoadFromFile(configfilelib);
+  end;
+  Result := FLibConnections;
+end;
+
+procedure TFRpMainFLCL.OpenReportStream(AStream: TStream);
+var
+  newRep: TRpReport;
+begin
+  // On error the current report, file name and frames stay untouched
+  newRep := LoadDesignReport(AStream);
+  InstallReport(newRep, '');
 end;
 
 procedure TFRpMainFLCL.OpenReportFile(const AFileName: string);
+var
+  astream: TFileStream;
+  newRep: TRpReport;
 begin
   if not FileExists(AFileName) then
   begin
@@ -946,24 +1144,31 @@ begin
   if not CheckSave then
     Exit;
 
-  if Assigned(FDesignerFrame) then
-    FDesignerFrame.Report := nil;
-  if Assigned(FStructure) then
-    FStructure.Report := nil;
+  astream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    // Load into a new report first: a load error is raised and nothing of
+    // the current report (file name, frames, undo history) is lost
+    newRep := LoadDesignReport(astream);
+  finally
+    astream.Free;
+  end;
+  InstallReport(newRep, AFileName);
+end;
 
-  if FOwnsReport and Assigned(FReport) then
-    FreeAndNil(FReport);
-
-  FReport := TRpReport.Create(Self);
-  FOwnsReport := True;
-  FReport.LoadFromFile(AFileName);
-  FReport.Modified := False;
-  FileName := AFileName;
-
-  RefreshInterface;
-  EnsureUndoCue;
-  TUndoCue(FReport.UndoCue).Clear;
-  TUndoCue(FReport.UndoCue).MarkClean;
+procedure TFRpMainFLCL.OpenReportFromLibrary(const ALibrary: string;
+  const AReportName: WideString);
+var
+  astream: TStream;
+begin
+  // The caller is responsible of CheckSave (VCL DoOpenFromLib)
+  astream := GetLibraryConnections.GetReportStream(ALibrary, AReportName, nil);
+  try
+    OpenReportStream(astream);
+  finally
+    astream.Free;
+  end;
+  FLibraryName := ALibrary;
+  FLibraryReportName := AReportName;
   UpdateStatus;
 end;
 
@@ -971,43 +1176,51 @@ procedure TFRpMainFLCL.SaveReportFile(const AFileName: string);
 begin
   if not Assigned(FReport) then Exit;
   FReport.SaveToFile(AFileName);
-  FReport.Modified := False;
-  FileName := AFileName;
-  if Assigned(FReport.UndoCue) then
-    TUndoCue(FReport.UndoCue).MarkClean;
+  FFileName := AFileName;
+  FLibraryName := '';
+  FLibraryReportName := '';
+  // MarkClean also resets Report.Modified
+  GetUndoCue.MarkClean;
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.SaveToLibrary;
+var
+  astream: TMemoryStream;
+begin
+  if not Assigned(FReport) then Exit;
+  // VCL DoSave, library branch
+  astream := TMemoryStream.Create;
+  try
+    FReport.SaveToStream(astream);
+    astream.Seek(0, soFromBeginning);
+    GetLibraryConnections.SaveReportStream(FLibraryName, FLibraryReportName, astream, nil);
+  finally
+    astream.Free;
+  end;
+  GetUndoCue.MarkClean;
   UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.NewReport;
 var
+  newRep: TRpReport;
   subrep: TRpSubReport;
 begin
   if not CheckSave then
     Exit;
 
-  if Assigned(FDesignerFrame) then
-    FDesignerFrame.Report := nil;
-  if Assigned(FStructure) then
-    FStructure.Report := nil;
-
-  if FOwnsReport and Assigned(FReport) then
-    FreeAndNil(FReport);
-
-  FReport := TRpReport.Create(Self);
-  FOwnsReport := True;
-
-  subrep := FReport.AddSubReport;
-  subrep.AddPageHeader;
-  subrep.AddDetail;
-  subrep.AddPageFooter;
-
-  FReport.Modified := False;
-  FileName := '';
-  RefreshInterface;
-  EnsureUndoCue;
-  TUndoCue(FReport.UndoCue).Clear;
-  TUndoCue(FReport.UndoCue).MarkClean;
-  UpdateStatus;
+  newRep := CreateDesignReport;
+  try
+    subrep := newRep.AddSubReport;
+    subrep.AddPageHeader;
+    subrep.AddDetail;
+    subrep.AddPageFooter;
+  except
+    newRep.Free;
+    raise;
+  end;
+  InstallReport(newRep, '');
 end;
 
 procedure TFRpMainFLCL.RefreshInterface;
@@ -1057,6 +1270,8 @@ begin
   if FReport.Modified then
     sInfo := sInfo + ' | [Modificado]';
   StatusBar.SimpleText := sInfo;
+  // Undo/redo may change the grid visibility
+  MenuViewGrid.Checked := FReport.GridVisible;
 
   if Assigned(FReport.UndoCue) then
   begin
@@ -1091,33 +1306,44 @@ end;
 procedure TFRpMainFLCL.BtnNewWizardClick(Sender: TObject);
 var
   newRep: TRpReport;
+  accepted: Boolean;
 begin
-  newRep := TRpReport.Create(Self);
+  if not CheckSave then
+    Exit;
+  newRep := CreateDesignReport;
   try
-    if NewReportWizard(newRep, False) then
-    begin
-      if Assigned(FDesignerFrame) then FDesignerFrame.Report := nil;
-      if Assigned(FStructure) then FStructure.Report := nil;
-      if FOwnsReport and Assigned(FReport) then FreeAndNil(FReport);
-      FReport := newRep;
-      FOwnsReport := True;
-      FileName := '';
-      RefreshInterface;
-    end
-    else
-      newRep.Free;
+    accepted := NewReportWizard(newRep, False);
   except
     newRep.Free;
     raise;
   end;
+  if not accepted then
+  begin
+    newRep.Free;
+    Exit;
+  end;
+  // From here the new report is owned by the form (never freed twice even
+  // if refreshing the interface raises); history starts clean
+  InstallReport(newRep, '');
 end;
 
 procedure TFRpMainFLCL.MenuReportWizardClick(Sender: TObject);
+var
+  cue: TUndoCue;
 begin
-  if Assigned(FReport) then
+  if not Assigned(FReport) then
+    Exit;
+  FReport.AssertCanModify('Report wizard');
+  EnsureUndoCue;
+  if NewReportWizard(FReport, True) then
   begin
-    if NewReportWizard(FReport, True) then
-      RefreshInterface;
+    // The columns created by the wizard are not recorded as undo operations
+    // and may reuse names of the history: restart the history keeping the
+    // report dirty
+    cue := GetUndoCue;
+    cue.Clear;
+    cue.MarkExternalChange;
+    RefreshInterface;
   end;
 end;
 
@@ -1129,29 +1355,31 @@ end;
 
 procedure TFRpMainFLCL.MenuFileOpenLibClick(Sender: TObject);
 var
-  libName, repName: string;
+  alibname: string;
+  arepname: WideString;
 begin
-  if not Assigned(FReport) or (FReport.DatabaseInfo.Count = 0) then
-  begin
-    ShowMessage(TranslateStr(123, 'No hay conexiones de base de datos disponibles para abrir desde librería'));
+  // VCL AOpenFromExecute: the designer library connections (repmandlib),
+  // not the report connections
+  if not CheckSave then
     Exit;
-  end;
-  libName := '';
-  repName := SelectReportFromLibrary(FReport.DatabaseInfo, libName);
-  if Length(repName) > 0 then
-    ShowMessage(TranslateStr(124, 'Informe seleccionado') + ': ' + repName);
+  alibname := FLibraryName;
+  arepname := SelectReportFromLibrary(GetLibraryConnections, alibname);
+  if Length(arepname) < 1 then
+    Exit;
+  OpenReportFromLibrary(alibname, arepname);
 end;
 
 procedure TFRpMainFLCL.BtnSaveClick(Sender: TObject);
 begin
-  if Length(FFileName) > 0 then
-    SaveReportFile(FFileName)
-  else
-    BtnSaveAsClick(Sender);
+  if FHostedMode then
+    Exit;
+  SaveCurrentReport;
 end;
 
 procedure TFRpMainFLCL.BtnSaveAsClick(Sender: TObject);
 begin
+  if FHostedMode then
+    Exit;
   if SaveDialog1.Execute then
     SaveReportFile(SaveDialog1.FileName);
 end;
@@ -1159,32 +1387,121 @@ end;
 procedure TFRpMainFLCL.BtnDataConfigClick(Sender: TObject);
 begin
   if not Assigned(FReport) then Exit;
-  ShowDataConfig(FReport);
-  if Assigned(FStructure) and Assigned(FStructure.browser) then
-    FStructure.browser.Report := FReport;
-  if Assigned(FDesignerFrame) then
-    FDesignerFrame.UpdateSelection(False);
+  // The dialog records the undo operations of the accepted changes
+  EnsureUndoCue;
+  if ShowDataConfig(FReport) then
+  begin
+    if Assigned(FStructure) and Assigned(FStructure.browser) then
+      FStructure.browser.Report := FReport;
+    if Assigned(FDesignerFrame) then
+      FDesignerFrame.UpdateSelection(False);
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnParamsClick(Sender: TObject);
 begin
   if not Assigned(FReport) then Exit;
+  FReport.AssertCanModify('Report parameters');
+  // ShowParamDef records the undo operations when the dialog is accepted
+  EnsureUndoCue;
   ShowParamDef(FReport.Params, FReport.DataInfo, FReport);
   if Assigned(FStructure) and Assigned(FStructure.browser) then
     FStructure.browser.Report := FReport;
 end;
 
 procedure TFRpMainFLCL.MenuReportUserParamsClick(Sender: TObject);
+var
+  origParams: TRpParamList;
 begin
   if not Assigned(FReport) then Exit;
-  rprflclparams.ShowUserParams(FReport.Params);
+  EnsureUndoCue;
+  origParams := TRpParamList.Create(nil);
+  try
+    origParams.Assign(FReport.Params);
+    try
+      rprflclparams.ShowUserParams(FReport.Params);
+    finally
+      // The dialog (and the lookup / initial value refresh done before it)
+      // changes the parameter values stored in the report
+      RecordParamUndoChanges(origParams, FReport.Params, FReport);
+    end;
+  finally
+    origParams.Free;
+  end;
 end;
 
+type
+  TRpPageSetupProp = record
+    Name: string;
+    PropType: TPropertyType;
+  end;
+
+const
+  // Report properties changed by the page setup dialog (rppagesetuplcl)
+  PAGESETUP_PROPS: array[0..28] of TRpPageSetupProp = (
+    (Name: 'LinesPerInch'; PropType: ptInteger),
+    (Name: 'Copies'; PropType: ptInteger),
+    (Name: 'CollateCopies'; PropType: ptBoolean),
+    (Name: 'TwoPass'; PropType: ptBoolean),
+    (Name: 'PreviewAbout'; PropType: ptBoolean),
+    (Name: 'PrintOnlyIfDataAvailable'; PropType: ptBoolean),
+    (Name: 'ReportAction'; PropType: ptInteger),
+    (Name: 'Pagesize'; PropType: ptInteger),
+    (Name: 'PagesizeQt'; PropType: ptInteger),
+    (Name: 'PageHeight'; PropType: ptInteger),
+    (Name: 'PageWidth'; PropType: ptInteger),
+    (Name: 'CustomPageWidth'; PropType: ptInteger),
+    (Name: 'CustomPageHeight'; PropType: ptInteger),
+    (Name: 'LeftMargin'; PropType: ptInteger),
+    (Name: 'RightMargin'; PropType: ptInteger),
+    (Name: 'TopMargin'; PropType: ptInteger),
+    (Name: 'BottomMargin'; PropType: ptInteger),
+    (Name: 'PageOrientation'; PropType: ptInteger),
+    (Name: 'PrinterSelect'; PropType: ptInteger),
+    (Name: 'PageBackColor'; PropType: ptInteger),
+    (Name: 'Language'; PropType: ptInteger),
+    (Name: 'PrinterFonts'; PropType: ptInteger),
+    (Name: 'PreviewStyle'; PropType: ptInteger),
+    (Name: 'PreviewMargins'; PropType: ptBoolean),
+    (Name: 'PreviewWindow'; PropType: ptInteger),
+    (Name: 'StreamFormat'; PropType: ptInteger),
+    (Name: 'PaperSource'; PropType: ptInteger),
+    (Name: 'Duplex'; PropType: ptInteger),
+    (Name: 'ForcePaperName'; PropType: ptString)
+  );
+
 procedure TFRpMainFLCL.BtnPageSetupClick(Sender: TObject);
+var
+  snapshot: array[0..High(PAGESETUP_PROPS)] of Variant;
+  i: Integer;
+  newValue: Variant;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   if not Assigned(FReport) then Exit;
+  FReport.AssertCanModify('Page setup');
+  for i := 0 to High(PAGESETUP_PROPS) do
+    snapshot[i] := FReport.GetItemProperty(PAGESETUP_PROPS[i].Name);
   if ExecutePageSetup(FReport) then
   begin
+    // Same as rppagesetupvcl.SaveOptions: one otModify on REPORT with the
+    // changed properties
+    cue := GetUndoCue;
+    op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+    op.componentName := 'REPORT';
+    op.componentClass := 'TRPREPORT';
+    op.parentName := '';
+    for i := 0 to High(PAGESETUP_PROPS) do
+    begin
+      newValue := FReport.GetItemProperty(PAGESETUP_PROPS[i].Name);
+      if not ParamValuesEqual(snapshot[i], newValue) then
+        op.AddProperty(PAGESETUP_PROPS[i].Name, PAGESETUP_PROPS[i].PropType,
+          snapshot[i], newValue);
+    end;
+    if op.properties.Count > 0 then
+      cue.AddOperation(op)
+    else
+      op.Free;
     if Assigned(FDesignerFrame) then
     begin
       FDesignerFrame.UpdateInterface(True);
@@ -1265,35 +1582,51 @@ end;
 procedure TFRpMainFLCL.DoUndo;
 var
   cue: TUndoCue;
+  ops: TObjectList<TChangeObjectOperation>;
 begin
-  if not Assigned(FReport) or not Assigned(FReport.UndoCue) then Exit;
-  cue := TUndoCue(FReport.UndoCue);
+  if not Assigned(FReport) then Exit;
+  FReport.AssertCanModify('Undo');
+  cue := GetUndoCue;
   if not cue.CanUndo then Exit;
-  cue.Undo;
-  if Assigned(FStructure) then
-  begin
-    if Assigned(FStructure.cueview) then
-      FStructure.cueview.RefreshList;
-    FStructure.CueUndoRedo(Self);
+  ops := nil;
+  try
+    ops := cue.Undo;
+  finally
+    // The returned list does not own the operations, but the caller owns it.
+    // Rebuild the display even if an operation failed midway.
+    ops.Free;
+    if Assigned(FStructure) then
+    begin
+      if Assigned(FStructure.cueview) then
+        FStructure.cueview.RefreshList;
+      FStructure.CueUndoRedo(Self);
+    end;
+    UpdateStatus;
   end;
-  UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.DoRedo;
 var
   cue: TUndoCue;
+  ops: TObjectList<TChangeObjectOperation>;
 begin
-  if not Assigned(FReport) or not Assigned(FReport.UndoCue) then Exit;
-  cue := TUndoCue(FReport.UndoCue);
+  if not Assigned(FReport) then Exit;
+  FReport.AssertCanModify('Redo');
+  cue := GetUndoCue;
   if not cue.CanRedo then Exit;
-  cue.Redo;
-  if Assigned(FStructure) then
-  begin
-    if Assigned(FStructure.cueview) then
-      FStructure.cueview.RefreshList;
-    FStructure.CueUndoRedo(Self);
+  ops := nil;
+  try
+    ops := cue.Redo;
+  finally
+    ops.Free;
+    if Assigned(FStructure) then
+    begin
+      if Assigned(FStructure.cueview) then
+        FStructure.cueview.RefreshList;
+      FStructure.CueUndoRedo(Self);
+    end;
+    UpdateStatus;
   end;
-  UpdateStatus;
 end;
 
 procedure TFRpMainFLCL.BtnUndoClick(Sender: TObject);
@@ -1404,15 +1737,22 @@ var
   alist: TList;
   pitem: TRpCommonPosComponent;
   ident: string;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  groupId: Integer;
 begin
+  if not Assigned(FReport) then Exit;
   if not Assigned(FObjInsp) or (FObjInsp.SelectedItems.Count < 1) then Exit;
   if (FObjInsp.SelectedItems.Objects[0] is TRpSectionInterface) then
     secint := TRpSectionInterface(FObjInsp.CompItem)
   else
     secint := TRpSectionInterface(TRpSizePosInterface(FObjInsp.SelectedItems.Objects[0]).SectionInt);
   if not Assigned(secint) then Exit;
+  FReport.AssertCanModify('Paste');
   FObjInsp.ClearMultiSelect;
   section := TRpSection(secint.printitem);
+  cue := GetUndoCue;
+  groupId := -1;
   acompo := TRpReport.Create(nil);
   try
     acompo.Name := 'AOwner';
@@ -1426,7 +1766,7 @@ begin
         if compo.Components[i] is TRpExpression then
         begin
           ident := TRpExpression(compo.Components[i]).Identifier;
-          if (Length(ident) > 0) and Assigned(FReport) and (FReport.Identifiers.IndexOf(ident) >= 0) then
+          if (Length(ident) > 0) and (FReport.Identifiers.IndexOf(ident) >= 0) then
             TRpExpression(compo.Components[i]).Identifier := '';
         end;
       end;
@@ -1435,14 +1775,26 @@ begin
         if not (TObject(alist[i]) is TRpCommonPosComponent) then Continue;
         pitem := TRpCommonPosComponent(alist[i]);
         compo.RemoveComponent(pitem);
+        // A fresh unique name: the clipboard name may exist in the report or
+        // in the undo history
         pitem.Name := '';
         section.ReportComponents.Add.Component := pitem;
         if section.IsExternal then
           section.InsertComponent(pitem)
-        else if Assigned(FReport) then
+        else
           FReport.InsertComponent(pitem);
         GenerateNewName(pitem);
         FObjInsp.AddCompItem(secint.CreateChild(pitem), False);
+        // Record the pasted component (APasteExecute): one otAdd per item,
+        // all of them in the same group so a single undo removes the paste
+        if groupId < 0 then
+          groupId := cue.GetGroupId;
+        op := TChangeObjectOperation.Create(otAdd, groupId);
+        op.componentName := pitem.Name;
+        op.componentClass := UpperCase(pitem.ClassName);
+        op.parentName := section.Name;
+        cue.AddAllComponentProperties(pitem, op);
+        cue.AddOperation(op);
       end;
       if Assigned(FDesignerFrame) then
         FDesignerFrame.UpdateInterface(True);
@@ -1535,19 +1887,42 @@ begin
 end;
 
 procedure TFRpMainFLCL.MenuViewGridClick(Sender: TObject);
+var
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  oldVisible: Boolean;
 begin
-  MenuViewGrid.Checked := not MenuViewGrid.Checked;
-  if Assigned(FReport) then
+  if not Assigned(FReport) then
   begin
-    FReport.GridVisible := MenuViewGrid.Checked;
-    FDesignerFrame.UpdateInterface(False);
+    MenuViewGrid.Checked := not MenuViewGrid.Checked;
+    Exit;
   end;
+  FReport.AssertCanModify('Grid');
+  MenuViewGrid.Checked := not MenuViewGrid.Checked;
+  oldVisible := FReport.GridVisible;
+  FReport.GridVisible := MenuViewGrid.Checked;
+  if oldVisible <> FReport.GridVisible then
+  begin
+    // GridVisible is saved with the report: record it
+    cue := GetUndoCue;
+    op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+    op.componentName := 'REPORT';
+    op.componentClass := 'TRPREPORT';
+    op.parentName := '';
+    op.AddProperty('gridVisible', ptBoolean, oldVisible, FReport.GridVisible);
+    cue.AddOperation(op);
+  end;
+  FDesignerFrame.UpdateInterface(False);
 end;
 
 procedure TFRpMainFLCL.MenuReportGridClick(Sender: TObject);
 begin
   if Assigned(FReport) then
   begin
+    // ModifyGridProperties records the undo operation on OK
+    EnsureUndoCue;
+    if Assigned(FObjInsp) then
+      FObjInsp.ClearMultiSelect;
     ModifyGridProperties(FReport);
     MenuViewGrid.Checked := FReport.GridVisible;
     if Assigned(FDesignerFrame) then

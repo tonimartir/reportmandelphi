@@ -20,8 +20,9 @@ interface
 
 uses
   SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
-  Buttons, ExtCtrls, Dialogs, DB,
-  rpmdconsts, rpdatainfo, rpreport, rpsection, rptypes;
+  Buttons, ExtCtrls, Dialogs, DB, Variants,
+  rpmdconsts, rpdatainfo, rpreport, rpsection, rptypes, rpgraphutilslcl,
+  rpmdundocuelcl;
 
 type
   { TFRpExtSectionLCL }
@@ -56,7 +57,7 @@ type
     procedure ComboReportFieldDropDown(Sender: TObject);
     procedure ComboSearchValueDropDown(Sender: TObject);
     procedure UpdateCombos;
-    procedure ValidateRecord;
+    function ValidateRecord: Boolean;
   public
     constructor Create(AOwner: TComponent); override;
 
@@ -69,12 +70,25 @@ function ChangeExternalSectionProps(report: TRpReport; section: TRpSection): Boo
 
 implementation
 
+const
+  EXTSECTION_PROPS: array[0..6] of string = ('ExternalFilename',
+    'ExternalConnection', 'ExternalTable', 'ExternalField',
+    'ExternalSearchField', 'ExternalSearchValue', 'StreamFormat');
+
 function ChangeExternalSectionProps(report: TRpReport; section: TRpSection): Boolean;
 var
   dia: TFRpExtSectionLCL;
+  oldValues: array[0..High(EXTSECTION_PROPS)] of Variant;
+  newValue: Variant;
+  i: Integer;
+  loaded: Boolean;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
 begin
   Result := False;
   if not Assigned(section) then Exit;
+  if (not Assigned(report)) and (section.Report is TRpReport) then
+    report := TRpReport(section.Report);
 
   dia := TFRpExtSectionLCL.Create(Application);
   try
@@ -84,6 +98,11 @@ begin
     dia.ShowModal;
     if dia.DoOk then
     begin
+      if Assigned(report) then
+        report.AssertCanModify('External section');
+      for i := 0 to High(EXTSECTION_PROPS) do
+        oldValues[i] := section.GetItemProperty(EXTSECTION_PROPS[i]);
+
       section.ExternalConnection := Trim(dia.ComboConnections.Text);
       section.ExternalTable := Trim(dia.ComboTable.Text);
       section.ExternalField := Trim(dia.ComboReportField.Text);
@@ -92,10 +111,46 @@ begin
       if dia.ComboFormat.ItemIndex >= 0 then
         section.StreamFormat := TRpStreamFormat(dia.ComboFormat.ItemIndex);
 
+      loaded := False;
       if Length(section.GetExternalDataDescription) > 0 then
       begin
         section.ExternalFilename := '';
-        dia.ValidateRecord;
+        loaded := dia.ValidateRecord;
+      end;
+
+      if Assigned(report) then
+      begin
+        if not Assigned(report.UndoCue) then
+          report.UndoCue := TUndoCue.Create(report);
+        cue := TUndoCue(report.UndoCue);
+        if loaded then
+        begin
+          // The section contents were replaced from the database: the
+          // history may reference components that no longer exist
+          cue.Clear;
+          cue.MarkExternalChange;
+        end
+        else
+        begin
+          op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+          op.componentName := section.Name;
+          op.componentClass := 'TRPSECTION';
+          for i := 0 to High(EXTSECTION_PROPS) do
+          begin
+            newValue := section.GetItemProperty(EXTSECTION_PROPS[i]);
+            if VarToStr(oldValues[i]) <> VarToStr(newValue) then
+            begin
+              if EXTSECTION_PROPS[i] = 'StreamFormat' then
+                op.AddProperty(EXTSECTION_PROPS[i], ptInteger, oldValues[i], newValue)
+              else
+                op.AddProperty(EXTSECTION_PROPS[i], ptString, oldValues[i], newValue);
+            end;
+          end;
+          if op.properties.Count > 0 then
+            cue.AddOperation(op)
+          else
+            op.Free;
+        end;
       end;
       Result := True;
     end;
@@ -295,18 +350,12 @@ begin
   if (idx < 0) or (Length(Trim(ComboTable.Text)) < 1) then Exit;
 
   sql := 'SELECT * FROM ' + ComboTable.Text;
+  // SQL errors are raised and shown, like rpmdfextsecvcl
+  adata := FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, nil, False, FReport.Params);
   try
-    adata := FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, nil, False, FReport.Params);
-    if Assigned(adata) then
-    begin
-      try
-        adata.GetFieldNames(TComboBox(Sender).Items);
-      finally
-        adata.Free;
-      end;
-    end;
-  except
-    // ignore query errors on metadata lookup
+    adata.GetFieldNames(TComboBox(Sender).Items);
+  finally
+    adata.Free;
   end;
 
   if TComboBox(Sender).Items.Count < 1 then
@@ -329,30 +378,24 @@ begin
 
   sql := 'SELECT ' + ComboSearchField.Text + ' FROM ' + ComboTable.Text +
          ' ORDER BY ' + ComboSearchField.Text;
+  // SQL errors are raised and shown, like rpmdfextsecvcl
+  adata := FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, nil, False, FReport.Params);
   try
-    adata := FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, nil, False, FReport.Params);
-    if Assigned(adata) then
+    TComboBox(Sender).Items.Clear;
+    while not adata.Eof do
     begin
-      try
-        TComboBox(Sender).Items.Clear;
-        while not adata.Eof do
-        begin
-          TComboBox(Sender).Items.Add(adata.Fields[0].AsString);
-          adata.Next;
-        end;
-      finally
-        adata.Free;
-      end;
+      TComboBox(Sender).Items.Add(adata.Fields[0].AsString);
+      adata.Next;
     end;
-  except
-    // ignore query errors on metadata lookup
+  finally
+    adata.Free;
   end;
 
   if TComboBox(Sender).Items.Count < 1 then
     TComboBox(Sender).Items.Add(' ');
 end;
 
-procedure TFRpExtSectionLCL.ValidateRecord;
+function TFRpExtSectionLCL.ValidateRecord: Boolean;
 var
   idx: Integer;
   sql: string;
@@ -360,6 +403,8 @@ var
   aparam: TRpParamObject;
   alist: TStringList;
 begin
+  // Returns True when the section was loaded from the external database
+  Result := False;
   if not Assigned(FReport) or not Assigned(FSection) then Exit;
 
   idx := FReport.DatabaseInfo.IndexOf(ComboConnections.Text);
@@ -375,30 +420,31 @@ begin
       aparam.Value := ComboSearchValue.Text;
       alist.AddObject(ComboSearchField.Text, aparam);
       adata := FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, alist, False, FReport.Params);
-      if Assigned(adata) then
-      begin
-        try
-          if adata.Eof then
+      try
+        if adata.Eof then
+        begin
+          // Ask if create record
+          if RpMessageBox(SRpRecordnotExists, SRpWarning,
+             [smbYes, smbNo], smsWarning, smbYes, smbNo) = smbYes then
           begin
-            if MessageDlg(TranslateStr(268, 'Record does not exist. Create new record?'),
-               mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-            begin
-              sql := 'INSERT INTO ' + ComboTable.Text + '(' +
-                     ComboSearchField.Text + ') VALUES (:' +
-                     ComboSearchField.Text + ')';
-              FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, alist, True, FReport.Params);
-              FSection.SaveExternal;
-            end;
-          end
-          else
-          begin
-            if MessageDlg(TranslateStr(269, 'Load section from external database?'),
-               mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-              FSection.LoadExternal;
+            sql := 'INSERT INTO ' + ComboTable.Text + '(' +
+                   ComboSearchField.Text + ') VALUES (:' +
+                   ComboSearchField.Text + ')';
+            FReport.DatabaseInfo.Items[idx].OpenDatasetFromSQL(sql, alist, True, FReport.Params);
+            FSection.SaveExternal;
           end;
-        finally
-          adata.Free;
+        end
+        else
+        begin
+          if RpMessageBox(SRpLoadSection, SRpWarning,
+             [smbYes, smbNo], smsWarning, smbYes, smbNo) = smbYes then
+          begin
+            FSection.LoadExternal;
+            Result := True;
+          end;
         end;
+      finally
+        adata.Free;
       end;
     finally
       aparam.Free;

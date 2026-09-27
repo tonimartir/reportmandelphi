@@ -79,9 +79,26 @@ type
     FReport: TRpReport;
     FCleanOpIndex: Integer;
     FMaxOperations: Integer;
+    // True when the report changed through a path that is not recorded in the
+    // cue (dialogs, external loads...). Only MarkClean resets it.
+    FExternalDirty: Boolean;
+    FOnChange: TNotifyEvent;
+    FUpdateCount: Integer;
+    FChangePending: Boolean;
+    procedure DoChange;
+    procedure TrimHistory;
     procedure ApplySwapOperation(const className: string; down: Boolean;
       aOldIndex: Integer; const aParentName: string);
+    procedure ApplySwap(operation: TChangeObjectOperation; isUndo: Boolean);
+    procedure MoveComponentToIndex(operation: TChangeObjectOperation;
+      const newIndex: Variant);
     procedure ApplyOperation(operation: TChangeObjectOperation; isUndo: Boolean);
+    procedure RecreateItem(operation: TChangeObjectOperation; isUndo: Boolean);
+    procedure DeleteRemovedItem(operation: TChangeObjectOperation);
+    procedure DeleteAddedItem(operation: TChangeObjectOperation);
+    procedure DiscardItem(target: TObject);
+    procedure ApplyParentChange(operation: TChangeObjectOperation;
+      target: TObject; isUndo: Boolean);
     procedure ApplyPropertiesToObject(operation: TChangeObjectOperation;
       target: TObject; isUndo: Boolean);
     function GetComponentByName(const name: string): TObject;
@@ -93,16 +110,31 @@ type
     constructor Create(AReport: TRpReport);
     destructor Destroy; override;
     function GetGroupId: Integer;
+    // Takes ownership of op, also when it raises (the op is then freed).
+    // When MaxOperations is exceeded whole oldest groups are discarded; the
+    // group of the op being added is never split.
     procedure AddOperation(op: TChangeObjectOperation);
+    // Defers OnChange until the matching EndUpdate, for actions that record
+    // many operations. Always pair them with try/finally.
+    procedure BeginUpdate;
+    procedure EndUpdate;
     procedure AddAllComponentProperties(pitem: TRpCommonPosComponent; op: TChangeObjectOperation);
     procedure AddSectionProperties(sec: TRpSection; op: TChangeObjectOperation);
     procedure AddSubreportProperties(subrep: TRpSubReport; op: TChangeObjectOperation);
+    // Undo/Redo apply a whole group. If an operation fails, the operations
+    // already applied stay applied (moved to the other stack), the failing
+    // one and the rest of the group stay where they were, and the error is
+    // re-raised: the stacks always match the report. The returned list does
+    // not own the operations; the caller frees it.
     function Undo: TObjectList<TChangeObjectOperation>;
     function Redo: TObjectList<TChangeObjectOperation>;
     function CanUndo: Boolean;
     function CanRedo: Boolean;
     procedure Clear;
     procedure MarkClean;
+    // Marks the report as modified by a change that is not recorded as an
+    // undo operation (e.g. a dialog accepted with OK). Survives Undo/Redo/Clear.
+    procedure MarkExternalChange;
     function IsDirty: Boolean;
     procedure TruncateHistory(MaxCount: Integer);
     function ToJSON: string;
@@ -112,12 +144,30 @@ type
     property Report: TRpReport read FReport write FReport;
     property MaxOperations: Integer read FMaxOperations write FMaxOperations;
     property CleanOpIndex: Integer read FCleanOpIndex;
+    // Fired after any change of the history or of the dirty state
+    // (AddOperation, Undo, Redo, Clear, MarkClean, MarkExternalChange,
+    // TruncateHistory). The designer uses it to refresh status and history UI.
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
+
+const
+  // Property of a otSwapUp/otSwapDown operation that moves a component to an
+  // arbitrary position of its section (bring to front / send to back):
+  // oldValue is the index before the action, newValue the index after it.
+  // Swap operations without it are adjacent swaps at oldItemIndex.
+  UndoItemIndexProperty = 'itemIndex';
+
+// Model name used to restore an undo property on target
+function MapUndoPropertyName(target: TObject; const propName: string): string;
+// Current model value of an undo property of target (as Undo/Redo restore it)
+function ReadUndoPropertyValue(target: TObject; const propName: string): Variant;
+// Undo cue of the report that owns AItem, nil when there is none
+function FindItemUndoCue(AItem: TRpCommonComponent): TUndoCue;
 
 implementation
 
 uses
-  rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams;
+  TypInfo, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
 
@@ -281,15 +331,6 @@ begin
   Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"."zzz"Z"', utcValue);
 end;
 
-function SafeISO8601ToDate(const dateStr: string): TDateTime;
-begin
-  try
-    Result := ISO8601ToDate(dateStr, False);
-  except
-    Result := Now;
-  end;
-end;
-
 function VariantTypeToJSONName(const value: Variant): string;
 var
   variantType: Integer;
@@ -350,6 +391,7 @@ var
   jsonObject: TJSONObject;
   typeValue, valueNode: TJSONData;
   typeName, valueText: string;
+  dateValue: TDateTime;
 begin
   if jData = nil then
     Exit(Unassigned);
@@ -384,12 +426,11 @@ begin
     Exit(valueNode.AsFloat);
   if SameText(typeName, 'DateTime') then
   begin
+    // Like the VCL cue: a value that is not ISO 8601 is kept as the raw text
     valueText := valueNode.AsString;
-    try
-      Exit(SafeISO8601ToDate(valueText));
-    except
-      Exit(valueText);
-    end;
+    if TryISO8601ToDate(valueText, dateValue, False) then
+      Exit(dateValue);
+    Exit(valueText);
   end;
   Exit(valueNode.AsString);
 end;
@@ -425,6 +466,7 @@ end;
 function JSONValueToVariant(jData: TJSONData; propType: TPropertyType): Variant;
 var
   typedValue: Variant;
+  dateValue: TDateTime;
 begin
   if jData = nil then
     Exit(Unassigned);
@@ -454,14 +496,9 @@ begin
 
   if jData.JSONType = jtString then
   begin
-    if propType = ptDate then
-    begin
-      try
-        Exit(SafeISO8601ToDate(jData.AsString));
-      except
-        Exit(jData.AsString);
-      end;
-    end;
+    // Like the VCL cue: a date that is not ISO 8601 is kept as the raw text
+    if (propType = ptDate) and TryISO8601ToDate(jData.AsString, dateValue, False) then
+      Exit(dateValue);
     Exit(jData.AsString);
   end;
 
@@ -635,6 +672,62 @@ begin
   end;
 end;
 
+function GetUndoPropertiesItem(target: TObject): IPropertiesItem;
+begin
+  if not Assigned(target) then
+    raise Exception.Create('UndoCue: no target object to apply the properties');
+  if (target is TRpCommonComponent) then
+    Result := TRpCommonComponent(target)
+  else if (target is TRpBaseReport) then
+    Result := TRpBaseReport(target)
+  else if (target is TRpParam) then
+    Result := TRpParam(target)
+  else if (target is TRpDataInfoItem) then
+    Result := TRpDataInfoItem(target)
+  else if (target is TRpDatabaseInfoItem) then
+    Result := TRpDatabaseInfoItem(target)
+  else if (target is TRpSubReport) then
+    Result := TRpSubReport(target)
+  else
+    raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
+end;
+
+function ReadUndoPropertyValue(target: TObject; const propName: string): Variant;
+begin
+  Result := GetUndoPropertiesItem(target).GetItemProperty(
+    MapUndoPropertyName(target, propName));
+end;
+
+function FindItemUndoCue(AItem: TRpCommonComponent): TUndoCue;
+begin
+  Result := nil;
+  if Assigned(AItem) and (AItem.Report is TRpBaseReport) and
+     (TRpBaseReport(AItem.Report).UndoCue is TUndoCue) then
+    Result := TUndoCue(TRpBaseReport(AItem.Report).UndoCue);
+end;
+
+function FindOperationProperty(operation: TChangeObjectOperation;
+  const propName: string): TChangeOperationItem;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to operation.properties.Count - 1 do
+  begin
+    if SameText(operation.properties[i].propertyName, propName) then
+    begin
+      Result := operation.properties[i];
+      Exit;
+    end;
+  end;
+end;
+
+function OperationDescription(operation: TChangeObjectOperation): string;
+begin
+  Result := GetEnumName(TypeInfo(TOperationType), Ord(operation.operation)) +
+    ' ' + operation.componentClass + ' ' + operation.componentName;
+end;
+
 { TChangeOperationItem }
 
 constructor TChangeOperationItem.Create(const APropertyName: string;
@@ -739,6 +832,7 @@ var
   i: Integer;
   propObj: TJSONObject;
   dateStr: string;
+  opDate: TDateTime;
 begin
   Result := TChangeObjectOperation.Create(
     TOperationType(JSONGetInt(jObj, 'operation', 'Operation', 0)),
@@ -750,9 +844,11 @@ begin
   Result.oldItemIndex := JSONGetInt(jObj, 'oldItemIndex', 'OldItemIndex', -1);
   Result.oldParentName := JSONGetStr(jObj, 'oldParentName', 'OldParentName');
   Result.expandedProperties := JSONGetBool(jObj, 'expandedProperties', 'ExpandedProperties', True);
+  // The operation date is only informative (history panel): like the VCL cue,
+  // a missing or unparsable date becomes the load time
   dateStr := JSONGetStr(jObj, 'date', 'Date');
-  if dateStr <> '' then
-    Result.date := SafeISO8601ToDate(dateStr)
+  if (dateStr <> '') and TryISO8601ToDate(dateStr, opDate, False) then
+    Result.date := opDate
   else
     Result.date := Now;
 
@@ -778,7 +874,8 @@ begin
   FReport := AReport;
   FGroupId := 0;
   FCleanOpIndex := 0;
-  FMaxOperations := 100;
+  // Unlimited by default, like the VCL undo cue; hosts may set a cap
+  FMaxOperations := 0;
   UndoOperations := TObjectList<TChangeObjectOperation>.Create(True);
   RedoOperations := TObjectList<TChangeObjectOperation>.Create(True);
 end;
@@ -821,65 +918,134 @@ procedure TUndoCue.AddOperation(op: TChangeObjectOperation);
 var
   isPosComp: Boolean;
 begin
-  AssertReportNotBlocked('AddOperation');
-  if (op.operation = otAdd) or (op.operation = otRemove) then
-  begin
-    isPosComp := (op.componentClass = 'TRPLABEL') or (op.componentClass = 'TRPEXPRESSION') or
-                 (op.componentClass = 'TRPSHAPE') or (op.componentClass = 'TRPIMAGE') or
-                 (op.componentClass = 'TRPBARCODE') or (op.componentClass = 'TRPCHART');
-    if isPosComp and (op.parentName = '') then
-      raise Exception.Create('UndoCue: La sección del componente no tiene nombre');
+  try
+    AssertReportNotBlocked('AddOperation');
+    if (op.operation = otAdd) or (op.operation = otRemove) then
+    begin
+      isPosComp := (op.componentClass = 'TRPLABEL') or (op.componentClass = 'TRPEXPRESSION') or
+                   (op.componentClass = 'TRPSHAPE') or (op.componentClass = 'TRPIMAGE') or
+                   (op.componentClass = 'TRPBARCODE') or (op.componentClass = 'TRPCHART');
+      if isPosComp and (op.parentName = '') then
+        raise Exception.Create('UndoCue: La sección del componente no tiene nombre');
+    end;
+  except
+    // The cue owns the operation from the call on: do not leak it
+    op.Free;
+    raise;
   end;
+
+  // The saved (clean) state lies in the redo branch that this new operation
+  // discards: it can never be reached again.
+  if FCleanOpIndex > UndoOperations.Count then
+    FCleanOpIndex := -1;
 
   UndoOperations.Add(op);
   RedoOperations.Clear;
-
-  if (FMaxOperations > 0) and (UndoOperations.Count > FMaxOperations) then
-  begin
-    UndoOperations.Delete(0);
-    if FCleanOpIndex > 0 then
-      Dec(FCleanOpIndex)
-    else if FCleanOpIndex = 0 then
-      FCleanOpIndex := -1;
-  end;
+  TrimHistory;
 
   if Assigned(FReport) then
     FReport.Modified := IsDirty;
+  DoChange;
+end;
+
+procedure TUndoCue.TrimHistory;
+var
+  oldestGroup, trimmed: Integer;
+begin
+  if FMaxOperations <= 0 then
+    Exit;
+  // Discard whole groups from the oldest end, so undo never restores half
+  // an action. The newest group (the one being recorded) is never trimmed,
+  // even when it alone exceeds the limit.
+  while UndoOperations.Count > FMaxOperations do
+  begin
+    oldestGroup := UndoOperations.First.groupId;
+    if oldestGroup = UndoOperations.Last.groupId then
+      Break;
+    trimmed := 0;
+    while (UndoOperations.Count > 0) and (UndoOperations.First.groupId = oldestGroup) do
+    begin
+      UndoOperations.Delete(0);
+      Inc(trimmed);
+    end;
+    // The clean point counts operations from the oldest one: shift it, or
+    // forget it when it lay inside the discarded part
+    if FCleanOpIndex >= trimmed then
+      Dec(FCleanOpIndex, trimmed)
+    else if FCleanOpIndex >= 0 then
+      FCleanOpIndex := -1;
+  end;
+end;
+
+procedure TUndoCue.DoChange;
+begin
+  if FUpdateCount > 0 then
+  begin
+    FChangePending := True;
+    Exit;
+  end;
+  FChangePending := False;
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+end;
+
+procedure TUndoCue.BeginUpdate;
+begin
+  Inc(FUpdateCount);
+end;
+
+procedure TUndoCue.EndUpdate;
+begin
+  if FUpdateCount <= 0 then
+    raise Exception.Create('UndoCue.EndUpdate without BeginUpdate');
+  Dec(FUpdateCount);
+  if (FUpdateCount = 0) and FChangePending then
+    DoChange;
 end;
 
 procedure TUndoCue.Clear;
 begin
+  // Clearing the history must not hide unsaved changes: keep the dirty state
+  // as an external change (MarkClean resets it after load/save).
+  if IsDirty then
+    FExternalDirty := True;
   UndoOperations.Clear;
   RedoOperations.Clear;
   FCleanOpIndex := 0;
   if Assigned(FReport) then
-    FReport.Modified := False;
+    FReport.Modified := IsDirty;
+  DoChange;
 end;
 
 procedure TUndoCue.MarkClean;
 begin
   FCleanOpIndex := UndoOperations.Count;
+  FExternalDirty := False;
   if Assigned(FReport) then
     FReport.Modified := False;
+  DoChange;
+end;
+
+procedure TUndoCue.MarkExternalChange;
+begin
+  FExternalDirty := True;
+  if Assigned(FReport) then
+    FReport.Modified := True;
+  DoChange;
 end;
 
 function TUndoCue.IsDirty: Boolean;
 begin
-  Result := (FCleanOpIndex < 0) or (UndoOperations.Count <> FCleanOpIndex);
+  Result := FExternalDirty or (FCleanOpIndex < 0) or
+    (UndoOperations.Count <> FCleanOpIndex);
 end;
 
 procedure TUndoCue.TruncateHistory(MaxCount: Integer);
 begin
   if MaxCount <= 0 then Exit;
   FMaxOperations := MaxCount;
-  while UndoOperations.Count > FMaxOperations do
-  begin
-    UndoOperations.Delete(0);
-    if FCleanOpIndex > 0 then
-      Dec(FCleanOpIndex)
-    else if FCleanOpIndex = 0 then
-      FCleanOpIndex := -1;
-  end;
+  TrimHistory;
+  DoChange;
 end;
 
 function TUndoCue.CanUndo: Boolean;
@@ -895,71 +1061,85 @@ end;
 function TUndoCue.Undo: TObjectList<TChangeObjectOperation>;
 var
   op: TChangeObjectOperation;
-  gId, newGroupId: Integer;
+  gId: Integer;
 begin
   AssertReportNotBlocked('Undo');
   if UndoOperations.Count = 0 then
     Exit(nil);
 
   Result := TObjectList<TChangeObjectOperation>.Create(False);
-  gId := UndoOperations.Last.groupId;
-  newGroupId := gId;
-
-  while newGroupId = gId do
-  begin
-    if UndoOperations.Count = 0 then
-      Break;
-    op := UndoOperations.Last;
-    UndoOperations.OwnsObjects := False;
-    UndoOperations.Delete(UndoOperations.Count - 1);
-    UndoOperations.OwnsObjects := True;
-
-    Result.Add(op);
-    ApplyOperation(op, True);
-    RedoOperations.Add(op);
-
-    if UndoOperations.Count = 0 then
-      Break;
-    newGroupId := UndoOperations.Last.groupId;
+  try
+    try
+      gId := UndoOperations.Last.groupId;
+      while (UndoOperations.Count > 0) and (UndoOperations.Last.groupId = gId) do
+      begin
+        op := UndoOperations.ExtractIndex(UndoOperations.Count - 1);
+        try
+          ApplyOperation(op, True);
+        except
+          on E: Exception do
+          begin
+            // Not undone: it stays the next operation to undo
+            UndoOperations.Add(op);
+            raise Exception.Create('UndoCue: undo of ' + OperationDescription(op) +
+              ' failed: ' + E.Message);
+          end;
+        end;
+        RedoOperations.Add(op);
+        Result.Add(op);
+      end;
+    except
+      FreeAndNil(Result);
+      raise;
+    end;
+  finally
+    // Also after a failure: the operations already undone changed the report
+    if Assigned(FReport) then
+      FReport.Modified := IsDirty;
+    DoChange;
   end;
-
-  if Assigned(FReport) and (Result.Count > 0) then
-    FReport.Modified := IsDirty;
 end;
 
 function TUndoCue.Redo: TObjectList<TChangeObjectOperation>;
 var
   op: TChangeObjectOperation;
-  gId, newGroupId: Integer;
+  gId: Integer;
 begin
   AssertReportNotBlocked('Redo');
   if RedoOperations.Count = 0 then
     Exit(nil);
 
   Result := TObjectList<TChangeObjectOperation>.Create(False);
-  gId := RedoOperations.Last.groupId;
-  newGroupId := gId;
-
-  while newGroupId = gId do
-  begin
-    if RedoOperations.Count = 0 then
-      Break;
-    op := RedoOperations.Last;
-    RedoOperations.OwnsObjects := False;
-    RedoOperations.Delete(RedoOperations.Count - 1);
-    RedoOperations.OwnsObjects := True;
-
-    Result.Add(op);
-    ApplyOperation(op, False);
-    UndoOperations.Add(op);
-
-    if RedoOperations.Count = 0 then
-      Break;
-    newGroupId := RedoOperations.Last.groupId;
+  try
+    try
+      gId := RedoOperations.Last.groupId;
+      while (RedoOperations.Count > 0) and (RedoOperations.Last.groupId = gId) do
+      begin
+        op := RedoOperations.ExtractIndex(RedoOperations.Count - 1);
+        try
+          ApplyOperation(op, False);
+        except
+          on E: Exception do
+          begin
+            // Not redone: it stays the next operation to redo
+            RedoOperations.Add(op);
+            raise Exception.Create('UndoCue: redo of ' + OperationDescription(op) +
+              ' failed: ' + E.Message);
+          end;
+        end;
+        UndoOperations.Add(op);
+        Result.Add(op);
+      end;
+    except
+      FreeAndNil(Result);
+      raise;
+    end;
+  finally
+    // Also after a failure: the operations already redone changed the report
+    if Assigned(FReport) then
+      FReport.Modified := IsDirty;
+    DoChange;
   end;
-
-  if Assigned(FReport) and (Result.Count > 0) then
-    FReport.Modified := IsDirty;
 end;
 
 function TUndoCue.GetComponentByName(const name: string): TObject;
@@ -983,6 +1163,16 @@ var
   increment: Integer;
   subreport: TRpSubReport;
   section: TRpSection;
+  parentItem: TObject;
+
+  procedure CheckSwapRange(ACount: Integer);
+  begin
+    if (aOldIndex < 0) or (aOldIndex >= ACount) or
+       (aOldIndex + increment < 0) or (aOldIndex + increment >= ACount) then
+      raise Exception.CreateFmt('UndoCue: swap of %s from %d to %d out of range (count %d)',
+        [className, aOldIndex, aOldIndex + increment, ACount]);
+  end;
+
 begin
   if down then
     increment := 1
@@ -991,13 +1181,18 @@ begin
 
   if className = 'TRPSUBREPORT' then
   begin
+    CheckSwapRange(FReport.SubReports.Count);
     FReport.SubReports.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if className = 'TRPSECTION' then
   begin
     if aParentName = '' then
       raise Exception.Create('Parent name required for TRPSECTION swap.');
-    subreport := TRpSubReport(GetComponentByName(aParentName));
+    parentItem := GetComponentByName(aParentName);
+    if not (parentItem is TRpSubReport) then
+      raise Exception.Create('UndoCue: parent of a section swap is not a subreport: ' + aParentName);
+    subreport := TRpSubReport(parentItem);
+    CheckSwapRange(subreport.Sections.Count);
     subreport.Sections.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if (className = 'TRPLABEL') or (className = 'TRPEXPRESSION') or
@@ -1006,38 +1201,154 @@ begin
   begin
     if aParentName = '' then
       raise Exception.Create('Parent name required for component swap.');
-    section := TRpSection(GetComponentByName(aParentName));
+    parentItem := GetComponentByName(aParentName);
+    if not (parentItem is TRpSection) then
+      raise Exception.Create('UndoCue: parent of a component swap is not a section: ' + aParentName);
+    section := TRpSection(parentItem);
+    CheckSwapRange(section.Components.Count);
     section.Components.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if className = 'TRPPARAM' then
   begin
+    CheckSwapRange(FReport.Params.Count);
     FReport.Params.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if className = 'TRPDATAINFOITEM' then
   begin
+    CheckSwapRange(FReport.DataInfo.Count);
     FReport.DataInfo.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else if className = 'TRPDATABASEINFOITEM' then
   begin
+    CheckSwapRange(FReport.DatabaseInfo.Count);
     FReport.DatabaseInfo.Items[aOldIndex].Index := aOldIndex + increment;
   end
   else
     raise Exception.Create('Swap not supported for className: ' + className);
 end;
 
+procedure TUndoCue.ApplySwap(operation: TChangeObjectOperation; isUndo: Boolean);
+var
+  indexProp: TChangeOperationItem;
+begin
+  indexProp := FindOperationProperty(operation, UndoItemIndexProperty);
+  if Assigned(indexProp) then
+  begin
+    // Bring to front / send to back: the component goes back to (undo) or
+    // again to (redo) its recorded position
+    if isUndo then
+      MoveComponentToIndex(operation, indexProp.oldValue)
+    else
+      MoveComponentToIndex(operation, indexProp.newValue);
+    Exit;
+  end;
+
+  // Adjacent swap: the item at oldItemIndex moved one position down/up
+  if isUndo then
+  begin
+    if operation.operation = otSwapDown then
+      ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex + 1, operation.parentName)
+    else
+      ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex - 1, operation.parentName);
+  end
+  else
+  begin
+    if operation.operation = otSwapDown then
+      ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex, operation.parentName)
+    else
+      ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex, operation.parentName);
+  end;
+end;
+
+procedure TUndoCue.MoveComponentToIndex(operation: TChangeObjectOperation;
+  const newIndex: Variant);
+var
+  parentItem, target: TObject;
+  section: TRpSection;
+  currentIndex, targetIndex: Integer;
+begin
+  if VarIsNull(newIndex) or VarIsEmpty(newIndex) then
+    raise Exception.Create('UndoCue: no position recorded for ' + OperationDescription(operation));
+  targetIndex := newIndex;
+  parentItem := GetComponentByName(operation.parentName);
+  if not (parentItem is TRpSection) then
+    raise Exception.Create('UndoCue: parent of a component move is not a section: ' +
+      operation.parentName);
+  section := TRpSection(parentItem);
+  target := GetComponentByName(operation.componentName);
+  if not (target is TRpCommonComponent) then
+    raise Exception.Create('UndoCue: ' + operation.componentName + ' is not a section component');
+  currentIndex := section.ReportComponents.IndexOf(TRpCommonComponent(target));
+  if currentIndex < 0 then
+    raise Exception.Create('UndoCue: ' + operation.componentName + ' not found in section ' +
+      operation.parentName);
+  if (targetIndex < 0) or (targetIndex >= section.ReportComponents.Count) then
+    raise Exception.CreateFmt('UndoCue: position %d out of range for %s (count %d)',
+      [targetIndex, operation.componentName, section.ReportComponents.Count]);
+  section.ReportComponents.Items[currentIndex].Index := targetIndex;
+end;
+
 procedure TUndoCue.ApplyOperation(operation: TChangeObjectOperation; isUndo: Boolean);
 var
   target: TObject;
-  loadTarget: Boolean;
+begin
+  case operation.operation of
+    otSwapDown, otSwapUp:
+      begin
+        ApplySwap(operation, isUndo);
+        Exit;
+      end;
+
+    otRename:
+      begin
+        if isUndo then
+          target := GetComponentByName(operation.componentName)
+        else
+          target := GetComponentByName(operation.oldParentName);
+        if not (target is TComponent) then
+          raise Exception.Create('UndoCue: rename not supported for ' + target.ClassName);
+        if isUndo then
+          TComponent(target).Name := operation.oldParentName
+        else
+          TComponent(target).Name := operation.componentName;
+        Exit;
+      end;
+
+    otRemove:
+      begin
+        if isUndo then
+          // Undo remove = re-create the element
+          RecreateItem(operation, True)
+        else
+          // Redo remove = delete again
+          DeleteRemovedItem(operation);
+        Exit;
+      end;
+
+    otAdd:
+      begin
+        if isUndo then
+          // Undo add = remove the element
+          DeleteAddedItem(operation)
+        else
+          // Redo add = re-create the element
+          RecreateItem(operation, False);
+        Exit;
+      end;
+  end;
+
+  target := GetComponentByName(operation.componentName);
+  ApplyParentChange(operation, target, isUndo);
+  ApplyPropertiesToObject(operation, target, isUndo);
+end;
+
+procedure TUndoCue.RecreateItem(operation: TChangeObjectOperation; isUndo: Boolean);
+var
+  target, parentItem: TObject;
+  itemIndex: Integer;
   parentSection: TRpSection;
   parentSubreport: TRpSubReport;
-  parentItem: TObject;
-  newParentName, sOldParentName: string;
-  oldParentSection, newParentSection: TRpSection;
-  indexOld, i: Integer;
-  comp: TRpCommonPosComponent;
   compItem: TRpCommonListItem;
-  sec: TRpSection;
   secItem: TRpSectionListItem;
   subrepItem: TRpSubReportListItem;
   dinfo: TRpDataInfoItem;
@@ -1045,397 +1356,325 @@ var
   param: TRpParam;
 begin
   target := nil;
-  loadTarget := True;
-
-  case operation.operation of
-    otSwapDown, otSwapUp:
-      begin
-        if isUndo then
-        begin
-          if operation.operation = otSwapDown then
-            ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex + 1, operation.parentName)
-          else
-            ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex - 1, operation.parentName);
-        end
-        else
-        begin
-          if operation.operation = otSwapDown then
-            ApplySwapOperation(operation.componentClass, True, operation.oldItemIndex, operation.parentName)
-          else
-            ApplySwapOperation(operation.componentClass, False, operation.oldItemIndex, operation.parentName);
-        end;
-        Exit;
-      end;
-
-    otRename:
-      begin
-        if isUndo then
-        begin
-          target := GetComponentByName(operation.componentName);
-          TComponent(target).Name := operation.oldParentName;
-        end
-        else
-        begin
-          target := GetComponentByName(operation.oldParentName);
-          TComponent(target).Name := operation.componentName;
-        end;
-        Exit;
-      end;
-
-    otRemove:
-      begin
-        if isUndo then
-        begin
-          // Undo remove = re-create the element
-          if operation.parentName <> '' then
-          begin
-            target := NewComponentByClassName(operation.componentClass, FReport);
-            TComponent(target).Name := operation.componentName;
-            parentItem := GetComponentByName(operation.parentName);
-            if parentItem is TRpSection then
-            begin
-              parentSection := TRpSection(parentItem);
-              if (operation.oldItemIndex >= 0) and
-                 (operation.oldItemIndex <= parentSection.ReportComponents.Count) then
-                compItem := parentSection.ReportComponents.Insert(operation.oldItemIndex)
-              else
-                compItem := parentSection.ReportComponents.Add;
-              compItem.Component := TRpCommonPosComponent(target);
-            end
-            else if parentItem is TRpSubReport then
-            begin
-              parentSubreport := TRpSubReport(parentItem);
-              if (operation.oldItemIndex >= 0) and
-                 (operation.oldItemIndex <= parentSubreport.Sections.Count) then
-                secItem := TRpSectionListItem(parentSubreport.Sections.Insert(operation.oldItemIndex))
-              else
-                secItem := TRpSectionListItem(parentSubreport.Sections.Add);
-              secItem.Section := TRpSection(target);
-              TRpSection(target).SubReport := parentSubreport;
-            end;
-          end
-          else
-          begin
-            // Report-level items
-            if operation.componentClass = 'TRPDATAINFOITEM' then
-            begin
-              dinfo := FReport.DataInfo.Add('');
-              dinfo.Name := operation.componentName;
-              if operation.oldItemIndex >= 0 then
-                dinfo.Index := operation.oldItemIndex;
-              target := dinfo;
-            end
-            else if operation.componentClass = 'TRPDATABASEINFOITEM' then
-            begin
-              dbinfo := FReport.DatabaseInfo.Add('');
-              dbinfo.Name := operation.componentName;
-              if operation.oldItemIndex >= 0 then
-                dbinfo.Index := operation.oldItemIndex;
-              target := dbinfo;
-            end
-            else if operation.componentClass = 'TRPPARAM' then
-            begin
-              param := FReport.Params.Add('');
-              param.IntName := operation.componentName;
-              if operation.oldItemIndex >= 0 then
-                param.Index := operation.oldItemIndex;
-              target := param;
-            end
-            else if operation.componentClass = 'TRPSUBREPORT' then
-            begin
-              target := TRpSubReport.Create(FReport);
-              TRpSubReport(target).Name := operation.componentName;
-              subrepItem := FReport.SubReports.Add;
-              subrepItem.SubReport := TRpSubReport(target);
-              if operation.oldItemIndex >= 0 then
-                subrepItem.Index := operation.oldItemIndex;
-            end;
-          end;
-        end
-        else
-        begin
-          // Redo remove = delete again
-          target := GetComponentByName(operation.componentName);
-          if target is TRpCommonPosComponent then
-          begin
-            comp := TRpCommonPosComponent(target);
-            if operation.parentName <> '' then
-            begin
-              parentSection := TRpSection(GetComponentByName(operation.parentName));
-              indexOld := parentSection.Components.IndexOf(comp);
-              if indexOld >= 0 then
-              begin
-                parentSection.Components.Items[indexOld].Component := nil;
-                parentSection.Components.Delete(indexOld);
-              end;
-            end;
-            comp.Free;
-          end
-          else if target is TRpSection then
-          begin
-            sec := TRpSection(target);
-            if operation.parentName <> '' then
-            begin
-              parentSubreport := TRpSubReport(GetComponentByName(operation.parentName));
-              for i := 0 to parentSubreport.Sections.Count - 1 do
-              begin
-                if SameText(parentSubreport.Sections.Items[i].Section.Name, sec.Name) then
-                begin
-                  parentSubreport.Sections.Items[i].Section := nil;
-                  parentSubreport.Sections.Delete(i);
-                  Break;
-                end;
-              end;
-            end;
-            sec.FreeComponents;
-            sec.Free;
-          end
-          else if target is TRpSubReport then
-          begin
-            FReport.DeleteSubReport(TRpSubReport(target));
-          end
-          else if target is TRpDataInfoItem then
-          begin
-            for i := 0 to FReport.DataInfo.Count - 1 do
-            begin
-              if SameText(FReport.DataInfo.Items[i].Name, operation.componentName) then
-              begin
-                FReport.DataInfo.Delete(i);
-                Break;
-              end;
-            end;
-          end
-          else if target is TRpDatabaseInfoItem then
-          begin
-            for i := 0 to FReport.DatabaseInfo.Count - 1 do
-            begin
-              if SameText(FReport.DatabaseInfo.Items[i].Name, operation.componentName) then
-              begin
-                FReport.DatabaseInfo.Delete(i);
-                Break;
-              end;
-            end;
-          end
-          else if target is TRpParam then
-          begin
-            for i := 0 to FReport.Params.Count - 1 do
-            begin
-              if SameText(FReport.Params.Items[i].IntName, operation.componentName) then
-              begin
-                FReport.Params.Delete(i);
-                Break;
-              end;
-            end;
-          end;
-          Exit;
-        end;
-      end;
-
-    otAdd:
-      begin
-        if not isUndo then
-          loadTarget := False;
-      end;
-  else
-    loadTarget := True;
-  end;
-
-  if loadTarget then
-    target := GetComponentByName(operation.componentName);
-
-  parentSection := nil;
-  parentSubreport := nil;
-
-  if operation.operation = otAdd then
-  begin
+  itemIndex := operation.oldItemIndex;
+  try
     if operation.parentName <> '' then
     begin
       parentItem := GetComponentByName(operation.parentName);
       if parentItem is TRpSection then
-        parentSection := TRpSection(parentItem)
-      else if parentItem is TRpSubReport then
-        parentSubreport := TRpSubReport(parentItem);
-    end;
-
-    if isUndo then
-    begin
-      // Undo add = remove the component
-      if parentSection <> nil then
       begin
-        for i := 0 to parentSection.Components.Count - 1 do
-        begin
-          comp := TRpCommonPosComponent(parentSection.Components.Items[i].Component);
-          if SameText(comp.Name, operation.componentName) then
-          begin
-            operation.oldItemIndex := i;
-            parentSection.Components.Items[i].Component := nil;
-            parentSection.Components.Delete(i);
-            comp.Free;
-            Exit;
-          end;
-        end;
-      end
-      else if parentSubreport <> nil then
-      begin
-        for i := 0 to parentSubreport.Sections.Count - 1 do
-        begin
-          sec := TRpSection(parentSubreport.Sections.Items[i].Section);
-          if SameText(sec.Name, operation.componentName) then
-          begin
-            operation.oldItemIndex := i;
-            parentSubreport.Sections.Items[i].Section := nil;
-            parentSubreport.Sections.Delete(i);
-            sec.FreeComponents;
-            sec.Free;
-            Exit;
-          end;
-        end;
-      end
-      else
-      begin
-        if operation.componentClass = 'TRPSUBREPORT' then
-        begin
-          for i := 0 to FReport.SubReports.Count - 1 do
-          begin
-            if SameText(FReport.SubReports.Items[i].SubReport.Name, operation.componentName) then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DeleteSubReport(FReport.SubReports.Items[i].SubReport);
-              Exit;
-            end;
-          end;
-        end
-        else if operation.componentClass = 'TRPDATAINFOITEM' then
-        begin
-          for i := 0 to FReport.DataInfo.Count - 1 do
-          begin
-            if SameText(FReport.DataInfo.Items[i].Name, operation.componentName) then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DataInfo.Delete(i);
-              Exit;
-            end;
-          end;
-        end
-        else if operation.componentClass = 'TRPDATABASEINFOITEM' then
-        begin
-          for i := 0 to FReport.DatabaseInfo.Count - 1 do
-          begin
-            if SameText(FReport.DatabaseInfo.Items[i].Name, operation.componentName) then
-            begin
-              operation.oldItemIndex := i;
-              FReport.DatabaseInfo.Delete(i);
-              Exit;
-            end;
-          end;
-        end
-        else if operation.componentClass = 'TRPPARAM' then
-        begin
-          for i := 0 to FReport.Params.Count - 1 do
-          begin
-            if SameText(FReport.Params.Items[i].IntName, operation.componentName) then
-            begin
-              operation.oldItemIndex := i;
-              FReport.Params.Delete(i);
-              Exit;
-            end;
-          end;
-        end;
-      end;
-      Exit;
-    end
-    else
-    begin
-      // Redo add = re-create the component
-      if operation.parentName <> '' then
-      begin
-        target := NewComponentByClassName(operation.componentClass, FReport);
+        parentSection := TRpSection(parentItem);
+        // Components of an external section are owned by the section, as
+        // when the designer creates them (TRpSectionInterface.CreateNewComponent)
+        if parentSection.IsExternal then
+          target := NewComponentByClassName(operation.componentClass, parentSection)
+        else
+          target := NewComponentByClassName(operation.componentClass, FReport);
+        if not (target is TRpCommonPosComponent) then
+          raise Exception.Create('UndoCue: ' + operation.componentClass +
+            ' can not be placed in section ' + operation.parentName);
         TComponent(target).Name := operation.componentName;
-        if parentSection <> nil then
-        begin
-          if (operation.oldItemIndex >= 0) and
-             (operation.oldItemIndex <= parentSection.ReportComponents.Count) then
-            compItem := parentSection.ReportComponents.Insert(operation.oldItemIndex)
-          else
-            compItem := parentSection.ReportComponents.Add;
-          compItem.Component := TRpCommonPosComponent(target);
-        end
-        else if parentSubreport <> nil then
-        begin
-          if (operation.oldItemIndex >= 0) and
-             (operation.oldItemIndex <= parentSubreport.Sections.Count) then
-            secItem := TRpSectionListItem(parentSubreport.Sections.Insert(operation.oldItemIndex))
-          else
-            secItem := TRpSectionListItem(parentSubreport.Sections.Add);
-          secItem.Section := TRpSection(target);
-          TRpSection(target).SubReport := parentSubreport;
-        end;
+        if (itemIndex >= 0) and (itemIndex <= parentSection.ReportComponents.Count) then
+          compItem := parentSection.ReportComponents.Insert(itemIndex)
+        else
+          compItem := parentSection.ReportComponents.Add;
+        compItem.Component := TRpCommonPosComponent(target);
+      end
+      else if parentItem is TRpSubReport then
+      begin
+        parentSubreport := TRpSubReport(parentItem);
+        target := NewComponentByClassName(operation.componentClass, FReport);
+        if not (target is TRpSection) then
+          raise Exception.Create('UndoCue: ' + operation.componentClass +
+            ' can not be placed in subreport ' + operation.parentName);
+        TComponent(target).Name := operation.componentName;
+        if (itemIndex >= 0) and (itemIndex <= parentSubreport.Sections.Count) then
+          secItem := TRpSectionListItem(parentSubreport.Sections.Insert(itemIndex))
+        else
+          secItem := TRpSectionListItem(parentSubreport.Sections.Add);
+        secItem.Section := TRpSection(target);
+        TRpSection(target).SubReport := parentSubreport;
+      end
+      else
+        raise Exception.Create('UndoCue: parent ' + operation.parentName +
+          ' is not a section or a subreport');
+    end
+    else if operation.componentClass = 'TRPSUBREPORT' then
+    begin
+      if isUndo then
+      begin
+        // Undo of a remove: its sections come back through their own
+        // operations of the same group
+        target := TRpSubReport.Create(FReport);
+        TRpSubReport(target).Name := operation.componentName;
+        subrepItem := FReport.SubReports.Add;
+        subrepItem.SubReport := TRpSubReport(target);
       end
       else
       begin
-        if operation.componentClass = 'TRPSUBREPORT' then
-        begin
-          target := TRpSubReport.Create(FReport);
-          TRpSubReport(target).Name := operation.componentName;
-          subrepItem := FReport.SubReports.Add;
-          subrepItem.SubReport := TRpSubReport(target);
-          if operation.oldItemIndex >= 0 then
-            subrepItem.Index := operation.oldItemIndex;
-        end
-        else if operation.componentClass = 'TRPDATAINFOITEM' then
-        begin
-          dinfo := FReport.DataInfo.Add('');
-          dinfo.Name := operation.componentName;
-          if operation.oldItemIndex >= 0 then
-            dinfo.Index := operation.oldItemIndex;
-          target := dinfo;
-        end
-        else if operation.componentClass = 'TRPDATABASEINFOITEM' then
-        begin
-          dbinfo := FReport.DatabaseInfo.Add('');
-          dbinfo.Name := operation.componentName;
-          if operation.oldItemIndex >= 0 then
-            dbinfo.Index := operation.oldItemIndex;
-          target := dbinfo;
-        end
-        else if operation.componentClass = 'TRPPARAM' then
-        begin
-          param := FReport.Params.Add('');
-          param.IntName := operation.componentName;
-          if operation.oldItemIndex >= 0 then
-            param.Index := operation.oldItemIndex;
-          target := param;
-        end;
+        // Redo of an add: recreate it as the designer does, AddSubReport
+        // also creates its detail section
+        target := FReport.AddSubReport;
+        TRpSubReport(target).Name := operation.componentName;
+        subrepItem := FReport.SubReports.Items[FReport.SubReports.Count - 1];
+      end;
+      if (itemIndex >= 0) and (itemIndex < FReport.SubReports.Count) then
+        subrepItem.Index := itemIndex;
+    end
+    else if operation.componentClass = 'TRPDATAINFOITEM' then
+    begin
+      dinfo := FReport.DataInfo.Add('');
+      target := dinfo;
+      dinfo.Name := operation.componentName;
+      if (itemIndex >= 0) and (itemIndex < FReport.DataInfo.Count) then
+        dinfo.Index := itemIndex;
+    end
+    else if operation.componentClass = 'TRPDATABASEINFOITEM' then
+    begin
+      dbinfo := FReport.DatabaseInfo.Add('');
+      target := dbinfo;
+      dbinfo.Name := operation.componentName;
+      if (itemIndex >= 0) and (itemIndex < FReport.DatabaseInfo.Count) then
+        dbinfo.Index := itemIndex;
+    end
+    else if operation.componentClass = 'TRPPARAM' then
+    begin
+      param := FReport.Params.Add('');
+      target := param;
+      param.IntName := operation.componentName;
+      if (itemIndex >= 0) and (itemIndex < FReport.Params.Count) then
+        param.Index := itemIndex;
+    end
+    else
+      raise Exception.Create('Class not found: ' + operation.componentClass);
+
+    ApplyPropertiesToObject(operation, target, isUndo);
+  except
+    // Leave the report as it was before this operation
+    if Assigned(target) then
+      DiscardItem(target);
+    raise;
+  end;
+end;
+
+procedure TUndoCue.DeleteRemovedItem(operation: TChangeObjectOperation);
+var
+  target: TObject;
+begin
+  target := GetComponentByName(operation.componentName);
+  if not ((target is TRpCommonPosComponent) or (target is TRpSection) or
+     (target is TRpSubReport) or (target is TRpDataInfoItem) or
+     (target is TRpDatabaseInfoItem) or (target is TRpParam)) then
+    raise Exception.Create('UndoCue: can not delete ' + operation.componentName +
+      ' (' + target.ClassName + ')');
+  DiscardItem(target);
+end;
+
+procedure TUndoCue.DeleteAddedItem(operation: TChangeObjectOperation);
+var
+  parentItem: TObject;
+  parentSection: TRpSection;
+  parentSubreport: TRpSubReport;
+  comp: TRpCommonComponent;
+  sec: TRpSection;
+  i: Integer;
+begin
+  parentSection := nil;
+  parentSubreport := nil;
+  if operation.parentName <> '' then
+  begin
+    parentItem := GetComponentByName(operation.parentName);
+    if parentItem is TRpSection then
+      parentSection := TRpSection(parentItem)
+    else if parentItem is TRpSubReport then
+      parentSubreport := TRpSubReport(parentItem);
+  end;
+
+  // The item is searched by name in its parent: it may have been removed by
+  // a previous operation of the same group, then there is nothing to do
+  if parentSection <> nil then
+  begin
+    for i := 0 to parentSection.Components.Count - 1 do
+    begin
+      comp := parentSection.Components.Items[i].Component;
+      if Assigned(comp) and SameText(comp.Name, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        parentSection.Components.Items[i].Component := nil;
+        parentSection.Components.Delete(i);
+        comp.Free;
+        Exit;
+      end;
+    end;
+  end
+  else if parentSubreport <> nil then
+  begin
+    for i := 0 to parentSubreport.Sections.Count - 1 do
+    begin
+      sec := TRpSection(parentSubreport.Sections.Items[i].Section);
+      if Assigned(sec) and SameText(sec.Name, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        parentSubreport.Sections.Items[i].Section := nil;
+        parentSubreport.Sections.Delete(i);
+        sec.FreeComponents;
+        sec.Free;
+        Exit;
+      end;
+    end;
+  end
+  else if operation.componentClass = 'TRPSUBREPORT' then
+  begin
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      if SameText(FReport.SubReports.Items[i].SubReport.Name, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        FReport.DeleteSubReport(FReport.SubReports.Items[i].SubReport);
+        Exit;
+      end;
+    end;
+  end
+  else if operation.componentClass = 'TRPDATAINFOITEM' then
+  begin
+    for i := 0 to FReport.DataInfo.Count - 1 do
+    begin
+      if SameText(FReport.DataInfo.Items[i].Name, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        FReport.DataInfo.Delete(i);
+        Exit;
+      end;
+    end;
+  end
+  else if operation.componentClass = 'TRPDATABASEINFOITEM' then
+  begin
+    for i := 0 to FReport.DatabaseInfo.Count - 1 do
+    begin
+      if SameText(FReport.DatabaseInfo.Items[i].Name, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        FReport.DatabaseInfo.Delete(i);
+        Exit;
+      end;
+    end;
+  end
+  else if operation.componentClass = 'TRPPARAM' then
+  begin
+    for i := 0 to FReport.Params.Count - 1 do
+    begin
+      if SameText(FReport.Params.Items[i].IntName, operation.componentName) then
+      begin
+        operation.oldItemIndex := i;
+        FReport.Params.Delete(i);
+        Exit;
       end;
     end;
   end;
+end;
 
-  // Handle parent change if applicable
-  if operation.oldParentName <> '' then
+procedure TUndoCue.DiscardItem(target: TObject);
+var
+  i, j, index: Integer;
+  subrep: TRpSubReport;
+  sec: TRpSection;
+begin
+  if target is TRpCommonPosComponent then
   begin
-    if isUndo then
+    for i := 0 to FReport.SubReports.Count - 1 do
     begin
-      newParentName := operation.parentName;
-      sOldParentName := operation.oldParentName;
-    end
+      subrep := FReport.SubReports.Items[i].SubReport;
+      for j := 0 to subrep.Sections.Count - 1 do
+      begin
+        sec := subrep.Sections.Items[j].Section;
+        if not Assigned(sec) then
+          Continue;
+        index := sec.ReportComponents.IndexOf(TRpCommonPosComponent(target));
+        if index >= 0 then
+        begin
+          sec.ReportComponents.Items[index].Component := nil;
+          sec.ReportComponents.Delete(index);
+        end;
+      end;
+    end;
+    target.Free;
+  end
+  else if target is TRpSection then
+  begin
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      subrep := FReport.SubReports.Items[i].SubReport;
+      for j := subrep.Sections.Count - 1 downto 0 do
+      begin
+        if subrep.Sections.Items[j].Section = target then
+        begin
+          // Nil the slot first: FreeSection would also free the group pair
+          subrep.Sections.Items[j].Section := nil;
+          subrep.Sections.Delete(j);
+        end;
+      end;
+    end;
+    TRpSection(target).FreeComponents;
+    target.Free;
+  end
+  else if target is TRpSubReport then
+  begin
+    if FReport.SubReports.IndexOf(TRpSubReport(target)) >= 0 then
+      FReport.DeleteSubReport(TRpSubReport(target))
     else
-    begin
-      newParentName := operation.oldParentName;
-      sOldParentName := operation.parentName;
-    end;
-    oldParentSection := TRpSection(GetComponentByName(sOldParentName));
-    newParentSection := TRpSection(GetComponentByName(newParentName));
-    indexOld := newParentSection.Components.IndexOf(TRpCommonPosComponent(target));
-    if indexOld >= 0 then
-    begin
-      newParentSection.Components.Items[indexOld].Component := nil;
-      newParentSection.Components.Delete(indexOld);
-      compItem := oldParentSection.ReportComponents.Add;
-      compItem.Component := TRpCommonPosComponent(target);
-    end;
-  end;
+      target.Free;
+  end
+  else
+    // Data info, database info and parameters are collection items: freeing
+    // them removes them from their collection
+    target.Free;
+end;
 
-  ApplyPropertiesToObject(operation, target, isUndo);
+procedure TUndoCue.ApplyParentChange(operation: TChangeObjectOperation;
+  target: TObject; isUndo: Boolean);
+var
+  fromName, toName: string;
+  fromItem, toItem: TObject;
+  fromSection, toSection: TRpSection;
+  indexOld: Integer;
+  compItem: TRpCommonListItem;
+begin
+  // A component moved from section oldParentName to section parentName
+  if (operation.parentName = '') or (operation.oldParentName = '') or
+     SameText(operation.parentName, operation.oldParentName) then
+    Exit;
+  if isUndo then
+  begin
+    fromName := operation.parentName;
+    toName := operation.oldParentName;
+  end
+  else
+  begin
+    fromName := operation.oldParentName;
+    toName := operation.parentName;
+  end;
+  fromItem := GetComponentByName(fromName);
+  toItem := GetComponentByName(toName);
+  if not (fromItem is TRpSection) or not (toItem is TRpSection) then
+    raise Exception.Create('UndoCue: parent change of ' + operation.componentName +
+      ' requires two sections: ' + fromName + ', ' + toName);
+  if not (target is TRpCommonPosComponent) then
+    raise Exception.Create('UndoCue: parent change not supported for ' + operation.componentName);
+  fromSection := TRpSection(fromItem);
+  toSection := TRpSection(toItem);
+  indexOld := fromSection.ReportComponents.IndexOf(TRpCommonPosComponent(target));
+  if indexOld < 0 then
+    raise Exception.Create('UndoCue: component ' + operation.componentName +
+      ' not found in section ' + fromName + ' for parent change');
+  fromSection.ReportComponents.Items[indexOld].Component := nil;
+  fromSection.ReportComponents.Delete(indexOld);
+  // Undo returns it to its recorded position in the old section
+  if isUndo and (operation.oldItemIndex >= 0) and
+     (operation.oldItemIndex <= toSection.ReportComponents.Count) then
+    compItem := toSection.ReportComponents.Insert(operation.oldItemIndex)
+  else
+    compItem := toSection.ReportComponents.Add;
+  compItem.Component := TRpCommonPosComponent(target);
 end;
 
 procedure TUndoCue.ApplyPropertiesToObject(operation: TChangeObjectOperation;
@@ -1449,20 +1688,7 @@ var
 begin
   if operation.properties.Count = 0 then
     Exit;
-  if (target is TRpCommonComponent) then
-    propsItem := TRpCommonComponent(target)
-  else if (target is TRpBaseReport) then
-    propsItem := TRpBaseReport(target)
-  else if (target is TRpParam) then
-    propsItem := TRpParam(target)
-  else if (target is TRpDataInfoItem) then
-    propsItem := TRpDataInfoItem(target)
-  else if (target is TRpDatabaseInfoItem) then
-    propsItem := TRpDatabaseInfoItem(target)
-  else if (target is TRpSubReport) then
-    propsItem := TRpSubReport(target)
-  else
-    raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
+  propsItem := GetUndoPropertiesItem(target);
 
   for i := 0 to operation.properties.Count - 1 do
   begin
@@ -1708,50 +1934,55 @@ var
 begin
   UndoOperations.Clear;
   RedoOperations.Clear;
-  if Trim(jsonStr) = '' then Exit;
-
   try
-    jData := GetJSON(jsonStr);
-  except
-    jData := nil;
-  end;
+    if Trim(jsonStr) = '' then Exit;
 
-  if (jData = nil) or not (jData is TJSONObject) then
-  begin
-    jData.Free;
-    Exit;
-  end;
-
-  root := TJSONObject(jData);
-  try
-    FGroupId := JSONGetInt(root, 'groupId', 'GroupId', 0);
-    undoArr := JSONGetArray(root, 'undoOperations', 'UndoOperations');
-    if Assigned(undoArr) then
-    begin
-      for i := 0 to undoArr.Count - 1 do
-      begin
-        if undoArr.Items[i] is TJSONObject then
-        begin
-          opObj := TJSONObject(undoArr.Items[i]);
-          UndoOperations.Add(TChangeObjectOperation.FromJSON(opObj));
-        end;
-      end;
+    try
+      jData := GetJSON(jsonStr);
+    except
+      jData := nil;
     end;
 
-    redoArr := JSONGetArray(root, 'redoOperations', 'RedoOperations');
-    if Assigned(redoArr) then
+    if (jData = nil) or not (jData is TJSONObject) then
     begin
-      for i := 0 to redoArr.Count - 1 do
+      jData.Free;
+      Exit;
+    end;
+
+    root := TJSONObject(jData);
+    try
+      FGroupId := JSONGetInt(root, 'groupId', 'GroupId', 0);
+      undoArr := JSONGetArray(root, 'undoOperations', 'UndoOperations');
+      if Assigned(undoArr) then
       begin
-        if redoArr.Items[i] is TJSONObject then
+        for i := 0 to undoArr.Count - 1 do
         begin
-          opObj := TJSONObject(redoArr.Items[i]);
-          RedoOperations.Add(TChangeObjectOperation.FromJSON(opObj));
+          if undoArr.Items[i] is TJSONObject then
+          begin
+            opObj := TJSONObject(undoArr.Items[i]);
+            UndoOperations.Add(TChangeObjectOperation.FromJSON(opObj));
+          end;
         end;
       end;
+
+      redoArr := JSONGetArray(root, 'redoOperations', 'RedoOperations');
+      if Assigned(redoArr) then
+      begin
+        for i := 0 to redoArr.Count - 1 do
+        begin
+          if redoArr.Items[i] is TJSONObject then
+          begin
+            opObj := TJSONObject(redoArr.Items[i]);
+            RedoOperations.Add(TChangeObjectOperation.FromJSON(opObj));
+          end;
+        end;
+      end;
+    finally
+      root.Free;
     end;
   finally
-    root.Free;
+    // The history was replaced: refresh listeners (history panel, status)
+    DoChange;
   end;
 end;
 

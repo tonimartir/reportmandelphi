@@ -131,6 +131,9 @@ type
     procedure PopupBringToFrontClick(Sender: TObject);
     procedure PopupSendToBackClick(Sender: TObject);
     procedure PopupSelectAllClick(Sender: TObject);
+    function SectionsOutOfSync: Boolean;
+    procedure RebuildSubReport;
+    procedure MoveSelectionZOrder(ToFront: Boolean);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Resize; override;
@@ -741,6 +744,9 @@ begin
 
   FUpdatingSubreport := True;
   try
+    // The previous subreport can already be freed (deleted, undo): nothing
+    // below may reach it, the inspector reads SubReport when it is cleared
+    FSubReport := nil;
     // Clear existing items
     ClearSelection;
     // Clear inspector CompItem references BEFORE freeing section interfaces
@@ -904,6 +910,34 @@ begin
   SecPosChange(Self);
 end;
 
+function TFRpDesignFrameLCL.SectionsOutOfSync: Boolean;
+var
+  i: Integer;
+begin
+  // True when sections of the displayed subreport were added, removed or
+  // reordered since the interfaces were built. Only pointers are compared:
+  // an interface can reference an already freed section.
+  Result := False;
+  if not Assigned(FSubReport) then
+    Exit;
+  if secinterfaces.Count <> FSubReport.Sections.Count then
+    Exit(True);
+  for i := 0 to secinterfaces.Count - 1 do
+  begin
+    if TRpSectionInterface(secinterfaces[i]).printitem <> FSubReport.Sections[i].Section then
+      Exit(True);
+  end;
+end;
+
+procedure TFRpDesignFrameLCL.RebuildSubReport;
+var
+  subrep: TRpSubReport;
+begin
+  subrep := FSubReport;
+  SelectSubReport(nil);
+  SelectSubReport(subrep);
+end;
+
 procedure TFRpDesignFrameLCL.UpdateInterface(refreshobjinsp: Boolean);
 var
   i, j: Integer;
@@ -915,6 +949,14 @@ var
 begin
   if not Assigned(FSubReport) then
     Exit;
+
+  // The section list changed: refreshing would touch interfaces of removed
+  // (freed) sections, rebuild them instead
+  if SectionsOutOfSync then
+  begin
+    RebuildSubReport;
+    Exit;
+  end;
 
   maxwidth := 0;
   posx := 0;
@@ -1167,7 +1209,9 @@ begin
   dataobj := TObject(struct.RView.Selected.Data);
   asubreport := struct.FindSelectedSubreport;
   if asubreport <> FSubReport then
-    SelectSubReport(asubreport);
+    SelectSubReport(asubreport)
+  else if SectionsOutOfSync then
+    RebuildSubReport;
 
   if dataobj is TRpSubReport then
   begin
@@ -1266,21 +1310,26 @@ begin
   begin
     cue := TUndoCue(FReport.UndoCue);
     gid := cue.GetGroupId;
-    for i := 0 to FSelectedItems.Count - 1 do
-    begin
-      item := TRpSizePosInterface(FSelectedItems[i]);
-      if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
+    cue.BeginUpdate;
+    try
+      for i := 0 to FSelectedItems.Count - 1 do
       begin
-        positem := TRpCommonPosComponent(item.printitem);
-        op := TChangeObjectOperation.Create(otModify, gid);
-        op.componentName := positem.Name;
-        op.componentClass := UpperCase(positem.ClassName);
-        if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) then
-          op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
-        op.AddProperty('posX', ptInteger, oldPosXArr[i], positem.PosX);
-        op.AddProperty('posY', ptInteger, oldPosYArr[i], positem.PosY);
-        cue.AddOperation(op);
+        item := TRpSizePosInterface(FSelectedItems[i]);
+        if Assigned(item.printitem) and (item.printitem is TRpCommonPosComponent) then
+        begin
+          positem := TRpCommonPosComponent(item.printitem);
+          op := TChangeObjectOperation.Create(otModify, gid);
+          op.componentName := positem.Name;
+          op.componentClass := UpperCase(positem.ClassName);
+          if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) then
+            op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
+          op.AddProperty('posX', ptInteger, oldPosXArr[i], positem.PosX);
+          op.AddProperty('posY', ptInteger, oldPosYArr[i], positem.PosY);
+          cue.AddOperation(op);
+        end;
       end;
+    finally
+      cue.EndUpdate;
     end;
     if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
       if Assigned(TFRpStructureLCL(freportstructure).cueview) then
@@ -1386,6 +1435,7 @@ var
   i: Integer;
   item: TRpSizePosInterface;
   secint: TRpSectionInterface;
+  sec: TRpSection;
   pitem: TRpCommonPosComponent;
   selectedList: TList;
   cue: TUndoCue;
@@ -1395,6 +1445,10 @@ begin
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then
     Exit;
 
+  cue := nil;
+  gid := 0;
+  if Assigned(FReport) and (FReport.UndoCue is TUndoCue) then
+    cue := TUndoCue(FReport.UndoCue);
   selectedList := TList.Create;
   try
     for i := 0 to FSelectedItems.Count - 1 do
@@ -1402,43 +1456,47 @@ begin
 
     ClearSelection;
 
-    // Record Undo otRemove before deleting
-    if Assigned(FReport) and Assigned(FReport.UndoCue) then
+    if Assigned(cue) then
     begin
-      cue := TUndoCue(FReport.UndoCue);
       gid := cue.GetGroupId;
+      cue.BeginUpdate;
+    end;
+    try
       for i := 0 to selectedList.Count - 1 do
       begin
         item := TRpSizePosInterface(selectedList[i]);
         secint := TRpSectionInterface(item.SectionInt);
         pitem := TRpCommonPosComponent(item.PrintItem);
-        if Assigned(secint) and Assigned(secint.PrintItem) and Assigned(pitem) then
+        if not (Assigned(secint) and Assigned(secint.PrintItem) and Assigned(pitem)) then
+          Continue;
+        sec := TRpSection(secint.PrintItem);
+        // Record each removal with its index right before deleting it: undo
+        // re-inserts the newest first, so the original order comes back
+        if Assigned(cue) then
         begin
           op := TChangeObjectOperation.Create(otRemove, gid);
-          op.componentName := pitem.Name;
-          op.componentClass := UpperCase(pitem.ClassName);
-          op.parentName := TRpSection(secint.PrintItem).Name;
-          op.oldItemIndex := TRpSection(secint.PrintItem).ReportComponents.IndexOf(pitem);
-          cue.AddAllComponentProperties(pitem, op);
+          try
+            op.componentName := pitem.Name;
+            op.componentClass := UpperCase(pitem.ClassName);
+            op.parentName := sec.Name;
+            op.oldItemIndex := sec.ReportComponents.IndexOf(pitem);
+            cue.AddAllComponentProperties(pitem, op);
+          except
+            op.Free;
+            raise;
+          end;
           cue.AddOperation(op);
         end;
-      end;
-      if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
-        if Assigned(TFRpStructureLCL(freportstructure).cueview) then
-          TFRpStructureLCL(freportstructure).cueview.RefreshList;
-    end;
-
-    for i := 0 to selectedList.Count - 1 do
-    begin
-      item := TRpSizePosInterface(selectedList[i]);
-      secint := TRpSectionInterface(item.SectionInt);
-      pitem := TRpCommonPosComponent(item.PrintItem);
-      if Assigned(secint) and Assigned(secint.PrintItem) and Assigned(pitem) then
-      begin
-        TRpSection(secint.PrintItem).DeleteComponent(pitem);
+        sec.DeleteComponent(pitem);
         secint.DeleteChild(item);
       end;
+    finally
+      if Assigned(cue) then
+        cue.EndUpdate;
     end;
+    if Assigned(cue) and Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+        TFRpStructureLCL(freportstructure).cueview.RefreshList;
   finally
     selectedList.Free;
   end;
@@ -1451,105 +1509,81 @@ begin
 end;
 
 procedure TFRpDesignFrameLCL.BringSelectionToFront;
-var
-  i, idx, gid: Integer;
-  item: TRpSizePosInterface;
-  sec: TRpSection;
-  pitem: TRpCommonComponent;
-  citem: TRpCommonListItem;
-  cue: TUndoCue;
-  op: TChangeObjectOperation;
 begin
-  if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
-  for i := 0 to FSelectedItems.Count - 1 do
-  begin
-    item := TRpSizePosInterface(FSelectedItems[i]);
-    item.BringToFront;
-    pitem := item.PrintItem;
-    if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
-    begin
-      sec := TRpSection(item.SectionInt.PrintItem);
-      idx := sec.ReportComponents.IndexOf(pitem);
-      if (idx >= 0) and (idx < sec.ReportComponents.Count - 1) then
-      begin
-        sec.ReportComponents.Delete(idx);
-        citem := sec.ReportComponents.Add;
-        citem.Component := pitem;
-      end;
-    end;
-  end;
-  if Assigned(FReport) and Assigned(FReport.UndoCue) then
-  begin
-    cue := TUndoCue(FReport.UndoCue);
-    gid := cue.GetGroupId;
-    for i := 0 to FSelectedItems.Count - 1 do
-    begin
-      item := TRpSizePosInterface(FSelectedItems[i]);
-      if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
-      begin
-        op := TChangeObjectOperation.Create(otSwapUp, gid);
-        op.componentName := item.PrintItem.Name;
-        op.componentClass := UpperCase(item.PrintItem.ClassName);
-        op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
-        cue.AddOperation(op);
-      end;
-    end;
-    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
-      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
-        TFRpStructureLCL(freportstructure).cueview.RefreshList;
-  end;
-  if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
-    FSizeModifier.UpdatePos;
+  MoveSelectionZOrder(True);
 end;
 
 procedure TFRpDesignFrameLCL.SendSelectionToBack;
+begin
+  MoveSelectionZOrder(False);
+end;
+
+procedure TFRpDesignFrameLCL.MoveSelectionZOrder(ToFront: Boolean);
 var
-  i, idx, gid: Integer;
+  i, idx, newIdx, gid: Integer;
   item: TRpSizePosInterface;
   sec: TRpSection;
   pitem: TRpCommonComponent;
-  citem: TRpCommonListItem;
   cue: TUndoCue;
   op: TChangeObjectOperation;
 begin
+  // Bring to front = move to the end of the section list (painted last),
+  // send to back = move to its start. Each move is recorded with the real
+  // positions before and after it (UndoItemIndexProperty), so undo puts
+  // every component back where it was.
   if not Assigned(FSelectedItems) or (FSelectedItems.Count = 0) then Exit;
-  for i := 0 to FSelectedItems.Count - 1 do
-  begin
-    item := TRpSizePosInterface(FSelectedItems[i]);
-    item.SendToBack;
-    pitem := item.PrintItem;
-    if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
-    begin
-      sec := TRpSection(item.SectionInt.PrintItem);
-      idx := sec.ReportComponents.IndexOf(pitem);
-      if idx > 0 then
-      begin
-        sec.ReportComponents.Delete(idx);
-        citem := sec.ReportComponents.Insert(0);
-        citem.Component := pitem;
-      end;
-    end;
-  end;
-  if Assigned(FReport) and Assigned(FReport.UndoCue) then
-  begin
+  cue := nil;
+  gid := 0;
+  if Assigned(FReport) and (FReport.UndoCue is TUndoCue) then
     cue := TUndoCue(FReport.UndoCue);
-    gid := cue.GetGroupId;
+  if Assigned(cue) then
+    cue.BeginUpdate;
+  try
     for i := 0 to FSelectedItems.Count - 1 do
     begin
       item := TRpSizePosInterface(FSelectedItems[i]);
-      if Assigned(item.SectionInt) and Assigned(item.SectionInt.PrintItem) and (item.SectionInt.PrintItem is TRpSection) then
+      if ToFront then
+        item.BringToFront
+      else
+        item.SendToBack;
+      pitem := item.PrintItem;
+      if not (Assigned(pitem) and Assigned(item.SectionInt) and
+         (item.SectionInt.PrintItem is TRpSection)) then
+        Continue;
+      sec := TRpSection(item.SectionInt.PrintItem);
+      idx := sec.ReportComponents.IndexOf(pitem);
+      if idx < 0 then
+        Continue;
+      if ToFront then
+        newIdx := sec.ReportComponents.Count - 1
+      else
+        newIdx := 0;
+      if idx = newIdx then
+        Continue;
+      sec.ReportComponents.Items[idx].Index := newIdx;
+      if Assigned(cue) then
       begin
-        op := TChangeObjectOperation.Create(otSwapDown, gid);
-        op.componentName := item.PrintItem.Name;
-        op.componentClass := UpperCase(item.PrintItem.ClassName);
-        op.parentName := TRpSection(item.SectionInt.PrintItem).Name;
+        if gid <= 0 then
+          gid := cue.GetGroupId;
+        if ToFront then
+          op := TChangeObjectOperation.Create(otSwapUp, gid)
+        else
+          op := TChangeObjectOperation.Create(otSwapDown, gid);
+        op.componentName := pitem.Name;
+        op.componentClass := UpperCase(pitem.ClassName);
+        op.parentName := sec.Name;
+        op.oldItemIndex := idx;
+        op.AddProperty(UndoItemIndexProperty, ptInteger, idx, newIdx);
         cue.AddOperation(op);
       end;
     end;
-    if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
-      if Assigned(TFRpStructureLCL(freportstructure).cueview) then
-        TFRpStructureLCL(freportstructure).cueview.RefreshList;
+  finally
+    if Assigned(cue) then
+      cue.EndUpdate;
   end;
+  if (gid > 0) and Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
+    if Assigned(TFRpStructureLCL(freportstructure).cueview) then
+      TFRpStructureLCL(freportstructure).cueview.RefreshList;
   if Assigned(FSizeModifier) and Assigned(FSizeModifier.Control) then
     FSizeModifier.UpdatePos;
 end;

@@ -2761,7 +2761,7 @@ begin
     dia.oldonidle := Application.OnIdle;
     try
       dia.metafile := metafile;
-      dia.tittle := SRpPrinting;
+      dia.tittle := 'Bitmap';
       dia.bitmono := Mono;
       dia.bitresx := resx;
       dia.bitresy := resy;

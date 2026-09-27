@@ -67,7 +67,7 @@ constructor TFRpAboutBoxLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(88, 'About Report Manager Designer');
+  Caption := TranslateStr(88, 'About Report Manager');
   Width := 460;
   Height := 340;
   Position := poScreenCenter;

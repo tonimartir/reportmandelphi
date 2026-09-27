@@ -63,6 +63,8 @@ type
     function GetCurrentPanel: TRpPanelObjLCL;
     function GetCommonClassName: string;
     function FindCommonClass(baseclass, newclass: string): string;
+    procedure RecordSelectionPositions(const oldPosX, oldPosY: array of Integer);
+    procedure DoAlignSelected(direction: Integer);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -127,6 +129,10 @@ type
     procedure CreateControlsSubReport;
     procedure DupValue(Sender: TControl);
     procedure RefreshCueView;
+    function GetTargetItems: TList;
+    procedure ApplyPropertyValues(items: TList; const propnames: array of string;
+      const values: array of WideString);
+    procedure MarkUnrecordedChange;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -148,6 +154,7 @@ implementation
 {$R *.lfm}
 
 uses
+  Variants, rplabelitem, rpdrawitem, rpmdbarcode,
   rpmdfdesignlcl, rpmdfstruclcl, rpexpredlglcl, rpmdfextseclcl, rpmdundocuelcl;
 
 function FindClassName(acompo: TRpSizeInterface): string;
@@ -195,6 +202,123 @@ begin
     Result := TrueBoolStrs[0]
   else
     Result := 'True';
+end;
+
+// Maps an inspector property (translated display name) of aitem to the model
+// property recorded in undo operations, whose value is read from the model
+// with its real type (twips, enum ordinal, boolean...). Returns '' when the
+// property has no model equivalent that TUndoCue can restore.
+function InspectorUndoProperty(aitem: TRpCommonComponent; const pname: string;
+  out ptype: TPropertyType): string;
+begin
+  Result := '';
+  ptype := ptString;
+  if not Assigned(aitem) then
+    Exit;
+
+  if pname = SrpSPrintCondition then Result := 'printCondition'
+  else if pname = SrpSBeforePrint then Result := 'doBeforePrint'
+  else if pname = SrpSAfterPrint then Result := 'doAfterPrint'
+  else if pname = SrpSWidth then
+  begin
+    Result := 'width';
+    ptype := ptInteger;
+  end
+  else if pname = SrpSHeight then
+  begin
+    Result := 'height';
+    ptype := ptInteger;
+  end;
+  if Result <> '' then
+    Exit;
+
+  if aitem is TRpCommonPosComponent then
+  begin
+    ptype := ptInteger;
+    if pname = SrpSTop then Result := 'posY'
+    else if pname = SrpSLeft then Result := 'posX'
+    else if pname = SRPAlign then Result := 'align';
+    if Result <> '' then
+      Exit;
+  end;
+
+  if aitem is TRpGenTextComponent then
+  begin
+    ptype := ptInteger;
+    if pname = SrpSAlignment then Result := 'alignment'
+    else if pname = SrpSVAlignment then Result := 'vAlignment'
+    else if pname = SrpSFontSize then Result := 'fontSize'
+    else if pname = SrpSFontColor then Result := 'fontColor'
+    else if pname = SrpSFontStyle then Result := 'fontStyle'
+    else if pname = SrpSBackColor then Result := 'backColor'
+    else if pname = SRpSFontRotation then Result := 'fontRotation'
+    else if pname = SRpSType1Font then Result := 'type1Font'
+    else if pname = SRpSFontStep then Result := 'printStep';
+    if Result <> '' then
+      Exit;
+    ptype := ptBoolean;
+    if pname = SrpSTransparent then Result := 'transparent'
+    else if pname = SrpSCutText then Result := 'cutText'
+    else if pname = SrpSWordWrap then Result := 'wordWrap'
+    else if pname = SrpSSingleLine then Result := 'singleLine';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SrpSWFontName then Result := 'wFontName'
+    else if pname = SrpSLFontName then Result := 'lFontName'
+    else if (aitem is TRpLabel) and (pname = SrpSText) then Result := 'allStrings'
+    else if (aitem is TRpExpression) and (pname = SrpSExpression) then Result := 'expression'
+    else if (aitem is TRpExpression) and (pname = SrpSDisplayFormat) then Result := 'displayFormat';
+    // TRpChart value expression has no model property yet
+    Exit;
+  end;
+
+  if aitem is TRpShape then
+  begin
+    ptype := ptInteger;
+    if pname = SrpSShape then Result := 'shape'
+    else if pname = SrpSPenColor then Result := 'penColor'
+    else if pname = SrpSBrushColor then Result := 'brushColor'
+    else if pname = SrpSPenStyle then Result := 'penStyle'
+    else if pname = SrpSBrushStyle then Result := 'brushStyle'
+    else if pname = SrpSPenWidth then Result := 'penWidth';
+    Exit;
+  end;
+
+  if (aitem is TRpImage) or (aitem is TRpBarcode) then
+  begin
+    ptype := ptString;
+    if pname = SrpSExpression then Result := 'expression';
+    Exit;
+  end;
+
+  if aitem is TRpSection then
+  begin
+    ptype := ptBoolean;
+    if pname = SRpGeneralPageHeader then Result := 'global'
+    else if pname = SRpSAutoExpand then Result := 'autoExpand'
+    else if pname = SRpSAutoContract then Result := 'autoContract'
+    else if pname = SRpIniNumPage then Result := 'iniNumPage'
+    else if pname = SRpSChangeBool then Result := 'changeBool'
+    else if pname = SRpSPageRepeat then Result := 'pageRepeat'
+    else if pname = SRpSForcePrint then Result := 'forcePrint'
+    else if pname = SRpSkipPage then Result := 'skipPage'
+    else if pname = SRPAlignBottom then Result := 'alignBottom'
+    else if pname = SRPHorzDesp then Result := 'horzDesp'
+    else if pname = SRPVertDesp then Result := 'vertDesp';
+    if Result <> '' then
+      Exit;
+    ptype := ptInteger;
+    if pname = SRpSSkipType then Result := 'skipType';
+    if Result <> '' then
+      Exit;
+    ptype := ptString;
+    if pname = SRpSGroupName then Result := 'groupName'
+    else if pname = SRpSGroupExpression then Result := 'changeExpression'
+    else if pname = SRpSBeginPage then Result := 'beginPageExpression'
+    else if pname = SRpSSkipToPage then Result := 'skipToPageExpre'
+    else if pname = SRpChildSubRep then Result := 'childSubreportName';
+  end;
 end;
 
 { TRpPanelObjLCL }
@@ -895,9 +1019,7 @@ var
   index: Integer;
   aname, avalue: string;
   desframe: TFRpDesignFrameLCL;
-  oldValue: WideString;
-  cue: TUndoCue;
-  op: TChangeObjectOperation;
+  items: TList;
 begin
   if FUpdatingValues then Exit;
   DupValue(TControl(Sender));
@@ -912,36 +1034,19 @@ begin
   else
     Exit;
 
+  // One path for single and multiple selection: applies the text and
+  // records the model values (real types) for undo
+  items := GetTargetItems;
+  try
+    ApplyPropertyValues(items, [aname], [WideString(avalue)]);
+  finally
+    items.Free;
+  end;
+
   if FSelectedItems.Count < 2 then
   begin
     if Assigned(FCompItem) then
     begin
-      oldValue := FCompItem.GetProperty(aname);
-      FCompItem.SetProperty(aname, avalue);
-      if (aname = SRpSWidth) or (aname = SRpSHeight) or
-         (aname = SRpSTop) or (aname = SRpSLeft) then
-      begin
-        FCompItem.UpdatePos;
-      end;
-
-      if (oldValue <> avalue) and Assigned(FCompItem.PrintItem) and
-         Assigned(FCompItem.PrintItem.Report) and (FCompItem.PrintItem.Report is TRpReport) and
-         Assigned(TRpReport(FCompItem.PrintItem.Report).UndoCue) then
-      begin
-        cue := TUndoCue(TRpReport(FCompItem.PrintItem.Report).UndoCue);
-        op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
-        op.componentName := FCompItem.PrintItem.Name;
-        op.componentClass := UpperCase(FCompItem.PrintItem.ClassName);
-        if (FCompItem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(FCompItem).SectionInt) and
-           Assigned(TRpSizePosInterface(FCompItem).SectionInt.PrintItem) then
-          op.parentName := TRpSizePosInterface(FCompItem).SectionInt.PrintItem.Name
-        else if (FCompItem is TRpSectionInterface) and Assigned(TRpSection(FCompItem.PrintItem).SubReport) then
-          op.parentName := TRpSection(FCompItem.PrintItem).SubReport.Name;
-        op.AddProperty(aname, ptString, oldValue, avalue);
-        cue.AddOperation(op);
-        RefreshCueView;
-      end;
-
       if FCompItem is TRpSectionInterface then
       begin
         if (aname = SRpSWidth) or (aname = SRpSHeight) then
@@ -964,10 +1069,6 @@ begin
       end;
       FCompItem.Invalidate;
     end;
-  end
-  else
-  begin
-    SetPropertyFull(aname, avalue);
   end;
 
   if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
@@ -1006,11 +1107,8 @@ var
   insp: TFRpObjInspLCL;
   aitem: TRpSizeInterface;
   index: Integer;
-  oldFontName, oldFontSize, oldFontColor, oldFontStyle: WideString;
   newFontName, newFontSize, newFontColor, newFontStyle: WideString;
-  cue: TUndoCue;
-  op: TChangeObjectOperation;
-  gid: Integer;
+  items: TList;
 begin
   insp := TFRpObjInspLCL(Owner);
   if FSelectedItems.Count < 2 then
@@ -1020,15 +1118,10 @@ begin
 
   if not Assigned(aitem) then Exit;
 
-  oldFontName := aitem.GetProperty(SRpSWFontName);
-  oldFontSize := aitem.GetProperty(SRpSFontSize);
-  oldFontColor := aitem.GetProperty(SRpSFontColor);
-  oldFontStyle := aitem.GetProperty(SRpSFontStyle);
-
-  insp.FontDialog1.Font.Name := oldFontName;
-  insp.FontDialog1.Font.Size := StrToIntDef(oldFontSize, 10);
-  insp.FontDialog1.Font.Color := StrToIntDef(oldFontColor, clBlack);
-  insp.FontDialog1.Font.Style := CLXIntegerToFontStyle(StrToIntDef(oldFontStyle, 0));
+  insp.FontDialog1.Font.Name := aitem.GetProperty(SRpSWFontName);
+  insp.FontDialog1.Font.Size := StrToIntDef(aitem.GetProperty(SRpSFontSize), 10);
+  insp.FontDialog1.Font.Color := StrToIntDef(aitem.GetProperty(SRpSFontColor), clBlack);
+  insp.FontDialog1.Font.Style := CLXIntegerToFontStyle(StrToIntDef(aitem.GetProperty(SRpSFontStyle), 0));
 
   if insp.FontDialog1.Execute then
   begin
@@ -1037,61 +1130,47 @@ begin
     newFontColor := IntToStr(insp.FontDialog1.Font.Color);
     newFontStyle := IntToStr(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
 
-    // Update UI controls
-    index := LNames.IndexOf(SRpSWFontName);
-    if index >= 0 then
-    begin
-      TEdit(LControls.Objects[index]).Text := newFontName;
-      TEdit(LControls2.Objects[index]).Text := newFontName;
-    end;
-    index := LNames.IndexOf(SRpSFontSize);
-    if index >= 0 then
-    begin
-      TEdit(LControls.Objects[index]).Text := newFontSize;
-      TEdit(LControls2.Objects[index]).Text := newFontSize;
-    end;
-    index := LNames.IndexOf(SRpSFontColor);
-    if index >= 0 then
-    begin
-      TShape(LControls.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
-      TShape(LControls2.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
-    end;
-    index := LNames.IndexOf(SRpSFontStyle);
-    if index >= 0 then
-    begin
-      TEdit(LControls.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
-      TEdit(LControls2.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
-    end;
-
-    // Apply values directly to items
-    aitem.SetProperty(SRpSWFontName, newFontName);
-    aitem.SetProperty(SRpSFontSize, newFontSize);
-    aitem.SetProperty(SRpSFontColor, newFontColor);
-    aitem.SetProperty(SRpSFontStyle, newFontStyle);
-
-    // Record single undo operation with all modified font properties
-    if Assigned(aitem.PrintItem) and Assigned(aitem.PrintItem.Report) and
-       (aitem.PrintItem.Report is TRpReport) and Assigned(TRpReport(aitem.PrintItem.Report).UndoCue) then
-    begin
-      cue := TUndoCue(TRpReport(aitem.PrintItem.Report).UndoCue);
-      gid := cue.GetGroupId;
-      op := TChangeObjectOperation.Create(otModify, gid);
-      op.componentName := aitem.PrintItem.Name;
-      op.componentClass := UpperCase(aitem.PrintItem.ClassName);
-      if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
-         Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
-        op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name;
-      if oldFontName <> newFontName then op.AddProperty(SRpSWFontName, ptString, oldFontName, newFontName);
-      if oldFontSize <> newFontSize then op.AddProperty(SRpSFontSize, ptString, oldFontSize, newFontSize);
-      if oldFontColor <> newFontColor then op.AddProperty(SRpSFontColor, ptString, oldFontColor, newFontColor);
-      if oldFontStyle <> newFontStyle then op.AddProperty(SRpSFontStyle, ptString, oldFontStyle, newFontStyle);
-      if op.properties.Count > 0 then
+    // Update UI controls; the font size edit would otherwise apply and
+    // record its value on its own (EditChange), outside the font group
+    FUpdatingValues := True;
+    try
+      index := LNames.IndexOf(SRpSWFontName);
+      if index >= 0 then
       begin
-        cue.AddOperation(op);
-        RefreshCueView;
-      end
-      else
-        op.Free;
+        TEdit(LControls.Objects[index]).Text := newFontName;
+        TEdit(LControls2.Objects[index]).Text := newFontName;
+      end;
+      index := LNames.IndexOf(SRpSFontSize);
+      if index >= 0 then
+      begin
+        TEdit(LControls.Objects[index]).Text := newFontSize;
+        TEdit(LControls2.Objects[index]).Text := newFontSize;
+      end;
+      index := LNames.IndexOf(SRpSFontColor);
+      if index >= 0 then
+      begin
+        TShape(LControls.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
+        TShape(LControls2.Objects[index]).Brush.Color := insp.FontDialog1.Font.Color;
+      end;
+      index := LNames.IndexOf(SRpSFontStyle);
+      if index >= 0 then
+      begin
+        TEdit(LControls.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
+        TEdit(LControls2.Objects[index]).Text := IntegerFontStyleToString(FontStyleToCLXInteger(insp.FontDialog1.Font.Style));
+      end;
+    finally
+      FUpdatingValues := False;
+    end;
+
+    // Apply to every selected item (like the VCL SetPropertyFull) and record
+    // one undo group with the model values
+    items := GetTargetItems;
+    try
+      ApplyPropertyValues(items, [string(SRpSWFontName), string(SRpSFontSize),
+        string(SRpSFontColor), string(SRpSFontStyle)],
+        [newFontName, newFontSize, newFontColor, newFontStyle]);
+    finally
+      items.Free;
     end;
 
     if Assigned(FCompItem) then
@@ -1159,6 +1238,8 @@ begin
           (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
     areport := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame).Report;
 
+  // ChangeExternalSectionProps records the change itself (or clears the
+  // history and marks the report modified after a database load)
   if ChangeExternalSectionProps(areport, sec) then
   begin
     TEdit(Sender).Text := sec.GetExternalDataDescription;
@@ -1168,7 +1249,13 @@ begin
     begin
       desframe := TFRpDesignFrameLCL(TFRpObjInspLCL(Owner).DesignFrame);
       if Assigned(desframe.freportstructure) and (desframe.freportstructure is TFRpStructureLCL) then
-        TFRpStructureLCL(desframe.freportstructure).RefreshInterface;
+      begin
+        TFRpStructureLCL(desframe.freportstructure).CreateInterface;
+        TFRpStructureLCL(desframe.freportstructure).SelectDataItem(sec);
+      end;
+      // The section components may have been reloaded: rebuild the design
+      // surface instead of refreshing interfaces of freed components
+      desframe.UpdateSelection(True);
     end;
   end;
 end;
@@ -1396,66 +1483,144 @@ begin
   end;
 end;
 
-procedure TRpPanelObjLCL.SetPropertyFull(propname: string; value: WideString);
+function TRpPanelObjLCL.GetTargetItems: TList;
 var
-  i, gid: Integer;
-  aitem: TRpSizeInterface;
-  oldVal: WideString;
-  cue: TUndoCue;
-  op: TChangeObjectOperation;
-  reportObj: TRpReport;
-  itemsToProcess: TList;
+  i: Integer;
 begin
-  itemsToProcess := TList.Create;
+  // Items an inspector edit applies to: the whole multiple selection, else
+  // the displayed item. The caller frees the list.
+  Result := TList.Create;
+  if FSelectedItems.Count > 1 then
+  begin
+    for i := 0 to FSelectedItems.Count - 1 do
+      Result.Add(FSelectedItems.Objects[i]);
+  end
+  else if Assigned(FCompItem) then
+    Result.Add(FCompItem)
+  else if FSelectedItems.Count = 1 then
+    Result.Add(FSelectedItems.Objects[0]);
+end;
+
+procedure TRpPanelObjLCL.ApplyPropertyValues(items: TList;
+  const propnames: array of string; const values: array of WideString);
+var
+  i, k, gid: Integer;
+  aitem: TRpSizeInterface;
+  pitem: TRpCommonComponent;
+  cue, itemcue: TUndoCue;
+  op, addop: TChangeObjectOperation;
+  undoName: string;
+  ptype: TPropertyType;
+  oldModel, newModel: Variant;
+  oldText: WideString;
+  unrecorded, positional: Boolean;
+begin
+  // Applies inspector (display) values to the items and records one undo
+  // group with the model values before and after, read from the print item
+  // with their real types: Undo/Redo restore them with SetItemProperty.
+  // A change with no model equivalent only marks the report as modified.
+  cue := nil;
+  gid := 0;
+  op := nil;
+  unrecorded := False;
   try
-    if FSelectedItems.Count > 0 then
+    for i := 0 to items.Count - 1 do
     begin
-      for i := 0 to FSelectedItems.Count - 1 do
-        itemsToProcess.Add(FSelectedItems.Objects[i]);
-    end
-    else if Assigned(FCompItem) then
-      itemsToProcess.Add(FCompItem);
-
-    cue := nil;
-    gid := 0;
-
-    for i := 0 to itemsToProcess.Count - 1 do
-    begin
-      aitem := TRpSizeInterface(itemsToProcess[i]);
-      oldVal := aitem.GetProperty(propname);
-      aitem.SetProperty(propname, value);
-      if (propname = SRpSWidth) or (propname = SRpSHeight) or
-         (propname = SRpSTop) or (propname = SRpSLeft) then
+      aitem := TRpSizeInterface(items[i]);
+      pitem := aitem.PrintItem;
+      itemcue := FindItemUndoCue(pitem);
+      if Assigned(itemcue) and not Assigned(cue) then
       begin
-        aitem.UpdatePos;
+        cue := itemcue;
+        cue.BeginUpdate;
       end;
-      aitem.Invalidate;
-
-      if (oldVal <> value) and Assigned(aitem.PrintItem) and Assigned(aitem.PrintItem.Report) and
-         (aitem.PrintItem.Report is TRpReport) and Assigned(TRpReport(aitem.PrintItem.Report).UndoCue) then
+      positional := False;
+      for k := 0 to High(propnames) do
       begin
-        if not Assigned(cue) then
+        undoName := '';
+        oldText := '';
+        if Assigned(itemcue) then
+          undoName := InspectorUndoProperty(pitem, propnames[k], ptype);
+        if undoName <> '' then
+          oldModel := ReadUndoPropertyValue(pitem, undoName)
+        else
+          oldText := aitem.GetProperty(propnames[k]);
+        aitem.SetProperty(propnames[k], values[k]);
+        if (propnames[k] = SRpSWidth) or (propnames[k] = SRpSHeight) or
+           (propnames[k] = SRpSTop) or (propnames[k] = SRpSLeft) then
+          positional := True;
+        if undoName <> '' then
         begin
-          reportObj := TRpReport(aitem.PrintItem.Report);
-          cue := TUndoCue(reportObj.UndoCue);
-          gid := cue.GetGroupId;
-        end;
-        op := TChangeObjectOperation.Create(otModify, gid);
-        op.componentName := aitem.PrintItem.Name;
-        op.componentClass := UpperCase(aitem.PrintItem.ClassName);
-        if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
-           Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
-          op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name
-        else if (aitem is TRpSectionInterface) and Assigned(TRpSection(aitem.PrintItem).SubReport) then
-          op.parentName := TRpSection(aitem.PrintItem).SubReport.Name;
-        op.AddProperty(propname, ptString, oldVal, value);
-        cue.AddOperation(op);
+          newModel := ReadUndoPropertyValue(pitem, undoName);
+          if not VarSameValue(oldModel, newModel) then
+          begin
+            if not Assigned(op) then
+            begin
+              if gid <= 0 then
+                gid := cue.GetGroupId;
+              op := TChangeObjectOperation.Create(otModify, gid);
+              op.componentName := pitem.Name;
+              op.componentClass := UpperCase(pitem.ClassName);
+              if (aitem is TRpSizePosInterface) and Assigned(TRpSizePosInterface(aitem).SectionInt) and
+                 Assigned(TRpSizePosInterface(aitem).SectionInt.PrintItem) then
+                op.parentName := TRpSizePosInterface(aitem).SectionInt.PrintItem.Name
+              else if (pitem is TRpSection) and Assigned(TRpSection(pitem).SubReport) then
+                op.parentName := TRpSection(pitem).SubReport.Name;
+            end;
+            op.AddProperty(undoName, ptype, oldModel, newModel);
+          end;
+        end
+        else if Assigned(itemcue) and (aitem.GetProperty(propnames[k]) <> oldText) then
+          unrecorded := True;
+      end;
+      if positional then
+        aitem.UpdatePos;
+      aitem.Invalidate;
+      if Assigned(op) then
+      begin
+        // The cue owns it from now on, also if AddOperation raises
+        addop := op;
+        op := nil;
+        cue.AddOperation(addop);
       end;
     end;
-    if Assigned(cue) then
-      RefreshCueView;
   finally
-    itemsToProcess.Free;
+    op.Free;
+    if Assigned(cue) then
+    begin
+      if unrecorded then
+        cue.MarkExternalChange;
+      cue.EndUpdate;
+    end;
+  end;
+  if Assigned(cue) then
+    RefreshCueView;
+end;
+
+procedure TRpPanelObjLCL.MarkUnrecordedChange;
+var
+  cue: TUndoCue;
+begin
+  // Changes without undo support (images, external section data) must
+  // still mark the report as modified
+  cue := nil;
+  if Assigned(FCompItem) then
+    cue := FindItemUndoCue(FCompItem.PrintItem);
+  if not Assigned(cue) and (FSelectedItems.Count > 0) then
+    cue := FindItemUndoCue(TRpSizeInterface(FSelectedItems.Objects[0]).PrintItem);
+  if Assigned(cue) then
+    cue.MarkExternalChange;
+end;
+
+procedure TRpPanelObjLCL.SetPropertyFull(propname: string; value: WideString);
+var
+  items: TList;
+begin
+  items := GetTargetItems;
+  try
+    ApplyPropertyValues(items, [propname], [value]);
+  finally
+    items.Free;
   end;
 end;
 
@@ -1470,6 +1635,9 @@ begin
     aitem.SetProperty(propname, stream);
     aitem.Invalidate;
   end;
+  // Images are not recorded in the undo cue
+  if FSelectedItems.Count > 0 then
+    MarkUnrecordedChange;
 end;
 
 { TFRpObjInspLCL }
@@ -1910,7 +2078,72 @@ begin
   end;
 end;
 
+procedure TFRpObjInspLCL.RecordSelectionPositions(const oldPosX, oldPosY: array of Integer);
+var
+  i, gid: Integer;
+  aitem: TRpSizePosInterface;
+  pitem: TRpCommonPosComponent;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+begin
+  // One undo group with the position changes of the selected items
+  cue := nil;
+  gid := 0;
+  try
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      aitem := TRpSizePosInterface(FSelectedItems.Objects[i]);
+      pitem := TRpCommonPosComponent(aitem.printitem);
+      if (pitem.PosX = oldPosX[i]) and (pitem.PosY = oldPosY[i]) then
+        Continue;
+      if not Assigned(cue) then
+      begin
+        cue := FindItemUndoCue(pitem);
+        if not Assigned(cue) then
+          Exit;
+        cue.BeginUpdate;
+        gid := cue.GetGroupId;
+      end;
+      op := TChangeObjectOperation.Create(otModify, gid);
+      op.componentName := pitem.Name;
+      op.componentClass := UpperCase(pitem.ClassName);
+      if Assigned(aitem.SectionInt) and Assigned(aitem.SectionInt.PrintItem) then
+        op.parentName := aitem.SectionInt.PrintItem.Name;
+      if pitem.PosX <> oldPosX[i] then
+        op.AddProperty('posX', ptInteger, oldPosX[i], pitem.PosX);
+      if pitem.PosY <> oldPosY[i] then
+        op.AddProperty('posY', ptInteger, oldPosY[i], pitem.PosY);
+      cue.AddOperation(op);
+    end;
+  finally
+    if Assigned(cue) then
+      cue.EndUpdate;
+  end;
+end;
+
 procedure TFRpObjInspLCL.AlignSelected(direction: Integer);
+var
+  i: Integer;
+  aitem: TRpSizePosInterface;
+  oldPosX, oldPosY: array of Integer;
+begin
+  if FSelectedItems.Count < 2 then Exit;
+  SetLength(oldPosX, FSelectedItems.Count);
+  SetLength(oldPosY, FSelectedItems.Count);
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    aitem := TRpSizePosInterface(FSelectedItems.Objects[i]);
+    oldPosX[i] := TRpCommonPosComponent(aitem.printitem).PosX;
+    oldPosY[i] := TRpCommonPosComponent(aitem.printitem).PosY;
+  end;
+  try
+    DoAlignSelected(direction);
+  finally
+    RecordSelectionPositions(oldPosX, oldPosY);
+  end;
+end;
+
+procedure TFRpObjInspLCL.DoAlignSelected(direction: Integer);
 var
   i, newpos, actualpos, minpos, maxpos, newminpos, newmaxpos, sumwidth, distance: Integer;
   aitem: TRpSizePosInterface;
@@ -2030,10 +2263,19 @@ var
   aitem: TRpSizePosInterface;
   pitem: TRpCommonPosComponent;
   desframe: TFRpDesignFrameLCL;
+  oldPosX, oldPosY: array of Integer;
 begin
   if FSelectedItems.Count < 1 then Exit;
   if not (FSelectedItems.Objects[0] is TRpSizePosInterface) then Exit;
   if not Assigned(FDesignFrame) or not (FDesignFrame is TFRpDesignFrameLCL) then Exit;
+  SetLength(oldPosX, FSelectedItems.Count);
+  SetLength(oldPosY, FSelectedItems.Count);
+  for i := 0 to FSelectedItems.Count - 1 do
+  begin
+    aitem := TRpSizePosInterface(FSelectedItems.Objects[i]);
+    oldPosX[i] := TRpCommonPosComponent(aitem.printitem).PosX;
+    oldPosY[i] := TRpCommonPosComponent(aitem.printitem).PosY;
+  end;
 
   desframe := TFRpDesignFrameLCL(FDesignFrame);
   if Assigned(desframe.Report) and desframe.Report.GridEnabled then
@@ -2051,15 +2293,19 @@ begin
   if fast then
     unitsize := unitsize * 5;
 
-  for i := 0 to FSelectedItems.Count - 1 do
-  begin
-    aitem := TRpSizePosInterface(FSelectedItems.Objects[i]);
-    pitem := TRpCommonPosComponent(aitem.printitem);
-    if direction in [1, 2] then
-      pitem.PosX := pitem.PosX + unitsize
-    else
-      pitem.PosY := pitem.PosY + unitsize;
-    aitem.UpdatePos;
+  try
+    for i := 0 to FSelectedItems.Count - 1 do
+    begin
+      aitem := TRpSizePosInterface(FSelectedItems.Objects[i]);
+      pitem := TRpCommonPosComponent(aitem.printitem);
+      if direction in [1, 2] then
+        pitem.PosX := pitem.PosX + unitsize
+      else
+        pitem.PosY := pitem.PosY + unitsize;
+      aitem.UpdatePos;
+    end;
+  finally
+    RecordSelectionPositions(oldPosX, oldPosY);
   end;
 
   if Assigned(desframe.SizeModifier) and Assigned(desframe.SizeModifier.Control) then
@@ -2069,13 +2315,23 @@ begin
 end;
 
 procedure TFRpObjInspLCL.MLoadExternalClick(Sender: TObject);
+var
+  sec: TRpSection;
+  cue: TUndoCue;
 begin
   if not (CompItem is TRpSectionInterface) then Exit;
   if Assigned(TRpSectionInterface(CompItem).printitem) then
   begin
-    TRpSection(TRpSectionInterface(CompItem).printitem).LoadExternal;
+    sec := TRpSection(TRpSectionInterface(CompItem).printitem);
+    sec.LoadExternal;
+    // Not recorded in the undo cue, but the report changed
+    cue := FindItemUndoCue(sec);
+    if Assigned(cue) then
+      cue.MarkExternalChange;
+    // The section components were replaced: rebuild the design surface
+    // instead of refreshing interfaces of freed components
     if Assigned(FDesignFrame) and (FDesignFrame is TFRpDesignFrameLCL) then
-      TFRpDesignFrameLCL(FDesignFrame).UpdateInterface(False);
+      TFRpDesignFrameLCL(FDesignFrame).UpdateSelection(True);
   end;
 end;
 

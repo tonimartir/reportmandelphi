@@ -194,7 +194,7 @@ var
   i: Integer;
 begin
   inherited CreateNew(AOwner);
-  Caption := TranslateStr(240, 'Expression Builder');
+  Caption := TranslateStr(240, 'Expression build');
   Width := 680;
   Height := 480;
   Position := poScreenCenter;
@@ -268,7 +268,7 @@ begin
 
   FBAdd := TButton.Create(Self);
   FBAdd.Parent := FPanelBottom;
-  FBAdd.Caption := TranslateStr(243, 'Add');
+  FBAdd.Caption := TranslateStr(243, 'Add selection');
   FBAdd.Left := 8;
   FBAdd.Top := 8;
   FBAdd.Width := 75;
@@ -277,7 +277,7 @@ begin
 
   FBCheckSyn := TButton.Create(Self);
   FBCheckSyn.Parent := FPanelBottom;
-  FBCheckSyn.Caption := TranslateStr(244, 'Check Syntax');
+  FBCheckSyn.Caption := TranslateStr(244, 'Syntax check');
   FBCheckSyn.Left := 90;
   FBCheckSyn.Top := 8;
   FBCheckSyn.Width := 110;
@@ -286,7 +286,7 @@ begin
 
   FBShowResult := TButton.Create(Self);
   FBShowResult.Parent := FPanelBottom;
-  FBShowResult.Caption := TranslateStr(246, 'Evaluate');
+  FBShowResult.Caption := TranslateStr(246, 'Show result');
   FBShowResult.Left := 208;
   FBShowResult.Top := 8;
   FBShowResult.Width := 95;
@@ -313,7 +313,7 @@ begin
   FLCategory.Width := 150;
   FLCategory.Height := FPanelCenter.Height - 20;
   FLCategory.Anchors := [akLeft, akTop, akBottom];
-  FLCategory.Items.Add(TranslateStr(247, 'Fields'));
+  FLCategory.Items.Add(TranslateStr(247, 'Database fields'));
   FLCategory.Items.Add(TranslateStr(248, 'Functions'));
   FLCategory.Items.Add(TranslateStr(249, 'Variables'));
   FLCategory.Items.Add(TranslateStr(250, 'Constants'));
@@ -322,7 +322,7 @@ begin
 
   FLOperationLabel := TLabel.Create(Self);
   FLOperationLabel.Parent := FPanelCenter;
-  FLOperationLabel.Caption := TranslateStr(242, 'Element:');
+  FLOperationLabel.Caption := TranslateStr(242, 'Operation');
   FLOperationLabel.Left := 160;
   FLOperationLabel.Top := 0;
 
@@ -339,7 +339,7 @@ begin
 
   FLabelHelp := TLabel.Create(Self);
   FLabelHelp.Parent := FPanelCenter;
-  FLabelHelp.Caption := TranslateStr(245, 'Description:');
+  FLabelHelp.Caption := SRpDescription + ':';
   FLabelHelp.Left := 370;
   FLabelHelp.Top := 0;
 
@@ -505,20 +505,27 @@ begin
   expr := Trim(FMemoExpre.Text);
   if expr = '' then
   begin
-    ShowMessage(TranslateStr(252, 'Expression is empty.'));
+    ShowMessage('Expression is empty.');
     Exit;
   end;
 
+  if not Assigned(FEvaluator) then
+    Exit;
+  // Untrimmed text, so PosError matches the memo positions (as in the VCL)
+  FEvaluator.Expression := FMemoExpre.Text;
   try
-    if Assigned(FEvaluator) then
-    begin
-      FEvaluator.Expression := expr;
-      ShowMessage(TranslateStr(253, 'Syntax is OK.'));
-    end;
+    FEvaluator.CheckSyntax;
   except
     on E: Exception do
-      ShowMessage(TranslateStr(254, 'Syntax Error: ') + E.Message);
+    begin
+      FMemoExpre.SetFocus;
+      FMemoExpre.SelStart := FEvaluator.PosError;
+      FMemoExpre.SelLength := 0;
+      ShowMessage(SRpEvalsyntax + ': ' + E.Message);
+      Exit;
+    end;
   end;
+  ShowMessage('Syntax is OK.');
 end;
 
 procedure TFRpExpreDialogLCL.BShowResultClick(Sender: TObject);
@@ -529,7 +536,7 @@ begin
   expr := Trim(FMemoExpre.Text);
   if expr = '' then
   begin
-    ShowMessage(TranslateStr(252, 'Expression is empty.'));
+    ShowMessage('Expression is empty.');
     Exit;
   end;
 
@@ -539,11 +546,11 @@ begin
       FEvaluator.Expression := expr;
       FEvaluator.Evaluate;
       FAResult := FEvaluator.EvalResult;
-      ShowMessage(TranslateStr(255, 'Result: ') + FEvaluator.EvalResultString);
+      ShowMessage('Result: ' + FEvaluator.EvalResultString);
     end;
   except
     on E: Exception do
-      ShowMessage(TranslateStr(256, 'Evaluation Error: ') + E.Message);
+      ShowMessage('Evaluation Error: ' + E.Message);
   end;
 end;
 

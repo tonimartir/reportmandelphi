@@ -21,7 +21,7 @@ interface
 uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls, Buttons,
-  rptypes, rpmdconsts, rpmunits, rpreport, rpmaskedit;
+  rptypes, rpmdconsts, rpmunits, rpreport, rpmaskedit, rpmdundocuelcl;
 
 type
   { TFRpGridOptionsLCL }
@@ -79,7 +79,7 @@ constructor TFRpGridOptionsLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(179, 'Grid Configuration');
+  Caption := TranslateStr(179, 'Grid Options');
   Width := 340;
   Height := 280;
   Position := poScreenCenter;
@@ -95,7 +95,7 @@ begin
   // Snap to grid
   FCheckEnabled := TCheckBox.Create(Self);
   FCheckEnabled.Parent := Self;
-  FCheckEnabled.Caption := TranslateStr(182, 'Snap to grid');
+  FCheckEnabled.Caption := TranslateStr(182, 'Enable grid');
   FCheckEnabled.Left := 20;
   FCheckEnabled.Top := 16;
   FCheckEnabled.Width := 280;
@@ -103,7 +103,7 @@ begin
   // Show grid
   FCheckVisible := TCheckBox.Create(Self);
   FCheckVisible.Parent := Self;
-  FCheckVisible.Caption := TranslateStr(183, 'Show grid');
+  FCheckVisible.Caption := TranslateStr(183, 'Visible');
   FCheckVisible.Left := 20;
   FCheckVisible.Top := 42;
   FCheckVisible.Width := 280;
@@ -111,7 +111,7 @@ begin
   // Grid lines
   FCheckLines := TCheckBox.Create(Self);
   FCheckLines.Parent := Self;
-  FCheckLines.Caption := TranslateStr(184, 'Grid lines');
+  FCheckLines.Caption := TranslateStr(184, 'Draw lines');
   FCheckLines.Left := 20;
   FCheckLines.Top := 68;
   FCheckLines.Width := 280;
@@ -119,7 +119,7 @@ begin
   // Horizontal spacing
   FLHorizontal := TLabel.Create(Self);
   FLHorizontal.Parent := Self;
-  FLHorizontal.Caption := TranslateStr(180, 'Horizontal:');
+  FLHorizontal.Caption := TranslateStr(180, 'Horizontal spacing');
   FLHorizontal.Left := 20;
   FLHorizontal.Top := 102;
 
@@ -137,7 +137,7 @@ begin
   // Vertical spacing
   FLVertical := TLabel.Create(Self);
   FLVertical.Parent := Self;
-  FLVertical.Caption := TranslateStr(181, 'Vertical:');
+  FLVertical.Caption := TranslateStr(181, 'Vertical spacing');
   FLVertical.Left := 20;
   FLVertical.Top := 134;
 
@@ -155,7 +155,7 @@ begin
   // Grid Color
   FLGridColor := TLabel.Create(Self);
   FLGridColor.Parent := Self;
-  FLGridColor.Caption := TranslateStr(185, 'Color:');
+  FLGridColor.Caption := TranslateStr(185, 'Grid Color');
   FLGridColor.Left := 20;
   FLGridColor.Top := 168;
 
@@ -215,6 +215,12 @@ begin
 end;
 
 procedure TFRpGridOptionsLCL.BOKClick(Sender: TObject);
+var
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  newGridWidth, newGridHeight: Integer;
+  oldGridWidth, oldGridHeight, oldGridColor: Integer;
+  oldGridEnabled, oldGridVisible, oldGridLines: Boolean;
 begin
   if not Assigned(FReport) then
   begin
@@ -222,12 +228,49 @@ begin
     Exit;
   end;
 
-  FReport.GridWidth := rpmunits.gettwipsfromtext(FEGridX.Text);
-  FReport.GridHeight := rpmunits.gettwipsfromtext(FEGridY.Text);
+  // Convert first: an invalid value keeps the dialog open and the report intact
+  newGridWidth := rpmunits.gettwipsfromtext(FEGridX.Text);
+  newGridHeight := rpmunits.gettwipsfromtext(FEGridY.Text);
+  FReport.AssertCanModify('Grid options');
+
+  oldGridWidth := FReport.GridWidth;
+  oldGridHeight := FReport.GridHeight;
+  oldGridEnabled := FReport.GridEnabled;
+  oldGridVisible := FReport.GridVisible;
+  oldGridLines := FReport.GridLines;
+  oldGridColor := FReport.GridColor;
+
+  FReport.GridWidth := newGridWidth;
+  FReport.GridHeight := newGridHeight;
   FReport.GridEnabled := FCheckEnabled.Checked;
   FReport.GridVisible := FCheckVisible.Checked;
   FReport.GridLines := FCheckLines.Checked;
   FReport.GridColor := FGridColor.Brush.Color;
+
+  // Same undo operation as rpmdfgridvcl
+  if not Assigned(FReport.UndoCue) then
+    FReport.UndoCue := TUndoCue.Create(FReport);
+  cue := TUndoCue(FReport.UndoCue);
+  op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
+  op.componentName := 'REPORT';
+  op.componentClass := 'TRPREPORT';
+  op.parentName := '';
+  if oldGridWidth <> FReport.GridWidth then
+    op.AddProperty('gridWidth', ptInteger, oldGridWidth, FReport.GridWidth);
+  if oldGridHeight <> FReport.GridHeight then
+    op.AddProperty('gridHeight', ptInteger, oldGridHeight, FReport.GridHeight);
+  if oldGridEnabled <> FReport.GridEnabled then
+    op.AddProperty('gridEnabled', ptBoolean, oldGridEnabled, FReport.GridEnabled);
+  if oldGridVisible <> FReport.GridVisible then
+    op.AddProperty('gridVisible', ptBoolean, oldGridVisible, FReport.GridVisible);
+  if oldGridLines <> FReport.GridLines then
+    op.AddProperty('gridLines', ptBoolean, oldGridLines, FReport.GridLines);
+  if oldGridColor <> FReport.GridColor then
+    op.AddProperty('gridColor', ptInteger, oldGridColor, FReport.GridColor);
+  if op.properties.Count > 0 then
+    cue.AddOperation(op)
+  else
+    op.Free;
 
   ModalResult := mrOk;
   Close;

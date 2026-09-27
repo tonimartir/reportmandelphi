@@ -35,6 +35,7 @@ type
 
     procedure SetReport(Value: TRpReport);
     function GetUndoCue: TUndoCue;
+    function IsLiveOperation(op: TObject): Boolean;
     procedure BuildControls;
   public
     PanelTop: TPanel;
@@ -49,6 +50,8 @@ type
 
     procedure RefreshList;
     procedure UpdateButtons;
+    // Clears the history without asking (BClearClick asks first)
+    procedure ClearHistory;
 
     procedure BUndoClick(Sender: TObject);
     procedure BRedoClick(Sender: TObject);
@@ -112,7 +115,7 @@ begin
   BUndo.Width := 30;
   BUndo.Height := 26;
   BUndo.Caption := '↩';
-  BUndo.Hint := TranslateStr(287, 'Deshacer');
+  BUndo.Hint := 'Deshacer';
   BUndo.ShowHint := True;
   BUndo.OnClick := BUndoClick;
 
@@ -123,7 +126,7 @@ begin
   BRedo.Width := 30;
   BRedo.Height := 26;
   BRedo.Caption := '↪';
-  BRedo.Hint := TranslateStr(288, 'Rehacer');
+  BRedo.Hint := 'Rehacer';
   BRedo.ShowHint := True;
   BRedo.OnClick := BRedoClick;
 
@@ -134,7 +137,7 @@ begin
   BClear.Width := 30;
   BClear.Height := 26;
   BClear.Caption := '✖';
-  BClear.Hint := TranslateStr(289, 'Limpiar historial');
+  BClear.Hint := 'Limpiar historial';
   BClear.ShowHint := True;
   BClear.OnClick := BClearClick;
 
@@ -142,7 +145,7 @@ begin
   LTitle.Parent := PanelTop;
   LTitle.Left := 110;
   LTitle.Top := 9;
-  LTitle.Caption := TranslateStr(290, 'Historial');
+  LTitle.Caption := 'Historial';
 
   // ListView for Cue items
   ListViewCue := TListView.Create(Self);
@@ -159,15 +162,15 @@ begin
   col.Width := 40;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := TranslateStr(64, 'Componente');
+  col.Caption := 'Componente';
   col.Width := 110;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := TranslateStr(65, 'Clase');
+  col.Caption := 'Clase';
   col.Width := 110;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := TranslateStr(291, 'Fecha/Hora');
+  col.Caption := 'Fecha/Hora';
   col.Width := 130;
 end;
 
@@ -257,11 +260,14 @@ var
   ops: TObjectList<TChangeObjectOperation>;
 begin
   cue := GetUndoCue;
-  if cue = nil then
+  if (cue = nil) or not cue.CanUndo then
     Exit;
-  ops := cue.Undo;
-  if Assigned(ops) then
-  begin
+  ops := nil;
+  try
+    ops := cue.Undo;
+  finally
+    // Refresh also when the undo failed midway: part of the group may have
+    // been undone and the design surface may reference removed items
     ops.Free;
     RefreshList;
     if Assigned(FOnUndoRedo) then
@@ -275,11 +281,13 @@ var
   ops: TObjectList<TChangeObjectOperation>;
 begin
   cue := GetUndoCue;
-  if cue = nil then
+  if (cue = nil) or not cue.CanRedo then
     Exit;
-  ops := cue.Redo;
-  if Assigned(ops) then
-  begin
+  ops := nil;
+  try
+    ops := cue.Redo;
+  finally
+    // Refresh also when the redo failed midway (see BUndoClick)
     ops.Free;
     RefreshList;
     if Assigned(FOnUndoRedo) then
@@ -288,6 +296,15 @@ begin
 end;
 
 procedure TFRpCueViewLCL.BClearClick(Sender: TObject);
+begin
+  // Same confirmation as the VCL designer (rpmdcueviewvcl)
+  if RpMessageBox('Limpiar toda la cola de deshacer?', '',
+    [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
+    Exit;
+  ClearHistory;
+end;
+
+procedure TFRpCueViewLCL.ClearHistory;
 var
   cue: TUndoCue;
 begin
@@ -296,6 +313,18 @@ begin
     Exit;
   cue.Clear;
   RefreshList;
+end;
+
+function TFRpCueViewLCL.IsLiveOperation(op: TObject): Boolean;
+var
+  cue: TUndoCue;
+begin
+  // A row can outlive its operation when the list was not refreshed after
+  // the cue discarded it (redo branch dropped, history trimmed)
+  cue := GetUndoCue;
+  Result := Assigned(cue) and Assigned(op) and
+    ((cue.UndoOperations.IndexOf(TChangeObjectOperation(op)) >= 0) or
+     (cue.RedoOperations.IndexOf(TChangeObjectOperation(op)) >= 0));
 end;
 
 procedure TFRpCueViewLCL.ListViewCueDblClick(Sender: TObject);
@@ -309,6 +338,11 @@ begin
     Exit;
   if ListViewCue.Selected.Data = nil then
     Exit;
+  if not IsLiveOperation(TObject(ListViewCue.Selected.Data)) then
+  begin
+    RefreshList;
+    Exit;
+  end;
   op := TChangeObjectOperation(ListViewCue.Selected.Data);
   msg := 'Operación: ' + OperationTypeToText(op.operation) + LineEnding +
     'Componente: ' + op.componentName + LineEnding +

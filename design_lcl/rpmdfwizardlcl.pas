@@ -22,7 +22,7 @@ uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ComCtrls, ExtCtrls, Buttons,
   rptypes, rpreport, rpdatainfo, rpmdconsts, rpcolumnar,
-  rppagesetuplcl, rpmdfdinfolcl, rpmdfselectfieldslcl;
+  rppagesetuplcl, rpmdfdinfolcl, rpmdfselectfieldslcl, rpmdundocuelcl;
 
 type
   { TFRpWizardLCL }
@@ -121,7 +121,7 @@ constructor TFRpWizardLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(935, 'Report Creation Wizard');
+  Caption := TranslateStr(935, 'New Report Wizard');
   Width := 600;
   Height := 460;
   Position := poScreenCenter;
@@ -165,7 +165,7 @@ begin
 
   BNext := TButton.Create(Self);
   BNext.Parent := PBottom;
-  BNext.Caption := TranslateStr(933, 'Next >');
+  BNext.Caption := TranslateStr(933, 'Next');
   BNext.Left := PBottom.Width - 270;
   BNext.Top := 10;
   BNext.Width := 80;
@@ -176,7 +176,7 @@ begin
 
   BBack := TButton.Create(Self);
   BBack.Parent := PBottom;
-  BBack.Caption := TranslateStr(934, '< Back');
+  BBack.Caption := TranslateStr(934, 'Back');
   BBack.Left := PBottom.Width - 360;
   BBack.Top := 10;
   BBack.Width := 80;
@@ -193,11 +193,11 @@ begin
   // Tab 1: Instructions
   TabInstructions := TTabSheet.Create(PControl);
   TabInstructions.PageControl := PControl;
-  TabInstructions.Caption := TranslateStr(875, 'Introduction');
+  TabInstructions.Caption := TranslateStr(875, 'Instructions');
 
   LTitle := TLabel.Create(TabInstructions);
   LTitle.Parent := TabInstructions;
-  LTitle.Caption := TranslateStr(869, 'Welcome to the Report Creation Wizard');
+  LTitle.Caption := TranslateStr(869, 'To design a report with this wizard you must follow this steps');
   LTitle.Font.Size := 12;
   LTitle.Font.Style := [fsBold];
   LTitle.Left := 24;
@@ -205,13 +205,13 @@ begin
 
   LPass1 := TLabel.Create(TabInstructions);
   LPass1.Parent := TabInstructions;
-  LPass1.Caption := TranslateStr(870, 'Step 1: Set report page orientation and margins.');
+  LPass1.Caption := '1. Set report page orientation and margins.';
   LPass1.Left := 24;
   LPass1.Top := 60;
 
   BPageSetup := TButton.Create(TabInstructions);
   BPageSetup.Parent := TabInstructions;
-  BPageSetup.Caption := TranslateStr(881, 'Page Setup...');
+  BPageSetup.Caption := TranslateStr(50, 'Page setup...');
   BPageSetup.Left := 24;
   BPageSetup.Top := 82;
   BPageSetup.Width := 150;
@@ -220,13 +220,13 @@ begin
 
   LPass2 := TLabel.Create(TabInstructions);
   LPass2.Parent := TabInstructions;
-  LPass2.Caption := TranslateStr(871, 'Step 2: Configure database connections and SQL datasets.');
+  LPass2.Caption := '2. Configure database connections and SQL datasets.';
   LPass2.Left := 24;
   LPass2.Top := 130;
 
   BConfigData := TButton.Create(TabInstructions);
   BConfigData.Parent := TabInstructions;
-  BConfigData.Caption := TranslateStr(882, 'Data Configuration...');
+  BConfigData.Caption := TranslateStr(131, 'Data access configuration');
   BConfigData.Left := 24;
   BConfigData.Top := 152;
   BConfigData.Width := 150;
@@ -235,13 +235,13 @@ begin
 
   LPass3 := TLabel.Create(TabInstructions);
   LPass3.Parent := TabInstructions;
-  LPass3.Caption := TranslateStr(872, 'Step 3: Select fields and configure columnar layout.');
+  LPass3.Caption := TranslateStr(872, '3. Select dataset fields to print, follow instructions at select fields page');
   LPass3.Left := 24;
   LPass3.Top := 200;
 
   LBegin := TLabel.Create(TabInstructions);
   LBegin.Parent := TabInstructions;
-  LBegin.Caption := TranslateStr(874, 'Click Next to proceed with the wizard steps.');
+  LBegin.Caption := TranslateStr(874, 'To begin the wizard click Next button');
   LBegin.Font.Color := clGrayText;
   LBegin.Left := 24;
   LBegin.Top := 250;
@@ -249,7 +249,7 @@ begin
   // Tab 2: Data Access Summary & Config
   TabData := TTabSheet.Create(PControl);
   TabData.PageControl := PControl;
-  TabData.Caption := TranslateStr(142, 'Data Access');
+  TabData.Caption := TranslateStr(142, 'Database connections');
 
   LDataInfo := TLabel.Create(TabData);
   LDataInfo.Parent := TabData;
@@ -282,7 +282,7 @@ begin
   // Tab 3: Fields Selection
   TabFields := TTabSheet.Create(PControl);
   TabFields.PageControl := PControl;
-  TabFields.Caption := TranslateStr(877, 'Fields Selection');
+  TabFields.Caption := TranslateStr(877, 'Fields');
 
   FSelFrame := TFRpSelectFieldsLCL.Create(TabFields);
   FSelFrame.Parent := TabFields;
@@ -367,23 +367,24 @@ end;
 
 procedure TFRpWizardLCL.BPageSetupClick(Sender: TObject);
 begin
-  if Assigned(FReport) then
-    ExecutePageSetup(FReport);
+  if not Assigned(FReport) then
+    Exit;
+  // The page setup is applied to the report even if the wizard is cancelled
+  // later: never lose the dirty state
+  if ExecutePageSetup(FReport) then
+  begin
+    if not Assigned(FReport.UndoCue) then
+      FReport.UndoCue := TUndoCue.Create(FReport);
+    TUndoCue(FReport.UndoCue).MarkExternalChange;
+  end;
 end;
 
 procedure TFRpWizardLCL.BConfigDataClick(Sender: TObject);
-var
-  dia: TFRpDInfoLCL;
 begin
   if not Assigned(FReport) then Exit;
-  dia := TFRpDInfoLCL.Create(Application);
-  try
-    dia.Report := FReport;
-    dia.ShowModal;
-    UpdateDataSummary;
-  finally
-    dia.Free;
-  end;
+  // Changes are applied (and recorded in the undo cue) only on OK
+  ShowDataConfig(FReport);
+  UpdateDataSummary;
 end;
 
 procedure TFRpWizardLCL.BFinishClick(Sender: TObject);

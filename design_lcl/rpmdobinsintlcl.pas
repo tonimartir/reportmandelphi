@@ -974,6 +974,13 @@ begin
     Invalidate;
     Exit;
   end;
+  if pname = SrpSFontStyle then
+  begin
+    // CLX integer style (bold, italic...), as set by the font dialog
+    titem.FontStyle := StrToInt(value);
+    Invalidate;
+    Exit;
+  end;
   if pname = SrpSTransparent then
   begin
     titem.Transparent := StrToBoolDef(value, True);
@@ -993,9 +1000,11 @@ begin
     Result := inherited GetProperty(pname);
     Exit;
   end;
-  if pname = SrpSWFontName then Result := titem.WFontName
+  if pname = SrpSAlignment then Result := HAlignmentToText(titem.Alignment)
+  else if pname = SrpSWFontName then Result := titem.WFontName
   else if pname = SrpSFontSize then Result := IntToStr(titem.FontSize)
   else if pname = SrpSFontColor then Result := IntToStr(titem.FontColor)
+  else if pname = SrpSFontStyle then Result := IntToStr(titem.FontStyle)
   else if pname = SrpSTransparent then Result := BoolToStr(titem.Transparent, True)
   else Result := inherited GetProperty(pname);
 end;

@@ -110,7 +110,7 @@ constructor TFRpSearchParamLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(22, 'Buscar valor');
+  Caption := SRpSearchValue;
   Position := poScreenCenter;
   Width := 620;
   Height := 420;
@@ -142,7 +142,7 @@ begin
   LSearch.Parent := PTop;
   LSearch.Left := 10;
   LSearch.Top := 15;
-  LSearch.Caption := TranslateStr(22, 'Buscar valor') + ':';
+  LSearch.Caption := SRpSearchValue + ':';
 
   ESearch := TEdit.Create(Self);
   ESearch.Parent := PTop;
@@ -157,7 +157,7 @@ begin
   BSearch.Top := 9;
   BSearch.Width := 80;
   BSearch.Height := 27;
-  BSearch.Caption := TranslateStr(23, 'Buscar');
+  BSearch.Caption := SRpSearch;
   BSearch.OnClick := BSearchClick;
 
   BOK := TButton.Create(Self);
@@ -166,7 +166,7 @@ begin
   BOK.Top := 9;
   BOK.Width := 80;
   BOK.Height := 27;
-  BOK.Caption := TranslateStr(93, 'Aceptar');
+  BOK.Caption := TranslateStr(93, 'OK');
   BOK.Default := True;
   BOK.OnClick := BOKClick;
 
@@ -176,7 +176,7 @@ begin
   BCancel.Top := 9;
   BCancel.Width := 80;
   BCancel.Height := 27;
-  BCancel.Caption := TranslateStr(94, 'Cancelar');
+  BCancel.Caption := TranslateStr(94, 'Cancel');
   BCancel.Cancel := True;
   BCancel.OnClick := BCancelClick;
 

@@ -101,6 +101,13 @@ implementation
 uses
   zipper;
 
+{$IFDEF MSWINDOWS}
+// Monaco editor assets embedded as the MONACO_ZIP RCDATA resource, the same
+// resource used by the VCL editor (MonacoEditorAssets.rc at the repository
+// root). The path is relative to this unit.
+{$R ../MonacoEditorAssets.res}
+{$ENDIF}
+
 function EscapeJsonString(const S: string): string;
 var
   I: Integer;
@@ -207,12 +214,17 @@ end;
 function TFRpMonacoEditorLCL.EnsureMonacoAssetsExtracted: string;
 var
   LBasePath, LVersionPath, LActualRoot: string;
-  LZipCandidates: array[0..3] of string;
+  LZipCandidates: array[0..1] of string;
   LZipFound: string;
+  LTempZip: string;
   I: Integer;
   LUnZipper: TUnZipper;
   LVerStr: string;
   LStrList: TStringList;
+{$IFDEF MSWINDOWS}
+  LResStream: TResourceStream;
+  LFileStream: TFileStream;
+{$ENDIF}
 begin
   LBasePath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', 'MonacoEditor');
   LVersionPath := LBasePath + DirectorySeparator + 'assets.version';
@@ -234,21 +246,45 @@ begin
     end;
   end;
 
-  // Search for MonacoEditor.zip
-  LZipCandidates[0] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor.zip';
-  LZipCandidates[1] := ExtractFilePath(ParamStr(0)) + '..' + DirectorySeparator + '..' + DirectorySeparator + '..' + DirectorySeparator + 'MonacoEditor.zip';
-  LZipCandidates[2] := 'c:\desarrollo\prog\toni\reportman\MonacoEditor.zip';
-  LZipCandidates[3] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor' + DirectorySeparator + 'MonacoEditor.zip';
-
   LZipFound := '';
-  for I := 0 to High(LZipCandidates) do
+  LTempZip := '';
+{$IFDEF MSWINDOWS}
+  // 1. Embedded resource, like rpfrmmonacoeditorvcl
+  if FindResource(HInstance, 'MONACO_ZIP', RT_RCDATA) <> 0 then
   begin
-    if FileExists(LZipCandidates[I]) then
+    ForceDirectories(LBasePath);
+    LTempZip := LBasePath + DirectorySeparator + 'MonacoEditor.zip.tmp';
+    LResStream := TResourceStream.Create(HInstance, 'MONACO_ZIP', RT_RCDATA);
+    try
+      LFileStream := TFileStream.Create(LTempZip, fmCreate);
+      try
+        LFileStream.CopyFrom(LResStream, 0);
+      finally
+        LFileStream.Free;
+      end;
+    finally
+      LResStream.Free;
+    end;
+    LZipFound := LTempZip;
+  end;
+{$ENDIF}
+
+  // 2. MonacoEditor.zip shipped next to the executable
+  if LZipFound = '' then
+  begin
+    LZipCandidates[0] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor.zip';
+    LZipCandidates[1] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor' + DirectorySeparator + 'MonacoEditor.zip';
+    for I := 0 to High(LZipCandidates) do
     begin
-      LZipFound := LZipCandidates[I];
-      Break;
+      if FileExists(LZipCandidates[I]) then
+      begin
+        LZipFound := LZipCandidates[I];
+        Break;
+      end;
     end;
   end;
+  if LZipFound = '' then
+    LogStatus('Monaco assets not found (no MONACO_ZIP resource nor MonacoEditor.zip next to the executable)');
 
   if LZipFound <> '' then
   begin
@@ -262,6 +298,8 @@ begin
       LUnZipper.UnZipAllFiles;
     finally
       LUnZipper.Free;
+      if (LTempZip <> '') and FileExists(LTempZip) then
+        SysUtils.DeleteFile(LTempZip);
     end;
 
     LStrList := TStringList.Create;
@@ -349,7 +387,8 @@ procedure TFRpMonacoEditorLCL.WebViewCreateCompleted(Sender: TObject; AResult: H
 var
   LURL: string;
 begin
-  if Succeeded(AResult) then
+  // Succeeded() lives in the Windows unit; HResult success is simply >= 0
+  if AResult >= 0 then
   begin
     LogStatus('WebView2 created successfully.');
     if FAssetRootPath = '' then
