@@ -166,7 +166,7 @@ end;
 procedure TFRpWizardVCL.FormCreate(Sender: TObject);
 begin
  // Load strings
- Caption:=TranslateStr(935,Caption);
+ // The form caption has no translation id (935 is the Finish button)
  LDesign.Caption:=TranslateStr(869,LDesign.Caption);
  LPass1.Caption:=TranslateStr(870,LPass1.Caption);
  LPass2.Caption:=TranslateStr(871,LPass2.Caption);

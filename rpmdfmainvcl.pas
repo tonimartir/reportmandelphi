@@ -1633,7 +1633,8 @@ var
     op.componentName:=pitem.Name;
     op.componentClass:=UpperCase(pitem.ClassName);
     op.parentName:=ASection.Name;
-    op.oldParentName:=ASection.Name;
+    // No oldParentName: this is not a parent change (undo would move every
+    // restored component to the end of the section, reversing their order)
     op.oldItemIndex:=0;
     cue.AddAllComponentProperties(pitem, op);
     cue.AddOperation(op);
@@ -1864,7 +1865,8 @@ begin
    op.componentName:=pitem.Name;
    op.componentClass:=UpperCase(pitem.ClassName);
    op.parentName:=TRpSection(sectionintf.printitem).Name;
-   op.oldparentName:=TRpSection(sectionintf.printitem).Name;
+   // No oldParentName (not a parent change): undo re-inserts each component
+   // at its recorded index, newest first, restoring the original order
    op.oldItemIndex:=TRpSection(sectionintf.printitem).ReportComponents.IndexOf(pitem);
    cue.AddAllComponentProperties(pitem, op);
    cue.AddOperation(op);
@@ -3059,13 +3061,14 @@ begin
  cue := TUndoCue(report.UndoCue);
  if cue.UndoOperations.Count = 0 then
   Exit;
- ops := cue.Undo;
- if Assigned(ops) then
- begin
+ ops := nil;
+ try
+  ops := cue.Undo;
+ finally
   ops.Free;
+  // Also when undo fails: the operations already undone changed the report
   OnUndoRedo(Self);
  end;
-   UpdateUndoToolbarButtons;
 end;
 
 procedure TFRpMainFVCL.DoRedo;
@@ -3080,13 +3083,14 @@ begin
  cue := TUndoCue(report.UndoCue);
  if cue.RedoOperations.Count = 0 then
   Exit;
- ops := cue.Redo;
- if Assigned(ops) then
- begin
+ ops := nil;
+ try
+  ops := cue.Redo;
+ finally
   ops.Free;
+  // Also when redo fails: the operations already redone changed the report
   OnUndoRedo(Self);
  end;
-   UpdateUndoToolbarButtons;
 end;
 
 procedure TFRpMainFVCL.OnUndoRedo(Sender: TObject);

@@ -2121,7 +2121,6 @@ begin
   // mismo fichero y hasta aqui la lista se quedaba con la primera de cada una.
   for ncara:=0 to ncaras-1 do
   begin
-   aobj:=nil;
    try
     // Add it only if it's a TrueType or OpenType font
     // Type1 fonts also supported
@@ -2228,10 +2227,10 @@ begin
     end;
   end;
  end;
-{$IFDEF FPC}
+  // No preferred default font found (font-poor systems/containers): use the
+  // first available one instead of failing later with "No active font"
   if (defaultfont = nil) and (fontlist.Count > 0) then
     defaultfont := TRpLogFont(fontlist.Objects[0]);
-{$ENDIF}
   if (defaultfontb=nil) then
    defaultfontb:=defaultfont;
   if (defaultfontit=nil) then
@@ -2799,10 +2798,8 @@ begin
 //  WriteToStdError('Default bold italic '+currentfont.familyname+chr(10));
  end;
 
-{$IFDEF FPC}
   if not assigned(currentfont) and (fontlist.Count > 0) then
     currentfont := TRpLogFont(fontlist.Objects[0]);
-{$ENDIF}
 
   if not assigned(currentfont) then
    Raise Exception.Create('No active font');

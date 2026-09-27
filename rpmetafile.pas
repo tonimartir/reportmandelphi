@@ -917,9 +917,9 @@ begin
  OpenDrawerAfter:=false;
  CollateCopies:=true;
  LinesPerInch:=6;
-{$IFDEF FPC}
+ // White page by default: drivers paint the page background with it, and only
+ // reports (PageBackColor) or loaded streams used to set it
  FBackColor:=$00FFFFFF;
-{$ENDIF}
 
  FPages:=TList.Create;
 end;

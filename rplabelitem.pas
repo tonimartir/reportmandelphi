@@ -1350,7 +1350,9 @@ begin
  AssertCanModify(ClassName+'.'+propName);
  if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
  begin
-  FExpression := value;
+  // Through the setter so PAGECOUNT/GROUPPAGECOUNT flags follow the new text
+  // (undo/redo and the inspector set the expression here)
+  SetExpression(value);
   exit;
  end;
  if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
@@ -1411,6 +1413,11 @@ begin
  if SameText(propName, 'ExportDisplayFormat') then
  begin
   FExportDisplayFormat := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportExpression') then
+ begin
+  FExportExpression := value;
   exit;
  end;
  if SameText(propName, 'ExportLine') then
@@ -1501,6 +1508,11 @@ begin
  if SameText(propName, 'ExportDisplayFormat') then
  begin
   Result := FExportDisplayFormat;
+  exit;
+ end;
+ if SameText(propName, 'ExportExpression') then
+ begin
+  Result := FExportExpression;
   exit;
  end;
  if SameText(propName, 'ExportLine') then

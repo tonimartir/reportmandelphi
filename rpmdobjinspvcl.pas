@@ -140,6 +140,7 @@ type
     procedure SelectProperty(propname:string);
     procedure SetPropertyFull(propname:string;value:Widestring);overload;
     procedure SetPropertyFull(propname:string;stream:TMemoryStream);overload;
+    procedure SetPropertyFullUndo(propname:string;value:Widestring;var gid:Integer);
     procedure DupValue(Sender:TControl);
    public
     constructor Create(AOwner:TComponent);override;
@@ -156,9 +157,221 @@ implementation
 
 {$R *.dfm}
 
-uses rpmdfdesignvcl,rpmdfsectionintvcl, rpmdfmainvcl, rpmdundocue;
+uses rpmdfdesignvcl,rpmdfsectionintvcl, rpmdfmainvcl, rpmdundocue,
+ rpdrawitem,rpmdbarcode;
 
+type
+ // Undo of an inspector edit, captured before the change (BeginInspectorUndo)
+ // and recorded after it (EndInspectorUndo)
+ TRpInspectorUndo=record
+  UndoName:string;
+  PType:TPropertyType;
+  OldModel:Variant;
+  OldText:WideString;
+ end;
 
+// Maps an inspector property (translated display name) of aitem to the model
+// property recorded in undo operations. Returns '' when there is no
+// canonical name for it (see BeginInspectorUndo)
+function InspectorUndoProperty(aitem:TRpCommonComponent;const pname:string;
+ out ptype:TPropertyType):string;
+begin
+ Result:='';
+ ptype:=ptString;
+ if not Assigned(aitem) then
+  exit;
+ if pname=SrpSPrintCondition then Result:='printCondition'
+ else if pname=SrpSBeforePrint then Result:='doBeforePrint'
+ else if pname=SrpSAfterPrint then Result:='doAfterPrint'
+ else if pname=SrpSWidth then
+ begin
+  Result:='width';
+  ptype:=ptInteger;
+ end
+ else if pname=SrpSHeight then
+ begin
+  Result:='height';
+  ptype:=ptInteger;
+ end;
+ if Result<>'' then
+  exit;
+
+ if aitem is TRpCommonPosComponent then
+ begin
+  ptype:=ptInteger;
+  if pname=SrpSTop then Result:='posY'
+  else if pname=SrpSLeft then Result:='posX'
+  else if pname=SRPAlign then Result:='align';
+  if Result<>'' then
+   exit;
+ end;
+
+ if aitem is TRpGenTextComponent then
+ begin
+  ptype:=ptInteger;
+  if pname=SrpSAlignment then Result:='alignment'
+  else if pname=SrpSVAlignment then Result:='vAlignment'
+  else if pname=SrpSFontSize then Result:='fontSize'
+  else if pname=SrpSFontColor then Result:='fontColor'
+  else if pname=SrpSFontStyle then Result:='fontStyle'
+  else if pname=SrpSBackColor then Result:='backColor'
+  else if pname=SRpSFontRotation then Result:='fontRotation'
+  else if pname=SRpSType1Font then Result:='type1Font'
+  else if pname=SRpSFontStep then Result:='printStep';
+  if Result<>'' then
+   exit;
+  ptype:=ptBoolean;
+  if pname=SrpSTransparent then Result:='transparent'
+  else if pname=SrpSCutText then Result:='cutText'
+  else if pname=SrpSWordWrap then Result:='wordWrap'
+  else if pname=SrpSSingleLine then Result:='singleLine';
+  if Result<>'' then
+   exit;
+  ptype:=ptString;
+  if pname=SrpSWFontName then Result:='wFontName'
+  else if pname=SrpSLFontName then Result:='lFontName'
+  else if (aitem is TRpLabel) and (pname=SrpSText) then Result:='allStrings'
+  else if (aitem is TRpExpression) and (pname=SrpSExpression) then Result:='expression'
+  else if (aitem is TRpExpression) and (pname=SrpSDisplayFormat) then Result:='displayFormat';
+  exit;
+ end;
+
+ if aitem is TRpShape then
+ begin
+  ptype:=ptInteger;
+  if pname=SrpSShape then Result:='shape'
+  else if pname=SrpSPenColor then Result:='penColor'
+  else if pname=SrpSBrushColor then Result:='brushColor'
+  else if pname=SrpSPenStyle then Result:='penStyle'
+  else if pname=SrpSBrushStyle then Result:='brushStyle'
+  else if pname=SrpSPenWidth then Result:='penWidth';
+  exit;
+ end;
+
+ if aitem is TRpBarcode then
+ begin
+  ptype:=ptInteger;
+  // The barcode color is shown as SrpSColor, the model only knows BColor
+  if pname=SrpSColor then Result:='bColor'
+  else if pname=SrpSBackColor then Result:='backColor';
+  if Result<>'' then
+   exit;
+ end;
+
+ if (aitem is TRpImage) or (aitem is TRpBarcode) then
+ begin
+  ptype:=ptString;
+  if pname=SrpSExpression then Result:='expression';
+  exit;
+ end;
+
+ if aitem is TRpSection then
+ begin
+  ptype:=ptBoolean;
+  if pname=SRpGeneralPageHeader then Result:='global'
+  else if pname=SRpSAutoExpand then Result:='autoExpand'
+  else if pname=SRpSAutoContract then Result:='autoContract'
+  else if pname=SRpIniNumPage then Result:='iniNumPage'
+  else if pname=SRpSChangeBool then Result:='changeBool'
+  else if pname=SRpSPageRepeat then Result:='pageRepeat'
+  else if pname=SRpSForcePrint then Result:='forcePrint'
+  else if pname=SRpSkipPage then Result:='skipPage'
+  else if pname=SRPAlignBottom then Result:='alignBottom'
+  else if pname=SRPHorzDesp then Result:='horzDesp'
+  else if pname=SRPVertDesp then Result:='vertDesp';
+  if Result<>'' then
+   exit;
+  ptype:=ptInteger;
+  if pname=SRpSSkipType then Result:='skipType';
+  if Result<>'' then
+   exit;
+  ptype:=ptString;
+  if pname=SRpSGroupName then Result:='groupName'
+  else if pname=SRpSGroupExpression then Result:='changeExpression'
+  else if pname=SRpSBeginPage then Result:='beginPageExpression'
+  else if pname=SRpSSkipToPage then Result:='skipToPageExpre'
+  else if pname=SRpChildSubRep then Result:='childSubreportName';
+ end;
+end;
+
+// Undo of inspector edits records MODEL values with their real types (twips,
+// enum ordinals, booleans...), read from the print item before and after the
+// change, never the text shown by the inspector ('2.540', 'Left'...), which
+// SetItemProperty can not restore
+function BeginInspectorUndo(aitem:TRpSizeInterface;const pname:string):TRpInspectorUndo;
+begin
+ Result.UndoName:='';
+ Result.PType:=ptString;
+ Result.OldModel:=Unassigned;
+ Result.OldText:='';
+ if (not Assigned(aitem)) or (not Assigned(aitem.printitem)) then
+  exit;
+ Result.OldText:=aitem.GetProperty(pname);
+ Result.UndoName:=InspectorUndoProperty(aitem.printitem,pname,Result.PType);
+ if Result.UndoName<>'' then
+ begin
+  Result.OldModel:=ReadUndoPropertyValue(aitem.printitem,Result.UndoName);
+  exit;
+ end;
+ // No canonical name: the model accepts most inspector (translated) names in
+ // Get/SetItemProperty. Only a real change of that model value is recorded
+ // (EndInspectorUndo), so a name the model reads as another property is
+ // never restored by mistake
+ try
+  Result.OldModel:=ReadUndoPropertyValue(aitem.printitem,pname);
+  Result.UndoName:=pname;
+  Result.PType:=UndoPropertyTypeOf(Result.OldModel);
+ except
+  // The model has no such property: the change can not be undone
+  Result.UndoName:='';
+  Result.OldModel:=Unassigned;
+ end;
+end;
+
+// Records the change captured by BeginInspectorUndo in the undo cue of report
+// (group gid, a new group if gid<=0). A change that can not be recorded still
+// marks the report as modified. Returns True if an operation was recorded
+function EndInspectorUndo(report:TRpReport;aitem:TRpSizeInterface;const pname:string;
+ const undo:TRpInspectorUndo;var gid:Integer):Boolean;
+var
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ newModel:Variant;
+ changed:Boolean;
+begin
+ Result:=false;
+ if (not Assigned(report)) or (not Assigned(aitem)) or (not Assigned(aitem.printitem)) then
+  exit;
+ changed:=false;
+ if undo.UndoName<>'' then
+ begin
+  newModel:=ReadUndoPropertyValue(aitem.printitem,undo.UndoName);
+  if not VarSameValue(undo.OldModel,newModel) then
+  begin
+   changed:=true;
+   if Assigned(report.UndoCue) then
+   begin
+    cue:=TUndoCue(report.UndoCue);
+    if gid<=0 then
+     gid:=cue.GetGroupId;
+    op:=TChangeObjectOperation.Create(otModify,gid);
+    try
+     op.componentName:=aitem.printitem.Name;
+     op.componentClass:=UpperCase(aitem.printitem.ClassName);
+     op.AddProperty(undo.UndoName,undo.PType,undo.OldModel,newModel);
+    except
+     op.Free;
+     raise;
+    end;
+    cue.AddOperation(op);
+    Result:=true;
+    exit;
+   end;
+  end;
+ end;
+ if changed or (aitem.GetProperty(pname)<>undo.OldText) then
+  report.Modified:=true;
+end;
 
 
 function FindClassName(acompo:TRpSizeInterface):string;
@@ -541,6 +754,10 @@ begin
  if (Not (FSelectedItems.Objects[0] is TRpSizePosInterface)) then
   exit;
  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+ cue:=nil;
+ if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  cue:=TUndoCue(FRpMainf.report.UndoCue);
+ gid:=0;
  for i:=0 to FSelectedItems.Count-1 do
  begin
   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
@@ -556,27 +773,29 @@ begin
    inc(index);
   end;
   if index>=section.ReportComponents.Count then
-   exit;
+   continue;
+  if index=0 then
+   continue;
   section.ReportComponents.Delete(index);
   item:=section.ReportComponents.Insert(0);
   item.Component:=pitem;
- end;
- // Record undo for send to back
- if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
- begin
-  cue:=TUndoCue(FRpMainf.report.UndoCue);
-  gid:=cue.GetGroupId;
-  for i:=0 to FSelectedItems.Count-1 do
+  // Record undo with the real positions before and after the move
+  // (UndoItemIndexProperty): undo puts the component back where it was
+  if Assigned(cue) then
   begin
-   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
+   if gid<=0 then
+    gid:=cue.GetGroupId;
    op:=TChangeObjectOperation.Create(otSwapDown, gid);
-   op.componentName:=aitem.printitem.Name;
-   op.componentClass:=UpperCase(aitem.printitem.ClassName);
-   op.parentName:=TRpSection(aitem.SectionInt.printitem).Name;
+   op.componentName:=pitem.Name;
+   op.componentClass:=UpperCase(pitem.ClassName);
+   op.parentName:=section.Name;
+   op.oldItemIndex:=index;
+   op.AddProperty(UndoItemIndexProperty,ptInteger,index,0);
    cue.AddOperation(op);
   end;
-  FRpMainf.RefreshCueView;
  end;
+ if gid>0 then
+  FRpMainf.RefreshCueView;
  if assigned(TFRpObjInspVCL(Owner).fchangesize) then
   TFRpObjInspVCL(Owner).fchangesize.UpdatePos;
 end;
@@ -599,6 +818,10 @@ begin
  if (Not (FSelectedItems.Objects[0] is TRpSizePosInterface)) then
   exit;
  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+ cue:=nil;
+ if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
+  cue:=TUndoCue(FRpMainf.report.UndoCue);
+ gid:=0;
  for i:=0 to FSelectedItems.Count-1 do
  begin
   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
@@ -613,27 +836,29 @@ begin
    inc(index);
   end;
   if index>=section.ReportComponents.Count then
-   exit;
+   continue;
+  if index=section.ReportComponents.Count-1 then
+   continue;
   section.ReportComponents.Delete(index);
   item:=section.ReportComponents.Add;
   item.Component:=pitem;
- end;
- // Record undo for bring to front
- if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
- begin
-  cue:=TUndoCue(FRpMainf.report.UndoCue);
-  gid:=cue.GetGroupId;
-  for i:=0 to FSelectedItems.Count-1 do
+  // Record undo with the real positions before and after the move
+  // (UndoItemIndexProperty): undo puts the component back where it was
+  if Assigned(cue) then
   begin
-   aitem:=TRpSizePosInterface(FSelectedItems.Objects[i]);
+   if gid<=0 then
+    gid:=cue.GetGroupId;
    op:=TChangeObjectOperation.Create(otSwapUp, gid);
-   op.componentName:=aitem.printitem.Name;
-   op.componentClass:=UpperCase(aitem.printitem.ClassName);
-   op.parentName:=TRpSection(aitem.SectionInt.printitem).Name;
+   op.componentName:=pitem.Name;
+   op.componentClass:=UpperCase(pitem.ClassName);
+   op.parentName:=section.Name;
+   op.oldItemIndex:=index;
+   op.AddProperty(UndoItemIndexProperty,ptInteger,index,section.ReportComponents.Count-1);
    cue.AddOperation(op);
   end;
-  FRpMainf.RefreshCueView;
  end;
+ if gid>0 then
+  FRpMainf.RefreshCueView;
  if assigned(TFRpObjInspVCL(Owner).fchangesize) then
   TFRpObjInspVCL(Owner).fchangesize.UpdatePos;
 end;
@@ -769,6 +994,33 @@ begin
  begin
   aitem:=TRpSizeInterface(FSelectedItems.Objects[i]);
   aitem.SetProperty(propname,value);
+ end;
+end;
+
+// Sets the property on every selected item recording the undo operations
+// (model values) in group gid, a new group if gid<=0
+procedure TRpPanelObj.SetPropertyFullUndo(propname:string;value:Widestring;var gid:Integer);
+var
+ i:integer;
+ aitem:TRpSizeInterface;
+ undo:TRpInspectorUndo;
+ FRpMainf:TFRpMainFVCL;
+ recorded:Boolean;
+begin
+ FRpMainf:=TFRpMainFVCL(Owner.Owner);
+ recorded:=false;
+ try
+  for i:=0 to FSelectedItems.Count-1 do
+  begin
+   aitem:=TRpSizeInterface(FSelectedItems.Objects[i]);
+   undo:=BeginInspectorUndo(aitem,propname);
+   aitem.SetProperty(propname,value);
+   if EndInspectorUndo(FRpMainf.report,aitem,propname,undo,gid) then
+    recorded:=true;
+  end;
+ finally
+  if recorded then
+   FRpMainf.RefreshCueView;
  end;
 end;
 
@@ -2364,18 +2616,18 @@ var
  index:integer;
  aname:string;
  FRpMainf:TFRpMainFVCL;
- cue:TUndoCue;
- op:TChangeObjectOperation;
- oldValue:WideString;
+ undo:TRpInspectorUndo;
+ gid:Integer;
 begin
  DupValue(TControl(Sender));
  index:=TControl(Sender).tag;
  aname:=Lnames.strings[index];
  FRpMainf:=TFRpMainFVCL(Owner.Owner);
+ gid:=0;
  if FSelectedItems.Count<2 then
  begin
-  // Capture old value before change
-  oldValue:=FCompItem.GetProperty(aname);
+  // Capture the model value before the change (see BeginInspectorUndo)
+  undo:=BeginInspectorUndo(FCompItem,aname);
 {$IFDEF USETNTUNICODE}
   if Sender is TTntEdit then
   begin
@@ -2393,16 +2645,8 @@ begin
      FCompItem.SetProperty(aname,TComboBox(Sender).Text);
   end;
   // Record undo operation
-  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
-  begin
-   cue:=TUndoCue(FRpMainf.report.UndoCue);
-   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
-   op.componentName:=FCompItem.printitem.Name;
-   op.componentClass:=UpperCase(FCompItem.printitem.ClassName);
-   op.AddProperty(aname,ptString,oldValue,FCompItem.GetProperty(aname));
-   cue.AddOperation(op);
+  if EndInspectorUndo(FRpMainf.report,FCompItem,aname,undo,gid) then
    FRpMainf.RefreshCueView;
-  end;
   if (FCompItem is TRpSectionInterface) then
   begin
    if ((aname=SRpsWidth) or (aname=SRpsHeight)) then
@@ -2430,20 +2674,20 @@ begin
 {$IFDEF USETNTUNICODE}
   if Sender is TTntEdit then
   begin
-   SetPropertyFull(aname,TTntEdit(Sender).Text);
+   SetPropertyFullUndo(aname,TTntEdit(Sender).Text,gid);
   end
   else
 {$ENDIF}
   if Sender is TRpMaskEdit then
   begin
-   SetPropertyFull(aname,String(TRpMaskEdit(Sender).Value));
+   SetPropertyFullUndo(aname,String(TRpMaskEdit(Sender).Value),gid);
   end
   else
   begin
    if (Sender is TComboBox) then
-     SetPropertyFull(aname,TComboBox(Sender).Text)
+     SetPropertyFullUndo(aname,TComboBox(Sender).Text,gid)
    else
-     SetPropertyFull(aname,TEdit(Sender).Text)
+     SetPropertyFullUndo(aname,TEdit(Sender).Text,gid)
   end;
  end;
  if aname=SRpChildSubRep then
@@ -2457,33 +2701,19 @@ procedure TRpPanelObj.ShapeMouseUp(Sender: TObject; Button: TMouseButton;
      Shift: TShiftState; X, Y: Integer);
 var
  AShape:TShape;
- FRpMainf:TFRpMainFVCL;
- cue:TUndoCue;
- op:TChangeObjectOperation;
  propname:string;
- oldValue:string;
+ gid:Integer;
 begin
  AShape:=TShape(Sender);
  TFRpObjInspVCL(Owner).ColorDialog1.COlor:=StrToInt(LValues.Strings[AShape.Tag]);
  if TFRpObjInspVCL(Owner).ColorDialog1.Execute then
  begin
   propname:=Lnames.strings[AShape.Tag];
-  oldValue:=LValues.Strings[AShape.Tag];
   AShape.Brush.Color:=TFRpObjInspVCL(Owner).ColorDialog1.Color;
-  SetPropertyFull(propname,IntToStr(TFRpObjInspVCL(Owner).ColorDialog1.Color));
+  // Sets and records undo (model values) for every selected item
+  gid:=0;
+  SetPropertyFullUndo(propname,IntToStr(TFRpObjInspVCL(Owner).ColorDialog1.Color),gid);
   DupValue(TControl(Sender));
-  // Record undo
-  FRpMainf:=TFRpMainFVCL(Owner.Owner);
-  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) and Assigned(FCompItem) then
-  begin
-   cue:=TUndoCue(FRpMainf.report.UndoCue);
-   op:=TChangeObjectOperation.Create(otModify, cue.GetGroupId);
-   op.componentName:=FCompItem.printitem.Name;
-   op.componentClass:=UpperCase(FCompItem.printitem.ClassName);
-   op.AddProperty(propname,ptInteger,StrToIntDef(oldValue,0),TFRpObjInspVCL(Owner).ColorDialog1.Color);
-   cue.AddOperation(op);
-   FRpMainf.RefreshCueView;
-  end;
  end;
 end;
 
@@ -2491,10 +2721,6 @@ procedure TRpPanelObj.FontClick(Sender:TObject);
 var
  index:integer;
  aitem:TRpSizeInterface;
- oldFontColor,oldFontStyle:WideString;
- FRpMainf:TFRpMainFVCL;
- cue:TUndoCue;
- op:TChangeObjectOperation;
  gid:Integer;
 begin
  if FSelectedItems.Count<2 then
@@ -2505,10 +2731,6 @@ begin
  begin
   aitem:=TRpSizeInterface(FSelectedItems.Objects[0]);
  end;
- FRpMainf:=TFRpMainFVCL(Owner.Owner);
- // Capture old values before dialog
- oldFontColor:=aitem.GetProperty(SRpSFontColor);
- oldFontStyle:=aitem.GetProperty(SRpSFontStyle);
  TFRpObjInspVCL(Owner).FontDialog1.Font.Name:=aitem.GetProperty(SRpSWFontName);
  TFRpObjInspVCL(Owner).FontDialog1.Font.Size:= StrToInt(aitem.GetProperty(SRpSFontSize));
  TFRpObjInspVCL(Owner).FontDialog1.Font.Color:= StrToInt(aitem.GetProperty(SRpSFontColor));
@@ -2527,32 +2749,22 @@ begin
    TRpMaskEdit(LControls.Objects[index]).Text:=IntToStr(TFRpObjInspVCL(Owner).FontDialog1.Font.Size);
    TRpMaskEdit(LControls2.Objects[index]).Text:=IntToStr(TFRpObjInspVCL(Owner).FontDialog1.Font.Size);
   end;
+  // Font color and style of every selected item, recorded as one undo group
+  // (name/size are handled via EditChange)
+  gid:=0;
   index:=LNames.IndexOf(SrpSFontColor);
   if index>=0 then
   begin
    TShape(LControls.Objects[index]).Brush.Color:=TFRpObjInspVCL(Owner).FontDialog1.Font.Color;
    TShape(LControls2.Objects[index]).Brush.Color:=TFRpObjInspVCL(Owner).FontDialog1.Font.Color;
-   SetPropertyFull(SRpSFontColor,IntToStr(TFRpObjInspVCL(Owner).FontDialog1.Font.Color));
+   SetPropertyFullUndo(SRpSFontColor,IntToStr(TFRpObjInspVCL(Owner).FontDialog1.Font.Color),gid);
   end;
   index:=LNames.IndexOf(SrpSFontStyle);
   if index>=0 then
   begin
    TRpMaskEdit(LControls.Objects[index]).Text:=IntegerFontStyleToString(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style));
    TRpMaskEdit(LControls2.Objects[index]).Text:=IntegerFontStyleToString(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style));
-   SetPropertyFull(SRpSFontStyle,IntToStr(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style)));
-  end;
-  // Record undo for font color and style (name/size are handled via EditChange)
-  if Assigned(FRpMainf.report) and Assigned(FRpMainf.report.UndoCue) then
-  begin
-   cue:=TUndoCue(FRpMainf.report.UndoCue);
-   gid:=cue.GetGroupId;
-   op:=TChangeObjectOperation.Create(otModify, gid);
-   op.componentName:=aitem.printitem.Name;
-   op.componentClass:=UpperCase(aitem.printitem.ClassName);
-   op.AddProperty(SRpSFontColor,ptString,oldFontColor,aitem.GetProperty(SRpSFontColor));
-   op.AddProperty(SRpSFontStyle,ptString,oldFontStyle,aitem.GetProperty(SRpSFontStyle));
-   cue.AddOperation(op);
-   FRpMainf.RefreshCueView;
+   SetPropertyFullUndo(SRpSFontStyle,IntToStr(FontStyleToCLXInteger(TFRpObjInspVCL(Owner).Fontdialog1.Font.Style)),gid);
   end;
  end;
 end;

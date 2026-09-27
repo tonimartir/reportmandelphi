@@ -421,15 +421,17 @@ begin
    op.componentName:=origDB.Name;
    op.componentClass:='TRPDATABASEINFOITEM';
    op.oldItemIndex:=i;
-  op.AddProperty('alias',ptString,origDB.Alias,Null);
-  op.AddProperty('driver',ptInteger,Integer(origDB.Driver),Null);
-  op.AddProperty('configFile',ptString,origDB.ConfigFile,Null);
-  op.AddProperty('loginPrompt',ptBoolean,origDB.LoginPrompt,Null);
-  op.AddProperty('loadParams',ptBoolean,origDB.LoadParams,Null);
-  op.AddProperty('loadDriverParams',ptBoolean,origDB.LoadDriverParams,Null);
-  op.AddProperty('connectionString',ptString,origDB.ADOConnectionString,Null);
-  op.AddProperty('providerFactory',ptString,origDB.ProviderFactory,Null);
-  op.AddProperty('dotNetDriver',ptInteger,origDB.DotNetDriver,Null);
+   // otRemove: undo recreates the item from newValue (same convention as
+   // the designer's delete), so the removed values go there
+  op.AddProperty('alias',ptString,Null,origDB.Alias);
+  op.AddProperty('driver',ptInteger,Null,Integer(origDB.Driver));
+  op.AddProperty('configFile',ptString,Null,origDB.ConfigFile);
+  op.AddProperty('loginPrompt',ptBoolean,Null,origDB.LoginPrompt);
+  op.AddProperty('loadParams',ptBoolean,Null,origDB.LoadParams);
+  op.AddProperty('loadDriverParams',ptBoolean,Null,origDB.LoadDriverParams);
+  op.AddProperty('connectionString',ptString,Null,origDB.ADOConnectionString);
+  op.AddProperty('providerFactory',ptString,Null,origDB.ProviderFactory);
+  op.AddProperty('dotNetDriver',ptInteger,Null,origDB.DotNetDriver);
    undoCue.AddOperation(op);
   end;
  end;
@@ -497,14 +499,15 @@ begin
    op.componentName:=origDS.Name;
    op.componentClass:='TRPDATAINFOITEM';
    op.oldItemIndex:=i;
-  op.AddProperty('alias',ptString,origDS.Alias,Null);
-  op.AddProperty('databaseAlias',ptString,origDS.DatabaseAlias,Null);
-  op.AddProperty('sql',ptString,origDS.SQL,Null);
-  op.AddProperty('hubSchemaId',ptInteger,origDS.HubSchemaId,Null);
-  op.AddProperty('dataSource',ptString,origDS.DataSource,Null);
-  op.AddProperty('groupUnion',ptBoolean,origDS.GroupUnion,Null);
-  op.AddProperty('openOnStart',ptBoolean,origDS.OpenOnStart,Null);
-  op.AddProperty('parallelUnion',ptBoolean,origDS.ParallelUnion,Null);
+   // otRemove: removed values go in newValue (see TRPDATABASEINFOITEM above)
+  op.AddProperty('alias',ptString,Null,origDS.Alias);
+  op.AddProperty('databaseAlias',ptString,Null,origDS.DatabaseAlias);
+  op.AddProperty('sql',ptString,Null,origDS.SQL);
+  op.AddProperty('hubSchemaId',ptInteger,Null,origDS.HubSchemaId);
+  op.AddProperty('dataSource',ptString,Null,origDS.DataSource);
+  op.AddProperty('groupUnion',ptBoolean,Null,origDS.GroupUnion);
+  op.AddProperty('openOnStart',ptBoolean,Null,origDS.OpenOnStart);
+  op.AddProperty('parallelUnion',ptBoolean,Null,origDS.ParallelUnion);
    undoCue.AddOperation(op);
   end;
  end;

@@ -501,13 +501,13 @@ begin
   BtnUpDS := TToolButton.Create(ToolBarDS);
   BtnUpDS.Parent := ToolBarDS;
   BtnUpDS.ImageIndex := IMG_DC_UP;
-  BtnUpDS.Hint := TranslateStr(190, 'Up');
+  BtnUpDS.Hint := TranslateStr(28, 'Moves the selection up');
   BtnUpDS.OnClick := BtnUpDSClick;
 
   BtnDownDS := TToolButton.Create(ToolBarDS);
   BtnDownDS.Parent := ToolBarDS;
   BtnDownDS.ImageIndex := IMG_DC_DOWN;
-  BtnDownDS.Hint := TranslateStr(191, 'Down');
+  BtnDownDS.Hint := TranslateStr(30, 'Moves the selection down');
   BtnDownDS.OnClick := BtnDownDSClick;
 
   SepDS1 := TToolButton.Create(ToolBarDS);

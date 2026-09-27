@@ -177,10 +177,13 @@ begin
   cue := GetUndoCue;
   if cue = nil then
     Exit;
-  ops := cue.Undo;
-  if Assigned(ops) then
-  begin
-    ops.Free; // Free the non-owning list (operations are owned by cue lists)
+  ops := nil;
+  try
+    ops := cue.Undo;
+  finally
+    // Free the non-owning list (operations are owned by cue lists) and
+    // rebuild the display even if an operation failed midway
+    ops.Free;
     RefreshList;
     if Assigned(FOnUndoRedo) then
       FOnUndoRedo(Self);
@@ -195,9 +198,10 @@ begin
   cue := GetUndoCue;
   if cue = nil then
     Exit;
-  ops := cue.Redo;
-  if Assigned(ops) then
-  begin
+  ops := nil;
+  try
+    ops := cue.Redo;
+  finally
     ops.Free;
     RefreshList;
     if Assigned(FOnUndoRedo) then

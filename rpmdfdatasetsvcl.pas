@@ -335,10 +335,11 @@ begin
  ARename.Caption:=TranslateStr(540,ARename.Caption);
  ARename.Hint:=ARename.Caption;
  ADelete.Caption:=TranslateStr(150,ADelete.Caption);
- ADelete.Hint:=ARename.Caption;
+ ADelete.Hint:=ADelete.Caption;
  BParams.Hint:=TranslateStr(152,BParams.Hint);
- AUp.Hint:=TranslateStr(190,AUp.Hint);
- ADown.Hint:=TranslateStr(191,ADown.Hint);
+ // 190/191 are the parameter hints; datasets use the generic selection ones
+ AUp.Hint:=TranslateStr(28,AUp.Hint);
+ ADown.Hint:=TranslateStr(30,ADown.Hint);
 
 
  PBottom.Height:=250;

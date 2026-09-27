@@ -121,7 +121,8 @@ constructor TFRpWizardLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := TranslateStr(935, 'New Report Wizard');
+  // No translation id for the form caption (935 is the Finish button)
+  Caption := 'New Report Wizard';
   Width := 600;
   Height := 460;
   Position := poScreenCenter;

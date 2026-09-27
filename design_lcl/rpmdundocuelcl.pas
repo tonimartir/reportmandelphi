@@ -1697,6 +1697,10 @@ begin
       nvalue := prop.oldValue
     else
       nvalue := prop.newValue;
+    // Removals recorded before the params/data dialogs stored their values in
+    // newValue (e.g. histories saved in reports) only carry oldValue
+    if (operation.operation = otRemove) and (VarIsEmpty(nvalue) or VarIsNull(nvalue)) then
+      nvalue := prop.oldValue;
     nvalue := NormalizeUndoPropertyValue(prop.propertyType, nvalue);
     mappedPropName := MapUndoPropertyName(target, prop.propertyName);
     if (prop.propertyType = ptStringArray) and ApplyStringArrayProperty(target, mappedPropName, nvalue) then
@@ -1809,6 +1813,12 @@ begin
       op.AddProperty('autoContract', ptBoolean, Null, pitem.GetItemProperty('AutoContract'));
       op.AddProperty('printOnlyOne', ptBoolean, Null, pitem.GetItemProperty('PrintOnlyOne'));
       op.AddProperty('printNulls', ptBoolean, Null, pitem.GetItemProperty('PrintNulls'));
+      op.AddProperty('exportDisplayFormat', ptString, Null, pitem.GetItemProperty('ExportDisplayFormat'));
+      op.AddProperty('exportExpression', ptString, Null, pitem.GetItemProperty('ExportExpression'));
+      op.AddProperty('exportLine', ptInteger, Null, pitem.GetItemProperty('ExportLine'));
+      op.AddProperty('exportPosition', ptInteger, Null, pitem.GetItemProperty('ExportPosition'));
+      op.AddProperty('exportSize', ptInteger, Null, pitem.GetItemProperty('ExportSize'));
+      op.AddProperty('exportDoNewLine', ptBoolean, Null, pitem.GetItemProperty('ExportDoNewLine'));
     end
     else if pitem is TRpChart then
     begin
@@ -1914,6 +1924,13 @@ begin
   op.AddProperty('groupName', ptString, Null, sec.GetItemProperty('GroupName'));
   op.AddProperty('changeExpression', ptString, Null, sec.GetItemProperty('ChangeExpression'));
   op.AddProperty('changeBool', ptBoolean, Null, sec.GetItemProperty('ChangeBool'));
+  op.AddProperty('beginPage', ptBoolean, Null, sec.GetItemProperty('BeginPage'));
+  op.AddProperty('externalFilename', ptString, Null, sec.GetItemProperty('ExternalFilename'));
+  op.AddProperty('externalConnection', ptString, Null, sec.GetItemProperty('ExternalConnection'));
+  op.AddProperty('externalTable', ptString, Null, sec.GetItemProperty('ExternalTable'));
+  op.AddProperty('externalField', ptString, Null, sec.GetItemProperty('ExternalField'));
+  op.AddProperty('externalSearchField', ptString, Null, sec.GetItemProperty('ExternalSearchField'));
+  op.AddProperty('externalSearchValue', ptString, Null, sec.GetItemProperty('ExternalSearchValue'));
 end;
 
 procedure TUndoCue.AddSubreportProperties(subrep: TRpSubReport;
