@@ -135,7 +135,7 @@ if [ "${1:-}" = "--inside" ]; then
         fi
         EXE=/opt/reportman-designer/reportman-designer
         echo "-- dependencias"
-        if ldd "$EXE" | grep -q "not found"; then
+        if ldd "$EXE" | grep "not found" >/dev/null; then
             ldd "$EXE" | grep "not found"; fail "ldd: librerias sin resolver"
         else
             ok "ldd: todas las librerias enlazadas resueltas"
@@ -149,18 +149,21 @@ if [ "${1:-}" = "--inside" ]; then
             fi
             info "Qt6 de la distribucion: $(dpkg-query -W -f='${db:Status-Abbrev}${Package} ${Version}\n' 'libqt6core6*' 2>/dev/null | sed -n 's/^ii *//p' | tr '\n' ' ')"
             xcb=$(find /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms -name libqxcb.so 2>/dev/null | head -n 1)
-            if [ -n "$xcb" ] && ! ldd "$xcb" | grep -q "not found"; then
+            if [ -n "$xcb" ] && ! ldd "$xcb" | grep "not found" >/dev/null; then
                 ok "plugin de plataforma xcb: $xcb"
             else
                 fail "falta el plugin xcb de Qt6 (o sus dependencias)"
             fi
         fi
+        # grep sin -q tras una tuberia: con pipefail, grep -q cierra la tuberia
+        # al encontrar la linea y ldconfig/ldd/dpkg acaban con SIGPIPE (falso
+        # fallo segun el orden de la salida)
         for l in libfreetype.so.6 libfontconfig.so.1 libharfbuzz.so.0 libsqlite3.so.0; do
-            if ldconfig -p | grep -q "$l "; then ok "dlopen: $l"; else fail "dlopen: falta $l"; fi
+            if ldconfig -p | grep "$l " >/dev/null; then ok "dlopen: $l"; else fail "dlopen: falta $l"; fi
         done
         icu=$(ldconfig -p | grep -o 'libicuuc\.so\.[0-9]*' | sort -u | head -n 1)
         if [ -n "$icu" ]; then ok "dlopen: $icu"; else fail "dlopen: falta libicuuc.so.N"; fi
-        if ldconfig -p | grep -q 'libharfbuzz-subset.so.0 '; then
+        if ldconfig -p | grep 'libharfbuzz-subset.so.0 ' >/dev/null; then
             ok "dlopen: libharfbuzz-subset.so.0 (recomendado)"
         else
             info "sin libharfbuzz-subset.so.0 (opcional; Ubuntu 22.04 no la tiene)"
@@ -179,7 +182,7 @@ if [ "${1:-}" = "--inside" ]; then
         done
         # Las imagenes Docker minimas excluyen /usr/share/man al instalar
         # (dpkg path-exclude): se comprueba que el paquete la contiene
-        if dpkg -L "$PKG" | grep -q '/usr/share/man/man1/reportman-designer.1.gz'; then
+        if dpkg -L "$PKG" | grep '/usr/share/man/man1/reportman-designer.1.gz' >/dev/null; then
             ok "pagina de manual en el paquete"
         else
             fail "falta la pagina de manual en el paquete"
