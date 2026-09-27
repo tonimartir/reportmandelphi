@@ -21,7 +21,8 @@ set ROOT=%~dp0..\..
 
 echo Compiling reportman_rtl.lpk...
 "%LAZBUILD%" --no-write-project "%ROOT%\packages\fpc\reportman_rtl.lpk" || goto fail
-timeout /t 3 /nobreak >nul
+rem (ping as delay: "timeout" fails when stdin is redirected, e.g. in CI)
+ping -n 4 127.0.0.1 >nul
 copy /b "%ROOT%\rpsecutil.pas"+,, "%ROOT%\rpsecutil.pas" >nul
 "%LAZBUILD%" --no-write-project "%ROOT%\packages\fpc\reportman_rtl.lpk" || goto fail
 
