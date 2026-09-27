@@ -140,6 +140,22 @@ El chat común (`TFRpChatFrame`) se porta en 7.3 y se reutiliza en 7.5; el
 orden sigue la dependencia (el esquema sirve al SQL y al diseño) y deja el
 asistente más grande, el de diseño, para el final.
 
+**La inteligencia está en el servidor** (`api.reportman.es`): el cliente solo
+habla HTTP/JSON, muestra el chat y aplica lo que devuelve. En Windows la
+interfaz rica es web y se reutiliza tal cual: Monaco (`MonacoEditorAssets`) y
+WebMarkdown (`WebMarkdownAssets`) sobre el WebView2 que ya aloja el diseñador
+LCL (`rpwebview2`, `rplclwebview`). Falta en Pascal el puente de Monaco con el
+esquema y la IA (el Monaco VCL tiene ~1.300 líneas de eso; el LCL, ninguna),
+alojar WebMarkdown en LCL y los marcos de chat nativos.
+
+**Linux no tiene WebView2** (hoy el Monaco LCL cae a un `TMemo`). Opciones:
+(a) nativa: SynEdit con completado por esquema en Pascal y un visor HTML de
+Lazarus para el markdown; (b) Chromium embebido (CEF4Delphi, compatible con
+Lazarus) para usar el mismo Monaco/WebMarkdown, a costa de ~150–200 MB por
+instalación (sin comprobar con Qt6); (c) WebKit del sistema, que exige GTK3.
+Plan: Windows completo primero; en Linux la opción (a), y (b) solo si hace
+falta.
+
 Tamaño aproximado: unas 9.000 líneas de interfaz VCL a portar más la capa
 JSON/HTTP. Riesgos: OpenSSL en Windows con FPC (DLL a distribuir), la
 redirección OAuth local, `System.Threading` (pasar a `TThread`) y el render
