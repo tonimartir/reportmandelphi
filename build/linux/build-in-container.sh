@@ -6,7 +6,7 @@
 #       bash /src/build/linux/build-in-container.sh [opciones]
 #
 # Opciones:
-#   --skip-selftest   no ejecuta LclDesignerTest --selftest
+#   --skip-selftest   no ejecuta LclDesignerTest --selftest ni LclAIChatTest
 #   --skip-deb        no genera los .deb
 #   --skip-appimage   no genera la AppImage
 #   --ws=<widgetset>  solo ese widgetset: qt6 (.deb + AppImage), gtk2 (.deb) u
@@ -20,7 +20,8 @@
 #   reportman-designer_<v>_amd64.deb         Qt6 (el recomendado)
 #   reportman-designer-gtk2_<v>_amd64.deb    GTK2 (transitorio)
 #   ReportManDesigner-<v>-x86_64.AppImage    Qt6
-#   build-info.txt, lintian-<paquete>.txt, selftest-<ws>.log
+#   build-info.txt, lintian-<paquete>.txt, selftest-<ws>.log,
+#   aichattest-<ws>.log y shots-<ws>/ (panel de IA)
 set -euo pipefail
 
 SRC=${SRC:-/src}
@@ -64,7 +65,8 @@ EXCL=(--exclude='lib/' --exclude='backup/' --exclude='*.ppu' --exclude='*.o'
       --exclude='*.exe' --exclude='*.dll' --exclude='*.log' --exclude='*.lps'
       --exclude='*.compiled')
 for d in rtl_fpc lcl design_lcl packages/fpc packages/fpc_lcl \
-         tests/fpc/LclDesignerTest repman/lcl_designer repman/repsamples build/linux; do
+         tests/fpc/LclDesignerTest tests/fpc/LclAIChatTest tests/fpc/HubClientTest \
+         repman/lcl_designer repman/repsamples build/linux; do
     mkdir -p "$B/$d"
     rsync -a "${EXCL[@]}" "$SRC/$d/" "$B/$d/"
 done
@@ -140,6 +142,25 @@ build_ws() {
         exit 1
     fi
     echo "Selftest $ws OK"
+
+    # ---- 5b. Panel de IA (Fase 7.2): LclAIChatTest contra un Hub simulado,
+    # con heaptrc (falla si hay fugas) y capturas en $OUT/shots-<ws>
+    step "[$ws] Compilando y ejecutando LclAIChatTest (Xvfb)"
+    "${laz[@]}" "--ws=$ws" "${opt[@]}" --no-write-project "$bw/tests/fpc/LclAIChatTest/LclAIChatTest.lpi"
+    mkdir -p "$OUT/shots-$ws"
+    set +e
+    (cd "$bw" && LD_LIBRARY_PATH=$QT6PAS_DIR/lib QT_QPA_PLATFORM=xcb \
+        timeout 900 xvfb-run -a -s "-screen 0 1600x1200x24" \
+        ./tests/fpc/LclAIChatTest/LclAIChatTest "--shots=$OUT/shots-$ws") > "$OUT/aichattest-$ws.log" 2>&1
+    rc=$?
+    set -e
+    tail -n 4 "$OUT/aichattest-$ws.log"
+    if [ $rc -ne 0 ]; then
+        echo "ERROR: LclAIChatTest ($ws) ha fallado (codigo $rc)" >&2
+        grep -n -A 12 "TEST_FAILED" "$OUT/aichattest-$ws.log" | head -n 40 >&2 || true
+        exit 1
+    fi
+    echo "LclAIChatTest $ws OK"
 }
 
 # lint_deb <.deb>: lintian; un error rompe la build

@@ -349,7 +349,8 @@ var
   LPreferredHeight: Integer;
 begin
   LPreferredHeight := PreferredHeight;
-  if Height <> LPreferredHeight then
+  // Only when the parent does not size it (alClient would loop)
+  if (Height <> LPreferredHeight) and (Align in [alNone, alTop, alBottom]) then
     Height := LPreferredHeight;
   UpdateGaugeVisibility;
   LayoutNonInferenceControls;

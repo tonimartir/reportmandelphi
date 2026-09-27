@@ -280,7 +280,8 @@ implementation
 constructor TFRpMainFLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
-  Width := 980;
+  // Room for the AI panel at the right (380) besides the design area
+  Width := 1260;
   Height := 680;
   Caption := TranslateStr(1, 'Report Manager Designer');
   Position := poScreenCenter;

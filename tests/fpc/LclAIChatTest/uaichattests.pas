@@ -22,7 +22,7 @@ implementation
 
 uses
   SysUtils, Classes, Types, Forms, Controls, Graphics, StdCtrls, ExtCtrls,
-  Menus, ComCtrls, LCLType, LCLIntf, fphttpserver, httpdefs,
+  Menus, ComCtrls, LCLType, LCLIntf, IntfGraphics, FPImage, fphttpserver, httpdefs,
   rpjsonfpc, rphttpclientfpc, rptypes, rpdatainfo, rpdatahttp, rpauthmanager,
   rpreportdesignercontracts, rpaithreadslcl, rpmarkdownlcl, rpwebmarkdownlcl,
   rpchatmodernstylelcl, rpfrmloginframelcl, rpfrmloginlcl, rpfrmaiselectionlcl,
@@ -625,17 +625,30 @@ end;
 function TAIChatTests.PixelsWithColor(AControl: TWinControl; AColor: TColor): Integer;
 var
   LBitmap: TBitmap;
+  LImage: TLazIntfImage;
+  LWanted, LColor: TFPColor;
   X, Y: Integer;
 begin
+  // TLazIntfImage: Canvas.Pixels is one X11 round trip per pixel on Linux
   Result := 0;
+  LWanted := TColorToFPColor(ColorToRGB(AColor));
   LBitmap := TBitmap.Create;
   try
     LBitmap.SetSize(AControl.Width, AControl.Height);
     AControl.PaintTo(LBitmap.Canvas, 0, 0);
-    for Y := 0 to LBitmap.Height - 1 do
-      for X := 0 to LBitmap.Width - 1 do
-        if ColorToRGB(LBitmap.Canvas.Pixels[X, Y]) = ColorToRGB(AColor) then
-          Inc(Result);
+    LImage := LBitmap.CreateIntfImage;
+    try
+      for Y := 0 to LImage.Height - 1 do
+        for X := 0 to LImage.Width - 1 do
+        begin
+          LColor := LImage.Colors[X, Y];
+          if (LColor.Red shr 8 = LWanted.Red shr 8) and (LColor.Green shr 8 = LWanted.Green shr 8) and
+            (LColor.Blue shr 8 = LWanted.Blue shr 8) then
+            Inc(Result);
+        end;
+    finally
+      LImage.Free;
+    end;
   finally
     LBitmap.Free;
   end;

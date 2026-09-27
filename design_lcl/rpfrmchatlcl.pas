@@ -144,6 +144,7 @@ type
     FLastProgressId: string;
     FLoginPreferredHeight: Integer;
     FInitialLayoutDone: Boolean;
+    FInTopLayout: Boolean;
     FMailbox: TRpAsyncMailbox;
     FMailboxRef: IRpAsyncMailbox;
     procedure BuildControls;
@@ -864,7 +865,9 @@ begin
     FAISelection := TFRpAISelectionLCL.Create(Self);
     PAISelectionHost.Height := FAISelection.PreferredHeight;
     FAISelection.Parent := PAISelectionHost;
-    FAISelection.Align := alClient;
+    // alTop as in the VCL: the selection sets its own height (alClient
+    // makes the host and the frame fight over it on GTK2: layout loop)
+    FAISelection.Align := alTop;
     FAISelection.OnStopRequest := AISelectionStopRequest;
   end
   else
@@ -1220,8 +1223,10 @@ procedure TFRpChatFrame.RefreshTopLayout;
 var
   LLoginHeight, LAISelectionHeight, LSchemaHeight, LTop: Integer;
 begin
-  if PTop = nil then
+  // The SetBounds below resize the frame children and come back here
+  if (PTop = nil) or FInTopLayout then
     Exit;
+  FInTopLayout := True;
   DisableAlign;
   try
     EnsureTopStackLayout;
@@ -1259,11 +1264,30 @@ begin
     PTop.Height := LTop + Scale(4);
   finally
     EnableAlign;
+    FInTopLayout := False;
   end;
   if FLoginFrame <> nil then
     FLoginFrame.RefreshLayout;
   if FAISelection <> nil then
+  begin
     FAISelection.RefreshLayout;
+    // Its height depends on the widgetset combo height, known now
+    if FAISelection.Height <> PAISelectionHost.Height then
+    begin
+      FInTopLayout := True;
+      try
+        LAISelectionHeight := FAISelection.Height;
+        LTop := PAISelectionHost.Top + LAISelectionHeight;
+        PAISelectionHost.Height := LAISelectionHeight;
+        PSchemaHost.Top := LTop;
+        if PSchemaHost.Visible then
+          Inc(LTop, PSchemaHost.Height);
+        PTop.Height := LTop + Scale(4);
+      finally
+        FInTopLayout := False;
+      end;
+    end;
+  end;
 end;
 
 procedure TFRpChatFrame.RefreshLayout;
