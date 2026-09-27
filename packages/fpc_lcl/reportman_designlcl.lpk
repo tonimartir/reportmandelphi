@@ -188,7 +188,7 @@
         <UnitName Value="rpfrmchatlcl"/>
       </Item40>
     </Files>
-    <RequiredPkgs Count="5">
+    <RequiredPkgs Count="6">
       <Item1>
         <PackageName Value="reportman_rtl"/>
         <MinVersion Major="4" Release="16" Valid="True"/>
@@ -207,6 +207,9 @@
       <Item5>
         <PackageName Value="TurboPowerIPro"/>
       </Item5>
+      <Item6>
+        <PackageName Value="SynEdit"/>
+      </Item6>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
