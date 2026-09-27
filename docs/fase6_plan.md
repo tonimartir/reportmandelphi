@@ -99,7 +99,11 @@ Guía de instalación para usuarios: `docs/linux-install.md`.
   `rptranslator` (unidad compartida con Delphi); no se ha hecho.
   El idioma sale de `LC_ALL`, `LC_MESSAGES` o `LANG` (en ese orden, como
   POSIX); `rptranslator` resuelve `ca`/`cs` a `reportmanres.cat`/`.csy`, que
-  usan códigos de Windows.
+  usan códigos de Windows. Los textos de la propia LCL (botones de los
+  diálogos, diálogos estándar) se traducen al mismo idioma con los
+  `lclstrconsts.<idioma>.po` de Lazarus (`rmdcmdline.TranslateLCL`, desde
+  `<exe>/languages/`); `stage_app` los copia de la Lazarus de la imagen de
+  compilación (no están en el repositorio).
 - Preferencias propias del lanzador (posición, tamaño, maximizada, última
   carpeta) en `$XDG_CONFIG_HOME/reportman/designer_lcl.ini` (por defecto
   `~/.config/reportman/`; en Windows `%LOCALAPPDATA%\reportman\`). El

@@ -20,10 +20,17 @@ preferences, then exit.
 .TP
 .B \-\-help
 Print a short usage message, then exit.
+.SH ENVIRONMENT
+.TP
+.BR LC_ALL ", " LC_MESSAGES ", " LANG
+Language of the designer, looked up in this order: Spanish, English,
+Catalan, French, German, Italian, Portuguese, Czech or Lithuanian; any other
+language shows the English texts.
 .SH FILES
 .TP
 .I /opt/reportman-designer/
-Program, translations (reportmanres.*) and sample reports (samples/).
+Program, translations (reportmanres.*, and languages/ for the LCL texts) and
+sample reports (samples/).
 .TP
 .I ~/.config/reportman/designer_lcl.ini
 Designer preferences (window position, last folder). Honours

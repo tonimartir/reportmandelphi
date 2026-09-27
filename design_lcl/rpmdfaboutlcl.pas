@@ -90,7 +90,7 @@ begin
 
   FLTitle := TLabel.Create(Self);
   FLTitle.Parent := FPanelTop;
-  FLTitle.Caption := 'Report Manager Designer';
+  FLTitle.Caption := TranslateStr(1, 'Report Manager Designer');
   FLTitle.Font.Size := 14;
   FLTitle.Font.Style := [fsBold];
   FLTitle.Left := 20;
@@ -112,24 +112,29 @@ begin
 
   FLAuthor := TLabel.Create(Self);
   FLAuthor.Parent := FPanelTop;
-  FLAuthor.Caption := TranslateStr(89, 'Author: ') + 'Toni Martir <toni@reportman.es>';
+  // The translated texts have no trailing ':'
+  FLAuthor.Caption := TranslateStr(89, 'Author') + ': Toni Martir <toni@reportman.es>';
   FLAuthor.Left := 20;
   FLAuthor.Top := 68;
 
   FLProject := TLabel.Create(Self);
   FLProject.Parent := FPanelTop;
-  FLProject.Caption := TranslateStr(90, 'Project: ');
+  FLProject.Caption := TranslateStr(90, 'Project Page') + ':';
   FLProject.Left := 20;
   FLProject.Top := 92;
 
+  // The link follows the label, its width depends on the language
   FLProjectLink := TLabel.Create(Self);
   FLProjectLink.Parent := FPanelTop;
   FLProjectLink.Caption := 'https://reportman.es';
   FLProjectLink.Font.Color := clHighlight;
   FLProjectLink.Font.Style := [fsUnderline];
   FLProjectLink.Cursor := crHandPoint;
-  FLProjectLink.Left := 75;
   FLProjectLink.Top := 92;
+  FLProjectLink.AnchorSideLeft.Control := FLProject;
+  FLProjectLink.AnchorSideLeft.Side := asrRight;
+  FLProjectLink.BorderSpacing.Left := 6;
+  FLProjectLink.Anchors := [akLeft, akTop];
   FLProjectLink.OnClick := ProjectLinkClick;
 
   // Bottom Panel

@@ -19,11 +19,32 @@ rm_version() {
     echo "$v"
 }
 
+# Traducciones de la LCL (lclstrconsts.<idioma>.po) que se instalan: los
+# idiomas de reportmanres.* (ca = .cat, cs = .csy) y pt_BR ademas de pt
+LCL_LANGUAGES="es ca cs de fr it lt pt pt_BR"
+
+# Directorio lcl/languages de la instalacion de Lazarus de la imagen (junto a
+# lazbuild: /usr/share/lazarus/<version>/lcl/languages)
+lazarus_lcl_languages() {
+    local lazbuild dir
+    lazbuild=$(command -v lazbuild) || { echo "ERROR: no encuentro lazbuild" >&2; return 1; }
+    dir=$(dirname "$(readlink -f "$lazbuild")")/lcl/languages
+    if [ ! -d "$dir" ]; then
+        echo "ERROR: no encuentro las traducciones de la LCL en $dir" >&2
+        return 1
+    fi
+    echo "$dir"
+}
+
 # stage_app <arbol de fuentes> <ejecutable> <raiz destino>
 # Arbol comun del .deb y de la AppImage:
 #   <raiz>/opt/reportman-designer/reportman-designer   ejecutable (sin simbolos)
 #   <raiz>/opt/reportman-designer/reportmanres.*       traducciones (el motor
 #                                                      las busca junto al exe)
+#   <raiz>/opt/reportman-designer/languages/           traducciones de la LCL
+#                                                      (lclstrconsts.*.po de
+#                                                      Lazarus: botones de los
+#                                                      dialogos...)
 #   <raiz>/opt/reportman-designer/samples/             informes de ejemplo y
 #                                                      sus datos (sin los PDF)
 #   <raiz>/usr/share/applications/reportman-designer.desktop
@@ -33,9 +54,9 @@ rm_version() {
 stage_app() {
     local src=$1 bin=$2 root=$3
     local app=$root$APP_PREFIX
-    local f s d
+    local f s d l lazlang
 
-    install -d -m 0755 "$app" "$app/samples"
+    install -d -m 0755 "$app" "$app/samples" "$app/languages"
     install -m 0755 "$bin" "$app/$APP_ID"
     strip --strip-all --remove-section=.comment --remove-section=.note "$app/$APP_ID"
 
@@ -44,6 +65,13 @@ stage_app() {
     done
     # El motor elige la traduccion por LC_ALL/LC_MESSAGES/LANG y ya encuentra
     # los dos ficheros con nombre de Windows (ca -> .cat, cs -> .csy)
+
+    # La LCL se traduce al mismo idioma (rmdcmdline.TranslateLCL) con los .po
+    # de la Lazarus con la que se compila (no estan en el repositorio)
+    lazlang=$(lazarus_lcl_languages)
+    for l in $LCL_LANGUAGES; do
+        install -m 0644 "$lazlang/lclstrconsts.$l.po" "$app/languages/"
+    done
     find "$src/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
         -exec install -m 0644 {} "$app/samples/" \;
 

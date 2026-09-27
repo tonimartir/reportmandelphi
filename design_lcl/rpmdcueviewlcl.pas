@@ -115,7 +115,7 @@ begin
   BUndo.Width := 30;
   BUndo.Height := 26;
   BUndo.Caption := '↩';
-  BUndo.Hint := 'Deshacer';
+  BUndo.Hint := TranslateStr(1481, 'Undo');
   BUndo.ShowHint := True;
   BUndo.OnClick := BUndoClick;
 
@@ -126,7 +126,7 @@ begin
   BRedo.Width := 30;
   BRedo.Height := 26;
   BRedo.Caption := '↪';
-  BRedo.Hint := 'Rehacer';
+  BRedo.Hint := TranslateStr(1482, 'Redo');
   BRedo.ShowHint := True;
   BRedo.OnClick := BRedoClick;
 
@@ -137,7 +137,7 @@ begin
   BClear.Width := 30;
   BClear.Height := 26;
   BClear.Caption := '✖';
-  BClear.Hint := 'Limpiar historial';
+  BClear.Hint := TranslateStr(1484, 'Clear the undo history');
   BClear.ShowHint := True;
   BClear.OnClick := BClearClick;
 
@@ -145,7 +145,7 @@ begin
   LTitle.Parent := PanelTop;
   LTitle.Left := 110;
   LTitle.Top := 9;
-  LTitle.Caption := 'Historial';
+  LTitle.Caption := TranslateStr(1483, 'History');
 
   // ListView for Cue items
   ListViewCue := TListView.Create(Self);
@@ -158,19 +158,19 @@ begin
   ListViewCue.OnDblClick := ListViewCueDblClick;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := 'Op';
-  col.Width := 40;
+  col.Caption := TranslateStr(242, 'Operation');
+  col.Width := 70;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := 'Componente';
+  col.Caption := TranslateStr(544, 'Name');
   col.Width := 110;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := 'Clase';
+  col.Caption := TranslateStr(1485, 'Class');
   col.Width := 110;
 
   col := ListViewCue.Columns.Add;
-  col.Caption := 'Fecha/Hora';
+  col.Caption := TranslateStr(889, 'Date Time');
   col.Width := 130;
 end;
 
@@ -231,7 +231,7 @@ begin
     begin
       item := ListViewCue.Items.Add;
       item.Caption := '---';
-      item.SubItems.Add('--- REDO ---');
+      item.SubItems.Add('--- ' + TranslateStr(1482, 'Redo') + ' ---');
       item.SubItems.Add('');
       item.SubItems.Add('');
       item.Data := nil;
@@ -298,7 +298,7 @@ end;
 procedure TFRpCueViewLCL.BClearClick(Sender: TObject);
 begin
   // Same confirmation as the VCL designer (rpmdcueviewvcl)
-  if RpMessageBox('Limpiar toda la cola de deshacer?', '',
+  if RpMessageBox(TranslateStr(1484, 'Clear the undo history'), '',
     [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
     Exit;
   ClearHistory;
@@ -344,14 +344,14 @@ begin
     Exit;
   end;
   op := TChangeObjectOperation(ListViewCue.Selected.Data);
-  msg := 'Operación: ' + OperationTypeToText(op.operation) + LineEnding +
-    'Componente: ' + op.componentName + LineEnding +
-    'Clase: ' + op.componentClass + LineEnding +
-    'Padre: ' + op.parentName + LineEnding +
+  msg := TranslateStr(242, 'Operation') + ': ' + OperationTypeToText(op.operation) + LineEnding +
+    TranslateStr(544, 'Name') + ': ' + op.componentName + LineEnding +
+    TranslateStr(1485, 'Class') + ': ' + op.componentClass + LineEnding +
+    TranslateStr(1486, 'Parent') + ': ' + op.parentName + LineEnding +
     'GroupId: ' + IntToStr(op.groupId) + LineEnding;
   if op.properties.Count > 0 then
   begin
-    msg := msg + LineEnding + 'Propiedades:' + LineEnding;
+    msg := msg + LineEnding + TranslateStr(1487, 'Properties') + ':' + LineEnding;
     for i := 0 to op.properties.Count - 1 do
     begin
       prop := op.properties[i];

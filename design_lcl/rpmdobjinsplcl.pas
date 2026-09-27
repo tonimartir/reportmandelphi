@@ -1482,6 +1482,9 @@ var
   alist: TStringList;
 begin
   inherited Create(AOwner);
+  // External section menu (captions of the .lfm), as TFRpObjInspVCL
+  MLoadExternal.Caption := TranslateStr(835, 'Load section');
+  MSaveExternal.Caption := TranslateStr(836, 'Save section');
   FPropPanels := TStringList.Create;
   FSelectedItems := TStringList.Create;
   FClasses := TStringList.Create;

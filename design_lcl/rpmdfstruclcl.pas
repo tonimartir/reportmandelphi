@@ -226,7 +226,7 @@ begin
   // History Tab
   TabHistory := TTabSheet.Create(PControl);
   TabHistory.PageControl := PControl;
-  TabHistory.Caption := 'Historial';
+  TabHistory.Caption := TranslateStr(1483, 'History');
 
   cueview := TFRpCueViewLCL.Create(Self);
   cueview.Align := alClient;
@@ -708,7 +708,7 @@ begin
   begin
     if FReport.SubReports.Count <= 1 then
     begin
-      RpShowMessage('Cannot delete the only subreport');
+      RpShowMessage(TranslateStr(538, 'At least one subreport must exists in a report'));
       Exit;
     end;
   end

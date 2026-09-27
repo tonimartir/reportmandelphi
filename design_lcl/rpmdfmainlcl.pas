@@ -85,6 +85,7 @@ type
     MenuViewGrid: TMenuItem;
     MenuViewGridConfig: TMenuItem;
     MenuViewRulers: TMenuItem;
+    MenuViewUnits: TMenuItem;
     MenuViewUnitsCm: TMenuItem;
     MenuViewUnitsInches: TMenuItem;
     MenuViewScale50: TMenuItem;
@@ -267,7 +268,7 @@ begin
   inherited CreateNew(AOwner);
   Width := 980;
   Height := 680;
-  Caption := 'Report Manager Designer';
+  Caption := TranslateStr(1, 'Report Manager Designer');
   Position := poScreenCenter;
   Color := clBtnFace;
   FFileName := '';
@@ -298,42 +299,45 @@ var
 begin
   MainMenu1 := TMainMenu.Create(Self);
 
+  // Translated with the same ids as the VCL designer (rpmdfmainvcl); the
+  // top level menus get a '&' for the Alt access
+
   // File Menu
   MenuFile := TMenuItem.Create(MainMenu1);
-  MenuFile.Caption := '&Archivo';
+  MenuFile.Caption := '&' + TranslateStr(0, 'File');
   MainMenu1.Items.Add(MenuFile);
 
   MenuFileNew := TMenuItem.Create(MenuFile);
-  MenuFileNew.Caption := '&Nuevo';
+  MenuFileNew.Caption := TranslateStr(40, 'New');
   MenuFileNew.ShortCut := ShortCut(VK_N, [ssCtrl]);
   MenuFileNew.OnClick := BtnNewClick;
   MenuFile.Add(MenuFileNew);
 
   MenuFileNewWizard := TMenuItem.Create(MenuFile);
-  MenuFileNewWizard.Caption := 'Nuevo con &asistente...';
+  MenuFileNewWizard.Caption := TranslateStr(1491, 'Report wizard');
   MenuFileNewWizard.ShortCut := ShortCut(VK_N, [ssCtrl, ssShift]);
   MenuFileNewWizard.OnClick := BtnNewWizardClick;
   MenuFile.Add(MenuFileNewWizard);
 
   MenuFileOpen := TMenuItem.Create(MenuFile);
-  MenuFileOpen.Caption := '&Abrir...';
+  MenuFileOpen.Caption := TranslateStr(42, 'Open');
   MenuFileOpen.ShortCut := ShortCut(VK_O, [ssCtrl]);
   MenuFileOpen.OnClick := BtnOpenClick;
   MenuFile.Add(MenuFileOpen);
 
   MenuFileOpenLib := TMenuItem.Create(MenuFile);
-  MenuFileOpenLib.Caption := 'Abrir desde &librería...';
+  MenuFileOpenLib.Caption := TranslateStr(1135, 'Open from library');
   MenuFileOpenLib.OnClick := MenuFileOpenLibClick;
   MenuFile.Add(MenuFileOpenLib);
 
   MenuFileSave := TMenuItem.Create(MenuFile);
-  MenuFileSave.Caption := '&Guardar';
+  MenuFileSave.Caption := TranslateStr(46, 'Save');
   MenuFileSave.ShortCut := ShortCut(VK_S, [ssCtrl]);
   MenuFileSave.OnClick := BtnSaveClick;
   MenuFile.Add(MenuFileSave);
 
   MenuFileSaveAs := TMenuItem.Create(MenuFile);
-  MenuFileSaveAs.Caption := 'Guardar &como...';
+  MenuFileSaveAs.Caption := TranslateStr(48, 'Save as...');
   MenuFileSaveAs.OnClick := BtnSaveAsClick;
   MenuFile.Add(MenuFileSaveAs);
 
@@ -342,7 +346,7 @@ begin
   MenuFile.Add(sep);
 
   MenuFilePageSetup := TMenuItem.Create(MenuFile);
-  MenuFilePageSetup.Caption := '&Configurar página...';
+  MenuFilePageSetup.Caption := TranslateStr(50, 'Page setup...');
   MenuFilePageSetup.OnClick := BtnPageSetupClick;
   MenuFile.Add(MenuFilePageSetup);
 
@@ -351,13 +355,13 @@ begin
   MenuFile.Add(sep);
 
   MenuFilePreview := TMenuItem.Create(MenuFile);
-  MenuFilePreview.Caption := '&Vista previa';
+  MenuFilePreview.Caption := TranslateStr(54, 'Preview');
   MenuFilePreview.ShortCut := ShortCut(VK_P, [ssCtrl]);
   MenuFilePreview.OnClick := BtnPreviewClick;
   MenuFile.Add(MenuFilePreview);
 
   MenuFilePrint := TMenuItem.Create(MenuFile);
-  MenuFilePrint.Caption := '&Imprimir...';
+  MenuFilePrint.Caption := TranslateStr(52, 'Print...');
   MenuFilePrint.OnClick := BtnPrintClick;
   MenuFile.Add(MenuFilePrint);
 
@@ -366,23 +370,23 @@ begin
   MenuFile.Add(sep);
 
   MenuFileExit := TMenuItem.Create(MenuFile);
-  MenuFileExit.Caption := '&Salir';
+  MenuFileExit.Caption := TranslateStr(44, 'Exit');
   MenuFileExit.OnClick := MenuFileExitClick;
   MenuFile.Add(MenuFileExit);
 
   // Edit Menu
   MenuEdit := TMenuItem.Create(MainMenu1);
-  MenuEdit.Caption := '&Edición';
+  MenuEdit.Caption := '&' + TranslateStr(3, 'Edit');
   MainMenu1.Items.Add(MenuEdit);
 
   MenuEditUndo := TMenuItem.Create(MenuEdit);
-  MenuEditUndo.Caption := '&Deshacer';
+  MenuEditUndo.Caption := TranslateStr(1481, 'Undo');
   MenuEditUndo.ShortCut := ShortCut(VK_Z, [ssCtrl]);
   MenuEditUndo.OnClick := BtnUndoClick;
   MenuEdit.Add(MenuEditUndo);
 
   MenuEditRedo := TMenuItem.Create(MenuEdit);
-  MenuEditRedo.Caption := '&Rehacer';
+  MenuEditRedo.Caption := TranslateStr(1482, 'Redo');
   MenuEditRedo.ShortCut := ShortCut(VK_Y, [ssCtrl]);
   MenuEditRedo.OnClick := BtnRedoClick;
   MenuEdit.Add(MenuEditRedo);
@@ -392,19 +396,19 @@ begin
   MenuEdit.Add(sep);
 
   MenuEditCut := TMenuItem.Create(MenuEdit);
-  MenuEditCut.Caption := 'Cor&tar';
+  MenuEditCut.Caption := TranslateStr(9, 'Cut');
   MenuEditCut.ShortCut := ShortCut(VK_X, [ssCtrl]);
   MenuEditCut.OnClick := BtnCutClick;
   MenuEdit.Add(MenuEditCut);
 
   MenuEditCopy := TMenuItem.Create(MenuEdit);
-  MenuEditCopy.Caption := '&Copiar';
+  MenuEditCopy.Caption := TranslateStr(10, 'Copy');
   MenuEditCopy.ShortCut := ShortCut(VK_C, [ssCtrl]);
   MenuEditCopy.OnClick := BtnCopyClick;
   MenuEdit.Add(MenuEditCopy);
 
   MenuEditPaste := TMenuItem.Create(MenuEdit);
-  MenuEditPaste.Caption := '&Pegar';
+  MenuEditPaste.Caption := TranslateStr(11, 'Paste');
   MenuEditPaste.ShortCut := ShortCut(VK_V, [ssCtrl]);
   MenuEditPaste.OnClick := BtnPasteClick;
   MenuEdit.Add(MenuEditPaste);
@@ -414,118 +418,125 @@ begin
   MenuEdit.Add(sep);
 
   MenuEditDelete := TMenuItem.Create(MenuEdit);
-  MenuEditDelete.Caption := '&Eliminar selección';
+  MenuEditDelete.Caption := TranslateStr(1142, 'Delete selection');
   MenuEditDelete.ShortCut := ShortCut(VK_DELETE, []);
   MenuEditDelete.OnClick := BtnDeleteClick;
   MenuEdit.Add(MenuEditDelete);
 
   MenuEditSelectAll := TMenuItem.Create(MenuEdit);
-  MenuEditSelectAll.Caption := '&Seleccionar todo';
+  MenuEditSelectAll.Caption := TranslateStr(1445, 'Select all');
   MenuEditSelectAll.ShortCut := ShortCut(VK_A, [ssCtrl]);
   MenuEditSelectAll.OnClick := BtnSelectAllClick;
   MenuEdit.Add(MenuEditSelectAll);
 
   // View Menu
   MenuView := TMenuItem.Create(MainMenu1);
-  MenuView.Caption := '&Ver';
+  MenuView.Caption := '&' + TranslateStr(740, 'View');
   MainMenu1.Items.Add(MenuView);
 
   MenuViewGrid := TMenuItem.Create(MenuView);
-  MenuViewGrid.Caption := '&Cuadrícula (Grid)';
+  MenuViewGrid.Caption := TranslateStr(7, 'Grid');
   MenuViewGrid.Checked := True;
   MenuViewGrid.OnClick := MenuViewGridClick;
   MenuView.Add(MenuViewGrid);
 
   MenuViewGridConfig := TMenuItem.Create(MenuView);
-  MenuViewGridConfig.Caption := 'Configurar c&uadrícula...';
+  MenuViewGridConfig.Caption := TranslateStr(179, 'Grid Options');
   MenuViewGridConfig.OnClick := MenuReportGridClick;
   MenuView.Add(MenuViewGridConfig);
 
-  MenuViewUnitsCm := TMenuItem.Create(MenuView);
-  MenuViewUnitsCm.Caption := 'Unidades: Centímetros (cm)';
+  // Measurement units: submenu, as MMeasurement in the VCL
+  MenuViewUnits := TMenuItem.Create(MenuView);
+  MenuViewUnits.Caption := TranslateStr(62, 'Measurement');
+  MenuView.Add(MenuViewUnits);
+
+  MenuViewUnitsCm := TMenuItem.Create(MenuViewUnits);
+  MenuViewUnitsCm.Caption := TranslateStr(63, 'Cm');
   MenuViewUnitsCm.Checked := True;
   MenuViewUnitsCm.RadioItem := True;
   MenuViewUnitsCm.Tag := 0;
   MenuViewUnitsCm.OnClick := MenuViewUnitsClick;
-  MenuView.Add(MenuViewUnitsCm);
+  MenuViewUnits.Add(MenuViewUnitsCm);
 
-  MenuViewUnitsInches := TMenuItem.Create(MenuView);
-  MenuViewUnitsInches.Caption := 'Unidades: Pulgadas (in)';
+  MenuViewUnitsInches := TMenuItem.Create(MenuViewUnits);
+  MenuViewUnitsInches.Caption := TranslateStr(65, 'Inches');
   MenuViewUnitsInches.RadioItem := True;
   MenuViewUnitsInches.Tag := 1;
   MenuViewUnitsInches.OnClick := MenuViewUnitsClick;
-  MenuView.Add(MenuViewUnitsInches);
+  MenuViewUnits.Add(MenuViewUnitsInches);
 
   sep := TMenuItem.Create(MenuView);
   sep.Caption := '-';
   MenuView.Add(sep);
 
+  // Scales: just the percentage (language independent)
   MenuViewScale50 := TMenuItem.Create(MenuView);
-  MenuViewScale50.Caption := 'Escala 50%';
+  MenuViewScale50.Caption := '50%';
   MenuViewScale50.Tag := 50;
   MenuViewScale50.OnClick := MenuViewScaleClick;
   MenuView.Add(MenuViewScale50);
 
   MenuViewScale100 := TMenuItem.Create(MenuView);
-  MenuViewScale100.Caption := 'Escala 100%';
+  MenuViewScale100.Caption := '100%';
   MenuViewScale100.Tag := 100;
   MenuViewScale100.OnClick := MenuViewScaleClick;
   MenuView.Add(MenuViewScale100);
 
   MenuViewScale150 := TMenuItem.Create(MenuView);
-  MenuViewScale150.Caption := 'Escala 150%';
+  MenuViewScale150.Caption := '150%';
   MenuViewScale150.Tag := 150;
   MenuViewScale150.OnClick := MenuViewScaleClick;
   MenuView.Add(MenuViewScale150);
 
   MenuViewScale200 := TMenuItem.Create(MenuView);
-  MenuViewScale200.Caption := 'Escala 200%';
+  MenuViewScale200.Caption := '200%';
   MenuViewScale200.Tag := 200;
   MenuViewScale200.OnClick := MenuViewScaleClick;
   MenuView.Add(MenuViewScale200);
 
   // Report Menu
   MenuReport := TMenuItem.Create(MainMenu1);
-  MenuReport.Caption := '&Informe';
+  MenuReport.Caption := '&' + TranslateStr(2, 'Report');
   MainMenu1.Items.Add(MenuReport);
 
   MenuReportDataConfig := TMenuItem.Create(MenuReport);
-  MenuReportDataConfig.Caption := '&Configuración de acceso a datos...';
+  MenuReportDataConfig.Caption := TranslateStr(131, 'Data access configuration');
   MenuReportDataConfig.OnClick := BtnDataConfigClick;
   MenuReport.Add(MenuReportDataConfig);
 
   MenuReportPageSetup := TMenuItem.Create(MenuReport);
-  MenuReportPageSetup.Caption := '&Configuración de página...';
+  MenuReportPageSetup.Caption := TranslateStr(50, 'Page setup...');
   MenuReportPageSetup.OnClick := BtnPageSetupClick;
   MenuReport.Add(MenuReportPageSetup);
 
   MenuReportGridOptions := TMenuItem.Create(MenuReport);
-  MenuReportGridOptions.Caption := 'Opciones de &cuadrícula...';
+  MenuReportGridOptions.Caption := TranslateStr(179, 'Grid Options');
   MenuReportGridOptions.OnClick := MenuReportGridClick;
   MenuReport.Add(MenuReportGridOptions);
 
+  // The wizard on the current report (adds field columns)
   MenuReportWizard := TMenuItem.Create(MenuReport);
-  MenuReportWizard.Caption := '&Asistente de columnas...';
+  MenuReportWizard.Caption := TranslateStr(1491, 'Report wizard');
   MenuReportWizard.OnClick := MenuReportWizardClick;
   MenuReport.Add(MenuReportWizard);
 
   MenuReportParams := TMenuItem.Create(MenuReport);
-  MenuReportParams.Caption := '&Definición de parámetros...';
+  MenuReportParams.Caption := TranslateStr(133, 'Parameter definition');
   MenuReportParams.OnClick := BtnParamsClick;
   MenuReport.Add(MenuReportParams);
 
   MenuReportUserParams := TMenuItem.Create(MenuReport);
-  MenuReportUserParams.Caption := '&Valores de parámetros de usuario...';
+  MenuReportUserParams.Caption := TranslateStr(135, 'Parameter values');
   MenuReportUserParams.OnClick := MenuReportUserParamsClick;
   MenuReport.Add(MenuReportUserParams);
 
   // Help Menu
   MenuHelp := TMenuItem.Create(MainMenu1);
-  MenuHelp.Caption := 'A&yuda';
+  MenuHelp.Caption := '&' + TranslateStr(6, 'Help');
   MainMenu1.Items.Add(MenuHelp);
 
   MenuHelpAbout := TMenuItem.Create(MenuHelp);
-  MenuHelpAbout.Caption := '&Acerca de Report Manager...';
+  MenuHelpAbout.Caption := TranslateStr(58, 'About Report Manager');
   MenuHelpAbout.OnClick := MenuHelpAboutClick;
   MenuHelp.Add(MenuHelpAbout);
 end;
@@ -552,43 +563,43 @@ begin
   BtnNew := TToolButton.Create(MainToolBar);
   BtnNew.Parent := MainToolBar;
   BtnNew.ImageIndex := IMG_NEW;
-  BtnNew.Hint := 'Nuevo reporte (Ctrl+N)';
+  BtnNew.Hint := TranslateStr(41, 'Creates a new report') + ' (Ctrl+N)';
   BtnNew.OnClick := BtnNewClick;
 
   BtnNewWizard := TToolButton.Create(MainToolBar);
   BtnNewWizard.Parent := MainToolBar;
   BtnNewWizard.ImageIndex := IMG_NEW;
-  BtnNewWizard.Hint := 'Nuevo informe con asistente... (Ctrl+Shift+N)';
+  BtnNewWizard.Hint := TranslateStr(1491, 'Report wizard') + ' (Ctrl+Shift+N)';
   BtnNewWizard.OnClick := BtnNewWizardClick;
 
   BtnOpen := TToolButton.Create(MainToolBar);
   BtnOpen.Parent := MainToolBar;
   BtnOpen.ImageIndex := IMG_OPEN;
-  BtnOpen.Hint := 'Abrir reporte...';
+  BtnOpen.Hint := TranslateStr(43, 'Opens an existing report');
   BtnOpen.OnClick := BtnOpenClick;
 
   BtnSave := TToolButton.Create(MainToolBar);
   BtnSave.Parent := MainToolBar;
   BtnSave.ImageIndex := IMG_SAVE;
-  BtnSave.Hint := 'Guardar reporte';
+  BtnSave.Hint := TranslateStr(47, 'Saves the current report');
   BtnSave.OnClick := BtnSaveClick;
 
   BtnPageSetup := TToolButton.Create(MainToolBar);
   BtnPageSetup.Parent := MainToolBar;
   BtnPageSetup.ImageIndex := IMG_PAGESETUP;
-  BtnPageSetup.Hint := 'Configuración de página e informe';
+  BtnPageSetup.Hint := TranslateStr(51, 'Configures the page for the report');
   BtnPageSetup.OnClick := BtnPageSetupClick;
 
   BtnDataConfig := TToolButton.Create(MainToolBar);
   BtnDataConfig.Parent := MainToolBar;
   BtnDataConfig.ImageIndex := IMG_DATACONFIG;
-  BtnDataConfig.Hint := 'Configuración de acceso a datos';
+  BtnDataConfig.Hint := TranslateStr(132, 'Modifies data access information');
   BtnDataConfig.OnClick := BtnDataConfigClick;
 
   BtnParams := TToolButton.Create(MainToolBar);
   BtnParams.Parent := MainToolBar;
   BtnParams.ImageIndex := IMG_USERPARAMS;
-  BtnParams.Hint := 'Definición de parámetros';
+  BtnParams.Hint := TranslateStr(134, 'Shows parameter definition for the report and data configuration');
   BtnParams.OnClick := BtnParamsClick;
 
   Sep1 := TToolButton.Create(MainToolBar);
@@ -599,13 +610,13 @@ begin
   BtnPrint := TToolButton.Create(MainToolBar);
   BtnPrint.Parent := MainToolBar;
   BtnPrint.ImageIndex := IMG_PRINT;
-  BtnPrint.Hint := 'Imprimir...';
+  BtnPrint.Hint := TranslateStr(53, 'Print the report, you can select pages to print');
   BtnPrint.OnClick := BtnPrintClick;
 
   BtnPreview := TToolButton.Create(MainToolBar);
   BtnPreview.Parent := MainToolBar;
   BtnPreview.ImageIndex := IMG_PREVIEW;
-  BtnPreview.Hint := 'Vista previa';
+  BtnPreview.Hint := TranslateStr(55, 'Preview the report in the screen');
   BtnPreview.OnClick := BtnPreviewClick;
 
   Sep2 := TToolButton.Create(MainToolBar);
@@ -616,13 +627,13 @@ begin
   BtnUndo := TToolButton.Create(MainToolBar);
   BtnUndo.Parent := MainToolBar;
   BtnUndo.ImageIndex := IMG_UNDO;
-  BtnUndo.Hint := 'Deshacer';
+  BtnUndo.Hint := TranslateStr(1481, 'Undo') + ' (Ctrl+Z)';
   BtnUndo.OnClick := BtnUndoClick;
 
   BtnRedo := TToolButton.Create(MainToolBar);
   BtnRedo.Parent := MainToolBar;
   BtnRedo.ImageIndex := IMG_REDO;
-  BtnRedo.Hint := 'Rehacer';
+  BtnRedo.Hint := TranslateStr(1482, 'Redo') + ' (Ctrl+Y)';
   BtnRedo.OnClick := BtnRedoClick;
 
   Sep3 := TToolButton.Create(MainToolBar);
@@ -633,7 +644,7 @@ begin
   BtnToolArrow := TToolButton.Create(MainToolBar);
   BtnToolArrow.Parent := MainToolBar;
   BtnToolArrow.ImageIndex := IMG_ARROW;
-  BtnToolArrow.Hint := 'Herramienta Selección';
+  BtnToolArrow.Hint := TranslateStr(81, 'Select objects');
   BtnToolArrow.Grouped := True;
   BtnToolArrow.Style := tbsCheck;
   BtnToolArrow.Down := True;
@@ -642,7 +653,7 @@ begin
   BtnToolLabel := TToolButton.Create(MainToolBar);
   BtnToolLabel.Parent := MainToolBar;
   BtnToolLabel.ImageIndex := IMG_LABEL;
-  BtnToolLabel.Hint := 'Insertar Etiqueta';
+  BtnToolLabel.Hint := TranslateStr(82, 'Inserts a static text');
   BtnToolLabel.Grouped := True;
   BtnToolLabel.Style := tbsCheck;
   BtnToolLabel.OnClick := BtnToolClick;
@@ -650,7 +661,7 @@ begin
   BtnToolExpr := TToolButton.Create(MainToolBar);
   BtnToolExpr.Parent := MainToolBar;
   BtnToolExpr.ImageIndex := IMG_EXPRESSION;
-  BtnToolExpr.Hint := 'Insertar Expresión';
+  BtnToolExpr.Hint := TranslateStr(83, 'Inserts a expression');
   BtnToolExpr.Grouped := True;
   BtnToolExpr.Style := tbsCheck;
   BtnToolExpr.OnClick := BtnToolClick;
@@ -658,7 +669,7 @@ begin
   BtnToolShape := TToolButton.Create(MainToolBar);
   BtnToolShape.Parent := MainToolBar;
   BtnToolShape.ImageIndex := IMG_SHAPE;
-  BtnToolShape.Hint := 'Insertar Forma (Línea / Rectángulo / Elipse)';
+  BtnToolShape.Hint := TranslateStr(84, 'Inserts a simple drawing');
   BtnToolShape.Grouped := True;
   BtnToolShape.Style := tbsCheck;
   BtnToolShape.OnClick := BtnToolClick;
@@ -666,7 +677,7 @@ begin
   BtnToolImage := TToolButton.Create(MainToolBar);
   BtnToolImage.Parent := MainToolBar;
   BtnToolImage.ImageIndex := IMG_IMAGE;
-  BtnToolImage.Hint := 'Insertar Imagen';
+  BtnToolImage.Hint := TranslateStr(85, 'Inserts a image');
   BtnToolImage.Grouped := True;
   BtnToolImage.Style := tbsCheck;
   BtnToolImage.OnClick := BtnToolClick;
@@ -674,7 +685,7 @@ begin
   BtnToolChart := TToolButton.Create(MainToolBar);
   BtnToolChart.Parent := MainToolBar;
   BtnToolChart.ImageIndex := IMG_CHART;
-  BtnToolChart.Hint := 'Insertar Gráfico';
+  BtnToolChart.Hint := TranslateStr(87, 'Inserts a chart');
   BtnToolChart.Grouped := True;
   BtnToolChart.Style := tbsCheck;
   BtnToolChart.OnClick := BtnToolClick;
@@ -682,7 +693,7 @@ begin
   BtnToolBarcode := TToolButton.Create(MainToolBar);
   BtnToolBarcode.Parent := MainToolBar;
   BtnToolBarcode.ImageIndex := IMG_BARCODE;
-  BtnToolBarcode.Hint := 'Insertar Código de Barras';
+  BtnToolBarcode.Hint := TranslateStr(86, 'Inserts a barcode');
   BtnToolBarcode.Grouped := True;
   BtnToolBarcode.Style := tbsCheck;
   BtnToolBarcode.OnClick := BtnToolClick;
@@ -714,25 +725,25 @@ begin
   BtnDelete := TToolButton.Create(MainToolBar);
   BtnDelete.Parent := MainToolBar;
   BtnDelete.ImageIndex := IMG_DELETE;
-  BtnDelete.Hint := 'Eliminar componentes seleccionados (Supr)';
+  BtnDelete.Hint := TranslateStr(1106, 'Delete selected object');
   BtnDelete.OnClick := BtnDeleteClick;
 
   BtnCut := TToolButton.Create(MainToolBar);
   BtnCut.Parent := MainToolBar;
   BtnCut.ImageIndex := IMG_CUT;
-  BtnCut.Hint := 'Cortar';
+  BtnCut.Hint := TranslateStr(12, 'Cut selected object');
   BtnCut.OnClick := BtnCutClick;
 
   BtnCopy := TToolButton.Create(MainToolBar);
   BtnCopy.Parent := MainToolBar;
   BtnCopy.ImageIndex := IMG_COPY;
-  BtnCopy.Hint := 'Copiar';
+  BtnCopy.Hint := TranslateStr(13, 'Copy selected object to clipboard');
   BtnCopy.OnClick := BtnCopyClick;
 
   BtnPaste := TToolButton.Create(MainToolBar);
   BtnPaste.Parent := MainToolBar;
   BtnPaste.ImageIndex := IMG_PASTE;
-  BtnPaste.Hint := 'Pegar';
+  BtnPaste.Hint := TranslateStr(14, 'Paste from clipboard');
   BtnPaste.OnClick := BtnPasteClick;
 
   Sep6 := TToolButton.Create(MainToolBar);
@@ -743,25 +754,25 @@ begin
   BtnNudgeLeft := TToolButton.Create(MainToolBar);
   BtnNudgeLeft.Parent := MainToolBar;
   BtnNudgeLeft.ImageIndex := IMG_NAV_LEFT;
-  BtnNudgeLeft.Hint := 'Mover hacia la izquierda';
+  BtnNudgeLeft.Hint := TranslateStr(24, 'Moves the selection to the left');
   BtnNudgeLeft.OnClick := BtnNudgeLeftClick;
 
   BtnNudgeRight := TToolButton.Create(MainToolBar);
   BtnNudgeRight.Parent := MainToolBar;
   BtnNudgeRight.ImageIndex := IMG_NAV_RIGHT;
-  BtnNudgeRight.Hint := 'Mover hacia la derecha';
+  BtnNudgeRight.Hint := TranslateStr(26, 'Moves the selection to the right');
   BtnNudgeRight.OnClick := BtnNudgeRightClick;
 
   BtnNudgeUp := TToolButton.Create(MainToolBar);
   BtnNudgeUp.Parent := MainToolBar;
   BtnNudgeUp.ImageIndex := IMG_NAV_UP;
-  BtnNudgeUp.Hint := 'Mover hacia arriba';
+  BtnNudgeUp.Hint := TranslateStr(28, 'Moves the selection up');
   BtnNudgeUp.OnClick := BtnNudgeUpClick;
 
   BtnNudgeDown := TToolButton.Create(MainToolBar);
   BtnNudgeDown.Parent := MainToolBar;
   BtnNudgeDown.ImageIndex := IMG_NAV_DOWN;
-  BtnNudgeDown.Hint := 'Mover hacia abajo';
+  BtnNudgeDown.Hint := TranslateStr(30, 'Moves the selection down');
   BtnNudgeDown.OnClick := BtnNudgeDownClick;
 
   Sep7 := TToolButton.Create(MainToolBar);
@@ -772,37 +783,37 @@ begin
   BtnAlignLeft := TToolButton.Create(MainToolBar);
   BtnAlignLeft.Parent := MainToolBar;
   BtnAlignLeft.ImageIndex := IMG_ALIGN_LEFT;
-  BtnAlignLeft.Hint := 'Alinear a la izquierda';
+  BtnAlignLeft.Hint := TranslateStr(32, 'Aligns selection to the left');
   BtnAlignLeft.OnClick := BtnAlignLeftClick;
 
   BtnAlignRight := TToolButton.Create(MainToolBar);
   BtnAlignRight.Parent := MainToolBar;
   BtnAlignRight.ImageIndex := IMG_ALIGN_RIGHT;
-  BtnAlignRight.Hint := 'Alinear a la derecha';
+  BtnAlignRight.Hint := TranslateStr(33, 'Aligns selection to the right');
   BtnAlignRight.OnClick := BtnAlignRightClick;
 
   BtnAlignUp := TToolButton.Create(MainToolBar);
   BtnAlignUp.Parent := MainToolBar;
   BtnAlignUp.ImageIndex := IMG_ALIGN_TOP;
-  BtnAlignUp.Hint := 'Alinear arriba';
+  BtnAlignUp.Hint := TranslateStr(34, 'Aligns selection up');
   BtnAlignUp.OnClick := BtnAlignUpClick;
 
   BtnAlignDown := TToolButton.Create(MainToolBar);
   BtnAlignDown.Parent := MainToolBar;
   BtnAlignDown.ImageIndex := IMG_ALIGN_BOTTOM;
-  BtnAlignDown.Hint := 'Alinear abajo';
+  BtnAlignDown.Hint := TranslateStr(35, 'Aligns selection down');
   BtnAlignDown.OnClick := BtnAlignDownClick;
 
   BtnAlignHorz := TToolButton.Create(MainToolBar);
   BtnAlignHorz.Parent := MainToolBar;
   BtnAlignHorz.ImageIndex := IMG_ALIGN_HCENTER;
-  BtnAlignHorz.Hint := 'Distribuir espacio horizontal';
+  BtnAlignHorz.Hint := TranslateStr(39, 'Aligns selection distributing horizontal space');
   BtnAlignHorz.OnClick := BtnAlignHorzClick;
 
   BtnAlignVert := TToolButton.Create(MainToolBar);
   BtnAlignVert.Parent := MainToolBar;
   BtnAlignVert.ImageIndex := IMG_ALIGN_VCENTER;
-  BtnAlignVert.Hint := 'Distribuir espacio vertical';
+  BtnAlignVert.Hint := TranslateStr(37, 'Aligns selection distributing vertical space');
   BtnAlignVert.OnClick := BtnAlignVertClick;
 
   Sep8 := TToolButton.Create(MainToolBar);
@@ -813,19 +824,19 @@ begin
   BtnToFront := TToolButton.Create(MainToolBar);
   BtnToFront.Parent := MainToolBar;
   BtnToFront.ImageIndex := IMG_NAV_UP;
-  BtnToFront.Hint := 'Traer al frente';
+  BtnToFront.Hint := TranslateStr(671, 'To Front');
   BtnToFront.OnClick := BtnToFrontClick;
 
   BtnToBack := TToolButton.Create(MainToolBar);
   BtnToBack.Parent := MainToolBar;
   BtnToBack.ImageIndex := IMG_NAV_DOWN;
-  BtnToBack.Hint := 'Enviar al fondo';
+  BtnToBack.Hint := TranslateStr(672, 'To Back');
   BtnToBack.OnClick := BtnToBackClick;
 
   BtnSelectAll := TToolButton.Create(MainToolBar);
   BtnSelectAll.Parent := MainToolBar;
   BtnSelectAll.ImageIndex := IMG_ALIGN_HCENTER;
-  BtnSelectAll.Hint := 'Seleccionar todo (Ctrl+A)';
+  BtnSelectAll.Hint := TranslateStr(20, 'Selects all components of the report') + ' (Ctrl+A)';
   BtnSelectAll.OnClick := BtnSelectAllClick;
 
   // 3. StatusBar
@@ -886,10 +897,13 @@ begin
 
   // 7. Dialogs
   OpenDialog1 := TOpenDialog.Create(Self);
-  OpenDialog1.Filter := 'Report Manager Files (*.rep)|*.rep|All Files (*.*)|*.*';
+  OpenDialog1.Title := TranslateStr(214, 'Open report');
+  OpenDialog1.Filter := TranslateStr(704, 'Report File') + ' (*.rep)|*.rep|' +
+    TranslateStr(705, 'Any File') + ' (*.*)|*.*';
 
   SaveDialog1 := TSaveDialog.Create(Self);
-  SaveDialog1.Filter := 'Report Manager Files (*.rep)|*.rep|All Files (*.*)|*.*';
+  SaveDialog1.Title := TranslateStr(213, 'Save report as');
+  SaveDialog1.Filter := OpenDialog1.Filter;
   SaveDialog1.DefaultExt := 'rep';
 end;
 
@@ -1032,12 +1046,13 @@ procedure TFRpMainFLCL.UpdateTitle;
 var
   sTitle: string;
 begin
+  sTitle := TranslateStr(1, 'Report Manager Designer') + ' - [';
   if Length(FFileName) > 0 then
-    sTitle := 'Report Manager Designer - [' + ExtractFileName(FFileName) + ']'
+    sTitle := sTitle + ExtractFileName(FFileName) + ']'
   else if Length(FLibraryReportName) > 0 then
-    sTitle := 'Report Manager Designer - [' + FLibraryName + '->' + FLibraryReportName + ']'
+    sTitle := sTitle + FLibraryName + '->' + FLibraryReportName + ']'
   else
-    sTitle := 'Report Manager Designer - [Sin título]';
+    sTitle := sTitle + TranslateStr(501, 'Untitled') + ']';
   if Assigned(FReport) and FReport.Modified then
     sTitle := sTitle + ' *';
   Caption := sTitle;
@@ -1141,7 +1156,7 @@ var
 begin
   if not FileExists(AFileName) then
   begin
-    ShowMessage('El archivo no existe: ' + AFileName);
+    ShowMessage(TranslateStr(731, 'Not found') + ': ' + AFileName);
     Exit;
   end;
 
@@ -1259,7 +1274,7 @@ begin
 
   if not Assigned(FReport) then
   begin
-    StatusBar.SimpleText := 'Sin informe cargado';
+    StatusBar.SimpleText := '';
     BtnUndo.Enabled := False;
     BtnRedo.Enabled := False;
     MenuEditUndo.Enabled := False;
@@ -1267,12 +1282,14 @@ begin
     Exit;
   end;
 
-  sInfo := Format('Subinformes: %d | Escala: %d%%',
-    [FReport.SubReports.Count, Round(FDesignerFrame.Scale * 100)]);
+  // Subreports, scale, file and '*' when modified (as the title)
+  sInfo := TranslateStr(125, 'Subreport') + ': ' +
+    IntToStr(FReport.SubReports.Count) + ' | ' +
+    IntToStr(Round(FDesignerFrame.Scale * 100)) + '%';
   if Length(FFileName) > 0 then
     sInfo := sInfo + ' | ' + ExtractFileName(FFileName);
   if FReport.Modified then
-    sInfo := sInfo + ' | [Modificado]';
+    sInfo := sInfo + ' | *';
   StatusBar.SimpleText := sInfo;
   // Undo/redo may change the grid visibility
   MenuViewGrid.Checked := FReport.GridVisible;
@@ -1529,13 +1546,13 @@ begin
     previewCtrl := TRpPreviewControl.Create(nil);
     try
       previewCtrl.Report := FReport;
-      rplclpreview.ShowPreview(previewCtrl, 'Vista Previa - ' + Caption);
+      rplclpreview.ShowPreview(previewCtrl, TranslateStr(54, 'Preview') + ' - ' + Caption);
     finally
       previewCtrl.Free;
     end;
   except
     on E: Exception do
-      ShowMessage('Error al previsualizar el informe: ' + E.Message);
+      ShowMessage(TranslateStr(355, 'Error') + ': ' + E.Message);
   end;
 end;
 

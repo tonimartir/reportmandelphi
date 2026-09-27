@@ -121,8 +121,7 @@ constructor TFRpWizardLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  // No translation id for the form caption (935 is the Finish button)
-  Caption := 'New Report Wizard';
+  Caption := TranslateStr(1491, 'Report wizard');
   Width := 600;
   Height := 460;
   Position := poScreenCenter;
@@ -206,7 +205,7 @@ begin
 
   LPass1 := TLabel.Create(TabInstructions);
   LPass1.Parent := TabInstructions;
-  LPass1.Caption := '1. Set report page orientation and margins.';
+  LPass1.Caption := '1. ' + TranslateStr(110, 'Report page setup');
   LPass1.Left := 24;
   LPass1.Top := 60;
 
@@ -221,7 +220,7 @@ begin
 
   LPass2 := TLabel.Create(TabInstructions);
   LPass2.Parent := TabInstructions;
-  LPass2.Caption := '2. Configure database connections and SQL datasets.';
+  LPass2.Caption := '2. ' + TranslateStr(178, 'Dataaccess configuration');
   LPass2.Left := 24;
   LPass2.Top := 130;
 
@@ -254,26 +253,26 @@ begin
 
   LDataInfo := TLabel.Create(TabData);
   LDataInfo.Parent := TabData;
-  LDataInfo.Caption := 'Configuración de acceso a base de datos del informe:';
+  LDataInfo.Caption := TranslateStr(1097, 'Database connections and datasets') + ':';
   LDataInfo.Font.Style := [fsBold];
   LDataInfo.Left := 24;
   LDataInfo.Top := 20;
 
   LConnectionsSummary := TLabel.Create(TabData);
   LConnectionsSummary.Parent := TabData;
-  LConnectionsSummary.Caption := 'Conexiones: (ninguna)';
+  LConnectionsSummary.Caption := TranslateStr(1275, 'Connections') + ' (0)';
   LConnectionsSummary.Left := 24;
   LConnectionsSummary.Top := 55;
 
   LDatasetsSummary := TLabel.Create(TabData);
   LDatasetsSummary.Parent := TabData;
-  LDatasetsSummary.Caption := 'Datasets / Consultas: (ninguno)';
+  LDatasetsSummary.Caption := TranslateStr(876, 'Datasets') + ' (0)';
   LDatasetsSummary.Left := 24;
   LDatasetsSummary.Top := 90;
 
   BOpenDataConfig := TButton.Create(TabData);
   BOpenDataConfig.Parent := TabData;
-  BOpenDataConfig.Caption := 'Abrir editor de conexiones y consultas SQL...';
+  BOpenDataConfig.Caption := TranslateStr(131, 'Data access configuration');
   BOpenDataConfig.Left := 24;
   BOpenDataConfig.Top := 135;
   BOpenDataConfig.Width := 280;
@@ -299,11 +298,11 @@ var
 begin
   if not Assigned(FReport) then Exit;
 
-  if FReport.DatabaseInfo.Count = 0 then
-    connStr := 'Conexiones configuradas: 0'
-  else
+  connStr := TranslateStr(1275, 'Connections') + ' (' +
+    IntToStr(FReport.DatabaseInfo.Count) + ')';
+  if FReport.DatabaseInfo.Count > 0 then
   begin
-    connStr := 'Conexiones configuradas (' + IntToStr(FReport.DatabaseInfo.Count) + '): ';
+    connStr := connStr + ': ';
     for i := 0 to FReport.DatabaseInfo.Count - 1 do
     begin
       if i > 0 then connStr := connStr + ', ';
@@ -312,11 +311,11 @@ begin
   end;
   LConnectionsSummary.Caption := connStr;
 
-  if FReport.DataInfo.Count = 0 then
-    dsStr := 'Datasets / Consultas configuradas: 0'
-  else
+  dsStr := TranslateStr(876, 'Datasets') + ' (' +
+    IntToStr(FReport.DataInfo.Count) + ')';
+  if FReport.DataInfo.Count > 0 then
   begin
-    dsStr := 'Datasets / Consultas configuradas (' + IntToStr(FReport.DataInfo.Count) + '): ';
+    dsStr := dsStr + ': ';
     for i := 0 to FReport.DataInfo.Count - 1 do
     begin
       if i > 0 then dsStr := dsStr + ', ';

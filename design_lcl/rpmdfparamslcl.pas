@@ -501,7 +501,8 @@ begin
   BRename.Top := 4;
   BRename.Width := 38;
   BRename.Height := 26;
-  BRename.Caption := 'Ren';
+  // Narrow button: a language independent symbol, the hint has the text
+  BRename.Caption := '✎';
   BRename.Hint := TranslateStr(192, 'Renames the selected parameter');
   BRename.ShowHint := True;
   BRename.OnClick := BRenameClick;
@@ -684,7 +685,7 @@ begin
 
   // Tab 3: Values & Search
   TabValuesSearch := PageControl1.AddTabSheet;
-  TabValuesSearch.Caption := 'Values and search';
+  TabValuesSearch.Caption := TranslateStr(961, 'Value list') + ' / ' + TranslateStr(1375, 'Search');
 
   GValues := TGroupBox.Create(Self);
   GValues.Parent := TabValuesSearch;
@@ -698,7 +699,7 @@ begin
   LItems.Parent := GValues;
   LItems.Left := 10;
   LItems.Top := 18;
-  LItems.Caption := 'Descriptions:';
+  LItems.Caption := TranslateStr(197, 'Description') + ':';
 
   MItems := TMemo.Create(Self);
   MItems.Parent := GValues;
@@ -712,7 +713,7 @@ begin
   LValues.Parent := GValues;
   LValues.Left := 255;
   LValues.Top := 18;
-  LValues.Caption := 'Corresponding values:';
+  LValues.Caption := TranslateStr(194, 'Value') + ':';
 
   MValues := TMemo.Create(Self);
   MValues.Parent := GValues;
