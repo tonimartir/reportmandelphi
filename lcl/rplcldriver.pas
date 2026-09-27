@@ -23,10 +23,27 @@ interface
 
 {$I rpconf.inc}
 
+// Outside Windows the text is painted from the runs the engine lays out (same
+// shaper and metrics as the PDF driver). With the GTK2 widgetset the glyphs are
+// drawn through Cairo with the very font files the engine measured.
+{$IFNDEF MSWINDOWS}
+ {$IFDEF LCLGTK2}
+  {$DEFINE RPLCLCAIRO}
+ {$ENDIF}
+{$ENDIF}
 
 uses
 {$IFDEF MSWINDOWS}
  Windows,
+{$ENDIF}
+{$IFDEF RPLCLCAIRO}
+ ctypes,gdk2,gtk2def,cairo,
+ {$IFDEF UNIX}
+ cairocanvas,
+ {$ENDIF}
+{$ENDIF}
+{$IFNDEF MSWINDOWS}
+ LCLType,rpfreetype2,rpinfoprovid,
 {$ENDIF}
  Classes,sysutils,rpmetafile,rpmdconsts,Graphics,Forms,
  rpmunits,Dialogs, Controls,rplclfonts,Math,
@@ -148,6 +165,23 @@ type
    procedure SendAfterPrintOperations;
    function DoNewPage(aorientation:TRpOrientation;apagesizeqt:TPageSizeQt):Boolean;
    procedure UpdateBitmapSize(report:TrpMetafileReport;apage:TrpMetafilePage);
+   procedure EnsureTextPdfDriver;
+   procedure ResolveTextDpi(adpix,adpiy:integer;out aintdpix,aintdpiy:integer);
+{$IFNDEF MSWINDOWS}
+  private
+   // Font family the PDF driver would use for the object being drawn
+   // (TRpPDFDriver.DrawObject takes the Linux font name outside Windows)
+   FTextFamily:WideString;
+   FTextType1Font:integer;
+   FTextFamilySet:Boolean;
+   FEngineFontCache:TStringList;
+   function EngineForceShaping:boolean;
+   procedure SyncTextPdfConformance;
+   function EngineResolveFont(const Family:string;Bold,Italic:Boolean;
+     out FileName:string;out FaceIndex:integer):Boolean;
+   procedure EngineTextOut(APainter:TObject;X,Y:integer;const Text:WideString;
+     const linfo:TRpLineInfo;LineWidth,Rotation:integer;RightToLeft,IsHtml:Boolean);
+{$ENDIF}
   public
    offset:TPoint;
    showpagemargins:boolean;
@@ -211,6 +245,15 @@ type
                         Alignment: integer; Clipping: boolean;Wordbreak:boolean;
                         Rotation:integer;RightToLeft:Boolean;drawbackground:Boolean;backcolor:TColor;
                         adpix: integer = 0; adpiy: integer = 0; IsHtml: Boolean = False; ptFontSize: Integer = 0);
+{$IFNDEF MSWINDOWS}
+    // Lays the text out exactly as TRpPDFCanvas.TextRect does (same shaper,
+    // line breaks, alignment, justification and clipping) and paints the
+    // resulting runs, so the preview matches the PDF
+    procedure EngineTextRect(Canvas: TCanvas; ARect: TRect; Text: WideString;
+      Alignment: integer; Clipping, Wordbreak: boolean; Rotation: integer;
+      RightToLeft, IsHtml, drawbackground: boolean; BackColor: TColor;
+      adpix, adpiy, ptFontSize: integer);
+{$ENDIF}
     procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
     procedure SetOrientation(Orientation:TRpOrientation);  override;
     procedure RestoreOrientation;override;
@@ -435,7 +478,52 @@ begin
  end;
  if assigned(npdfdriver) then
   npdfdriver.free;
+{$IFNDEF MSWINDOWS}
+ FEngineFontCache.Free;
+{$ENDIF}
  inherited Destroy;
+end;
+
+procedure TRpGDIDriver.EnsureTextPdfDriver;
+begin
+ if not assigned(npdfdriver) then
+ begin
+  npdfdriver:=TRpPDFDriver.Create;
+  if Assigned(FReport) then
+   npdfdriver.PDFConformance:=FReport.PDFConformance
+  else
+   npdfdriver.PDFConformance:=TPDFConformanceType.PDF_A_3;
+ end;
+end;
+
+// Device resolution for the text routines: explicit, the printer one or the
+// preview one (dpi*scale, the same the shapes and images are drawn with)
+procedure TRpGDIDriver.ResolveTextDpi(adpix,adpiy:integer;out aintdpix,aintdpiy:integer);
+begin
+ if adpix>0 then
+ begin
+  aintdpix:=adpix;
+  aintdpiy:=adpiy;
+ end
+ else if toprinter then
+ begin
+  if intdpix=0 then
+  begin
+   intdpix:=printer.XDPI;
+   intdpiy:=printer.YDPI;
+  end;
+  aintdpix:=intdpix;
+  aintdpiy:=intdpiy;
+ end
+ else
+ begin
+  aintdpix:=Round(dpi*scale);
+  aintdpiy:=Round(dpi*scale);
+  if aintdpix<1 then
+   aintdpix:=1;
+  if aintdpiy<1 then
+   aintdpiy:=1;
+ end;
 end;
 
 function TRpGDIDriver.UseExactPdfText: boolean;
@@ -812,8 +900,15 @@ begin
      if assigned(FReport) then
        npdfdriver.PDFConformance := FReport.PDFConformance;
    end;
+{$IFDEF MSWINDOWS}
    npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
    atext.Type1Font:=integer(poLinked);
+{$ELSE}
+   // Measured exactly as TRpPDFDriver measures it (same font kind, shaping
+   // mode and conformance): EngineTextRect draws it the way the PDF canvas does
+   SyncTextPdfConformance;
+   npdfdriver.PDFFile.Canvas.ForceComplexShaping := EngineForceShaping;
+{$ENDIF}
    npdfdriver.TextExtent(atext,extent);
    exit;
   end;
@@ -905,9 +1000,56 @@ begin
    if assigned(FReport) then
      npdfdriver.PDFConformance := FReport.PDFConformance;
  end;
+{$IFDEF MSWINDOWS}
  npdfdriver.PDFFile.Canvas.ForceComplexShaping := UseExactPdfText;
  atext.Type1Font:=integer(poLinked);
+{$ELSE}
+ SyncTextPdfConformance;
+ npdfdriver.PDFFile.Canvas.ForceComplexShaping := EngineForceShaping;
+{$ENDIF}
  Result:=npdfdriver.TextExtentLineInfo(atext,extent);
+end;
+
+{$IFNDEF MSWINDOWS}
+// Shaping mode of TRpPDFDriver: forced only with UsePdfFonts (which the PDF
+// driver also turns on for PrinterFonts=Recalculate). PDF/A-3 embeds the
+// fonts but keeps the plain text pipeline.
+function TRpGDIDriver.EngineForceShaping: boolean;
+begin
+  Result := UsePdfFonts;
+  if (not Result) and Assigned(FReport) then
+    Result := (FReport.PrinterFonts = rppfontsrecalculate);
+end;
+
+// The PDF canvas takes its conformance only in TRpPDFFile.BeginDoc, which the
+// measuring driver never calls: without this a PDF/A-3 report was measured and
+// drawn with the PDF 1.4 line spacing while its PDF uses the font height.
+procedure TRpGDIDriver.SyncTextPdfConformance;
+begin
+  if not Assigned(npdfdriver) then
+    exit;
+  if Assigned(FReport) and (npdfdriver.PDFConformance <> FReport.PDFConformance) then
+    npdfdriver.PDFConformance := FReport.PDFConformance;
+  npdfdriver.PDFFile.Canvas.PDFConformance := npdfdriver.PDFConformance;
+end;
+{$ENDIF}
+
+// The model pen style is the VCL TPenStyle ordinal (5 clear, 6 inside frame,
+// as rpgdidriver and the PDF canvas read it). The LCL enumeration differs from
+// 5 on (psinsideFrame=5, psPattern=6, psClear=7): a direct cast turned the
+// clear pen into a solid inside-frame line.
+function RpModelPenStyle(Value: Integer): TPenStyle;
+begin
+ case Value of
+  1: Result:=psDash;
+  2: Result:=psDot;
+  3: Result:=psDashDot;
+  4: Result:=psDashDotDot;
+  5: Result:=psClear;
+  6: Result:=psInsideFrame;
+ else
+  Result:=psSolid;
+ end;
 end;
 
 function CleanGraphicStream(Src: TStream): TStream;
@@ -992,6 +1134,7 @@ var
  bitmapwidth,bitmapheight:integer;
  astring:WideString;
  drawbackground:boolean;
+ abackcolor:TColor;
  oldhandle:THandle;
  format:string;
 {$IFDEF DELPHI2009UP}
@@ -1009,12 +1152,20 @@ begin
  end
  else
  begin
-  posx:=round(obj.Left*dpix/TWIPS_PER_INCHESS);
-  posy:=round(obj.Top*dpiy/TWIPS_PER_INCHESS);
+  // The offset (twips) is also honoured here: the text rectangle below adds it,
+  // so shapes and images must too (DoMetafileToBitmap stacks pages with it)
+  posx:=round((obj.Left+offset.X)*dpix/TWIPS_PER_INCHESS);
+  posy:=round((obj.Top+offset.Y)*dpiy/TWIPS_PER_INCHESS);
  end;
  case obj.Metatype of
   rpMetaText:
    begin
+{$IFNDEF MSWINDOWS}
+    // Same family the PDF driver takes on this platform
+    FTextFamily:=page.GetLFontName(Obj);
+    FTextType1Font:=obj.Type1Font;
+    FTextFamilySet:=true;
+{$ENDIF}
     Canvas.Font.Name:=page.GetWFontName(Obj);
     Canvas.Font.Color:=CLXColorToVCLColor(Obj.FontColor);
     Canvas.Font.Style:=CLXIntegerToFontStyle(obj.FontStyle);
@@ -1064,37 +1215,35 @@ begin
       //SetBkMode(Canvas.Handle,OPAQUE);
       drawbackground:=true ;
      end;
+     abackcolor:=CLXColorToVCLColor(obj.BackColor);
      if selected then
      begin
       Canvas.Brush.Color:=clHighlight;
       Canvas.Font.Color:=clHighlightText;
+      // The text routines paint the background with this color
+      abackcolor:=clHighlight;
      end;
      if obj.IsHtml then
      begin
        TextRectHtml(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-         obj.FontRotation, obj.FontStyle, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         obj.FontRotation, obj.FontStyle, drawbackground, abackcolor,
          dpix, dpiy, true, obj.RightToLeft, obj.FontSize);
      end
      else if (UseExactPdfText and (obj.FontRotation = 0) and
               ((obj.Alignment and AlignmentFlags_AlignHJustify) = 0)) then
      begin
        TextRectHtml(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-         obj.FontRotation, obj.FontStyle, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         obj.FontRotation, obj.FontStyle, drawbackground, abackcolor,
          dpix, dpiy, false, obj.RightToLeft, obj.FontSize);
-     end
-     else if (((obj.Alignment and AlignmentFlags_AlignHJustify) > 0) or
-              (Assigned(FReport) and (FReport.PDFConformance <> TPDFConformanceType.PDF_1_4)) or
-              (obj.Type1Font >= Integer(poLinked))) and
-             ((not obj.RightToLeft) or UseExactPdfText) then
-     begin
-       TextRectJustify(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-         obj.FontRotation, obj.RightToLeft, drawbackground, CLXColorToVCLColor(obj.BackColor),
-         dpix, dpiy, false, obj.FontSize);
      end
      else
      begin
+       // The VCL driver draws the remaining plain text with DrawTextW, but only
+       // because its TextExtent measured it with GDI. This driver measures ALL
+       // text with the PDF driver (TextExtent above), so the drawing has to use
+       // the same layout: the former "native" branch was identical to this one.
        TextRectJustify(Canvas, rec, astring, obj.AlignMent, obj.CutText, obj.WordWrap,
-         obj.FontRotation, obj.RightToLeft, drawbackground, CLXColorToVCLColor(obj.BackColor),
+         obj.FontRotation, obj.RightToLeft, drawbackground, abackcolor,
          dpix, dpiy, false, obj.FontSize);
      end;
 
@@ -1104,6 +1253,9 @@ begin
       begin
         Canvas.Font.Handle:=oldhandle;
       end;
+{$IFNDEF MSWINDOWS}
+      FTextFamilySet:=false;
+{$ENDIF}
     end;
    end;
   rpMetaDraw:
@@ -1114,8 +1266,9 @@ begin
     if obj.BrushStyle>integer(bsDiagCross) then
      abrushstyle:=integer(bsDiagCross);
     Canvas.Pen.Color:=CLXColorToVCLColor(obj.Pencolor);
-    Canvas.Pen.Style:=TPenStyle(obj.PenStyle);
+    Canvas.Pen.Style:=RpModelPenStyle(obj.PenStyle);
     Canvas.Brush.Color:=CLXColorToVCLColor(obj.BrushColor);
+    // The brush ordinals match (TRpBrushStyle / VCL / LCL up to bsDiagCross)
     Canvas.Brush.Style:=TBrushStyle(abrushstyle);
     Canvas.Pen.Width:=Round(dpix*obj.PenWidth/TWIPS_PER_INCHESS);
     X := Canvas.Pen.Width div 2;
@@ -1690,6 +1843,12 @@ var
   allDx: TIntegerDynArray;
   textstyle: TTextStyle;
 begin
+{$IFNDEF MSWINDOWS}
+  // Glyph runs, clipping and HTML styles are painted by the engine renderer
+  EngineTextRect(Canvas, ARect, Text, Alignment, Clipping, Wordbreak, Rotation,
+    RightToLeft, IsHtml, drawbackground, BackColor, adpix, adpiy, ptFontSize);
+  exit;
+{$ENDIF}
 {$IFDEF MSWINDOWS}
   savedDC := 0;
   clipRgn := 0;
@@ -1863,6 +2022,12 @@ var
  savedDC: Integer;
 {$ENDIF}
 begin
+{$IFNDEF MSWINDOWS}
+ // Same text layout as the PDF driver, painted from the engine runs
+ EngineTextRect(Canvas, ARect, Text, Alignment, Clipping, Wordbreak, Rotation,
+   RightToLeft, IsHtml, drawbackground, backcolor, adpix, adpiy, ptFontSize);
+ exit;
+{$ENDIF}
 {$IFDEF MSWINDOWS}
  savedDC := 0;
  clipRgn := 0;
@@ -2089,6 +2254,1052 @@ begin
   end;
 end;
 
+{$IFNDEF MSWINDOWS}
+{ ---------------------------------------------------------------------------
+  Engine text renderer (Linux / Unix)
+
+  The text is laid out by the PDF canvas of the embedded PDF driver (the very
+  code TRpPDFCanvas.TextRect runs) and every glyph is painted at the position
+  that layout gives it: shaped runs (HTML, right to left, complex scripts,
+  forced shaping) with their own glyph ids and advances, plain text with the
+  font widths the PDF writes. With GTK2 the glyphs go through Cairo using the
+  font files the engine's FreeType provider resolved, so line breaks,
+  positions, clipping and HTML styles match the PDF. Other widgetsets fall back
+  to the LCL canvas, still at the engine positions.
+  --------------------------------------------------------------------------- }
+
+type
+  TRpPaintGlyph = record
+    Index: Cardinal;   // glyph id in the run font
+    X, Y: Double;      // twips: absolute, or relative to the rotation origin
+    Ch: WideChar;      // character, only for the LCL fallback
+  end;
+  TRpPaintGlyphArray = array of TRpPaintGlyph;
+
+  TRpPaintFont = record
+    Family: string;
+    Bold, Italic: Boolean;
+    SizePt: Integer;
+    FileName: string;
+    FaceIndex: Integer;
+  end;
+
+  TRpCanvasAccess = class(TCanvas);
+
+  TRpTextPainter = class(TObject)
+  private
+    FCanvas: TCanvas;
+    FDpiX, FDpiY: Integer;
+    FUseCairo: Boolean;
+    FRotated: Boolean;
+    FRotOX, FRotOY: Double;
+    FRotAngle: Double;
+    FClipped: Boolean;
+    FOldClipping: Boolean;
+    FOldClipRect: TRect;
+{$IFDEF RPLCLCAIRO}
+    FCr: Pcairo_t;
+    FOwnCr: Boolean;
+    FDC: TGtkDeviceContext;
+    FSX, FSY, FOX, FOY: Double;
+    function BeginCairo: Boolean;
+    procedure EndCairo;
+    function UX(tw: Double): Double;
+    function UY(tw: Double): Double;
+    procedure CairoColor(AColor: TColor);
+{$ENDIF}
+    function DevX(tw: Double): Double;
+    function DevY(tw: Double): Double;
+    procedure FrameToDev(fx, fy: Double; out dx, dy: Double);
+    procedure DrawRunLCL(const AFont: TRpPaintFont; AColor: TColor;
+      const Glyphs: TRpPaintGlyphArray; Count: Integer);
+  public
+    constructor Create(ACanvas: TCanvas; ADpiX, ADpiY: Integer);
+    destructor Destroy; override;
+    procedure ClipTo(const R: TRect);
+    procedure FillRectTw(x1, y1, x2, y2: Double; AColor: TColor);
+    procedure LineTw(x1, y1, x2, y2, WidthTw: Double; AColor: TColor);
+    procedure SetRotation(OX, OY: Double; Angle10: Integer);
+    procedure ClearRotation;
+    function GlyphForChar(const AFont: TRpPaintFont; Ch: WideChar): Cardinal;
+    procedure DrawRun(const AFont: TRpPaintFont; AColor: TColor;
+      const Glyphs: TRpPaintGlyphArray; Count: Integer);
+  end;
+
+{$IFDEF RPLCLCAIRO}
+type
+  // cairo_glyph_t: "unsigned long index" is 64 bit on LP64 (the record of the
+  // FPC cairo unit declares it as LongWord)
+  TRpCairoGlyph = record
+    index: culong;
+    x, y: Double;
+  end;
+  PRpCairoGlyph = ^TRpCairoGlyph;
+
+  TRpCairoFaceEntry = class(TObject)
+  public
+    FTFace: FT_Face;
+    CairoFace: Pcairo_font_face_t;
+  end;
+
+{$IFDEF UNIX}
+  // Printer canvas of the CUPS printers: exposes its cairo context
+  TRpCairoPrinterAccess = class(TCairoPrinterCanvas);
+{$ENDIF}
+
+const
+  RP_FT_LOAD_NO_HINTING = 2;
+
+function rp_cairo_ft_font_face_create_for_ft_face(face: Pointer;
+  load_flags: cint): Pcairo_font_face_t; cdecl;
+  external LIB_CAIRO name 'cairo_ft_font_face_create_for_ft_face';
+procedure rp_cairo_show_glyphs(cr: Pcairo_t; glyphs: PRpCairoGlyph;
+  num_glyphs: cint); cdecl; external LIB_CAIRO name 'cairo_show_glyphs';
+
+var
+  RpFTLibrary: FT_Library;
+  RpFTLibraryReady: Boolean = False;
+  // 'file|face' -> TRpCairoFaceEntry. The FreeType faces and the cairo font
+  // faces live until the process ends (cairo keeps them in its own caches)
+  RpCairoFaceCache: TStringList = nil;
+  RpCairoFontOptions: Pcairo_font_options_t = nil;
+
+function RpGetCairoFace(const FileName: string; FaceIndex: Integer): TRpCairoFaceEntry;
+var
+  key: string;
+  idx: Integer;
+  aface: FT_Face;
+begin
+  Result := nil;
+  if (FileName = '') or (FaceIndex < 0) then
+    exit;
+  if RpCairoFaceCache = nil then
+  begin
+    RpCairoFaceCache := TStringList.Create;
+    RpCairoFaceCache.Sorted := True;
+    RpCairoFaceCache.OwnsObjects := True;
+  end;
+  key := FileName + '|' + IntToStr(FaceIndex);
+  idx := RpCairoFaceCache.IndexOf(key);
+  if idx >= 0 then
+  begin
+    Result := TRpCairoFaceEntry(RpCairoFaceCache.Objects[idx]);
+    exit;
+  end;
+  // A failure is cached too (entry without faces)
+  Result := TRpCairoFaceEntry.Create;
+  RpCairoFaceCache.AddObject(key, Result);
+  try
+    CheckFreeTypeLoaded;
+    if not RpFTLibraryReady then
+    begin
+      if FT_Init_FreeType(RpFTLibrary) <> 0 then
+        exit;
+      RpFTLibraryReady := True;
+    end;
+    aface := nil;
+    if FT_New_Face(RpFTLibrary, PAnsiChar(UTF8Encode(FileName)), FaceIndex, aface) <> 0 then
+      exit;
+    Result.FTFace := aface;
+    Result.CairoFace := rp_cairo_ft_font_face_create_for_ft_face(aface, RP_FT_LOAD_NO_HINTING);
+    if (Result.CairoFace <> nil) and
+       (cairo_font_face_status(Result.CairoFace) <> CAIRO_STATUS_SUCCESS) then
+      Result.CairoFace := nil;
+  except
+    Result.CairoFace := nil;
+  end;
+end;
+
+function RpCairoOptions: Pcairo_font_options_t;
+begin
+  if RpCairoFontOptions = nil then
+  begin
+    // Unhinted outlines at the exact positions, like a PDF rasterizer
+    RpCairoFontOptions := cairo_font_options_create;
+    cairo_font_options_set_antialias(RpCairoFontOptions, CAIRO_ANTIALIAS_GRAY);
+    cairo_font_options_set_hint_style(RpCairoFontOptions, CAIRO_HINT_STYLE_NONE);
+    cairo_font_options_set_hint_metrics(RpCairoFontOptions, CAIRO_HINT_METRICS_OFF);
+  end;
+  Result := RpCairoFontOptions;
+end;
+{$ENDIF}
+
+constructor TRpTextPainter.Create(ACanvas: TCanvas; ADpiX, ADpiY: Integer);
+begin
+  inherited Create;
+  FCanvas := ACanvas;
+  FDpiX := ADpiX;
+  FDpiY := ADpiY;
+  if FDpiX < 1 then
+    FDpiX := 1;
+  if FDpiY < 1 then
+    FDpiY := 1;
+{$IFDEF RPLCLCAIRO}
+  FUseCairo := BeginCairo;
+{$ENDIF}
+end;
+
+destructor TRpTextPainter.Destroy;
+begin
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+    EndCairo;
+{$ENDIF}
+  if FClipped then
+  begin
+    if FOldClipping then
+      FCanvas.ClipRect := FOldClipRect
+    else
+      FCanvas.Clipping := False;
+  end;
+  inherited Destroy;
+end;
+
+{$IFDEF RPLCLCAIRO}
+function TRpTextPainter.BeginCairo: Boolean;
+var
+  h: HDC;
+begin
+  Result := False;
+  FCr := nil;
+  FOwnCr := False;
+  FDC := nil;
+  FSX := 1;
+  FSY := 1;
+  FOX := 0;
+  FOY := 0;
+{$IFDEF UNIX}
+  if FCanvas is TCairoPrinterCanvas then
+  begin
+    // Printing through CUPS: draw on the canvas' own cairo context, whose
+    // user space is the printer page in points (device pixel * Scale)
+    h := FCanvas.Handle;
+    if h = 0 then
+      exit;
+    FCr := TRpCairoPrinterAccess(FCanvas).cr;
+    if FCr = nil then
+      exit;
+    FSX := TRpCairoPrinterAccess(FCanvas).ScaleX;
+    FSY := TRpCairoPrinterAccess(FCanvas).ScaleY;
+    cairo_save(FCr);
+    Result := True;
+    exit;
+  end;
+{$ENDIF}
+  if FCanvas is TPrinterCanvas then
+    exit;
+  h := FCanvas.Handle;
+  if h = 0 then
+    exit;
+  if not (TObject(h) is TGtkDeviceContext) then
+    exit;
+  FDC := TGtkDeviceContext(h);
+  if FDC.Drawable = nil then
+    exit;
+  FCr := gdk_cairo_create(FDC.Drawable);
+  if FCr = nil then
+    exit;
+  if cairo_status(FCr) <> CAIRO_STATUS_SUCCESS then
+  begin
+    cairo_destroy(FCr);
+    FCr := nil;
+    exit;
+  end;
+  FOwnCr := True;
+  FOX := FDC.Offset.X;
+  FOY := FDC.Offset.Y;
+  Result := True;
+end;
+
+procedure TRpTextPainter.EndCairo;
+begin
+  if FCr = nil then
+    exit;
+  if FOwnCr then
+  begin
+    cairo_destroy(FCr);
+    // The pixmap changed behind the LCL: drop the cached pixbuf and notify
+    if Assigned(FDC) then
+      FDC.RemovePixbuf;
+    TRpCanvasAccess(FCanvas).Changed;
+  end
+  else
+    cairo_restore(FCr);
+  FCr := nil;
+end;
+
+function TRpTextPainter.UX(tw: Double): Double;
+begin
+  Result := DevX(tw) * FSX;
+  if not FRotated then
+    Result := Result + FOX;
+end;
+
+function TRpTextPainter.UY(tw: Double): Double;
+begin
+  Result := DevY(tw) * FSY;
+  if not FRotated then
+    Result := Result + FOY;
+end;
+
+procedure TRpTextPainter.CairoColor(AColor: TColor);
+var
+  c: Longint;
+begin
+  c := ColorToRGB(AColor);
+  cairo_set_source_rgb(FCr, (c and $FF) / 255, ((c shr 8) and $FF) / 255,
+    ((c shr 16) and $FF) / 255);
+end;
+{$ENDIF}
+
+function TRpTextPainter.DevX(tw: Double): Double;
+begin
+  Result := tw * FDpiX / TWIPS_PER_INCHESS;
+end;
+
+function TRpTextPainter.DevY(tw: Double): Double;
+begin
+  Result := tw * FDpiY / TWIPS_PER_INCHESS;
+end;
+
+// Rotated frame (twips, origin at the rotation origin) to device pixels
+procedure TRpTextPainter.FrameToDev(fx, fy: Double; out dx, dy: Double);
+var
+  s, c: Double;
+begin
+  if not FRotated then
+  begin
+    dx := DevX(fx);
+    dy := DevY(fy);
+    exit;
+  end;
+  s := Sin(FRotAngle);
+  c := Cos(FRotAngle);
+  dx := DevX(FRotOX) + DevX(fx) * c + DevY(fy) * s;
+  dy := DevY(FRotOY) - DevX(fx) * s + DevY(fy) * c;
+end;
+
+procedure TRpTextPainter.ClipTo(const R: TRect);
+begin
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+  begin
+    cairo_new_path(FCr);
+    cairo_rectangle(FCr, UX(R.Left), UY(R.Top), UX(R.Right) - UX(R.Left),
+      UY(R.Bottom) - UY(R.Top));
+    cairo_clip(FCr);
+    exit;
+  end;
+{$ENDIF}
+  if not FClipped then
+  begin
+    FOldClipping := FCanvas.Clipping;
+    FOldClipRect := FCanvas.ClipRect;
+  end;
+  FCanvas.ClipRect := Rect(Round(DevX(R.Left)), Round(DevY(R.Top)),
+    Round(DevX(R.Right)), Round(DevY(R.Bottom)));
+  FCanvas.Clipping := True;
+  FClipped := True;
+end;
+
+procedure TRpTextPainter.FillRectTw(x1, y1, x2, y2: Double; AColor: TColor);
+begin
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+  begin
+    CairoColor(AColor);
+    cairo_new_path(FCr);
+    cairo_rectangle(FCr, UX(x1), UY(y1), UX(x2) - UX(x1), UY(y2) - UY(y1));
+    cairo_fill(FCr);
+    exit;
+  end;
+{$ENDIF}
+  FCanvas.Brush.Style := bsSolid;
+  FCanvas.Brush.Color := AColor;
+  FCanvas.FillRect(Rect(Round(DevX(x1)), Round(DevY(y1)), Round(DevX(x2)),
+    Round(DevY(y2))));
+end;
+
+procedure TRpTextPainter.LineTw(x1, y1, x2, y2, WidthTw: Double; AColor: TColor);
+var
+  w, ax, ay, bx, by: Double;
+begin
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+  begin
+    w := DevY(WidthTw) * FSY;
+    if w < FSY then
+      w := FSY;
+    CairoColor(AColor);
+    cairo_set_line_width(FCr, w);
+    cairo_new_path(FCr);
+    cairo_move_to(FCr, UX(x1), UY(y1));
+    cairo_line_to(FCr, UX(x2), UY(y2));
+    cairo_stroke(FCr);
+    exit;
+  end;
+{$ENDIF}
+  w := DevY(WidthTw);
+  if w < 1 then
+    w := 1;
+  FrameToDev(x1, y1, ax, ay);
+  FrameToDev(x2, y2, bx, by);
+  FCanvas.Pen.Style := psSolid;
+  FCanvas.Pen.Color := AColor;
+  FCanvas.Pen.Width := Round(w);
+  FCanvas.Line(Round(ax), Round(ay), Round(bx), Round(by));
+end;
+
+// Angle10: tenths of degree, counterclockwise (as the PDF "cm" rotation)
+procedure TRpTextPainter.SetRotation(OX, OY: Double; Angle10: Integer);
+begin
+  FRotOX := OX;
+  FRotOY := OY;
+  FRotAngle := Angle10 / 10 * PI / 180;
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+  begin
+    cairo_save(FCr);
+    cairo_translate(FCr, UX(OX), UY(OY));
+    cairo_rotate(FCr, -FRotAngle);
+  end;
+{$ENDIF}
+  FRotated := True;
+end;
+
+procedure TRpTextPainter.ClearRotation;
+begin
+  if not FRotated then
+    exit;
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+    cairo_restore(FCr);
+{$ENDIF}
+  FRotated := False;
+end;
+
+function TRpTextPainter.GlyphForChar(const AFont: TRpPaintFont; Ch: WideChar): Cardinal;
+{$IFDEF RPLCLCAIRO}
+var
+  entry: TRpCairoFaceEntry;
+{$ENDIF}
+begin
+  Result := 0;
+{$IFDEF RPLCLCAIRO}
+  if not FUseCairo then
+    exit;
+  entry := RpGetCairoFace(AFont.FileName, AFont.FaceIndex);
+  if Assigned(entry) and Assigned(entry.FTFace) then
+    Result := FT_Get_Char_Index(entry.FTFace, Ord(Ch));
+{$ENDIF}
+end;
+
+procedure TRpTextPainter.DrawRun(const AFont: TRpPaintFont; AColor: TColor;
+  const Glyphs: TRpPaintGlyphArray; Count: Integer);
+{$IFDEF RPLCLCAIRO}
+var
+  entry: TRpCairoFaceEntry;
+  m: cairo_matrix_t;
+  cg: array of TRpCairoGlyph;
+  i, n: Integer;
+{$ENDIF}
+begin
+  if Count <= 0 then
+    exit;
+{$IFDEF RPLCLCAIRO}
+  if FUseCairo then
+  begin
+    entry := RpGetCairoFace(AFont.FileName, AFont.FaceIndex);
+    if Assigned(entry) and Assigned(entry.CairoFace) then
+    begin
+      cairo_set_font_face(FCr, entry.CairoFace);
+      cairo_matrix_init_scale(@m, AFont.SizePt * FDpiX / 72 * FSX,
+        AFont.SizePt * FDpiY / 72 * FSY);
+      cairo_set_font_matrix(FCr, @m);
+      cairo_set_font_options(FCr, RpCairoOptions);
+      CairoColor(AColor);
+      SetLength(cg, Count);
+      n := 0;
+      for i := 0 to Count - 1 do
+      begin
+        // Glyph 0 (.notdef: control characters, missing glyphs) leaves a blank
+        // in the PDF too, instead of the box the font draws for it
+        if Glyphs[i].Index = 0 then
+          continue;
+        cg[n].index := Glyphs[i].Index;
+        cg[n].x := UX(Glyphs[i].X);
+        cg[n].y := UY(Glyphs[i].Y);
+        Inc(n);
+      end;
+      if n > 0 then
+        rp_cairo_show_glyphs(FCr, @cg[0], n);
+      exit;
+    end;
+  end;
+{$ENDIF}
+  DrawRunLCL(AFont, AColor, Glyphs, Count);
+end;
+
+// Without Cairo: each character at its engine position with the LCL canvas
+// (no complex shaping, but the layout, the styles and the clipping are kept)
+procedure TRpTextPainter.DrawRunLCL(const AFont: TRpPaintFont; AColor: TColor;
+  const Glyphs: TRpPaintGlyphArray; Count: Integer);
+var
+  i: Integer;
+  st: TFontStyles;
+  tm: TLCLTextMetric;
+  asc, dx, dy, ax, ay: Double;
+begin
+  FCanvas.Font.Name := AFont.Family;
+  st := [];
+  if AFont.Bold then
+    Include(st, fsBold);
+  if AFont.Italic then
+    Include(st, fsItalic);
+  FCanvas.Font.Style := st;
+  FCanvas.Font.Height := -Round(AFont.SizePt * FDpiY / 72);
+  FCanvas.Font.Color := AColor;
+  if FRotated then
+    FCanvas.Font.Orientation := Round(FRotAngle * 1800 / PI)
+  else
+    FCanvas.Font.Orientation := 0;
+  FCanvas.Brush.Style := bsClear;
+  asc := 0;
+  if FCanvas.GetTextMetrics(tm) then
+    asc := tm.Ascender;
+  for i := 0 to Count - 1 do
+  begin
+    if Ord(Glyphs[i].Ch) < 32 then
+      continue;
+    FrameToDev(Glyphs[i].X, Glyphs[i].Y, dx, dy);
+    // TextOut places the top of the cell: go up the ascent along the baseline normal
+    if FRotated then
+    begin
+      ax := dx - asc * Sin(FRotAngle);
+      ay := dy - asc * Cos(FRotAngle);
+    end
+    else
+    begin
+      ax := dx;
+      ay := dy - asc;
+    end;
+    FCanvas.TextOut(Round(ax), Round(ay), UTF8Encode(WideString(Glyphs[i].Ch)));
+  end;
+  FCanvas.Font.Orientation := 0;
+end;
+
+function TRpGDIDriver.EngineResolveFont(const Family: string; Bold, Italic: Boolean;
+  out FileName: string; out FaceIndex: integer): Boolean;
+var
+  key, value: string;
+  p: Integer;
+  pc: TRpPDFCanvas;
+  oW, oL: WideString;
+  oBold, oItalic: Boolean;
+  oName: TRpType1Font;
+  data: TRpTTFontData;
+begin
+  FileName := '';
+  FaceIndex := -1;
+  if FEngineFontCache = nil then
+    FEngineFontCache := TStringList.Create;
+  key := UpperCase(Family) + '/' + IntToStr(Ord(Bold)) + IntToStr(Ord(Italic));
+  value := FEngineFontCache.Values[key];
+  if value = '' then
+  begin
+    // The same request the PDF canvas makes (UpdateFonts -> provider SelectFont)
+    // when it switches to this family and style
+    // (for a PDF standard font it is the TrueType face the provider picks for
+    // that family: the glyph shapes, the advances stay the standard ones)
+    pc := npdfdriver.PDFFile.Canvas;
+    oW := pc.Font.WFontName;
+    oL := pc.Font.LFontName;
+    oBold := pc.Font.Bold;
+    oItalic := pc.Font.Italic;
+    oName := pc.Font.Name;
+    try
+      pc.Font.WFontName := Family;
+      pc.Font.LFontName := Family;
+      pc.Font.Bold := Bold;
+      pc.Font.Italic := Italic;
+      if not (pc.Font.Name in [poLinked, poEmbedded]) then
+        pc.Font.Name := poLinked;
+      data := nil;
+      try
+        data := pc.UpdateFonts;
+      except
+        data := nil;
+      end;
+      if Assigned(data) and (data.filename <> '') then
+        value := IntToStr(data.FontIndex) + '|' + data.filename
+      else
+        value := '-1|';
+    finally
+      pc.Font.WFontName := oW;
+      pc.Font.LFontName := oL;
+      pc.Font.Bold := oBold;
+      pc.Font.Italic := oItalic;
+      pc.Font.Name := oName;
+    end;
+    FEngineFontCache.Values[key] := value;
+  end;
+  p := Pos('|', value);
+  FaceIndex := StrToIntDef(Copy(value, 1, p - 1), -1);
+  FileName := Copy(value, p + 1, MaxInt);
+  Result := (FaceIndex >= 0) and (FileName <> '');
+end;
+
+// Mirrors TRpPDFCanvas.TextOut: X is the line start, Y the line top (plain
+// text) or the baseline (shaped text: TopPos includes the ascent)
+procedure TRpGDIDriver.EngineTextOut(APainter: TObject; X, Y: integer; const Text: WideString;
+  const linfo: TRpLineInfo; LineWidth, Rotation: integer; RightToLeft, IsHtml: Boolean);
+var
+  painter: TRpTextPainter;
+  pc: TRpPDFCanvas;
+  adata: TRpTTFontData;
+  shaped: Boolean;
+  ascent, linespacing, leading: integer;
+  baseFamily: string;
+  baseSize: integer;
+  baseColor: TColor;
+  baseBold, baseItalic: Boolean;
+  ox, baseline, cursor, w: Double;
+  i, n: integer;
+  g: TGlyphPos;
+  runFont, gFont: TRpPaintFont;
+  runColor, gColor: TColor;
+  run: TRpPaintGlyphArray;
+  runCount: integer;
+  ch: WideChar;
+  penw: Double;
+  posline, fontSizeOffset: integer;
+  decCursor, ulStartX, soStartX, ulEndX, soEndX: Double;
+  inUnderline, inStrikeOut, isLast, gUnderline, gStrikeOut: Boolean;
+  ulFontSz, soFontSz, gFontSz: Single;
+  lineY: Double;
+
+  procedure FlushRun;
+  begin
+    if runCount > 0 then
+      painter.DrawRun(runFont, runColor, run, runCount);
+    runCount := 0;
+  end;
+
+  procedure AddGlyph(AIndex: Cardinal; AX, AY: Double; ACh: WideChar);
+  begin
+    if runCount >= Length(run) then
+      SetLength(run, runCount * 2 + 16);
+    run[runCount].Index := AIndex;
+    run[runCount].X := AX;
+    run[runCount].Y := AY;
+    run[runCount].Ch := ACh;
+    Inc(runCount);
+  end;
+
+begin
+  painter := TRpTextPainter(APainter);
+  pc := npdfdriver.PDFFile.Canvas;
+  adata := nil;
+  try
+    adata := pc.UpdateFonts;
+  except
+    adata := nil;
+  end;
+  baseFamily := pc.Font.GetFontFamily;
+  baseSize := pc.Font.Size;
+  baseColor := TColor(pc.Font.Color);
+  baseBold := pc.Font.Bold;
+  baseItalic := pc.Font.Italic;
+  shaped := RightToLeft or IsHtml or
+    (pc.ForceComplexShaping and (Rotation = 0) and (Length(linfo.Glyphs) > 0));
+  if Assigned(adata) then
+    ascent := Round(adata.Ascent * baseSize * 20 / 1000)
+  else
+  begin
+    pc.GetStdLineSpacing(linespacing, leading, ascent);
+    if pc.PDFConformance > PDF_1_4 then
+      ascent := Round(ascent * baseSize * 20 * 1.1 / 1000)
+    else
+      ascent := baseSize * 20;
+  end;
+  if Rotation <> 0 then
+  begin
+    // PDF: translate to (X, top + font size), rotate, text from the origin
+    painter.SetRotation(X, Y + baseSize * 20, Rotation);
+    ox := 0;
+    baseline := 0;
+  end
+  else
+  begin
+    ox := X;
+    if shaped then
+      baseline := Y
+    else
+      baseline := Y + ascent;
+  end;
+  try
+    runCount := 0;
+    SetLength(run, 0);
+    runFont.Family := baseFamily;
+    runFont.Bold := baseBold;
+    runFont.Italic := baseItalic;
+    runFont.SizePt := baseSize;
+    runFont.FileName := '';
+    runFont.FaceIndex := -1;
+    runColor := baseColor;
+    if shaped then
+    begin
+      cursor := 0;
+      for i := 0 to High(linfo.Glyphs) do
+      begin
+        g := linfo.Glyphs[i];
+        // The font the shaper used for this glyph (TRpFTInfoProvider.TextExtentHtml)
+        gFont.Family := g.FontFamily;
+        if gFont.Family = '' then
+          gFont.Family := baseFamily;
+        gFont.Bold := baseBold or ((g.Style and 1) > 0);
+        gFont.Italic := baseItalic or ((g.Style and 2) > 0);
+        if g.HasFontSize then
+          gFont.SizePt := Round(g.FontSize)
+        else
+          gFont.SizePt := baseSize;
+        if g.HasColor then
+          gColor := TColor(g.Color)
+        else
+          gColor := baseColor;
+        if (runCount > 0) and ((gFont.Family <> runFont.Family) or
+           (gFont.Bold <> runFont.Bold) or (gFont.Italic <> runFont.Italic) or
+           (gFont.SizePt <> runFont.SizePt) or (gColor <> runColor)) then
+          FlushRun;
+        if runCount = 0 then
+        begin
+          runFont := gFont;
+          EngineResolveFont(runFont.Family, runFont.Bold, runFont.Italic,
+            runFont.FileName, runFont.FaceIndex);
+          runColor := gColor;
+        end;
+        AddGlyph(Cardinal(g.GlyphIndex), ox + cursor + g.XOffset, baseline - g.YOffset,
+          g.CharCode);
+        cursor := cursor + g.XAdvance;
+      end;
+      FlushRun;
+    end
+    else
+    begin
+      // Plain text: the advances of the Tj/TJ the PDF writes (font widths and
+      // kerning, TRpPDFCanvas.TextExtentSimple). A PDF standard font (no font
+      // data) keeps its standard widths, drawn with the provider's face.
+      if Assigned(adata) and (adata.filename <> '') then
+      begin
+        runFont.FileName := adata.filename;
+        runFont.FaceIndex := adata.FontIndex;
+      end
+      else
+      begin
+        // The PDF names the standard font itself (/BaseFont), not the report
+        // family: a viewer substitutes that one
+        case pc.Font.Name of
+          poHelvetica: runFont.Family := 'Helvetica';
+          poCourier: runFont.Family := 'Courier';
+          poTimesRoman: runFont.Family := 'Times';
+          poSymbol: runFont.Family := 'Symbol';
+          poZapfDingbats: runFont.Family := 'ZapfDingbats';
+        end;
+        EngineResolveFont(runFont.Family, runFont.Bold, runFont.Italic,
+          runFont.FileName, runFont.FaceIndex);
+      end;
+      runColor := baseColor;
+      cursor := 0;
+      n := Length(Text);
+      // TrueType without font data: no provider to measure with
+      if (adata = nil) and (pc.Font.Name in [poLinked, poEmbedded]) then
+        n := 0;
+      for i := 1 to n do
+      begin
+        ch := Text[i];
+        w := pc.CalcCharWidth(ch, adata);
+        if Assigned(adata) and adata.havekerning and (i < n) then
+          w := w - pc.InfoProvider.GetKerning(pc.Font, adata, ch, Text[i + 1]) * baseSize / 1000;
+        if Ord(ch) >= 32 then
+          AddGlyph(painter.GlyphForChar(runFont, ch), ox + cursor, baseline, ch);
+        cursor := cursor + w * 20;
+      end;
+      FlushRun;
+    end;
+
+    // Underline and strikeout, as TRpPDFCanvas.TextOut draws them
+    if IsHtml and (Length(linfo.Glyphs) > 0) then
+    begin
+      // Per glyph segments of the HTML styles
+      if Rotation <> 0 then
+        lineY := 0
+      else
+        lineY := Y;
+      decCursor := 0;
+      inUnderline := False;
+      inStrikeOut := False;
+      ulStartX := 0;
+      soStartX := 0;
+      ulFontSz := baseSize;
+      soFontSz := baseSize;
+      fontSizeOffset := Round(baseSize * 20);
+      n := Length(linfo.Glyphs);
+      for i := 0 to n do
+      begin
+        isLast := (i = n);
+        gUnderline := False;
+        gStrikeOut := False;
+        gFontSz := baseSize;
+        if not isLast then
+        begin
+          gUnderline := (linfo.Glyphs[i].Style and 4) > 0;
+          gStrikeOut := (linfo.Glyphs[i].Style and 8) > 0;
+          if linfo.Glyphs[i].HasFontSize then
+            gFontSz := linfo.Glyphs[i].FontSize;
+        end;
+        if gUnderline and (not inUnderline) then
+        begin
+          inUnderline := True;
+          ulStartX := ox + decCursor;
+          ulFontSz := gFontSz;
+        end
+        else if ((not gUnderline) or isLast) and inUnderline then
+        begin
+          ulEndX := ox + decCursor;
+          if gUnderline and isLast then
+            ulEndX := ox + decCursor + linfo.Glyphs[i - 1].XAdvance;
+          penw := Round(ulFontSz * 20 * CONS_UNDERLINEWIDTH);
+          posline := Round(CONS_UNDERLINEPOS * (ulFontSz * 20));
+          painter.LineTw(Round(ulStartX), lineY - fontSizeOffset + posline, Round(ulEndX),
+            lineY - fontSizeOffset + posline, penw, baseColor);
+          inUnderline := gUnderline;
+          if gUnderline then
+          begin
+            ulStartX := ox + decCursor;
+            ulFontSz := gFontSz;
+          end;
+        end;
+        if gStrikeOut and (not inStrikeOut) then
+        begin
+          inStrikeOut := True;
+          soStartX := ox + decCursor;
+          soFontSz := gFontSz;
+        end
+        else if ((not gStrikeOut) or isLast) and inStrikeOut then
+        begin
+          soEndX := ox + decCursor;
+          if gStrikeOut and isLast then
+            soEndX := ox + decCursor + linfo.Glyphs[i - 1].XAdvance;
+          penw := Round(soFontSz * 20 * CONS_UNDERLINEWIDTH);
+          posline := Round(CONS_STRIKEOUTPOS * (soFontSz * 20));
+          painter.LineTw(Round(soStartX), lineY - fontSizeOffset + posline, Round(soEndX),
+            lineY - fontSizeOffset + posline, penw, baseColor);
+          inStrikeOut := gStrikeOut;
+          if gStrikeOut then
+          begin
+            soStartX := ox + decCursor;
+            soFontSz := gFontSz;
+          end;
+        end;
+        if not isLast then
+          decCursor := decCursor + linfo.Glyphs[i].XAdvance;
+      end;
+    end
+    else
+    begin
+      penw := Round(baseSize * 20 * CONS_UNDERLINEWIDTH);
+      if pc.Font.Underline then
+      begin
+        posline := Round(CONS_UNDERLINEPOS * (baseSize * 20));
+        if Rotation <> 0 then
+          lineY := posline - baseSize * 20
+        else
+        begin
+          lineY := Y + posline;
+          // Shaped output gets the baseline in Y: back to the line top
+          if shaped then
+            lineY := lineY - Round(baseSize * 20);
+        end;
+        painter.LineTw(ox, lineY, ox + LineWidth, lineY, penw, baseColor);
+      end;
+      if pc.Font.StrikeOut then
+      begin
+        posline := Round(CONS_STRIKEOUTPOS * (baseSize * 20));
+        if Rotation <> 0 then
+          lineY := posline - baseSize * 20
+        else
+        begin
+          lineY := Y + posline;
+          if shaped then
+            lineY := lineY - Round(baseSize * 20);
+        end;
+        painter.LineTw(ox, lineY, ox + LineWidth, lineY, penw, baseColor);
+      end;
+    end;
+  finally
+    if Rotation <> 0 then
+      painter.ClearRotation;
+  end;
+end;
+
+procedure TRpGDIDriver.EngineTextRect(Canvas: TCanvas; ARect: TRect; Text: WideString;
+  Alignment: integer; Clipping, Wordbreak: boolean; Rotation: integer;
+  RightToLeft, IsHtml, drawbackground: boolean; BackColor: TColor;
+  adpix, adpiy, ptFontSize: integer);
+var
+  pc: TRpPDFCanvas;
+  painter: TRpTextPainter;
+  aintdpix, aintdpiy: integer;
+  family: WideString;
+  recsize, arec: TRect;
+  larray, winfos, lwordinfos: TRpLineInfoArray;
+  lwidths: array of integer;
+  lwords: TRpWideStrings;
+  singleline, dojustify: boolean;
+  i, index, posx, posy, linetop, currpos, alinedif, alinesize, decowidth: integer;
+  astring, aword: WideString;
+begin
+  ResolveTextDpi(adpix, adpiy, aintdpix, aintdpiy);
+  EnsureTextPdfDriver;
+  SyncTextPdfConformance;
+  pc := npdfdriver.PDFFile.Canvas;
+  // Font as TRpPDFDriver.DrawObject sets it (TextExtent measured it the same way)
+  pc.ForceComplexShaping := EngineForceShaping and (Rotation = 0);
+  if FTextFamilySet then
+  begin
+    family := FTextFamily;
+    pc.Font.Name := TRpType1Font(FTextType1Font);
+  end
+  else
+  begin
+    family := Canvas.Font.Name;
+    pc.Font.Name := poLinked;
+  end;
+  if npdfdriver.PDFConformance = TPDFConformanceType.PDF_A_3 then
+    pc.Font.Name := poEmbedded;
+  if EngineForceShaping and (not (pc.Font.Name in [poLinked, poEmbedded])) then
+    pc.Font.Name := poLinked;
+  pc.Font.WFontName := family;
+  pc.Font.LFontName := family;
+  if ptFontSize > 0 then
+    pc.Font.Size := ptFontSize
+  else
+    pc.Font.Size := Canvas.Font.Size;
+  pc.Font.Color := ColorToRGB(Canvas.Font.Color);
+  pc.Font.Bold := fsBold in Canvas.Font.Style;
+  pc.Font.Italic := fsItalic in Canvas.Font.Style;
+  pc.Font.Underline := fsUnderline in Canvas.Font.Style;
+  pc.Font.StrikeOut := fsStrikeOut in Canvas.Font.Style;
+  // (the shaping mode is the measurement one; rotated text keeps the legacy
+  // pipeline in the PDF canvas too)
+  if (RightToLeft or IsHtml) and Assigned(pc.InfoProvider) then
+    Text := pc.InfoProvider.NFCNormalize(Text);
+  singleline := (Alignment and AlignmentFlags_SingleLine) > 0;
+  if singleline then
+    Wordbreak := false;
+  recsize := ARect;
+  larray := pc.TextExtent(Text, recsize, Wordbreak, singleline, RightToLeft, IsHtml);
+  posy := ARect.Top;
+  if (Alignment and AlignmentFlags_AlignBottom) > 0 then
+    posy := ARect.Bottom - recsize.Bottom;
+  if (Alignment and AlignmentFlags_AlignVCenter) > 0 then
+    posy := ARect.Top + (((ARect.Bottom - ARect.Top) - recsize.Bottom) div 2);
+
+  painter := TRpTextPainter.Create(Canvas, aintdpix, aintdpiy);
+  try
+    if Clipping then
+      painter.ClipTo(ARect);
+    linetop := posy;
+    for i := 0 to Length(larray) - 1 do
+    begin
+      posx := ARect.Left;
+      if (Alignment and AlignmentFlags_AlignRight) > 0 then
+        posx := ARect.Right - larray[i].Width;
+      if (Alignment and AlignmentFlags_AlignHCenter) > 0 then
+        posx := ARect.Left + (((ARect.Right - ARect.Left) - larray[i].Width) div 2);
+      astring := Copy(Text, larray[i].Position, larray[i].Size);
+      dojustify := ((Alignment and AlignmentFlags_AlignHJustify) > 0) and
+        (not larray[i].LastLine) and (not RightToLeft);
+      if dojustify then
+      begin
+        // Space shared between the words, same arithmetic as the PDF canvas
+        lwords := TRpWideStrings.Create;
+        try
+          aword := '';
+          index := 1;
+          while index <= Length(astring) do
+          begin
+            if astring[index] <> ' ' then
+              aword := aword + astring[index]
+            else
+            begin
+              if Length(aword) > 0 then
+                lwords.Add(aword);
+              aword := '';
+            end;
+            Inc(index);
+          end;
+          if Length(aword) > 0 then
+            lwords.Add(aword);
+          SetLength(lwordinfos, lwords.Count);
+          SetLength(lwidths, lwords.Count);
+          alinesize := 0;
+          for index := 0 to lwords.Count - 1 do
+          begin
+            arec := ARect;
+            winfos := pc.TextExtent(lwords.Strings[index], arec, false, true,
+              RightToLeft, IsHtml);
+            if Length(winfos) > 0 then
+              lwordinfos[index] := winfos[0]
+            else
+              lwordinfos[index] := larray[i];
+            lwidths[index] := arec.Right - arec.Left;
+            alinesize := alinesize + lwidths[index];
+          end;
+          alinedif := ARect.Right - ARect.Left - alinesize;
+          if alinedif > 0 then
+          begin
+            if lwords.Count > 1 then
+              alinedif := alinedif div (lwords.Count - 1);
+            currpos := posx;
+            if drawbackground then
+              painter.FillRectTw(posx, linetop, ARect.Right, linetop + larray[i].Height,
+                BackColor);
+            for index := 0 to lwords.Count - 1 do
+            begin
+              // Decorations run on to the next word, so an underline stays continuous
+              decowidth := lwidths[index];
+              if index < lwords.Count - 1 then
+                decowidth := decowidth + alinedif;
+              EngineTextOut(painter, currpos, posy + larray[i].TopPos,
+                lwords.Strings[index], lwordinfos[index], decowidth, Rotation,
+                RightToLeft, IsHtml);
+              currpos := currpos + lwidths[index] + alinedif;
+            end;
+          end
+          else
+            // Overflowing line: drawn unjustified, as the PDF canvas does
+            dojustify := false;
+        finally
+          lwords.Free;
+        end;
+      end;
+      if not dojustify then
+      begin
+        if drawbackground then
+          painter.FillRectTw(posx, linetop, posx + larray[i].Width,
+            linetop + larray[i].Height, BackColor);
+        EngineTextOut(painter, posx, posy + larray[i].TopPos, astring, larray[i],
+          larray[i].Width, Rotation, RightToLeft, IsHtml);
+      end;
+      linetop := linetop + larray[i].Height;
+    end;
+  finally
+    painter.Free;
+  end;
+end;
+{$ENDIF}
+
 
 procedure TRpGDIDriver.DrawPage(apage:TRpMetaFilePage);
 var
@@ -2120,8 +3331,10 @@ begin
   bitmap.Canvas.Brush.Color:=CLXColorToVCLColor(BackColor);
   bitmap.Canvas.FillRect(rec);
 
-  dpix := Round(Screen.PixelsPerInch * scale);
-  dpiy := Round(Screen.PixelsPerInch * scale);
+  // Same resolution the page bitmap was sized with (UpdateBitmapSize):
+  // dpi defaults to the screen one, SaveMetafileToPNG sets the requested one
+  dpix := Round(dpi * scale);
+  dpiy := Round(dpi * scale);
   if dpix < 1 then dpix := 1;
   if dpiy < 1 then dpiy := 1;
 
@@ -2180,8 +3393,8 @@ begin
   if not Assigned(bitmap) then
    Raise Exception.Create(SRpGDIDriverNotInit);
   Canvas:=bitmap.Canvas;
-  dpix:=Round(Screen.PixelsPerInch * scale);
-  dpiy:=Round(Screen.PixelsPerInch * scale);
+  dpix:=Round(dpi * scale);
+  dpiy:=Round(dpi * scale);
   if dpix < 1 then dpix := 1;
   if dpiy < 1 then dpiy := 1;
  end;
@@ -2704,8 +3917,10 @@ begin
       for i := 0 to metafile.CurrentPageCount - 1 do
       begin
         apage := metafile.Pages[i];
+        // PrintObject takes the offset in twips (text, shapes and images):
+        // page i starts exactly at pixel row pageheight*i
         offset.X := 0;
-        offset.Y := pageheight * i;
+        offset.Y := Round(Int64(pageheight) * i * TWIPS_PER_INCHESS / resy);
         for j := 0 to apage.ObjectCount - 1 do
         begin
           aobj := apage.Objects[j];

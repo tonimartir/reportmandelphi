@@ -444,6 +444,7 @@ var
  pdfA3: boolean;
 begin
  areport:=nil;
+ abitmap:=nil;
  if not Assigned(PreviewControl) then
   exit;
  // Saves the metafile
@@ -556,7 +557,8 @@ begin
        if AskBitmapProps(horzres,vertres,mono) then
        begin
         ALastExecute(Self);
-        //abitmap:=MetafileToBitmap(PreviewControl.Metafile,true,mono,horzres,vertres);
+        // abitmap was freed without ever being assigned (access violation)
+        abitmap:=MetafileToBitmap(PreviewControl.Metafile,true,mono,horzres,vertres);
         try
          if assigned(abitmap) then
           abitmap.SaveToFile(SaveDialog1.FileName);

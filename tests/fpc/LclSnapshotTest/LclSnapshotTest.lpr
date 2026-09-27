@@ -3,9 +3,15 @@ program LclSnapshotTest;
 {$mode objfpc}{$H+}
 
 uses
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
   Interfaces, // LCL widgetset initialization
-  Classes, SysUtils, Graphics, Forms,
-  rpreport, rpmetafile, rplcldriver, rppreviewcontrol, rppreviewmetalcl, rplclpreview, rppdfdriver;
+  Classes, SysUtils, Graphics, Forms, IntfGraphics, FPImage,
+{$IFDEF UNIX}
+  cairocanvas,
+{$ENDIF}
+  rptypes, rpmdconsts, rpreport, rpmetafile, rplcldriver, rppreviewcontrol, rppreviewmetalcl, rplclpreview, rppdfdriver;
 
 function FindReportFile(const AFileName: string): string;
 var
@@ -110,6 +116,15 @@ begin
         png.SaveToFile(AOutPng);
       finally
         png.Free;
+      end;
+
+      // Reference: the PDF driver drawing this very metafile, with the report's
+      // own conformance. Rasterize it (pdftoppm -r 96) to compare with the PNG.
+      if AScale = 1.0 then
+      begin
+        WriteLn('7. Exporting the same metafile to the reference PDF...');
+        SaveMetafileToPDF(report.Metafile, ChangeFileExt(AOutPng, '') + '_ref.pdf', False,
+          report.Metafile.PDFConformance = TPDFConformanceType.PDF_A_3);
       end;
 
       report.EndPrint;
@@ -312,6 +327,582 @@ begin
   Result := True;
 end;
 
+{ ---------------------------------------------------------------------------
+  Automated rendering checks on metafiles built in code (TRpGDIDriver)
+  --------------------------------------------------------------------------- }
+
+const
+  TEST_DPI = 96;
+  LONG_TEXT = 'Clipping test text that is much longer than the box it is printed in, ' +
+    'so it wraps into several lines and would overflow the bottom of the box when ' +
+    'the text is not cut. More words, more lines, more overflow for the check.';
+
+function NewTestText(const AText: WideString; AAlign: Integer; ACut, AWrap, AHtml: Boolean;
+  AFontSize: Integer = 12): TRpTextObject;
+begin
+  Result.Text := AText;
+  Result.WFontName := 'Arial';
+  Result.LFontName := 'Helvetica';
+  Result.FontSize := AFontSize;
+  Result.FontRotation := 0;
+  Result.FontStyle := 0;
+  Result.FontColor := 0;
+  Result.Type1Font := Ord(poLinked);
+  Result.CutText := ACut;
+  Result.Alignment := AAlign;
+  Result.WordWrap := AWrap;
+  Result.RightToLeft := False;
+  Result.PrintStep := rpselectsize;
+  Result.Annotation := '';
+  Result.IsHtml := AHtml;
+end;
+
+function TwToPx(tw: Integer; dpi: Integer = TEST_DPI): Integer;
+begin
+  Result := Round(tw * dpi / 1440);
+end;
+
+function IsInk(const c: TFPColor): Boolean;
+begin
+  Result := (Integer(c.Red) + c.Green + c.Blue) div 3 < $A000;
+end;
+
+function IsRed(const c: TFPColor): Boolean;
+begin
+  Result := (c.Red > $A000) and (c.Green < $6000) and (c.Blue < $6000);
+end;
+
+// Dark pixels in [x1,x2) x [y1,y2)
+function CountInk(img: TLazIntfImage; x1, y1, x2, y2: Integer): Integer;
+var
+  x, y: Integer;
+begin
+  Result := 0;
+  if x1 < 0 then x1 := 0;
+  if y1 < 0 then y1 := 0;
+  if x2 > img.Width then x2 := img.Width;
+  if y2 > img.Height then y2 := img.Height;
+  for y := y1 to y2 - 1 do
+    for x := x1 to x2 - 1 do
+      if IsInk(img.Colors[x, y]) then
+        Inc(Result);
+end;
+
+// Horizontal extent of the ink in a band of rows; False when there is none
+function InkSpan(img: TLazIntfImage; x1, y1, x2, y2: Integer; out minx, maxx: Integer): Boolean;
+var
+  x, y: Integer;
+begin
+  minx := MaxInt;
+  maxx := -1;
+  if x1 < 0 then x1 := 0;
+  if y1 < 0 then y1 := 0;
+  if x2 > img.Width then x2 := img.Width;
+  if y2 > img.Height then y2 := img.Height;
+  for y := y1 to y2 - 1 do
+    for x := x1 to x2 - 1 do
+      if IsInk(img.Colors[x, y]) then
+      begin
+        if x < minx then minx := x;
+        if x > maxx then maxx := x;
+      end;
+  Result := maxx >= 0;
+end;
+
+function Check(ACond: Boolean; const AMsg: string): Boolean;
+begin
+  Result := ACond;
+  if ACond then
+    WriteLn('   [CHECK OK]     ', AMsg)
+  else
+    WriteLn('   [CHECK FAILED] ', AMsg);
+end;
+
+// Renders page 0 of the metafile with the LCL driver into an intf image
+function RenderPage(meta: TRpMetafileReport; const APng: string): TLazIntfImage;
+var
+  driver: TRpGDIDriver;
+  png: TPortableNetworkGraphic;
+begin
+  // PDF/A-3: embedded fonts, so the reference PDF below rasterizes with the
+  // very glyphs (line spacing depends on the conformance, both use this one)
+  meta.PDFConformance := TPDFConformanceType.PDF_A_3;
+  driver := TRpGDIDriver.Create;
+  try
+    driver.dpi := TEST_DPI;
+    driver.scale := 1.0;
+    driver.NewDocument(meta, 1, False);
+    driver.DrawPage(meta.Pages[0]);
+    Result := driver.bitmap.CreateIntfImage;
+    png := TPortableNetworkGraphic.Create;
+    try
+      png.Assign(driver.bitmap);
+      png.SaveToFile(APng);
+    finally
+      png.Free;
+    end;
+  finally
+    driver.Free;
+  end;
+  // The PDF driver drawing the same metafile, for visual comparison (PDF/A-3:
+  // fonts embedded, so a rasterizer draws the same glyphs)
+  SaveMetafileToPDF(meta, ChangeFileExt(APng, '') + '_ref.pdf', False, True);
+end;
+
+// CutText clips the text to its box; the same text without CutText overflows
+// (proves the check is meaningful). Also the ink of a left, a right aligned and
+// a justified text starts/ends at the box edges computed by the engine (the
+// right edge allows the side bearing of the last glyph: the PDF of the same
+// metafile ends 3-4 px before the box too).
+function TestTextClipAndAlign: Boolean;
+const
+  BOXW = 2880;   // 2 inches
+  BOXH = 480;
+  CUTL = 720;
+  FREEL = 5040;
+  TOPY = 1440;
+  ALGY = 5040;
+  ALGL = 1440;
+  ALGW = 5760;   // 4 inches
+var
+  meta: TRpMetafileReport;
+  img: TLazIntfImage;
+  below, inside, belowfree: Integer;
+  minx, maxx: Integer;
+  ok: Boolean;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking text clipping, alignment and justification');
+  WriteLn('--------------------------------------------------');
+  meta := TRpMetafileReport.Create(nil);
+  img := nil;
+  try
+    try
+      meta.NewPage;
+      meta.Pages[0].NewTextObject(TOPY, CUTL, BOXW, BOXH,
+        NewTestText(LONG_TEXT, AlignmentFlags_AlignLeft, True, True, False), $FFFFFF, True);
+      meta.Pages[0].NewTextObject(TOPY, FREEL, BOXW, BOXH,
+        NewTestText(LONG_TEXT, AlignmentFlags_AlignLeft, False, True, False), $FFFFFF, True);
+      meta.Pages[0].NewTextObject(ALGY, ALGL, ALGW, 400,
+        NewTestText('Left aligned', AlignmentFlags_AlignLeft, False, False, False), $FFFFFF, True);
+      meta.Pages[0].NewTextObject(ALGY + 600, ALGL, ALGW, 400,
+        NewTestText('Right aligned text with some words', AlignmentFlags_AlignRight, False, False, False), $FFFFFF, True);
+      meta.Pages[0].NewTextObject(ALGY + 1200, ALGL, ALGW, 1400,
+        NewTestText(LONG_TEXT, AlignmentFlags_AlignHJustify, False, True, False), $FFFFFF, True);
+      img := RenderPage(meta, 'snapshot_check_clip_align.png');
+      ok := True;
+      inside := CountInk(img, TwToPx(CUTL), TwToPx(TOPY), TwToPx(CUTL + BOXW), TwToPx(TOPY + BOXH));
+      below := CountInk(img, TwToPx(CUTL), TwToPx(TOPY + BOXH) + 2, TwToPx(CUTL + BOXW) + 20,
+        TwToPx(TOPY + BOXH) + 120);
+      belowfree := CountInk(img, TwToPx(FREEL), TwToPx(TOPY + BOXH) + 2, TwToPx(FREEL + BOXW) + 20,
+        TwToPx(TOPY + BOXH) + 120);
+      ok := Check(inside > 50, Format('CutText box has text inside (%d ink px)', [inside])) and ok;
+      ok := Check(below = 0, Format('CutText box: nothing below the box (%d ink px)', [below])) and ok;
+      ok := Check(belowfree > 50, Format('Same text without CutText overflows (%d ink px)', [belowfree])) and ok;
+      // Right edge of the cut box: nothing to the right either
+      ok := Check(CountInk(img, TwToPx(CUTL + BOXW) + 2, TwToPx(TOPY), TwToPx(FREEL) - 2,
+        TwToPx(TOPY + BOXH)) = 0, 'CutText box: nothing to the right of the box') and ok;
+
+      if InkSpan(img, 0, TwToPx(ALGY), img.Width, TwToPx(ALGY + 400), minx, maxx) then
+        ok := Check(Abs(minx - TwToPx(ALGL)) <= 3,
+          Format('Left aligned ink starts at the box left (%d vs %d)', [minx, TwToPx(ALGL)])) and ok
+      else
+        ok := Check(False, 'Left aligned text drawn');
+      if InkSpan(img, 0, TwToPx(ALGY + 600), img.Width, TwToPx(ALGY + 1000), minx, maxx) then
+        ok := Check(Abs(maxx - TwToPx(ALGL + ALGW)) <= 6,
+          Format('Right aligned ink ends at the box right (%d vs %d)', [maxx, TwToPx(ALGL + ALGW)])) and ok
+      else
+        ok := Check(False, 'Right aligned text drawn');
+      // First line of the justified paragraph spans the whole box
+      if InkSpan(img, 0, TwToPx(ALGY + 1200), img.Width, TwToPx(ALGY + 1200 + 260), minx, maxx) then
+        ok := Check((Abs(minx - TwToPx(ALGL)) <= 3) and (Abs(maxx - TwToPx(ALGL + ALGW)) <= 6),
+          Format('Justified first line spans the box (%d..%d vs %d..%d)',
+          [minx, maxx, TwToPx(ALGL), TwToPx(ALGL + ALGW)])) and ok
+      else
+        ok := Check(False, 'Justified text drawn');
+      Result := ok;
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestTextClipAndAlign: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    img.Free;
+    meta.Free;
+  end;
+end;
+
+// HTML runs keep their styles: a colored span is painted in its color.
+// Rotated text (90 degrees) runs upwards from its origin, as in the PDF.
+function TestHtmlRuns: Boolean;
+var
+  meta: TRpMetafileReport;
+  img: TLazIntfImage;
+  x, y, reds, minx, maxx, miny, maxy: Integer;
+  rot: TRpTextObject;
+  ok: Boolean;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking HTML runs (styles and colors)');
+  WriteLn('--------------------------------------------------');
+  meta := TRpMetafileReport.Create(nil);
+  img := nil;
+  try
+    try
+      meta.NewPage;
+      meta.Pages[0].NewTextObject(1440, 1440, 5760, 800,
+        NewTestText('Plain <span style="color:#FF0000">RED RED RED</span> <b>bold</b>',
+        AlignmentFlags_AlignLeft, False, True, True, 16), $FFFFFF, True);
+      rot := NewTestText('Rotated text', AlignmentFlags_AlignLeft, False, False, False, 16);
+      rot.FontRotation := 900;
+      meta.Pages[0].NewTextObject(5760, 2880, 2880, 400, rot, $FFFFFF, True);
+      img := RenderPage(meta, 'snapshot_check_html.png');
+      reds := 0;
+      for y := TwToPx(1440) to TwToPx(2240) do
+        for x := TwToPx(1440) to TwToPx(7200) do
+          if IsRed(img.Colors[x, y]) then
+            Inc(reds);
+      ok := Check(reds > 40, Format('Colored HTML span painted in red (%d red px)', [reds]));
+      // Origin (left, top + font size); the text goes up from there
+      minx := MaxInt; maxx := -1; miny := MaxInt; maxy := -1;
+      for y := TwToPx(5760 - 3000) to TwToPx(5760 + 1000) do
+        for x := TwToPx(2880 - 1000) to TwToPx(2880 + 1000) do
+          if IsInk(img.Colors[x, y]) then
+          begin
+            if x < minx then minx := x;
+            if x > maxx then maxx := x;
+            if y < miny then miny := y;
+            if y > maxy then maxy := y;
+          end;
+{$IFDEF MSWINDOWS}
+      // The Windows GDI path still anchors rotated text at the cell top (one
+      // line to the right of the PDF baseline origin): informational only
+      WriteLn(Format('   [INFO] Rotated text ink x %d..%d, y %d..%d (PDF origin x=%d)',
+        [minx, maxx, miny, maxy, TwToPx(2880)]));
+{$ELSE}
+      ok := Check((maxx >= 0) and (maxy - miny > 3 * (maxx - minx)) and
+        (maxy <= TwToPx(5760 + 16 * 20) + 2) and (maxx <= TwToPx(2880) + 2),
+        Format('Rotated text drawn upwards from its origin (x %d..%d, y %d..%d)',
+        [minx, maxx, miny, maxy])) and ok;
+{$ENDIF}
+      Result := ok;
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestHtmlRuns: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    img.Free;
+    meta.Free;
+  end;
+end;
+
+// SaveMetafileToPNG at 300 dpi: the page bitmap and its content use 300 dpi
+function TestPngDpi: Boolean;
+const
+  RL = 9000;
+  RT = 15000;
+  RW = 1440;
+  RH = 1000;
+var
+  meta: TRpMetafileReport;
+  png: TPortableNetworkGraphic;
+  img: TLazIntfImage;
+  ok: Boolean;
+  cx, cy: Integer;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking SaveMetafileToPNG at 300 dpi');
+  WriteLn('--------------------------------------------------');
+  meta := TRpMetafileReport.Create(nil);
+  png := nil;
+  img := nil;
+  try
+    try
+      meta.NewPage;
+      // Solid black rectangle near the bottom right corner of the page
+      meta.Pages[0].NewDrawObject(RT, RL, RW, RH, 0, 0, 0, 0, 0, 0, '');
+      meta.Pages[0].NewTextObject(RT - 600, RL, 2000, 400,
+        NewTestText('Bottom right', AlignmentFlags_AlignLeft, False, False, False), $FFFFFF, True);
+      if FileExists('snapshot_check_png300.png') then
+        DeleteFile('snapshot_check_png300.png');
+      SaveMetafileToPNG(meta, 'snapshot_check_png300.png', 300);
+      png := TPortableNetworkGraphic.Create;
+      png.LoadFromFile('snapshot_check_png300.png');
+      img := png.CreateIntfImage;
+      ok := Check((Abs(img.Width - TwToPx(meta.CustomX, 300)) <= 1) and
+        (Abs(img.Height - TwToPx(meta.CustomY, 300)) <= 1),
+        Format('PNG size is the page at 300 dpi (%dx%d)', [img.Width, img.Height]));
+      cx := TwToPx(RL + RW div 2, 300);
+      cy := TwToPx(RT + RH div 2, 300);
+      ok := Check(CountInk(img, cx - 5, cy - 5, cx + 5, cy + 5) = 100,
+        Format('Rectangle drawn at its 300 dpi position (%d,%d)', [cx, cy])) and ok;
+      ok := Check(CountInk(img, TwToPx(RL, 300), TwToPx(RT - 600, 300), TwToPx(RL + 2000, 300),
+        TwToPx(RT - 200, 300)) > 100, 'Text drawn at its 300 dpi position') and ok;
+      // At the 96 dpi position the page must be empty
+      ok := Check(CountInk(img, TwToPx(RL, 96), TwToPx(RT, 96), TwToPx(RL + RW, 96),
+        TwToPx(RT + RH, 96)) = 0, 'Nothing drawn at the screen dpi position') and ok;
+      Result := ok;
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestPngDpi: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    img.Free;
+    png.Free;
+    meta.Free;
+  end;
+end;
+
+// Model pen styles (VCL ordinals): 5 is the clear pen, no outline is drawn
+function TestShapePenStyles: Boolean;
+var
+  meta: TRpMetafileReport;
+  img: TLazIntfImage;
+  ok: Boolean;
+  lx, my: Integer;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking shape pen styles');
+  WriteLn('--------------------------------------------------');
+  meta := TRpMetafileReport.Create(nil);
+  img := nil;
+  try
+    try
+      meta.NewPage;
+      // Clear pen (5), black pen color, light (yellow) solid brush
+      meta.Pages[0].NewDrawObject(1440, 1440, 1440, 1440, 0, 0, $00FFFF, 5, 40, 0, '');
+      // Control: solid black pen (0), clear brush (1)
+      meta.Pages[0].NewDrawObject(1440, 4320, 1440, 1440, 0, 1, $00FFFF, 0, 40, 0, '');
+      img := RenderPage(meta, 'snapshot_check_pens.png');
+      my := TwToPx(1440 + 720);
+      lx := TwToPx(1440);
+      ok := Check(CountInk(img, lx - 2, my - 10, lx + 4, my + 10) = 0,
+        'Clear pen (model 5): no outline drawn');
+      lx := TwToPx(4320);
+      ok := Check(CountInk(img, lx - 2, my - 10, lx + 4, my + 10) > 10,
+        'Solid pen (model 0): outline drawn') and ok;
+      Result := ok;
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestShapePenStyles: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    img.Free;
+    meta.Free;
+  end;
+end;
+
+// DoMetafileToBitmap stacks the pages: page 2 content lands in the page 2 band
+function TestMultiPageBitmap: Boolean;
+const
+  RES = 50;
+var
+  meta: TRpMetafileReport;
+  bmp: TBitmap;
+  img: TLazIntfImage;
+  pageh, cx, cy, ty: Integer;
+  ok: Boolean;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking DoMetafileToBitmap page offsets');
+  WriteLn('--------------------------------------------------');
+  meta := TRpMetafileReport.Create(nil);
+  bmp := nil;
+  img := nil;
+  try
+    try
+      meta.NewPage;
+      meta.Pages[0].NewDrawObject(720, 720, 1440, 1440, 0, 0, 0, 0, 0, 0, '');
+      meta.NewPage;
+      meta.Pages[1].NewDrawObject(12000, 7200, 1440, 1440, 0, 0, 0, 0, 0, 0, '');
+      meta.Pages[1].NewTextObject(8000, 720, 4000, 600,
+        NewTestText('PAGE TWO TEXT', AlignmentFlags_AlignLeft, False, False, False, 20), $FFFFFF, True);
+      bmp := DoMetafileToBitmap(meta, nil, False, RES, RES);
+      img := bmp.CreateIntfImage;
+      pageh := (meta.CustomY * RES) div 1440;
+      ok := Check(img.Height = pageh * 2, Format('Bitmap holds two pages (%d = 2 x %d)', [img.Height, pageh]));
+      cx := TwToPx(720 + 720, RES);
+      cy := TwToPx(720 + 720, RES);
+      ok := Check(CountInk(img, cx - 3, cy - 3, cx + 3, cy + 3) = 36, 'Page 1 rectangle in the page 1 band') and ok;
+      cx := TwToPx(7200 + 720, RES);
+      cy := TwToPx(12000 + 720, RES);
+      ok := Check(CountInk(img, cx - 3, pageh + cy - 3, cx + 3, pageh + cy + 3) = 36,
+        'Page 2 rectangle in the page 2 band') and ok;
+      ok := Check(CountInk(img, cx - 3, cy - 3, cx + 3, cy + 3) = 0,
+        'Page 2 rectangle not drawn over page 1') and ok;
+      ty := TwToPx(8000, RES);
+      ok := Check(CountInk(img, TwToPx(720, RES), pageh + ty, TwToPx(4720, RES), pageh + ty + TwToPx(600, RES)) > 20,
+        'Page 2 text in the page 2 band') and ok;
+      ok := Check(CountInk(img, 0, ty - 30, img.Width, ty + 40) = 0,
+        'Page 2 text not drawn over page 1') and ok;
+      Result := ok;
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestMultiPageBitmap: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    img.Free;
+    bmp.Free;
+    meta.Free;
+  end;
+end;
+
+{$IFDEF UNIX}
+// Printing on Linux goes through the cairo printer canvas of the CUPS printer:
+// the engine renderer draws there with the canvas' own cairo context. The same
+// text is written to a PDF with TCairoPdfCanvas (rasterize it and compare with
+// snapshot_check_printcanvas.png, the bitmap rendering of the same calls).
+function TestCairoPrinterCanvas: Boolean;
+const
+  HTMLTXT = 'Printed <b>bold</b> <i>italic</i> <span style="color:#FF0000">red</span> ' +
+    'and a long line that wraps inside the box and is cut at the bottom of it, ' +
+    'several lines more than the box can hold.';
+var
+  driver: TRpGDIDriver;
+  pdfc: TCairoPdfCanvas;
+  bmp: TBitmap;
+  png: TPortableNetworkGraphic;
+  r: TRect;
+  sr: TSearchRec;
+  size: Int64;
+
+  procedure DrawOn(ACanvas: TCanvas);
+  begin
+    ACanvas.Font.Name := 'Arial';
+    ACanvas.Font.Size := 12;
+    ACanvas.Font.Style := [];
+    ACanvas.Font.Color := clBlack;
+    driver.TextRectHtml(ACanvas, r, HTMLTXT, AlignmentFlags_AlignLeft, True, True, 0, 0,
+      False, clWhite, 72, 72, True, False, 12);
+  end;
+
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking the cairo printer canvas (TCairoPdfCanvas)');
+  WriteLn('--------------------------------------------------');
+  r := Rect(1440, 1440, 1440 + 4320, 1440 + 900);
+  driver := TRpGDIDriver.Create;
+  try
+    try
+      if FileExists('snapshot_check_printcanvas.pdf') then
+        DeleteFile('snapshot_check_printcanvas.pdf');
+      pdfc := TCairoPdfCanvas.Create;
+      try
+        pdfc.OutputFileName := 'snapshot_check_printcanvas.pdf';
+        pdfc.PaperWidth := 595;
+        pdfc.PaperHeight := 842;
+        pdfc.BeginDoc;
+        DrawOn(pdfc);
+        pdfc.EndDoc;
+      finally
+        pdfc.Free;
+      end;
+      bmp := TBitmap.Create;
+      try
+        bmp.PixelFormat := pf24bit;
+        bmp.SetSize(595, 842);
+        bmp.Canvas.Brush.Color := clWhite;
+        bmp.Canvas.FillRect(0, 0, 595, 842);
+        DrawOn(bmp.Canvas);
+        png := TPortableNetworkGraphic.Create;
+        try
+          png.Assign(bmp);
+          png.SaveToFile('snapshot_check_printcanvas.png');
+        finally
+          png.Free;
+        end;
+      finally
+        bmp.Free;
+      end;
+      size := 0;
+      if FindFirst('snapshot_check_printcanvas.pdf', faAnyFile, sr) = 0 then
+      begin
+        size := sr.Size;
+        FindClose(sr);
+      end;
+      // cairo embeds the font subsets it draws with: a few KB at least
+      Result := Check(size > 4000, Format('Cairo PDF printed with embedded glyphs (%d bytes)', [size]));
+    except
+      on E: Exception do
+        WriteLn('ERROR in TestCairoPrinterCanvas: [', E.ClassName, '] ', E.Message);
+    end;
+  finally
+    driver.Free;
+  end;
+end;
+{$ENDIF}
+
+{$IFDEF MSWINDOWS}
+function RpGetGuiResources(hProcess: THandle; uiFlags: DWORD): DWORD; stdcall;
+  external 'user32.dll' name 'GetGuiResources';
+
+// Draws every page of the report at a range of preview scales (each scale is a
+// new set of font heights for the LCL font cache) with the glyph-exact path
+procedure RenderAtScales(const ARep: string; s0, s1, step: Double);
+var
+  report: TRpReport;
+  driver: TRpGDIDriver;
+  sc: Double;
+  i: Integer;
+begin
+  report := TRpReport.Create(nil);
+  driver := TRpGDIDriver.Create;
+  try
+    report.LoadFromFile(FindReportFile(ARep));
+    driver.UsePdfFonts := True;
+    report.BeginPrint(driver);
+    report.Metafile.RequestPage(MAX_PAGECOUNT);
+    sc := s0;
+    while sc < s1 do
+    begin
+      driver.scale := sc;
+      driver.NewDocument(report.Metafile, 1, False);
+      for i := 0 to report.Metafile.CurrentPageCount - 1 do
+        driver.DrawPage(report.Metafile.Pages[i]);
+      sc := sc + step;
+    end;
+    report.EndPrint;
+  finally
+    driver.Free;
+    report.Free;
+  end;
+end;
+
+// The glyph path must not leak GDI objects (fonts, regions) over long runs
+function TestGdiHandles: Boolean;
+var
+  c0, c1, c2: Integer;
+begin
+  Result := False;
+  WriteLn('--------------------------------------------------');
+  WriteLn('Checking GDI objects over repeated glyph rendering');
+  WriteLn('--------------------------------------------------');
+  try
+    c0 := RpGetGuiResources(GetCurrentProcess, 0);
+    // Warm up: fills the LCL font resource cache
+    RenderAtScales('htmltest.rep', 0.50, 1.50, 0.05);
+    RenderAtScales('boldold.rep', 0.50, 1.50, 0.05);
+    c1 := RpGetGuiResources(GetCurrentProcess, 0);
+    // New font heights (cache evictions), then the first ones again
+    RenderAtScales('htmltest.rep', 1.52, 2.52, 0.05);
+    RenderAtScales('boldold.rep', 1.52, 2.52, 0.05);
+    RenderAtScales('htmltest.rep', 0.51, 1.51, 0.05);
+    RenderAtScales('boldold.rep', 0.51, 1.51, 0.05);
+    c2 := RpGetGuiResources(GetCurrentProcess, 0);
+    WriteLn(Format('   GDI objects: start %d, after warm up %d, after 80 more renders %d', [c0, c1, c2]));
+    Result := Check(c2 - c1 <= 20, Format('GDI objects stable (+%d)', [c2 - c1]));
+  except
+    on E: Exception do
+      WriteLn('ERROR in TestGdiHandles: [', E.ClassName, '] ', E.Message);
+  end;
+end;
+{$ENDIF}
+
 var
   passed, total: Integer;
 begin
@@ -371,6 +962,37 @@ begin
   Inc(total);
   if TestMetafileExportPDFAndPNG then
     Inc(passed);
+
+  Inc(total);
+  if TestTextClipAndAlign then
+    Inc(passed);
+
+  Inc(total);
+  if TestHtmlRuns then
+    Inc(passed);
+
+  Inc(total);
+  if TestPngDpi then
+    Inc(passed);
+
+  Inc(total);
+  if TestMultiPageBitmap then
+    Inc(passed);
+
+  Inc(total);
+  if TestShapePenStyles then
+    Inc(passed);
+
+{$IFDEF UNIX}
+  Inc(total);
+  if TestCairoPrinterCanvas then
+    Inc(passed);
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+  Inc(total);
+  if TestGdiHandles then
+    Inc(passed);
+{$ENDIF}
 
   WriteLn('==================================================');
   WriteLn(Format('LCL Visual Test Results: %d / %d PASSED', [passed, total]));

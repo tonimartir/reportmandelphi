@@ -229,16 +229,19 @@ begin
   end;
 
   conteimage.Color := meta.BackColor;
+  // The escape-style (text only) driver of the metafile printer decides the
+  // font driver; drivername used to be read here before being assigned
+  drivername := Trim(GetPrinterEscapeStyleDriver(meta.PrinterSelect));
   istextonly := Length(drivername) > 0;
+  // The GDI driver does not own its FontDriver: free the previous ones
+  prdriver.FontDriver.Free;
+  prdriver.FontDriver := nil;
+  prdriver_internal.FontDriver.Free;
+  prdriver_internal.FontDriver := nil;
   if istextonly then
   begin
     prdriver.FontDriver := TRpTextDriver.Create;
     prdriver_internal.FontDriver := TRpTextDriver.Create;
-  end
-  else
-  begin
-    prdriver.FontDriver := nil;
-    prdriver_internal.FontDriver := nil;
   end;
   prdriver.NewDocument(meta, 1, false);
   prdriver_internal.NewDocument(meta, 1, false);
@@ -258,7 +261,6 @@ begin
   end;
   metafile.OnWorkAsyncError := WorkAsyncError;
   metafile.OnWorkProgress := OnWorkProgress;
-  drivername := Trim(GetPrinterEscapeStyleDriver(metafile.PrinterSelect));
   ReDrawPage;
 end;
 
@@ -273,6 +275,8 @@ begin
     FBitmap.Free;
   if Assigned(FIntBitmap) then
     FIntBitmap.Free;
+  prdriver.FontDriver.Free;
+  prdriver_internal.FontDriver.Free;
   prdriver.Free;
   prdriver_internal.Free;
   inherited Destroy;
