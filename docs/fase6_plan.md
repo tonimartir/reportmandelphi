@@ -296,7 +296,8 @@ siempre presente). El plugin GTK está pensado para GTK3; un hook propio quita
 y los tres paquetes: 15 contenedores, 5 a la vez) un contenedor nuevo y:
 
 - `.deb`: `apt install ./reportman-designer_<v>_amd64.deb` sin nada más
-  instalado (apt trae 78–92 paquetes); `ldd` sin "not found"; presentes las
+  instalado (apt trae 78–108 paquetes con GTK2 y 187–244 con Qt6, según la
+  distro; con Recommends); `ldd` sin "not found"; presentes las
   librerías que el motor abre con `dlopen`; ficheros instalados;
   shared-mime-info y desktop-file-utils registran el MIME y la asociación;
   `desktop-file-validate`; `--version` sin pantalla y aviso sin `DISPLAY`;
@@ -384,7 +385,8 @@ cbindings del `.deb` de Lazarus (fijado por sha256; se comprueba que el `.pro`
 es la 6.2.10), con qmake6 contra la Qt 6.2.4 de Ubuntu 22.04, los flags de
 endurecimiento de `dpkg-buildflags` (sin LTO) y `strip`, y la instala en
 `/opt/libqt6pas` (fuera de las rutas del sistema; `sha256.txt` al lado, que
-copia `build-info.txt`). Tarda unos 4 min, solo al construir la imagen. El
+copia `build-info.txt`). Tarda unos 4 min, solo al construir la imagen, y es
+repetible: dos compilaciones de la capa dieron el mismo sha256 (`08a72c70…`). El
 enlace del diseñador la encuentra con `lazbuild --opt=-Fl/opt/libqt6pas/lib`
 y el selftest con `LD_LIBRARY_PATH`. Compilada contra Qt 6.2.4 funciona con
 las Qt 6.2.4, 6.4.2, 6.8.2 y 6.10.2 de las distros probadas (Qt mantiene la
@@ -435,8 +437,12 @@ lanzador para que valga igual desde `/usr/bin`, `/opt`, el menú y la AppImage.
 Hace falta porque Qt 6, según su versión y el escritorio, prefiere Wayland en
 una sesión Wayland si está `qt6-wayland`, que Ubuntu 24.04/26.04 y Debian 13
 instalan como Recommends de `libqt6gui6`. `test-packages.sh` lo comprueba con una sesión Wayland simulada.
-Documentado en `docs/linux-install.md` y en la página de manual
-(`QT_QPA_PLATFORM`).
+Con el `.deb` instalado, weston y Xvfb (como XWayland) a la vez, en Ubuntu
+22.04/24.04/26.04 y Debian 13: sin `QT_QPA_PLATFORM` la ventana sale en X11;
+con `QT_QPA_PLATFORM=wayland`, y sin `DISPLAY`, sale en weston (la Qt 6.2 de
+Ubuntu 22.04 avisa "Wayland does not support QWindow::requestActivate()": la
+LCL activa ventanas, algo que Wayland no permite). Documentado en
+`docs/linux-install.md` y en la página de manual (`QT_QPA_PLATFORM`).
 
 **AppImage Qt6.** linuxdeploy despliega las dependencias del ejecutable
 (libQt6Pas con `LD_LIBRARY_PATH`, Qt 6.2.4 de Ubuntu 22.04, ICU 70, GLib,
@@ -456,7 +462,9 @@ nativo). Unos 31 MB (51 librerías, 70 MB sin comprimir; la ICU son 34 MB).
 
 **Pruebas.** Los dos selftest (Qt6 y GTK2) bajo Xvfb rompen la build; el
 de Qt6 con `QT_QPA_PLATFORM=xcb`. `test-packages.sh` prueba los tres paquetes
-en Ubuntu 22.04, 24.04, 26.04 y Debian 12, 13 (ver 6.6).
+en Ubuntu 22.04, 24.04, 26.04 y Debian 12, 13 (ver 6.6): las 15 pruebas pasan
+(unos 4,5 min, 5 contenedores a la vez). `build-linux.ps1` completo, con la
+capa de libQt6Pas reconstruida, tarda unos 12 min.
 
 ## Riesgos conocidos
 
