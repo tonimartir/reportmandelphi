@@ -2552,6 +2552,279 @@ begin
   LogMsg('TRpDesignerLCL.Execute verified');
 end;
 
+{ Phase 7.5: the undo history travels with the report XML (BINCUE), as in
+  Delphi (rpxmlstream hooks registered by rpmdundocuelcl) }
+
+const
+  // BINCUE of repman/repsamples/debugagentexample.rep, written by the Delphi
+  // designer (rpmdundocue TUndoCue.ToJSON)
+  DELPHI_CUE_JSON = '{"groupId":2,"undoOperations":[{"componentName":"REPORT",' +
+    '"componentClass":"TRPREPORT","date":"2026-05-29T14:18:58.364Z","properties":[' +
+    '{"propertyName":"pageHeight","propertyType":1,"oldValue":16837,"newValue":8120},' +
+    '{"propertyName":"pageWidth","propertyType":1,"oldValue":11906,"newValue":5742},' +
+    '{"propertyName":"streamFormat","propertyType":1,"oldValue":1,"newValue":3}],' +
+    '"expandedProperties":true,"operation":1,"groupId":1},' +
+    '{"componentName":"TRPDATAINFOITEM1","componentClass":"TRPDATAINFOITEM",' +
+    '"date":"2026-06-17T13:11:19.391Z","properties":[{"propertyName":"hubSchemaId",' +
+    '"propertyType":1,"oldValue":0,"newValue":34}],"expandedProperties":true,' +
+    '"operation":1,"groupId":2}],"redoOperations":[]}';
+  // What Delphi writes for an otAdd: \u escapes (Delphi escapes non ASCII),
+  // CR LF, nulls, booleans and a double (as in repsamples/bold.rep)
+  DELPHI_CUE_ESCAPES = '{"groupId":5,"undoOperations":[{"componentName":"TRpExpression0",' +
+    '"componentClass":"TRPEXPRESSION","parentName":"TRpSection0","oldItemIndex":27,' +
+    '"oldParentName":"TRpSection0","date":"2026-09-18T16:56:32.540Z","properties":[' +
+    '{"propertyName":"posX","propertyType":1,"oldValue":null,"newValue":4824},' +
+    '{"propertyName":"visible","propertyType":6,"oldValue":null,"newValue":true},' +
+    '{"propertyName":"expression","propertyType":3,"oldValue":null,' +
+    '"newValue":"''النص:''+\r\n#10"},' +
+    '{"propertyName":"ratio","propertyType":2,"oldValue":1.5,"newValue":2.25}],' +
+    '"expandedProperties":false,"operation":0,"groupId":5}],"redoOperations":[]}';
+
+function ReportXmlOf(rep: TRpReport): string;
+var
+  ms: TStringStream;
+  oldFormat: TRpStreamFormat;
+begin
+  oldFormat := rep.StreamFormat;
+  ms := TStringStream.Create('');
+  try
+    rep.StreamFormat := rpStreamXML;
+    rep.SaveToStream(ms);
+    Result := ms.DataString;
+  finally
+    rep.StreamFormat := oldFormat;
+    ms.Free;
+  end;
+end;
+
+function LoadReportFromText(const AText: string): TRpReport;
+var
+  ms: TStringStream;
+begin
+  Result := TRpReport.Create(nil);
+  ms := TStringStream.Create(AText);
+  try
+    Result.LoadFromStream(ms);
+  finally
+    ms.Free;
+  end;
+end;
+
+procedure TestUndoCueDelphiJson;
+var
+  cue, cue2: TUndoCue;
+  op: TChangeObjectOperation;
+  json: string;
+begin
+  LogMsg('7.5: undo history JSON compatible with the Delphi designer');
+  cue := TUndoCue.Create(nil);
+  cue2 := TUndoCue.Create(nil);
+  try
+    cue.FromJSON(DELPHI_CUE_JSON);
+    CheckInt(2, cue.UndoOperations.Count, 'Delphi cue: undo operations');
+    CheckInt(0, cue.RedoOperations.Count, 'Delphi cue: redo operations');
+    CheckInt(2, cue.GroupId, 'Delphi cue: groupId');
+    CheckInt(1, cue.LoadCount, 'Delphi cue: LoadCount');
+    op := cue.UndoOperations[0];
+    Check(op.operation = otModify, 'Delphi cue: otModify');
+    CheckStr('REPORT', op.componentName, 'Delphi cue: component');
+    CheckInt(3, op.properties.Count, 'Delphi cue: properties');
+    CheckStr('pageHeight', op.properties[0].propertyName, 'Delphi cue: property name');
+    Check(op.properties[0].propertyType = ptInteger, 'Delphi cue: property type');
+    CheckInt(16837, op.properties[0].oldValue, 'Delphi cue: old value');
+    CheckInt(8120, op.properties[0].newValue, 'Delphi cue: new value');
+    CheckStr('TRPDATAINFOITEM1', cue.UndoOperations[1].componentName, 'Delphi cue: second operation');
+    CheckInt(2, cue.UndoOperations[1].groupId, 'Delphi cue: second group');
+    // Written back compact (as Delphi) and read again without changes
+    json := cue.ToJSON;
+    Check(Copy(json, 1, 11) = '{"groupId":', 'LCL cue JSON is compact: ' + Copy(json, 1, 40));
+    Check(Pos('": ', json) = 0, 'LCL cue JSON has no blanks');
+    cue2.FromJSON(json);
+    CheckStr(json, cue2.ToJSON, 'LCL cue JSON round trip');
+
+    cue.FromJSON(DELPHI_CUE_ESCAPES);
+    CheckInt(1, cue.UndoOperations.Count, 'Delphi escapes: operations');
+    op := cue.UndoOperations[0];
+    Check(op.operation = otAdd, 'Delphi escapes: otAdd');
+    CheckInt(27, op.oldItemIndex, 'Delphi escapes: oldItemIndex');
+    CheckStr('TRpSection0', op.parentName, 'Delphi escapes: parent');
+    Check(not op.expandedProperties, 'Delphi escapes: expandedProperties');
+    Check(VarIsNull(op.properties[0].oldValue), 'Delphi escapes: null old value of an otAdd');
+    CheckInt(4824, op.properties[0].newValue, 'Delphi escapes: integer');
+    Check(op.properties[1].newValue = True, 'Delphi escapes: boolean');
+    CheckStr('''' + #$D8#$A7#$D9#$84#$D9#$86#$D8#$B5 + ':''+' + #13#10 + '#10',
+      VarToStr(op.properties[2].newValue), 'Delphi escapes: \u escapes and CR LF as UTF-8');
+    Check(Abs(Double(op.properties[3].newValue) - 2.25) < 1E-9, 'Delphi escapes: double');
+    json := cue.ToJSON;
+    cue2.FromJSON(json);
+    CheckStr(json, cue2.ToJSON, 'LCL cue JSON round trip with UTF-8 text');
+    CheckStr(VarToStr(op.properties[2].newValue), VarToStr(cue2.UndoOperations[0].properties[2].newValue),
+      'UTF-8 text kept by the LCL JSON');
+  finally
+    cue2.Free;
+    cue.Free;
+  end;
+  LogMsg('Undo history JSON compatible with Delphi verified');
+end;
+
+procedure TestUndoCueInReportXml;
+var
+  rep, rep2, rep3: TRpReport;
+  sec, sec3: TRpSection;
+  lab: TRpLabel;
+  cue, cue2: TUndoCue;
+  xml: string;
+  oldX: Integer;
+begin
+  LogMsg('7.5: undo history saved and read with the report XML (BINCUE)');
+  rep := NewEngineReport(sec);
+  rep2 := nil;
+  rep3 := nil;
+  try
+    cue := TUndoCue(rep.UndoCue);
+    lab := AddEngineLabel(rep, sec, 'CUELAB1');
+    oldX := lab.PosX;
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, oldX + 777));
+    xml := ReportXmlOf(rep);
+    Check(Pos('<BINCUE', xml) > 0, 'report XML carries the undo history');
+    rep2 := LoadReportFromText(xml);
+    Check(rep2.UndoCue is TUndoCue, 'reading the XML gives the report its undo cue');
+    cue2 := TUndoCue(rep2.UndoCue);
+    CheckInt(1, cue2.UndoOperations.Count, 'history read from the XML');
+    CheckStr(cue.ToJSON, cue2.ToJSON, 'the same history');
+    cue2.Undo.Free;
+    CheckInt(oldX, TRpLabel(FindItem(rep2, 'CUELAB1')).PosX, 'the history read undoes on the loaded report');
+    // An empty history is not written (as Delphi)
+    rep3 := NewEngineReport(sec3);
+    Check(Pos('BINCUE', ReportXmlOf(rep3)) = 0, 'no BINCUE for an empty history');
+  finally
+    rep3.Free;
+    rep2.Free;
+    rep.Free;
+  end;
+  LogMsg('Undo history in the report XML verified');
+end;
+
+procedure TestHistoryExtendedFrom;
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  lab: TRpLabel;
+  cue, other: TUndoCue;
+  base, extended: string;
+begin
+  LogMsg('7.5: history returned by the design assistant (HistoryExtendedFrom)');
+  rep := NewEngineReport(sec);
+  other := TUndoCue.Create(nil);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    lab := AddEngineLabel(rep, sec, 'EXTLAB1');
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, 100));
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, 200));
+    cue.MarkClean;
+    base := cue.ToJSON;
+    // The assistant returns the history with one operation on top
+    other.FromJSON(base);
+    other.AddOperation(NewPosXOp(other.GetGroupId, lab, sec, 300));
+    extended := other.ToJSON;
+    cue.FromJSON(extended);
+    cue.HistoryExtendedFrom(2);
+    CheckInt(3, cue.UndoOperations.Count, 'extended history');
+    Check(rep.Modified and cue.IsDirty, 'a history extended after the clean point is dirty');
+    cue.Undo.Free;
+    Check(not rep.Modified, 'undoing the new operation reaches the saved state');
+    // Clean point in the redo branch: unreachable after the extension
+    cue.Redo.Free;
+    cue.MarkClean;
+    cue.Undo.Free;
+    CheckInt(1, cue.RedoOperations.Count, 'one operation to redo');
+    cue.FromJSON(extended);
+    cue.RedoOperations.Add(TChangeObjectOperation.Create(otModify, 99));
+    cue.HistoryExtendedFrom(2);
+    CheckInt(0, cue.RedoOperations.Count, 'new operations discard the redo branch');
+    Check(cue.IsDirty and rep.Modified, 'a clean point after the base is lost');
+  finally
+    other.Free;
+    rep.Free;
+  end;
+  LogMsg('HistoryExtendedFrom verified');
+end;
+
+procedure TestDesignerKeepsHistory(const ASamplePath: string);
+var
+  mf: TFRpMainFLCL;
+  sec: TRpSection;
+  lab: TRpLabel;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  tmp, sample, content: string;
+  sl: TStringList;
+begin
+  LogMsg('7.5: the designer keeps the undo history of the reports it opens and saves');
+  tmp := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_bincue_test.rep';
+  mf := TFRpMainFLCL.Create(nil);
+  sl := TStringList.Create;
+  try
+    // A Delphi report with its history (repsamples/debugagentexample.rep)
+    sample := ExtractFilePath(ASamplePath) + 'debugagentexample.rep';
+    if FileExists(sample) then
+    begin
+      mf.OpenReportFile(sample);
+      cue := TUndoCue(mf.Report.UndoCue);
+      CheckInt(2, cue.UndoOperations.Count, 'Delphi report: history loaded with it');
+      Check(not mf.Report.Modified, 'Delphi report: opened unmodified');
+      Check(mf.BtnUndo.Enabled, 'Delphi report: Undo enabled');
+      CheckInt(8120, mf.Report.PageHeight, 'Delphi report: page height');
+      CheckInt(34, mf.Report.DataInfo.Items[0].HubSchemaId, 'Delphi report: schema of the dataset');
+      mf.DoUndo;
+      CheckInt(0, mf.Report.DataInfo.Items[0].HubSchemaId, 'Delphi history: undo of the dataset change');
+      mf.DoUndo;
+      CheckInt(16837, mf.Report.PageHeight, 'Delphi history: undo of the page height');
+      CheckInt(11906, mf.Report.PageWidth, 'Delphi history: undo of the page width');
+      Check(not cue.CanUndo and mf.Report.Modified, 'Delphi history undone (modified)');
+      // No save question for the next report
+      cue.MarkClean;
+    end
+    else
+      LogMsg('SKIP: ' + sample + ' not found');
+
+    // Saved as XML: the history goes with the file
+    mf.NewReport;
+    sec := mf.Report.SubReports[0].SubReport.Sections[mf.Report.SubReports[0].SubReport.FirstDetail].Section;
+    cue := TUndoCue(mf.Report.UndoCue);
+    lab := AddEngineLabel(mf.Report, sec, 'HISTLAB1');
+    op := TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+    op.componentName := lab.Name;
+    op.componentClass := 'TRPLABEL';
+    op.parentName := sec.Name;
+    cue.AddAllComponentProperties(lab, op);
+    cue.AddOperation(op);
+    cue.AddOperation(NewPosXOp(cue.GetGroupId, lab, sec, lab.PosX + 500));
+    mf.Report.StreamFormat := rpStreamXML;
+    mf.SaveReportFile(tmp);
+    sl.LoadFromFile(tmp);
+    content := sl.Text;
+    Check(Pos('<BINCUE', content) > 0, 'XML report file carries the history');
+    mf.OpenReportFile(tmp);
+    cue := TUndoCue(mf.Report.UndoCue);
+    CheckInt(2, cue.UndoOperations.Count, 'history kept when the file is opened again');
+    Check(not mf.Report.Modified, 'opened unmodified');
+    mf.DoUndo;
+    mf.DoUndo;
+    Check(FindItem(mf.Report, 'HISTLAB1') = nil, 'the saved history undoes the saved changes');
+    // The text format (the default) does not carry it, as in Delphi
+    mf.Report.StreamFormat := rpStreamText;
+    mf.SaveReportFile(tmp);
+    mf.OpenReportFile(tmp);
+    CheckInt(0, TUndoCue(mf.Report.UndoCue).UndoOperations.Count, 'text format: no history');
+  finally
+    sl.Free;
+    mf.Free;
+    DeleteFile(tmp);
+  end;
+  LogMsg('Designer history with the report verified');
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -2571,6 +2844,11 @@ begin
     t.TestLibraryTree;
     t.TestUserParams;
     t.TestDesignerExecute(ASamplePath);
+    // Phase 7.5: undo history with the report (BINCUE)
+    TestUndoCueDelphiJson;
+    TestUndoCueInReportXml;
+    TestHistoryExtendedFrom;
+    TestDesignerKeepsHistory(ASamplePath);
   finally
     t.Free;
   end;

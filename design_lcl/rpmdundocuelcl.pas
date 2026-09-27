@@ -85,6 +85,7 @@ type
     FOnChange: TNotifyEvent;
     FUpdateCount: Integer;
     FChangePending: Boolean;
+    FLoadCount: Integer;
     procedure DoChange;
     procedure TrimHistory;
     procedure ApplySwapOperation(const className: string; down: Boolean;
@@ -142,10 +143,22 @@ type
     function HistoryUsesName(const AName: string): Boolean;
     function IsDirty: Boolean;
     procedure TruncateHistory(MaxCount: Integer);
+    // Same JSON as the Delphi cue (rpmdundocue): the report XML carries it as
+    // BINCUE (rpxmlstream, through the hooks registered by this unit)
     function ToJSON: string;
+    // Replaces the whole history; the clean point is kept (see
+    // HistoryExtendedFrom)
     procedure FromJSON(const jsonStr: string);
+    // After FromJSON with a history that keeps the first ABaseCount
+    // operations and adds new ones on top (the design assistant returns the
+    // report with the operations of its change): the new operations discard
+    // the redo branch and a clean point after ABaseCount can not be reached
+    // again, as when AddOperation records them. Report.Modified follows.
+    procedure HistoryExtendedFrom(ABaseCount: Integer);
 
     property GroupId: Integer read FGroupId;
+    // Times FromJSON replaced the history (a document with BINCUE was read)
+    property LoadCount: Integer read FLoadCount;
     property Report: TRpReport read FReport write FReport;
     property MaxOperations: Integer read FMaxOperations write FMaxOperations;
     property CleanOpIndex: Integer read FCleanOpIndex;
@@ -172,7 +185,8 @@ function FindItemUndoCue(AItem: TRpCommonComponent): TUndoCue;
 implementation
 
 uses
-  TypInfo, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams;
+  TypInfo, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams,
+  rpxmlstream;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
 
@@ -1095,6 +1109,20 @@ begin
   DoChange;
 end;
 
+procedure TUndoCue.HistoryExtendedFrom(ABaseCount: Integer);
+begin
+  if UndoOperations.Count > ABaseCount then
+  begin
+    RedoOperations.Clear;
+    if FCleanOpIndex > ABaseCount then
+      FCleanOpIndex := -1;
+  end;
+  TrimHistory;
+  if Assigned(FReport) then
+    FReport.Modified := IsDirty;
+  DoChange;
+end;
+
 function TUndoCue.CanUndo: Boolean;
 begin
   Result := Assigned(UndoOperations) and (UndoOperations.Count > 0);
@@ -1799,7 +1827,9 @@ begin
       redoArr.Add(RedoOperations[i].ToJSON);
     root.Add('redoOperations', redoArr);
 
-    Result := root.AsJSON;
+    // Compact, as the Delphi TJSONObject.ToJSON (AsJSON adds blanks): it
+    // travels hex encoded in the report XML (BINCUE)
+    Result := root.FormatJSON([foSingleLineArray, foSingleLineObject, foSkipWhiteSpace], 0);
   finally
     root.Free;
   end;
@@ -2014,6 +2044,7 @@ var
 begin
   UndoOperations.Clear;
   RedoOperations.Clear;
+  Inc(FLoadCount);
   try
     if Trim(jsonStr) = '' then Exit;
 
@@ -2065,5 +2096,42 @@ begin
     DoChange;
   end;
 end;
+
+{ BINCUE hooks of rpxmlstream: the undo cue travels with the report XML, as
+  in Delphi (the AI design request sends it and the server returns it with
+  the operations of its change) }
+
+function UndoCueToJsonHook(AUndoCue: TObject): string;
+begin
+  // Delphi writes nothing when the history is empty
+  Result := '';
+  if (AUndoCue is TUndoCue) and
+     ((TUndoCue(AUndoCue).UndoOperations.Count > 0) or
+      (TUndoCue(AUndoCue).RedoOperations.Count > 0)) then
+    Result := TUndoCue(AUndoCue).ToJSON;
+end;
+
+procedure UndoCueFromJsonHook(AReport: TComponent; const AJson: string);
+var
+  rep: TRpBaseReport;
+begin
+  if not (AReport is TRpBaseReport) then
+    Exit;
+  rep := TRpBaseReport(AReport);
+  // As Delphi: the report gets a cue when it has none; a designer reloading
+  // a document into its report keeps its own cue object
+  if (rep.UndoCue = nil) and (AReport is TRpReport) then
+    rep.UndoCue := TUndoCue.Create(TRpReport(AReport));
+  if rep.UndoCue is TUndoCue then
+    TUndoCue(rep.UndoCue).FromJSON(AJson);
+end;
+
+initialization
+  RpUndoCueToJson := UndoCueToJsonHook;
+  RpUndoCueFromJson := UndoCueFromJsonHook;
+
+finalization
+  RpUndoCueToJson := nil;
+  RpUndoCueFromJson := nil;
 
 end.

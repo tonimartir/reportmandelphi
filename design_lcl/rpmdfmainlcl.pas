@@ -30,11 +30,29 @@ uses
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
-  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl;
+  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl, rpbasereport, rpdatahttp,
+  rpreportdesignercontracts, rpaithreadslcl;
 
 type
   TFRpMainFLCL = class(TForm)
   private
+    // Design assistant (the chat of rpmdfmainvcl): dataset context of the
+    // requests, refreshed in a worker thread
+    FDesignMailbox: TRpAsyncMailbox;
+    FDesignMailboxRef: IRpAsyncMailbox;
+    FDesignContextRefreshVersion: Integer;
+    FDesignChatContextJson: string;
+    FDesignChatContextInitialized: Boolean;
+    FDesignChatPendingPrompt: string;
+    FDesignChatValidatedPrompt: string;
+    FDesignContextRefreshRunning: Boolean;
+    // Report changes blocked by this form during an inference
+    FDesignInferenceDepth: Integer;
+    FDesignApplyCount: Integer;
+    // The report content is being replaced: the views are detached
+    FReplacingReport: Boolean;
+    // The online initialization of the hidden AI panel waits until it is shown
+    FChatOnlinePending: Boolean;
     FReport: TRpReport;
     FFileName: string;
     FOwnsReport: Boolean;
@@ -119,7 +137,10 @@ type
     function CreateDesignReport: TRpReport;
     function LoadDesignReport(AStream: TStream): TRpReport;
     procedure DetachReport;
-    procedure InstallReport(ANewReport: TRpReport; const AFileName: string);
+    // AKeepHistory: the undo history loaded with the report (BINCUE) is kept,
+    // as in the VCL designer; new reports start with an empty one
+    procedure InstallReport(ANewReport: TRpReport; const AFileName: string;
+      AKeepHistory: Boolean);
     function GetUndoCue: TUndoCue;
     function GetLibraryConnections: TRpDatabaseInfoList;
     function SaveCurrentReport: Boolean;
@@ -167,9 +188,41 @@ type
     procedure MenuHelpAboutClick(Sender: TObject);
     procedure MenuViewAIChatClick(Sender: TObject);
     procedure ApplyChatPanelVisibility;
+    function GetShowAIChat: Boolean;
+    procedure SetShowAIChat(Value: Boolean);
+    procedure LoadDesignerPreferences;
+    procedure SaveDesignerPreferences;
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string);
     procedure InitializeDesignChatSchemaSelection;
+    // Design assistant, as rpmdfmainvcl
+    procedure ConfigureDesignChat;
+    procedure ConfigureReportChangeBlocking;
+    function ReportBlockChanges(Sender: TRpBaseReport; const AReason: string): Boolean;
+    procedure DesignInferenceBegin(Sender: TObject);
+    procedure DesignInferenceEnd(Sender: TObject);
+    function BuildDesignChatRequestForFrame(Sender: TObject;
+      const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
+      TRpApiPreprocessSqlContextRequest;
+    procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+      const AModifiedReportDocument: string);
+    procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure StopDesignChatRequest(Sender: TObject);
+    procedure RefreshDesignChatContext(Sender: TObject);
+    procedure ResetDesignChatContextCache;
+    procedure CancelDesignChat;
+    procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
+      ANotifyOnSuccess: Boolean);
+    procedure HandleDesignAsyncMessage(AMessage: TRpAsyncMessage);
+    function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+      const AErrorMessage: string): string;
+    function ConfirmDesignPromptWithDatasetErrors(
+      const ADatasetErrorMessage: string): Boolean;
+    procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
+    procedure BeginReportReplace;
+    procedure EndReportReplace;
     procedure MenuFileExitClick(Sender: TObject);
     procedure DesignerToolChange(Sender: TObject);
     procedure StructureUndoRedo(Sender: TObject);
@@ -251,6 +304,20 @@ type
     // Marks the report dirty for a change that is not recorded in the cue
     procedure MarkExternalChange;
     procedure EmbedInControl(AParent: TWinControl);
+    // Design assistant (rpmdfmainvcl). The request carries the report XML
+    // with the undo history (BINCUE), the chat schema and the dataset
+    // context of the last refresh.
+    function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+    procedure ApplyPreprocessSqlContextResult(AResult: TRpApiPreprocessSqlContextResult);
+    // The report XML the assistant receives (with the undo history)
+    function SaveReportAsXml: string;
+    // Reloads the document returned by the assistant into the same report
+    // object and refreshes the designer (rpmdfmainvcl). Its undo history
+    // comes with it (BINCUE, with the operations of the change on top of the
+    // previous ones): Undo reverts the change step by step. A document that
+    // does not load raises and leaves the report as it was.
+    procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
 
     property Report: TRpReport read FReport write SetReport;
     property FileName: string read FFileName write SetFileName;
@@ -260,10 +327,19 @@ type
     property DesignerFrame: TFRpDesignFrameLCL read FDesignerFrame;
     property ObjInsp: TFRpObjInspLCL read FObjInsp;
     property Structure: TFRpStructureLCL read FStructure;
-    // AI chat panel (account, model, schema and chat), as in rpmdfmainvcl.
-    // The design assistant is connected to it in phase 7.5.
+    // AI chat panel (account, model, schema and chat) with the design
+    // assistant, as in rpmdfmainvcl
     property ChatFrame: TFRpChatFrame read FChatFrame;
     property AIChatPanel: TPanel read PAIPanel;
+    // View > AI chat; saved in the designer preferences (Preferences/
+    // ShowAIChat of the repmand file, as the VCL designer)
+    property ShowAIChat: Boolean read GetShowAIChat write SetShowAIChat;
+    property AIChatMenuItem: TMenuItem read MenuViewAIChat;
+    // Dataset context sent with the design requests (JSON)
+    property DesignChatContextJson: string read FDesignChatContextJson;
+    property DesignContextRefreshRunning: Boolean read FDesignContextRefreshRunning;
+    // Documents applied by ApplyModifiedReportDocument
+    property DesignApplyCount: Integer read FDesignApplyCount;
     // Hides New/Open/Save/Save as (TRpDesignerLCL, as rpmdesignervcl does);
     // closing a modified report then asks whether the changes are accepted
     property HostedMode: Boolean read FHostedMode write SetHostedMode;
@@ -271,9 +347,794 @@ type
     property SaveAccepted: Boolean read FSaveAccepted;
   end;
 
+var
+  // Preferences file of the designer. Empty: the one of the VCL designer
+  // (repmand in the user configuration folder); tests use a sandbox
+  RpDesignerLCLConfigFile: string = '';
+
 implementation
 
 {$R *.lfm}
+
+uses
+  IniFiles, DB, rpjsonfpc, rpauthmanager, rpxmlstream, rptypeval, rpeval,
+  rpalias;
+
+const
+  SDesignChatInitialMessage =
+    'Describe report changes here or ask for assistance. Any change can be undone.';
+  // Separator of the schema only field entries (alias, field, type)
+  CSchemaFieldSep = #1;
+
+type
+  { Dataset context of the design requests (the payload of WM_USER + 207 in
+    rpmdfmainvcl). ContextReport is the copy of the report whose datasets the
+    worker opened; the payload owns it. }
+  TRpDesignContextPayload = class(TRpAsyncMessage)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+    OpenErrors: TStringList;
+    SchemaOnlyFields: TStringList;
+    SchemaOnlyErrors: TStringList;
+    ContextReport: TRpReport;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  { The anonymous thread of BeginDesignChatContextRefresh: opens the datasets
+    of a copy of the report (PrepareLiveContext) and reads the schema of the
+    Reportman Agent datasets }
+  TRpDesignContextWorker = class(TRpAsyncWorker)
+  public
+    RequestVersion: Integer;
+    Report: TRpReport;
+    destructor Destroy; override;
+  protected
+    procedure Run; override;
+  end;
+
+constructor TRpDesignContextPayload.Create;
+begin
+  inherited Create;
+  OpenErrors := TStringList.Create;
+  SchemaOnlyFields := TStringList.Create;
+  SchemaOnlyErrors := TStringList.Create;
+end;
+
+destructor TRpDesignContextPayload.Destroy;
+begin
+  ContextReport.Free;
+  SchemaOnlyErrors.Free;
+  SchemaOnlyFields.Free;
+  OpenErrors.Free;
+  inherited Destroy;
+end;
+
+// The connection of a dataset, nil when it does not exist.
+// TRpDatabaseInfoList.ItemByName raises instead: the VCL code that expects
+// nil from it fails with a dataset without a valid connection.
+function FindDatabaseInfo(AReport: TRpReport; const AAlias: string): TRpDatabaseInfoItem;
+var
+  LIndex: Integer;
+begin
+  Result := nil;
+  LIndex := AReport.DatabaseInfo.IndexOf(AAlias);
+  if LIndex >= 0 then
+    Result := AReport.DatabaseInfo.Items[LIndex];
+end;
+
+{ Dataset context (rpchatdialogvcl: CollectAgentSchemaOnlyContext and
+  BuildDesignExpressionContextJson, without the expression dialog) }
+
+function EncodeSchemaFieldEntry(const ADatasetAlias, AFieldName,
+  ADataType: string): string;
+begin
+  Result := Trim(ADatasetAlias) + CSchemaFieldSep + Trim(AFieldName) +
+    CSchemaFieldSep + Trim(ADataType);
+end;
+
+function SchemaFieldEntryAlias(const AEntry: string): string;
+var
+  LPos: Integer;
+begin
+  LPos := Pos(CSchemaFieldSep, AEntry);
+  if LPos > 0 then
+    Result := Copy(AEntry, 1, LPos - 1)
+  else
+    Result := '';
+end;
+
+// The part of AEntry after its first separator ('' when there is none)
+function SchemaFieldEntryRest(const AEntry: string): string;
+var
+  LPos: Integer;
+begin
+  LPos := Pos(CSchemaFieldSep, AEntry);
+  if LPos > 0 then
+    Result := Copy(AEntry, LPos + 1, MaxInt)
+  else
+    Result := '';
+end;
+
+function SchemaFieldEntryFieldName(const AEntry: string): string;
+var
+  LRest: string;
+  LPos: Integer;
+begin
+  Result := '';
+  if Pos(CSchemaFieldSep, AEntry) <= 0 then
+    Exit;
+  LRest := SchemaFieldEntryRest(AEntry);
+  LPos := Pos(CSchemaFieldSep, LRest);
+  if LPos > 0 then
+    Result := Copy(LRest, 1, LPos - 1)
+  else
+    Result := LRest;
+end;
+
+function SchemaFieldEntryDataType(const AEntry: string): string;
+var
+  LRest: string;
+begin
+  Result := '';
+  if Pos(CSchemaFieldSep, AEntry) <= 0 then
+    Exit;
+  LRest := SchemaFieldEntryRest(AEntry);
+  if Pos(CSchemaFieldSep, LRest) > 0 then
+    Result := SchemaFieldEntryRest(LRest);
+end;
+
+function MapSchemaTypeToSemanticType(const ADataType: string): string;
+var
+  LType: string;
+begin
+  LType := LowerCase(Trim(ADataType));
+  if (LType = 'system.int16') or (LType = 'system.int32') or
+    (LType = 'system.int64') or (LType = 'int16') or (LType = 'int32') or
+    (LType = 'int64') then
+    Result := 'integer'
+  else if (LType = 'system.decimal') or (LType = 'system.double') or
+    (LType = 'system.single') or (LType = 'decimal') or (LType = 'double') or
+    (LType = 'single') then
+    Result := 'float'
+  else if LType = 'system.boolean' then
+    Result := 'boolean'
+  else if LType = 'system.datetime' then
+    Result := 'datetime'
+  else if LType = 'system.byte[]' then
+    Result := 'blob'
+  else
+    Result := 'string';
+end;
+
+function GetMappedError(AErrors: TStrings; const AAlias, AName: string): string;
+var
+  LIndex: Integer;
+begin
+  Result := '';
+  if AErrors = nil then
+    Exit;
+  LIndex := AErrors.IndexOfName(Trim(AAlias));
+  if LIndex >= 0 then
+  begin
+    Result := Trim(AErrors.ValueFromIndex[LIndex]);
+    if Result <> '' then
+      Exit;
+  end;
+  if Trim(AName) <> '' then
+  begin
+    LIndex := AErrors.IndexOfName(Trim(AName));
+    if LIndex >= 0 then
+      Result := Trim(AErrors.ValueFromIndex[LIndex]);
+  end;
+end;
+
+// Fields of the Reportman Agent (rpdbHttp) datasets read from the Hub schema
+// (they are not opened): entries of EncodeSchemaFieldEntry, errors by alias
+procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
+  AErrors: TStrings);
+var
+  I, J: Integer;
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LHttp: TRpDatabaseHttp;
+  LConnectionParams: TStringList;
+  LResponse, LRoot: TJSONObject;
+  LColumns, LRows: TJSONArray;
+  LColumnIndexes: TStringList;
+  LRow: TJSONArray;
+  LColIndex, LDataTypeIndex: Integer;
+  LFieldName, LDataType, LAlias: string;
+
+  function ReadCellString(ARow: TJSONArray; AIndex: Integer): string;
+  var
+    LValue: TJSONValue;
+  begin
+    Result := '';
+    if (ARow = nil) or (AIndex < 0) or (AIndex >= ARow.Count) then
+      Exit;
+    LValue := ARow.Items[AIndex];
+    if (LValue <> nil) and (not (LValue is TJSONNull)) then
+      Result := LValue.Value;
+  end;
+
+begin
+  if AFields <> nil then
+    AFields.Clear;
+  if AErrors <> nil then
+    AErrors.Clear;
+  if AReport = nil then
+    Exit;
+  LConnectionParams := TStringList.Create;
+  LColumnIndexes := TStringList.Create;
+  try
+    for I := 0 to AReport.DataInfo.Count - 1 do
+    begin
+      LDataInfo := AReport.DataInfo.Items[I];
+      if Trim(LDataInfo.SQL) = '' then
+        Continue;
+      LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
+      if (LDatabaseInfo = nil) or (LDatabaseInfo.Driver <> rpdbHttp) then
+        Continue;
+      LAlias := Trim(LDataInfo.Alias);
+      if LAlias = '' then
+        LAlias := Trim(LDataInfo.Name);
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      try
+        LConnectionParams.Clear;
+        LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+        LHttp.ApiKey := LConnectionParams.Values['ApiKey'];
+        LHttp.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+        LHttp.HubSchemaId := LDataInfo.HubSchemaId;
+        if (LHttp.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
+        begin
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+        end;
+        LResponse := LHttp.GetTableSchema(LDataInfo.SQL);
+        if LResponse = nil then
+          raise Exception.Create('Empty schema response.');
+        LRoot := LResponse;
+        if (LRoot.Values['data'] <> nil) and (LRoot.Values['data'] is TJSONObject) then
+          LRoot := TJSONObject(LRoot.Values['data']);
+        if not ((LRoot.Values['columns'] is TJSONArray) and (LRoot.Values['rows'] is TJSONArray)) then
+          raise Exception.Create('Invalid schema response format.');
+        LColumns := TJSONArray(LRoot.Values['columns']);
+        LRows := TJSONArray(LRoot.Values['rows']);
+        LColumnIndexes.Clear;
+        for LColIndex := 0 to LColumns.Count - 1 do
+          LColumnIndexes.Add(LowerCase(TJSONObject(LColumns.Items[LColIndex]).Values['name'].Value));
+        LColIndex := LColumnIndexes.IndexOf('columnname');
+        LDataTypeIndex := LColumnIndexes.IndexOf('datatype');
+        for J := 0 to LRows.Count - 1 do
+        begin
+          if not (LRows.Items[J] is TJSONArray) then
+            Continue;
+          LRow := TJSONArray(LRows.Items[J]);
+          LFieldName := ReadCellString(LRow, LColIndex);
+          LDataType := MapSchemaTypeToSemanticType(ReadCellString(LRow, LDataTypeIndex));
+          if (Trim(LFieldName) <> '') and (AFields <> nil) then
+            AFields.Add(EncodeSchemaFieldEntry(LAlias, LFieldName, LDataType));
+        end;
+      except
+        on E: Exception do
+          if AErrors <> nil then
+            AErrors.Values[LAlias] := E.Message;
+      end;
+      LResponse.Free;
+      LHttp.Free;
+    end;
+  finally
+    LColumnIndexes.Free;
+    LConnectionParams.Free;
+  end;
+end;
+
+function GetSemanticFieldDataType(AFieldType: TFieldType): string;
+begin
+  case AFieldType of
+    ftString, ftWideString, ftFixedChar:
+      Result := 'string';
+    ftSmallint, ftInteger, ftWord, ftAutoInc, ftLargeint:
+      Result := 'integer';
+    ftFloat, ftBCD, ftFMTBcd:
+      Result := 'float';
+    ftCurrency:
+      Result := 'currency';
+    ftDate:
+      Result := 'date';
+    ftTime:
+      Result := 'time';
+    ftDateTime:
+      Result := 'datetime';
+    ftBoolean:
+      Result := 'boolean';
+    ftMemo, ftWideMemo:
+      Result := 'memo';
+    ftBlob, ftGraphic, ftBytes, ftVarBytes:
+      Result := 'blob';
+  else
+    Result := 'unknown';
+  end;
+end;
+
+function GetSemanticParamType(AParamType: TRpParamType): string;
+begin
+  case AParamType of
+    rpParamString: Result := 'string';
+    rpParamInteger: Result := 'integer';
+    rpParamDouble: Result := 'float';
+    rpParamDate: Result := 'date';
+    rpParamTime: Result := 'time';
+    rpParamDateTime: Result := 'datetime';
+    rpParamCurrency: Result := 'currency';
+    rpParamBool: Result := 'boolean';
+    rpParamExpreB: Result := 'expression_boolean';
+    rpParamExpreA: Result := 'expression_string';
+    rpParamSubst: Result := 'substitution';
+    rpParamList: Result := 'list';
+    rpParamMultiple: Result := 'multiple';
+    rpParamSubstE: Result := 'substitution_expression';
+    rpParamSubstList: Result := 'substitution_list';
+    rpParamInitialExpression: Result := 'initial_expression';
+  else
+    Result := 'unknown';
+  end;
+end;
+
+// '[DATASET_COLUMNS alias columns]' block of the AI context
+function BuildDatasetColumnsBlock(const ADatasetAlias: string;
+  AColumns: TStrings): string;
+var
+  K: Integer;
+begin
+  Result := '[DATASET_COLUMNS ' + ADatasetAlias + ' columns]' + sLineBreak;
+  for K := 0 to AColumns.Count - 1 do
+    Result := Result + AColumns[K] + sLineBreak;
+  Result := Result + '[/DATASET_COLUMNS]';
+end;
+
+// The expression semantic context of TFRpExpredialogVCL (chat mode
+// expression) for the evaluator of AReport after PrepareLiveContext: dataset
+// columns, report parameters and the documented functions and constants
+function BuildExpressionSemanticContext(AReport: TRpReport;
+  ASchemaOnlyFields: TStrings): TJSONObject;
+var
+  LEvaluator: TRpEvaluator;
+  LAliasItem: TRpAliasListItem;
+  LDataset: TDataSet;
+  LField: TField;
+  LParam: TRpParam;
+  LDatasetColumnsBlocks, LFunctions, LConstants: TJSONArray;
+  LDatasetColumnsMap, LMemoryVariables: TStringList;
+  LIdentifier: TRpIdentifier;
+  LBlock: string;
+  I, J: Integer;
+
+  function EnsureDatasetColumnList(const ADatasetAlias: string): TStringList;
+  var
+    LIndex: Integer;
+  begin
+    LIndex := LDatasetColumnsMap.IndexOf(ADatasetAlias);
+    if LIndex >= 0 then
+      Result := TStringList(LDatasetColumnsMap.Objects[LIndex])
+    else
+    begin
+      Result := TStringList.Create;
+      Result.CaseSensitive := False;
+      Result.Duplicates := dupIgnore;
+      LDatasetColumnsMap.AddObject(ADatasetAlias, Result);
+    end;
+  end;
+
+  procedure AddDatasetColumn(const ADatasetAlias, AFieldName, AFieldType: string);
+  var
+    LColumns: TStringList;
+    LEntry: string;
+  begin
+    if (Trim(ADatasetAlias) = '') or (Trim(AFieldName) = '') then
+      Exit;
+    LColumns := EnsureDatasetColumnList(ADatasetAlias);
+    LEntry := AFieldName + ':' + AFieldType;
+    if LColumns.IndexOf(LEntry) < 0 then
+      LColumns.Add(LEntry);
+  end;
+
+  function CreateCatalogEntry(const AModel, AHelp: string): TJSONObject;
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('model', AModel);
+    if Trim(AHelp) <> '' then
+      Result.AddPair('help', AHelp);
+  end;
+
+begin
+  Result := TJSONObject.Create;
+  LDatasetColumnsMap := TStringList.Create;
+  LMemoryVariables := TStringList.Create;
+  try
+    LDatasetColumnsBlocks := TJSONArray.Create;
+    LFunctions := TJSONArray.Create;
+    LConstants := TJSONArray.Create;
+    Result.AddPair('datasetColumnsBlocks', LDatasetColumnsBlocks);
+    Result.AddPair('functions', LFunctions);
+    Result.AddPair('constants', LConstants);
+
+    LEvaluator := AReport.Evaluator;
+    if (LEvaluator <> nil) and (LEvaluator.Rpalias <> nil) then
+    begin
+      for I := 0 to LEvaluator.Rpalias.List.Count - 1 do
+      begin
+        LAliasItem := LEvaluator.Rpalias.List.Items[I];
+        if LAliasItem = nil then
+          Continue;
+        LDataset := LAliasItem.Dataset;
+        if LDataset = nil then
+          Continue;
+        for J := 0 to LDataset.FieldCount - 1 do
+        begin
+          LField := LDataset.Fields[J];
+          AddDatasetColumn(LAliasItem.Alias, LField.FieldName,
+            GetSemanticFieldDataType(LField.DataType));
+        end;
+      end;
+    end;
+
+    if ASchemaOnlyFields <> nil then
+      for I := 0 to ASchemaOnlyFields.Count - 1 do
+        if Trim(ASchemaOnlyFields[I]) <> '' then
+          AddDatasetColumn(SchemaFieldEntryAlias(ASchemaOnlyFields[I]),
+            SchemaFieldEntryFieldName(ASchemaOnlyFields[I]),
+            SchemaFieldEntryDataType(ASchemaOnlyFields[I]));
+
+    for I := 0 to AReport.Params.Count - 1 do
+    begin
+      LParam := AReport.Params[I];
+      if LParam <> nil then
+        LMemoryVariables.Add('M.' + LParam.Name + ':' +
+          GetSemanticParamType(LParam.ParamType));
+    end;
+
+    for I := 0 to LDatasetColumnsMap.Count - 1 do
+      LDatasetColumnsBlocks.Add(BuildDatasetColumnsBlock(LDatasetColumnsMap[I],
+        TStringList(LDatasetColumnsMap.Objects[I])));
+
+    if LMemoryVariables.Count > 0 then
+    begin
+      LBlock := '[MEMORY_VARIABLES]' + sLineBreak;
+      for I := 0 to LMemoryVariables.Count - 1 do
+        LBlock := LBlock + LMemoryVariables[I] + sLineBreak;
+      LBlock := LBlock + '[/MEMORY_VARIABLES]';
+      Result.AddPair('memoryVariablesBlock', LBlock);
+    end;
+
+    if LEvaluator <> nil then
+      for I := 0 to LEvaluator.Identifiers.Count - 1 do
+      begin
+        LIdentifier := TRpIdentifier(LEvaluator.Identifiers.Objects[I]);
+        if (LIdentifier = nil) or (LIdentifier is TIdenRpExpression) or
+           (Trim(LIdentifier.AIHelp) = '') then
+          Continue;
+        case LIdentifier.RType of
+          RTypeidenfunction:
+            LFunctions.AddElement(CreateCatalogEntry(LIdentifier.Model,
+              Trim(LIdentifier.AIHelp)));
+          RTypeidenconstant:
+            LConstants.AddElement(CreateCatalogEntry(LIdentifier.Model,
+              Trim(LIdentifier.AIHelp)));
+        end;
+      end;
+  finally
+    for I := 0 to LDatasetColumnsMap.Count - 1 do
+      LDatasetColumnsMap.Objects[I].Free;
+    LDatasetColumnsMap.Free;
+    LMemoryVariables.Free;
+  end;
+end;
+
+// ExistingContextJson of the design requests: the expression context and the
+// state of every data source (live fields, Agent schema, open errors)
+function BuildDesignExpressionContextJson(AReport: TRpReport;
+  AOpenErrors, ASchemaOnlyFields, ASchemaOnlyErrors: TStrings;
+  out AErrorMessage: string): string;
+var
+  LRoot, LExpressionContext, LRuntimeSource: TJSONObject;
+  LRuntimeDataSources, LIssues: TJSONArray;
+  LRuntimeDatasetColumns: TStringList;
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LDataSourceName, LDataSourceError, LRuntimeSourceName: string;
+  I, K: Integer;
+  LEntry: string;
+
+  procedure AddIssue(AIssues: TJSONArray; const ASeverity, ACode, AMessage: string);
+  var
+    LIssue: TJSONObject;
+  begin
+    LIssue := TJSONObject.Create;
+    LIssue.AddPair('severity', ASeverity);
+    LIssue.AddPair('code', ACode);
+    LIssue.AddPair('message', AMessage);
+    AIssues.AddElement(LIssue);
+  end;
+
+  function BuildRuntimeSource(const AName, AAlias, AStatus, ASource: string;
+    ARefreshRequired: Boolean; const ADatasetColumnsBlock: string;
+    AIssues: TJSONArray): TJSONObject;
+  var
+    LRuntimeSchema: TJSONObject;
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('name', AName);
+    if Trim(AAlias) <> '' then
+      Result.AddPair('alias', AAlias);
+    LRuntimeSchema := TJSONObject.Create;
+    LRuntimeSchema.AddPair('status', AStatus);
+    LRuntimeSchema.AddPair('source', ASource);
+    LRuntimeSchema.AddPair('refreshRequired', TJSONBool.Create(ARefreshRequired));
+    if Trim(ADatasetColumnsBlock) <> '' then
+      LRuntimeSchema.AddPair('datasetColumnsBlock', ADatasetColumnsBlock);
+    LRuntimeSchema.AddPair('issues', AIssues);
+    Result.AddPair('runtimeSchema', LRuntimeSchema);
+  end;
+
+  function ColumnsBlock(const AAlias: string): string;
+  begin
+    if LRuntimeDatasetColumns.Count = 0 then
+      Result := ''
+    else
+      Result := BuildDatasetColumnsBlock(AAlias, LRuntimeDatasetColumns);
+  end;
+
+begin
+  AErrorMessage := '';
+  Result := '{}';
+  if AReport = nil then
+    Exit;
+  LRoot := TJSONObject.Create;
+  try
+    try
+      if AReport.Evaluator = nil then
+        raise Exception.Create('The report evaluator is not available after dataset refresh.');
+      LExpressionContext := BuildExpressionSemanticContext(AReport, ASchemaOnlyFields);
+    except
+      on E: Exception do
+      begin
+        AErrorMessage := E.Message;
+        LExpressionContext := TJSONObject.Create;
+      end;
+    end;
+    LRuntimeDataSources := TJSONArray.Create;
+    LRoot.AddPair('expressionContext', LExpressionContext);
+    LRoot.AddPair('runtimeDataSources', LRuntimeDataSources);
+
+    for I := 0 to AReport.DataInfo.Count - 1 do
+    begin
+      LDataInfo := AReport.DataInfo.Items[I];
+      LDataSourceName := Trim(LDataInfo.Name);
+      if LDataSourceName = '' then
+        LDataSourceName := Trim(LDataInfo.Alias);
+      LRuntimeDatasetColumns := TStringList.Create;
+      try
+        LRuntimeDatasetColumns.Duplicates := dupIgnore;
+        LRuntimeDatasetColumns.CaseSensitive := False;
+        LIssues := TJSONArray.Create;
+        LDatabaseInfo := FindDatabaseInfo(AReport, LDataInfo.DatabaseAlias);
+        if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+          LRuntimeSourceName := 'agent_schema_only'
+        else
+          LRuntimeSourceName := 'delphi_evaluator';
+        LDataSourceError := GetMappedError(AOpenErrors, LDataInfo.Alias, LDataSourceName);
+        if LDataSourceError = '' then
+          LDataSourceError := GetMappedError(ASchemaOnlyErrors, LDataInfo.Alias, LDataSourceName);
+
+        if AErrorMessage = '' then
+        begin
+          if LRuntimeSourceName = 'agent_schema_only' then
+          begin
+            if ASchemaOnlyFields <> nil then
+              for K := 0 to ASchemaOnlyFields.Count - 1 do
+              begin
+                LEntry := Trim(ASchemaOnlyFields[K]);
+                if (LEntry <> '') and
+                   SameText(Trim(SchemaFieldEntryAlias(LEntry)), Trim(LDataInfo.Alias)) then
+                  LRuntimeDatasetColumns.Add(SchemaFieldEntryFieldName(LEntry) + ':' +
+                    SchemaFieldEntryDataType(LEntry));
+              end;
+          end
+          else if LDataInfo.Dataset <> nil then
+            for K := 0 to LDataInfo.Dataset.FieldCount - 1 do
+              LRuntimeDatasetColumns.Add(LDataInfo.Dataset.Fields[K].FieldName + ':' +
+                GetSemanticFieldDataType(LDataInfo.Dataset.Fields[K].DataType));
+
+          if Trim(LDataSourceError) <> '' then
+          begin
+            if LRuntimeSourceName = 'agent_schema_only' then
+              AddIssue(LIssues, 'error', 'datasource_schema_failed', LDataSourceError)
+            else
+              AddIssue(LIssues, 'error', 'datasource_open_failed', LDataSourceError);
+            LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
+              'refresh_failed', LRuntimeSourceName, True, ColumnsBlock(LDataInfo.Alias), LIssues);
+          end
+          else
+          begin
+            if LRuntimeDatasetColumns.Count = 0 then
+              AddIssue(LIssues, 'info', 'no_live_fields',
+                'No live fields were returned by the Delphi evaluator for this datasource.');
+            LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
+              'live_context', LRuntimeSourceName, False, ColumnsBlock(LDataInfo.Alias), LIssues);
+          end;
+        end
+        else
+        begin
+          AddIssue(LIssues, 'error', 'refresh_failed', AErrorMessage);
+          LRuntimeSource := BuildRuntimeSource(LDataSourceName, LDataInfo.Alias,
+            'refresh_failed', LRuntimeSourceName, True, ColumnsBlock(LDataInfo.Alias), LIssues);
+        end;
+        LRuntimeDataSources.AddElement(LRuntimeSource);
+      finally
+        LRuntimeDatasetColumns.Free;
+      end;
+    end;
+    Result := LRoot.ToJSON;
+  finally
+    LRoot.Free;
+  end;
+end;
+
+{ Report documents }
+
+// A copy of the report for the dataset context: the worker opens its
+// datasets, never the ones of the report being designed (binary stream as
+// SaveToStream, without restoring the initial parameter values)
+function CreateContextReportCopy(AReport: TRpReport): TRpReport;
+var
+  LStream: TMemoryStream;
+begin
+  LStream := TMemoryStream.Create;
+  try
+    LStream.WriteComponent(AReport);
+    LStream.Position := 0;
+    Result := TRpReport.Create(nil);
+    try
+      Result.FailIfLoadExternalError := False;
+      Result.LoadFromStream(LStream);
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    LStream.Free;
+  end;
+end;
+
+// Raises when ADocument does not load (into a scratch report)
+procedure CheckReportDocumentLoads(const ADocument: string);
+var
+  LScratch: TRpReport;
+  LStream: TStringStream;
+begin
+  LScratch := TRpReport.Create(nil);
+  LStream := TStringStream.Create(ADocument);
+  try
+    LScratch.FailIfLoadExternalError := False;
+    LScratch.LoadFromStream(LStream);
+  finally
+    LStream.Free;
+    LScratch.Free;
+  end;
+end;
+
+// Frees every item of the report. TRpBaseReport.Clear (what the VCL calls
+// before reloading) only removes the sections and components from the
+// report, which leaks them, and FreeSubreports leaves them owned by it: the
+// load would then find duplicate names.
+procedure ClearReportItems(AReport: TRpReport);
+var
+  I: Integer;
+  LSubReport: TRpSubReport;
+begin
+  AReport.DeActivateDatasets;
+  for I := 0 to AReport.SubReports.Count - 1 do
+  begin
+    LSubReport := AReport.SubReports.Items[I].SubReport;
+    if Assigned(LSubReport) then
+      LSubReport.FreeSections;
+  end;
+  AReport.FreeSubreports;
+  AReport.DataInfo.Clear;
+  AReport.DatabaseInfo.Clear;
+  AReport.Params.Clear;
+  // Items that were in no section are owned by the report as well; it owns
+  // nothing else
+  for I := AReport.ComponentCount - 1 downto 0 do
+    AReport.Components[I].Free;
+end;
+
+// Loads ADocument into the same report object (the owner, the host of a
+// hosted designer and the undo cue keep it), as rpmdfmainvcl
+// ApplyModifiedReportDocument: the report properties that the document does
+// not contain keep their values. The XML readers append embedded files: a
+// document without them keeps the ones of the report.
+procedure ReplaceReportContent(AReport: TRpReport; const ADocument: string);
+var
+  LCue: TObject;
+  LStream: TStringStream;
+  LOldFiles: TList;
+  I: Integer;
+begin
+  AReport.AssertCanModify('ReplaceReportContent');
+  LCue := AReport.UndoCue;
+  LStream := TStringStream.Create(ADocument);
+  LOldFiles := TList.Create;
+  try
+    ClearReportItems(AReport);
+    for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
+      LOldFiles.Add(AReport.EmbeddedFiles[I]);
+    SetLength(AReport.EmbeddedFiles, 0);
+    AReport.LoadFromStream(LStream);
+    if (LOldFiles.Count > 0) and (Length(AReport.EmbeddedFiles) = 0) then
+    begin
+      SetLength(AReport.EmbeddedFiles, LOldFiles.Count);
+      for I := 0 to LOldFiles.Count - 1 do
+        AReport.EmbeddedFiles[I] := TEmbeddedFile(LOldFiles[I]);
+      LOldFiles.Clear;
+    end;
+  finally
+    for I := 0 to LOldFiles.Count - 1 do
+      TObject(LOldFiles[I]).Free;
+    LOldFiles.Free;
+    LStream.Free;
+    // The BINCUE of the document was loaded into this cue object
+    AReport.UndoCue := LCue;
+  end;
+end;
+
+{ TRpDesignContextWorker }
+
+destructor TRpDesignContextWorker.Destroy;
+begin
+  Report.Free;
+  inherited Destroy;
+end;
+
+procedure TRpDesignContextWorker.Run;
+var
+  LPayload: TRpDesignContextPayload;
+begin
+  LPayload := TRpDesignContextPayload.Create;
+  try
+    LPayload.RequestVersion := RequestVersion;
+    try
+      Report.PrepareLiveContext(LPayload.OpenErrors);
+      CollectAgentSchemaOnlyContext(Report, LPayload.SchemaOnlyFields,
+        LPayload.SchemaOnlyErrors);
+    except
+      on E: Exception do
+      begin
+        LPayload.ErrorMessage := E.Message;
+        LPayload.OpenErrors.Clear;
+        LPayload.SchemaOnlyFields.Clear;
+        LPayload.SchemaOnlyErrors.Clear;
+      end;
+    end;
+    LPayload.ContextReport := Report;
+    Report := nil;
+    Post(LPayload);
+    LPayload := nil;
+  finally
+    LPayload.Free;
+  end;
+end;
+
+function DesignerConfigFileName: string;
+begin
+  Result := RpDesignerLCLConfigFile;
+  if Result = '' then
+    Result := Obtainininameuserconfig('', '', 'repmand');
+end;
 
 { TFRpMainFLCL }
 
@@ -288,9 +1149,16 @@ begin
   Color := clBtnFace;
   FFileName := '';
   FOwnsReport := True;
+  // Results of the dataset context worker (WM_USER + 207 of the VCL)
+  FDesignMailbox := TRpAsyncMailbox.Create(HandleDesignAsyncMessage);
+  FDesignMailboxRef := FDesignMailbox;
 
   BuildMenus;
   BuildControls;
+  // View > AI chat as the user left it (VCL LoadConfig)
+  LoadDesignerPreferences;
+  if not MenuViewAIChat.Checked then
+    ApplyChatPanelVisibility;
 
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
@@ -302,6 +1170,23 @@ end;
 
 destructor TFRpMainFLCL.Destroy;
 begin
+  // A context refresh still running drops its result; the chat frame
+  // (destroyed with the form) stops its own request
+  if Assigned(FDesignMailbox) then
+    FDesignMailbox.Detach;
+  FDesignMailboxRef := nil;
+  FDesignMailbox := nil;
+  if Assigned(FChatFrame) then
+  begin
+    FChatFrame.OnBuildDesignRequest := nil;
+    FChatFrame.OnBuildPreprocessSqlContextRequest := nil;
+    FChatFrame.OnApplyDesignResult := nil;
+    FChatFrame.OnApplyPreprocessSqlContextResult := nil;
+    FChatFrame.OnDesignInferenceBegin := nil;
+    FChatFrame.OnDesignInferenceEnd := nil;
+    FChatFrame.OnStopRequest := nil;
+    FChatFrame.OnRefreshContext := nil;
+  end;
   // Also unhooks the undo cue of a report owned by someone else
   DetachReport;
   FreeAndNil(FLibConnections);
@@ -919,7 +1804,7 @@ begin
   FChatFrame := TFRpChatFrame.Create(Self);
   FChatFrame.Parent := PAIPanel;
   FChatFrame.Align := alClient;
-  FChatFrame.SetRefreshAction(True);
+  ConfigureDesignChat;
 
   // 7. Client Area (Canvas Frame)
   PClient := TPanel.Create(Self);
@@ -979,6 +1864,10 @@ begin
   // buttons and the history panel
   if csDestroying in ComponentState then
     Exit;
+  // The report is being reloaded (the history comes with it): refreshed at
+  // the end of the replacement
+  if FReplacingReport then
+    Exit;
   UpdateStatus;
   if Assigned(FStructure) and Assigned(FStructure.cueview) then
     FStructure.cueview.RefreshList;
@@ -1023,8 +1912,15 @@ end;
 
 procedure TFRpMainFLCL.DetachReport;
 begin
-  if Assigned(FReport) and Assigned(FReport.UndoCue) and (FReport.UndoCue is TUndoCue) then
-    TUndoCue(FReport.UndoCue).OnChange := nil;
+  if Assigned(FReport) then
+  begin
+    if Assigned(FReport.UndoCue) and (FReport.UndoCue is TUndoCue) then
+      TUndoCue(FReport.UndoCue).OnChange := nil;
+    // A report of a host outlives the form: no handler of it, not blocked
+    FReport.OnBlockChanges := nil;
+    FReport.BlockChanges := False;
+  end;
+  FDesignInferenceDepth := 0;
   if Assigned(FDesignerFrame) then
     FDesignerFrame.Report := nil;
   if Assigned(FStructure) then
@@ -1035,10 +1931,13 @@ begin
     FReport := nil;
 end;
 
-procedure TFRpMainFLCL.InstallReport(ANewReport: TRpReport; const AFileName: string);
+procedure TFRpMainFLCL.InstallReport(ANewReport: TRpReport; const AFileName: string;
+  AKeepHistory: Boolean);
 var
   cue: TUndoCue;
 begin
+  // A design request of the current report must not reach the new one
+  CancelDesignChat;
   // The new report is complete: only now the current one is released
   DetachReport;
   FReport := ANewReport;
@@ -1047,18 +1946,24 @@ begin
   FLibraryName := '';
   FLibraryReportName := '';
   cue := GetUndoCue;
-  cue.Clear;
+  if not AKeepHistory then
+    cue.Clear;
   cue.MarkClean;
+  ConfigureReportChangeBlocking;
+  ResetDesignChatContextCache;
   RefreshInterface;
   // The VCL designer creates a new chat for every report
   if Assigned(FChatFrame) then
-    FChatFrame.Initialize('', '');
+    FChatFrame.Initialize('', TranslateStr(1640, SDesignChatInitialMessage));
   InitializeDesignChatSchemaSelection;
 end;
 
 procedure TFRpMainFLCL.SetReport(Value: TRpReport);
+var
+  cue: TUndoCue;
 begin
   if FReport = Value then Exit;
+  CancelDesignChat;
   DetachReport;
   FReport := Value;
   FOwnsReport := False;
@@ -1066,9 +1971,16 @@ begin
   FLibraryReportName := '';
   if Assigned(FReport) then
   begin
+    // The history may come with the report (BINCUE): its current state is
+    // the saved one unless the host says it is modified
+    cue := GetUndoCue;
+    if not FReport.Modified then
+      cue.MarkClean;
+    ConfigureReportChangeBlocking;
+    ResetDesignChatContextCache;
     RefreshInterface;
     if Assigned(FChatFrame) then
-      FChatFrame.Initialize('', '');
+      FChatFrame.Initialize('', TranslateStr(1640, SDesignChatInitialMessage));
     InitializeDesignChatSchemaSelection;
   end
   else
@@ -1077,8 +1989,54 @@ end;
 
 procedure TFRpMainFLCL.MenuViewAIChatClick(Sender: TObject);
 begin
-  MenuViewAIChat.Checked := not MenuViewAIChat.Checked;
+  // AChatIAExecute: apply and save the preference
+  SetShowAIChat(not MenuViewAIChat.Checked);
+end;
+
+function TFRpMainFLCL.GetShowAIChat: Boolean;
+begin
+  Result := MenuViewAIChat.Checked;
+end;
+
+procedure TFRpMainFLCL.SetShowAIChat(Value: Boolean);
+begin
+  MenuViewAIChat.Checked := Value;
   ApplyChatPanelVisibility;
+  SaveDesignerPreferences;
+end;
+
+procedure TFRpMainFLCL.LoadDesignerPreferences;
+var
+  inif: TIniFile;
+begin
+  // Preferences/ShowAIChat of the VCL designer (same file and key)
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      MenuViewAIChat.Checked := inif.ReadBool('Preferences', 'ShowAIChat', True);
+    finally
+      inif.Free;
+    end;
+  except
+    // An unreadable preferences file keeps the defaults
+  end;
+end;
+
+procedure TFRpMainFLCL.SaveDesignerPreferences;
+var
+  inif: TIniFile;
+begin
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      inif.WriteBool('Preferences', 'ShowAIChat', MenuViewAIChat.Checked);
+      inif.UpdateFile;
+    finally
+      inif.Free;
+    end;
+  except
+    // A preference that can not be saved does not stop the designer
+  end;
 end;
 
 procedure TFRpMainFLCL.ApplyChatPanelVisibility;
@@ -1090,6 +2048,13 @@ begin
     // The splitter must stay at the left of the panel
     SplitterAI.Left := PAIPanel.Left - SplitterAI.Width;
     FChatFrame.RefreshLayout;
+    // The panel was hidden when the report was opened: no Hub requests
+    // until the user shows it
+    if FChatOnlinePending then
+    begin
+      FChatOnlinePending := False;
+      FChatFrame.StartOnlineInitialization;
+    end;
   end;
 end;
 
@@ -1118,7 +2083,7 @@ begin
     begin
       LHasPersistedSchema := True;
       AHubSchemaId := LDataInfo.HubSchemaId;
-      LDatabaseInfo := FReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      LDatabaseInfo := FindDatabaseInfo(FReport, LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
       begin
         LConnectionParams := TStringList.Create;
@@ -1167,7 +2132,518 @@ begin
     Exit;
   ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
   FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
-  FChatFrame.StartOnlineInitialization;
+  // The AI panel is optional: hidden, it makes no Hub request until shown
+  if PAIPanel.Visible then
+    FChatFrame.StartOnlineInitialization
+  else
+    FChatOnlinePending := True;
+end;
+
+{ Design assistant (rpmdfmainvcl) }
+
+procedure TFRpMainFLCL.ConfigureDesignChat;
+begin
+  FChatFrame.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+  FChatFrame.OnBuildPreprocessSqlContextRequest := BuildPreprocessSqlContextRequestForFrame;
+  FChatFrame.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+  FChatFrame.OnApplyPreprocessSqlContextResult := ApplyPreprocessSqlContextResultFromFrame;
+  FChatFrame.OnDesignInferenceBegin := DesignInferenceBegin;
+  FChatFrame.OnDesignInferenceEnd := DesignInferenceEnd;
+  FChatFrame.OnStopRequest := StopDesignChatRequest;
+  FChatFrame.OnRefreshContext := RefreshDesignChatContext;
+  FChatFrame.SetRefreshAction(True);
+end;
+
+procedure TFRpMainFLCL.ConfigureReportChangeBlocking;
+begin
+  if Assigned(FReport) then
+    FReport.OnBlockChanges := ReportBlockChanges;
+end;
+
+function TFRpMainFLCL.ReportBlockChanges(Sender: TRpBaseReport;
+  const AReason: string): Boolean;
+begin
+  // A change while the assistant works: it is applied only if the user
+  // cancels the inference
+  Result := False;
+  if RpMessageBox(TranslateStr(1651, 'An AI inference is in progress. Modifying ' +
+    'the report now cancels it. Do you want to cancel it and apply the change?'),
+    SRpWarning, [smbYes, smbNo], smsWarning, smbYes, smbNo) = smbYes then
+  begin
+    if Assigned(FChatFrame) then
+      FChatFrame.AISelectionStopRequest(Self);
+    Sender.BlockChanges := False;
+    FDesignInferenceDepth := 0;
+    Result := True;
+  end;
+end;
+
+procedure TFRpMainFLCL.DesignInferenceBegin(Sender: TObject);
+begin
+  // Both requests of a validated prompt are built: the next prompt refreshes
+  // the dataset context again (the VCL cleared it only on a stop)
+  FDesignChatValidatedPrompt := '';
+  if Assigned(FReport) then
+  begin
+    FReport.BeginBlockChanges;
+    Inc(FDesignInferenceDepth);
+  end;
+end;
+
+procedure TFRpMainFLCL.DesignInferenceEnd(Sender: TObject);
+begin
+  if Assigned(FReport) and (FDesignInferenceDepth > 0) then
+  begin
+    Dec(FDesignInferenceDepth);
+    FReport.EndBlockChanges;
+  end;
+end;
+
+procedure TFRpMainFLCL.StopDesignChatRequest(Sender: TObject);
+begin
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := False;
+  FDesignChatPendingPrompt := '';
+  FDesignChatValidatedPrompt := '';
+  if Assigned(FReport) then
+    FReport.BlockChanges := False;
+  FDesignInferenceDepth := 0;
+  UpdateDesignContextProgress(False, '');
+end;
+
+procedure TFRpMainFLCL.CancelDesignChat;
+begin
+  if not Assigned(FChatFrame) then
+    Exit;
+  if FChatFrame.Busy or FDesignContextRefreshRunning then
+    // Stops the stream of the frame, then StopDesignChatRequest
+    FChatFrame.AISelectionStopRequest(Self)
+  else
+    StopDesignChatRequest(Self);
+end;
+
+procedure TFRpMainFLCL.ResetDesignChatContextCache;
+begin
+  FDesignChatContextJson := '';
+  FDesignChatContextInitialized := False;
+  FDesignChatPendingPrompt := '';
+  FDesignChatValidatedPrompt := '';
+end;
+
+procedure TFRpMainFLCL.UpdateDesignContextProgress(AActive: Boolean;
+  const AStatus: string);
+begin
+  if AActive then
+    StatusBar.SimpleText := AStatus
+  else if not (csDestroying in ComponentState) then
+    UpdateStatus;
+  if Assigned(FChatFrame) then
+  begin
+    if AActive then
+    begin
+      if not FDesignContextRefreshRunning then
+        FChatFrame.BeginProgress('System', AStatus)
+      else
+        FChatFrame.UpdateProgress(AStatus);
+    end
+    else
+      FChatFrame.FinishProgress;
+  end;
+end;
+
+function TFRpMainFLCL.SaveReportAsXml: string;
+var
+  LStream: TStringStream;
+begin
+  Result := '';
+  if not Assigned(FReport) then
+    Exit;
+  // With the undo history (BINCUE, rpmdundocuelcl hooks), as in Delphi
+  LStream := TStringStream.Create('');
+  try
+    WriteReportXML(FReport, LStream);
+    Result := LStream.DataString;
+  finally
+    LStream.Free;
+  end;
+end;
+
+function TFRpMainFLCL.BuildDesignChatRequest(
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+  Result := TRpApiModifyReportRequest.Create;
+  try
+    Result.AITier := RpAITierTypeFromString(FChatFrame.GetAITier);
+    Result.Mode := RpReportDesignerModeFromString(FChatFrame.GetAIMode);
+    Result.ReportDocument := SaveReportAsXml;
+    Result.ReportFormat := rdfXml;
+    Result.ExistingContextJson := FDesignChatContextJson;
+    Result.ReturnModifiedDocument := True;
+    Result.SimplifiedPrompt := False;
+    Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+    Result.ApiKey := FChatFrame.GetSchemaApiKey;
+    Result.Config.HubDatabaseId := FChatFrame.GetHubDatabaseId;
+    Result.Config.HubSchemaId := FChatFrame.GetHubSchemaId;
+    TRpAuthManager.Instance.Log(
+      'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
+      ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+      ' SchemaApiKey=' + Result.ApiKey);
+    Result.UserInstructions.Add(APrompt);
+    if Result.AITier = ratLocalAgent then
+    begin
+      Result.AgentSecret := FChatFrame.GetAgentSecret;
+      Result.AgentAiId := FChatFrame.GetAgentAiId;
+      Result.HasAgentAiId := Result.AgentAiId <> 0;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TFRpMainFLCL.BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+var
+  I: Integer;
+  LConnectionParams: TStringList;
+  LDataInfo: TRpDataInfoItem;
+  LDataSource: TRpApiPreprocessSqlContextDataSource;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LDataInfoName: string;
+begin
+  // The datasets whose SQL has no explanation yet
+  Result := nil;
+  if (not Assigned(FReport)) or (not Assigned(FChatFrame)) then
+    Exit;
+  LConnectionParams := TStringList.Create;
+  try
+    try
+      for I := 0 to FReport.DataInfo.Count - 1 do
+      begin
+        LDataInfo := FReport.DataInfo.Items[I];
+        if Trim(LDataInfo.SQL) = '' then
+          Continue;
+        if Trim(LDataInfo.SQLExplanation) <> '' then
+          Continue;
+        if Trim(LDataInfo.SQLExplanationError) <> '' then
+          Continue;
+        if Result = nil then
+        begin
+          Result := TRpApiPreprocessSqlContextRequest.Create;
+          Result.AITier := RpAITierTypeFromString(FChatFrame.GetAITier);
+          Result.Mode := RpReportDesignerModeFromString(FChatFrame.GetAIMode);
+          Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+          Result.ApiKey := FChatFrame.GetSchemaApiKey;
+          Result.Config.HubDatabaseId := FChatFrame.GetHubDatabaseId;
+          Result.Config.HubSchemaId := FChatFrame.GetHubSchemaId;
+          if Result.AITier = ratLocalAgent then
+          begin
+            Result.AgentSecret := FChatFrame.GetAgentSecret;
+            Result.AgentAiId := FChatFrame.GetAgentAiId;
+            Result.HasAgentAiId := Result.AgentAiId <> 0;
+          end;
+        end;
+        LDataSource := TRpApiPreprocessSqlContextDataSource.Create;
+        LDataInfoName := Trim(LDataInfo.Name);
+        if LDataInfoName = '' then
+          LDataInfoName := Trim(LDataInfo.Alias);
+        LDataSource.DataInfoName := LDataInfoName;
+        LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
+        LDataSource.Sql := LDataInfo.SQL;
+        LDatabaseInfo := FindDatabaseInfo(FReport, LDataInfo.DatabaseAlias);
+        if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+        begin
+          LConnectionParams.Clear;
+          LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+          LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+          LDataSource.Config.HubSchemaId := LDataInfo.HubSchemaId;
+        end;
+        Result.DataSources.Add(LDataSource);
+      end;
+    except
+      FreeAndNil(Result);
+      raise;
+    end;
+  finally
+    LConnectionParams.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.ApplyPreprocessSqlContextResult(
+  AResult: TRpApiPreprocessSqlContextResult);
+var
+  I, J: Integer;
+  LDataInfo: TRpDataInfoItem;
+  LDataInfoName: string;
+  LResultItem: TRpApiPreprocessSqlContextDataSourceResult;
+begin
+  // The explanations are a cache of the report (saved with it, like the VCL
+  // they do not mark it modified)
+  if (not Assigned(FReport)) or (AResult = nil) then
+    Exit;
+  for I := 0 to AResult.DataSources.Count - 1 do
+  begin
+    if not (AResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+      Continue;
+    LResultItem := TRpApiPreprocessSqlContextDataSourceResult(AResult.DataSources[I]);
+    for J := 0 to FReport.DataInfo.Count - 1 do
+    begin
+      LDataInfo := FReport.DataInfo.Items[J];
+      LDataInfoName := Trim(LDataInfo.Name);
+      if LDataInfoName = '' then
+        LDataInfoName := Trim(LDataInfo.Alias);
+      if not SameText(LDataInfoName, LResultItem.DataInfoName) then
+        Continue;
+      if Trim(LResultItem.SqlExplanation) <> '' then
+      begin
+        LDataInfo.SQLExplanation := LResultItem.SqlExplanation;
+        LDataInfo.SQLExplanationError := '';
+      end
+      else
+      begin
+        LDataInfo.SQLExplanation := '';
+        LDataInfo.SQLExplanationError := LResultItem.ErrorMessage;
+      end;
+      Break;
+    end;
+  end;
+end;
+
+function TFRpMainFLCL.BuildDesignChatRequestForFrame(Sender: TObject;
+  const APrompt: string): TRpApiModifyReportRequest;
+var
+  LPrompt: string;
+begin
+  // A prompt is sent after refreshing the dataset context: the first call
+  // starts the refresh and returns nil, the refresh sends it again
+  Result := nil;
+  if (not Assigned(FChatFrame)) or (not Assigned(FReport)) then
+    Exit;
+  LPrompt := Trim(APrompt);
+  if LPrompt = '' then
+    Exit;
+  if SameText(FDesignChatValidatedPrompt, LPrompt) then
+  begin
+    Result := BuildDesignChatRequest(LPrompt);
+    Exit;
+  end;
+  if not FDesignContextRefreshRunning then
+    BeginDesignChatContextRefresh(LPrompt, False);
+end;
+
+function TFRpMainFLCL.BuildPreprocessSqlContextRequestForFrame(
+  Sender: TObject): TRpApiPreprocessSqlContextRequest;
+begin
+  Result := BuildPreprocessSqlContextRequest;
+end;
+
+procedure TFRpMainFLCL.ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+  AResult: TRpApiPreprocessSqlContextResult);
+begin
+  ApplyPreprocessSqlContextResult(AResult);
+end;
+
+procedure TFRpMainFLCL.ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+  const AModifiedReportDocument: string);
+begin
+  ApplyModifiedReportDocument(AModifiedReportDocument);
+end;
+
+procedure TFRpMainFLCL.BeginReportReplace;
+begin
+  FReplacingReport := True;
+  // The views reference items that the reload frees
+  if Assigned(FDesignerFrame) then
+    FDesignerFrame.Report := nil;
+  if Assigned(FStructure) then
+    FStructure.Report := nil;
+end;
+
+procedure TFRpMainFLCL.EndReportReplace;
+begin
+  FReplacingReport := False;
+  RefreshInterface;
+end;
+
+procedure TFRpMainFLCL.ApplyModifiedReportDocument(
+  const AModifiedReportDocument: string);
+var
+  cue: TUndoCue;
+  baseCount, loads: Integer;
+begin
+  if (not Assigned(FReport)) or (Trim(AModifiedReportDocument) = '') then
+    Exit;
+  // The inference is over
+  FReport.BlockChanges := False;
+  FDesignInferenceDepth := 0;
+  FDesignChatValidatedPrompt := '';
+  // A document that does not load leaves the report untouched (the VCL
+  // clears the report first)
+  CheckReportDocumentLoads(AModifiedReportDocument);
+  cue := GetUndoCue;
+  baseCount := cue.UndoOperations.Count;
+  loads := cue.LoadCount;
+  BeginReportReplace;
+  try
+    ReplaceReportContent(FReport, AModifiedReportDocument);
+  finally
+    EndReportReplace;
+  end;
+  // The history travels with the document (BINCUE): the server returns the
+  // one it received with the operations of its change on top, so Undo
+  // reverts the change step by step and the earlier history stays
+  if (cue.LoadCount <> loads) and (cue.UndoOperations.Count > baseCount) then
+    cue.HistoryExtendedFrom(baseCount)
+  else
+    // A change without its operations can not be undone: modified until saved
+    cue.MarkExternalChange;
+  Inc(FDesignApplyCount);
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.RefreshDesignChatContext(Sender: TObject);
+begin
+  BeginDesignChatContextRefresh('', True);
+end;
+
+procedure TFRpMainFLCL.BeginDesignChatContextRefresh(const APendingPrompt: string;
+  ANotifyOnSuccess: Boolean);
+var
+  LWorker: TRpDesignContextWorker;
+  LCopy: TRpReport;
+  LStatus: string;
+begin
+  if (not Assigned(FChatFrame)) or (not Assigned(FReport)) then
+    Exit;
+  if FDesignContextRefreshRunning then
+    Exit;
+  // The worker opens the datasets of a copy: the designer keeps editing its
+  // report meanwhile (the VCL opens them on the designed report)
+  try
+    LCopy := CreateContextReportCopy(FReport);
+  except
+    on E: Exception do
+    begin
+      FChatFrame.AddAssistantMessage(TranslateStr(1648, 'Context refresh failed') +
+        ': ' + E.Message);
+      Exit;
+    end;
+  end;
+  FChatFrame.SetBusy(True);
+  FDesignChatPendingPrompt := APendingPrompt;
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := True;
+  if Trim(APendingPrompt) <> '' then
+    LStatus := TranslateStr(1641, 'Opening datasets...')
+  else if ANotifyOnSuccess then
+    LStatus := TranslateStr(1642, 'Refreshing design context...')
+  else
+    LStatus := TranslateStr(1643, 'Initializing design context...');
+  UpdateDesignContextProgress(True, LStatus);
+  LWorker := TRpDesignContextWorker.Create(FDesignMailboxRef);
+  LWorker.RequestVersion := FDesignContextRefreshVersion;
+  LWorker.Report := LCopy;
+  LWorker.Start;
+end;
+
+function TFRpMainFLCL.BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+  const AErrorMessage: string): string;
+var
+  I: Integer;
+  LName, LValue: string;
+begin
+  Result := Trim(AErrorMessage);
+  if (AOpenErrors = nil) or (AOpenErrors.Count = 0) then
+    Exit;
+  if Result <> '' then
+    Result := Result + sLineBreak + sLineBreak;
+  Result := Result + TranslateStr(1644, 'Some datasets could not be opened:');
+  for I := 0 to AOpenErrors.Count - 1 do
+  begin
+    LName := Trim(AOpenErrors.Names[I]);
+    LValue := Trim(AOpenErrors.ValueFromIndex[I]);
+    if LName <> '' then
+      Result := Result + sLineBreak + '- ' + LName + ': ' + LValue
+    else
+      Result := Result + sLineBreak + '- ' + LValue;
+  end;
+end;
+
+function TFRpMainFLCL.ConfirmDesignPromptWithDatasetErrors(
+  const ADatasetErrorMessage: string): Boolean;
+var
+  LMessage: string;
+begin
+  LMessage := Trim(ADatasetErrorMessage);
+  if LMessage = '' then
+    Exit(True);
+  LMessage := TranslateStr(1645, 'Opening datasets failed.') + sLineBreak + sLineBreak +
+    LMessage + sLineBreak + sLineBreak +
+    TranslateStr(1646, 'Do you want to send the design request to the assistant anyway?');
+  Result := RpMessageBox(LMessage, SRpWarning, [smbYes, smbNo], smsWarning,
+    smbYes, smbNo) = smbYes;
+end;
+
+procedure TFRpMainFLCL.HandleDesignAsyncMessage(AMessage: TRpAsyncMessage);
+var
+  LPayload: TRpDesignContextPayload;
+  LErrorMessage, LPendingPrompt, LDatasetErrorMessage: string;
+begin
+  // WMHandleDesignContextPayload of the VCL
+  if not (AMessage is TRpDesignContextPayload) then
+    Exit;
+  LPayload := TRpDesignContextPayload(AMessage);
+  if LPayload.RequestVersion <> FDesignContextRefreshVersion then
+    Exit;
+  FDesignContextRefreshRunning := False;
+  LErrorMessage := '';
+  if Trim(LPayload.ErrorMessage) <> '' then
+  begin
+    FDesignChatContextJson := '';
+    FDesignChatContextInitialized := False;
+    LErrorMessage := LPayload.ErrorMessage;
+  end
+  else
+  begin
+    FDesignChatContextJson := BuildDesignExpressionContextJson(LPayload.ContextReport,
+      LPayload.OpenErrors, LPayload.SchemaOnlyFields, LPayload.SchemaOnlyErrors,
+      LErrorMessage);
+    FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
+  end;
+  UpdateDesignContextProgress(False, '');
+  if Assigned(FChatFrame) then
+    FChatFrame.SetBusy(False);
+  LPendingPrompt := Trim(FDesignChatPendingPrompt);
+  FDesignChatPendingPrompt := '';
+  LDatasetErrorMessage := BuildDesignDatasetErrorMessage(LPayload.OpenErrors,
+    LErrorMessage);
+  if not Assigned(FChatFrame) then
+    Exit;
+
+  if LPendingPrompt <> '' then
+  begin
+    if not ConfirmDesignPromptWithDatasetErrors(LDatasetErrorMessage) then
+    begin
+      FDesignChatValidatedPrompt := '';
+      FChatFrame.AddAssistantMessage(TranslateStr(1647,
+        'Design request canceled after dataset validation.'));
+      Exit;
+    end;
+    FDesignChatValidatedPrompt := LPendingPrompt;
+    FChatFrame.StartDesignPrompt(LPendingPrompt);
+    Exit;
+  end;
+
+  if Trim(LErrorMessage) <> '' then
+  begin
+    FChatFrame.AddAssistantMessage(TranslateStr(1648, 'Context refresh failed') +
+      ': ' + LErrorMessage);
+    Exit;
+  end;
+  if Trim(LDatasetErrorMessage) <> '' then
+    FChatFrame.AddAssistantMessage(TranslateStr(1649,
+      'Context refreshed with dataset errors.') + sLineBreak + LDatasetErrorMessage)
+  else
+    FChatFrame.AddAssistantMessage(TranslateStr(1650, 'Context refreshed.'));
 end;
 
 procedure TFRpMainFLCL.SetHostedMode(Value: Boolean);
@@ -1297,7 +2773,8 @@ var
 begin
   // On error the current report, file name and frames stay untouched
   newRep := LoadDesignReport(AStream);
-  InstallReport(newRep, '');
+  // The undo history saved with the report (XML, BINCUE) is kept
+  InstallReport(newRep, '', True);
 end;
 
 procedure TFRpMainFLCL.OpenReportFile(const AFileName: string);
@@ -1322,7 +2799,7 @@ begin
   finally
     astream.Free;
   end;
-  InstallReport(newRep, AFileName);
+  InstallReport(newRep, AFileName, True);
 end;
 
 procedure TFRpMainFLCL.OpenReportFromLibrary(const ALibrary: string;
@@ -1390,7 +2867,7 @@ begin
     newRep.Free;
     raise;
   end;
-  InstallReport(newRep, '');
+  InstallReport(newRep, '', False);
 end;
 
 procedure TFRpMainFLCL.RefreshInterface;
@@ -1496,7 +2973,7 @@ begin
   end;
   // From here the new report is owned by the form (never freed twice even
   // if refreshing the interface raises); history starts clean
-  InstallReport(newRep, '');
+  InstallReport(newRep, '', False);
 end;
 
 procedure TFRpMainFLCL.MenuReportWizardClick(Sender: TObject);
