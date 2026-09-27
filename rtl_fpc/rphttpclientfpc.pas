@@ -258,7 +258,7 @@ implementation
 
 uses
 {$IFDEF MSWINDOWS}
-  Windows,
+  Windows, winsock2, uriparser,
 {$ELSE}
   process, baseunix,
 {$ENDIF}
@@ -958,6 +958,7 @@ var
   I, P: Integer;
   S: string;
 begin
+  Result := nil;
   SetLength(Result, FHeaders.Count);
   for I := 0 to FHeaders.Count - 1 do
   begin
@@ -1214,6 +1215,105 @@ begin
   AHandler := LHandler;
 end;
 
+{$IFDEF MSWINDOWS}
+type
+  // FPC 3.2.2 TInetSocket waits for the non-blocking connect with select on
+  // the write set only, but Windows reports a refused connection in the
+  // except set: the connect then waits the whole ConnectTimeout (60 s by
+  // default) instead of failing at once. This socket watches both sets.
+  TRpProbeSocket = class(TInetSocket)
+  protected
+    function CheckSocketConnectTimeout(ASocket: cint; AFDSPtr: Pointer;
+      ATimeVPtr: Pointer): TCheckTimeoutResult; override;
+  end;
+
+var
+  GProbeLock: TRTLCriticalSection;
+  GProbeOK: TStringList;
+
+const
+  // A server that accepted a connection is not checked again for this time
+  PROBE_OK_MS = 30000;
+
+function TRpProbeSocket.CheckSocketConnectTimeout(ASocket: cint;
+  AFDSPtr: Pointer; ATimeVPtr: Pointer): TCheckTimeoutResult;
+var
+  LWrite, LExcept: winsock2.TFDSet;
+  LTime: winsock2.PTimeVal;
+  LRes: LongInt;
+  LErr, LErrLen: LongInt;
+begin
+  LTime := winsock2.PTimeVal(ATimeVPtr);
+  LTime^.tv_usec := 0;
+  LTime^.tv_sec := ConnectTimeout div 1000;
+  winsock2.FD_ZERO(LWrite);
+  winsock2.FD_SET(ASocket, LWrite);
+  winsock2.FD_ZERO(LExcept);
+  winsock2.FD_SET(ASocket, LExcept);
+  LRes := winsock2.select(ASocket + 1, nil, @LWrite, @LExcept, LTime);
+  if LRes = 0 then
+    Exit(ctrTimeout);
+  Result := ctrError;
+  if LRes < 0 then
+    Exit;
+  // In the except set: refused or unreachable
+  if winsock2.FD_ISSET(ASocket, LExcept) then
+    Exit;
+  if winsock2.FD_ISSET(ASocket, LWrite) then
+  begin
+    LErrLen := SizeOf(LErr);
+    if (fpGetSockOpt(ASocket, SOL_SOCKET, SO_ERROR, @LErr, @LErrLen) = 0) and
+      (LErr = 0) then
+      Result := ctrOK;
+  end;
+end;
+
+// Before the real request, check with TRpProbeSocket that the server accepts
+// connections, so that a refused one fails at once as on Linux. A server that
+// answered recently is not checked again. Raises ESocketError on failure.
+procedure RpProbeServer(const AURL: string; ATimeoutMs: Integer);
+var
+  LURI: TURI;
+  LPort: Word;
+  LKey: string;
+  I: Integer;
+  LNow: QWord;
+  LSocket: TRpProbeSocket;
+begin
+  LURI := ParseURI(AURL);
+  if LURI.Host = '' then
+    Exit;
+  LPort := LURI.Port;
+  if LPort = 0 then
+    if SameText(LURI.Protocol, 'https') then
+      LPort := 443
+    else
+      LPort := 80;
+  LKey := LowerCase(LURI.Host) + ':' + IntToStr(LPort);
+  LNow := GetTickCount64;
+  EnterCriticalSection(GProbeLock);
+  try
+    I := GProbeOK.IndexOf(LKey);
+    if (I >= 0) and (LNow - QWord(PtrUInt(GProbeOK.Objects[I])) < PROBE_OK_MS) then
+      Exit;
+  finally
+    LeaveCriticalSection(GProbeLock);
+  end;
+  // Connects in the constructor (no handler), with the request's timeout
+  LSocket := TRpProbeSocket.Create(LURI.Host, LPort, ATimeoutMs, nil);
+  LSocket.Free;
+  EnterCriticalSection(GProbeLock);
+  try
+    I := GProbeOK.IndexOf(LKey);
+    if I < 0 then
+      I := GProbeOK.Add(LKey);
+    GProbeOK.Objects[I] := TObject(PtrUInt(LNow));
+  finally
+    LeaveCriticalSection(GProbeLock);
+  end;
+end;
+{$ENDIF}
+
 function TNetHTTPClient.DoExecute(const AMethod, AURL: string; ASource,
   AResponseContent: TStream; const AHeaders: TNetHeaders): IHTTPResponse;
 var
@@ -1273,6 +1373,9 @@ begin
       // Some servers and proxies reject a POST without Content-Length (411)
       LClient.AddHeader('Content-Length', '0');
     try
+{$IFDEF MSWINDOWS}
+      RpProbeServer(LUrl, FConnectionTimeout);
+{$ENDIF}
       LClient.HTTPMethod(LMethod, LUrl, LNotify, []);
     except
       on E: ENetHTTPException do
@@ -1591,7 +1694,15 @@ end;
 initialization
   InitCriticalSection(GOpenSSLLock);
   InitCriticalSection(GUrlRewriteLock);
+{$IFDEF MSWINDOWS}
+  InitCriticalSection(GProbeLock);
+  GProbeOK := TStringList.Create;
+{$ENDIF}
 finalization
+{$IFDEF MSWINDOWS}
+  GProbeOK.Free;
+  DoneCriticalSection(GProbeLock);
+{$ENDIF}
   if (GTrustStore <> nil) and Assigned(X509_STORE_free) and IsSSLloaded then
     X509_STORE_free(GTrustStore);
   GTrustStore := nil;
