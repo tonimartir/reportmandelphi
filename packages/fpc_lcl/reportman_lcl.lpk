@@ -4,6 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="reportman_lcl"/>
     <Type Value="RunAndDesignTime"/>
+    <Author Value="Toni Martir"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -21,6 +22,9 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
+    <Description Value="Report Manager LCL runtime: TLCLReport component, report preview window and preview control, page setup and parameters dialogs, and printing through Printer4Lazarus. Home page: https://reportman.es"/>
+    <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
+    <Version Major="4" Release="16"/>
     <Files Count="11">
       <Item1>
         <Filename Value="..\..\lcl\rplclfonts.pas"/>
@@ -71,6 +75,7 @@
     <RequiredPkgs Count="5">
       <Item1>
         <PackageName Value="reportman_rtl"/>
+        <MinVersion Major="4" Release="16" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="LCL"/>
@@ -80,6 +85,7 @@
       </Item3>
       <Item4>
         <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item4>
       <Item5>
         <PackageName Value="DateTimeCtrls"/>

@@ -4,6 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="reportman_rtl"/>
     <Type Value="RunAndDesignTime"/>
+    <Author Value="Toni Martir"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -21,6 +22,9 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
+    <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (SQLite) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
+    <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
+    <Version Major="4" Release="16"/>
     <Files Count="65">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
@@ -287,9 +291,11 @@
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="zcomponent"/>
+        <MinVersion Major="8" Valid="True"/>
       </Item2>
     </RequiredPkgs>
     <UsageOptions>

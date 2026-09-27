@@ -1,0 +1,172 @@
+# Ficheros del paquete OPM (Lazarus Online Package Manager) de Report Manager.
+#
+# Una ruta por linea, relativa a la raiz del repositorio y con las mayusculas
+# exactas de git (git archive distingue mayusculas). '#' inicia un comentario.
+# make_opm_package.ps1 extrae SOLO estos ficheros de "git archive HEAD" y
+# conserva la estructura del repositorio, para que las rutas relativas de los
+# .lpk (..\..\rpsection.pas, ..\..\lcl\..., ..\..\design_lcl\...) sigan valiendo.
+#
+# La lista es exactamente lo que FPC abre al compilar los tres paquetes
+# (unidades, .inc, .lrs, .lfm, .dcr y .res enlazados), obtenida con ppudump de
+# los .ppu de un build Windows (x86_64-win64) y otro Linux (x86_64-linux/gtk2)
+# y unida.  Si se anade una unidad al motor, regenerala con:
+#   packages\fpc\build_fpc.bat
+#   build\opm\make_opm_package.ps1 -RefreshFileList
+# y comprueba el resultado con -Validate (compila desde el zip extraido).
+
+# --- Paquetes Lazarus (.lpk) y sus fuentes de paquete ---
+packages/fpc/reportman_rtl.lpk
+packages/fpc/reportman_rtl.pas
+packages/fpc_lcl/reportman_lcl.lpk
+packages/fpc_lcl/reportman_lcl.pas
+packages/fpc_lcl/reportman_designlcl.lpk
+packages/fpc_lcl/reportman_designlcl.pas
+
+# --- Licencia ---
+LICENSE.TXT
+
+# --- reportman_rtl: unidades del motor en la raiz ---
+rpalias.pas
+rpbarcodecons.pas
+rpbasereport.pas
+rpcolumnar.pas
+rpcompilerep.pas
+rpcompobase.pas
+rpcsvdriver.pas
+rpdatainfo.pas
+rpdataset.pas
+rpdatatext.pas
+rpDelphiZXIngQRCode.pas
+rpdirectwrite.pas
+RpDirectWriteRenderer.pas
+rpdrawitem.pas
+rpeval.pas
+rpevalfunc.pas
+rpfontconfig.pas
+rpfreetype2.pas
+rpHarfBuzz.pas
+rphtmldriver.pas
+rphtmlparser.pas
+rpICU.pas
+rpinfoprovft.pas
+rpinfoprovgdi.pas
+rpinfoprovid.pas
+rplabelitem.pas
+rplastsav.pas
+rpmdbarcode.pas
+rpmdchart.pas
+rpmdcharttypes.pas
+rpmdconsts.pas
+rpmdshfolder.pas
+rpmetafile.pas
+rpmreg.pas
+rpmunits.pas
+rpmzlib.pas
+rpparams.pas
+rpparser.pas
+rppdfdriver.pas
+rppdffile.pas
+rppdfreport.pas
+rpprintitem.pas
+rpreport.pas
+rpsection.pas
+rpsecutil.pas
+rpsubreport.pas
+rpsvgdriver.pas
+rptextdriver.pas
+rptranslator.pas
+rptruetype.pas
+rptypes.pas
+rptypeval.pas
+rpxmlstream.pas
+rpzlib77.pas
+rpzlibadler.pas
+rpzlibinfblock.pas
+rpzlibinfcodes.pas
+rpzlibinffast.pas
+rpzlibinftrees.pas
+rpzlibinfutil.pas
+rpzlibtrees.pas
+rpzlibzdeflate.pas
+rpzlibzinflate.pas
+rpzlibzlib.pas
+rpzlibzutil.pas
+
+# --- reportman_rtl: include y recursos en la raiz ---
+rpconf.inc
+rpfdmidas.inc
+zconf.inc
+REPORTMANRES.RES
+dbxdrivers.RES
+rpalias.dcr
+rpeval.dcr
+rplastsav.dcr
+rppdfreport.dcr
+rptranslator.dcr
+
+# --- reportman_rtl: unidades solo FPC ---
+rtl_fpc/rpfpcutils.pas
+rtl_fpc/rpinfoprovfpc.pas
+
+# --- reportman_lcl ---
+lcl/rpgraphutilslcl.lfm
+lcl/rpgraphutilslcl.pas
+lcl/rplcldriver.lfm
+lcl/rplcldriver.pas
+lcl/rplclfonts.pas
+lcl/rplclpreview.lfm
+lcl/rplclpreview.pas
+lcl/rplclreport.pas
+lcl/rpmaskedit.dcr
+lcl/rpmaskedit.pas
+lcl/rppagesetuplcl.lfm
+lcl/rppagesetuplcl.pas
+lcl/rppreviewcontrol.pas
+lcl/rppreviewmetalcl.pas
+lcl/rpreglcl.lrs
+lcl/rpreglcl.pas
+lcl/rprflclparams.lfm
+lcl/rprflclparams.pas
+lcl/rpvclreport.dcr
+
+# --- reportman_designlcl ---
+design_lcl/rpdbbrowserlcl.lfm
+design_lcl/rpdbbrowserlcl.pas
+design_lcl/rpexpredlglcl.pas
+design_lcl/rpfrmmonacoeditorlcl.pas
+design_lcl/rplclwebview.pas
+design_lcl/rpmdcueviewlcl.pas
+design_lcl/rpmdesignerlcl.pas
+design_lcl/rpmdfaboutlcl.pas
+design_lcl/rpmdfbarcodeintlcl.pas
+design_lcl/rpmdfchartintlcl.pas
+design_lcl/rpmdfdesignlcl.lfm
+design_lcl/rpmdfdesignlcl.pas
+design_lcl/rpmdfdinfolcl.lfm
+design_lcl/rpmdfdinfolcl.pas
+design_lcl/rpmdfdrawintlcl.pas
+design_lcl/rpmdfextseclcl.pas
+design_lcl/rpmdfgridlcl.pas
+design_lcl/rpmdflabelintlcl.pas
+design_lcl/rpmdfmainlcl.lfm
+design_lcl/rpmdfmainlcl.pas
+design_lcl/rpmdfopenliblcl.pas
+design_lcl/rpmdfparamslcl.pas
+design_lcl/rpmdfsearchlcl.pas
+design_lcl/rpmdfsectionintlcl.pas
+design_lcl/rpmdfselectfieldslcl.pas
+design_lcl/rpmdfstruclcl.lfm
+design_lcl/rpmdfstruclcl.pas
+design_lcl/rpmdfwizardlcl.pas
+design_lcl/rpmdimageslcl.pas
+design_lcl/rpmdobinsintlcl.pas
+design_lcl/rpmdobjinsplcl.lfm
+design_lcl/rpmdobjinsplcl.pas
+design_lcl/rpmdundocuelcl.pas
+design_lcl/rpmregdesignlcl.lrs
+design_lcl/rpmregdesignlcl.pas
+design_lcl/rprulerlcl.pas
+design_lcl/rpwebview2.pas
+# Monaco (editor SQL del disenador): {$R ../MonacoEditorAssets.res} dentro de
+# {$IFDEF MSWINDOWS} en design_lcl/rpfrmmonacoeditorlcl.pas. Solo Windows.
+MonacoEditorAssets.RES

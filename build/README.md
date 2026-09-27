@@ -38,3 +38,10 @@ Rutas alternativas con `-RsVars` / `-MsBuild`.
 ## 2) make-sourceforge.ps1 — publicacion en SourceForge (Inno Setup)
 
 **Pendiente** (siguiente fase). Stub con las notas de partida.
+
+## 3) opm\make_opm_package.ps1 — paquete para el Online Package Manager de Lazarus
+
+Genera en `build\opm\out\` el zip de repositorio y los JSON (lista de paquetes
+y actualizaciones) de los paquetes Free Pascal/Lazarus; con `-Validate` /
+`-ValidateWsl` los compila desde el zip como un usuario nuevo de OPM. No sube
+nada. Detalles, envio y actualizaciones en `docs\opm.md`.

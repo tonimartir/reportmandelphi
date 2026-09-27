@@ -259,6 +259,8 @@ webactivex/WebReportManX.tlb
 lib/x86_64-win64/
 packages/fpc/lib/
 packages/fpc_lcl/lib/
+# Paquete OPM (Lazarus Online Package Manager): salida de build/opm/make_opm_package.ps1
+build/opm/out/
 *.lps
 backup/
 # Lazarus per-user package registry (absolute paths, rewritten on every build)

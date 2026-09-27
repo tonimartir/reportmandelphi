@@ -4,6 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="reportman_designlcl"/>
     <Type Value="RunAndDesignTime"/>
+    <Author Value="Toni Martir"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -21,6 +22,9 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
+    <Description Value="Report Manager visual report designer for the LCL, embeddable in applications: TRpDesignerLCL with ruler, object inspector, report structure, data and parameters editors, expression editor, database browser and report wizard. On Windows the SQL editor uses Monaco through WebView2. Home page: https://reportman.es"/>
+    <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
+    <Version Major="4" Release="16"/>
     <Files Count="30">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
@@ -147,15 +151,18 @@
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="reportman_rtl"/>
+        <MinVersion Major="4" Release="16" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="reportman_lcl"/>
+        <MinVersion Major="4" Release="16" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="LCL"/>
       </Item3>
       <Item4>
         <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
       </Item4>
     </RequiredPkgs>
     <UsageOptions>
