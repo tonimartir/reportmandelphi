@@ -481,7 +481,7 @@ begin
     dtExpression:
       begin
         compo := TRpExpression.Create(theowner);
-        TRpExpression(compo).Expression := QuotedStr('Texto');
+        TRpExpression(compo).Expression := QuotedStr(SRpSampleTextToLabels);
       end;
     dtShape:
       begin

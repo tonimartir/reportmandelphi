@@ -26,14 +26,19 @@ unit rmdcmdline;
     <prefix>/share/reportman-designer/samples (<prefix> = <exe dir>/..).
   - Preferences (window position, last folder): Linux
     $XDG_CONFIG_HOME/reportman/ (default ~/.config/reportman/), Windows
-    %LOCALAPPDATA%\reportman\. }
+    %LOCALAPPDATA%\reportman\.
+  - LCL texts (buttons of the message dialogs, standard dialogs...): the
+    LCLStrConsts resourcestrings are translated from
+    <exe dir>/languages/lclstrconsts.<lang>.po (the files Lazarus ships in
+    lcl/languages; the Linux packages install them), in the language the
+    engine uses for reportmanres.*. Without the file the LCL stays in English. }
 
 {$mode delphi}{$H+}
 
 interface
 
 uses
-  SysUtils, Classes, rpmdconsts;
+  SysUtils, Classes, gettext, Translations, rpmdconsts;
 
 const
   APP_NAME = 'Report Manager Designer';
@@ -62,6 +67,10 @@ function UserConfigDir: string;
 function ConfigFileName: string;
 // First non-option argument (a path or a file:// URI), '' if none
 function CommandLineFile: string;
+// The lclstrconsts .po file for the user language, '' if there is none
+function LCLTranslationFile: string;
+// Translates the LCL resourcestrings (call it before Application.Initialize)
+procedure TranslateLCL;
 
 implementation
 
@@ -216,6 +225,61 @@ begin
   end;
 end;
 
+function LCLTranslationFile: string;
+var
+  lang, fallback, code, dir: string;
+  cands: array[0..2] of string;
+  i, p: Integer;
+begin
+  Result := '';
+  // Same language as the engine (rptranslator): LC_ALL, LC_MESSAGES, LANG on
+  // Unix, the user locale on Windows ('es_ES', fallback 'es')
+  gettext.GetLanguageIDs(lang, fallback);
+  // es_ES.UTF-8 / ca_ES@valencia -> es_ES / ca_ES
+  p := Pos('.', lang);
+  if p > 0 then
+    SetLength(lang, p - 1);
+  p := Pos('@', lang);
+  if p > 0 then
+    SetLength(lang, p - 1);
+  p := Pos('_', lang);
+  if p > 0 then
+    code := LowerCase(Copy(lang, 1, p - 1))
+  else
+    code := LowerCase(lang);
+  // C, POSIX... (no language): the LCL stays in English
+  if (Length(code) < 2) or (Length(code) > 3) then
+    Exit;
+  cands[0] := lang;
+  cands[1] := code;
+  // Lazarus has pt and pt_BR: pt_BR when the country has no file
+  if code = 'pt' then
+    cands[2] := 'pt_BR'
+  else
+    cands[2] := '';
+  dir := ExeDir + 'languages' + PathDelim;
+  for i := Low(cands) to High(cands) do
+    if (cands[i] <> '') and FileExists(dir + 'lclstrconsts.' + cands[i] + '.po') then
+      Exit(dir + 'lclstrconsts.' + cands[i] + '.po');
+end;
+
+procedure TranslateLCL;
+var
+  fname: string;
+begin
+  fname := LCLTranslationFile;
+  if fname = '' then
+    Exit;
+  try
+    // gettext has a .mo version with the same name: the .po one is wanted
+    Translations.TranslateUnitResourceStrings('lclstrconsts', fname);
+  except
+    // A damaged .po file only leaves the LCL texts in English
+    on E: Exception do
+      WriteStd('WARNING: ' + fname + ' not loaded (' + E.Message + ')', True);
+  end;
+end;
+
 procedure ShowUsage;
 begin
   WriteStd(APP_NAME + ' ' + RM_VERSION, False);
@@ -232,6 +296,7 @@ begin
   WriteStd(APP_NAME + ' ' + RM_VERSION + ' (LCL ' + WIDGETSET + ')', False);
   WriteStd('Executable:   ' + ParamStr(0), False);
   WriteStd('Translations: ' + FindTranslationsDir, False);
+  WriteStd('LCL language: ' + LCLTranslationFile, False);
   WriteStd('Samples:      ' + FindSamplesDir, False);
   WriteStd('Preferences:  ' + ConfigFileName, False);
 end;

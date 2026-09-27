@@ -40,7 +40,7 @@ Qué instala:
 
 | Ruta | Contenido |
 |---|---|
-| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`) y los ejemplos (`samples/`) |
+| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`, y en `languages/` las de la LCL) y los ejemplos (`samples/`) |
 | `/usr/bin/reportman-designer` | Enlace al programa |
 | `/usr/share/applications/reportman-designer.desktop` | Entrada del menú |
 | `/usr/share/mime/packages/reportman-designer.xml` | Tipo MIME de `*.rep` |
@@ -116,10 +116,11 @@ distribución no soportada o algo falla.
   `SQLITETEST`, SQLite sobre `clientes.db`) están en
   `samples/dbxconnections.ini` y se dan de alta en la configuración de
   conexiones del diseñador.
-- El idioma de los diálogos y mensajes sigue la variable `LANG` (español,
-  inglés, catalán, francés, alemán, italiano, portugués, checo y lituano; si no
-  hay traducción, inglés). El menú principal y la barra de herramientas del
-  diseñador LCL están, de momento, siempre en español.
+- El idioma del diseñador (menús, barras de herramientas, diálogos y
+  mensajes, también los botones de los diálogos estándar) sigue `LC_ALL`,
+  `LC_MESSAGES` o `LANG`, en ese orden (español, inglés, catalán, francés,
+  alemán, italiano, portugués, checo y lituano; si no hay traducción, inglés).
+  Por ejemplo `LANG=fr_FR.UTF-8 reportman-designer`.
 
 ## Configuración
 

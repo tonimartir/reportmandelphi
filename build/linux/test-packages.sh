@@ -121,7 +121,8 @@ if [ "${1:-}" = "--inside" ]; then
                  /usr/share/icons/hicolor/48x48/apps/reportman-designer.png \
                  /usr/share/icons/hicolor/scalable/apps/reportman-designer.svg \
                  "/opt/reportman-designer/samples/$SAMPLE" \
-                 /opt/reportman-designer/reportmanres.es; do
+                 /opt/reportman-designer/reportmanres.es \
+                 /opt/reportman-designer/languages/lclstrconsts.es.po; do
             if [ -e "$f" ]; then ok "$f"; else fail "falta $f"; fi
         done
         # Las imagenes Docker minimas excluyen /usr/share/man al instalar

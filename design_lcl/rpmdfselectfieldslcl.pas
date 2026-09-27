@@ -114,7 +114,7 @@ begin
 
   FCheckProportional := TCheckBox.Create(Self);
   FCheckProportional.Parent := Self;
-  FCheckProportional.Caption := 'Proportional column widths';
+  FCheckProportional.Caption := TranslateStr(1488, 'Proportional column widths');
   FCheckProportional.Checked := True;
   FCheckProportional.Left := 280;
   FCheckProportional.Top := 32;
@@ -122,7 +122,7 @@ begin
   // Available fields list
   FLabelAvailable := TLabel.Create(Self);
   FLabelAvailable.Parent := Self;
-  FLabelAvailable.Caption := 'Available Fields:';
+  FLabelAvailable.Caption := TranslateStr(1100, 'Available') + ':';
   FLabelAvailable.Left := 16;
   FLabelAvailable.Top := 64;
 
@@ -157,7 +157,7 @@ begin
   // Selected fields checklistbox
   FLabelSelected := TLabel.Create(Self);
   FLabelSelected.Parent := Self;
-  FLabelSelected.Caption := 'Selected Fields (Check to Calculate Total):';
+  FLabelSelected.Caption := TranslateStr(1489, 'Selected fields (check to sum)') + ':';
   FLabelSelected.Left := 282;
   FLabelSelected.Top := 64;
 

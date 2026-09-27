@@ -32,7 +32,7 @@ uses
   {$ENDIF}
   rmdcmdline,
   SysUtils, Classes, IniFiles, Interfaces, Forms, Controls, Dialogs,
-  rpmdfmainlcl;
+  rpmdconsts, rpmdfmainlcl;
 
 {$R *.res}
 
@@ -138,8 +138,8 @@ begin
   if not FileExists(fname) then
   begin
     WriteStd('ERROR: file not found: ' + fname, True);
-    MessageDlg(APP_NAME, 'File not found:' + LineEnding + fname, mtError,
-      [mbOK], 0);
+    MessageDlg(Application.Title, TranslateStr(731, 'Not found') + ':' +
+      LineEnding + fname, mtError, [mbOK], 0);
     Exit;
   end;
   try
@@ -151,7 +151,7 @@ begin
     on E: Exception do
     begin
       WriteStd('ERROR: cannot open ' + fname + ': ' + E.Message, True);
-      MessageDlg(APP_NAME, fname + LineEnding + LineEnding + E.Message,
+      MessageDlg(Application.Title, fname + LineEnding + LineEnding + E.Message,
         mtError, [mbOK], 0);
     end;
   end;
@@ -159,8 +159,12 @@ end;
 
 begin
   FileArg := CommandLineFile;
+  // LCL texts (dialog buttons...) in the language of reportmanres.*
+  TranslateLCL;
   RequireDerivedFormResource := True;
-  Application.Title := APP_NAME;
+  // Translated like the VCL designer (rpgraphutilsvcl); the console
+  // messages keep APP_NAME
+  Application.Title := TranslateStr(1, 'Report Manager Designer');
   Application.Scaled := True;
   Application.Initialize;
   ExceptionLogger := TExceptionLogger.Create;

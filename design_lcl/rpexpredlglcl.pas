@@ -302,7 +302,7 @@ begin
 
   FLabelCategory := TLabel.Create(Self);
   FLabelCategory.Parent := FPanelCenter;
-  FLabelCategory.Caption := TranslateStr(241, 'Category:');
+  FLabelCategory.Caption := TranslateStr(241, 'Category') + ':';
   FLabelCategory.Left := 0;
   FLabelCategory.Top := 0;
 
@@ -355,6 +355,25 @@ begin
   FMemoHelp.Color := clBtnFace;
 end;
 
+// Help of an operator, same texts as TFRpExpredialogVCL (translated constants)
+function OperatorHelp(const AOperator: string): string;
+begin
+  if AOperator = '+' then
+    Result := SRpOperatorSum
+  else if AOperator = '-' then
+    Result := SRpOperatorDif
+  else if AOperator = '*' then
+    Result := SRpOperatorMul
+  else if AOperator = '/' then
+    Result := SRpOperatorDiv
+  else if (AOperator = 'AND') or (AOperator = 'OR') or (AOperator = 'NOT') then
+    Result := SRpOperatorLog
+  else if (AOperator = '(') or (AOperator = ')') then
+    Result := ''
+  else
+    Result := SRpOperatorComp;
+end;
+
 procedure TFRpExpreDialogLCL.SetEvaluator(const Value: TRpCustomEvaluator);
 var
   list: TStringList;
@@ -382,7 +401,7 @@ begin
     begin
       rec := TRpRecHelp.Create;
       rec.RFunction := list.Strings[i];
-      rec.Help := 'Database field: ' + list.Strings[i];
+      rec.Help := TranslateStr(372, 'Database field') + ': ' + list.Strings[i];
       rec.Model := list.Strings[i];
       list.Objects[i] := rec;
     end;
@@ -408,13 +427,13 @@ begin
     list.AddObject(rec.RFunction, rec);
   end;
 
-  // Category 4: Operators
+  // Category 4: Operators, with the help texts of the VCL dialog
   list := FLists[4];
   for i := Low(operators) to High(operators) do
   begin
     rec := TRpRecHelp.Create;
     rec.RFunction := operators[i];
-    rec.Help := 'Operator: ' + operators[i];
+    rec.Help := OperatorHelp(operators[i]);
     rec.Model := operators[i];
     list.AddObject(rec.RFunction, rec);
   end;
@@ -457,10 +476,11 @@ begin
     if Assigned(rec) then
     begin
       FMemoHelp.Lines.Clear;
+      // Model and parameters as the VCL dialog shows them (LModel, LParams)
       if rec.Model <> '' then
-        FMemoHelp.Lines.Add('Syntax: ' + rec.Model);
+        FMemoHelp.Lines.Add(rec.Model);
       if rec.Params <> '' then
-        FMemoHelp.Lines.Add('Parameters: ' + rec.Params);
+        FMemoHelp.Lines.Add(TranslateStr(152, 'Parameters') + ': ' + rec.Params);
       if rec.Help <> '' then
       begin
         FMemoHelp.Lines.Add('');
@@ -503,11 +523,9 @@ var
   expr: string;
 begin
   expr := Trim(FMemoExpre.Text);
+  // Nothing to check in an empty expression
   if expr = '' then
-  begin
-    ShowMessage('Expression is empty.');
     Exit;
-  end;
 
   if not Assigned(FEvaluator) then
     Exit;
@@ -525,7 +543,7 @@ begin
       Exit;
     end;
   end;
-  ShowMessage('Syntax is OK.');
+  ShowMessage(TranslateStr(1490, 'Syntax is correct'));
 end;
 
 procedure TFRpExpreDialogLCL.BShowResultClick(Sender: TObject);
@@ -534,11 +552,9 @@ var
   val: Variant;
 begin
   expr := Trim(FMemoExpre.Text);
+  // Nothing to evaluate in an empty expression
   if expr = '' then
-  begin
-    ShowMessage('Expression is empty.');
     Exit;
-  end;
 
   try
     if Assigned(FEvaluator) then
@@ -546,11 +562,12 @@ begin
       FEvaluator.Expression := expr;
       FEvaluator.Evaluate;
       FAResult := FEvaluator.EvalResult;
-      ShowMessage('Result: ' + FEvaluator.EvalResultString);
+      // Only the value, as the VCL dialog
+      ShowMessage(FEvaluator.EvalResultString);
     end;
   except
     on E: Exception do
-      ShowMessage('Evaluation Error: ' + E.Message);
+      ShowMessage(TranslateStr(355, 'Error') + ': ' + E.Message);
   end;
 end;
 

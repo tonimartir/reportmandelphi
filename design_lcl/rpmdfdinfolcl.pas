@@ -323,7 +323,9 @@ end;
 procedure TFRpDInfoLCL.BuildControls;
 begin
   OpenDialog1 := TOpenDialog.Create(Self);
-  OpenDialog1.Filter := 'All files (*.*)|*.*|SQLite databases (*.db;*.sqlite;*.sqlite3)|*.db;*.sqlite;*.sqlite3|XML/ClientDataset (*.xml;*.cds)|*.xml;*.cds';
+  OpenDialog1.Filter := TranslateStr(705, 'Any File') + ' (*.*)|*.*|' +
+    'SQLite (*.db;*.sqlite;*.sqlite3)|*.db;*.sqlite;*.sqlite3|' +
+    'XML/ClientDataset (*.xml;*.cds)|*.xml;*.cds';
 
   // Bottom buttons panel
   PBottom := TPanel.Create(Self);
@@ -422,7 +424,7 @@ begin
 
   LabelConnAlias := TLabel.Create(PConnProps);
   LabelConnAlias.Parent := PConnProps;
-  LabelConnAlias.Caption := 'Connection Name / Alias:';
+  LabelConnAlias.Caption := TranslateStr(400, 'Connection name') + ':';
   LabelConnAlias.SetBounds(10, 12, 200, 16);
 
   EConnAlias := TEdit.Create(PConnProps);
@@ -432,7 +434,7 @@ begin
 
   LabelConnDriver := TLabel.Create(PConnProps);
   LabelConnDriver.Parent := PConnProps;
-  LabelConnDriver.Caption := 'Database Driver:';
+  LabelConnDriver.Caption := TranslateStr(1101, 'Database driver') + ':';
   LabelConnDriver.SetBounds(10, 68, 200, 16);
 
   ComboDriver := TComboBox.Create(PConnProps);
@@ -447,14 +449,14 @@ begin
   ComboDriver.Items.Add('4 - ADO / ODBC');
   ComboDriver.Items.Add('5 - IBO');
   ComboDriver.Items.Add('6 - ZeosDBO');
-  ComboDriver.Items.Add('7 - Native Driver / SQLite');
-  ComboDriver.Items.Add('8 - .NET Driver');
+  ComboDriver.Items.Add('7 - ' + TranslateStr(936, 'Native driver') + ' / SQLite');
+  ComboDriver.Items.Add('8 - ' + TranslateStr(1394, 'Dot net driver'));
   ComboDriver.Items.Add('9 - FireDAC');
   ComboDriver.Items.Add('10 - HTTP / Cloud');
 
   LabelConfigFile := TLabel.Create(PConnProps);
   LabelConfigFile.Parent := PConnProps;
-  LabelConfigFile.Caption := 'Config / Database File:';
+  LabelConfigFile.Caption := TranslateStr(743, 'Configuration file') + ':';
   LabelConfigFile.SetBounds(10, 124, 200, 16);
 
   EConfigFile := TEdit.Create(PConnProps);
@@ -471,7 +473,7 @@ begin
 
   CheckLoginPrompt := TCheckBox.Create(PConnProps);
   CheckLoginPrompt.Parent := PConnProps;
-  CheckLoginPrompt.Caption := 'Prompt for login credentials';
+  CheckLoginPrompt.Caption := TranslateStr(144, 'Login prompt');
   CheckLoginPrompt.SetBounds(10, 180, 250, 20);
 
   // -------------------------------------------------------------
@@ -562,7 +564,7 @@ begin
 
   LabelDSAlias := TLabel.Create(PDSProps);
   LabelDSAlias.Parent := PDSProps;
-  LabelDSAlias.Caption := 'Dataset Name / Alias:';
+  LabelDSAlias.Caption := TranslateStr(518, 'Alias Name') + ':';
   LabelDSAlias.SetBounds(10, 6, 160, 16);
 
   EDSAlias := TEdit.Create(PDSProps);
@@ -572,7 +574,7 @@ begin
 
   LabelDSConn := TLabel.Create(PDSProps);
   LabelDSConn.Parent := PDSProps;
-  LabelDSConn.Caption := 'Database Connection:';
+  LabelDSConn.Caption := TranslateStr(154, 'Connection') + ':';
   LabelDSConn.SetBounds(10, 54, 160, 16);
 
   ComboDSConn := TComboBox.Create(PDSProps);
@@ -583,7 +585,7 @@ begin
 
   LabelDSMaster := TLabel.Create(PDSProps);
   LabelDSMaster.Parent := PDSProps;
-  LabelDSMaster.Caption := 'Master DataSource:';
+  LabelDSMaster.Caption := TranslateStr(155, 'Master dataset') + ':';
   LabelDSMaster.SetBounds(10, 102, 160, 16);
 
   ComboDSMaster := TComboBox.Create(PDSProps);
@@ -593,7 +595,7 @@ begin
 
   CheckOpenOnStart := TCheckBox.Create(PDSProps);
   CheckOpenOnStart.Parent := PDSProps;
-  CheckOpenOnStart.Caption := 'Open on start';
+  CheckOpenOnStart.Caption := TranslateStr(1373, 'Open on start');
   CheckOpenOnStart.SetBounds(270, 122, 120, 20);
   CheckOpenOnStart.Anchors := [akTop, akRight];
 
@@ -615,19 +617,21 @@ begin
   PSQLTop.Parent := PSQLArea;
 
   LabelSQL := TLabel.Create(PSQLTop);
-  LabelSQL.Caption := ' Consulta SQL:';
+  LabelSQL.Caption := ' ' + TranslateStr(159, 'Query') + ':';
   LabelSQL.SetBounds(4, 6, 100, 18);
   LabelSQL.Parent := PSQLTop;
 
+  // Switches between the Monaco editor and the plain text memo
   BMonacoToggle := TButton.Create(PSQLTop);
   BMonacoToggle.Parent := PSQLTop;
-  BMonacoToggle.Caption := 'Alternar Monaco / Texto';
+  BMonacoToggle.Caption := 'Monaco / ' + TranslateStr(314, 'Text');
   BMonacoToggle.SetBounds(110, 2, 160, 24);
   BMonacoToggle.OnClick := BMonacoToggleClick;
 
+  // Switches the light / dark editor theme
   BThemeToggle := TButton.Create(PSQLTop);
   BThemeToggle.Parent := PSQLTop;
-  BThemeToggle.Caption := 'Tema Claro / Oscuro';
+  BThemeToggle.Caption := TranslateStr(1447, 'Theme');
   BThemeToggle.SetBounds(276, 2, 140, 24);
   BThemeToggle.OnClick := BThemeToggleClick;
   FIsDarkTheme := False;

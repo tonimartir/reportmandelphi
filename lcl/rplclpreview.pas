@@ -249,7 +249,7 @@ begin
    SRpPDFFileUn+'|*.pdf|'+
    SRpPDFFile+' A/3|*.pdf|'+
    SRpPDFFileUn+' A/3|*.pdf|'+
-   'PNG Images (multiple files)|*.png|'+
+   TranslateStr(881,'PNG Images')+'|*.png|'+
    SRpExcelFile+'|*.xls|'+
    SRpExcelFileNoMulti+'|*.xls|'+
    SRpPlainFile+'|*.txt|'+
