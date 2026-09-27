@@ -30,11 +30,29 @@ uses
   rpmdfgridlcl, rpmdfaboutlcl,
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
-  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl;
+  rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl, rpbasereport,
+  rpreportdesignercontracts, rpaithreadslcl;
 
 type
   TFRpMainFLCL = class(TForm)
   private
+    // Design assistant (the chat of rpmdfmainvcl): dataset context of the
+    // requests, refreshed in a worker thread
+    FDesignMailbox: TRpAsyncMailbox;
+    FDesignMailboxRef: IRpAsyncMailbox;
+    FDesignContextRefreshVersion: Integer;
+    FDesignChatContextJson: string;
+    FDesignChatContextInitialized: Boolean;
+    FDesignChatPendingPrompt: string;
+    FDesignChatValidatedPrompt: string;
+    FDesignContextRefreshRunning: Boolean;
+    // Report changes blocked by this form during an inference
+    FDesignInferenceDepth: Integer;
+    FDesignApplyCount: Integer;
+    // The report content is being replaced: the views are detached
+    FReplacingReport: Boolean;
+    // The online initialization of the hidden AI panel waits until it is shown
+    FChatOnlinePending: Boolean;
     FReport: TRpReport;
     FFileName: string;
     FOwnsReport: Boolean;
@@ -119,7 +137,10 @@ type
     function CreateDesignReport: TRpReport;
     function LoadDesignReport(AStream: TStream): TRpReport;
     procedure DetachReport;
-    procedure InstallReport(ANewReport: TRpReport; const AFileName: string);
+    // AKeepHistory: the undo history loaded with the report (BINCUE) is kept,
+    // as in the VCL designer; new reports start with an empty one
+    procedure InstallReport(ANewReport: TRpReport; const AFileName: string;
+      AKeepHistory: Boolean);
     function GetUndoCue: TUndoCue;
     function GetLibraryConnections: TRpDatabaseInfoList;
     function SaveCurrentReport: Boolean;
@@ -167,9 +188,41 @@ type
     procedure MenuHelpAboutClick(Sender: TObject);
     procedure MenuViewAIChatClick(Sender: TObject);
     procedure ApplyChatPanelVisibility;
+    function GetShowAIChat: Boolean;
+    procedure SetShowAIChat(Value: Boolean);
+    procedure LoadDesignerPreferences;
+    procedure SaveDesignerPreferences;
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string);
     procedure InitializeDesignChatSchemaSelection;
+    // Design assistant, as rpmdfmainvcl
+    procedure ConfigureDesignChat;
+    procedure ConfigureReportChangeBlocking;
+    function ReportBlockChanges(Sender: TRpBaseReport; const AReason: string): Boolean;
+    procedure DesignInferenceBegin(Sender: TObject);
+    procedure DesignInferenceEnd(Sender: TObject);
+    function BuildDesignChatRequestForFrame(Sender: TObject;
+      const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
+      TRpApiPreprocessSqlContextRequest;
+    procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+      const AModifiedReportDocument: string);
+    procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure StopDesignChatRequest(Sender: TObject);
+    procedure RefreshDesignChatContext(Sender: TObject);
+    procedure ResetDesignChatContextCache;
+    procedure CancelDesignChat;
+    procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
+      ANotifyOnSuccess: Boolean);
+    procedure HandleDesignAsyncMessage(AMessage: TRpAsyncMessage);
+    function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+      const AErrorMessage: string): string;
+    function ConfirmDesignPromptWithDatasetErrors(
+      const ADatasetErrorMessage: string): Boolean;
+    procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
+    procedure BeginReportReplace;
+    procedure EndReportReplace;
     procedure MenuFileExitClick(Sender: TObject);
     procedure DesignerToolChange(Sender: TObject);
     procedure StructureUndoRedo(Sender: TObject);
@@ -251,6 +304,20 @@ type
     // Marks the report dirty for a change that is not recorded in the cue
     procedure MarkExternalChange;
     procedure EmbedInControl(AParent: TWinControl);
+    // Design assistant (rpmdfmainvcl). The request carries the report XML
+    // with the undo history (BINCUE), the chat schema and the dataset
+    // context of the last refresh.
+    function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+    procedure ApplyPreprocessSqlContextResult(AResult: TRpApiPreprocessSqlContextResult);
+    // The report XML the assistant receives (with the undo history)
+    function SaveReportAsXml: string;
+    // Reloads the document returned by the assistant into the same report
+    // object and refreshes the designer (rpmdfmainvcl). Its undo history
+    // comes with it (BINCUE, with the operations of the change on top of the
+    // previous ones): Undo reverts the change step by step. A document that
+    // does not load raises and leaves the report as it was.
+    procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
 
     property Report: TRpReport read FReport write SetReport;
     property FileName: string read FFileName write SetFileName;
@@ -260,10 +327,19 @@ type
     property DesignerFrame: TFRpDesignFrameLCL read FDesignerFrame;
     property ObjInsp: TFRpObjInspLCL read FObjInsp;
     property Structure: TFRpStructureLCL read FStructure;
-    // AI chat panel (account, model, schema and chat), as in rpmdfmainvcl.
-    // The design assistant is connected to it in phase 7.5.
+    // AI chat panel (account, model, schema and chat) with the design
+    // assistant, as in rpmdfmainvcl
     property ChatFrame: TFRpChatFrame read FChatFrame;
     property AIChatPanel: TPanel read PAIPanel;
+    // View > AI chat; saved in the designer preferences (Preferences/
+    // ShowAIChat of the repmand file, as the VCL designer)
+    property ShowAIChat: Boolean read GetShowAIChat write SetShowAIChat;
+    property AIChatMenuItem: TMenuItem read MenuViewAIChat;
+    // Dataset context sent with the design requests (JSON)
+    property DesignChatContextJson: string read FDesignChatContextJson;
+    property DesignContextRefreshRunning: Boolean read FDesignContextRefreshRunning;
+    // Documents applied by ApplyModifiedReportDocument
+    property DesignApplyCount: Integer read FDesignApplyCount;
     // Hides New/Open/Save/Save as (TRpDesignerLCL, as rpmdesignervcl does);
     // closing a modified report then asks whether the changes are accepted
     property HostedMode: Boolean read FHostedMode write SetHostedMode;
@@ -271,9 +347,258 @@ type
     property SaveAccepted: Boolean read FSaveAccepted;
   end;
 
+var
+  // Preferences file of the designer. Empty: the one of the VCL designer
+  // (repmand in the user configuration folder); tests use a sandbox
+  RpDesignerLCLConfigFile: string = '';
+
 implementation
 
 {$R *.lfm}
+
+uses
+  // rpexpredlglcl: the dataset context of the assistants (ports of the
+  // rpchatdialogvcl CollectAgentSchemaOnlyContext and
+  // BuildDesignExpressionContextJson)
+  IniFiles, rpauthmanager, rpxmlstream, rpexpredlglcl;
+
+const
+  SDesignChatInitialMessage =
+    'Describe report changes here or ask for assistance. Any change can be undone.';
+
+type
+  { Dataset context of the design requests (the payload of WM_USER + 207 in
+    rpmdfmainvcl). ContextReport is the copy of the report whose datasets the
+    worker opened; the payload owns it. }
+  TRpDesignContextPayload = class(TRpAsyncMessage)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+    OpenErrors: TStringList;
+    SchemaOnlyFields: TStringList;
+    SchemaOnlyErrors: TStringList;
+    ContextReport: TRpReport;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  { The anonymous thread of BeginDesignChatContextRefresh: opens the datasets
+    of a copy of the report (PrepareLiveContext) and reads the schema of the
+    Reportman Agent datasets }
+  TRpDesignContextWorker = class(TRpAsyncWorker)
+  public
+    RequestVersion: Integer;
+    Report: TRpReport;
+    // Session of the Hub, read in the main thread
+    Token: string;
+    InstallId: string;
+    destructor Destroy; override;
+  protected
+    procedure Run; override;
+  end;
+
+constructor TRpDesignContextPayload.Create;
+begin
+  inherited Create;
+  OpenErrors := TStringList.Create;
+  SchemaOnlyFields := TStringList.Create;
+  SchemaOnlyErrors := TStringList.Create;
+end;
+
+destructor TRpDesignContextPayload.Destroy;
+begin
+  ContextReport.Free;
+  SchemaOnlyErrors.Free;
+  SchemaOnlyFields.Free;
+  OpenErrors.Free;
+  inherited Destroy;
+end;
+
+// The connection of a dataset, nil when it does not exist.
+// TRpDatabaseInfoList.ItemByName raises instead: the VCL code that expects
+// nil from it fails with a dataset without a valid connection.
+function FindDatabaseInfo(AReport: TRpReport; const AAlias: string): TRpDatabaseInfoItem;
+var
+  LIndex: Integer;
+begin
+  Result := nil;
+  LIndex := AReport.DatabaseInfo.IndexOf(AAlias);
+  if LIndex >= 0 then
+    Result := AReport.DatabaseInfo.Items[LIndex];
+end;
+
+{ Report documents }
+
+// A copy of the report for the dataset context: the worker opens its
+// datasets, never the ones of the report being designed (binary stream as
+// SaveToStream, without restoring the initial parameter values)
+function CreateContextReportCopy(AReport: TRpReport): TRpReport;
+var
+  LStream: TMemoryStream;
+  LFiles: TList;
+  I: Integer;
+begin
+  LFiles := TList.Create;
+  LStream := TMemoryStream.Create;
+  try
+    // Without the embedded files: the context does not need them, and under
+    // FPC TRpBaseReport.WriteEmbeddedFiles/ReadEmbeddedFiles pass a TBytes
+    // variable to TStream.Write/Read (it has no TBytes overload in FPC)
+    for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
+      LFiles.Add(AReport.EmbeddedFiles[I]);
+    SetLength(AReport.EmbeddedFiles, 0);
+    try
+      LStream.WriteComponent(AReport);
+    finally
+      SetLength(AReport.EmbeddedFiles, LFiles.Count);
+      for I := 0 to LFiles.Count - 1 do
+        AReport.EmbeddedFiles[I] := TEmbeddedFile(LFiles[I]);
+    end;
+    LStream.Position := 0;
+    Result := TRpReport.Create(nil);
+    try
+      Result.FailIfLoadExternalError := False;
+      Result.LoadFromStream(LStream);
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    LStream.Free;
+    LFiles.Free;
+  end;
+end;
+
+// Raises when ADocument does not load (into a scratch report)
+procedure CheckReportDocumentLoads(const ADocument: string);
+var
+  LScratch: TRpReport;
+  LStream: TStringStream;
+  I: Integer;
+begin
+  LScratch := TRpReport.Create(nil);
+  LStream := TStringStream.Create(ADocument);
+  try
+    LScratch.FailIfLoadExternalError := False;
+    LScratch.LoadFromStream(LStream);
+  finally
+    LStream.Free;
+    // TRpBaseReport.Destroy does not free the embedded files
+    for I := 0 to Length(LScratch.EmbeddedFiles) - 1 do
+      LScratch.EmbeddedFiles[I].Free;
+    SetLength(LScratch.EmbeddedFiles, 0);
+    LScratch.Free;
+  end;
+end;
+
+// Frees every item of the report. TRpBaseReport.Clear (what the VCL calls
+// before reloading) only removes the sections and components from the
+// report, which leaks them, and FreeSubreports leaves them owned by it: the
+// load would then find duplicate names.
+procedure ClearReportItems(AReport: TRpReport);
+var
+  I: Integer;
+  LSubReport: TRpSubReport;
+begin
+  AReport.DeActivateDatasets;
+  for I := 0 to AReport.SubReports.Count - 1 do
+  begin
+    LSubReport := AReport.SubReports.Items[I].SubReport;
+    if Assigned(LSubReport) then
+      LSubReport.FreeSections;
+  end;
+  AReport.FreeSubreports;
+  AReport.DataInfo.Clear;
+  AReport.DatabaseInfo.Clear;
+  AReport.Params.Clear;
+  // Items that were in no section are owned by the report as well; it owns
+  // nothing else
+  for I := AReport.ComponentCount - 1 downto 0 do
+    AReport.Components[I].Free;
+end;
+
+// Loads ADocument into the same report object (the owner, the host of a
+// hosted designer and the undo cue keep it), as rpmdfmainvcl
+// ApplyModifiedReportDocument: the report properties that the document does
+// not contain keep their values. The XML readers append embedded files: a
+// document without them keeps the ones of the report.
+procedure ReplaceReportContent(AReport: TRpReport; const ADocument: string);
+var
+  LCue: TObject;
+  LStream: TStringStream;
+  LOldFiles: TList;
+  I: Integer;
+begin
+  AReport.AssertCanModify('ReplaceReportContent');
+  LCue := AReport.UndoCue;
+  LStream := TStringStream.Create(ADocument);
+  LOldFiles := TList.Create;
+  try
+    ClearReportItems(AReport);
+    for I := 0 to Length(AReport.EmbeddedFiles) - 1 do
+      LOldFiles.Add(AReport.EmbeddedFiles[I]);
+    SetLength(AReport.EmbeddedFiles, 0);
+    AReport.LoadFromStream(LStream);
+    if (LOldFiles.Count > 0) and (Length(AReport.EmbeddedFiles) = 0) then
+    begin
+      SetLength(AReport.EmbeddedFiles, LOldFiles.Count);
+      for I := 0 to LOldFiles.Count - 1 do
+        AReport.EmbeddedFiles[I] := TEmbeddedFile(LOldFiles[I]);
+      LOldFiles.Clear;
+    end;
+  finally
+    for I := 0 to LOldFiles.Count - 1 do
+      TObject(LOldFiles[I]).Free;
+    LOldFiles.Free;
+    LStream.Free;
+    // The BINCUE of the document was loaded into this cue object
+    AReport.UndoCue := LCue;
+  end;
+end;
+
+{ TRpDesignContextWorker }
+
+destructor TRpDesignContextWorker.Destroy;
+begin
+  Report.Free;
+  inherited Destroy;
+end;
+
+procedure TRpDesignContextWorker.Run;
+var
+  LPayload: TRpDesignContextPayload;
+begin
+  LPayload := TRpDesignContextPayload.Create;
+  try
+    LPayload.RequestVersion := RequestVersion;
+    try
+      Report.PrepareLiveContext(LPayload.OpenErrors);
+      CollectAgentSchemaOnlyContext(Report, LPayload.SchemaOnlyFields,
+        LPayload.SchemaOnlyErrors, Token, InstallId);
+    except
+      on E: Exception do
+      begin
+        LPayload.ErrorMessage := E.Message;
+        LPayload.OpenErrors.Clear;
+        LPayload.SchemaOnlyFields.Clear;
+        LPayload.SchemaOnlyErrors.Clear;
+      end;
+    end;
+    LPayload.ContextReport := Report;
+    Report := nil;
+    Post(LPayload);
+    LPayload := nil;
+  finally
+    LPayload.Free;
+  end;
+end;
+
+function DesignerConfigFileName: string;
+begin
+  Result := RpDesignerLCLConfigFile;
+  if Result = '' then
+    Result := Obtainininameuserconfig('', '', 'repmand');
+end;
 
 { TFRpMainFLCL }
 
@@ -288,9 +613,16 @@ begin
   Color := clBtnFace;
   FFileName := '';
   FOwnsReport := True;
+  // Results of the dataset context worker (WM_USER + 207 of the VCL)
+  FDesignMailbox := TRpAsyncMailbox.Create(HandleDesignAsyncMessage);
+  FDesignMailboxRef := FDesignMailbox;
 
   BuildMenus;
   BuildControls;
+  // View > AI chat as the user left it (VCL LoadConfig)
+  LoadDesignerPreferences;
+  if not MenuViewAIChat.Checked then
+    ApplyChatPanelVisibility;
 
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
@@ -302,6 +634,23 @@ end;
 
 destructor TFRpMainFLCL.Destroy;
 begin
+  // A context refresh still running drops its result; the chat frame
+  // (destroyed with the form) stops its own request
+  if Assigned(FDesignMailbox) then
+    FDesignMailbox.Detach;
+  FDesignMailboxRef := nil;
+  FDesignMailbox := nil;
+  if Assigned(FChatFrame) then
+  begin
+    FChatFrame.OnBuildDesignRequest := nil;
+    FChatFrame.OnBuildPreprocessSqlContextRequest := nil;
+    FChatFrame.OnApplyDesignResult := nil;
+    FChatFrame.OnApplyPreprocessSqlContextResult := nil;
+    FChatFrame.OnDesignInferenceBegin := nil;
+    FChatFrame.OnDesignInferenceEnd := nil;
+    FChatFrame.OnStopRequest := nil;
+    FChatFrame.OnRefreshContext := nil;
+  end;
   // Also unhooks the undo cue of a report owned by someone else
   DetachReport;
   FreeAndNil(FLibConnections);
@@ -919,7 +1268,7 @@ begin
   FChatFrame := TFRpChatFrame.Create(Self);
   FChatFrame.Parent := PAIPanel;
   FChatFrame.Align := alClient;
-  FChatFrame.SetRefreshAction(True);
+  ConfigureDesignChat;
 
   // 7. Client Area (Canvas Frame)
   PClient := TPanel.Create(Self);
@@ -979,6 +1328,10 @@ begin
   // buttons and the history panel
   if csDestroying in ComponentState then
     Exit;
+  // The report is being reloaded (the history comes with it): refreshed at
+  // the end of the replacement
+  if FReplacingReport then
+    Exit;
   UpdateStatus;
   if Assigned(FStructure) and Assigned(FStructure.cueview) then
     FStructure.cueview.RefreshList;
@@ -1023,8 +1376,15 @@ end;
 
 procedure TFRpMainFLCL.DetachReport;
 begin
-  if Assigned(FReport) and Assigned(FReport.UndoCue) and (FReport.UndoCue is TUndoCue) then
-    TUndoCue(FReport.UndoCue).OnChange := nil;
+  if Assigned(FReport) then
+  begin
+    if Assigned(FReport.UndoCue) and (FReport.UndoCue is TUndoCue) then
+      TUndoCue(FReport.UndoCue).OnChange := nil;
+    // A report of a host outlives the form: no handler of it, not blocked
+    FReport.OnBlockChanges := nil;
+    FReport.BlockChanges := False;
+  end;
+  FDesignInferenceDepth := 0;
   if Assigned(FDesignerFrame) then
     FDesignerFrame.Report := nil;
   if Assigned(FStructure) then
@@ -1035,10 +1395,13 @@ begin
     FReport := nil;
 end;
 
-procedure TFRpMainFLCL.InstallReport(ANewReport: TRpReport; const AFileName: string);
+procedure TFRpMainFLCL.InstallReport(ANewReport: TRpReport; const AFileName: string;
+  AKeepHistory: Boolean);
 var
   cue: TUndoCue;
 begin
+  // A design request of the current report must not reach the new one
+  CancelDesignChat;
   // The new report is complete: only now the current one is released
   DetachReport;
   FReport := ANewReport;
@@ -1047,18 +1410,24 @@ begin
   FLibraryName := '';
   FLibraryReportName := '';
   cue := GetUndoCue;
-  cue.Clear;
+  if not AKeepHistory then
+    cue.Clear;
   cue.MarkClean;
+  ConfigureReportChangeBlocking;
+  ResetDesignChatContextCache;
   RefreshInterface;
   // The VCL designer creates a new chat for every report
   if Assigned(FChatFrame) then
-    FChatFrame.Initialize('', '');
+    FChatFrame.Initialize('', TranslateStr(1640, SDesignChatInitialMessage));
   InitializeDesignChatSchemaSelection;
 end;
 
 procedure TFRpMainFLCL.SetReport(Value: TRpReport);
+var
+  cue: TUndoCue;
 begin
   if FReport = Value then Exit;
+  CancelDesignChat;
   DetachReport;
   FReport := Value;
   FOwnsReport := False;
@@ -1066,9 +1435,16 @@ begin
   FLibraryReportName := '';
   if Assigned(FReport) then
   begin
+    // The history may come with the report (BINCUE): its current state is
+    // the saved one unless the host says it is modified
+    cue := GetUndoCue;
+    if not FReport.Modified then
+      cue.MarkClean;
+    ConfigureReportChangeBlocking;
+    ResetDesignChatContextCache;
     RefreshInterface;
     if Assigned(FChatFrame) then
-      FChatFrame.Initialize('', '');
+      FChatFrame.Initialize('', TranslateStr(1640, SDesignChatInitialMessage));
     InitializeDesignChatSchemaSelection;
   end
   else
@@ -1077,8 +1453,54 @@ end;
 
 procedure TFRpMainFLCL.MenuViewAIChatClick(Sender: TObject);
 begin
-  MenuViewAIChat.Checked := not MenuViewAIChat.Checked;
+  // AChatIAExecute: apply and save the preference
+  SetShowAIChat(not MenuViewAIChat.Checked);
+end;
+
+function TFRpMainFLCL.GetShowAIChat: Boolean;
+begin
+  Result := MenuViewAIChat.Checked;
+end;
+
+procedure TFRpMainFLCL.SetShowAIChat(Value: Boolean);
+begin
+  MenuViewAIChat.Checked := Value;
   ApplyChatPanelVisibility;
+  SaveDesignerPreferences;
+end;
+
+procedure TFRpMainFLCL.LoadDesignerPreferences;
+var
+  inif: TIniFile;
+begin
+  // Preferences/ShowAIChat of the VCL designer (same file and key)
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      MenuViewAIChat.Checked := inif.ReadBool('Preferences', 'ShowAIChat', True);
+    finally
+      inif.Free;
+    end;
+  except
+    // An unreadable preferences file keeps the defaults
+  end;
+end;
+
+procedure TFRpMainFLCL.SaveDesignerPreferences;
+var
+  inif: TIniFile;
+begin
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      inif.WriteBool('Preferences', 'ShowAIChat', MenuViewAIChat.Checked);
+      inif.UpdateFile;
+    finally
+      inif.Free;
+    end;
+  except
+    // A preference that can not be saved does not stop the designer
+  end;
 end;
 
 procedure TFRpMainFLCL.ApplyChatPanelVisibility;
@@ -1090,6 +1512,13 @@ begin
     // The splitter must stay at the left of the panel
     SplitterAI.Left := PAIPanel.Left - SplitterAI.Width;
     FChatFrame.RefreshLayout;
+    // The panel was hidden when the report was opened: no Hub requests
+    // until the user shows it
+    if FChatOnlinePending then
+    begin
+      FChatOnlinePending := False;
+      FChatFrame.StartOnlineInitialization;
+    end;
   end;
 end;
 
@@ -1118,7 +1547,7 @@ begin
     begin
       LHasPersistedSchema := True;
       AHubSchemaId := LDataInfo.HubSchemaId;
-      LDatabaseInfo := FReport.DatabaseInfo.ItemByName(LDataInfo.DatabaseAlias);
+      LDatabaseInfo := FindDatabaseInfo(FReport, LDataInfo.DatabaseAlias);
       if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
       begin
         LConnectionParams := TStringList.Create;
@@ -1167,7 +1596,521 @@ begin
     Exit;
   ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
   FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
-  FChatFrame.StartOnlineInitialization;
+  // The AI panel is optional: hidden, it makes no Hub request until shown
+  if PAIPanel.Visible then
+    FChatFrame.StartOnlineInitialization
+  else
+    FChatOnlinePending := True;
+end;
+
+{ Design assistant (rpmdfmainvcl) }
+
+procedure TFRpMainFLCL.ConfigureDesignChat;
+begin
+  FChatFrame.OnBuildDesignRequest := BuildDesignChatRequestForFrame;
+  FChatFrame.OnBuildPreprocessSqlContextRequest := BuildPreprocessSqlContextRequestForFrame;
+  FChatFrame.OnApplyDesignResult := ApplyModifiedReportDocumentFromFrame;
+  FChatFrame.OnApplyPreprocessSqlContextResult := ApplyPreprocessSqlContextResultFromFrame;
+  FChatFrame.OnDesignInferenceBegin := DesignInferenceBegin;
+  FChatFrame.OnDesignInferenceEnd := DesignInferenceEnd;
+  FChatFrame.OnStopRequest := StopDesignChatRequest;
+  FChatFrame.OnRefreshContext := RefreshDesignChatContext;
+  FChatFrame.SetRefreshAction(True);
+end;
+
+procedure TFRpMainFLCL.ConfigureReportChangeBlocking;
+begin
+  if Assigned(FReport) then
+    FReport.OnBlockChanges := ReportBlockChanges;
+end;
+
+function TFRpMainFLCL.ReportBlockChanges(Sender: TRpBaseReport;
+  const AReason: string): Boolean;
+begin
+  // A change while the assistant works: it is applied only if the user
+  // cancels the inference
+  Result := False;
+  if RpMessageBox(TranslateStr(1651, 'An AI inference is in progress. Modifying ' +
+    'the report now cancels it. Do you want to cancel it and apply the change?'),
+    SRpWarning, [smbYes, smbNo], smsWarning, smbYes, smbNo) = smbYes then
+  begin
+    if Assigned(FChatFrame) then
+      FChatFrame.AISelectionStopRequest(Self);
+    Sender.BlockChanges := False;
+    FDesignInferenceDepth := 0;
+    Result := True;
+  end;
+end;
+
+procedure TFRpMainFLCL.DesignInferenceBegin(Sender: TObject);
+begin
+  // Both requests of a validated prompt are built: the next prompt refreshes
+  // the dataset context again (the VCL cleared it only on a stop)
+  FDesignChatValidatedPrompt := '';
+  if Assigned(FReport) then
+  begin
+    FReport.BeginBlockChanges;
+    Inc(FDesignInferenceDepth);
+  end;
+end;
+
+procedure TFRpMainFLCL.DesignInferenceEnd(Sender: TObject);
+begin
+  if Assigned(FReport) and (FDesignInferenceDepth > 0) then
+  begin
+    Dec(FDesignInferenceDepth);
+    FReport.EndBlockChanges;
+  end;
+end;
+
+procedure TFRpMainFLCL.StopDesignChatRequest(Sender: TObject);
+begin
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := False;
+  FDesignChatPendingPrompt := '';
+  FDesignChatValidatedPrompt := '';
+  if Assigned(FReport) then
+    FReport.BlockChanges := False;
+  FDesignInferenceDepth := 0;
+  UpdateDesignContextProgress(False, '');
+end;
+
+procedure TFRpMainFLCL.CancelDesignChat;
+begin
+  if not Assigned(FChatFrame) then
+    Exit;
+  if FChatFrame.Busy or FDesignContextRefreshRunning then
+    // Stops the stream of the frame, then StopDesignChatRequest
+    FChatFrame.AISelectionStopRequest(Self)
+  else
+    StopDesignChatRequest(Self);
+end;
+
+procedure TFRpMainFLCL.ResetDesignChatContextCache;
+begin
+  FDesignChatContextJson := '';
+  FDesignChatContextInitialized := False;
+  FDesignChatPendingPrompt := '';
+  FDesignChatValidatedPrompt := '';
+end;
+
+procedure TFRpMainFLCL.UpdateDesignContextProgress(AActive: Boolean;
+  const AStatus: string);
+begin
+  if AActive then
+    StatusBar.SimpleText := AStatus
+  else if not (csDestroying in ComponentState) then
+    UpdateStatus;
+  if Assigned(FChatFrame) then
+  begin
+    if AActive then
+    begin
+      if not FDesignContextRefreshRunning then
+        FChatFrame.BeginProgress('System', AStatus)
+      else
+        FChatFrame.UpdateProgress(AStatus);
+    end
+    else
+      FChatFrame.FinishProgress;
+  end;
+end;
+
+function TFRpMainFLCL.SaveReportAsXml: string;
+var
+  LStream: TStringStream;
+begin
+  Result := '';
+  if not Assigned(FReport) then
+    Exit;
+  // With the undo history (BINCUE, rpmdundocuelcl hooks), as in Delphi
+  LStream := TStringStream.Create('');
+  try
+    WriteReportXML(FReport, LStream);
+    Result := LStream.DataString;
+  finally
+    LStream.Free;
+  end;
+end;
+
+function TFRpMainFLCL.BuildDesignChatRequest(
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+  Result := TRpApiModifyReportRequest.Create;
+  try
+    Result.AITier := RpAITierTypeFromString(FChatFrame.GetAITier);
+    Result.Mode := RpReportDesignerModeFromString(FChatFrame.GetAIMode);
+    Result.ReportDocument := SaveReportAsXml;
+    Result.ReportFormat := rdfXml;
+    Result.ExistingContextJson := FDesignChatContextJson;
+    Result.ReturnModifiedDocument := True;
+    Result.SimplifiedPrompt := False;
+    Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+    Result.ApiKey := FChatFrame.GetSchemaApiKey;
+    Result.Config.HubDatabaseId := FChatFrame.GetHubDatabaseId;
+    Result.Config.HubSchemaId := FChatFrame.GetHubSchemaId;
+    TRpAuthManager.Instance.Log(
+      'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
+      ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+      ' SchemaApiKey=' + Result.ApiKey);
+    Result.UserInstructions.Add(APrompt);
+    if Result.AITier = ratLocalAgent then
+    begin
+      Result.AgentSecret := FChatFrame.GetAgentSecret;
+      Result.AgentAiId := FChatFrame.GetAgentAiId;
+      Result.HasAgentAiId := Result.AgentAiId <> 0;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TFRpMainFLCL.BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+var
+  I: Integer;
+  LConnectionParams: TStringList;
+  LDataInfo: TRpDataInfoItem;
+  LDataSource: TRpApiPreprocessSqlContextDataSource;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LDataInfoName: string;
+begin
+  // The datasets whose SQL has no explanation yet
+  Result := nil;
+  if (not Assigned(FReport)) or (not Assigned(FChatFrame)) then
+    Exit;
+  LConnectionParams := TStringList.Create;
+  try
+    try
+      for I := 0 to FReport.DataInfo.Count - 1 do
+      begin
+        LDataInfo := FReport.DataInfo.Items[I];
+        if Trim(LDataInfo.SQL) = '' then
+          Continue;
+        if Trim(LDataInfo.SQLExplanation) <> '' then
+          Continue;
+        if Trim(LDataInfo.SQLExplanationError) <> '' then
+          Continue;
+        if Result = nil then
+        begin
+          Result := TRpApiPreprocessSqlContextRequest.Create;
+          Result.AITier := RpAITierTypeFromString(FChatFrame.GetAITier);
+          Result.Mode := RpReportDesignerModeFromString(FChatFrame.GetAIMode);
+          Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+          Result.ApiKey := FChatFrame.GetSchemaApiKey;
+          Result.Config.HubDatabaseId := FChatFrame.GetHubDatabaseId;
+          Result.Config.HubSchemaId := FChatFrame.GetHubSchemaId;
+          if Result.AITier = ratLocalAgent then
+          begin
+            Result.AgentSecret := FChatFrame.GetAgentSecret;
+            Result.AgentAiId := FChatFrame.GetAgentAiId;
+            Result.HasAgentAiId := Result.AgentAiId <> 0;
+          end;
+        end;
+        LDataSource := TRpApiPreprocessSqlContextDataSource.Create;
+        LDataInfoName := Trim(LDataInfo.Name);
+        if LDataInfoName = '' then
+          LDataInfoName := Trim(LDataInfo.Alias);
+        LDataSource.DataInfoName := LDataInfoName;
+        LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
+        LDataSource.Sql := LDataInfo.SQL;
+        LDatabaseInfo := FindDatabaseInfo(FReport, LDataInfo.DatabaseAlias);
+        if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+        begin
+          LConnectionParams.Clear;
+          LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+          LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+          LDataSource.Config.HubSchemaId := LDataInfo.HubSchemaId;
+        end;
+        Result.DataSources.Add(LDataSource);
+      end;
+    except
+      FreeAndNil(Result);
+      raise;
+    end;
+  finally
+    LConnectionParams.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.ApplyPreprocessSqlContextResult(
+  AResult: TRpApiPreprocessSqlContextResult);
+var
+  I, J: Integer;
+  LDataInfo: TRpDataInfoItem;
+  LDataInfoName: string;
+  LResultItem: TRpApiPreprocessSqlContextDataSourceResult;
+begin
+  // The explanations are a cache of the report (saved with it, like the VCL
+  // they do not mark it modified)
+  if (not Assigned(FReport)) or (AResult = nil) then
+    Exit;
+  for I := 0 to AResult.DataSources.Count - 1 do
+  begin
+    if not (AResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+      Continue;
+    LResultItem := TRpApiPreprocessSqlContextDataSourceResult(AResult.DataSources[I]);
+    for J := 0 to FReport.DataInfo.Count - 1 do
+    begin
+      LDataInfo := FReport.DataInfo.Items[J];
+      LDataInfoName := Trim(LDataInfo.Name);
+      if LDataInfoName = '' then
+        LDataInfoName := Trim(LDataInfo.Alias);
+      if not SameText(LDataInfoName, LResultItem.DataInfoName) then
+        Continue;
+      if Trim(LResultItem.SqlExplanation) <> '' then
+      begin
+        LDataInfo.SQLExplanation := LResultItem.SqlExplanation;
+        LDataInfo.SQLExplanationError := '';
+      end
+      else
+      begin
+        LDataInfo.SQLExplanation := '';
+        LDataInfo.SQLExplanationError := LResultItem.ErrorMessage;
+      end;
+      Break;
+    end;
+  end;
+end;
+
+function TFRpMainFLCL.BuildDesignChatRequestForFrame(Sender: TObject;
+  const APrompt: string): TRpApiModifyReportRequest;
+var
+  LPrompt: string;
+begin
+  // A prompt is sent after refreshing the dataset context: the first call
+  // starts the refresh and returns nil, the refresh sends it again
+  Result := nil;
+  if (not Assigned(FChatFrame)) or (not Assigned(FReport)) then
+    Exit;
+  LPrompt := Trim(APrompt);
+  if LPrompt = '' then
+    Exit;
+  if SameText(FDesignChatValidatedPrompt, LPrompt) then
+  begin
+    Result := BuildDesignChatRequest(LPrompt);
+    Exit;
+  end;
+  if not FDesignContextRefreshRunning then
+    BeginDesignChatContextRefresh(LPrompt, False);
+end;
+
+function TFRpMainFLCL.BuildPreprocessSqlContextRequestForFrame(
+  Sender: TObject): TRpApiPreprocessSqlContextRequest;
+begin
+  Result := BuildPreprocessSqlContextRequest;
+end;
+
+procedure TFRpMainFLCL.ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+  AResult: TRpApiPreprocessSqlContextResult);
+begin
+  ApplyPreprocessSqlContextResult(AResult);
+end;
+
+procedure TFRpMainFLCL.ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+  const AModifiedReportDocument: string);
+begin
+  ApplyModifiedReportDocument(AModifiedReportDocument);
+end;
+
+procedure TFRpMainFLCL.BeginReportReplace;
+begin
+  FReplacingReport := True;
+  // The views reference items that the reload frees
+  if Assigned(FDesignerFrame) then
+    FDesignerFrame.Report := nil;
+  if Assigned(FStructure) then
+    FStructure.Report := nil;
+end;
+
+procedure TFRpMainFLCL.EndReportReplace;
+begin
+  FReplacingReport := False;
+  RefreshInterface;
+end;
+
+procedure TFRpMainFLCL.ApplyModifiedReportDocument(
+  const AModifiedReportDocument: string);
+var
+  cue: TUndoCue;
+  baseCount, loads: Integer;
+begin
+  if (not Assigned(FReport)) or (Trim(AModifiedReportDocument) = '') then
+    Exit;
+  // The inference is over
+  FReport.BlockChanges := False;
+  FDesignInferenceDepth := 0;
+  FDesignChatValidatedPrompt := '';
+  // A document that does not load leaves the report untouched (the VCL
+  // clears the report first)
+  CheckReportDocumentLoads(AModifiedReportDocument);
+  cue := GetUndoCue;
+  baseCount := cue.UndoOperations.Count;
+  loads := cue.LoadCount;
+  BeginReportReplace;
+  try
+    ReplaceReportContent(FReport, AModifiedReportDocument);
+  finally
+    EndReportReplace;
+  end;
+  // The history travels with the document (BINCUE): the server returns the
+  // one it received with the operations of its change on top, so Undo
+  // reverts the change step by step and the earlier history stays
+  if (cue.LoadCount <> loads) and (cue.UndoOperations.Count > baseCount) then
+    cue.HistoryExtendedFrom(baseCount)
+  else
+    // A change without its operations can not be undone: modified until saved
+    cue.MarkExternalChange;
+  Inc(FDesignApplyCount);
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.RefreshDesignChatContext(Sender: TObject);
+begin
+  BeginDesignChatContextRefresh('', True);
+end;
+
+procedure TFRpMainFLCL.BeginDesignChatContextRefresh(const APendingPrompt: string;
+  ANotifyOnSuccess: Boolean);
+var
+  LWorker: TRpDesignContextWorker;
+  LCopy: TRpReport;
+  LStatus: string;
+begin
+  if (not Assigned(FChatFrame)) or (not Assigned(FReport)) then
+    Exit;
+  if FDesignContextRefreshRunning then
+    Exit;
+  // The worker opens the datasets of a copy: the designer keeps editing its
+  // report meanwhile (the VCL opens them on the designed report)
+  try
+    LCopy := CreateContextReportCopy(FReport);
+  except
+    on E: Exception do
+    begin
+      FChatFrame.AddAssistantMessage(TranslateStr(1648, 'Context refresh failed') +
+        ': ' + E.Message);
+      Exit;
+    end;
+  end;
+  FChatFrame.SetBusy(True);
+  FDesignChatPendingPrompt := APendingPrompt;
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := True;
+  if Trim(APendingPrompt) <> '' then
+    LStatus := TranslateStr(1641, 'Opening datasets...')
+  else if ANotifyOnSuccess then
+    LStatus := TranslateStr(1642, 'Refreshing design context...')
+  else
+    LStatus := TranslateStr(1643, 'Initializing design context...');
+  UpdateDesignContextProgress(True, LStatus);
+  LWorker := TRpDesignContextWorker.Create(FDesignMailboxRef);
+  LWorker.RequestVersion := FDesignContextRefreshVersion;
+  LWorker.Report := LCopy;
+  LWorker.Token := TRpAuthManager.Instance.Token;
+  LWorker.InstallId := TRpAuthManager.Instance.InstallId;
+  LWorker.Start;
+end;
+
+function TFRpMainFLCL.BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+  const AErrorMessage: string): string;
+var
+  I: Integer;
+  LName, LValue: string;
+begin
+  Result := Trim(AErrorMessage);
+  if (AOpenErrors = nil) or (AOpenErrors.Count = 0) then
+    Exit;
+  if Result <> '' then
+    Result := Result + sLineBreak + sLineBreak;
+  Result := Result + TranslateStr(1644, 'Some datasets could not be opened:');
+  for I := 0 to AOpenErrors.Count - 1 do
+  begin
+    LName := Trim(AOpenErrors.Names[I]);
+    LValue := Trim(AOpenErrors.ValueFromIndex[I]);
+    if LName <> '' then
+      Result := Result + sLineBreak + '- ' + LName + ': ' + LValue
+    else
+      Result := Result + sLineBreak + '- ' + LValue;
+  end;
+end;
+
+function TFRpMainFLCL.ConfirmDesignPromptWithDatasetErrors(
+  const ADatasetErrorMessage: string): Boolean;
+var
+  LMessage: string;
+begin
+  LMessage := Trim(ADatasetErrorMessage);
+  if LMessage = '' then
+    Exit(True);
+  LMessage := TranslateStr(1645, 'Opening datasets failed.') + sLineBreak + sLineBreak +
+    LMessage + sLineBreak + sLineBreak +
+    TranslateStr(1646, 'Do you want to send the design request to the assistant anyway?');
+  Result := RpMessageBox(LMessage, SRpWarning, [smbYes, smbNo], smsWarning,
+    smbYes, smbNo) = smbYes;
+end;
+
+procedure TFRpMainFLCL.HandleDesignAsyncMessage(AMessage: TRpAsyncMessage);
+var
+  LPayload: TRpDesignContextPayload;
+  LErrorMessage, LPendingPrompt, LDatasetErrorMessage: string;
+begin
+  // WMHandleDesignContextPayload of the VCL
+  if not (AMessage is TRpDesignContextPayload) then
+    Exit;
+  LPayload := TRpDesignContextPayload(AMessage);
+  if LPayload.RequestVersion <> FDesignContextRefreshVersion then
+    Exit;
+  FDesignContextRefreshRunning := False;
+  LErrorMessage := '';
+  if Trim(LPayload.ErrorMessage) <> '' then
+  begin
+    FDesignChatContextJson := '';
+    FDesignChatContextInitialized := False;
+    LErrorMessage := LPayload.ErrorMessage;
+  end
+  else
+  begin
+    // No alias of the designer: the evaluator of the copy gets its own
+    FDesignChatContextJson := BuildDesignExpressionContextJson(LPayload.ContextReport,
+      nil, LPayload.OpenErrors, LPayload.SchemaOnlyFields, LPayload.SchemaOnlyErrors,
+      LErrorMessage);
+    FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
+  end;
+  UpdateDesignContextProgress(False, '');
+  if Assigned(FChatFrame) then
+    FChatFrame.SetBusy(False);
+  LPendingPrompt := Trim(FDesignChatPendingPrompt);
+  FDesignChatPendingPrompt := '';
+  LDatasetErrorMessage := BuildDesignDatasetErrorMessage(LPayload.OpenErrors,
+    LErrorMessage);
+  if not Assigned(FChatFrame) then
+    Exit;
+
+  if LPendingPrompt <> '' then
+  begin
+    if not ConfirmDesignPromptWithDatasetErrors(LDatasetErrorMessage) then
+    begin
+      FDesignChatValidatedPrompt := '';
+      FChatFrame.AddAssistantMessage(TranslateStr(1647,
+        'Design request canceled after dataset validation.'));
+      Exit;
+    end;
+    FDesignChatValidatedPrompt := LPendingPrompt;
+    FChatFrame.StartDesignPrompt(LPendingPrompt);
+    Exit;
+  end;
+
+  if Trim(LErrorMessage) <> '' then
+  begin
+    FChatFrame.AddAssistantMessage(TranslateStr(1648, 'Context refresh failed') +
+      ': ' + LErrorMessage);
+    Exit;
+  end;
+  if Trim(LDatasetErrorMessage) <> '' then
+    FChatFrame.AddAssistantMessage(TranslateStr(1649,
+      'Context refreshed with dataset errors.') + sLineBreak + LDatasetErrorMessage)
+  else
+    FChatFrame.AddAssistantMessage(TranslateStr(1650, 'Context refreshed.'));
 end;
 
 procedure TFRpMainFLCL.SetHostedMode(Value: Boolean);
@@ -1297,7 +2240,8 @@ var
 begin
   // On error the current report, file name and frames stay untouched
   newRep := LoadDesignReport(AStream);
-  InstallReport(newRep, '');
+  // The undo history saved with the report (XML, BINCUE) is kept
+  InstallReport(newRep, '', True);
 end;
 
 procedure TFRpMainFLCL.OpenReportFile(const AFileName: string);
@@ -1322,7 +2266,7 @@ begin
   finally
     astream.Free;
   end;
-  InstallReport(newRep, AFileName);
+  InstallReport(newRep, AFileName, True);
 end;
 
 procedure TFRpMainFLCL.OpenReportFromLibrary(const ALibrary: string;
@@ -1390,7 +2334,7 @@ begin
     newRep.Free;
     raise;
   end;
-  InstallReport(newRep, '');
+  InstallReport(newRep, '', False);
 end;
 
 procedure TFRpMainFLCL.RefreshInterface;
@@ -1496,7 +2440,7 @@ begin
   end;
   // From here the new report is owned by the form (never freed twice even
   // if refreshing the interface raises); history starts clean
-  InstallReport(newRep, '');
+  InstallReport(newRep, '', False);
 end;
 
 procedure TFRpMainFLCL.MenuReportWizardClick(Sender: TObject);

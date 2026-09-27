@@ -262,6 +262,9 @@ begin
   cue := GetUndoCue;
   if (cue = nil) or not cue.CanUndo then
     Exit;
+  // During an AI inference the report asks whether to cancel it (as the
+  // Undo of the designer), instead of the undo cue failing
+  FReport.AssertCanModify('Undo');
   ops := nil;
   try
     ops := cue.Undo;
@@ -283,6 +286,7 @@ begin
   cue := GetUndoCue;
   if (cue = nil) or not cue.CanRedo then
     Exit;
+  FReport.AssertCanModify('Redo');
   ops := nil;
   try
     ops := cue.Redo;

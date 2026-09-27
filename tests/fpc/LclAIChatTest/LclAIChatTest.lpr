@@ -18,7 +18,7 @@ uses
   cthreads,
 {$ENDIF}
   Interfaces, SysUtils, Classes, Forms, process, utestutil, uaichattests,
-  uaiexprtests, uaisqltests;
+  uaiexprtests, uaisqltests, uaidesigntests;
 
 function OptionValue(const AName: string): string;
 var
@@ -129,6 +129,7 @@ begin
     RunAIChatTests(OptionValue('--shots'));
     RunAIExprTests(OptionValue('--shots'));
     RunAISqlTests(OptionValue('--shots'));
+    RunAIDesignTests(OptionValue('--shots'));
   except
     on E: Exception do
       Fail('unexpected exception ' + E.ClassName + ': ' + E.Message);
