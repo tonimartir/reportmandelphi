@@ -802,11 +802,16 @@ begin
 end;
 
 procedure TFRpAISelectionLCL.ClearAgentEndpoints;
+var
+  LWasAgent: Boolean;
 begin
+  // Windows leaves no selection when the selected item is deleted, Qt
+  // selects another one: an agent selection always goes back to Standard
+  LWasAgent := ComboAIProvider.ItemIndex >= 2;
   SetLength(FAgentEndpoints, 0);
   while ComboAIProvider.Items.Count > 2 do
     ComboAIProvider.Items.Delete(ComboAIProvider.Items.Count - 1);
-  if (ComboAIProvider.ItemIndex >= ComboAIProvider.Items.Count) or
+  if LWasAgent or (ComboAIProvider.ItemIndex >= ComboAIProvider.Items.Count) or
     (ComboAIProvider.ItemIndex < 0) then
     ComboAIProvider.ItemIndex := 0;
   ComboAIProviderChange(ComboAIProvider);

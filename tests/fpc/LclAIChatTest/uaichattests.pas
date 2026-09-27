@@ -331,13 +331,20 @@ var
 procedure TRedirectThread.Execute;
 var
   LClient: TNetHTTPClient;
+  LTry: Integer;
 begin
-  Sleep(300);
+  // The login opens the browser before it listens on the loopback port:
+  // retry while the port refuses connections (busy machines)
   LClient := TNetHTTPClient.Create(nil);
   try
-    try
-      LClient.Get(Url);
-    except
+    for LTry := 1 to 100 do
+    begin
+      Sleep(200);
+      try
+        LClient.Get(Url);
+        Break;
+      except
+      end;
     end;
   finally
     LClient.Free;
