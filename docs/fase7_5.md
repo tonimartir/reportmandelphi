@@ -12,7 +12,7 @@ VCL (`rpmdfmainvcl`): el usuario describe un cambio, el servidor
 | Paso | VCL (`rpmdfmainvcl`) | LCL (`rpmdfmainlcl`) |
 |---|---|---|
 | Petición | `BuildDesignChatRequest`: XML del informe, modo, nivel, idioma, esquema/base de datos del Hub, API key, agente local | Igual (`BuildDesignChatRequest`, pública) |
-| Contexto de datos | Hilo con `PrepareLiveContext` + esquema de los datasets del Agente; `BuildDesignExpressionContextJson` (de `rpchatdialogvcl`) | Igual, portado sin el diálogo de expresiones; el hilo abre los datasets de una **copia** del informe |
+| Contexto de datos | Hilo con `PrepareLiveContext` + esquema de los datasets del Agente; `BuildDesignExpressionContextJson` (de `rpchatdialogvcl`) | Igual, con el port de `rpexpredlglcl` (7.4) compartido con el asistente de expresiones; el hilo abre los datasets de una **copia** del informe |
 | Datasets que no abren | Pregunta si enviar igualmente | Igual (`ConfirmDesignPromptWithDatasetErrors`) |
 | Preproceso SQL | `BuildPreprocessSqlContextRequest` / `ApplyPreprocessSqlContextResult`: explicación de las SQL sin explicar | Igual; el frame reconstruye la petición con las explicaciones |
 | Inferencia | `BeginBlockChanges`/`EndBlockChanges`; un cambio del informe pregunta si cancelar la inferencia | Igual (`ReportBlockChanges`, texto traducible) |
@@ -45,7 +45,8 @@ puede usar la unidad de deshacer del diseñador. En master (a7855a1)
   diseñador y el panel de historial.
 - **JSON**: las mismas claves y tipos que el `TUndoCue` de Delphi
   (`rpmdundocue`). Diferencias sin efecto: Delphi escapa el texto no ASCII
-  (`ا`) y el LCL lo escribe en UTF-8; los números reales de fpjson van
+  (secuencias de escape Unicode de JSON) y el LCL lo escribe en UTF-8; los
+  números reales de fpjson van
   en notación exponencial. Cada uno lee lo que escribe el otro (probado con
   el `BINCUE` de `repsamples/debugagentexample.rep` y con escapes, nulos,
   booleanos y reales). El `ToJSON` del LCL pasa a ser compacto, como el de
@@ -88,10 +89,15 @@ Delphi).
   cambiarla (el VCL guarda todas sus preferencias al cerrar).
 - **Conexiones inexistentes.** `TRpDatabaseInfoList.ItemByName` lanza una
   excepción si no encuentra la conexión; el código del VCL espera `nil`. El
-  LCL la busca con `IndexOf`: un dataset sin conexión válida ya no rompe la
-  petición.
+  LCL la busca con `IndexOf` (en `rpmdfmainlcl` y, tras la fusión con 7.4,
+  también en `rpexpredlglcl`): un dataset sin conexión válida ya no rompe el
+  contexto ni la petición.
+- **Panel de historial.** Sus botones Deshacer/Rehacer (ocultos en el VCL)
+  preguntan también si cancelar una inferencia en curso, en lugar de fallar.
 - La barra de progreso del contexto va en el chat y el texto en la barra de
   estado (sin barra marquee dentro de la barra de estado).
+- No incluido: el asistente de informe nuevo del VCL con un prompt inicial
+  (`NewModernReportWizard`), que no existe en el diseñador LCL.
 
 ## Textos
 
@@ -105,7 +111,7 @@ reutilizan los ids del chat de 7.2 (1536 "Generation stopped.", 1539, 1540,
 ## Pruebas
 
 - `tests/fpc/LclAIChatTest/uaidesigntests.pas` (`RunAIDesignTests`, tras
-  las de 7.2), con un Hub simulado propio sobre `ufakeserver`:
+  las de 7.2, 7.4 y 7.3), con un Hub simulado propio sobre `ufakeserver`:
   - prompt, contexto, petición (XML con `BINCUE`, instrucciones, contexto) y
     diseño transmitido y aplicado: el informe (mismo objeto, mismo
     historial) tiene el título en la cabecera y el componente movido, está
@@ -161,10 +167,15 @@ reutilizan los ids del chat de 7.2 (1536 "Generation stopped.", 1539, 1540,
    apuntando a un alias que libera al terminar (el diseñador VCL pasa
    `RpAlias1`, así que no le afecta).
 
+## Otros cambios
+
+- `build/linux/test-packages.sh`: con `pipefail`, `ldconfig -p | grep -q`
+  fallaba al azar (grep cierra la tubería y ldconfig acaba con SIGPIPE): la
+  prueba de debian-12 deb dijo "falta libsqlite3.so.0" con la librería
+  instalada. Ahora grep lee toda la salida.
+- `LclAIChatTest` y `LclDesignerTest` usan su propio fichero de
+  preferencias (`RpDesignerLCLConfigFile`), no el del usuario.
+
 ## Para integrar
 
 - Añadir los ids 1640–1651 a los `reportmanres.*`.
-- El puerto de `CollectAgentSchemaOnlyContext` y del contexto de diseño está
-  en la parte privada de `rpmdfmainlcl`; si 7.4 porta los mismos
-  procedimientos de `rpchatdialogvcl` en `rpexpredlglcl`, se pueden unificar
-  después de la fusión.
