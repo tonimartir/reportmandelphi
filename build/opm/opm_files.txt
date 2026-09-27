@@ -140,11 +140,20 @@ lcl/rprflclparams.pas
 lcl/rpvclreport.dcr
 
 # --- reportman_designlcl ---
+design_lcl/rpaithreadslcl.pas
+design_lcl/rpchatmodernstylelcl.pas
 design_lcl/rpdbbrowserlcl.lfm
 design_lcl/rpdbbrowserlcl.pas
 design_lcl/rpexpredlglcl.pas
+design_lcl/rpfrmaireportlcl.pas
+design_lcl/rpfrmaischemaselectorlcl.pas
+design_lcl/rpfrmaiselectionlcl.pas
+design_lcl/rpfrmchatlcl.pas
+design_lcl/rpfrmloginframelcl.pas
+design_lcl/rpfrmloginlcl.pas
 design_lcl/rpfrmmonacoeditorlcl.pas
 design_lcl/rplclwebview.pas
+design_lcl/rpmarkdownlcl.pas
 design_lcl/rpmdcueviewlcl.pas
 design_lcl/rpmdesignerlcl.pas
 design_lcl/rpmdfaboutlcl.pas
@@ -176,7 +185,11 @@ design_lcl/rpmdundocuelcl.pas
 design_lcl/rpmregdesignlcl.lrs
 design_lcl/rpmregdesignlcl.pas
 design_lcl/rprulerlcl.pas
+design_lcl/rpwebmarkdownlcl.pas
 design_lcl/rpwebview2.pas
 # Monaco (editor SQL del disenador): {$R ../MonacoEditorAssets.res} dentro de
 # {$IFDEF MSWINDOWS} en design_lcl/rpfrmmonacoeditorlcl.pas. Solo Windows.
 MonacoEditorAssets.RES
+# WebMarkdown (visor de Markdown de los chats de IA): {$R ../WebMarkdownAssets.res}
+# dentro de {$IFDEF MSWINDOWS} en design_lcl/rpwebmarkdownlcl.pas. Solo Windows.
+WebMarkdownAssets.RES

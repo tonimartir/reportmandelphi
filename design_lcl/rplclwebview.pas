@@ -50,6 +50,10 @@ type
     FCtrlHandler: ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
     FNavCompletedHandler: ICoreWebView2NavigationCompletedEventHandler;
     FWebMsgReceivedHandler: ICoreWebView2WebMessageReceivedEventHandler;
+    // Handler objects (not owned); WebView2 may call them after the control
+    // is gone, so CloseWebView disconnects them
+    FHandlerObjects: TList;
+    procedure DetachHandlers;
     procedure UpdateWebViewBounds;
     procedure DoEnvironmentCreated(errorCode: HResult; const AEnv: ICoreWebView2Environment);
     procedure DoControllerCreated(errorCode: HResult; const AController: ICoreWebView2Controller);
@@ -73,6 +77,10 @@ type
     function ExecuteScript(const AScript: string): Boolean;
     function PostWebMessageAsString(const AMessage: string): Boolean;
     function PostWebMessageAsJson(const AJson: string): Boolean;
+    // PNG of what the page shows (ICoreWebView2.CapturePreview), waiting up
+    // to ATimeoutMs while processing messages. Works without a visible
+    // desktop (tests, screenshots); False where there is no WebView2.
+    function CapturePreviewPng(AStream: TStream; ATimeoutMs: Cardinal = 10000): Boolean;
 
     property WebViewCreated: Boolean read FWebViewCreated;
     property WebViewCreating: Boolean read FWebViewCreating;
@@ -95,45 +103,76 @@ implementation
 {$IFDEF MSWINDOWS}
 
 type
-  TCreateEnvHandler = class(TInterfacedObject, ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler)
-  private
-    FControl: TRpLCLWebView;
+  // WebView2 keeps its references to the handlers and may call them after
+  // the control is destroyed (a form closed while WebView2 starts): the
+  // control clears FControl in CloseWebView (DetachHandlers)
+  TRpWebViewHandler = class(TInterfacedObject)
   public
+    FControl: TRpLCLWebView;
     constructor Create(AControl: TRpLCLWebView);
+    destructor Destroy; override;
+  end;
+
+  TCreateEnvHandler = class(TRpWebViewHandler, ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler)
+  public
     function Invoke(errorCode: HResult; const created_environment: ICoreWebView2Environment): HResult; stdcall;
   end;
 
-  TCreateControllerHandler = class(TInterfacedObject, ICoreWebView2CreateCoreWebView2ControllerCompletedHandler)
-  private
-    FControl: TRpLCLWebView;
+  TCreateControllerHandler = class(TRpWebViewHandler, ICoreWebView2CreateCoreWebView2ControllerCompletedHandler)
   public
-    constructor Create(AControl: TRpLCLWebView);
     function Invoke(errorCode: HResult; const createdController: ICoreWebView2Controller): HResult; stdcall;
   end;
 
-  TNavCompletedHandler = class(TInterfacedObject, ICoreWebView2NavigationCompletedEventHandler)
-  private
-    FControl: TRpLCLWebView;
+  TNavCompletedHandler = class(TRpWebViewHandler, ICoreWebView2NavigationCompletedEventHandler)
   public
-    constructor Create(AControl: TRpLCLWebView);
     function Invoke(const sender: ICoreWebView2; const args: ICoreWebView2NavigationCompletedEventArgs): HResult; stdcall;
   end;
 
-  TWebMsgReceivedHandler = class(TInterfacedObject, ICoreWebView2WebMessageReceivedEventHandler)
-  private
-    FControl: TRpLCLWebView;
+  TWebMsgReceivedHandler = class(TRpWebViewHandler, ICoreWebView2WebMessageReceivedEventHandler)
   public
-    constructor Create(AControl: TRpLCLWebView);
     function Invoke(const sender: ICoreWebView2; const args: ICoreWebView2WebMessageReceivedEventArgs): HResult; stdcall;
   end;
 
-{ TCreateEnvHandler }
+  ICoreWebView2CapturePreviewCompletedHandler = interface(IUnknown)
+    ['{697E05E9-3D8F-45FA-96F4-8FFE1EDEDAF5}']
+    function Invoke(errorCode: HResult): HResult; stdcall;
+  end;
 
-constructor TCreateEnvHandler.Create(AControl: TRpLCLWebView);
+  TCapturePreviewHandler = class(TRpWebViewHandler, ICoreWebView2CapturePreviewCompletedHandler)
+  public
+    Done: Boolean;
+    Error: HResult;
+    function Invoke(errorCode: HResult): HResult; stdcall;
+  end;
+
+{ TCapturePreviewHandler }
+
+function TCapturePreviewHandler.Invoke(errorCode: HResult): HResult; stdcall;
+begin
+  Result := S_OK;
+  Error := errorCode;
+  Done := True;
+end;
+
+{ TRpWebViewHandler }
+
+constructor TRpWebViewHandler.Create(AControl: TRpLCLWebView);
 begin
   inherited Create;
   FControl := AControl;
+  if AControl <> nil then
+    AControl.FHandlerObjects.Add(Self);
 end;
+
+destructor TRpWebViewHandler.Destroy;
+begin
+  // Released by WebView2 while the control lives (a replaced handler)
+  if FControl <> nil then
+    FControl.FHandlerObjects.Remove(Self);
+  inherited Destroy;
+end;
+
+{ TCreateEnvHandler }
 
 function TCreateEnvHandler.Invoke(errorCode: HResult; const created_environment: ICoreWebView2Environment): HResult; stdcall;
 begin
@@ -144,12 +183,6 @@ end;
 
 { TCreateControllerHandler }
 
-constructor TCreateControllerHandler.Create(AControl: TRpLCLWebView);
-begin
-  inherited Create;
-  FControl := AControl;
-end;
-
 function TCreateControllerHandler.Invoke(errorCode: HResult; const createdController: ICoreWebView2Controller): HResult; stdcall;
 begin
   Result := S_OK;
@@ -159,12 +192,6 @@ end;
 
 { TNavCompletedHandler }
 
-constructor TNavCompletedHandler.Create(AControl: TRpLCLWebView);
-begin
-  inherited Create;
-  FControl := AControl;
-end;
-
 function TNavCompletedHandler.Invoke(const sender: ICoreWebView2; const args: ICoreWebView2NavigationCompletedEventArgs): HResult; stdcall;
 begin
   Result := S_OK;
@@ -173,12 +200,6 @@ begin
 end;
 
 { TWebMsgReceivedHandler }
-
-constructor TWebMsgReceivedHandler.Create(AControl: TRpLCLWebView);
-begin
-  inherited Create;
-  FControl := AControl;
-end;
 
 function TWebMsgReceivedHandler.Invoke(const sender: ICoreWebView2; const args: ICoreWebView2WebMessageReceivedEventArgs): HResult; stdcall;
 begin
@@ -203,12 +224,18 @@ begin
   FPendingUrl := '';
   FUserDataFolder := '';
   FLoaderDllPath := '';
+{$IFDEF MSWINDOWS}
+  FHandlerObjects := TList.Create;
+{$ENDIF}
 end;
 
 destructor TRpLCLWebView.Destroy;
 begin
   FIsDestroying := True;
   CloseWebView;
+{$IFDEF MSWINDOWS}
+  FHandlerObjects.Free;
+{$ENDIF}
   inherited Destroy;
 end;
 
@@ -330,6 +357,8 @@ end;
 procedure TRpLCLWebView.CloseWebView;
 begin
 {$IFDEF MSWINDOWS}
+  // Before releasing them: this control keeps them alive until then
+  DetachHandlers;
   if FController <> nil then
   begin
     FController.Close;
@@ -401,7 +430,48 @@ begin
 {$ENDIF}
 end;
 
+function TRpLCLWebView.CapturePreviewPng(AStream: TStream; ATimeoutMs: Cardinal): Boolean;
 {$IFDEF MSWINDOWS}
+var
+  LHandler: TCapturePreviewHandler;
+  LHandlerRef: ICoreWebView2CapturePreviewCompletedHandler;
+  LStreamRef: IStream;
+  LStart: QWord;
+{$ENDIF}
+begin
+  Result := False;
+{$IFDEF MSWINDOWS}
+  if FWebView = nil then
+    Exit;
+  LHandler := TCapturePreviewHandler.Create(Self);
+  LHandlerRef := LHandler;
+  LStreamRef := TStreamAdapter.Create(AStream, soReference);
+  // 0 = COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG
+  if Failed(FWebView.CapturePreview(0, LStreamRef, LHandlerRef)) then
+    Exit;
+  LStart := GetTickCount64;
+  while (not LHandler.Done) and (not FIsDestroying) and
+    (GetTickCount64 - LStart < ATimeoutMs) do
+  begin
+    Application.ProcessMessages;
+    Sleep(5);
+  end;
+  Result := LHandler.Done and Succeeded(LHandler.Error);
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
+
+procedure TRpLCLWebView.DetachHandlers;
+var
+  I: Integer;
+begin
+  if FHandlerObjects = nil then
+    Exit;
+  for I := 0 to FHandlerObjects.Count - 1 do
+    TRpWebViewHandler(FHandlerObjects[I]).FControl := nil;
+  FHandlerObjects.Clear;
+end;
 
 procedure TRpLCLWebView.UpdateWebViewBounds;
 var

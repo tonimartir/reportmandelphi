@@ -195,6 +195,11 @@ begin
     // Importante: El diccionario es responsable de liberar los objetos TRpLogFont
     GlobalFontCache.Free;
     GlobalFontCache := nil;
+{$IFDEF FPC}
+    // Se crea con la caché en InitializeFontCache (heaptrc: 48 bytes)
+    critSection.Free;
+    critSection := nil;
+{$ENDIF}
   end;
 end;
 

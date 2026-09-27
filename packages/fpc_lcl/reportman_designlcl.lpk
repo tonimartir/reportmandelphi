@@ -22,10 +22,10 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Description Value="Report Manager visual report designer for the LCL, embeddable in applications: TRpDesignerLCL with ruler, object inspector, report structure, data and parameters editors, expression editor, database browser and report wizard. On Windows the SQL editor uses Monaco through WebView2. Home page: https://reportman.es"/>
+    <Description Value="Report Manager visual report designer for the LCL, embeddable in applications: TRpDesignerLCL with ruler, object inspector, report structure, data and parameters editors, expression editor, database browser, report wizard and the AI panel (Hub account, model, schema and chat; the assistants go through api.reportman.es). On Windows the SQL editor and the chat use WebView2; elsewhere the chat uses the TurboPower IPro viewer. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="16"/>
-    <Files Count="30">
+    <Files Count="40">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -147,8 +147,48 @@
         <Filename Value="..\..\design_lcl\rpmdcueviewlcl.pas"/>
         <UnitName Value="rpmdcueviewlcl"/>
       </Item30>
+      <Item31>
+        <Filename Value="..\..\design_lcl\rpaithreadslcl.pas"/>
+        <UnitName Value="rpaithreadslcl"/>
+      </Item31>
+      <Item32>
+        <Filename Value="..\..\design_lcl\rpchatmodernstylelcl.pas"/>
+        <UnitName Value="rpchatmodernstylelcl"/>
+      </Item32>
+      <Item33>
+        <Filename Value="..\..\design_lcl\rpmarkdownlcl.pas"/>
+        <UnitName Value="rpmarkdownlcl"/>
+      </Item33>
+      <Item34>
+        <Filename Value="..\..\design_lcl\rpwebmarkdownlcl.pas"/>
+        <UnitName Value="rpwebmarkdownlcl"/>
+      </Item34>
+      <Item35>
+        <Filename Value="..\..\design_lcl\rpfrmloginlcl.pas"/>
+        <UnitName Value="rpfrmloginlcl"/>
+      </Item35>
+      <Item36>
+        <Filename Value="..\..\design_lcl\rpfrmloginframelcl.pas"/>
+        <UnitName Value="rpfrmloginframelcl"/>
+      </Item36>
+      <Item37>
+        <Filename Value="..\..\design_lcl\rpfrmaiselectionlcl.pas"/>
+        <UnitName Value="rpfrmaiselectionlcl"/>
+      </Item37>
+      <Item38>
+        <Filename Value="..\..\design_lcl\rpfrmaischemaselectorlcl.pas"/>
+        <UnitName Value="rpfrmaischemaselectorlcl"/>
+      </Item38>
+      <Item39>
+        <Filename Value="..\..\design_lcl\rpfrmaireportlcl.pas"/>
+        <UnitName Value="rpfrmaireportlcl"/>
+      </Item39>
+      <Item40>
+        <Filename Value="..\..\design_lcl\rpfrmchatlcl.pas"/>
+        <UnitName Value="rpfrmchatlcl"/>
+      </Item40>
     </Files>
-    <RequiredPkgs Count="4">
+    <RequiredPkgs Count="5">
       <Item1>
         <PackageName Value="reportman_rtl"/>
         <MinVersion Major="4" Release="16" Valid="True"/>
@@ -164,6 +204,9 @@
         <PackageName Value="FCL"/>
         <MinVersion Major="1" Valid="True"/>
       </Item4>
+      <Item5>
+        <PackageName Value="TurboPowerIPro"/>
+      </Item5>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

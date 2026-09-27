@@ -15,6 +15,9 @@ uses
   rpmdfdinfolcl, rpmdfmainlcl, rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl, 
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpmdfsearchlcl, 
   rpmdfopenliblcl, rpmdfparamslcl, rpmdundocuelcl, rpmdcueviewlcl,
+  rpaithreadslcl, rpchatmodernstylelcl, rpmarkdownlcl, rpwebmarkdownlcl,
+  rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl,
+  rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl,
   LazarusPackageIntf;
 
 implementation

@@ -9,6 +9,7 @@ uses
   SysUtils,
   Interfaces,
   Forms,
+  rptypes, rphttpclientfpc, rpwebmarkdownlcl,
   umainform;
 
 {$R *.res}
@@ -18,6 +19,12 @@ var
   selfTestMode: Boolean;
 begin
   LogMsg('LclDesignerTest: Application starting');
+  // The AI panel of the designer windows talks to the Hub when they open:
+  // no real network in the tests (a closed local port), and the native
+  // chat viewer instead of one WebView2 per window (LclAIChatTest covers
+  // the AI panel against a fake Hub)
+  RpHttpSetUrlRewrite(HUB_API_URL, 'http://127.0.0.1:9');
+  RpWebMarkdownForceNative := True;
   RequireDerivedFormResource := True;
   Application.Scaled := True;
   Application.Initialize;

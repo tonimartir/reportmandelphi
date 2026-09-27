@@ -105,7 +105,7 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | Compilar solo `reportman_designlcl.lpk` | Se compilan los tres paquetes con `build_fpc.bat` (el motor también cambia) |
 | Textos con IDs de `TranslateStr` | Varios IDs eran inventados; se sustituyeron por los de la VCL |
 
-## Fase 7: diseño con IA y Hub en FPC/LCL (en curso: 7.1 hecha)
+## Fase 7: diseño con IA y Hub en FPC/LCL (en curso: 7.1 y 7.2 hechas)
 
 El diseñador Delphi tiene tres asistentes de IA, todos a través de
 `api.reportman.es` y con los esquemas (tablas, columnas, relaciones) que el
@@ -130,15 +130,15 @@ Linux cae a un `TMemo`), sin autocompletado de esquema.
 | Subfase | Contenido |
 |---|---|
 | 7.1 Base portable (hecha) | `rpaireportcontracts`, `rpreportdesignercontracts`, `rpauthmanager` y `rpdatahttp` compilando con FPC: JSON, HTTP/TLS (`fphttpclient` + OpenSSL), codificación y fechas con equivalentes de la API de Delphi en `rtl_fpc/`, todo bajo `{$IFDEF FPC}` (Delphi sin cambios). Registro en `reportman_rtl.lpk`. Da ya valor sin diseñador: el driver del Agente (`rpdbHttp`) en Linux y en aplicaciones Lazarus. Detalle abajo |
-| 7.2 Sesión y esquemas | Login (OAuth con la redirección local), selección de modelo (`rpfrmaiselectionvcl`) y selector de esquema en LCL; estilo común de los chats (`rpchatmodernstyle`). Markdown de las respuestas: WebView2 en Windows (ya hay `rpwebview2`/`rplclwebview` en LCL) y un visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux |
+| 7.2 Base de la interfaz (hecha) | Login (OAuth con la redirección local) y tarjeta de cuenta, selección de modelo (`rpfrmaiselectionvcl`), selectores de esquema, estilo común (`rpchatmodernstyle`) y el chat común `TFRpChatFrame` en LCL, con la misma API que el VCL. Markdown de las respuestas: WebMarkdown en WebView2 en Windows y el visor HTML de Lazarus (IPro, `TIpHtmlPanel`) en Linux o sin WebView2. Panel de IA en la ventana del diseñador LCL. Detalle abajo |
 | 7.3 Asistente SQL | `TFRpChatFrame` en modo SQL dentro de la configuración de datos LCL, y autocompletado con el esquema en Monaco (Windows); en Linux, completado sobre el editor alternativo |
 | 7.4 Asistente de expresiones | Port del chat de `rpchatdialogvcl` al editor de expresiones LCL (`rpexpredlglcl`) |
 | 7.5 Asistente de diseño | `TFRpChatFrame` en modo diseño en el diseñador LCL; aplicar los contratos al modelo con deshacer y refresco del diseñador, igual que la VCL |
 | 7.6 Pruebas | Tests de regresión de los tres asistentes con respuestas del Hub simuladas (sin red), en Windows y Linux; prueba real contra `api.reportman.es` a mano |
 
-El chat común (`TFRpChatFrame`) se porta en 7.3 y se reutiliza en 7.5; el
-orden sigue la dependencia (el esquema sirve al SQL y al diseño) y deja el
-asistente más grande, el de diseño, para el final.
+El chat común (`TFRpChatFrame`) se portó en 7.2 y lo usan 7.3, 7.4 y 7.5;
+el orden sigue la dependencia (el esquema sirve al SQL y al diseño) y deja
+el asistente más grande, el de diseño, para el final.
 
 **La inteligencia está en el servidor** (`api.reportman.es`): el cliente solo
 habla HTTP/JSON, muestra el chat y aplica lo que devuelve. En Windows la
@@ -225,6 +225,115 @@ de OAuth.
 **Queda para 7.2 y siguientes**: interfaz LCL de login, selección de modelo y
 de esquema, marcos de chat, puente Monaco–esquema; si hace falta, proxy HTTP
 y, en Windows, un cliente sobre WinHTTP para no distribuir OpenSSL.
+
+### Subfase 7.2: qué se hizo
+
+**Unidades nuevas** (`design_lcl/`, solo FPC, en `reportman_designlcl.lpk`
+y en `build/opm/opm_files.txt`). Son ports de las VCL con la misma API
+pública (métodos, propiedades y eventos), para que los anfitriones de 7.3–7.5
+copien el código VCL; son paneles en vez de `TFrame` (un frame de la LCL
+necesita un recurso de formulario) y se construyen en código:
+
+| Unidad LCL | Port de | Qué es |
+|---|---|---|
+| `rpchatmodernstylelcl` | `rpchatmodernstyle` | Paleta e iconos de los chats con el lienzo de la LCL (sin `DrawText`), más `TRpChatIconButton` |
+| `rpfrmloginframelcl` | `rpfrmloginframevcl` | Tarjeta de cuenta: usuario, nivel, menú (login, idioma de la IA, planes, esquemas, Agente, logout) |
+| `rpfrmloginlcl` | `rpfrmloginvcl` | Diálogo de login: Google, Microsoft, código por correo |
+| `rpfrmaiselectionlcl` | `rpfrmaiselectionvcl` | Proveedor (Standard, Precision, agentes locales), modo, créditos, progreso de la inferencia |
+| `rpfrmaischemaselectorlcl` | `rpfrmaischemaselectorvcl` | Tarjeta de cuenta y selector de esquemas del Hub |
+| `rpfrmaireportlcl` | `rpfrmaireportvcl` | Diálogo "Report content" (avisar de contenido de la IA) |
+| `rpfrmchatlcl` | `rpfrmchatvcl` | `TFRpChatFrame`: el chat común de los tres asistentes |
+| `rpwebmarkdownlcl` | `rpwebmarkdownvcl` | `TRpWebMarkdownView`: visor de Markdown del chat y de los registros |
+| `rpmarkdownlcl` | (nuevo) | Markdown a HTML para el visor nativo |
+| `rpaithreadslcl` | (nuevo) | Hilos y paso de mensajes al hilo principal |
+
+La ventana principal del diseñador LCL (`rpmdfmainlcl`) tiene el panel de IA
+a la derecha, como la pestaña de chat del VCL: el `TFRpChatFrame` con la
+tarjeta de cuenta arriba, el modelo y el esquema; se muestra u oculta con
+Ver > Chat IA (visible por omisión, sin guardarse todavía). Al abrir o crear
+un informe resuelve la base de datos y el esquema del Hub del informe
+(`ResolveInitialDesignChatSchemaContext`, igual que el VCL) y arranca la
+inicialización en línea. El asistente de diseño (eventos del chat) se
+conecta en 7.5; hasta entonces el chat responde que no hay asistente.
+
+**Visor de Markdown.** Windows: la misma página WebMarkdown del VCL
+(`WebMarkdownAssets.res`, extraída a la misma carpeta y con la misma versión
+de recursos) en el WebView2 LCL de `rplclwebview`. Linux, Windows sin
+WebView2 o `RPM_FORCE_WEBVIEW_FALLBACK`: el visor HTML de TurboPower IPro
+(`TIpHtmlPanel`, paquete `TurboPowerIPro` de la instalación estándar de
+Lazarus, nueva dependencia de `reportman_designlcl`) con el HTML de
+`rpmarkdownlcl`. IPro se pinta con el lienzo de la LCL, así que funciona igual
+con Qt6, GTK2 y win32, sin librerías del sistema; un WebKit/Chromium no
+estaba disponible en Qt6+GTK2 sin añadir dependencias grandes. El conversor
+cubre lo que markdown-it muestra en las respuestas (títulos, párrafos con
+saltos de línea, código, citas, listas anidadas, tablas, énfasis, enlaces y
+bloques `<think>`); el HTML de la respuesta se muestra como texto. El tema
+oscuro es el de `index.html`. El visor guarda siempre un modelo de lo
+mostrado (mensajes, líneas y bloques de registro por clave, con la semántica
+de las funciones JavaScript de la página): si WebView2 falla más tarde, el
+visor nativo lo muestra todo; el VCL cae a un memo negro. El render nativo se
+agrupa (una vez por vuelta de mensajes) y el documento se limita a 800
+bloques.
+
+**Hilos.** FPC 3.2.2 no tiene métodos anónimos. `rpaithreadslcl`:
+`TRpAsyncWorker` (un `TThread` con `FreeOnTerminate`) sustituye a cada
+`TThread.CreateAnonymousThread` (las variables capturadas son campos) y sus
+resultados son mensajes (`TRpAsyncMessage`: las clases `TRpQueued*Payload`
+del VCL) que un buzón (`TRpAsyncMailbox`) entrega en el hilo principal con
+`Application.QueueAsyncCall`, en lugar de `PostMessage` a la ventana. El buzón
+se comparte con contador de referencias: el formulario lo desconecta al
+destruirse y los mensajes posteriores se descartan, así que un hilo nunca
+toca un formulario liberado. Los callbacks de streaming de `rpdatahttp` corren
+en el hilo y publican mensajes; la cancelación es un indicador compartido
+(`IRpAsyncCancel`) en vez de leer un campo del frame desde el hilo; lo que el
+VCL hace con `TThread.Synchronize` (preparar la petición de diseño tras el
+preproceso, `OnDesignInferenceBegin/End`) se hace igual, comprobando antes
+que el frame sigue vivo. `RpAuthEvents` es el único oyente registrado en
+`TRpAuthManager`: los eventos de login y de registro llegan a los formularios
+en el hilo principal (el gestor llama a los oyentes de registro desde el hilo
+que registra). Los logins del diálogo corren en un hilo: la espera de la
+redirección OAuth (hasta 5 minutos) ya no congela la aplicación.
+
+**Encontrado.** (1) FPC 3.2.2: `TThread.Destroy` borra los eventos que el hilo
+encoló con `TThread.Queue` y el hilo principal no ha ejecutado aún (compara el
+`ThreadID`, también con `TThread.Queue(nil, ...)`), y los pierde sin
+liberarlos. `TRpAuthManager.DispatchAuthListener` (FPC) usa esa llamada, así
+que un login o un `CheckStatus` hecho en un hilo que termina enseguida
+(`RefreshStatusInBackground`) no avisaba a nadie. `TRpAsyncWorker` espera con
+un `Synchronize` final a que se ejecuten; el arreglo en `rpauthmanager`
+queda pendiente. (2) El VCL llama a `window.appendStreamingChunk`, que la
+página no define (es `appendMessageChunk`); el LCL usa la buena. (3)
+`rplclwebview`: WebView2 podía llamar a los manejadores después de destruir el
+control; ahora se desconectan al cerrar. Nuevo `CapturePreviewPng`. (4)
+`rpinfoprovft` no liberaba la sección crítica de la caché de fuentes (48
+bytes en Linux, visto con heaptrc); se libera bajo `{$IFDEF FPC}` (Delphi
+sin cambios; en Delphi Linux64 la fuga es la misma).
+
+**Textos.** `TranslateStr` con textos por omisión en inglés. El VCL no
+traduce estas unidades (texto fijo en inglés), así que solo se reutilizan
+OK/Cancel, Ready, Refresh, Copy y Select all; ids nuevos 1492–1551 en los nueve
+`reportmanres.*`. Los mensajes de diagnóstico siguen en inglés.
+
+**Pruebas** (`tests/fpc/LclAIChatTest`, sin red): el conversor de Markdown,
+el visor nativo (modelo, render agrupado, píxeles pintados), la tarjeta de
+cuenta con una sesión simulada, el diálogo de login (código por correo y
+Google con un navegador simulado, con el diálogo abierto mientras el hilo
+espera), la selección de modelo, los selectores de esquema (carga y mezcla
+de esquemas por API key y de la cuenta), el chat (inicialización en línea,
+petición de diseño transmitida y aplicada, parada a mitad, frame destruido
+mientras transmite, un anfitrión que transmite con su propio buzón como harán
+los de SQL y expresiones, progreso), el diálogo "Report content", el panel
+de la ventana del diseñador y, en Windows, WebView2 (HTML de la página y
+captura). El programa se relanza con `LOCALAPPDATA` temporal y heaptrc: falla
+si queda memoria sin liberar. En Windows, 194 comprobaciones. Se ejecuta en
+el Docker para Qt6 y GTK2 (`build-in-container.sh`, con capturas en
+`shots-<ws>/`). `LclDesignerTest` lleva el Hub a un puerto local cerrado y
+usa el visor nativo (sus ventanas abren el panel de IA).
+
+**Para 7.3–7.5**: los anfitriones crean su `TRpAsyncMailbox` con el
+manejador equivalente al `WM_USER` del VCL, y sus hilos (`TRpAsyncWorker`)
+llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
+`LclAIChatTest` (`TestChatHostStream`) tiene un ejemplo.
 
 ## Pendiente
 
