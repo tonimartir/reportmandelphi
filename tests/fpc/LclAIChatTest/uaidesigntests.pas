@@ -965,6 +965,16 @@ begin
     end;
     Check(LRaised and (FAnswerer.Answered = 1), 'undo asks as well');
     Check(FindLabel(LRep, 'MANUAL1') <> nil, 'undo refused');
+    FAnswerer.Arm(smbNo);
+    LRaised := False;
+    try
+      LMain.Structure.cueview.BUndoClick(nil);
+    except
+      on E: ERpReportChangesBlocked do
+        LRaised := True;
+    end;
+    Check(LRaised and (FAnswerer.Answered = 1), 'undo of the history panel asks as well');
+    Check(FindLabel(LRep, 'MANUAL1') <> nil, 'history panel undo refused');
 
     // A change accepted: the inference is canceled and the change applied
     FAnswerer.Arm(smbYes);
