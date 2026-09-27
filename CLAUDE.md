@@ -91,6 +91,21 @@ paths in their `.lpi`).
 `--selftest` exits 0 on success and 1 on the first `[TEST_FAILED]`; it appends
 to `selftest.log`, so read only the last run.
 
+Other FPC deliverables:
+
+- Standalone LCL designer: `repman/lcl_designer/repmandesigner_lcl.lpi` (own
+  folder because `repman\TmSchema.pas` shadows the LCL unit; the exe is written
+  to `repman\`). `lazbuild --ws=win32 --bm=Release …` on Windows.
+- Linux packages (`.deb` + AppImage, GTK2) are built in Docker inside WSL by
+  `build\linux\build-linux.ps1` (output `build\linux\out\<v>\`, gitignored);
+  see `docs/fase6_plan.md` and the user guide `docs/linux-install.md`.
+- Lazarus Online Package Manager zip: `build\opm\make_opm_package.ps1`
+  (`docs/opm.md`); it packs only the files in `build/opm/opm_files.txt`, so
+  after adding a unit to a package run it with `-RefreshFileList`, then
+  `-Validate`.
+- `LclSnapshotTest` compares the LCL preview against the PDF driver (exit 1 on
+  failure); `PdfTest` covers the PDF driver.
+
 **Shared units rule:** the root `rp*.pas` units are also the Delphi product.
 Any change Delphi can see must be a genuine bug fix; all other port work goes
 inside `{$IFDEF FPC}` so Delphi compiles exactly the previous code. Watch for
