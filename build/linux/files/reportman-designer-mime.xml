@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tipo MIME de los informes de Report Manager (*.rep). Se instala como
+     /usr/share/mime/packages/reportman-designer.xml -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-reportman-report">
+    <comment>Report Manager report</comment>
+    <comment xml:lang="es">Informe de Report Manager</comment>
+    <comment xml:lang="ca">Informe de Report Manager</comment>
+    <comment xml:lang="fr">Rapport Report Manager</comment>
+    <comment xml:lang="de">Report-Manager-Bericht</comment>
+    <comment xml:lang="it">Report di Report Manager</comment>
+    <comment xml:lang="pt">Relatório do Report Manager</comment>
+    <icon name="reportman-designer"/>
+    <generic-icon name="x-office-document"/>
+    <magic priority="50">
+      <match type="string" value="object TRpReport" offset="0"/>
+    </magic>
+    <glob pattern="*.rep"/>
+  </mime-type>
+</mime-info>

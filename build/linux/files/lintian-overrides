@@ -1,0 +1,19 @@
+# Overrides de lintian para reportman-designer (paquete de terceros, se
+# distribuye desde reportman.es; no esta pensado para el archivo de Debian).
+
+# Decision de la Fase 6: programa autocontenido en /opt/reportman-designer
+# (binario, traducciones y ejemplos juntos), facil de desinstalar. El motor
+# busca las traducciones junto al ejecutable.
+reportman-designer: dir-or-file-in-opt
+
+# Free Pascal 3.2.2 enlaza con su propio codigo de arranque: no genera
+# ejecutables PIE, no pasa -z now al enlazador y no usa las funciones
+# _chk de glibc (FORTIFY_SOURCE es de C/C++).
+reportman-designer: hardening-no-pie [opt/reportman-designer/reportman-designer]
+reportman-designer: hardening-no-bindnow [opt/reportman-designer/reportman-designer]
+reportman-designer: hardening-no-fortify-functions [opt/reportman-designer/reportman-designer]
+
+# Erratas en cadenas del motor, que comparte fuentes con el producto Delphi
+# (se corrigen alli, no en el empaquetado), y en el texto literal de la MPL.
+reportman-designer: spelling-error-in-binary *
+reportman-designer: spelling-error-in-copyright *
