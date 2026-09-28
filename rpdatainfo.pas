@@ -4899,6 +4899,10 @@ begin
 {$ENDIF}
    end;
  end;
+ // The drivers without a query here (Reportman AI Agent, .Net) ended in an
+ // access violation (a report library on them)
+ if not Assigned(FSQLInternalQuery) then
+  Raise Exception.Create(SRpDriverNotSupported);
  // Assigns parameters
  if assigned(params) then
  begin
@@ -5588,7 +5592,10 @@ begin
  astring:='CREATE TABLE '+reporttable+' ('+reportsearchfield+' VARCHAR(50) NOT NULL,'+
   reportfield+' BLOB,REPORT_GROUP INTEGER,USER_FLAG INTEGER,PRIMARY KEY ('+reportsearchfield+'))';
  OpenDatasetFromSQL(astring,nil,true,paramlist);
- astring:='CREATE TABLE REPMAN_GROUPS (GROUP_CODE INTEGER NOT NULL,'+
+ // The groups table of the library (it was always REPMAN_GROUPS)
+ if Length(Trim(groupstable))<1 then
+  groupstable:='REPMAN_GROUPS';
+ astring:='CREATE TABLE '+groupstable+' (GROUP_CODE INTEGER NOT NULL,'+
   'GROUP_NAME VARCHAR(50),PARENT_GROUP INTEGER NOT NULL,'+
   'PRIMARY KEY (GROUP_CODE))';
  OpenDatasetFromSQL(astring,nil,true,paramlist);
@@ -6200,10 +6207,20 @@ begin
  end;
 {$ENDIF}
 {$IFDEF USEZEOS}
- if Assigned(FZInternalDatabase) then
+ // In AutoCommit mode (the default) the changes are committed and Commit
+ // raises "Invalid operation in AutoCommit mode" after saving
+ if Assigned(FZInternalDatabase) and FZInternalDatabase.InTransaction then
  begin
   FZInternalDatabase.Commit;
  end;
+{$ENDIF}
+{$IFNDEF FIREDAC}
+{$IFDEF FPC}
+ // The FireDac connections of FPC are SQLdb ones in the transaction that
+ // Connect starts: the library saves were rolled back when disconnecting
+ if Assigned(FSQLDBTransaction) and FSQLDBTransaction.Active then
+  FSQLDBTransaction.CommitRetaining;
+{$ENDIF}
 {$ENDIF}
 end;
 

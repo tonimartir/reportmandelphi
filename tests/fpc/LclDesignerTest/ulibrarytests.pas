@@ -1103,9 +1103,10 @@ begin
   LogMsg('8: save to library (File > Libraries > Save to library) and open from library');
   mf := TFRpMainFLCL.Create(nil);
   try
-    // With a value: FPC can not write a Null parameter value in the text
-    // format (ObjectBinaryToText has no vaNull), see docs/fase8_libreria.md
     mf.Report.Params.Add('LIBPARAM').Value := 'A';
+    // A parameter without value (Null): FPC's ObjectBinaryToText could not
+    // write it in the text format (rpstreamfpc does)
+    mf.Report.Params.Add('NULLPARAM');
     mf.MarkExternalChange;
     Check(mf.Report.Modified, 'Modified report');
     ExpectForm(TFRpOpenLibLCL, SaveAsNewReportAction);
@@ -1118,7 +1119,7 @@ begin
     CheckStr('', mf.FileName, 'Saved: no file');
     Check(not mf.Report.Modified, 'Saved: not modified');
     Check(Pos(LIB_ALIAS + '->SAVED1', mf.Caption) > 0, 'Saved: title ' + mf.Caption);
-    CheckStr('LIBPARAM', DbReportParams(FDbPath, 'SAVED1'), 'Saved report content committed');
+    CheckStr('LIBPARAM,NULLPARAM', DbReportParams(FDbPath, 'SAVED1'), 'Saved report content committed');
     CheckStr('3', DbQueryValue(FDbPath, 'SELECT REPORT_GROUP FROM REPMAN_REPORTS WHERE REPORT_NAME=''SAVED1'''),
       'Saved report in the selected group');
 
@@ -1129,7 +1130,7 @@ begin
     Check(Assigned(mi), 'Save menu entry');
     mi.Click;
     Check(not mf.Report.Modified, 'Save: not modified');
-    CheckStr('LIBPARAM,LIBPARAM2', DbReportParams(FDbPath, 'SAVED1'), 'Save to the library committed');
+    CheckStr('LIBPARAM,NULLPARAM,LIBPARAM2', DbReportParams(FDbPath, 'SAVED1'), 'Save to the library committed');
 
     // A failed save keeps the document
     msg := '';
@@ -1146,7 +1147,7 @@ begin
     // Frees the designer library connections: what was saved stays
     mf.Free;
   end;
-  CheckStr('LIBPARAM,LIBPARAM2', DbReportParams(FDbPath, 'SAVED1'),
+  CheckStr('LIBPARAM,NULLPARAM,LIBPARAM2', DbReportParams(FDbPath, 'SAVED1'),
     'Saved report after closing the designer');
 
   // Open from library (menu), in a new designer
@@ -1212,10 +1213,9 @@ begin
       on E: Exception do
         msg := E.Message;
     end;
-    if msg <> '' then
-      // rpdatainfo: SaveReportStream calls DoCommit, and TZConnection.Commit
-      // raises in AutoCommit mode (the default) after the UPDATE succeeded
-      LogMsg('[KNOWN_ROOT_BUG] Zeos save to library raises after saving: ' + msg);
+    // rpdatainfo DoCommit called TZConnection.Commit, that raises in
+    // AutoCommit mode (the default) after the UPDATE succeeded
+    CheckStr('', msg, 'Zeos: save to library without an error');
     CheckStr('ZPARAM', DbReportParams(FZeosDbPath, 'Z2'), 'Zeos: saved report');
   finally
     mf.Free;
