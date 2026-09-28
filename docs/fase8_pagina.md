@@ -63,34 +63,14 @@ propiedades del informe. Ahora son 40: se añaden `PDFConformance`,
 `DocXMPContent` (nombres Delphi de `GetItemProperty`/`SetItemProperty`, que
 el deshacer de Delphi también aplica).
 
-Los ficheros incrustados no son una propiedad del informe. Se registran en
-la misma operación (`otModify` sobre `REPORT`) como la propiedad
-`embeddedFiles` (`UndoEmbeddedFilesProperty`, `ptString`), con la lista
-completa antes y después:
-
-- Valor (`EmbeddedFilesToUndoValue`): cadena vacía sin ficheros; si no, un
-  array JSON compacto con un objeto por fichero (`fileName`, `mimeType`,
-  `description`, `relationship`, `creationDate`, `modificationDate` y
-  `data`, el contenido en Base64; los nombres primero para que el historial
-  se lea).
-- `TUndoCue.ApplyPropertiesToObject` lo aplica con
-  `ApplyEmbeddedFilesUndoValue` en lugar de `SetItemProperty`: sustituye los
-  ficheros del informe (libera los anteriores). Un valor inválido lanza la
-  excepción sin cambiar el informe.
-- Viaja con el historial en el XML del informe (`BINCUE`) y en la petición
-  del asistente de diseño, como el resto.
-
-Así un cambio solo de ficheros incrustados queda en el historial y marca el
-informe como modificado; el VCL no lo hace (ver "Encontrado").
-
-Compatibilidad: el deshacer de Delphi (`rpmdundocue`) y el de C# no conocen
-`embeddedFiles`. Un informe con esa operación en su historial, abierto en el
-diseñador Delphi, falla al deshacer ese paso ("Unknown property
-embeddedFiles"); el resto del historial funciona. Si se quiere lo mismo en
-Delphi basta con reconocer la propiedad en `ApplyPropertiesToObject` con el
-mismo formato. Coste: el contenido de los ficheros va dos veces (antes y
-después) en el `BINCUE`; con los ficheros habituales (XML de factura, unos
-kB) no importa.
+Los ficheros incrustados no entran en el historial de deshacer (decisión
+de la integración, 28-09-2026): el agente los registraba como una
+propiedad `embeddedFiles` (la lista en JSON con el contenido en Base64),
+pero los motores de deshacer de Delphi y de C# no la conocen (un historial
+del LCL fallaba al deshacer en el VCL) y el historial viaja con cada
+petición al asistente de diseño. Como en el VCL corregido, un cambio de los
+ficheros marca el informe modificado (`MarkExternalChange`) y no se
+deshace.
 
 ### Ficheros incrustados (`rpmdfembeddedfilelcl`)
 
@@ -170,8 +150,8 @@ de solo lectura (se pueden copiar).
 
 | Función | VCL | LCL |
 |---|---|---|
-| Deshacer de los ficheros incrustados | No se registra; un cambio solo de ficheros no marca el informe como modificado | Se registra (`embeddedFiles`) y marca el informe |
-| Líneas por pulgada en el deshacer | Alias web `linesPerInch` (0/1): pierde el valor | `LinesPerInch` (valor exacto), como ya hacía el LCL |
+| Deshacer de los ficheros incrustados | No se registra; ahora marca el informe modificado (corregido) | Igual: no se registra, marca el informe modificado |
+| Líneas por pulgada en el deshacer | `LinesPerInch` (corregido; antes el alias `linesPerInch`, 0/1) | `LinesPerInch` (valor exacto) |
 | Tipo MIME al añadir | Según el filtro elegido (`image/jpg` para `.jpg`) | Según la extensión (`image/jpeg`); se puede cambiar en el diálogo |
 | Relación en el diálogo del fichero | Nombres del enumerado (`PDF_AF_Data`) | Nombres del PDF (`Data`), como en la lista |
 | Botones de la lista | Iconos | Texto; doble clic en la lista = Modificar |
@@ -255,7 +235,13 @@ Resultados:
 - Zip OPM: `make_opm_package.ps1 -Validate` (Windows) y `-ValidateWsl`
   (GTK2) correctos: los tres paquetes compilan desde el zip.
 
-## Encontrado en el VCL y en unidades compartidas (sin corregir)
+## Encontrado en el VCL y en unidades compartidas
+
+Estado a 28-09-2026: 1, 2, 3, 5 y 7 corregidos en Delphi (0ecb77b); 4
+corregido en FPC con `rtl_fpc/rpstreamfpc` (258a4b7), que además corrige
+la moneda truncada de FPC 3.2.2 en todos los formatos; 6 se deja (menor:
+los valores solo se escriben al aceptar).
+
 
 1. `rppagesetupvcl.pas:506-516` y `609-612`: los ficheros incrustados se
    sustituyen fuera del deshacer. Si solo cambian los ficheros no se añade
@@ -301,6 +287,5 @@ Resultados:
 
 ## Pendiente
 
-- Conectar `ASysInfo` a `ShowSysInfo` en la ventana principal (coordinador).
-- Añadir los ids 1800–1814 a los `reportmanres.*` y a `REPORTMANRES.RES`.
-- Si se quiere, `embeddedFiles` en el deshacer de Delphi y de C#.
+- ~~Conectar `ASysInfo` a `ShowSysInfo`~~ (Ayuda > Información del sistema).
+- ~~Añadir los ids 1800–1814~~ (2494240).

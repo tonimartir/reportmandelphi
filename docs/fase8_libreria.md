@@ -209,7 +209,13 @@ Resultados:
   pruebas usan `libsqlite3.so.0` si no está `libsqlite3.so`, como
   `rpdatainfo`; la prueba de árbol de 5.5 se sigue omitiendo allí por eso).
 
-## Encontrado en unidades compartidas (sin corregir)
+## Encontrado en unidades compartidas
+
+Estado a 28-09-2026: todos corregidos (c2dba2a, 258a4b7 y 8c3b1a1). 1 en
+FPC (`DoCommit` confirma la transacción SQLdb); en Delphi FireDAC no se ha
+tocado (confirma al desconectar, sin comprobar). El botón *Configurar*
+abre `rpdbxconfiglcl.ShowDBXConfig`.
+
 
 1. `rpdatainfo.pas:6185` (`TRpDatabaseInfoItem.DoCommit`) no tiene rama para
    la conexión SQLdb de FPC (controlador FireDac). `Connect`

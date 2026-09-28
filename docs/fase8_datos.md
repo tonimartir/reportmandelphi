@@ -244,7 +244,11 @@ Resultados:
   pruebas de esta fase solas (`uaidatatests` con el mismo arenero y heaptrc)
   pasan: 95 comprobaciones, 0 bloques sin liberar.
 
-## Encontrado en unidades compartidas y en el VCL (sin corregir)
+## Encontrado en unidades compartidas y en el VCL
+
+Estado a 28-09-2026: 1, 2, 3, 5 y 6 corregidos (2dc4803); 4 se deja (el
+producto nunca llama a `ShowDBXConfig` con un fichero).
+
 
 1. `rpdatainfo.pas:2684` (FPC, `rpfiredac`): `driverId` toma `DriverName`
    antes que `DriverID`, así que una entrada FireDAC como las que escribe

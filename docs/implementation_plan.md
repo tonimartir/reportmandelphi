@@ -15,7 +15,8 @@ de estabilización y la Fase 6, por Claude.
 - Motor de informes compilable con FPC 3.2.2 en Windows y Linux, con salida
   PDF/SVG/PNG/texto y el mismo resultado que la versión Delphi.
 - Vista previa y diseñador LCL (Lazarus 4.x; Linux con Qt6, y GTK2 como
-  paquete de transición) equivalentes al diseñador VCL de Delphi.
+  paquete de transición) equivalentes al diseñador VCL de Delphi (Fase 8:
+  lo que queda fuera no existe en FPC, ver abajo).
 - Todo ello **sin cambiar el producto Delphi**, que comparte las unidades del
   motor.
 
@@ -71,6 +72,8 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 | 5.5 | Estabilización: aislamiento de Delphi, infraestructura, sin pérdida de datos, undo fiable, tests de regresión reales, bugs comunes corregidos también en Delphi | a7c6c89 … 1014d29 | Hecha |
 | — | Compilación en una sola pasada (CRC de `rpsection`), zip OPM, Base64 binario seguro en FPC, paridad del inspector con la VCL, vista previa Linux con Cairo/FreeType igual que el PDF | 57961c6 … cc8e917 | Hecha |
 | 6 | Diseñador autónomo, `.deb` + AppImage construidos en Docker, pruebas en máquinas limpias, enganche al release de SourceForge | 07bfa5a … b3ea54b | Hecha salvo pruebas manuales y subida (ver `fase6_plan.md`) |
+| 7 | Asistentes de IA y Hub en FPC/LCL (abajo) | 05f20c0 … ebb5cbe | Hecha salvo la prueba real contra el Hub |
+| 8 | Paridad con el diseñador VCL (abajo) | f4ae136 … | Hecha |
 
 ### Subfase 5.5: qué se corrigió
 
@@ -338,6 +341,58 @@ usa el visor nativo (sus ventanas abren el panel de IA).
 manejador equivalente al `WM_USER` del VCL, y sus hilos (`TRpAsyncWorker`)
 llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
 `LclAIChatTest` (`TestChatHostStream`) tiene un ejemplo.
+
+## Fase 8: paridad con el diseñador VCL (hecha, 28-09-2026)
+
+Una auditoría menú a menú y diálogo a diálogo del diseñador VCL
+(`rpmdfmainvcl` y sus diálogos) contra el LCL encontró que al LCL le faltaban
+configuraciones enteras. Se portaron en cuatro bloques en paralelo y uno
+propio:
+
+| Bloque | Qué | Detalle |
+|---|---|---|
+| Ventana principal y vista previa | Menús del VCL que faltaban (ocultar/mostrar todo, todos los textos, mover, alinear, ajustar alto a 1/n, Informe > Añadir, Preferencias, ficheros recientes, documentación, información del sistema, configurar impresora), imprimir de verdad con diálogo, el error de un informe selecciona el elemento, arrastrar campos del árbol de datos, zoom hasta 400%; vista previa: enviar por correo (MAPI en Windows, `xdg-email` en Linux) y sin los formatos que no escribían nada (Excel, autoejecutable) | `LclDesignerTest` (`uvclparitytests`) |
+| Configuración de datos | Diálogo de conexiones (`rpdbxconfiglcl`, con prueba de conexión y bases de datos del Hub), pestaña de conexiones como la VCL, mostrar datos, página MyBase y ficheros de texto, uniones | `fase8_datos.md` |
+| Asistente de informe nuevo | `NewModernReportWizard` en Archivo > Nuevo, con sus rutas (Agente, conexión directa, sin conexión) y el chat de diseño con el prompt | `fase8_asistente.md` |
+| Configurar página | Ficheros incrustados, opciones PDF y metadatos, configuración de impresoras, información del sistema | `fase8_pagina.md` |
+| Librería de informes | Editor de conexiones de la librería, guardar en la librería, árbol editable (grupos, informes, mover, buscar, exportar) | `fase8_libreria.md` |
+
+Los ficheros incrustados no entran en el historial de deshacer (ni en el
+VCL): los motores de deshacer de Delphi y C# no los conocen y el historial
+viaja con cada petición al asistente de diseño; su cambio marca el informe
+modificado.
+
+**Fallos encontrados al portar y corregidos** (Delphi o común, verificados
+leyendo el ciclo completo):
+
+- Diseñador VCL: soltar un campo en una sección, ajustar el alto a 1/n, un
+  cambio solo de ficheros incrustados, de uniones o de MyBase no marcaban el
+  informe modificado (se perdían al cerrar sin preguntar); las líneas por
+  pulgada se registraban con el alias `linesPerInch` (0/1) y no se
+  deshacían bien; el asistente de informe nuevo creaba las conexiones Zeos
+  sin protocolo, rechazaba su propia conexión al volver atrás y mostraba
+  `nombre=id`; conexiones: Zeos listaba las de Interbase y FireDac las del
+  controlador anterior; librería: mover con `REPORT_NAME` fijo, informe nuevo
+  colgado de otro informe, raíz editable y ciclos de grupos, nombres de
+  conexión vacíos o repetidos no detectados, fugas; la cadena ADO guardaba la
+  contraseña enmascarada al editarla; información del sistema con alto por
+  ancho.
+- Comunes: `rpdatatext` no guardaba la precisión y leía mal las horas;
+  `TRpChart` no liberaba sus series; `rplastsav` acortaba de más los nombres
+  recientes; `OpenDatasetFromSQL` con el controlador del Agente acababa en
+  una violación de acceso; `CreateLibrary` ignoraba la tabla de grupos;
+  Zeos fallaba al confirmar en modo AutoCommit.
+- Solo FPC: el formato texto (el de omisión) no podía guardar parámetros
+  sin valor, de fecha o de moneda y estropeaba los textos no ASCII, y la
+  moneda se truncaba en todos los formatos (`rtl_fpc/rpstreamfpc`); lo
+  guardado en una librería FireDac se deshacía al desconectar; una conexión
+  FireDac con `DriverName=FireDac` y `DriverID=SQLite` se rechazaba.
+
+Diferencias que quedan con el VCL (no aplican en FPC): exportar a Excel
+(OLE), controladores ADO, BDE, IBX y .NET, el editor de conexiones de
+FireDAC, el canal directo WebRTC y Monaco en Linux (decisión de esperar a
+GTK3). La ejecución asíncrona de la vista previa (Preferencias >
+Asíncrono) no se portó.
 
 ## Pendiente
 

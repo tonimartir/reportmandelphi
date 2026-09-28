@@ -203,7 +203,14 @@ Resultados:
 En GTK el primer botón de radio de cada grupo sale marcado: el tipo de
 conexión empieza en Reportman AI y la pregunta del esquema en Sí.
 
-## Encontrado en código común, `server/web` o VCL (sin corregir)
+## Encontrado en código común, `server/web` o VCL
+
+Estado a 28-09-2026: 1 corregido (2dc4803), 2, 3 y 4 corregidos en el VCL
+(62c45b0); 5 se deja (solo sin FIREDAC, configuración que no se compila);
+6 no se da (el Hub siempre envía `displayName`); 7 es el comportamiento del
+VCL (Cancelar deja el diseñador sin informe, con las acciones
+desactivadas).
+
 
 1. `rpdatainfo.pas:2684-2712` (solo FPC, `{$IFDEF FPC}` del driver
    FireDAC): toma como controlador `DriverName` y solo si está vacío

@@ -209,6 +209,14 @@ Wayland nativo si está instalado `qt6-wayland`.
   sugerencia de IA de Monaco: se escribe un comentario en lenguaje natural y
   la IA propone el SQL en gris en el cursor; Tab lo acepta, Esc lo descarta.
   Las respuestas del chat de IA se muestran con el visor HTML nativo.
+- **Controladores de datos**: MyBase (ficheros de texto y XML), Zeos,
+  FireDac (SQLite) y Reportman AI Agent. ADO, BDE, IBX, dbExpress y .NET son
+  de la versión Windows (Delphi); un informe que los use muestra su
+  conexión como "(no disponible)" y no la cambia.
+- **Exportar a Excel** no existe (la versión Windows usa Excel por OLE): la
+  vista previa guarda en PDF, PDF/A-3, HTML, SVG, CSV, texto, PNG, BMP y
+  metafile. *Enviar por correo* abre el cliente de correo del escritorio con
+  el PDF adjunto (`xdg-email`, paquete `xdg-utils`).
 - **DataDirect solo por HTTP**: el canal directo WebRTC (P2P) del controlador
   *Reportman Agent* solo está en Windows. En Linux las consultas van siempre por
   HTTP a través del Hub (`api.reportman.es`), con los mismos resultados y algo
