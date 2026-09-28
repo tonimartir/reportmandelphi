@@ -31,7 +31,7 @@ uses
   Graphics, DB, sqldb, sqlite3conn, sqlite3dyn,
   rptypes, rpmdconsts, rpreport, rpparams, rpdatainfo, rpgraphutilslcl,
   rpmdfmainlcl, rpmdfopenliblcl, rpmdftreelcl, rpeditconnlcl, rpdbxconfiglcl,
-  umainform;
+  umainform, udialoglayouttests;
 
 const
   // GUARD_HANDLED_TAG of uregressiontests
@@ -767,6 +767,7 @@ end;
 procedure TLibTests.TestLibraryTreeActions;
 var
   list: TRpDatabaseInfoList;
+  layout: string;
   item: TRpDatabaseInfoItem;
   dia: TFRpOpenLibLCL;
   tree: TFRpDBTreeLCL;
@@ -895,6 +896,8 @@ begin
       Application.ProcessMessages;
       dia.ATree.Selected := nR1;
       Shot(dia, 'library_dialog');
+      layout := DialogLayoutProblems(dia);
+      Check(layout = '', 'Library dialog layout: ' + layout);
       r := nR1.DisplayRect(True);
       if (r.Bottom > r.Top) and (dia.ATree.GetNodeAt(r.Left + 2, (r.Top + r.Bottom) div 2) = nR1) then
       begin

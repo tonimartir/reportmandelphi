@@ -192,7 +192,7 @@ function RpMimeTypeFromFileName(const AFileName:string):string;
 implementation
 
 uses
- Math;
+ Math,rplcllayout;
 
 {$R *.lfm}
 
@@ -467,53 +467,6 @@ var
   dh:=Max(dh,AHeight-(ph-dp));
  end;
 
- // Forgets the anchors of the lfm
- procedure Reset(AControl:TControl);
- var
-  k:TAnchorKind;
- begin
-  for k:=Low(TAnchorKind) to High(TAnchorKind) do
-   AControl.AnchorSide[k].Control:=nil;
-  AControl.Anchors:=[akLeft,akTop];
-  AControl.BorderSpacing.Around:=0;
- end;
-
- // Left and top: at ALeft of the left side of the parent and below ABelow
- // (the top of the parent when nil)
- procedure PlaceAt(AControl:TControl;ALeft:integer;ABelow:TControl;ASpace:integer);
- begin
-  Reset(AControl);
-  AControl.AnchorParallel(akLeft,ALeft,AControl.Parent);
-  if ABelow=nil then
-   AControl.AnchorParallel(akTop,ASpace,AControl.Parent)
-  else
-   AControl.AnchorToNeighbour(akTop,ASpace,ABelow);
- end;
-
- // The right side at ASpace of the right side of the parent
- procedure ToRight(AControl:TControl;ASpace:integer);
- begin
-  AControl.AnchorParallel(akRight,ASpace,AControl.Parent);
- end;
-
- // A label at ALeft, centered on the height of its editor
- procedure LabelFor(ALabel:TLabel;ALeft:integer;AEditor:TControl);
- begin
-  Reset(ALabel);
-  ALabel.AutoSize:=true;
-  ALabel.AnchorParallel(akLeft,ALeft,ALabel.Parent);
-  ALabel.AnchorVerticalCenterTo(AEditor);
- end;
-
- // A label (units) after its editor
- procedure UnitsFor(ALabel:TLabel;AEditor:TControl);
- begin
-  Reset(ALabel);
-  ALabel.AutoSize:=true;
-  ALabel.AnchorToNeighbour(akLeft,Scale96ToScreen(4),AEditor);
-  ALabel.AnchorVerticalCenterTo(AEditor);
- end;
-
  // A group that takes the height of its content (the width comes from its
  // anchors)
  procedure AutoHeight(AGroup:TWinControl);
@@ -534,8 +487,8 @@ var
   Result.BevelOuter:=bvNone;
   Result.Caption:='';
   Result.Parent:=TabPage;
-  PlaceAt(Result,M,ABelow,M);
-  ToRight(Result,M);
+  RpPlaceAt(Result,M,ABelow,M);
+  RpToParentRight(Result,M);
   Result.AutoSize:=true;
  end;
 
@@ -543,7 +496,7 @@ var
  procedure InRow(AControl:TWinControl;ARow:TPanel;ALeft:TControl;AWidth:integer);
  begin
   AControl.Parent:=ARow;
-  Reset(AControl);
+  RpResetAnchors(AControl);
   if ALeft=nil then
    AControl.AnchorParallel(akLeft,0,ARow)
   else
@@ -553,7 +506,7 @@ var
   if AWidth>0 then
    AControl.Width:=AWidth
   else
-   ToRight(AControl,0);
+   RpToParentRight(AControl,0);
  end;
 
 begin
@@ -598,9 +551,9 @@ begin
   bw:=ButtonWidth([BOK.Caption,BCancel.Caption],101);
   dp:=buttonh+2*M-Panel1.Height;
   Panel1.Height:=buttonh+2*M;
-  PlaceAt(BOK,M,nil,M);
+  RpPlaceAt(BOK,M,nil,M);
   BOK.SetBounds(BOK.Left,BOK.Top,bw,buttonh);
-  PlaceAt(BCancel,M+bw+S,nil,M);
+  RpPlaceAt(BCancel,M+bw+S,nil,M);
   BCancel.SetBounds(BCancel.Left,BCancel.Top,bw,buttonh);
 
   // Page setup. Rows: page size (with the custom size or the user defined
@@ -624,30 +577,30 @@ begin
   // User defined size: width, height and form name
   lw:=MaxTW([LWidth.Caption,LHeight.Caption,LForceFormName.Caption])+G;
   uw:=TW(LMetrics7.Caption);
-  PlaceAt(EPageWidth,M+lw,nil,0);
+  RpPlaceAt(EPageWidth,M+lw,nil,0);
   EPageWidth.AnchorToNeighbour(akRight,Scale96ToScreen(4),LMetrics7);
-  Reset(LMetrics7);
+  RpResetAnchors(LMetrics7);
   LMetrics7.AutoSize:=true;
   LMetrics7.AnchorParallel(akRight,M,GUserDefined);
   LMetrics7.AnchorVerticalCenterTo(EPageWidth);
   LMetrics7.Anchors:=[akTop,akRight];
-  LabelFor(LWidth,M,EPageWidth);
-  PlaceAt(EPageheight,M+lw,EPageWidth,S);
+  RpLabelFor(LWidth,M,EPageWidth);
+  RpPlaceAt(EPageheight,M+lw,EPageWidth,S);
   EPageheight.AnchorToNeighbour(akRight,Scale96ToScreen(4),LMetrics8);
-  Reset(LMetrics8);
+  RpResetAnchors(LMetrics8);
   LMetrics8.AutoSize:=true;
   LMetrics8.AnchorParallel(akRight,M,GUserDefined);
   LMetrics8.AnchorVerticalCenterTo(EPageheight);
   LMetrics8.Anchors:=[akTop,akRight];
-  LabelFor(LHeight,M,EPageheight);
-  PlaceAt(EForceFormName,M+lw,EPageheight,S);
+  RpLabelFor(LHeight,M,EPageheight);
+  RpPlaceAt(EForceFormName,M+lw,EPageheight,S);
   EForceFormName.AnchorParallel(akRight,0,EPageheight);
-  LabelFor(LForceFormName,M,EForceFormName);
+  RpLabelFor(LForceFormName,M,EForceFormName);
   AutoHeight(GUserDefined);
   // The editors keep at least 80 pixels
   Need(M+col1+S+groupw+M+lw+Scale96ToScreen(80)+Scale96ToScreen(4)+uw+M+M,0);
-  PlaceAt(ComboPageSize,M,nil,0);
-  ToRight(ComboPageSize,M);
+  RpPlaceAt(ComboPageSize,M,nil,0);
+  RpToParentRight(ComboPageSize,M);
   AutoHeight(GPageSize);
   // Orientation
   PRow2:=NewRow(PRow1,'POrientationRow');
@@ -656,41 +609,41 @@ begin
   InRow(RCustomOrientation,PRow2,RPageOrientation,0);
   // Margins, in two columns
   GPageMargins.Parent:=TabPage;
-  PlaceAt(GPageMargins,M,PRow2,S);
-  ToRight(GPageMargins,M);
+  RpPlaceAt(GPageMargins,M,PRow2,S);
+  RpToParentRight(GPageMargins,M);
   lw:=MaxTW([LLeft.Caption,LTop.Caption])+G;
   lw2:=MaxTW([LRight.Caption,LBottom.Caption])+G;
   uw:=TW(LMetrics3.Caption);
   ew:=Scale96ToScreen(90);
   x2:=M+lw+ew+Scale96ToScreen(4)+uw+3*G;
-  PlaceAt(ELeftMargin,M+lw,nil,0);
+  RpPlaceAt(ELeftMargin,M+lw,nil,0);
   ELeftMargin.Width:=ew;
-  LabelFor(LLeft,M,ELeftMargin);
-  UnitsFor(LMetrics3,ELeftMargin);
-  PlaceAt(ERightMargin,x2+lw2,nil,0);
+  RpLabelFor(LLeft,M,ELeftMargin);
+  RpUnitsFor(LMetrics3,ELeftMargin,Scale96ToScreen(4));
+  RpPlaceAt(ERightMargin,x2+lw2,nil,0);
   ERightMargin.Width:=ew;
-  LabelFor(LRight,x2,ERightMargin);
-  UnitsFor(LMetrics5,ERightMargin);
-  PlaceAt(ETopMargin,M+lw,ELeftMargin,S);
+  RpLabelFor(LRight,x2,ERightMargin);
+  RpUnitsFor(LMetrics5,ERightMargin,Scale96ToScreen(4));
+  RpPlaceAt(ETopMargin,M+lw,ELeftMargin,S);
   ETopMargin.Width:=ew;
-  LabelFor(LTop,M,ETopMargin);
-  UnitsFor(LMetrics4,ETopMargin);
-  PlaceAt(EBottomMargin,x2+lw2,ELeftMargin,S);
+  RpLabelFor(LTop,M,ETopMargin);
+  RpUnitsFor(LMetrics4,ETopMargin,Scale96ToScreen(4));
+  RpPlaceAt(EBottomMargin,x2+lw2,ELeftMargin,S);
   EBottomMargin.Width:=ew;
-  LabelFor(LBottom,x2,EBottomMargin);
-  UnitsFor(LMetrics6,EBottomMargin);
+  RpLabelFor(LBottom,x2,EBottomMargin);
+  RpUnitsFor(LMetrics6,EBottomMargin,Scale96ToScreen(4));
   AutoHeight(GPageMargins);
   Need(M+groupw+x2+lw2+ew+Scale96ToScreen(4)+uw+M+M,0);
   // Lines per inch
   lw:=TW(LLinesperInch.Caption)+G;
-  PlaceAt(ELinesPerInch,M+lw,GPageMargins,S);
+  RpPlaceAt(ELinesPerInch,M+lw,GPageMargins,S);
   ELinesPerInch.Width:=ew;
-  LabelFor(LLinesperInch,M,ELinesPerInch);
+  RpLabelFor(LLinesperInch,M,ELinesPerInch);
   // Background color
   bw:=ButtonWidth([BBackground.Caption],149);
-  PlaceAt(BBackground,M,ELinesPerInch,S);
+  RpPlaceAt(BBackground,M,ELinesPerInch,S);
   BBackground.SetBounds(BBackground.Left,BBackground.Top,bw,buttonh);
-  Reset(SColor);
+  RpResetAnchors(SColor);
   SColor.AnchorToNeighbour(akLeft,S,BBackground);
   SColor.AnchorParallel(akTop,0,BBackground);
   SColor.SetBounds(SColor.Left,SColor.Top,buttonh,buttonh);
@@ -710,37 +663,37 @@ begin
   w:=Max(Scale96ToScreen(118),MaxTW([ComboPreview.Items[0],
    ComboPreview.Items[1]])+Scale96ToScreen(40));
   Need(x+w+S+Scale96ToScreen(120)+M,0);
-  PlaceAt(ComboPrinterFonts,x,nil,M);
-  ToRight(ComboPrinterFonts,M);
-  LabelFor(LPrinterFonts,M,ComboPrinterFonts);
-  PlaceAt(ComboLanguage,x,ComboPrinterFonts,S);
-  ToRight(ComboLanguage,M);
-  LabelFor(LRLang,M,ComboLanguage);
-  PlaceAt(ComboPreview,x,ComboLanguage,S);
+  RpPlaceAt(ComboPrinterFonts,x,nil,M);
+  RpToParentRight(ComboPrinterFonts,M);
+  RpLabelFor(LPrinterFonts,M,ComboPrinterFonts);
+  RpPlaceAt(ComboLanguage,x,ComboPrinterFonts,S);
+  RpToParentRight(ComboLanguage,M);
+  RpLabelFor(LRLang,M,ComboLanguage);
+  RpPlaceAt(ComboPreview,x,ComboLanguage,S);
   ComboPreview.Width:=w;
-  LabelFor(LPreview,M,ComboPreview);
-  Reset(ComboStyle);
+  RpLabelFor(LPreview,M,ComboPreview);
+  RpResetAnchors(ComboStyle);
   ComboStyle.AnchorToNeighbour(akLeft,S,ComboPreview);
   ComboStyle.AnchorParallel(akTop,0,ComboPreview);
-  ToRight(ComboStyle,M);
-  PlaceAt(ComboSelPrinter,x,ComboPreview,S);
-  ToRight(ComboSelPrinter,M);
-  LabelFor(LSelectPrinter,M,ComboSelPrinter);
+  RpToParentRight(ComboStyle,M);
+  RpPlaceAt(ComboSelPrinter,x,ComboPreview,S);
+  RpToParentRight(ComboSelPrinter,M);
+  RpLabelFor(LSelectPrinter,M,ComboSelPrinter);
   // Paper source: its number and its name
-  Reset(EPaperSource);
+  RpResetAnchors(EPaperSource);
   EPaperSource.AnchorParallel(akLeft,x,TabPrint);
   EPaperSource.Width:=Scale96ToScreen(45);
-  Reset(ComboPaperSource);
+  RpResetAnchors(ComboPaperSource);
   ComboPaperSource.AnchorToNeighbour(akLeft,S,EPaperSource);
   ComboPaperSource.AnchorToNeighbour(akTop,S,ComboSelPrinter);
-  ToRight(ComboPaperSource,M);
+  RpToParentRight(ComboPaperSource,M);
   EPaperSource.AnchorVerticalCenterTo(ComboPaperSource);
-  LabelFor(LPaperSource,M,ComboPaperSource);
-  PlaceAt(ComboDuplex,x,ComboPaperSource,S);
-  ToRight(ComboDuplex,M);
-  LabelFor(LDuplex,M,ComboDuplex);
+  RpLabelFor(LPaperSource,M,ComboPaperSource);
+  RpPlaceAt(ComboDuplex,x,ComboPaperSource,S);
+  RpToParentRight(ComboDuplex,M);
+  RpLabelFor(LDuplex,M,ComboDuplex);
   bw:=ButtonWidth([BConfigure.Caption],213);
-  PlaceAt(BConfigure,M,ComboDuplex,S);
+  RpPlaceAt(BConfigure,M,ComboDuplex,S);
   BConfigure.SetBounds(BConfigure.Left,BConfigure.Top,bw,buttonh);
   // Copies and options: two columns
   LChecks[0]:=CheckCollate;
@@ -755,26 +708,26 @@ begin
   x2:=M+w+Scale96ToScreen(16);
   Need(x2+MaxTW([CheckDefaultCopies.Caption,CheckPreviewAbout.Caption,
    CheckMargins.Caption])+checkw+Scale96ToScreen(8)+M,0);
-  PlaceAt(ECopies,M+lw,BConfigure,S);
+  RpPlaceAt(ECopies,M+lw,BConfigure,S);
   ECopies.Width:=Scale96ToScreen(69);
-  LabelFor(LCopies,M,ECopies);
+  RpLabelFor(LCopies,M,ECopies);
   for i:=0 to High(LChecks) do
   begin
    if i=0 then
-    PlaceAt(LChecks[i],M,ECopies,S)
+    RpPlaceAt(LChecks[i],M,ECopies,S)
    else
-    PlaceAt(LChecks[i],M,LChecks[i-1],Scale96ToScreen(2));
+    RpPlaceAt(LChecks[i],M,LChecks[i-1],Scale96ToScreen(2));
    LChecks[i].AutoSize:=true;
   end;
-  Reset(CheckDefaultCopies);
+  RpResetAnchors(CheckDefaultCopies);
   CheckDefaultCopies.AutoSize:=true;
   CheckDefaultCopies.AnchorParallel(akLeft,x2,TabPrint);
   CheckDefaultCopies.AnchorVerticalCenterTo(ECopies);
-  Reset(CheckPreviewAbout);
+  RpResetAnchors(CheckPreviewAbout);
   CheckPreviewAbout.AutoSize:=true;
   CheckPreviewAbout.AnchorParallel(akLeft,x2,TabPrint);
   CheckPreviewAbout.AnchorParallel(akTop,0,CheckCollate);
-  Reset(CheckMargins);
+  RpResetAnchors(CheckMargins);
   CheckMargins.AutoSize:=true;
   CheckMargins.AnchorParallel(akLeft,x2,TabPrint);
   CheckMargins.AnchorParallel(akTop,0,CheckTwoPass);
@@ -783,30 +736,30 @@ begin
   // Options: save format, PDF options and embedded files
   UsePage(TabOptions);
   lw:=TW(LPreferedFormat.Caption)+G;
-  PlaceAt(ComboFormat,M+lw,nil,M);
-  ToRight(ComboFormat,M);
-  LabelFor(LPreferedFormat,M,ComboFormat);
-  PlaceAt(GPDF,M,ComboFormat,S);
-  ToRight(GPDF,M);
+  RpPlaceAt(ComboFormat,M+lw,nil,M);
+  RpToParentRight(ComboFormat,M);
+  RpLabelFor(LPreferedFormat,M,ComboFormat);
+  RpPlaceAt(GPDF,M,ComboFormat,S);
+  RpToParentRight(GPDF,M);
   lw:=MaxTW([LabelPDFConformance.Caption,LabelCompressed.Caption])+G;
-  PlaceAt(ComboBoxPDFConformance,M+lw,nil,0);
+  RpPlaceAt(ComboBoxPDFConformance,M+lw,nil,0);
   ComboBoxPDFConformance.Width:=Scale96ToScreen(200);
-  LabelFor(LabelPDFConformance,M,ComboBoxPDFConformance);
-  PlaceAt(CheckBoxPDFCompressed,M+lw,ComboBoxPDFConformance,S);
+  RpLabelFor(LabelPDFConformance,M,ComboBoxPDFConformance);
+  RpPlaceAt(CheckBoxPDFCompressed,M+lw,ComboBoxPDFConformance,S);
   CheckBoxPDFCompressed.AutoSize:=true;
-  LabelFor(LabelCompressed,M,CheckBoxPDFCompressed);
+  RpLabelFor(LabelCompressed,M,CheckBoxPDFCompressed);
   AutoHeight(GPDF);
   // The list of files fills the rest of the page
-  PlaceAt(GEmbedded,M,GPDF,S);
-  ToRight(GEmbedded,M);
+  RpPlaceAt(GEmbedded,M,GPDF,S);
+  RpToParentRight(GEmbedded,M);
   GEmbedded.AnchorParallel(akBottom,M,TabOptions);
   bw:=ButtonWidth([BNewFile.Caption,BDeleteFile.Caption,BModifyFile.Caption],104);
   PEmbeddedButtons.Height:=buttonh+2*Scale96ToScreen(4);
-  PlaceAt(BNewFile,Scale96ToScreen(4),nil,Scale96ToScreen(4));
+  RpPlaceAt(BNewFile,Scale96ToScreen(4),nil,Scale96ToScreen(4));
   BNewFile.SetBounds(BNewFile.Left,BNewFile.Top,bw,buttonh);
-  PlaceAt(BDeleteFile,Scale96ToScreen(4)+bw+S,nil,Scale96ToScreen(4));
+  RpPlaceAt(BDeleteFile,Scale96ToScreen(4)+bw+S,nil,Scale96ToScreen(4));
   BDeleteFile.SetBounds(BDeleteFile.Left,BDeleteFile.Top,bw,buttonh);
-  PlaceAt(BModifyFile,Scale96ToScreen(4)+2*(bw+S),nil,Scale96ToScreen(4));
+  RpPlaceAt(BModifyFile,Scale96ToScreen(4)+2*(bw+S),nil,Scale96ToScreen(4));
   BModifyFile.SetBounds(BModifyFile.Left,BModifyFile.Top,bw,buttonh);
   Need(M+groupw+Scale96ToScreen(4)+3*(bw+S)+M,
    M+comboh+S+(grouph+S+comboh+S+checkh+S)+S+grouph+PEmbeddedButtons.Height+
@@ -838,16 +791,16 @@ begin
   for i:=0 to High(LEdits) do
   begin
    if i=0 then
-    PlaceAt(LEdits[i],M+lw,nil,M)
+    RpPlaceAt(LEdits[i],M+lw,nil,M)
    else
-    PlaceAt(LEdits[i],M+lw,LEdits[i-1],S);
-   ToRight(LEdits[i],M);
-   LabelFor(LLabels[i],M,LEdits[i]);
+    RpPlaceAt(LEdits[i],M+lw,LEdits[i-1],S);
+   RpToParentRight(LEdits[i],M);
+   RpLabelFor(LLabels[i],M,LEdits[i]);
   end;
-  PlaceAt(TextXMPContent,M+lw,textDocModDate,S);
-  ToRight(TextXMPContent,M);
+  RpPlaceAt(TextXMPContent,M+lw,textDocModDate,S);
+  RpToParentRight(TextXMPContent,M);
   TextXMPContent.AnchorParallel(akBottom,M,TabMetadata);
-  Reset(LabelXmpContent);
+  RpResetAnchors(LabelXmpContent);
   LabelXmpContent.AnchorParallel(akLeft,M,TabMetadata);
   LabelXmpContent.AnchorParallel(akTop,Scale96ToScreen(4),TextXMPContent);
   Need(0,M+8*(edith+S)+Scale96ToScreen(100)+M);

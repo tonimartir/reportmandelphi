@@ -25,7 +25,7 @@
     <Description Value="Report Manager LCL runtime: TLCLReport component, report preview window and preview control, page setup and parameters dialogs, and printing through Printer4Lazarus. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="16"/>
-    <Files Count="13">
+    <Files Count="14">
       <Item1>
         <Filename Value="..\..\lcl\rplclfonts.pas"/>
         <UnitName Value="rplclfonts"/>
@@ -79,6 +79,10 @@
         <Filename Value="..\..\lcl\rpmdprintconfiglcl.pas"/>
         <UnitName Value="rpmdprintconfiglcl"/>
       </Item13>
+      <Item14>
+        <Filename Value="..\..\lcl\rplcllayout.pas"/>
+        <UnitName Value="rplcllayout"/>
+      </Item14>
     </Files>
     <RequiredPkgs Count="5">
       <Item1>

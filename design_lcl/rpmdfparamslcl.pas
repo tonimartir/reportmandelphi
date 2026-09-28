@@ -416,27 +416,30 @@ begin
   PBottom.Height := 44;
   PBottom.BevelOuter := bvNone;
 
-  BOK := TButton.Create(Self);
-  BOK.Parent := PBottom;
-  BOK.Left := Width - 190;
-  BOK.Top := 9;
-  BOK.Width := 85;
-  BOK.Height := 27;
-  BOK.Caption := TranslateStr(93, 'OK');
-  BOK.Default := True;
-  BOK.Anchors := [akTop, akRight];
-  BOK.OnClick := BOKClick;
-
+  // At the right side of the panel: it is not aligned yet (the width of the
+  // form placed them outside it)
   BCancel := TButton.Create(Self);
   BCancel.Parent := PBottom;
-  BCancel.Left := Width - 95;
   BCancel.Top := 9;
   BCancel.Width := 85;
   BCancel.Height := 27;
   BCancel.Caption := TranslateStr(94, 'Cancel');
   BCancel.Cancel := True;
+  BCancel.AnchorParallel(akRight, 10, PBottom);
   BCancel.Anchors := [akTop, akRight];
   BCancel.OnClick := BCancelClick;
+
+  BOK := TButton.Create(Self);
+  BOK.Parent := PBottom;
+  BOK.Top := 9;
+  BOK.Width := 85;
+  BOK.Height := 27;
+  BOK.Caption := TranslateStr(93, 'OK');
+  BOK.Default := True;
+  BOK.AnchorToNeighbour(akRight, 10, BCancel);
+  BOK.Anchors := [akTop, akRight];
+  BOK.TabOrder := 0;
+  BOK.OnClick := BOKClick;
 
   // Left parameter list panel
   PLeft := TPanel.Create(Self);

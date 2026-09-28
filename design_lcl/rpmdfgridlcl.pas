@@ -50,6 +50,7 @@ type
     procedure BOKClick(Sender: TObject);
     procedure BCancelClick(Sender: TObject);
     procedure BuildControls;
+    procedure LayoutControls;
   public
     constructor Create(AOwner: TComponent); override;
 
@@ -59,6 +60,9 @@ type
 procedure ModifyGridProperties(report: TRpReport);
 
 implementation
+
+uses
+  Math, rplcllayout;
 
 procedure ModifyGridProperties(report: TRpReport);
 var
@@ -189,6 +193,57 @@ begin
   FBCancel.Height := 28;
   FBCancel.Cancel := True;
   FBCancel.OnClick := BCancelClick;
+
+  LayoutControls;
+end;
+
+// Anchored one below the other: the label column of 95 pixels cut the
+// translated labels, and the fixed positions did not follow the heights of
+// GTK2 and Qt6. The form takes the size of its content.
+procedure TFRpGridOptionsLCL.LayoutControls;
+var
+  M, S, G, lw, bw: Integer;
+begin
+  M := Scale96ToScreen(12);
+  S := Scale96ToScreen(6);
+  G := Scale96ToScreen(8);
+  lw := RpMaxTextWidth(Font, [FLHorizontal.Caption, FLVertical.Caption,
+    FLGridColor.Caption]) + G;
+  bw := Max(Scale96ToScreen(80), RpMaxTextWidth(Font, [FBOK.Caption,
+    FBCancel.Caption]) + Scale96ToScreen(24));
+  RpPlaceAt(FCheckEnabled, M, nil, M);
+  FCheckEnabled.AutoSize := True;
+  RpPlaceAt(FCheckVisible, M, FCheckEnabled, S);
+  FCheckVisible.AutoSize := True;
+  RpPlaceAt(FCheckLines, M, FCheckVisible, S);
+  FCheckLines.AutoSize := True;
+  RpPlaceAt(FEGridX, M + lw, FCheckLines, M);
+  FEGridX.Width := Scale96ToScreen(85);
+  RpLabelFor(FLHorizontal, M, FEGridX);
+  RpUnitsFor(FLUnits1, FEGridX, G);
+  RpPlaceAt(FEGridY, M + lw, FEGridX, S);
+  FEGridY.Width := Scale96ToScreen(85);
+  RpLabelFor(FLVertical, M, FEGridY);
+  RpUnitsFor(FLUnits2, FEGridY, G);
+  RpPlaceAt(FGridColor, M + lw, FEGridY, S);
+  FGridColor.SetBounds(FGridColor.Left, FGridColor.Top, Scale96ToScreen(50),
+    Scale96ToScreen(22));
+  RpLabelFor(FLGridColor, M, FGridColor);
+  // OK and Cancel at the right
+  RpResetAnchors(FBCancel);
+  FBCancel.AnchorToNeighbour(akTop, 2 * M, FGridColor);
+  FBCancel.AnchorParallel(akRight, M, Self);
+  FBCancel.Anchors := [akTop, akRight];
+  FBCancel.SetBounds(FBCancel.Left, FBCancel.Top, bw, Scale96ToScreen(28));
+  RpResetAnchors(FBOK);
+  FBOK.AnchorParallel(akTop, 0, FBCancel);
+  FBOK.AnchorToNeighbour(akRight, S, FBCancel);
+  FBOK.Anchors := [akTop, akRight];
+  FBOK.SetBounds(FBOK.Left, FBOK.Top, bw, Scale96ToScreen(28));
+  Constraints.MinWidth := Scale96ToScreen(300);
+  ChildSizing.LeftRightSpacing := M;
+  ChildSizing.TopBottomSpacing := M;
+  AutoSize := True;
 end;
 
 procedure TFRpGridOptionsLCL.SetReport(Value: TRpReport);

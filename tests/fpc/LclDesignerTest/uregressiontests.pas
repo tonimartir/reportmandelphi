@@ -20,6 +20,11 @@ interface
 procedure InstallModalGuard;
 procedure RunRegressionTests(const ASamplePath: string);
 
+var
+  // A modal form the guard leaves alone: udialoglayouttests checks it once
+  // it is laid out and closes it
+  ModalGuardIgnore: TObject = nil;
+
 implementation
 
 uses
@@ -334,6 +339,8 @@ var
 begin
   if not Assigned(AForm) or not AForm.Visible or not (fsModal in AForm.FormState) then
     Exit;
+  if AForm = ModalGuardIgnore then
+    Exit;
   if AForm.Tag = GUARD_HANDLED_TAG then
     Exit;
   AForm.Tag := GUARD_HANDLED_TAG;
@@ -389,6 +396,8 @@ begin
   for i := 0 to Screen.CustomFormCount - 1 do
   begin
     f := Screen.CustomForms[i];
+    if f = ModalGuardIgnore then
+      Continue;
     if f.Visible and (fsModal in f.FormState) then
     begin
       if f.Tag = GUARD_HANDLED_TAG then

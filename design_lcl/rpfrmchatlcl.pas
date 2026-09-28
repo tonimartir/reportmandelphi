@@ -1055,6 +1055,10 @@ begin
   PLogTop.ChildSizing.TopBottomSpacing := Scale(4);
   PLogTop.ChildSizing.HorizontalSpacing := Scale(8);
   PLogTop.ChildSizing.Layout := cclLeftToRightThenTopToBottom;
+  // Both buttons in a row (without it the second one went to a second row
+  // that the panel cut); the panel takes the height of its row
+  PLogTop.ChildSizing.ControlsPerLine := 2;
+  PLogTop.AutoSize := True;
   BClearLog := NewButton(PLogTop, TranslateStr(1532, 'Clear'), BClearLogClick);
   BClearLog.AutoSize := True;
   BReportAI := NewButton(PLogTop, TranslateStr(1533, 'Report content'), BReportAIClick);
@@ -1068,6 +1072,8 @@ begin
   PNetLogTop.ChildSizing.LeftRightSpacing := Scale(8);
   PNetLogTop.ChildSizing.TopBottomSpacing := Scale(4);
   PNetLogTop.ChildSizing.Layout := cclLeftToRightThenTopToBottom;
+  PNetLogTop.ChildSizing.ControlsPerLine := 1;
+  PNetLogTop.AutoSize := True;
   BClearNetLog := NewButton(PNetLogTop, TranslateStr(1532, 'Clear'), BClearNetLogClick);
   BClearNetLog.AutoSize := True;
 

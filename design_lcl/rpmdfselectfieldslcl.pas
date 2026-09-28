@@ -168,6 +168,12 @@ begin
   FLSelected.Width := 270;
   FLSelected.Height := 240;
   FLSelected.Anchors := [akLeft, akTop, akRight, akBottom];
+  // The frame is not aligned yet: its default size placed the bottom (and
+  // the right side) of the lists outside the wizard page. They follow the
+  // sides of the frame.
+  FLAvailable.AnchorParallel(akBottom, 12, Self);
+  FLSelected.AnchorParallel(akBottom, 12, Self);
+  FLSelected.AnchorParallel(akRight, 12, Self);
 end;
 
 procedure TFRpSelectFieldsLCL.UpdateDatasets;

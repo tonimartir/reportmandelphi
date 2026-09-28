@@ -10,13 +10,15 @@ uses
   Interfaces,
   Forms,
   rptypes, rphttpclientfpc, rpwebmarkdownlcl,
-  umainform;
+  umainform, uregressiontests, udialoglayouttests;
 
 {$R *.res}
 
 var
   i: Integer;
   selfTestMode: Boolean;
+  // --layout: only the layout of the dialogs (udialoglayouttests)
+  layoutMode: Boolean;
 begin
   LogMsg('LclDesignerTest: Application starting');
   // The AI panel of the designer windows talks to the Hub when they open:
@@ -30,13 +32,25 @@ begin
   Application.Initialize;
   LogMsg('LclDesignerTest: Application.Initialize done');
   selfTestMode := False;
+  layoutMode := False;
   for i := 1 to ParamCount do
     if (ParamStr(i) = '--selftest') or (ParamStr(i) = '--run-and-exit') then
       selfTestMode := True;
+  for i := 1 to ParamCount do
+    if ParamStr(i) = '--layout' then
+      layoutMode := True;
 
   LogMsg('LclDesignerTest: Creating MainForm');
   Application.CreateForm(TMainForm, MainForm);
   LogMsg('LclDesignerTest: MainForm created');
+
+  if layoutMode then
+  begin
+    InstallModalGuard;
+    RunDialogLayoutTests;
+    LogMsg('[TEST_PASSED] Dialog layout OK');
+    Exit;
+  end;
 
   if selfTestMode then
   begin

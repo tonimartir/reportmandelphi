@@ -204,3 +204,6 @@ MonacoEditorAssets.RES
 # WebMarkdown (visor de Markdown de los chats de IA): {$R ../WebMarkdownAssets.res}
 # dentro de {$IFDEF MSWINDOWS} en design_lcl/rpwebmarkdownlcl.pas. Solo Windows.
 WebMarkdownAssets.RES
+
+# --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-28) ---
+lcl/rplcllayout.pas

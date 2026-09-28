@@ -51,6 +51,7 @@ type
     BCancel: TButton;
 
     procedure BuildControls;
+    procedure LayoutControls;
     procedure BOkClick(Sender: TObject);
     procedure BCancelClick(Sender: TObject);
     procedure ComboTableDropDown(Sender: TObject);
@@ -69,6 +70,9 @@ type
 function ChangeExternalSectionProps(report: TRpReport; section: TRpSection): Boolean;
 
 implementation
+
+uses
+  Math, rplcllayout;
 
 const
   EXTSECTION_PROPS: array[0..6] of string = ('ExternalFilename',
@@ -295,6 +299,46 @@ begin
   ComboFormat.Items.Add(SRpStreamBinary);
   ComboFormat.Items.Add(SRpStreamXML);
   ComboFormat.Items.Add(SRpStreamXMLComp);
+
+  LayoutControls;
+end;
+
+// A label and its combo box in each row, anchored one below the other: the
+// fixed label column cut the longer labels (GTK2) and the fixed rows did not
+// follow the heights of the combo boxes
+procedure TFRpExtSectionLCL.LayoutControls;
+var
+  M, S, lw, i: Integer;
+  LLabels: array[0..5] of TLabel;
+  LCombos: array[0..5] of TComboBox;
+begin
+  M := Scale96ToScreen(12);
+  S := Scale96ToScreen(8);
+  LLabels[0] := LConnection;
+  LLabels[1] := LTable;
+  LLabels[2] := LReportField;
+  LLabels[3] := LSearchField;
+  LLabels[4] := LSearchValue;
+  LLabels[5] := LPreferedFormat;
+  LCombos[0] := ComboConnections;
+  LCombos[1] := ComboTable;
+  LCombos[2] := ComboReportField;
+  LCombos[3] := ComboSearchField;
+  LCombos[4] := ComboSearchValue;
+  LCombos[5] := ComboFormat;
+  lw := 0;
+  for i := 0 to High(LLabels) do
+    lw := Max(lw, RpMaxTextWidth(Font, [LLabels[i].Caption]));
+  Inc(lw, Scale96ToScreen(8));
+  for i := 0 to High(LCombos) do
+  begin
+    if i = 0 then
+      RpPlaceAt(LCombos[i], M + lw, nil, M)
+    else
+      RpPlaceAt(LCombos[i], M + lw, LCombos[i - 1], S);
+    RpToParentRight(LCombos[i], M);
+    RpLabelFor(LLabels[i], M, LCombos[i]);
+  end;
 end;
 
 procedure TFRpExtSectionLCL.UpdateCombos;

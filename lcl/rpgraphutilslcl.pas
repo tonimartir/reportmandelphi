@@ -111,6 +111,9 @@ procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
 
 implementation
 
+uses
+ LCLIntf, Math;
+
 {$R *.lfm}
 
 procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
@@ -741,7 +744,27 @@ var
  i:integer;
  alist:TList;
  leftpos:integer;
+ M,y:integer;
+ R:TRect;
+ atext:string;
 begin
+ // The message takes the height of its text and the input goes below it:
+ // the fixed label of the lfm cut long messages and the input covered
+ // their second line
+ M:=Scale96ToScreen(8);
+ atext:=LMessage.Caption;
+ Canvas.Font:=LMessage.Font;
+ R:=Rect(0,0,ClientWidth-2*M,0);
+ LCLIntf.DrawText(Canvas.Handle,PChar(atext),Length(atext),R,
+  DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+ LMessage.SetBounds(M,M,ClientWidth-2*M,Max(R.Bottom-R.Top,Canvas.TextHeight('Xj')));
+ y:=LMessage.Top+LMessage.Height+M;
+ if EInput.Visible then
+ begin
+  EInput.SetBounds(M,y,ClientWidth-2*M,EInput.Height);
+  y:=y+EInput.Height+M;
+ end;
+ ClientHeight:=Min(y+PBottom.Height,Screen.WorkAreaHeight-Scale96ToScreen(80));
  // Center visible buttons
  alist:=TList.Create;
  try

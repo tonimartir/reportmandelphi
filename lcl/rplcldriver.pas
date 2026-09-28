@@ -118,6 +118,7 @@ type
     MetaBitmap:TBitmap;
     bitresx,bitresy:Integer;
     bitmono:Boolean;
+    procedure ArrangeControls;
     procedure AppIdle(Sender:TObject;var done:boolean);
     procedure AppIdleBitmap(Sender:TObject;var done:boolean);
 {$IFNDEF FORWEBAX}
@@ -302,7 +303,8 @@ procedure ExFilterImage(memstream:TMemoryStream);
 
 implementation
 
-
+uses
+ rplcllayout;
 
 {$R *.lfm}
 
@@ -391,6 +393,7 @@ begin
    diarange.GPrintRange.Visible:=true;
    diarange.RadioAll.Checked:=allpages;
    diarange.RadioRange.Checked:=not allpages;
+   diarange.BorderStyle:=bsDialog;
    diarange.ActiveControl:=diarange.BOK;
    diarange.Frompage:=frompage;
    diarange.ToPage:=topage;
@@ -4612,6 +4615,140 @@ begin
   EFrom.Text:=IntToStr(FromPage);
   ETo.Text:=IntToStr(ToPage);
  end;
+ ArrangeControls;
+end;
+
+// The same form shows the progress, the print range or the bitmap
+// properties. The positions of the lfm were made for other fonts, and the
+// LCL does not hide the progress labels behind the groups as the VCL does:
+// the controls of the mode are anchored one below the other (the group
+// takes the height of its content) and the form gets the size estimated
+// from the texts. An AutoSize form did not settle at times with GTK2 and Qt6
+// under Xvfb.
+procedure TFRpVCLProgress.ArrangeControls;
+var
+ M,S,G,bw,th,eh,rh,bh,fh,fw,cw,ch:integer;
+ group:TGroupBox;
+ widest:TLabel;
+
+ function TW(const AText:string):integer;
+ begin
+  Result:=Canvas.TextWidth(AText);
+ end;
+
+begin
+ M:=Scale96ToScreen(8);
+ S:=Scale96ToScreen(6);
+ G:=Scale96ToScreen(8);
+ group:=nil;
+ Canvas.Font:=Font;
+ // Heights estimated from the font: edit, radio or check box, button and
+ // the frame of a group (its caption)
+ th:=Canvas.TextHeight('Xj');
+ eh:=th+Scale96ToScreen(12);
+ rh:=th+Scale96ToScreen(8);
+ bh:=Max(Scale96ToScreen(28),th+Scale96ToScreen(14));
+ fh:=th+Scale96ToScreen(14);
+ fw:=Scale96ToScreen(12);
+ if GPrintRange.Visible then
+  group:=GPrintRange
+ else
+ if GBitmap.Visible then
+  group:=GBitmap;
+ DisableAutoSizing;
+ try
+  AutoSize:=false;
+  AutoScroll:=false;
+  HorzScrollBar.Range:=0;
+  VertScrollBar.Range:=0;
+  bw:=Max(Scale96ToScreen(80),Max(TW(BOK.Caption),TW(BCancel.Caption))+
+   Scale96ToScreen(24));
+  if Assigned(group) then
+  begin
+   LProcessing.Visible:=false;
+   LRecordCount.Visible:=false;
+   LTitle.Visible:=false;
+   LTittle.Visible:=false;
+   if group=GPrintRange then
+   begin
+    RpPlaceAt(RadioAll,M,nil,0);
+    RpPlaceAt(RadioRange,M,RadioAll,Scale96ToScreen(2));
+    RpPlaceAt(LFrom,M,nil,0);
+    RpPlaceRightOf(EFrom,LFrom,G);
+    EFrom.AnchorToNeighbour(akTop,S,RadioRange);
+    EFrom.Width:=Scale96ToScreen(60);
+    LFrom.AnchorVerticalCenterTo(EFrom);
+    RpPlaceRightOf(LTo,EFrom,2*G);
+    LTo.AnchorVerticalCenterTo(EFrom);
+    RpPlaceRightOf(ETo,LTo,G);
+    ETo.AnchorParallel(akTop,0,EFrom);
+    ETo.Width:=Scale96ToScreen(60);
+    cw:=Max(Max(TW(RadioAll.Caption),TW(RadioRange.Caption))+Scale96ToScreen(32),
+     TW(LFrom.Caption)+G+Scale96ToScreen(60)+2*G+TW(LTo.Caption)+G+Scale96ToScreen(60));
+    ch:=S+rh+Scale96ToScreen(2)+rh+S+eh+S;
+   end
+   else
+   begin
+    // The editors after the longest label
+    if TW(LHorzRes.Caption)>=TW(LVertRes.Caption) then
+     widest:=LHorzRes
+    else
+     widest:=LVertRes;
+    RpPlaceAt(LHorzRes,M,nil,0);
+    RpPlaceAt(LVertRes,M,nil,0);
+    RpPlaceRightOf(EHorzRes,widest,G);
+    EHorzRes.AnchorParallel(akTop,S,group);
+    EHorzRes.Width:=Scale96ToScreen(76);
+    LHorzRes.AnchorVerticalCenterTo(EHorzRes);
+    RpPlaceRightOf(EVertRes,widest,G);
+    EVertRes.AnchorToNeighbour(akTop,S,EHorzRes);
+    EVertRes.Width:=Scale96ToScreen(76);
+    LVertRes.AnchorVerticalCenterTo(EVertRes);
+    RpPlaceAt(CheckMono,M,EVertRes,S);
+    cw:=Max(TW(widest.Caption)+G+Scale96ToScreen(76),TW(CheckMono.Caption)+
+     Scale96ToScreen(32));
+    ch:=S+eh+S+eh+S+rh+S;
+   end;
+   cw:=Max(cw+2*M,TW(group.Caption)+Scale96ToScreen(32))+fw;
+   group.ChildSizing.LeftRightSpacing:=M;
+   group.ChildSizing.TopBottomSpacing:=S;
+   // The width follows the form, the height the content
+   RpPlaceAt(group,M,nil,M);
+   RpToParentRight(group,M);
+   group.AutoSize:=true;
+   RpPlaceAt(BOK,M,group,M);
+   BOK.SetBounds(BOK.Left,BOK.Top,bw,bh);
+   RpPlaceRightOf(BCancel,BOK,S);
+   BCancel.AnchorParallel(akTop,0,BOK);
+   BCancel.SetBounds(BCancel.Left,BCancel.Top,bw,bh);
+   ClientWidth:=Max(M+cw+M,M+2*bw+S+M);
+   ClientHeight:=M+ch+fh+M+bh+M;
+  end
+  else
+  begin
+   // Progress: the title of the report, the page and Cancel
+   LTitle.Visible:=false;
+   RpPlaceAt(LTittle,M,nil,M);
+   LTittle.AutoSize:=true;
+   RpPlaceAt(LProcessing,M,LTittle,S);
+   LProcessing.AutoSize:=true;
+   RpPlaceRightOf(LRecordCount,LProcessing,G);
+   LRecordCount.AnchorParallel(akTop,0,LProcessing);
+   LRecordCount.AutoSize:=true;
+   RpResetAnchors(BCancel);
+   BCancel.AnchorToNeighbour(akTop,2*M,LProcessing);
+   BCancel.AnchorSide[akLeft].Side:=asrCenter;
+   BCancel.AnchorSide[akLeft].Control:=Self;
+   BCancel.SetBounds(BCancel.Left,BCancel.Top,Max(bw,Scale96ToScreen(200)),bh);
+   // The page number changes: the width leaves room for it and the form
+   // stays still
+   ClientWidth:=Min(Max(Scale96ToScreen(420),Max(TW(LTittle.Caption),
+    TW(LProcessing.Caption)+G+Scale96ToScreen(300))+2*M),Scale96ToScreen(640));
+   ClientHeight:=M+th+S+th+2*M+bh+M;
+  end;
+ finally
+  EnableAutoSizing;
+ end;
 end;
 
 procedure TRpGDIDriver.GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);
@@ -5051,6 +5188,7 @@ begin
   diarange.EHorzRes.Text:=IntToStr(HorzRes);
   diarange.EVertRes.Text:=IntToStr(HorzRes);
   diarange.CheckMono.Checked:=Mono;
+  diarange.BorderStyle:=bsDialog;
   diarange.ActiveControl:=diarange.BOK;
   diarange.showmodal;
   if diarange.dook then

@@ -123,7 +123,7 @@ implementation
 
 uses
   uregressiontests, uvclparitytests, udataconfigtests, upagesetuptests,
-  ulibrarytests;
+  ulibrarytests, udialoglayouttests;
 
 type
   TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
@@ -2101,6 +2101,8 @@ begin
      RunPageSetupTests;
      // Phase 8: report library (ulibrarytests.pas)
      RunLibraryTests;
+     // Every page of the dialogs: no control cut or covered
+     RunDialogLayoutTests;
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
