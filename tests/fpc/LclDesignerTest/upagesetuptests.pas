@@ -816,7 +816,7 @@ begin
     FEmbFileName := '';
     FEmbRelation := Ord(PDF_AF_Data);
     Expect(TFRpPageSetupVCL, PageSetupAction);
-    mf.BtnPageSetup.Click;
+    mf.PageSetupMenuItem.Click;
     CheckAllHandled('Page setup cancelled');
     CheckInt(opCount, cue.UndoOperations.Count, 'Cancel records nothing');
     CheckStr('', mf.Report.DocAuthor, 'Cancel: author unchanged');
@@ -831,7 +831,7 @@ begin
     FPageOpenPrinters := True;
     FEmbDescription := 'Invoice data';
     Expect(TFRpPageSetupVCL, PageSetupAction);
-    mf.BtnPageSetup.Click;
+    mf.PageSetupMenuItem.Click;
     CheckAllHandled('Page setup accepted');
     CheckInt(opCount + 1, cue.UndoOperations.Count, 'OK records one operation');
     op := cue.UndoOperations[cue.UndoOperations.Count - 1];
@@ -878,7 +878,7 @@ begin
     FEmbDescription := 'Only the description';
     FEmbRelation := Ord(PDF_AF_Supplement);
     Expect(TFRpPageSetupVCL, PageSetupAction);
-    mf.BtnPageSetup.Click;
+    mf.PageSetupMenuItem.Click;
     CheckAllHandled('Page setup, embedded file modified');
     CheckInt(opCount + 1, cue.UndoOperations.Count, 'embedded file change not recorded');
     CheckStr('Only the description', mf.Report.EmbeddedFiles[0].Description,
@@ -908,7 +908,7 @@ begin
     FPageModifyFirst := False;
     FPageDeleteFirst := True;
     Expect(TFRpPageSetupVCL, PageSetupAction);
-    mf.BtnPageSetup.Click;
+    mf.PageSetupMenuItem.Click;
     CheckAllHandled('Page setup, embedded file deleted');
     CheckInt(0, Length(mf.Report.EmbeddedFiles), 'delete applied');
     Check(mf.Report.Modified, 'delete: report modified');

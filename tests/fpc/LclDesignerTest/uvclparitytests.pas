@@ -16,11 +16,11 @@ procedure RunVCLParityTests(const ASamplePath: string);
 implementation
 
 uses
-  Classes, SysUtils, Forms, Controls, ComCtrls, Menus, LCLType,
+  Classes, SysUtils, Types, Forms, Controls, ComCtrls, Menus, LCLType,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
   rpprintitem, rplabelitem, rpmdbarcode,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
-  rpmdfmainlcl, rplclpreview, rplclreport,
+  rpmdfmainlcl, rpmdimageslcl, rplclpreview, rplclreport,
   umainform;
 
 procedure Fail(const Msg: string);
@@ -494,6 +494,281 @@ begin
   mf.Hide;
 end;
 
+function FindToolBar(mf: TFRpMainFLCL): TToolBar;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to mf.ControlCount - 1 do
+    if mf.Controls[i] is TToolBar then
+      Exit(TToolBar(mf.Controls[i]));
+end;
+
+procedure PumpMessages;
+var
+  i: Integer;
+begin
+  for i := 1 to 10 do
+  begin
+    Application.ProcessMessages;
+    Sleep(10);
+  end;
+end;
+
+// The controls of the toolbar as it shows them: by row and position
+function ToolBarOrder(bar: TToolBar): TList;
+var
+  i, j: Integer;
+  a, b: TControl;
+
+  function Before(c1, c2: TControl): Boolean;
+  var
+    r1, r2: Integer;
+  begin
+    r1 := (c1.Top + bar.ButtonHeight div 2) div bar.ButtonHeight;
+    r2 := (c2.Top + bar.ButtonHeight div 2) div bar.ButtonHeight;
+    Result := (r1 < r2) or ((r1 = r2) and (c1.Left < c2.Left));
+  end;
+
+begin
+  Result := TList.Create;
+  for i := 0 to bar.ControlCount - 1 do
+    Result.Add(bar.Controls[i]);
+  for i := 1 to Result.Count - 1 do
+    for j := i downto 1 do
+    begin
+      a := TControl(Result[j - 1]);
+      b := TControl(Result[j]);
+      if Before(b, a) then
+        Result.Exchange(j - 1, j)
+      else
+        Break;
+    end;
+end;
+
+// The buttons and groups of the VCL toolbar (nil: a separator), the image of
+// each one, no image twice, and every button visible when the window is
+// narrow (the toolbar takes the height of its rows)
+procedure TestToolbar(mf: TFRpMainFLCL);
+var
+  bar: TToolBar;
+  order: TList;
+  i, j, oldWidth: Integer;
+  c, d: TControl;
+  r: TRect;
+
+  procedure CheckOrder(const AExpected: array of TControl);
+  var
+    k: Integer;
+  begin
+    CheckInt(Length(AExpected), order.Count, 'Controls of the toolbar');
+    for k := 0 to High(AExpected) do
+      if AExpected[k] = nil then
+        Check((TControl(order[k]) is TToolButton) and
+          (TToolButton(order[k]).Style = tbsSeparator),
+          Format('Toolbar control %d is a separator', [k]))
+      else
+        Check(order[k] = Pointer(AExpected[k]),
+          Format('Toolbar control %d: expected "%s", got "%s"', [k,
+            AExpected[k].Hint, TControl(order[k]).Hint]));
+  end;
+
+  procedure CheckImage(AButton: TToolButton; AImage: Integer);
+  begin
+    CheckInt(AImage, AButton.ImageIndex, 'Image of "' + AButton.Hint + '"');
+  end;
+
+begin
+  LogMsg('VCL parity: toolbar buttons, images and rows');
+  bar := FindToolBar(mf);
+  Check(Assigned(bar), 'Main toolbar');
+  mf.Show;
+  PumpMessages;
+  order := ToolBarOrder(bar);
+  try
+    CheckOrder([mf.BtnNew, mf.BtnOpen, nil, mf.BtnSave, mf.BtnDataConfig, nil,
+      mf.BtnPrint, mf.BtnPreview, mf.BtnUndo, mf.BtnRedo, nil,
+      mf.BtnToolArrow, mf.BtnToolLabel, mf.BtnToolExpr, mf.BtnToolShape,
+      mf.BtnToolImage, mf.BtnToolChart, mf.BtnToolBarcode, nil,
+      mf.ComboScale, mf.BtnDelete, mf.BtnCut, mf.BtnCopy, mf.BtnPaste, nil,
+      mf.BtnNudgeLeft, mf.BtnNudgeRight, mf.BtnNudgeUp, mf.BtnNudgeDown, nil,
+      mf.BtnAlignLeft, mf.BtnAlignRight, mf.BtnAlignUp, mf.BtnAlignDown,
+      mf.BtnAlignHorz, mf.BtnAlignVert, mf.BtnAIChat]);
+  finally
+    order.Free;
+  end;
+  CheckImage(mf.BtnNew, IMG_NEW);
+  CheckImage(mf.BtnOpen, IMG_OPEN);
+  CheckImage(mf.BtnSave, IMG_SAVE);
+  CheckImage(mf.BtnDataConfig, IMG_DATACONFIG);
+  CheckImage(mf.BtnPrint, IMG_PRINT);
+  CheckImage(mf.BtnPreview, IMG_PREVIEW);
+  CheckImage(mf.BtnUndo, IMG_UNDO);
+  CheckImage(mf.BtnRedo, IMG_REDO);
+  CheckImage(mf.BtnToolArrow, IMG_ARROW);
+  CheckImage(mf.BtnToolLabel, IMG_LABEL);
+  CheckImage(mf.BtnToolExpr, IMG_EXPRESSION);
+  CheckImage(mf.BtnToolShape, IMG_SHAPE);
+  CheckImage(mf.BtnToolImage, IMG_IMAGE);
+  CheckImage(mf.BtnToolChart, IMG_CHART);
+  CheckImage(mf.BtnToolBarcode, IMG_BARCODE);
+  CheckImage(mf.BtnDelete, IMG_DELETE);
+  CheckImage(mf.BtnCut, IMG_CUT);
+  CheckImage(mf.BtnCopy, IMG_COPY);
+  CheckImage(mf.BtnPaste, IMG_PASTE);
+  CheckImage(mf.BtnNudgeLeft, IMG_NAV_LEFT);
+  CheckImage(mf.BtnNudgeRight, IMG_NAV_RIGHT);
+  CheckImage(mf.BtnNudgeUp, IMG_NAV_UP);
+  CheckImage(mf.BtnNudgeDown, IMG_NAV_DOWN);
+  CheckImage(mf.BtnAlignLeft, IMG_ALIGN_LEFT);
+  CheckImage(mf.BtnAlignRight, IMG_ALIGN_RIGHT);
+  CheckImage(mf.BtnAlignUp, IMG_ALIGN_TOP);
+  CheckImage(mf.BtnAlignDown, IMG_ALIGN_BOTTOM);
+  // The image with the horizontal arrow distributes the horizontal space
+  CheckImage(mf.BtnAlignHorz, IMG_SPACE_HORZ);
+  CheckImage(mf.BtnAlignVert, IMG_SPACE_VERT);
+  CheckImage(mf.BtnAIChat, IMG_CHAT_IA);
+  for i := 0 to bar.ButtonCount - 1 do
+    for j := i + 1 to bar.ButtonCount - 1 do
+      if bar.Buttons[i].Style <> tbsSeparator then
+        Check(bar.Buttons[i].ImageIndex <> bar.Buttons[j].ImageIndex,
+          Format('"%s" and "%s" have the same image', [bar.Buttons[i].Hint,
+            bar.Buttons[j].Hint]));
+
+  // A narrow window: two or more rows, no button outside the toolbar
+  oldWidth := mf.Width;
+  try
+    mf.Width := mf.Scale96ToScreen(560);
+    PumpMessages;
+    r := bar.ClientRect;
+    for i := 0 to bar.ControlCount - 1 do
+    begin
+      c := bar.Controls[i];
+      Check((c.Left >= 0) and (c.Top >= 0) and (c.Left + c.Width <= r.Right) and
+        (c.Top + c.Height <= r.Bottom),
+        Format('Toolbar control "%s" (%d,%d %dx%d) outside the toolbar %dx%d',
+          [c.Hint, c.Left, c.Top, c.Width, c.Height, r.Right, r.Bottom]));
+      for j := i + 1 to bar.ControlCount - 1 do
+      begin
+        d := bar.Controls[j];
+        Check((c.Left + c.Width <= d.Left) or (d.Left + d.Width <= c.Left) or
+          (c.Top + c.Height <= d.Top) or (d.Top + d.Height <= c.Top),
+          Format('Toolbar controls "%s" and "%s" overlap', [c.Hint, d.Hint]));
+      end;
+    end;
+    Check(bar.Height >= 2 * bar.ButtonHeight, 'The narrow toolbar has two rows');
+    LogMsg(Format('Toolbar at %d pixels: %d pixels high', [mf.Width, bar.Height]));
+  finally
+    mf.Width := oldWidth;
+    PumpMessages;
+  end;
+end;
+
+// Each command does what its image shows: move, align and distribute the
+// selection in the direction of the arrow
+procedure TestToolbarCommands(mf: TFRpMainFLCL);
+var
+  rep: TRpReport;
+  detail: TRpSection;
+  secint: TRpSectionInterface;
+  items: array[0..2] of TRpCommonPosComponent;
+  oldX, oldY: array[0..2] of Integer;
+  i: Integer;
+
+  procedure Select3;
+  begin
+    mf.SelectAllText;
+    CheckInt(3, mf.ObjInsp.SelectedItems.Count, 'Three selected labels');
+  end;
+
+  procedure Remember;
+  var
+    k: Integer;
+  begin
+    for k := 0 to 2 do
+    begin
+      oldX[k] := items[k].PosX;
+      oldY[k] := items[k].PosY;
+    end;
+  end;
+
+  // Gap between the items in the order of the axis
+  procedure CheckEvenGaps(AHorz: Boolean; const AWhat: string);
+  var
+    gap1, gap2: Integer;
+  begin
+    if AHorz then
+    begin
+      gap1 := items[1].PosX - (items[0].PosX + items[0].Width);
+      gap2 := items[2].PosX - (items[1].PosX + items[1].Width);
+    end
+    else
+    begin
+      gap1 := items[1].PosY - (items[0].PosY + items[0].Height);
+      gap2 := items[2].PosY - (items[1].PosY + items[1].Height);
+    end;
+    Check(Abs(gap1 - gap2) <= 1, Format('%s: gaps %d and %d', [AWhat, gap1, gap2]));
+  end;
+
+begin
+  LogMsg('VCL parity: toolbar commands move and align as their images show');
+  FreshReport(mf);
+  rep := mf.Report;
+  detail := FindSectionOfType(rep.SubReports[0].SubReport, rpsecdetail);
+  secint := SecIntOf(mf.DesignerFrame, detail);
+  Check(Assigned(secint), 'Detail interface');
+  items[0] := TRpCommonPosComponent(secint.CreateNewComponent(dtLabel, 10, 2, 0, 0).printitem);
+  items[1] := TRpCommonPosComponent(secint.CreateNewComponent(dtLabel, 120, 10, 0, 0).printitem);
+  items[2] := TRpCommonPosComponent(secint.CreateNewComponent(dtLabel, 400, 40, 0, 0).printitem);
+  // Different sizes: the distribution keeps them
+  items[1].Width := items[1].Width * 2;
+  items[2].Height := items[2].Height * 2;
+  Select3;
+
+  // Distribute: the horizontal arrow moves only along X, the vertical one
+  // only along Y; the first and the last items stay
+  Remember;
+  mf.BtnAlignHorz.Click;
+  for i := 0 to 2 do
+    CheckInt(oldY[i], items[i].PosY, 'Horizontal space keeps Y');
+  CheckInt(oldX[0], items[0].PosX, 'Horizontal space keeps the first item');
+  CheckInt(oldX[2], items[2].PosX, 'Horizontal space keeps the last item');
+  CheckEvenGaps(True, 'Horizontal space');
+  Remember;
+  mf.BtnAlignVert.Click;
+  for i := 0 to 2 do
+    CheckInt(oldX[i], items[i].PosX, 'Vertical space keeps X');
+  CheckEvenGaps(False, 'Vertical space');
+
+  // Align to a side
+  mf.BtnAlignLeft.Click;
+  for i := 1 to 2 do
+    CheckInt(items[0].PosX, items[i].PosX, 'Align left');
+  mf.BtnAlignRight.Click;
+  for i := 1 to 2 do
+    CheckInt(items[0].PosX + items[0].Width, items[i].PosX + items[i].Width, 'Align right');
+  mf.BtnAlignUp.Click;
+  for i := 1 to 2 do
+    CheckInt(items[0].PosY, items[i].PosY, 'Align up');
+  mf.BtnAlignDown.Click;
+  for i := 1 to 2 do
+    CheckInt(items[0].PosY + items[0].Height, items[i].PosY + items[i].Height, 'Align down');
+
+  // Move
+  Remember;
+  mf.BtnNudgeRight.Click;
+  Check((items[0].PosX > oldX[0]) and (items[0].PosY = oldY[0]), 'Move right');
+  Remember;
+  mf.BtnNudgeLeft.Click;
+  Check((items[0].PosX < oldX[0]) and (items[0].PosY = oldY[0]), 'Move left');
+  Remember;
+  mf.BtnNudgeDown.Click;
+  Check((items[0].PosY > oldY[0]) and (items[0].PosX = oldX[0]), 'Move down');
+  Remember;
+  mf.BtnNudgeUp.Click;
+  Check((items[0].PosY < oldY[0]) and (items[0].PosX = oldX[0]), 'Move up');
+end;
+
 procedure TestPreviewFormats;
 var
   dia: TFRpVPreview;
@@ -547,6 +822,8 @@ begin
     TestDataTreeFields(mf);
     TestReportException(mf);
     TestCtrlArrows(mf);
+    TestToolbar(mf);
+    TestToolbarCommands(mf);
     TUndoCue(mf.Report.UndoCue).MarkClean;
   finally
     mf.Free;

@@ -216,8 +216,6 @@ type
     procedure BtnAlignDownClick(Sender: TObject);
     procedure BtnAlignHorzClick(Sender: TObject);
     procedure BtnAlignVertClick(Sender: TObject);
-    procedure BtnToFrontClick(Sender: TObject);
-    procedure BtnToBackClick(Sender: TObject);
     procedure BtnSelectAllClick(Sender: TObject);
     procedure ComboScaleChange(Sender: TObject);
     procedure MenuViewGridClick(Sender: TObject);
@@ -284,22 +282,18 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
   public
-    // Toolbar buttons
+    // Toolbar buttons (those of the VCL toolbar)
     BtnNew: TToolButton;
-    BtnNewWizard: TToolButton;
     BtnOpen: TToolButton;
     Sep1: TToolButton;
     BtnSave: TToolButton;
     BtnDataConfig: TToolButton;
-    BtnParams: TToolButton;
-    BtnPageSetup: TToolButton;
     Sep2: TToolButton;
     BtnPrint: TToolButton;
     BtnPreview: TToolButton;
-    Sep3: TToolButton;
     BtnUndo: TToolButton;
     BtnRedo: TToolButton;
-    Sep4: TToolButton;
+    Sep3: TToolButton;
     BtnToolArrow: TToolButton;
     BtnToolLabel: TToolButton;
     BtnToolExpr: TToolButton;
@@ -307,29 +301,24 @@ type
     BtnToolImage: TToolButton;
     BtnToolChart: TToolButton;
     BtnToolBarcode: TToolButton;
-    Sep5: TToolButton;
+    Sep4: TToolButton;
     ComboScale: TComboBox;
-    Sep6: TToolButton;
     BtnDelete: TToolButton;
     BtnCut: TToolButton;
     BtnCopy: TToolButton;
     BtnPaste: TToolButton;
-    Sep7: TToolButton;
+    Sep5: TToolButton;
     BtnNudgeLeft: TToolButton;
     BtnNudgeRight: TToolButton;
     BtnNudgeUp: TToolButton;
     BtnNudgeDown: TToolButton;
-    Sep8: TToolButton;
+    Sep6: TToolButton;
     BtnAlignLeft: TToolButton;
     BtnAlignRight: TToolButton;
     BtnAlignUp: TToolButton;
     BtnAlignDown: TToolButton;
     BtnAlignHorz: TToolButton;
     BtnAlignVert: TToolButton;
-    Sep9: TToolButton;
-    BtnToFront: TToolButton;
-    BtnToBack: TToolButton;
-    BtnSelectAll: TToolButton;
     // AChatIA of the VCL toolbar: shows or hides the AI panel
     BtnAIChat: TToolButton;
 
@@ -415,6 +404,8 @@ type
     // ShowAIChat of the repmand file, as the VCL designer)
     property ShowAIChat: Boolean read GetShowAIChat write SetShowAIChat;
     property AIChatMenuItem: TMenuItem read MenuViewAIChat;
+    // Report > Page setup (not in the toolbar, as in the VCL designer)
+    property PageSetupMenuItem: TMenuItem read MenuReportPageSetup;
     // Dataset context sent with the design requests (JSON)
     property DesignChatContextJson: string read FDesignChatContextJson;
     property DesignContextRefreshRunning: Boolean read FDesignContextRefreshRunning;
@@ -1066,6 +1057,25 @@ begin
 end;
 
 procedure TFRpMainFLCL.BuildControls;
+
+  function NewToolButton(AImage: Integer; const AHint: string;
+    AOnClick: TNotifyEvent): TToolButton;
+  begin
+    Result := TToolButton.Create(MainToolBar);
+    Result.Parent := MainToolBar;
+    Result.ImageIndex := AImage;
+    Result.Hint := AHint;
+    Result.OnClick := AOnClick;
+  end;
+
+  function NewToolSeparator: TToolButton;
+  begin
+    Result := TToolButton.Create(MainToolBar);
+    Result.Parent := MainToolBar;
+    Result.Style := tbsSeparator;
+    Result.Width := 8;
+  end;
+
 begin
   // 1. ImageList (19x19 sharp premultiplied icons)
   ImageList1 := TImageList.Create(Self);
@@ -1073,159 +1083,67 @@ begin
   ImageList1.Height := 19;
   LoadDesignerImageList(ImageList1);
 
-  // 2. Toolbar
+  // 2. Toolbar: the buttons and groups of the VCL toolbar (rpmdfmainvcl),
+  // AI chat at the end (BuildVCLMenus). It takes the height of its rows:
+  // a narrow window wraps it instead of hiding the last buttons. Page
+  // setup, parameters, the wizard, select all and front/back are in the
+  // menus (and front/back in the object inspector and the context menu).
   MainToolBar := TToolBar.Create(Self);
   MainToolBar.Parent := Self;
   MainToolBar.Align := alTop;
-  MainToolBar.Height := 32;
   MainToolBar.ButtonWidth := 26;
   MainToolBar.ButtonHeight := 26;
+  MainToolBar.AutoSize := True;
   MainToolBar.Flat := True;
   MainToolBar.ShowHint := True;
   MainToolBar.Images := ImageList1;
 
-  BtnNew := TToolButton.Create(MainToolBar);
-  BtnNew.Parent := MainToolBar;
-  BtnNew.ImageIndex := IMG_NEW;
-  BtnNew.Hint := TranslateStr(41, 'Creates a new report') + ' (Ctrl+N)';
-  BtnNew.OnClick := BtnNewClick;
+  BtnNew := NewToolButton(IMG_NEW,
+    TranslateStr(41, 'Creates a new report') + ' (Ctrl+N)', BtnNewClick);
+  BtnOpen := NewToolButton(IMG_OPEN,
+    TranslateStr(43, 'Opens an existing report'), BtnOpenClick);
+  Sep1 := NewToolSeparator;
+  BtnSave := NewToolButton(IMG_SAVE,
+    TranslateStr(47, 'Saves the current report'), BtnSaveClick);
+  BtnDataConfig := NewToolButton(IMG_DATACONFIG,
+    TranslateStr(132, 'Modifies data access information'), BtnDataConfigClick);
+  Sep2 := NewToolSeparator;
+  BtnPrint := NewToolButton(IMG_PRINT,
+    TranslateStr(53, 'Print the report, you can select pages to print'), BtnPrintClick);
+  BtnPreview := NewToolButton(IMG_PREVIEW,
+    TranslateStr(55, 'Preview the report in the screen'), BtnPreviewClick);
+  BtnUndo := NewToolButton(IMG_UNDO, TranslateStr(1481, 'Undo') + ' (Ctrl+Z)', BtnUndoClick);
+  BtnRedo := NewToolButton(IMG_REDO, TranslateStr(1482, 'Redo') + ' (Ctrl+Y)', BtnRedoClick);
+  Sep3 := NewToolSeparator;
 
-  BtnNewWizard := TToolButton.Create(MainToolBar);
-  BtnNewWizard.Parent := MainToolBar;
-  BtnNewWizard.ImageIndex := IMG_NEW;
-  BtnNewWizard.Hint := TranslateStr(1491, 'Report wizard') + ' (Ctrl+Shift+N)';
-  BtnNewWizard.OnClick := BtnNewWizardClick;
-
-  BtnOpen := TToolButton.Create(MainToolBar);
-  BtnOpen.Parent := MainToolBar;
-  BtnOpen.ImageIndex := IMG_OPEN;
-  BtnOpen.Hint := TranslateStr(43, 'Opens an existing report');
-  BtnOpen.OnClick := BtnOpenClick;
-
-  BtnSave := TToolButton.Create(MainToolBar);
-  BtnSave.Parent := MainToolBar;
-  BtnSave.ImageIndex := IMG_SAVE;
-  BtnSave.Hint := TranslateStr(47, 'Saves the current report');
-  BtnSave.OnClick := BtnSaveClick;
-
-  BtnPageSetup := TToolButton.Create(MainToolBar);
-  BtnPageSetup.Parent := MainToolBar;
-  BtnPageSetup.ImageIndex := IMG_PAGESETUP;
-  BtnPageSetup.Hint := TranslateStr(51, 'Configures the page for the report');
-  BtnPageSetup.OnClick := BtnPageSetupClick;
-
-  BtnDataConfig := TToolButton.Create(MainToolBar);
-  BtnDataConfig.Parent := MainToolBar;
-  BtnDataConfig.ImageIndex := IMG_DATACONFIG;
-  BtnDataConfig.Hint := TranslateStr(132, 'Modifies data access information');
-  BtnDataConfig.OnClick := BtnDataConfigClick;
-
-  BtnParams := TToolButton.Create(MainToolBar);
-  BtnParams.Parent := MainToolBar;
-  BtnParams.ImageIndex := IMG_USERPARAMS;
-  BtnParams.Hint := TranslateStr(134, 'Shows parameter definition for the report and data configuration');
-  BtnParams.OnClick := BtnParamsClick;
-
-  Sep1 := TToolButton.Create(MainToolBar);
-  Sep1.Parent := MainToolBar;
-  Sep1.Style := tbsSeparator;
-  Sep1.Width := 8;
-
-  BtnPrint := TToolButton.Create(MainToolBar);
-  BtnPrint.Parent := MainToolBar;
-  BtnPrint.ImageIndex := IMG_PRINT;
-  BtnPrint.Hint := TranslateStr(53, 'Print the report, you can select pages to print');
-  BtnPrint.OnClick := BtnPrintClick;
-
-  BtnPreview := TToolButton.Create(MainToolBar);
-  BtnPreview.Parent := MainToolBar;
-  BtnPreview.ImageIndex := IMG_PREVIEW;
-  BtnPreview.Hint := TranslateStr(55, 'Preview the report in the screen');
-  BtnPreview.OnClick := BtnPreviewClick;
-
-  Sep2 := TToolButton.Create(MainToolBar);
-  Sep2.Parent := MainToolBar;
-  Sep2.Style := tbsSeparator;
-  Sep2.Width := 8;
-
-  BtnUndo := TToolButton.Create(MainToolBar);
-  BtnUndo.Parent := MainToolBar;
-  BtnUndo.ImageIndex := IMG_UNDO;
-  BtnUndo.Hint := TranslateStr(1481, 'Undo') + ' (Ctrl+Z)';
-  BtnUndo.OnClick := BtnUndoClick;
-
-  BtnRedo := TToolButton.Create(MainToolBar);
-  BtnRedo.Parent := MainToolBar;
-  BtnRedo.ImageIndex := IMG_REDO;
-  BtnRedo.Hint := TranslateStr(1482, 'Redo') + ' (Ctrl+Y)';
-  BtnRedo.OnClick := BtnRedoClick;
-
-  Sep3 := TToolButton.Create(MainToolBar);
-  Sep3.Parent := MainToolBar;
-  Sep3.Style := tbsSeparator;
-  Sep3.Width := 8;
-
-  BtnToolArrow := TToolButton.Create(MainToolBar);
-  BtnToolArrow.Parent := MainToolBar;
-  BtnToolArrow.ImageIndex := IMG_ARROW;
-  BtnToolArrow.Hint := TranslateStr(81, 'Select objects');
+  // Insertion tools: one of them is down
+  BtnToolArrow := NewToolButton(IMG_ARROW, TranslateStr(81, 'Select objects'), BtnToolClick);
+  BtnToolLabel := NewToolButton(IMG_LABEL, TranslateStr(82, 'Inserts a static text'),
+    BtnToolClick);
+  BtnToolExpr := NewToolButton(IMG_EXPRESSION, TranslateStr(83, 'Inserts a expression'),
+    BtnToolClick);
+  BtnToolShape := NewToolButton(IMG_SHAPE, TranslateStr(84, 'Inserts a simple drawing'),
+    BtnToolClick);
+  BtnToolImage := NewToolButton(IMG_IMAGE, TranslateStr(85, 'Inserts a image'), BtnToolClick);
+  BtnToolChart := NewToolButton(IMG_CHART, TranslateStr(87, 'Inserts a chart'), BtnToolClick);
+  BtnToolBarcode := NewToolButton(IMG_BARCODE, TranslateStr(86, 'Inserts a barcode'),
+    BtnToolClick);
   BtnToolArrow.Grouped := True;
   BtnToolArrow.Style := tbsCheck;
-  BtnToolArrow.Down := True;
-  BtnToolArrow.OnClick := BtnToolClick;
-
-  BtnToolLabel := TToolButton.Create(MainToolBar);
-  BtnToolLabel.Parent := MainToolBar;
-  BtnToolLabel.ImageIndex := IMG_LABEL;
-  BtnToolLabel.Hint := TranslateStr(82, 'Inserts a static text');
   BtnToolLabel.Grouped := True;
   BtnToolLabel.Style := tbsCheck;
-  BtnToolLabel.OnClick := BtnToolClick;
-
-  BtnToolExpr := TToolButton.Create(MainToolBar);
-  BtnToolExpr.Parent := MainToolBar;
-  BtnToolExpr.ImageIndex := IMG_EXPRESSION;
-  BtnToolExpr.Hint := TranslateStr(83, 'Inserts a expression');
   BtnToolExpr.Grouped := True;
   BtnToolExpr.Style := tbsCheck;
-  BtnToolExpr.OnClick := BtnToolClick;
-
-  BtnToolShape := TToolButton.Create(MainToolBar);
-  BtnToolShape.Parent := MainToolBar;
-  BtnToolShape.ImageIndex := IMG_SHAPE;
-  BtnToolShape.Hint := TranslateStr(84, 'Inserts a simple drawing');
   BtnToolShape.Grouped := True;
   BtnToolShape.Style := tbsCheck;
-  BtnToolShape.OnClick := BtnToolClick;
-
-  BtnToolImage := TToolButton.Create(MainToolBar);
-  BtnToolImage.Parent := MainToolBar;
-  BtnToolImage.ImageIndex := IMG_IMAGE;
-  BtnToolImage.Hint := TranslateStr(85, 'Inserts a image');
   BtnToolImage.Grouped := True;
   BtnToolImage.Style := tbsCheck;
-  BtnToolImage.OnClick := BtnToolClick;
-
-  BtnToolChart := TToolButton.Create(MainToolBar);
-  BtnToolChart.Parent := MainToolBar;
-  BtnToolChart.ImageIndex := IMG_CHART;
-  BtnToolChart.Hint := TranslateStr(87, 'Inserts a chart');
   BtnToolChart.Grouped := True;
   BtnToolChart.Style := tbsCheck;
-  BtnToolChart.OnClick := BtnToolClick;
-
-  BtnToolBarcode := TToolButton.Create(MainToolBar);
-  BtnToolBarcode.Parent := MainToolBar;
-  BtnToolBarcode.ImageIndex := IMG_BARCODE;
-  BtnToolBarcode.Hint := TranslateStr(86, 'Inserts a barcode');
   BtnToolBarcode.Grouped := True;
   BtnToolBarcode.Style := tbsCheck;
-  BtnToolBarcode.OnClick := BtnToolClick;
-
-  Sep4 := TToolButton.Create(MainToolBar);
-  Sep4.Parent := MainToolBar;
-  Sep4.Style := tbsSeparator;
-  Sep4.Width := 8;
+  BtnToolArrow.Down := True;
+  Sep4 := NewToolSeparator;
 
   ComboScale := TComboBox.Create(MainToolBar);
   ComboScale.Parent := MainToolBar;
@@ -1244,127 +1162,41 @@ begin
   ComboScale.ItemIndex := 3;
   ComboScale.OnChange := ComboScaleChange;
 
-  Sep5 := TToolButton.Create(MainToolBar);
-  Sep5.Parent := MainToolBar;
-  Sep5.Style := tbsSeparator;
-  Sep5.Width := 8;
+  BtnDelete := NewToolButton(IMG_DELETE, TranslateStr(1106, 'Delete selected object'),
+    BtnDeleteClick);
+  BtnCut := NewToolButton(IMG_CUT, TranslateStr(12, 'Cut selected object'), BtnCutClick);
+  BtnCopy := NewToolButton(IMG_COPY, TranslateStr(13, 'Copy selected object to clipboard'),
+    BtnCopyClick);
+  BtnPaste := NewToolButton(IMG_PASTE, TranslateStr(14, 'Paste from clipboard'), BtnPasteClick);
+  Sep5 := NewToolSeparator;
 
-  BtnDelete := TToolButton.Create(MainToolBar);
-  BtnDelete.Parent := MainToolBar;
-  BtnDelete.ImageIndex := IMG_DELETE;
-  BtnDelete.Hint := TranslateStr(1106, 'Delete selected object');
-  BtnDelete.OnClick := BtnDeleteClick;
+  BtnNudgeLeft := NewToolButton(IMG_NAV_LEFT,
+    TranslateStr(24, 'Moves the selection to the left'), BtnNudgeLeftClick);
+  BtnNudgeRight := NewToolButton(IMG_NAV_RIGHT,
+    TranslateStr(26, 'Moves the selection to the right'), BtnNudgeRightClick);
+  BtnNudgeUp := NewToolButton(IMG_NAV_UP, TranslateStr(28, 'Moves the selection up'),
+    BtnNudgeUpClick);
+  BtnNudgeDown := NewToolButton(IMG_NAV_DOWN, TranslateStr(30, 'Moves the selection down'),
+    BtnNudgeDownClick);
+  Sep6 := NewToolSeparator;
 
-  BtnCut := TToolButton.Create(MainToolBar);
-  BtnCut.Parent := MainToolBar;
-  BtnCut.ImageIndex := IMG_CUT;
-  BtnCut.Hint := TranslateStr(12, 'Cut selected object');
-  BtnCut.OnClick := BtnCutClick;
-
-  BtnCopy := TToolButton.Create(MainToolBar);
-  BtnCopy.Parent := MainToolBar;
-  BtnCopy.ImageIndex := IMG_COPY;
-  BtnCopy.Hint := TranslateStr(13, 'Copy selected object to clipboard');
-  BtnCopy.OnClick := BtnCopyClick;
-
-  BtnPaste := TToolButton.Create(MainToolBar);
-  BtnPaste.Parent := MainToolBar;
-  BtnPaste.ImageIndex := IMG_PASTE;
-  BtnPaste.Hint := TranslateStr(14, 'Paste from clipboard');
-  BtnPaste.OnClick := BtnPasteClick;
-
-  Sep6 := TToolButton.Create(MainToolBar);
-  Sep6.Parent := MainToolBar;
-  Sep6.Style := tbsSeparator;
-  Sep6.Width := 8;
-
-  BtnNudgeLeft := TToolButton.Create(MainToolBar);
-  BtnNudgeLeft.Parent := MainToolBar;
-  BtnNudgeLeft.ImageIndex := IMG_NAV_LEFT;
-  BtnNudgeLeft.Hint := TranslateStr(24, 'Moves the selection to the left');
-  BtnNudgeLeft.OnClick := BtnNudgeLeftClick;
-
-  BtnNudgeRight := TToolButton.Create(MainToolBar);
-  BtnNudgeRight.Parent := MainToolBar;
-  BtnNudgeRight.ImageIndex := IMG_NAV_RIGHT;
-  BtnNudgeRight.Hint := TranslateStr(26, 'Moves the selection to the right');
-  BtnNudgeRight.OnClick := BtnNudgeRightClick;
-
-  BtnNudgeUp := TToolButton.Create(MainToolBar);
-  BtnNudgeUp.Parent := MainToolBar;
-  BtnNudgeUp.ImageIndex := IMG_NAV_UP;
-  BtnNudgeUp.Hint := TranslateStr(28, 'Moves the selection up');
-  BtnNudgeUp.OnClick := BtnNudgeUpClick;
-
-  BtnNudgeDown := TToolButton.Create(MainToolBar);
-  BtnNudgeDown.Parent := MainToolBar;
-  BtnNudgeDown.ImageIndex := IMG_NAV_DOWN;
-  BtnNudgeDown.Hint := TranslateStr(30, 'Moves the selection down');
-  BtnNudgeDown.OnClick := BtnNudgeDownClick;
-
-  Sep7 := TToolButton.Create(MainToolBar);
-  Sep7.Parent := MainToolBar;
-  Sep7.Style := tbsSeparator;
-  Sep7.Width := 8;
-
-  BtnAlignLeft := TToolButton.Create(MainToolBar);
-  BtnAlignLeft.Parent := MainToolBar;
-  BtnAlignLeft.ImageIndex := IMG_ALIGN_LEFT;
-  BtnAlignLeft.Hint := TranslateStr(32, 'Aligns selection to the left');
-  BtnAlignLeft.OnClick := BtnAlignLeftClick;
-
-  BtnAlignRight := TToolButton.Create(MainToolBar);
-  BtnAlignRight.Parent := MainToolBar;
-  BtnAlignRight.ImageIndex := IMG_ALIGN_RIGHT;
-  BtnAlignRight.Hint := TranslateStr(33, 'Aligns selection to the right');
-  BtnAlignRight.OnClick := BtnAlignRightClick;
-
-  BtnAlignUp := TToolButton.Create(MainToolBar);
-  BtnAlignUp.Parent := MainToolBar;
-  BtnAlignUp.ImageIndex := IMG_ALIGN_TOP;
-  BtnAlignUp.Hint := TranslateStr(34, 'Aligns selection up');
-  BtnAlignUp.OnClick := BtnAlignUpClick;
-
-  BtnAlignDown := TToolButton.Create(MainToolBar);
-  BtnAlignDown.Parent := MainToolBar;
-  BtnAlignDown.ImageIndex := IMG_ALIGN_BOTTOM;
-  BtnAlignDown.Hint := TranslateStr(35, 'Aligns selection down');
-  BtnAlignDown.OnClick := BtnAlignDownClick;
-
-  BtnAlignHorz := TToolButton.Create(MainToolBar);
-  BtnAlignHorz.Parent := MainToolBar;
-  BtnAlignHorz.ImageIndex := IMG_ALIGN_HCENTER;
-  BtnAlignHorz.Hint := TranslateStr(39, 'Aligns selection distributing horizontal space');
-  BtnAlignHorz.OnClick := BtnAlignHorzClick;
-
-  BtnAlignVert := TToolButton.Create(MainToolBar);
-  BtnAlignVert.Parent := MainToolBar;
-  BtnAlignVert.ImageIndex := IMG_ALIGN_VCENTER;
-  BtnAlignVert.Hint := TranslateStr(37, 'Aligns selection distributing vertical space');
-  BtnAlignVert.OnClick := BtnAlignVertClick;
-
-  Sep8 := TToolButton.Create(MainToolBar);
-  Sep8.Parent := MainToolBar;
-  Sep8.Style := tbsSeparator;
-  Sep8.Width := 8;
-
-  BtnToFront := TToolButton.Create(MainToolBar);
-  BtnToFront.Parent := MainToolBar;
-  BtnToFront.ImageIndex := IMG_NAV_UP;
-  BtnToFront.Hint := TranslateStr(671, 'To Front');
-  BtnToFront.OnClick := BtnToFrontClick;
-
-  BtnToBack := TToolButton.Create(MainToolBar);
-  BtnToBack.Parent := MainToolBar;
-  BtnToBack.ImageIndex := IMG_NAV_DOWN;
-  BtnToBack.Hint := TranslateStr(672, 'To Back');
-  BtnToBack.OnClick := BtnToBackClick;
-
-  BtnSelectAll := TToolButton.Create(MainToolBar);
-  BtnSelectAll.Parent := MainToolBar;
-  BtnSelectAll.ImageIndex := IMG_ALIGN_HCENTER;
-  BtnSelectAll.Hint := TranslateStr(20, 'Selects all components of the report') + ' (Ctrl+A)';
-  BtnSelectAll.OnClick := BtnSelectAllClick;
+  BtnAlignLeft := NewToolButton(IMG_ALIGN_LEFT,
+    TranslateStr(32, 'Aligns selection to the left'), BtnAlignLeftClick);
+  BtnAlignRight := NewToolButton(IMG_ALIGN_RIGHT,
+    TranslateStr(33, 'Aligns selection to the right'), BtnAlignRightClick);
+  BtnAlignUp := NewToolButton(IMG_ALIGN_TOP, TranslateStr(34, 'Aligns selection up'),
+    BtnAlignUpClick);
+  BtnAlignDown := NewToolButton(IMG_ALIGN_BOTTOM, TranslateStr(35, 'Aligns selection down'),
+    BtnAlignDownClick);
+  BtnAlignHorz := NewToolButton(IMG_SPACE_HORZ,
+    TranslateStr(39, 'Aligns selection distributing horizontal space'), BtnAlignHorzClick);
+  BtnAlignVert := NewToolButton(IMG_SPACE_VERT,
+    TranslateStr(37, 'Aligns selection distributing vertical space'), BtnAlignVertClick);
+  // AChatIA: shows or hides the AI panel (View > AI chat)
+  BtnAIChat := NewToolButton(IMG_CHAT_IA,
+    TranslateStr(1551, 'Show or hide the AI chat panel'), MenuViewAIChatClick);
+  BtnAIChat.Style := tbsCheck;
+  BtnAIChat.Down := True;
 
   // 3. StatusBar
   StatusBar := TStatusBar.Create(Self);
@@ -2317,7 +2149,6 @@ begin
   MenuFileSaveAs.Visible := not Value;
   MenuFileSaveAs.Enabled := not Value;
   BtnNew.Visible := not Value;
-  BtnNewWizard.Visible := not Value;
   BtnOpen.Visible := not Value;
   BtnSave.Visible := not Value;
   // No recent files either: the host decides what is edited
@@ -3353,16 +3184,6 @@ begin
   if Assigned(FObjInsp) then FObjInsp.AlignSelected(6);
 end;
 
-procedure TFRpMainFLCL.BtnToFrontClick(Sender: TObject);
-begin
-  FDesignerFrame.BringSelectionToFront;
-end;
-
-procedure TFRpMainFLCL.BtnToBackClick(Sender: TObject);
-begin
-  FDesignerFrame.SendSelectionToBack;
-end;
-
 procedure TFRpMainFLCL.BtnSelectAllClick(Sender: TObject);
 begin
   FDesignerFrame.SelectAll;
@@ -3466,7 +3287,6 @@ end;
 procedure TFRpMainFLCL.BuildVCLMenus;
 var
   item, sep: TMenuItem;
-  idx: Integer;
 begin
   // File > Printer setup..., after Print
   MenuFilePrintSetup := NewMenuItem(MenuFile, TranslateStr(56, 'Printer setup...'),
@@ -3584,18 +3404,6 @@ begin
   // VCL ASysInfo
   MenuHelpSysInfo := NewMenuItem(MenuHelp, SRpSsysInfo, SRpSsysInfoH, MenuHelpSysInfoClick);
   MenuHelp.Insert(1, MenuHelpSysInfo);
-
-  // Toolbar: AI chat (AChatIA), at the end as in the VCL
-  idx := MainToolBar.ButtonCount;
-  BtnAIChat := TToolButton.Create(MainToolBar);
-  BtnAIChat.Parent := MainToolBar;
-  BtnAIChat.Left := MainToolBar.Buttons[idx - 1].Left +
-    MainToolBar.Buttons[idx - 1].Width + 1;
-  BtnAIChat.ImageIndex := IMG_CHAT_IA;
-  BtnAIChat.Style := tbsCheck;
-  BtnAIChat.Down := True;
-  BtnAIChat.Hint := TranslateStr(1551, 'Show or hide the AI chat panel');
-  BtnAIChat.OnClick := MenuViewAIChatClick;
 
   UpdateFileMenu;
 end;

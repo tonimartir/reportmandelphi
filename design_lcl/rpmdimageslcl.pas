@@ -74,8 +74,10 @@ const
   IMG_ALIGN_RIGHT = 26;
   IMG_ALIGN_TOP = 27;
   IMG_ALIGN_BOTTOM = 28;
-  IMG_ALIGN_HCENTER = 29;
-  IMG_ALIGN_VCENTER = 30;
+  // Distribute the space: the image of 29 has a vertical arrow, the one of
+  // 30 a horizontal arrow (the VCL showed them swapped)
+  IMG_SPACE_VERT = 29;
+  IMG_SPACE_HORZ = 30;
   IMG_BARCODE = 31;
   IMG_PAGESETUP = 32;
   IMG_REDO = 33;

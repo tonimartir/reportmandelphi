@@ -738,8 +738,8 @@ object FRpMainFVCL: TFRpMainFVCL
       Caption = 'Horizontal space'
       Enabled = False
       Hint = 'Aligns selection distributing horzontal space'
-      ImageIndex = 29
-      ImageName = 'Item30'
+      ImageIndex = 30
+      ImageName = 'Item31'
       OnExecute = AAlignHorzExecute
     end
     object AAlignVert: TAction
@@ -747,8 +747,8 @@ object FRpMainFVCL: TFRpMainFVCL
       Caption = 'Vertical space'
       Enabled = False
       Hint = 'Aligns selection distributing vertical space'
-      ImageIndex = 30
-      ImageName = 'Item31'
+      ImageIndex = 29
+      ImageName = 'Item30'
       OnExecute = AAlignVertExecute
     end
     object AStatusBar: TAction
