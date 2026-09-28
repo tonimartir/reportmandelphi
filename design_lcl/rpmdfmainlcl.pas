@@ -339,7 +339,13 @@ type
     procedure OpenReportStream(AStream: TStream);
     procedure OpenReportFromLibrary(const ALibrary: string; const AReportName: WideString);
     procedure SaveReportFile(const AFileName: string);
+    // A blank report, without questions (also the one of the constructor)
     procedure NewReport;
+    // File > New, as rpmdfmainvcl ANewExecute: the new report wizard
+    // (connection, Hub schema and prompt); the design chat gets the Hub
+    // context and starts with the prompt. False when it was canceled (the
+    // current report stays)
+    function NewReportFromWizard: Boolean;
     procedure RefreshInterface;
     procedure UpdateStatus;
     procedure UpdateTitle;
@@ -422,6 +428,9 @@ var
   // Preferences file of the designer. Empty: the one of the VCL designer
   // (repmand in the user configuration folder); tests use a sandbox
   RpDesignerLCLConfigFile: string = '';
+  // File > New runs the new report wizard (as the VCL designer); False: a
+  // blank report as before
+  RpDesignerLCLNewReportWizard: Boolean = True;
 
 implementation
 
@@ -432,6 +441,7 @@ uses
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
   IniFiles, LCLIntf, PrintersDlgs, rpauthmanager, rpxmlstream, rpexpredlglcl,
+  rpmdfnewreportwizardlcl,
   rplcldriver;
 
 const
@@ -2455,6 +2465,61 @@ begin
   InstallReport(newRep, '', False);
 end;
 
+function TFRpMainFLCL.NewReportFromWizard: Boolean;
+var
+  newRep: TRpReport;
+  LPendingPrompt: string;
+  LHubDatabaseId, LHubSchemaId: Int64;
+  LHubApiKey: string;
+  accepted: Boolean;
+begin
+  // rpmdfmainvcl ANewExecute. The current report stays when the wizard is
+  // canceled (the VCL designer is left without a report)
+  Result := False;
+  if not CheckSave then
+    Exit;
+  newRep := CreateDesignReport;
+  try
+    accepted := NewModernReportWizard(newRep, LPendingPrompt, LHubDatabaseId,
+      LHubSchemaId, LHubApiKey);
+  except
+    newRep.Free;
+    raise;
+  end;
+  if not accepted then
+  begin
+    newRep.Free;
+    Exit;
+  end;
+  InstallReport(newRep, '', False);
+  Result := True;
+  if not Assigned(FChatFrame) then
+    Exit;
+  // The Hub database, schema and API key chosen in the wizard
+  FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
+  // A prompt for the assistant shows the AI panel (the saved View > AI chat
+  // preference does not change)
+  if (Trim(LPendingPrompt) <> '') and (not PAIPanel.Visible) then
+  begin
+    MenuViewAIChat.Checked := True;
+    ApplyChatPanelVisibility;
+  end;
+  if PAIPanel.Visible then
+  begin
+    FChatOnlinePending := False;
+    FChatFrame.StartOnlineInitialization;
+  end
+  else
+    FChatOnlinePending := True;
+  if Trim(LPendingPrompt) <> '' then
+  begin
+    // The prompt of the wizard in the conversation (the VCL sends it without
+    // showing it)
+    FChatFrame.AddUserMessage(Trim(LPendingPrompt));
+    BeginDesignChatContextRefresh(Trim(LPendingPrompt), False);
+  end;
+end;
+
 procedure TFRpMainFLCL.RefreshInterface;
 begin
   if not Assigned(FReport) then Exit;
@@ -2534,7 +2599,10 @@ end;
 
 procedure TFRpMainFLCL.BtnNewClick(Sender: TObject);
 begin
-  NewReport;
+  if RpDesignerLCLNewReportWizard then
+    NewReportFromWizard
+  else
+    NewReport;
 end;
 
 procedure TFRpMainFLCL.BtnNewWizardClick(Sender: TObject);
