@@ -116,6 +116,7 @@ rtl_fpc/rpinfoprovfpc.pas
 rtl_fpc/rpioutilsfpc.pas
 rtl_fpc/rpjsonfpc.pas
 rtl_fpc/rpnetencodingfpc.pas
+rtl_fpc/rpstreamfpc.pas
 rtl_fpc/rpsysutilsfpc.pas
 
 # --- reportman_lcl ---

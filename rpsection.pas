@@ -247,7 +247,7 @@ procedure GetSkipTypePossibleValues(alist:TRpWideStrings);
 
 implementation
 
-uses rpsubreport,rpbasereport, Math,rpxmlstream{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc{$ENDIF};
+uses rpsubreport,rpbasereport, Math,rpxmlstream{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc, rpstreamfpc{$ENDIF};
 
 function StreamToBase64String(stream: TMemoryStream): string;
 var
@@ -873,7 +873,7 @@ begin
  begin
   zstream:=TCompressionStream.Create(clDefault,Stream);
   try
-   writer:=TWriter.Create(zStream,4096);
+   writer:={$IFDEF FPC}TRpWriter{$ELSE}TWriter{$ENDIF}.Create(zStream,4096);
    try
     writer.WriteRootComponent(Self);
    finally
@@ -897,7 +897,7 @@ begin
 {$ENDIF}
  if theformat=rpStreamBinary then
  begin
-  writer:=TWriter.Create(Stream,4096);
+  writer:={$IFDEF FPC}TRpWriter{$ELSE}TWriter{$ENDIF}.Create(Stream,4096);
   try
    writer.WriteRootComponent(Self);
   finally
@@ -913,14 +913,18 @@ begin
  begin
   memstream:=TMemoryStream.Create;
   try
-   writer:=TWriter.Create(memStream,4096);
+   writer:={$IFDEF FPC}TRpWriter{$ELSE}TWriter{$ENDIF}.Create(memStream,4096);
    try
     writer.WriteRootComponent(Self);
    finally
     writer.free;
    end;
    memstream.Seek(0,soFromBeginning);
+{$IFDEF FPC}
+   RpObjectBinaryToText(memstream,Stream);
+{$ELSE}
    ObjectBinaryToText(memstream,Stream);
+{$ENDIF}
   finally
    memstream.free;
   end;
@@ -1088,7 +1092,7 @@ begin
      end
      else
      begin
-      reader:=TReader.Create(memstream,1000);
+      reader:={$IFDEF FPC}TRpReader{$ELSE}TReader{$ENDIF}.Create(memstream,1000);
       try
        reader.OnError:=OnReadError;
        tempsec:=TRpSection.Create(nil);
@@ -1131,7 +1135,11 @@ begin
      try
       memstream.LoadFromStream(amemstream);
       amemstream.clear;
+{$IFDEF FPC}
+      RpObjectTextToBinary(memstream,amemstream);
+{$ELSE}
       ObjectTextToBinary(memstream,amemstream);
+{$ENDIF}
       amemstream.Seek(0,soFromBeginning);
      finally
       memstream.free;
@@ -1141,7 +1149,7 @@ begin
     try
      MemStream.LoadFromStream(amemstream);
      memstream.Seek(0,soFrombeginning);
-     reader:=TReader.Create(memstream,1000);
+     reader:={$IFDEF FPC}TRpReader{$ELSE}TReader{$ENDIF}.Create(memstream,1000);
      try
       reader.OnError:=OnReadError;
       tempsec:=TRpSection.Create(nil);

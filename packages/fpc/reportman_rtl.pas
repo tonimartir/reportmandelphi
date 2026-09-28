@@ -19,9 +19,9 @@ uses
   rphtmldriver, rpcsvdriver, rpsvgdriver, rppdfreport, rptextdriver, 
   rplastsav, rpinfoprovfpc, rpfreetype2, rpHarfBuzz, rpICU, rpinfoprovft, 
   rpdirectwrite, RpDirectWriteRenderer, rpinfoprovgdi, rpfontconfig, 
-  rpDelphiZXIngQRCode, rpfpcutils, rpmreg, rpcolumnar, rpbase64fpc,
-  rpjsonfpc, rphttpclientfpc, rpnetencodingfpc, rpioutilsfpc, rpsysutilsfpc,
-  rpaireportcontracts, rpreportdesignercontracts, rpauthmanager, rpdatahttp,
+  rpDelphiZXIngQRCode, rpfpcutils, rpmreg, rpcolumnar, rpbase64fpc, rpjsonfpc, 
+  rphttpclientfpc, rpnetencodingfpc, rpioutilsfpc, rpsysutilsfpc, 
+  rpaireportcontracts, rpreportdesignercontracts, rpauthmanager, rpdatahttp, 
   LazarusPackageIntf;
 
 implementation

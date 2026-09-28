@@ -493,7 +493,7 @@ type
 
 implementation
 
-uses rpxmlstream,rplabelitem,rpmdchart;
+uses rpxmlstream,rplabelitem,rpmdchart{$IFDEF FPC},rpstreamfpc{$ENDIF};
 
 
 
@@ -913,7 +913,7 @@ begin
  begin
   zstream:=TCompressionStream.Create(clDefault,Stream);
   try
-    zstream.WriteComponent(Self);
+    {$IFDEF FPC}RpWriteComponent(zstream,Self){$ELSE}zstream.WriteComponent(Self){$ENDIF};
   finally
    zstream.free;
   end;
@@ -940,7 +940,7 @@ begin
 {$ENDIF}
  if theformat=rpStreamBinary then
  begin
-  Stream.WriteComponent(Self);
+  {$IFDEF FPC}RpWriteComponent(Stream,Self){$ELSE}Stream.WriteComponent(Self){$ENDIF};
  end
  else
  if theformat=rpStreamXML then
@@ -951,9 +951,14 @@ begin
  begin
   memstream:=TMemoryStream.Create;
   try
-   memstream.WriteComponent(Self);
+   {$IFDEF FPC}RpWriteComponent(memstream,Self){$ELSE}memstream.WriteComponent(Self){$ENDIF};
    memstream.Seek(0,soFromBeginning);
+{$IFDEF FPC}
+   // Null, Single, Currency, Date and non ASCII strings (see rpstreamfpc)
+   RpObjectBinaryToText(memstream,Stream);
+{$ELSE}
    ObjectBinaryToText(memstream,Stream);
+{$ENDIF}
   finally
    memstream.free;
   end;
@@ -1110,7 +1115,7 @@ begin
      end
      else
      begin
-      reader:=TReader.Create(amemstream,1000);
+      reader:={$IFDEF FPC}TRpReader{$ELSE}TReader{$ENDIF}.Create(amemstream,1000);
       try
        reader.OnError:=FInternalOnReadError;
        reader.ReadRootComponent(Self);
@@ -1129,7 +1134,7 @@ begin
 {$ENDIF}
   if theformat=rpStreambinary then
   begin
-   reader:=TReader.Create(memstream,1000);
+   reader:={$IFDEF FPC}TRpReader{$ELSE}TReader{$ENDIF}.Create(memstream,1000);
    try
     reader.OnError:=FInternalOnReadError;
     reader.ReadRootComponent(Self);
@@ -1146,9 +1151,13 @@ begin
   begin
    amemstream:=TMemoryStream.Create;
    try
+{$IFDEF FPC}
+    RpObjectTextToBinary(memstream,amemstream);
+{$ELSE}
     ObjectTextToBinary(memstream,amemstream);
+{$ENDIF}
     amemstream.Seek(0,soFromBeginning);
-    reader:=TReader.Create(amemstream,1000);
+    reader:={$IFDEF FPC}TRpReader{$ELSE}TReader{$ENDIF}.Create(amemstream,1000);
     try
      reader.OnError:=FInternalOnReadError;
      reader.ReadRootComponent(Self);
