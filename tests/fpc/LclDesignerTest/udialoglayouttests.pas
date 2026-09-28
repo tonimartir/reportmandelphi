@@ -2,7 +2,7 @@ unit udialoglayouttests;
 
 { Layout of the dialogs of the LCL designer and preview: every page of each
   dialog as the user opens it, with no control cut by the client area of its
-  parent nor covering another one, and the dialog inside an 800x600 screen
+  parent nor covering another one, and the dialog inside an 800x720 screen
   (the positions of several lfm files were made for other fonts: see
   rppagesetuplcl). The dialogs are opened with their public functions; a
   form visibility handler, called before the modal guard of
@@ -249,7 +249,8 @@ var
 
 begin
   Pump;
-  // The dialogs fit an 800x600 screen; the windows the user resizes (data
+  // The dialogs fit a screen 720 pixels high (at 96 ppi: 650 without the
+  // title bar and the task bar) and 800 wide; the windows the user resizes (data
   // configuration, expression, preview) are as big as in the VCL and fit
   // the screen
   if AForm.BorderStyle in [bsSizeable, bsSizeToolWin] then
@@ -260,8 +261,8 @@ begin
   end
   else
   if (AForm.Width > AForm.Scale96ToScreen(800)) or
-    (AForm.Height > AForm.Scale96ToScreen(530)) then
-    Issue(Format('%s is %dx%d: does not fit 800x600', [AForm.ClassName,
+    (AForm.Height > AForm.Scale96ToScreen(650)) then
+    Issue(Format('%s is %dx%d: does not fit 800x720', [AForm.ClassName,
       AForm.Width, AForm.Height]));
   pages := TList.Create;
   try

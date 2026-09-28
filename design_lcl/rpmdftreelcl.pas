@@ -350,6 +350,7 @@ begin
     AImageList.Width := 19;
     AImageList.Height := 19;
   end;
+  ScaleImageListToScreen(AImageList);
   png := TPortableNetworkGraphic.Create;
   try
     for i := 0 to LIB_ICON_COUNT - 1 do

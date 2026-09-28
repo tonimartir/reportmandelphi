@@ -1057,9 +1057,12 @@ begin
       LogMsg(Format('[TEST_FAILED] ImageList1 should contain 36 icons, got %d', [ImageList1.Count]));
       Halt(1);
     end;
-    if (ImageList1.Width <> 19) or (ImageList1.Height <> 19) then
+    // 19x19 at 96 ppi, scaled to the screen (rpmdimageslcl)
+    if (ImageList1.Width <> MulDiv(19, Screen.PixelsPerInch, 96)) or
+      (ImageList1.Height <> MulDiv(19, Screen.PixelsPerInch, 96)) then
     begin
-      LogMsg(Format('[TEST_FAILED] ImageList1 dimensions must be 19x19, got %dx%d', [ImageList1.Width, ImageList1.Height]));
+      LogMsg(Format('[TEST_FAILED] ImageList1 dimensions must be 19x19 at 96 ppi (%d at %d ppi), got %dx%d',
+        [MulDiv(19, Screen.PixelsPerInch, 96), Screen.PixelsPerInch, ImageList1.Width, ImageList1.Height]));
       Halt(1);
     end;
     ComboScale.Text := '150%';

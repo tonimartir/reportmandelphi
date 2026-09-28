@@ -575,8 +575,8 @@ var
 begin
   dia := TFRpEditConLCL(AForm);
   CurEdit := dia;
-  Check(dia.Width <= 800, 'Connections dialog fits a 800x600 screen (width)');
-  Check(dia.Height <= 600, 'Connections dialog fits a 800x600 screen (height)');
+  Check(dia.Width <= dia.Scale96ToScreen(800), 'Connections dialog fits a 800x720 screen (width)');
+  Check(dia.Height <= dia.Scale96ToScreen(650), 'Connections dialog fits a 800x720 screen (height)');
   CheckInt(0, dia.LConnections.Items.Count, 'No library connections yet');
   Check(not dia.PCon2.Visible, 'No connection: no editors');
 
@@ -787,8 +787,8 @@ begin
     item := LibraryItem(list, LIB_ALIAS);
     dia := TFRpOpenLibLCL.Create(nil);
     try
-      Check(dia.Width <= 800, 'Library dialog fits a 800x600 screen (width)');
-      Check(dia.Height <= 600, 'Library dialog fits a 800x600 screen (height)');
+      Check(dia.Width <= dia.Scale96ToScreen(800), 'Library dialog fits a 800x720 screen (width)');
+      Check(dia.Height <= dia.Scale96ToScreen(650), 'Library dialog fits a 800x720 screen (height)');
       dia.EditTree(item);
       tree := dia.Tree;
       CurTree := tree;

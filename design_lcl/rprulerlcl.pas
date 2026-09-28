@@ -253,7 +253,10 @@ begin
       bitmapVin := Bitmap;
   end;
 
-  Bitmap.PixelFormat := pf32bit;
+  // Without alpha: the LCL gives a pf32bit bitmap an alpha channel that the
+  // lines and texts leave at 0, and the vertical rulers were drawn
+  // transparent (GTK2 at 144 ppi)
+  Bitmap.PixelFormat := pf24bit;
   if RType = rHorizontal then
   begin
     Bitmap.Width := bwidth;

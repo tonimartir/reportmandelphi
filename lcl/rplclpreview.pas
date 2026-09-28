@@ -498,7 +498,10 @@ end;
 
 procedure TFRpVPreview.FormCreate(Sender: TObject);
 begin
- ScaleToolBar(BToolBar);
+ // No ScaleToolBar: the LCL scales the buttons of the lfm after OnCreate
+ // (they were twice as big at 192 ppi); the images of the list are made for
+ // the ppi of the toolbar
+ ImageList1.Scaled:=true;
   SaveDialog1.Filter:=SRpRepMetafile+'|*.rpmf|'+
    SRpPDFFile+'|*.pdf|'+
    SRpPDFFileUn+'|*.pdf|'+

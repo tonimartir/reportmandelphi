@@ -254,8 +254,9 @@ var
    AControl.GetPreferredSize(pw,ph,true,false);
    if ph>Result then
     Result:=ph;
-   if ((AControl is TCustomEdit) or (AControl is TCustomComboBox) or
-    (AControl is TDateTimePicker)) and (minrowh>Result) then
+   // Its label needs the height of the text too (a check box of 23 pixels
+   // grew to 43 at 192 ppi)
+   if minrowh>Result then
     Result:=minrowh;
   end;
  end;

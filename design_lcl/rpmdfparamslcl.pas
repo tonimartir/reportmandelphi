@@ -143,6 +143,9 @@ procedure ShowParamDef(params: TRpParamList; datainfo: TRpDataInfoList; report: 
 
 implementation
 
+uses
+  rplcllayout;
+
 function ParamStringListToVariant(strings: TStrings): Variant;
 var
   index: Integer;
@@ -798,6 +801,22 @@ begin
   ESearch.Top := 92;
   ESearch.Width := 230;
   ESearch.OnChange := PropChange;
+
+  // Each label just above its editor: with bigger fonts (120 ppi) the labels
+  // are taller than the room between the fixed positions
+  RpLabelAbove(LDescription, EDescription);
+  RpLabelAbove(LDataType, ComboDataType);
+  RpLabelAbove(LValue, EValue);
+  RpLabelAbove(LHint, EHint);
+  RpLabelAbove(LValidation, EValidation);
+  RpLabelAbove(LErrorMessage, EErrorMessage);
+  RpLabelAbove(LAssign, ComboDatasets);
+  RpLabelAbove(LItems, MItems);
+  RpLabelAbove(LValues, MValues);
+  RpLabelAbove(LLookup, ComboLookup);
+  RpLabelAbove(LSearchDataset, ComboSearchDataset);
+  RpLabelAbove(LSearchParam, ComboSearchParam);
+  RpLabelAbove(LSearch, ESearch);
 end;
 
 procedure TFRpParamsLCL.FillParamList;

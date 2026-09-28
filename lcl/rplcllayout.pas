@@ -50,6 +50,10 @@ procedure RpPlaceRightOf(AControl, ALeftOf: TControl; ASpace: Integer);
 procedure RpToParentRight(AControl: TControl; ASpace: Integer);
 // A label at ALeft of its parent, centered on the height of AEditor
 procedure RpLabelFor(ALabel: TControl; ALeft: Integer; AEditor: TControl);
+// A label just above its editor (same parent): its bottom on the top of the
+// editor, so a label taller than the room left by fixed positions (bigger
+// fonts, 120 ppi) grows upwards instead of covering the editor
+procedure RpLabelAbove(ALabel, AEditor: TControl);
 // A label (units) after its editor, centered on its height
 procedure RpUnitsFor(ALabel: TControl; AEditor: TControl; ASpace: Integer);
 // Width of the widest of the texts with AFont (no handle needed)
@@ -101,6 +105,13 @@ begin
   ALabel.AutoSize := True;
   ALabel.AnchorParallel(akLeft, ALeft, ALabel.Parent);
   ALabel.AnchorVerticalCenterTo(AEditor);
+end;
+
+procedure RpLabelAbove(ALabel, AEditor: TControl);
+begin
+  ALabel.AnchorSide[akBottom].Control := AEditor;
+  ALabel.AnchorSide[akBottom].Side := asrTop;
+  ALabel.Anchors := ALabel.Anchors - [akTop] + [akBottom];
 end;
 
 procedure RpUnitsFor(ALabel: TControl; AEditor: TControl; ASpace: Integer);

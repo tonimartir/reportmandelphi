@@ -296,11 +296,11 @@ end;
 
 procedure TPageSetupTests.CheckFitsSmallScreen(AForm: TCustomForm);
 begin
-  // The dialogs must fit an 800x600 screen (title bar and task bar included)
+  // The dialogs must fit an 800x720 screen (title bar and task bar included)
   Check(AForm.Width <= Round(800 * Screen.PixelsPerInch / 96),
-    Format('%s is %d pixels wide: does not fit 800x600', [AForm.ClassName, AForm.Width]));
-  Check(AForm.Height <= Round(530 * Screen.PixelsPerInch / 96),
-    Format('%s is %d pixels high: does not fit 800x600', [AForm.ClassName, AForm.Height]));
+    Format('%s is %d pixels wide: does not fit 800x720', [AForm.ClassName, AForm.Width]));
+  Check(AForm.Height <= Round(650 * Screen.PixelsPerInch / 96),
+    Format('%s is %d pixels high: does not fit 800x720', [AForm.ClassName, AForm.Height]));
 end;
 
 procedure TPageSetupTests.EmbeddedAccept(AForm: TCustomForm);

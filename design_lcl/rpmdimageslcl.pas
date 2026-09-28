@@ -95,12 +95,14 @@ procedure LoadDesignerImageList(AImageList: TImageList);
 procedure LoadDBBrowserImageList(AImageList: TImageList);
 procedure LoadDataConfigImageList(AImageList: TImageList);
 function ResamplePngToTarget(APng: TPortableNetworkGraphic; TargetW, TargetH: Integer): TBitmap;
+// The size of a list given at 96 ppi, for the ppi of the screen (once)
+procedure ScaleImageListToScreen(AImageList: TImageList);
 procedure AddPngToImageList(AImageList: TImageList; APng: TPortableNetworkGraphic);
 
 implementation
 
 uses
-  IntfGraphics, FPimage, Math;
+  IntfGraphics, FPimage, Math, Forms, LCLType;
 
 const
   ICON_COUNT = 36;
@@ -359,11 +361,75 @@ begin
   end;
 end;
 
+// A bitmap with each pixel repeated AFactor times (sharp pixel art, rule 5),
+// centered in ATargetW x ATargetH with transparent margins
+function EnlargeBitmap(ABitmap: TBitmap; AFactor, ATargetW, ATargetH: Integer): TBitmap;
+var
+  SrcImg, DstImg: TLazIntfImage;
+  C: TFPColor;
+  x, y, offX, offY: Integer;
+begin
+  SrcImg := ABitmap.CreateIntfImage;
+  try
+    DstImg := TLazIntfImage.CreateCompatible(SrcImg, ATargetW, ATargetH);
+    try
+      C := colTransparent;
+      for y := 0 to ATargetH - 1 do
+        for x := 0 to ATargetW - 1 do
+          DstImg.Colors[x, y] := C;
+      offX := (ATargetW - SrcImg.Width * AFactor) div 2;
+      offY := (ATargetH - SrcImg.Height * AFactor) div 2;
+      for y := 0 to SrcImg.Height * AFactor - 1 do
+        for x := 0 to SrcImg.Width * AFactor - 1 do
+          DstImg.Colors[offX + x, offY + y] := SrcImg.Colors[x div AFactor, y div AFactor];
+      Result := TBitmap.Create;
+      Result.LoadFromIntfImage(DstImg);
+    finally
+      DstImg.Free;
+    end;
+  finally
+    SrcImg.Free;
+  end;
+end;
+
+// The lists are sized at 96 ppi (19x19, or the 16x16 of TImageList): they get
+// the size for the ppi of the screen. Called once by each loader.
+procedure ScaleImageListToScreen(AImageList: TImageList);
+begin
+  AImageList.Width := MulDiv(AImageList.Width, Screen.PixelsPerInch, 96);
+  AImageList.Height := MulDiv(AImageList.Height, Screen.PixelsPerInch, 96);
+end;
+
 procedure AddPngToImageList(AImageList: TImageList; APng: TPortableNetworkGraphic);
 var
-  resBmp: TBitmap;
+  resBmp, smallBmp: TBitmap;
+  base, k: Integer;
 begin
   if not Assigned(AImageList) or not Assigned(APng) then Exit;
+  // At 200% and more the list is k times its size at 96 ppi: the icon is made
+  // at that size and each pixel repeated k times, sharp (rule 5)
+  base := MulDiv(AImageList.Width, 96, Screen.PixelsPerInch);
+  k := 1;
+  if base > 0 then
+    k := AImageList.Width div base;
+  if k >= 2 then
+  begin
+    smallBmp := ResamplePngToTarget(APng, AImageList.Width div k, AImageList.Height div k);
+    try
+      if Assigned(smallBmp) then
+      begin
+        resBmp := EnlargeBitmap(smallBmp, k, AImageList.Width, AImageList.Height);
+        try
+          AImageList.Add(resBmp, nil);
+        finally
+          resBmp.Free;
+        end;
+      end;
+    finally
+      smallBmp.Free;
+    end;
+    Exit;
+  end;
   if (APng.Width = AImageList.Width) and (APng.Height = AImageList.Height) then
   begin
     resBmp := TBitmap.Create;
@@ -401,6 +467,7 @@ begin
     AImageList.Width := 19;
     AImageList.Height := 19;
   end;
+  ScaleImageListToScreen(AImageList);
   png := TPortableNetworkGraphic.Create;
   try
     for i := 0 to ICON_COUNT - 1 do
@@ -442,6 +509,7 @@ begin
     AImageList.Width := 19;
     AImageList.Height := 19;
   end;
+  ScaleImageListToScreen(AImageList);
   png := TPortableNetworkGraphic.Create;
   try
     for i := 0 to DB_ICON_COUNT - 1 do
@@ -487,6 +555,7 @@ begin
     AImageList.Width := 19;
     AImageList.Height := 19;
   end;
+  ScaleImageListToScreen(AImageList);
   png := TPortableNetworkGraphic.Create;
   try
     for i := 0 to DC_ICON_COUNT - 1 do

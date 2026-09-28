@@ -65,6 +65,9 @@ type
 
 implementation
 
+uses
+  rplcllayout;
+
 { TFRpSelectFieldsLCL }
 
 constructor TFRpSelectFieldsLCL.Create(AOwner: TComponent);
@@ -173,6 +176,10 @@ begin
   // sides of the frame.
   FLAvailable.AnchorParallel(akBottom, 12, Self);
   FLSelected.AnchorParallel(akBottom, 12, Self);
+  // The labels just above their lists and combo box (bigger fonts)
+  RpLabelAbove(FLabelDataset, FComboDataset);
+  RpLabelAbove(FLabelAvailable, FLAvailable);
+  RpLabelAbove(FLabelSelected, FLSelected);
   FLSelected.AnchorParallel(akRight, 12, Self);
 end;
 
