@@ -30,7 +30,7 @@ implementation
 
 uses
   {$IFDEF MSWINDOWS}Windows,{$ENDIF}
-  Classes, SysUtils, Types, Variants, Controls, Graphics, StdCtrls, LCLIntf, LMessages,
+  Classes, SysUtils, Types, Variants, Controls, Graphics, StdCtrls,
   ExtCtrls, ComCtrls,
   rptypes, rpreport, rpparams, rpdatainfo, rpbasereport,
   rpgraphutilslcl, rplcldriver, rpmdprintconfiglcl, rpmdfembeddedfilelcl,
@@ -58,6 +58,7 @@ type
     procedure Issue(const AText: string);
     procedure FormVisibleChanged(Sender: TObject; Form: TCustomForm);
     procedure InspectAsync(Data: PtrInt);
+    procedure CloseTimer(Sender: TObject);
     procedure Inspect(AForm: TCustomForm);
     procedure CheckControls(AParent: TWinControl; const APath: string);
     procedure Shot(AForm: TCustomForm; const AName: string);
@@ -303,6 +304,7 @@ end;
 procedure TDialogLayoutTests.InspectAsync(Data: PtrInt);
 var
   form: TCustomForm;
+  timer: TTimer;
 begin
   form := TCustomForm(Data);
   try
@@ -311,13 +313,21 @@ begin
     on E: Exception do
       Issue('checking raised ' + E.ClassName + ': ' + E.Message);
   end;
-  form.ModalResult := mrCancel;
-  // This runs in the idle of the modal loop, which then waits for an
-  // event: Qt6 under Xvfb may have none, and the dialog never closed. The
-  // message goes to the main form (GTK2 may deliver it after the dialog
-  // was freed).
-  if Assigned(Application.MainForm) and Application.MainForm.HandleAllocated then
-    LCLIntf.PostMessage(Application.MainForm.Handle, LM_NULL, 0, 0);
+  // This runs in the idle of the modal loop, which then waits for an event:
+  // under Xvfb there may be none (Qt6, or a GTK2 dialog with no blinking
+  // caret), and a posted message does not wake it (the GTK2 of Lazarus 3.0
+  // does not wake its loop for the messages posted by the main thread).
+  // A timer of the dialog closes it and goes with it.
+  timer := TTimer.Create(form);
+  timer.Interval := 10;
+  timer.OnTimer := CloseTimer;
+  timer.Enabled := True;
+end;
+
+procedure TDialogLayoutTests.CloseTimer(Sender: TObject);
+begin
+  TTimer(Sender).Enabled := False;
+  TCustomForm(TTimer(Sender).Owner).ModalResult := mrCancel;
 end;
 
 procedure TDialogLayoutTests.Open(const ACase: string; AOpen: TOpenProc);

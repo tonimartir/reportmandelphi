@@ -167,6 +167,7 @@ type
     function GetEmbeddedFileCount:Integer;
   public
     { Public declarations }
+    procedure AfterConstruction;override;
     // Shows the options of the report (ExecutePageSetup does it before
     // showing the dialog)
     procedure ReadOptions;
@@ -394,7 +395,15 @@ begin
  ListViewEmbedded.Columns[4].Caption:=SRpDescription;
  ListViewEmbedded.Columns[5].Caption:=SRpCreationDateISO;
  ListViewEmbedded.Columns[6].Caption:=SRpModificationDateISO;
- // After the translations: the widths come from the texts
+end;
+
+// The layout goes after the translations of FormCreate (the widths come from
+// the texts) and after the LCL scaled the lfm to the monitor, which it does
+// after OnCreate: the layout is made in pixels of the screen, and in
+// FormCreate it was scaled again (a 25% bigger dialog at 120 dpi)
+procedure TFRpPageSetupVCL.AfterConstruction;
+begin
+ inherited AfterConstruction;
  LayoutControls;
 end;
 
@@ -411,7 +420,7 @@ var
  M,S,G,th:integer;
  edith,comboh,checkh,buttonh,radioh,rowh:integer;
  groupw,grouph,checkw,radiow:integer;
- pw,ph,dw,dh,dp:integer;
+ needw,needh:integer;
  col1,x,x2,lw,lw2,uw,ew,bw,h,i,w:integer;
  PRow1,PRow2:TPanel;
  LLabels:array[0..7] of TLabel;
@@ -452,19 +461,11 @@ var
   end;
  end;
 
- // The controls of a page are placed in its current client area
- procedure UsePage(APage:TTabSheet);
- begin
-  pw:=APage.ClientWidth;
-  ph:=APage.ClientHeight;
- end;
-
- // The form grows when the content of a page needs more room (dp is what
- // the bottom panel takes from the pages)
+ // The room the content of a page needs (estimated)
  procedure Need(AWidth,AHeight:integer);
  begin
-  dw:=Max(dw,AWidth-pw);
-  dh:=Max(dh,AHeight-(ph-dp));
+  needw:=Max(needw,AWidth);
+  needh:=Max(needh,AHeight);
  end;
 
  // A group that takes the height of its content (the width comes from its
@@ -544,12 +545,11 @@ begin
   groupw:=Max(Scale96ToScreen(4),Min(groupw,Scale96ToScreen(40)));
   grouph:=Max(th+Scale96ToScreen(10),Min(grouph,Scale96ToScreen(60)));
   rowh:=Max(edith,comboh);
-  dw:=0;
-  dh:=0;
+  needw:=0;
+  needh:=0;
 
   // OK and Cancel
   bw:=ButtonWidth([BOK.Caption,BCancel.Caption],101);
-  dp:=buttonh+2*M-Panel1.Height;
   Panel1.Height:=buttonh+2*M;
   RpPlaceAt(BOK,M,nil,M);
   BOK.SetBounds(BOK.Left,BOK.Top,bw,buttonh);
@@ -558,7 +558,6 @@ begin
 
   // Page setup. Rows: page size (with the custom size or the user defined
   // one), orientation, margins, lines per inch and background color
-  UsePage(TabPage);
   col1:=Max(Scale96ToScreen(177),
    MaxTW([RPageSize.Items[0],RPageSize.Items[1],RPageSize.Items[2],
     RPageOrientation.Items[0],RPageOrientation.Items[1]])+radiow+
@@ -656,7 +655,6 @@ begin
    S+(grouph+S+2*edith+S+S)+S+edith+S+buttonh+M);
 
   // Print setup: a label and its combo boxes in each row
-  UsePage(TabPrint);
   lw:=MaxTW([LPrinterFonts.Caption,LRLang.Caption,LPreview.Caption,
    LSelectPrinter.Caption,LPaperSource.Caption,LDuplex.Caption])+G;
   x:=M+lw;
@@ -734,7 +732,6 @@ begin
   Need(0,M+6*(rowh+S)+buttonh+S+edith+S+5*(checkh+Scale96ToScreen(2))+M);
 
   // Options: save format, PDF options and embedded files
-  UsePage(TabOptions);
   lw:=TW(LPreferedFormat.Caption)+G;
   RpPlaceAt(ComboFormat,M+lw,nil,M);
   RpToParentRight(ComboFormat,M);
@@ -767,7 +764,6 @@ begin
 
   // Metadata: a label and its text in each row, the XMP content fills the
   // rest of the page
-  UsePage(TabMetadata);
   LLabels[0]:=LabelDocAuthor;
   LLabels[1]:=labelDocTitle;
   LLabels[2]:=labeldocSubject;
@@ -807,11 +803,13 @@ begin
  finally
   LBitmap.Free;
  end;
- // Never smaller than the lfm: the lists and texts keep their room
- if dw>0 then
-  ClientWidth:=ClientWidth+dw;
- if dh>0 then
-  ClientHeight:=ClientHeight+dh;
+ // The form holds the pages, their tabs and borders, and the buttons. The
+ // LCL has not realigned the pages after scaling the lfm, but their size
+ // and the page control's are from the same moment. Never smaller than the
+ // lfm: the lists and texts keep their room
+ ClientWidth:=Max(ClientWidth,needw+PControl.Width-TabPage.ClientWidth);
+ ClientHeight:=Max(ClientHeight,needh+PControl.Height-TabPage.ClientHeight+
+  Panel1.Height);
 end;
 
 procedure TFRpPageSetupVCL.FormDestroy(Sender: TObject);
