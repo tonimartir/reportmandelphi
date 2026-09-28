@@ -58,6 +58,9 @@ function RpAFRelationShipName(AValue: TPDFAFRelationShip): string;
 
 implementation
 
+uses
+  rplcllayout;
+
 function RpAFRelationShipName(AValue: TPDFAFRelationShip): string;
 begin
   case AValue of
@@ -73,6 +76,8 @@ end;
 constructor TFRpEmbeddedFileLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := SRpEmbeddedFile;
   BorderStyle := bsDialog;
   Position := poScreenCenter;

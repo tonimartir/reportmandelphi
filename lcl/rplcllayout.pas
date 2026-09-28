@@ -28,8 +28,15 @@ unit rplcllayout;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics;
+  Classes, SysUtils, Controls, Graphics, Forms;
 
+// The LCL scales a new form (or frame) from its PixelsPerInch (96, or that of
+// its lfm) to the ppi of its monitor after the constructor and OnCreate
+// (TCustomForm.AfterConstruction; a frame when it gets its parent). A form
+// built in code in pixels of the screen (Scale96ToScreen, widths of texts)
+// calls this before creating its controls, or all its sizes were scaled
+// twice (50% bigger at 144 ppi); its fixed sizes use Scale96ToScreen too
+procedure RpBuiltInScreenPixels(AControl: TCustomDesignControl);
 // Forgets the anchors of the lfm: left and top at the current position
 procedure RpResetAnchors(AControl: TControl);
 // Left at ALeft of the left side of the parent; top at ASpace below ABelow,
@@ -49,6 +56,12 @@ procedure RpUnitsFor(ALabel: TControl; AEditor: TControl; ASpace: Integer);
 function RpMaxTextWidth(AFont: TFont; const ATexts: array of string): Integer;
 
 implementation
+
+procedure RpBuiltInScreenPixels(AControl: TCustomDesignControl);
+begin
+  AControl.PixelsPerInch := Screen.PixelsPerInch;
+  AControl.Font.PixelsPerInch := Screen.PixelsPerInch;
+end;
 
 procedure RpResetAnchors(AControl: TControl);
 var

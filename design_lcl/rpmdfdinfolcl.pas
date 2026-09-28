@@ -346,7 +346,7 @@ implementation
 
 uses
   rpjsonfpc, rpauthmanager, rpdatahttp, rpdbxconfiglcl, rpmdfsampledatalcl,
-  rpmdfdatatextlcl;
+  rpmdfdatatextlcl, rplcllayout;
 
 type
   { "Show data" (VCL BShowDataClick): the dataset is opened in a worker on a
@@ -918,6 +918,9 @@ end;
 constructor TFRpDInfoLCL.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again (the
+  // lfm only has the form)
+  RpBuiltInScreenPixels(Self);
   FActiveConnIndex := -1;
   FActiveDSIndex := -1;
   FUpdatingControls := False;
@@ -996,7 +999,7 @@ begin
   // Bottom buttons panel
   PBottom := TPanel.Create(Self);
   PBottom.Align := alBottom;
-  PBottom.Height := 44;
+  PBottom.Height := Scale96ToScreen(44);
   PBottom.BevelOuter := bvNone;
   PBottom.Parent := Self;
 
@@ -1006,7 +1009,7 @@ begin
   BOk.Parent := PBottom;
   BOk.Caption := TranslateStr(93, 'OK');
   BOk.Default := True;
-  BOk.SetBounds(PBottom.Width - 210, 8, 95, 28);
+  BOk.SetBounds(PBottom.Width - Scale96ToScreen(210), Scale96ToScreen(8), Scale96ToScreen(95), Scale96ToScreen(28));
   BOk.OnClick := BOkClick;
 
   BCancel := TButton.Create(PBottom);
@@ -1014,14 +1017,14 @@ begin
   BCancel.Caption := TranslateStr(94, 'Cancel');
   BCancel.ModalResult := mrCancel;
   BCancel.Cancel := True;
-  BCancel.SetBounds(PBottom.Width - 105, 8, 95, 28);
+  BCancel.SetBounds(PBottom.Width - Scale96ToScreen(105), Scale96ToScreen(8), Scale96ToScreen(95), Scale96ToScreen(28));
   BCancel.OnClick := BCancelClick;
   // Anchored to the sides (the size of the parents is not final here: fixed
   // right distances computed now can push the controls out of a small
   // window)
-  BCancel.AnchorParallel(akRight, 10, PBottom);
+  BCancel.AnchorParallel(akRight, Scale96ToScreen(10), PBottom);
   BCancel.Anchors := [akTop, akRight];
-  BOk.AnchorToNeighbour(akRight, 10, BCancel);
+  BOk.AnchorToNeighbour(akRight, Scale96ToScreen(10), BCancel);
   BOk.Anchors := [akTop, akRight];
 
   // PageControl
@@ -1047,9 +1050,9 @@ begin
   ToolBarConn := TToolBar.Create(TabConnections);
   ToolBarConn.Parent := TabConnections;
   ToolBarConn.Align := alTop;
-  ToolBarConn.Height := 28;
-  ToolBarConn.ButtonWidth := 26;
-  ToolBarConn.ButtonHeight := 26;
+  ToolBarConn.Height := Scale96ToScreen(28);
+  ToolBarConn.ButtonWidth := Scale96ToScreen(26);
+  ToolBarConn.ButtonHeight := Scale96ToScreen(26);
   ToolBarConn.Flat := True;
   ToolBarConn.ShowHint := True;
   ToolBarConn.Images := FImageList;
@@ -1074,7 +1077,7 @@ begin
   SepConn := TToolButton.Create(ToolBarConn);
   SepConn.Parent := ToolBarConn;
   SepConn.Style := tbsSeparator;
-  SepConn.Width := 8;
+  SepConn.Width := Scale96ToScreen(8);
 
   BDelConn := TToolButton.Create(ToolBarConn);
   BDelConn.Parent := ToolBarConn;
@@ -1091,42 +1094,42 @@ begin
 
   LConnections := TListBox.Create(PConnClient);
   LConnections.Align := alLeft;
-  LConnections.Width := 210;
+  LConnections.Width := Scale96ToScreen(210);
   LConnections.Parent := PConnClient;
   LConnections.OnClick := LConnectionsClick;
 
   SplitterConn := TSplitter.Create(PConnClient);
   SplitterConn.Align := alLeft;
-  SplitterConn.Width := 5;
+  SplitterConn.Width := Scale96ToScreen(5);
   SplitterConn.Parent := PConnClient;
 
   PConnProps := TPanel.Create(PConnClient);
   PConnProps.Align := alClient;
   PConnProps.BevelOuter := bvNone;
-  PConnProps.BorderWidth := 10;
+  PConnProps.BorderWidth := Scale96ToScreen(10);
   PConnProps.Parent := PConnClient;
 
   LabelConnAlias := TLabel.Create(PConnProps);
   LabelConnAlias.Parent := PConnProps;
   LabelConnAlias.Caption := TranslateStr(400, 'Connection name') + ':';
-  LabelConnAlias.SetBounds(10, 12, 200, 16);
+  LabelConnAlias.SetBounds(Scale96ToScreen(10), Scale96ToScreen(12), Scale96ToScreen(200), Scale96ToScreen(16));
 
   EConnAlias := TEdit.Create(PConnProps);
   EConnAlias.Parent := PConnProps;
-  EConnAlias.SetBounds(10, 32, 380, 24);
-  EConnAlias.AnchorParallel(akRight, 10, PConnProps);
+  EConnAlias.SetBounds(Scale96ToScreen(10), Scale96ToScreen(32), Scale96ToScreen(380), Scale96ToScreen(24));
+  EConnAlias.AnchorParallel(akRight, Scale96ToScreen(10), PConnProps);
   EConnAlias.Anchors := [akLeft, akTop, akRight];
 
   LabelConnDriver := TLabel.Create(PConnProps);
   LabelConnDriver.Parent := PConnProps;
   LabelConnDriver.Caption := TranslateStr(1101, 'Database driver') + ':';
-  LabelConnDriver.SetBounds(10, 68, 200, 16);
+  LabelConnDriver.SetBounds(Scale96ToScreen(10), Scale96ToScreen(68), Scale96ToScreen(200), Scale96ToScreen(16));
 
   ComboDriver := TComboBox.Create(PConnProps);
   ComboDriver.Parent := PConnProps;
   ComboDriver.Style := csDropDownList;
-  ComboDriver.SetBounds(10, 88, 380, 24);
-  ComboDriver.AnchorParallel(akRight, 10, PConnProps);
+  ComboDriver.SetBounds(Scale96ToScreen(10), Scale96ToScreen(88), Scale96ToScreen(380), Scale96ToScreen(24));
+  ComboDriver.AnchorParallel(akRight, Scale96ToScreen(10), PConnProps);
   ComboDriver.Anchors := [akLeft, akTop, akRight];
   // The drivers of the FPC build (FillDriverCombo; a driver that is not
   // available is listed only for the connection that uses it, so the
@@ -1136,43 +1139,43 @@ begin
   LabelConfigFile := TLabel.Create(PConnProps);
   LabelConfigFile.Parent := PConnProps;
   LabelConfigFile.Caption := TranslateStr(743, 'Configuration file') + ':';
-  LabelConfigFile.SetBounds(10, 124, 200, 16);
+  LabelConfigFile.SetBounds(Scale96ToScreen(10), Scale96ToScreen(124), Scale96ToScreen(200), Scale96ToScreen(16));
 
   EConfigFile := TEdit.Create(PConnProps);
   EConfigFile.Parent := PConnProps;
-  EConfigFile.SetBounds(10, 144, 340, 24);
+  EConfigFile.SetBounds(Scale96ToScreen(10), Scale96ToScreen(144), Scale96ToScreen(340), Scale96ToScreen(24));
 
   BBrowseFile := TButton.Create(PConnProps);
   BBrowseFile.Parent := PConnProps;
   BBrowseFile.Caption := '...';
-  BBrowseFile.SetBounds(355, 144, 35, 24);
-  BBrowseFile.AnchorParallel(akRight, 10, PConnProps);
+  BBrowseFile.SetBounds(Scale96ToScreen(355), Scale96ToScreen(144), Scale96ToScreen(35), Scale96ToScreen(24));
+  BBrowseFile.AnchorParallel(akRight, Scale96ToScreen(10), PConnProps);
   BBrowseFile.Anchors := [akTop, akRight];
   BBrowseFile.OnClick := BBrowseFileClick;
-  EConfigFile.AnchorToNeighbour(akRight, 5, BBrowseFile);
+  EConfigFile.AnchorToNeighbour(akRight, Scale96ToScreen(5), BBrowseFile);
   EConfigFile.Anchors := [akLeft, akTop, akRight];
 
   CheckLoginPrompt := TCheckBox.Create(PConnProps);
   CheckLoginPrompt.Parent := PConnProps;
   CheckLoginPrompt.Caption := TranslateStr(144, 'Login prompt');
-  CheckLoginPrompt.SetBounds(10, 178, 250, 20);
+  CheckLoginPrompt.SetBounds(Scale96ToScreen(10), Scale96ToScreen(178), Scale96ToScreen(250), Scale96ToScreen(20));
 
   // VCL CheckLoadParams, CheckLoadDriverParams
   CheckLoadParams := TCheckBox.Create(PConnProps);
   CheckLoadParams.Parent := PConnProps;
   CheckLoadParams.Caption := TranslateStr(145, 'Load params');
-  CheckLoadParams.SetBounds(10, 202, 250, 20);
+  CheckLoadParams.SetBounds(Scale96ToScreen(10), Scale96ToScreen(202), Scale96ToScreen(250), Scale96ToScreen(20));
 
   CheckLoadDriverParams := TCheckBox.Create(PConnProps);
   CheckLoadDriverParams.Parent := PConnProps;
   CheckLoadDriverParams.Caption := TranslateStr(146, 'Load driver params');
-  CheckLoadDriverParams.SetBounds(10, 226, 250, 20);
+  CheckLoadDriverParams.SetBounds(Scale96ToScreen(10), Scale96ToScreen(226), Scale96ToScreen(250), Scale96ToScreen(20));
 
   // VCL BTest: connects and disconnects (in a worker thread)
   BTestConn := TButton.Create(PConnProps);
   BTestConn.Parent := PConnProps;
   BTestConn.Caption := TranslateStr(753, 'Connect');
-  BTestConn.SetBounds(10, 254, RpCaptionWidth(BTestConn, [BTestConn.Caption], 110),
+  BTestConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(254), RpCaptionWidth(BTestConn, [BTestConn.Caption], 110),
     Scale96ToForm(28));
   BTestConn.OnClick := BTestConnClick;
 
@@ -1187,9 +1190,9 @@ begin
   ToolBarDS := TToolBar.Create(TabDatasets);
   ToolBarDS.Parent := TabDatasets;
   ToolBarDS.Align := alTop;
-  ToolBarDS.Height := 28;
-  ToolBarDS.ButtonWidth := 26;
-  ToolBarDS.ButtonHeight := 26;
+  ToolBarDS.Height := Scale96ToScreen(28);
+  ToolBarDS.ButtonWidth := Scale96ToScreen(26);
+  ToolBarDS.ButtonHeight := Scale96ToScreen(26);
   ToolBarDS.Flat := True;
   ToolBarDS.ShowHint := True;
   ToolBarDS.Images := FImageList;
@@ -1215,7 +1218,7 @@ begin
   SepDS1 := TToolButton.Create(ToolBarDS);
   SepDS1.Parent := ToolBarDS;
   SepDS1.Style := tbsSeparator;
-  SepDS1.Width := 8;
+  SepDS1.Width := Scale96ToScreen(8);
 
   BDelDS := TToolButton.Create(ToolBarDS);
   BDelDS.Parent := ToolBarDS;
@@ -1226,7 +1229,7 @@ begin
   SepDS2 := TToolButton.Create(ToolBarDS);
   SepDS2.Parent := ToolBarDS;
   SepDS2.Style := tbsSeparator;
-  SepDS2.Width := 8;
+  SepDS2.Width := Scale96ToScreen(8);
 
   BtnRenameDS := TToolButton.Create(ToolBarDS);
   BtnRenameDS.Parent := ToolBarDS;
@@ -1237,7 +1240,7 @@ begin
   SepDS3 := TToolButton.Create(ToolBarDS);
   SepDS3.Parent := ToolBarDS;
   SepDS3.Style := tbsSeparator;
-  SepDS3.Width := 8;
+  SepDS3.Width := Scale96ToScreen(8);
   SepDS3.Left := BtnRenameDS.Left + BtnRenameDS.Width + 1;
 
   // VCL BShowData (in the dataset properties there); here in the toolbar so
@@ -1246,7 +1249,7 @@ begin
   BShowData.Parent := ToolBarDS;
   BShowData.Caption := TranslateStr(156, 'Show data');
   BShowData.Width := RpCaptionWidth(BShowData, [BShowData.Caption], 90);
-  BShowData.Height := 24;
+  BShowData.Height := Scale96ToScreen(24);
   BShowData.Left := SepDS3.Left + SepDS3.Width + 1;
   BShowData.OnClick := BShowDataClick;
 
@@ -1257,82 +1260,82 @@ begin
 
   PDSTopArea := TPanel.Create(PDSClient);
   PDSTopArea.Align := alTop;
-  PDSTopArea.Height := 170;
+  PDSTopArea.Height := Scale96ToScreen(170);
   PDSTopArea.BevelOuter := bvNone;
   PDSTopArea.Parent := PDSClient;
 
   LDatasets := TListBox.Create(PDSTopArea);
   LDatasets.Align := alLeft;
-  LDatasets.Width := 210;
+  LDatasets.Width := Scale96ToScreen(210);
   LDatasets.Parent := PDSTopArea;
   LDatasets.OnClick := LDatasetsClick;
 
   SplitterDS := TSplitter.Create(PDSTopArea);
   SplitterDS.Align := alLeft;
-  SplitterDS.Width := 5;
+  SplitterDS.Width := Scale96ToScreen(5);
   SplitterDS.Parent := PDSTopArea;
 
   PDSProps := TPanel.Create(PDSTopArea);
   PDSProps.Align := alClient;
   PDSProps.BevelOuter := bvNone;
-  PDSProps.BorderWidth := 6;
+  PDSProps.BorderWidth := Scale96ToScreen(6);
   PDSProps.Parent := PDSTopArea;
 
   LabelDSAlias := TLabel.Create(PDSProps);
   LabelDSAlias.Parent := PDSProps;
   LabelDSAlias.Caption := TranslateStr(518, 'Alias Name') + ':';
-  LabelDSAlias.SetBounds(10, 6, 160, 16);
+  LabelDSAlias.SetBounds(Scale96ToScreen(10), Scale96ToScreen(6), Scale96ToScreen(160), Scale96ToScreen(16));
 
   EDSAlias := TEdit.Create(PDSProps);
   EDSAlias.Parent := PDSProps;
-  EDSAlias.SetBounds(10, 24, 380, 24);
-  EDSAlias.AnchorParallel(akRight, 10, PDSProps);
+  EDSAlias.SetBounds(Scale96ToScreen(10), Scale96ToScreen(24), Scale96ToScreen(380), Scale96ToScreen(24));
+  EDSAlias.AnchorParallel(akRight, Scale96ToScreen(10), PDSProps);
   EDSAlias.Anchors := [akLeft, akTop, akRight];
 
   LabelDSConn := TLabel.Create(PDSProps);
   LabelDSConn.Parent := PDSProps;
   LabelDSConn.Caption := TranslateStr(154, 'Connection') + ':';
-  LabelDSConn.SetBounds(10, 54, 160, 16);
+  LabelDSConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(54), Scale96ToScreen(160), Scale96ToScreen(16));
 
   ComboDSConn := TComboBox.Create(PDSProps);
   ComboDSConn.Parent := PDSProps;
   ComboDSConn.Style := csDropDownList;
-  ComboDSConn.SetBounds(10, 72, 380, 24);
-  ComboDSConn.AnchorParallel(akRight, 10, PDSProps);
+  ComboDSConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(72), Scale96ToScreen(380), Scale96ToScreen(24));
+  ComboDSConn.AnchorParallel(akRight, Scale96ToScreen(10), PDSProps);
   ComboDSConn.Anchors := [akLeft, akTop, akRight];
   ComboDSConn.OnChange := ComboDSConnChange;
 
   LabelDSMaster := TLabel.Create(PDSProps);
   LabelDSMaster.Parent := PDSProps;
   LabelDSMaster.Caption := TranslateStr(155, 'Master dataset') + ':';
-  LabelDSMaster.SetBounds(10, 102, 160, 16);
+  LabelDSMaster.SetBounds(Scale96ToScreen(10), Scale96ToScreen(102), Scale96ToScreen(160), Scale96ToScreen(16));
 
   ComboDSMaster := TComboBox.Create(PDSProps);
   ComboDSMaster.Parent := PDSProps;
   ComboDSMaster.Style := csDropDownList;
-  ComboDSMaster.SetBounds(10, 120, 240, 24);
+  ComboDSMaster.SetBounds(Scale96ToScreen(10), Scale96ToScreen(120), Scale96ToScreen(240), Scale96ToScreen(24));
 
   CheckOpenOnStart := TCheckBox.Create(PDSProps);
   CheckOpenOnStart.Parent := PDSProps;
   CheckOpenOnStart.Caption := TranslateStr(1373, 'Open on start');
   // After the master combo (a right anchor computed before the final size
   // put it out of small windows)
-  CheckOpenOnStart.SetBounds(262, 122, 180, 20);
+  CheckOpenOnStart.SetBounds(Scale96ToScreen(262), Scale96ToScreen(122), Scale96ToScreen(180), Scale96ToScreen(20));
 
   SplitterSQL := TSplitter.Create(PDSClient);
   SplitterSQL.Align := alTop;
-  SplitterSQL.Height := 5;
+  SplitterSQL.Height := Scale96ToScreen(5);
   SplitterSQL.Parent := PDSClient;
 
   PSQLArea := TPanel.Create(PDSClient);
   PSQLArea.Align := alClient;
   PSQLArea.BevelOuter := bvNone;
-  PSQLArea.BorderWidth := 4;
+  PSQLArea.BorderWidth := Scale96ToScreen(4);
   PSQLArea.Parent := PDSClient;
 
   PSQLTop := TPanel.Create(PSQLArea);
   PSQLTop.Align := alTop;
-  PSQLTop.Height := 28;
+  PSQLTop.Height := Scale96ToScreen(28);
   PSQLTop.BevelOuter := bvNone;
   PSQLTop.Parent := PSQLArea;
 
@@ -1340,23 +1343,23 @@ begin
   // (the chat takes the right part)
   LabelSQL := TLabel.Create(PSQLTop);
   LabelSQL.Caption := ' ' + TranslateStr(159, 'Query') + ':';
-  LabelSQL.SetBounds(4, 6, RpCaptionWidth(Self, [LabelSQL.Caption], 40) - 16, 18);
+  LabelSQL.SetBounds(Scale96ToScreen(4), Scale96ToScreen(6), RpCaptionWidth(Self, [LabelSQL.Caption], 40) - Scale96ToScreen(16), Scale96ToScreen(18));
   LabelSQL.Parent := PSQLTop;
 
   // Switches between the Monaco editor and the plain text memo
   BMonacoToggle := TButton.Create(PSQLTop);
   BMonacoToggle.Parent := PSQLTop;
   BMonacoToggle.Caption := 'Monaco / ' + TranslateStr(314, 'Text');
-  BMonacoToggle.SetBounds(LabelSQL.Left + LabelSQL.Width + 6, 2,
-    RpCaptionWidth(BMonacoToggle, [BMonacoToggle.Caption], 90), 24);
+  BMonacoToggle.SetBounds(LabelSQL.Left + LabelSQL.Width + Scale96ToScreen(6), Scale96ToScreen(2),
+    RpCaptionWidth(BMonacoToggle, [BMonacoToggle.Caption], 90), Scale96ToScreen(24));
   BMonacoToggle.OnClick := BMonacoToggleClick;
 
   // Switches the light / dark editor theme
   BThemeToggle := TButton.Create(PSQLTop);
   BThemeToggle.Parent := PSQLTop;
   BThemeToggle.Caption := TranslateStr(1447, 'Theme');
-  BThemeToggle.SetBounds(BMonacoToggle.Left + BMonacoToggle.Width + 6, 2,
-    RpCaptionWidth(BThemeToggle, [BThemeToggle.Caption], 70), 24);
+  BThemeToggle.SetBounds(BMonacoToggle.Left + BMonacoToggle.Width + Scale96ToScreen(6), Scale96ToScreen(2),
+    RpCaptionWidth(BThemeToggle, [BThemeToggle.Caption], 70), Scale96ToScreen(24));
   BThemeToggle.OnClick := BThemeToggleClick;
   FIsDarkTheme := False;
 
@@ -1367,7 +1370,7 @@ begin
   BParams.Caption := TranslateStr(152, 'Parameters');
   BParams.Hint := BParams.Caption;
   BParams.Width := RpCaptionWidth(BParams, [BParams.Caption], 90);
-  BParams.Height := 24;
+  BParams.Height := Scale96ToScreen(24);
   BParams.Left := BShowData.Left + BShowData.Width + 1;
   BParams.OnClick := BParamsClick;
 
@@ -1383,7 +1386,7 @@ begin
 
   SplitterChat := TSplitter.Create(PSQLArea);
   SplitterChat.Align := alRight;
-  SplitterChat.Width := 5;
+  SplitterChat.Width := Scale96ToScreen(5);
   SplitterChat.Parent := PSQLArea;
   SplitterChat.Left := PChatHost.Left - SplitterChat.Width;
 
@@ -1427,7 +1430,7 @@ begin
   LDrivers := TListBox.Create(PConnDriver);
   LDrivers.Parent := PConnDriver;
   LDrivers.Align := alLeft;
-  LDrivers.Width := 210;
+  LDrivers.Width := Scale96ToScreen(210);
   GetFpcDatabaseDrivers(LDrivers.Items);
   LDrivers.OnClick := LDriversClick;
 
@@ -1446,7 +1449,7 @@ begin
   BConfig.Parent := PConnDriverButtons;
   BConfig.Caption := TranslateStr(143, 'Configure');
   LWidth := RpCaptionWidth(BConfig, [BConfig.Caption], 120);
-  BConfig.SetBounds(5, 3, LWidth, Scale96ToForm(26));
+  BConfig.SetBounds(Scale96ToScreen(5), Scale96ToScreen(3), LWidth, Scale96ToForm(26));
   BConfig.OnClick := BConfigClick;
 
   MHelp := TMemo.Create(PConnDriverInfo);
@@ -1474,7 +1477,7 @@ var
     Result.BevelOuter := bvNone;
     Result.Caption := '';
     // alTop rows are ordered by Top
-    Result.SetBounds(0, ATop, 400, Scale96ToForm(30));
+    Result.SetBounds(0, ATop, Scale96ToScreen(400), Scale96ToForm(30));
     Result.Align := alTop;
   end;
 
@@ -1485,9 +1488,9 @@ var
     Result.Caption := ACaption;
     Result.Layout := tlCenter;
     Result.AutoSize := False;
-    Result.SetBounds(0, 0, LLabelWidth, 20);
+    Result.SetBounds(0, 0, LLabelWidth, Scale96ToScreen(20));
     Result.Align := alLeft;
-    Result.BorderSpacing.Left := 4;
+    Result.BorderSpacing.Left := Scale96ToScreen(4);
   end;
 
   function NewEdit(ARow: TPanel): TEdit;
@@ -1495,7 +1498,7 @@ var
     Result := TEdit.Create(ARow);
     Result.Parent := ARow;
     Result.Align := alClient;
-    Result.BorderSpacing.Around := 3;
+    Result.BorderSpacing.Around := Scale96ToScreen(3);
   end;
 
   function NewButton(ARow: TPanel; const ACaption: string; AWidth, ALeft: Integer;
@@ -1505,9 +1508,9 @@ var
     Result.Parent := ARow;
     Result.Caption := ACaption;
     // Fixed width (alRight buttons ordered by Left)
-    Result.SetBounds(ALeft, 0, AWidth, 24);
+    Result.SetBounds(ALeft, 0, AWidth, Scale96ToScreen(24));
     Result.Align := alRight;
-    Result.BorderSpacing.Around := 3;
+    Result.BorderSpacing.Around := Scale96ToScreen(3);
     Result.OnClick := AClick;
   end;
 
@@ -1520,7 +1523,7 @@ begin
   PMyBaseArea.Parent := PDSClient;
   PMyBaseArea.Align := alClient;
   PMyBaseArea.BevelOuter := bvNone;
-  PMyBaseArea.BorderWidth := 4;
+  PMyBaseArea.BorderWidth := Scale96ToScreen(4);
   PMyBaseArea.Visible := False;
 
   LLabelWidth := RpCaptionWidth(Self, [TranslateStr(167, 'MyBase Filename'),
@@ -1558,7 +1561,7 @@ begin
   GUnions.Parent := PMyBaseArea;
   GUnions.Caption := TranslateStr(1082, 'Dataset client side unions');
   GUnions.Align := alClient;
-  GUnions.BorderSpacing.Top := 4;
+  GUnions.BorderSpacing.Top := Scale96ToScreen(4);
 
   LLeftPanel := TPanel.Create(GUnions);
   LLeftPanel.Parent := GUnions;
@@ -1573,12 +1576,12 @@ begin
   LabelUnions := TLabel.Create(LLeftPanel);
   LabelUnions.Parent := LLeftPanel;
   LabelUnions.Caption := TranslateStr(1083, 'Unions');
-  LabelUnions.SetBounds(4, 4, 150, 18);
+  LabelUnions.SetBounds(Scale96ToScreen(4), Scale96ToScreen(4), Scale96ToScreen(150), Scale96ToScreen(18));
 
   ComboUnions := TComboBox.Create(LLeftPanel);
   ComboUnions.Parent := LLeftPanel;
   ComboUnions.Style := csDropDownList;
-  ComboUnions.SetBounds(4, 22, LLeftPanel.Width - LButtonsWidth - 8, 24);
+  ComboUnions.SetBounds(Scale96ToScreen(4), Scale96ToScreen(22), LLeftPanel.Width - LButtonsWidth - Scale96ToScreen(8), Scale96ToScreen(24));
 
   CheckParallelUnion := TCheckBox.Create(LLeftPanel);
   CheckParallelUnion.Parent := LLeftPanel;
@@ -1587,29 +1590,29 @@ begin
     'the resulting table will contain all the columns of all tables, and as much rows as ' +
     'the table with the maximum number of rows');
   CheckParallelUnion.ShowHint := True;
-  CheckParallelUnion.SetBounds(4, 54, LLeftPanel.Width - LButtonsWidth - 8, 20);
+  CheckParallelUnion.SetBounds(Scale96ToScreen(4), Scale96ToScreen(54), LLeftPanel.Width - LButtonsWidth - Scale96ToScreen(8), Scale96ToScreen(20));
 
   CheckGroupUnion := TCheckBox.Create(LLeftPanel);
   CheckGroupUnion.Parent := LLeftPanel;
   CheckGroupUnion.Caption := TranslateStr(1084, 'Union grouping');
-  CheckGroupUnion.SetBounds(4, 78, LLeftPanel.Width - LButtonsWidth - 8, 20);
+  CheckGroupUnion.SetBounds(Scale96ToScreen(4), Scale96ToScreen(78), LLeftPanel.Width - LButtonsWidth - Scale96ToScreen(8), Scale96ToScreen(20));
 
   BAddUnions := TButton.Create(LLeftPanel);
   BAddUnions.Parent := LLeftPanel;
   BAddUnions.Caption := '>';
-  BAddUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, 20, LButtonsWidth - 6, 28);
+  BAddUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, Scale96ToScreen(20), LButtonsWidth - Scale96ToScreen(6), Scale96ToScreen(28));
   BAddUnions.OnClick := BAddUnionsClick;
 
   BDelUnions := TButton.Create(LLeftPanel);
   BDelUnions.Parent := LLeftPanel;
   BDelUnions.Caption := '<';
-  BDelUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, 56, LButtonsWidth - 6, 28);
+  BDelUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, Scale96ToScreen(56), LButtonsWidth - Scale96ToScreen(6), Scale96ToScreen(28));
   BDelUnions.OnClick := BDelUnionsClick;
 
   LUnions := TListBox.Create(GUnions);
   LUnions.Parent := GUnions;
   LUnions.Align := alClient;
-  LUnions.BorderSpacing.Around := 2;
+  LUnions.BorderSpacing.Around := Scale96ToScreen(2);
 end;
 
 procedure TFRpDInfoLCL.SetReport(Value: TRpReport);

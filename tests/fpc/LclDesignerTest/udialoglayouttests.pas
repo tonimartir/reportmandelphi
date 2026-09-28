@@ -12,7 +12,11 @@ unit udialoglayouttests;
   these tests.
 
   RP_LAYOUT_SHOTS=<dir> saves a screenshot of each page;
-  RP_LAYOUT_CASES=<case>,<case> checks only those dialogs. }
+  RP_LAYOUT_CASES=<case>,<case> checks only those dialogs (Designer measures
+  the designer). The log gives the size of each dialog and of the parts of
+  the designer: from a run at 96 ppi to one at 144 (Xvfb -dpi 144) they grow
+  1.5 times, and 2.25 times the parts the LCL scaled twice (see
+  rplcllayout.RpBuiltInScreenPixels). }
 
 {$mode delphi}
 
@@ -31,14 +35,15 @@ implementation
 uses
   {$IFDEF MSWINDOWS}Windows,{$ENDIF}
   Classes, SysUtils, Types, Variants, Controls, Graphics, StdCtrls,
-  ExtCtrls, ComCtrls,
+  ExtCtrls, ComCtrls, DB, memds,
   rptypes, rpreport, rpparams, rpdatainfo, rpbasereport,
   rpgraphutilslcl, rplcldriver, rpmdprintconfiglcl, rpmdfembeddedfilelcl,
   rppagesetuplcl, rprflclparams,
   rpmdfdinfolcl, rpmdfparamslcl, rpexpredlglcl, rpmdfgridlcl, rpmdfextseclcl,
   rpmdfwizardlcl, rpmdfopenliblcl, rpdbxconfiglcl, rpeditconnlcl,
   rpmdfdatatextlcl, rpfrmloginlcl, rpfrmaireportlcl, rpmdfaboutlcl,
-  rpmdsysinfolcl, rpmdfmainlcl, rpmdundocuelcl,
+  rpmdsysinfolcl, rpmdfmainlcl, rpmdundocuelcl, rpmdfnewreportwizardlcl,
+  rpmdfsampledatalcl,
   umainform, uregressiontests;
 
 const
@@ -63,6 +68,7 @@ type
     procedure CheckControls(AParent: TWinControl; const APath: string);
     procedure Shot(AForm: TCustomForm; const AName: string);
     procedure Open(const ACase: string; AOpen: TOpenProc);
+    procedure MeasureDesigner;
   public
     constructor Create;
     destructor Destroy; override;
@@ -309,6 +315,9 @@ begin
   form := TCustomForm(Data);
   try
     Inspect(form);
+    // Compared between runs at different ppi: a dialog scaled twice grows
+    // with the square of the ratio
+    LogMsg(Format('Dialog layout: %s size %dx%d', [FCase, form.Width, form.Height]));
   except
     on E: Exception do
       Issue('checking raised ' + E.ClassName + ': ' + E.Message);
@@ -566,6 +575,99 @@ begin
   end;
 end;
 
+procedure OpenNewReportWizard;
+var
+  rep: TRpReport;
+  prompt, apikey: string;
+  dbid, schemaid: Int64;
+begin
+  rep := TRpReport.Create(nil);
+  try
+    rep.CreateNew;
+    NewModernReportWizard(rep, prompt, dbid, schemaid, apikey);
+  finally
+    rep.Free;
+  end;
+end;
+
+procedure OpenSampleData;
+var
+  ds: TMemDataset;
+  i: Integer;
+begin
+  ds := TMemDataset.Create(nil);
+  try
+    ds.FieldDefs.Add('ID', ftInteger);
+    ds.FieldDefs.Add('CUSTOMER', ftString, 40);
+    ds.FieldDefs.Add('AMOUNT', ftFloat);
+    ds.CreateTable;
+    ds.Open;
+    for i := 1 to 20 do
+      ds.AppendRecord([i, 'Customer ' + IntToStr(i), i * 12.5]);
+    ds.First;
+    ShowDataset(ds);
+  finally
+    ds.Free;
+  end;
+end;
+
+// The designer is not modal: its parts are measured shown (the toolbar, the
+// inspector, the structure and the AI chat, built in code) and compared
+// between runs at different ppi as the dialogs
+procedure TDialogLayoutTests.MeasureDesigner;
+var
+  mf: TFRpMainFLCL;
+  i, buttons: Integer;
+
+  procedure LogSize(const AName: string; AControl: TControl);
+  begin
+    LogMsg(Format('Dialog layout: Designer.%s size %dx%d', [AName, AControl.Width,
+      AControl.Height]));
+  end;
+
+  procedure LogButtons(AParent: TWinControl);
+  var
+    k: Integer;
+  begin
+    for k := 0 to AParent.ControlCount - 1 do
+      if AParent.Controls[k].Visible then
+      begin
+        if AParent.Controls[k] is TButton then
+        begin
+          Inc(buttons);
+          LogSize('ChatButton' + IntToStr(buttons), AParent.Controls[k]);
+        end
+        else
+        if AParent.Controls[k] is TWinControl then
+          LogButtons(TWinControl(AParent.Controls[k]));
+      end;
+  end;
+
+begin
+  LogMsg('Dialog layout: measuring the designer');
+  mf := TFRpMainFLCL.Create(nil);
+  try
+    mf.NewReport;
+    mf.ShowAIChat := True;
+    mf.Show;
+    Pump;
+    LogSize('Form', mf);
+    for i := 0 to mf.ControlCount - 1 do
+      if mf.Controls[i] is TToolBar then
+        LogSize('ToolBar', mf.Controls[i]);
+    LogSize('ObjInsp', mf.ObjInsp);
+    LogSize('Structure', mf.Structure);
+    LogSize('AIChatPanel', mf.AIChatPanel);
+    // The buttons of the chat (Send, Refresh...)
+    buttons := 0;
+    LogButtons(mf.ChatFrame);
+    Shot(mf, 'Designer');
+    TUndoCue(mf.Report.UndoCue).MarkClean;
+  finally
+    mf.Free;
+  end;
+end;
+
 procedure TDialogLayoutTests.Run;
 var
   i: Integer;
@@ -596,6 +698,11 @@ begin
     Open('MessageBox', OpenMessageBox);
     Open('InputBox', OpenInputBox);
     Open('Preview', OpenPreview);
+    Open('NewReportWizard', OpenNewReportWizard);
+    Open('SampleData', OpenSampleData);
+    if (GetEnvironmentVariable('RP_LAYOUT_CASES') = '') or
+      (Pos(',Designer,', ',' + GetEnvironmentVariable('RP_LAYOUT_CASES') + ',') > 0) then
+      MeasureDesigner;
   finally
     FreeAndNil(CaseReport);
   end;
@@ -611,7 +718,8 @@ end;
 
 procedure RunDialogLayoutTests;
 begin
-  LogMsg('Testing the layout of the dialogs (every page, no control cut or covered)');
+  LogMsg(Format('Testing the layout of the dialogs (every page, no control cut or covered), %d ppi',
+    [Screen.PixelsPerInch]));
   Tests := TDialogLayoutTests.Create;
   try
     Tests.Run;

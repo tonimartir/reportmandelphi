@@ -231,11 +231,44 @@ var
  achecknull:TCheckBox;
  NewClientHeight:integer;
  acontrol2:TControl;
+ leftgap,labelgap,controlgap,nullwidth,searchwidth,minrowh,rowh:integer;
 {$IFNDEF FORWEBAX}
  bbutton:TButton;
  defheight:integer;
 {$ENDIF}
+
+ // The height of the row of a parameter: an edit, a combo box or a date
+ // take the height of the widgetset when their handle is created (at 144
+ // ppi an edit grows from the 23 pixels of its creation, and the rows
+ // covered each other); Qt gives smaller heights before showing the form
+ function RowHeight(AControl:TControl):integer;
+ var
+  pw,ph:integer;
+ begin
+  Result:=AControl.Height;
+  if (AControl is TWinControl) and not (AControl is TCheckListBox) then
+  begin
+   TWinControl(AControl).HandleNeeded;
+   pw:=0;
+   ph:=0;
+   AControl.GetPreferredSize(pw,ph,true,false);
+   if ph>Result then
+    Result:=ph;
+   if ((AControl is TCustomEdit) or (AControl is TCustomComboBox) or
+    (AControl is TDateTimePicker)) and (minrowh>Result) then
+    Result:=minrowh;
+  end;
+ end;
+
 begin
+ // The gaps and widths are pixels at 96 ppi: the LCL scaled the form
+ // before this
+ leftgap:=Scale96ToScreen(CONS_LEFTGAP);
+ labelgap:=Scale96ToScreen(CONS_LABELTOPGAP);
+ controlgap:=Scale96ToScreen(CONS_CONTROLGAP);
+ nullwidth:=Scale96ToScreen(CONS_NULLWIDTH);
+ searchwidth:=Scale96ToScreen(CONS_SEARCH);
+ minrowh:=Canvas.TextHeight('Mg')+Scale96ToScreen(8);
 {$IFNDEF FORWEBAX}
  defheight:=calcdefaultheight(Font.Size);
  report:=avalue.Report;
@@ -244,8 +277,8 @@ begin
   TRpBaseReport(report).Language:=aparam.Value;
 {$ENDIF}
  fparams.assign(avalue);
- TotalWidth:=PRight.Width-CONS_NULLWIDTH-CONS_SEARCH-CONS_LEFTGAP-CONS_RIGHTBARGAP;
- posy:=CONS_CONTROLGAP;
+ TotalWidth:=PRight.Width-nullwidth-searchwidth-leftgap-Scale96ToScreen(CONS_RIGHTBARGAP);
+ posy:=controlgap;
  // Creates all controls from params
  for i:=0 to fparams.Count-1 do
  begin
@@ -256,15 +289,15 @@ begin
   begin
    alabel:=TLabel.Create(Self);
    alabel.Caption:=aparam.Description;
-   aLabel.Left:=CONS_LEFTGAP;
-   aLabel.Top:=posy+CONS_LABELTOPGAP;
+   aLabel.Left:=leftgap;
+   aLabel.Top:=posy+labelgap;
    aLabel.Hint:=aparam.Hint;
    alabel.Parent:=PLeft;
    achecknull:=TCheckBox.Create(Self);
    achecknull.Top:=posy;
    achecknull.Tag:=i;
-   achecknull.Width:=CONS_NULLWIDTH;
-   achecknull.Left:=TotalWidth+CONS_SEARCH+CONS_LEFTGAP;
+   achecknull.Width:=nullwidth;
+   achecknull.Left:=TotalWidth+searchwidth+leftgap;
    achecknull.Caption:=SRpNull;
    achecknull.Anchors:=[akTop,akRight];
    achecknull.Parent:=PRight;
@@ -276,7 +309,7 @@ begin
    bbutton:=TButton.Create(Self);
    bbutton.Top:=posy;
    bbutton.Tag:=i;
-   bbutton.Width:=CONS_SEARCH;
+   bbutton.Width:=searchwidth;
    bbutton.Left:=TotalWidth;
    bbutton.Height:=defheight;
    bbutton.Caption:='...';
@@ -545,7 +578,7 @@ begin
    begin
     acontrol.Enabled:=false;
    end;
-   acontrol.Left:=CONS_LEFTGAP;
+   acontrol.Left:=leftgap;
    if assigned(acontrol2) then
    begin
     acontrol2.Top:=Posy;
@@ -554,8 +587,8 @@ begin
     begin
      acontrol2.Enabled:=false;
     end;
-    acontrol2.Left:=acontrol.Left+acontrol.Width+CONS_LEFTGAP;
-    acontrol2.Width:=TotalWidth-(acontrol.Left+acontrol.Width)-CONS_LEFTGAP;
+    acontrol2.Left:=acontrol.Left+acontrol.Width+leftgap;
+    acontrol2.Width:=TotalWidth-(acontrol.Left+acontrol.Width)-leftgap;
     acontrol2.parent:=PRight;
 {$IFNDEF FORWEBAX}
     bbutton.TabOrder:=bbutton.TabOrder+1;
@@ -582,7 +615,11 @@ begin
    if Not assigned(ActiveControl) then
     if (acontrol.Visible and acontrol.Enabled) then
      ActiveControl:=TWinControl(acontrol);
-   Posy:=PosY+acontrol.Height+CONS_CONTROLGAP;
+   rowh:=RowHeight(acontrol);
+{$IFNDEF FORWEBAX}
+   bbutton.Height:=rowh;
+{$ENDIF}
+   Posy:=PosY+rowh+controlgap;
   end
   else
   begin
@@ -593,9 +630,9 @@ begin
  end;
  PParent.Height:=PosY;
  // Set the height of the form
- NewClientHeight:=PModalButtons.Height+PosY+CONS_CONTROLGAP;
- if  NewClientHeight>CONS_MAXCLIENTHEIGHT then
-  NewClientHeight:=CONS_MAXCLIENTHEIGHT;
+ NewClientHeight:=PModalButtons.Height+PosY+controlgap;
+ if NewClientHeight>Scale96ToScreen(CONS_MAXCLIENTHEIGHT) then
+  NewClientHeight:=Scale96ToScreen(CONS_MAXCLIENTHEIGHT);
  ClientHeight:=NewClientHeight;
 end;
 

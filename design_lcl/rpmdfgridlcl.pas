@@ -82,6 +82,8 @@ end;
 constructor TFRpGridOptionsLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
 
   Caption := TranslateStr(179, 'Grid Options');
   Width := 340;

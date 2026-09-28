@@ -113,6 +113,9 @@ procedure ShowSysInfo;
 
 implementation
 
+uses
+  rplcllayout;
+
 {$IFDEF MSWINDOWS}
 const
   winspooldrv = 'winspool.drv';
@@ -225,6 +228,8 @@ end;
 constructor TFRpSysInfoLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := TranslateStr(976, 'System information');
   BorderStyle := bsDialog;
   Position := poScreenCenter;

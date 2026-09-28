@@ -275,7 +275,7 @@ function NewModernReportWizard(report: TRpReport;
 implementation
 
 uses
-  rpauthmanager, rpdatahttp, rpjsonfpc;
+  rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -523,6 +523,8 @@ end;
 constructor TFRpNewReportWizardLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := TR(1131, 'New Report');
   BorderStyle := bsDialog;
   Position := poScreenCenter;

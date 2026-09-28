@@ -252,7 +252,7 @@ var
   ALabel: TLabel;
 begin
   posy := 0;
-  aheight := 24;
+  aheight := ScaleDpi(24);
 
   AScrollBox := TScrollBox.Create(Self);
   AScrollBox.Align := alClient;
@@ -268,7 +268,7 @@ begin
   PParent.Parent := AScrollBox;
 
   PLeft := TPanel.Create(Self);
-  PLeft.Width := CONS_CONTROLPOS;
+  PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
   PLeft.BorderStyle := bsNone;
   PLeft.BevelInner := bvNone;
   PLeft.BevelOuter := bvNone;
@@ -279,7 +279,7 @@ begin
   Psplit.ResizeStyle := rsUpdate;
   Psplit.Cursor := crHSplit;
   Psplit.MinSize := 10;
-  Psplit.Width := 4;
+  Psplit.Width := ScaleDpi(4);
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -294,27 +294,27 @@ begin
   ALabel := TLabel.Create(Self);
   LLabels.Add(ALabel);
   ALabel.Caption := SRpMainDataset;
-  ALabel.Left := CONS_LEFTGAP;
-  ALabel.Top := posy + CONS_LABELTOPGAP;
+  ALabel.Left := ScaleDpi(CONS_LEFTGAP);
+  ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
   ALabel.Parent := PLeft;
 
   ComboAlias := TComboBox.Create(Self);
   ComboAlias.Style := csDropDownList;
   ComboAlias.Top := posy;
-  ComboAlias.Left := CONS_LEFTGAP;
-  ComboAlias.Width := PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
+  ComboAlias.Left := ScaleDpi(CONS_LEFTGAP);
+  ComboAlias.Width := PRight.Width - ScaleDpi(CONS_LEFTGAP) - ScaleDpi(CONS_RIGHTBARGAP);
   ComboAlias.Anchors := [akLeft, akTop, akRight];
   ComboAlias.OnChange := ComboAliasChange;
   ComboAlias.Parent := PRight;
 
-  posy := posy + aheight + 2;
+  posy := posy + aheight + ScaleDpi(2);
 
   // Print only if data available
   ALabel := TLabel.Create(Self);
   LLabels.Add(ALabel);
   ALabel.Caption := SRpSPOnlyData;
-  ALabel.Left := CONS_LEFTGAP;
-  ALabel.Top := posy + CONS_LABELTOPGAP;
+  ALabel.Left := ScaleDpi(CONS_LEFTGAP);
+  ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
   ALabel.Parent := PLeft;
 
   ComboPrintOnly := TComboBox.Create(Self);
@@ -322,13 +322,13 @@ begin
   ComboPrintOnly.Items.Add(GetFalseBoolStr);
   ComboPrintOnly.Items.Add(GetTrueBoolStr);
   ComboPrintOnly.Top := posy;
-  ComboPrintOnly.Left := CONS_LEFTGAP;
-  ComboPrintOnly.Width := PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
+  ComboPrintOnly.Left := ScaleDpi(CONS_LEFTGAP);
+  ComboPrintOnly.Width := PRight.Width - ScaleDpi(CONS_LEFTGAP) - ScaleDpi(CONS_RIGHTBARGAP);
   ComboPrintOnly.Anchors := [akLeft, akTop, akRight];
   ComboPrintOnly.OnChange := ComboPrintOnlyChange;
   ComboPrintOnly.Parent := PRight;
 
-  posy := posy + aheight + 2;
+  posy := posy + aheight + ScaleDpi(2);
   PParent.Height := posy;
 end;
 
@@ -349,14 +349,14 @@ var
 begin
   apage := nil;
   FCompItem := acompo;
-  aheight := 24;
+  aheight := ScaleDpi(24);
 
   // Top combobox container
   APanelTop := TPanel.Create(Self);
   APanelTop.BevelInner := bvNone;
   APanelTop.BevelOuter := bvNone;
   APanelTop.Align := alTop;
-  APanelTop.Height := aheight + 2;
+  APanelTop.Height := aheight + ScaleDpi(2);
   APanelTop.Parent := Self;
 
   FCombo := TComboBox.Create(Self);
@@ -392,7 +392,7 @@ begin
   pageall.PParent := PParent;
 
   PLeft := TPanel.Create(Self);
-  PLeft.Width := CONS_CONTROLPOS;
+  PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
   PLeft.BorderStyle := bsNone;
   PLeft.BevelInner := bvNone;
   PLeft.BevelOuter := bvNone;
@@ -403,7 +403,7 @@ begin
   Psplit.ResizeStyle := rsUpdate;
   Psplit.Cursor := crHSplit;
   Psplit.MinSize := 10;
-  Psplit.Width := 4;
+  Psplit.Width := ScaleDpi(4);
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -458,7 +458,7 @@ begin
       apage.PParent.Parent := NScrollBox;
 
       apage.PLeft := TPanel.Create(Self);
-      apage.PLeft.Width := CONS_CONTROLPOS;
+      apage.PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
       apage.PLeft.BorderStyle := bsNone;
       apage.PLeft.BevelInner := bvNone;
       apage.PLeft.BevelOuter := bvNone;
@@ -469,7 +469,7 @@ begin
       Psplit.ResizeStyle := rsUpdate;
       Psplit.Cursor := crHSplit;
       Psplit.MinSize := 10;
-      Psplit.Width := 4;
+      Psplit.Width := ScaleDpi(4);
       Psplit.Align := alLeft;
       Psplit.Parent := apage.PParent;
 
@@ -485,16 +485,16 @@ begin
     ALabel := TLabel.Create(Self);
     LLabels.Add(ALabel);
     ALabel.Caption := LNames.Strings[i];
-    ALabel.Left := CONS_LEFTGAP;
-    ALabel.Top := posy + CONS_LABELTOPGAP;
+    ALabel.Left := ScaleDpi(CONS_LEFTGAP);
+    ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
     ALabel.Parent := PLeft;
 
     // Label for Category page
     ALabel := TLabel.Create(Self);
     LLabels.Add(ALabel);
     ALabel.Caption := LNames.Strings[i];
-    ALabel.Left := CONS_LEFTGAP;
-    ALabel.Top := apage.PosY + CONS_LABELTOPGAP;
+    ALabel.Left := ScaleDpi(CONS_LEFTGAP);
+    ALabel.Top := apage.PosY + ScaleDpi(CONS_LABELTOPGAP);
     ALabel.Parent := apage.PLeft;
 
     typename := LTypes.Strings[i];
@@ -619,28 +619,28 @@ begin
     end;
 
     control.Top := posy;
-    control.Left := CONS_LEFTGAP;
-    control.Width := PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
+    control.Left := ScaleDpi(CONS_LEFTGAP);
+    control.Width := PRight.Width - ScaleDpi(CONS_LEFTGAP) - ScaleDpi(CONS_RIGHTBARGAP);
     control.Anchors := [akLeft, akTop, akRight];
     control.Parent := PRight;
 
     NControl.Top := apage.PosY;
-    NControl.Left := CONS_LEFTGAP;
-    NControl.Width := apage.PRight.Width - CONS_LEFTGAP - CONS_RIGHTBARGAP;
+    NControl.Left := ScaleDpi(CONS_LEFTGAP);
+    NControl.Width := apage.PRight.Width - ScaleDpi(CONS_LEFTGAP) - ScaleDpi(CONS_RIGHTBARGAP);
     NControl.Anchors := [akLeft, akTop, akRight];
     NControl.Parent := apage.PRight;
 
     if typename = SRpSExpression then
     begin
-      control.Width := control.Width - 26;
-      NControl.Width := NControl.Width - 26;
+      control.Width := control.Width - ScaleDpi(26);
+      NControl.Width := NControl.Width - ScaleDpi(26);
 
       btn1 := TButton.Create(Self);
       btn1.Parent := PRight;
-      btn1.Width := 24;
+      btn1.Width := ScaleDpi(24);
       btn1.Height := control.Height;
       btn1.Top := posy;
-      btn1.Left := PRight.Width - CONS_RIGHTBARGAP - 24;
+      btn1.Left := PRight.Width - ScaleDpi(CONS_RIGHTBARGAP) - ScaleDpi(24);
       btn1.Caption := '...';
       btn1.Tag := i;
       btn1.OnClick := ExpressionClick;
@@ -648,10 +648,10 @@ begin
 
       btn2 := TButton.Create(Self);
       btn2.Parent := apage.PRight;
-      btn2.Width := 24;
+      btn2.Width := ScaleDpi(24);
       btn2.Height := NControl.Height;
       btn2.Top := apage.PosY;
-      btn2.Left := apage.PRight.Width - CONS_RIGHTBARGAP - 24;
+      btn2.Left := apage.PRight.Width - ScaleDpi(CONS_RIGHTBARGAP) - ScaleDpi(24);
       btn2.Caption := '...';
       btn2.Tag := i;
       btn2.OnClick := ExpressionClick;
@@ -663,8 +663,8 @@ begin
     LControls.AddObject(LNames.Strings[i], control);
     LControls2.AddObject(LNames.Strings[i], NControl);
 
-    posy := posy + aheight + 2;
-    apage.PosY := apage.PosY + aheight + 2;
+    posy := posy + aheight + ScaleDpi(2);
+    apage.PosY := apage.PosY + aheight + ScaleDpi(2);
   end;
 
   pageall.PParent.Height := posy;

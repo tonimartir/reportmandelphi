@@ -182,7 +182,7 @@ type
 implementation
 
 uses
-  rpmdobjinsplcl, rpmdfstruclcl, rpmdundocuelcl;
+  rpmdobjinsplcl, rpmdfstruclcl, rpmdundocuelcl, rplcllayout;
 
 {$R *.lfm}
 
@@ -555,6 +555,9 @@ var
   i: Integer;
 begin
   inherited Create(AOwner);
+  // Sizes in pixels of the screen (ScaleDpi): the LCL does not scale it
+  // again when it gets its parent (the lfm only has PTop and PLeft)
+  RpBuiltInScreenPixels(Self);
 
   FScale := 1.0;
   CONS_RIGHTPWIDTH := ScaleDPI(5);

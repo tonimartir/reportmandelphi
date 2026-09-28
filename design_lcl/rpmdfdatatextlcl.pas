@@ -135,7 +135,7 @@ function DataTextTypeFromName(const AName: string): TFieldType;
 implementation
 
 uses
-  rpdbxconfiglcl, rpmdfsampledatalcl, rpmdimageslcl;
+  rpdbxconfiglcl, rpmdfsampledatalcl, rpmdimageslcl, rplcllayout;
 
 const
   // The types of the VCL DDataType lookup
@@ -207,6 +207,8 @@ end;
 constructor TFRpDataTextLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := TranslateStr(1088, 'Text file to database table configuration');
   Position := poScreenCenter;
   ShowHint := True;
@@ -332,7 +334,7 @@ begin
   Splitter1 := TSplitter.Create(Self);
   Splitter1.Parent := Self;
   Splitter1.Align := alTop;
-  Splitter1.Height := 6;
+  Splitter1.Height := Scale96ToScreen(6);
   Splitter1.Top := PList.Top + PList.Height + 1;
 
   PBottom := TPanel.Create(Self);

@@ -109,6 +109,9 @@ function RpPrinterConfigFileName: string;
 
 implementation
 
+uses
+  rplcllayout;
+
 function RpPrinterConfigFileName: string;
 begin
   Result := Obtainininamecommonconfig('', '', 'reportman');
@@ -139,6 +142,8 @@ var
   j: Integer;
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Position := poScreenCenter;
   BorderStyle := bsDialog;
   ShowHint := True;

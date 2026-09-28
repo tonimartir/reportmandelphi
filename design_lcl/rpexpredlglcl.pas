@@ -264,7 +264,7 @@ implementation
 
 uses
   StrUtils, DB, Math, LazUTF8, rpjsonfpc, rpdatainfo, rpparams, rpdatahttp,
-  rpauthmanager, rplabelitem;
+  rpauthmanager, rplabelitem, rplcllayout;
 
 const
   CSchemaFieldSep = #1;
@@ -1473,6 +1473,8 @@ var
   i: Integer;
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := TranslateStr(240, 'Expression build');
   Width := Scale96ToScreen(1040);
   Height := Scale96ToScreen(600);
@@ -1582,7 +1584,7 @@ begin
 
   FSplitterChat := TSplitter.Create(Self);
   FSplitterChat.Parent := Self;
-  FSplitterChat.SetBounds(19000, 0, 5, 100);
+  FSplitterChat.SetBounds(19000, 0, Scale96ToScreen(5), 100);
   FSplitterChat.Align := alRight;
   FSplitterChat.ResizeAnchor := akRight;
 

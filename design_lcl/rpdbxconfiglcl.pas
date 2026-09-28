@@ -201,7 +201,7 @@ function RpCaptionWidth(AControl: TControl; const ACaptions: array of string;
 implementation
 
 uses
-  rpjsonfpc, rpdatahttp, rpauthmanager, rpgraphutilslcl, rpmdimageslcl;
+  rpjsonfpc, rpdatahttp, rpauthmanager, rpgraphutilslcl, rpmdimageslcl, rplcllayout;
 
 const
   CONTROL_DISTANCEY = 5;
@@ -557,6 +557,8 @@ end;
 constructor TFRpDBXConfigLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   FInteractive := True;
   FParams := TStringList.Create;
   FMailbox := TRpAsyncMailbox.Create(HandleAsyncMessage);
@@ -603,7 +605,7 @@ procedure TFRpDBXConfigLCL.BuildControls;
     LSep := TToolButton.Create(Self);
     LSep.Parent := ToolBar1;
     LSep.Style := tbsSeparator;
-    LSep.Width := 8;
+    LSep.Width := Scale96ToScreen(8);
   end;
 
 var

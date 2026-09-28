@@ -115,7 +115,7 @@ function ShowModifyConnections(Connections: TRpDatabaseInfoList): Boolean;
 implementation
 
 uses
-  rpdbxconfiglcl;
+  rpdbxconfiglcl, rplcllayout;
 
 function ShowModifyConnections(Connections: TRpDatabaseInfoList): Boolean;
 var
@@ -140,6 +140,8 @@ end;
 constructor TFRpEditConLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   Caption := TranslateStr(1122, 'Edit connections');
   Position := poScreenCenter;
   ShowHint := True;

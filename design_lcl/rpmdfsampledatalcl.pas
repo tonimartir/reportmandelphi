@@ -83,7 +83,7 @@ function SampleFieldText(AField: TField): string;
 implementation
 
 uses
-  rpdbxconfiglcl;
+  rpdbxconfiglcl, rplcllayout;
 
 const
   MAX_CELL_TEXT = 250;
@@ -175,6 +175,8 @@ var
   LWidth: Integer;
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   FBatchSize := RP_SAMPLE_DATA_BATCH;
   Caption := TranslateStr(735, 'Data');
   Position := poScreenCenter;

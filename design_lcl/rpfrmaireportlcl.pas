@@ -67,7 +67,7 @@ function ExecuteAIReportDialog(AOwner: TComponent; const AAIContent, AToken,
 implementation
 
 uses
-  rpmdconsts, rpchatmodernstylelcl, rpgraphutilslcl;
+  rpmdconsts, rpchatmodernstylelcl, rpgraphutilslcl, rplcllayout;
 
 type
   TRpAIReportResult = class(TRpAsyncMessage)
@@ -138,6 +138,8 @@ end;
 constructor TFRpAIReportLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   FMailbox := TRpAsyncMailbox.Create(HandleMessage);
   FMailboxRef := FMailbox;
   BuildControls;

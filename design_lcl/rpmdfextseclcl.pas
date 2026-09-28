@@ -168,10 +168,12 @@ end;
 constructor TFRpExtSectionLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
 
   Caption := TranslateStr(860, 'External Section Properties');
-  Width := 420;
-  Height := 340;
+  Width := Scale96ToScreen(420);
+  Height := Scale96ToScreen(340);
   Position := poScreenCenter;
   BorderStyle := bsDialog;
 
@@ -186,16 +188,16 @@ begin
   PBottom := TPanel.Create(Self);
   PBottom.Parent := Self;
   PBottom.Align := alBottom;
-  PBottom.Height := 48;
+  PBottom.Height := Scale96ToScreen(48);
   PBottom.BevelOuter := bvNone;
 
   BCancel := TButton.Create(Self);
   BCancel.Parent := PBottom;
   BCancel.Caption := TranslateStr(94, 'Cancel');
-  BCancel.Left := PBottom.Width - 90;
-  BCancel.Top := 10;
-  BCancel.Width := 80;
-  BCancel.Height := 28;
+  BCancel.Left := PBottom.Width - Scale96ToScreen(90);
+  BCancel.Top := Scale96ToScreen(10);
+  BCancel.Width := Scale96ToScreen(80);
+  BCancel.Height := Scale96ToScreen(28);
   BCancel.Anchors := [akTop, akRight];
   BCancel.Cancel := True;
   BCancel.OnClick := BCancelClick;
@@ -203,10 +205,10 @@ begin
   BOk := TButton.Create(Self);
   BOk.Parent := PBottom;
   BOk.Caption := TranslateStr(93, 'OK');
-  BOk.Left := PBottom.Width - 180;
-  BOk.Top := 10;
-  BOk.Width := 80;
-  BOk.Height := 28;
+  BOk.Left := PBottom.Width - Scale96ToScreen(180);
+  BOk.Top := Scale96ToScreen(10);
+  BOk.Width := Scale96ToScreen(80);
+  BOk.Height := Scale96ToScreen(28);
   BOk.Anchors := [akTop, akRight];
   BOk.Default := True;
   BOk.OnClick := BOkClick;

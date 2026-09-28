@@ -451,7 +451,7 @@ uses
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
   IniFiles, LCLIntf, PrintersDlgs, md5, rpmdsysinfolcl, rpauthmanager, rpxmlstream, rpexpredlglcl,
-  rpmdfnewreportwizardlcl,
+  rpmdfnewreportwizardlcl, rplcllayout,
   // Report library: connections editor and tree (rpeditconnvcl, rpmdftreevcl)
   rpeditconnlcl, rpmdftreelcl,
   rplcldriver;
@@ -714,9 +714,11 @@ end;
 constructor TFRpMainFLCL.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
+  // Sizes in pixels of the screen: the LCL does not scale it again
+  RpBuiltInScreenPixels(Self);
   // Room for the AI panel at the right (380) besides the design area
-  Width := 1260;
-  Height := 680;
+  Width := Scale96ToScreen(1260);
+  Height := Scale96ToScreen(680);
   Caption := TranslateStr(1, 'Report Manager Designer');
   Position := poScreenCenter;
   Color := clBtnFace;
@@ -1073,7 +1075,7 @@ procedure TFRpMainFLCL.BuildControls;
     Result := TToolButton.Create(MainToolBar);
     Result.Parent := MainToolBar;
     Result.Style := tbsSeparator;
-    Result.Width := 8;
+    Result.Width := Scale96ToScreen(8);
   end;
 
 begin
@@ -1091,8 +1093,8 @@ begin
   MainToolBar := TToolBar.Create(Self);
   MainToolBar.Parent := Self;
   MainToolBar.Align := alTop;
-  MainToolBar.ButtonWidth := 26;
-  MainToolBar.ButtonHeight := 26;
+  MainToolBar.ButtonWidth := Scale96ToScreen(26);
+  MainToolBar.ButtonHeight := Scale96ToScreen(26);
   MainToolBar.AutoSize := True;
   MainToolBar.Flat := True;
   MainToolBar.ShowHint := True;
@@ -1148,7 +1150,7 @@ begin
   ComboScale := TComboBox.Create(MainToolBar);
   ComboScale.Parent := MainToolBar;
   ComboScale.Style := csDropDownList;
-  ComboScale.Width := 75;
+  ComboScale.Width := Scale96ToScreen(75);
   ComboScale.Items.Add('25%');
   ComboScale.Items.Add('50%');
   ComboScale.Items.Add('75%');
@@ -1207,18 +1209,18 @@ begin
   PLeft := TPanel.Create(Self);
   PLeft.Parent := Self;
   PLeft.Align := alLeft;
-  PLeft.Width := 235;
+  PLeft.Width := Scale96ToScreen(235);
   PLeft.BevelOuter := bvNone;
 
   FStructure := TFRpStructureLCL.Create(Self);
   FStructure.Parent := PLeft;
   FStructure.Align := alTop;
-  FStructure.Height := 280;
+  FStructure.Height := Scale96ToScreen(280);
 
   SplitterStruct := TSplitter.Create(PLeft);
   SplitterStruct.Parent := PLeft;
   SplitterStruct.Align := alTop;
-  SplitterStruct.Height := 5;
+  SplitterStruct.Height := Scale96ToScreen(5);
 
   FObjInsp := TFRpObjInspLCL.Create(Self);
   FObjInsp.Parent := PLeft;
@@ -1231,7 +1233,7 @@ begin
   SplitterMain := TSplitter.Create(Self);
   SplitterMain.Parent := Self;
   SplitterMain.Align := alLeft;
-  SplitterMain.Width := 5;
+  SplitterMain.Width := Scale96ToScreen(5);
 
   // 6. AI panel at the right: account card, model, schema and chat (the
   // chat tab of the VCL designer). alRight controls are ordered by Left.
@@ -1244,7 +1246,7 @@ begin
 
   SplitterAI := TSplitter.Create(Self);
   SplitterAI.Parent := Self;
-  SplitterAI.SetBounds(19000, 0, 5, 100);
+  SplitterAI.SetBounds(19000, 0, Scale96ToScreen(5), 100);
   SplitterAI.Align := alRight;
   SplitterAI.ResizeAnchor := akRight;
 
