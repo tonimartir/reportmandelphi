@@ -779,7 +779,9 @@ begin
  if Not Assigned(dinfoitem) then
   exit;
  AssertCanModify('Database connection');
- dinfoitem.ADOConnectionString:=EConnectionString.Text;
+ // The edit shows the password masked: editing another part saved the '*'
+ dinfoitem.ADOConnectionString:=RestoreADOPassword(EConnectionString.Text,
+  dinfoitem.ADOConnectionString);
 end;
 
 end.

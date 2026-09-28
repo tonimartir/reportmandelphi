@@ -590,6 +590,9 @@ procedure ConvertParamsFromDBXToIBX(base:TIBDatabase);
 procedure FillFieldsInfo(adata:TDataset;fieldnames,fieldtypes,fieldsizes:TStrings);
 function ExtractFieldNameEx(astring:String):string;
 function EncodeADOPassword(astring:String):String;
+// The connection string edited over the one of EncodeADOPassword: a masked
+// password (only '*') is the one of the original string
+function RestoreADOPassword(const AEdited,AOriginal:String):String;
 procedure GetDotNetDrivers(alist:TStrings);
 procedure GetDotNet2Drivers(alist:TStrings);
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -6251,6 +6254,52 @@ begin
   end;
   Result:=astring;
  end;
+end;
+
+// Start and length of the password in an ADO connection string (0 when none)
+procedure FindADOPassword(const astring:String;out astart,alength:integer);
+var
+ ustring:string;
+begin
+ ustring:=UpperCase(astring);
+ astart:=Pos('PASSWORD=',ustring);
+ if astart=0 then
+ begin
+  astart:=Pos('PASSWORD =',ustring);
+  if astart>0 then
+   astart:=astart+10;
+ end
+ else
+  astart:=astart+9;
+ alength:=0;
+ if astart>0 then
+  while (astart+alength<=Length(astring)) and (astring[astart+alength]<>';') do
+   inc(alength);
+end;
+
+function RestoreADOPassword(const AEdited,AOriginal:String):String;
+var
+ editstart,editlength,origstart,origlength,i:integer;
+ masked:boolean;
+begin
+ Result:=AEdited;
+ FindADOPassword(AEdited,editstart,editlength);
+ if (editstart=0) or (editlength=0) then
+  exit;
+ masked:=true;
+ for i:=editstart to editstart+editlength-1 do
+  if AEdited[i]<>'*' then
+  begin
+   masked:=false;
+   break;
+  end;
+ if not masked then
+  exit;
+ FindADOPassword(AOriginal,origstart,origlength);
+ if origstart=0 then
+  exit;
+ Result:=Copy(AEdited,1,editstart-1)+Copy(AOriginal,origstart,origlength)+
+  Copy(AEdited,editstart+editlength,Length(AEdited));
 end;
 
 procedure GetDotNetDrivers(alist:TStrings);
