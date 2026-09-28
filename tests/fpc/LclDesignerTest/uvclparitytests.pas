@@ -144,6 +144,7 @@ begin
     'Preferences menu with 4 commands');
   Check(Assigned(FindCaption(mf.HelpMenu, TranslateStr(60, 'Documentation'))),
     'Help > Documentation');
+  Check(Assigned(FindCaption(mf.HelpMenu, SRpSsysInfo)), 'Help > System information');
   Check(Assigned(mf.BtnAIChat) and (mf.BtnAIChat.Down = mf.ShowAIChat),
     'AI chat toolbar button following View > AI chat');
   mf.BtnAIChat.Click;

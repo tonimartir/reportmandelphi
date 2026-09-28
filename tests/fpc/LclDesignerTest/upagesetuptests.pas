@@ -51,6 +51,8 @@ type
     FEmbFileName: string;
     FEmbRelation: Integer;
     FPageAuthor: string;
+    // Only the embedded files change (no metadata nor PDF options)
+    FPageOnlyFiles: Boolean;
     FPageAddFile: Boolean;
     FPageDeleteFirst: Boolean;
     FPageModifyFirst: Boolean;
@@ -358,11 +360,14 @@ begin
     Expect(TFRpPrinterConfigLCL, PrinterConfigCancel);
     dia.BConfigureClick(dia.BConfigure);
   end;
-  dia.textDocAuthor.Text := FPageAuthor;
-  dia.textDocTitle.Text := 'Designer title';
-  dia.ComboBoxPDFConformance.ItemIndex := 1;
-  dia.CheckBoxPDFCompressed.Checked := not dia.CheckBoxPDFCompressed.Checked;
-  dia.TextXMPContent.Text := '<x:xmpmeta xmlns:x="adobe:ns:meta/">' + LineEnding + '</x:xmpmeta>';
+  if not FPageOnlyFiles then
+  begin
+    dia.textDocAuthor.Text := FPageAuthor;
+    dia.textDocTitle.Text := 'Designer title';
+    dia.ComboBoxPDFConformance.ItemIndex := 1;
+    dia.CheckBoxPDFCompressed.Checked := not dia.CheckBoxPDFCompressed.Checked;
+    dia.TextXMPContent.Text := '<x:xmpmeta xmlns:x="adobe:ns:meta/">' + LineEnding + '</x:xmpmeta>';
+  end;
   if FPageDeleteFirst then
     dia.DeleteEmbeddedFile(0);
   if FPageModifyFirst then
@@ -424,92 +429,28 @@ begin
   dia.BOK.Click;
 end;
 
-{ Undo value of the embedded files }
+{ Embedded files of a report as text (to compare them) and mime types }
+
+function FilesText(ARep: TRpBaseReport): string;
+var
+  i: Integer;
+begin
+  Result := IntToStr(Length(ARep.EmbeddedFiles));
+  for i := 0 to Length(ARep.EmbeddedFiles) - 1 do
+    Result := Result + '|' + ARep.EmbeddedFiles[i].FileName + ';' +
+      ARep.EmbeddedFiles[i].Description + ';' +
+      IntToStr(Ord(ARep.EmbeddedFiles[i].AFRelationShip)) + ';' +
+      StreamText(ARep.EmbeddedFiles[i].Stream);
+end;
 
 procedure TPageSetupTests.TestUndoValue;
-var
-  rep, rep2: TRpReport;
-  value, value2: string;
-  cue, cue2: TUndoCue;
-  op: TChangeObjectOperation;
-  raised: Boolean;
 begin
-  LogMsg('Phase 8: embedded files as an undo value');
-  rep := NewTestReport;
-  rep2 := NewTestReport;
-  cue := TUndoCue.Create(rep);
-  cue2 := TUndoCue.Create(rep2);
-  try
-    CheckStr('', EmbeddedFilesToUndoValue(rep), 'no files: empty value');
-    AddReportFile(rep, NewEmbeddedFile('a.xml', 'application/xml', 'First ' + #$C3#$B1, FDataContent));
-    AddReportFile(rep, NewEmbeddedFile('empty.bin', 'application/octet-stream', '', ''));
-    rep.EmbeddedFiles[1].AFRelationShip := PDF_AF_Supplement;
-    value := EmbeddedFilesToUndoValue(rep);
-    Check(Copy(value, 1, 14) = '[{"fileName":"', 'value starts with the file name: ' + Copy(value, 1, 30));
-    ApplyEmbeddedFilesUndoValue(rep2, value);
-    CheckInt(2, Length(rep2.EmbeddedFiles), 'files applied');
-    CheckStr('a.xml', rep2.EmbeddedFiles[0].FileName, 'file name');
-    CheckStr('application/xml', rep2.EmbeddedFiles[0].MimeType, 'mime type');
-    CheckStr('First ' + #$C3#$B1, rep2.EmbeddedFiles[0].Description, 'UTF-8 description');
-    Check(rep2.EmbeddedFiles[0].AFRelationShip = PDF_AF_Source, 'relationship');
-    CheckStr('2026-09-28T10:00:00Z', rep2.EmbeddedFiles[0].CreationDate, 'creation date');
-    CheckStr('2026-09-28T11:00:00Z', rep2.EmbeddedFiles[0].ModificationDate, 'modification date');
-    Check(StreamText(rep2.EmbeddedFiles[0].Stream) = FDataContent, 'binary content');
-    Check(Assigned(rep2.EmbeddedFiles[1].Stream) and (rep2.EmbeddedFiles[1].Stream.Size = 0),
-      'empty file keeps a stream');
-    Check(rep2.EmbeddedFiles[1].AFRelationShip = PDF_AF_Supplement, 'second relationship');
-    value2 := EmbeddedFilesToUndoValue(rep2);
-    CheckStr(value, value2, 'value round trip');
-    // Invalid values leave the report as it was
-    raised := False;
-    try
-      ApplyEmbeddedFilesUndoValue(rep2, '{"fileName":"x"}');
-    except
-      raised := True;
-    end;
-    Check(raised, 'an object is not a valid value');
-    raised := False;
-    try
-      ApplyEmbeddedFilesUndoValue(rep2, '[{"fileName":"x"},7]');
-    except
-      raised := True;
-    end;
-    Check(raised, 'a number is not an embedded file');
-    CheckStr(value, EmbeddedFilesToUndoValue(rep2), 'invalid values do not change the report');
-    ApplyEmbeddedFilesUndoValue(rep2, '');
-    CheckInt(0, Length(rep2.EmbeddedFiles), 'empty value removes the files');
-
-    // Through the undo engine, and in its JSON (BINCUE of the report XML)
-    op := TChangeObjectOperation.Create(otModify, cue.GetGroupId);
-    op.componentName := 'REPORT';
-    op.componentClass := 'TRPREPORT';
-    op.AddProperty(UndoEmbeddedFilesProperty, ptString, '', value);
-    op.AddProperty('DocAuthor', ptString, '', 'Undo author');
-    rep.DocAuthor := 'Undo author';
-    cue.AddOperation(op);
-    cue2.FromJSON(cue.ToJSON);
-    CheckStr(value, VarToStr(cue2.UndoOperations[0].properties[0].newValue),
-      'embedded files kept by the history JSON');
-    cue.Undo.Free;
-    CheckInt(0, Length(rep.EmbeddedFiles), 'undo removes the embedded files');
-    CheckStr('', rep.DocAuthor, 'undo restores the metadata');
-    cue.Redo.Free;
-    CheckStr(value, EmbeddedFilesToUndoValue(rep), 'redo restores the embedded files');
-    CheckStr(value, ReadUndoPropertyValue(rep, UndoEmbeddedFilesProperty),
-      'ReadUndoPropertyValue of the embedded files');
-  finally
-    rep.UndoCue := nil;
-    rep2.UndoCue := nil;
-    cue.Free;
-    cue2.Free;
-    rep.Free;
-    rep2.Free;
-  end;
+  LogMsg('Phase 8: mime types of the embedded files');
   Check(RpMimeTypeFromFileName('INVOICE.XML') = 'application/xml', 'mime of an XML file');
   Check(RpMimeTypeFromFileName('a.jpg') = 'image/jpeg', 'mime of a JPEG file');
   Check(RpMimeTypeFromFileName('a.png') = 'image/png', 'mime of a PNG file');
   Check(RpMimeTypeFromFileName('a.zzz') = 'application/octet-stream', 'mime of other files');
-  LogMsg('Embedded files undo value verified');
+  LogMsg('Mime types verified');
 end;
 
 { Embedded file dialog }
@@ -593,7 +534,7 @@ begin
     rep.PDFConformance := PDF_1_4;
     rep.PDFCompressed := True;
     AddReportFile(rep, NewEmbeddedFile('first.txt', 'text/plain', 'First', 'first content'));
-    value := EmbeddedFilesToUndoValue(rep);
+    value := FilesText(rep);
 
     // The dialog shows the report
     dia := TFRpPageSetupVCL.Create(nil);
@@ -608,14 +549,14 @@ begin
       Check(dia.EmbeddedFiles[0] <> rep.EmbeddedFiles[0], 'the dialog works on copies');
       // Cancel: nothing changes
       EditAll(dia);
-      CheckStr(value, EmbeddedFilesToUndoValue(rep), 'the report keeps its files until OK');
+      CheckStr(value, FilesText(rep), 'the report keeps its files until OK');
       CheckStr('A0', rep.DocAuthor, 'the report keeps its author until OK');
       dia.BCancelClick(dia.BCancel);
       Check(not dia.Accepted, 'Cancel does not accept');
     finally
       dia.Free;
     end;
-    CheckStr(value, EmbeddedFilesToUndoValue(rep), 'Cancel: embedded files unchanged');
+    CheckStr(value, FilesText(rep), 'Cancel: embedded files unchanged');
     CheckStr('A0', rep.DocAuthor, 'Cancel: author unchanged');
     Check(rep.PDFConformance = PDF_1_4, 'Cancel: conformance unchanged');
     Check(rep.PDFCompressed, 'Cancel: compression unchanged');
@@ -778,7 +719,9 @@ begin
     CheckInt(0, Length(mf.Report.EmbeddedFiles), 'Cancel: no embedded file');
     Check(not mf.Report.Modified, 'Cancel: report unmodified');
 
-    // OK: one operation with the metadata, PDF options and embedded files
+    // OK: one operation with the metadata and PDF options; the embedded
+    // files are not in the history (the Delphi and C# undo engines do not
+    // know them), they mark the report modified
     FPageAuthor := 'Designer author';
     FPageAccept := True;
     FPageOpenPrinters := True;
@@ -793,12 +736,12 @@ begin
     hasAuthor := False;
     for i := 0 to op.properties.Count - 1 do
     begin
-      if op.properties[i].propertyName = UndoEmbeddedFilesProperty then
+      if SameText(op.properties[i].propertyName, 'embeddedFiles') then
         hasFiles := True;
       if op.properties[i].propertyName = 'DocAuthor' then
         hasAuthor := True;
     end;
-    Check(hasFiles, 'the operation records the embedded files');
+    Check(not hasFiles, 'the embedded files are not in the operation');
     Check(hasAuthor, 'the operation records the author');
     Check(mf.Report.Modified, 'OK: report modified');
     CheckStr('Designer author', mf.Report.DocAuthor, 'OK: author');
@@ -806,22 +749,24 @@ begin
     Check(mf.Report.PDFConformance = PDF_A_3, 'OK: conformance');
     CheckInt(1, Length(mf.Report.EmbeddedFiles), 'OK: embedded file');
     Check(StreamText(mf.Report.EmbeddedFiles[0].Stream) = FDataContent, 'OK: embedded content');
-    filesAfter := EmbeddedFilesToUndoValue(mf.Report);
+    filesAfter := FilesText(mf.Report);
 
     // Undo and redo
     mf.DoUndo;
     CheckStr('', mf.Report.DocAuthor, 'undo: author');
     CheckStr('', mf.Report.DocTitle, 'undo: title');
     Check(mf.Report.PDFConformance = PDF_1_4, 'undo: conformance');
-    CheckInt(0, Length(mf.Report.EmbeddedFiles), 'undo: no embedded file');
-    Check(not mf.Report.Modified, 'undo reaches the unmodified state');
+    CheckStr(filesAfter, FilesText(mf.Report), 'undo keeps the embedded files');
+    Check(mf.Report.Modified, 'undo: still modified (the embedded file)');
     mf.DoRedo;
     CheckStr('Designer author', mf.Report.DocAuthor, 'redo: author');
     Check(mf.Report.PDFConformance = PDF_A_3, 'redo: conformance');
-    CheckStr(filesAfter, EmbeddedFilesToUndoValue(mf.Report), 'redo: embedded files');
+    CheckStr(filesAfter, FilesText(mf.Report), 'redo: embedded files');
     Check(mf.Report.Modified, 'redo: modified');
 
-    // Only the embedded files change: recorded and modified
+    // Only the embedded files change: not recorded, modified
+    TUndoCue(mf.Report.UndoCue).MarkClean;
+    FPageOnlyFiles := True;
     FPageAuthor := 'Designer author';
     FPageAddFile := False;
     FPageModifyFirst := True;
@@ -831,13 +776,11 @@ begin
     Expect(TFRpPageSetupVCL, PageSetupAction);
     mf.BtnPageSetup.Click;
     CheckAllHandled('Page setup, embedded file modified');
-    CheckInt(opCount + 2, cue.UndoOperations.Count, 'embedded file change recorded');
+    CheckInt(opCount + 1, cue.UndoOperations.Count, 'embedded file change not recorded');
     CheckStr('Only the description', mf.Report.EmbeddedFiles[0].Description,
       'modified description applied');
-    mf.DoUndo;
-    CheckStr('Invoice data', mf.Report.EmbeddedFiles[0].Description, 'undo: description');
-    mf.DoRedo;
-    CheckStr('Only the description', mf.Report.EmbeddedFiles[0].Description, 'redo: description');
+    Check(mf.Report.Modified, 'embedded file change: report modified');
+    FPageOnlyFiles := False;
 
     // Saved as XML: the files and the history go with the report
     mf.Report.StreamFormat := rpStreamXML;
@@ -845,21 +788,17 @@ begin
     Check(not mf.Report.Modified, 'saved: unmodified');
     mf.OpenReportFile(tmp);
     cue := TUndoCue(mf.Report.UndoCue);
-    CheckInt(opCount + 2, cue.UndoOperations.Count, 'history loaded with the report');
+    CheckInt(opCount + 1, cue.UndoOperations.Count, 'history loaded with the report');
     CheckInt(1, Length(mf.Report.EmbeddedFiles), 'loaded: embedded file');
     Check(StreamText(mf.Report.EmbeddedFiles[0].Stream) = FDataContent, 'loaded: content');
     CheckStr('Only the description', mf.Report.EmbeddedFiles[0].Description, 'loaded: description');
     CheckStr('Designer author', mf.Report.DocAuthor, 'loaded: author');
     mf.DoUndo;
-    CheckStr('Invoice data', mf.Report.EmbeddedFiles[0].Description,
-      'loaded history: undo of the description');
-    mf.DoUndo;
-    CheckInt(0, Length(mf.Report.EmbeddedFiles), 'loaded history: undo of the addition');
     CheckStr('', mf.Report.DocAuthor, 'loaded history: undo of the author');
-    mf.DoRedo;
-    mf.DoRedo;
     CheckStr('Only the description', mf.Report.EmbeddedFiles[0].Description,
-      'loaded history: redo');
+      'loaded history: the embedded file stays');
+    mf.DoRedo;
+    CheckStr('Designer author', mf.Report.DocAuthor, 'loaded history: redo');
 
     // Delete through the page setup
     FPageModifyFirst := False;
@@ -868,9 +807,7 @@ begin
     mf.BtnPageSetup.Click;
     CheckAllHandled('Page setup, embedded file deleted');
     CheckInt(0, Length(mf.Report.EmbeddedFiles), 'delete applied');
-    mf.DoUndo;
-    CheckInt(1, Length(mf.Report.EmbeddedFiles), 'undo of the delete');
-    Check(StreamText(mf.Report.EmbeddedFiles[0].Stream) = FDataContent, 'undo of the delete: content');
+    Check(mf.Report.Modified, 'delete: report modified');
     // No save question for the next report
     TUndoCue(mf.Report.UndoCue).MarkClean;
   finally

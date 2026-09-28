@@ -139,6 +139,7 @@ type
     MenuPrefTypeInfo: TMenuItem;
     MenuPrefPrintDialog: TMenuItem;
     MenuHelpDoc: TMenuItem;
+    MenuHelpSysInfo: TMenuItem;
     // Last used files (VCL Lastusedfiles), listed after File > Exit
     FLastUsedFiles: TRpLastUsedStrings;
     // Object inspector font (Preferences), applied when chosen
@@ -219,6 +220,7 @@ type
     procedure MenuViewScaleClick(Sender: TObject);
     procedure MenuHelpAboutClick(Sender: TObject);
     procedure MenuHelpDocClick(Sender: TObject);
+    procedure MenuHelpSysInfoClick(Sender: TObject);
     procedure MenuFilePrintSetupClick(Sender: TObject);
     procedure MenuReportAddClick(Sender: TObject);
     procedure MenuReportDeleteSectionClick(Sender: TObject);
@@ -440,7 +442,7 @@ uses
   // rpexpredlglcl: the dataset context of the assistants (ports of the
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
-  IniFiles, LCLIntf, PrintersDlgs, rpauthmanager, rpxmlstream, rpexpredlglcl,
+  IniFiles, LCLIntf, PrintersDlgs, md5, rpmdsysinfolcl, rpauthmanager, rpxmlstream, rpexpredlglcl,
   rpmdfnewreportwizardlcl,
   rplcldriver;
 
@@ -2740,7 +2742,7 @@ type
 
 const
   // Report properties changed by the page setup dialog (rppagesetuplcl).
-  // The embedded files are recorded apart (UndoEmbeddedFilesProperty).
+  // The embedded files are not in the undo history (see BtnPageSetupClick).
   PAGESETUP_PROPS: array[0..39] of TRpPageSetupProp = (
     (Name: 'LinesPerInch'; PropType: ptInteger),
     (Name: 'Copies'; PropType: ptInteger),
@@ -2784,6 +2786,27 @@ const
     (Name: 'DocXMPContent'; PropType: ptString)
   );
 
+// Name, type, description, relationship, dates and content (MD5) of the
+// embedded files: tells whether the page setup changed them
+function EmbeddedFilesSignature(AReport: TRpBaseReport): string;
+var
+  i: Integer;
+  efile: TEmbeddedFile;
+  digest: string;
+begin
+  Result := IntToStr(Length(AReport.EmbeddedFiles));
+  for i := 0 to Length(AReport.EmbeddedFiles) - 1 do
+  begin
+    efile := AReport.EmbeddedFiles[i];
+    digest := '';
+    if Assigned(efile.Stream) and (efile.Stream.Size > 0) then
+      digest := MD5Print(MD5Buffer(efile.Stream.Memory^, efile.Stream.Size));
+    Result := Result + #1 + efile.FileName + #2 + efile.MimeType + #2 +
+      efile.Description + #2 + IntToStr(Ord(efile.AFRelationShip)) + #2 +
+      efile.CreationDate + #2 + efile.ModificationDate + #2 + digest;
+  end;
+end;
+
 procedure TFRpMainFLCL.BtnPageSetupClick(Sender: TObject);
 var
   snapshot: array[0..High(PAGESETUP_PROPS)] of Variant;
@@ -2791,13 +2814,13 @@ var
   newValue: Variant;
   cue: TUndoCue;
   op: TChangeObjectOperation;
-  oldFiles, newFiles: string;
+  oldFiles: string;
 begin
   if not Assigned(FReport) then Exit;
   FReport.AssertCanModify('Page setup');
   for i := 0 to High(PAGESETUP_PROPS) do
     snapshot[i] := FReport.GetItemProperty(PAGESETUP_PROPS[i].Name);
-  oldFiles := EmbeddedFilesToUndoValue(FReport);
+  oldFiles := EmbeddedFilesSignature(FReport);
   if ExecutePageSetup(FReport) then
   begin
     // Same as rppagesetupvcl.SaveOptions: one otModify on REPORT with the
@@ -2814,14 +2837,15 @@ begin
         op.AddProperty(PAGESETUP_PROPS[i].Name, PAGESETUP_PROPS[i].PropType,
           snapshot[i], newValue);
     end;
-    // Files embedded in the PDF: the whole list, in the same operation
-    newFiles := EmbeddedFilesToUndoValue(FReport);
-    if newFiles <> oldFiles then
-      op.AddProperty(UndoEmbeddedFilesProperty, ptString, oldFiles, newFiles);
     if op.properties.Count > 0 then
       cue.AddOperation(op)
     else
       op.Free;
+    // The files embedded in the PDF are not recorded (the Delphi and C#
+    // undo engines have no such property, and the history travels with the
+    // design requests): the report is marked modified, as the VCL does
+    if EmbeddedFilesSignature(FReport) <> oldFiles then
+      cue.MarkExternalChange;
     if Assigned(FDesignerFrame) then
     begin
       FDesignerFrame.UpdateInterface(True);
@@ -3427,6 +3451,9 @@ begin
   MenuHelpDoc := NewMenuItem(MenuHelp, TranslateStr(60, 'Documentation'),
     TranslateStr(61, 'Display Report Manager Designer Documentation'), MenuHelpDocClick);
   MenuHelp.Insert(0, MenuHelpDoc);
+  // VCL ASysInfo
+  MenuHelpSysInfo := NewMenuItem(MenuHelp, SRpSsysInfo, SRpSsysInfoH, MenuHelpSysInfoClick);
+  MenuHelp.Insert(1, MenuHelpSysInfo);
 
   // Toolbar: AI chat (AChatIA), at the end as in the VCL
   idx := MainToolBar.ButtonCount;
@@ -3772,6 +3799,11 @@ begin
     OpenDocument(aurl)
   else
     OpenURL('https://reportman.es');
+end;
+
+procedure TFRpMainFLCL.MenuHelpSysInfoClick(Sender: TObject);
+begin
+  ShowSysInfo;
 end;
 
 procedure TFRpMainFLCL.MenuFilePrintSetupClick(Sender: TObject);
