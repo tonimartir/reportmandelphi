@@ -63,6 +63,14 @@ type
     procedure Execute; override;
   end;
 
+  // Status requests of a worker (RefreshStatusInBackground of the AI panel)
+  TStatusThread = class(TThread)
+  public
+    Rounds: Integer;
+  protected
+    procedure Execute; override;
+  end;
+
 var
   GHub: TFakeServer;
   GHubHandler: TFakeHub;
@@ -485,6 +493,92 @@ begin
   CheckContains('"isYearly":true', GHub.LastBody, 'GetCheckoutUrl body');
   CheckEquals('https://portal.example/', LAuth.GetPortalUrl, 'GetPortalUrl');
   CheckEquals(12, LAuth.GetCreditsConsumed, 'credits consumed (paid tier)');
+end;
+
+procedure TStatusThread.Execute;
+var
+  I: Integer;
+begin
+  for I := 1 to Rounds do
+    TRpAuthManager.Instance.CheckStatus;
+end;
+
+// The workers ask for the status while the main thread reads the session,
+// logs out and logs in again. The profile strings were written by both
+// threads without a lock and heaptrc found a leaked one (LclAIChatTest);
+// the answer to a request of a closed session brought back its profile.
+procedure ConcurrentSessionTest(AWatcher: TAuthWatcher);
+const
+  THREADS = 4;
+  ROUNDS = 25;
+var
+  LAuth: TRpAuthManager;
+  LThreads: array[0..THREADS - 1] of TStatusThread;
+  LProfile: TRpProfile;
+  LTier: TRpTier;
+  I, LLoops, LLogouts: Integer;
+  LRunning, LConsistent: Boolean;
+begin
+  Section('Session shared by the main thread and the status workers');
+  LAuth := TRpAuthManager.Instance;
+  Check(LAuth.IsLoggedIn, 'logged in before the workers start');
+  // The log listener of the test (a TStringList) is not thread safe
+  LAuth.UnregisterLogListener(AWatcher.OnLog);
+  try
+    for I := 0 to THREADS - 1 do
+    begin
+      LThreads[I] := TStatusThread.Create(True);
+      LThreads[I].Rounds := ROUNDS;
+      LThreads[I].Start;
+    end;
+    LLoops := 0;
+    LLogouts := 0;
+    LConsistent := True;
+    repeat
+      LProfile := LAuth.Profile;
+      if Length(LAuth.Tiers) > 0 then
+      begin
+        LTier := LAuth.Tiers[0];
+        if LTier.Name = '' then
+          LConsistent := False;
+      end;
+      // A profile is published whole: the email and the tier go together
+      if (LProfile.Email <> '') and (LProfile.TierName = '') then
+        LConsistent := False;
+      Inc(LLoops);
+      if LLoops mod 40 = 0 then
+      begin
+        LAuth.Logout;
+        Inc(LLogouts);
+        LAuth.LoginWithCode('ana@example.com', '123456');
+      end;
+      // The auth listeners run in this thread (TThread.Synchronize)
+      CheckSynchronize(1);
+      LRunning := False;
+      for I := 0 to THREADS - 1 do
+        if not LThreads[I].Finished then
+          LRunning := True;
+    until not LRunning;
+    for I := 0 to THREADS - 1 do
+    begin
+      LThreads[I].WaitFor;
+      LThreads[I].Free;
+    end;
+  finally
+    LAuth.RegisterLogListener(AWatcher.OnLog);
+  end;
+  CheckSynchronize(0);
+  Log(Format('  %d reads, %d logouts while %d workers asked %d times for the status',
+    [LLoops, LLogouts, THREADS, ROUNDS]));
+  Check(LConsistent, 'every profile and tier list read was whole');
+  if not LAuth.IsLoggedIn then
+    Check(LAuth.LoginWithCode('ana@example.com', '123456'), 'login after the workers');
+  // As AuthTests left it for the next tests
+  LAuth.CheckStatus;
+  Check(LAuth.IsLoggedIn, 'logged in after the workers');
+  CheckEquals('tok123', LAuth.Token, 'token after the workers');
+  CheckEquals('ana@example.com', LAuth.Profile.Email, 'profile after the workers');
+  CheckEquals('Pro+', LAuth.Profile.TierName, 'status applied after the workers');
 end;
 
 var
@@ -927,6 +1021,7 @@ begin
     TRpAuthManager.Instance.RegisterLogListener(LWatcher.OnLog);
     try
       AuthTests(LWatcher);
+      ConcurrentSessionTest(LWatcher);
       DataTests;
       AITests;
       UnauthorizedTest;

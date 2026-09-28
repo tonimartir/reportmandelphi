@@ -27,13 +27,13 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
-  SysUtils, Classes, rpjsonfpc, rpnetencodingfpc, DateUtils, rpsysutilsfpc,
+  SysUtils, Classes, SyncObjs, rpjsonfpc, rpnetencodingfpc, DateUtils, rpsysutilsfpc,
   rphttpclientfpc, rptypes, Generics.Collections;
 {$ELSE}
 {$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Messages,
 {$ENDIF}
-  SysUtils, Classes, System.JSON, System.NetEncoding, System.DateUtils,
+  SysUtils, Classes, System.SyncObjs, System.JSON, System.NetEncoding, System.DateUtils,
 {$IFDEF FIREDAC}
   System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
 {$ELSE}
@@ -95,6 +95,11 @@ type
   { TRpAuthManager }
   TRpAuthManager = class
   private
+    // The main thread and the workers (CheckStatus, the logins, rpdatahttp)
+    // share the session: FLock guards the fields below and the listener
+    // lists. Readers get copies, the answers are parsed into local values
+    // and then published, and no listener is called with the lock held.
+    FLock: TCriticalSection;
     FToken: string;
     FInstallId: string;
     FProfile: TRpProfile;
@@ -133,6 +138,22 @@ type
 
     class var FInstance: TRpAuthManager;
     constructor Create;
+    function GetToken: string;
+    procedure SetToken(const Value: string);
+    function GetInstallId: string;
+    procedure SetInstallId(const Value: string);
+    function GetProfile: TRpProfile;
+    function GetTiers: TArray<TRpTier>;
+    function GetIsLoggedIn: Boolean;
+    function GetAIEnabled: Boolean;
+    function GetAILanguage: string;
+    function GetOnLog: TRpAuthLog;
+    procedure SetOnLog(Value: TRpAuthLog);
+    function GetAuthListeners: TArray<TRpAuthEvent>;
+    // The profile and tiers of an answer, without touching the session
+    function ReadProfile(AProfileObj: TJSONObject; const ABase: TRpProfile): TRpProfile;
+    function ReadTiers(ATiersArray: TJSONArray): TArray<TRpTier>;
+    // Read and publish
     procedure ParseTiers(ATiersArray: TJSONArray);
     procedure ParseProfile(AProfileObj: TJSONObject);
     procedure NotifyListeners(ASuccess: Boolean);
@@ -212,14 +233,15 @@ type
     procedure UnregisterLogListener(AListener: TRpAuthLog);
     procedure Log(const AMsg: string);
 
-    property Token: string read FToken;
-    property InstallId: string read FInstallId write FInstallId;
-    property Profile: TRpProfile read FProfile;
-    property Tiers: TArray<TRpTier> read FTiers;
-    property IsLoggedIn: Boolean read FIsLoggedIn;
-    property AIEnabled: Boolean read FAIEnabled write SetAIEnabled;
-    property AILanguage: string read FAILanguage write SetAILanguage;
-    property OnLog: TRpAuthLog read FOnLog write FOnLog;
+    // Copies of the current values (any thread)
+    property Token: string read GetToken;
+    property InstallId: string read GetInstallId write SetInstallId;
+    property Profile: TRpProfile read GetProfile;
+    property Tiers: TArray<TRpTier> read GetTiers;
+    property IsLoggedIn: Boolean read GetIsLoggedIn;
+    property AIEnabled: Boolean read GetAIEnabled write SetAIEnabled;
+    property AILanguage: string read GetAILanguage write SetAILanguage;
+    property OnLog: TRpAuthLog read GetOnLog write SetOnLog;
   end;
 
 implementation
@@ -260,6 +282,7 @@ end;
 constructor TRpAuthManager.Create;
 begin
   inherited Create;
+  FLock := TCriticalSection.Create;
   FIsLoggedIn := False;
   FAIEnabled := True;
   FAILanguage := ResolveDefaultAILanguage;
@@ -359,7 +382,128 @@ begin
 {$ENDIF}
   FLogListeners.Free;
   FAuthListeners.Free;
+  FLock.Free;
   inherited Destroy;
+end;
+
+function TRpAuthManager.GetToken: string;
+begin
+  FLock.Enter;
+  try
+    Result := FToken;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpAuthManager.SetToken(const Value: string);
+begin
+  FLock.Enter;
+  try
+    FToken := Value;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetInstallId: string;
+begin
+  FLock.Enter;
+  try
+    Result := FInstallId;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpAuthManager.SetInstallId(const Value: string);
+begin
+  FLock.Enter;
+  try
+    FInstallId := Value;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetProfile: TRpProfile;
+begin
+  FLock.Enter;
+  try
+    Result := FProfile;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetTiers: TArray<TRpTier>;
+begin
+  FLock.Enter;
+  try
+    Result := Copy(FTiers);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetIsLoggedIn: Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FIsLoggedIn;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetAIEnabled: Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FAIEnabled;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetAILanguage: string;
+begin
+  FLock.Enter;
+  try
+    Result := FAILanguage;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetOnLog: TRpAuthLog;
+begin
+  FLock.Enter;
+  try
+    Result := FOnLog;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpAuthManager.SetOnLog(Value: TRpAuthLog);
+begin
+  FLock.Enter;
+  try
+    FOnLog := Value;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.GetAuthListeners: TArray<TRpAuthEvent>;
+begin
+  FLock.Enter;
+  try
+    Result := FAuthListeners.ToArray;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 {$IFDEF MSWINDOWS}
@@ -387,13 +531,23 @@ end;
 procedure TRpAuthManager.Log(const AMsg: string);
 var
   LListener: TRpAuthLog;
+  LOnLog: TRpAuthLog;
+  LListeners: TArray<TRpAuthLog>;
 begin
 {$IFDEF MSWINDOWS}
   OutputDebugString(PChar('RpAuth: ' + AMsg));
 {$ENDIF}
-  if Assigned(FOnLog) then
-    FOnLog(AMsg);
-  for LListener in FLogListeners do
+  // The workers log while the main thread registers listeners: a copy
+  FLock.Enter;
+  try
+    LOnLog := FOnLog;
+    LListeners := FLogListeners.ToArray;
+  finally
+    FLock.Leave;
+  end;
+  if Assigned(LOnLog) then
+    LOnLog(AMsg);
+  for LListener in LListeners do
     LListener(AMsg);
 end;
 
@@ -404,10 +558,12 @@ begin
   Result := FInstance;
 end;
 
-procedure TRpAuthManager.ParseProfile(AProfileObj: TJSONObject);
+function TRpAuthManager.ReadProfile(AProfileObj: TJSONObject;
+  const ABase: TRpProfile): TRpProfile;
 var
   LValue: TJSONValue;
 begin
+  Result := ABase;
   if AProfileObj = nil then Exit;
   Log('Parsing User Profile...');
   
@@ -416,37 +572,37 @@ begin
   if LValue = nil then LValue := AProfileObj.GetValue('userid');
   if LValue <> nil then 
   begin
-    FProfile.UserId := StrToInt64Def(LValue.Value, 0);
-    Log('UserId: ' + IntToStr(FProfile.UserId));
+    Result.UserId := StrToInt64Def(LValue.Value, 0);
+    Log('UserId: ' + IntToStr(Result.UserId));
   end;
 
   LValue := AProfileObj.GetValue('email');
   if LValue = nil then LValue := AProfileObj.GetValue('Email');
   if LValue = nil then LValue := AProfileObj.GetValue('email'); // redundant but consistent
-  if LValue <> nil then Self.FProfile.Email := LValue.Value;
+  if LValue <> nil then Result.Email := LValue.Value;
 
   LValue := AProfileObj.GetValue('userName');
   if LValue = nil then LValue := AProfileObj.GetValue('UserName');
   if LValue = nil then LValue := AProfileObj.GetValue('username');
-  if LValue <> nil then Self.FProfile.UserName := LValue.Value;
+  if LValue <> nil then Result.UserName := LValue.Value;
 
   LValue := AProfileObj.GetValue('profileImageUrl');
   if LValue = nil then LValue := AProfileObj.GetValue('ProfileImageUrl');
   if LValue = nil then LValue := AProfileObj.GetValue('profileimageurl');
-  if LValue <> nil then Self.FProfile.AvatarUrl := LValue.Value;
+  if LValue <> nil then Result.AvatarUrl := LValue.Value;
 
   LValue := AProfileObj.GetValue('accountType');
   if LValue = nil then LValue := AProfileObj.GetValue('AccountType');
   if LValue = nil then LValue := AProfileObj.GetValue('accounttype');
-  if LValue <> nil then Self.FProfile.AccountType := StrToIntDef(LValue.Value, 0);
+  if LValue <> nil then Result.AccountType := StrToIntDef(LValue.Value, 0);
 
   LValue := AProfileObj.GetValue('tierId');
   if LValue = nil then LValue := AProfileObj.GetValue('TierId');
   if LValue = nil then LValue := AProfileObj.GetValue('tierid');
   if LValue <> nil then 
   begin
-    FProfile.TierId := StrToInt64Def(LValue.Value, 1);
-    Log('TierId: ' + IntToStr(FProfile.TierId));
+    Result.TierId := StrToInt64Def(LValue.Value, 1);
+    Log('TierId: ' + IntToStr(Result.TierId));
   end;
 
   LValue := AProfileObj.GetValue('tierName');
@@ -454,86 +610,109 @@ begin
   if LValue = nil then LValue := AProfileObj.GetValue('tiername');
   if LValue <> nil then 
   begin
-    FProfile.TierName := LValue.Value;
-    Log('TierName: ' + FProfile.TierName);
+    Result.TierName := LValue.Value;
+    Log('TierName: ' + Result.TierName);
   end;
 
   LValue := AProfileObj.GetValue('dailyMax');
   if LValue = nil then LValue := AProfileObj.GetValue('DailyMax');
   if LValue = nil then LValue := AProfileObj.GetValue('dailymax');
-  if LValue <> nil then Self.FProfile.DailyMax := StrToInt64Def(LValue.Value, 0);
+  if LValue <> nil then Result.DailyMax := StrToInt64Def(LValue.Value, 0);
 
   LValue := AProfileObj.GetValue('dailyConsumed');
   if LValue = nil then LValue := AProfileObj.GetValue('DailyConsumed');
   if LValue = nil then LValue := AProfileObj.GetValue('dailyconsumed');
-  if LValue <> nil then Self.FProfile.DailyConsumed := StrToInt64Def(LValue.Value, 0);
+  if LValue <> nil then Result.DailyConsumed := StrToInt64Def(LValue.Value, 0);
 
   LValue := AProfileObj.GetValue('freeInitial');
   if LValue = nil then LValue := AProfileObj.GetValue('FreeInitial');
   if LValue = nil then LValue := AProfileObj.GetValue('freeinitial');
-  if LValue <> nil then Self.FProfile.FreeInitial := StrToInt64Def(LValue.Value, 0);
+  if LValue <> nil then Result.FreeInitial := StrToInt64Def(LValue.Value, 0);
 
   LValue := AProfileObj.GetValue('freeRemaining');
   if LValue = nil then LValue := AProfileObj.GetValue('FreeRemaining');
   if LValue = nil then LValue := AProfileObj.GetValue('freeremaining');
-  if LValue <> nil then Self.FProfile.FreeRemaining := StrToInt64Def(LValue.Value, 0);
+  if LValue <> nil then Result.FreeRemaining := StrToInt64Def(LValue.Value, 0);
 
   LValue := AProfileObj.GetValue('serverDay');
   if LValue = nil then LValue := AProfileObj.GetValue('ServerDay');
   if LValue = nil then LValue := AProfileObj.GetValue('serverday');
   // Simple ISO date parsing for Delphi
-  if LValue <> nil then Self.FProfile.ServerDay := ISO8601ToDate(LValue.Value);
+  if LValue <> nil then Result.ServerDay := ISO8601ToDate(LValue.Value);
 
   LValue := AProfileObj.GetValue('credits');
   if LValue = nil then LValue := AProfileObj.GetValue('Credits');
-  if LValue <> nil then Self.FProfile.Credits := StrToInt64Def(LValue.Value, 0);
+  if LValue <> nil then Result.Credits := StrToInt64Def(LValue.Value, 0);
 
-  Log('Profile Parsed: ' + Self.FProfile.Email + ' Tier: ' + Self.FProfile.TierName +
-    ' (Daily: ' + IntToStr(FProfile.DailyConsumed) + '/' + IntToStr(FProfile.DailyMax) +
-    ', Free: ' + IntToStr(FProfile.FreeRemaining) + '/' + IntToStr(FProfile.FreeInitial) + ')');
+  Log('Profile Parsed: ' + Result.Email + ' Tier: ' + Result.TierName +
+    ' (Daily: ' + IntToStr(Result.DailyConsumed) + '/' + IntToStr(Result.DailyMax) +
+    ', Free: ' + IntToStr(Result.FreeRemaining) + '/' + IntToStr(Result.FreeInitial) + ')');
+end;
+
+// The fields of the answer over the current profile, then published
+procedure TRpAuthManager.ParseProfile(AProfileObj: TJSONObject);
+var
+  LProfile: TRpProfile;
+begin
+  if AProfileObj = nil then Exit;
+  LProfile := ReadProfile(AProfileObj, GetProfile);
+  FLock.Enter;
+  try
+    FProfile := LProfile;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+// The credits are computed from one copy of the profile (a worker may
+// publish a new one meanwhile)
+function ProfileUsesFreeCredits(const AProfile: TRpProfile): Boolean;
+begin
+  Result := (AProfile.Email = '') or (AProfile.TierId <= 2);
+end;
+
+function ProfileCreditsConsumed(const AProfile: TRpProfile): Int64;
+begin
+  if ProfileUsesFreeCredits(AProfile) then
+    Result := AProfile.FreeInitial - AProfile.FreeRemaining
+  else
+    Result := AProfile.DailyConsumed;
+end;
+
+function ProfileCreditsMax(const AProfile: TRpProfile): Int64;
+begin
+  if ProfileUsesFreeCredits(AProfile) then
+    Result := AProfile.FreeInitial
+  else
+    Result := AProfile.DailyMax;
 end;
 
 function TRpAuthManager.UsesFreeCredits: Boolean;
 begin
-  Result := (FProfile.Email = '') or (FProfile.TierId <= 2);
+  Result := ProfileUsesFreeCredits(GetProfile);
 end;
 
 function TRpAuthManager.GetCreditsRatio: Double;
 var
+  LProfile: TRpProfile;
   LMax: Int64;
-  LConsumed: Int64;
 begin
-  if UsesFreeCredits then
-  begin
-    LMax := FProfile.FreeInitial;
-    LConsumed := FProfile.FreeInitial - FProfile.FreeRemaining;
-  end
-  else
-  begin
-    LMax := FProfile.DailyMax;
-    LConsumed := FProfile.DailyConsumed;
-  end;
-
+  LProfile := GetProfile;
+  LMax := ProfileCreditsMax(LProfile);
   if LMax > 0 then
-    Result := LConsumed / LMax
+    Result := ProfileCreditsConsumed(LProfile) / LMax
   else
     Result := 0.0;
 end;
 
 function TRpAuthManager.GetCreditsConsumed: Int64;
 begin
-  if UsesFreeCredits then
-    Result := FProfile.FreeInitial - FProfile.FreeRemaining
-  else
-    Result := FProfile.DailyConsumed;
+  Result := ProfileCreditsConsumed(GetProfile);
 end;
 
 function TRpAuthManager.GetCreditsMax: Int64;
 begin
-  if UsesFreeCredits then
-    Result := FProfile.FreeInitial
-  else
-    Result := FProfile.DailyMax;
+  Result := ProfileCreditsMax(GetProfile);
 end;
 
 procedure TRpAuthManager.CheckStatus;
@@ -545,16 +724,22 @@ var
   LValue: TJSONValue;
   LRequestStartedAt: TDateTime;
   LAvatarStartedAt: TDateTime;
+  LToken, LInstallId, LAvatarUrl: string;
+  LProfile: TRpProfile;
+  LTiers: TArray<TRpTier>;
+  LHasProfile, LHasTiers, LApplied: Boolean;
 begin
-  if FInstallId = '' then Exit;
+  // Usually in a worker thread: the session of the request
+  LToken := GetToken;
+  LInstallId := GetInstallId;
+  if LInstallId = '' then Exit;
   LRequestStartedAt:=Now;
   LClient := TNetHTTPClient.Create(nil);
   try
     ConfigureDebugHttpClient(LClient);
-    if FToken <> '' then
-      LClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
-    if FInstallId <> '' then
-      LClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+    if LToken <> '' then
+      LClient.CustomHeaders['Authorization'] := 'Bearer ' + LToken;
+    LClient.CustomHeaders['X-Reportman-WebInstallId'] := LInstallId;
     try
       // Use lowercase URL and cast nil to TStream to avoid ambiguous overload
       LRequestStartedAt := Now;
@@ -569,24 +754,48 @@ begin
         try
           LValue := LRoot.GetValue('profile');
           if LValue = nil then LValue := LRoot.GetValue('Profile');
-          if (LValue <> nil) and (LValue is TJSONObject) then
-            ParseProfile(LValue as TJSONObject);
-          
+          LHasProfile := (LValue <> nil) and (LValue is TJSONObject);
+          if LHasProfile then
+            LProfile := ReadProfile(LValue as TJSONObject, GetProfile);
+
           LValue := LRoot.GetValue('tiers');
           if LValue = nil then LValue := LRoot.GetValue('Tiers');
-          if (LValue <> nil) and (LValue is TJSONArray) then
-            ParseTiers(LValue as TJSONArray);
+          LHasTiers := (LValue <> nil) and (LValue is TJSONArray);
+          if LHasTiers then
+            LTiers := ReadTiers(LValue as TJSONArray);
+
+          // The answer belongs to the session of the request: after a logout
+          // or another login meanwhile it would bring back an old profile
+          FLock.Enter;
+          try
+            LApplied := FToken = LToken;
+            if LApplied then
+            begin
+              if LHasProfile then
+                FProfile := LProfile;
+              if LHasTiers then
+                FTiers := LTiers;
+            end;
+            LAvatarUrl := FProfile.AvatarUrl;
+          finally
+            FLock.Leave;
+          end;
+          if not LApplied then
+          begin
+            Log('CheckStatus: the session changed during the request, its answer is not applied.');
+            Exit;
+          end;
           SaveConfig;
-            
+
           NotifyListeners(True);
-          
+
           // Refresh Avatar if changed
-          if FProfile.AvatarUrl <> '' then
+          if LAvatarUrl <> '' then
           begin
              LPicture := TMemoryStream.Create;
              try
                LAvatarStartedAt := Now;
-               LResponse := LClient.Get(FProfile.AvatarUrl);
+               LResponse := LClient.Get(LAvatarUrl);
                Log('CheckStatus Avatar GET: Response Status ' + IntToStr(LResponse.StatusCode) +
                  ' (' + IntToStr(MilliSecondsBetween(Now, LAvatarStartedAt)) + ' ms)');
                if LResponse.StatusCode = 200 then
@@ -604,13 +813,16 @@ begin
       end
       else if LResponse.StatusCode = 401 then
       begin
-        if FToken <> '' then
+        if LToken = '' then
+          Log('CheckStatus: Guest status not available (401).')
+        else
+        if GetToken = LToken then
         begin
           Log('CheckStatus: Unauthorized (401). Token expired or invalid. Logging out.');
           Logout;
         end
         else
-          Log('CheckStatus: Guest status not available (401).');
+          Log('CheckStatus: Unauthorized (401) with a token no longer in use, ignored.');
       end
       else
       begin
@@ -684,64 +896,81 @@ end;
 procedure TRpAuthManager.NotifyListeners(ASuccess: Boolean);
 var
   LListener: TRpAuthEvent;
+  LListeners: TArray<TRpAuthEvent>;
 begin
-  for LListener in FAuthListeners do
+  LListeners := GetAuthListeners;
+  for LListener in LListeners do
     DispatchAuthListener(LListener, ASuccess);
 end;
 
 procedure TRpAuthManager.ParseTiers(ATiersArray: TJSONArray);
 var
+  LTiers: TArray<TRpTier>;
+begin
+  if ATiersArray = nil then Exit;
+  LTiers := ReadTiers(ATiersArray);
+  FLock.Enter;
+  try
+    FTiers := LTiers;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpAuthManager.ReadTiers(ATiersArray: TJSONArray): TArray<TRpTier>;
+var
   I: Integer;
   TierObj: TJSONObject;
   LValue: TJSONValue;
 begin
+  Result := nil;
   if ATiersArray = nil then Exit;
   Log('Parsing Tiers (' + IntToStr(ATiersArray.Count) + ' found)...');
-  SetLength(Self.FTiers, ATiersArray.Count);
+  SetLength(Result, ATiersArray.Count);
   for I := 0 to ATiersArray.Count - 1 do
   begin
     TierObj := ATiersArray.Items[I] as TJSONObject;
     
     LValue := TierObj.GetValue('id');
     if LValue = nil then LValue := TierObj.GetValue('Id');
-    if LValue <> nil then Self.FTiers[I].Id := StrToInt64Def(LValue.Value, 0);
+    if LValue <> nil then Result[I].Id := StrToInt64Def(LValue.Value, 0);
 
     LValue := TierObj.GetValue('name');
     if LValue = nil then LValue := TierObj.GetValue('Name');
-    if LValue <> nil then Self.FTiers[I].Name := LValue.Value;
+    if LValue <> nil then Result[I].Name := LValue.Value;
 
     LValue := TierObj.GetValue('monthlyPrice');
     if LValue = nil then LValue := TierObj.GetValue('MonthlyPrice');
     // JSON numbers always use '.' as decimal separator, whatever the locale
-    if LValue <> nil then Self.FTiers[I].MonthlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
+    if LValue <> nil then Result[I].MonthlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
 
     LValue := TierObj.GetValue('yearlyPrice');
     if LValue = nil then LValue := TierObj.GetValue('YearlyPrice');
-    if LValue <> nil then Self.FTiers[I].YearlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
+    if LValue <> nil then Result[I].YearlyPrice := StrToFloatDef(LValue.Value, 0, TFormatSettings.Invariant);
 
     LValue := TierObj.GetValue('maxCreditsDay');
     if LValue = nil then LValue := TierObj.GetValue('MaxCreditsDay');
-    if LValue <> nil then Self.FTiers[I].MaxCreditsDay := StrToInt64Def(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxCreditsDay := StrToInt64Def(LValue.Value, 0);
 
     LValue := TierObj.GetValue('maxFreeCredits');
     if LValue = nil then LValue := TierObj.GetValue('MaxFreeCredits');
-    if LValue <> nil then Self.FTiers[I].MaxFreeCredits := StrToInt64Def(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxFreeCredits := StrToInt64Def(LValue.Value, 0);
 
     LValue := TierObj.GetValue('maxConnections');
     if LValue = nil then LValue := TierObj.GetValue('MaxConnections');
-    if LValue <> nil then Self.FTiers[I].MaxConnections := StrToIntDef(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxConnections := StrToIntDef(LValue.Value, 0);
 
     LValue := TierObj.GetValue('maxTables');
     if LValue = nil then LValue := TierObj.GetValue('MaxTables');
-    if LValue <> nil then Self.FTiers[I].MaxTables := StrToIntDef(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxTables := StrToIntDef(LValue.Value, 0);
 
     LValue := TierObj.GetValue('maxColumnsPerTable');
     if LValue = nil then LValue := TierObj.GetValue('MaxColumnsPerTable');
-    if LValue <> nil then Self.FTiers[I].MaxColumnsPerTable := StrToIntDef(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxColumnsPerTable := StrToIntDef(LValue.Value, 0);
 
     LValue := TierObj.GetValue('maxKpis');
     if LValue = nil then LValue := TierObj.GetValue('MaxKpis');
-    if LValue <> nil then Self.FTiers[I].MaxKpis := StrToIntDef(LValue.Value, 0);
+    if LValue <> nil then Result[I].MaxKpis := StrToIntDef(LValue.Value, 0);
   end;
 end;
 
@@ -762,8 +991,8 @@ begin
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
-      if FInstallId <> '' then
-        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      if GetInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
       try
         Response := HttpClient.Post(HUB_API_URL + '/api/LoginResend/send', SourceStream, TStream(nil));
         Log('Hub API Response Code (Resend): ' + IntToStr(Response.StatusCode));
@@ -803,13 +1032,13 @@ begin
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('email', AEmail);
     RequestBody.AddPair('emailCode', ACode);
-    RequestBody.AddPair('installId', FInstallId);
+    RequestBody.AddPair('installId', GetInstallId);
     
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
-      if FInstallId <> '' then
-        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      if GetInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
       Response := HttpClient.Post(HUB_API_URL + '/api/Login/email', SourceStream, TStream(nil));
       if Response.StatusCode = 200 then
       begin
@@ -819,7 +1048,7 @@ begin
           LValue := ResponseJson.GetValue('token');
           if LValue = nil then LValue := ResponseJson.GetValue('Token');
           if LValue <> nil then
-            FToken := LValue.Value;
+            SetToken(LValue.Value);
 
           LValue := ResponseJson.GetValue('profile');
           if LValue = nil then LValue := ResponseJson.GetValue('Profile');
@@ -831,8 +1060,8 @@ begin
           if (LValue <> nil) and (LValue is TJSONArray) then
             ParseTiers(LValue as TJSONArray);
 
-          SetIsLoggedIn(FToken <> '');
-          Result := FToken <> '';
+          SetIsLoggedIn(GetToken <> '');
+          Result := GetToken <> '';
           if Result then SaveConfig;
         finally
           ResponseJson.Free;
@@ -854,14 +1083,19 @@ end;
 
 procedure TRpAuthManager.Logout;
 begin
-  FToken := '';
-  FProfile.UserId := 0;
-  FProfile.Email := '';
-  FProfile.UserName := '';
-  FProfile.AvatarUrl := '';
-  FProfile.AccountType := 0;
-  FProfile.Credits := 0;
-  FTiers := [];
+  FLock.Enter;
+  try
+    FToken := '';
+    FProfile.UserId := 0;
+    FProfile.Email := '';
+    FProfile.UserName := '';
+    FProfile.AvatarUrl := '';
+    FProfile.AccountType := 0;
+    FProfile.Credits := 0;
+    FTiers := [];
+  finally
+    FLock.Leave;
+  end;
   ClearConfig;
   SetIsLoggedIn(False);
 end;
@@ -869,18 +1103,29 @@ end;
 procedure TRpAuthManager.SetIsLoggedIn(Value: Boolean);
 var
   LListener: TRpAuthEvent;
+  LListeners: TArray<TRpAuthEvent>;
 begin
-  FIsLoggedIn := Value;
-  for LListener in FAuthListeners do
-    DispatchAuthListener(LListener, FIsLoggedIn);
+  FLock.Enter;
+  try
+    FIsLoggedIn := Value;
+  finally
+    FLock.Leave;
+  end;
+  LListeners := GetAuthListeners;
+  for LListener in LListeners do
+    DispatchAuthListener(LListener, Value);
 end;
 
 procedure TRpAuthManager.SetAIEnabled(Value: Boolean);
 begin
-  if FAIEnabled = Value then
-    Exit;
-
-  FAIEnabled := Value;
+  FLock.Enter;
+  try
+    if FAIEnabled = Value then
+      Exit;
+    FAIEnabled := Value;
+  finally
+    FLock.Leave;
+  end;
   SaveConfig;
 end;
 
@@ -889,10 +1134,14 @@ var
   LNormalized: string;
 begin
   LNormalized := NormalizeAILanguageValue(Value);
-  if SameText(FAILanguage, LNormalized) then
-    Exit;
-
-  FAILanguage := LNormalized;
+  FLock.Enter;
+  try
+    if SameText(FAILanguage, LNormalized) then
+      Exit;
+    FAILanguage := LNormalized;
+  finally
+    FLock.Leave;
+  end;
   SaveConfig;
 end;
 
@@ -969,24 +1218,44 @@ end;
 
 procedure TRpAuthManager.RegisterAuthListener(AListener: TRpAuthEvent);
 begin
-  if FAuthListeners.IndexOf(AListener) < 0 then
-    FAuthListeners.Add(AListener);
+  FLock.Enter;
+  try
+    if FAuthListeners.IndexOf(AListener) < 0 then
+      FAuthListeners.Add(AListener);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRpAuthManager.UnregisterAuthListener(AListener: TRpAuthEvent);
 begin
-  FAuthListeners.Remove(AListener);
+  FLock.Enter;
+  try
+    FAuthListeners.Remove(AListener);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRpAuthManager.RegisterLogListener(AListener: TRpAuthLog);
 begin
-  if FLogListeners.IndexOf(AListener) < 0 then
-    FLogListeners.Add(AListener);
+  FLock.Enter;
+  try
+    if FLogListeners.IndexOf(AListener) < 0 then
+      FLogListeners.Add(AListener);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRpAuthManager.UnregisterLogListener(AListener: TRpAuthLog);
 begin
-  FLogListeners.Remove(AListener);
+  FLock.Enter;
+  try
+    FLogListeners.Remove(AListener);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 {$IF DEFINED(FPC) OR DEFINED(MSWINDOWS)}
@@ -1293,14 +1562,14 @@ begin
     try
       LRequest.AddPair('code', ACode);
       LRequest.AddPair('redirectUri', ARedirectUri);
-      LRequest.AddPair('installId', FInstallId);
+      LRequest.AddPair('installId', GetInstallId);
       LSourceStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
       try
         LHttpClient.ContentType := 'application/json';
         Log('Step 1: Sending Google Authorization Code to Hub API...');
         try
-          if FInstallId <> '' then
-            LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+          if GetInstallId <> '' then
+            LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
           // All API calls use the global HUB_API_URL from rptypes
           LResponse := LHttpClient.Post(HUB_API_URL + '/api/Login/google', LSourceStream, TStream(nil));
           Log('Hub API Response Code: ' + IntToStr(LResponse.StatusCode));
@@ -1313,7 +1582,7 @@ begin
               LValue := LResponseJson.GetValue('token');
               if LValue = nil then LValue := LResponseJson.GetValue('Token');
               if LValue <> nil then
-                FToken := LValue.Value;
+                SetToken(LValue.Value);
 
               LValue := LResponseJson.GetValue('profile');
               if LValue = nil then LValue := LResponseJson.GetValue('Profile');
@@ -1325,9 +1594,9 @@ begin
               if (LValue <> nil) and (LValue is TJSONArray) then
                 ParseTiers(LValue as TJSONArray);
 
-              SetIsLoggedIn(FToken <> '');
+              SetIsLoggedIn(GetToken <> '');
               CheckStatus;
-              Result := FToken <> '';
+              Result := GetToken <> '';
               if Result then SaveConfig;
             finally
               LResponseJson.Free;
@@ -1382,8 +1651,8 @@ begin
       TEncoding.UTF8);
     try
       LHttpClient.ContentType := 'application/x-www-form-urlencoded';
-      if FInstallId <> '' then
-        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      if GetInstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
       LResponse := LHttpClient.Post('https://login.microsoftonline.com/common/oauth2/v2.0/token', LSourceStream);
       if LResponse.StatusCode = 200 then
       begin
@@ -1407,12 +1676,12 @@ begin
     LRequest := TJSONObject.Create;
     try
       LRequest.AddPair('microsoftCode', LAccessToken);
-      LRequest.AddPair('installId', FInstallId);
+      LRequest.AddPair('installId', GetInstallId);
       LSourceStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
       try
         LHttpClient.ContentType := 'application/json';
-        if FInstallId <> '' then
-          LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+        if GetInstallId <> '' then
+          LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
         Log('Step 2: Sending Microsoft Access Token to Hub API...');
         try
           LResponse := LHttpClient.Post(HUB_API_URL + '/api/Login/microsoft', LSourceStream, TStream(nil));
@@ -1425,7 +1694,7 @@ begin
             try
               LValue := LResponseJson.GetValue('token');
               if LValue = nil then LValue := LResponseJson.GetValue('Token');
-              if LValue <> nil then FToken := LValue.Value;
+              if LValue <> nil then SetToken(LValue.Value);
 
               LValue := LResponseJson.GetValue('profile');
               if LValue = nil then LValue := LResponseJson.GetValue('Profile');
@@ -1437,9 +1706,9 @@ begin
               if (LValue <> nil) and (LValue is TJSONArray) then
                 ParseTiers(LValue as TJSONArray);
 
-              SetIsLoggedIn(FToken <> '');
+              SetIsLoggedIn(GetToken <> '');
               CheckStatus;
-              Result := FToken <> '';
+              Result := GetToken <> '';
               if Result then SaveConfig;
             finally
               LResponseJson.Free;
@@ -1580,10 +1849,10 @@ begin
   try
     ConfigureDebugHttpClient(HttpClient);
     try
-      if FToken <> '' then
-        HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
-      if FInstallId <> '' then
-        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      if GetToken <> '' then
+        HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + GetToken;
+      if GetInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
       Response := HttpClient.Get(HUB_API_URL + '/api/Tiers');
       Log('Hub API Response Code (Tiers): ' + IntToStr(Response.StatusCode));
       if Response.StatusCode = 200 then
@@ -1622,16 +1891,16 @@ begin
   HttpClient := TNetHTTPClient.Create(nil);
   try
     ConfigureDebugHttpClient(HttpClient);
-    if FToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+    if GetToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + GetToken;
     RequestBody := TJSONObject.Create;
     RequestBody.AddPair('tierId', TJSONNumber.Create(ATierId));
     RequestBody.AddPair('isYearly', TJSONBool.Create(AIsYearly));
-    RequestBody.AddPair('userEmail', Self.FProfile.Email);
+    RequestBody.AddPair('userEmail', GetProfile.Email);
     SourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       HttpClient.ContentType := 'application/json';
-      if FInstallId <> '' then
-        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      if GetInstallId <> '' then
+        HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
       try
         Response := HttpClient.Post(HUB_API_URL + '/api/stripe/subscribe', SourceStream, TStream(nil));
         Log('Hub API Response Code (Stripe): ' + IntToStr(Response.StatusCode));
@@ -1664,8 +1933,8 @@ begin
   HttpClient := TNetHTTPClient.Create(nil);
   try
     ConfigureDebugHttpClient(HttpClient);
-    if FToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
-    if FInstallId <> '' then HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+    if GetToken <> '' then HttpClient.CustomHeaders['Authorization'] := 'Bearer ' + GetToken;
+    if GetInstallId <> '' then HttpClient.CustomHeaders['X-Reportman-WebInstallId'] := GetInstallId;
     try
       Response := HttpClient.Post(HUB_API_URL + '/api/stripe/portal', TStream(nil), TStream(nil));
       Log('Hub API Response Code (Portal): ' + IntToStr(Response.StatusCode));
@@ -1716,28 +1985,35 @@ procedure TRpAuthManager.SaveConfig;
 var
   LIni: TIniFile;
 begin
-  LIni := TIniFile.Create(GetConfigFileName);
+  // Under the lock: a consistent copy of the session and one writer of the
+  // file at a time (the workers save it after an answer)
+  FLock.Enter;
   try
-    LIni.WriteString('Auth', 'Token', FToken);
-    LIni.WriteString('Auth', 'InstallId', FInstallId);
-    
-    LIni.WriteString('Profile', 'UserId', IntToStr(FProfile.UserId));
-    LIni.WriteString('Profile', 'Email', FProfile.Email);
-    LIni.WriteString('Profile', 'UserName', FProfile.UserName);
-    LIni.WriteString('Profile', 'AvatarUrl', FProfile.AvatarUrl);
-    LIni.WriteInteger('Profile', 'AccountType', FProfile.AccountType);
-    LIni.WriteString('Profile', 'TierId', IntToStr(FProfile.TierId));
-    LIni.WriteString('Profile', 'TierName', FProfile.TierName);
-    LIni.WriteString('Profile', 'DailyMax', IntToStr(FProfile.DailyMax));
-    LIni.WriteString('Profile', 'DailyConsumed', IntToStr(FProfile.DailyConsumed));
-    LIni.WriteString('Profile', 'FreeInitial', IntToStr(FProfile.FreeInitial));
-    LIni.WriteString('Profile', 'FreeRemaining', IntToStr(FProfile.FreeRemaining));
-    LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
-    LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
-    LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
-    LIni.UpdateFile;
+    LIni := TIniFile.Create(GetConfigFileName);
+    try
+      LIni.WriteString('Auth', 'Token', FToken);
+      LIni.WriteString('Auth', 'InstallId', FInstallId);
+
+      LIni.WriteString('Profile', 'UserId', IntToStr(FProfile.UserId));
+      LIni.WriteString('Profile', 'Email', FProfile.Email);
+      LIni.WriteString('Profile', 'UserName', FProfile.UserName);
+      LIni.WriteString('Profile', 'AvatarUrl', FProfile.AvatarUrl);
+      LIni.WriteInteger('Profile', 'AccountType', FProfile.AccountType);
+      LIni.WriteString('Profile', 'TierId', IntToStr(FProfile.TierId));
+      LIni.WriteString('Profile', 'TierName', FProfile.TierName);
+      LIni.WriteString('Profile', 'DailyMax', IntToStr(FProfile.DailyMax));
+      LIni.WriteString('Profile', 'DailyConsumed', IntToStr(FProfile.DailyConsumed));
+      LIni.WriteString('Profile', 'FreeInitial', IntToStr(FProfile.FreeInitial));
+      LIni.WriteString('Profile', 'FreeRemaining', IntToStr(FProfile.FreeRemaining));
+      LIni.WriteString('Profile', 'Credits', IntToStr(FProfile.Credits));
+      LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
+      LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
   finally
-    LIni.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -1745,51 +2021,60 @@ procedure TRpAuthManager.LoadConfig;
 var
   LIni: TIniFile;
 begin
-  LIni := TIniFile.Create(GetConfigFileName);
+  FLock.Enter;
   try
-    FToken := LIni.ReadString('Auth', 'Token', '');
-    FInstallId := LIni.ReadString('Auth', 'InstallId', FInstallId);
-    
-    FProfile.UserId := StrToInt64Def(LIni.ReadString('Profile', 'UserId', '0'), 0);
-    FProfile.Email := LIni.ReadString('Profile', 'Email', '');
-    FProfile.UserName := LIni.ReadString('Profile', 'UserName', '');
-    FProfile.AvatarUrl := LIni.ReadString('Profile', 'AvatarUrl', '');
-    FProfile.AccountType := LIni.ReadInteger('Profile', 'AccountType', 0);
-    FProfile.TierId := StrToInt64Def(LIni.ReadString('Profile', 'TierId', '1'), 1);
-    FProfile.TierName := LIni.ReadString('Profile', 'TierName', 'Guest');
-    FProfile.DailyMax := StrToInt64Def(LIni.ReadString('Profile', 'DailyMax', '0'), 0);
-    FProfile.DailyConsumed := StrToInt64Def(LIni.ReadString('Profile', 'DailyConsumed', '0'), 0);
-    FProfile.FreeInitial := StrToInt64Def(LIni.ReadString('Profile', 'FreeInitial', '0'), 0);
-    FProfile.FreeRemaining := StrToInt64Def(LIni.ReadString('Profile', 'FreeRemaining', '0'), 0);
-    FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
-    FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
-    FAILanguage := NormalizeAILanguageValue(
-      LIni.ReadString('Preferences', 'AILanguage', FAILanguage));
-    
-    FIsLoggedIn := FToken <> '';
+    LIni := TIniFile.Create(GetConfigFileName);
+    try
+      FToken := LIni.ReadString('Auth', 'Token', '');
+      FInstallId := LIni.ReadString('Auth', 'InstallId', FInstallId);
 
-    // Do not touch the network while constructing the singleton.
-    // UI code triggers status refresh explicitly after the dialog is visible.
-    if FIsLoggedIn then
-      Log('LoadConfig: deferred CheckStatus until explicit background refresh.');
+      FProfile.UserId := StrToInt64Def(LIni.ReadString('Profile', 'UserId', '0'), 0);
+      FProfile.Email := LIni.ReadString('Profile', 'Email', '');
+      FProfile.UserName := LIni.ReadString('Profile', 'UserName', '');
+      FProfile.AvatarUrl := LIni.ReadString('Profile', 'AvatarUrl', '');
+      FProfile.AccountType := LIni.ReadInteger('Profile', 'AccountType', 0);
+      FProfile.TierId := StrToInt64Def(LIni.ReadString('Profile', 'TierId', '1'), 1);
+      FProfile.TierName := LIni.ReadString('Profile', 'TierName', 'Guest');
+      FProfile.DailyMax := StrToInt64Def(LIni.ReadString('Profile', 'DailyMax', '0'), 0);
+      FProfile.DailyConsumed := StrToInt64Def(LIni.ReadString('Profile', 'DailyConsumed', '0'), 0);
+      FProfile.FreeInitial := StrToInt64Def(LIni.ReadString('Profile', 'FreeInitial', '0'), 0);
+      FProfile.FreeRemaining := StrToInt64Def(LIni.ReadString('Profile', 'FreeRemaining', '0'), 0);
+      FProfile.Credits := StrToInt64Def(LIni.ReadString('Profile', 'Credits', '0'), 0);
+      FAIEnabled := LIni.ReadBool('Preferences', 'AIEnabled', True);
+      FAILanguage := NormalizeAILanguageValue(
+        LIni.ReadString('Preferences', 'AILanguage', FAILanguage));
+
+      FIsLoggedIn := FToken <> '';
+    finally
+      LIni.Free;
+    end;
   finally
-    LIni.Free;
+    FLock.Leave;
   end;
+  // Do not touch the network while constructing the singleton.
+  // UI code triggers status refresh explicitly after the dialog is visible.
+  if GetIsLoggedIn then
+    Log('LoadConfig: deferred CheckStatus until explicit background refresh.');
 end;
 
 procedure TRpAuthManager.ClearConfig;
 var
   LIni: TIniFile;
 begin
-  LIni := TIniFile.Create(GetConfigFileName);
+  FLock.Enter;
   try
-    LIni.EraseSection('Auth');
-    LIni.EraseSection('Profile');
-    LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
-    LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
-    LIni.UpdateFile;
+    LIni := TIniFile.Create(GetConfigFileName);
+    try
+      LIni.EraseSection('Auth');
+      LIni.EraseSection('Profile');
+      LIni.WriteBool('Preferences', 'AIEnabled', FAIEnabled);
+      LIni.WriteString('Preferences', 'AILanguage', FAILanguage);
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
   finally
-    LIni.Free;
+    FLock.Leave;
   end;
 end;
 
