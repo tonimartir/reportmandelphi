@@ -144,6 +144,7 @@ design_lcl/rpaithreadslcl.pas
 design_lcl/rpchatmodernstylelcl.pas
 design_lcl/rpdbbrowserlcl.lfm
 design_lcl/rpdbbrowserlcl.pas
+design_lcl/rpdbxconfiglcl.pas
 design_lcl/rpexpredlglcl.pas
 design_lcl/rpfrmaireportlcl.pas
 design_lcl/rpfrmaischemaselectorlcl.pas
@@ -159,6 +160,7 @@ design_lcl/rpmdesignerlcl.pas
 design_lcl/rpmdfaboutlcl.pas
 design_lcl/rpmdfbarcodeintlcl.pas
 design_lcl/rpmdfchartintlcl.pas
+design_lcl/rpmdfdatatextlcl.pas
 design_lcl/rpmdfdesignlcl.lfm
 design_lcl/rpmdfdesignlcl.pas
 design_lcl/rpmdfdinfolcl.lfm
@@ -171,6 +173,7 @@ design_lcl/rpmdfmainlcl.lfm
 design_lcl/rpmdfmainlcl.pas
 design_lcl/rpmdfopenliblcl.pas
 design_lcl/rpmdfparamslcl.pas
+design_lcl/rpmdfsampledatalcl.pas
 design_lcl/rpmdfsearchlcl.pas
 design_lcl/rpmdfsectionintlcl.pas
 design_lcl/rpmdfselectfieldslcl.pas

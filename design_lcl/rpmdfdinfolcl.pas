@@ -14,13 +14,17 @@ unit rpmdfdinfolcl;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, ComCtrls, Variants,
+  Classes, SysUtils, Math, Forms, Controls, Graphics, Dialogs, Menus,
+  StdCtrls, ExtCtrls, ComCtrls, Variants, DB,
   rpreport, rpdatainfo, rpparams, rpmdconsts, rptypes, rpbasereport, rpxmlstream,
   rpfrmmonacoeditorlcl, rpmdimageslcl, rpmdundocuelcl, rpmdfparamslcl,
   rpgraphutilslcl, rpaithreadslcl, rpfrmchatlcl;
 
 type
+  // "Show data": ADataset is the open dataset (nil and AError on failure)
+  TRpShowDatasetEvent = procedure(Sender: TObject; ADataset: TDataset;
+    const AError: string) of object;
+
   { TFRpDInfoLCL }
 
   // The dialog edits working copies of the report connections, datasets and
@@ -34,6 +38,14 @@ type
   // copy (so OK records it in the undo cue), and the Audit page of the editor
   // explains the SQL (ExplainSql). Both use the Hub database and schema of the
   // dataset connection, kept in the dataset (HubSchemaId) as in the VCL.
+  //
+  // Data access (Phase 8, port of TFRpConnectionVCL and TFRpDatasetsVCL):
+  // drivers of the FPC build with their description, connections of the
+  // connections file to add (New drop down), Configure (ShowDBXConfig),
+  // Connect (test), Load params / Load driver params; "Show data"
+  // (rpmdfsampledatalcl), the MyBase page (files, index and master fields,
+  // Modify -> ShowDataTextConfig) and the client side unions. Connection tests
+  // and opening the dataset run in worker threads on copies.
   TFRpDInfoLCL = class(TForm)
   private
     FReport: TRpReport;
@@ -47,6 +59,19 @@ type
     FUpdatingControls: Boolean;
     FImageList: TImageList;
     FTabImageList: TImageList;
+    // Connections file (available connections of the New drop down)
+    FConAdmin: TRpConnAdmin;
+    FAvailable: TStringList;
+    // Workers of this session (SetReport and closing start a new one)
+    FSession: Integer;
+    FTestVersion: Integer;
+    FTestRunning: Boolean;
+    FShowDataVersion: Integer;
+    FShowDataRunning: Boolean;
+    FOnShowDataset: TRpShowDatasetEvent;
+    FInteractive: Boolean;
+    FLastMessage: string;
+    FMessageCount: Integer;
 
     // Bottom controls
     PBottom: TPanel;
@@ -59,6 +84,15 @@ type
     TabDatasets: TTabSheet;
 
     // Connection controls
+    // Drivers (VCL GDriver, MHelp, BConfig)
+    PConnDriver: TPanel;
+    LDrivers: TListBox;
+    PConnDriverInfo: TPanel;
+    PConnDriverButtons: TPanel;
+    BConfig: TButton;
+    MHelp: TMemo;
+    PopAdd: TPopupMenu;
+    MNew: TMenuItem;
     PConnClient: TPanel;
     LConnections: TListBox;
     SplitterConn: TSplitter;
@@ -71,6 +105,9 @@ type
     EConfigFile: TEdit;
     BBrowseFile: TButton;
     CheckLoginPrompt: TCheckBox;
+    CheckLoadParams: TCheckBox;
+    CheckLoadDriverParams: TCheckBox;
+    BTestConn: TButton;
     OpenDialog1: TOpenDialog;
 
     PDSClient: TPanel;
@@ -105,8 +142,52 @@ type
     FSyncingSchemaContext: Boolean;
     FMailbox: TRpAsyncMailbox;
     FMailboxRef: IRpAsyncMailbox;
+    // MyBase page and unions (VCL TabMyBase, GUnions)
+    PMyBaseArea: TPanel;
+    LMyBase: TLabel;
+    EMyBase: TEdit;
+    BMyBase: TButton;
+    LFields: TLabel;
+    EMyBaseDefs: TEdit;
+    BSearchFieldsFile: TButton;
+    BModify: TButton;
+    LIndexFields: TLabel;
+    EIndexFields: TEdit;
+    LMasterFields: TLabel;
+    EMasterFields: TEdit;
+    GUnions: TGroupBox;
+    LabelUnions: TLabel;
+    ComboUnions: TComboBox;
+    CheckParallelUnion: TCheckBox;
+    CheckGroupUnion: TCheckBox;
+    BAddUnions: TButton;
+    BDelUnions: TButton;
+    LUnions: TListBox;
+    OpenDialogMyBase: TOpenDialog;
 
     procedure BuildControls;
+    procedure BuildDriverControls;
+    procedure BuildMyBaseControls;
+    procedure ShowInfo(const AText: string; AError: Boolean = False);
+    // Connections file and drivers (VCL TFRpConnectionVCL)
+    procedure LoadConAdmin;
+    procedure RefreshAvailable;
+    procedure FillDriverCombo(ADriver: TRpDbDriver);
+    function ComboDriverValue(out ADriver: TRpDbDriver): Boolean;
+    function SelectedListDriver: TRpDbDriver;
+    procedure LDriversClick(Sender: TObject);
+    procedure PopAddPopup(Sender: TObject);
+    procedure MNewClick(Sender: TObject);
+    procedure MenuAddClick(Sender: TObject);
+    procedure BConfigClick(Sender: TObject);
+    procedure BTestConnClick(Sender: TObject);
+    // Datasets (VCL TFRpDatasetsVCL)
+    procedure UpdateConnectionDependentUi(AItem: TRpDataInfoItem);
+    procedure BShowDataClick(Sender: TObject);
+    procedure BMyBaseClick(Sender: TObject);
+    procedure BModifyClick(Sender: TObject);
+    procedure BAddUnionsClick(Sender: TObject);
+    procedure BDelUnionsClick(Sender: TObject);
     procedure SetReport(Value: TRpReport);
     procedure SaveActiveConn;
     procedure SaveActiveDS;
@@ -161,6 +242,8 @@ type
     procedure MonacoAuditSql(Sender: TObject);
     procedure MonacoStopRequest(Sender: TObject);
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
+  protected
+    procedure DoClose(var CloseAction: TCloseAction); override;
   public
     // Toolbar controls
     ToolBarConn: TToolBar;
@@ -176,6 +259,8 @@ type
     BDelDS: TToolButton;
     SepDS2: TToolButton;
     BtnRenameDS: TToolButton;
+    SepDS3: TToolButton;
+    BShowData: TButton;
     BParams: TButton;
 
     constructor Create(AOwner: TComponent); override;
@@ -183,6 +268,22 @@ type
     // Applies the working copies to the report (what OK does). Returns False
     // when the report can not be modified; the dialog stays open then.
     function ApplyChanges: Boolean;
+    // Operations of the buttons without their prompts (the tests use them)
+    // Adds a connection of the connections file (New drop down)
+    procedure AddAvailableConnection(const AName: string);
+    // Selects a driver of the driver list (VCL GDriver)
+    procedure SelectListDriver(ADriver: TRpDbDriver);
+    // Tests the active connection in a worker (VCL BTestClick)
+    procedure StartConnectionTest;
+    // Opens the active dataset in a worker and shows its records (VCL
+    // BShowDataClick)
+    procedure StartShowData;
+    // Adds a union to the active dataset (with the common fields of a
+    // parallel union), removes the selected one
+    procedure AddUnion(const ADataset, ACommonFields: string);
+    procedure DeleteUnion;
+    // Saves the controls into the working copies
+    procedure SaveControls;
     property Report: TRpReport read FReport write SetReport;
     // Working copies edited by the dialog (not the report lists)
     property WorkReport: TRpReport read FWork;
@@ -196,6 +297,43 @@ type
     // Index of the dataset being edited (-1 none)
     property ActiveDatasetIndex: Integer read FActiveDSIndex;
     property DatasetList: TListBox read LDatasets;
+    // Connections tab
+    property PageControl: TPageControl read PControl;
+    property ConnectionsTab: TTabSheet read TabConnections;
+    property DatasetsTab: TTabSheet read TabDatasets;
+    property ConnectionList: TListBox read LConnections;
+    property DriverList: TListBox read LDrivers;
+    property DriverCombo: TComboBox read ComboDriver;
+    property DriverHelp: TMemo read MHelp;
+    property ConnectionAliasEdit: TEdit read EConnAlias;
+    property LoginPromptCheck: TCheckBox read CheckLoginPrompt;
+    property LoadParamsCheck: TCheckBox read CheckLoadParams;
+    property LoadDriverParamsCheck: TCheckBox read CheckLoadDriverParams;
+    property TestConnectionButton: TButton read BTestConn;
+    property AddConnectionMenu: TPopupMenu read PopAdd;
+    // Connections of the connections file for the driver of the driver list
+    property AvailableConnections: TStringList read FAvailable;
+    property ConnectionTestRunning: Boolean read FTestRunning;
+    // Datasets tab
+    property ConnectionCombo: TComboBox read ComboDSConn;
+    property SQLArea: TPanel read PSQLArea;
+    property MyBaseArea: TPanel read PMyBaseArea;
+    property MyBaseFileEdit: TEdit read EMyBase;
+    property MyBaseFieldsEdit: TEdit read EMyBaseDefs;
+    property IndexFieldsEdit: TEdit read EIndexFields;
+    property MasterFieldsEdit: TEdit read EMasterFields;
+    property UnionsCombo: TComboBox read ComboUnions;
+    property UnionsList: TListBox read LUnions;
+    property GroupUnionCheck: TCheckBox read CheckGroupUnion;
+    property ParallelUnionCheck: TCheckBox read CheckParallelUnion;
+    property ShowDataRunning: Boolean read FShowDataRunning;
+    // Called instead of showing the records (tests): the dataset is open
+    // during the call and closed after it
+    property OnShowDataset: TRpShowDatasetEvent read FOnShowDataset write FOnShowDataset;
+    // False: messages are not shown (tests), only kept in LastMessage
+    property Interactive: Boolean read FInteractive write FInteractive;
+    property LastMessage: string read FLastMessage;
+    property MessageCount: Integer read FMessageCount;
   end;
 
 // Shows the data configuration dialog. Returns True when the report was
@@ -207,9 +345,36 @@ implementation
 {$R *.lfm}
 
 uses
-  rpjsonfpc, rpauthmanager, rpdatahttp;
+  rpjsonfpc, rpauthmanager, rpdatahttp, rpdbxconfiglcl, rpmdfsampledatalcl,
+  rpmdfdatatextlcl;
 
 type
+  { "Show data" (VCL BShowDataClick): the dataset is opened in a worker on a
+    copy of the working data; the result message owns the copy }
+
+  TRpShowDataResult = class(TRpAsyncMessage)
+  public
+    Session: Integer;
+    RequestVersion: Integer;
+    DataInfoIndex: Integer;
+    Report: TRpReport;
+    ErrorMessage: string;
+    destructor Destroy; override;
+  end;
+
+  TRpShowDataWorker = class(TRpAsyncWorker)
+  public
+    Session: Integer;
+    RequestVersion: Integer;
+    DataInfoIndex: Integer;
+    // Owned until it is passed to the result
+    Report: TRpReport;
+    destructor Destroy; override;
+  protected
+    procedure Run; override;
+    procedure HandleError(E: Exception); override;
+  end;
+
   { Messages and workers of the SQL assistant (the anonymous threads and
     TThread.Queue/Synchronize procedures of TFRpDatasetsVCL) }
 
@@ -514,6 +679,73 @@ begin
   Post(LMsg);
 end;
 
+// Closes the datasets and connections of a copy of the data and frees it
+procedure FreeDataCopy(var AReport: TRpReport);
+var
+  i: Integer;
+begin
+  if AReport = nil then
+    Exit;
+  try
+    for i := AReport.DataInfo.Count - 1 downto 0 do
+      AReport.DataInfo.Items[i].Disconnect;
+    for i := 0 to AReport.DatabaseInfo.Count - 1 do
+      AReport.DatabaseInfo.Items[i].DisConnect;
+  except
+    // Freeing closes them anyway
+  end;
+  FreeAndNil(AReport);
+end;
+
+{ TRpShowDataResult }
+
+destructor TRpShowDataResult.Destroy;
+begin
+  FreeDataCopy(Report);
+  inherited Destroy;
+end;
+
+{ TRpShowDataWorker }
+
+destructor TRpShowDataWorker.Destroy;
+begin
+  FreeDataCopy(Report);
+  inherited Destroy;
+end;
+
+procedure TRpShowDataWorker.Run;
+var
+  LMsg: TRpShowDataResult;
+  i: Integer;
+begin
+  // VCL BShowDataClick: disconnect, evaluator, parameters, open
+  for i := 0 to Report.DataInfo.Count - 1 do
+    Report.DataInfo.Items[i].Disconnect;
+  Report.InitEvaluator;
+  Report.AddReportItemsToEvaluator(Report.Evaluator);
+  Report.PrepareParamsBeforeOpen;
+  Report.DataInfo.Items[DataInfoIndex].Connect(Report.DatabaseInfo, Report.Params);
+  LMsg := TRpShowDataResult.Create;
+  LMsg.Session := Session;
+  LMsg.RequestVersion := RequestVersion;
+  LMsg.DataInfoIndex := DataInfoIndex;
+  LMsg.Report := Report;
+  Report := nil;
+  Post(LMsg);
+end;
+
+procedure TRpShowDataWorker.HandleError(E: Exception);
+var
+  LMsg: TRpShowDataResult;
+begin
+  LMsg := TRpShowDataResult.Create;
+  LMsg.Session := Session;
+  LMsg.RequestVersion := RequestVersion;
+  LMsg.DataInfoIndex := DataInfoIndex;
+  LMsg.ErrorMessage := E.Message;
+  Post(LMsg);
+end;
+
 var
   GDataConfigDialog: TFRpDInfoLCL = nil;
 
@@ -583,10 +815,45 @@ begin
     (AItem.SQLExplanation = BItem.SQLExplanation) and
     (AItem.SQLExplanationError = BItem.SQLExplanationError) and
     (AItem.HubSchemaId = BItem.HubSchemaId) and
+    (AItem.MyBaseFilename = BItem.MyBaseFilename) and
+    (AItem.MyBaseFields = BItem.MyBaseFields) and
+    (AItem.MyBaseIndexFields = BItem.MyBaseIndexFields) and
+    (AItem.MyBaseMasterFields = BItem.MyBaseMasterFields) and
     (AItem.GroupUnion = BItem.GroupUnion) and
     (AItem.OpenOnStart = BItem.OpenOnStart) and
     (AItem.ParallelUnion = BItem.ParallelUnion) and
     SameStringLists(AItem.DataUnions, BItem.DataUnions);
+end;
+
+// The MyBase properties are not undo properties (neither in the Delphi undo
+// cue): a change of them marks the report modified
+function SameMyBaseProperties(AItem, BItem: TRpDataInfoItem): Boolean;
+begin
+  Result := (AItem.MyBaseFilename = BItem.MyBaseFilename) and
+    (AItem.MyBaseFields = BItem.MyBaseFields) and
+    (AItem.MyBaseIndexFields = BItem.MyBaseIndexFields) and
+    (AItem.MyBaseMasterFields = BItem.MyBaseMasterFields);
+end;
+
+// Value of a ptStringArray undo property (dataUnions)
+function StringListToVariant(AStrings: TStrings): Variant;
+var
+  i: Integer;
+begin
+  if AStrings.Count = 0 then
+  begin
+    Result := VarArrayCreate([0, -1], varVariant);
+    Exit;
+  end;
+  Result := VarArrayCreate([0, AStrings.Count - 1], varVariant);
+  for i := 0 to AStrings.Count - 1 do
+    Result[i] := AStrings[i];
+end;
+
+function HasMyBaseProperties(AItem: TRpDataInfoItem): Boolean;
+begin
+  Result := (AItem.MyBaseFilename <> '') or (AItem.MyBaseFields <> '') or
+    (AItem.MyBaseIndexFields <> '') or (AItem.MyBaseMasterFields <> '');
 end;
 
 function SameDataInfoList(AList, BList: TRpDataInfoList): Boolean;
@@ -662,19 +929,23 @@ begin
   FOrigParams := TRpParamList.Create(nil);
   FMailbox := TRpAsyncMailbox.Create(HandleAsyncMessage);
   FMailboxRef := FMailbox;
+  FAvailable := TStringList.Create;
+  FInteractive := True;
 
   Caption := TranslateStr(1097, 'Database connections and datasets');
   Position := poScreenCenter;
-  // Room for the SQL editor and the chat of the SQL assistant
-  Width := Scale96ToForm(1060);
-  Height := Scale96ToForm(720);
+  // Room for the SQL editor and the chat of the SQL assistant; it must fit
+  // the screen (800x600)
+  Width := Min(Scale96ToForm(1060), Screen.WorkAreaWidth - 20);
+  Height := Min(Scale96ToForm(720), Screen.WorkAreaHeight - 20);
 
   BuildControls;
 end;
 
 destructor TFRpDInfoLCL.Destroy;
 begin
-  // Workers still running drop their results; the chat stream stops
+  // Workers still running drop their results (and the copies of the data
+  // they opened); the chat stream stops
   FMailbox.Detach;
   if FChatCancel <> nil then
     FChatCancel.Cancel;
@@ -688,7 +959,31 @@ begin
   FreeAndNil(FOrigDatabaseInfo);
   FreeAndNil(FOrigDataInfo);
   FreeAndNil(FOrigParams);
+  FreeAndNil(FConAdmin);
+  FreeAndNil(FAvailable);
   inherited Destroy;
+end;
+
+procedure TFRpDInfoLCL.DoClose(var CloseAction: TCloseAction);
+begin
+  inherited DoClose(CloseAction);
+  // Answers of the workers of this session are dropped (the dialog is
+  // reused by ShowDataConfig)
+  Inc(FSession);
+  FTestRunning := False;
+  FShowDataRunning := False;
+end;
+
+procedure TFRpDInfoLCL.ShowInfo(const AText: string; AError: Boolean);
+begin
+  FLastMessage := AText;
+  Inc(FMessageCount);
+  if not FInteractive then
+    Exit;
+  if AError then
+    RpMessageBox(AText, '', [smbOK], smsCritical)
+  else
+    RpShowMessage(AText);
 end;
 
 procedure TFRpDInfoLCL.BuildControls;
@@ -712,7 +1007,6 @@ begin
   BOk.Caption := TranslateStr(93, 'OK');
   BOk.Default := True;
   BOk.SetBounds(PBottom.Width - 210, 8, 95, 28);
-  BOk.Anchors := [akTop, akRight];
   BOk.OnClick := BOkClick;
 
   BCancel := TButton.Create(PBottom);
@@ -721,8 +1015,14 @@ begin
   BCancel.ModalResult := mrCancel;
   BCancel.Cancel := True;
   BCancel.SetBounds(PBottom.Width - 105, 8, 95, 28);
-  BCancel.Anchors := [akTop, akRight];
   BCancel.OnClick := BCancelClick;
+  // Anchored to the sides (the size of the parents is not final here: fixed
+  // right distances computed now can push the controls out of a small
+  // window)
+  BCancel.AnchorParallel(akRight, 10, PBottom);
+  BCancel.Anchors := [akTop, akRight];
+  BOk.AnchorToNeighbour(akRight, 10, BCancel);
+  BOk.Anchors := [akTop, akRight];
 
   // PageControl
   PControl := TPageControl.Create(Self);
@@ -754,10 +1054,21 @@ begin
   ToolBarConn.ShowHint := True;
   ToolBarConn.Images := FImageList;
 
+  // New: a connection with the driver of the driver list; the drop down
+  // (VCL PopAdd) also lists the connections of the connections file
+  PopAdd := TPopupMenu.Create(Self);
+  PopAdd.OnPopup := PopAddPopup;
+  MNew := TMenuItem.Create(PopAdd);
+  MNew.Caption := TranslateStr(40, 'New');
+  MNew.OnClick := MNewClick;
+  PopAdd.Items.Add(MNew);
+
   BNewConn := TToolButton.Create(ToolBarConn);
   BNewConn.Parent := ToolBarConn;
   BNewConn.ImageIndex := IMG_DC_NEW;
   BNewConn.Hint := TranslateStr(1103, 'Adds a new connection');
+  BNewConn.Style := tbsDropDown;
+  BNewConn.DropdownMenu := PopAdd;
   BNewConn.OnClick := BNewConnClick;
 
   SepConn := TToolButton.Create(ToolBarConn);
@@ -770,6 +1081,8 @@ begin
   BDelConn.ImageIndex := IMG_DC_DELETE;
   BDelConn.Hint := TranslateStr(1105, 'Deletes the selected connection');
   BDelConn.OnClick := BDelConnClick;
+
+  BuildDriverControls;
 
   PConnClient := TPanel.Create(TabConnections);
   PConnClient.Align := alClient;
@@ -801,6 +1114,7 @@ begin
   EConnAlias := TEdit.Create(PConnProps);
   EConnAlias.Parent := PConnProps;
   EConnAlias.SetBounds(10, 32, 380, 24);
+  EConnAlias.AnchorParallel(akRight, 10, PConnProps);
   EConnAlias.Anchors := [akLeft, akTop, akRight];
 
   LabelConnDriver := TLabel.Create(PConnProps);
@@ -812,18 +1126,12 @@ begin
   ComboDriver.Parent := PConnProps;
   ComboDriver.Style := csDropDownList;
   ComboDriver.SetBounds(10, 88, 380, 24);
+  ComboDriver.AnchorParallel(akRight, 10, PConnProps);
   ComboDriver.Anchors := [akLeft, akTop, akRight];
-  ComboDriver.Items.Add('0 - dbExpress / SQLDB');
-  ComboDriver.Items.Add('1 - MyBase / Memory');
-  ComboDriver.Items.Add('2 - IBX / Firebird');
-  ComboDriver.Items.Add('3 - BDE');
-  ComboDriver.Items.Add('4 - ADO / ODBC');
-  ComboDriver.Items.Add('5 - IBO');
-  ComboDriver.Items.Add('6 - ZeosDBO');
-  ComboDriver.Items.Add('7 - ' + TranslateStr(936, 'Native driver') + ' / SQLite');
-  ComboDriver.Items.Add('8 - ' + TranslateStr(1394, 'Dot net driver'));
-  ComboDriver.Items.Add('9 - FireDAC');
-  ComboDriver.Items.Add('10 - HTTP / Cloud');
+  // The drivers of the FPC build (FillDriverCombo; a driver that is not
+  // available is listed only for the connection that uses it, so the
+  // connection keeps it)
+  GetFpcDatabaseDrivers(ComboDriver.Items);
 
   LabelConfigFile := TLabel.Create(PConnProps);
   LabelConfigFile.Parent := PConnProps;
@@ -833,19 +1141,40 @@ begin
   EConfigFile := TEdit.Create(PConnProps);
   EConfigFile.Parent := PConnProps;
   EConfigFile.SetBounds(10, 144, 340, 24);
-  EConfigFile.Anchors := [akLeft, akTop, akRight];
 
   BBrowseFile := TButton.Create(PConnProps);
   BBrowseFile.Parent := PConnProps;
   BBrowseFile.Caption := '...';
   BBrowseFile.SetBounds(355, 144, 35, 24);
+  BBrowseFile.AnchorParallel(akRight, 10, PConnProps);
   BBrowseFile.Anchors := [akTop, akRight];
   BBrowseFile.OnClick := BBrowseFileClick;
+  EConfigFile.AnchorToNeighbour(akRight, 5, BBrowseFile);
+  EConfigFile.Anchors := [akLeft, akTop, akRight];
 
   CheckLoginPrompt := TCheckBox.Create(PConnProps);
   CheckLoginPrompt.Parent := PConnProps;
   CheckLoginPrompt.Caption := TranslateStr(144, 'Login prompt');
-  CheckLoginPrompt.SetBounds(10, 180, 250, 20);
+  CheckLoginPrompt.SetBounds(10, 178, 250, 20);
+
+  // VCL CheckLoadParams, CheckLoadDriverParams
+  CheckLoadParams := TCheckBox.Create(PConnProps);
+  CheckLoadParams.Parent := PConnProps;
+  CheckLoadParams.Caption := TranslateStr(145, 'Load params');
+  CheckLoadParams.SetBounds(10, 202, 250, 20);
+
+  CheckLoadDriverParams := TCheckBox.Create(PConnProps);
+  CheckLoadDriverParams.Parent := PConnProps;
+  CheckLoadDriverParams.Caption := TranslateStr(146, 'Load driver params');
+  CheckLoadDriverParams.SetBounds(10, 226, 250, 20);
+
+  // VCL BTest: connects and disconnects (in a worker thread)
+  BTestConn := TButton.Create(PConnProps);
+  BTestConn.Parent := PConnProps;
+  BTestConn.Caption := TranslateStr(753, 'Connect');
+  BTestConn.SetBounds(10, 254, RpCaptionWidth(BTestConn, [BTestConn.Caption], 110),
+    Scale96ToForm(28));
+  BTestConn.OnClick := BTestConnClick;
 
   // -------------------------------------------------------------
   // TAB 2: Datasets
@@ -905,6 +1234,22 @@ begin
   BtnRenameDS.Hint := TranslateStr(540, 'Rename dataset');
   BtnRenameDS.OnClick := BtnRenameDSClick;
 
+  SepDS3 := TToolButton.Create(ToolBarDS);
+  SepDS3.Parent := ToolBarDS;
+  SepDS3.Style := tbsSeparator;
+  SepDS3.Width := 8;
+  SepDS3.Left := BtnRenameDS.Left + BtnRenameDS.Width + 1;
+
+  // VCL BShowData (in the dataset properties there); here in the toolbar so
+  // it is at hand for the SQL and the MyBase datasets
+  BShowData := TButton.Create(ToolBarDS);
+  BShowData.Parent := ToolBarDS;
+  BShowData.Caption := TranslateStr(156, 'Show data');
+  BShowData.Width := RpCaptionWidth(BShowData, [BShowData.Caption], 90);
+  BShowData.Height := 24;
+  BShowData.Left := SepDS3.Left + SepDS3.Width + 1;
+  BShowData.OnClick := BShowDataClick;
+
   PDSClient := TPanel.Create(TabDatasets);
   PDSClient.Align := alClient;
   PDSClient.BevelOuter := bvNone;
@@ -941,6 +1286,7 @@ begin
   EDSAlias := TEdit.Create(PDSProps);
   EDSAlias.Parent := PDSProps;
   EDSAlias.SetBounds(10, 24, 380, 24);
+  EDSAlias.AnchorParallel(akRight, 10, PDSProps);
   EDSAlias.Anchors := [akLeft, akTop, akRight];
 
   LabelDSConn := TLabel.Create(PDSProps);
@@ -952,6 +1298,7 @@ begin
   ComboDSConn.Parent := PDSProps;
   ComboDSConn.Style := csDropDownList;
   ComboDSConn.SetBounds(10, 72, 380, 24);
+  ComboDSConn.AnchorParallel(akRight, 10, PDSProps);
   ComboDSConn.Anchors := [akLeft, akTop, akRight];
   ComboDSConn.OnChange := ComboDSConnChange;
 
@@ -968,8 +1315,9 @@ begin
   CheckOpenOnStart := TCheckBox.Create(PDSProps);
   CheckOpenOnStart.Parent := PDSProps;
   CheckOpenOnStart.Caption := TranslateStr(1373, 'Open on start');
-  CheckOpenOnStart.SetBounds(270, 122, 120, 20);
-  CheckOpenOnStart.Anchors := [akTop, akRight];
+  // After the master combo (a right anchor computed before the final size
+  // put it out of small windows)
+  CheckOpenOnStart.SetBounds(262, 122, 180, 20);
 
   SplitterSQL := TSplitter.Create(PDSClient);
   SplitterSQL.Align := alTop;
@@ -988,39 +1336,47 @@ begin
   PSQLTop.BevelOuter := bvNone;
   PSQLTop.Parent := PSQLArea;
 
+  // The widths of the captions: the SQL editor is narrow in a 800x600 window
+  // (the chat takes the right part)
   LabelSQL := TLabel.Create(PSQLTop);
   LabelSQL.Caption := ' ' + TranslateStr(159, 'Query') + ':';
-  LabelSQL.SetBounds(4, 6, 100, 18);
+  LabelSQL.SetBounds(4, 6, RpCaptionWidth(Self, [LabelSQL.Caption], 40) - 16, 18);
   LabelSQL.Parent := PSQLTop;
 
   // Switches between the Monaco editor and the plain text memo
   BMonacoToggle := TButton.Create(PSQLTop);
   BMonacoToggle.Parent := PSQLTop;
   BMonacoToggle.Caption := 'Monaco / ' + TranslateStr(314, 'Text');
-  BMonacoToggle.SetBounds(110, 2, 160, 24);
+  BMonacoToggle.SetBounds(LabelSQL.Left + LabelSQL.Width + 6, 2,
+    RpCaptionWidth(BMonacoToggle, [BMonacoToggle.Caption], 90), 24);
   BMonacoToggle.OnClick := BMonacoToggleClick;
 
   // Switches the light / dark editor theme
   BThemeToggle := TButton.Create(PSQLTop);
   BThemeToggle.Parent := PSQLTop;
   BThemeToggle.Caption := TranslateStr(1447, 'Theme');
-  BThemeToggle.SetBounds(276, 2, 140, 24);
+  BThemeToggle.SetBounds(BMonacoToggle.Left + BMonacoToggle.Width + 6, 2,
+    RpCaptionWidth(BThemeToggle, [BThemeToggle.Caption], 70), 24);
   BThemeToggle.OnClick := BThemeToggleClick;
   FIsDarkTheme := False;
 
-  // Report parameters (VCL: TFRpDatasetsVCL.BParams)
-  BParams := TButton.Create(PSQLTop);
-  BParams.Parent := PSQLTop;
+  // Report parameters (VCL: TFRpDatasetsVCL.BParams, in its toolbar): in the
+  // toolbar too, usable with the MyBase page (the SQL one is hidden then)
+  BParams := TButton.Create(ToolBarDS);
+  BParams.Parent := ToolBarDS;
   BParams.Caption := TranslateStr(152, 'Parameters');
   BParams.Hint := BParams.Caption;
-  BParams.SetBounds(422, 2, 120, 24);
+  BParams.Width := RpCaptionWidth(BParams, [BParams.Caption], 90);
+  BParams.Height := 24;
+  BParams.Left := BShowData.Left + BShowData.Width + 1;
   BParams.OnClick := BParamsClick;
 
   // SQL assistant at the right of the editor (VCL: PChatHost of TabSQL);
   // the chat is created with the first dataset (EnsureAdvancedEditors)
   PChatHost := TPanel.Create(PSQLArea);
   PChatHost.Align := alRight;
-  PChatHost.Width := Scale96ToForm(340);
+  // Room for the editor in a small window
+  PChatHost.Width := Min(Scale96ToForm(340), Width * 2 div 5);
   PChatHost.BevelOuter := bvNone;
   PChatHost.Caption := '';
   PChatHost.Parent := PSQLArea;
@@ -1051,7 +1407,209 @@ begin
   FMonacoEditor.OnAuditSql := MonacoAuditSql;
   FMonacoEditor.OnStopRequest := MonacoStopRequest;
 
+  BuildMyBaseControls;
+
   PControl.OnChange := PControlChange;
+end;
+
+procedure TFRpDInfoLCL.BuildDriverControls;
+var
+  LWidth: Integer;
+begin
+  // VCL PTop of TFRpConnectionVCL: drivers, their description and Configure
+  PConnDriver := TPanel.Create(TabConnections);
+  PConnDriver.Parent := TabConnections;
+  PConnDriver.Align := alTop;
+  PConnDriver.BevelOuter := bvNone;
+  PConnDriver.Height := Scale96ToForm(104);
+  PConnDriver.Top := ToolBarConn.Top + ToolBarConn.Height + 1;
+
+  LDrivers := TListBox.Create(PConnDriver);
+  LDrivers.Parent := PConnDriver;
+  LDrivers.Align := alLeft;
+  LDrivers.Width := 210;
+  GetFpcDatabaseDrivers(LDrivers.Items);
+  LDrivers.OnClick := LDriversClick;
+
+  PConnDriverInfo := TPanel.Create(PConnDriver);
+  PConnDriverInfo.Parent := PConnDriver;
+  PConnDriverInfo.Align := alClient;
+  PConnDriverInfo.BevelOuter := bvNone;
+
+  PConnDriverButtons := TPanel.Create(PConnDriverInfo);
+  PConnDriverButtons.Parent := PConnDriverInfo;
+  PConnDriverButtons.Align := alTop;
+  PConnDriverButtons.BevelOuter := bvNone;
+  PConnDriverButtons.Height := Scale96ToForm(32);
+
+  BConfig := TButton.Create(PConnDriverButtons);
+  BConfig.Parent := PConnDriverButtons;
+  BConfig.Caption := TranslateStr(143, 'Configure');
+  LWidth := RpCaptionWidth(BConfig, [BConfig.Caption], 120);
+  BConfig.SetBounds(5, 3, LWidth, Scale96ToForm(26));
+  BConfig.OnClick := BConfigClick;
+
+  MHelp := TMemo.Create(PConnDriverInfo);
+  MHelp.Parent := PConnDriverInfo;
+  MHelp.Align := alClient;
+  MHelp.ReadOnly := True;
+  MHelp.Color := clInfoBk;
+  MHelp.Font.Color := clInfoText;
+  MHelp.ScrollBars := ssAutoVertical;
+  MHelp.WordWrap := True;
+
+  // Zeos: the general SQL driver of the FPC build (the VCL selects dbExpress)
+  SelectListDriver(rpdatazeos);
+end;
+
+procedure TFRpDInfoLCL.BuildMyBaseControls;
+var
+  LLabelWidth, LSearchWidth, LModifyWidth: Integer;
+  LLeftPanel: TPanel;
+
+  function NewRow(ATop: Integer): TPanel;
+  begin
+    Result := TPanel.Create(PMyBaseArea);
+    Result.Parent := PMyBaseArea;
+    Result.BevelOuter := bvNone;
+    Result.Caption := '';
+    // alTop rows are ordered by Top
+    Result.SetBounds(0, ATop, 400, Scale96ToForm(30));
+    Result.Align := alTop;
+  end;
+
+  function NewLabel(ARow: TPanel; const ACaption: string): TLabel;
+  begin
+    Result := TLabel.Create(ARow);
+    Result.Parent := ARow;
+    Result.Caption := ACaption;
+    Result.Layout := tlCenter;
+    Result.AutoSize := False;
+    Result.SetBounds(0, 0, LLabelWidth, 20);
+    Result.Align := alLeft;
+    Result.BorderSpacing.Left := 4;
+  end;
+
+  function NewEdit(ARow: TPanel): TEdit;
+  begin
+    Result := TEdit.Create(ARow);
+    Result.Parent := ARow;
+    Result.Align := alClient;
+    Result.BorderSpacing.Around := 3;
+  end;
+
+  function NewButton(ARow: TPanel; const ACaption: string; AWidth, ALeft: Integer;
+    AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(ARow);
+    Result.Parent := ARow;
+    Result.Caption := ACaption;
+    // Fixed width (alRight buttons ordered by Left)
+    Result.SetBounds(ALeft, 0, AWidth, 24);
+    Result.Align := alRight;
+    Result.BorderSpacing.Around := 3;
+    Result.OnClick := AClick;
+  end;
+
+var
+  LRow: TPanel;
+  LButtonsWidth: Integer;
+begin
+  // VCL TabMyBase: shown instead of the SQL page for MyBase connections
+  PMyBaseArea := TPanel.Create(PDSClient);
+  PMyBaseArea.Parent := PDSClient;
+  PMyBaseArea.Align := alClient;
+  PMyBaseArea.BevelOuter := bvNone;
+  PMyBaseArea.BorderWidth := 4;
+  PMyBaseArea.Visible := False;
+
+  LLabelWidth := RpCaptionWidth(Self, [TranslateStr(167, 'MyBase Filename'),
+    TranslateStr(1085, 'Field defs file'), TranslateStr(164, 'Index fields'),
+    TranslateStr(165, 'Master fields')], 110);
+  LSearchWidth := RpCaptionWidth(Self, [TranslateStr(168, 'Search...')], 80);
+  LModifyWidth := RpCaptionWidth(Self, [TranslateStr(1086, 'Modify...')], 80);
+
+  OpenDialogMyBase := TOpenDialog.Create(Self);
+  OpenDialogMyBase.Filter := 'Mybase files|*.cds;*.xml|Text files|*.txt|All files|*.*|' +
+    'Inifiles|*.ini';
+
+  LRow := NewRow(0);
+  LMyBase := NewLabel(LRow, TranslateStr(167, 'MyBase Filename'));
+  BMyBase := NewButton(LRow, TranslateStr(168, 'Search...'), LSearchWidth, 1000, BMyBaseClick);
+  EMyBase := NewEdit(LRow);
+
+  LRow := NewRow(100);
+  LFields := NewLabel(LRow, TranslateStr(1085, 'Field defs file'));
+  BModify := NewButton(LRow, TranslateStr(1086, 'Modify...'), LModifyWidth, 1100, BModifyClick);
+  BSearchFieldsFile := NewButton(LRow, TranslateStr(168, 'Search...'), LSearchWidth, 1000,
+    BMyBaseClick);
+  EMyBaseDefs := NewEdit(LRow);
+
+  LRow := NewRow(200);
+  LIndexFields := NewLabel(LRow, TranslateStr(164, 'Index fields'));
+  EIndexFields := NewEdit(LRow);
+
+  LRow := NewRow(300);
+  LMasterFields := NewLabel(LRow, TranslateStr(165, 'Master fields'));
+  EMasterFields := NewEdit(LRow);
+
+  // VCL GUnions
+  GUnions := TGroupBox.Create(PMyBaseArea);
+  GUnions.Parent := PMyBaseArea;
+  GUnions.Caption := TranslateStr(1082, 'Dataset client side unions');
+  GUnions.Align := alClient;
+  GUnions.BorderSpacing.Top := 4;
+
+  LLeftPanel := TPanel.Create(GUnions);
+  LLeftPanel.Parent := GUnions;
+  LLeftPanel.BevelOuter := bvNone;
+  LLeftPanel.Caption := '';
+  LLeftPanel.Align := alLeft;
+  LButtonsWidth := Scale96ToForm(40);
+  LLeftPanel.Width := Max(Scale96ToForm(210),
+    RpCaptionWidth(Self, [TranslateStr(1440, 'Parallel union'),
+    TranslateStr(1084, 'Union grouping')], 150) + Scale96ToForm(24)) + LButtonsWidth;
+
+  LabelUnions := TLabel.Create(LLeftPanel);
+  LabelUnions.Parent := LLeftPanel;
+  LabelUnions.Caption := TranslateStr(1083, 'Unions');
+  LabelUnions.SetBounds(4, 4, 150, 18);
+
+  ComboUnions := TComboBox.Create(LLeftPanel);
+  ComboUnions.Parent := LLeftPanel;
+  ComboUnions.Style := csDropDownList;
+  ComboUnions.SetBounds(4, 22, LLeftPanel.Width - LButtonsWidth - 8, 24);
+
+  CheckParallelUnion := TCheckBox.Create(LLeftPanel);
+  CheckParallelUnion.Parent := LLeftPanel;
+  CheckParallelUnion.Caption := TranslateStr(1440, 'Parallel union');
+  CheckParallelUnion.Hint := TranslateStr(1441, 'The columns of each table will be added, ' +
+    'the resulting table will contain all the columns of all tables, and as much rows as ' +
+    'the table with the maximum number of rows');
+  CheckParallelUnion.ShowHint := True;
+  CheckParallelUnion.SetBounds(4, 54, LLeftPanel.Width - LButtonsWidth - 8, 20);
+
+  CheckGroupUnion := TCheckBox.Create(LLeftPanel);
+  CheckGroupUnion.Parent := LLeftPanel;
+  CheckGroupUnion.Caption := TranslateStr(1084, 'Union grouping');
+  CheckGroupUnion.SetBounds(4, 78, LLeftPanel.Width - LButtonsWidth - 8, 20);
+
+  BAddUnions := TButton.Create(LLeftPanel);
+  BAddUnions.Parent := LLeftPanel;
+  BAddUnions.Caption := '>';
+  BAddUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, 20, LButtonsWidth - 6, 28);
+  BAddUnions.OnClick := BAddUnionsClick;
+
+  BDelUnions := TButton.Create(LLeftPanel);
+  BDelUnions.Parent := LLeftPanel;
+  BDelUnions.Caption := '<';
+  BDelUnions.SetBounds(LLeftPanel.Width - LButtonsWidth, 56, LButtonsWidth - 6, 28);
+  BDelUnions.OnClick := BDelUnionsClick;
+
+  LUnions := TListBox.Create(GUnions);
+  LUnions.Parent := GUnions;
+  LUnions.Align := alClient;
+  LUnions.BorderSpacing.Around := 2;
 end;
 
 procedure TFRpDInfoLCL.SetReport(Value: TRpReport);
@@ -1060,6 +1618,13 @@ begin
   FApplied := False;
   FActiveConnIndex := -1;
   FActiveDSIndex := -1;
+  // A new session: answers of earlier workers are dropped
+  Inc(FSession);
+  FTestRunning := False;
+  FShowDataRunning := False;
+  BTestConn.Enabled := True;
+  // The connections file may have changed since the last session
+  LoadConAdmin;
 
   FWork.DatabaseInfo.Clear;
   FWork.DataInfo.Clear;
@@ -1189,7 +1754,7 @@ end;
 procedure TFRpDInfoLCL.SaveActiveConn;
 var
   item: TRpDatabaseInfoItem;
-  driverIdx: Integer;
+  driver: TRpDbDriver;
 begin
   if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
     Exit;
@@ -1203,12 +1768,13 @@ begin
       LConnections.Items[FActiveConnIndex] := item.Alias;
   end;
 
-  driverIdx := ComboDriver.ItemIndex;
-  if driverIdx >= 0 then
-    item.Driver := TRpDbDriver(driverIdx);
+  if ComboDriverValue(driver) then
+    item.Driver := driver;
 
   item.ConfigFile := EConfigFile.Text;
   item.LoginPrompt := CheckLoginPrompt.Checked;
+  item.LoadParams := CheckLoadParams.Checked;
+  item.LoadDriverParams := CheckLoadDriverParams.Checked;
 end;
 
 procedure TFRpDInfoLCL.SaveActiveDS;
@@ -1234,6 +1800,19 @@ begin
     item.SQL := FMonacoEditor.SQL
   else
     item.SQL := MSQL.Text;
+  // MyBase page (the unions are saved when added or removed)
+  item.MyBaseFilename := EMyBase.Text;
+  item.MyBaseFields := EMyBaseDefs.Text;
+  item.MyBaseIndexFields := EIndexFields.Text;
+  item.MyBaseMasterFields := EMasterFields.Text;
+  item.GroupUnion := CheckGroupUnion.Checked;
+  item.ParallelUnion := CheckParallelUnion.Checked;
+end;
+
+procedure TFRpDInfoLCL.SaveControls;
+begin
+  SaveActiveConn;
+  SaveActiveDS;
 end;
 
 procedure TFRpDInfoLCL.MonacoContentChanged(Sender: TObject);
@@ -1274,6 +1853,8 @@ begin
   item.DatabaseAlias := ComboDSConn.Text;
   if (item.HubSchemaId = 0) and (not SameText(previousAlias, item.DatabaseAlias)) then
     item.HubSchemaId := FindSiblingHubSchemaId(item);
+  // SQL or MyBase page (VCL UpdateConnectionDependentUi)
+  UpdateConnectionDependentUi(item);
   if FWork.DatabaseInfo.IndexOf(item.DatabaseAlias) < 0 then
   begin
     FMonacoEditor.SetHubContext(0, 0);
@@ -1286,9 +1867,30 @@ end;
 
 procedure TFRpDInfoLCL.PControlChange(Sender: TObject);
 begin
+  // The datasets follow the changes of the connections (new, renamed,
+  // driver): VCL PControlChange assigns the connections to the datasets frame
+  SaveActiveConn;
+  SaveActiveDS;
+  if PControl.ActivePage = TabDatasets then
+    LoadDSDetails(FActiveDSIndex);
   // VCL DatasetPageChanged
   if (PControl.ActivePage = TabDatasets) and (FActiveDSIndex >= 0) then
     EnsureAdvancedEditors;
+end;
+
+procedure TFRpDInfoLCL.UpdateConnectionDependentUi(AItem: TRpDataInfoItem);
+var
+  index: Integer;
+  isMyBase: Boolean;
+begin
+  index := -1;
+  if AItem <> nil then
+    index := FWork.DatabaseInfo.IndexOf(AItem.DatabaseAlias);
+  BShowData.Enabled := (index >= 0) and (not FShowDataRunning);
+  isMyBase := (index >= 0) and (FWork.DatabaseInfo[index].Driver = rpdatamybase);
+  // The MyBase page replaces the SQL one (VCL TabMyBase / TabSQL)
+  PMyBaseArea.Visible := isMyBase;
+  PSQLArea.Visible := not isMyBase;
 end;
 
 { SQL assistant }
@@ -1649,8 +2251,43 @@ var
   profile: TJSONValue;
   item: TRpDataInfoItem;
   i: Integer;
+  testResult: TRpConnectionTestResult;
+  showResult: TRpShowDataResult;
+  dataset: TDataset;
 begin
-  if AMessage is TRpSqlChatProgress then
+  if AMessage is TRpConnectionTestResult then
+  begin
+    // Connect (VCL BTestClick)
+    testResult := TRpConnectionTestResult(AMessage);
+    if (testResult.Session <> FSession) or (testResult.RequestVersion <> FTestVersion) then
+      Exit;
+    FTestRunning := False;
+    BTestConn.Enabled := True;
+    ShowInfo(testResult.MessageText, not testResult.Success);
+  end
+  else if AMessage is TRpShowDataResult then
+  begin
+    // Show data: the message frees the copy (and closes it) afterwards
+    showResult := TRpShowDataResult(AMessage);
+    if (showResult.Session <> FSession) or (showResult.RequestVersion <> FShowDataVersion) then
+      Exit;
+    FShowDataRunning := False;
+    UpdateConnectionDependentUi(ActiveDataInfo);
+    if showResult.ErrorMessage <> '' then
+    begin
+      if Assigned(FOnShowDataset) then
+        FOnShowDataset(Self, nil, showResult.ErrorMessage)
+      else
+        ShowInfo(showResult.ErrorMessage, True);
+      Exit;
+    end;
+    dataset := showResult.Report.DataInfo.Items[showResult.DataInfoIndex].Dataset;
+    if Assigned(FOnShowDataset) then
+      FOnShowDataset(Self, dataset, '')
+    else
+      ShowDataset(dataset);
+  end
+  else if AMessage is TRpSqlChatProgress then
   begin
     // VCL ChatTranslateProgress
     progress := TRpSqlStreamProgress(AMessage);
@@ -1807,9 +2444,12 @@ begin
     begin
       FActiveConnIndex := -1;
       EConnAlias.Text := '';
+      FillDriverCombo(SelectedListDriver);
       ComboDriver.ItemIndex := -1;
       EConfigFile.Text := '';
       CheckLoginPrompt.Checked := False;
+      CheckLoadParams.Checked := False;
+      CheckLoadDriverParams.Checked := False;
       PConnProps.Enabled := False;
       BDelConn.Enabled := False;
       Exit;
@@ -1819,12 +2459,47 @@ begin
     BDelConn.Enabled := True;
     item := FWork.DatabaseInfo[Index];
     EConnAlias.Text := item.Alias;
-    ComboDriver.ItemIndex := Integer(item.Driver);
+    FillDriverCombo(item.Driver);
     EConfigFile.Text := item.ConfigFile;
     CheckLoginPrompt.Checked := item.LoginPrompt;
+    CheckLoadParams.Checked := item.LoadParams;
+    CheckLoadDriverParams.Checked := item.LoadDriverParams;
   finally
     FUpdatingControls := False;
   end;
+end;
+
+procedure TFRpDInfoLCL.FillDriverCombo(ADriver: TRpDbDriver);
+var
+  i: Integer;
+begin
+  ComboDriver.Items.BeginUpdate;
+  try
+    GetFpcDatabaseDrivers(ComboDriver.Items);
+    // A driver the FPC build does not have stays listed for the connection
+    // that uses it: opening a report must not change it
+    if not IsFpcDriverAvailable(ADriver) then
+      ComboDriver.Items.AddObject(FpcDriverName(ADriver) + ' (' +
+        TranslateStr(1036, 'Not available') + ')', TObject(PtrInt(Ord(ADriver))));
+  finally
+    ComboDriver.Items.EndUpdate;
+  end;
+  ComboDriver.ItemIndex := -1;
+  for i := 0 to ComboDriver.Items.Count - 1 do
+    if PtrInt(ComboDriver.Items.Objects[i]) = Ord(ADriver) then
+    begin
+      ComboDriver.ItemIndex := i;
+      Break;
+    end;
+end;
+
+function TFRpDInfoLCL.ComboDriverValue(out ADriver: TRpDbDriver): Boolean;
+begin
+  Result := ComboDriver.ItemIndex >= 0;
+  if Result then
+    ADriver := TRpDbDriver(PtrInt(ComboDriver.Items.Objects[ComboDriver.ItemIndex]))
+  else
+    ADriver := rpdatadbexpress;
 end;
 
 procedure TFRpDInfoLCL.LoadDSDetails(Index: Integer);
@@ -1856,8 +2531,18 @@ begin
         FChat.SetCurrentExpression('');
         FChat.SetHubContext(0, 0);
       end;
+      EMyBase.Text := '';
+      EMyBaseDefs.Text := '';
+      EIndexFields.Text := '';
+      EMasterFields.Text := '';
+      LUnions.Clear;
+      ComboUnions.Clear;
+      CheckGroupUnion.Checked := False;
+      CheckParallelUnion.Checked := False;
+      UpdateConnectionDependentUi(nil);
       PDSProps.Enabled := False;
       PSQLArea.Enabled := False;
+      PMyBaseArea.Enabled := False;
       BDelDS.Enabled := False;
       BtnUpDS.Enabled := False;
       BtnDownDS.Enabled := False;
@@ -1869,6 +2554,7 @@ begin
 
     PDSProps.Enabled := True;
     PSQLArea.Enabled := True;
+    PMyBaseArea.Enabled := True;
     BDelDS.Enabled := True;
     BtnUpDS.Enabled := (Index > 0);
     BtnDownDS.Enabled := (Index < FWork.DataInfo.Count - 1);
@@ -1881,6 +2567,22 @@ begin
     MSQL.Text := item.SQL;
     if Assigned(FMonacoEditor) then
       FMonacoEditor.SQL := item.SQL;
+    // MyBase page and unions (VCL LDatasetsClick)
+    EMyBase.Text := item.MyBaseFilename;
+    EMyBaseDefs.Text := item.MyBaseFields;
+    EIndexFields.Text := item.MyBaseIndexFields;
+    EMasterFields.Text := item.MyBaseMasterFields;
+    LUnions.Items.Assign(item.DataUnions);
+    CheckGroupUnion.Checked := item.GroupUnion;
+    CheckParallelUnion.Checked := item.ParallelUnion;
+    ComboUnions.Items.Assign(LDatasets.Items);
+    if Index < ComboUnions.Items.Count then
+      ComboUnions.Items.Delete(Index);
+    if ComboUnions.Items.Count < 1 then
+      ComboUnions.ItemIndex := -1
+    else
+      ComboUnions.ItemIndex := 0;
+    UpdateConnectionDependentUi(item);
     // Chat and Hub context of the dataset (VCL LDatasetsClick)
     EnsureAdvancedEditors;
   finally
@@ -1919,7 +2621,8 @@ begin
 
   item := FWork.DatabaseInfo.Add(newAlias);
   item.Name := UniqueItemName('TRPDATABASEINFOITEM');
-  item.Driver := rpdatadriver;
+  // The driver selected in the driver list (VCL MNewClick)
+  item.Driver := SelectedListDriver;
 
   LConnections.Items.Add(newAlias);
   LConnections.ItemIndex := LConnections.Count - 1;
@@ -1955,6 +2658,337 @@ procedure TFRpDInfoLCL.BBrowseFileClick(Sender: TObject);
 begin
   if OpenDialog1.Execute then
     EConfigFile.Text := OpenDialog1.FileName;
+end;
+
+{ Drivers and connections file (VCL TFRpConnectionVCL) }
+
+procedure TFRpDInfoLCL.LoadConAdmin;
+begin
+  FreeAndNil(FConAdmin);
+  try
+    FConAdmin := TRpConnAdmin.Create;
+  except
+    // Without connections file there is nothing to add from it
+    FConAdmin := nil;
+  end;
+  RefreshAvailable;
+end;
+
+function TFRpDInfoLCL.SelectedListDriver: TRpDbDriver;
+begin
+  if LDrivers.ItemIndex >= 0 then
+    Result := TRpDbDriver(PtrInt(LDrivers.Items.Objects[LDrivers.ItemIndex]))
+  else
+    Result := rpdatazeos;
+end;
+
+procedure TFRpDInfoLCL.SelectListDriver(ADriver: TRpDbDriver);
+var
+  i: Integer;
+begin
+  for i := 0 to LDrivers.Items.Count - 1 do
+    if PtrInt(LDrivers.Items.Objects[i]) = Ord(ADriver) then
+    begin
+      LDrivers.ItemIndex := i;
+      Break;
+    end;
+  LDriversClick(LDrivers);
+end;
+
+procedure TFRpDInfoLCL.LDriversClick(Sender: TObject);
+begin
+  // VCL GDriverClick: description and connections of the driver
+  MHelp.Lines.Text := FpcDriverDescription(SelectedListDriver);
+  RefreshAvailable;
+end;
+
+procedure TFRpDInfoLCL.RefreshAvailable;
+var
+  sections: TStringList;
+  i: Integer;
+  driver: TRpDbDriver;
+  drivername: string;
+begin
+  // VCL ComboAvailable: the entries of the connections file that the driver
+  // opens (ResolveFpcConnectionDriver); entries without driver name are not
+  // listed (the VCL lists none for MyBase)
+  FAvailable.Clear;
+  if (FConAdmin = nil) or (FConAdmin.config = nil) then
+    Exit;
+  driver := SelectedListDriver;
+  sections := TStringList.Create;
+  try
+    FConAdmin.config.ReadSections(sections);
+    for i := 0 to sections.Count - 1 do
+    begin
+      drivername := Trim(FConAdmin.config.ReadString(sections[i], 'DriverName', ''));
+      if drivername = '' then
+        Continue;
+      if ResolveFpcConnectionDriver(drivername, driver) = driver then
+        FAvailable.Add(sections[i]);
+    end;
+  finally
+    sections.Free;
+  end;
+end;
+
+procedure TFRpDInfoLCL.PopAddPopup(Sender: TObject);
+var
+  aitem: TMenuItem;
+  i: Integer;
+begin
+  // VCL PopAddPopup: New plus the available connections
+  while PopAdd.Items.Count > 1 do
+    PopAdd.Items[PopAdd.Items.Count - 1].Free;
+  for i := 0 to FAvailable.Count - 1 do
+  begin
+    aitem := TMenuItem.Create(PopAdd);
+    aitem.Caption := FAvailable[i];
+    // The name (a caption may get an accelerator)
+    aitem.Hint := FAvailable[i];
+    aitem.OnClick := MenuAddClick;
+    PopAdd.Items.Add(aitem);
+  end;
+end;
+
+procedure TFRpDInfoLCL.MNewClick(Sender: TObject);
+begin
+  BNewConnClick(Sender);
+end;
+
+procedure TFRpDInfoLCL.MenuAddClick(Sender: TObject);
+begin
+  AddAvailableConnection(TMenuItem(Sender).Hint);
+end;
+
+procedure TFRpDInfoLCL.AddAvailableConnection(const AName: string);
+var
+  conname, drivername: string;
+  item: TRpDatabaseInfoItem;
+  params: TStringList;
+  driver: TRpDbDriver;
+begin
+  // VCL MenuAddClick
+  conname := UpperCase(Trim(AName));
+  if conname = '' then
+    Exit;
+  if not CheckCanModify then
+    Exit;
+  SaveActiveConn;
+  driver := SelectedListDriver;
+  if FConAdmin <> nil then
+  begin
+    params := TStringList.Create;
+    try
+      FConAdmin.GetConnectionParams(conname, params);
+      drivername := Trim(params.Values['DriverName']);
+    finally
+      params.Free;
+    end;
+    driver := ResolveFpcConnectionDriver(drivername, driver);
+  end;
+  // Raises when the report has a connection with that name
+  item := FWork.DatabaseInfo.Add(conname);
+  item.Name := UniqueItemName('TRPDATABASEINFOITEM');
+  item.Driver := driver;
+  LConnections.Items.Add(item.Alias);
+  LConnections.ItemIndex := LConnections.Count - 1;
+  LoadConnDetails(LConnections.ItemIndex);
+end;
+
+procedure TFRpDInfoLCL.BConfigClick(Sender: TObject);
+var
+  i: Integer;
+begin
+  ShowDBXConfig;
+  LoadConAdmin;
+  // VCL BConfigClick: the connections file may have changed; the next
+  // connect reads it again
+  for i := 0 to FWork.DatabaseInfo.Count - 1 do
+  begin
+    FWork.DatabaseInfo[i].DisConnect;
+    FWork.DatabaseInfo[i].UpdateConAdmin;
+  end;
+  // The Hub database or the API key of the dataset connection
+  if ActiveDataInfo <> nil then
+    ApplyActiveDataInfoContext(False);
+end;
+
+procedure TFRpDInfoLCL.StartConnectionTest;
+var
+  item: TRpDatabaseInfoItem;
+  copy: TRpReport;
+  worker: TRpConnectionTestWorker;
+begin
+  // VCL BTestClick; the .Net drivers (printreport.exe) are not available
+  SaveActiveConn;
+  if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
+    Exit;
+  if FTestRunning then
+    Exit;
+  item := FWork.DatabaseInfo[FActiveConnIndex];
+  // A copy for the worker: the dialog keeps editing the working one
+  copy := TRpReport.Create(nil);
+  try
+    copy.Params.Assign(FWork.Params);
+    copy.DatabaseInfo.Add(item.Alias).Assign(item);
+  except
+    copy.Free;
+    raise;
+  end;
+  Inc(FTestVersion);
+  worker := TRpConnectionTestWorker.Create(FMailboxRef);
+  worker.Session := FSession;
+  worker.RequestVersion := FTestVersion;
+  worker.Report := copy;
+  FTestRunning := True;
+  BTestConn.Enabled := False;
+  worker.Start;
+end;
+
+procedure TFRpDInfoLCL.BTestConnClick(Sender: TObject);
+begin
+  StartConnectionTest;
+end;
+
+{ Datasets: show data, MyBase and unions (VCL TFRpDatasetsVCL) }
+
+procedure TFRpDInfoLCL.StartShowData;
+var
+  item: TRpDataInfoItem;
+  copy: TRpReport;
+  worker: TRpShowDataWorker;
+begin
+  SaveActiveConn;
+  SaveActiveDS;
+  item := ActiveDataInfo;
+  if (item = nil) or (Trim(item.DatabaseAlias) = '') then
+    Exit;
+  if FShowDataRunning then
+    Exit;
+  // The worker opens a copy of the working data (master datasets and unions
+  // included); the dialog keeps editing the working one
+  copy := TRpReport.Create(nil);
+  try
+    if Assigned(FReport) then
+      copy.Language := FReport.Language;
+    copy.DatabaseInfo.Assign(FWork.DatabaseInfo);
+    copy.DataInfo.Assign(FWork.DataInfo);
+    copy.Params.Assign(FWork.Params);
+  except
+    copy.Free;
+    raise;
+  end;
+  Inc(FShowDataVersion);
+  worker := TRpShowDataWorker.Create(FMailboxRef);
+  worker.Session := FSession;
+  worker.RequestVersion := FShowDataVersion;
+  worker.DataInfoIndex := FActiveDSIndex;
+  worker.Report := copy;
+  FShowDataRunning := True;
+  BShowData.Enabled := False;
+  worker.Start;
+end;
+
+procedure TFRpDInfoLCL.BShowDataClick(Sender: TObject);
+begin
+  StartShowData;
+end;
+
+procedure TFRpDInfoLCL.BMyBaseClick(Sender: TObject);
+begin
+  if Sender = BMyBase then
+  begin
+    OpenDialogMyBase.DefaultExt := 'cds';
+    OpenDialogMyBase.FilterIndex := 1;
+  end
+  else
+  begin
+    OpenDialogMyBase.DefaultExt := 'ini';
+    OpenDialogMyBase.FilterIndex := 4;
+  end;
+  if OpenDialogMyBase.Execute then
+  begin
+    if Sender = BMyBase then
+      EMyBase.Text := OpenDialogMyBase.FileName
+    else
+      EMyBaseDefs.Text := OpenDialogMyBase.FileName;
+  end;
+end;
+
+procedure TFRpDInfoLCL.BModifyClick(Sender: TObject);
+var
+  item: TRpDataInfoItem;
+  dbinfo: TRpDatabaseInfoItem;
+  index: Integer;
+  path: string;
+begin
+  item := ActiveDataInfo;
+  if item = nil then
+    Exit;
+  index := FWork.DatabaseInfo.IndexOf(item.DatabaseAlias);
+  if index < 0 then
+    Exit;
+  dbinfo := FWork.DatabaseInfo[index];
+  path := '';
+  // The MyBase connection reads its path (Database parameter); no other
+  // driver is connected here (network)
+  if dbinfo.Driver = rpdatamybase then
+  begin
+    dbinfo.Connect(FWork.Params);
+    path := dbinfo.MyBasePath;
+  end;
+  ShowDataTextConfig(path + EMyBaseDefs.Text, path + EMyBase.Text);
+end;
+
+procedure TFRpDInfoLCL.AddUnion(const ADataset, ACommonFields: string);
+var
+  item: TRpDataInfoItem;
+  datasetname: string;
+begin
+  item := ActiveDataInfo;
+  if (item = nil) or (Trim(ADataset) = '') then
+    Exit;
+  if not CheckCanModify then
+    Exit;
+  // VCL BAddUnionsClick: not twice (by the dataset name alone)
+  if LUnions.Items.IndexOf(ADataset) >= 0 then
+    Exit;
+  datasetname := ADataset;
+  if Trim(ACommonFields) <> '' then
+    datasetname := datasetname + '-' + Trim(ACommonFields);
+  LUnions.Items.Add(datasetname);
+  item.DataUnions := LUnions.Items;
+end;
+
+procedure TFRpDInfoLCL.DeleteUnion;
+var
+  item: TRpDataInfoItem;
+begin
+  item := ActiveDataInfo;
+  if (item = nil) or (LUnions.ItemIndex < 0) then
+    Exit;
+  if not CheckCanModify then
+    Exit;
+  LUnions.Items.Delete(LUnions.ItemIndex);
+  item.DataUnions := LUnions.Items;
+end;
+
+procedure TFRpDInfoLCL.BAddUnionsClick(Sender: TObject);
+var
+  commonfields: string;
+begin
+  if ComboUnions.ItemIndex < 0 then
+    Exit;
+  commonfields := '';
+  if CheckParallelUnion.Checked then
+    commonfields := Trim(RpInputBox(ComboUnions.Text, SRpCommonFields, ''));
+  AddUnion(ComboUnions.Text, commonfields);
+end;
+
+procedure TFRpDInfoLCL.BDelUnionsClick(Sender: TObject);
+begin
+  DeleteUnion;
 end;
 
 procedure TFRpDInfoLCL.BNewDSClick(Sender: TObject);
@@ -2297,6 +3331,10 @@ begin
       op.AddProperty('groupUnion', ptBoolean, Null, origDS.GroupUnion);
       op.AddProperty('openOnStart', ptBoolean, Null, origDS.OpenOnStart);
       op.AddProperty('parallelUnion', ptBoolean, Null, origDS.ParallelUnion);
+      // Both undo cues (Delphi and LCL) restore dataUnions
+      if origDS.DataUnions.Count > 0 then
+        op.AddProperty('dataUnions', ptStringArray, Null,
+          StringListToVariant(origDS.DataUnions));
       undoCue.AddOperation(op);
     end;
   end;
@@ -2317,6 +3355,9 @@ begin
       op.AddProperty('groupUnion', ptBoolean, Null, newDS.GroupUnion);
       op.AddProperty('openOnStart', ptBoolean, Null, newDS.OpenOnStart);
       op.AddProperty('parallelUnion', ptBoolean, Null, newDS.ParallelUnion);
+      if newDS.DataUnions.Count > 0 then
+        op.AddProperty('dataUnions', ptStringArray, Null,
+          StringListToVariant(newDS.DataUnions));
       undoCue.AddOperation(op);
     end;
   end;
@@ -2345,6 +3386,10 @@ begin
         op.AddProperty('openOnStart', ptBoolean, origDS.OpenOnStart, newDS.OpenOnStart);
       if origDS.ParallelUnion <> newDS.ParallelUnion then
         op.AddProperty('parallelUnion', ptBoolean, origDS.ParallelUnion, newDS.ParallelUnion);
+      if not SameStringLists(origDS.DataUnions, newDS.DataUnions) then
+        op.AddProperty('dataUnions', ptStringArray,
+          StringListToVariant(origDS.DataUnions),
+          StringListToVariant(newDS.DataUnions));
       if op.properties.Count > 0 then
         undoCue.AddOperation(op)
       else
@@ -2356,7 +3401,7 @@ end;
 
 function TFRpDInfoLCL.ApplyChanges: Boolean;
 var
-  needsExternalMark: Boolean;
+  needsExternalMark, found: Boolean;
   i, j: Integer;
 begin
   Result := True;
@@ -2373,13 +3418,35 @@ begin
   // name based undo operations: keep the report dirty for them
   needsExternalMark := OrderChanged;
   // The same for the SQL explanation of the audit (saved with the report,
-  // not an undo property)
+  // not an undo property) and the MyBase properties (not undo properties
+  // either, neither in the Delphi undo cue)
   for i := 0 to FWork.DataInfo.Count - 1 do
+  begin
+    found := False;
     for j := 0 to FOrigDataInfo.Count - 1 do
-      if SameText(FOrigDataInfo.Items[j].Name, FWork.DataInfo.Items[i].Name) and
-        ((FOrigDataInfo.Items[j].SQLExplanation <> FWork.DataInfo.Items[i].SQLExplanation) or
-        (FOrigDataInfo.Items[j].SQLExplanationError <> FWork.DataInfo.Items[i].SQLExplanationError)) then
+      if SameText(FOrigDataInfo.Items[j].Name, FWork.DataInfo.Items[i].Name) then
+      begin
+        found := True;
+        if (FOrigDataInfo.Items[j].SQLExplanation <> FWork.DataInfo.Items[i].SQLExplanation) or
+          (FOrigDataInfo.Items[j].SQLExplanationError <> FWork.DataInfo.Items[i].SQLExplanationError) or
+          (not SameMyBaseProperties(FOrigDataInfo.Items[j], FWork.DataInfo.Items[i])) then
+          needsExternalMark := True;
+      end;
+    // Added with MyBase properties: redo would recreate it without them
+    if (not found) and HasMyBaseProperties(FWork.DataInfo.Items[i]) then
+      needsExternalMark := True;
+  end;
+  // Removed with MyBase properties: undo would recreate it without them
+  for j := 0 to FOrigDataInfo.Count - 1 do
+    if HasMyBaseProperties(FOrigDataInfo.Items[j]) then
+    begin
+      found := False;
+      for i := 0 to FWork.DataInfo.Count - 1 do
+        if SameText(FOrigDataInfo.Items[j].Name, FWork.DataInfo.Items[i].Name) then
+          found := True;
+      if not found then
         needsExternalMark := True;
+    end;
   RecordUndoChanges;
   FReport.DatabaseInfo.Assign(FWork.DatabaseInfo);
   FReport.DataInfo.Assign(FWork.DataInfo);
