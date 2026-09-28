@@ -16,9 +16,25 @@ type
   TFakeHandler = procedure(AServer: TFakeServer; ARequest: TFPHTTPConnectionRequest;
     AResponse: TFPHTTPConnectionResponse) of object;
 
+  // A connection thread that is not freed on terminate: the fake server
+  // waits for it and frees it. fphttpserver frees its connection threads
+  // themselves after the connection count went down, so one could still be
+  // alive when the test program ends (heaptrc reported it now and then).
+  TFakeConnectionThread = class(TFPHTTPConnectionThread)
+  public
+    constructor CreateConnection(AConnection: TFPHTTPConnection); override;
+  end;
+
   // Makes the bind address and the connection count public
   TFakeHttpServer = class(TFPHttpServer)
+  private
+    FConnThreads: TThreadList;
+    procedure FreeConnectionThreads(AOnlyFinished: Boolean);
+  protected
+    function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
   public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     property Address;
     property ConnectionCount;
   end;
@@ -76,6 +92,59 @@ implementation
 type
   // Access to the protected connection of a response (raw socket writes)
   TResponseAccess = class(TFPHTTPConnectionResponse);
+
+{ TFakeConnectionThread }
+
+constructor TFakeConnectionThread.CreateConnection(AConnection: TFPHTTPConnection);
+begin
+  inherited CreateConnection(AConnection);
+  // The thread starts in AfterConstruction: this runs before
+  FreeOnTerminate := False;
+end;
+
+{ TFakeHttpServer }
+
+constructor TFakeHttpServer.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FConnThreads := TThreadList.Create;
+end;
+
+destructor TFakeHttpServer.Destroy;
+begin
+  inherited Destroy;
+  FreeConnectionThreads(False);
+  FConnThreads.Free;
+end;
+
+function TFakeHttpServer.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;
+begin
+  FreeConnectionThreads(True);
+  Result := TFakeConnectionThread.CreateConnection(Conn);
+  FConnThreads.Add(Result);
+end;
+
+procedure TFakeHttpServer.FreeConnectionThreads(AOnlyFinished: Boolean);
+var
+  LList: TList;
+  LThread: TThread;
+  I: Integer;
+begin
+  LList := FConnThreads.LockList;
+  try
+    for I := LList.Count - 1 downto 0 do
+    begin
+      LThread := TThread(LList[I]);
+      if AOnlyFinished and not LThread.Finished then
+        Continue;
+      LThread.WaitFor;
+      LThread.Free;
+      LList.Delete(I);
+    end;
+  finally
+    FConnThreads.UnlockList;
+  end;
+end;
 
 { TFakeServerThread }
 
