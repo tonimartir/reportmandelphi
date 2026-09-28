@@ -17,8 +17,8 @@ uses
   rpmdfopenliblcl, rpmdfparamslcl, rpmdundocuelcl, rpmdcueviewlcl,
   rpaithreadslcl, rpchatmodernstylelcl, rpmarkdownlcl, rpwebmarkdownlcl,
   rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl,
-  rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl,
-  LazarusPackageIntf;
+  rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl, rpdbxadminlcl,
+  rpmdfnewreportwizardlcl, LazarusPackageIntf;
 
 implementation
 

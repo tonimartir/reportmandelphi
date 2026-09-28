@@ -144,6 +144,7 @@ design_lcl/rpaithreadslcl.pas
 design_lcl/rpchatmodernstylelcl.pas
 design_lcl/rpdbbrowserlcl.lfm
 design_lcl/rpdbbrowserlcl.pas
+design_lcl/rpdbxadminlcl.pas
 design_lcl/rpexpredlglcl.pas
 design_lcl/rpfrmaireportlcl.pas
 design_lcl/rpfrmaischemaselectorlcl.pas
@@ -169,6 +170,7 @@ design_lcl/rpmdfgridlcl.pas
 design_lcl/rpmdflabelintlcl.pas
 design_lcl/rpmdfmainlcl.lfm
 design_lcl/rpmdfmainlcl.pas
+design_lcl/rpmdfnewreportwizardlcl.pas
 design_lcl/rpmdfopenliblcl.pas
 design_lcl/rpmdfparamslcl.pas
 design_lcl/rpmdfsearchlcl.pas
