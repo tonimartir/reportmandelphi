@@ -198,7 +198,7 @@ El script termina con código 2 si algo no sale OK. Los logs quedan en
 Todo compila en una sola pasada desde el zip, con Zeos recién compilado y
 una configuración de Lazarus vacía, así que la lista de ficheros está completa.
 
-Antes del commit 57961c6 la segunda compilación fallaba con `Can't find unit
+Antes del commit e1ff3db la segunda compilación fallaba con `Can't find unit
 rpsecutil used by rpsubreport`: el ciclo `rpsection` → `rpsubreport` →
 `rpsecutil` dejaba `rpsecutil.ppu` con un checksum obsoleto tras una
 compilación limpia (ver `CLAUDE.md`). OPM compila cada paquete una sola vez,

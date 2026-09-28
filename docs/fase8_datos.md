@@ -246,7 +246,7 @@ Resultados:
 
 ## Encontrado en unidades compartidas y en el VCL
 
-Estado a 28-09-2026: 1, 2, 3, 5 y 6 corregidos (2dc4803); 4 se deja (el
+Estado a 28-09-2026: 1, 2, 3, 5 y 6 corregidos (e5fa947); 4 se deja (el
 producto nunca llama a `ShowDBXConfig` con un fichero).
 
 

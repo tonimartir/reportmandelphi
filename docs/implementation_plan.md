@@ -64,35 +64,35 @@ tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 
 | Fase | Contenido | Commits | Estado |
 |---|---|---|---|
-| 1 | Paquete del motor para FPC; texto complejo (DirectWrite en Windows, FreeType/HarfBuzz en Linux); datos MyBase/MIDAS XML con `TBufDataset`; SQLite vía la abstracción FireDAC; paquete `reportman_lcl` y vista previa; exportar a PDF/A-3 y PNG | 3e03a06 … cb66d67 | Hecha |
-| 2 | Marco del diseñador visual LCL, carpetas `rtl_fpc`/`lcl`/`design_lcl`, selección, tiradores y reglas | 6ae4ff3 … 961fa31 | Hecha |
-| 3.1–3.5 | Inspector de objetos; paleta y herramientas; árbol de estructura y explorador de datos; configuración de datos y secciones; configurar página, vista previa, editor SQL Monaco; `TFRpMainFLCL` reutilizable y `TRpDesignerLCL.Execute`; registro de componentes en la paleta de Lazarus | c6baddd … d288b33 | Hecha |
-| 4.1–4.3 | Diálogos: editor de expresiones, rejilla, acerca de; asistente de informes, selección de campos, secciones externas; parámetros, búsqueda de valores y librería de informes en base de datos | 81c911d … 0d10358 | Hecha (4.3 completada en 5.5) |
-| 5.1–5.4 | Deshacer/rehacer: motor (`rpmdundocuelcl`), panel de historial, instrumentación de acciones, atajos y estado modificado | a2a6684 … b725f80 | Hecha (corregida en 5.5) |
-| 5.5 | Estabilización: aislamiento de Delphi, infraestructura, sin pérdida de datos, undo fiable, tests de regresión reales, bugs comunes corregidos también en Delphi | a7c6c89 … 1014d29 | Hecha |
-| — | Compilación en una sola pasada (CRC de `rpsection`), zip OPM, Base64 binario seguro en FPC, paridad del inspector con la VCL, vista previa Linux con Cairo/FreeType igual que el PDF | 57961c6 … cc8e917 | Hecha |
-| 6 | Diseñador autónomo, `.deb` + AppImage construidos en Docker, pruebas en máquinas limpias, enganche al release de SourceForge | 07bfa5a … b3ea54b | Hecha salvo pruebas manuales y subida (ver `fase6_plan.md`) |
-| 7 | Asistentes de IA y Hub en FPC/LCL (abajo) | 05f20c0 … ebb5cbe | Hecha salvo la prueba real contra el Hub |
-| 8 | Paridad con el diseñador VCL (abajo) | f4ae136 … | Hecha |
+| 1 | Paquete del motor para FPC; texto complejo (DirectWrite en Windows, FreeType/HarfBuzz en Linux); datos MyBase/MIDAS XML con `TBufDataset`; SQLite vía la abstracción FireDAC; paquete `reportman_lcl` y vista previa; exportar a PDF/A-3 y PNG | 9bb8edc … 94bf348 | Hecha |
+| 2 | Marco del diseñador visual LCL, carpetas `rtl_fpc`/`lcl`/`design_lcl`, selección, tiradores y reglas | 1ed2413 … df501d8 | Hecha |
+| 3.1–3.5 | Inspector de objetos; paleta y herramientas; árbol de estructura y explorador de datos; configuración de datos y secciones; configurar página, vista previa, editor SQL Monaco; `TFRpMainFLCL` reutilizable y `TRpDesignerLCL.Execute`; registro de componentes en la paleta de Lazarus | c9827ed … d060825 | Hecha |
+| 4.1–4.3 | Diálogos: editor de expresiones, rejilla, acerca de; asistente de informes, selección de campos, secciones externas; parámetros, búsqueda de valores y librería de informes en base de datos | 08147d3 … f68cc6b | Hecha (4.3 completada en 5.5) |
+| 5.1–5.4 | Deshacer/rehacer: motor (`rpmdundocuelcl`), panel de historial, instrumentación de acciones, atajos y estado modificado | 96e0aef … 4697af2 | Hecha (corregida en 5.5) |
+| 5.5 | Estabilización: aislamiento de Delphi, infraestructura, sin pérdida de datos, undo fiable, tests de regresión reales, bugs comunes corregidos también en Delphi | e1f5266 … c08b3e0 | Hecha |
+| — | Compilación en una sola pasada (CRC de `rpsection`), zip OPM, Base64 binario seguro en FPC, paridad del inspector con la VCL, vista previa Linux con Cairo/FreeType igual que el PDF | e1ff3db … a823e2e | Hecha |
+| 6 | Diseñador autónomo, `.deb` + AppImage construidos en Docker, pruebas en máquinas limpias, enganche al release de SourceForge | 722acb4 … 6917439 | Hecha salvo pruebas manuales y subida (ver `fase6_plan.md`) |
+| 7 | Asistentes de IA y Hub en FPC/LCL (abajo) | ec875fd … c755378 | Hecha salvo la prueba real contra el Hub |
+| 8 | Paridad con el diseñador VCL (abajo) | 5f35ad1 … | Hecha |
 
 ### Subfase 5.5: qué se corrigió
 
-- **P0, aislamiento de Delphi** (a7c6c89): todo el trabajo del port quedó bajo
+- **P0, aislamiento de Delphi** (e1f5266): todo el trabajo del port quedó bajo
   `{$IFDEF FPC}`; Delphi compila de nuevo exactamente el código anterior al
   port salvo arreglos genuinos (claves PDF `/CIDToGIDMap` y `/Length1`, fuga de
   anotaciones, lecturas fuera de rango en `rpinfoprovid`/`rpHarfBuzz`, mensaje
   de FireDAC). `USEZEOS` solo para FPC; `dynlibs` solo en FPC (rompía Delphi
   Linux64); BOM restaurados.
-- **P3, infraestructura** (d98e24b): fuera los paquetes duplicados de la raíz y
+- **P3, infraestructura** (66fd672): fuera los paquetes duplicados de la raíz y
   `packagefiles.xml` con rutas absolutas; `build_fpc.bat/.sh`; tests que usan
   los paquetes sin rutas al motor.
-- **P1/P2, diseñador** (33c8b25, 5b4a150): abrir un informe no deja uno a
+- **P1/P2, diseñador** (7ebbb64, 50e0b51): abrir un informe no deja uno a
   medias; todos los diálogos registran deshacer o marcan el informe como
   modificado; configuración de datos sobre copias (Cancelar funciona);
   deshacer consistente ante fallos, orden Z, inspector con valores del modelo;
   deshacer el borrado de parámetros/conexiones/datasets ya no los recrea
   vacíos (el mismo fallo estaba en la VCL y se corrigió también en Delphi).
-- Bugs comunes corregidos en Delphi al mismo tiempo (41391af, 1014d29): deshacer
+- Bugs comunes corregidos en Delphi al mismo tiempo (eff8c90, c08b3e0): deshacer
   en la VCL, color de fondo por defecto del metafile, reserva de fuentes,
   expresiones de gráfico y BidiModes al deshacer un borrado.
 

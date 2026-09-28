@@ -237,8 +237,8 @@ Resultados:
 
 ## Encontrado en el VCL y en unidades compartidas
 
-Estado a 28-09-2026: 1, 2, 3, 5 y 7 corregidos en Delphi (0ecb77b); 4
-corregido en FPC con `rtl_fpc/rpstreamfpc` (258a4b7), que además corrige
+Estado a 28-09-2026: 1, 2, 3, 5 y 7 corregidos en Delphi (6752a42); 4
+corregido en FPC con `rtl_fpc/rpstreamfpc` (96f61e5), que además corrige
 la moneda truncada de FPC 3.2.2 en todos los formatos; 6 se deja (menor:
 los valores solo se escriben al aceptar).
 
@@ -288,4 +288,4 @@ los valores solo se escriben al aceptar).
 ## Pendiente
 
 - ~~Conectar `ASysInfo` a `ShowSysInfo`~~ (Ayuda > Información del sistema).
-- ~~Añadir los ids 1800–1814~~ (2494240).
+- ~~Añadir los ids 1800–1814~~ (9c72238).

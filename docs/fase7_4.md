@@ -193,7 +193,7 @@ La prueba del Hub inaccesible tarda unos 60 s en Windows (hallazgo 1).
 
 ## Encontrado
 
-Estado a 28-09-2026: 1 corregido (48f04a4); 3, 4 y 6 corregidos en el VCL
+Estado a 28-09-2026: 1 corregido (3bfdc5d); 3, 4 y 6 corregidos en el VCL
 (contexto por petición, validación con `Synchronize`, el refresco espera al
 anterior; además el diálogo espera a su refresco al ocultarse y los refrescos
 de un informe, del diálogo y del asistente de diseño, ya no se solapan);

@@ -188,7 +188,7 @@ Carpeta `build/linux/`:
   `ZCbor`, MySQL/PostgreSQL), ninguno necesario para compilar con FPC en Linux.
 - `build-in-container.sh`: copia de trabajo de lo necesario, `--pcp` privado
   con `--add-package-link` (Zeos y los tres paquetes), `build_fpc.sh clean`
-  (una pasada por paquete desde 57961c6), diseñador en Release,
+  (una pasada por paquete desde e1ff3db), diseñador en Release,
   `LclDesignerTest --selftest` bajo `xvfb-run` (fallo = build roto), `.deb` +
   lintian (un error = build roto) + AppImage, y `build-info.txt`. Desde 6.8 lo
   hace dos veces, Qt6 y GTK2, cada una en su copia (`/build/src-qt6`,
@@ -502,13 +502,13 @@ capa de libQt6Pas reconstruida, tarda unos 12 min.
   `/usr/share`, hay que cambiar `rptranslator` (unidad compartida con Delphi).
 - **Ejecutables no PIE**: FPC 3.2.2 no genera PIE ni usa `-z now`/FORTIFY;
   lintian lo marca y se documenta con overrides.
-- **Menú principal sin traducir**: resuelto (70cd0e7): menús y barra de
+- **Menú principal sin traducir**: resuelto (3284c2d): menús y barra de
   herramientas con `TranslateStr` y los textos de la LCL traducidos.
 - **Funciones solo Windows**: DataDirect/WebRTC queda en HTTP. En Linux no hay
   Monaco (decisión del 28-09-2026: hasta que la LCL GTK3 esté lista): el
   editor SQL es SynEdit con completado por esquema y la sugerencia de SQL de
-  la IA (1da814b).
-- **Vista previa en Linux**: resuelto; el texto se recorta (9c74a64) y el HTML
+  la IA (ecd5a0e).
+- **Vista previa en Linux**: resuelto; el texto se recorta (1ea9ea4) y el HTML
   en línea conserva sus estilos (`LclSnapshotTest`, `TestTextClipAndAlign` y
   `TestHtmlRuns`).
 - **Paridad del inspector**: resuelta; las listas de propiedades de los

@@ -234,7 +234,7 @@ Capturas (`--shots`): `sql_assistant_dialog`, `sql_fallback_editor`,
 
 ## Encontrado en el VCL y en unidades compartidas
 
-Verificado y corregido el 28-09-2026 (commits 0a7f5c7 y siguiente): 1 a 4.
+Verificado y corregido el 28-09-2026 (commits dd5a3d4 y siguiente): 1 a 4.
 5 y 6 no son fallos (lecturas atómicas; mismo desplazamiento del campo).
 
 1. `rpmdfdatasetsvcl.pas:827` (`ChatSchemaChange`): el chat llama a
@@ -264,9 +264,9 @@ Verificado y corregido el 28-09-2026 (commits 0a7f5c7 y siguiente): 1 a 4.
 
 ## Pendiente
 
-- ~~Añadir los ids 1552–1560 a los `reportmanres.*`~~ (hecho, f3d8449).
+- ~~Añadir los ids 1552–1560 a los `reportmanres.*`~~ (hecho, 4893c74).
 - Completado de columnas con conexiones locales (Zeos, SQLite...) sin
   esquema del Hub: se podría usar `GetTableNames`/`GetFieldNames` de la
   conexión (conectar al abrir el completado).
-- ~~Completado de IA en el editor alternativo (Linux)~~ (hecho, 1da814b).
+- ~~Completado de IA en el editor alternativo (Linux)~~ (hecho, ecd5a0e).
 - ~~Parar la auditoría desde el Stop de la selección de modelo~~ (hecho).

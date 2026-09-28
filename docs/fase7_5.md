@@ -33,7 +33,7 @@ Al recargarlo, el historial vuelve con ellas: Ctrl+Z deshace el cambio de la
 IA paso a paso y el historial anterior sigue intacto.
 
 En FPC ese código estaba fuera (`{$IFNDEF FPC}`): el paquete del motor no
-puede usar la unidad de deshacer del diseñador. En master (a7855a1)
+puede usar la unidad de deshacer del diseñador. En master (5cec367)
 `rpxmlstream` escribe y lee `BINCUE` a través de dos ganchos
 (`RpUndoCueToJson`, `RpUndoCueFromJson`); en 7.5 los registra
 `design_lcl/rpmdundocuelcl` (sección `initialization`):
