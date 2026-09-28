@@ -144,9 +144,9 @@ el asistente más grande, el de diseño, para el final.
 habla HTTP/JSON, muestra el chat y aplica lo que devuelve. En Windows la
 interfaz rica es web y se reutiliza tal cual: Monaco (`MonacoEditorAssets`) y
 WebMarkdown (`WebMarkdownAssets`) sobre el WebView2 que ya aloja el diseñador
-LCL (`rpwebview2`, `rplclwebview`). Falta en Pascal el puente de Monaco con el
-esquema y la IA (el Monaco VCL tiene ~1.300 líneas de eso; el LCL, ninguna),
-alojar WebMarkdown en LCL y los marcos de chat nativos.
+LCL (`rpwebview2`, `rplclwebview`). Hubo que escribir en Pascal el puente de
+Monaco con el esquema y la IA (el Monaco VCL tiene ~1.300 líneas de eso),
+alojar WebMarkdown en LCL y los marcos de chat nativos (hecho en 7.2 y 7.3).
 
 **Linux no tiene WebView2.** Opciones: (a) nativa: SynEdit con completado
 por esquema en Pascal y un visor HTML de Lazarus para el markdown; (b)
@@ -254,7 +254,7 @@ necesita un recurso de formulario) y se construyen en código:
 La ventana principal del diseñador LCL (`rpmdfmainlcl`) tiene el panel de IA
 a la derecha, como la pestaña de chat del VCL: el `TFRpChatFrame` con la
 tarjeta de cuenta arriba, el modelo y el esquema; se muestra u oculta con
-Ver > Chat IA (visible por omisión, sin guardarse todavía). Al abrir o crear
+Ver > Chat IA (visible por omisión; la preferencia se guarda desde 7.5). Al abrir o crear
 un informe resuelve la base de datos y el esquema del Hub del informe
 (`ResolveInitialDesignChatSchemaContext`, igual que el VCL) y arranca la
 inicialización en línea. El asistente de diseño (eventos del chat) se
@@ -304,8 +304,8 @@ encoló con `TThread.Queue` y el hilo principal no ha ejecutado aún (compara el
 liberarlos. `TRpAuthManager.DispatchAuthListener` (FPC) usa esa llamada, así
 que un login o un `CheckStatus` hecho en un hilo que termina enseguida
 (`RefreshStatusInBackground`) no avisaba a nadie. `TRpAsyncWorker` espera con
-un `Synchronize` final a que se ejecuten; el arreglo en `rpauthmanager`
-queda pendiente. (2) El VCL llama a `window.appendStreamingChunk`, que la
+un `Synchronize` final a que se ejecuten, y `rpauthmanager` usa
+`TThread.Synchronize` en FPC. (2) El VCL llama a `window.appendStreamingChunk`, que la
 página no define (es `appendMessageChunk`); el LCL usa la buena. (3)
 `rplclwebview`: WebView2 podía llamar a los manejadores después de destruir el
 control; ahora se desconectan al cerrar. Nuevo `CapturePreviewPng`. (4)
@@ -341,11 +341,6 @@ llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
 
 ## Pendiente
 
-- **Traducción del diseñador LCL**: menús y varios formularios tienen el texto
-  fijo en español; pasar a `TranslateStr` con los IDs de la VCL (textos por
-  defecto en inglés) y traducir también los textos propios de la LCL
-  (`LCLStrConsts`) con los `.po` de Lazarus. El idioma ya se detecta en
-  Linux (`LC_ALL`/`LC_MESSAGES`/`LANG`).
 - **Widgetset de Linux** (decidido 27-09-2026; empaquetado hecho, ver
   `fase6_plan.md` 6.8, falta probarlo en un escritorio real): Qt6 pasa a
   ser el principal (`.deb` `reportman-designer` y AppImage), con

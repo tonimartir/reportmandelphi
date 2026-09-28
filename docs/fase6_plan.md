@@ -502,17 +502,17 @@ capa de libQt6Pas reconstruida, tarda unos 12 min.
   `/usr/share`, hay que cambiar `rptranslator` (unidad compartida con Delphi).
 - **Ejecutables no PIE**: FPC 3.2.2 no genera PIE ni usa `-z now`/FORTIFY;
   lintian lo marca y se documenta con overrides.
-- **Menú principal sin traducir**: `TFRpMainFLCL.BuildMenus` y la barra de
-  herramientas usan textos fijos en español (los diálogos sí usan
-  `TranslateStr`); se ve en las capturas de las pruebas con `LANG=C`.
-- **Funciones solo Windows**: Monaco (WebView2) cae al editor de texto simple;
-  DataDirect/WebRTC queda en HTTP. Valorar WebKitGTK para Monaco en una fase
-  posterior.
-- **Vista previa en Linux**: el texto que desborda no se recorta y el HTML en
-  línea se pinta sin formato (hallazgos de la auditoría); conviene corregirlo
-  antes o durante 6.6.
-- **Paridad del inspector** (gráfico, código de barras, imagen, expresión): sigue
-  pendiente como fase propia; no bloquea el instalador pero sí la experiencia.
+- **Menú principal sin traducir**: resuelto (70cd0e7): menús y barra de
+  herramientas con `TranslateStr` y los textos de la LCL traducidos.
+- **Funciones solo Windows**: DataDirect/WebRTC queda en HTTP. En Linux no hay
+  Monaco (decisión del 28-09-2026: hasta que la LCL GTK3 esté lista): el
+  editor SQL es SynEdit con completado por esquema y la sugerencia de SQL de
+  la IA (1da814b).
+- **Vista previa en Linux**: resuelto; el texto se recorta (9c74a64) y el HTML
+  en línea conserva sus estilos (`LclSnapshotTest`, `TestTextClipAndAlign` y
+  `TestHtmlRuns`).
+- **Paridad del inspector**: resuelta; las listas de propiedades de los
+  elementos son las de la VCL (`LclDesignerTest`, `TestItemInterfaces`).
 
 ## Criterios de aceptación de la Fase 6
 
