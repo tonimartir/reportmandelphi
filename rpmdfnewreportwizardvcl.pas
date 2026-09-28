@@ -96,6 +96,12 @@ type
     FHistory: TList<TRpWizardPage>;
     FCommitted: Boolean;
     FPendingPrompt: string;
+    // The connection this wizard created, and its driver: going Back and
+    // Next again reuses it instead of refusing the name as existing
+    FCreatedConnName: string;
+    FCreatedConnKind: string;
+    // Hub databases of the API key (name=id), the combo shows the names
+    FHubDatabases: TStringList;
     FAdminService: TRpWebDbxAdminService;
     FDestReport: TRpReport;
     FConnAdmin: TRpConnAdmin;
@@ -181,6 +187,7 @@ type
     function FamilyAcceptsParamStep: Boolean;
     function HasReportmanAiSchema: Boolean;
     function ConnectionExists(const AConnectionName: string): Boolean;
+    function OwnConnection(const AConnectionName: string): Boolean;
     function TryGetConnectionDetails(const AConnectionName: string;
       out AFamily: TRpWizardDriverFamily; out ADriverHint: string;
       out AHubDatabaseId, AHubSchemaId: Int64; out AApiKey: string): Boolean;
@@ -282,6 +289,7 @@ end;
 procedure TFRpNewReportWizardVCL.FormCreate(Sender: TObject);
 begin
   FHistory := TList<TRpWizardPage>.Create;
+  FHubDatabases := TStringList.Create;
   FParamsList := TList<TRpWebConnectionParam>.Create;
   FParamEditors := TList<TWinControl>.Create;
   FAdminService := TRpWebDbxAdminService.Create;
@@ -304,6 +312,7 @@ begin
   FParamsList.Free;
   FParamEditors.Free;
   FHistory.Free;
+  FHubDatabases.Free;
   FAdminService.Free;
   FConnAdmin.Free;
 end;
@@ -521,6 +530,8 @@ var
   schemaApiKey: string;
   i: Integer;
   testResult: TRpWebConnectionTestResult;
+  newkind: string;
+  zeosvalues: TStringList;
 begin
   Result := False;
   case FCurrentPage of
@@ -567,12 +578,24 @@ begin
         end;
         if FState.ConnMode = cnNew then
         begin
-          FState.HubDatabaseName := FCbHubDatabase.Items.Names[FCbHubDatabase.ItemIndex];
-          FState.HubDatabaseId := StrToInt64Def(FCbHubDatabase.Items.ValueFromIndex[FCbHubDatabase.ItemIndex], 0);
+          FState.HubDatabaseName := FHubDatabases.Names[FCbHubDatabase.ItemIndex];
+          FState.HubDatabaseId := StrToInt64Def(FHubDatabases.ValueFromIndex[FCbHubDatabase.ItemIndex], 0);
           values := TStringList.Create;
           try
+            // A connection of another driver created by this wizard with the
+            // same name (Back to the route page) is replaced
+            if OwnConnection(FState.ConnName) and
+              (not SameText(FCreatedConnKind, AGENT_DRIVER_NAME)) then
+            begin
+              FAdminService.DeleteConnection(FState.ConnName);
+              FCreatedConnName := '';
+            end;
             if not ConnectionExists(FState.ConnName) then
+            begin
               FAdminService.CreateConnection(FState.ConnName, AGENT_DRIVER_NAME);
+              FCreatedConnName := FState.ConnName;
+              FCreatedConnKind := AGENT_DRIVER_NAME;
+            end;
             values.Values['ApiKey'] := FState.HubApiKey;
             values.Values['HubDatabaseId'] := IntToStr(FState.HubDatabaseId);
             FAdminService.UpdateConnectionParams(FState.ConnName, values);
@@ -704,7 +727,7 @@ begin
               [smbOK], smsInformation, smbOK, smbOK);
             Exit;
           end;
-          if ConnectionExists(trimmedName) then
+          if ConnectionExists(trimmedName) and (not OwnConnection(trimmedName)) then
           begin
             RpMessageBox('This connection name already exists. Choose a different name.',
               'New Report', [smbOK], smsInformation, smbOK, smbOK);
@@ -737,7 +760,8 @@ begin
           try
             FConnAdmin.GetConnectionNames(existing, '');
             for i := 0 to existing.Count - 1 do
-              if SameText(existing[i], trimmedName) then
+              if SameText(existing[i], trimmedName) and
+                (not OwnConnection(trimmedName)) then
               begin
                 RpMessageBox('This connection name already exists. Choose a different name.',
                   'New Report', [smbOK], smsInformation, smbOK, smbOK);
@@ -746,9 +770,34 @@ begin
           finally
             existing.Free;
           end;
-          // create the new connection in DBXConnections
+          // create the new connection in DBXConnections (the one created
+          // before with this name and the same driver is kept)
           try
-            FAdminService.CreateConnection(trimmedName, FamilyDriverName, FState.DriverConcrete);
+            newkind := FamilyDriverName + '/' + FState.DriverConcrete;
+            if OwnConnection(trimmedName) and
+              (not SameText(FCreatedConnKind, newkind)) then
+            begin
+              FAdminService.DeleteConnection(trimmedName);
+              FCreatedConnName := '';
+            end;
+            if not OwnConnection(trimmedName) then
+            begin
+              FAdminService.CreateConnection(trimmedName, FamilyDriverName, FState.DriverConcrete);
+              FCreatedConnName := trimmedName;
+              FCreatedConnKind := newkind;
+              // Zeos: the chosen protocol (the ZeosLib driver defaults to
+              // firebird-1.0)
+              if FState.DriverFamily = dfZeos then
+              begin
+                zeosvalues := TStringList.Create;
+                try
+                  zeosvalues.Values['Database Protocol'] := FState.DriverConcrete;
+                  FAdminService.UpdateConnectionParams(trimmedName, zeosvalues);
+                finally
+                  zeosvalues.Free;
+                end;
+              end;
+            end;
           except
             on E: Exception do
             begin
@@ -820,6 +869,13 @@ begin
   finally
     existing.Free;
   end;
+end;
+
+function TFRpNewReportWizardVCL.OwnConnection(
+  const AConnectionName: string): Boolean;
+begin
+  Result := (FCreatedConnName <> '') and
+    SameText(Trim(AConnectionName), FCreatedConnName);
 end;
 
 function TFRpNewReportWizardVCL.TryGetConnectionDetails(
@@ -894,7 +950,9 @@ function TFRpNewReportWizardVCL.FamilyDriverName: string;
 begin
   case FState.DriverFamily of
     dfFireDac:   Result := 'FireDac';
-    dfZeos:      Result := 'Interbase';   // Zeos shares semantics with Interbase family in this codebase
+    // The Zeos connections are ZeosLib ones (dbxdrivers [ZeosLib], with the
+    // Database Protocol): an Interbase one had no protocol and did not open
+    dfZeos:      Result := 'ZeosLib';
     dfDbExpress: Result := 'DBExpress';
     dfBde:       Result := 'BDE';
     dfDao:       Result := 'ADO';
@@ -1745,6 +1803,7 @@ end;
 procedure TFRpNewReportWizardVCL.LoadHubDatabases;
 var
   list: TStringList;
+  i: Integer;
 begin
   list := TStringList.Create;
   try
@@ -1760,9 +1819,13 @@ begin
       Screen.Cursor := crDefault;
     end;
     FState.HubLoggedIn := True;
+    FHubDatabases.Assign(list);
     if Assigned(FCbHubDatabase) then
     begin
-      FCbHubDatabase.Items.Assign(list);
+      // The names (the list has name=id lines)
+      FCbHubDatabase.Items.Clear;
+      for i := 0 to list.Count - 1 do
+        FCbHubDatabase.Items.Add(list.Names[i]);
       if FCbHubDatabase.Items.Count > 0 then
         FCbHubDatabase.ItemIndex := 0;
     end;

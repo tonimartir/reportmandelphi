@@ -2708,6 +2708,8 @@ var
  cue:TUndoCue;
  op:TChangeObjectOperation;
 begin
+ if not Assigned(report) then
+  exit;
  // The changes are recorded as one undo step: they mark the report
  // modified (they were lost on close without asking) and can be undone
  oldtop:=report.TopMargin;
