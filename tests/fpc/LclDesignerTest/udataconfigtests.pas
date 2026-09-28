@@ -329,7 +329,10 @@ begin
       dlg.SelectListDriver(rpdbHttp);
       CheckStr('HUBCONN', ItemsText(dlg.AvailableConnections),
         'Available connections of the Reportman AI Agent driver');
-      Check(Pos('Reportman AI Agent', dlg.DriverHelp.Text) > 0, 'Driver description of the Agent');
+      // In the language of the test machine (id 1670)
+      Check(Pos(string(TranslateStr(1670, 'Executes SQL remotely via Reportman AI Agent bridge. ' +
+        'Supports secure, non-interactive queries with API Keys.')), dlg.DriverHelp.Text) > 0,
+        'Driver description of the Agent');
       dlg.SelectListDriver(rpdatamybase);
       CheckInt(0, dlg.AvailableConnections.Count, 'No available connection for MyBase (VCL)');
       Check(Pos(string(SRpMyBaseDesc), dlg.DriverHelp.Text) = 1, 'Driver description of MyBase');
