@@ -166,6 +166,17 @@ begin
   end;
 end;
 
+// Printers of the system; 0 when the printing system is missing (a Linux
+// without CUPS raises)
+function InstalledPrinterCount: Integer;
+begin
+  try
+    Result := Printer.Printers.Count;
+  except
+    Result := 0;
+  end;
+end;
+
 function NewEmbeddedFile(const AName, AMime, ADescription: string;
   const AData: RawByteString): TEmbeddedFile;
 begin
@@ -323,7 +334,7 @@ begin
   dia := AForm as TFRpPrinterConfigLCL;
   CheckFitsSmallScreen(dia);
   CheckInt(68, dia.LSelPrinter.Items.Count, 'Printer configuration: logical printers');
-  CheckInt(Printer.Printers.Count + 1, dia.ComboPrinters.Items.Count,
+  CheckInt(InstalledPrinterCount + 1, dia.ComboPrinters.Items.Count,
     'Printer configuration: default printer and the installed ones');
   drivers := TStringList.Create;
   try
@@ -387,13 +398,16 @@ begin
     ', duplex ' + dia.EDuplex.Text + ', type ' + dia.EPrinterType.Text);
   Check(dia.EOS.Text <> '', 'SysInfo: operating system');
   Check(dia.EVersion.Text <> '', 'SysInfo: version');
-  CheckStr(IntToStr(GetCPUCount), dia.EProcessors.Text, 'SysInfo: processors');
+  Check(StrToIntDef(dia.EProcessors.Text, 0) >= 1, 'SysInfo: processors');
+{$IFDEF MSWINDOWS}
+  CheckStr(IntToStr(GetCPUCount), dia.EProcessors.Text, 'SysInfo: processors (Windows)');
+{$ENDIF}
   Check(Pos(' x ', dia.EDisplay.Text) > 0, 'SysInfo: display size');
   Check(dia.EWidgetset.Text <> '', 'SysInfo: widgetset');
   CheckInt(4, dia.ComboSeparators.Items.Count, 'SysInfo: separators');
   Check(Pos(DefaultFormatSettings.DecimalSeparator, dia.ComboSeparators.Items[2]) > 0,
     'SysInfo: decimal separator');
-  if Printer.Printers.Count > 0 then
+  if InstalledPrinterCount > 0 then
   begin
     Check(dia.EPrinterName.Text <> '', 'SysInfo: printer name');
     Check(dia.EStatus.Text <> '', 'SysInfo: printer status');

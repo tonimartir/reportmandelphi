@@ -741,7 +741,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
             item
               Alignment = taRightJustify
               Caption = 'Size'
-              Width = 80
+              Width = 100
             end
             item
               Caption = 'Relationship'

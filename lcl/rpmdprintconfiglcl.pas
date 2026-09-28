@@ -47,6 +47,7 @@ type
     function PrinterKey: string;
     procedure DoSave;
     procedure DiscardConfig;
+    procedure FitTexts;
     procedure FormCloseEvent(Sender: TObject; var CloseAction: TCloseAction);
     procedure LSelPrinterSelectionChange(Sender: TObject; User: Boolean);
   public
@@ -200,10 +201,35 @@ begin
     RadioSystem.Checked := not FUserConfig;
     RadioUser.Checked := FUserConfig;
     RadioUserClick(Self);
+    FitTexts;
   finally
     FLoading := False;
   end;
   SelectLogicalPrinter(0);
+end;
+
+procedure TFRpPrinterConfigLCL.FitTexts;
+var
+  LBitmap: TBitmap;
+  LNeeded: Integer;
+begin
+  // The translated texts of the right column with the widgetset font: the
+  // controls anchored to the right follow a wider window
+  LBitmap := TBitmap.Create;
+  try
+    LBitmap.Canvas.Font := Font;
+    LNeeded := Max(LBitmap.Canvas.TextWidth(LExample.Caption),
+      LBitmap.Canvas.TextWidth(LExample2.Caption));
+    LNeeded := Max(LNeeded, LBitmap.Canvas.TextWidth(LOperations.Caption));
+    LNeeded := Max(LNeeded, LBitmap.Canvas.TextWidth(CheckPrinterFonts.Caption) +
+      Scale96ToScreen(24));
+  finally
+    LBitmap.Free;
+  end;
+  LNeeded := LSelectPrinter.Left + LNeeded + Scale96ToScreen(16);
+  LNeeded := Min(LNeeded, Screen.WorkAreaWidth - Scale96ToScreen(40));
+  if LNeeded > ClientWidth then
+    ClientWidth := LNeeded;
 end;
 
 destructor TFRpPrinterConfigLCL.Destroy;

@@ -178,6 +178,34 @@ begin
   end;
 end;
 
+// FPC 3.2.2 GetCPUCount is always 1 outside Windows
+function ProcessorCount: Integer;
+{$IFDEF LINUX}
+var
+  LLines: TStringList;
+  I: Integer;
+{$ENDIF}
+begin
+  Result := 0;
+{$IFDEF LINUX}
+  LLines := TStringList.Create;
+  try
+    try
+      LLines.LoadFromFile('/proc/cpuinfo');
+    except
+      LLines.Clear;
+    end;
+    for I := 0 to LLines.Count - 1 do
+      if Copy(LLines[I], 1, 9) = 'processor' then
+        Inc(Result);
+  finally
+    LLines.Free;
+  end;
+{$ENDIF}
+  if Result < 1 then
+    Result := GetCPUCount;
+end;
+
 function YesNo(AValue: Boolean): string;
 begin
   if AValue then
@@ -255,7 +283,7 @@ end;
 procedure TFRpSysInfoLCL.BuildControls;
 var
   LBottom: TPanel;
-  LRow, I: Integer;
+  LRow, I, LMaxWidth, LValueWidth: Integer;
   // Not the TBITMAP record of the Windows unit
   LBitmap: Graphics.TBitmap;
   LCaptions: array of string;
@@ -288,8 +316,15 @@ begin
   finally
     LBitmap.Free;
   end;
-  FLabelWidth := Min(FLabelWidth, Scale96ToScreen(180));
-  FColumnWidth := FLabelWidth + Scale96ToScreen(180);
+  FLabelWidth := Min(FLabelWidth, Scale96ToScreen(260));
+  // Values of 180 pixels, less when two columns do not fit an 800 pixels
+  // wide screen (the labels keep their width)
+  LMaxWidth := Min(Screen.WorkAreaWidth, Scale96ToScreen(800)) - Scale96ToScreen(40);
+  LValueWidth := Scale96ToScreen(180);
+  if 2 * (FLabelWidth + LValueWidth) + Scale96ToScreen(20) > LMaxWidth then
+    LValueWidth := Max(Scale96ToScreen(120),
+      (LMaxWidth - Scale96ToScreen(20)) div 2 - FLabelWidth);
+  FColumnWidth := FLabelWidth + LValueWidth;
   ClientWidth := 2 * FColumnWidth + Scale96ToScreen(20);
   FRowHeight := Scale96ToScreen(32);
 
@@ -404,7 +439,7 @@ begin
   ComboSeparators.Items.Add(TranslateStr(1807, 'Thousand') + ' ' +
     DefaultFormatSettings.ThousandSeparator);
   ComboSeparators.ItemIndex := 0;
-  EProcessors.Text := IntToStr(GetCPUCount);
+  EProcessors.Text := IntToStr(ProcessorCount);
   EDisplay.Text := FormatFloat('#,##0', Screen.Width) + ' x ' +
     FormatFloat('#,##0', Screen.Height) + ' ' + SRpDPIRes + ':' +
     IntToStr(Screen.PixelsPerInch);
