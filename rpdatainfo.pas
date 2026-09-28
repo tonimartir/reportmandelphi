@@ -2681,9 +2681,11 @@ begin
              end;
            end;
 
-           driverId := UpperCase(alist.Values['DriverName']);
+           // DriverID is the FireDAC driver (DriverName=FireDac, DriverID=SQLite
+           // as the connections dialog writes); DriverName=SQLite also works
+           driverId := UpperCase(alist.Values['DriverID']);
            if driverId = '' then
-             driverId := UpperCase(alist.Values['DriverID']);
+             driverId := UpperCase(alist.Values['DriverName']);
 
            dbName := alist.Values['Database'];
            if dbName = '' then

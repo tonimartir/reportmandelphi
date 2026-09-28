@@ -64,6 +64,7 @@ type
     procedure TestShowData;
     procedure TestSampleGrid;
     procedure TestDataTextDialog;
+    procedure TestTextDriver;
     procedure TestDialogSizes;
   public
     procedure Run;
@@ -194,6 +195,7 @@ begin
     '[FDCONN]' + LineEnding +
     'DriverName=FireDac' + LineEnding +
     'DriverID=SQLite' + LineEnding +
+    'Database=' + FSQLiteFile + LineEnding +
     '[ZEOSCONN]' + LineEnding +
     'DriverName=ZeosLib' + LineEnding +
     'Database Protocol=sqlite' + LineEnding +
@@ -437,6 +439,7 @@ begin
   try
     rep.DatabaseInfo.Add('NOSUCHCONN').Driver := rpdatazeos;
     rep.DatabaseInfo.Add('SQLITECONN').Driver := rpfiredac;
+    rep.DatabaseInfo.Add('FDCONN').Driver := rpfiredac;
     dlg := TFRpDInfoLCL.Create(nil);
     try
       dlg.Interactive := False;
@@ -458,6 +461,13 @@ begin
         dlg.StartConnectionTest;
         WaitWorkers('the SQLite connection test');
         CheckStr(SRpConnectionOk, dlg.LastMessage, 'SQLite connection test passed');
+        // DriverName=FireDac, DriverID=SQLite, as the connections dialog
+        // writes it (the FPC FireDAC shim read DriverName first)
+        dlg.ConnectionList.ItemIndex := 2;
+        dlg.ConnectionList.OnClick(dlg.ConnectionList);
+        dlg.StartConnectionTest;
+        WaitWorkers('the FireDac/SQLite connection test');
+        CheckStr(SRpConnectionOk, dlg.LastMessage, 'FireDac/SQLite connection test passed');
       end;
       // Answers of an earlier session are dropped
       nMessages := dlg.MessageCount;
@@ -757,6 +767,78 @@ begin
   LogMsg('Records grid verified');
 end;
 
+// rpdatatext (shared with Delphi): the decimal digits of a currency field
+// (PRECISION) are saved with the field definitions, and time fields read
+// the hour, minute and second positions
+procedure TDataConfigTests.TestTextDriver;
+var
+  lfields: TStringList;
+  fobj: TRpFieldObj;
+  fieldsfile, datafile: string;
+  rs, irs: Char;
+  data: TRpMemDataSet;
+begin
+  LogMsg('Phase 8: text driver precision and time fields (rpdatatext)');
+  fieldsfile := FDir + 'fields_prec.ini';
+  datafile := FDir + 'data_prec.txt';
+  lfields := TStringList.Create;
+  try
+    fobj := TRpFieldObj.Create;
+    fobj.fieldname := 'AMOUNT';
+    fobj.fieldtype := ftCurrency;
+    fobj.posbegin := 1;
+    fobj.fieldsize := 3;
+    fobj.fieldtrim := True;
+    fobj.posbeginprecision := 4;
+    fobj.precision := 2;
+    lfields.AddObject(fobj.fieldname, fobj);
+    fobj := TRpFieldObj.Create;
+    fobj.fieldname := 'TIMEF';
+    fobj.fieldtype := ftTime;
+    fobj.posbegin := 6;
+    fobj.hourpos := 6;
+    fobj.hoursize := 2;
+    fobj.minpos := 8;
+    fobj.minsize := 2;
+    fobj.secpos := 10;
+    fobj.secsize := 2;
+    lfields.AddObject(fobj.fieldname, fobj);
+    SaveFieldObjListToFile(lfields, fieldsfile, #10, #13);
+  finally
+    FreeFieldObjList(lfields);
+    lfields.Free;
+  end;
+  lfields := TStringList.Create;
+  try
+    FillFieldObjList(fieldsfile, lfields, rs, irs);
+    CheckInt(2, TRpFieldObj(lfields.Objects[0]).precision, 'PRECISION saved and read');
+    CheckInt(8, TRpFieldObj(lfields.Objects[1]).minpos, 'Minute position read');
+  finally
+    FreeFieldObjList(lfields);
+    lfields.Free;
+  end;
+  with TStringList.Create do
+  try
+    LineBreak := #10;
+    Add('01234102030');
+    SaveToFile(datafile);
+  finally
+    Free;
+  end;
+  data := TRpMemDataSet.Create(nil);
+  try
+    FillClientDatasetFromFile(data, fieldsfile, datafile, '');
+    data.First;
+    Check(not data.Eof, 'Text driver: one record');
+    Check(Abs(data.FieldByName('AMOUNT').AsFloat - 12.34) < 0.0001,
+      'Currency with its decimal digits: ' + data.FieldByName('AMOUNT').AsString);
+    CheckStr('10:20:30', FormatDateTime('hh:nn:ss', data.FieldByName('TIMEF').AsDateTime),
+      'Time field from the hour, minute and second positions');
+  finally
+    data.Free;
+  end;
+end;
+
 procedure TDataConfigTests.TestDataTextDialog;
 var
   f: TFRpDataTextLCL;
@@ -870,6 +952,7 @@ begin
   TestShowData;
   TestSampleGrid;
   TestDataTextDialog;
+  TestTextDriver;
   Check(RpAsyncWaitIdle(10000), 'All the data configuration workers finished');
 end;
 

@@ -146,6 +146,7 @@ begin
    ffile.WriteBool('FIELD'+IntToStr(i),'TRIM',fobj.fieldtrim);
    ffile.WriteInteger('FIELD'+IntToStr(i),'DATATYPE',Integer(fobj.fieldtype));
    ffile.WriteInteger('FIELD'+IntToStr(i),'BEGINPRECISION',fobj.posbeginprecision);
+   ffile.WriteInteger('FIELD'+IntToStr(i),'PRECISION',fobj.precision);
    ffile.WriteInteger('FIELD'+IntToStr(i),'YEARPOS',fobj.yearpos);
    ffile.WriteInteger('FIELD'+IntToStr(i),'YEARSIZE',fobj.yearsize);
    ffile.WriteInteger('FIELD'+IntToStr(i),'MONTHPOS',fobj.monthpos);
@@ -193,6 +194,7 @@ begin
    fobj.fieldtrim:=ffile.ReadBool('FIELD'+IntToStr(i),'TRIM',true);
    fobj.fieldtype:=TFieldType(ffile.ReadInteger('FIELD'+IntToStr(i),'DATATYPE',Integer(ftMemo)));
    fobj.posbeginprecision:=ffile.ReadInteger('FIELD'+IntToStr(i),'BEGINPRECISION',0);
+   fobj.precision:=ffile.ReadInteger('FIELD'+IntToStr(i),'PRECISION',0);
    fobj.yearpos:=ffile.ReadInteger('FIELD'+IntToStr(i),'YEARPOS',0);
    fobj.yearsize:=ffile.ReadInteger('FIELD'+IntToStr(i),'YEARSIZE',0);
    fobj.monthpos:=ffile.ReadInteger('FIELD'+IntToStr(i),'MONTHPOS',0);
@@ -444,7 +446,6 @@ begin
     fdef.DataType:=fobj.fieldtype;
     if fobj.fieldsize>0 then
      fdef.Size:=fobj.fieldsize;
-    fdef.Precision:=fobj.Precision;
    end;
    if Length(Trim(IndexFields))<1 then
    begin
@@ -593,9 +594,9 @@ begin
          ftTime:
           begin
            try
-            ahour:=StrToInt(Copy(line,fobj.yearpos,fobj.hoursize));
-            amin:=StrToInt(Copy(line,fobj.monthpos,fobj.minsize));
-            asec:=StrToInt(Copy(line,fobj.yearpos,fobj.secsize));
+            ahour:=StrToInt(Copy(line,fobj.hourpos,fobj.hoursize));
+            amin:=StrToInt(Copy(line,fobj.minpos,fobj.minsize));
+            asec:=StrToInt(Copy(line,fobj.secpos,fobj.secsize));
             fieldvalue:=EncodeTime(ahour,amin,asec,0);
            except
             fieldvalue:=Null;
@@ -607,9 +608,9 @@ begin
             ayear:=StrToInt(Copy(line,fobj.yearpos,fobj.yearsize));
             amonth:=StrToInt(Copy(line,fobj.monthpos,fobj.monthsize));
             aday:=StrToInt(Copy(line,fobj.daypos,fobj.daysize));
-            ahour:=StrToInt(Copy(line,fobj.yearpos,fobj.hoursize));
-            amin:=StrToInt(Copy(line,fobj.monthpos,fobj.minsize));
-            asec:=StrToInt(Copy(line,fobj.yearpos,fobj.secsize));
+            ahour:=StrToInt(Copy(line,fobj.hourpos,fobj.hoursize));
+            amin:=StrToInt(Copy(line,fobj.minpos,fobj.minsize));
+            asec:=StrToInt(Copy(line,fobj.secpos,fobj.secsize));
             fieldvalue:=EncodeDate(ayear,amonth,aday);
             fieldvalue:=fieldvalue+EncodeTime(ahour,amin,asec,0);
            except

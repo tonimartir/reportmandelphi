@@ -181,6 +181,21 @@ begin
   SameStringLists(AItem.DataUnions,BItem.DataUnions);
 end;
 
+// Value of a ptStringArray undo property (dataUnions)
+function StringListToVariant(AStrings:TStrings):Variant;
+var
+ i:Integer;
+begin
+ if AStrings.Count=0 then
+ begin
+  Result:=VarArrayCreate([0,-1],varVariant);
+  Exit;
+ end;
+ Result:=VarArrayCreate([0,AStrings.Count-1],varVariant);
+ for i:=0 to AStrings.Count-1 do
+  Result[i]:=AStrings[i];
+end;
+
 function SameDataInfoList(AList,BList:TRpDataInfoList):Boolean;
 var
  i:Integer;
@@ -508,6 +523,8 @@ begin
   op.AddProperty('groupUnion',ptBoolean,Null,origDS.GroupUnion);
   op.AddProperty('openOnStart',ptBoolean,Null,origDS.OpenOnStart);
   op.AddProperty('parallelUnion',ptBoolean,Null,origDS.ParallelUnion);
+  if origDS.DataUnions.Count>0 then
+   op.AddProperty('dataUnions',ptStringArray,Null,StringListToVariant(origDS.DataUnions));
    undoCue.AddOperation(op);
   end;
  end;
@@ -528,6 +545,8 @@ begin
   op.AddProperty('groupUnion',ptBoolean,Null,newDS.GroupUnion);
   op.AddProperty('openOnStart',ptBoolean,Null,newDS.OpenOnStart);
   op.AddProperty('parallelUnion',ptBoolean,Null,newDS.ParallelUnion);
+  if newDS.DataUnions.Count>0 then
+   op.AddProperty('dataUnions',ptStringArray,Null,StringListToVariant(newDS.DataUnions));
    undoCue.AddOperation(op);
   end;
  end;
@@ -556,6 +575,11 @@ begin
     op.AddProperty('openOnStart',ptBoolean,origDS.OpenOnStart,newDS.OpenOnStart);
    if origDS.ParallelUnion<>newDS.ParallelUnion then
     op.AddProperty('parallelUnion',ptBoolean,origDS.ParallelUnion,newDS.ParallelUnion);
+   // The union datasets were not recorded: a change of only them could not
+   // be undone
+   if not SameStringLists(origDS.DataUnions,newDS.DataUnions) then
+    op.AddProperty('dataUnions',ptStringArray,StringListToVariant(origDS.DataUnions),
+     StringListToVariant(newDS.DataUnions));
    if op.properties.Count>0 then
     undoCue.AddOperation(op)
    else
@@ -613,6 +637,9 @@ begin
   freport.DataInfo.Assign(fdatasets.Datainfo);
   freport.Params.Assign(fdatasets.Params);
  end;
+ // Some changes have no undo operation (MyBase files and fields, dataset
+ // order...): the report was saved on close without asking
+ freport.Modified:=True;
  Close;
 end;
 

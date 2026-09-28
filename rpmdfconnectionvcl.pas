@@ -330,13 +330,22 @@ begin
      conadmin.GetConnectionNames(ComboAvailable.Items,'Interbase');
     end;
    end;
-  // Zeos
+  // Zeos: the ZeosLib connections of the connections file
   rpdatazeos:
    begin
     BConfig.Visible:=true;
     if Assigned(ConAdmin) then
     begin
-     conadmin.GetConnectionNames(ComboAvailable.Items,'Interbase');
+     conadmin.GetConnectionNames(ComboAvailable.Items,'ZeosLib');
+    end;
+   end;
+  // FireDac: its connections (the list kept the previous driver ones)
+  rpfiredac:
+   begin
+    BConfig.Visible:=true;
+    if Assigned(ConAdmin) then
+    begin
+     conadmin.GetConnectionNames(ComboAvailable.Items,'FireDac');
     end;
    end;
   // My Base
