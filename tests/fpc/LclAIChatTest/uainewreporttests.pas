@@ -29,8 +29,7 @@ implementation
 
 uses
   SysUtils, Classes, Types, Forms, Controls, Graphics, ExtCtrls, StdCtrls,
-  IniFiles, Generics.Collections, fphttpserver, httpdefs, sqldb, sqlite3conn,
-  rpjsonfpc, rphttpclientfpc, rptypes, rpreport, rpsubreport, rpsection,
+  IniFiles, Generics.Collections, fphttpserver, httpdefs, rpjsonfpc, rphttpclientfpc, rptypes, rpreport, rpsubreport, rpsection,
   rpdatainfo, rpauthmanager, rpaithreadslcl, rpwebmarkdownlcl, rpmdfmainlcl,
   rpgraphutilslcl, rpmdconsts, rpdbxadminlcl, rpmdfnewreportwizardlcl,
   utestutil, ufakeserver;
@@ -636,23 +635,21 @@ end;
 
 function TAINewReportTests.CheckSqliteAvailable: Boolean;
 var
-  LConn: TSQLite3Connection;
+  LParams: TStringList;
+  LResult: TRpDbxConnectionTestResult;
 begin
-  // The SQLite client library (sqlite3.dll / libsqlite3.so)
-  Result := False;
-  LConn := TSQLite3Connection.Create(nil);
+  // The SQLite client library (sqlite3.dll / libsqlite3.so.0), loaded as the
+  // FireDAC driver of the FPC engine does
+  LParams := TStringList.Create;
   try
-    LConn.DatabaseName := IncludeTrailingPathDelimiter(FSandbox) + 'probe.db';
-    try
-      LConn.Open;
-      LConn.Close;
-      Result := True;
-    except
-      on E: Exception do
-        Log('  SQLite client library not available: ' + E.Message);
-    end;
+    LParams.Values['DriverName'] := 'Sqlite';
+    LParams.Values['Database'] := IncludeTrailingPathDelimiter(FSandbox) + 'probe.db';
+    LResult := RpExecuteConnectionTest('SQLITE_PROBE', LParams, '');
+    Result := LResult.Success;
+    if not Result then
+      Log('  SQLite client library not available: ' + LResult.MessageText);
   finally
-    LConn.Free;
+    LParams.Free;
   end;
 end;
 
@@ -904,13 +901,18 @@ begin
     Check(not W.BBack.Enabled, 'Back disabled on the first page');
     Check(W.BNext.Visible and not W.BFinish.Visible, 'Next visible, Finish hidden');
     CheckEquals(T(933, 'Next'), W.BNext.Caption, 'Next caption');
-    Check(not W.RbAgent.Checked and not W.RbDirect.Checked and not W.RbNoConnection.Checked,
-      'no route chosen');
     FAnswerer.Arm(smbOK);
-    W.BNextClick(nil);
-    CheckContains(T(1753, 'Please choose a connection route.'), FAnswerer.LastText,
-      'a route is required');
-    CheckPage(W, wpRoute, 'still on the route page');
+    // GTK always checks one radio button of a group (the first one)
+    if not W.RbAgent.Checked and not W.RbDirect.Checked and not W.RbNoConnection.Checked then
+    begin
+      Pass('no route chosen');
+      W.BNextClick(nil);
+      CheckContains(T(1753, 'Please choose a connection route.'), FAnswerer.LastText,
+        'a route is required');
+      CheckPage(W, wpRoute, 'still on the route page');
+    end
+    else
+      Skip('no route chosen: the widgetset checks the first radio button');
     W.RbNoConnection.Checked := True;
     CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'no connection: Next becomes Finish');
     W.RbAgent.Checked := True;
@@ -1178,8 +1180,14 @@ begin
     W.RbDirect.Checked := True;
     W.BNextClick(nil);
     CheckPage(W, wpDirectSchemaQuestion, 'direct route: schema question');
-    W.BNextClick(nil);
-    CheckContains(T(1760, 'Please choose Yes or No.'), FAnswerer.LastText, 'an answer is required');
+    if not W.RbHasSchema.Checked and not W.RbNoSchema.Checked then
+    begin
+      W.BNextClick(nil);
+      CheckContains(T(1760, 'Please choose Yes or No.'), FAnswerer.LastText,
+        'an answer is required');
+    end
+    else
+      Skip('schema question: the widgetset checks the first radio button');
     W.RbHasSchema.Checked := True;
     W.BNextClick(nil);
     CheckPage(W, wpDirectSchema, 'has schema: schema page');
@@ -1602,6 +1610,9 @@ begin
     Fail('the tests must run in the sandbox (LOCALAPPDATA=' + FSandbox + ')');
   FConnFile := IncludeTrailingPathDelimiter(FSandbox) + 'dbxconnections_newreport.ini';
   WriteConnectionsFile;
+  // The designer preferences of the sandbox (also when this series runs alone)
+  if RpDesignerLCLConfigFile = '' then
+    RpDesignerLCLConfigFile := IncludeTrailingPathDelimiter(FSandbox) + 'repmand_newreport.ini';
   DBXConnectionsFileOverride := FConnFile;
   RpWebMarkdownForceNative := True;
   FSqliteAvailable := CheckSqliteAvailable;

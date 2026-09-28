@@ -184,10 +184,24 @@ Capturas (`--shots`): `newreport_route`, `newreport_agent_login`,
 Resultados:
 
 - Windows: `LclAIChatTest` 1101 comprobaciones (308 nuevas), 0 omitidas,
-  sin fugas; `LclDesignerTest --selftest` correcto; el diseñador autónomo
-  (`repmandesigner_lcl`, Release) compila.
-- WSL (Lazarus 3.0, GTK2): ver el informe de la fase.
-- Qt6 y Docker: no probados (sin Docker en esta fase).
+  sin fugas (en una de ocho ejecuciones heaptrc marcó 2 bloques reservados
+  por un hilo de `ufakeserver` al cerrar; no se repitió);
+  `LclDesignerTest --selftest` correcto; el diseñador autónomo
+  (`repmandesigner_lcl`, Release) compila; zip OPM validado
+  (`make_opm_package.ps1 -Validate`, lista de ficheros comprobada con
+  `-RefreshFileList`).
+- WSL (Lazarus 3.0, GTK2): paquetes y pruebas compilan;
+  `LclDesignerTest --selftest` correcto; la serie nueva sola, 304
+  comprobaciones, 2 omitidas (GTK marca siempre un botón de radio del grupo,
+  así que no se puede probar "sin elegir tipo" ni "sin elegir Sí/No"), sin
+  fugas. `LclAIChatTest` completo no llega a la serie nueva: el servidor X
+  de WSLg (Xwayland) cae en la serie 7.4 ("Expression editor with a
+  report", `Fatal server error: request could not be marshaled: can't send
+  file descriptor`), antes de ejecutar nada de esta fase.
+- Qt6 y Docker: no probados.
+
+En GTK el primer botón de radio de cada grupo sale marcado: el tipo de
+conexión empieza en Reportman AI y la pregunta del esquema en Sí.
 
 ## Encontrado en código común, `server/web` o VCL (sin corregir)
 
