@@ -252,7 +252,8 @@ Resultados:
   ruta sin impresoras y la configuración en `~/.etc.reportman`.
 - Capturas de los diálogos en win32 y GTK2 revisadas (textos que no caben,
   columnas cortadas).
-- Zip OPM: `make_opm_package.ps1 -Validate` correcto.
+- Zip OPM: `make_opm_package.ps1 -Validate` (Windows) y `-ValidateWsl`
+  (GTK2) correctos: los tres paquetes compilan desde el zip.
 
 ## Encontrado en el VCL y en unidades compartidas (sin corregir)
 
