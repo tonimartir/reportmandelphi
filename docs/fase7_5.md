@@ -142,7 +142,13 @@ comprobaciones (las cuatro series) sin fugas, `LclDesignerTest --selftest`,
 fugas, `--selftest` en los dos, lintian sin errores y las 15 pruebas en
 máquinas limpias.
 
-## Encontrado en código común o VCL (sin cambiar)
+## Encontrado en código común o VCL
+
+Estado a 28-09-2026: 1, 2, 4 y 5 corregidos (1 y 2 en el diseñador VCL:
+`ApplyModifiedReportDocument` conserva los ficheros incrustados y libera los
+elementos anteriores al final; los llamadores de `ItemByName` usan
+`IndexOf`); 3 es código muerto; 6 no se produce (el diseñador pasa siempre
+`RpAlias1`).
 
 1. `TRpBaseReport.Clear` (`rpbasereport.pas:1018`) quita los componentes
    del informe con `RemoveComponent` sin liberarlos (fuga de todas las

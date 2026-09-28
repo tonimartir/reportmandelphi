@@ -193,6 +193,19 @@ La prueba del Hub inaccesible tarda unos 60 s en Windows (hallazgo 1).
 
 ## Encontrado
 
+Estado a 28-09-2026: 1 corregido (48f04a4); 3, 4 y 6 corregidos en el VCL
+(contexto por petición, validación con `Synchronize`, el refresco espera al
+anterior; además el diálogo espera a su refresco al ocultarse y los refrescos
+de un informe, del diálogo y del asistente de diseño, ya no se solapan);
+2 y 5 no se producen (el diseñador pasa siempre `RpAlias1`; el Hub no envía
+`null` en esos campos).
+
+Corregido también en el LCL (28-09-2026): en una ventana estrecha (pantalla
+de 800 px, o el ancho mínimo de 760) los botones `AutoSize` alineados de la
+barra inferior no cabían y la LCL lanzaba "InvalidatePreferredSize loop
+detected". Ahora tienen un ancho fijo medido con su texto y el chat cede
+ancho para que quepan.
+
 1. **FPC 3.2.2 en Windows: una conexión rechazada tarda el tiempo de
    conexión entero (60 s).** `ssockets` (`TInetSocket.Connect` con
    `ConnectTimeout`) hace `select` solo con el conjunto de escritura, y en

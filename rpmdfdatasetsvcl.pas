@@ -41,6 +41,12 @@ type
     RequestVersion: Integer;
   end;
 
+  // Sender of the audit stream: stopped when the version changes
+  TRpDatasetAuditContext = class(TObject)
+  public
+    RequestVersion: Integer;
+  end;
+
   TFRpDatasetsVCL = class(TFrame)
     ImageList1: TImageList;
     PTop: TPanel;
@@ -139,10 +145,13 @@ type
     procedure AUpExecute(Sender: TObject);
     procedure ADownExecute(Sender: TObject);
     procedure MonacoAuditSql(Sender: TObject);
+    procedure MonacoStopRequest(Sender: TObject);
+    function MonacoAuditCancelRequested(Sender: TObject): Boolean;
   private
     { Private declarations }
     FChat: TFRpChatFrame;
     FChatRequestVersion: Integer;
+    FAuditRequestVersion: Integer;
     FMonaco: TFRpMonacoEditorVCL;
     FLoadingControls: Boolean;
     FSyncingSchemaContext: Boolean;
@@ -359,6 +368,7 @@ begin
     FMonaco.OnSchemaChanged := MonacoSchemaChange;
     FMonaco.OnInferenceLog := MonacoInferenceLog;
     FMonaco.OnAuditSql := MonacoAuditSql;
+    FMonaco.OnStopRequest := MonacoStopRequest;
   end;
 
   if FChat = nil then
@@ -825,6 +835,8 @@ begin
 end;
 
 procedure TFRpDatasetsVCL.ChatSchemaChange(Sender: TObject);
+var
+  LDataInfo: TRpDataInfoItem;
 begin
   if FSyncingSchemaContext or (FChat = nil) then
     Exit;
@@ -833,6 +845,15 @@ begin
   // not reset the schema of the dataset
   if (FChat.ComboSchema.Items.Count <= 1) and (FChat.GetHubSchemaId = 0) then
     Exit;
+  // Nor may the fallback of a list without the schema of the dataset (another
+  // account, no access) replace it: only a choice of the user does
+  if FChat.SchemaChangeFromLoad then
+  begin
+    LDataInfo := FindDataInfoItem;
+    if (LDataInfo <> nil) and (LDataInfo.HubSchemaId <> 0) and
+      (LDataInfo.HubSchemaId <> FChat.GetHubSchemaId) then
+      Exit;
+  end;
   SyncActiveSchemaContext(FChat.GetHubDatabaseId, FChat.GetHubSchemaId,
     FChat.GetSchemaApiKey);
 end;
@@ -1176,6 +1197,8 @@ var
   LLanguage: string;
   LRuntimeDb: string;
   LAlias: string;
+  LAuditContext: TRpDatasetAuditContext;
+  LAuditVersion: Integer;
 begin
   if FMonaco = nil then
     Exit;
@@ -1207,6 +1230,10 @@ begin
   FMonaco.SetAuditBusy(True);
   FMonaco.ClearLog;
   FMonaco.AppendLog('Starting SQL audit...');
+  Inc(FAuditRequestVersion);
+  LAuditVersion := FAuditRequestVersion;
+  LAuditContext := TRpDatasetAuditContext.Create;
+  LAuditContext.RequestVersion := LAuditVersion;
 
   LWorker := TThread.CreateAnonymousThread(
     procedure
@@ -1244,8 +1271,8 @@ begin
           LHttp.AgentSecret := LAgentSecret;
           LHttp.AgentAiId := LAgentAiId;
 
-          LResponse := LHttp.ExplainSql(LSql, LAIMode, LLanguage, Self,
-            MonacoAuditProgress, nil);
+          LResponse := LHttp.ExplainSql(LSql, LAIMode, LLanguage, LAuditContext,
+            MonacoAuditProgress, MonacoAuditCancelRequested);
 
           if LResponse <> nil then
           begin
@@ -1289,6 +1316,12 @@ begin
           procedure
           begin
             try
+              // Stopped with the Stop of the model selection
+              if LAuditVersion <> FAuditRequestVersion then
+              begin
+                FMonaco.AppendLog('Audit SQL stopped.');
+                Exit;
+              end;
               // The audited dataset, if it still exists with the audited SQL
               // (the selection may have changed meanwhile, or the dialog
               // may have been reopened with another working copy)
@@ -1335,10 +1368,23 @@ begin
         LUserProfile.Free;
         LResponse.Free;
         LHttp.Free;
+        LAuditContext.Free;
       end;
     end);
   LWorker.FreeOnTerminate := True;
   LWorker.Start;
+end;
+
+procedure TFRpDatasetsVCL.MonacoStopRequest(Sender: TObject);
+begin
+  // The running audit stops (its answer is not stored)
+  Inc(FAuditRequestVersion);
+end;
+
+function TFRpDatasetsVCL.MonacoAuditCancelRequested(Sender: TObject): Boolean;
+begin
+  Result := (Sender is TRpDatasetAuditContext) and
+    (TRpDatasetAuditContext(Sender).RequestVersion <> FAuditRequestVersion);
 end;
 
 procedure TFRpDatasetsVCL.BMyBaseClick(Sender: TObject);

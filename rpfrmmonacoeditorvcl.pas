@@ -112,6 +112,7 @@ type
     FAuthUIUpdateVersion: Integer;
     FGuard: IEditorGuard;
     FOnAuditSql: TAuditSqlEvent;
+    FOnStopRequest: TNotifyEvent;
     FOnInferenceLog: TInferenceLogEvent;
     procedure AIToggleClick(Sender: TObject);
     procedure AISelectionStopRequest(Sender: TObject);
@@ -187,6 +188,8 @@ type
     property OnContentChanged: TNotifyEvent read FOnContentChanged write FOnContentChanged;
     property OnSchemaChanged: TNotifyEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnAuditSql: TAuditSqlEvent read FOnAuditSql write FOnAuditSql;
+    // Stop of the model selection: the host stops what it runs (the audit)
+    property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
     property OnInferenceLog: TInferenceLogEvent read FOnInferenceLog write FOnInferenceLog;
   end;
 
@@ -1338,8 +1341,8 @@ var
   LRequestId: string;
 begin
   // Stop of the model selection: the running AI completion stream ends
-  // (SuggestSqlStreamCancelRequested) and the page gets an empty answer.
-  // The audit can not be stopped.
+  // (SuggestSqlStreamCancelRequested) and the page gets an empty answer;
+  // the host stops the audit (OnStopRequest)
   FDebounceTimer.Enabled := False;
   LRequestId := FActiveInferenceRequestId;
   FPendingRequestId := '';
@@ -1350,6 +1353,8 @@ begin
     LCompletionItems := TJSONArray.Create;
     SendAICompletions(LInlineItems, LCompletionItems, LRequestId);
   end;
+  if Assigned(FOnStopRequest) then
+    FOnStopRequest(Self);
 end;
 
 procedure TFRpMonacoEditorVCL.SchemaConfigClick(Sender: TObject);

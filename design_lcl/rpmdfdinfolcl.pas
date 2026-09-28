@@ -100,6 +100,8 @@ type
     FChat: TFRpChatFrame;
     FChatRequestVersion: Integer;
     FChatCancel: IRpAsyncCancel;
+    // The running audit (nil when there is none, or it was stopped)
+    FAuditCancel: IRpAsyncCancel;
     FSyncingSchemaContext: Boolean;
     FMailbox: TRpAsyncMailbox;
     FMailboxRef: IRpAsyncMailbox;
@@ -157,6 +159,7 @@ type
     procedure MonacoInferenceLog(Sender: TObject; const ASource, AText: string;
       AAppendLineBreak: Boolean);
     procedure MonacoAuditSql(Sender: TObject);
+    procedure MonacoStopRequest(Sender: TObject);
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
   public
     // Toolbar controls
@@ -462,8 +465,8 @@ begin
   LMsg := TRpSqlAuditResult.Create;
   try
     LMsg.DataInfoName := DataInfoName;
-    // As the VCL the audit is not stopped by the user; only when the
-    // dialog is closed
+    // Stopped by the Stop of the model selection, or when the dialog is
+    // closed: nothing is posted
     LResponse := LHttp.ExplainSql(Sql, AIMode, UserLanguage, Self,
       StreamProgress, StreamCancelRequested);
     if Cancelled then
@@ -676,6 +679,9 @@ begin
   if FChatCancel <> nil then
     FChatCancel.Cancel;
   FChatCancel := nil;
+  if FAuditCancel <> nil then
+    FAuditCancel.Cancel;
+  FAuditCancel := nil;
   FMailboxRef := nil;
   if GDataConfigDialog = Self then
     GDataConfigDialog := nil;
@@ -1043,6 +1049,7 @@ begin
   FMonacoEditor.OnSchemaChanged := MonacoSchemaChange;
   FMonacoEditor.OnInferenceLog := MonacoInferenceLog;
   FMonacoEditor.OnAuditSql := MonacoAuditSql;
+  FMonacoEditor.OnStopRequest := MonacoStopRequest;
 
   PControl.OnChange := PControlChange;
 end;
@@ -1466,6 +1473,12 @@ begin
   // the schema of the dataset (the VCL does)
   if (FChat.ComboSchema.Items.Count <= 1) and (FChat.GetHubSchemaId = 0) then
     Exit;
+  // Nor may the fallback of a list without the schema of the dataset (another
+  // account, no access) replace it: only a choice of the user does
+  if FChat.SchemaChangeFromLoad and (ActiveDataInfo <> nil) and
+    (ActiveDataInfo.HubSchemaId <> 0) and
+    (ActiveDataInfo.HubSchemaId <> FChat.GetHubSchemaId) then
+    Exit;
   SyncActiveSchemaContext(FChat.GetHubDatabaseId, FChat.GetHubSchemaId,
     FChat.GetSchemaApiKey);
 end;
@@ -1479,6 +1492,20 @@ begin
     FChat.AppendLogLine('[' + ASource + '] ' + AText)
   else
     FChat.AppendLogChunk(AText, AAppendLineBreak);
+end;
+
+procedure TFRpDInfoLCL.MonacoStopRequest(Sender: TObject);
+begin
+  // The running audit stops; its answer is not stored
+  if FAuditCancel = nil then
+    Exit;
+  FAuditCancel.Cancel;
+  FAuditCancel := nil;
+  if FMonacoEditor <> nil then
+  begin
+    FMonacoEditor.SetAuditBusy(False);
+    FMonacoEditor.AppendLog('Audit SQL stopped.');
+  end;
 end;
 
 procedure TFRpDInfoLCL.ChatStopRequest(Sender: TObject);
@@ -1592,7 +1619,11 @@ begin
   FMonacoEditor.ClearLog;
   FMonacoEditor.AppendLog('Starting SQL audit...');
 
+  if FAuditCancel <> nil then
+    FAuditCancel.Cancel;
+  FAuditCancel := TRpAsyncCancel.Create;
   worker := TRpSqlAuditWorker.Create(FMailboxRef);
+  worker.Cancel := FAuditCancel;
   // The explanation goes to this dataset even if another one is selected
   // when it arrives (the VCL uses the selected one)
   worker.DataInfoName := item.Name;
@@ -1683,6 +1714,10 @@ begin
   else if AMessage is TRpSqlAuditResult then
   begin
     auditResult := TRpSqlAuditResult(AMessage);
+    // Posted just before a stop: dropped
+    if FAuditCancel = nil then
+      Exit;
+    FAuditCancel := nil;
     try
       item := nil;
       for i := 0 to FWork.DataInfo.Count - 1 do

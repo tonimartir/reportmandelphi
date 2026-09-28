@@ -206,6 +206,7 @@ type
     FOnStatusLog: TStatusLogEvent;
     FOnSchemaChanged: TNotifyEvent;
     FOnAuditSql: TAuditSqlEvent;
+    FOnStopRequest: TNotifyEvent;
     FOnInferenceLog: TInferenceLogEvent;
     FOnScript: TRpEditorScriptEvent;
     FOnSchemaTablesLoaded: TNotifyEvent;
@@ -366,6 +367,8 @@ type
     property OnStatusLog: TStatusLogEvent read FOnStatusLog write FOnStatusLog;
     property OnSchemaChanged: TNotifyEvent read FOnSchemaChanged write FOnSchemaChanged;
     property OnAuditSql: TAuditSqlEvent read FOnAuditSql write FOnAuditSql;
+    // Stop of the model selection: the host stops what it runs (the audit)
+    property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
     property OnInferenceLog: TInferenceLogEvent read FOnInferenceLog write FOnInferenceLog;
     // Every script run in the page (also without WebView2: tests)
     property OnScript: TRpEditorScriptEvent read FOnScript write FOnScript;
@@ -2453,10 +2456,12 @@ end;
 
 procedure TFRpMonacoEditorLCL.AISelectionStopRequest(Sender: TObject);
 begin
-  // Stop of the model selection: the AI completion running (the VCL does
-  // not stop anything here); the result is an empty answer to the page
+  // Stop of the model selection: the AI completion running (the result is
+  // an empty answer to the page) and, through the host, the audit
   if FInferenceRunning and (FInferenceCancel <> nil) then
     FInferenceCancel.Cancel;
+  if Assigned(FOnStopRequest) then
+    FOnStopRequest(Self);
 end;
 
 function TFRpMonacoEditorLCL.GetAITier: string;

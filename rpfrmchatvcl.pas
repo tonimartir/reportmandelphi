@@ -118,6 +118,7 @@ type
     FOnDesignInferenceEnd: TDesignInferenceEvent;
     FOnRefreshContext: TChatRefreshEvent;
     FOnSchemaChanged: TChatSchemaChangedEvent;
+    FSchemaChangeFromLoad: Boolean;
     FOnSendPrompt: TChatSendEvent;
     FOnStopRequest: TChatStopEvent;
     FSchemaApiKey: string;
@@ -245,6 +246,10 @@ type
     property OnDesignInferenceEnd: TDesignInferenceEvent read FOnDesignInferenceEnd write FOnDesignInferenceEnd;
     property OnRefreshContext: TChatRefreshEvent read FOnRefreshContext write FOnRefreshContext;
     property OnSchemaChanged: TChatSchemaChangedEvent read FOnSchemaChanged write FOnSchemaChanged;
+    // True during the OnSchemaChanged that follows the loading of the schema
+    // list: the chat selected the schema itself (the one of its context, or
+    // a fallback when the list does not have it), not the user
+    property SchemaChangeFromLoad: Boolean read FSchemaChangeFromLoad;
     property OnSendPrompt: TChatSendEvent read FOnSendPrompt write FOnSendPrompt;
     property OnStopRequest: TChatStopEvent read FOnStopRequest write FOnStopRequest;
   end;
@@ -1287,7 +1292,12 @@ begin
       LParts.Free;
       ComboSchema.Items.EndUpdate;
       FLoadingSchemas := False;
-      ComboSchemaChange(ComboSchema);
+      FSchemaChangeFromLoad := True;
+      try
+        ComboSchemaChange(ComboSchema);
+      finally
+        FSchemaChangeFromLoad := False;
+      end;
       TRpAuthManager.Instance.Log(
         'ApplyLoadedSchemas: FinalItemIndex=' + IntToStr(ComboSchema.ItemIndex) +
         ' FinalHubDatabaseId=' + IntToStr(GetHubDatabaseId) +

@@ -380,13 +380,14 @@ llaman a `rpdatahttp` con los callbacks de progreso publicando mensajes;
   diálogo. Descartados: alias nulo (inalcanzable), `null` del JSON (el
   servidor no lo envía), lecturas de enteros entre hilos (benignas), el
   molde de `rpdatainfo.pas:2009` (mismo desplazamiento) y
-  `WMHandleDesignChatPayload` (código muerto). Quedan, sin tocar: una lista
-  de esquemas que no contiene el del dataset puede sustituirlo por otro (el
-  anfitrión no distingue la carga de una elección del usuario; hay que
-  cambiar la API del chat); cerrar el diálogo de expresiones no espera a su
-  refresco (si luego se abre otro informe, el hilo usa el informe liberado);
-  el refresco de contexto del asistente de diseño y el del diálogo de
-  expresiones no se coordinan; la auditoría de SQL no se puede parar.
+  `WMHandleDesignChatPayload` (código muerto). Después, también corregidos
+  (VCL y LCL): una lista de esquemas sin el del dataset ya no lo sustituye
+  (`SchemaChangeFromLoad` del chat), el diálogo de expresiones espera a su
+  refresco al ocultarse, los refrescos de contexto de un informe (diseño y
+  expresiones) no se solapan y el diseñador espera a ellos antes de liberar
+  o recargar el informe (`RpWaitReportRefreshes`), y la auditoría de SQL se
+  para con el Stop del editor. En el LCL, el bucle de autoajuste del editor
+  de expresiones en ventanas estrechas.
 - **Traducciones solo junto al ejecutable**: `rptranslator` busca los
   `reportmanres.*` al lado del binario; por eso los paquetes Linux instalan en
   `/opt/reportman-designer`.

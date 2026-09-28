@@ -148,6 +148,7 @@ type
       Shift: TShiftState; X, Y: Integer);
   protected
     procedure DoShow; override;
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -262,7 +263,7 @@ function SchemaFieldEntryDataType(const AEntry: string): string;
 implementation
 
 uses
-  StrUtils, DB, LazUTF8, rpjsonfpc, rpdatainfo, rpparams, rpdatahttp,
+  StrUtils, DB, Math, LazUTF8, rpjsonfpc, rpdatainfo, rpparams, rpdatahttp,
   rpauthmanager, rplabelitem;
 
 const
@@ -1535,15 +1536,32 @@ var
     Result.Align := AAlign;
   end;
 
+  // The width of the longest caption: AutoSize buttons aligned to the sides
+  // fight the alignment when they do not fit (narrow window, small screen)
+  // and the LCL raises "InvalidatePreferredSize loop detected"
+  function ButtonWidth(const ACaptions: array of string): Integer;
+  var
+    LBitmap: TBitmap;
+    I: Integer;
+  begin
+    Result := Scale96ToScreen(75);
+    LBitmap := TBitmap.Create;
+    try
+      LBitmap.Canvas.Font := Font;
+      for I := 0 to High(ACaptions) do
+        Result := Max(Result, LBitmap.Canvas.TextWidth(ACaptions[I]) + Scale96ToScreen(24));
+    finally
+      LBitmap.Free;
+    end;
+  end;
+
   function NewButton(AParent: TWinControl; const ACaption: string;
     ALeft: Integer; AAlign: TAlign; AClick: TNotifyEvent): TButton;
   begin
     Result := TButton.Create(Self);
     Result.Parent := AParent;
     Result.Caption := ACaption;
-    Result.Left := ALeft;
-    Result.AutoSize := True;
-    Result.Constraints.MinWidth := Scale96ToScreen(75);
+    Result.SetBounds(ALeft, 0, ButtonWidth([ACaption]), Scale96ToScreen(26));
     Result.BorderSpacing.Around := Scale96ToScreen(4);
     Result.Align := AAlign;
     Result.OnClick := AClick;
@@ -1600,6 +1618,9 @@ begin
 
   FBRefresh := NewButton(FPanelBottom, TranslateStr(1149, 'Refresh'), 0, alLeft,
     BRefreshClick);
+  // Also fits its caption while refreshing
+  FBRefresh.Width := ButtonWidth([string(TranslateStr(1149, 'Refresh')),
+    string(TranslateStr(1609, 'Refreshing...'))]);
   FBRefresh.Hint := TranslateStr(1610, 'Reopen datasets and refresh fields');
   FBAdd := NewButton(FPanelBottom, TranslateStr(243, 'Add selection'), 1000, alLeft,
     BAddClick);
@@ -1761,6 +1782,25 @@ begin
   FSchemaOnlyErrors.Clear;
   if AErrors <> nil then
     FSchemaOnlyErrors.Assign(AErrors);
+end;
+
+procedure TFRpExpreDialogLCL.Resize;
+var
+  I, LNeeded, LMaxChat: Integer;
+begin
+  inherited Resize;
+  if (FPanelChat = nil) or (FPanelBottom = nil) or (FSplitterChat = nil) then
+    Exit;
+  // The buttons of the classic editor must fit: in a narrow window the chat
+  // gives up its width (down to a minimum)
+  LNeeded := FPanelBottom.BorderSpacing.Around * 2 + Scale96ToScreen(16);
+  for I := 0 to FPanelBottom.ControlCount - 1 do
+    if FPanelBottom.Controls[I].Visible then
+      LNeeded := LNeeded + FPanelBottom.Controls[I].Width +
+        FPanelBottom.Controls[I].BorderSpacing.Around * 2;
+  LMaxChat := ClientWidth - FSplitterChat.Width - LNeeded;
+  if FPanelChat.Width > LMaxChat then
+    FPanelChat.Width := Max(Scale96ToScreen(220), LMaxChat);
 end;
 
 procedure TFRpExpreDialogLCL.UpdateRefreshUIState;

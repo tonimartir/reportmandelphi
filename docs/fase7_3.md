@@ -155,14 +155,14 @@ Docker Qt6 y GTK2.
 | Completado de IA en Monaco (`02:`) | Igual |
 | Combo de esquemas, botón de configuración, botón AI, selección de modelo en el editor | Igual |
 | Aviso de WebView2 ausente en el registro | Igual (solo Windows) |
-| Aplicar una sugerencia | Se puede deshacer con Ctrl+Z en el editor (el VCL usa `setValue`, que borra el deshacer de Monaco) |
-| Explicación de la auditoría | Va al dataset auditado aunque se cambie de dataset mientras llega (el VCL la guarda en el seleccionado) |
-| Lista de esquemas vacía (sin sesión o sin red) | No borra el `HubSchemaId` del dataset (el VCL sí; ver abajo) |
-| Stop de la selección de modelo en el editor | Cancela el completado de IA (el VCL no hace nada) |
+| Aplicar una sugerencia | Se puede deshacer con Ctrl+Z en el editor (el VCL también desde el 28-09-2026: antes usaba `setValue`) |
+| Explicación de la auditoría | Va al dataset auditado aunque se cambie de dataset mientras llega (igual en el VCL desde el 28-09-2026) |
+| Lista de esquemas vacía, o sin el esquema del dataset | No cambia el `HubSchemaId` del dataset: solo lo cambia una elección del usuario (`SchemaChangeFromLoad` del chat; igual en el VCL desde el 28-09-2026) |
+| Stop de la selección de modelo en el editor | Cancela el completado de IA y la auditoría (igual en el VCL desde el 28-09-2026) |
 | Completado por esquema (tablas/columnas) | Nuevo, en Monaco y en el editor alternativo |
 | Editor sin WebView2 | SynEdit con resaltado y completado (el VCL: `TMemo`) |
 | Completado de IA en el editor alternativo | Sí: texto fantasma en el cursor, Tab/Esc (el VCL, con `TMemo`, no lo tiene) |
-| Parar la auditoría | No, como el VCL (solo se descarta al cerrar el diálogo) |
+| Parar la auditoría | Sí, con el Stop de la selección de modelo del editor (su respuesta no se guarda) |
 | Texto de la auditoría | `TMemo` de texto como el VCL, aunque venga en Markdown |
 
 ## Textos
@@ -232,7 +232,10 @@ Capturas (`--shots`): `sql_assistant_dialog`, `sql_fallback_editor`,
 `sql_fallback_ai_accepted` y, en Windows,
 `sql_monaco_completion` y `sql_assistant_monaco`.
 
-## Encontrado y sin corregir (VCL y unidades compartidas)
+## Encontrado en el VCL y en unidades compartidas
+
+Verificado y corregido el 28-09-2026 (commits 0a7f5c7 y siguiente): 1 a 4.
+5 y 6 no son fallos (lecturas atómicas; mismo desplazamiento del campo).
 
 1. `rpmdfdatasetsvcl.pas:827` (`ChatSchemaChange`): el chat llama a
    `OnSchemaChanged` al terminar de cargar su lista
@@ -261,9 +264,9 @@ Capturas (`--shots`): `sql_assistant_dialog`, `sql_fallback_editor`,
 
 ## Pendiente
 
-- Añadir los ids 1552–1560 a los `reportmanres.*`.
+- ~~Añadir los ids 1552–1560 a los `reportmanres.*`~~ (hecho, f3d8449).
 - Completado de columnas con conexiones locales (Zeos, SQLite...) sin
   esquema del Hub: se podría usar `GetTableNames`/`GetFieldNames` de la
   conexión (conectar al abrir el completado).
-- Completado de IA en el editor alternativo (Linux): no existe en el VCL.
-- Parar la auditoría desde el Stop de la selección de modelo.
+- ~~Completado de IA en el editor alternativo (Linux)~~ (hecho, 1da814b).
+- ~~Parar la auditoría desde el Stop de la selección de modelo~~ (hecho).

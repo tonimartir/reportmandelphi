@@ -253,10 +253,13 @@ type
       APayload: TRpQueuedExpressionChatPayload);
     procedure StartReportRefresh;
     procedure WaitForReportRefresh;
+    procedure FinishReportRefresh;
     procedure SetSchemaOnlyContext(AFields, AErrors: TStrings);
     procedure SetChatMode(AMode: TRpChatMode);
     procedure UpdateRefreshUIState;
     procedure Setevaluator(aval:TRpCustomEvaluator);
+  protected
+    procedure DoHide; override;
   public
     { Public declarations }
     property evaluator:TRpCustomEvaluator read fevaluator write setevaluator;
@@ -273,6 +276,15 @@ procedure CollectAgentSchemaOnlyContext(AReport: TRpReport; AFields,
 function BuildDesignExpressionContextJson(AReport: TRpReport; ARpAlias: TRpAlias;
   AOpenErrors, ASchemaOnlyFields, ASchemaOnlyErrors: TStrings;
   out AErrorMessage: string): string;
+
+// Refreshes of the live context of a report (PrepareLiveContext in a worker
+// thread: the design assistant of the designer and the expression dialog)
+// must not run at the same time on the same report nor outlive it. A worker
+// registers its done flag; the main thread waits for the refreshes of a
+// report before starting another one or before changing or freeing it.
+function RpNewRefreshDone: IRpRefreshDone;
+procedure RpRegisterReportRefresh(AReport: TObject; const ADone: IRpRefreshDone);
+procedure RpWaitReportRefreshes(AReport: TObject);
 
 
 
@@ -354,6 +366,72 @@ end;
 procedure TRpRefreshDone.SetDone;
 begin
  FDone := True;
+end;
+
+type
+  TRpReportRefresh = class(TObject)
+  public
+    Report: TObject;
+    Done: IRpRefreshDone;
+  end;
+
+var
+  GReportRefreshes: TObjectList = nil;
+
+function RpNewRefreshDone: IRpRefreshDone;
+begin
+ Result := TRpRefreshDone.Create;
+end;
+
+procedure PurgeDoneReportRefreshes;
+var
+ I: Integer;
+begin
+ if GReportRefreshes = nil then
+  Exit;
+ for I := GReportRefreshes.Count - 1 downto 0 do
+  if TRpReportRefresh(GReportRefreshes[I]).Done.Done then
+   GReportRefreshes.Delete(I);
+end;
+
+procedure RpRegisterReportRefresh(AReport: TObject; const ADone: IRpRefreshDone);
+var
+ LEntry: TRpReportRefresh;
+begin
+ if (AReport = nil) or (ADone = nil) then
+  Exit;
+ if GReportRefreshes = nil then
+  GReportRefreshes := TObjectList.Create(True);
+ PurgeDoneReportRefreshes;
+ LEntry := TRpReportRefresh.Create;
+ LEntry.Report := AReport;
+ LEntry.Done := ADone;
+ GReportRefreshes.Add(LEntry);
+end;
+
+procedure RpWaitReportRefreshes(AReport: TObject);
+var
+ I: Integer;
+ LDone: IRpRefreshDone;
+begin
+ if (AReport = nil) or (GReportRefreshes = nil) then
+  Exit;
+ repeat
+  LDone := nil;
+  for I := 0 to GReportRefreshes.Count - 1 do
+   if (TRpReportRefresh(GReportRefreshes[I]).Report = AReport) and
+     (not TRpReportRefresh(GReportRefreshes[I]).Done.Done) then
+   begin
+    LDone := TRpReportRefresh(GReportRefreshes[I]).Done;
+    Break;
+   end;
+  if LDone = nil then
+   Break;
+  // The worker posts its answer, but may also wait for the main thread
+  while not LDone.Done do
+   CheckSynchronize(10);
+ until False;
+ PurgeDoneReportRefreshes;
 end;
 
 destructor TRpExpressionRequestContext.Destroy;
@@ -1574,9 +1652,12 @@ begin
   Setevaluator(BuildRefreshSnapshotEvaluator);
   FOwnsEvaluator := True;
  end;
+ // Not at the same time as a refresh of the design assistant
+ RpWaitReportRefreshes(LReport);
  FRefreshRunning := True;
  LDone := TRpRefreshDone.Create;
  FRefreshDone := LDone;
+ RpRegisterReportRefresh(LReport, LDone);
  UpdateRefreshUIState;
 
  LWorker := TThread.CreateAnonymousThread(
@@ -1632,6 +1713,32 @@ begin
  while not FRefreshDone.Done do
   CheckSynchronize(10);
  FRefreshDone := nil;
+end;
+
+procedure TFRpExpredialogVCL.FinishReportRefresh;
+begin
+ if FRefreshDone = nil then
+  Exit;
+ // A refresh must not outlive the dialog: afterwards the designer changes
+ // or frees the report. Its answer is dropped.
+ if not FRefreshDone.Done then
+ begin
+  Screen.Cursor := crHourGlass;
+  try
+   WaitForReportRefresh;
+  finally
+   Screen.Cursor := crDefault;
+  end;
+ end;
+ FRefreshDone := nil;
+ Inc(FRefreshVersion);
+ FRefreshRunning := False;
+end;
+
+procedure TFRpExpredialogVCL.DoHide;
+begin
+ FinishReportRefresh;
+ inherited DoHide;
 end;
 
 procedure TFRpExpredialogVCL.WMHandleExpressionRefresh(var Message: TMessage);
@@ -2991,5 +3098,6 @@ initialization
 finalization
  if GSharedExpreDialogVCL<>nil then
   GSharedExpreDialogVCL.Free;
+ GReportRefreshes.Free;
 
 end.

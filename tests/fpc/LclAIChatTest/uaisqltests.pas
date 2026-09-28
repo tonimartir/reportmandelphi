@@ -248,6 +248,14 @@ begin
     begin
       Inc(ExplainCalls);
       LastExplainBody := LContent;
+      if Pos('slow', LContent) > 0 then
+      begin
+        SetLength(LEvents, 40);
+        for I := 0 to High(LEvents) do
+          LEvents[I] := ProgressEvent('Partial', 'e' + IntToStr(I) + ' ', 'x3');
+        SendEvents(AResponse, LEvents, 100, True, True);
+        Exit;
+      end;
       SetLength(LEvents, 3);
       LEvents[0] := ProgressEvent('Partial', 'Lists the clients', 'x1');
       LEvents[1] := ProgressEvent('End', ' with their balance.', 'x1');
@@ -1130,6 +1138,14 @@ var
   begin
     Result := LDlg.MonacoEditor.AuditButton.Enabled;
   end;
+  function AuditStreaming: Boolean;
+  begin
+    Result := Pos('e2 ', LDlg.Chat.LogView.PlainText) > 0;
+  end;
+  function ChatSchemasLoaded: Boolean;
+  begin
+    Result := (not LDlg.Chat.LoadingSchemas) and (LDlg.Chat.ComboSchema.Items.Count > 1);
+  end;
 
 begin
   Section('SQL assistant of the data configuration dialog');
@@ -1239,6 +1255,23 @@ begin
       'the SQL of the editor is explained');
     CheckContains('Audit SQL complete. Input Tokens: 50 Output Tokens: 12',
       LDlg.Chat.LogView.PlainText, 'audit log in the chat');
+
+    // The Stop of the model selection of the editor stops the audit
+    LDlg.MonacoEditor.SQL := 'SELECT slow FROM CLIENTS';
+    LDlg.MonacoEditor.AuditButton.Click;
+    WaitUntil(AuditStreaming, 10000, 'slow audit running');
+    Check(not LDlg.MonacoEditor.AuditButton.Enabled, 'slow audit busy');
+    LStart := GetTickCount64;
+    LDlg.MonacoEditor.AISelection.BStopInferenceClick(nil);
+    Check(LDlg.MonacoEditor.AuditButton.Enabled, 'Stop ends the audit at once');
+    CheckContains('Audit SQL stopped.', LDlg.Chat.LogView.PlainText, 'stop in the log');
+    Check(RpAsyncWaitIdle(3000), 'the audit worker ends soon after the stop');
+    Check(ElapsedMs(LStart) < 2500, Format('audit cancel is prompt (%d ms; the stream lasts 4 s)',
+      [ElapsedMs(LStart)]));
+    Pump(200);
+    CheckEquals(AUDIT_TEXT, LDlg.WorkReport.DataInfo[0].SQLExplanation,
+      'the stopped audit stores nothing');
+    LDlg.MonacoEditor.SQL := SUGGESTED_SQL;
     LDlg.MonacoEditor.PageControl.ActivePage := LDlg.MonacoEditor.TabSQL;
 
     // Schema chosen in the editor: kept in the dataset, the chat follows
@@ -1250,12 +1283,29 @@ begin
     CheckEquals(8, LDlg.Chat.GetHubSchemaId, 'the chat follows (SetHubContext)');
 
     // Second dataset: its own SQL and the Hub database of the connection
+    // (its schema, 99, is not in the lists: another account, no access)
+    LDlg.WorkReport.DataInfo[1].HubSchemaId := 99;
     LDlg.DatasetList.ItemIndex := 1;
     LDlg.DatasetList.OnClick(LDlg.DatasetList);
     CheckEquals(1, LDlg.ActiveDatasetIndex, 'second dataset selected');
     CheckEquals(77, LDlg.MonacoEditor.HubDatabaseId, 'same Hub database');
     CheckEquals('SELECT * FROM ORDERS', LDlg.MonacoEditor.SQL, 'its SQL in the editor');
     CheckEquals(SUGGESTED_SQL, LDlg.WorkReport.DataInfo[0].SQL, 'first dataset keeps the applied SQL');
+
+    // The chat reloads its list: it falls back to a schema of the connection,
+    // but that is not a choice of the user and the dataset keeps its own
+    LDlg.Chat.BRefreshSchemasClick(nil);
+    WaitUntil(ChatSchemasLoaded, 10000, 'schemas of the chat reloaded');
+    Pump(100);
+    Check(LDlg.Chat.GetHubSchemaId <> 99, 'the chat falls back to a listed schema');
+    CheckEquals(99, LDlg.WorkReport.DataInfo[1].HubSchemaId,
+      'the fallback of the list does not replace the schema of the dataset');
+    // A schema chosen by the user in the chat is kept
+    I := LDlg.Chat.ComboSchema.Items.IndexOf('Sales / Main');
+    Check(I > 0, 'schema listed in the chat');
+    LDlg.Chat.ComboSchema.ItemIndex := I;
+    LDlg.Chat.ComboSchema.OnChange(LDlg.Chat.ComboSchema);
+    CheckEquals(5, LDlg.WorkReport.DataInfo[1].HubSchemaId, 'the choice of the user is kept');
 
     // OK: recorded in the undo cue as one group
     nOps := LCue.UndoOperations.Count;

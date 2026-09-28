@@ -684,6 +684,19 @@ end;
 
 procedure TFRpMainFVCL.DoDisable;
 begin
+ // A refresh of the design context (or of the expression dialog) must end
+ // before the report is freed; the answer of the design context is dropped
+ if Assigned(report) then
+  RpWaitReportRefreshes(report);
+ if FDesignContextRefreshRunning then
+ begin
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := False;
+  FDesignChatPendingPrompt := '';
+  UpdateDesignContextProgress(False, '');
+  if Assigned(fchatframe) then
+   fchatframe.SetBusy(False);
+ end;
  FreeInterface;
  if Assigned(report) then
  begin
@@ -1431,6 +1444,9 @@ end;
 
 procedure TFRpMainFVCL.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+ // The report is freed with the form: no refresh may still prepare it
+ if Assigned(report) then
+  RpWaitReportRefreshes(report);
  LastUsedFiles.SaveToConfigFile(configfile);
  SaveConfig;
 end;
@@ -3477,12 +3493,15 @@ var
  LRequestVersion: Integer;
  LReport: TRpReport;
  LStatusMessage: string;
+ LDone: IRpRefreshDone;
 begin
  if (not Assigned(fchatframe)) or (not Assigned(report)) then
   Exit;
 
  if FDesignContextRefreshRunning then
   Exit;
+ // Not at the same time as a refresh of the expression dialog
+ RpWaitReportRefreshes(report);
 
  fchatframe.SetBusy(True);
  FDesignChatPendingPrompt := APendingPrompt;
@@ -3490,6 +3509,8 @@ begin
  LRequestVersion := FDesignContextRefreshVersion;
  LReport := report;
  FDesignContextRefreshRunning := True;
+ LDone := RpNewRefreshDone;
+ RpRegisterReportRefresh(LReport, LDone);
  if Trim(APendingPrompt) <> '' then
   LStatusMessage := 'Opening datasets...'
  else if ANotifyOnSuccess then
@@ -3533,6 +3554,7 @@ begin
         LSchemaOnlyFields.Free;
         LOpenErrors.Free;
       LPayload.Free;
+      LDone.SetDone;
     end;
    end);
  LWorker.FreeOnTerminate := True;
@@ -3556,6 +3578,8 @@ begin
  if (not Assigned(report)) or (Trim(AModifiedReportDocument) = '') then
   Exit;
  LApplied := False;
+ // No refresh may be preparing the report that is replaced
+ RpWaitReportRefreshes(report);
 
  report.BlockChanges:=False;
  // Clear takes the sections and items out of the report without freeing
