@@ -159,8 +159,9 @@ distribución no soportada o algo falla.
 
   Los ejemplos con datos necesitan su conexión: las de prueba (por ejemplo
   `SQLITETEST`, SQLite sobre `clientes.db`) están en
-  `samples/dbxconnections.ini` y se dan de alta en la configuración de
-  conexiones del diseñador.
+  `samples/dbxconnections.ini`. Dalas de alta con los mismos parámetros en
+  Informe > Configuración de datos > Configurar (el editor de
+  `~/.borland/dbxconnections`), o copia sus secciones a ese fichero.
 - El idioma del diseñador (menús, barras de herramientas, diálogos y
   mensajes, también los botones de los diálogos estándar) sigue `LC_ALL`,
   `LC_MESSAGES` o `LANG`, en ese orden (español, inglés, catalán, francés,
