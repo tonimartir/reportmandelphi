@@ -18,6 +18,7 @@ uses
   rpaithreadslcl, rpchatmodernstylelcl, rpmarkdownlcl, rpwebmarkdownlcl,
   rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl,
   rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl,
+  rpmdftreelcl, rpeditconnlcl,
   LazarusPackageIntf;
 
 implementation

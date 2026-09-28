@@ -122,7 +122,7 @@ implementation
 {$R *.lfm}
 
 uses
-  uregressiontests;
+  uregressiontests, ulibrarytests;
 
 type
   TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
@@ -2092,6 +2092,8 @@ begin
 
      // Subphase 5.5 regression tests (uregressiontests.pas)
      RunRegressionTests(FindSampleFile('sample4.rep'));
+     // Phase 8: report library (ulibrarytests.pas)
+     RunLibraryTests;
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
