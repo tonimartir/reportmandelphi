@@ -193,9 +193,8 @@ end;
 
 procedure TLCLReport.SaveToExcel(filename:string;onesheet:Boolean=false);
 begin
-// rplcldriver.CalcReportWidthProgress(report);
-// rpexceldriver.ExportMetafileToExcel(report.metafile,filename,showprogress,false,
-// true,1,999,onesheet);
+ // The Excel export drives Excel through OLE (VCL only)
+ Raise Exception.Create(SRpExcelNotSupported);
 end;
 
 procedure TLCLReport.InternalExecuteRemote(metafile:TRpMetafileReport);

@@ -42,8 +42,13 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    // A field dragged from the data tree of the structure (VCL
+    // TRpSectionInTf.DoDragOver/DoDragDrop)
+    procedure DragOver(Source: TObject; X, Y: Integer; State: TDragState;
+      var Accept: Boolean); override;
   public
     OnPosChange: TNotifyEvent;
+    procedure DragDrop(Source: TObject; X, Y: Integer); override;
     procedure ExecuteMouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure ExecuteMouseMove(Shift: TShiftState; X, Y: Integer);
     procedure ExecuteMouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -71,6 +76,11 @@ type
     procedure SetOnPosChange(AValue: TNotifyEvent);
     procedure CalcNewCoords(var NewLeft, NewTop, NewWidth, NewHeight, X, Y: Integer);
     function DoSelectControls(NewLeft, NewTop, NewWidth, NewHeight: Integer): Boolean;
+    // Adds a new item to the section at the given twips: interface,
+    // selection and the otAdd undo operation (AExtraOp, when given, goes in
+    // the same undo group)
+    function InsertNewItem(compo: TRpCommonPosComponent; posx, posy, w,
+      h: Integer; AExtraOp: TObject = nil): TRpSizePosInterface;
   protected
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -100,6 +110,14 @@ type
     procedure DrawBackground(ACanvas: TCanvas; AWidth, AHeight: Integer);
     function CreateChild(compo: TRpCommonPosComponent): TRpSizePosInterface;
     function CreateNewComponent(ATool: TRpDesignTool; ALeft, ATop, AWidth, AHeight: Integer): TRpSizePosInterface;
+    // The field selected in the data tree of the structure, '' when none (VCL
+    // TFRpMainFVCL.GetExpressionText): new expressions, barcodes and charts
+    // use it
+    function SelectedDataField: string;
+    // The field of a drag from the data tree, '' when Source is not one
+    function DraggedDataField(Source: TObject): string;
+    // Adds an expression with the dragged field at X, Y (pixels)
+    function DropDataField(Source: TObject; X, Y: Integer): TRpSizePosInterface;
     procedure CreateChilds;
     procedure SyncChilds;
     procedure DeleteChild(achild: TRpSizePosInterface);
@@ -113,9 +131,28 @@ type
 implementation
 
 uses
-  rpmdundocuelcl, rpmdfstruclcl;
+  ComCtrls, rpmdundocuelcl, rpmdfstruclcl, rpdbbrowserlcl, rpdatainfo;
+
+const
+  // Maximum width in characters of a dropped field (VCL MAX_DROP_SIZE)
+  MAX_DROP_SIZE = 40;
 
 { TRpSectionIntf }
+
+procedure TRpSectionIntf.DragOver(Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+begin
+  inherited DragOver(Source, X, Y, State, Accept);
+  Accept := Assigned(secint) and (secint.DraggedDataField(Source) <> '');
+end;
+
+procedure TRpSectionIntf.DragDrop(Source: TObject; X, Y: Integer);
+begin
+  if Assigned(secint) and (secint.DraggedDataField(Source) <> '') then
+    secint.DropDataField(Source, X, Y)
+  else
+    inherited DragDrop(Source, X, Y);
+end;
 
 constructor TRpSectionIntf.Create(AOwner: TComponent);
 begin
@@ -406,12 +443,9 @@ function TRpSectionInterface.CreateNewComponent(ATool: TRpDesignTool; ALeft, ATo
 var
   theowner: TComponent;
   compo: TRpCommonPosComponent;
-  asizeposint: TRpSizePosInterface;
-  aitem: TRpCommonListItem;
   sec: TRpSection;
   posx, posy, w, h: Integer;
-  cue: TUndoCue;
-  undoop: TChangeObjectOperation;
+  fieldname: string;
 begin
   Result := nil;
   if not Assigned(printitem) or not (printitem is TRpSection) then
@@ -472,6 +506,9 @@ begin
   if posy < 0 then posy := 0;
 
   compo := nil;
+  // As the VCL, the field selected in the data tree is the expression of
+  // new expressions, barcodes and charts
+  fieldname := SelectedDataField;
   case ATool of
     dtLabel:
       begin
@@ -481,7 +518,10 @@ begin
     dtExpression:
       begin
         compo := TRpExpression.Create(theowner);
-        TRpExpression(compo).Expression := QuotedStr(SRpSampleTextToLabels);
+        if fieldname <> '' then
+          TRpExpression(compo).Expression := fieldname
+        else
+          TRpExpression(compo).Expression := QuotedStr(SRpSampleTextToLabels);
       end;
     dtShape:
       begin
@@ -495,12 +535,18 @@ begin
     dtBarcode:
       begin
         compo := TRpBarcode.Create(theowner);
-        TRpBarcode(compo).Expression := QuotedStr(SRpSampleBarCode);
+        if fieldname <> '' then
+          TRpBarcode(compo).Expression := fieldname
+        else
+          TRpBarcode(compo).Expression := QuotedStr(SRpSampleBarCode);
       end;
     dtChart:
       begin
         compo := TRpChart.Create(theowner);
-        TRpChart(compo).ValueExpression := '10';
+        if fieldname <> '' then
+          TRpChart(compo).ValueExpression := fieldname
+        else
+          TRpChart(compo).ValueExpression := '10';
       end;
   end;
 
@@ -510,6 +556,20 @@ begin
   if (compo is TRpGenTextComponent) and Assigned(sec.Report) then
     TRpReport(sec.Report).AssignDefaultFontTo(TRpGenTextComponent(compo));
 
+  Result := InsertNewItem(compo, posx, posy, w, h);
+end;
+
+function TRpSectionInterface.InsertNewItem(compo: TRpCommonPosComponent;
+  posx, posy, w, h: Integer; AExtraOp: TObject): TRpSizePosInterface;
+var
+  sec: TRpSection;
+  aitem: TRpCommonListItem;
+  asizeposint: TRpSizePosInterface;
+  cue: TUndoCue;
+  undoop: TChangeObjectOperation;
+  gid: Integer;
+begin
+  sec := TRpSection(printitem);
   compo.PosX := posx;
   compo.PosY := posy;
   compo.Width := w;
@@ -530,7 +590,13 @@ begin
   if Assigned(sec.Report) and (sec.Report is TRpReport) and Assigned(TRpReport(sec.Report).UndoCue) then
   begin
     cue := TUndoCue(TRpReport(sec.Report).UndoCue);
-    undoop := TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+    gid := cue.GetGroupId;
+    if Assigned(AExtraOp) then
+    begin
+      TChangeObjectOperation(AExtraOp).groupId := gid;
+      cue.AddOperation(TChangeObjectOperation(AExtraOp));
+    end;
+    undoop := TChangeObjectOperation.Create(otAdd, gid);
     undoop.componentName := compo.Name;
     undoop.componentClass := UpperCase(compo.ClassName);
     undoop.parentName := sec.Name;
@@ -539,9 +605,104 @@ begin
     if Assigned(freportstructure) and (freportstructure is TFRpStructureLCL) then
       if Assigned(TFRpStructureLCL(freportstructure).cueview) then
         TFRpStructureLCL(freportstructure).cueview.RefreshList;
-  end;
+  end
+  else
+    AExtraOp.Free;
 
   Result := asizeposint;
+end;
+
+function TRpSectionInterface.SelectedDataField: string;
+var
+  anode: TTreeNode;
+begin
+  Result := '';
+  if not (Assigned(freportstructure) and (freportstructure is TFRpStructureLCL)) then
+    Exit;
+  if not Assigned(TFRpStructureLCL(freportstructure).browser) then
+    Exit;
+  anode := TFRpStructureLCL(freportstructure).browser.ATree.Selected;
+  // Fields and variables (image 2), not the datasets and tables
+  if Assigned(anode) and Assigned(anode.Parent) and (anode.ImageIndex = 2) then
+    Result := ExtractFieldNameEx(anode.Text);
+end;
+
+function TRpSectionInterface.DraggedDataField(Source: TObject): string;
+var
+  anode: TTreeNode;
+begin
+  Result := '';
+  if not ((Source is TTreeView) and (TTreeView(Source).Owner is TFRpBrowserLCL)) then
+    Exit;
+  anode := TTreeView(Source).Selected;
+  if Assigned(anode) and Assigned(anode.Parent) and (anode.ImageIndex = 2) then
+    Result := ExtractFieldNameEx(anode.Text);
+end;
+
+function TRpSectionInterface.DropDataField(Source: TObject; X,
+  Y: Integer): TRpSizePosInterface;
+var
+  sec: TRpSection;
+  rep: TRpReport;
+  compo: TRpExpression;
+  fieldname: string;
+  anode: TTreeNode;
+  size, w, h, posx, posy: Integer;
+  twopassop: TChangeObjectOperation;
+begin
+  Result := nil;
+  fieldname := DraggedDataField(Source);
+  if fieldname = '' then
+    Exit;
+  sec := TRpSection(printitem);
+  rep := nil;
+  if Assigned(sec.Report) and (sec.Report is TRpReport) then
+  begin
+    rep := TRpReport(sec.Report);
+    rep.AssertCanModify('Drop field');
+  end;
+  if sec.IsExternal or not Assigned(rep) then
+    compo := TRpExpression.Create(sec)
+  else
+    compo := TRpExpression.Create(rep);
+  if Assigned(rep) then
+    rep.AssignDefaultFontTo(compo);
+  compo.Expression := fieldname;
+  // As TRpSectionInterface.DoDragDrop of the VCL: the width of the field
+  // size in 'x' (up to MAX_DROP_SIZE) and the height of the text
+  size := 10;
+  anode := TTreeView(Source).Selected;
+  if TObject(anode.Data) is TRpDBFieldInfo then
+    size := TRpDBFieldInfo(anode.Data).FieldSize;
+  if size < 1 then
+    size := 10;
+  if size > MAX_DROP_SIZE then
+    size := MAX_DROP_SIZE;
+  FInterface.Canvas.Font.Name := compo.WFontName;
+  FInterface.Canvas.Font.Size := compo.FontSize;
+  w := pixelstotwips(FInterface.Canvas.TextWidth(StringOfChar('x', size)), 1.0);
+  h := Round(pixelstotwips(FInterface.Canvas.TextHeight('Mg'), 1.0) * 1.1);
+  posx := pixelstotwips(X, Scale);
+  posy := pixelstotwips(Y, Scale);
+  if posx < 0 then posx := 0;
+  if posy < 0 then posy := 0;
+  if posx + w > sec.Width then
+    w := sec.Width - posx;
+  if w < CONS_MINWIDTH then
+    w := pixelstotwips(CONS_MINWIDTH, 1.0);
+  // The page count needs two passes (VCL): recorded with the new item
+  twopassop := nil;
+  if Assigned(rep) and ((fieldname = 'PAGECOUNT') or (fieldname = 'GROUPPAGECOUNT')) and
+    not rep.TwoPass then
+  begin
+    twopassop := TChangeObjectOperation.Create(otModify, 0);
+    twopassop.componentName := 'REPORT';
+    twopassop.componentClass := 'TRPREPORT';
+    twopassop.parentName := '';
+    twopassop.AddProperty('twoPass', ptBoolean, False, True);
+    rep.TwoPass := True;
+  end;
+  Result := InsertNewItem(compo, posx, posy, w, h, twopassop);
 end;
 
 procedure TRpSectionInterface.CalcNewCoords(var NewLeft, NewTop, NewWidth, NewHeight, X, Y: Integer);

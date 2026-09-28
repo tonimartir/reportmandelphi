@@ -194,7 +194,7 @@ for p in libfreetype6 libfontconfig1 libharfbuzz0b libsqlite3-0 \
 done
 DEPENDS=$(printf '%s, ' "${DEPS[@]}")
 DEPENDS=${DEPENDS%, }
-RECOMMENDS="fonts-liberation, libharfbuzz-subset0, libcups2 | libcups2t64"
+RECOMMENDS="fonts-liberation, libharfbuzz-subset0, libcups2 | libcups2t64, xdg-utils"
 
 # Las dos variantes instalan los mismos ficheros: cada una sustituye a la
 # otra. La GTK2 provee ademas el nombre reportman-designer.

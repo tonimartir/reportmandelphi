@@ -1030,7 +1030,32 @@ begin
 end;
 
 procedure TFRpDesignFrameLCL.ShowAllHidden;
+var
+  i, j, k: Integer;
+  sub: TRpSubReport;
+  sec: TRpSection;
 begin
+  // Hidden items (Edit > Hide) have Visible=False, a design time flag that
+  // is not saved; the interfaces are created with it (VCL ShowAllHiden)
+  if Assigned(FReport) then
+  begin
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      sub := FReport.SubReports.Items[i].SubReport;
+      for j := 0 to sub.Sections.Count - 1 do
+      begin
+        sec := sub.Sections.Items[j].Section;
+        for k := 0 to sec.ReportComponents.Count - 1 do
+          if sec.ReportComponents.Items[k].Component is TRpCommonComponent then
+            TRpCommonComponent(sec.ReportComponents.Items[k].Component).Visible := True;
+      end;
+    end;
+  end;
+  // The interfaces kept by UpdateInterface too
+  if Assigned(secinterfaces) then
+    for i := 0 to secinterfaces.Count - 1 do
+      for j := 0 to TRpSectionInterface(secinterfaces[i]).childlist.Count - 1 do
+        TControl(TRpSectionInterface(secinterfaces[i]).childlist[j]).Visible := True;
   UpdateInterface(True);
 end;
 

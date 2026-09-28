@@ -122,7 +122,7 @@ implementation
 {$R *.lfm}
 
 uses
-  uregressiontests;
+  uregressiontests, uvclparitytests;
 
 type
   TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
@@ -2092,6 +2092,8 @@ begin
 
      // Subphase 5.5 regression tests (uregressiontests.pas)
      RunRegressionTests(FindSampleFile('sample4.rep'));
+     // Commands of the VCL designer ported after phase 7
+     RunVCLParityTests(FindSampleFile('sample4.rep'));
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

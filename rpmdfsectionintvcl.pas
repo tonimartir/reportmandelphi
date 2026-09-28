@@ -1530,6 +1530,10 @@ var
  fieldname:String;
  size:Integer;
  apoint:TPoint;
+ settwopass:boolean;
+ cue:TUndoCue;
+ undoop:TChangeObjectOperation;
+ gid:integer;
 begin
  if Source is TFRpBrowserVCL then
  begin
@@ -1548,10 +1552,14 @@ begin
    size:=TRpDBFieldInfo(anode.Data).FieldSize;
   fieldname:=ExtractFieldNameEx(anode.Text);
   TRpExpression(asizepos).Expression:=fieldname;
+  settwopass:=false;
   if ((fieldname='PAGECOUNT') or (fieldname='GROUPPAGECOUNT')) then
   begin
    if Not TRpReport(printitem.Report).TwoPass then
+   begin
     TRpReport(printitem.Report).TwoPass:=true;
+    settwopass:=true;
+   end;
   end;
   Canvas.Font.Name:=TRpExpression(asizepos).WFontName;
   Canvas.Font.Size:=TRpExpression(asizepos).FontSize;
@@ -1594,6 +1602,30 @@ begin
    TFRpObjInspVCL(fobjinsp).Combo.ItemIndex:=TFRpObjInspVCL(fobjinsp).Combo.Items.IndexOfObject(asizeposint);
   end;
   TFRpObjInspVCL(fobjinsp).AddCompItem(asizeposint,true);
+  // Record the added expression as the items inserted with the mouse: it
+  // marks the report modified (the drop was lost on close without asking)
+  // and can be undone
+  if Assigned(printitem.Report) and Assigned(TRpReport(printitem.Report).UndoCue) then
+  begin
+   cue:=TUndoCue(TRpReport(printitem.Report).UndoCue);
+   gid:=cue.GetGroupId;
+   if settwopass then
+   begin
+    undoop:=TChangeObjectOperation.Create(otModify,gid);
+    undoop.componentName:='REPORT';
+    undoop.componentClass:='TRPREPORT';
+    undoop.parentName:='';
+    undoop.AddProperty('twoPass',ptBoolean,False,True);
+    cue.AddOperation(undoop);
+   end;
+   undoop:=TChangeObjectOperation.Create(otAdd,gid);
+   undoop.componentName:=asizepos.Name;
+   undoop.componentClass:=UpperCase(asizepos.ClassName);
+   undoop.parentName:=TRpSection(printitem).Name;
+   cue.AddAllComponentProperties(asizepos,undoop);
+   cue.AddOperation(undoop);
+   TFRpMainFVCL(Owner.Owner).RefreshCueView;
+  end;
  end;
 end;
 

@@ -358,12 +358,18 @@ procedure TFRpBrowserLCL.ATreeMouseDown(Sender: TObject;
 var
   anode: TTreeNode;
 begin
-  if not Assigned(ATree.Selected) then Exit;
-  anode := ATree.Selected;
+  if Button <> mbLeft then Exit;
+  // The node under the mouse (the selection may not have changed yet)
+  anode := ATree.GetNodeAt(X, Y);
+  if not Assigned(anode) then Exit;
   if not Assigned(anode.Parent) then Exit;
   if anode.ImageIndex = 2 then
   begin
-    // Could initiate drag
+    // A field or variable dragged onto a section becomes an expression
+    // (VCL TFRpBrowserVCL.ATreeMouseDown); the drag starts after the mouse
+    // moves, so a click still just selects
+    ATree.Selected := anode;
+    ATree.BeginDrag(False);
   end;
 end;
 

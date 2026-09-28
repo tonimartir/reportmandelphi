@@ -2700,9 +2700,64 @@ end;
 
 
 procedure TFRpMainFVCL.AAlign1_6Execute(Sender: TObject);
+var
+ oldtop,i,j,k,gid:integer;
+ oldheights:TList<Integer>;
+ subrep:TRpSubReport;
+ sec:TRpSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
- report.AlignSectionsTo(report.LinesPerInch);
+ // The changes are recorded as one undo step: they mark the report
+ // modified (they were lost on close without asking) and can be undone
+ oldtop:=report.TopMargin;
+ oldheights:=TList<Integer>.Create;
+ try
+  for i:=0 to report.SubReports.Count-1 do
+  begin
+   subrep:=report.SubReports.Items[i].SubReport;
+   for j:=0 to subrep.Sections.Count-1 do
+    oldheights.Add(subrep.Sections.Items[j].Section.Height);
+  end;
+  report.AlignSectionsTo(report.LinesPerInch);
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  gid:=-1;
+  if oldtop<>report.TopMargin then
+  begin
+   gid:=cue.GetGroupId;
+   op:=TChangeObjectOperation.Create(otModify,gid);
+   op.componentName:='REPORT';
+   op.componentClass:='TRPREPORT';
+   op.parentName:='';
+   op.AddProperty('topMargin',ptInteger,oldtop,report.TopMargin);
+   cue.AddOperation(op);
+  end;
+  k:=0;
+  for i:=0 to report.SubReports.Count-1 do
+  begin
+   subrep:=report.SubReports.Items[i].SubReport;
+   for j:=0 to subrep.Sections.Count-1 do
+   begin
+    sec:=subrep.Sections.Items[j].Section;
+    if oldheights[k]<>sec.Height then
+    begin
+     if gid<0 then
+      gid:=cue.GetGroupId;
+     op:=TChangeObjectOperation.Create(otModify,gid);
+     op.componentName:=sec.Name;
+     op.componentClass:=UpperCase(sec.ClassName);
+     op.AddProperty('height',ptInteger,oldheights[k],sec.Height);
+     cue.AddOperation(op);
+    end;
+    inc(k);
+   end;
+  end;
+ finally
+  oldheights.Free;
+ end;
  RefreshInterface(Self);
+ RefreshCueView;
 end;
 
 procedure TFRpMainFVCL.ADeleteExecute(Sender: TObject);

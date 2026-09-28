@@ -166,9 +166,264 @@ function ShowPreview(previewcontrol:TRpPreviewMeta;
 
 implementation
 
-uses rprflclparams, rppdfdriver;
+uses rprflclparams, rppdfdriver
+{$IFDEF MSWINDOWS}
+ ,LazUTF8
+{$ELSE}
+ ,process, FileUtil
+{$ENDIF}
+ ;
 
 {$R *.lfm}
+
+const
+ MAIL_TEMP_FOLDER='reportman-mail';
+
+// Folder for the attachments of the mails sent from the preview. On Linux
+// the mail client reads the attachment after the preview has returned, so
+// the files can't be deleted right away: the ones older than a day are
+// removed here, on the next mail
+function MailTempDir:string;
+var
+ sr:TSearchRec;
+begin
+ Result:=IncludeTrailingPathDelimiter(GetTempDir(false))+MAIL_TEMP_FOLDER;
+ ForceDirectories(Result);
+ Result:=IncludeTrailingPathDelimiter(Result);
+ if FindFirst(Result+'*',faAnyFile,sr)=0 then
+ try
+  repeat
+   if ((sr.Attr and faDirectory)=0) and
+    (Now-FileDateToDateTime(sr.Time)>1) then
+    SysUtils.DeleteFile(Result+sr.Name);
+  until FindNext(sr)<>0;
+ finally
+  SysUtils.FindClose(sr);
+ end;
+end;
+
+{$IFDEF MSWINDOWS}
+// Simple MAPI, as rptypes.SendMail in the VCL (its Mapi unit does not exist
+// in FPC). The string fields are PWideChar for MAPISendMailW and PAnsiChar
+// (ANSI code page) for MAPISendMail
+type
+ PRpMapiRecipDesc=^TRpMapiRecipDesc;
+ TRpMapiRecipDesc=record
+  ulReserved:Cardinal;
+  ulRecipClass:Cardinal;
+  lpszName:Pointer;
+  lpszAddress:Pointer;
+  ulEIDSize:Cardinal;
+  lpEntryID:Pointer;
+ end;
+ PRpMapiFileDesc=^TRpMapiFileDesc;
+ TRpMapiFileDesc=record
+  ulReserved:Cardinal;
+  flFlags:Cardinal;
+  nPosition:Cardinal;
+  lpszPathName:Pointer;
+  lpszFileName:Pointer;
+  lpFileType:Pointer;
+ end;
+ TRpMapiMessage=record
+  ulReserved:Cardinal;
+  lpszSubject:Pointer;
+  lpszNoteText:Pointer;
+  lpszMessageType:Pointer;
+  lpszDateReceived:Pointer;
+  lpszConversationID:Pointer;
+  flFlags:Cardinal;
+  lpOriginator:PRpMapiRecipDesc;
+  nRecipCount:Cardinal;
+  lpRecips:PRpMapiRecipDesc;
+  nFileCount:Cardinal;
+  lpFiles:PRpMapiFileDesc;
+ end;
+ TRpMapiSendMail=function(lhSession:PtrUInt;ulUIParam:PtrUInt;
+  var lpMessage:TRpMapiMessage;flFlags:Cardinal;ulReserved:Cardinal):Cardinal;stdcall;
+
+const
+ RP_MAPI_TO=1;
+ RP_MAPI_DIALOG=8;
+ RP_MAPI_USER_ABORT=1;
+
+var
+ MapiModule:HMODULE=0;
+
+function MapiError(const detail:string):string;
+begin
+ Result:=string(TranslateStr(1236,
+  'One or more unspecified errors occurred; no message was sent.'))+detail;
+end;
+
+procedure RpSendMail(const destination,subject,body,filename,attachname:string);
+var
+ sendw,senda:TRpMapiSendMail;
+ amessage:TRpMapiMessage;
+ recip:TRpMapiRecipDesc;
+ afile:TRpMapiFileDesc;
+ wdest,waddress,wsubject,wbody,wfile,wname:UnicodeString;
+ adest,aaddress,asubject,abody,afilen,aname:string;
+ res:Cardinal;
+begin
+ // Kept loaded, as the VCL does: some MAPI providers fail when unloaded
+ if MapiModule=0 then
+  MapiModule:=LoadLibrary('mapi32.dll');
+ if MapiModule=0 then
+  Raise Exception.Create(MapiError(' (mapi32.dll)'));
+ sendw:=TRpMapiSendMail(GetProcAddress(MapiModule,'MAPISendMailW'));
+ senda:=TRpMapiSendMail(GetProcAddress(MapiModule,'MAPISendMail'));
+ if (not Assigned(sendw)) and (not Assigned(senda)) then
+  Raise Exception.Create(MapiError(' (MAPISendMail)'));
+ amessage:=Default(TRpMapiMessage);
+ recip:=Default(TRpMapiRecipDesc);
+ afile:=Default(TRpMapiFileDesc);
+ recip.ulRecipClass:=RP_MAPI_TO;
+ afile.nPosition:=$FFFFFFFF;
+ if Assigned(sendw) then
+ begin
+  wdest:=UTF8Decode(destination);
+  waddress:=UTF8Decode('SMTP:'+destination);
+  wsubject:=UTF8Decode(subject);
+  wbody:=UTF8Decode(body);
+  if Length(wbody)<1 then
+   wbody:=' ';
+  wfile:=UTF8Decode(filename);
+  wname:=UTF8Decode(attachname);
+  if Length(wsubject)>0 then
+   amessage.lpszSubject:=PWideChar(wsubject);
+  amessage.lpszNoteText:=PWideChar(wbody);
+  recip.lpszName:=PWideChar(wdest);
+  recip.lpszAddress:=PWideChar(waddress);
+  afile.lpszPathName:=PWideChar(wfile);
+  afile.lpszFileName:=PWideChar(wname);
+ end
+ else
+ begin
+  adest:=UTF8ToWinCP(destination);
+  aaddress:=UTF8ToWinCP('SMTP:'+destination);
+  asubject:=UTF8ToWinCP(subject);
+  abody:=UTF8ToWinCP(body);
+  if Length(abody)<1 then
+   abody:=' ';
+  afilen:=UTF8ToWinCP(filename);
+  aname:=UTF8ToWinCP(attachname);
+  if Length(asubject)>0 then
+   amessage.lpszSubject:=PAnsiChar(asubject);
+  amessage.lpszNoteText:=PAnsiChar(abody);
+  recip.lpszName:=PAnsiChar(adest);
+  recip.lpszAddress:=PAnsiChar(aaddress);
+  afile.lpszPathName:=PAnsiChar(afilen);
+  afile.lpszFileName:=PAnsiChar(aname);
+ end;
+ if Length(destination)>0 then
+ begin
+  amessage.nRecipCount:=1;
+  amessage.lpRecips:=@recip;
+ end;
+ amessage.nFileCount:=1;
+ amessage.lpFiles:=@afile;
+ if Assigned(sendw) then
+  res:=sendw(0,0,amessage,RP_MAPI_DIALOG,0)
+ else
+  res:=senda(0,0,amessage,RP_MAPI_DIALOG,0);
+ if (res<>0) and (res<>RP_MAPI_USER_ABORT) then
+  Raise Exception.Create(MapiError(' Error: '+IntToStr(res)));
+end;
+{$ELSE}
+// xdg-email opens a new message in the user's mail client. It may not
+// return until the client is closed (Thunderbird not running yet), so it
+// runs in a thread
+type
+ TRpMailClientThread=class(TThread)
+ private
+  FExecutable:string;
+  FParams:TStringList;
+  FExitCode:integer;
+  procedure ShowError;
+ protected
+  procedure Execute;override;
+ public
+  constructor Create(const AExecutable:string;AParams:TStrings);
+  destructor Destroy;override;
+ end;
+
+constructor TRpMailClientThread.Create(const AExecutable:string;AParams:TStrings);
+begin
+ FExecutable:=AExecutable;
+ FParams:=TStringList.Create;
+ FParams.Assign(AParams);
+ FreeOnTerminate:=true;
+ inherited Create(false);
+end;
+
+destructor TRpMailClientThread.Destroy;
+begin
+ FParams.Free;
+ inherited Destroy;
+end;
+
+procedure TRpMailClientThread.Execute;
+var
+ aprocess:TProcess;
+begin
+ aprocess:=TProcess.Create(nil);
+ try
+  aprocess.Executable:=FExecutable;
+  aprocess.Parameters.Assign(FParams);
+  aprocess.Options:=[poWaitOnExit];
+  try
+   aprocess.Execute;
+   FExitCode:=aprocess.ExitStatus;
+  except
+   FExitCode:=-1;
+  end;
+ finally
+  aprocess.Free;
+ end;
+ if FExitCode<>0 then
+  Synchronize(ShowError);
+end;
+
+procedure TRpMailClientThread.ShowError;
+begin
+ RpShowMessage(WideFormat(TranslateStr(1652,
+  'The mail client could not be opened (xdg-email exit code %d).'),[FExitCode]));
+end;
+
+procedure RpSendMail(const destination,subject,body,filename,attachname:string);
+var
+ aexe:string;
+ aparams:TStringList;
+begin
+ // The attachment name is the name of the file
+ aexe:=FindDefaultExecutablePath('xdg-email');
+ if Length(aexe)<1 then
+  Raise Exception.Create(string(TranslateStr(1653,
+   'xdg-email was not found: install xdg-utils to send the report by mail.')));
+ aparams:=TStringList.Create;
+ try
+  aparams.Add('--utf8');
+  if Length(subject)>0 then
+  begin
+   aparams.Add('--subject');
+   aparams.Add(subject);
+  end;
+  if Length(body)>0 then
+  begin
+   aparams.Add('--body');
+   aparams.Add(body);
+  end;
+  aparams.Add('--attach');
+  aparams.Add(filename);
+  if Length(destination)>0 then
+   aparams.Add(destination);
+  TRpMailClientThread.Create(aexe,aparams);
+ finally
+  aparams.Free;
+ end;
+end;
+{$ENDIF}
 
 procedure TFRpVPreview.SetPreviewControl(avalue:TRpPreviewMeta);
 begin
@@ -250,8 +505,7 @@ begin
    SRpPDFFile+' A/3|*.pdf|'+
    SRpPDFFileUn+' A/3|*.pdf|'+
    TranslateStr(881,'PNG Images')+'|*.png|'+
-   SRpExcelFile+'|*.xls|'+
-   SRpExcelFileNoMulti+'|*.xls|'+
+   // No Excel export nor self-executable metafile: both need the VCL
    SRpPlainFile+'|*.txt|'+
    SRpBitmapFile+'|*.bmp|'+
    SRpHtmlFile+'|*.html|'+
@@ -260,10 +514,6 @@ begin
    SRpCSVFile+'|*.csv|'+
    SRpTXTProFile+'|*.txt|'+
    SRpRepMetafileUn+'|*.rpmf';
-{$IFNDEF DOTNETD}
-  SaveDialog1.Filter:=SaveDialog1.Filter+
-    '|'+SRpExeMetafile+'|*.exe';
-{$ENDIF}
  APrevious.ShortCut:=ShortCut(VK_PRIOR, []);
  ANext.ShortCut:=ShortCut(VK_NEXT, []);
  AFirst.ShortCut:=ShortCut(VK_HOME, []);
@@ -380,6 +630,8 @@ begin
  allpages:=true;
  collate:=PreviewControl.metafile.CollateCopies;
  frompage:=1; topage:=MAX_PAGECOUNT;
+ if (PreviewControl.Metafile.Finished) then
+  topage:=PreviewControl.Metafile.CurrentPageCount;
  copies:=PreviewControl.metafile.Copies;
  if Not DoShowPrintDialog(allpages,frompage,topage,copies,collate) then
   exit;
@@ -492,64 +744,7 @@ begin
         SaveMetafileToPNG(PreviewControl.Metafile,SaveDialog1.FileName);
         AppIdle(Self,adone);
       end;
-     7,8:
-      begin
-       recalcreport:=false;
-       if (previewcontrol is TRpPreviewControl) then
-       begin
-         if (TRpPreviewControl(previewcontrol).Report.PrinterFonts in [rppfontsalways,rppfontsrecalculate]) then
-         begin
-          recalcreport:=true;
-          areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
-         end;
-       end;
-       if recalcreport then
-       begin
-         areport:=TRpReport(TRpPreviewControl(previewcontrol).Report);
-         TRpPreviewControl(previewcontrol).Report:=nil;
-         previewcontrol.Parent:=nil;
-         pdfdriver:=TRpPdfDriver.Create;
-         try
-          pdfdriver.filename:='';
-          oldpagesize:=areport.Pagesize;
-          oldwidth:=areport.CustomPageWidth;
-          oldheight:=areport.CustomPageHeight;
-          try
-           areport.Pagesize:=rpPageSizeUser;
-           // Maximum of aprox 25000 A4 pages
-           if (areport.PrinterFonts=rppfontsrecalculate) then
-            areport.CustomPageHeight:=TWIPS_PER_INCHESS*100000;
-
-           areport.PrintAll(pdfdriver);
-           if (areport.PrinterFonts=rppfontsrecalculate) then
-           begin
-            areport.Metafile.CustomY:=areport.maximum_height;
-            areport.Metafile.CustomX:=areport.maximum_width;
-           end;
-          finally
-           areport.Pagesize:=oldpagesize;
-           areport.CustomPageWidth:=oldwidth;
-           areport.CustomPageHeight:=oldheight;
-          end;
-          meta:=areport.Metafile;
-         finally
-          pdfdriver.free;
-          TRpPreviewControl(previewcontrol).Report:=areport;
-         end;
-         //ExportMetafileToExcel(meta,SaveDialog1.FileName,
-         // true,false,true,1,9999,SaveDialog1.FilterIndex=5);
-         TRpPreviewControl(previewcontrol).Report:=areport;
-         AppIdle(Self,adone);
-       end
-       else
-       begin
-        ALastExecute(Self);
-        //ExportMetafileToExcel(PreviewControl.Metafile,SaveDialog1.FileName,
-        // true,false,true,1,9999,SaveDialog1.FilterIndex=5);
-        AppIdle(Self,adone);
-        end;
-      end;
-     10:
+     8:
       begin
        horzres:=100;
        vertres:=100;
@@ -567,7 +762,7 @@ begin
         end;
        end;
       end;
-     11:
+     9:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -626,7 +821,7 @@ begin
 //        true,true,1,9999);
 //       AppIdle(Self,adone);
       end;
-     12:
+     10:
       begin
        recalcreport:=false;
        if (previewcontrol is TRpPreviewControl) then
@@ -682,39 +877,32 @@ begin
         TRpPreviewControl(previewcontrol).Report:=areport;
        AppIdle(Self,adone);
       end;
-     13:
+     11:
       begin
        ALastExecute(Self);
        ExportMetafileToSVG(PreviewControl.Metafile,Caption,SaveDialog1.FileName,
         true,true,1,9999);
        AppIdle(Self,adone);
       end;
-     14:
+     12:
       begin
        ALastExecute(Self);
        ExportMetafileToCSV(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999,',');
        AppIdle(Self,adone);
       end;
-     15:
+     13:
       begin
        ALastExecute(Self);
        ExportMetafileToTextPro(PreviewControl.metafile,SaveDialog1.Filename,true,true,
         1,9999);
        AppIdle(Self,adone);
       end;
-     16:
+     14:
      begin
       ALastExecute(Self);
       PreviewControl.Metafile.SaveToFile(SaveDialog1.Filename,false);
      end;
-{$IFNDEF DOTNETD}
-     17:
-      begin
-       ALastExecute(Self);
-       //MetafileToExe(PreviewControl.metafile,SaveDialog1.Filename);
-      end;
-{$ENDIF}
      else
      begin
       ALastExecute(Self);
@@ -929,19 +1117,30 @@ begin
   if report.Params.IndexOf('MAIL_BODY')>=0 then
    body:=report.Params.ParamByName('MAIL_BODY').AsString;
   if report.Params.IndexOf('MAIL_FILE')>=0 then
-   afilename:=ExtractFilePath(afilename)+report.Params.ParamByName('MAIL_FILE').AsString;
+   afilename:=report.Params.ParamByName('MAIL_FILE').AsString;
  end;
- if Length(afilename)<1 then
-  afilename:=RpTempFileName;
+ // The PDF goes to a folder of its own unless MAIL_FILE has a path; the
+ // file name is also the attachment name
+ if Length(ExtractFileName(afilename))<1 then
+  afilename:='report-'+FormatDateTime('yyyymmdd-hhnnsszzz',Now);
+ if Length(ExtractFilePath(afilename))<1 then
+  afilename:=MailTempDir+afilename;
+ afilename:=ChangeFileExt(afilename,'.pdf');
 
- SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true,false);
+ // PDF/A-3, as the VCL
+ SaveMetafileToPDF(fpreviewcontrol.Metafile,afilename,true,true);
+{$IFDEF MSWINDOWS}
+ // Simple MAPI shows its dialog modally: the file can be deleted after it
  try
+{$ENDIF}
   if Length(subject)<1 then
-   subject:=ExtractFileName(ChangeFileExt(afilename,'.pdf'));
-  //rptypes.SendMail(destination,subject,body,afilename,ExtractFileName(ChangeFileExt(afilename,'.pdf')));
+   subject:=ExtractFileName(afilename);
+  RpSendMail(destination,subject,body,afilename,ExtractFileName(afilename));
+{$IFDEF MSWINDOWS}
  finally
   sysutils.DeleteFile(afilename);
  end;
+{$ENDIF}
 end;
 
 procedure TFRpVPreview.APageSetupExecute(Sender: TObject);

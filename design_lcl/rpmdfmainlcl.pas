@@ -31,7 +31,7 @@ uses
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl,
   rpmdfsearchlcl, rpmdfopenliblcl, rpmdfparamslcl, rprflclparams,
   rpmdundocuelcl, rpgraphutilslcl, rpfrmchatlcl, rpbasereport,
-  rpreportdesignercontracts, rpaithreadslcl;
+  rpreportdesignercontracts, rpaithreadslcl, rplastsav;
 
 type
   TFRpMainFLCL = class(TForm)
@@ -106,7 +106,6 @@ type
     MenuView: TMenuItem;
     MenuViewGrid: TMenuItem;
     MenuViewGridConfig: TMenuItem;
-    MenuViewRulers: TMenuItem;
     MenuViewUnits: TMenuItem;
     MenuViewUnitsCm: TMenuItem;
     MenuViewUnitsInches: TMenuItem;
@@ -124,8 +123,41 @@ type
     MenuReportUserParams: TMenuItem;
     MenuHelp: TMenuItem;
     MenuHelpAbout: TMenuItem;
+    // Menus of the VCL designer (rpmdfmainvcl) added by BuildVCLMenus
+    MenuFilePrintSetup: TMenuItem;
+    MenuReportAdd: TMenuItem;
+    MenuReportDeleteSection: TMenuItem;
+    MenuEditSelectAllText: TMenuItem;
+    MenuEditMove: TMenuItem;
+    MenuEditAlign: TMenuItem;
+    MenuEditHide: TMenuItem;
+    MenuEditShowAll: TMenuItem;
+    MenuEditAlign1_6: TMenuItem;
+    MenuPreferences: TMenuItem;
+    MenuPrefStatusBar: TMenuItem;
+    MenuPrefObjFont: TMenuItem;
+    MenuPrefTypeInfo: TMenuItem;
+    MenuPrefPrintDialog: TMenuItem;
+    MenuHelpDoc: TMenuItem;
+    // Last used files (VCL Lastusedfiles), listed after File > Exit
+    FLastUsedFiles: TRpLastUsedStrings;
+    // Object inspector font (Preferences), applied when chosen
+    FObjFontName: string;
+    FObjFontSize: Integer;
+    FObjFontStyle: Integer;
+    FObjFontColor: Integer;
 
     procedure BuildMenus;
+    procedure BuildVCLMenus;
+    function NewMenuItem(AParent: TMenuItem; const ACaption, AHint: string;
+      AOnClick: TNotifyEvent): TMenuItem;
+    procedure AppHint(Sender: TObject);
+    procedure UpdateFileMenu;
+    procedure UseFile(const AName: string);
+    procedure RecentFileClick(Sender: TObject);
+    procedure ApplyObjInspFont;
+    procedure ApplyUnits;
+    function SelectedSizePosItems: Boolean;
     procedure BuildControls;
     procedure EnsureUndoCue;
     procedure SetReport(Value: TRpReport);
@@ -186,6 +218,18 @@ type
     procedure MenuViewUnitsClick(Sender: TObject);
     procedure MenuViewScaleClick(Sender: TObject);
     procedure MenuHelpAboutClick(Sender: TObject);
+    procedure MenuHelpDocClick(Sender: TObject);
+    procedure MenuFilePrintSetupClick(Sender: TObject);
+    procedure MenuReportAddClick(Sender: TObject);
+    procedure MenuReportDeleteSectionClick(Sender: TObject);
+    procedure MenuEditSelectAllTextClick(Sender: TObject);
+    procedure MenuEditHideClick(Sender: TObject);
+    procedure MenuEditShowAllClick(Sender: TObject);
+    procedure MenuEditAlign1_6Click(Sender: TObject);
+    procedure MenuPrefStatusBarClick(Sender: TObject);
+    procedure MenuPrefObjFontClick(Sender: TObject);
+    procedure MenuPrefTypeInfoClick(Sender: TObject);
+    procedure MenuPrefPrintDialogClick(Sender: TObject);
     procedure MenuViewAIChatClick(Sender: TObject);
     procedure ApplyChatPanelVisibility;
     function GetShowAIChat: Boolean;
@@ -278,6 +322,8 @@ type
     BtnToFront: TToolButton;
     BtnToBack: TToolButton;
     BtnSelectAll: TToolButton;
+    // AChatIA of the VCL toolbar: shows or hides the AI panel
+    BtnAIChat: TToolButton;
 
     // Dialogs
     OpenDialog1: TOpenDialog;
@@ -303,6 +349,18 @@ type
     procedure DoRedo;
     // Marks the report dirty for a change that is not recorded in the cue
     procedure MarkExternalChange;
+    // Commands of the VCL designer menus (rpmdfmainvcl AHide, AShowAll,
+    // ASelectAllText, AAlign1_6, APrint)
+    procedure HideSelection;
+    procedure ShowAllHidden;
+    procedure SelectAllText;
+    procedure AlignSectionsToLines;
+    procedure PrintCurrentReport;
+    // Selects the component and property of a TRpReportException (VCL
+    // MyExceptionHandler); False for other exceptions
+    function SelectReportExceptionSource(E: Exception): Boolean;
+    // Selects the source of the error and shows it
+    procedure ShowReportError(E: Exception);
     procedure EmbedInControl(AParent: TWinControl);
     // Design assistant (rpmdfmainvcl). The request carries the report XML
     // with the undo history (BINCUE), the chat schema and the dataset
@@ -345,6 +403,19 @@ type
     property HostedMode: Boolean read FHostedMode write SetHostedMode;
     // Hosted mode: True when the user accepted the changes on close
     property SaveAccepted: Boolean read FSaveAccepted;
+    // File > recent files (the repmand file of the VCL designer)
+    property LastUsedFiles: TRpLastUsedStrings read FLastUsedFiles;
+    property FileMenu: TMenuItem read MenuFile;
+    property EditMenu: TMenuItem read MenuEdit;
+    property ReportMenu: TMenuItem read MenuReport;
+    property PreferencesMenu: TMenuItem read MenuPreferences;
+    property HelpMenu: TMenuItem read MenuHelp;
+    property StatusBarMenuItem: TMenuItem read MenuPrefStatusBar;
+    property TypeInfoMenuItem: TMenuItem read MenuPrefTypeInfo;
+    property PrintDialogMenuItem: TMenuItem read MenuPrefPrintDialog;
+    property UnitsInchesMenuItem: TMenuItem read MenuViewUnitsInches;
+    property UnitsCmMenuItem: TMenuItem read MenuViewUnitsCm;
+    property StatusBarControl: TStatusBar read StatusBar;
   end;
 
 var
@@ -360,7 +431,12 @@ uses
   // rpexpredlglcl: the dataset context of the assistants (ports of the
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
-  IniFiles, rpauthmanager, rpxmlstream, rpexpredlglcl;
+  IniFiles, LCLIntf, PrintersDlgs, rpauthmanager, rpxmlstream, rpexpredlglcl,
+  rplcldriver;
+
+const
+  // Width of the recent file names in the File menu (VCL C_FILENAME_WIDTH)
+  C_FILENAME_WIDTH = 40;
 
 const
   SDesignChatInitialMessage =
@@ -610,12 +686,18 @@ begin
   FDesignMailbox := TRpAsyncMailbox.Create(HandleDesignAsyncMessage);
   FDesignMailboxRef := FDesignMailbox;
 
+  FLastUsedFiles := TRpLastUsedStrings.Create(Self);
+  FLastUsedFiles.CaseSensitive := False;
   BuildMenus;
   BuildControls;
-  // View > AI chat as the user left it (VCL LoadConfig)
+  BuildVCLMenus;
+  // View > AI chat, units, status bar... as the user left them (VCL
+  // LoadConfig)
   LoadDesignerPreferences;
   if not MenuViewAIChat.Checked then
     ApplyChatPanelVisibility;
+  // The hints of the menus and buttons go to the status bar (VCL AppHint)
+  Application.AddOnHintHandler(AppHint);
 
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
@@ -627,6 +709,7 @@ end;
 
 destructor TFRpMainFLCL.Destroy;
 begin
+  Application.RemoveOnHintHandler(AppHint);
   // A context refresh still running drops its result; the chat frame
   // (destroyed with the form) stops its own request
   if Assigned(FDesignMailbox) then
@@ -1083,6 +1166,9 @@ begin
   ComboScale.Items.Add('125%');
   ComboScale.Items.Add('150%');
   ComboScale.Items.Add('200%');
+  // Up to 400% as the VCL designer
+  ComboScale.Items.Add('300%');
+  ComboScale.Items.Add('400%');
   ComboScale.ItemIndex := 3;
   ComboScale.OnChange := ComboScaleChange;
 
@@ -1458,6 +1544,8 @@ end;
 procedure TFRpMainFLCL.SetShowAIChat(Value: Boolean);
 begin
   MenuViewAIChat.Checked := Value;
+  if Assigned(BtnAIChat) then
+    BtnAIChat.Down := Value;
   ApplyChatPanelVisibility;
   SaveDesignerPreferences;
 end;
@@ -1466,17 +1554,36 @@ procedure TFRpMainFLCL.LoadDesignerPreferences;
 var
   inif: TIniFile;
 begin
-  // Preferences/ShowAIChat of the VCL designer (same file and key)
+  // The preferences of the VCL designer (same file and keys, VCL LoadConfig)
   try
     inif := TIniFile.Create(DesignerConfigFileName);
     try
       MenuViewAIChat.Checked := inif.ReadBool('Preferences', 'ShowAIChat', True);
+      MenuViewUnitsCm.Checked := inif.ReadBool('Preferences', 'UnitCms', True);
+      MenuViewUnitsInches.Checked := not MenuViewUnitsCm.Checked;
+      MenuPrefStatusBar.Checked := inif.ReadBool('Preferences', 'StatusBar', True);
+      MenuPrefTypeInfo.Checked := inif.ReadBool('Preferences', 'TypeInfo', True);
+      MenuPrefPrintDialog.Checked := inif.ReadBool('Preferences', 'ShowPrintDialog', True);
+      // Own keys: the font of the VCL inspector may not suit the LCL one
+      FObjFontName := inif.ReadString('Preferences', 'ObjFontNameLCL', '');
+      FObjFontSize := inif.ReadInteger('Preferences', 'ObjFontSizeLCL', 8);
+      FObjFontColor := inif.ReadInteger('Preferences', 'ObjFontColorLCL', clWindowText);
+      FObjFontStyle := inif.ReadInteger('Preferences', 'ObjFontStyleLCL', 0);
     finally
       inif.Free;
     end;
+    FLastUsedFiles.LoadFromConfigFile(DesignerConfigFileName);
   except
     // An unreadable preferences file keeps the defaults
   end;
+  BtnAIChat.Down := MenuViewAIChat.Checked;
+  StatusBar.Visible := MenuPrefStatusBar.Checked;
+  if Assigned(FStructure) and Assigned(FStructure.browser) then
+    FStructure.browser.ShowDataTypes := MenuPrefTypeInfo.Checked;
+  ApplyObjInspFont;
+  if not MenuViewUnitsCm.Checked then
+    ApplyUnits;
+  UpdateFileMenu;
 end;
 
 procedure TFRpMainFLCL.SaveDesignerPreferences;
@@ -1487,10 +1594,22 @@ begin
     inif := TIniFile.Create(DesignerConfigFileName);
     try
       inif.WriteBool('Preferences', 'ShowAIChat', MenuViewAIChat.Checked);
+      inif.WriteBool('Preferences', 'UnitCms', MenuViewUnitsCm.Checked);
+      inif.WriteBool('Preferences', 'StatusBar', MenuPrefStatusBar.Checked);
+      inif.WriteBool('Preferences', 'TypeInfo', MenuPrefTypeInfo.Checked);
+      inif.WriteBool('Preferences', 'ShowPrintDialog', MenuPrefPrintDialog.Checked);
+      if FObjFontName <> '' then
+      begin
+        inif.WriteString('Preferences', 'ObjFontNameLCL', FObjFontName);
+        inif.WriteInteger('Preferences', 'ObjFontSizeLCL', FObjFontSize);
+        inif.WriteInteger('Preferences', 'ObjFontColorLCL', FObjFontColor);
+        inif.WriteInteger('Preferences', 'ObjFontStyleLCL', FObjFontStyle);
+      end;
       inif.UpdateFile;
     finally
       inif.Free;
     end;
+    FLastUsedFiles.SaveToConfigFile(DesignerConfigFileName);
   except
     // A preference that can not be saved does not stop the designer
   end;
@@ -2127,6 +2246,8 @@ begin
   BtnNewWizard.Visible := not Value;
   BtnOpen.Visible := not Value;
   BtnSave.Visible := not Value;
+  // No recent files either: the host decides what is edited
+  UpdateFileMenu;
 end;
 
 procedure TFRpMainFLCL.UpdateTitle;
@@ -2260,6 +2381,7 @@ begin
     astream.Free;
   end;
   InstallReport(newRep, AFileName, True);
+  UseFile(AFileName);
 end;
 
 procedure TFRpMainFLCL.OpenReportFromLibrary(const ALibrary: string;
@@ -2277,6 +2399,7 @@ begin
   FLibraryName := ALibrary;
   FLibraryReportName := AReportName;
   UpdateStatus;
+  UseFile(ALibrary + '->' + AReportName);
 end;
 
 procedure TFRpMainFLCL.SaveReportFile(const AFileName: string);
@@ -2289,6 +2412,7 @@ begin
   // MarkClean also resets Report.Modified
   GetUndoCue.MarkClean;
   UpdateStatus;
+  UseFile(AFileName);
 end;
 
 procedure TFRpMainFLCL.SaveToLibrary;
@@ -2307,6 +2431,7 @@ begin
   end;
   GetUndoCue.MarkClean;
   UpdateStatus;
+  UseFile(FLibraryName + '->' + FLibraryReportName);
 end;
 
 procedure TFRpMainFLCL.NewReport;
@@ -2622,7 +2747,14 @@ end;
 
 procedure TFRpMainFLCL.BtnPrintClick(Sender: TObject);
 begin
-  BtnPreviewClick(Sender);
+  try
+    PrintCurrentReport;
+  except
+    on E: EAbort do
+      raise;
+    on E: Exception do
+      ShowReportError(E);
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnPreviewClick(Sender: TObject);
@@ -2639,8 +2771,10 @@ begin
       previewCtrl.Free;
     end;
   except
+    on E: EAbort do
+      raise;
     on E: Exception do
-      ShowMessage(TranslateStr(355, 'Error') + ': ' + E.Message);
+      ShowReportError(E);
   end;
 end;
 
@@ -2685,6 +2819,20 @@ begin
   begin
     Key := 0;
     DoRedo;
+  end
+  // Ctrl+arrows move the selection (VCL ALeft/ARight/AUp/ADown shortcuts);
+  // in a text box they keep moving by words
+  else if (Shift = [ssCtrl]) and ((Key = VK_LEFT) or (Key = VK_RIGHT) or
+    (Key = VK_UP) or (Key = VK_DOWN)) and
+    not IsEditableTextShortcutTarget(ActiveControl) and SelectedSizePosItems then
+  begin
+    case Key of
+      VK_LEFT: FObjInsp.MoveSelected(1, False);
+      VK_RIGHT: FObjInsp.MoveSelected(2, False);
+      VK_UP: FObjInsp.MoveSelected(3, False);
+      VK_DOWN: FObjInsp.MoveSelected(4, False);
+    end;
+    Key := 0;
   end;
 end;
 
@@ -3041,21 +3189,11 @@ end;
 
 procedure TFRpMainFLCL.MenuViewUnitsClick(Sender: TObject);
 begin
-  if TMenuItem(Sender).Tag = 0 then
-  begin
-    rpmunits.defaultunit := rpUnitCms;
-    MenuViewUnitsCm.Checked := True;
-    MenuViewUnitsInches.Checked := False;
-    FDesignerFrame.TopRuler.Metrics := rCms;
-  end
-  else
-  begin
-    rpmunits.defaultunit := rpUnitInchess;
-    MenuViewUnitsCm.Checked := False;
-    MenuViewUnitsInches.Checked := True;
-    FDesignerFrame.TopRuler.Metrics := rInchess;
-  end;
-  FDesignerFrame.UpdateInterface(False);
+  MenuViewUnitsCm.Checked := TMenuItem(Sender).Tag = 0;
+  MenuViewUnitsInches.Checked := not MenuViewUnitsCm.Checked;
+  ApplyUnits;
+  // Saved as the VCL UnitCms preference
+  SaveDesignerPreferences;
 end;
 
 procedure TFRpMainFLCL.MenuViewScaleClick(Sender: TObject);
@@ -3072,6 +3210,579 @@ end;
 procedure TFRpMainFLCL.MenuFileExitClick(Sender: TObject);
 begin
   Close;
+end;
+
+{ Menus of the VCL designer (rpmdfmainvcl.dfm) that the LCL one did not have }
+
+function TFRpMainFLCL.NewMenuItem(AParent: TMenuItem; const ACaption,
+  AHint: string; AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(AParent);
+  Result.Caption := ACaption;
+  Result.Hint := AHint;
+  Result.OnClick := AOnClick;
+end;
+
+procedure TFRpMainFLCL.BuildVCLMenus;
+var
+  item, sep: TMenuItem;
+  idx: Integer;
+begin
+  // File > Printer setup..., after Print
+  MenuFilePrintSetup := NewMenuItem(MenuFile, TranslateStr(56, 'Printer setup...'),
+    TranslateStr(57, 'Displays printer setup dialog'), MenuFilePrintSetupClick);
+  MenuFile.Insert(MenuFilePrint.MenuIndex + 1, MenuFilePrintSetup);
+
+  // Edit > Select all text, Move, Align, Hide, Show all, Align height 1/n
+  MenuEditSelectAllText := NewMenuItem(MenuEdit, TranslateStr(117, 'All text'),
+    TranslateStr(118, 'Selects all text components'), MenuEditSelectAllTextClick);
+  MenuEdit.Insert(MenuEditSelectAll.MenuIndex + 1, MenuEditSelectAllText);
+
+  sep := TMenuItem.Create(MenuEdit);
+  sep.Caption := '-';
+  MenuEdit.Add(sep);
+
+  // The arrow keys with Ctrl move the selection (FormKeyDown), as the VCL
+  MenuEditMove := NewMenuItem(MenuEdit, TranslateStr(22, 'Move'), '', nil);
+  MenuEdit.Add(MenuEditMove);
+  MenuEditMove.Add(NewMenuItem(MenuEditMove, TranslateStr(23, 'Left') + #9'Ctrl+Left',
+    TranslateStr(24, 'Moves the selection to the left'), BtnNudgeLeftClick));
+  MenuEditMove.Add(NewMenuItem(MenuEditMove, TranslateStr(25, 'Right') + #9'Ctrl+Right',
+    TranslateStr(26, 'Moves the selection to the right'), BtnNudgeRightClick));
+  MenuEditMove.Add(NewMenuItem(MenuEditMove, TranslateStr(27, 'Up') + #9'Ctrl+Up',
+    TranslateStr(28, 'Moves the selection up'), BtnNudgeUpClick));
+  MenuEditMove.Add(NewMenuItem(MenuEditMove, TranslateStr(29, 'Down') + #9'Ctrl+Down',
+    TranslateStr(30, 'Moves the selection down'), BtnNudgeDownClick));
+
+  MenuEditAlign := NewMenuItem(MenuEdit, TranslateStr(31, 'Align'), '', nil);
+  MenuEdit.Add(MenuEditAlign);
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(23, 'Left'),
+    TranslateStr(32, 'Aligns selection to the left'), BtnAlignLeftClick));
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(25, 'Right'),
+    TranslateStr(33, 'Aligns selection to the right'), BtnAlignRightClick));
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(27, 'Up'),
+    TranslateStr(34, 'Aligns selection up'), BtnAlignUpClick));
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(29, 'Down'),
+    TranslateStr(35, 'Aligns selection down'), BtnAlignDownClick));
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(38, 'Horizontal space'),
+    TranslateStr(39, 'Aligns selection distributing horizontal space'), BtnAlignHorzClick));
+  MenuEditAlign.Add(NewMenuItem(MenuEditAlign, TranslateStr(36, 'Vertical space'),
+    TranslateStr(37, 'Aligns selection distributing vertical space'), BtnAlignVertClick));
+
+  sep := TMenuItem.Create(MenuEdit);
+  sep.Caption := '-';
+  MenuEdit.Add(sep);
+
+  MenuEditHide := NewMenuItem(MenuEdit, TranslateStr(15, 'Hide'),
+    TranslateStr(16, 'Hide selected objects'), MenuEditHideClick);
+  MenuEdit.Add(MenuEditHide);
+  MenuEditShowAll := NewMenuItem(MenuEdit, TranslateStr(17, 'Show all'),
+    TranslateStr(18, 'Shows all the hiden components'), MenuEditShowAllClick);
+  MenuEdit.Add(MenuEditShowAll);
+
+  sep := TMenuItem.Create(MenuEdit);
+  sep.Caption := '-';
+  MenuEdit.Add(sep);
+
+  MenuEditAlign1_6 := NewMenuItem(MenuEdit, TranslateStr(1059, 'Adjust height to 1/n inch'),
+    TranslateStr(1060, 'Adjust section height to provide compatibility with dot matrix printers'),
+    MenuEditAlign1_6Click);
+  MenuEdit.Add(MenuEditAlign1_6);
+
+  // Report > Add (sections and subreports) and Delete section/subreport, as
+  // the structure frame buttons
+  MenuReportAdd := NewMenuItem(MenuReport, TranslateStr(149, 'Add'), '', nil);
+  MenuReport.Insert(0, MenuReportAdd);
+  item := NewMenuItem(MenuReportAdd, TranslateStr(119, 'Page header'),
+    TranslateStr(120, 'Inserts a page header in the selected subreport'), MenuReportAddClick);
+  item.Tag := 1;
+  MenuReportAdd.Add(item);
+  item := NewMenuItem(MenuReportAdd, TranslateStr(121, 'Page footer'),
+    TranslateStr(122, 'Inserts a page footer in the selected subreport'), MenuReportAddClick);
+  item.Tag := 2;
+  MenuReportAdd.Add(item);
+  item := NewMenuItem(MenuReportAdd, TranslateStr(123, 'Group header and footer'),
+    TranslateStr(124, 'Insert a group header an footer'), MenuReportAddClick);
+  item.Tag := 3;
+  MenuReportAdd.Add(item);
+  item := NewMenuItem(MenuReportAdd, TranslateStr(125, 'Subreport'),
+    TranslateStr(126, 'Insert a new subreport'), MenuReportAddClick);
+  item.Tag := 4;
+  MenuReportAdd.Add(item);
+  item := NewMenuItem(MenuReportAdd, TranslateStr(129, 'Detail'),
+    TranslateStr(130, 'Inserts a detail section in the selected subreport'), MenuReportAddClick);
+  item.Tag := 5;
+  MenuReportAdd.Add(item);
+  MenuReportDeleteSection := NewMenuItem(MenuReport,
+    TranslateStr(127, 'Delete section/subreport'),
+    TranslateStr(128, 'Deletes the selected subreport or section'), MenuReportDeleteSectionClick);
+  MenuReport.Add(MenuReportDeleteSection);
+
+  // Preferences, after View
+  MenuPreferences := TMenuItem.Create(MainMenu1);
+  MenuPreferences.Caption := '&' + TranslateStr(5, 'Preferences');
+  MainMenu1.Items.Insert(MenuView.MenuIndex + 1, MenuPreferences);
+  MenuPrefStatusBar := NewMenuItem(MenuPreferences, TranslateStr(76, 'Status bar'),
+    TranslateStr(77, 'Shows or hides the status bar'), MenuPrefStatusBarClick);
+  MenuPrefStatusBar.Checked := True;
+  MenuPreferences.Add(MenuPrefStatusBar);
+  MenuPrefObjFont := NewMenuItem(MenuPreferences,
+    TranslateStr(1348, 'Object inspector Font'), '', MenuPrefObjFontClick);
+  MenuPreferences.Add(MenuPrefObjFont);
+  MenuPrefTypeInfo := NewMenuItem(MenuPreferences, SRpTypeInfo, '', MenuPrefTypeInfoClick);
+  MenuPrefTypeInfo.Checked := True;
+  MenuPreferences.Add(MenuPrefTypeInfo);
+  MenuPrefPrintDialog := NewMenuItem(MenuPreferences, SRpShowPrintDialog, '',
+    MenuPrefPrintDialogClick);
+  MenuPrefPrintDialog.Checked := True;
+  MenuPreferences.Add(MenuPrefPrintDialog);
+
+  // Help > Documentation, before About
+  MenuHelpDoc := NewMenuItem(MenuHelp, TranslateStr(60, 'Documentation'),
+    TranslateStr(61, 'Display Report Manager Designer Documentation'), MenuHelpDocClick);
+  MenuHelp.Insert(0, MenuHelpDoc);
+
+  // Toolbar: AI chat (AChatIA), at the end as in the VCL
+  idx := MainToolBar.ButtonCount;
+  BtnAIChat := TToolButton.Create(MainToolBar);
+  BtnAIChat.Parent := MainToolBar;
+  BtnAIChat.Left := MainToolBar.Buttons[idx - 1].Left +
+    MainToolBar.Buttons[idx - 1].Width + 1;
+  BtnAIChat.ImageIndex := IMG_CHAT_IA;
+  BtnAIChat.Style := tbsCheck;
+  BtnAIChat.Down := True;
+  BtnAIChat.Hint := TranslateStr(1551, 'Show or hide the AI chat panel');
+  BtnAIChat.OnClick := MenuViewAIChatClick;
+
+  UpdateFileMenu;
+end;
+
+procedure TFRpMainFLCL.AppHint(Sender: TObject);
+begin
+  if csDestroying in ComponentState then
+    Exit;
+  // The hint while the mouse is over a command, the report state otherwise
+  if Application.Hint <> '' then
+    StatusBar.SimpleText := GetLongHint(Application.Hint)
+  else
+    UpdateStatus;
+end;
+
+function TFRpMainFLCL.SelectedSizePosItems: Boolean;
+begin
+  Result := Assigned(FObjInsp) and (FObjInsp.SelectedItems.Count > 0) and
+    (FObjInsp.SelectedItems.Objects[0] is TRpSizePosInterface);
+end;
+
+procedure TFRpMainFLCL.HideSelection;
+var
+  i: Integer;
+  aint: TRpSizePosInterface;
+begin
+  // VCL AHideExecute: Visible is a design time flag, not saved nor undone
+  if not SelectedSizePosItems then
+    Exit;
+  for i := 0 to FObjInsp.SelectedItems.Count - 1 do
+  begin
+    if not (FObjInsp.SelectedItems.Objects[i] is TRpSizePosInterface) then
+      Continue;
+    aint := TRpSizePosInterface(FObjInsp.SelectedItems.Objects[i]);
+    aint.Visible := False;
+    aint.printitem.Visible := False;
+  end;
+  FDesignerFrame.ClearSelection;
+end;
+
+procedure TFRpMainFLCL.ShowAllHidden;
+begin
+  if Assigned(FDesignerFrame) then
+  begin
+    FDesignerFrame.ShowAllHidden;
+    FDesignerFrame.UpdateSelection(False);
+  end;
+end;
+
+procedure TFRpMainFLCL.SelectAllText;
+begin
+  // VCL ASelectAllTextExecute: labels and expressions
+  if Assigned(FObjInsp) then
+    FObjInsp.SelectAllClass('TRpGenTextInterface');
+end;
+
+procedure TFRpMainFLCL.AlignSectionsToLines;
+var
+  sub: TRpSubReport;
+  sec: TRpSection;
+  i, j, k, gid, oldTop: Integer;
+  cue: TUndoCue;
+  op: TChangeObjectOperation;
+  oldHeights: TList<Integer>;
+begin
+  // VCL AAlign1_6Execute: the top margin and every section height to a
+  // multiple of 1/n inch (n = Report.LinesPerInch), for dot matrix
+  // printers. The changes are recorded as one undo step.
+  if not Assigned(FReport) then
+    Exit;
+  FReport.AssertCanModify('Align height 1/n');
+  oldTop := FReport.TopMargin;
+  oldHeights := TList<Integer>.Create;
+  try
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      sub := FReport.SubReports.Items[i].SubReport;
+      for j := 0 to sub.Sections.Count - 1 do
+        oldHeights.Add(sub.Sections.Items[j].Section.Height);
+    end;
+    FReport.AlignSectionsTo(FReport.LinesPerInch);
+    cue := GetUndoCue;
+    gid := -1;
+    if oldTop <> FReport.TopMargin then
+    begin
+      gid := cue.GetGroupId;
+      op := TChangeObjectOperation.Create(otModify, gid);
+      op.componentName := 'REPORT';
+      op.componentClass := 'TRPREPORT';
+      op.parentName := '';
+      op.AddProperty('topMargin', ptInteger, oldTop, FReport.TopMargin);
+      cue.AddOperation(op);
+    end;
+    k := 0;
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      sub := FReport.SubReports.Items[i].SubReport;
+      for j := 0 to sub.Sections.Count - 1 do
+      begin
+        sec := sub.Sections.Items[j].Section;
+        if oldHeights[k] <> sec.Height then
+        begin
+          if gid < 0 then
+            gid := cue.GetGroupId;
+          op := TChangeObjectOperation.Create(otModify, gid);
+          op.componentName := sec.Name;
+          op.componentClass := UpperCase(sec.ClassName);
+          op.AddProperty('height', ptInteger, oldHeights[k], sec.Height);
+          cue.AddOperation(op);
+        end;
+        Inc(k);
+      end;
+    end;
+  finally
+    oldHeights.Free;
+  end;
+  RefreshInterface;
+end;
+
+procedure TFRpMainFLCL.PrintCurrentReport;
+var
+  allpages, collate, doprint: Boolean;
+  frompage, topage, copies: Integer;
+  pconfig: TPrinterConfig;
+begin
+  // VCL APrintExecute: prints with the printer, paper source, duplex and
+  // orientation of the report, asking the range first (Preferences > Show
+  // print dialog)
+  if not Assigned(FReport) then
+    Exit;
+  allpages := True;
+  collate := FReport.CollateCopies;
+  frompage := 1;
+  topage := MAX_PAGECOUNT;
+  copies := FReport.Copies;
+  pconfig.Changed := False;
+  rplcldriver.PrinterSelection(FReport.PrinterSelect, FReport.PaperSource,
+    FReport.Duplex, pconfig);
+  rplcldriver.OrientationSelection(FReport.PageOrientation);
+  doprint := True;
+  if MenuPrefPrintDialog.Checked then
+    doprint := rplcldriver.DoShowPrintDialog(allpages, frompage, topage, copies, collate);
+  if not doprint then
+    Exit;
+  FReport.Metafile.BlockPrinterSelection := True;
+  try
+    rplcldriver.PrintReport(FReport, Caption, True, allpages, frompage, topage,
+      copies, collate);
+  finally
+    FReport.Metafile.BlockPrinterSelection := False;
+  end;
+end;
+
+function TFRpMainFLCL.SelectReportExceptionSource(E: Exception): Boolean;
+var
+  compo: TComponent;
+  i, j, k: Integer;
+  sub: TRpSubReport;
+  sec, secsel: TRpSection;
+  secint: TRpSectionInterface;
+  aint: TRpSizePosInterface;
+begin
+  // VCL MyExceptionHandler: the subreport, section or item of the error is
+  // selected, and the property in the inspector
+  Result := False;
+  if not ((E is TRpReportException) and Assigned(FReport) and Assigned(FStructure)) then
+    Exit;
+  compo := TRpReportException(E).Component;
+  if not Assigned(compo) then
+    Exit;
+  if (compo is TRpSubReport) or (compo is TRpSection) then
+  begin
+    FStructure.SelectDataItem(compo);
+    Result := True;
+  end
+  else if compo is TRpCommonComponent then
+  begin
+    secsel := nil;
+    for i := 0 to FReport.SubReports.Count - 1 do
+    begin
+      sub := FReport.SubReports.Items[i].SubReport;
+      for j := 0 to sub.Sections.Count - 1 do
+      begin
+        sec := sub.Sections.Items[j].Section;
+        for k := 0 to sec.ReportComponents.Count - 1 do
+          if sec.ReportComponents.Items[k].Component = compo then
+          begin
+            secsel := sec;
+            Break;
+          end;
+        if Assigned(secsel) then
+          Break;
+      end;
+      if Assigned(secsel) then
+        Break;
+    end;
+    if not Assigned(secsel) then
+      Exit;
+    FStructure.SelectDataItem(secsel);
+    for i := 0 to FDesignerFrame.secinterfaces.Count - 1 do
+    begin
+      secint := TRpSectionInterface(FDesignerFrame.secinterfaces[i]);
+      if secint.printitem <> secsel then
+        Continue;
+      for j := 0 to secint.childlist.Count - 1 do
+      begin
+        aint := TRpSizePosInterface(secint.childlist[j]);
+        if aint.printitem = compo then
+        begin
+          FDesignerFrame.SelectComponent(aint, False);
+          Result := True;
+          Break;
+        end;
+      end;
+    end;
+  end;
+  if Result and (TRpReportException(E).PropertyName <> '') then
+    FObjInsp.SelectProperty(TRpReportException(E).PropertyName);
+end;
+
+procedure TFRpMainFLCL.ShowReportError(E: Exception);
+begin
+  SelectReportExceptionSource(E);
+  RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK);
+end;
+
+procedure TFRpMainFLCL.UpdateFileMenu;
+var
+  i, exitindex: Integer;
+  alist: TStringList;
+  aitem: TMenuItem;
+begin
+  // VCL UpdateFileMenu: the last used files after File > Exit
+  exitindex := MenuFileExit.MenuIndex;
+  while MenuFile.Count > exitindex + 1 do
+    MenuFile.Items[MenuFile.Count - 1].Free;
+  if FHostedMode or (FLastUsedFiles.LastUsed.Count = 0) then
+    Exit;
+  alist := TStringList.Create;
+  try
+    FLastUsedFiles.FillWidthShortNames(alist, C_FILENAME_WIDTH);
+    aitem := TMenuItem.Create(MenuFile);
+    aitem.Caption := '-';
+    MenuFile.Add(aitem);
+    for i := 0 to alist.Count - 1 do
+    begin
+      aitem := TMenuItem.Create(MenuFile);
+      // '&' would become an accelerator
+      aitem.Caption := StringReplace(alist[i], '&', '&&', [rfReplaceAll]);
+      aitem.Hint := FLastUsedFiles.LastUsed[i];
+      aitem.Tag := i;
+      aitem.OnClick := RecentFileClick;
+      MenuFile.Add(aitem);
+    end;
+  finally
+    alist.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.UseFile(const AName: string);
+begin
+  if FHostedMode or (AName = '') then
+    Exit;
+  FLastUsedFiles.UseString(AName);
+  UpdateFileMenu;
+  SaveDesignerPreferences;
+end;
+
+procedure TFRpMainFLCL.RecentFileClick(Sender: TObject);
+var
+  aname: string;
+  apos: Integer;
+begin
+  // VCL OnFileClick: a file, or library->report
+  if TComponent(Sender).Tag >= FLastUsedFiles.LastUsed.Count then
+    Exit;
+  aname := FLastUsedFiles.LastUsed[TComponent(Sender).Tag];
+  if aname = '' then
+    Exit;
+  apos := Pos('->', aname);
+  if apos = 0 then
+    OpenReportFile(aname)
+  else
+  begin
+    if not CheckSave then
+      Exit;
+    OpenReportFromLibrary(Copy(aname, 1, apos - 1),
+      Copy(aname, apos + 2, Length(aname)));
+  end;
+end;
+
+procedure TFRpMainFLCL.ApplyObjInspFont;
+begin
+  if (FObjFontName = '') or not Assigned(FObjInsp) then
+    Exit;
+  FObjInsp.Font.Name := FObjFontName;
+  FObjInsp.Font.Size := FObjFontSize;
+  FObjInsp.Font.Color := FObjFontColor;
+  FObjInsp.Font.Style := CLXIntegerToFontStyle(FObjFontStyle);
+end;
+
+procedure TFRpMainFLCL.ApplyUnits;
+begin
+  // VCL UpdateUnits
+  if MenuViewUnitsCm.Checked then
+  begin
+    rpmunits.defaultunit := rpUnitCms;
+    FDesignerFrame.TopRuler.Metrics := rCms;
+  end
+  else
+  begin
+    rpmunits.defaultunit := rpUnitInchess;
+    FDesignerFrame.TopRuler.Metrics := rInchess;
+  end;
+  if not Assigned(FReport) then
+    Exit;
+  if Assigned(FObjInsp) then
+    FObjInsp.ClearMultiSelect;
+  FDesignerFrame.UpdateInterface(True);
+  FDesignerFrame.UpdateSelection(True);
+end;
+
+procedure TFRpMainFLCL.MenuHelpDocClick(Sender: TObject);
+var
+  aurl: string;
+begin
+  // VCL ADocumentationExecute: the doc folder next to the executable or the
+  // web site
+  aurl := ExtractFilePath(Application.ExeName) + 'doc' + PathDelim + 'index.html';
+  if FileExists(aurl) then
+    OpenDocument(aurl)
+  else
+    OpenURL('https://reportman.es');
+end;
+
+procedure TFRpMainFLCL.MenuFilePrintSetupClick(Sender: TObject);
+var
+  psetup: TPrinterSetupDialog;
+begin
+  psetup := TPrinterSetupDialog.Create(nil);
+  try
+    psetup.Execute;
+  finally
+    psetup.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.MenuReportAddClick(Sender: TObject);
+begin
+  if not Assigned(FStructure) then
+    Exit;
+  case TComponent(Sender).Tag of
+    1: FStructure.MNewSectionClick(FStructure.MPHeader);
+    2: FStructure.MNewSectionClick(FStructure.MPFooter);
+    3: FStructure.MNewSectionClick(FStructure.MGHeader);
+    4: FStructure.MNewSectionClick(FStructure.MSubReport);
+    5: FStructure.MNewSectionClick(FStructure.MDetail);
+  end;
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.MenuReportDeleteSectionClick(Sender: TObject);
+begin
+  if Assigned(FStructure) then
+    FStructure.BDeleteClick(Sender);
+  UpdateStatus;
+end;
+
+procedure TFRpMainFLCL.MenuEditSelectAllTextClick(Sender: TObject);
+begin
+  SelectAllText;
+end;
+
+procedure TFRpMainFLCL.MenuEditHideClick(Sender: TObject);
+begin
+  HideSelection;
+end;
+
+procedure TFRpMainFLCL.MenuEditShowAllClick(Sender: TObject);
+begin
+  ShowAllHidden;
+end;
+
+procedure TFRpMainFLCL.MenuEditAlign1_6Click(Sender: TObject);
+begin
+  AlignSectionsToLines;
+end;
+
+procedure TFRpMainFLCL.MenuPrefStatusBarClick(Sender: TObject);
+begin
+  MenuPrefStatusBar.Checked := not MenuPrefStatusBar.Checked;
+  StatusBar.Visible := MenuPrefStatusBar.Checked;
+  SaveDesignerPreferences;
+end;
+
+procedure TFRpMainFLCL.MenuPrefObjFontClick(Sender: TObject);
+var
+  dia: TFontDialog;
+begin
+  dia := TFontDialog.Create(nil);
+  try
+    dia.Font.Assign(FObjInsp.Font);
+    if dia.Execute then
+    begin
+      FObjFontName := dia.Font.Name;
+      FObjFontSize := dia.Font.Size;
+      if FObjFontSize < 3 then
+        FObjFontSize := 8;
+      FObjFontColor := dia.Font.Color;
+      FObjFontStyle := FontStyleToCLXInteger(dia.Font.Style);
+      ApplyObjInspFont;
+      SaveDesignerPreferences;
+    end;
+  finally
+    dia.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.MenuPrefTypeInfoClick(Sender: TObject);
+begin
+  MenuPrefTypeInfo.Checked := not MenuPrefTypeInfo.Checked;
+  if Assigned(FStructure) and Assigned(FStructure.browser) then
+    FStructure.browser.ShowDataTypes := MenuPrefTypeInfo.Checked;
+  SaveDesignerPreferences;
+end;
+
+procedure TFRpMainFLCL.MenuPrefPrintDialogClick(Sender: TObject);
+begin
+  MenuPrefPrintDialog.Checked := not MenuPrefPrintDialog.Checked;
+  SaveDesignerPreferences;
 end;
 
 end.

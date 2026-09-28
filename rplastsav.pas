@@ -163,8 +163,8 @@ begin
   end
   else
   begin
-   width:=width-3;
-   astring:=Copy(astring,length(astring)-width,width+1);
+   // The width of the next names must not change
+   astring:=Copy(astring,length(astring)-(width-3),width-2);
    astring:='...'+astring;
    alist.Add(astring);
   end;
