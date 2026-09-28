@@ -359,7 +359,9 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
     read-only; copy it to modify the samples:
     <code>cp -r /opt/reportman-designer/samples ~/reportman-samples</code>. The samples with data need
     their connection: the test connections (for example <code>SQLITETEST</code>, SQLite over
-    <code>clientes.db</code>) are in <code>samples/dbxconnections.ini</code>.</li>
+    <code>clientes.db</code>) are in <code>samples/dbxconnections.ini</code>. Add them with the same
+    parameters in <i>Report &gt; Data access configuration &gt; Configure</i> (the editor of
+    <code>~/.borland/dbxconnections</code>), or copy their sections to that file.</li>
   <li>The designer language (menus, toolbars, dialogs and messages) follows <code>LC_ALL</code>,
     <code>LC_MESSAGES</code> or <code>LANG</code>, in that order: English, Spanish, Catalan, French,
     German, Italian, Portuguese, Czech and Lithuanian. For example
@@ -397,6 +399,12 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
     implements it as grey text at the cursor; <kbd>Tab</kbd> accepts it (one undo step),
     <kbd>Esc</kbd> dismisses it.</li>
   <li><b>AI chat</b>: the answers are shown with the native HTML viewer instead of a web view.</li>
+  <li><b>Database drivers</b>: MyBase (text and XML files), Zeos, FireDac (SQLite) and the Reportman
+    Agent. ADO, BDE, IBX, dbExpress and .NET belong to the Windows designer; a report that uses them
+    shows its connection as not available and keeps it unchanged.</li>
+  <li><b>Excel export</b> is Windows only (it drives Excel). The preview saves to PDF, PDF/A-3, HTML,
+    SVG, CSV, text, PNG, BMP and metafile; <i>Mail to</i> opens your desktop mail client with the PDF
+    attached (<code>xdg-email</code>, package <code>xdg-utils</code>).</li>
   <li><b>Reportman Agent driver</b>: the direct WebRTC (peer-to-peer) channel is Windows only; on Linux
     the queries always go over HTTPS through the Hub (<code>api.reportman.es</code>), with the same
     results and slightly more latency.</li>

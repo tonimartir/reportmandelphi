@@ -235,7 +235,10 @@
         designer, built with Lazarus and Qt&nbsp;6: a <code>.deb</code> package for
         Ubuntu 22.04+ and Debian 12+, an AppImage for other distributions and a
         transitional GTK2 package. Menus and dialogs follow the language of the
-        desktop. See <a href="installlin.html">Linux desktop designer</a>.</li>
+        desktop. It has the dialogs of the Windows designer: database
+        connections, the AI new report wizard, the report library, page setup
+        with PDF options, metadata and embedded files, and printer
+        configuration. See <a href="installlin.html">Linux desktop designer</a>.</li>
       <li><b>Lazarus and Free Pascal packages</b> &mdash; the reporting engine with
         PDF export, the LCL preview and printing, and the embeddable report
         designer, for Windows and Linux. Install them from the Lazarus Online
@@ -256,6 +259,13 @@
         left and HTML) in PDF output, justification of right-to-left text,
         memory leaks of embedded files, and the chart Y axis range saved only when
         it is not the default.</li>
+      <li>Designer fixes: changes that were lost on close without asking to save
+        (a field dropped on a section, section heights adjusted to 1/n inch, embedded
+        files, dataset unions and text file settings), lines per inch that did not
+        undo, Zeos connections created by the new report wizard without protocol,
+        the report library tree (moves, groups) and the masked password of ADO
+        connection strings; decimals of currency fields and time fields of text
+        files.</li>
     </ul>
 
     <p>Version 4.0.10 include this new features (June 2026)</p>
