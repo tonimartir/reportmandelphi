@@ -148,6 +148,7 @@ design_lcl/rpdbbrowserlcl.lfm
 design_lcl/rpdbbrowserlcl.pas
 design_lcl/rpdbxadminlcl.pas
 design_lcl/rpdbxconfiglcl.pas
+design_lcl/rpeditconnlcl.pas
 design_lcl/rpexpredlglcl.pas
 design_lcl/rpfrmaireportlcl.pas
 design_lcl/rpfrmaischemaselectorlcl.pas
@@ -183,6 +184,7 @@ design_lcl/rpmdfsectionintlcl.pas
 design_lcl/rpmdfselectfieldslcl.pas
 design_lcl/rpmdfstruclcl.lfm
 design_lcl/rpmdfstruclcl.pas
+design_lcl/rpmdftreelcl.pas
 design_lcl/rpmdfwizardlcl.pas
 design_lcl/rpmdimageslcl.pas
 design_lcl/rpmdobinsintlcl.pas

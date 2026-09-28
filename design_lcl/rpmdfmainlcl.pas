@@ -89,6 +89,10 @@ type
     MenuFileNewWizard: TMenuItem;
     MenuFileOpen: TMenuItem;
     MenuFileOpenLib: TMenuItem;
+    // File > Libraries: configure, open from, save to (VCL MLibraries)
+    MenuFileLibraries: TMenuItem;
+    MenuFileLibConfig: TMenuItem;
+    MenuFileSaveLib: TMenuItem;
     MenuFileSave: TMenuItem;
     MenuFileSaveAs: TMenuItem;
     MenuFilePageSetup: TMenuItem;
@@ -185,6 +189,8 @@ type
     procedure MenuReportWizardClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure MenuFileOpenLibClick(Sender: TObject);
+    procedure MenuFileLibConfigClick(Sender: TObject);
+    procedure MenuFileSaveLibClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnSaveAsClick(Sender: TObject);
     procedure BtnDataConfigClick(Sender: TObject);
@@ -340,6 +346,14 @@ type
     // Same rollback-safe load from a stream (library reports)
     procedure OpenReportStream(AStream: TStream);
     procedure OpenReportFromLibrary(const ALibrary: string; const AReportName: WideString);
+    // VCL ASaveToExecute after the selection: saves the report over the
+    // library report, that becomes the document (restored on error)
+    procedure SaveReportToLibrary(const ALibrary: string; const AReportName: WideString);
+    // File > Libraries > Save to library: selection in the library dialog
+    procedure SaveToLibraryAs;
+    // File > Libraries > Configure libraries (VCL ALibrariesExecute): the
+    // accepted connections are saved in the library configuration file
+    procedure ConfigureLibraries;
     procedure SaveReportFile(const AFileName: string);
     // A blank report, without questions (also the one of the constructor)
     procedure NewReport;
@@ -433,6 +447,9 @@ var
   // File > New runs the new report wizard (as the VCL designer); False: a
   // blank report as before
   RpDesignerLCLNewReportWizard: Boolean = True;
+  // Library connections file of the designer. Empty: the one of the VCL
+  // designer (repmandlib in the user configuration folder)
+  RpDesignerLCLLibConfigFile: string = '';
 
 implementation
 
@@ -444,6 +461,8 @@ uses
   // BuildDesignExpressionContextJson)
   IniFiles, LCLIntf, PrintersDlgs, md5, rpmdsysinfolcl, rpauthmanager, rpxmlstream, rpexpredlglcl,
   rpmdfnewreportwizardlcl,
+  // Report library: connections editor and tree (rpeditconnvcl, rpmdftreevcl)
+  rpeditconnlcl, rpmdftreelcl,
   rplcldriver;
 
 const
@@ -681,6 +700,24 @@ begin
     Result := Obtainininameuserconfig('', '', 'repmand');
 end;
 
+function LibraryConfigFileName: string;
+begin
+  Result := RpDesignerLCLLibConfigFile;
+  if Result = '' then
+    Result := Obtainininameuserconfig('', '', 'repmandlib');
+end;
+
+// Ends the transaction of a library connection after reading or saving a
+// report (rpmdftreelcl.RpLibraryCommit)
+procedure CommitLibraryConnection(AList: TRpDatabaseInfoList; const ALibrary: string);
+var
+  i: Integer;
+begin
+  i := AList.IndexOf(ALibrary);
+  if i >= 0 then
+    RpLibraryCommit(AList.Items[i]);
+end;
+
 { TFRpMainFLCL }
 
 constructor TFRpMainFLCL.Create(AOwner: TComponent);
@@ -777,10 +814,33 @@ begin
   MenuFileOpen.OnClick := BtnOpenClick;
   MenuFile.Add(MenuFileOpen);
 
-  MenuFileOpenLib := TMenuItem.Create(MenuFile);
+  // Libraries submenu, as MLibraries of the VCL designer
+  sep := TMenuItem.Create(MenuFile);
+  sep.Caption := '-';
+  MenuFile.Add(sep);
+
+  MenuFileLibraries := TMenuItem.Create(MenuFile);
+  MenuFileLibraries.Caption := TranslateStr(1080, 'Libraries...');
+  MenuFileLibraries.Hint := TranslateStr(1081, 'Show and define report libraries');
+  MenuFile.Add(MenuFileLibraries);
+
+  MenuFileLibConfig := TMenuItem.Create(MenuFileLibraries);
+  MenuFileLibConfig.Caption := SRpConfigLib;
+  MenuFileLibConfig.Hint := SRpConfigLibH;
+  MenuFileLibConfig.OnClick := MenuFileLibConfigClick;
+  MenuFileLibraries.Add(MenuFileLibConfig);
+
+  MenuFileOpenLib := TMenuItem.Create(MenuFileLibraries);
   MenuFileOpenLib.Caption := TranslateStr(1135, 'Open from library');
+  MenuFileOpenLib.Hint := SRpOpenFromH;
   MenuFileOpenLib.OnClick := MenuFileOpenLibClick;
-  MenuFile.Add(MenuFileOpenLib);
+  MenuFileLibraries.Add(MenuFileOpenLib);
+
+  MenuFileSaveLib := TMenuItem.Create(MenuFileLibraries);
+  MenuFileSaveLib.Caption := SRpSaveTo;
+  MenuFileSaveLib.Hint := SRpSaveToH;
+  MenuFileSaveLib.OnClick := MenuFileSaveLibClick;
+  MenuFileLibraries.Add(MenuFileSaveLib);
 
   MenuFileSave := TMenuItem.Create(MenuFile);
   MenuFileSave.Caption := TranslateStr(46, 'Save');
@@ -2250,6 +2310,8 @@ begin
   MenuFileOpen.Enabled := not Value;
   MenuFileOpenLib.Visible := not Value;
   MenuFileOpenLib.Enabled := not Value;
+  MenuFileLibraries.Visible := not Value;
+  MenuFileLibraries.Enabled := not Value;
   MenuFileSave.Visible := not Value;
   MenuFileSave.Enabled := not Value;
   MenuFileSaveAs.Visible := not Value;
@@ -2353,7 +2415,7 @@ begin
   begin
     FLibConnections := TRpDatabaseInfoList.Create(nil);
     // Same library configuration file as the VCL designer
-    configfilelib := Obtainininameuserconfig('', '', 'repmandlib');
+    configfilelib := LibraryConfigFileName;
     if FileExists(configfilelib) then
       FLibConnections.LoadFromFile(configfilelib);
   end;
@@ -2402,7 +2464,12 @@ var
   astream: TStream;
 begin
   // The caller is responsible of CheckSave (VCL DoOpenFromLib)
-  astream := GetLibraryConnections.GetReportStream(ALibrary, AReportName, nil);
+  try
+    astream := GetLibraryConnections.GetReportStream(ALibrary, AReportName, nil);
+  finally
+    // Releases the locks of the read
+    CommitLibraryConnection(GetLibraryConnections, ALibrary);
+  end;
   try
     OpenReportStream(astream);
   finally
@@ -2437,7 +2504,13 @@ begin
   try
     FReport.SaveToStream(astream);
     astream.Seek(0, soFromBeginning);
-    GetLibraryConnections.SaveReportStream(FLibraryName, FLibraryReportName, astream, nil);
+    try
+      GetLibraryConnections.SaveReportStream(FLibraryName, FLibraryReportName, astream, nil);
+    finally
+      // SaveReportStream does not commit the SQLdb connections of the FPC
+      // build: without this the report is lost when the connection closes
+      CommitLibraryConnection(GetLibraryConnections, FLibraryName);
+    end;
   finally
     astream.Free;
   end;
@@ -2671,6 +2744,63 @@ begin
   if Length(arepname) < 1 then
     Exit;
   OpenReportFromLibrary(alibname, arepname);
+end;
+
+procedure TFRpMainFLCL.MenuFileLibConfigClick(Sender: TObject);
+begin
+  ConfigureLibraries;
+end;
+
+procedure TFRpMainFLCL.MenuFileSaveLibClick(Sender: TObject);
+begin
+  SaveToLibraryAs;
+end;
+
+procedure TFRpMainFLCL.ConfigureLibraries;
+begin
+  // VCL ALibrariesExecute (ShowModifyConnections, then SaveConfig)
+  if ShowModifyConnections(GetLibraryConnections) then
+    GetLibraryConnections.SaveToFile(LibraryConfigFileName);
+end;
+
+procedure TFRpMainFLCL.SaveToLibraryAs;
+var
+  alibname: string;
+  arepname: WideString;
+begin
+  if FHostedMode then
+    Exit;
+  // VCL ASaveToExecute: the report is selected (or created with New report)
+  // in the library dialog
+  alibname := FLibraryName;
+  arepname := SelectReportFromLibrary(GetLibraryConnections, alibname);
+  if Length(arepname) < 1 then
+    Exit;
+  SaveReportToLibrary(alibname, arepname);
+end;
+
+procedure TFRpMainFLCL.SaveReportToLibrary(const ALibrary: string;
+  const AReportName: WideString);
+var
+  oldlibname, oldfilename: string;
+  oldrepname: WideString;
+begin
+  if not Assigned(FReport) then Exit;
+  oldlibname := FLibraryName;
+  oldrepname := FLibraryReportName;
+  oldfilename := FFileName;
+  try
+    FFileName := '';
+    FLibraryName := ALibrary;
+    FLibraryReportName := AReportName;
+    SaveToLibrary;
+  except
+    FLibraryName := oldlibname;
+    FLibraryReportName := oldrepname;
+    FFileName := oldfilename;
+    UpdateStatus;
+    raise;
+  end;
 end;
 
 procedure TFRpMainFLCL.BtnSaveClick(Sender: TObject);
