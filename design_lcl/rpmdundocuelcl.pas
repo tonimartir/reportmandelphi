@@ -174,6 +174,21 @@ const
   // oldValue is the index before the action, newValue the index after it.
   // Swap operations without it are adjacent swaps at oldItemIndex.
   UndoItemIndexProperty = 'itemIndex';
+  // Property of a otModify operation on REPORT with the whole list of files
+  // embedded in the PDF (page setup): ptString, the value of
+  // EmbeddedFilesToUndoValue. The report has no such item property: the cue
+  // applies it with ApplyEmbeddedFilesUndoValue.
+  UndoEmbeddedFilesProperty = 'embeddedFiles';
+
+// The embedded files of a report as the value of UndoEmbeddedFilesProperty:
+// '' without files, else a compact JSON array with an object per file
+// (fileName, mimeType, description, relationship, creationDate,
+// modificationDate and data, the content in Base64)
+function EmbeddedFilesToUndoValue(AReport: TRpBaseReport): string;
+// Replaces the embedded files of the report (frees the current ones) with
+// the files of a value of EmbeddedFilesToUndoValue. An invalid value raises
+// and leaves the report unchanged.
+procedure ApplyEmbeddedFilesUndoValue(AReport: TRpBaseReport; const AValue: string);
 
 // Model name used to restore an undo property on target
 function MapUndoPropertyName(target: TObject; const propName: string): string;
@@ -185,7 +200,7 @@ function FindItemUndoCue(AItem: TRpCommonComponent): TUndoCue;
 implementation
 
 uses
-  TypInfo, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams,
+  TypInfo, base64, rplabelitem, rpdrawitem, rpmdbarcode, rpmdchart, rpdatainfo, rpparams,
   rpxmlstream;
 
 function NewComponentByClassName(const className: string; AOwner: TComponent): TComponent; forward;
@@ -711,8 +726,109 @@ begin
     raise Exception.Create('Object does not support IPropertiesItem: ' + target.ClassName);
 end;
 
+function EmbeddedFilesToUndoValue(AReport: TRpBaseReport): string;
+var
+  arr: TJSONArray;
+  obj: TJSONObject;
+  efile: TEmbeddedFile;
+  data: RawByteString;
+  i: Integer;
+begin
+  Result := '';
+  if Length(AReport.EmbeddedFiles) = 0 then
+    Exit;
+  arr := TJSONArray.Create;
+  try
+    for i := 0 to Length(AReport.EmbeddedFiles) - 1 do
+    begin
+      efile := AReport.EmbeddedFiles[i];
+      obj := TJSONObject.Create;
+      arr.Add(obj);
+      obj.Add('fileName', efile.FileName);
+      obj.Add('mimeType', efile.MimeType);
+      obj.Add('description', efile.Description);
+      obj.Add('relationship', Ord(efile.AFRelationShip));
+      obj.Add('creationDate', efile.CreationDate);
+      obj.Add('modificationDate', efile.ModificationDate);
+      data := '';
+      if Assigned(efile.Stream) and (efile.Stream.Size > 0) then
+        SetString(data, PAnsiChar(efile.Stream.Memory), efile.Stream.Size);
+      // Last, so that the history shows the names first
+      obj.Add('data', EncodeStringBase64(data));
+    end;
+    Result := arr.FormatJSON([foSingleLineArray, foSingleLineObject, foSkipWhiteSpace], 0);
+  finally
+    arr.Free;
+  end;
+end;
+
+procedure ApplyEmbeddedFilesUndoValue(AReport: TRpBaseReport; const AValue: string);
+var
+  jData: TJSONData;
+  arr: TJSONArray;
+  obj: TJSONObject;
+  files: array of TEmbeddedFile;
+  efile: TEmbeddedFile;
+  data: RawByteString;
+  relation, i, created: Integer;
+begin
+  AReport.AssertCanModify('report.' + UndoEmbeddedFilesProperty);
+  files := nil;
+  created := 0;
+  if Trim(AValue) <> '' then
+  begin
+    jData := GetJSON(AValue);
+    try
+      if not (jData is TJSONArray) then
+        raise Exception.Create('UndoCue: invalid embedded files value');
+      arr := TJSONArray(jData);
+      SetLength(files, arr.Count);
+      try
+        for i := 0 to arr.Count - 1 do
+        begin
+          if not (arr.Items[i] is TJSONObject) then
+            raise Exception.Create('UndoCue: invalid embedded file in the value');
+          obj := TJSONObject(arr.Items[i]);
+          efile := TEmbeddedFile.Create;
+          files[i] := efile;
+          created := i + 1;
+          efile.FileName := JSONGetStr(obj, 'fileName', 'FileName');
+          efile.MimeType := JSONGetStr(obj, 'mimeType', 'MimeType');
+          efile.Description := JSONGetStr(obj, 'description', 'Description');
+          relation := JSONGetInt(obj, 'relationship', 'Relationship');
+          if (relation < Ord(Low(TPDFAFRelationShip))) or
+             (relation > Ord(High(TPDFAFRelationShip))) then
+            relation := Ord(PDF_AF_Unspecified);
+          efile.AFRelationShip := TPDFAFRelationShip(relation);
+          efile.CreationDate := JSONGetStr(obj, 'creationDate', 'CreationDate');
+          efile.ModificationDate := JSONGetStr(obj, 'modificationDate', 'ModificationDate');
+          data := DecodeStringBase64(JSONGetStr(obj, 'data', 'Data'));
+          // The writers of the report always read the stream
+          efile.Stream := TMemoryStream.Create;
+          if Length(data) > 0 then
+            efile.Stream.WriteBuffer(data[1], Length(data));
+          efile.Stream.Position := 0;
+        end;
+      except
+        for i := 0 to created - 1 do
+          files[i].Free;
+        raise;
+      end;
+    finally
+      jData.Free;
+    end;
+  end;
+  for i := 0 to Length(AReport.EmbeddedFiles) - 1 do
+    AReport.EmbeddedFiles[i].Free;
+  SetLength(AReport.EmbeddedFiles, Length(files));
+  for i := 0 to Length(files) - 1 do
+    AReport.EmbeddedFiles[i] := files[i];
+end;
+
 function ReadUndoPropertyValue(target: TObject; const propName: string): Variant;
 begin
+  if (target is TRpBaseReport) and SameText(propName, UndoEmbeddedFilesProperty) then
+    Exit(EmbeddedFilesToUndoValue(TRpBaseReport(target)));
   Result := GetUndoPropertiesItem(target).GetItemProperty(
     MapUndoPropertyName(target, propName));
 end;
@@ -1777,6 +1893,13 @@ begin
     if (operation.operation = otRemove) and (VarIsEmpty(nvalue) or VarIsNull(nvalue)) then
       nvalue := prop.oldValue;
     nvalue := NormalizeUndoPropertyValue(prop.propertyType, nvalue);
+    // The embedded files of the report (page setup) are not an item property
+    if (target is TRpBaseReport) and
+       SameText(prop.propertyName, UndoEmbeddedFilesProperty) then
+    begin
+      ApplyEmbeddedFilesUndoValue(TRpBaseReport(target), VarToStr(nvalue));
+      Continue;
+    end;
     mappedPropName := MapUndoPropertyName(target, prop.propertyName);
     if (prop.propertyType = ptStringArray) and ApplyStringArrayProperty(target, mappedPropName, nvalue) then
       Continue;

@@ -20,7 +20,7 @@ interface
 
 uses
   SysUtils, Classes, Controls, Forms, ComCtrls, StdCtrls, ExtCtrls,
-  Buttons, Dialogs, Graphics, Variants, Generics.Collections,
+  Buttons, Dialogs, Graphics, Variants, Generics.Collections, LazUTF8,
   rpreport, rptypes, rpmdundocuelcl, rpmdconsts, rpgraphutilslcl;
 
 type
@@ -337,6 +337,18 @@ var
   msg: string;
   i: Integer;
   prop: TChangeOperationItem;
+
+  // Long values (the embedded files of the page setup carry their content)
+  // are cut: the message must fit the screen
+  function ShortValue(const AValue: Variant): string;
+  const
+    MAX_VALUE_LENGTH = 200;
+  begin
+    Result := VarToStr(AValue);
+    if UTF8Length(Result) > MAX_VALUE_LENGTH then
+      Result := UTF8Copy(Result, 1, MAX_VALUE_LENGTH) + '...';
+  end;
+
 begin
   if ListViewCue.Selected = nil then
     Exit;
@@ -360,7 +372,7 @@ begin
     begin
       prop := op.properties[i];
       msg := msg + '  ' + prop.propertyName +
-        ': ' + VarToStr(prop.oldValue) + ' -> ' + VarToStr(prop.newValue) + LineEnding;
+        ': ' + ShortValue(prop.oldValue) + ' -> ' + ShortValue(prop.newValue) + LineEnding;
     end;
   end;
   ShowMessage(msg);

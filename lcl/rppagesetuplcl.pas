@@ -31,8 +31,9 @@ uses
   Classes,rpmunits,
   Graphics, Controls, Forms, Dialogs,
   StdCtrls,rpreport, ExtCtrls,Buttons,Printers,
-  rptypes,rpbasereport,
-  rpmetafile,rpmdconsts,ComCtrls, rpmaskedit;
+  rptypes,rpbasereport,Contnrs,
+  rpmetafile,rpmdconsts,ComCtrls, rpmaskedit,
+  rpmdfembeddedfilelcl,rpmdprintconfiglcl;
 
 type
   TFRpPageSetupVCL = class(TForm)
@@ -102,8 +103,39 @@ type
     LLinesperInch: TLabel;
     ELinesPerInch: TRpMaskEdit;
     CheckDefaultCopies: TCheckBox;
+    GPDF: TGroupBox;
+    LabelPDFConformance: TLabel;
+    ComboBoxPDFConformance: TComboBox;
+    LabelCompressed: TLabel;
+    CheckBoxPDFCompressed: TCheckBox;
+    GEmbedded: TGroupBox;
+    PEmbeddedButtons: TPanel;
+    BNewFile: TButton;
+    BDeleteFile: TButton;
+    BModifyFile: TButton;
+    ListViewEmbedded: TListView;
+    TabMetadata: TTabSheet;
+    LabelDocAuthor: TLabel;
+    textDocAuthor: TEdit;
+    labelDocTitle: TLabel;
+    textDocTitle: TEdit;
+    labeldocSubject: TLabel;
+    textDocSubject: TEdit;
+    LabelDocKeywords: TLabel;
+    textDocKeywords: TEdit;
+    labelDocCreator: TLabel;
+    textDocCreator: TEdit;
+    LabelDocProducer: TLabel;
+    textDocProducer: TEdit;
+    labelCreationDate: TLabel;
+    textDocCreationDate: TEdit;
+    labelModifyDate: TLabel;
+    textDocModDate: TEdit;
+    LabelXmpContent: TLabel;
+    TextXMPContent: TMemo;
     procedure BCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure BOKClick(Sender: TObject);
     procedure SColorMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
@@ -115,20 +147,46 @@ type
     procedure EPaperSourceChange(Sender: TObject);
     procedure ComboPaperSourceClick(Sender: TObject);
     procedure CheckDefaultCopiesClick(Sender: TObject);
+    procedure BNewFileClick(Sender: TObject);
+    procedure BDeleteFileClick(Sender: TObject);
+    procedure BModifyFileClick(Sender: TObject);
+    procedure ListViewEmbeddedDblClick(Sender: TObject);
   private
     { Private declarations }
-    report:TRpBaseReport;
+    FReport:TRpBaseReport;
     oldleftmargin,oldtopmargin,oldrightmargin,oldbottommargin:string;
     oldcustompagewidth,oldcustompageheight:string;
     dook:boolean;
+    FOptionsRead:boolean;
+    // Copies of the embedded files of the report: the report gets them on OK
+    FEmbeddedFiles:TObjectList;
     procedure SaveOptions;
-    procedure ReadOptions;
+    procedure SetReport(AReport:TRpBaseReport);
+    function GetEmbeddedFile(Index:Integer):TEmbeddedFile;
+    function GetEmbeddedFileCount:Integer;
   public
     { Public declarations }
+    // Shows the options of the report (ExecutePageSetup does it before
+    // showing the dialog)
+    procedure ReadOptions;
+    procedure UpdateEmbeddedList;
+    // Embedded files of the dialog (the report changes on OK). Adding one
+    // loads AFileName and asks for its properties (AskEmbeddedFileData)
+    function AddEmbeddedFile(const AFileName:string):boolean;
+    function ModifyEmbeddedFile(AIndex:Integer):boolean;
+    procedure DeleteEmbeddedFile(AIndex:Integer);
+    property Report:TRpBaseReport read FReport write SetReport;
+    property EmbeddedFileCount:Integer read GetEmbeddedFileCount;
+    property EmbeddedFiles[Index:Integer]:TEmbeddedFile read GetEmbeddedFile;
+    // True after OK: the options were saved to the report
+    property Accepted:boolean read dook;
   end;
 
 
 function ExecutePageSetup(report:TRpBaseReport):boolean;
+
+// Mime type for a file to embed, from its extension
+function RpMimeTypeFromFileName(const AFileName:string):string;
 
 implementation
 
@@ -140,12 +198,56 @@ var
 begin
  dia:=TFRpPageSetupVCL.Create(Application);
  try
-  dia.report:=report;
+  dia.Report:=report;
   dia.ShowModal;
   Result:=dia.dook;
  finally
   dia.free;
  end;
+end;
+
+function RpMimeTypeFromFileName(const AFileName:string):string;
+var
+ aext:string;
+begin
+ aext:=LowerCase(ExtractFileExt(AFileName));
+ if aext='.xml' then
+  Result:='application/xml'
+ else
+ if aext='.pdf' then
+  Result:='application/pdf'
+ else
+ if (aext='.jpg') or (aext='.jpeg') then
+  Result:='image/jpeg'
+ else
+ if (aext='.png') or (aext='.bmp') or (aext='.gif') or (aext='.tiff') then
+  Result:='image/'+Copy(aext,2,Length(aext))
+ else
+ if aext='.tif' then
+  Result:='image/tiff'
+ else
+ if aext='.txt' then
+  Result:='text/plain'
+ else
+ if aext='.csv' then
+  Result:='text/csv'
+ else
+ if (aext='.htm') or (aext='.html') then
+  Result:='text/html'
+ else
+ if aext='.json' then
+  Result:='application/json'
+ else
+ if aext='.xlsx' then
+  Result:='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+ else
+ if aext='.docx' then
+  Result:='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+ else
+ if aext='.pptx' then
+  Result:='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+ else
+  Result:='application/octet-stream';
 end;
 
 procedure TFRpPageSetupVCL.BCancelClick(Sender: TObject);
@@ -160,6 +262,7 @@ var
  aheight:integer;
  i:integer;
 begin
+ FEmbeddedFiles:=TObjectList.Create(true);
  PControl.ActivePage:=TabPage;
  CheckDefaultCopies.Caption:=SRpDefaultCopies;
  LMetrics3.Caption:=rpunitlabels[defaultunit];
@@ -260,6 +363,48 @@ begin
  CheckDrawerBefore.Caption:=SRpOpenDrawerBefore;
  GetPaperSourceDescriptions(ComboPaperSource.Items);
  GetDuplexDescriptions(ComboDuplex.Items);
+
+ // PDF options, embedded files and metadata (as rppagesetupvcl)
+ GPDF.Caption:=SRpPDFOptions;
+ LabelCompressed.Caption:=SRpCompressed;
+ BNewFile.Caption:=SRpAdd;
+ BDeleteFile.Caption:=SRpDelete;
+ BModifyFile.Caption:=SRpModify;
+ GEmbedded.Caption:=SRpEmbeddedFiles;
+ LabelPDFConformance.Caption:=SRpConformance;
+ TabMetadata.Caption:=SRpMetadata;
+ LabelDocAuthor.Caption:=SRpDocAuthor;
+ LabelDocTitle.Caption:=SRpDocTitle;
+ LabelDocSubject.Caption:=SRpDocSubject;
+ LabelDocCreator.Caption:=SRpDocCreator;
+ LabelDocProducer.Caption:=SRpDocProducer;
+ labelCreationDate.Caption:=SRpDocCreationDate;
+ labelModifyDate.Caption:=SRpDocModifyDate;
+ LabelDocKeywords.Caption:=SRpDocKeywords;
+ LabelXMPContent.Caption:=SRpXMPmetadata;
+
+ ListViewEmbedded.Columns[0].Caption:=SRpFilename;
+ ListViewEmbedded.Columns[1].Caption:=SRpMimetype;
+ ListViewEmbedded.Columns[2].Caption:=SRpSize;
+ ListViewEmbedded.Columns[3].Caption:=SRpRelationShip;
+ ListViewEmbedded.Columns[4].Caption:=SRpDescription;
+ ListViewEmbedded.Columns[5].Caption:=SRpCreationDateISO;
+ ListViewEmbedded.Columns[6].Caption:=SRpModificationDateISO;
+end;
+
+procedure TFRpPageSetupVCL.FormDestroy(Sender: TObject);
+begin
+ // The copies not given to the report (Cancel, or deleted in the dialog)
+ FEmbeddedFiles.Free;
+ FEmbeddedFiles:=nil;
+end;
+
+procedure TFRpPageSetupVCL.SetReport(AReport:TRpBaseReport);
+begin
+ FReport:=AReport;
+ FOptionsRead:=false;
+ if Assigned(FReport) then
+  ReadOptions;
 end;
 
 procedure TFRpPageSetupVCL.BOKClick(Sender: TObject);
@@ -276,6 +421,7 @@ var
  apapersource:integer;
  acustomwidth,acustomheight:integer;
  aleft,aright,atop,abottom:integer;
+ i:integer;
 begin
  if CheckDefaultCopies.Checked then
   acopies:=0
@@ -291,103 +437,131 @@ begin
  // Validate every typed value before touching the report: an invalid value
  // must not leave the report half modified
  apapersource:=StrToInt(EPaperSource.Text);
- acustomwidth:=report.CustomPageWidth;
+ acustomwidth:=FReport.CustomPageWidth;
  if EPageWidth.Text<>oldcustompagewidth then
   acustomwidth:=gettwipsfromtext(EPageWidth.Text);
- acustomheight:=report.CustomPageHeight;
+ acustomheight:=FReport.CustomPageHeight;
  if EPageHeight.Text<>oldcustompageheight then
   acustomheight:=gettwipsfromtext(EPageHeight.Text);
- aleft:=report.LeftMargin;
+ aleft:=FReport.LeftMargin;
  if ELeftMargin.Text<>oldleftmargin then
   aleft:=gettwipsfromtext(ELeftMargin.Text);
- aright:=report.RightMargin;
+ aright:=FReport.RightMargin;
  if ERightMargin.Text<>oldrightmargin then
   aright:=gettwipsfromtext(ERightMargin.Text);
- atop:=report.TopMargin;
+ atop:=FReport.TopMargin;
  if ETopMargin.Text<>oldtopmargin then
   atop:=gettwipsfromtext(ETopMargin.Text);
- abottom:=report.BottomMargin;
+ abottom:=FReport.BottomMargin;
  if EBottomMargin.Text<>oldbottommargin then
   abottom:=gettwipsfromtext(EBottomMargin.Text);
- report.LinesPerInch:=linch;
- report.Copies:=acopies;
- report.CollateCopies:=CheckCollate.Checked;
- report.TwoPass:=CheckTwoPass.Checked;
- report.PreviewAbout:=CheckPreviewAbout.Checked;
- report.PrintOnlyIfDataAvailable:=CheckPrintOnlyIfData.Checked;
+ FReport.LinesPerInch:=linch;
+ FReport.Copies:=acopies;
+ FReport.CollateCopies:=CheckCollate.Checked;
+ FReport.TwoPass:=CheckTwoPass.Checked;
+ FReport.PreviewAbout:=CheckPreviewAbout.Checked;
+ FReport.PrintOnlyIfDataAvailable:=CheckPrintOnlyIfData.Checked;
  FReportAction:=[];
  if CheckDrawerAfter.Checked then
   include(FreportAction,rpDrawerAfter);
  if CheckDrawerBefore.Checked then
   include(FreportAction,rpDrawerBefore);
- report.ReportAction:=FReportAction;
+ FReport.ReportAction:=FReportAction;
  // Saves the options to report
- report.Pagesize:=TRpPageSize(RPageSize.ItemIndex);
+ FReport.Pagesize:=TRpPageSize(RPageSize.ItemIndex);
   // Assigns the with and height in twips
- report.PagesizeQt:=ComboPageSize.ItemIndex;
- report.PageHeight:=Round(PageSizeArray[report.PageSizeQt].Height*1000/TWIPS_PER_INCHESS);
- report.PageWidth:=Round(PageSizeArray[report.PageSizeQt].Width*1000/TWIPS_PER_INCHESS);
- report.CustomPageWidth:=acustomwidth;
- report.CustomPageHeight:=acustomheight;
- report.LeftMargin:=aleft;
- report.RightMargin:=aright;
- report.TopMargin:=atop;
- report.BottomMargin:=abottom;
- report.PageOrientation:=rpOrientationDefault;
- report.PrinterSelect:=TRpPrinterSelect(ComboSelPrinter.ItemIndex);
+ FReport.PagesizeQt:=ComboPageSize.ItemIndex;
+ FReport.PageHeight:=Round(PageSizeArray[FReport.PageSizeQt].Height*1000/TWIPS_PER_INCHESS);
+ FReport.PageWidth:=Round(PageSizeArray[FReport.PageSizeQt].Width*1000/TWIPS_PER_INCHESS);
+ FReport.CustomPageWidth:=acustomwidth;
+ FReport.CustomPageHeight:=acustomheight;
+ FReport.LeftMargin:=aleft;
+ FReport.RightMargin:=aright;
+ FReport.TopMargin:=atop;
+ FReport.BottomMargin:=abottom;
+ FReport.PageOrientation:=rpOrientationDefault;
+ FReport.PrinterSelect:=TRpPrinterSelect(ComboSelPrinter.ItemIndex);
  if RPageOrientation.itemindex=1 then
  begin
   if RCustomOrientation.itemindex=0 then
-   report.PageOrientation:=rpOrientationPortrait
+   FReport.PageOrientation:=rpOrientationPortrait
   else
-   report.PageOrientation:=rpOrientationLandscape;
+   FReport.PageOrientation:=rpOrientationLandscape;
  end;
- report.PageBackColor:=SColor.Brush.Color;
+ FReport.PageBackColor:=SColor.Brush.Color;
  // Language
- report.Language:=ComboLanguage.ItemIndex-1;
+ FReport.Language:=ComboLanguage.ItemIndex-1;
  // Other
- report.PrinterFonts:=TRpPrinterFontsOption(ComboPrinterFonts.ItemIndex);
- report.PreviewStyle:=TRpPreviewStyle(ComboStyle.ItemIndex);
- report.PreviewMargins:=CheckMargins.Checked;
- report.PreviewWindow:=TRpPreviewWindowStyle(ComboPreview.ItemIndex);
- report.StreamFormat:=TRpStreamFormat(ComboFormat.ItemIndex);
- report.PaperSOurce:=apapersource;
- report.Duplex:=ComboDuplex.ItemIndex;
- report.ForcePaperName:=EForceFormName.Text;
+ FReport.PrinterFonts:=TRpPrinterFontsOption(ComboPrinterFonts.ItemIndex);
+ FReport.PreviewStyle:=TRpPreviewStyle(ComboStyle.ItemIndex);
+ FReport.PreviewMargins:=CheckMargins.Checked;
+ FReport.PreviewWindow:=TRpPreviewWindowStyle(ComboPreview.ItemIndex);
+ FReport.StreamFormat:=TRpStreamFormat(ComboFormat.ItemIndex);
+ FReport.PaperSOurce:=apapersource;
+ FReport.Duplex:=ComboDuplex.ItemIndex;
+ FReport.ForcePaperName:=EForceFormName.Text;
+ // PDF options and document metadata
+ FReport.PDFConformance:=TPDFConformanceType(ComboBoxPDFConformance.ItemIndex);
+ FReport.PDFCompressed:=CheckBoxPDFCompressed.Checked;
+ FReport.DocAuthor:=textDocAuthor.Text;
+ FReport.DocCreator:=textDocCreator.Text;
+ FReport.DocProducer:=textDocProducer.Text;
+ FReport.DocTitle:=textDocTitle.Text;
+ FReport.DocSubject:=textDocSubject.Text;
+ FReport.DocCreationDate:=textDocCreationDate.Text;
+ FReport.DocModificationDate:=textDocModDate.Text;
+ FReport.DocKeywords:=textDocKeywords.Text;
+ FReport.DocXMPContent:=TextXMPContent.Text;
+ // Embedded files: the report owns the copies of the dialog from now on
+ for i:=0 to Length(FReport.EmbeddedFiles)-1 do
+  FReport.EmbeddedFiles[i].Free;
+ SetLength(FReport.EmbeddedFiles,0);
+ SetLength(FReport.EmbeddedFiles,FEmbeddedFiles.Count);
+ FEmbeddedFiles.OwnsObjects:=false;
+ try
+  for i:=0 to FEmbeddedFiles.Count-1 do
+   FReport.EmbeddedFiles[i]:=TEmbeddedFile(FEmbeddedFiles[i]);
+  FEmbeddedFiles.Clear;
+ finally
+  FEmbeddedFiles.OwnsObjects:=true;
+ end;
 
  dook:=true;
 end;
 
 procedure TFRpPageSetupVCL.ReadOptions;
+var
+ i:integer;
 begin
+ FOptionsRead:=true;
  // ReadOptions
- ELinesPerInch.Text:=FloatToStr(report.LinesPerInch/100);
- if report.copies=0 then
+ ELinesPerInch.Text:=FloatToStr(FReport.LinesPerInch/100);
+ if FReport.copies=0 then
  begin
   CheckDefaultCopies.Checked:=true;
   ECopies.Text:='1';
   CheckDefaultCopiesClick(Self);
  end
  else
-  ECopies.Text:=IntToStr(report.Copies);
- 
- CheckCollate.Checked:=report.CollateCopies;
- CheckTwoPass.Checked:=report.TwoPass;
- CheckPrintOnlyIfData.Checked:=report.PrintOnlyIfDataAvailable;
- CheckDrawerBefore.Checked:=rpDrawerBefore in report.ReportAction;
- CheckDrawerAfter.Checked:=rpDrawerAfter in report.ReportAction;
- CheckPreviewAbout.Checked:=report.PreviewAbout;
+  ECopies.Text:=IntToStr(FReport.Copies);
+
+ CheckCollate.Checked:=FReport.CollateCopies;
+ CheckTwoPass.Checked:=FReport.TwoPass;
+ CheckPrintOnlyIfData.Checked:=FReport.PrintOnlyIfDataAvailable;
+ CheckDrawerBefore.Checked:=rpDrawerBefore in FReport.ReportAction;
+ CheckDrawerAfter.Checked:=rpDrawerAfter in FReport.ReportAction;
+ CheckPreviewAbout.Checked:=FReport.PreviewAbout;
 
  // Size
- ComboPageSize.ItemIndex:=report.PagesizeQt;
+ ComboPageSize.ItemIndex:=FReport.PagesizeQt;
  GPageSize.Visible:=false;
  RPageSize.ItemIndex:=0;
- ELeftMargin.Text:=gettextfromtwips(report.LeftMargin);
- ERightMargin.Text:=gettextfromtwips(report.RightMargin);
- ETopMargin.Text:=gettextfromtwips(report.TopMargin);
- EBottomMargin.Text:=gettextfromtwips(report.BottomMargin);
- EPageWidth.Text:=gettextfromtwips(report.CustomPageWidth);
- EPageHeight.Text:=gettextfromtwips(report.CustomPageheight);
+ ELeftMargin.Text:=gettextfromtwips(FReport.LeftMargin);
+ ERightMargin.Text:=gettextfromtwips(FReport.RightMargin);
+ ETopMargin.Text:=gettextfromtwips(FReport.TopMargin);
+ EBottomMargin.Text:=gettextfromtwips(FReport.BottomMargin);
+ EPageWidth.Text:=gettextfromtwips(FReport.CustomPageWidth);
+ EPageHeight.Text:=gettextfromtwips(FReport.CustomPageheight);
  oldcustompagewidth:=EPageWidth.Text;
  oldcustompageheight:=EPageheight.Text;
  oldleftmargin:=ELeftMargin.Text;
@@ -395,37 +569,58 @@ begin
  oldTopmargin:=ETopMargin.Text;
  oldBottommargin:=EBottomMargin.Text;
 
- RPageSize.ItemIndex:=integer(report.Pagesize);
+ RPageSize.ItemIndex:=integer(FReport.Pagesize);
  RPageSizeClick(Self);
  // Orientation
  RPageOrientation.Itemindex:=0;
  RCustomOrientation.Itemindex:=0;
  RCustomOrientation.Visible:=false;
- if report.PageOrientation>rpOrientationdefault then
+ if FReport.PageOrientation>rpOrientationdefault then
  begin
   RCustomOrientation.Visible:=true;
   RPageOrientation.itemindex:=1;
  end;
- if report.PageOrientation=rpOrientationPortrait then
+ if FReport.PageOrientation=rpOrientationPortrait then
   RCustomOrientation.Itemindex:=0;
- if report.PageOrientation=rpOrientationLandscape then
+ if FReport.PageOrientation=rpOrientationLandscape then
   RCustomOrientation.Itemindex:=1;
- ComboSelPrinter.ItemIndex:=integer(report.PrinterSelect);
+ ComboSelPrinter.ItemIndex:=integer(FReport.PrinterSelect);
  // Color
- SColor.Brush.Color:=TColor(report.PageBackColor);
+ SColor.Brush.Color:=TColor(FReport.PageBackColor);
  // Language
  ComboLanguage.ItemIndex:=0;
- ComboPrinterFonts.ItemIndex:=integer(report.PrinterFonts);
- if (report.Language+1)<ComboLanguage.Items.Count then
-  ComboLanguage.ItemIndex:=report.Language+1;
- ComboStyle.ItemIndex:=integer(report.PreviewStyle);
- ComboPreview.ItemIndex:=integer(report.PreviewWindow);
- ComboFormat.ItemIndex:=integer(report.StreamFormat);
- CheckMargins.Checked:=report.PreviewMargins;
- EPaperSource.Text:=IntToStr(report.PaperSource);
+ ComboPrinterFonts.ItemIndex:=integer(FReport.PrinterFonts);
+ if (FReport.Language+1)<ComboLanguage.Items.Count then
+  ComboLanguage.ItemIndex:=FReport.Language+1;
+ ComboStyle.ItemIndex:=integer(FReport.PreviewStyle);
+ ComboPreview.ItemIndex:=integer(FReport.PreviewWindow);
+ ComboFormat.ItemIndex:=integer(FReport.StreamFormat);
+ CheckMargins.Checked:=FReport.PreviewMargins;
+ EPaperSource.Text:=IntToStr(FReport.PaperSource);
  EPaperSourceChange(Self);
- ComboDuplex.ItemIndex:=report.Duplex;
- EForceFormName.Text:=report.ForcePaperName;
+ ComboDuplex.ItemIndex:=FReport.Duplex;
+ EForceFormName.Text:=FReport.ForcePaperName;
+ // PDF options
+ if (FReport.PDFConformance=PDF_1_4) then
+  ComboBoxPDFConformance.ItemIndex:=0
+ else
+  ComboBoxPDFConformance.ItemIndex:=1;
+ CheckBoxPDFCompressed.Checked:=FReport.PDFCompressed;
+ // Metadata
+ textDocAuthor.Text:=FReport.DocAuthor;
+ textDocCreator.Text:=FReport.DocCreator;
+ textDocProducer.Text:=FReport.DocProducer;
+ textDocTitle.Text:=FReport.DocTitle;
+ textDocSubject.Text:=FReport.DocSubject;
+ textDocCreationDate.Text:=FReport.DocCreationDate;
+ textDocModDate.Text:=FReport.DocModificationDate;
+ textDocKeywords.Text:=FReport.DocKeywords;
+ TextXMPContent.Text:=FReport.DocXMPContent;
+ // Embedded files: the dialog works on copies (Cancel keeps the report)
+ FEmbeddedFiles.Clear;
+ for i:=0 to Length(FReport.EmbeddedFiles)-1 do
+  FEmbeddedFiles.Add(FReport.EmbeddedFiles[i].Clone());
+ UpdateEmbeddedList;
 end;
 
 procedure TFRpPageSetupVCL.SColorMouseDown(Sender: TObject;
@@ -453,12 +648,14 @@ end;
 
 procedure TFRpPageSetupVCL.FormShow(Sender: TObject);
 begin
- ReadOptions;
+ // Report assigned without reading the options
+ if (not FOptionsRead) and Assigned(FReport) then
+  ReadOptions;
 end;
 
 procedure TFRpPageSetupVCL.BConfigureClick(Sender: TObject);
 begin
- //ShowPrintersConfiguration;
+ ShowPrintersConfiguration;
 end;
 
 procedure TFRpPageSetupVCL.EPaperSourceChange(Sender: TObject);
@@ -486,6 +683,135 @@ end;
 procedure TFRpPageSetupVCL.CheckDefaultCopiesClick(Sender: TObject);
 begin
  ECopies.Enabled:=not CheckDefaultCopies.Checked;
+end;
+
+function TFRpPageSetupVCL.GetEmbeddedFile(Index:Integer):TEmbeddedFile;
+begin
+ Result:=TEmbeddedFile(FEmbeddedFiles[Index]);
+end;
+
+function TFRpPageSetupVCL.GetEmbeddedFileCount:Integer;
+begin
+ Result:=FEmbeddedFiles.Count;
+end;
+
+procedure TFRpPageSetupVCL.UpdateEmbeddedList;
+var
+ i:integer;
+ embedded:TEmbeddedFile;
+ listItem:TListItem;
+ asize:Double;
+begin
+ ListViewEmbedded.Items.BeginUpdate;
+ try
+  ListViewEmbedded.Items.Clear;
+  for i:=0 to FEmbeddedFiles.Count-1 do
+  begin
+   embedded:=TEmbeddedFile(FEmbeddedFiles[i]);
+   listItem:=ListViewEmbedded.Items.Add;
+   listItem.Caption:=embedded.FileName;
+   listItem.SubItems.Add(embedded.MimeType);
+   asize:=0;
+   if Assigned(embedded.Stream) then
+    asize:=embedded.Stream.Size;
+   listItem.SubItems.Add(FormatFloat('##,##0.00',asize/1024)+' '+SRpKbytes);
+   listItem.SubItems.Add(RpAFRelationShipName(embedded.AFRelationShip));
+   listItem.SubItems.Add(embedded.Description);
+   listItem.SubItems.Add(embedded.CreationDate);
+   listItem.SubItems.Add(embedded.ModificationDate);
+  end;
+ finally
+  ListViewEmbedded.Items.EndUpdate;
+ end;
+ if (ListViewEmbedded.Items.Count>0) then
+  ListViewEmbedded.ItemIndex:=0;
+ BDeleteFile.Enabled:=ListViewEmbedded.Items.Count>0;
+ BModifyFile.Enabled:=BDeleteFile.Enabled;
+end;
+
+function TFRpPageSetupVCL.AddEmbeddedFile(const AFileName:string):boolean;
+var
+ embedded:TEmbeddedFile;
+begin
+ Result:=false;
+ embedded:=TEmbeddedFile.Create;
+ try
+  embedded.FileName:=ExtractFileName(AFileName);
+  embedded.MimeType:=RpMimeTypeFromFileName(AFileName);
+  embedded.Stream:=TMemoryStream.Create;
+  embedded.Stream.LoadFromFile(AFileName);
+  embedded.Stream.Position:=0;
+  if AskEmbeddedFileData(embedded) then
+  begin
+   FEmbeddedFiles.Add(embedded);
+   embedded:=nil;
+   UpdateEmbeddedList;
+   ListViewEmbedded.ItemIndex:=ListViewEmbedded.Items.Count-1;
+   Result:=true;
+  end;
+ finally
+  embedded.Free;
+ end;
+end;
+
+function TFRpPageSetupVCL.ModifyEmbeddedFile(AIndex:Integer):boolean;
+begin
+ Result:=false;
+ if (AIndex<0) or (AIndex>=FEmbeddedFiles.Count) then
+  exit;
+ if AskEmbeddedFileData(TEmbeddedFile(FEmbeddedFiles[AIndex])) then
+ begin
+  UpdateEmbeddedList;
+  ListViewEmbedded.ItemIndex:=AIndex;
+  Result:=true;
+ end;
+end;
+
+procedure TFRpPageSetupVCL.DeleteEmbeddedFile(AIndex:Integer);
+begin
+ if (AIndex<0) or (AIndex>=FEmbeddedFiles.Count) then
+  exit;
+ // Owned by the list: freed here (the report still has its own copy
+ // until OK)
+ FEmbeddedFiles.Delete(AIndex);
+ UpdateEmbeddedList;
+ if AIndex<ListViewEmbedded.Items.Count then
+  ListViewEmbedded.ItemIndex:=AIndex;
+end;
+
+procedure TFRpPageSetupVCL.BNewFileClick(Sender: TObject);
+var
+ dia:TOpenDialog;
+begin
+ dia:=TOpenDialog.Create(nil);
+ try
+  dia.Filter:=TranslateStr(1800,'XML file')+'|*.xml;*.XML|'+
+   TranslateStr(1801,'PDF file')+'|*.pdf;*.PDF|'+
+   TranslateStr(1802,'Image file')+'|*.png;*.PNG;*.jpg;*.JPG;*.jpeg;*.JPEG;*.bmp;*.BMP|'+
+   TranslateStr(1803,'Other file')+'|*.*;*';
+  dia.FilterIndex:=1;
+  dia.Options:=[ofFileMustExist,ofEnableSizing];
+  if not dia.Execute then
+   exit;
+  AddEmbeddedFile(dia.FileName);
+ finally
+  dia.Free;
+ end;
+end;
+
+procedure TFRpPageSetupVCL.BDeleteFileClick(Sender: TObject);
+begin
+ DeleteEmbeddedFile(ListViewEmbedded.ItemIndex);
+end;
+
+procedure TFRpPageSetupVCL.BModifyFileClick(Sender: TObject);
+begin
+ ModifyEmbeddedFile(ListViewEmbedded.ItemIndex);
+end;
+
+procedure TFRpPageSetupVCL.ListViewEmbeddedDblClick(Sender: TObject);
+begin
+ ModifyEmbeddedFile(ListViewEmbedded.ItemIndex);
 end;
 
 end.

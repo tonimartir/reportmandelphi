@@ -129,6 +129,8 @@ lcl/rplclpreview.pas
 lcl/rplclreport.pas
 lcl/rpmaskedit.dcr
 lcl/rpmaskedit.pas
+lcl/rpmdfembeddedfilelcl.pas
+lcl/rpmdprintconfiglcl.pas
 lcl/rppagesetuplcl.lfm
 lcl/rppagesetuplcl.pas
 lcl/rppreviewcontrol.pas
@@ -181,6 +183,7 @@ design_lcl/rpmdimageslcl.pas
 design_lcl/rpmdobinsintlcl.pas
 design_lcl/rpmdobjinsplcl.lfm
 design_lcl/rpmdobjinsplcl.pas
+design_lcl/rpmdsysinfolcl.pas
 design_lcl/rpmdundocuelcl.pas
 design_lcl/rpmregdesignlcl.lrs
 design_lcl/rpmregdesignlcl.pas
