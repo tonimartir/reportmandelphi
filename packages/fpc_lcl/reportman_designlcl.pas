@@ -19,6 +19,7 @@ uses
   rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl,
   rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl, rpdbxconfiglcl,
   rpmdfsampledatalcl, rpmdfdatatextlcl, rpdbxadminlcl, rpmdfnewreportwizardlcl,
+  rpmdsysinfolcl,
   LazarusPackageIntf;
 
 implementation

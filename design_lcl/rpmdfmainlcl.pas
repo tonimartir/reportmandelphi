@@ -2739,8 +2739,9 @@ type
   end;
 
 const
-  // Report properties changed by the page setup dialog (rppagesetuplcl)
-  PAGESETUP_PROPS: array[0..28] of TRpPageSetupProp = (
+  // Report properties changed by the page setup dialog (rppagesetuplcl).
+  // The embedded files are recorded apart (UndoEmbeddedFilesProperty).
+  PAGESETUP_PROPS: array[0..39] of TRpPageSetupProp = (
     (Name: 'LinesPerInch'; PropType: ptInteger),
     (Name: 'Copies'; PropType: ptInteger),
     (Name: 'CollateCopies'; PropType: ptBoolean),
@@ -2769,7 +2770,18 @@ const
     (Name: 'StreamFormat'; PropType: ptInteger),
     (Name: 'PaperSource'; PropType: ptInteger),
     (Name: 'Duplex'; PropType: ptInteger),
-    (Name: 'ForcePaperName'; PropType: ptString)
+    (Name: 'ForcePaperName'; PropType: ptString),
+    (Name: 'PDFConformance'; PropType: ptInteger),
+    (Name: 'PDFCompressed'; PropType: ptBoolean),
+    (Name: 'DocAuthor'; PropType: ptString),
+    (Name: 'DocTitle'; PropType: ptString),
+    (Name: 'DocSubject'; PropType: ptString),
+    (Name: 'DocKeywords'; PropType: ptString),
+    (Name: 'DocCreator'; PropType: ptString),
+    (Name: 'DocProducer'; PropType: ptString),
+    (Name: 'DocCreationDate'; PropType: ptString),
+    (Name: 'DocModificationDate'; PropType: ptString),
+    (Name: 'DocXMPContent'; PropType: ptString)
   );
 
 procedure TFRpMainFLCL.BtnPageSetupClick(Sender: TObject);
@@ -2779,11 +2791,13 @@ var
   newValue: Variant;
   cue: TUndoCue;
   op: TChangeObjectOperation;
+  oldFiles, newFiles: string;
 begin
   if not Assigned(FReport) then Exit;
   FReport.AssertCanModify('Page setup');
   for i := 0 to High(PAGESETUP_PROPS) do
     snapshot[i] := FReport.GetItemProperty(PAGESETUP_PROPS[i].Name);
+  oldFiles := EmbeddedFilesToUndoValue(FReport);
   if ExecutePageSetup(FReport) then
   begin
     // Same as rppagesetupvcl.SaveOptions: one otModify on REPORT with the
@@ -2800,6 +2814,10 @@ begin
         op.AddProperty(PAGESETUP_PROPS[i].Name, PAGESETUP_PROPS[i].PropType,
           snapshot[i], newValue);
     end;
+    // Files embedded in the PDF: the whole list, in the same operation
+    newFiles := EmbeddedFilesToUndoValue(FReport);
+    if newFiles <> oldFiles then
+      op.AddProperty(UndoEmbeddedFilesProperty, ptString, oldFiles, newFiles);
     if op.properties.Count > 0 then
       cue.AddOperation(op)
     else

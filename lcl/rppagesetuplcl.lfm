@@ -9,6 +9,7 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
   ClientWidth = 537
   Color = clBtnFace
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   ParentFont = True
   Position = poScreenCenter
@@ -626,6 +627,296 @@ object FRpPageSetupVCL: TFRpPageSetupVCL
         ItemHeight = 0
         Style = csDropDownList
         TabOrder = 0
+      end
+      object GPDF: TGroupBox
+        Left = 4
+        Height = 84
+        Top = 40
+        Width = 520
+        Anchors = [akTop, akLeft, akRight]
+        Caption = 'PDF Options'
+        ClientHeight = 65
+        ClientWidth = 516
+        TabOrder = 1
+        object LabelPDFConformance: TLabel
+          Left = 12
+          Height = 17
+          Top = 8
+          Width = 119
+          Caption = 'PDF Conformance'
+          ParentColor = False
+        end
+        object ComboBoxPDFConformance: TComboBox
+          Left = 180
+          Height = 21
+          Top = 4
+          Width = 200
+          ItemHeight = 0
+          Items.Strings = (
+            'PDF 1.4'
+            'PDF A/3'
+          )
+          Style = csDropDownList
+          TabOrder = 0
+        end
+        object LabelCompressed: TLabel
+          Left = 12
+          Height = 17
+          Top = 40
+          Width = 82
+          Caption = 'Compressed'
+          ParentColor = False
+        end
+        object CheckBoxPDFCompressed: TCheckBox
+          Left = 180
+          Height = 21
+          Top = 38
+          Width = 24
+          TabOrder = 1
+        end
+      end
+      object GEmbedded: TGroupBox
+        Left = 4
+        Height = 266
+        Top = 128
+        Width = 520
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        Caption = 'PDF Embedded Files'
+        ClientHeight = 247
+        ClientWidth = 516
+        TabOrder = 2
+        object PEmbeddedButtons: TPanel
+          Left = 0
+          Height = 34
+          Top = 0
+          Width = 516
+          Align = alTop
+          BevelOuter = bvNone
+          ClientHeight = 34
+          ClientWidth = 516
+          TabOrder = 0
+          object BNewFile: TButton
+            Left = 4
+            Height = 27
+            Top = 3
+            Width = 104
+            Caption = 'New'
+            OnClick = BNewFileClick
+            TabOrder = 0
+          end
+          object BDeleteFile: TButton
+            Left = 112
+            Height = 27
+            Top = 3
+            Width = 104
+            Caption = 'Delete'
+            OnClick = BDeleteFileClick
+            TabOrder = 1
+          end
+          object BModifyFile: TButton
+            Left = 220
+            Height = 27
+            Top = 3
+            Width = 104
+            Caption = 'Modify'
+            OnClick = BModifyFileClick
+            TabOrder = 2
+          end
+        end
+        object ListViewEmbedded: TListView
+          Left = 0
+          Height = 213
+          Top = 34
+          Width = 516
+          Align = alClient
+          Columns = <
+            item
+              Caption = 'File Name'
+              Width = 150
+            end
+            item
+              Caption = 'Mime Type'
+              Width = 110
+            end
+            item
+              Alignment = taRightJustify
+              Caption = 'Size'
+              Width = 100
+            end
+            item
+              Caption = 'Relationship'
+              Width = 90
+            end
+            item
+              Caption = 'Description'
+              Width = 150
+            end
+            item
+              Caption = 'Creation Date'
+              Width = 100
+            end
+            item
+              Caption = 'Modification Date'
+              Width = 100
+            end>
+          HideSelection = False
+          ReadOnly = True
+          RowSelect = True
+          TabOrder = 1
+          ViewStyle = vsReport
+          OnDblClick = ListViewEmbeddedDblClick
+        end
+      end
+    end
+    object TabMetadata: TTabSheet
+      Caption = 'Metadata'
+      ClientHeight = 399
+      ClientWidth = 533
+      object LabelDocAuthor: TLabel
+        Left = 8
+        Height = 17
+        Top = 12
+        Width = 45
+        Caption = 'Author'
+        ParentColor = False
+      end
+      object textDocAuthor: TEdit
+        Left = 184
+        Height = 27
+        Top = 8
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 0
+      end
+      object labelDocTitle: TLabel
+        Left = 8
+        Height = 17
+        Top = 44
+        Width = 29
+        Caption = 'Title'
+        ParentColor = False
+      end
+      object textDocTitle: TEdit
+        Left = 184
+        Height = 27
+        Top = 40
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 1
+      end
+      object labeldocSubject: TLabel
+        Left = 8
+        Height = 17
+        Top = 76
+        Width = 49
+        Caption = 'Subject'
+        ParentColor = False
+      end
+      object textDocSubject: TEdit
+        Left = 184
+        Height = 27
+        Top = 72
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 2
+      end
+      object LabelDocKeywords: TLabel
+        Left = 8
+        Height = 17
+        Top = 108
+        Width = 64
+        Caption = 'Keywords'
+        ParentColor = False
+      end
+      object textDocKeywords: TEdit
+        Left = 184
+        Height = 27
+        Top = 104
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 3
+      end
+      object labelDocCreator: TLabel
+        Left = 8
+        Height = 17
+        Top = 140
+        Width = 49
+        Caption = 'Creator'
+        ParentColor = False
+      end
+      object textDocCreator: TEdit
+        Left = 184
+        Height = 27
+        Top = 136
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 4
+      end
+      object LabelDocProducer: TLabel
+        Left = 8
+        Height = 17
+        Top = 172
+        Width = 59
+        Caption = 'Producer'
+        ParentColor = False
+      end
+      object textDocProducer: TEdit
+        Left = 184
+        Height = 27
+        Top = 168
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 5
+      end
+      object labelCreationDate: TLabel
+        Left = 8
+        Height = 17
+        Top = 204
+        Width = 92
+        Caption = 'Creation Date'
+        ParentColor = False
+      end
+      object textDocCreationDate: TEdit
+        Left = 184
+        Height = 27
+        Top = 200
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 6
+      end
+      object labelModifyDate: TLabel
+        Left = 8
+        Height = 17
+        Top = 236
+        Width = 83
+        Caption = 'Modify Date'
+        ParentColor = False
+      end
+      object textDocModDate: TEdit
+        Left = 184
+        Height = 27
+        Top = 232
+        Width = 340
+        Anchors = [akTop, akLeft, akRight]
+        TabOrder = 7
+      end
+      object LabelXmpContent: TLabel
+        Left = 8
+        Height = 17
+        Top = 268
+        Width = 98
+        Caption = 'XMP Metadata'
+        ParentColor = False
+      end
+      object TextXMPContent: TMemo
+        Left = 184
+        Height = 124
+        Top = 264
+        Width = 340
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        ScrollBars = ssAutoBoth
+        TabOrder = 8
+        WordWrap = False
       end
     end
   end

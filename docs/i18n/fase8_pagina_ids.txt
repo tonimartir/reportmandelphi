@@ -1,0 +1,15 @@
+1800	XML file	Archivo XML	Arxiu XML	Soubor XML	XML-Datei	Fichier XML	File XML	XML byla	Arquivo XML
+1801	PDF file	Archivo PDF	Arxiu PDF	Soubor PDF	PDF-Datei	Fichier PDF	File PDF	PDF byla	Arquivo PDF
+1802	Image file	Archivo de imagen	Arxiu d'imatge	Soubor obrázku	Bilddatei	Fichier image	File immagine	Paveikslėlio byla	Arquivo de imagem
+1803	Other file	Otro archivo	Altre arxiu	Jiný soubor	Andere Datei	Autre fichier	Altro file	Kita byla	Outro arquivo
+1804	Duplex	Dúplex	Dúplex	Oboustranný tisk	Duplex	Recto verso	Fronte/retro	Dvipusis spausdinimas	Frente e verso
+1805	Separators	Separadores	Separadors	Oddělovače	Trennzeichen	Séparateurs	Separatori	Skyrikliai	Separadores
+1806	Decimal	Decimal	Decimal	Desetinný	Dezimal	Décimal	Decimale	Dešimtainis	Decimal
+1807	Thousand	Miles	Milers	Tisíce	Tausender	Milliers	Migliaia	Tūkstančiai	Milhares
+1808	Location	Ubicación	Ubicació	Umístění	Standort	Emplacement	Posizione	Vieta	Localização
+1809	Printer type	Tipo de impresora	Tipus d'impressora	Typ tiskárny	Druckertyp	Type d'imprimante	Tipo di stampante	Spausdintuvo tipas	Tipo de impressora
+1810	Local	Local	Local	Místní	Lokal	Locale	Locale	Vietinis	Local
+1811	Network	Red	Xarxa	Síťová	Netzwerk	Réseau	Rete	Tinklo	Rede
+1812	Widgetset	Widgetset	Widgetset	Sada widgetů	Widgetset	Widgetset	Widgetset	Valdiklių rinkinys	Widgetset
+1813	Printing	Imprimiendo	Imprimint	Tiskne	Druckt	Impression en cours	In stampa	Spausdinama	Imprimindo
+1814	Stopped	Detenida	Aturada	Zastavena	Angehalten	Arrêtée	Fermata	Sustabdytas	Parada

@@ -122,7 +122,7 @@ implementation
 {$R *.lfm}
 
 uses
-  uregressiontests, uvclparitytests, udataconfigtests;
+  uregressiontests, uvclparitytests, udataconfigtests, upagesetuptests;
 
 type
   TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
@@ -2096,6 +2096,8 @@ begin
      RunVCLParityTests(FindSampleFile('sample4.rep'));
      // Phase 8: data access configuration (udataconfigtests.pas)
      RunDataConfigTests;
+     // Phase 8: page setup, printer configuration and system information
+     RunPageSetupTests;
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');
