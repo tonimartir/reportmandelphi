@@ -203,6 +203,8 @@ Resultados:
   `dbxconnections.ini`). `repmandesigner_lcl` compila.
 - heaptrc: un programa aparte con solo `RunLibraryTests` (esperando a los
   hilos del panel de IA antes de salir) da 0 bloques sin liberar.
+- Zip OPM: `make_opm_package.ps1 -Validate` correcto (los tres paquetes
+  compilan desde el zip con las dos unidades nuevas).
 - WSL (Lazarus 3.0, GTK2): paquetes y `LclDesignerTest --selftest` pasan (las
   pruebas usan `libsqlite3.so.0` si no está `libsqlite3.so`, como
   `rpdatainfo`; la prueba de árbol de 5.5 se sigue omitiendo allí por eso).

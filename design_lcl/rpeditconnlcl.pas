@@ -39,7 +39,6 @@ type
   private
     FConnections: TRpDatabaseInfoList;
     FUpdating: Boolean;
-    FLabelWidth: Integer;
 
     procedure BuildControls;
     procedure UpdateConList;
@@ -322,7 +321,6 @@ begin
     TranslateStr(1117, 'R.search field'), TranslateStr(1118, 'Groups table'),
     TranslateStr(1119, 'ADO Conn.String')]);
   editleft := Max(editleft, Scale96ToScreen(120));
-  FLabelWidth := editleft;
 
   y := Scale96ToScreen(4);
   CheckLoadParams := NewCheck(TranslateStr(145, 'Load params'));
