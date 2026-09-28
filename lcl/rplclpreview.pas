@@ -454,6 +454,11 @@ begin
   end;
   if previewcontrol.metafile.PreviewWindow=spwMaximized then
     dia.WindowState:=wsMaximized;
+  // Never bigger than the screen (the lfm is 774x606 at 96 ppi)
+  if dia.Width>Screen.WorkAreaWidth then
+   dia.Width:=Screen.WorkAreaWidth;
+  if dia.Height>Screen.WorkAreaHeight then
+   dia.Height:=Screen.WorkAreaHeight;
   previewcontrol.OnWorkProgress:=dia.RepProgress;
   Application.OnIdle:=dia.AppIdle;
   dia.ShowModal;

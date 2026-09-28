@@ -1476,8 +1476,9 @@ begin
   // Sizes in pixels of the screen: the LCL does not scale it again
   RpBuiltInScreenPixels(Self);
   Caption := TranslateStr(240, 'Expression build');
-  Width := Scale96ToScreen(1040);
-  Height := Scale96ToScreen(600);
+  // It must fit the screen, as the other windows the user resizes
+  Width := Min(Scale96ToScreen(1040), Screen.WorkAreaWidth - 20);
+  Height := Min(Scale96ToScreen(600), Screen.WorkAreaHeight - 20);
   Constraints.MinWidth := Scale96ToScreen(760);
   Constraints.MinHeight := Scale96ToScreen(460);
   Position := poScreenCenter;

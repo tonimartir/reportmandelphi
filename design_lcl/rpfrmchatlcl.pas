@@ -212,6 +212,7 @@ type
     procedure BClearLogClick(Sender: TObject);
     procedure BClearNetLogClick(Sender: TObject);
     procedure BReportAIClick(Sender: TObject);
+    procedure LogTopResize(Sender: TObject);
     procedure BRefreshSchemasClick(Sender: TObject);
     procedure BSendClick(Sender: TObject);
     procedure MemoPromptChange(Sender: TObject);
@@ -1063,6 +1064,8 @@ begin
   BClearLog.AutoSize := True;
   BReportAI := NewButton(PLogTop, TranslateStr(1533, 'Report content'), BReportAIClick);
   BReportAI.AutoSize := True;
+  // A narrow chat (small screen, splitter) puts them one below the other
+  PLogTop.OnResize := LogTopResize;
 
   TabNetLog := TTabSheet.Create(PControl);
   TabNetLog.PageControl := PControl;
@@ -2244,6 +2247,20 @@ procedure TFRpChatFrame.BClearLogClick(Sender: TObject);
 begin
   if FWebLog <> nil then
     FWebLog.ClearAll;
+end;
+
+// Both buttons of the AI log in a row when they fit; the panel takes the
+// height of the rows
+procedure TFRpChatFrame.LogTopResize(Sender: TObject);
+var
+  LNeeded: Integer;
+begin
+  LNeeded := BClearLog.Width + BReportAI.Width + PLogTop.ChildSizing.HorizontalSpacing +
+    2 * PLogTop.ChildSizing.LeftRightSpacing;
+  if PLogTop.ClientWidth >= LNeeded then
+    PLogTop.ChildSizing.ControlsPerLine := 2
+  else
+    PLogTop.ChildSizing.ControlsPerLine := 1;
 end;
 
 procedure TFRpChatFrame.BClearNetLogClick(Sender: TObject);

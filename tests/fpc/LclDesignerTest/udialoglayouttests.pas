@@ -152,6 +152,14 @@ end;
 // sibling. Only the active page of a page control is laid out; the LCL
 // places the contents of radio groups, lists, grids and combo boxes, and a
 // scroll box scrolls its contents.
+// The name of a control in the messages, its class when it has none
+function ControlName(AControl: TControl): string;
+begin
+  Result := AControl.Name;
+  if Result = '' then
+    Result := '<' + AControl.ClassName + '>';
+end;
+
 procedure CollectLayoutProblems(AParent: TWinControl; const APath: string;
   AIssues: TStrings);
 var
@@ -175,7 +183,7 @@ begin
       Continue;
     if not (AParent is TScrollBox) and ((c.Left < 0) or (c.Top < 0) or
       (c.Left + c.Width > r.Right) or (c.Top + c.Height > r.Bottom)) then
-      AIssues.Add(Format('%s.%s (%d,%d %dx%d) does not fit in %dx%d', [APath, c.Name,
+      AIssues.Add(Format('%s.%s (%d,%d %dx%d) does not fit in %dx%d', [APath, ControlName(c),
         c.Left, c.Top, c.Width, c.Height, r.Right, r.Bottom]));
     for j := i + 1 to AParent.ControlCount - 1 do
     begin
@@ -186,14 +194,14 @@ begin
         IntersectRect(x, c.BoundsRect, d.BoundsRect) and
         (x.Right - x.Left > 2) and (x.Bottom - x.Top > 2) then
         AIssues.Add(Format('%s: %s (%d,%d %dx%d) and %s (%d,%d %dx%d) overlap', [APath,
-          c.Name, c.Left, c.Top, c.Width, c.Height, d.Name, d.Left, d.Top,
+          ControlName(c), c.Left, c.Top, c.Width, c.Height, ControlName(d), d.Left, d.Top,
           d.Width, d.Height]));
     end;
     if (c is TWinControl) and not (c is TCustomRadioGroup) and
       not (c is TCustomCheckGroup) and not (c is TCustomListView) and
       not (c is TCustomTreeView) and not (c is TCustomComboBox) and
       not (c is TCustomMemo) then
-      CollectLayoutProblems(TWinControl(c), APath + '.' + c.Name, AIssues);
+      CollectLayoutProblems(TWinControl(c), APath + '.' + ControlName(c), AIssues);
   end;
 end;
 
