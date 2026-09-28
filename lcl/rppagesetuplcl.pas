@@ -161,6 +161,7 @@ type
     // Copies of the embedded files of the report: the report gets them on OK
     FEmbeddedFiles:TObjectList;
     procedure SaveOptions;
+    procedure LayoutControls;
     procedure SetReport(AReport:TRpBaseReport);
     function GetEmbeddedFile(Index:Integer):TEmbeddedFile;
     function GetEmbeddedFileCount:Integer;
@@ -189,6 +190,9 @@ function ExecutePageSetup(report:TRpBaseReport):boolean;
 function RpMimeTypeFromFileName(const AFileName:string):string;
 
 implementation
+
+uses
+ Math;
 
 {$R *.lfm}
 
@@ -390,6 +394,471 @@ begin
  ListViewEmbedded.Columns[4].Caption:=SRpDescription;
  ListViewEmbedded.Columns[5].Caption:=SRpCreationDateISO;
  ListViewEmbedded.Columns[6].Caption:=SRpModificationDateISO;
+ // After the translations: the widths come from the texts
+ LayoutControls;
+end;
+
+// The positions of the lfm were made for the fonts of other widgetsets: the
+// margins, the custom size and the user defined size did not fit in their
+// groups (worse with GTK2, Qt and the translated texts). The controls are
+// anchored one below the other, so the real heights of this widgetset place
+// them (Qt gives the final ones only after showing the form), the columns
+// come from the widths of the texts and the groups take the height of their
+// content. The form grows when the estimated content of a page needs it.
+procedure TFRpPageSetupVCL.LayoutControls;
+var
+ LBitmap:TBitmap;
+ M,S,G,th:integer;
+ edith,comboh,checkh,buttonh,radioh,rowh:integer;
+ groupw,grouph,checkw,radiow:integer;
+ pw,ph,dw,dh,dp:integer;
+ col1,x,x2,lw,lw2,uw,ew,bw,h,i,w:integer;
+ PRow1,PRow2:TPanel;
+ LLabels:array[0..7] of TLabel;
+ LEdits:array[0..7] of TEdit;
+ LChecks:array[0..4] of TCheckBox;
+
+ function TW(const AText:string):integer;
+ begin
+  Result:=LBitmap.Canvas.TextWidth(AText);
+ end;
+
+ function MaxTW(const ATexts:array of string):integer;
+ var
+  j:integer;
+ begin
+  Result:=0;
+  for j:=0 to High(ATexts) do
+   Result:=Max(Result,TW(ATexts[j]));
+ end;
+
+ // Height and width of a kind of control as the widgetset gives them before
+ // showing the form (Qt gives smaller ones), not less than AMin
+ function Probe(AControl:TWinControl;AMin:integer;out AWidth:integer):integer;
+ var
+  pwidth,pheight:integer;
+ begin
+  try
+   AControl.Visible:=false;
+   AControl.Parent:=Self;
+   AControl.HandleNeeded;
+   pwidth:=0;
+   pheight:=0;
+   AControl.GetPreferredSize(pwidth,pheight,true,false);
+   AWidth:=pwidth;
+   Result:=Max(pheight,AMin);
+  finally
+   AControl.Free;
+  end;
+ end;
+
+ // The controls of a page are placed in its current client area
+ procedure UsePage(APage:TTabSheet);
+ begin
+  pw:=APage.ClientWidth;
+  ph:=APage.ClientHeight;
+ end;
+
+ // The form grows when the content of a page needs more room (dp is what
+ // the bottom panel takes from the pages)
+ procedure Need(AWidth,AHeight:integer);
+ begin
+  dw:=Max(dw,AWidth-pw);
+  dh:=Max(dh,AHeight-(ph-dp));
+ end;
+
+ // Forgets the anchors of the lfm
+ procedure Reset(AControl:TControl);
+ var
+  k:TAnchorKind;
+ begin
+  for k:=Low(TAnchorKind) to High(TAnchorKind) do
+   AControl.AnchorSide[k].Control:=nil;
+  AControl.Anchors:=[akLeft,akTop];
+  AControl.BorderSpacing.Around:=0;
+ end;
+
+ // Left and top: at ALeft of the left side of the parent and below ABelow
+ // (the top of the parent when nil)
+ procedure PlaceAt(AControl:TControl;ALeft:integer;ABelow:TControl;ASpace:integer);
+ begin
+  Reset(AControl);
+  AControl.AnchorParallel(akLeft,ALeft,AControl.Parent);
+  if ABelow=nil then
+   AControl.AnchorParallel(akTop,ASpace,AControl.Parent)
+  else
+   AControl.AnchorToNeighbour(akTop,ASpace,ABelow);
+ end;
+
+ // The right side at ASpace of the right side of the parent
+ procedure ToRight(AControl:TControl;ASpace:integer);
+ begin
+  AControl.AnchorParallel(akRight,ASpace,AControl.Parent);
+ end;
+
+ // A label at ALeft, centered on the height of its editor
+ procedure LabelFor(ALabel:TLabel;ALeft:integer;AEditor:TControl);
+ begin
+  Reset(ALabel);
+  ALabel.AutoSize:=true;
+  ALabel.AnchorParallel(akLeft,ALeft,ALabel.Parent);
+  ALabel.AnchorVerticalCenterTo(AEditor);
+ end;
+
+ // A label (units) after its editor
+ procedure UnitsFor(ALabel:TLabel;AEditor:TControl);
+ begin
+  Reset(ALabel);
+  ALabel.AutoSize:=true;
+  ALabel.AnchorToNeighbour(akLeft,Scale96ToScreen(4),AEditor);
+  ALabel.AnchorVerticalCenterTo(AEditor);
+ end;
+
+ // A group that takes the height of its content (the width comes from its
+ // anchors)
+ procedure AutoHeight(AGroup:TWinControl);
+ begin
+  AGroup.ChildSizing.TopBottomSpacing:=S;
+  AGroup.AutoSize:=true;
+ end;
+
+ function ButtonWidth(const ACaptions:array of string;AMin:integer):integer;
+ begin
+  Result:=Max(Scale96ToScreen(AMin),MaxTW(ACaptions)+Scale96ToScreen(24));
+ end;
+
+ function NewRow(ABelow:TControl;const AName:string):TPanel;
+ begin
+  Result:=TPanel.Create(Self);
+  Result.Name:=AName;
+  Result.BevelOuter:=bvNone;
+  Result.Caption:='';
+  Result.Parent:=TabPage;
+  PlaceAt(Result,M,ABelow,M);
+  ToRight(Result,M);
+  Result.AutoSize:=true;
+ end;
+
+ // A group or radio group in a row, as high as the row
+ procedure InRow(AControl:TWinControl;ARow:TPanel;ALeft:TControl;AWidth:integer);
+ begin
+  AControl.Parent:=ARow;
+  Reset(AControl);
+  if ALeft=nil then
+   AControl.AnchorParallel(akLeft,0,ARow)
+  else
+   AControl.AnchorToNeighbour(akLeft,S,ALeft);
+  AControl.AnchorParallel(akTop,0,ARow);
+  AControl.AnchorParallel(akBottom,0,ARow);
+  if AWidth>0 then
+   AControl.Width:=AWidth
+  else
+   ToRight(AControl,0);
+ end;
+
+begin
+ M:=Scale96ToScreen(8);
+ S:=Scale96ToScreen(6);
+ G:=Scale96ToScreen(8);
+ HandleNeeded;
+ LBitmap:=TBitmap.Create;
+ try
+  LBitmap.Canvas.Font:=Font;
+  th:=LBitmap.Canvas.TextHeight('Xj');
+  // Heights to estimate the size of the form: the anchors use the real ones
+  edith:=Probe(TEdit.Create(nil),th+Scale96ToScreen(10),w);
+  comboh:=Probe(TComboBox.Create(nil),th+Scale96ToScreen(10),w);
+  checkh:=Probe(TCheckBox.Create(nil),th+Scale96ToScreen(6),checkw);
+  // Width of the box and its space
+  checkw:=Max(Scale96ToScreen(20),checkw);
+  buttonh:=Probe(TButton.Create(nil),Max(Scale96ToScreen(25),th+Scale96ToScreen(12)),w);
+  radioh:=Probe(TRadioButton.Create(nil),checkh,radiow);
+  radiow:=Max(Scale96ToScreen(20),radiow);
+  with TGroupBox.Create(nil) do
+  begin
+   try
+    Visible:=false;
+    Parent:=Self;
+    Caption:='X';
+    SetBounds(0,0,Scale96ToScreen(200),Scale96ToScreen(100));
+    HandleNeeded;
+    groupw:=Width-ClientWidth;
+    grouph:=Height-ClientHeight;
+   finally
+    Free;
+   end;
+  end;
+  groupw:=Max(Scale96ToScreen(4),Min(groupw,Scale96ToScreen(40)));
+  grouph:=Max(th+Scale96ToScreen(10),Min(grouph,Scale96ToScreen(60)));
+  rowh:=Max(edith,comboh);
+  dw:=0;
+  dh:=0;
+
+  // OK and Cancel
+  bw:=ButtonWidth([BOK.Caption,BCancel.Caption],101);
+  dp:=buttonh+2*M-Panel1.Height;
+  Panel1.Height:=buttonh+2*M;
+  PlaceAt(BOK,M,nil,M);
+  BOK.SetBounds(BOK.Left,BOK.Top,bw,buttonh);
+  PlaceAt(BCancel,M+bw+S,nil,M);
+  BCancel.SetBounds(BCancel.Left,BCancel.Top,bw,buttonh);
+
+  // Page setup. Rows: page size (with the custom size or the user defined
+  // one), orientation, margins, lines per inch and background color
+  UsePage(TabPage);
+  col1:=Max(Scale96ToScreen(177),
+   MaxTW([RPageSize.Items[0],RPageSize.Items[1],RPageSize.Items[2],
+    RPageOrientation.Items[0],RPageOrientation.Items[1]])+radiow+
+   Scale96ToScreen(16)+groupw);
+  col1:=Max(col1,MaxTW([RPageSize.Caption,RPageOrientation.Caption])+
+   Scale96ToScreen(20)+groupw);
+  PRow1:=NewRow(nil,'PSizeRow');
+  // As high as the user defined size (estimated) from the start: the rows
+  // below do not move when it is shown
+  h:=Max(grouph+3*(radioh+Scale96ToScreen(4))+Scale96ToScreen(6),
+   grouph+S+3*edith+2*S+S);
+  PRow1.Constraints.MinHeight:=h;
+  InRow(RPageSize,PRow1,nil,col1);
+  InRow(GUserDefined,PRow1,RPageSize,0);
+  InRow(GPageSize,PRow1,RPageSize,0);
+  // User defined size: width, height and form name
+  lw:=MaxTW([LWidth.Caption,LHeight.Caption,LForceFormName.Caption])+G;
+  uw:=TW(LMetrics7.Caption);
+  PlaceAt(EPageWidth,M+lw,nil,0);
+  EPageWidth.AnchorToNeighbour(akRight,Scale96ToScreen(4),LMetrics7);
+  Reset(LMetrics7);
+  LMetrics7.AutoSize:=true;
+  LMetrics7.AnchorParallel(akRight,M,GUserDefined);
+  LMetrics7.AnchorVerticalCenterTo(EPageWidth);
+  LMetrics7.Anchors:=[akTop,akRight];
+  LabelFor(LWidth,M,EPageWidth);
+  PlaceAt(EPageheight,M+lw,EPageWidth,S);
+  EPageheight.AnchorToNeighbour(akRight,Scale96ToScreen(4),LMetrics8);
+  Reset(LMetrics8);
+  LMetrics8.AutoSize:=true;
+  LMetrics8.AnchorParallel(akRight,M,GUserDefined);
+  LMetrics8.AnchorVerticalCenterTo(EPageheight);
+  LMetrics8.Anchors:=[akTop,akRight];
+  LabelFor(LHeight,M,EPageheight);
+  PlaceAt(EForceFormName,M+lw,EPageheight,S);
+  EForceFormName.AnchorParallel(akRight,0,EPageheight);
+  LabelFor(LForceFormName,M,EForceFormName);
+  AutoHeight(GUserDefined);
+  // The editors keep at least 80 pixels
+  Need(M+col1+S+groupw+M+lw+Scale96ToScreen(80)+Scale96ToScreen(4)+uw+M+M,0);
+  PlaceAt(ComboPageSize,M,nil,0);
+  ToRight(ComboPageSize,M);
+  AutoHeight(GPageSize);
+  // Orientation
+  PRow2:=NewRow(PRow1,'POrientationRow');
+  PRow2.BorderSpacing.Top:=S;
+  InRow(RPageOrientation,PRow2,nil,col1);
+  InRow(RCustomOrientation,PRow2,RPageOrientation,0);
+  // Margins, in two columns
+  GPageMargins.Parent:=TabPage;
+  PlaceAt(GPageMargins,M,PRow2,S);
+  ToRight(GPageMargins,M);
+  lw:=MaxTW([LLeft.Caption,LTop.Caption])+G;
+  lw2:=MaxTW([LRight.Caption,LBottom.Caption])+G;
+  uw:=TW(LMetrics3.Caption);
+  ew:=Scale96ToScreen(90);
+  x2:=M+lw+ew+Scale96ToScreen(4)+uw+3*G;
+  PlaceAt(ELeftMargin,M+lw,nil,0);
+  ELeftMargin.Width:=ew;
+  LabelFor(LLeft,M,ELeftMargin);
+  UnitsFor(LMetrics3,ELeftMargin);
+  PlaceAt(ERightMargin,x2+lw2,nil,0);
+  ERightMargin.Width:=ew;
+  LabelFor(LRight,x2,ERightMargin);
+  UnitsFor(LMetrics5,ERightMargin);
+  PlaceAt(ETopMargin,M+lw,ELeftMargin,S);
+  ETopMargin.Width:=ew;
+  LabelFor(LTop,M,ETopMargin);
+  UnitsFor(LMetrics4,ETopMargin);
+  PlaceAt(EBottomMargin,x2+lw2,ELeftMargin,S);
+  EBottomMargin.Width:=ew;
+  LabelFor(LBottom,x2,EBottomMargin);
+  UnitsFor(LMetrics6,EBottomMargin);
+  AutoHeight(GPageMargins);
+  Need(M+groupw+x2+lw2+ew+Scale96ToScreen(4)+uw+M+M,0);
+  // Lines per inch
+  lw:=TW(LLinesperInch.Caption)+G;
+  PlaceAt(ELinesPerInch,M+lw,GPageMargins,S);
+  ELinesPerInch.Width:=ew;
+  LabelFor(LLinesperInch,M,ELinesPerInch);
+  // Background color
+  bw:=ButtonWidth([BBackground.Caption],149);
+  PlaceAt(BBackground,M,ELinesPerInch,S);
+  BBackground.SetBounds(BBackground.Left,BBackground.Top,bw,buttonh);
+  Reset(SColor);
+  SColor.AnchorToNeighbour(akLeft,S,BBackground);
+  SColor.AnchorParallel(akTop,0,BBackground);
+  SColor.SetBounds(SColor.Left,SColor.Top,buttonh,buttonh);
+  PRow1.TabOrder:=0;
+  PRow2.TabOrder:=1;
+  GPageMargins.TabOrder:=2;
+  ELinesPerInch.TabOrder:=3;
+  BBackground.TabOrder:=4;
+  Need(0,M+h+S+(grouph+2*(radioh+Scale96ToScreen(4))+Scale96ToScreen(6))+
+   S+(grouph+S+2*edith+S+S)+S+edith+S+buttonh+M);
+
+  // Print setup: a label and its combo boxes in each row
+  UsePage(TabPrint);
+  lw:=MaxTW([LPrinterFonts.Caption,LRLang.Caption,LPreview.Caption,
+   LSelectPrinter.Caption,LPaperSource.Caption,LDuplex.Caption])+G;
+  x:=M+lw;
+  w:=Max(Scale96ToScreen(118),MaxTW([ComboPreview.Items[0],
+   ComboPreview.Items[1]])+Scale96ToScreen(40));
+  Need(x+w+S+Scale96ToScreen(120)+M,0);
+  PlaceAt(ComboPrinterFonts,x,nil,M);
+  ToRight(ComboPrinterFonts,M);
+  LabelFor(LPrinterFonts,M,ComboPrinterFonts);
+  PlaceAt(ComboLanguage,x,ComboPrinterFonts,S);
+  ToRight(ComboLanguage,M);
+  LabelFor(LRLang,M,ComboLanguage);
+  PlaceAt(ComboPreview,x,ComboLanguage,S);
+  ComboPreview.Width:=w;
+  LabelFor(LPreview,M,ComboPreview);
+  Reset(ComboStyle);
+  ComboStyle.AnchorToNeighbour(akLeft,S,ComboPreview);
+  ComboStyle.AnchorParallel(akTop,0,ComboPreview);
+  ToRight(ComboStyle,M);
+  PlaceAt(ComboSelPrinter,x,ComboPreview,S);
+  ToRight(ComboSelPrinter,M);
+  LabelFor(LSelectPrinter,M,ComboSelPrinter);
+  // Paper source: its number and its name
+  Reset(EPaperSource);
+  EPaperSource.AnchorParallel(akLeft,x,TabPrint);
+  EPaperSource.Width:=Scale96ToScreen(45);
+  Reset(ComboPaperSource);
+  ComboPaperSource.AnchorToNeighbour(akLeft,S,EPaperSource);
+  ComboPaperSource.AnchorToNeighbour(akTop,S,ComboSelPrinter);
+  ToRight(ComboPaperSource,M);
+  EPaperSource.AnchorVerticalCenterTo(ComboPaperSource);
+  LabelFor(LPaperSource,M,ComboPaperSource);
+  PlaceAt(ComboDuplex,x,ComboPaperSource,S);
+  ToRight(ComboDuplex,M);
+  LabelFor(LDuplex,M,ComboDuplex);
+  bw:=ButtonWidth([BConfigure.Caption],213);
+  PlaceAt(BConfigure,M,ComboDuplex,S);
+  BConfigure.SetBounds(BConfigure.Left,BConfigure.Top,bw,buttonh);
+  // Copies and options: two columns
+  LChecks[0]:=CheckCollate;
+  LChecks[1]:=CheckTwoPass;
+  LChecks[2]:=CheckPrintOnlyIfData;
+  LChecks[3]:=CheckDrawerBefore;
+  LChecks[4]:=CheckDrawerAfter;
+  lw:=TW(LCopies.Caption)+G;
+  w:=Max(bw,lw+Scale96ToScreen(69));
+  for i:=0 to High(LChecks) do
+   w:=Max(w,TW(LChecks[i].Caption)+checkw+Scale96ToScreen(8));
+  x2:=M+w+Scale96ToScreen(16);
+  Need(x2+MaxTW([CheckDefaultCopies.Caption,CheckPreviewAbout.Caption,
+   CheckMargins.Caption])+checkw+Scale96ToScreen(8)+M,0);
+  PlaceAt(ECopies,M+lw,BConfigure,S);
+  ECopies.Width:=Scale96ToScreen(69);
+  LabelFor(LCopies,M,ECopies);
+  for i:=0 to High(LChecks) do
+  begin
+   if i=0 then
+    PlaceAt(LChecks[i],M,ECopies,S)
+   else
+    PlaceAt(LChecks[i],M,LChecks[i-1],Scale96ToScreen(2));
+   LChecks[i].AutoSize:=true;
+  end;
+  Reset(CheckDefaultCopies);
+  CheckDefaultCopies.AutoSize:=true;
+  CheckDefaultCopies.AnchorParallel(akLeft,x2,TabPrint);
+  CheckDefaultCopies.AnchorVerticalCenterTo(ECopies);
+  Reset(CheckPreviewAbout);
+  CheckPreviewAbout.AutoSize:=true;
+  CheckPreviewAbout.AnchorParallel(akLeft,x2,TabPrint);
+  CheckPreviewAbout.AnchorParallel(akTop,0,CheckCollate);
+  Reset(CheckMargins);
+  CheckMargins.AutoSize:=true;
+  CheckMargins.AnchorParallel(akLeft,x2,TabPrint);
+  CheckMargins.AnchorParallel(akTop,0,CheckTwoPass);
+  Need(0,M+6*(rowh+S)+buttonh+S+edith+S+5*(checkh+Scale96ToScreen(2))+M);
+
+  // Options: save format, PDF options and embedded files
+  UsePage(TabOptions);
+  lw:=TW(LPreferedFormat.Caption)+G;
+  PlaceAt(ComboFormat,M+lw,nil,M);
+  ToRight(ComboFormat,M);
+  LabelFor(LPreferedFormat,M,ComboFormat);
+  PlaceAt(GPDF,M,ComboFormat,S);
+  ToRight(GPDF,M);
+  lw:=MaxTW([LabelPDFConformance.Caption,LabelCompressed.Caption])+G;
+  PlaceAt(ComboBoxPDFConformance,M+lw,nil,0);
+  ComboBoxPDFConformance.Width:=Scale96ToScreen(200);
+  LabelFor(LabelPDFConformance,M,ComboBoxPDFConformance);
+  PlaceAt(CheckBoxPDFCompressed,M+lw,ComboBoxPDFConformance,S);
+  CheckBoxPDFCompressed.AutoSize:=true;
+  LabelFor(LabelCompressed,M,CheckBoxPDFCompressed);
+  AutoHeight(GPDF);
+  // The list of files fills the rest of the page
+  PlaceAt(GEmbedded,M,GPDF,S);
+  ToRight(GEmbedded,M);
+  GEmbedded.AnchorParallel(akBottom,M,TabOptions);
+  bw:=ButtonWidth([BNewFile.Caption,BDeleteFile.Caption,BModifyFile.Caption],104);
+  PEmbeddedButtons.Height:=buttonh+2*Scale96ToScreen(4);
+  PlaceAt(BNewFile,Scale96ToScreen(4),nil,Scale96ToScreen(4));
+  BNewFile.SetBounds(BNewFile.Left,BNewFile.Top,bw,buttonh);
+  PlaceAt(BDeleteFile,Scale96ToScreen(4)+bw+S,nil,Scale96ToScreen(4));
+  BDeleteFile.SetBounds(BDeleteFile.Left,BDeleteFile.Top,bw,buttonh);
+  PlaceAt(BModifyFile,Scale96ToScreen(4)+2*(bw+S),nil,Scale96ToScreen(4));
+  BModifyFile.SetBounds(BModifyFile.Left,BModifyFile.Top,bw,buttonh);
+  Need(M+groupw+Scale96ToScreen(4)+3*(bw+S)+M,
+   M+comboh+S+(grouph+S+comboh+S+checkh+S)+S+grouph+PEmbeddedButtons.Height+
+   Scale96ToScreen(100)+M);
+
+  // Metadata: a label and its text in each row, the XMP content fills the
+  // rest of the page
+  UsePage(TabMetadata);
+  LLabels[0]:=LabelDocAuthor;
+  LLabels[1]:=labelDocTitle;
+  LLabels[2]:=labeldocSubject;
+  LLabels[3]:=LabelDocKeywords;
+  LLabels[4]:=labelDocCreator;
+  LLabels[5]:=LabelDocProducer;
+  LLabels[6]:=labelCreationDate;
+  LLabels[7]:=labelModifyDate;
+  LEdits[0]:=textDocAuthor;
+  LEdits[1]:=textDocTitle;
+  LEdits[2]:=textDocSubject;
+  LEdits[3]:=textDocKeywords;
+  LEdits[4]:=textDocCreator;
+  LEdits[5]:=textDocProducer;
+  LEdits[6]:=textDocCreationDate;
+  LEdits[7]:=textDocModDate;
+  lw:=TW(LabelXmpContent.Caption);
+  for i:=0 to High(LLabels) do
+   lw:=Max(lw,TW(LLabels[i].Caption));
+  Inc(lw,G);
+  for i:=0 to High(LEdits) do
+  begin
+   if i=0 then
+    PlaceAt(LEdits[i],M+lw,nil,M)
+   else
+    PlaceAt(LEdits[i],M+lw,LEdits[i-1],S);
+   ToRight(LEdits[i],M);
+   LabelFor(LLabels[i],M,LEdits[i]);
+  end;
+  PlaceAt(TextXMPContent,M+lw,textDocModDate,S);
+  ToRight(TextXMPContent,M);
+  TextXMPContent.AnchorParallel(akBottom,M,TabMetadata);
+  Reset(LabelXmpContent);
+  LabelXmpContent.AnchorParallel(akLeft,M,TabMetadata);
+  LabelXmpContent.AnchorParallel(akTop,Scale96ToScreen(4),TextXMPContent);
+  Need(0,M+8*(edith+S)+Scale96ToScreen(100)+M);
+ finally
+  LBitmap.Free;
+ end;
+ // Never smaller than the lfm: the lists and texts keep their room
+ if dw>0 then
+  ClientWidth:=ClientWidth+dw;
+ if dh>0 then
+  ClientHeight:=ClientHeight+dh;
 end;
 
 procedure TFRpPageSetupVCL.FormDestroy(Sender: TObject);

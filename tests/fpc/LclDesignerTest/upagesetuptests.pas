@@ -19,7 +19,7 @@ procedure RunPageSetupTests;
 implementation
 
 uses
-  Classes, SysUtils, Variants, Forms, Printers,
+  Classes, SysUtils, Types, Variants, Forms, Printers, Controls, ExtCtrls, ComCtrls,
   rptypes, rpmunits, rpreport, rpbasereport,
   rpmdundocuelcl, rpmdfmainlcl,
   rppagesetuplcl, rpmdfembeddedfilelcl, rpmdprintconfiglcl, rpmdsysinfolcl,
@@ -79,6 +79,7 @@ type
     procedure TestUndoValue;
     procedure TestEmbeddedFileDialog;
     procedure TestPageSetupDialog;
+    procedure TestPageSetupLayout;
     procedure TestPageSetupInDesigner;
     procedure DesignerPageSetupSteps;
     procedure TestPrinterConfig;
@@ -661,6 +662,109 @@ begin
   LogMsg('Page setup dialog verified');
 end;
 
+{ Layout of the page setup: the positions of the lfm did not fit GTK2, Qt nor
+  the translated texts (the margins and the user defined size were cut) }
+
+procedure Pump;
+var
+  i: Integer;
+begin
+  for i := 1 to 10 do
+  begin
+    Application.ProcessMessages;
+    Sleep(10);
+  end;
+end;
+
+// No visible control is cut by the client area of its parent nor covers a
+// sibling. Only the active page of a page control is laid out; the LCL
+// places the buttons of a radio group.
+procedure CheckLayout(AParent: TWinControl; const APath: string);
+var
+  i, j: Integer;
+  c, d: TControl;
+  r, x: TRect;
+begin
+  if AParent is TPageControl then
+  begin
+    if Assigned(TPageControl(AParent).ActivePage) then
+      CheckLayout(TPageControl(AParent).ActivePage,
+        APath + '.' + TPageControl(AParent).ActivePage.Name);
+    Exit;
+  end;
+  r := AParent.ClientRect;
+  x := Rect(0, 0, 0, 0);
+  for i := 0 to AParent.ControlCount - 1 do
+  begin
+    c := AParent.Controls[i];
+    if not c.Visible then
+      Continue;
+    Check((c.Left >= 0) and (c.Top >= 0) and (c.Left + c.Width <= r.Right) and
+      (c.Top + c.Height <= r.Bottom),
+      Format('%s.%s (%d,%d %dx%d) does not fit in %dx%d', [APath, c.Name, c.Left,
+        c.Top, c.Width, c.Height, r.Right, r.Bottom]));
+    for j := i + 1 to AParent.ControlCount - 1 do
+    begin
+      d := AParent.Controls[j];
+      Check(not d.Visible or not IntersectRect(x, c.BoundsRect, d.BoundsRect),
+        Format('%s: %s (%d,%d %dx%d) and %s (%d,%d %dx%d) overlap', [APath,
+          c.Name, c.Left, c.Top, c.Width, c.Height, d.Name, d.Left, d.Top,
+          d.Width, d.Height]));
+    end;
+    if (c is TWinControl) and not (c is TCustomRadioGroup) then
+      CheckLayout(TWinControl(c), APath + '.' + c.Name);
+  end;
+end;
+
+procedure TPageSetupTests.TestPageSetupLayout;
+var
+  rep: TRpReport;
+  dia: TFRpPageSetupVCL;
+  margintop: Integer;
+
+  procedure CheckPage(APage: TTabSheet; const AState: string);
+  begin
+    dia.PControl.ActivePage := APage;
+    Pump;
+    CheckLayout(dia, 'Page setup (' + AState + ')');
+  end;
+
+begin
+  LogMsg('Phase 8: page setup layout (no control cut or covered)');
+  rep := NewTestReport;
+  try
+    dia := TFRpPageSetupVCL.Create(nil);
+    try
+      dia.Report := rep;
+      dia.Show;
+      CheckFitsSmallScreen(dia);
+      CheckPage(dia.TabPage, 'default size');
+      margintop := dia.GPageMargins.Top;
+      dia.RPageSize.ItemIndex := 1;
+      dia.RPageSizeClick(dia.RPageSize);
+      dia.RPageOrientation.ItemIndex := 1;
+      dia.RPageOrientationClick(dia.RPageOrientation);
+      CheckPage(dia.TabPage, 'custom size and orientation');
+      dia.RPageSize.ItemIndex := 2;
+      dia.RPageSizeClick(dia.RPageSize);
+      CheckPage(dia.TabPage, 'user defined size');
+      LogMsg(Format('Page setup: %dx%d, margins at %d (%d with the user defined size)',
+        [dia.Width, dia.Height, margintop, dia.GPageMargins.Top]));
+      CheckInt(margintop, dia.GPageMargins.Top, 'the margins do not move with the page size');
+      CheckPage(dia.TabPrint, 'print setup');
+      CheckPage(dia.TabOptions, 'options');
+      CheckPage(dia.TabMetadata, 'metadata');
+      dia.BCancelClick(dia.BCancel);
+      Check(not dia.Accepted, 'layout test: cancelled');
+    finally
+      dia.Free;
+    end;
+  finally
+    rep.Free;
+  end;
+  LogMsg('Page setup layout verified');
+end;
+
 { Page setup in the designer: modal dialog, undo, redo, save and load }
 
 procedure TPageSetupTests.TestPageSetupInDesigner;
@@ -964,6 +1068,7 @@ begin
   TestUndoValue;
   TestEmbeddedFileDialog;
   TestPageSetupDialog;
+  TestPageSetupLayout;
   TestPageSetupInDesigner;
   TestPrinterConfig;
   TestSysInfo;
