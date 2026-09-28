@@ -174,6 +174,7 @@ type
     procedure UpdateEmbeddedList;
   public
     { Public declarations }
+    destructor Destroy;override;
   end;
 
 
@@ -184,6 +185,45 @@ implementation
 uses rpmdundocue, System.UITypes;
 
 {$R *.dfm}
+
+// The files of the dialog are the ones of the report (the page setup
+// replaces them always)
+function SameEmbeddedFiles(const AReportFiles:array of TEmbeddedFile;
+ AFiles:TList<TEmbeddedFile>):boolean;
+var
+ i:integer;
+ a,b:TEmbeddedFile;
+begin
+ Result:=Length(AReportFiles)=AFiles.Count;
+ i:=0;
+ while Result and (i<AFiles.Count) do
+ begin
+  a:=AReportFiles[i];
+  b:=AFiles[i];
+  Result:=(a.FileName=b.FileName) and (a.MimeType=b.MimeType) and
+   (a.Description=b.Description) and (a.AFRelationShip=b.AFRelationShip) and
+   (a.CreationDate=b.CreationDate) and (a.ModificationDate=b.ModificationDate) and
+   (Assigned(a.Stream)=Assigned(b.Stream));
+  if Result and Assigned(a.Stream) then
+   Result:=(a.Stream.Size=b.Stream.Size) and
+    CompareMem(a.Stream.Memory,b.Stream.Memory,a.Stream.Size);
+  inc(i);
+ end;
+end;
+
+destructor TFRpPageSetupVCL.Destroy;
+var
+ i:integer;
+begin
+ // The copies of the files not moved to the report (Cancel) were leaked
+ if Assigned(EmbeddedFiles) then
+ begin
+  for i:=0 to EmbeddedFiles.Count-1 do
+   EmbeddedFiles[i].Free;
+  EmbeddedFiles.Free;
+ end;
+ inherited Destroy;
+end;
 
 function ExecutePageSetup(report:TRpBaseReport):boolean;
 var
@@ -387,7 +427,9 @@ var
 begin
  if Assigned(report.UndoCue) then
  begin
-  snapLinesPerInch:=report.GetItemProperty('linesPerInch');
+  // LinesPerInch, not the linesPerInch alias (0 for 600, 1 for anything
+  // else): 7 to 9 lines per inch was not recorded
+  snapLinesPerInch:=report.GetItemProperty('LinesPerInch');
   snapCopies:=report.GetItemProperty('copies');
   snapCollateCopies:=report.GetItemProperty('collateCopies');
   snapTwoPass:=report.GetItemProperty('twoPass');
@@ -503,6 +545,10 @@ begin
  report.DocModificationDate:=textDocModDate.Text;
  report.DocKeywords:=textDocKeywords.Text;
  report.DocXMPContent:=TextXMPContent.Text;
+ // The embedded files have no undo operation: a change of only them was
+ // lost on close without asking
+ if not SameEmbeddedFiles(report.EmbeddedFiles,EmbeddedFiles) then
+  report.Modified:=True;
  for i:=0 to Length(report.EmbeddedFiles)-1 do
  begin
   report.EmbeddedFiles[i].Free;
@@ -524,8 +570,8 @@ begin
   op.componentName:='REPORT';
   op.componentClass:='TRPREPORT';
   op.parentName:='';
-  if snapLinesPerInch<>report.GetItemProperty('linesPerInch') then
-   op.AddProperty('linesPerInch', ptInteger, snapLinesPerInch, report.GetItemProperty('linesPerInch'));
+  if snapLinesPerInch<>report.GetItemProperty('LinesPerInch') then
+   op.AddProperty('LinesPerInch', ptInteger, snapLinesPerInch, report.GetItemProperty('LinesPerInch'));
   if snapCopies<>report.GetItemProperty('copies') then
    op.AddProperty('copies', ptInteger, snapCopies, report.GetItemProperty('copies'));
   if snapCollateCopies<>report.GetItemProperty('collateCopies') then
@@ -776,6 +822,7 @@ procedure TFRpPageSetupVCL.AFileDeleteExecute(Sender: TObject);
 begin
  if ListViewEmbedded.ItemIndex<0 then
   exit;
+ EmbeddedFiles[ListViewEmbedded.ItemIndex].Free;
  EmbeddedFiles.Delete(ListViewEmbedded.ItemIndex);
  UpdateEmbeddedList;
 end;

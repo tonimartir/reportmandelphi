@@ -130,6 +130,7 @@ type
    property IdenChart:TVariableGrap read FIdenChart;
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');override;
    constructor Create(AOwner:TComponent);override;
+   destructor Destroy;override;
    property ChangeSerieExpression:widestring read FChangeSerieExpression write
     FChangeSerieExpression;
    property ClearExpression:widestring read FClearExpression write
@@ -208,6 +209,14 @@ procedure TRpChart.Loaded;
 begin
  inherited Loaded;
  FIdenChart.DefaultChartType:=FChartType;
+end;
+
+destructor TRpChart.Destroy;
+begin
+ // The series were never freed (every chart leaked them)
+ FSeries.Free;
+ FSeries:=nil;
+ inherited Destroy;
 end;
 
 constructor TRpChart.Create(AOwner:TComponent);

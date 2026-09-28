@@ -311,16 +311,17 @@ begin
                 pforminfo:=AllocMem(needed);
                 if Not GetForm(fprinterhandle,Pchar(LFormName.Caption),1,pforminfo,needed,needed) then
                  RaiseLastOSError;
-                Pagesize.x:=pforminfo.Size.cy div 100;
-                Pagesize.y:=pforminfo.Size.cx div 100;
+                // Width x height, as the page size above (cx is the width)
+                Pagesize.x:=pforminfo.Size.cx div 100;
+                Pagesize.y:=pforminfo.Size.cy div 100;
                end;
               end;
              end;
             end
             else
             begin
-             Pagesize.x:=pforminfo.Size.cy div 100;
-             PageSize.y:=pforminfo.Size.cx div 100;
+             Pagesize.x:=pforminfo.Size.cx div 100;
+             PageSize.y:=pforminfo.Size.cy div 100;
             end;
            finally
             freemem(pforminfo);
