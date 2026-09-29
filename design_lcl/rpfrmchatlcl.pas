@@ -1578,7 +1578,7 @@ begin
         LApiKey := '';
       TRpAuthManager.Instance.Log('ApplyLoadedSchemas: DisplayName=' + LDisplayName +
         ' RawValue=' + LValue + ' ParsedHubDatabaseId=' + IntToStr(LHubDatabaseId) +
-        ' ParsedHubSchemaId=' + IntToStr(LHubSchemaId) + ' ApiKey=' + LApiKey);
+        ' ParsedHubSchemaId=' + IntToStr(LHubSchemaId) + ' ApiKey=' + RpMaskSecret(LApiKey));
       ComboSchema.Items.AddObject(LDisplayName,
         TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LApiKey));
     end;
@@ -1595,7 +1595,7 @@ begin
     end;
     TRpAuthManager.Instance.Log('ApplyLoadedSchemas: FinalItemIndex=' +
       IntToStr(ComboSchema.ItemIndex) + ' FinalHubDatabaseId=' + IntToStr(GetHubDatabaseId) +
-      ' FinalHubSchemaId=' + IntToStr(GetHubSchemaId) + ' FinalApiKey=' + GetSchemaApiKey);
+      ' FinalHubSchemaId=' + IntToStr(GetHubSchemaId) + ' FinalApiKey=' + RpMaskSecret(GetSchemaApiKey));
     UpdateButtons;
   end;
 end;
@@ -1616,7 +1616,7 @@ begin
       FSchemaApiKey := LItem.ApiKey;
       TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=' +
         IntToStr(ComboSchema.ItemIndex) + ' HubDatabaseId=' + IntToStr(FHubDatabaseId) +
-        ' HubSchemaId=' + IntToStr(FHubSchemaId) + ' ApiKey=' + FSchemaApiKey);
+        ' HubSchemaId=' + IntToStr(FHubSchemaId) + ' ApiKey=' + RpMaskSecret(FSchemaApiKey));
     end;
   end
   else

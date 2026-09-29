@@ -14,8 +14,8 @@ procedure RunHubTests;
 implementation
 
 uses
-  SysUtils, Classes, DB, DateUtils, fphttpserver, httpdefs, ssockets, rpjsonfpc, rphttpclientfpc,
-  rpnetencodingfpc, rptypes, rpparams, rpdatainfo, rpdatahttp, rpauthmanager,
+  SysUtils, Classes, DB, DateUtils, IniFiles, fphttpserver, httpdefs, ssockets, rpjsonfpc, rphttpclientfpc,
+  rpnetencodingfpc, rptypes, rpparams, rpdatainfo, rpdatahttp, rpauthmanager, rpmdconsts,
   rpreportdesignercontracts, rpaireportcontracts, utestutil, ufakeserver, ujsoncases;
 
 const
@@ -640,6 +640,145 @@ begin
   LItem.SQL := 'SELECT * FROM CLIENTS WHERE ID>=@MINID';
 end;
 
+// The design assistant of the Hub adds its Agent connections to the report by
+// name only: without an entry in the connections file they had no Hub
+// database and the data did not open ("500" on the Hub). The designer writes
+// them with the Hub database and API key of the design context.
+procedure AgentConnectionsTest;
+var
+  LDatabases: TRpDatabaseInfoList;
+  LDesigned, LPartial, LConfigured, LNoKey: TRpDatabaseInfoItem;
+  LParams: TRpParamList;
+  LIni: TMemIniFile;
+  LMessage: string;
+  LBody: TJSONObject;
+
+  function AddAgentDatabase(const AAlias: string): TRpDatabaseInfoItem;
+  begin
+    Result := LDatabases.Add(AAlias);
+    Result.Driver := rpdbHttp;
+    Result.LoadParams := True;
+    Result.UpdateConAdmin;
+    Result.ConAdmin.DBXDriversOverride := GDriversFile;
+    Result.ConAdmin.DBXConnectionsOverride := GConnectionsFile;
+    Result.ConAdmin.LoadConfig;
+  end;
+
+begin
+  Section('Agent connections added by the design assistant (RpEnsureAgentConnections)');
+  // A connection of the file without Hub database, with its own API key
+  LIni := TMemIniFile.Create(GConnectionsFile);
+  try
+    LIni.WriteString('PARTIAL', 'DriverName', 'Reportman AI Agent');
+    LIni.WriteString('PARTIAL', 'ApiKey', 'own-key');
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
+  LDatabases := TRpDatabaseInfoList.Create(nil);
+  LParams := TRpParamList.Create(nil);
+  try
+    LDesigned := AddAgentDatabase('AIDESIGNED');
+    LPartial := AddAgentDatabase('PARTIAL');
+    LConfigured := AddAgentDatabase('HUBTEST');
+    // Missing in the connections file: no Hub database. The Hub answered with
+    // an internal error; now a clear error, without calling it
+    GHub.ClearLog;
+    LMessage := '';
+    try
+      LDesigned.Connect(LParams);
+    except
+      on E: ERpAgentConnectionError do
+        LMessage := E.Message + '|' + E.ConnectionName;
+    end;
+    CheckEquals(Format(SRpAgentNotConfigured, ['AIDESIGNED']) + '|AIDESIGNED', LMessage,
+      'a connection missing in the connections file: clear error');
+    CheckEquals('', GHub.RequestLog, 'the Hub is not called');
+    CheckEquals(0, RpEnsureAgentConnections(LDatabases, 0, 'design-key'),
+      'no Hub database in the design context: nothing written');
+    CheckEquals(2, RpEnsureAgentConnections(LDatabases, 77, 'design-key'),
+      'the missing connection and the one without Hub database written');
+    LIni := TMemIniFile.Create(GConnectionsFile);
+    try
+      CheckEquals('Reportman AI Agent', LIni.ReadString('AIDESIGNED', 'DriverName', ''),
+        'written with the Agent driver');
+      CheckEquals('77', LIni.ReadString('AIDESIGNED', 'HubDatabaseId', ''),
+        'Hub database of the design context');
+      CheckEquals('design-key', LIni.ReadString('AIDESIGNED', 'ApiKey', ''),
+        'API key of the design context');
+      CheckEquals('77', LIni.ReadString('PARTIAL', 'HubDatabaseId', ''),
+        'Hub database completed');
+      CheckEquals('own-key', LIni.ReadString('PARTIAL', 'ApiKey', ''), 'its API key kept');
+      CheckEquals('test-key', LIni.ReadString('HUBTEST', 'ApiKey', ''),
+        'a configured connection is left as it is');
+    finally
+      LIni.Free;
+    end;
+    CheckEquals(0, RpEnsureAgentConnections(LDatabases, 78, 'other-key'),
+      'connections with a Hub database are not changed');
+    // It opens now, against the Hub database of the design context
+    GHub.ClearLog;
+    LDesigned.Connect(LParams);
+    CheckEquals(77, LDesigned.HttpHubDatabaseId, 'HubDatabaseId read again');
+    CheckEquals('design-key', GHub.LastHeader('X-Reportman-ApiKey'), 'API key header');
+    LBody := TJSONObject.ParseJSONValue(GHub.LastBody) as TJSONObject;
+    try
+      CheckEquals('77', LBody.Values['hubDatabaseId'].Value, 'request hubDatabaseId');
+    finally
+      LBody.Free;
+    end;
+    LDesigned.DisConnect;
+    LConfigured.DisConnect;
+    LPartial.DisConnect;
+    // No API key: the session of the user in the designer; without session
+    // (printreptopdf, a server) a clear error, without calling the Hub
+    LIni := TMemIniFile.Create(GConnectionsFile);
+    try
+      LIni.WriteString('NOKEY', 'DriverName', 'Reportman AI Agent');
+      LIni.WriteString('NOKEY', 'HubDatabaseId', '77');
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
+    LNoKey := AddAgentDatabase('NOKEY');
+    TRpAuthManager.Instance.Logout;
+    try
+      GHub.ClearLog;
+      LMessage := '';
+      try
+        LNoKey.Connect(LParams);
+      except
+        on E: ERpAgentConnectionError do
+          LMessage := E.Message;
+      end;
+      CheckEquals(Format(SRpAgentNoCredentials, ['NOKEY']), LMessage,
+        'no API key and no session: clear error');
+      CheckEquals('', GHub.RequestLog, 'the Hub is not called');
+    finally
+      Check(TRpAuthManager.Instance.LoginWithCode('ana@example.com', '123456'),
+        'logged in again');
+    end;
+    GHub.ClearLog;
+    LNoKey.Connect(LParams);
+    CheckEquals('', GHub.LastHeader('X-Reportman-ApiKey'), 'with the session: no API key sent');
+    CheckEquals('Bearer tok123', GHub.LastHeader('Authorization'), 'the session token is sent');
+    LNoKey.DisConnect;
+  finally
+    LParams.Free;
+    LDatabases.Free;
+    // The other tests see the connections file as it was
+    LIni := TMemIniFile.Create(GConnectionsFile);
+    try
+      LIni.EraseSection('AIDESIGNED');
+      LIni.EraseSection('PARTIAL');
+      LIni.EraseSection('NOKEY');
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
+  end;
+end;
+
 procedure DataTests;
 var
   LDatabases: TRpDatabaseInfoList;
@@ -1057,6 +1196,7 @@ begin
       AgentDownloadUrlTest;
       ConcurrentSessionTest(LWatcher);
       DataTests;
+      AgentConnectionsTest;
       AITests;
       UnauthorizedTest;
       OAuthTests;

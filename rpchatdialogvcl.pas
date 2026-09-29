@@ -2075,7 +2075,7 @@ begin
  TRpAuthManager.Instance.Log(
   'BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
   ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
-  ' SchemaApiKey=' + Result.ApiKey);
+  ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin

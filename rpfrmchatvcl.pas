@@ -1282,7 +1282,7 @@ begin
           ' RawValue=' + LValue +
           ' ParsedHubDatabaseId=' + IntToStr(LHubDatabaseId) +
           ' ParsedHubSchemaId=' + IntToStr(LHubSchemaId) +
-          ' ApiKey=' + LApiKey);
+          ' ApiKey=' + RpMaskSecret(LApiKey));
 
         ComboSchema.Items.AddObject(LDisplayName,
           TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LApiKey));
@@ -1302,7 +1302,7 @@ begin
         'ApplyLoadedSchemas: FinalItemIndex=' + IntToStr(ComboSchema.ItemIndex) +
         ' FinalHubDatabaseId=' + IntToStr(GetHubDatabaseId) +
         ' FinalHubSchemaId=' + IntToStr(GetHubSchemaId) +
-        ' FinalApiKey=' + GetSchemaApiKey);
+        ' FinalApiKey=' + RpMaskSecret(GetSchemaApiKey));
       UpdateButtons;
     end;
   finally
@@ -1329,7 +1329,7 @@ begin
         'ComboSchemaChange: ItemIndex=' + IntToStr(ComboSchema.ItemIndex) +
         ' HubDatabaseId=' + IntToStr(FHubDatabaseId) +
         ' HubSchemaId=' + IntToStr(FHubSchemaId) +
-        ' ApiKey=' + FSchemaApiKey);
+        ' ApiKey=' + RpMaskSecret(FSchemaApiKey));
     end;
   end
   else

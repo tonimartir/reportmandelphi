@@ -1410,6 +1410,14 @@ var
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
   SRpSAnnotation: WideString = 'Annotation Expression';
+  // Reportman AI Agent connections that can not be opened (rpdatainfo)
+  SRpAgentNotConfigured: WideString = 'The connection "%s" (Reportman AI Agent) is not '+
+    'configured on this computer: it has no Hub database. Define it in the connections '+
+    'file, for example with the connections dialog or the new report wizard.';
+  SRpAgentNoCredentials: WideString = 'The connection "%s" (Reportman AI Agent) has no '+
+    'API key and there is no Reportman AI session. Log in from the designer, or add the '+
+    'API key of the connection to the connections file to run the report without a '+
+    'session (printreptopdf, server).';
 
 implementation
 
@@ -2447,6 +2455,8 @@ begin
   TranslateVar(1477,SRpModificationDateISO);
   TranslateVar(1478,SRpModify);
   TranslateVar(1479,SRpXMPmetadata);
+  TranslateVar(1824,SRpAgentNotConfigured);
+  TranslateVar(1825,SRpAgentNoCredentials);
 //  TranslateVar(1500,SRpIsHtml);
 
  end;

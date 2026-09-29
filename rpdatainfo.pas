@@ -593,6 +593,14 @@ function EncodeADOPassword(astring:String):String;
 // The connection string edited over the one of EncodeADOPassword: a masked
 // password (only '*') is the one of the original string
 function RestoreADOPassword(const AEdited,AOriginal:String):String;
+// A Reportman AI Agent connection (rpdbHttp) is only a name in the report:
+// its Hub database and API key are read from the connections file. The
+// design assistant of the Hub adds connections by name, so the ones that the
+// file does not define, or defines without Hub database, are written there
+// with the Hub database and API key of the design context (no API key: the
+// session of the user). Returns the number of connections written.
+function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
+  AHubDatabaseId:Int64;const AApiKey:string):Integer;
 procedure GetDotNetDrivers(alist:TStrings);
 procedure GetDotNet2Drivers(alist:TStrings);
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -2037,6 +2045,49 @@ begin
  ConAdmin.GetConnectionParams(Alias, AParams);
 end;
 
+function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
+  AHubDatabaseId:Int64;const AApiKey:string):Integer;
+var
+ i:integer;
+ item:TRpDatabaseInfoItem;
+ params:TStringList;
+begin
+ Result:=0;
+ if (ADatabases=nil) or (AHubDatabaseId<=0) then
+  exit;
+ params:=TStringList.Create;
+ try
+  for i:=0 to ADatabases.Count-1 do
+  begin
+   item:=ADatabases.Items[i];
+   if (item.Driver<>rpdbHttp) or (not item.LoadParams) then
+    continue;
+   // The connections file of the report (DBXCONNECTIONS parameter), read
+   // again: each connection has its own copy and another one may have
+   // written the file meanwhile
+   if not Assigned(item.ConAdmin) then
+    item.UpdateConAdmin
+   else
+    item.ConAdmin.LoadConfig;
+   item.ConAdmin.GetConnectionParams(item.Alias,params);
+   // A connection of the file with its Hub database is left as it is
+   if StrToInt64Def(params.Values['HubDatabaseId'],0)>0 then
+    continue;
+   if not item.ConAdmin.config.SectionExists(item.Alias) then
+    item.ConAdmin.AddConnection(item.Alias,'Reportman AI Agent');
+   item.ConAdmin.config.WriteString(item.Alias,'HubDatabaseId',IntToStr(AHubDatabaseId));
+   if (Trim(AApiKey)<>'') and (Trim(params.Values['ApiKey'])='') then
+    item.ConAdmin.config.WriteString(item.Alias,'ApiKey',Trim(AApiKey));
+   item.ConAdmin.config.UpdateFile;
+   // A connection opened before without them reads them again
+   item.DisConnect;
+   Inc(Result);
+  end;
+ finally
+  params.Free;
+ end;
+end;
+
 
 {$IFDEF USEADO}
 procedure TRpDatabaseinfoitem.SetADOConnection(Value:TADOConnection);
@@ -2776,6 +2827,14 @@ begin
            alist2.Free;
          end;
        end;
+       // Without them the Hub can not route the request (it answered with an
+       // internal error): say what is missing
+       if FHttpDatabase.HubDatabaseId <= 0 then
+         raise ERpAgentConnectionError.CreateFor(
+           Format(SRpAgentNotConfigured, [Alias]), Alias);
+       if (FHttpDatabase.ApiKey = '') and (FHttpDatabase.Token = '') then
+         raise ERpAgentConnectionError.CreateFor(
+           Format(SRpAgentNoCredentials, [Alias]), Alias);
        FHttpDatabase.Connected := True;
      end;
        end;

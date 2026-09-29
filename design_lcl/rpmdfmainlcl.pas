@@ -1769,7 +1769,7 @@ begin
     TRpAuthManager.Instance.Log(
       'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
       ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
-      ' SchemaApiKey=' + Result.ApiKey);
+      ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
     Result.UserInstructions.Add(APrompt);
     if Result.AITier = ratLocalAgent then
     begin
@@ -1970,6 +1970,13 @@ begin
   finally
     EndReportReplace;
   end;
+  // The Hub adds the Agent connections by name only: without an entry in
+  // the connections file the data could not be opened
+  if Assigned(FChatFrame) and
+    (RpEnsureAgentConnections(FReport.DatabaseInfo, FChatFrame.GetHubDatabaseId,
+      FChatFrame.GetSchemaApiKey) > 0) then
+    TRpAuthManager.Instance.Log(
+      'Design chat: Reportman AI Agent connections written to the connections file');
   // The history travels with the document (BINCUE): the server returns the
   // one it received with the operations of its change on top, so Undo
   // reverts the change step by step and the earlier history stays

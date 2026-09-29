@@ -3297,7 +3297,7 @@ begin
  TRpAuthManager.Instance.Log(
   'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
   ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
-  ' SchemaApiKey=' + Result.ApiKey);
+  ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
  begin
@@ -3673,6 +3673,13 @@ begin
   report.Modified := True;
   ConfigureReportChangeBlocking;
   EnsureUndoCue;
+  // The Hub adds the Agent connections by name only: without an entry in
+  // the connections file the data could not be opened
+  if Assigned(fchatframe) and
+    (RpEnsureAgentConnections(report.DatabaseInfo, fchatframe.GetHubDatabaseId,
+      fchatframe.GetSchemaApiKey) > 0) then
+    TRpAuthManager.Instance.Log(
+      'Design chat: Reportman AI Agent connections written to the connections file');
 
   if Assigned(freportstructure) then
     freportstructure.Report := report;

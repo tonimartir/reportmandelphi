@@ -96,6 +96,17 @@ type
   TRpDcDatabaseConnectFunc = function(ADatabaseHttp: TObject): Boolean;
 {$ENDIF}
 
+  // A Reportman AI Agent connection that can not be opened: no Hub database
+  // in the connections file, or neither API key nor Reportman AI session.
+  // The designer offers to configure the connection when it catches it.
+  ERpAgentConnectionError = class(Exception)
+  private
+    FConnectionName: string;
+  public
+    constructor CreateFor(const AMessage, AConnectionName: string);
+    property ConnectionName: string read FConnectionName;
+  end;
+
   TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
     AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
     const AProgressId: string; APrefillPercent: Integer) of object;
@@ -354,6 +365,14 @@ type
     function TakeResultJson: TJSONObject;
     property ErrorMessage: string read FErrorMessage;
   end;
+
+{ ERpAgentConnectionError }
+
+constructor ERpAgentConnectionError.CreateFor(const AMessage, AConnectionName: string);
+begin
+  inherited Create(AMessage);
+  FConnectionName := AConnectionName;
+end;
 
 { TRpDatabaseHttp }
 

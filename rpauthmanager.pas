@@ -248,6 +248,9 @@ type
     property OnLog: TRpAuthLog read GetOnLog write SetOnLog;
   end;
 
+// An API key or token for the log: only its first characters
+function RpMaskSecret(const AValue: string): string;
+
 implementation
 
 uses
@@ -266,6 +269,16 @@ const
   WM_RP_AUTH_DISPATCH = WM_USER + 210;
 {$ENDIF}
 {$ENDIF}
+
+function RpMaskSecret(const AValue: string): string;
+begin
+  if AValue = '' then
+    Result := ''
+  else if Length(AValue) <= 8 then
+    Result := '***'
+  else
+    Result := Copy(AValue, 1, 4) + '***';
+end;
 
 {$IFDEF FPC}
 { TRpQueuedAuthListenerPayload }
