@@ -40,6 +40,11 @@ const
   KEY_EXIST = 'key-exist';
   KEY_BAD = 'key-bad';
   PROMPT_AGENT = 'Sales by customer with a group total';
+  // The notes under the API key of the wizard
+  NOTE_SIGNED_IN = 'You are signed in to Reportman AI: the API key is optional. ' +
+    'Without it the connection uses your session, and the report cannot run ' +
+    'unattended on this computer (printreptopdf, server, scheduled tasks).';
+  NOTE_NOT_SIGNED_IN = 'You are not signed in to Reportman AI: the API key is required.';
   PROMPT_DESIGNER = 'Add a title with the report name';
 
 type
@@ -55,6 +60,7 @@ type
     FLock: TRTLCriticalSection;
     FTestRequests: TStringList;
     FModifyBodies: TStringList;
+    FLastTestAuthorization: string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -65,6 +71,8 @@ type
     // "hubDatabaseId|X-Reportman-ApiKey" of a api/agent/testconnection
     function TestRequest(AIndex: Integer): string;
     function LastTestRequest: string;
+    // The Authorization header of the last api/agent/testconnection
+    function LastTestAuthorization: string;
     function ModifyCount: Integer;
     function ModifyBody(AIndex: Integer): string;
   end;
@@ -302,6 +310,7 @@ begin
     EnterCriticalSection(FLock);
     try
       FTestRequests.Add(LId + '|' + LKey);
+      FLastTestAuthorization := ARequest.Authorization;
     finally
       LeaveCriticalSection(FLock);
     end;
@@ -377,6 +386,16 @@ begin
       Result := ''
     else
       Result := FTestRequests[FTestRequests.Count - 1];
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+function TNewReportFakeHub.LastTestAuthorization: string;
+begin
+  EnterCriticalSection(FLock);
+  try
+    Result := FLastTestAuthorization;
   finally
     LeaveCriticalSection(FLock);
   end;
@@ -956,6 +975,7 @@ var
   W: TFRpNewReportWizardLCL;
   LRep: TRpReport;
   LItem: TRpDatabaseInfoItem;
+  LAnswered: Integer;
 
   function SchemasLoaded: Boolean;
   begin
@@ -998,27 +1018,40 @@ begin
     CheckPage(W, wpAgentLogin, 'new connection: Agent login page');
     CheckEquals(T(1712, 'Reportman AI Connection'), W.LStepTitle.Caption, 'login page title');
     Check(IniKeyCount('AGENT_NEW') = 0, 'the connection is created after the login');
-    Shot(W, 'newreport_agent_login');
 
-    W.BNextClick(nil);
-    CheckContains(T(1754, 'Please log in to Reportman AI'), FAnswerer.LastText,
-      'login required before continuing');
+    // Signed in: the databases of the account load at once, the key is optional
+    Check(W.Operation = woHubLogin, 'signed in: the databases of the session load at once');
+    Check(not W.BNext.Enabled and not W.BBack.Enabled and not W.BtnHubLogin.Enabled,
+      'navigation and login wait for the request');
+    CheckEquals(T(1782, 'Contacting Reportman AI...'), W.LStatus.Caption, 'status of the request');
+    LAnswered := FAnswerer.Answered;
+    WaitIdle(W, 'databases of the session');
+    CheckEquals(LAnswered, FAnswerer.Answered, 'entering the page: no "Logged in" message');
+    Check(W.State.HubLoggedIn, 'logged in with the session');
+    CheckEquals(1, W.CbHubDatabase.Items.Count, 'the database of the account');
+    CheckEquals('Account DB', W.CbHubDatabase.Items[0], 'its name');
+    CheckEquals(T(1831, NOTE_SIGNED_IN), W.LblHubKeyNote.Caption,
+      'signed in: the key is optional, without it no unattended runs');
+    Check((W.LblHubKeyNote.Top > W.EdHubApiKey.Parent.Top) and
+      (W.LblHubKeyNote.Top < W.CbHubDatabase.Parent.Top), 'the note under the API key');
+    Shot(W, 'newreport_agent_login');
+    // "Log in" without a key: the databases of the session again
     W.EdHubApiKey.Text := '';
+    LAnswered := FAnswerer.Answered;
     W.BtnHubLogin.Click;
-    CheckContains(T(1777, 'Please enter your Reportman AI API key.'), FAnswerer.LastText,
-      'an API key is required');
+    WaitIdle(W, 'Log in without a key');
+    CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Log in: its message');
+    CheckContains(Format(T(1780, 'Logged in. Loaded %d connections.'), [1]),
+      FAnswerer.LastText, 'Log in without a key: the databases of the session');
 
     // A key that the Hub refuses
     W.EdHubApiKey.Text := KEY_BAD;
     W.BtnHubLogin.Click;
     Check(W.Operation = woHubLogin, 'the Hub request runs in a worker thread');
-    Check(not W.BNext.Enabled and not W.BBack.Enabled and not W.BtnHubLogin.Enabled,
-      'navigation and login wait for the request');
-    CheckEquals(T(1782, 'Contacting Reportman AI...'), W.LStatus.Caption, 'status of the request');
     WaitIdle(W, 'Hub request with a refused key answered');
     CheckContains(T(1779, 'Could not contact Reportman AI Web'), FAnswerer.LastText,
       'refused key: the error');
-    Check(not W.State.HubLoggedIn, 'refused key: not logged in');
+    CheckEquals(1, W.CbHubDatabase.Items.Count, 'refused key: the databases of the session kept');
     CheckEquals('', W.LStatus.Caption, 'status cleared');
     Check(W.BNext.Enabled and W.BBack.Enabled, 'navigation enabled again');
 
@@ -1060,10 +1093,10 @@ begin
     W.BNextClick(nil);
     CheckPage(W, wpAgentLogin, 'the name of the connection of this wizard is accepted');
     CheckEquals(KEY_OK, W.EdHubApiKey.Text, 'the API key kept');
+    LAnswered := FAnswerer.Answered;
     WaitIdle(W, 'Hub databases loaded again');
-    CheckContains(Format(T(1780, 'Logged in. Loaded %d connections.'), [2]),
-      FAnswerer.LastText, 'databases loaded again (as the VCL)');
-    CheckEquals(2, W.CbHubDatabase.Items.Count, 'the databases again');
+    CheckEquals(LAnswered, FAnswerer.Answered, 'loaded again without a message');
+    CheckEquals(2, W.CbHubDatabase.Items.Count, 'the databases of the key again');
 
     // The good database
     W.CbHubDatabase.ItemIndex := 0;
@@ -1121,6 +1154,8 @@ end;
 procedure TAINewReportTests.TestConnectionWizard;
 var
   W: TFRpNewReportWizardLCL;
+  LIni: TMemIniFile;
+  LAnswered: Integer;
 
   function Finished: Boolean;
   begin
@@ -1148,6 +1183,7 @@ begin
     W.BNextClick(nil);
     CheckPage(W, wpAgentLogin, 'the API key and the Hub database');
     CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'the last step: Finish');
+    WaitIdle(W, 'databases of the session');
     W.EdHubApiKey.Text := KEY_OK;
     W.BtnHubLogin.Click;
     WaitIdle(W, 'Hub databases of the API key');
@@ -1163,6 +1199,94 @@ begin
     CheckEquals('21', IniValue('WIZ_AGENT', 'HubDatabaseId'), 'and its Hub database');
   finally
     W.Free;
+  end;
+
+  Section('Connection wizard: signed in, a connection without API key');
+  W := TFRpNewReportWizardLCL.Create(nil);
+  try
+    W.StartConnectionMode('', 0);
+    W.Show;
+    Pump(150);
+    FAnswerer.Arm(smbOK);
+    W.RbAgent.Checked := True;
+    W.BNextClick(nil);
+    W.RbNew.Checked := True;
+    W.EdNewConnName.Text := 'WIZ_SESSION';
+    W.BNextClick(nil);
+    CheckPage(W, wpAgentLogin, 'the API key page');
+    WaitIdle(W, 'databases of the session');
+    CheckEquals(T(1831, NOTE_SIGNED_IN), W.LblHubKeyNote.Caption,
+      'the key is optional, without it no unattended runs');
+    CheckEquals('', W.EdHubApiKey.Text, 'no API key');
+    CheckEquals('Account DB', W.CbHubDatabase.Items[W.CbHubDatabase.ItemIndex],
+      'the database of the account');
+    Shot(W, 'connwizard_agent_session');
+    FHubHandler.ClearRequests;
+    W.BNextClick(nil);
+    WaitUntil(Finished, 20000, 'connection tested with the session and wizard finished');
+    CheckEquals('51|', FHubHandler.LastTestRequest, 'tested without an API key');
+    CheckEquals('Bearer toknewreport', FHubHandler.LastTestAuthorization,
+      'tested with the session');
+    CheckEquals('WIZ_SESSION', W.ResultConnection, 'result: the connection');
+    CheckEquals('51', IniValue('WIZ_SESSION', 'HubDatabaseId'), 'written with its Hub database');
+    CheckEquals('', IniValue('WIZ_SESSION', 'ApiKey'), 'and without an API key');
+  finally
+    W.Free;
+  end;
+
+  Section('Connection wizard: not signed in, the API key is required');
+  TRpAuthManager.Instance.Logout;
+  Pump(50);
+  try
+    W := TFRpNewReportWizardLCL.Create(nil);
+    try
+      W.StartConnectionMode('', 0);
+      W.Show;
+      Pump(150);
+      FAnswerer.Arm(smbOK);
+      W.RbAgent.Checked := True;
+      W.BNextClick(nil);
+      W.RbNew.Checked := True;
+      W.EdNewConnName.Text := 'WIZ_NOSESSION';
+      W.BNextClick(nil);
+      CheckPage(W, wpAgentLogin, 'the API key page');
+      Check(W.Operation = woNone, 'no session: nothing loads by itself');
+      CheckEquals(T(1832, NOTE_NOT_SIGNED_IN), W.LblHubKeyNote.Caption,
+        'no session: the key is required');
+      CheckEquals(0, W.CbHubDatabase.Items.Count, 'no databases');
+      Shot(W, 'connwizard_agent_nosession');
+      LAnswered := FAnswerer.Answered;
+      W.BNextClick(nil);
+      CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Next without a key: a message');
+      CheckContains(T(1777, 'Please enter your Reportman AI API key.'), FAnswerer.LastText,
+        'Next without a key: the key is required');
+      CheckPage(W, wpAgentLogin, 'still on the API key page');
+      LAnswered := FAnswerer.Answered;
+      W.BtnHubLogin.Click;
+      CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Log in without a key: a message');
+      CheckContains(T(1777, 'Please enter your Reportman AI API key.'), FAnswerer.LastText,
+        'Log in without a key: the key is required');
+      Check(W.Operation = woNone, 'Log in without a key: no request');
+      // A key typed but not used yet: its databases first
+      W.EdHubApiKey.Text := KEY_OK;
+      W.BNextClick(nil);
+      CheckContains(T(1754, 'Please log in to Reportman AI'), FAnswerer.LastText,
+        'the key loads its databases before continuing');
+      W.BtnHubLogin.Click;
+      WaitIdle(W, 'Hub databases of the API key');
+      CheckEquals(2, W.CbHubDatabase.Items.Count, 'the databases of the key');
+      FHubHandler.ClearRequests;
+      W.BNextClick(nil);
+      WaitUntil(Finished, 20000, 'connection tested with the key and wizard finished');
+      CheckEquals('21|' + KEY_OK, FHubHandler.LastTestRequest, 'tested with the key');
+      CheckEquals(KEY_OK, IniValue('WIZ_NOSESSION', 'ApiKey'), 'written with its API key');
+    finally
+      W.Free;
+    end;
+  finally
+    Check(TRpAuthManager.Instance.LoginWithCode('ana@example.com', '123456'),
+      'signed in again (fake Hub)');
+    Pump(50);
   end;
 
   Section('Connection wizard: an existing Reportman AI connection');
@@ -1185,6 +1309,15 @@ begin
   end;
 
   Section('Connection wizard: a connection of the report not configured here');
+  // In the connections file with its API key, without its Hub database
+  LIni := TMemIniFile.Create(FConnFile);
+  try
+    LIni.WriteString('TONI', 'DriverName', RP_DBX_DRIVER_FAMILY_AGENT);
+    LIni.WriteString('TONI', 'ApiKey', KEY_EXIST);
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
   W := TFRpNewReportWizardLCL.Create(nil);
   try
     W.StartConnectionMode('TONI', 22);
@@ -1197,6 +1330,9 @@ begin
     Check(not W.BBack.Enabled, 'nothing to go back to');
     CheckContains('TONI', W.PContent.Controls[0].Caption, 'the connection named on the page');
     CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'Finish');
+    CheckEquals(KEY_EXIST, W.EdHubApiKey.Text, 'the API key of the connections file');
+    WaitIdle(W, 'databases of that API key and of the session');
+    CheckEquals('Existing DB', W.CbHubDatabase.Items[0], 'the databases of that key');
     W.EdHubApiKey.Text := KEY_OK;
     W.BtnHubLogin.Click;
     WaitIdle(W, 'Hub databases of the API key');

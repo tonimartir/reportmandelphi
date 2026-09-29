@@ -127,6 +127,9 @@ type
     FPreferredHubDatabaseId: Int64;
     FResultConnection: string;
     FResultDriver: TRpDbDriver;
+    // The Hub databases load of the API key page on entering it: without
+    // the "Logged in" message
+    FQuietHubLoad: Boolean;
 
     procedure BuildControls;
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
@@ -181,8 +184,11 @@ type
     procedure OpenSchemasLink(Sender: TObject);
     procedure OpenAgentDownloadLink(Sender: TObject);
 
-    procedure LoadHubDatabases;
+    // AQuiet: without the "Logged in" message (entering the page)
+    procedure LoadHubDatabases(AQuiet: Boolean = False);
     procedure ApplyHubDatabases(AOk: Boolean; ADatabases: TStrings);
+    // A Reportman AI session: the API key of an Agent connection is optional
+    function HasHubSession: Boolean;
     procedure FillHubDatabaseCombo;
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
@@ -232,6 +238,8 @@ type
     LnkAgentDownload: TLabel;
     EdHubApiKey: TEdit;
     BtnHubLogin: TButton;
+    // Under the API key: optional with a session, required without one
+    LblHubKeyNote: TLabel;
     BtnHubRefresh: TButton;
     CbHubDatabase: TComboBox;
     RbHasSchema, RbNoSchema: TRadioButton;
@@ -708,6 +716,10 @@ end;
 
 procedure TFRpNewReportWizardLCL.StartConnectionMode(const AFixedName: string;
   APreferredHubDatabaseId: Int64);
+var
+  LFamily: TRpWizardDriverFamily;
+  LDriverHint, LApiKey: string;
+  LHubDatabaseId, LHubSchemaId: Int64;
 begin
   FConnectionMode := True;
   FFixedName := Trim(AFixedName);
@@ -721,6 +733,10 @@ begin
     FState.Route := wrAgent;
     FState.ConnMode := cnNew;
     FState.ConnName := FFixedName;
+    // The API key it may already have in the connections file is kept
+    if ConnectionExists(FFixedName) and TryGetConnectionDetails(FFixedName,
+      LFamily, LDriverHint, LHubDatabaseId, LHubSchemaId, LApiKey) then
+      FState.HubApiKey := LApiKey;
     GoTo_Page(wpAgentLogin, False);
   end
   else
@@ -1058,7 +1074,7 @@ begin
   FLastStacked := nil;
   RbAgent := nil; RbDirect := nil; RbNoConnection := nil;
   LnkAgentDownload := nil;
-  EdHubApiKey := nil; BtnHubLogin := nil;
+  EdHubApiKey := nil; BtnHubLogin := nil; LblHubKeyNote := nil;
   BtnHubRefresh := nil;
   CbHubDatabase := nil;
   RbHasSchema := nil; RbNoSchema := nil;
@@ -1300,6 +1316,15 @@ begin
       end;
     wpAgentLogin:
       begin
+        // The key as it is typed (also without "Log in"): the connection
+        // test validates it. Without a session it is required.
+        if Assigned(EdHubApiKey) then
+          FState.HubApiKey := Trim(EdHubApiKey.Text);
+        if (FState.HubApiKey = '') and not HasHubSession then
+        begin
+          ShowInfo(TR(1777, 'Please enter your Reportman AI API key.'));
+          Exit;
+        end;
         if not FState.HubLoggedIn then
         begin
           ShowInfo(TR(1754, 'Please log in to Reportman AI before continuing.'));
@@ -1756,6 +1781,17 @@ begin
   EdHubApiKey := NewRowEdit(LRow);
   EdHubApiKey.Text := FState.HubApiKey;
   EdHubApiKey.PasswordChar := '*';
+  // With a session the key is optional, but the report needs it to run
+  // unattended (printreptopdf, server): the engine uses the session otherwise
+  if HasHubSession then
+    LblHubKeyNote := NewLabel(TR(1831, 'You are signed in to Reportman AI: the API ' +
+      'key is optional. Without it the connection uses your session, and the ' +
+      'report cannot run unattended on this computer (printreptopdf, server, ' +
+      'scheduled tasks).'), 0, 6)
+  else
+    LblHubKeyNote := NewLabel(TR(1832, 'You are not signed in to Reportman AI: ' +
+      'the API key is required.'), 0, 6);
+  LblHubKeyNote.Font.Color := clGrayText;
 
   NewLabel(TR(1712, 'Reportman AI Connection'), 0, 16);
   LRow := NewRow(0, 4);
@@ -1763,8 +1799,9 @@ begin
   CbHubDatabase := NewRowCombo(LRow, csDropDownList);
   FillHubDatabaseCombo;
 
-  if FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '') then
-    LoadHubDatabases;
+  // The databases of the session, or of the key of a previous visit
+  if HasHubSession or (FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '')) then
+    LoadHubDatabases(True);
 end;
 
 procedure TFRpNewReportWizardLCL.BuildPageAgentSchema;
@@ -2333,7 +2370,8 @@ begin
   if FOperation <> woNone then
     Exit;
   FState.HubApiKey := Trim(EdHubApiKey.Text);
-  if FState.HubApiKey = '' then
+  // With a session, no key: the databases of the account
+  if (FState.HubApiKey = '') and not HasHubSession then
   begin
     RpMessageBox(WideString(TR(1777, 'Please enter your Reportman AI API key.')),
       WideString(TR(1778, 'Reportman AI')), [smbOK], smsInformation, smbOK, smbOK);
@@ -2342,15 +2380,22 @@ begin
   LoadHubDatabases;
 end;
 
+function TFRpNewReportWizardLCL.HasHubSession: Boolean;
+begin
+  // As the engine: the token of the session goes when there is no key
+  Result := TRpAuthManager.Instance.Token <> '';
+end;
+
 procedure TFRpNewReportWizardLCL.DoHubRefresh(Sender: TObject);
 begin
   DoHubLogin(Sender);
 end;
 
-procedure TFRpNewReportWizardLCL.LoadHubDatabases;
+procedure TFRpNewReportWizardLCL.LoadHubDatabases(AQuiet: Boolean);
 var
   LWorker: TRpWizardHubWorker;
 begin
+  FQuietHubLoad := AQuiet;
   BeginOperation(woHubLogin, TR(1782, 'Contacting Reportman AI...'));
   LWorker := TRpWizardHubWorker.Create(FMailboxRef);
   LWorker.Version := FOperationVersion;
@@ -2399,9 +2444,10 @@ begin
     for I := 0 to FHubDatabases.Count - 1 do
       if StrToInt64Def(FHubDatabases.ValueFromIndex[I], 0) = FPreferredHubDatabaseId then
         CbHubDatabase.ItemIndex := I;
-  RpMessageBox(WideString(Format(TR(1780, 'Logged in. Loaded %d connections.'),
-    [ADatabases.Count])), WideString(TR(1778, 'Reportman AI')), [smbOK],
-    smsInformation, smbOK, smbOK);
+  if not FQuietHubLoad then
+    RpMessageBox(WideString(Format(TR(1780, 'Logged in. Loaded %d connections.'),
+      [ADatabases.Count])), WideString(TR(1778, 'Reportman AI')), [smbOK],
+      smsInformation, smbOK, smbOK);
 end;
 
 procedure TFRpNewReportWizardLCL.BuildPageFinish;

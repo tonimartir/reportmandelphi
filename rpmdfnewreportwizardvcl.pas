@@ -182,7 +182,10 @@ type
     procedure DoDaoTest(Sender: TObject);
     procedure DoParamsTest(Sender: TObject);
 
-    procedure LoadHubDatabases;
+    // AQuiet: without the "Logged in" message (entering the page)
+    procedure LoadHubDatabases(AQuiet: Boolean = False);
+    // A Reportman AI session: the API key of an Agent connection is optional
+    function HasHubSession: Boolean;
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
     procedure UpdateExistingConnDriverHint;
@@ -448,6 +451,10 @@ end;
 
 procedure TFRpNewReportWizardVCL.StartConnectionMode(const AFixedName: string;
   APreferredHubDatabaseId: Int64);
+var
+  LFamily: TRpWizardDriverFamily;
+  LDriverHint, LApiKey: string;
+  LHubDatabaseId, LHubSchemaId: Int64;
 begin
   FConnectionMode := True;
   FFixedName := Trim(AFixedName);
@@ -461,6 +468,10 @@ begin
     FState.Route := wrAgent;
     FState.ConnMode := cnNew;
     FState.ConnName := FFixedName;
+    // The API key it may already have in the connections file is kept
+    if ConnectionExists(FFixedName) and TryGetConnectionDetails(FFixedName,
+      LFamily, LDriverHint, LHubDatabaseId, LHubSchemaId, LApiKey) then
+      FState.HubApiKey := LApiKey;
     GoTo_Page(wpAgentLogin, False);
   end
   else
@@ -780,6 +791,16 @@ begin
       end;
     wpAgentLogin:
       begin
+        // The key as it is typed (also without "Log in"): the connection
+        // test validates it. Without a session it is required.
+        if Assigned(FEdHubApiKey) then
+          FState.HubApiKey := Trim(FEdHubApiKey.Text);
+        if (FState.HubApiKey = '') and not HasHubSession then
+        begin
+          RpMessageBox('Please enter your Reportman AI API key.',
+            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Exit;
+        end;
         if not FState.HubLoggedIn then
         begin
           RpMessageBox('Please log in to Reportman AI before continuing.',
@@ -1305,6 +1326,7 @@ end;
 procedure TFRpNewReportWizardVCL.BuildPageAgentLogin;
 var
   L: TLabel;
+  LTop: Integer;
 begin
   if FState.ConnMode = cnExisting then
   begin
@@ -1358,22 +1380,38 @@ begin
   FBtnHubLogin.Caption := 'Log in';
   FBtnHubLogin.OnClick := DoHubLogin;
 
-  CreateLabel(PContent, 'Reportman AI connection', 24, 92);
+  // With a session the key is optional, but the report needs it to run
+  // unattended (printreptopdf, server): the engine uses the session otherwise
+  if HasHubSession then
+    L := CreateLabel(PContent, 'You are signed in to Reportman AI: the API key ' +
+      'is optional. Without it the connection uses your session, and the report ' +
+      'cannot run unattended on this computer (printreptopdf, server, scheduled ' +
+      'tasks).', 24, 76)
+  else
+    L := CreateLabel(PContent, 'You are not signed in to Reportman AI: the API ' +
+      'key is required.', 24, 76);
+  L.Font.Color := clGrayText;
+  L.Width := 620;
+  L.WordWrap := True;
+  LTop := L.Top + L.Height + 14;
+
+  CreateLabel(PContent, 'Reportman AI connection', 24, LTop);
   FCbHubDatabase := TComboBox.Create(PContent);
   FCbHubDatabase.Parent := PContent;
-  FCbHubDatabase.Left := 24; FCbHubDatabase.Top := 112;
+  FCbHubDatabase.Left := 24; FCbHubDatabase.Top := LTop + 20;
   FCbHubDatabase.Width := 480;
   FCbHubDatabase.Style := csDropDownList;
 
   FBtnHubRefresh := TButton.Create(PContent);
   FBtnHubRefresh.Parent := PContent;
-  FBtnHubRefresh.Left := 514; FBtnHubRefresh.Top := 110;
+  FBtnHubRefresh.Left := 514; FBtnHubRefresh.Top := LTop + 18;
   FBtnHubRefresh.Width := 130; FBtnHubRefresh.Height := 28;
   FBtnHubRefresh.Caption := 'Refresh';
   FBtnHubRefresh.OnClick := DoHubRefresh;
 
-  if FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '') then
-    LoadHubDatabases;
+  // The databases of the session, or of the key of a previous visit
+  if HasHubSession or (FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '')) then
+    LoadHubDatabases(True);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageAgentSchema;
@@ -2041,7 +2079,8 @@ end;
 procedure TFRpNewReportWizardVCL.DoHubLogin(Sender: TObject);
 begin
   FState.HubApiKey := Trim(FEdHubApiKey.Text);
-  if FState.HubApiKey = '' then
+  // With a session, no key: the databases of the account
+  if (FState.HubApiKey = '') and not HasHubSession then
   begin
     RpMessageBox('Please enter your Reportman AI API key.', 'Reportman AI',
       [smbOK], smsInformation, smbOK, smbOK);
@@ -2050,12 +2089,18 @@ begin
   LoadHubDatabases;
 end;
 
+function TFRpNewReportWizardVCL.HasHubSession: Boolean;
+begin
+  // As the engine: the token of the session goes when there is no key
+  Result := TRpAuthManager.Instance.Token <> '';
+end;
+
 procedure TFRpNewReportWizardVCL.DoHubRefresh(Sender: TObject);
 begin
   DoHubLogin(Sender);
 end;
 
-procedure TFRpNewReportWizardVCL.LoadHubDatabases;
+procedure TFRpNewReportWizardVCL.LoadHubDatabases(AQuiet: Boolean);
 var
   list: TStringList;
   i: Integer;
@@ -2089,8 +2134,9 @@ begin
           if StrToInt64Def(list.ValueFromIndex[i], 0) = FPreferredHubDatabaseId then
             FCbHubDatabase.ItemIndex := i;
     end;
-    RpMessageBox('Logged in. Loaded ' + IntToStr(list.Count) + ' connections.',
-      'Reportman AI', [smbOK], smsInformation, smbOK, smbOK);
+    if not AQuiet then
+      RpMessageBox('Logged in. Loaded ' + IntToStr(list.Count) + ' connections.',
+        'Reportman AI', [smbOK], smsInformation, smbOK, smbOK);
   finally
     list.Free;
   end;

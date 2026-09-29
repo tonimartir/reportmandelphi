@@ -111,6 +111,16 @@ conexión sin clave y sin sesión da un error claro. Todo en Delphi y en FPC.
   esquema de los datasets de la conexión, si el chat de diseño lo conoce.
 - Prueba: `TestConnectionWizard` en LclAIChatTest (conexión nueva del Agent,
   existente y nombre fijo con base de datos preferida).
+- **La clave con sesión** (decisión de Toni, 29-09-2026): la página de la clave
+  la sigue pidiendo, pero con la sesión iniciada es opcional. Al entrar se
+  cargan las bases de datos de la cuenta (desarrollador o esquema compartido,
+  las mismas que el Hub acepta al ejecutar con la sesión) y un aviso dice que
+  sin clave el informe no se podrá ejecutar de forma desatendida en este
+  equipo (id 1831). Sin sesión la clave es obligatoria (id 1832). La conexión
+  se guarda con la clave si se escribió; con nombre fijo se conserva la que ya
+  tenía el fichero de conexiones. Vale para los dos modos (conexión e informe
+  nuevo). Pruebas: `TestAgentNewConnection` y `TestConnectionWizard` (con
+  sesión sin clave, y sin sesión).
 
 Plan original:
 
@@ -152,9 +162,11 @@ páginas, en Delphi y en Lazarus, sin duplicar código.
   `RpCheckAgentConnections` comprueba antes de abrir, sin llamar al Hub, y
   pregunta "¿Configurar la conexión ahora?" (id 1830); el asistente se abre
   con el nombre fijo (título, id 1827) y la base de datos preferida.
-- **Pendiente**: el diálogo de conexiones sin asistente (sigue para usos
-  avanzados), el contexto de la IA y el aviso del chat de una conexión creada
-  sin clave (3.4).
+- **Descartado**: el botón al asistente en el diálogo de conexiones
+  (`TFRpDBXConfigVCL`, el editor del fichero de conexiones): el asistente ya
+  está al lado, en la misma pestaña.
+- **Pendiente**: el contexto de la IA y el aviso del chat de una conexión
+  creada sin clave (3.4).
 - Pruebas: `TestCheckAgentConnections` y `TestDataDialogWizard` en
   LclAIChatTest; en Delphi, capturas del marco de conexiones en un escritorio
   oculto.
