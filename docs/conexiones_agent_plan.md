@@ -65,8 +65,12 @@ conexión sin clave y sin sesión da un error claro. Todo en Delphi y en FPC.
      de Reportman AI iniciada. Inicie sesión desde el diseñador, o añada la
      clave de API de la conexión en el fichero de conexiones para ejecutar el
      informe sin sesión (printreptopdf, servidor)" (id 1825).
-3. **Hub** (repositorio ReportmanAI, pendiente de aprobar y desplegar):
-   `return Forbid("mensaje")` cuando no hay acceso a la base de datos.
+3. **Hub** (hecho en ReportmanAI, commit `83de85a9`, pendiente de desplegar):
+   `return Forbid("mensaje")` cuando no hay acceso a la base de datos. Los
+   nueve `Forbid(...)`/`Forbid()` del API pasan a un 403 real; comprobado
+   con un servidor mínimo con la misma configuración (Forbid: 500 vacío con
+   "No authentication handlers are registered"; el arreglo: 403 con el
+   motivo).
    - **Por qué da 500**: en ASP.NET `Forbid(...)` no recibe un mensaje sino
      nombres de esquemas de autenticación. El Hub no usa la autenticación de
      ASP.NET (tiene `TokenAuthenticationMiddleware` propio), así que
