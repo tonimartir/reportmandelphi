@@ -28,7 +28,8 @@ uses
   SysUtils, Classes, Forms, Controls, Graphics, StdCtrls, Menus, IniFiles,
   fphttpserver, httpdefs,
   rpjsonfpc, rphttpclientfpc, rptypes, rpdatainfo, rpreport, rpmdconsts,
-  rpaithreadslcl, rpdbxconfiglcl, rpmdfdinfolcl, rpauthmanager, utestutil, ufakeserver;
+  rpaithreadslcl, rpdbxconfiglcl, rpmdfdinfolcl, rpauthmanager, rpmdfnewreportwizardlcl,
+  utestutil, ufakeserver;
 
 const
   AGENT_OK_MESSAGE = 'Agent Connection: Success' + #10 + 'Database Connection: Success (fake)';
@@ -76,6 +77,7 @@ type
     procedure TestDataDialogAgent;
     procedure TestDataDialogLayout;
     procedure TestAgentInfo;
+    procedure TestDataDialogWizard;
   public
     constructor Create(const AShotsDir: string);
     procedure Run;
@@ -690,6 +692,115 @@ begin
   end;
 end;
 
+var
+  GDataWizardCalls: Integer;
+  GDataWizardName: string;
+  GDataWizardFile: string;
+
+// The connection wizard: a new connection is WIZCONN; both are written to the
+// connections file with the Hub database of HUBCONN
+function DataFakeWizard(const AFixedName: string; APreferredHubDatabaseId: Int64;
+  out AConnectionName: string; out ADriver: TRpDbDriver): Boolean;
+var
+  LIni: TMemIniFile;
+begin
+  Inc(GDataWizardCalls);
+  GDataWizardName := AFixedName;
+  if AFixedName = '' then
+    AConnectionName := 'WIZCONN'
+  else
+    AConnectionName := AFixedName;
+  LIni := TMemIniFile.Create(GDataWizardFile);
+  try
+    LIni.WriteString(AConnectionName, 'DriverName', 'Reportman AI Agent');
+    LIni.WriteString(AConnectionName, 'ApiKey', 'hub-key');
+    LIni.WriteString(AConnectionName, 'HubDatabaseId', '77');
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
+  ADriver := rpdbHttp;
+  Result := True;
+end;
+
+procedure TAIDataTests.TestDataDialogWizard;
+var
+  LReport: TRpReport;
+  LDlg: TFRpDInfoLCL;
+  LOverride: string;
+  LOld: TRpShowConnectionWizardFunc;
+  LIni: TMemIniFile;
+begin
+  Section('Data configuration dialog: the connection wizard');
+  LOverride := DBXConnectionsFileOverride;
+  DBXConnectionsFileOverride := FIniFile;
+  LOld := RpConnectionWizardFunc;
+  RpConnectionWizardFunc := DataFakeWizard;
+  GDataWizardCalls := 0;
+  GDataWizardFile := FIniFile;
+  LReport := TRpReport.Create(nil);
+  try
+    LDlg := TFRpDInfoLCL.Create(nil);
+    try
+      LDlg.Interactive := False;
+      LDlg.Report := LReport;
+      Check(LDlg.EmptyConnectionsPanel.Visible,
+        'no connections: the wizard in the middle of the tab');
+      CheckContains(string(TranslateStr(1826, 'Add connection')),
+        LDlg.AddConnectionWizardButton.Caption, 'Add connection button');
+      Check(not LDlg.AddConnectionWizardButton.Glyph.Empty, 'with the magic wand');
+      if FShotsDir <> '' then
+      begin
+        LDlg.Show;
+        Pump(200);
+        Shot(LDlg, 'data_connections_empty');
+      end;
+      LDlg.AddConnectionWizardButton.Click;
+      CheckEquals(1, GDataWizardCalls, 'the connection wizard');
+      CheckEquals('', GDataWizardName, 'for a new connection');
+      CheckEquals(1, LDlg.ConnectionList.Count, 'the connection of the wizard added');
+      CheckEquals('WIZCONN', LDlg.ConnectionList.Items[0], 'its name');
+      Check(LDlg.WorkReport.DatabaseInfo.Items[0].Driver = rpdbHttp, 'its driver');
+      Check(not LDlg.EmptyConnectionsPanel.Visible, 'the empty tab hidden');
+      Check(not LDlg.AgentProblemLabel.Visible and not LDlg.ConfigureWizardButton.Visible,
+        'configured: no warning');
+      // An Agent connection that the connections file does not have
+      LDlg.SelectListDriver(rpdbHttp);
+      LDlg.AddAvailableConnection('NOTHERE');
+      Check(LDlg.AgentProblemLabel.Visible and LDlg.ConfigureWizardButton.Visible,
+        'not configured here: warning and "Configure with the wizard"');
+      CheckContains('NOTHERE', LDlg.AgentProblemLabel.Caption, 'the warning names it');
+      CheckEquals(string(TranslateStr(1829, 'Configure with the wizard')),
+        LDlg.ConfigureWizardButton.Caption, 'the configure button');
+      if FShotsDir <> '' then
+      begin
+        Pump(200);
+        Shot(LDlg, 'data_connections_agent_problem');
+      end;
+      LDlg.ConfigureWizardButton.Click;
+      CheckEquals(2, GDataWizardCalls, 'the connection wizard again');
+      CheckEquals('NOTHERE', GDataWizardName, 'for that connection');
+      Check(not LDlg.AgentProblemLabel.Visible and not LDlg.ConfigureWizardButton.Visible,
+        'configured: the warning goes away');
+      LDlg.Hide;
+    finally
+      LDlg.Free;
+    end;
+  finally
+    LReport.Free;
+    RpConnectionWizardFunc := LOld;
+    DBXConnectionsFileOverride := LOverride;
+    LIni := TMemIniFile.Create(FIniFile);
+    try
+      LIni.EraseSection('WIZCONN');
+      LIni.EraseSection('NOTHERE');
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
+  end;
+end;
+
 procedure TAIDataTests.Run;
 var
   LSandbox: string;
@@ -732,6 +843,7 @@ begin
       TestDataDialogAgent;
       TestDataDialogLayout;
       TestAgentInfo;
+      TestDataDialogWizard;
       Check(RpAsyncWaitIdle(10000), 'all the data workers finished');
     finally
       RpHttpSetUrlRewrite('', '');

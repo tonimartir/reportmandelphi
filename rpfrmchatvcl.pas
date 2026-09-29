@@ -234,6 +234,8 @@ type
     function GetAgentSecret: string;
     function GetAgentAiId: Int64;
     function GetHubDatabaseId: Int64;
+    // The Hub database of a schema of the schema list (0 when not listed)
+    function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     function GetHubSchemaId: Int64;
     function GetSchemaApiKey: string;
   published
@@ -2284,6 +2286,22 @@ begin
     Result := FAISelection.AgentAiId
   else
     Result := 0;
+end;
+
+function TFRpChatFrame.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+var
+  I: Integer;
+  LItem: TSchemaComboItem;
+begin
+  Result := 0;
+  if AHubSchemaId <= 0 then
+    Exit;
+  for I := 0 to ComboSchema.Items.Count - 1 do
+  begin
+    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
+    if (LItem <> nil) and (LItem.HubSchemaId = AHubSchemaId) then
+      Exit(LItem.HubDatabaseId);
+  end;
 end;
 
 function TFRpChatFrame.GetHubDatabaseId: Int64;

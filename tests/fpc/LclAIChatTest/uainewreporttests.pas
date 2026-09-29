@@ -127,6 +127,9 @@ type
     procedure TestLayout;
     procedure TestRouteNoConnection;
     procedure TestAgentNewConnection;
+    procedure TestConnectionWizard;
+    procedure TestCheckAgentConnections;
+    function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     procedure TestAgentExistingConnection;
     procedure TestDirectSqlite;
     procedure TestDirectZeos;
@@ -1115,6 +1118,185 @@ begin
   end;
 end;
 
+procedure TAINewReportTests.TestConnectionWizard;
+var
+  W: TFRpNewReportWizardLCL;
+
+  function Finished: Boolean;
+  begin
+    Result := W.Committed;
+  end;
+
+begin
+  Section('Connection wizard: a new Reportman AI connection');
+  W := TFRpNewReportWizardLCL.Create(nil);
+  try
+    W.StartConnectionMode('', 0);
+    W.Show;
+    Pump(150);
+    FAnswerer.Arm(smbOK);
+    CheckEquals(T(1826, 'Add connection'), W.Caption, 'window caption');
+    CheckPage(W, wpRoute, 'route page first');
+    Check(W.RbNoConnection = nil, 'no "continue with no connection" route');
+    Check(W.LnkAgentDownload <> nil, 'the Agent download link');
+    W.RbAgent.Checked := True;
+    W.BNextClick(nil);
+    CheckPage(W, wpConnName, 'connection name page');
+    W.RbNew.Checked := True;
+    CheckEquals(T(933, 'Next'), W.BNext.Caption, 'a new connection: Next');
+    W.EdNewConnName.Text := 'WIZ_AGENT';
+    W.BNextClick(nil);
+    CheckPage(W, wpAgentLogin, 'the API key and the Hub database');
+    CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'the last step: Finish');
+    W.EdHubApiKey.Text := KEY_OK;
+    W.BtnHubLogin.Click;
+    WaitIdle(W, 'Hub databases of the API key');
+    CheckEquals(0, W.CbHubDatabase.ItemIndex, 'no preferred database: the first one');
+    Shot(W, 'connwizard_agent_login');
+    W.BNextClick(nil);
+    WaitUntil(Finished, 20000, 'connection tested and wizard finished');
+    CheckEquals('WIZ_AGENT', W.ResultConnection, 'result: the connection');
+    Check(W.ResultDriver = rpdbHttp, 'result: the Reportman AI Agent driver');
+    CheckEquals(RP_DBX_DRIVER_FAMILY_AGENT, IniValue('WIZ_AGENT', 'DriverName'),
+      'written to the connections file');
+    CheckEquals(KEY_OK, IniValue('WIZ_AGENT', 'ApiKey'), 'with its API key');
+    CheckEquals('21', IniValue('WIZ_AGENT', 'HubDatabaseId'), 'and its Hub database');
+  finally
+    W.Free;
+  end;
+
+  Section('Connection wizard: an existing Reportman AI connection');
+  W := TFRpNewReportWizardLCL.Create(nil);
+  try
+    W.StartConnectionMode('', 0);
+    W.Show;
+    Pump(150);
+    W.RbAgent.Checked := True;
+    W.BNextClick(nil);
+    W.RbExisting.Checked := True;
+    W.CbExistingConn.ItemIndex := W.CbExistingConn.Items.IndexOf('AGENT_EXIST');
+    CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'an existing connection: Finish');
+    W.BNextClick(nil);
+    Check(W.Committed, 'finished without the API key page');
+    CheckEquals('AGENT_EXIST', W.ResultConnection, 'result: the existing connection');
+    CheckEquals(KEY_EXIST, IniValue('AGENT_EXIST', 'ApiKey'), 'not changed');
+  finally
+    W.Free;
+  end;
+
+  Section('Connection wizard: a connection of the report not configured here');
+  W := TFRpNewReportWizardLCL.Create(nil);
+  try
+    W.StartConnectionMode('TONI', 22);
+    W.Show;
+    Pump(150);
+    FAnswerer.Arm(smbOK);
+    CheckEquals(Format(T(1827, 'Configure the connection "%s"'), ['TONI']), W.Caption,
+      'window caption with the connection');
+    CheckPage(W, wpAgentLogin, 'straight to the API key');
+    Check(not W.BBack.Enabled, 'nothing to go back to');
+    CheckContains('TONI', W.PContent.Controls[0].Caption, 'the connection named on the page');
+    CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'Finish');
+    W.EdHubApiKey.Text := KEY_OK;
+    W.BtnHubLogin.Click;
+    WaitIdle(W, 'Hub databases of the API key');
+    CheckEquals(1, W.CbHubDatabase.ItemIndex, 'the Hub database of the report selected (22)');
+    // Database 22 is offline in the fake Hub
+    W.CbHubDatabase.ItemIndex := 0;
+    W.BNextClick(nil);
+    WaitUntil(Finished, 20000, 'connection tested and wizard finished');
+    CheckEquals('TONI', W.ResultConnection, 'result: the connection of the report');
+    CheckEquals(RP_DBX_DRIVER_FAMILY_AGENT, IniValue('TONI', 'DriverName'),
+      'written with the Agent driver');
+    CheckEquals('21', IniValue('TONI', 'HubDatabaseId'), 'with its Hub database');
+    CheckEquals(KEY_OK, IniValue('TONI', 'ApiKey'), 'and its API key');
+  finally
+    W.Free;
+  end;
+  Check(RpAsyncWaitIdle(15000), 'workers of the connection wizard finished');
+end;
+
+var
+  GWizardCalls: Integer;
+  GWizardFixedName: string;
+  GWizardPreferred: Int64;
+  GWizardConnFile: string;
+
+// The connection wizard of RpCheckAgentConnections: writes the connection as
+// the wizard would
+function FakeConnectionWizard(const AFixedName: string; APreferredHubDatabaseId: Int64;
+  out AConnectionName: string; out ADriver: TRpDbDriver): Boolean;
+var
+  LIni: TMemIniFile;
+begin
+  Inc(GWizardCalls);
+  GWizardFixedName := AFixedName;
+  GWizardPreferred := APreferredHubDatabaseId;
+  LIni := TMemIniFile.Create(GWizardConnFile);
+  try
+    LIni.WriteString(AFixedName, 'DriverName', RP_DBX_DRIVER_FAMILY_AGENT);
+    LIni.WriteString(AFixedName, 'HubDatabaseId', IntToStr(APreferredHubDatabaseId));
+    LIni.WriteString(AFixedName, 'ApiKey', KEY_OK);
+    LIni.UpdateFile;
+  finally
+    LIni.Free;
+  end;
+  AConnectionName := AFixedName;
+  ADriver := rpdbHttp;
+  Result := True;
+end;
+
+function TAINewReportTests.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+begin
+  if AHubSchemaId = 31 then
+    Result := 21
+  else
+    Result := 0;
+end;
+
+procedure TAINewReportTests.TestCheckAgentConnections;
+var
+  LRep: TRpReport;
+  LDb: TRpDatabaseInfoItem;
+  LData: TRpDataInfoItem;
+  LOld: TRpShowConnectionWizardFunc;
+begin
+  Section('Before opening the data: an Agent connection not configured here');
+  LRep := TRpReport.Create(nil);
+  LOld := RpConnectionWizardFunc;
+  RpConnectionWizardFunc := FakeConnectionWizard;
+  GWizardCalls := 0;
+  GWizardConnFile := FConnFile;
+  try
+    LDb := LRep.DatabaseInfo.Add('NOTCONF');
+    LDb.Driver := rpdbHttp;
+    LDb.LoadParams := True;
+    LData := LRep.DataInfo.Add('SALES');
+    LData.DatabaseAlias := 'NOTCONF';
+    LData.HubSchemaId := 31;
+    LData.OpenOnStart := True;
+    FAnswerer.Arm(smbNo);
+    Check(not RpCheckAgentConnections(LRep.DatabaseInfo, LRep.DataInfo, nil,
+      HubDatabaseOfSchema), 'the user does not configure it: the data is not opened');
+    CheckContains('NOTCONF', FAnswerer.LastText, 'the question names the connection');
+    CheckContains(T(1830, 'Configure the connection now?'), FAnswerer.LastText,
+      'and offers the connection wizard');
+    CheckEquals(0, GWizardCalls, 'No: no wizard');
+    FAnswerer.Arm(smbYes);
+    Check(RpCheckAgentConnections(LRep.DatabaseInfo, LRep.DataInfo, nil,
+      HubDatabaseOfSchema), 'configured: the data can be opened');
+    CheckEquals(1, GWizardCalls, 'the connection wizard');
+    CheckEquals('NOTCONF', GWizardFixedName, 'for that connection');
+    CheckEquals(21, GWizardPreferred, 'with the Hub database of the dataset schema');
+    Check(RpCheckAgentConnections(LRep.DatabaseInfo, LRep.DataInfo, nil,
+      HubDatabaseOfSchema), 'configured now: nothing to ask');
+    CheckEquals(1, GWizardCalls, 'no wizard again');
+  finally
+    RpConnectionWizardFunc := LOld;
+    LRep.Free;
+  end;
+end;
+
 procedure TAINewReportTests.TestAgentExistingConnection;
 var
   W: TFRpNewReportWizardLCL;
@@ -1646,6 +1828,8 @@ begin
       TestDirectSqlite;
       TestDirectZeos;
       TestDesignerFileNew;
+      TestConnectionWizard;
+      TestCheckAgentConnections;
       TRpAuthManager.Instance.Logout;
       Check(RpAsyncWaitIdle(10000), 'all workers finished');
     finally

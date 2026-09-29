@@ -474,6 +474,8 @@ type
     procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
       AResult: TRpApiPreprocessSqlContextResult);
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
+    // The Hub database of a schema of the design chat (connection wizard)
+    function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     procedure StopDesignChatRequest(Sender: TObject);
     procedure RefreshDesignChatContext(Sender: TObject);
     procedure InitializeDesignChatSchemaSelection;
@@ -2061,10 +2063,22 @@ begin
  Handled:=RpMessageBox(SRpErrorReadingReport+#10+Message+#10+SRpIgnoreError,SRpWarning,[smbYes,smbNo],smsWarning,smbYes)=smbYes;
 end;
 
+function TFRpMainFVCL.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+begin
+ Result:=0;
+ if Assigned(fchatframe) then
+  Result:=fchatframe.HubDatabaseOfSchema(AHubSchemaId);
+end;
+
 procedure TFRpMainFVCL.APreviewExecute(Sender: TObject);
 var
  pconfig:TPrinterConfig;
 begin
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,nil,
+  HubDatabaseOfSchema) then
+  exit;
  if (report.DatabaseInfo.Count>0) then
  begin
   if report.DatabaseInfo.Items[0].Driver in [rpdatadriver,rpdotnet2driver] then
@@ -2122,6 +2136,11 @@ var
  pconfig:TPrinterConfig;
  astream:TMemoryStream;
 begin
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,nil,
+  HubDatabaseOfSchema) then
+  exit;
 
  pconfig.Changed:=false;
  try

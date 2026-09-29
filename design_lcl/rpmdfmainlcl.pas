@@ -372,6 +372,11 @@ type
     function SelectReportExceptionSource(E: Exception): Boolean;
     // Selects the source of the error and shows it
     procedure ShowReportError(E: Exception);
+    // The Hub database of a schema of the design chat (connection wizard)
+    function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+    // Before running the report: the Reportman AI Agent connections not
+    // configured on this computer go to the connection wizard
+    function CheckAgentConnections: Boolean;
     procedure EmbedInControl(AParent: TWinControl);
     // Design assistant (rpmdfmainvcl). The request carries the report XML
     // with the undo history (BINCUE), the chat schema and the dataset
@@ -2827,6 +2832,8 @@ end;
 
 procedure TFRpMainFLCL.BtnPrintClick(Sender: TObject);
 begin
+  if Assigned(FReport) and not CheckAgentConnections then
+    Exit;
   try
     PrintCurrentReport;
   except
@@ -2842,6 +2849,8 @@ var
   previewCtrl: TRpPreviewControl;
 begin
   if not Assigned(FReport) then Exit;
+  if not CheckAgentConnections then
+    Exit;
   try
     previewCtrl := TRpPreviewControl.Create(nil);
     try
@@ -3637,6 +3646,19 @@ procedure TFRpMainFLCL.ShowReportError(E: Exception);
 begin
   SelectReportExceptionSource(E);
   RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK);
+end;
+
+function TFRpMainFLCL.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+begin
+  Result := 0;
+  if Assigned(FChatFrame) then
+    Result := FChatFrame.HubDatabaseOfSchema(AHubSchemaId);
+end;
+
+function TFRpMainFLCL.CheckAgentConnections: Boolean;
+begin
+  Result := RpCheckAgentConnections(FReport.DatabaseInfo, FReport.DataInfo, nil,
+    HubDatabaseOfSchema);
 end;
 
 procedure TFRpMainFLCL.UpdateFileMenu;

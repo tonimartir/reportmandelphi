@@ -210,7 +210,8 @@ type
 
 implementation
 
-uses System.JSON, rpmdfdatatextvcl, rpxmlstream, rpbasereport;
+uses System.JSON, rpmdfdatatextvcl, rpxmlstream, rpbasereport,
+  rpmdfnewreportwizardvcl;
 
 {$R *.DFM}
 
@@ -1423,6 +1424,10 @@ begin
  if dinfo=nil then
   exit;
  if Trim(dinfo.DatabaseAlias) = '' then
+  exit;
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,dinfo) then
   exit;
  // See if is dot net
  i:=report.DatabaseInfo.IndexOf(dinfo.DatabaseAlias);

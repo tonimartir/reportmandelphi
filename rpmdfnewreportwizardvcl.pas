@@ -105,6 +105,12 @@ type
     FAdminService: TRpWebDbxAdminService;
     FDestReport: TRpReport;
     FConnAdmin: TRpConnAdmin;
+    // Connection wizard (StartConnectionMode): only the connection pages
+    FConnectionMode: Boolean;
+    FFixedName: string;
+    FPreferredHubDatabaseId: Int64;
+    FResultConnection: string;
+    FResultDriver: TRpDbDriver;
 
     // dynamic controls per page
     FCurrentPanel: TPanel;
@@ -201,16 +207,55 @@ type
     procedure DoRouteChange(Sender: TObject);
     function IsImmediateFinishRouteSelected: Boolean;
     procedure FinishWizard;
+    // Connection mode: the page that ends the wizard, and its end
+    function IsLastConnectionStep: Boolean;
+    procedure FinishConnection;
   public
+    // Turns the wizard into the connection wizard (before showing it): the
+    // connection pages without the schema and the prompt; the report is not
+    // changed. AFixedName configures the Reportman AI Agent connection with
+    // that name (a connection of a report not configured on this computer);
+    // APreferredHubDatabaseId is selected when the API key lists it.
+    procedure StartConnectionMode(const AFixedName: string;
+      APreferredHubDatabaseId: Int64);
     property PendingPrompt: string read FPendingPrompt;
     property State: TRpWizardState read FState;
   end;
+
+  TRpShowConnectionWizardFunc = function(const AFixedName: string;
+    APreferredHubDatabaseId: Int64; out AConnectionName: string;
+    out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
+  // The Hub database of a Reportman AI schema when the designer knows it
+  // (the schemas of the design chat), 0 otherwise
+  TRpHubDatabaseOfSchema = function(AHubSchemaId: Int64): Int64 of object;
 
 function NewModernReportWizard(report: TRpReport;
   out APendingPrompt: string;
   out AHubDatabaseId: Int64;
   out AHubSchemaId: Int64;
   out AHubApiKey: string): Boolean;
+
+// The connection wizard (Data configuration > Add connection, a connection
+// of a report not configured on this computer), see StartConnectionMode.
+// True when the user finished it: the connection is in the connections file
+// (an ADO connection has its connection string instead).
+function ShowConnectionWizard(const AFixedName: string;
+  APreferredHubDatabaseId: Int64; out AConnectionName: string;
+  out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
+
+var
+  // The connection wizard of RpCheckAgentConnections and the data
+  // configuration (tests can replace it)
+  RpConnectionWizardFunc: TRpShowConnectionWizardFunc = nil;
+
+// Before opening the data (preview, print, Show data): each Reportman AI
+// Agent connection of the datasets (the ones opened on start, or
+// AOnlyDataset) that can not be opened on this computer is offered to the
+// connection wizard, with the Hub database of the schema of its datasets.
+// False when the user did not configure one: the data would not open.
+function RpCheckAgentConnections(ADatabases: TRpDatabaseInfoList;
+  ADataInfo: TRpDataInfoList; AOnlyDataset: TRpDataInfoItem = nil;
+  AHubDatabaseOfSchema: TRpHubDatabaseOfSchema = nil): Boolean;
 
 implementation
 
@@ -284,6 +329,90 @@ begin
   end;
 end;
 
+function ShowConnectionWizard(const AFixedName: string;
+  APreferredHubDatabaseId: Int64; out AConnectionName: string;
+  out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
+var
+  dia: TFRpNewReportWizardVCL;
+begin
+  AConnectionName := '';
+  ADriver := rpdbHttp;
+  AAdoConnectionString := '';
+  dia := TFRpNewReportWizardVCL.Create(Application);
+  try
+    dia.StartConnectionMode(AFixedName, APreferredHubDatabaseId);
+    dia.ShowModal;
+    Result := dia.FCommitted;
+    if Result then
+    begin
+      AConnectionName := dia.FResultConnection;
+      ADriver := dia.FResultDriver;
+      AAdoConnectionString := dia.FState.AdoConnectionString;
+    end;
+  finally
+    dia.Free;
+  end;
+end;
+
+function RpCheckAgentConnections(ADatabases: TRpDatabaseInfoList;
+  ADataInfo: TRpDataInfoList; AOnlyDataset: TRpDataInfoItem;
+  AHubDatabaseOfSchema: TRpHubDatabaseOfSchema): Boolean;
+var
+  I, J, LIndex: Integer;
+  LData: TRpDataInfoItem;
+  LDatabase: TRpDatabaseInfoItem;
+  LMessage, LName, LAdo: string;
+  LDriver: TRpDbDriver;
+  LPreferred: Int64;
+  LChecked: TStringList;
+begin
+  Result := True;
+  LChecked := TStringList.Create;
+  try
+    for I := 0 to ADataInfo.Count - 1 do
+    begin
+      LData := ADataInfo.Items[I];
+      if AOnlyDataset <> nil then
+      begin
+        if LData <> AOnlyDataset then
+          Continue;
+      end
+      else if not LData.OpenOnStart then
+        Continue;
+      LIndex := ADatabases.IndexOf(LData.DatabaseAlias);
+      if (LIndex < 0) or (LChecked.IndexOf(LData.DatabaseAlias) >= 0) then
+        Continue;
+      LChecked.Add(LData.DatabaseAlias);
+      LDatabase := ADatabases.Items[LIndex];
+      if not RpAgentConnectionProblem(LDatabase, LMessage) then
+        Continue;
+      if RpMessageBox(LMessage + sLineBreak + sLineBreak +
+        TranslateStr(1830, 'Configure the connection now?'), 'Reportman AI',
+        [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
+        Exit(False);
+      // The Hub database of the schema of a dataset of this connection
+      LPreferred := 0;
+      if Assigned(AHubDatabaseOfSchema) then
+        for J := 0 to ADataInfo.Count - 1 do
+          if SameText(ADataInfo.Items[J].DatabaseAlias, LDatabase.Alias) and
+            (ADataInfo.Items[J].HubSchemaId > 0) then
+          begin
+            LPreferred := AHubDatabaseOfSchema(ADataInfo.Items[J].HubSchemaId);
+            if LPreferred > 0 then
+              Break;
+          end;
+      if not RpConnectionWizardFunc(LDatabase.Alias, LPreferred, LName, LDriver,
+        LAdo) then
+        Exit(False);
+      // The next Connect reads the new settings
+      LDatabase.UpdateConAdmin;
+      LDatabase.DisConnect;
+    end;
+  finally
+    LChecked.Free;
+  end;
+end;
+
 { TFRpNewReportWizardVCL }
 
 procedure TFRpNewReportWizardVCL.FormCreate(Sender: TObject);
@@ -315,6 +444,76 @@ begin
   FHubDatabases.Free;
   FAdminService.Free;
   FConnAdmin.Free;
+end;
+
+procedure TFRpNewReportWizardVCL.StartConnectionMode(const AFixedName: string;
+  APreferredHubDatabaseId: Int64);
+begin
+  FConnectionMode := True;
+  FFixedName := Trim(AFixedName);
+  FPreferredHubDatabaseId := APreferredHubDatabaseId;
+  FHistory.Clear;
+  if FFixedName <> '' then
+  begin
+    // A Reportman AI Agent connection of the report: its API key and Hub
+    // database, under the same name
+    Caption := Format('Configure the connection "%s"', [FFixedName]);
+    FState.Route := wrAgent;
+    FState.ConnMode := cnNew;
+    FState.ConnName := FFixedName;
+    GoTo_Page(wpAgentLogin, False);
+  end
+  else
+  begin
+    Caption := 'Add connection';
+    GoTo_Page(wpRoute, False);
+  end;
+end;
+
+function TFRpNewReportWizardVCL.IsLastConnectionStep: Boolean;
+begin
+  Result := False;
+  if not FConnectionMode then
+    Exit;
+  case FCurrentPage of
+    wpAgentLogin, wpParams, wpDaoConn:
+      Result := True;
+    wpConnName:
+      // An existing connection is added as it is
+      Result := (Assigned(FRbExisting) and FRbExisting.Checked) or
+        ((FState.Route = wrDirect) and ((FState.DriverFamily = dfBde) or
+        not FamilyAcceptsParamStep));
+  end;
+end;
+
+procedure TFRpNewReportWizardVCL.FinishConnection;
+begin
+  FResultConnection := FState.ConnName;
+  if FState.Route = wrAgent then
+    FResultDriver := rpdbHttp
+  else
+  begin
+    case FState.DriverFamily of
+      dfZeos:
+        FResultDriver := rpdatazeos;
+      dfDbExpress:
+        FResultDriver := rpdatadbexpress;
+      dfBde:
+        begin
+          FResultDriver := rpdatabde;
+          FResultConnection := FState.DriverConcrete;
+        end;
+      dfDao:
+        begin
+          FResultDriver := rpdataado;
+          FResultConnection := 'ADO';
+        end;
+    else
+      FResultDriver := rpfiredac;
+    end;
+  end;
+  FCommitted := True;
+  Close;
 end;
 
 procedure TFRpNewReportWizardVCL.BCancelClick(Sender: TObject);
@@ -470,12 +669,38 @@ begin
     else
       BNext.Caption := 'Next';
   end
+  else if IsLastConnectionStep then
+    BNext.Caption := 'Finish'
   else if BNext.Caption = 'Finish' then
     BNext.Caption := 'Next';
 end;
 
 function TFRpNewReportWizardVCL.NextPageFor(APage: TRpWizardPage): TRpWizardPage;
 begin
+  // The connection wizard: no schema and no prompt (wpFinish ends it)
+  if FConnectionMode then
+  begin
+    case APage of
+      wpRoute:
+        if FState.Route = wrAgent then Result := wpConnName
+        else Result := wpDriver;
+      wpDriver:
+        if FState.DriverFamily = dfDao then Result := wpDaoConn
+        else Result := wpConnName;
+      wpConnName:
+        if FState.ConnMode = cnExisting then
+          Result := wpFinish
+        else if FState.Route = wrAgent then
+          Result := wpAgentLogin
+        else if (FState.DriverFamily <> dfBde) and FamilyAcceptsParamStep then
+          Result := wpParams
+        else
+          Result := wpFinish;
+    else
+      Result := wpFinish;
+    end;
+    Exit;
+  end;
   case APage of
     wpRoute:
       if FState.Route = wrAgent then Result := wpConnName
@@ -848,6 +1073,12 @@ begin
   end;
 
   next := NextPageFor(FCurrentPage);
+  if FConnectionMode and (next = wpFinish) then
+  begin
+    FinishConnection;
+    Result := True;
+    Exit;
+  end;
   GoTo_Page(next, True);
   Result := True;
 end;
@@ -1037,6 +1268,13 @@ begin
     48, 182);
   L.Width := 620; L.WordWrap := True;
 
+  // The connection wizard adds a connection: no "no connection" route
+  if FConnectionMode then
+  begin
+    UpdateNavButtons;
+    Exit;
+  end;
+
   FRbNoConnection := TRadioButton.Create(PContent);
   FRbNoConnection.Parent := PContent;
   FRbNoConnection.Left := 24; FRbNoConnection.Top := 242;
@@ -1099,6 +1337,12 @@ begin
     Exit;
   end;
 
+  // Connection wizard for a connection of the report: its name
+  if FFixedName <> '' then
+  begin
+    L := CreateLabel(PContent, Format('Connection: %s', [FFixedName]), 24, 4);
+    L.Font.Style := [fsBold];
+  end;
   CreateLabel(PContent, 'Reportman AI API key', 24, 24);
   FEdHubApiKey := TEdit.Create(PContent);
   FEdHubApiKey.Parent := PContent;
@@ -1427,6 +1671,8 @@ begin
     FLblExistingConnDriver.Visible := isExisting and (FState.Route = wrDirect);
   if Assigned(FEdNewConnName) then FEdNewConnName.Enabled := not isExisting;
   UpdateExistingConnDriverHint;
+  // Connection wizard: Finish with an existing connection
+  UpdateNavButtons;
 end;
 
 procedure TFRpNewReportWizardVCL.DoExistingConnChange(Sender: TObject);
@@ -1837,6 +2083,11 @@ begin
         FCbHubDatabase.Items.Add(list.Names[i]);
       if FCbHubDatabase.Items.Count > 0 then
         FCbHubDatabase.ItemIndex := 0;
+      // Connection wizard: the Hub database of the report connection
+      if FPreferredHubDatabaseId > 0 then
+        for i := 0 to list.Count - 1 do
+          if StrToInt64Def(list.ValueFromIndex[i], 0) = FPreferredHubDatabaseId then
+            FCbHubDatabase.ItemIndex := i;
     end;
     RpMessageBox('Logged in. Loaded ' + IntToStr(list.Count) + ' connections.',
       'Reportman AI', [smbOK], smsInformation, smbOK, smbOK);
@@ -1920,4 +2171,6 @@ begin
   end;
 end;
 
+initialization
+  RpConnectionWizardFunc := ShowConnectionWizard;
 end.

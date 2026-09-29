@@ -15,7 +15,7 @@ interface
 
 uses
   Classes, SysUtils, Math, Forms, Controls, Graphics, Dialogs, Menus,
-  StdCtrls, ExtCtrls, ComCtrls, Variants, DB,
+  StdCtrls, ExtCtrls, ComCtrls, Buttons, Variants, DB,
   rpreport, rpdatainfo, rpparams, rpmdconsts, rptypes, rpbasereport, rpxmlstream,
   rpfrmmonacoeditorlcl, rpmdimageslcl, rpmdundocuelcl, rpmdfparamslcl,
   rpgraphutilslcl, rpaithreadslcl, rpfrmchatlcl;
@@ -109,6 +109,17 @@ type
     CheckLoadDriverParams: TCheckBox;
     BTestConn: TButton;
     OpenDialog1: TOpenDialog;
+    // Connection wizard: "Add connection" above the toolbar, the same button
+    // in the middle of the tab while the report has no connections, and
+    // "Configure with the wizard" for a Reportman AI Agent connection that
+    // can not be opened on this computer
+    PConnWizard: TPanel;
+    BWizardConn: TBitBtn;
+    PConnEmpty: TPanel;
+    BWizardConnEmpty: TBitBtn;
+    LWizardHint: TLabel;
+    LAgentProblem: TLabel;
+    BWizardConfigure: TBitBtn;
 
     PDSClient: TPanel;
     PDSTopArea: TPanel;
@@ -181,6 +192,10 @@ type
     procedure MenuAddClick(Sender: TObject);
     procedure BConfigClick(Sender: TObject);
     procedure BTestConnClick(Sender: TObject);
+    procedure BuildWizardControls;
+    procedure BWizardConnClick(Sender: TObject);
+    procedure BWizardConfigureClick(Sender: TObject);
+    procedure UpdateAgentProblem(AItem: TRpDatabaseInfoItem);
     // Datasets (VCL TFRpDatasetsVCL)
     procedure UpdateConnectionDependentUi(AItem: TRpDataInfoItem);
     procedure BShowDataClick(Sender: TObject);
@@ -271,6 +286,8 @@ type
     // Operations of the buttons without their prompts (the tests use them)
     // Adds a connection of the connections file (New drop down)
     procedure AddAvailableConnection(const AName: string);
+    // Adds (or selects) the connection made by the connection wizard
+    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
     // Selects a driver of the driver list (VCL GDriver)
     procedure SelectListDriver(ADriver: TRpDbDriver);
     // Tests the active connection in a worker (VCL BTestClick)
@@ -311,6 +328,11 @@ type
     property LoadDriverParamsCheck: TCheckBox read CheckLoadDriverParams;
     property TestConnectionButton: TButton read BTestConn;
     property AddConnectionMenu: TPopupMenu read PopAdd;
+    // Connection wizard buttons and the empty tab
+    property AddConnectionWizardButton: TBitBtn read BWizardConn;
+    property EmptyConnectionsPanel: TPanel read PConnEmpty;
+    property ConfigureWizardButton: TBitBtn read BWizardConfigure;
+    property AgentProblemLabel: TLabel read LAgentProblem;
     // Connections of the connections file for the driver of the driver list
     property AvailableConnections: TStringList read FAvailable;
     property ConnectionTestRunning: Boolean read FTestRunning;
@@ -346,7 +368,7 @@ implementation
 
 uses
   rpjsonfpc, rpauthmanager, rpdatahttp, rpdbxconfiglcl, rpmdfsampledatalcl,
-  rpmdfdatatextlcl, rplcllayout;
+  rpmdfdatatextlcl, rplcllayout, rpmdfnewreportwizardlcl;
 
 type
   { "Show data" (VCL BShowDataClick): the dataset is opened in a worker on a
@@ -1047,8 +1069,24 @@ begin
   TabConnections.Caption := TranslateStr(142, 'Database connections');
   TabConnections.ImageIndex := 0;
 
+  // "Add connection" (the connection wizard) above the toolbar
+  PConnWizard := TPanel.Create(TabConnections);
+  PConnWizard.Parent := TabConnections;
+  PConnWizard.BevelOuter := bvNone;
+  PConnWizard.Align := alTop;
+  PConnWizard.AutoSize := True;
+  PConnWizard.Top := 0;
+  BWizardConn := TBitBtn.Create(PConnWizard);
+  BWizardConn.Parent := PConnWizard;
+  BWizardConn.Caption := TranslateStr(1826, 'Add connection') + '...';
+  BWizardConn.AutoSize := True;
+  BWizardConn.BorderSpacing.Around := Scale96ToScreen(6);
+  BWizardConn.Align := alLeft;
+  BWizardConn.OnClick := BWizardConnClick;
+
   ToolBarConn := TToolBar.Create(TabConnections);
   ToolBarConn.Parent := TabConnections;
+  ToolBarConn.Top := Scale96ToScreen(60);
   ToolBarConn.Align := alTop;
   ToolBarConn.Height := Scale96ToScreen(28);
   ToolBarConn.ButtonWidth := Scale96ToScreen(26);
@@ -1178,6 +1216,8 @@ begin
   BTestConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(254), RpCaptionWidth(BTestConn, [BTestConn.Caption], 110),
     Scale96ToForm(28));
   BTestConn.OnClick := BTestConnClick;
+
+  BuildWizardControls;
 
   // -------------------------------------------------------------
   // TAB 2: Datasets
@@ -2443,6 +2483,13 @@ begin
   FUpdatingControls := True;
   try
     FActiveConnIndex := Index;
+    // No connections: the connection wizard instead of the properties
+    PConnEmpty.Visible := FWork.DatabaseInfo.Count = 0;
+    PConnProps.Visible := not PConnEmpty.Visible;
+    if (Index < 0) or (Index >= FWork.DatabaseInfo.Count) then
+      UpdateAgentProblem(nil)
+    else
+      UpdateAgentProblem(FWork.DatabaseInfo[Index]);
     if (Index < 0) or (Index >= FWork.DatabaseInfo.Count) then
     begin
       FActiveConnIndex := -1;
@@ -2799,6 +2846,147 @@ begin
   LoadConnDetails(LConnections.ItemIndex);
 end;
 
+procedure TFRpDInfoLCL.BuildWizardControls;
+
+  procedure SetWand(AButton: TBitBtn; ASize: Integer);
+  var
+    LBitmap: TBitmap;
+  begin
+    LBitmap := CreateWandBitmap(Scale96ToScreen(ASize));
+    try
+      AButton.Glyph.Assign(LBitmap);
+    finally
+      LBitmap.Free;
+    end;
+  end;
+
+begin
+  SetWand(BWizardConn, 20);
+
+  // The report has no connections: the wizard in the place of the
+  // properties of the connection (one of both panels is visible)
+  PConnEmpty := TPanel.Create(PConnClient);
+  PConnEmpty.Parent := PConnClient;
+  PConnEmpty.BevelOuter := bvNone;
+  PConnEmpty.Align := alClient;
+  PConnEmpty.Visible := False;
+  BWizardConnEmpty := TBitBtn.Create(PConnEmpty);
+  BWizardConnEmpty.Parent := PConnEmpty;
+  BWizardConnEmpty.Caption := BWizardConn.Caption;
+  BWizardConnEmpty.Font.Size := 11;
+  BWizardConnEmpty.Spacing := Scale96ToScreen(10);
+  BWizardConnEmpty.AutoSize := True;
+  BWizardConnEmpty.AnchorHorizontalCenterTo(PConnEmpty);
+  BWizardConnEmpty.AnchorVerticalCenterTo(PConnEmpty);
+  BWizardConnEmpty.OnClick := BWizardConnClick;
+  SetWand(BWizardConnEmpty, 32);
+  LWizardHint := TLabel.Create(PConnEmpty);
+  LWizardHint.Parent := PConnEmpty;
+  LWizardHint.AutoSize := False;
+  LWizardHint.WordWrap := True;
+  LWizardHint.Alignment := taCenter;
+  LWizardHint.ShowAccelChar := False;
+  LWizardHint.Width := Scale96ToScreen(420);
+  LWizardHint.Height := Scale96ToScreen(54);
+  LWizardHint.Font.Color := clGrayText;
+  LWizardHint.Caption := TranslateStr(1828, 'Connect the report to your database: ' +
+    'through the Reportman Agent, or directly (SQLite, Zeos...).');
+  LWizardHint.AnchorHorizontalCenterTo(PConnEmpty);
+  LWizardHint.AnchorToNeighbour(akTop, Scale96ToScreen(10), BWizardConnEmpty);
+
+  // A Reportman AI Agent connection that can not be opened on this computer
+  LAgentProblem := TLabel.Create(PConnProps);
+  LAgentProblem.Parent := PConnProps;
+  LAgentProblem.WordWrap := True;
+  LAgentProblem.ShowAccelChar := False;
+  LAgentProblem.Font.Color := clMaroon;
+  LAgentProblem.SetBounds(Scale96ToScreen(10), Scale96ToScreen(294), Scale96ToScreen(380),
+    Scale96ToScreen(16));
+  // Both sides anchored: the autosize only sets the height of the lines
+  LAgentProblem.AnchorParallel(akRight, Scale96ToScreen(10), PConnProps);
+  LAgentProblem.Anchors := [akLeft, akTop, akRight];
+  LAgentProblem.Visible := False;
+  BWizardConfigure := TBitBtn.Create(PConnProps);
+  BWizardConfigure.Parent := PConnProps;
+  BWizardConfigure.Caption := TranslateStr(1829, 'Configure with the wizard');
+  BWizardConfigure.AutoSize := True;
+  BWizardConfigure.Left := Scale96ToScreen(10);
+  BWizardConfigure.AnchorToNeighbour(akTop, Scale96ToScreen(6), LAgentProblem);
+  BWizardConfigure.OnClick := BWizardConfigureClick;
+  BWizardConfigure.Visible := False;
+  SetWand(BWizardConfigure, 16);
+end;
+
+procedure TFRpDInfoLCL.BWizardConnClick(Sender: TObject);
+var
+  LName: string;
+  LDriver: TRpDbDriver;
+begin
+  if not CheckCanModify then
+    Exit;
+  SaveActiveConn;
+  if RpConnectionWizardFunc('', 0, LName, LDriver) then
+    AddWizardConnection(LName, LDriver);
+end;
+
+procedure TFRpDInfoLCL.AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
+var
+  conname: string;
+  index: Integer;
+  item: TRpDatabaseInfoItem;
+begin
+  conname := UpperCase(Trim(AName));
+  if conname = '' then
+    Exit;
+  // The connections file has it now (New drop down)
+  LoadConAdmin;
+  index := FWork.DatabaseInfo.IndexOf(conname);
+  if index < 0 then
+  begin
+    item := FWork.DatabaseInfo.Add(conname);
+    item.Name := UniqueItemName('TRPDATABASEINFOITEM');
+    item.Driver := ADriver;
+    LConnections.Items.Add(item.Alias);
+    index := LConnections.Count - 1;
+  end;
+  LConnections.ItemIndex := index;
+  LoadConnDetails(index);
+end;
+
+procedure TFRpDInfoLCL.BWizardConfigureClick(Sender: TObject);
+var
+  LName: string;
+  LDriver: TRpDbDriver;
+begin
+  if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
+    Exit;
+  SaveActiveConn;
+  if RpConnectionWizardFunc(FWork.DatabaseInfo[FActiveConnIndex].Alias, 0, LName,
+    LDriver) then
+  begin
+    LoadConAdmin;
+    LoadConnDetails(FActiveConnIndex);
+  end;
+end;
+
+procedure TFRpDInfoLCL.UpdateAgentProblem(AItem: TRpDatabaseInfoItem);
+var
+  LMessage: string;
+begin
+  if (AItem <> nil) and (AItem.Driver = rpdbHttp) and
+    RpAgentConnectionProblem(AItem, LMessage) then
+  begin
+    LAgentProblem.Caption := LMessage;
+    LAgentProblem.Visible := True;
+    BWizardConfigure.Visible := True;
+  end
+  else
+  begin
+    LAgentProblem.Visible := False;
+    BWizardConfigure.Visible := False;
+  end;
+end;
+
 procedure TFRpDInfoLCL.BConfigClick(Sender: TObject);
 var
   i: Integer;
@@ -2868,6 +3056,11 @@ begin
   if (item = nil) or (Trim(item.DatabaseAlias) = '') then
     Exit;
   if FShowDataRunning then
+    Exit;
+  // A Reportman AI Agent connection not configured on this computer: the
+  // connection wizard first
+  if FInteractive and not RpCheckAgentConnections(FWork.DatabaseInfo,
+    FWork.DataInfo, item) then
     Exit;
   // The worker opens a copy of the working data (master datasets and unions
   // included); the dialog keeps editing the working one

@@ -601,6 +601,13 @@ function RestoreADOPassword(const AEdited,AOriginal:String):String;
 // session of the user). Returns the number of connections written.
 function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
   AHubDatabaseId:Int64;const AApiKey:string):Integer;
+// Whether a Reportman AI Agent connection can not be opened on this computer,
+// without opening it (the check of TRpDatabaseInfoItem.Connect, with its
+// message): no Hub database in the connections file, or neither API key nor
+// Reportman AI session. The connections file is read again. The designer
+// offers to configure the connection before opening the data.
+function RpAgentConnectionProblem(ADatabase:TRpDatabaseInfoItem;
+  out AMessage:string):Boolean;
 procedure GetDotNetDrivers(alist:TStrings);
 procedure GetDotNet2Drivers(alist:TStrings);
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -2083,6 +2090,37 @@ begin
    item.DisConnect;
    Inc(Result);
   end;
+ finally
+  params.Free;
+ end;
+end;
+
+function RpAgentConnectionProblem(ADatabase:TRpDatabaseInfoItem;
+  out AMessage:string):Boolean;
+var
+ params:TStringList;
+begin
+ Result:=False;
+ AMessage:='';
+ if (ADatabase=nil) or (ADatabase.Driver<>rpdbHttp) then
+  exit;
+ params:=TStringList.Create;
+ try
+  if ADatabase.LoadParams then
+  begin
+   // Changed meanwhile by the connections dialog or the connection wizard
+   ADatabase.UpdateConAdmin;
+   ADatabase.LoadConnectionParams(params);
+  end;
+  if StrToInt64Def(params.Values['HubDatabaseId'],0)<=0 then
+   AMessage:=Format(SRpAgentNotConfigured,[ADatabase.Alias])
+  else
+  if (Trim(params.Values['ApiKey'])='') and (TRpAuthManager.Instance.Token='') then
+   AMessage:=Format(SRpAgentNoCredentials,[ADatabase.Alias]);
+  Result:=AMessage<>'';
+  // The next Connect reads the connections file again
+  if Result then
+   ADatabase.DisConnect;
  finally
   params.Free;
  end;

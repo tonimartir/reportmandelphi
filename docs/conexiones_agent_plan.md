@@ -1,7 +1,7 @@
 # Conexiones del Reportman Agent: asistente de conexión (plan)
 
-Estado: la fase 1 está decidida y hecha (29-09-2026) salvo el cambio del Hub;
-las fases 2 y 3 están pendientes de aprobar. Afecta al diseñador
+Estado: las fases 1, 2 y 3 están hechas (29-09-2026); el cambio del Hub está
+pendiente de desplegar y la fase 4 queda aplazada. Afecta al diseñador
 Delphi (VCL) y al de Lazarus (LCL) por igual, al motor común (`rpdatainfo`) y,
 en un punto, al Hub (`C:\desarrollo\ReportmanAI`).
 
@@ -98,6 +98,22 @@ conexión sin clave y sin sesión da un error claro. Todo en Delphi y en FPC.
 
 ## Fase 2: el asistente de conexión
 
+**Hecho** (Delphi y Lazarus), con estas diferencias respecto al plan:
+
+- `StartConnectionMode(nombre fijo, base de datos preferida)` en
+  `TFRpNewReportWizardVCL` / `TFRpNewReportWizardLCL`, y
+  `ShowConnectionWizard`, que devuelve el nombre y el controlador (y la cadena
+  ADO en Delphi). Quien lo abre añade la conexión al informe.
+- Páginas: ruta (sin "sin conexión"), controlador, nombre, clave y base de
+  datos del Hub (Agent) o parámetros (directa). No hay página de esquema: el
+  esquema es de cada dataset, no de la conexión. "Terminar" en el último paso.
+- En lugar del esquema preseleccionado, la base de datos preferida: la del
+  esquema de los datasets de la conexión, si el chat de diseño lo conoce.
+- Prueba: `TestConnectionWizard` en LclAIChatTest (conexión nueva del Agent,
+  existente y nombre fijo con base de datos preferida).
+
+Plan original:
+
 El asistente actual con un **modo conexión**: la misma ventana y las mismas
 páginas, en Delphi y en Lazarus, sin duplicar código.
 
@@ -123,6 +139,27 @@ páginas, en Delphi y en Lazarus, sin duplicar código.
   página final de la petición a la IA.
 
 ## Fase 3: dónde se abre
+
+**Hecho** (Delphi y Lazarus):
+
+- **Configuración de datos > Conexiones**: botón "Añadir conexión..." con una
+  varita encima de la barra de herramientas; sin conexiones, el mismo botón
+  grande en el centro con una explicación (id 1826, 1828). Con una conexión
+  del Agent que no se puede abrir en este equipo, el motivo
+  (`RpAgentConnectionProblem`, en `rpdatainfo`) y "Configurar con el
+  asistente" (id 1829).
+- **Al abrir los datos** (vista previa, imprimir, Mostrar datos):
+  `RpCheckAgentConnections` comprueba antes de abrir, sin llamar al Hub, y
+  pregunta "¿Configurar la conexión ahora?" (id 1830); el asistente se abre
+  con el nombre fijo (título, id 1827) y la base de datos preferida.
+- **Pendiente**: el diálogo de conexiones sin asistente (sigue para usos
+  avanzados), el contexto de la IA y el aviso del chat de una conexión creada
+  sin clave (3.4).
+- Pruebas: `TestCheckAgentConnections` y `TestDataDialogWizard` en
+  LclAIChatTest; en Delphi, capturas del marco de conexiones en un escritorio
+  oculto.
+
+Plan original:
 
 1. **Configuración de datos > Conexiones**:
    - botón "Asistente..." para una conexión nueva;
@@ -162,8 +199,10 @@ se decide después de usarlas.
 - **Delphi**: compilación del grupo (Win32, Win64, Linux64).
 - **A mano**: el Ubuntu de Hyper-V (XFCE) y Windows con la cuenta real.
 
-## Decisiones pendientes
+## Decisiones
 
-1. **1.3**: ¿se corrige el Hub en ReportmanAI dentro de este trabajo?
-2. **Fases 2 y 3**: ¿adelante?
-3. **Fase 4**: ¿queda aplazada?
+1. **1.3**: el Hub se corrige, compatible con las versiones anteriores; Toni
+   lo despliega.
+2. **Fases 2 y 3**: adelante, con el asistente en la pestaña Conexiones (botón
+   grande con varita).
+3. **Fase 4**: aplazada.
