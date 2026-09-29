@@ -331,6 +331,12 @@ type
     Height: double;
   end;
 
+const
+  // Edge of each page: GTK2 and Qt6 paint clAppWorkSpace (the background
+  // around the pages) almost white, where Windows paints it dark gray, so a
+  // white page had no visible edge
+  PAGE_FRAME_COLOR = clGray;
+
 procedure TRpPreviewMeta.ReDrawPage;
 var
   newwidth, newheight: integer;
@@ -362,6 +368,14 @@ var
       PhysicWidth := FMetafile.CustomX;
       PhysicHeight := FMetafile.CustomY;
     end;
+  end;
+
+  // The last column and row of a page stay in the background color (the
+  // separator between pages); the frame goes inside them
+  procedure FramePage(ALeft, ATop: integer);
+  begin
+    FBitmap.Canvas.Brush.Color := PAGE_FRAME_COLOR;
+    FBitmap.Canvas.FrameRect(Rect(ALeft, ATop, ALeft + pwidth - 1, ATop + pheight - 1));
   end;
 begin
   if not Assigned(Parent) then
@@ -532,6 +546,7 @@ begin
     begin
       prdriver.DrawPage(FMetafile.Pages[FPage]);
       FBitmap.Canvas.Draw(0, 0, prdriver.bitmap);
+      FramePage(0, 0);
       FBitmap.Canvas.MoveTo(FBitmap.Width - 1, 0);
       FBitmap.Canvas.LineTo(FBitmap.Width - 1, FBitmap.Height - 1);
       FBitmap.Canvas.LineTo(0, FBitmap.Height - 1);
@@ -567,6 +582,7 @@ begin
             begin
               prdriver.DrawPage(FMetafile.Pages[FPage + pdrawn]);
               FBitmap.Canvas.Draw(x * pwidth, y * pheight, prdriver.bitmap);
+              FramePage(x * pwidth, y * pheight);
               FBitmap.Canvas.MoveTo((x + 1) * pwidth - 1, y * pheight - 1);
               FBitmap.Canvas.LineTo((x + 1) * pwidth - 1, (y + 1) * pheight - 1);
               FBitmap.Canvas.MoveTo((x) * pwidth - 1, (y + 1) * pheight - 1);
@@ -593,6 +609,7 @@ begin
             begin
               prdriver.DrawPage(FMetafile.Pages[FPage + pdrawn]);
               FBitmap.Canvas.Draw(x * pwidth, y * pheight, prdriver.bitmap);
+              FramePage(x * pwidth, y * pheight);
               FBitmap.Canvas.MoveTo((x + 1) * pwidth - 1, y * pheight - 1);
               FBitmap.Canvas.LineTo((x + 1) * pwidth - 1, (y + 1) * pheight - 1);
               FBitmap.Canvas.MoveTo((x) * pwidth - 1, (y + 1) * pheight - 1);
