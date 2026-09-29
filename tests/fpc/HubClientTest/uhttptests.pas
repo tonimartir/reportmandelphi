@@ -665,6 +665,50 @@ begin
   end;
 end;
 
+type
+  // Ends the accept loop if the bind of BindErrorTest succeeded after all
+  TIdleStopper = class
+  public
+    procedure Idle(Sender: TObject);
+  end;
+
+procedure TIdleStopper.Idle(Sender: TObject);
+begin
+  TSocketServer(Sender).StopAccepting(False);
+end;
+
+// A fake server that can not listen frees its listening socket (heaptrc
+// reported it now and then, when the random port of a fake server was taken)
+procedure BindErrorTest;
+var
+  LServer: TFakeHttpServer;
+  LStopper: TIdleStopper;
+  LError: string;
+begin
+  Section('Fake server: a bind error frees the listening socket');
+  LStopper := TIdleStopper.Create;
+  LServer := TFakeHttpServer.Create(nil);
+  try
+    // 192.0.2.1 (TEST-NET-1) is not an address of this machine
+    LServer.Address := '192.0.2.1';
+    LServer.Port := 20000 + Random(30000);
+    LServer.AcceptIdleTimeout := 50;
+    LServer.OnAcceptIdle := LStopper.Idle;
+    LError := '';
+    try
+      LServer.Active := True;
+    except
+      on E: Exception do
+        LError := E.Message;
+    end;
+    Check(LError <> '', 'binding to an address of another machine fails');
+    Check(not LServer.Active, 'the listening socket was freed after the error: ' + LError);
+  finally
+    LServer.Free;
+    LStopper.Free;
+  end;
+end;
+
 procedure RunHttpTests;
 var
   LRoutes: THttpRoutes;
@@ -683,6 +727,7 @@ begin
     GServer.Free;
     LRoutes.Free;
   end;
+  BindErrorTest;
   LoopbackTest;
   TlsTest;
 end;

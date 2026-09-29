@@ -25,13 +25,24 @@ type
     constructor CreateConnection(AConnection: TFPHTTPConnection); override;
   end;
 
-  // Makes the bind address and the connection count public
+  // Makes the bind address and the connection count public. Frees the
+  // listening socket when it can not listen: TFPCustomHttpServer.SetActive
+  // (FPC 3.2.2) frees it only when StartServerSocket returns, so a bind error
+  // (random port in use, or excluded by Hyper-V on Windows) or an accept
+  // error left the TInetServer and its handler allocated (heaptrc: 2 blocks,
+  // 32 + 168 bytes, allocated in TFakeServerThread.Execute).
   TFakeHttpServer = class(TFPHttpServer)
   private
     FConnThreads: TThreadList;
+    // Stop (main thread) and the server thread freeing the socket after an
+    // error
+    FSocketLock: TRTLCriticalSection;
     procedure FreeConnectionThreads(AOnlyFinished: Boolean);
   protected
     function CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread; override;
+    procedure StartServerSocket; override;
+    procedure StopServerSocket; override;
+    procedure FreeServerSocket; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -107,6 +118,7 @@ end;
 constructor TFakeHttpServer.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  InitCriticalSection(FSocketLock);
   FConnThreads := TThreadList.Create;
 end;
 
@@ -115,6 +127,39 @@ begin
   inherited Destroy;
   FreeConnectionThreads(False);
   FConnThreads.Free;
+  DoneCriticalSection(FSocketLock);
+end;
+
+procedure TFakeHttpServer.StartServerSocket;
+begin
+  try
+    inherited StartServerSocket;
+  except
+    FreeServerSocket;
+    raise;
+  end;
+end;
+
+procedure TFakeHttpServer.StopServerSocket;
+begin
+  EnterCriticalSection(FSocketLock);
+  try
+    // The server thread may have freed it after an error meanwhile
+    if Active then
+      inherited StopServerSocket;
+  finally
+    LeaveCriticalSection(FSocketLock);
+  end;
+end;
+
+procedure TFakeHttpServer.FreeServerSocket;
+begin
+  EnterCriticalSection(FSocketLock);
+  try
+    inherited FreeServerSocket;
+  finally
+    LeaveCriticalSection(FSocketLock);
+  end;
 end;
 
 function TFakeHttpServer.CreateConnectionThread(Conn: TFPHTTPConnection): TFPHTTPConnectionThread;
