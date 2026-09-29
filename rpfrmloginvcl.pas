@@ -34,11 +34,14 @@ type
     BtnLoginCode: TButton;
     LStatus: TLabel;
     MemoLog: TMemo;
+    LAgentInfo: TLabel;
+    LnkAgentDownload: TLabel;
     procedure BtnGoogleClick(Sender: TObject);
     procedure BtnMicrosoftClick(Sender: TObject);
     procedure BtnEmailClick(Sender: TObject);
     procedure BtnSendCodeClick(Sender: TObject);
     procedure BtnLoginCodeClick(Sender: TObject);
+    procedure LnkAgentDownloadClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
     procedure AddLog(const AMsg: string);
@@ -119,6 +122,11 @@ begin
     LStatus.Caption := 'Microsoft login failed or cancelled.';
     LStatus.Font.Color := clRed;
   end;
+end;
+
+procedure TFRpLoginVCL.LnkAgentDownloadClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpLoginVCL.BtnEmailClick(Sender: TObject);

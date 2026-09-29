@@ -60,6 +60,9 @@ type
     BtnLoginCode: TButton;
     LStatus: TLabel;
     MemoLog: TMemo;
+    // How to reach the databases: the Reportman Agent and its download page
+    LAgentInfo: TLabel;
+    LnkAgentDownload: TLabel;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure BtnGoogleClick(Sender: TObject);
@@ -67,6 +70,7 @@ type
     procedure BtnEmailClick(Sender: TObject);
     procedure BtnSendCodeClick(Sender: TObject);
     procedure BtnLoginCodeClick(Sender: TObject);
+    procedure LnkAgentDownloadClick(Sender: TObject);
     // A login is running in the worker thread
     property Busy: Boolean read FBusy;
   end;
@@ -172,7 +176,7 @@ begin
   Position := poMainFormCenter;
   Caption := TranslateStr(1499, 'Login to Reportman.AI');
   ClientWidth := Scale(400);
-  ClientHeight := Scale(460);
+  ClientHeight := Scale(540);
   KeyPreview := True;
   OnKeyPress := FormKeyPress;
   LLeft := Scale(24);
@@ -264,6 +268,34 @@ begin
 {$ENDIF}
   MemoLog.Font.Size := 8;
   MemoLog.TabStop := False;
+
+  // Room for three lines (long translations); the link goes under the text
+  LAgentInfo := TLabel.Create(Self);
+  LAgentInfo.Parent := Self;
+  LAgentInfo.WordWrap := True;
+  LAgentInfo.ShowAccelChar := False;
+  LAgentInfo.SetBounds(LLeft, Scale(456), LWidth, Scale(18));
+  // Both sides anchored: the autosize only sets the height of the lines
+  LAgentInfo.AnchorParallel(akRight, LLeft, Self);
+  LAgentInfo.Anchors := [akLeft, akTop, akRight];
+  LAgentInfo.Caption := TranslateStr(1821,
+    'To connect to your databases you can use the Reportman Agent (ai.reportman.es).');
+
+  LnkAgentDownload := TLabel.Create(Self);
+  LnkAgentDownload.Parent := Self;
+  LnkAgentDownload.ShowAccelChar := False;
+  LnkAgentDownload.Caption := TranslateStr(1822, 'Download Reportman Agent');
+  LnkAgentDownload.Cursor := crHandPoint;
+  LnkAgentDownload.Font.Color := clBlue;
+  LnkAgentDownload.Font.Style := [fsUnderline];
+  LnkAgentDownload.OnClick := LnkAgentDownloadClick;
+  LnkAgentDownload.Left := LLeft;
+  LnkAgentDownload.AnchorToNeighbour(akTop, Scale(4), LAgentInfo);
+end;
+
+procedure TFRpLoginLCL.LnkAgentDownloadClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpLoginLCL.FormKeyPress(Sender: TObject; var Key: Char);

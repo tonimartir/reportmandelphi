@@ -216,6 +216,10 @@ type
     function GetPortalUrl: string;
 
     procedure OpenUrl(const AUrl: string);
+    // Download page of the Reportman Agent on ai.reportman.es in the AI
+    // language (the site has the same eight languages)
+    function AgentDownloadUrl: string;
+    procedure OpenAgentDownloadPage;
 
     // AI/OAuth additions
     function LoginGoogle: Boolean;
@@ -1967,6 +1971,39 @@ begin
     Log('OpenUrl is not supported on this platform: '+AUrl);
 {$ENDIF}
 {$ENDIF}
+end;
+
+function TRpAuthManager.AgentDownloadUrl: string;
+var
+  LLanguage, LCode: string;
+begin
+  LLanguage := GetAILanguage;
+  if SameText(LLanguage, 'Spanish') then
+    LCode := 'es'
+  else if SameText(LLanguage, 'Italian') then
+    LCode := 'it'
+  else if SameText(LLanguage, 'French') then
+    LCode := 'fr'
+  else if SameText(LLanguage, 'German') then
+    LCode := 'de'
+  else if SameText(LLanguage, 'Portuguese') then
+    LCode := 'pt'
+  else if SameText(LLanguage, 'Chinese') then
+    LCode := 'zh'
+  else if SameText(LLanguage, 'Catalan') then
+    LCode := 'ca'
+  else
+    LCode := '';
+  // English has no language folder
+  if LCode = '' then
+    Result := 'https://ai.reportman.es/download'
+  else
+    Result := 'https://ai.reportman.es/' + LCode + '/download';
+end;
+
+procedure TRpAuthManager.OpenAgentDownloadPage;
+begin
+  OpenUrl(AgentDownloadUrl);
 end;
 
 function TRpAuthManager.GetConfigFileName: string;

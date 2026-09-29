@@ -603,7 +603,7 @@ end;
 
 procedure TFRpLoginFrameLCL.MenuItemDbAiAgentClick(Sender: TObject);
 begin
-  TRpAuthManager.Instance.OpenUrl('https://ai.reportman.es/es/download');
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpLoginFrameLCL.MenuItemLogoutClick(Sender: TObject);

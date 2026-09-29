@@ -93,6 +93,8 @@ type
     FImages: TImageList;
     FHubButton: TButton;
     FHubMenu: TPopupMenu;
+    FAgentInfo: TLabel;
+    FAgentLink: TLabel;
     // Controls
     PTop: TPanel;
     LDriversFile: TLabel;
@@ -115,6 +117,8 @@ type
     procedure LoadConfig;
     procedure FreeParamsControls;
     procedure CreateParamsControls;
+    procedure AddAgentInfo(ATop: Integer);
+    procedure AgentLinkClick(Sender: TObject);
     procedure ComboDriversClick(Sender: TObject);
     procedure LConnectionsClick(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
@@ -160,6 +164,11 @@ type
     property ScrollParams: TScrollBox read FScrollParams;
     // Button of the HubDatabaseId parameter (nil when the entry has none)
     property HubButton: TButton read FHubButton;
+    // What the Reportman Agent is and its download link, under the
+    // parameters of an Agent entry or alone when the list of the Agent
+    // driver is empty (nil otherwise)
+    property AgentInfo: TLabel read FAgentInfo;
+    property AgentLink: TLabel read FAgentLink;
     // Hub databases of the last discovery (name, Hint = hubDatabaseId)
     property HubMenu: TPopupMenu read FHubMenu;
     property HubDiscoveryRunning: Boolean read FHubDiscoveryRunning;
@@ -795,6 +804,8 @@ end;
 procedure TFRpDBXConfigLCL.FreeParamsControls;
 begin
   FHubButton := nil;
+  FAgentInfo := nil;
+  FAgentLink := nil;
   while FScrollParams.ControlCount > 0 do
     FScrollParams.Controls[0].Free;
 end;
@@ -881,12 +892,46 @@ begin
         LButton.Height := Edit1.Height;
       top := top + Edit1.Height + Scale96ToScreen(CONTROL_DISTANCEY);
     end;
+    if SameText(FParams.Values['DriverName'], AGENT_DRIVER_NAME) then
+      AddAgentInfo(top);
   finally
     alist.Free;
     FScrollParams.EnableAutoSizing;
     FUpdatingParams := False;
   end;
   UpdateHubButton;
+end;
+
+procedure TFRpDBXConfigLCL.AddAgentInfo(ATop: Integer);
+begin
+  FAgentInfo := TLabel.Create(Self);
+  FAgentInfo.Parent := FScrollParams;
+  FAgentInfo.WordWrap := True;
+  FAgentInfo.ShowAccelChar := False;
+  FAgentInfo.Caption := TranslateStr(1823, 'The Reportman Agent is installed as a service ' +
+    'on a Windows or Linux computer that can reach your database and gives the designer ' +
+    'secure access to it through ai.reportman.es.');
+  FAgentInfo.Left := Scale96ToScreen(CONTROL_DISTANCEX);
+  FAgentInfo.Top := ATop + Scale96ToScreen(8);
+  // Both sides anchored: the autosize only sets the height of the lines
+  FAgentInfo.AnchorParallel(akRight, Scale96ToScreen(10), FScrollParams);
+  FAgentInfo.Anchors := [akLeft, akTop, akRight];
+
+  FAgentLink := TLabel.Create(Self);
+  FAgentLink.Parent := FScrollParams;
+  FAgentLink.ShowAccelChar := False;
+  FAgentLink.Caption := TranslateStr(1822, 'Download Reportman Agent');
+  FAgentLink.Cursor := crHandPoint;
+  FAgentLink.Font.Color := clBlue;
+  FAgentLink.Font.Style := [fsUnderline];
+  FAgentLink.OnClick := AgentLinkClick;
+  FAgentLink.Left := FAgentInfo.Left;
+  FAgentLink.AnchorToNeighbour(akTop, Scale96ToScreen(4), FAgentInfo);
+end;
+
+procedure TFRpDBXConfigLCL.AgentLinkClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpDBXConfigLCL.LConnectionsClick(Sender: TObject);
@@ -902,7 +947,11 @@ begin
   begin
     FConnectionName := '';
     FParams.Clear;
-    FScrollParams.Visible := False;
+    // No Agent entry yet: tell where the Agent comes from
+    FScrollParams.Visible := (FComboDrivers.ItemIndex > 0) and
+      SameText(FComboDrivers.Text, AGENT_DRIVER_NAME);
+    if FScrollParams.Visible then
+      AddAgentInfo(0);
     Exit;
   end;
   FScrollParams.Visible := True;

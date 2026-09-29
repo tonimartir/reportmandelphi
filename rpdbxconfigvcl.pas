@@ -118,9 +118,13 @@ type
     SQLConnection1: TSQLConnection;
 {$ENDIF}
     conadmin:TRpConnAdmin;
+    FAgentInfo: TLabel;
+    FAgentLink: TLabel;
     procedure WMHubDiscoveryComplete(var Message: TMessage); message WM_USER + 220;
     procedure FreeParamsControls;
     procedure CreateParamsControls;
+    procedure AddAgentInfo(ATop: Integer);
+    procedure AgentLinkClick(Sender: TObject);
     procedure Edit1Change(Sender:TObject);
     procedure BSelectHubConnectionClick(Sender: TObject);
     procedure HubConnectionMenuItemClick(Sender: TObject);
@@ -351,6 +355,8 @@ procedure TFRpDBXConfigVCL.FreeParamsControls;
 var
  i:integer;
 begin
+ FAgentInfo:=nil;
+ FAgentLink:=nil;
  i:=0;
  While  ScrollParams.ControlCount>0 do
  begin
@@ -447,16 +453,57 @@ begin
 
    top:=top+Edit1.Height+ScaleDPi(CONTROL_DISTANCEY);
   end;
+  if SameText(params.Values['DriverName'],'Reportman AI Agent') then
+   AddAgentInfo(top);
  finally
   alist.free;
  end;
+end;
+
+// What the Reportman Agent is and its download page, under the parameters
+// of an Agent connection or alone when the Agent driver has none yet
+procedure TFRpDBXConfigVCL.AddAgentInfo(ATop: Integer);
+begin
+ FAgentInfo:=TLabel.Create(Self);
+ FAgentInfo.Parent:=ScrollParams;
+ FAgentInfo.Left:=ScaleDPi(CONTROL_DISTANCEX);
+ FAgentInfo.Top:=ATop+ScaleDPi(8);
+ FAgentInfo.Width:=ScrollParams.Width-ScaleDPI(30)-ScaleDPi(CONTROL_DISTANCEX);
+ FAgentInfo.Anchors:=[akLeft,akTop,akRight];
+ FAgentInfo.WordWrap:=True;
+ FAgentInfo.ShowAccelChar:=False;
+ FAgentInfo.Caption:=TranslateStr(1823,'The Reportman Agent is installed as a service '+
+  'on a Windows or Linux computer that can reach your database and gives the designer '+
+  'secure access to it through ai.reportman.es.');
+
+ FAgentLink:=TLabel.Create(Self);
+ FAgentLink.Parent:=ScrollParams;
+ FAgentLink.Left:=FAgentInfo.Left;
+ FAgentLink.Top:=FAgentInfo.Top+FAgentInfo.Height+ScaleDPi(4);
+ FAgentLink.ShowAccelChar:=False;
+ FAgentLink.Caption:=TranslateStr(1822,'Download Reportman Agent');
+ FAgentLink.Cursor:=crHandPoint;
+ FAgentLink.ParentFont:=False;
+ FAgentLink.Font.Color:=clBlue;
+ FAgentLink.Font.Style:=[fsUnderline];
+ FAgentLink.OnClick:=AgentLinkClick;
+end;
+
+procedure TFRpDBXConfigVCL.AgentLinkClick(Sender: TObject);
+begin
+ TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpDBXConfigVCL.LConnectionsClick(Sender: TObject);
 begin
  if LConnections.ItemIndex<0 then
  begin
-  ScrollParams.Visible:=false;
+  FreeParamsControls;
+  // No Agent connection yet: tell where the Agent comes from
+  ScrollParams.Visible:=(ComboDrivers.ItemIndex>0) and
+   SameText(ComboDrivers.Text,'Reportman AI Agent');
+  if ScrollParams.Visible then
+   AddAgentInfo(0);
   exit;
  end;
  ScrollParams.Visible:=true;

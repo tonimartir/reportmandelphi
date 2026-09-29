@@ -10,7 +10,8 @@
   superseded by another entry, the dialog destroyed while it runs); the
   Connect test of the Reportman AI Agent entries (the message of the Hub, the
   default one, a failure) and of the other drivers in a worker thread; and
-  the Connect test of the data configuration dialog with the Agent driver. }
+  the Connect test of the data configuration dialog with the Agent driver;
+  the explanation of the Reportman Agent and its download link. }
 unit uaidatatests;
 
 {$mode delphi}{$H+}
@@ -27,7 +28,7 @@ uses
   SysUtils, Classes, Forms, Controls, Graphics, StdCtrls, Menus, IniFiles,
   fphttpserver, httpdefs,
   rpjsonfpc, rphttpclientfpc, rptypes, rpdatainfo, rpreport, rpmdconsts,
-  rpaithreadslcl, rpdbxconfiglcl, rpmdfdinfolcl, utestutil, ufakeserver;
+  rpaithreadslcl, rpdbxconfiglcl, rpmdfdinfolcl, rpauthmanager, utestutil, ufakeserver;
 
 const
   AGENT_OK_MESSAGE = 'Agent Connection: Success' + #10 + 'Database Connection: Success (fake)';
@@ -74,6 +75,7 @@ type
     procedure TestConnectionTest;
     procedure TestDataDialogAgent;
     procedure TestDataDialogLayout;
+    procedure TestAgentInfo;
   public
     constructor Create(const AShotsDir: string);
     procedure Run;
@@ -614,6 +616,80 @@ begin
   Check(RpAsyncWaitIdle(10000), 'no worker left');
 end;
 
+var
+  GOpenedUrl: string;
+
+// The browser: keeps the URL instead of opening it
+function CaptureUrl(const AURL: string): Boolean;
+begin
+  GOpenedUrl := AURL;
+  Result := True;
+end;
+
+procedure TAIDataTests.TestAgentInfo;
+var
+  LDlg: TFRpDBXConfigLCL;
+  LFile, LOldLanguage: string;
+begin
+  Section('Connections file dialog: what the Reportman Agent is and its download link');
+  // A file without Agent entries
+  LFile := FDir + 'dbxconnections_noagent.ini';
+  with TStringList.Create do
+  try
+    Add('[ZCONN]');
+    Add('DriverName=ZeosLib');
+    Add('Database=C:\data\zdb.fdb');
+    SaveToFile(LFile);
+  finally
+    Free;
+  end;
+  LOldLanguage := TRpAuthManager.Instance.AILanguage;
+  LDlg := TFRpDBXConfigLCL.Create(nil);
+  try
+    LDlg.Interactive := False;
+    LDlg.ConnectionsFile := FIniFile;
+    LDlg.SelectConnection('ZCONN');
+    Check(LDlg.AgentInfo = nil, 'no Agent explanation for a Zeos entry');
+    LDlg.SelectConnection('HUBCONN');
+    Check(LDlg.AgentInfo <> nil, 'the Agent explained with an Agent entry');
+    Check(LDlg.AgentInfo.Top > LDlg.ParamEditor('HubDatabaseId').Top,
+      'under the parameters');
+    CheckEquals(string(TranslateStr(1822, 'Download Reportman Agent')),
+      LDlg.AgentLink.Caption, 'download link');
+    // The page in the language of the AI
+    RpOpenUrlHook := CaptureUrl;
+    try
+      TRpAuthManager.Instance.AILanguage := 'Spanish';
+      GOpenedUrl := '';
+      LDlg.AgentLink.OnClick(LDlg.AgentLink);
+      CheckEquals('https://ai.reportman.es/es/download', GOpenedUrl, 'Spanish download page');
+      TRpAuthManager.Instance.AILanguage := 'English';
+      LDlg.AgentLink.OnClick(LDlg.AgentLink);
+      CheckEquals('https://ai.reportman.es/download', GOpenedUrl, 'English download page');
+    finally
+      RpOpenUrlHook := nil;
+      TRpAuthManager.Instance.AILanguage := LOldLanguage;
+    end;
+    // No Agent entry yet: the explanation alone
+    LDlg.ConnectionsFile := LFile;
+    LDlg.SelectDriver('Reportman AI Agent');
+    CheckEquals(0, LDlg.LConnections.Items.Count, 'no Agent entries in the file');
+    Check(LDlg.ScrollParams.Visible and (LDlg.AgentInfo <> nil),
+      'the explanation alone when the Agent driver has no entries');
+    if FShotsDir <> '' then
+    begin
+      LDlg.Show;
+      Pump(200);
+      Shot(LDlg, 'dbxconfig_agent_info');
+      LDlg.Hide;
+    end;
+    LDlg.SelectDriver('ZeosLib');
+    Check(LDlg.AgentInfo = nil, 'not with the other drivers');
+  finally
+    LDlg.Free;
+  end;
+end;
+
 procedure TAIDataTests.Run;
 var
   LSandbox: string;
@@ -655,6 +731,7 @@ begin
       TestConnectionTest;
       TestDataDialogAgent;
       TestDataDialogLayout;
+      TestAgentInfo;
       Check(RpAsyncWaitIdle(10000), 'all the data workers finished');
     finally
       RpHttpSetUrlRewrite('', '');

@@ -220,6 +220,7 @@ type
     PContent: TPanel;
     // Controls of the current page (nil on the others)
     RbAgent, RbDirect, RbNoConnection: TRadioButton;
+    LnkAgentDownload: TLabel;
     EdHubApiKey: TEdit;
     BtnHubLogin: TButton;
     BtnHubRefresh: TButton;
@@ -871,6 +872,7 @@ begin
     PContent.Components[PContent.ComponentCount - 1].Free;
   FLastStacked := nil;
   RbAgent := nil; RbDirect := nil; RbNoConnection := nil;
+  LnkAgentDownload := nil;
   EdHubApiKey := nil; BtnHubLogin := nil;
   BtnHubRefresh := nil;
   CbHubDatabase := nil;
@@ -1455,7 +1457,7 @@ end;
 
 procedure TFRpNewReportWizardLCL.OpenAgentDownloadLink(Sender: TObject);
 begin
-  TRpAuthManager.Instance.OpenUrl('https://ai.reportman.es/download');
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 { Pages }
@@ -1467,6 +1469,14 @@ begin
   RbAgent.OnClick := DoRouteChange;
   NewLabel(TR(1725, 'Use a Reportman AI database connection. Recommended when the ' +
     'database is reachable through Reportman AI Web.'), 24, 2);
+  // Where the Agent comes from, for those who do not have it yet
+  NewLabel(TR(1823, 'The Reportman Agent is installed as a service on a Windows or Linux ' +
+    'computer that can reach your database and gives the designer secure access to it ' +
+    'through ai.reportman.es.'), 24, 6);
+  LnkAgentDownload := NewHyperlinkLabel(TR(1822, 'Download Reportman Agent'), 2,
+    OpenAgentDownloadLink);
+  // Aligned with the descriptions
+  LnkAgentDownload.BorderSpacing.Left := Px(24 + 24);
 
   RbDirect := NewRadio(TR(1726, 'Direct database connection'), 0, 18);
   RbDirect.Checked := FState.Route = wrDirect;

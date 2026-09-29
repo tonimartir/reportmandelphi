@@ -3,7 +3,7 @@ object FRpLoginVCL: TFRpLoginVCL
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Login to Reportman.AI'
-  ClientHeight = 450
+  ClientHeight = 510
   ClientWidth = 400
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -140,5 +140,32 @@ object FRpLoginVCL: TFRpLoginVCL
     ReadOnly = True
     ScrollBars = ssVertical
     TabOrder = 4
+  end
+  object LAgentInfo: TLabel
+    Left = 24
+    Top = 443
+    Width = 352
+    Height = 39
+    AutoSize = False
+    Caption =
+      'To connect to your databases you can use the Reportman Agent (ai' +
+      '.reportman.es).'
+    ShowAccelChar = False
+    WordWrap = True
+  end
+  object LnkAgentDownload: TLabel
+    Left = 24
+    Top = 485
+    Width = 132
+    Height = 13
+    Cursor = crHandPoint
+    Caption = 'Download Reportman Agent'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clBlue
+    Font.Height = -11
+    Font.Name = 'Tahoma'
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = LnkAgentDownloadClick
   end
 end

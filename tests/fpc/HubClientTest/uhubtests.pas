@@ -503,6 +503,39 @@ begin
     TRpAuthManager.Instance.CheckStatus;
 end;
 
+// The download page of the Reportman Agent (login dialog, new report wizard,
+// connections dialog, user menu) in the language of the AI
+procedure AgentDownloadUrlTest;
+const
+  LANGUAGES: array[0..7] of string = ('English', 'Spanish', 'Italian', 'French',
+    'German', 'Portuguese', 'Chinese', 'Catalan');
+  URLS: array[0..7] of string = ('https://ai.reportman.es/download',
+    'https://ai.reportman.es/es/download', 'https://ai.reportman.es/it/download',
+    'https://ai.reportman.es/fr/download', 'https://ai.reportman.es/de/download',
+    'https://ai.reportman.es/pt/download', 'https://ai.reportman.es/zh/download',
+    'https://ai.reportman.es/ca/download');
+var
+  LAuth: TRpAuthManager;
+  LOldLanguage: string;
+  I: Integer;
+begin
+  Section('Download page of the Reportman Agent in the language of the AI');
+  LAuth := TRpAuthManager.Instance;
+  LOldLanguage := LAuth.AILanguage;
+  try
+    for I := Low(LANGUAGES) to High(LANGUAGES) do
+    begin
+      LAuth.AILanguage := LANGUAGES[I];
+      CheckEquals(URLS[I], LAuth.AgentDownloadUrl, LANGUAGES[I]);
+    end;
+    // Language codes are normalized by the setter
+    LAuth.AILanguage := 'es-ES';
+    CheckEquals('https://ai.reportman.es/es/download', LAuth.AgentDownloadUrl, 'es-ES');
+  finally
+    LAuth.AILanguage := LOldLanguage;
+  end;
+end;
+
 // The workers ask for the status while the main thread reads the session,
 // logs out and logs in again. The profile strings were written by both
 // threads without a lock and heaptrc found a leaked one (LclAIChatTest);
@@ -1021,6 +1054,7 @@ begin
     TRpAuthManager.Instance.RegisterLogListener(LWatcher.OnLog);
     try
       AuthTests(LWatcher);
+      AgentDownloadUrlTest;
       ConcurrentSessionTest(LWatcher);
       DataTests;
       AITests;

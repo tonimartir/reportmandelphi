@@ -995,7 +995,7 @@ end;
 
 procedure TFRpNewReportWizardVCL.OpenAgentDownloadLink(Sender: TObject);
 begin
-  TRpAuthManager.Instance.OpenUrl('https://ai.reportman.es/download');
+  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageRoute;
@@ -1015,9 +1015,18 @@ begin
     48, 50);
   L.Width := 620; L.WordWrap := True;
 
+  // Where the Agent comes from, for those who do not have it yet
+  L := CreateLabel(PContent,
+    'The Reportman Agent is installed as a service on a Windows or Linux computer that can ' +
+    'reach your database and gives the designer secure access to it through ai.reportman.es.',
+    48, 86);
+  L.Width := 620; L.WordWrap := True;
+  CreateHyperlinkLabel(PContent, 'Download Reportman Agent', 48, 122,
+    OpenAgentDownloadLink);
+
   FRbDirect := TRadioButton.Create(PContent);
   FRbDirect.Parent := PContent;
-  FRbDirect.Left := 24; FRbDirect.Top := 110;
+  FRbDirect.Left := 24; FRbDirect.Top := 156;
   FRbDirect.Width := 660; FRbDirect.Height := 22;
   FRbDirect.Caption := 'Direct database connection';
   FRbDirect.Checked := FState.Route = wrDirect;
@@ -1025,12 +1034,12 @@ begin
 
   L := CreateLabel(PContent,
     'Connect directly using a local driver (FireDAC, Zeos, DBExpress, BDE or Microsoft DAO).',
-    48, 136);
+    48, 182);
   L.Width := 620; L.WordWrap := True;
 
   FRbNoConnection := TRadioButton.Create(PContent);
   FRbNoConnection.Parent := PContent;
-  FRbNoConnection.Left := 24; FRbNoConnection.Top := 196;
+  FRbNoConnection.Left := 24; FRbNoConnection.Top := 242;
   FRbNoConnection.Width := 660; FRbNoConnection.Height := 22;
   FRbNoConnection.Caption := 'Continue with no connection';
   FRbNoConnection.Checked := FState.Route = wrNoConnection;
@@ -1038,7 +1047,7 @@ begin
 
   L := CreateLabel(PContent,
     'Create a blank report and finish the wizard without selecting or creating any data connection.',
-    48, 222);
+    48, 268);
   L.Width := 620; L.WordWrap := True;
 
   UpdateNavButtons;

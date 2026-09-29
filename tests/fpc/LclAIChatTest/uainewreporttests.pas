@@ -901,6 +901,12 @@ begin
     Check(not W.BBack.Enabled, 'Back disabled on the first page');
     Check(W.BNext.Visible and not W.BFinish.Visible, 'Next visible, Finish hidden');
     CheckEquals(T(933, 'Next'), W.BNext.Caption, 'Next caption');
+    // Where the Agent comes from, for those who do not have it yet
+    Check(W.LnkAgentDownload <> nil, 'download link of the Agent on the route page');
+    CheckEquals(T(1822, 'Download Reportman Agent'), W.LnkAgentDownload.Caption,
+      'caption of the download link');
+    Check((W.LnkAgentDownload.Top > W.RbAgent.Top) and
+      (W.LnkAgentDownload.Top < W.RbDirect.Top), 'under the Agent route');
     FAnswerer.Arm(smbOK);
     // GTK always checks one radio button of a group (the first one)
     if not W.RbAgent.Checked and not W.RbDirect.Checked and not W.RbNoConnection.Checked then
