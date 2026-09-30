@@ -44,6 +44,22 @@ see whether the mirror has fallen behind.
 order and reports the failure, but it does not roll back — so when a push complains, check
 which of the two actually landed before assuming nothing did.
 
+## Deployment
+
+`reportman.es` is served from the machine that builds it, and **the how lives outside this
+repository, in a private one**: this repo is public, and deployment notes are internal network
+topology — private addresses, ports, paths and which host still carries the mail. That is nobody
+else's business and it is not information a public mirror should carry.
+
+What belongs here is the site itself: the web root is **`doc/`** (`index.html`, `company.html`,
+`download.html`, their Spanish twins `indexes.html`, `companyes.html`… and the `doc/`, `docnet/`,
+`tutorial/` and `training/` folders). **The HTML in the repository *is* the artefact — nothing is
+generated at deploy time.** `doc/_build/build-docs.mjs` is an *authoring* tool: it rewrites the
+pages **in place**, inside the repository, when the navigation changes, and it is run by hand.
+
+`doc/robots.txt` marks `/_build/` as «not part of the published site», and the deployment honours
+that: it is excluded.
+
 ## Source layout (important)
 
 The engine source — ~200 `rp*.pas` units — lives in the **repository root**, not
