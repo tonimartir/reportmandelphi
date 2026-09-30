@@ -405,8 +405,9 @@ uses
 {$IFDEF MSWINDOWS}
 // Monaco editor assets embedded as the MONACO_ZIP RCDATA resource, the same
 // resource used by the VCL editor (MonacoEditorAssets.rc at the repository
-// root). The path is relative to this unit.
-{$R ../MonacoEditorAssets.res}
+// root). The path is relative to this unit, with the exact case of the file
+// (cross compiling for Windows from Linux the file system is case sensitive).
+{$R ../MonacoEditorAssets.RES}
 {$ENDIF}
 
 const

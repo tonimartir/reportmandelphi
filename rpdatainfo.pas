@@ -25,11 +25,9 @@ interface
 {$I rpconf.inc}
 
 {$IFDEF FPC}
-{$IFDEF LINUX}
+// The exact case of the file in the repository: a case-sensitive file system
+// (Linux, also when cross compiling for Windows) does not find another one
 {$R dbxdrivers.RES}
-{$ELSE}
-{$R dbxdrivers.res}
-{$ENDIF}
 {$ELSE}
 {$R dbxdrivers.res}
 {$ENDIF}

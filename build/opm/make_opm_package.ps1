@@ -559,6 +559,16 @@ function Invoke-OpmBuildSequence([scriptblock]$run, [scriptblock]$touch, [string
     }
     return 'FALLA'
   }
+  # Los proyectos de ejemplo (examples\lazarus), como los abre un usuario tras instalar
+  foreach ($ex in 'pdfconsole', 'preview', 'designer') {
+    $lpi = $pkgRoot + $sep + ('examples{0}lazarus{0}' -f $sep) + $ex + $sep + "$ex.lpi"
+    $r = & $run @($lpi)
+    $r[1] | Out-File -Encoding utf8 (Join-Path $logDir "$label-example-$ex.log")
+    if ($r[0] -eq 0) { Info "  [$label] ejemplo ${ex}: OK"; continue }
+    $err = @($r[1] | Where-Object { "$_" -match 'Fatal:|Error:' } | Select-Object -First 3)
+    Warn "  [$label] ejemplo ${ex}: FALLA"; $err | ForEach-Object { Write-Host "      $_" }
+    return 'FALLA'
+  }
   return $status
 }
 

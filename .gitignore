@@ -298,3 +298,12 @@ repman/lcl_designer/repmandesigner_lcl.res
 build/linux/out/
 # Release de SourceForge (build/sourceforge/make-release.ps1): instaladores y zips
 build/sourceforge/release_*/
+# Lazarus examples (examples/lazarus): build output, generated .res, results
+examples/lazarus/*/lib/
+examples/lazarus/*/backup/
+examples/lazarus/*/*.res
+examples/lazarus/*/*.lps
+examples/lazarus/pdfconsole/sales.pdf
+examples/lazarus/pdfconsole/pdfconsole
+examples/lazarus/preview/preview
+examples/lazarus/designer/designer

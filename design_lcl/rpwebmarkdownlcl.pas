@@ -181,8 +181,9 @@ uses
 {$IFDEF MSWINDOWS}
 // WebMarkdown page (index.html, markdown-it, WebView2Loader.dll) as the
 // WEBMARKDOWN_ZIP RCDATA resource, the one used by the VCL viewer
-// (WebMarkdownAssets.rc at the repository root). Relative to this unit.
-{$R ../WebMarkdownAssets.res}
+// (WebMarkdownAssets.rc at the repository root). Relative to this unit, with
+// the exact case of the file (a case-sensitive file system needs it).
+{$R ../WebMarkdownAssets.RES}
 {$ENDIF}
 
 function HtmlColor(const AHex: string): TColor;

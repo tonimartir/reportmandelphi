@@ -1,0 +1,52 @@
+object FDesigner: TFDesigner
+  Left = 300
+  Height = 180
+  Top = 200
+  Width = 420
+  AutoSize = True
+  BorderStyle = bsDialog
+  Caption = 'Report Manager - designer example'
+  ChildSizing.LeftRightSpacing = 12
+  ChildSizing.TopBottomSpacing = 12
+  ChildSizing.VerticalSpacing = 8
+  ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+  ChildSizing.Layout = cclLeftToRightThenTopToBottom
+  ChildSizing.ControlsPerLine = 1
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  object LInfo: TLabel
+    Left = 12
+    Height = 15
+    Top = 12
+    Width = 396
+    Caption = 'Report:'
+  end
+  object BDesign: TButton
+    Left = 12
+    Height = 30
+    Top = 35
+    Width = 396
+    Caption = 'Design the report...'
+    Constraints.MinWidth = 396
+    OnClick = BDesignClick
+    TabOrder = 0
+  end
+  object BPreview: TButton
+    Left = 12
+    Height = 30
+    Top = 73
+    Width = 396
+    Caption = 'Preview...'
+    OnClick = BPreviewClick
+    TabOrder = 1
+  end
+  object RpDesignerLCL1: TRpDesignerLCL
+    Left = 320
+    Top = 110
+  end
+  object LCLReport1: TLCLReport
+    Title = 'Sales by customer'
+    Left = 360
+    Top = 110
+  end
+end
