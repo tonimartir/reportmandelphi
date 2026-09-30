@@ -1777,6 +1777,10 @@ begin
   FFallbackEditor.Font.Name := 'Monospace';
 {$ENDIF}
   FFallbackEditor.Font.Size := 10;
+  // SynEdit defaults to fqNonAntialiased (SynDefaultFontQuality): with Qt6
+  // the text comes out aliased and cramped; follow the desktop setting as
+  // the rest of the controls do
+  FFallbackEditor.Font.Quality := fqDefault;
   FFallbackEditor.Options := FFallbackEditor.Options + [eoTabsToSpaces] -
     [eoScrollPastEol, eoSmartTabs];
   FFallbackEditor.TabWidth := 2;

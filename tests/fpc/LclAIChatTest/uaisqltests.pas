@@ -843,6 +843,8 @@ begin
     Check(LEditor.UseFallback, 'fallback editor in use');
     Check(LEditor.FallbackEditor.Visible, 'SynEdit visible');
     Check(not LEditor.WebView.Visible, 'WebView hidden');
+    // SynEdit's own default is fqNonAntialiased (aliased text with Qt6)
+    Check(LEditor.FallbackEditor.Font.Quality = fqDefault, 'antialiased as the desktop');
     LCompletion := LEditor.Completion;
     LEditor.SetHubContext(77, 5, 'sql-key');
     WaitUntil(TablesLoaded, 10000, 'tables of the schema loaded');
