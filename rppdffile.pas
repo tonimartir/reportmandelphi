@@ -4709,7 +4709,13 @@ end;
 procedure TextoDeCadaGlifo(const lInfo:TRpLineInfo;out textos:TArray<string>;
   out callar:TArray<Boolean>);
 var
+{$IFDEF FPC}
+ // TList<T>.BinarySearch da el indice como SizeInt (Int64 en 64 bits)
+ i,k,c,fin,largo,n:integer;
+ pos:SizeInt;
+{$ELSE}
  i,k,c,fin,largo,pos,n:integer;
+{$ENDIF}
  texto:string;
  limites:TList<Integer>;
  cuantos:TDictionary<Integer,Integer>;

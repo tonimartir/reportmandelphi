@@ -581,6 +581,9 @@
  {$UNDEF USEIBX}
  {$UNDEF USEADO}
  {$UNDEF USETEECHART}
+ // No BDE (dbtables) in FPC: USEBDE is defined above for every target but
+ // Win64, so 32-bit Windows (a 32-bit Lazarus) would require it
+ {$UNDEF USEBDE}
  // The FPC packages (reportman_rtl.lpk) require Zeos
  {$DEFINE USEZEOS}
 {$ENDIF}
@@ -808,6 +811,10 @@
 {$IFNDEF WIN64}
  {$DEFINE EXTENDEDGRAPHICS}
 {$ENDIF}
+{$ENDIF}
+// rpgraphicex (GraphicEx) is not part of the FPC packages
+{$IFDEF FPC}
+ {$UNDEF EXTENDEDGRAPHICS}
 {$ENDIF}
 
 

@@ -210,3 +210,18 @@ lcl/rplcllayout.pas
 
 # --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-30) ---
 rtl_fpc/rpsqldbconnfpc.pas
+
+# --- Ejemplos (examples/lazarus): se compilan desde el zip con -Validate ---
+examples/lazarus/README.txt
+examples/lazarus/sales.rep
+examples/lazarus/salesdata.pas
+examples/lazarus/pdfconsole/pdfconsole.lpi
+examples/lazarus/pdfconsole/pdfconsole.lpr
+examples/lazarus/preview/preview.lpi
+examples/lazarus/preview/preview.lpr
+examples/lazarus/preview/upreview.lfm
+examples/lazarus/preview/upreview.pas
+examples/lazarus/designer/designer.lpi
+examples/lazarus/designer/designer.lpr
+examples/lazarus/designer/udesigner.lfm
+examples/lazarus/designer/udesigner.pas

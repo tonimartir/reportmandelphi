@@ -1,0 +1,65 @@
+object FPreview: TFPreview
+  Left = 300
+  Height = 220
+  Top = 200
+  Width = 420
+  AutoSize = True
+  BorderStyle = bsDialog
+  Caption = 'Report Manager - preview example'
+  ChildSizing.LeftRightSpacing = 12
+  ChildSizing.TopBottomSpacing = 12
+  ChildSizing.VerticalSpacing = 8
+  ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+  ChildSizing.Layout = cclLeftToRightThenTopToBottom
+  ChildSizing.ControlsPerLine = 1
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  object LInfo: TLabel
+    Left = 12
+    Height = 15
+    Top = 12
+    Width = 396
+    Caption = 'Report:'
+  end
+  object BPreview: TButton
+    Left = 12
+    Height = 30
+    Top = 35
+    Width = 396
+    Caption = 'Preview...'
+    Constraints.MinWidth = 396
+    OnClick = BPreviewClick
+    TabOrder = 0
+  end
+  object BPrint: TButton
+    Left = 12
+    Height = 30
+    Top = 73
+    Width = 396
+    Caption = 'Print...'
+    OnClick = BPrintClick
+    TabOrder = 1
+  end
+  object BPDF: TButton
+    Left = 12
+    Height = 30
+    Top = 111
+    Width = 396
+    Caption = 'Save as PDF...'
+    OnClick = BPDFClick
+    TabOrder = 2
+  end
+  object LCLReport1: TLCLReport
+    Title = 'Sales by customer'
+    Left = 360
+    Top = 150
+  end
+  object SaveDialog1: TSaveDialog
+    DefaultExt = '.pdf'
+    FileName = 'sales.pdf'
+    Filter = 'PDF files|*.pdf'
+    Options = [ofOverwritePrompt, ofEnableSizing, ofViewDetail]
+    Left = 320
+    Top = 150
+  end
+end

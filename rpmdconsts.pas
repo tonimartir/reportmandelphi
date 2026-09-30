@@ -41,11 +41,9 @@ const
 
 
 {$IFDEF FPC}
-{$IFDEF LINUX}
+// The exact case of the file in the repository: a case-sensitive file system
+// (Linux, also when cross compiling for Windows) does not find another one
 {$R REPORTMANRES.RES}
-{$ELSE}
-{$R reportmanres.RES}
-{$ENDIF}
 {$ELSE}
 {$R reportmanres.RES}
 {$ENDIF}

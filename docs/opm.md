@@ -98,7 +98,16 @@ reportman/packages/fpc_lcl/reportman_designlcl.lpk
 ```
 
 Tamaño: ~4,9 MB comprimido (3,9 MB son el recurso de Monaco). No incluye
-nada de Delphi/VCL, ejemplos, binarios ni documentación.
+nada de Delphi/VCL, binarios ni documentación.
+
+Incluye los ejemplos de `examples/lazarus` (los pidió el mantenedor de OPM,
+ver la sección 4): `pdfconsole` (consola, solo `reportman_rtl`, escribe un
+PDF), `preview` (`TLCLReport`: vista previa, imprimir, PDF) y `designer`
+(`TRpDesignerLCL` dentro de una aplicación). Los tres usan `sales.rep` con los
+datos de un `TBufDataset` en memoria (`salesdata.pas`), sin base de datos: el
+conjunto de datos `SALES` apunta a una conexión MyBase solo porque el motor
+exige una para cada conjunto de datos de un subinforme, y no la abre mientras
+la aplicación asigna `DataInfo.ItemByName('SALES').Dataset`.
 
 ## 2. Regenerar el paquete
 
@@ -182,6 +191,16 @@ otra: no se deben borrar.
    dependencias y con compilación limpia (`lazbuild -B`), que es lo que hace
    el instalador de OPM (`opkman_installer.pas`: `DoCompilePackage` con
    `pcfCleanCompile`).
+4. Compilan los tres ejemplos de `examples/lazarus` desde la misma copia.
+
+Ninguno de los dos prueba un Lazarus de **32 bits**, que es donde falló la
+primera revisión (sección 4): el Lazarus de Windows de esta máquina es de 64
+bits y en Linux se descartan otras definiciones. Para eso está la imagen
+`reportman-linux-builder:fpc3.2.2-laz4.8-win32cross` (la del builder más el
+compilador cruzado `i386-win32` de FPC 3.2.2, hecho con `make crossall
+crossinstall OS_TARGET=win32 CPU_TARGET=i386` desde `/usr/share/fpcsrc`):
+`lazbuild --os=win32 --cpu=i386 --ws=win32` de los tres paquetes. Los `.exe`
+que genera se pueden ejecutar en este Windows.
 
 El script termina con código 2 si algo no sale OK. Los logs quedan en
 `build\opm\out\validate\`.
@@ -293,6 +312,28 @@ ejemplo en `https://reportman.es/opm/` o como adjuntos de una release de
 GitHub) y enviar los enlaces a `opm@lazarus-ide.org`, o en el hilo de OPM del
 foro de Lazarus (<https://forum.lazarus.freepascal.org/index.php/topic,34297.0.html>).
 
+### Primera revisión (30-09-2026, Werner, mantenedor de OPM)
+
+Con el camino B. Werner no pudo compilar y pidió ejemplos:
+
+- `reportman_rtl`: *unit dbtables* no encontrada. `rpconf.inc` define
+  `USEBDE` en todo lo que no es Win64 (`{$IFNDEF WIN64}`); en Linux se quita
+  más abajo y nuestras pruebas de Windows eran de 64 bits, así que solo falla
+  con un Lazarus de **32 bits**. Arreglado con `{$UNDEF USEBDE}` en el bloque
+  `{$IFDEF FPC}`.
+- `reportman_lcl`: *rpgraphicex* no encontrada, por la misma causa
+  (`EXTENDEDGRAPHICS` en Windows de 32 bits). Arreglado con `{$UNDEF
+  EXTENDEDGRAPHICS}` para FPC.
+- Al reproducirlo con el compilador cruzado aparecieron además los recursos
+  con otras mayúsculas (`reportmanres.RES`, `dbxdrivers.res`,
+  `MonacoEditorAssets.res`, `WebMarkdownAssets.res`): en Windows da igual, en
+  un sistema de ficheros que distingue mayúsculas no. En FPC se usa ya el
+  nombre exacto del repositorio.
+- Ejemplos: `examples/lazarus` (sección 1).
+
+Delphi no ve ninguno de estos cambios (todos van en `{$IFDEF FPC}` o en
+unidades solo LCL).
+
 ## 5. Actualizaciones mediante el JSON externo
 
 El campo `DownloadURL` de la entrada (*Update link (JSON)* en el formulario)
@@ -331,7 +372,8 @@ a enviar el paquete (sección 4).
    `-RefreshFileList` (y `-Target x86_64-linux` tras `build_fpc.sh` en WSL);
    revisar el diff de `opm_files.txt`.
 3. `make_opm_package.ps1 -Validate -ValidateWsl` con todo en OK (código de
-   salida 0).
+   salida 0), y los tres paquetes también para Windows de 32 bits con la
+   imagen `win32cross` (sección 3).
 4. Prueba de instalación real en un Lazarus desechable (instalar recompila el
    IDE): servir un repositorio de prueba con
    `ReportManager.json` copiado como `packagelist.json` junto a
