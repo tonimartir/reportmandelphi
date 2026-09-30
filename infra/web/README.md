@@ -46,10 +46,16 @@ Volver atrás son dos órdenes, en la cabecera del guion, y se guardan los cinco
 
 ## Lo que falta para que el dominio apunte aquí
 
-1. **Sitio nuevo en el IIS del anfitrión**, carpeta física vacía, bindings :80 para `reportman.es` y
-   `www.reportman.es`, **win-acme para los dos nombres**, y el `web.config` de proxy a
-   `http://192.168.100.2:5083` — el mismo patrón que los otros dos, con la regla del reto ACME
-   primera y con `stopProcessing`.
+1. **Sitio nuevo en el IIS del anfitrión**: carpeta física vacía (ahí escribe win-acme el reto),
+   bindings :80 para `reportman.es` y `www.reportman.es`, **win-acme para los dos nombres**, y
+   copiar **`iis-proxy.web.config`** de esta carpeta a la carpeta física del sitio, renombrado a
+   `web.config`. Lleva cuatro reglas en este orden: reto ACME → `www` al apex → HTTPS → proxy.
+
+   **El canónico es el apex**, y no es una preferencia: lo dice la propia web en su
+   `rel=canonical`, en su `og:url` y en las 541 URL de su sitemap. Eso **cambia** lo que hacía el
+   host viejo, donde `https://www.reportman.es/` devolvía 200 y servía el sitio — los dos nombres
+   competían mientras la página votaba por uno. Los redirects salen en 302 para poder dar marcha
+   atrás; cuando esté visto, `redirectType="Permanent"`.
 2. **DNS**: los registros `A` de `reportman.es` y `www.reportman.es` pasan de `91.134.113.42` a
    `51.178.118.23`.
 
