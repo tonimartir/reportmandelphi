@@ -248,7 +248,7 @@
 <ul>
   <li>Lazarus 3.0 or later with Free Pascal 3.2.2 (tested with Lazarus 3.0 and 4.8).</li>
   <li>Windows (win32/win64 widgetset) or Linux (Qt&nbsp;6, Qt&nbsp;5 or GTK2 widgetset); tested on
-    64-bit systems.</li>
+    64-bit Windows and Linux and on 32-bit Windows.</li>
   <li>The <b>ZeosDBO</b> package (<code>zcomponent</code> 8.0) for database access. The Online Package
     Manager installs it for you.</li>
   <li>From Lazarus itself: LCL, Printer4Lazarus, DateTimeCtrls, TurboPowerIPro and SynEdit.</li>
@@ -309,6 +309,19 @@
 </table>
 
 <h2>Examples</h2>
+<p>The packages include three example projects in <code>examples/lazarus</code> (inside the folder
+  where the Online Package Manager installs Report Manager, or in the source code). They use the same
+  report, <code>sales.rep</code>, with data that the application builds in memory, so they run without
+  a database:</p>
+<ul>
+  <li><b>pdfconsole</b>: a console program that writes a PDF file; it only needs
+    <code>reportman_rtl</code>.</li>
+  <li><b>preview</b>: a form with a <code>TLCLReport</code> to preview, print and save the report as
+    PDF.</li>
+  <li><b>designer</b>: a <code>TRpDesignerLCL</code> inside an application, so its users can change
+    the report and preview it with the data of the application.</li>
+</ul>
+<p>The snippets below show the essential lines.</p>
 <h3>Preview, print or export a report</h3>
 <p>Drop a <code>TLCLReport</code> on a form:</p>
 <pre><code>procedure TForm1.ButtonPreviewClick(Sender: TObject);
@@ -362,10 +375,12 @@ end;</code></pre>
 <h2>Data access</h2>
 <p>Reports connect to their databases with the same connection definitions as the designer
   (<code>dbxconnections</code>, see <a href="refdatabaseinfo.html">database connections</a>): Zeos
-  connections for Firebird, PostgreSQL, MySQL/MariaDB, SQLite and other databases, and the
+  connections and FireDAC connections, which Free Pascal opens with SQLdb, for Firebird, PostgreSQL,
+  MySQL/MariaDB, SQLite, SQL Server, Oracle, ODBC and other databases, and the
   <b>Reportman DB Agent</b> driver, which runs the queries on a remote database through the Hub
-  (<code>api.reportman.es</code>) without opening ports or a VPN. You can also assign your own open
-  datasets to the report with <code>TRpAlias</code>.</p>
+  (<code>api.reportman.es</code>) without opening ports or a VPN. You can also give the report your
+  own datasets, with <code>TRpAlias</code> or directly, as the examples do:
+  <code>Report.DataInfo.ItemByName('SALES').Dataset := MyDataset</code>.</p>
 
 <h2>Notes</h2>
 <ul>
