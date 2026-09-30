@@ -244,7 +244,13 @@ ambos el mantenedor de OPM revisa el paquete (malware, licencia…) antes de
 añadirlo a `packagelist.json`.
 
 **A. Desde el IDE (formulario de OPM).** En **Paquete → Online Package
-Manager**, botón **Create → Create repository package**:
+Manager**, botón **Create → Create repository package**. El botón **Create**
+solo aparece con el perfil de usuario avanzado (`tbCreate.Visible :=
+Options.UserProfile = 1` en `opkman_mainfrm.pas`): **Options → Profiles →
+Advanced user**. *Submit* no sube el zip generado por el script: vuelve a
+comprimir la carpeta elegida y genera su propio JSON con los campos del
+formulario, así que la carpeta tiene que ser una extracción limpia del zip y
+los campos, los de la tabla de la sección 1.
 
 1. *Package directory*: la carpeta `reportman` **descomprimida del zip
    generado** (por ejemplo `build\opm\out\validate\win\packages\reportman`
@@ -262,9 +268,13 @@ Manager**, botón **Create → Create repository package**:
 4. **Create** genera el zip y los JSON en local (equivalentes a los del
    script). **Submit** vuelve a comprimir la carpeta y sube por HTTP el zip,
    `ReportManager.json` y, si se marcó, `update_ReportManager.json` a
-   `lazarusopm.org` (`zip.php` / `json.php`; las URL están en base64 en
-   `opkman_const.pas`). Al terminar muestra *"Your request will be processed
-   in 24 hours"*.
+   `lazarusopm.org` (`http://lazarusopm.org/zip.php` y `json.php`, por HTTP
+   sin cifrar; las URL están en base64 en `opkman_const.pas`). Al terminar
+   muestra *"Your request will be processed in 24 hours"*. El IDE solo
+   comprueba que estén los campos obligatorios (categoría; compatibilidad de
+   Lazarus y de FPC y widgetsets de cada `.lpk`): la revisión la hace a mano
+   el mantenedor del repositorio central de OPM, que lo añade a
+   `packagelist.json` de `packages.lazarus-ide.org`.
 
    Al recomprimir, OPM excluye por defecto `*.ppu`, `*.o`, `*.compiled`,
    `*.exe`, `*.dll`, `*.zip`, ficheros sin extensión y las carpetas `lib`,
