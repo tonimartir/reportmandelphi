@@ -4202,6 +4202,11 @@ var
  cmaphead,fromTo:AnsiString;
  FCMapStream:TMemoryStream;
  FontStream:TMemoryStream;
+ yadeclarados:TDictionary<Integer,Boolean>;
+ sustituidos:TList<Integer>;
+ destino:string;
+ ginfo:TGlyphInfo;
+ g,k,desde,cuantos:integer;
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -4350,6 +4355,76 @@ begin
      cmaphead:=cmaphead+'endbfchar' +LINE_FEED;
     end;
     currentindex:=nextindex+1;
+   end;
+   // LOS GLIFOS QUE EL CONFORMADO NO SACO DEL `cmap` DE LA FUENTE (30-09-2026).
+   //
+   // El barrido de arriba recorre los CARACTERES cargados y declara el glifo NOMINAL de cada uno.
+   // Pero el conformado no siempre dibuja el nominal: una ligadura junta «fi» o «ti» en un glifo, y
+   // una alternativa contextual cambia la forma de una letra segun sus vecinas -en arabe eso es la
+   // norma, no la excepcion-. Esos glifos no son el nominal de ningun caracter, asi que se quedaban
+   // SIN NINGUNA ENTRADA aqui, y un lector de PDF acaba leyendo el NUMERO DEL GLIFO como si fuera
+   // un codigo de caracter: «año de gestión» salia «año de gesƟón», y «الفاتورة رقم» perdia cinco
+   // de sus once letras. El PDF se ve perfecto y el texto esta mal, que es lo peor que le puede
+   // pasar a una factura.
+   //
+   // El dato ya estaba: `glyphsInfo[glifo].Char` guarda el caracter del que salio cada glifo -lo
+   // rellenan los dos proveedores, FreeType y GDI-, y `glyphText` trae la cadena entera cuando el
+   // glifo vale por varios caracteres. Aqui solo se declaran los que no estan ya declarados arriba,
+   // porque dos entradas para el mismo glifo se contradicen.
+   yadeclarados:=TDictionary<Integer,Boolean>.Create;
+   sustituidos:=TList<Integer>.Create;
+   try
+    for index:=adata.firstloaded to adata.lastloaded do
+     if ((index>=0) and (index<=65535) and adata.loaded[index]) then
+      yadeclarados.AddOrSetValue(Integer(adata.loadedglyphs[index]),true);
+    for ginfo in adata.glyphsInfo.Values do
+    begin
+     if ((ginfo.Glyph<=0) or yadeclarados.ContainsKey(ginfo.Glyph)) then
+      Continue;
+     // SIN UN DESTINO QUE VALGA NO SE DECLARA NADA: poner un cero o un caracter de control seria
+     // cambiar un texto mudo por un texto sucio, y eso es peor. Se filtra AQUI y no al escribir,
+     // porque el numero de entradas va delante del bloque.
+     if (not adata.glyphText.TryGetValue(ginfo.Glyph,destino)) then
+      destino:=ginfo.Char;
+     if ((Length(destino)=0) or (destino[1]<=' ')) then
+      Continue;
+     // Y NI UN SUBROGADO SUELTO: un emoji son DOS unidades, y `glyphsInfo.Char` solo guarda una.
+     // Declarar media pareja es declarar algo que no es un caracter. La pareja entera si vale, y
+     // esa llega por `glyphText` cuando el cluster la trae.
+     if ((Length(destino)=1) and (destino[1]>=#$D800) and (destino[1]<=#$DFFF)) then
+      Continue;
+     yadeclarados.AddOrSetValue(ginfo.Glyph,true);
+     sustituidos.Add(ginfo.Glyph);
+    end;
+    sustituidos.Sort;
+    // En bloques de cien, como el barrido de arriba: el numero de entradas va delante y el formato
+    // no admite un bloque de tamaño declarado a la ligera.
+    desde:=0;
+    while (desde<sustituidos.Count) do
+    begin
+     cuantos:=sustituidos.Count-desde;
+     if (cuantos>100) then
+      cuantos:=100;
+     cmaphead:=AnsiString(String(cmaphead)+IntToStr(cuantos)+' beginbfchar'+LINE_FEED);
+     for k:=desde to desde+cuantos-1 do
+     begin
+      g:=sustituidos[k];
+      // La cadena entera si el glifo vale por varias letras; si no, el caracter que guardo el
+      // proveedor. Es exactamente lo que la norma pide para una ligadura: `<glifo> <00660069>`.
+      if (not adata.glyphText.TryGetValue(g,destino)) then
+       destino:=adata.glyphsInfo[g].Char;
+      fromTo:=AnsiString('<'+IntToHex4(g)+'> ');
+      cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <');
+      for index:=1 to Length(destino) do
+       cmaphead:=AnsiString(String(cmaphead)+IntToHex4(Integer(destino[index])));
+      cmaphead:=AnsiString(String(cmaphead)+'>'+LINE_FEED);
+     end;
+     cmaphead:=cmaphead+'endbfchar'+LINE_FEED;
+     desde:=desde+cuantos;
+    end;
+   finally
+    sustituidos.Free;
+    yadeclarados.Free;
    end;
    cmaphead:= cmaphead+'endcmap' +LINE_FEED+
                'CMapName currentdict /CMap defineresource pop'+LINE_FEED+
@@ -4609,7 +4684,126 @@ begin
  Result:=Format('%4.4x',[aint]);
 end;
 
-
+// EL TEXTO DEL QUE SALE CADA GLIFO, cuando vale por MAS DE UN caracter (30-09-2026).
+//
+// El conformado no dibuja siempre el glifo «nominal» de un caracter: una ligadura junta «fi», «fl»
+// o «ti» en UNO, y una alternativa contextual cambia la forma de una letra segun sus vecinas. Para
+// el caso de un caracter no hace falta nada de esto: `glyphsInfo[glifo].Char` ya guarda el suyo y
+// el CMap de ToUnicode ya lo puede declarar. El que no tiene donde caber es la LIGADURA, que son
+// dos o mas caracteres en un glifo.
+//
+// Sin esto, el glifo de la ligadura no tiene ningun caracter que declarar y el PDF se queda sin
+// entrada para el: el lector acaba leyendo el NUMERO DEL GLIFO como si fuera un codigo de
+// caracter, y «oficina eficaz, inflar» sale «oĮcina eĮcaz, inŇar». Se ve perfecto y el texto
+// esta mal, que es lo peor que puede pasarle a una factura en PDF.
+//
+// El cluster de HarfBuzz (y el de DirectWrite) dice de que parte del texto viene cada glifo, asi que
+// se le puede devolver. Hay dos formas:
+//
+//   UN glifo en el cluster      -> ese glifo vale por todo el tramo y se declara entero.
+//   VARIOS en el mismo cluster  -> un caracter se ha partido en varios glifos (devanagari,
+//                                  tailandes). El PRIMERO se lleva el tramo y los demas NO DECLARAN
+//                                  NADA: poner en todos el primer caracter del cluster repite
+//                                  letras -sale «कककतत ककक»- y una atribucion equivocada es peor
+//                                  que ninguna. Esos vienen marcados en `callar`.
+procedure TextoDeCadaGlifo(const lInfo:TRpLineInfo;out textos:TArray<string>;
+  out callar:TArray<Boolean>);
+var
+ i,k,c,fin,largo,pos,n:integer;
+ texto:string;
+ limites:TList<Integer>;
+ cuantos:TDictionary<Integer,Integer>;
+ primero:TDictionary<Integer,Integer>;
+ limpio:boolean;
+begin
+ SetLength(textos,Length(lInfo.Glyphs));
+ SetLength(callar,Length(lInfo.Glyphs));
+ texto:=lInfo.Text;
+ if (Length(texto)=0) then
+  exit;
+ limites:=TList<Integer>.Create;
+ cuantos:=TDictionary<Integer,Integer>.Create;
+ primero:=TDictionary<Integer,Integer>.Create;
+ try
+  // LOS LIMITES SE SACAN DE LOS VALORES, NO DEL ORDEN DE LOS GLIFOS: asi da igual que la escritura
+  // vaya de derecha a izquierda, donde los clusters van decreciendo. El final de un cluster es el
+  // principio del siguiente.
+  for i:=0 to High(lInfo.Glyphs) do
+  begin
+   c:=Integer(lInfo.Glyphs[i].LineCluster);
+   if ((c<0) or (c>=Length(texto))) then
+    continue;
+   if cuantos.TryGetValue(c,n) then
+    cuantos[c]:=n+1
+   else
+   begin
+    cuantos.Add(c,1);
+    limites.Add(c);
+    primero.Add(c,i);
+   end;
+  end;
+  limites.Sort;
+  for i:=0 to High(lInfo.Glyphs) do
+  begin
+   c:=Integer(lInfo.Glyphs[i].LineCluster);
+   if ((c<0) or (c>=Length(texto))) then
+    continue;
+   if (not limites.BinarySearch(c,pos)) then
+    continue;
+   if (pos+1<limites.Count) then
+    fin:=limites[pos+1]
+   else
+    fin:=Length(texto);
+   largo:=fin-c;
+   // TRES CAUTELAS, porque una atribucion equivocada saldria en el texto del PDF y eso es PEOR que
+   // no atribuir nada: perder una letra se nota, cambiarla por otra no. Lo que no pase las tres se
+   // queda como estaba, que es el comportamiento de siempre.
+   //
+   // 1. De uno a cuatro caracteres: «ffi» es la ligadura mas larga que se ve, y un emoji son dos
+   //    unidades. Con un solo caracter y un solo glifo ya acierta `glyphsInfo`, asi que ahi no se
+   //    declara nada nuevo (abajo).
+   // 2. Sin espacios en medio, que una sustitucion nunca los cruza.
+   // 3. Y LA QUE DE VERDAD IMPORTA: que el primer caracter del tramo sea el que el conformador
+   //    dice. `CharCode` es su propia palabra -el `texto[cluster]` de SU texto-, asi que si al
+   //    indexar el texto de la linea no sale lo mismo, el cluster no apunta donde creemos y no hay
+   //    nada que atribuir. Pasa con el texto que llega en varios tramos (HTML), donde el cluster se
+   //    corrige con el inicio del tramo.
+   if ((largo<1) or (largo>4)) then
+    continue;
+   // OJO: en Pascal una cadena empieza en 1 y el cluster viene en base 0.
+   if (texto[c+1]<>lInfo.Glyphs[i].CharCode) then
+    continue;
+   limpio:=true;
+   for k:=c to fin-1 do
+    if (texto[k+1]<=' ') then
+     limpio:=false;
+   if (not limpio) then
+    continue;
+   // UN CARACTER PARTIDO EN VARIOS GLIFOS: el caracter es del primero y los demas NO DECLARAN NADA.
+   // Ponerlo en todos lo repite en el texto extraido -salia «कककतत ककक»- y una atribucion
+   // equivocada es PEOR que ninguna, porque perder una letra se nota y cambiarla por otra no.
+   //
+   // SE PREGUNTA POR EL TRAMO, NO POR EL NUMERO DE GLIFOS, y no es un detalle: cuando el cluster
+   // cubre VARIOS caracteres -una letra arabe con su vocal- sus glifos pueden ser cosas distintas y
+   // `glyphsInfo` acierta con cada una. Callar ahi en bloque costaba la «ي» y la «ع» de un informe
+   // que ya salia bien: MEDIDO, no supuesto. Se probo tambien elegir al que avanza el lapiz, y
+   // salio peor en devanagari, asi que se quedo esto.
+   if ((largo=1) and (cuantos[c]>1) and (primero[c]<>i)) then
+   begin
+    callar[i]:=true;
+    continue;
+   end;
+   // Con un caracter y un solo glifo no hace falta declarar nada nuevo: `glyphsInfo` ya guarda ese
+   // caracter y el CMap lo declara por su cuenta.
+   if ((largo>1) or (cuantos[c]>1)) then
+    textos[i]:=Copy(texto,c+1,largo);
+  end;
+ finally
+  primero.Free;
+  cuantos.Free;
+  limites.Free;
+ end;
+end;
 
 function TRpPDFCanvas.PDFCompatibleTextShaping(
   adata: TRpTTFontData;
@@ -4637,6 +4831,8 @@ var
   newBold: Boolean;
   newItalic: Boolean;
   newFontSize: Single;
+  textos: TArray<string>;
+  callar: TArray<Boolean>;
 {$IFDEF FPC}
   actualColor: Integer;
   originalColor: Integer;
@@ -4647,6 +4843,8 @@ begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
+  // De que texto sale cada glifo, para el CMap de ToUnicode.
+  TextoDeCadaGlifo(lInfo, textos, callar);
   actualFontFamily:=Font.GetFontFamily;
   originalFontFamily:=Font.GetFontFamily;
   actualBold := Font.Bold;
@@ -4722,9 +4920,21 @@ begin
       Result := Result + RGBToFloats(newColor) + ' rg' + EOL;
       actualColor := newColor;
     end;
-    // llamadas auxiliares que tenías para compatibilidad
+    // llamadas auxiliares que tenías para compatibilidad. NO SON SOLO UNA MEDIDA: es aqui donde el
+    // glifo queda registrado -con su caracter- para el subconjunto y para el CMap de ToUnicode.
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
     InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
+    // DE QUE TEXTO SALE ESTE GLIFO, para el CMap de ToUnicode. Con un caracter basta el que ya
+    // guarda `glyphsInfo`; aqui se anota lo que alli no cabe -una ligadura- y se manda CALLAR a los
+    // glifos que no son el primero de su cluster, para no repetir letras. Una cadena buena nunca se
+    // pisa con un silencio: el mismo glifo puede aparecer en otro sitio donde si se sepa.
+    if (Assigned(adata) and (i<=High(textos))) then
+    begin
+     if (Length(textos[i])>0) then
+      adata.glyphText.AddOrSetValue(g.GlyphIndex, textos[i])
+     else if (callar[i] and (not adata.glyphText.ContainsKey(g.GlyphIndex))) then
+      adata.glyphText.AddOrSetValue(g.GlyphIndex, '');
+    end;
 
     // calcular posiciones PDF como hacías
     absY := posY - g.YOffset;

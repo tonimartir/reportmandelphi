@@ -118,6 +118,11 @@ type
   glyphsInfo:TDictionary<integer, TGlyphInfo>;
   widths:TDictionary<char, double>;
 {$ENDIF}
+  // EL TEXTO DEL QUE SALE UN GLIFO, cuando vale por MAS DE UN caracter (30-09-2026): una ligadura
+  // -«fi», «fl», «ti»- es UN glifo con dos o mas caracteres detras, y `glyphsInfo[glyph].Char` solo
+  // puede guardar uno. Lo llena el emisor de glifos conformados a partir del cluster, y lo consume
+  // el CMap de ToUnicode. Vacio para todo lo demas: con un solo caracter basta el de `glyphsInfo`.
+  glyphText:TDictionary<integer, string>;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
@@ -299,12 +304,14 @@ begin
  widths:=TDictionary<char, double>.Create;
 {$ENDIF}
  glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
+ glyphText:=TDictionary<integer, string>.Create;
 end;
 
 destructor TRpTTFontData.Destroy;
 var
  i:integer;
 begin
+ glyphText.Free;
  for i:=0 to kerningsadded.count-1 do
  begin
   loadedkernings[StrToInt(kerningsadded.Strings[i])].Free;
