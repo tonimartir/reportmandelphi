@@ -20,7 +20,7 @@ en `build\opm\out\`.
 
 | Paquete (`.lpk`) | Ruta en el zip | Contenido | Requiere |
 |---|---|---|---|
-| `reportman_rtl` | `packages/fpc/` | Motor no visual: modelo de informe, evaluador, datos (Zeos, SQLdb/SQLite, texto) y exportación PDF/SVG/HTML/CSV/texto/metafile. Unidades de la raíz + `rtl_fpc/`. | `FCL(1.0)`, `zcomponent(8.0)` |
+| `reportman_rtl` | `packages/fpc/` | Motor no visual: modelo de informe, evaluador, datos (Zeos, SQLdb para las conexiones FireDAC: SQLite, PostgreSQL, MySQL/MariaDB, Firebird, SQL Server, Oracle, ODBC; texto) y exportación PDF/SVG/HTML/CSV/texto/metafile. Unidades de la raíz + `rtl_fpc/`. | `FCL(1.0)`, `zcomponent(8.0)` |
 | `reportman_lcl` | `packages/fpc_lcl/` | Runtime LCL: `TLCLReport`, vista previa, configuración de página, parámetros, impresión (`lcl/`). | `reportman_rtl(4.0.16)`, LCL, Printer4Lazarus, `FCL(1.0)`, DateTimeCtrls |
 | `reportman_designlcl` | `packages/fpc_lcl/` | Diseñador visual embebible `TRpDesignerLCL` (`design_lcl/`). | `reportman_rtl(4.0.16)`, `reportman_lcl(4.0.16)`, LCL, `FCL(1.0)`, TurboPowerIPro, SynEdit |
 

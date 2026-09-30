@@ -22,7 +22,7 @@
         <CustomOptions Value="-dLCL"/>
       </Other>
     </CompilerOptions>
-    <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (SQLite) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
+    <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (the FireDAC connections of Delphi: SQLite, PostgreSQL, MySQL/MariaDB, Firebird/InterBase, SQL Server, Oracle and ODBC) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="16"/>
     <Files Count="77">
