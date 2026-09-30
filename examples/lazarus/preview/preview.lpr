@@ -6,8 +6,10 @@ program preview;
 {$mode objfpc}{$H+}
 
 uses
+  // On Linux and other Unix systems, the threads and the conversion of
+  // Unicode strings of the system (text with accents, other alphabets)
   {$IFDEF UNIX}
-  cthreads,
+  cthreads, cwstring,
   {$ENDIF}
   Interfaces, Forms, upreview;
 
