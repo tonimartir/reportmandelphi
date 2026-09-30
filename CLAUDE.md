@@ -16,16 +16,33 @@ This repository lives in **two** places and **every change must be pushed to bot
 (Toni, 30-09-2026). SourceForge is not an archive: it is the historical home of the
 project and the URL that a decade of links, tarballs and documentation point at.
 
-    origin        https://github.com/tonimartir/reportmandelphi.git
-    sourceforge   ssh://sf-reportman/p/reportman/delphi
+On the deployment VM this is **not left to memory**: `origin` carries two push URLs, so
+one `git push` lands on both. Fetch still comes from GitHub only.
+
+    $ git remote -v
+    origin   https://github.com/tonimartir/reportmandelphi.git   (fetch)
+    origin   https://github.com/tonimartir/reportmandelphi.git   (push)
+    origin   ssh://sf-reportman/p/reportman/delphi               (push)
+
+    git push                       # both, in one command
+    git push sourceforge master    # the named remote is still there, for pushing one alone
+
+Set up with `git remote set-url --add --push origin <url>` (twice — the first `--add`
+replaces the implicit push URL, so **both** have to be named). To undo it, the single
+command is `git remote set-url --delete --push origin <the sourceforge url>`.
 
 The HTTPS form SourceForge shows (`https://tonim@git.code.sf.net/p/reportman/delphi`)
-asks for the account password on every push, so the VM uses **SSH** through the
-`sf-reportman` alias in `~/.ssh/config` with a dedicated key. Read access is anonymous
-either way, which is why `git ls-remote https://git.code.sf.net/p/reportman/delphi` is
-the quickest way to see whether the mirror is behind.
+asks for the account password on every push, and a step that asks for a password is a
+step that gets skipped — which is exactly how the website ended up three months behind.
+So the VM uses **SSH** through the `sf-reportman` alias in `~/.ssh/config` with a
+dedicated key (`~/.ssh/id_sf_reportman`, registered in the SourceForge account on
+30-09-2026). Read access is anonymous either way, which makes
+`git ls-remote https://git.code.sf.net/p/reportman/delphi | head -1` the quickest way to
+see whether the mirror has fallen behind.
 
-    git push origin master && git push sourceforge master
+**A failed push to one of them still succeeded on the other.** Git pushes to the URLs in
+order and reports the failure, but it does not roll back — so when a push complains, check
+which of the two actually landed before assuming nothing did.
 
 ## Source layout (important)
 
