@@ -87,9 +87,11 @@ type
   TRpDbxAdminLCL = class
   private
     function CreateConnAdmin: TRpConnAdmin;
+    // ADriverId: the DriverID of a FireDac connection (the parameters of
+    // that SQLdb driver)
     procedure BuildDriverParamValues(AConnAdmin: TRpConnAdmin;
       const ADriverName: string; AValues: TStrings;
-      AEditableOptionNames: TStrings);
+      AEditableOptionNames: TStrings; const ADriverId: string = '');
     procedure FillDriverOptions(AConnAdmin: TRpConnAdmin;
       const AParamName: string; AOptions: TStrings);
     function ResolveEditorKind(const AName, AValue: string; AOptions: TStrings;
@@ -137,7 +139,14 @@ function RpExecuteConnectionTest(const AConnectionName: string; AParams: TString
 implementation
 
 uses
-  rpparams, rpdatahttp, rpjsonfpc, rpauthmanager;
+  rpparams, rpdatahttp, rpjsonfpc, rpauthmanager, rpsqldbconnfpc;
+
+// A FireDac connection with a DriverID that SQLdb opens
+function IsSQLDBConnection(const ADriverName, ADriverId: string): Boolean;
+begin
+  Result := (RpDbxDriverFamily(ADriverName) = RP_DBX_DRIVER_FAMILY_FIREDAC) and
+    (RpSQLDBDriverId(ADriverId) <> '');
+end;
 
 procedure SetNameValuePreserveEmpty(AValues: TStrings; const AName, AValue: string);
 var
@@ -473,6 +482,9 @@ end;
 
 procedure TRpDbxAdminLCL.WriteNewConnection(AConnAdmin: TRpConnAdmin;
   const AConnectionName, ADriverName, AProtocol: string);
+var
+  LValues: TStringList;
+  I: Integer;
 begin
   if RpDbxDriverFamily(ADriverName) = RP_DBX_DRIVER_SQLITE then
   begin
@@ -481,6 +493,21 @@ begin
     AConnAdmin.config.EraseSection(AConnectionName);
     AConnAdmin.config.WriteString(AConnectionName, 'DriverName', RP_DBX_DRIVER_SQLITE);
     AConnAdmin.config.WriteString(AConnectionName, 'Database', '');
+  end
+  else if IsSQLDBConnection(ADriverName, AProtocol) then
+  begin
+    // A FireDAC connection as Delphi writes it: its DriverID and the FireDAC
+    // parameters of that driver (SQLdb opens it in the FPC engine)
+    AConnAdmin.config.EraseSection(AConnectionName);
+    LValues := TStringList.Create;
+    try
+      BuildDriverParamValues(AConnAdmin, ADriverName, LValues, nil, AProtocol);
+      for I := 0 to LValues.Count - 1 do
+        AConnAdmin.config.WriteString(AConnectionName, LValues.Names[I],
+          LValues.ValueFromIndex[I]);
+    finally
+      LValues.Free;
+    end;
   end
   else
   begin
@@ -512,7 +539,8 @@ begin
 end;
 
 procedure TRpDbxAdminLCL.BuildDriverParamValues(AConnAdmin: TRpConnAdmin;
-  const ADriverName: string; AValues: TStrings; AEditableOptionNames: TStrings);
+  const ADriverName: string; AValues: TStrings; AEditableOptionNames: TStrings;
+  const ADriverId: string);
 var
   I: Integer;
   LParamName: string;
@@ -525,6 +553,15 @@ begin
   begin
     AValues.Add('DriverName=' + RP_DBX_DRIVER_SQLITE);
     AValues.Add('Database=');
+    Exit;
+  end;
+  // FireDac with a driver of SQLdb: the FireDAC parameters of that driver
+  // (the [FireDac] section of the drivers file is the one of Firebird)
+  if IsSQLDBConnection(ADriverName, ADriverId) then
+  begin
+    RpSQLDBDriverParams(ADriverId, AValues);
+    AValues.Insert(0, 'DriverID=' + RpSQLDBDriverId(ADriverId));
+    AValues.Insert(0, 'DriverName=' + RP_DBX_DRIVER_FAMILY_FIREDAC);
     Exit;
   end;
   LParamNames := TStringList.Create;
@@ -567,9 +604,13 @@ begin
   begin
     // The connection types of the FPC engine (ListConnectionTypes)
     AOptions.Add(RP_DBX_DRIVER_SQLITE);
+    AOptions.Add(RP_DBX_DRIVER_FAMILY_FIREDAC);
     AOptions.Add(RP_DBX_DRIVER_FAMILY_AGENT);
     AOptions.Add(RP_DBX_DRIVER_FAMILY_ZEOS);
   end
+  else if SameText(Trim(AParamName), 'DriverID') then
+    // The FireDAC drivers that SQLdb opens
+    RpSQLDBDriverIds(AOptions)
   else if AConnAdmin.drivers.SectionExists(Trim(AParamName)) then
     AConnAdmin.drivers.ReadSection(Trim(AParamName), AOptions);
 end;
@@ -648,10 +689,16 @@ begin
     MergeConnectionValues(LSeedValues, AOverrideValues);
     LDriverName := ResolveEffectiveDriverName(LSeedValues, LStoredActualDriverName);
 
-    BuildDriverParamValues(LConnAdmin, LDriverName, LEffectiveValues, LEditableOptionNames);
+    BuildDriverParamValues(LConnAdmin, LDriverName, LEffectiveValues, LEditableOptionNames,
+      LSeedValues.Values['DriverID']);
     if LEffectiveValues.Count = 0 then
       LEffectiveValues.Assign(LStoredValues);
-    MergeKnownConnectionValues(LEffectiveValues, LStoredValues);
+    // A FireDAC connection of SQLdb shows also the parameters that Delphi
+    // wrote (the ones of its DriverID in FireDAC)
+    if IsSQLDBConnection(LDriverName, LSeedValues.Values['DriverID']) then
+      MergeConnectionValues(LEffectiveValues, LStoredValues)
+    else
+      MergeKnownConnectionValues(LEffectiveValues, LStoredValues);
     MergeKnownConnectionValues(LEffectiveValues, AOverrideValues);
     LEffectiveValues.Values['DriverName'] := LDriverFamily;
     if SameText(LDriverFamily, RP_DBX_DRIVER_FAMILY_DBEXPRESS) then
@@ -690,7 +737,7 @@ var
   LConnAdmin: TRpConnAdmin;
   LCurrentParams, LAllowedParams: TStringList;
   I: Integer;
-  LName, LOriginalDriverName, LNewDriverName: string;
+  LName, LOriginalDriverName, LNewDriverName, LDriverId: string;
 begin
   RpValidateConnectionName(AConnectionName);
   LConnAdmin := CreateConnAdmin;
@@ -711,9 +758,14 @@ begin
       LConnAdmin.GetConnectionParams(AConnectionName, LCurrentParams);
     end;
 
-    BuildDriverParamValues(LConnAdmin, LNewDriverName, LAllowedParams, nil);
+    LDriverId := Trim(AValues.Values['DriverID']);
+    if LDriverId = '' then
+      LDriverId := Trim(LCurrentParams.Values['DriverID']);
+    BuildDriverParamValues(LConnAdmin, LNewDriverName, LAllowedParams, nil, LDriverId);
     if LAllowedParams.Count = 0 then
-      LAllowedParams.Assign(LCurrentParams);
+      LAllowedParams.Assign(LCurrentParams)
+    else if IsSQLDBConnection(LNewDriverName, LDriverId) then
+      MergeConnectionValues(LAllowedParams, LCurrentParams);
 
     for I := 0 to AValues.Count - 1 do
     begin

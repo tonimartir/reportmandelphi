@@ -210,9 +210,18 @@ Wayland nativo si está instalado `qt6-wayland`.
   la IA propone el SQL en gris en el cursor; Tab lo acepta, Esc lo descarta.
   Las respuestas del chat de IA se muestran con el visor HTML nativo.
 - **Controladores de datos**: MyBase (ficheros de texto y XML), Zeos,
-  FireDac (SQLite) y Reportman AI Agent. ADO, BDE, IBX, dbExpress y .NET son
+  FireDAC / SQLdb y Reportman AI Agent. ADO, BDE, IBX, dbExpress y .NET son
   de la versión Windows (Delphi); un informe que los use muestra su
   conexión como "(no disponible)" y no la cambia.
+- **FireDAC / SQLdb**: FireDAC no existe en Linux; las conexiones FireDAC
+  (las mismas que escribe el diseñador de Windows: `DriverName=FireDac` y su
+  `DriverID`) se abren con SQLdb, el motor de bases de datos de Free Pascal.
+  Drivers: SQLite, PG (PostgreSQL), MySQL (y MariaDB), FB e IB (Firebird e
+  InterBase), MSSQL (SQL Server, con FreeTDS), Ora (Oracle) y ODBC. Cada uno
+  necesita la librería cliente de su base de datos, que se carga al conectar:
+  `libpq5`, `libmariadb3` o `libmysqlclient21`, `libfbclient2`, `libsybdb5`,
+  el Instant Client de Oracle o `libodbc2` (el paquete `.deb` las sugiere).
+  ASA, DB2, Informix, Teradata y MongoDB no tienen conector en SQLdb.
 - **Exportar a Excel** no existe (la versión Windows usa Excel por OLE): la
   vista previa guarda en PDF, PDF/A-3, HTML, SVG, CSV, texto, PNG, BMP y
   metafile. *Enviar por correo* abre el cliente de correo del escritorio con

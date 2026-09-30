@@ -25,7 +25,7 @@
     <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (SQLite) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="16"/>
-    <Files Count="76">
+    <Files Count="77">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -331,6 +331,10 @@
         <Filename Value="..\..\rtl_fpcpstreamfpc.pas"/>
         <UnitName Value="rpstreamfpc"/>
       </Item76>
+      <Item77>
+        <Filename Value="..\..\rtl_fpc\rpsqldbconnfpc.pas"/>
+        <UnitName Value="rpsqldbconnfpc"/>
+      </Item77>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

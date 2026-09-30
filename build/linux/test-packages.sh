@@ -173,7 +173,7 @@ if [ "${1:-}" = "--inside" ]; then
                  /usr/share/applications/reportman-designer.desktop \
                  /usr/share/mime/packages/reportman-designer.xml \
                  /usr/share/icons/hicolor/48x48/apps/reportman-designer.png \
-                 /usr/share/icons/hicolor/scalable/apps/reportman-designer.svg \
+                 /usr/share/icons/hicolor/256x256/apps/reportman-designer.png \
                  "/opt/reportman-designer/samples/$SAMPLE" \
                  /opt/reportman-designer/reportmanres.es \
                  /opt/reportman-designer/languages/lclstrconsts.es.po \

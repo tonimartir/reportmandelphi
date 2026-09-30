@@ -628,6 +628,9 @@ uses
  Posix.Unistd,
  {$ENDIF}
 {$ENDIF}
+{$IFDEF FPC}
+ rpsqldbconnfpc,
+{$ENDIF}
  rpreport,rpbasereport;
 
 
@@ -2778,12 +2781,15 @@ begin
            driverId := UpperCase(alist.Values['DriverID']);
            if driverId = '' then
              driverId := UpperCase(alist.Values['DriverName']);
+           if driverId = '' then
+             driverId := 'SQLITE';
 
            dbName := alist.Values['Database'];
            if dbName = '' then
              dbName := alist.Values['DatabaseName'];
 
-           if (dbName <> '') and (not FileExists(dbName)) then
+           // The file of a SQLite database (the samples) near the program
+           if (driverId = 'SQLITE') and (dbName <> '') and (not FileExists(dbName)) then
            begin
              {$IFDEF UNIX}
              dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
@@ -2800,9 +2806,9 @@ begin
                dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
            end;
 
-           // The FPC build maps FireDAC connections to SQLdb and only supports
-           // SQLite so far: never open another driver's database as SQLite
-           if (driverId <> '') and (driverId <> 'SQLITE') then
+           // The FPC build maps FireDAC connections to SQLdb, with the
+           // drivers that SQLdb has (rpsqldbconnfpc)
+           if RpSQLDBDriverId(driverId) = '' then
              Raise Exception.Create(SRpDriverNotSupported + ' - FireDac (FPC): ' + driverId);
 
            {$IFDEF UNIX}
@@ -2813,8 +2819,7 @@ begin
            end;
            {$ENDIF}
 
-           FSQLDBInternalConnection := TSQLite3Connection.Create(nil);
-           FSQLDBInternalConnection.DatabaseName := dbName;
+           FSQLDBInternalConnection := RpOpenSQLDBConnection(driverId, alist, dbName);
 
            FSQLDBInternalTransaction := TSQLTransaction.Create(nil);
            FSQLDBInternalTransaction.DataBase := FSQLDBInternalConnection;

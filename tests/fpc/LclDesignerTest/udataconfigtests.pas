@@ -321,7 +321,7 @@ begin
       // Connections of the connections file by driver
       dlg.SelectListDriver(rpfiredac);
       CheckStr('SQLITECONN,FDCONN', ItemsText(dlg.AvailableConnections),
-        'Available connections of the FireDAC (SQLite) driver');
+        'Available connections of the FireDAC / SQLdb driver');
       Check(Pos(string(SRpFireDacDesc), dlg.DriverHelp.Text) = 1, 'Driver description of FireDAC');
       dlg.SelectListDriver(rpdatazeos);
       CheckStr('ZEOSCONN,MYSQLCONN', ItemsText(dlg.AvailableConnections),

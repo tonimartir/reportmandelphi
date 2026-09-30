@@ -207,3 +207,6 @@ WebMarkdownAssets.RES
 
 # --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-28) ---
 lcl/rplcllayout.pas
+
+# --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-30) ---
+rtl_fpc/rpsqldbconnfpc.pas

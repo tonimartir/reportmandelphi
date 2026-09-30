@@ -210,7 +210,8 @@ function RpCaptionWidth(AControl: TControl; const ACaptions: array of string;
 implementation
 
 uses
-  rpjsonfpc, rpdatahttp, rpauthmanager, rpgraphutilslcl, rpmdimageslcl, rplcllayout;
+  rpjsonfpc, rpdatahttp, rpauthmanager, rpgraphutilslcl, rpmdimageslcl, rplcllayout,
+  rpsqldbconnfpc;
 
 const
   CONTROL_DISTANCEY = 5;
@@ -303,9 +304,9 @@ begin
       Result := LNames[Ord(ADriver)]
     else
       Result := IntToStr(Ord(ADriver));
-    // The FireDAC shim of the FPC build only opens SQLite databases
+    // No FireDAC in the FPC build: its connections open with SQLdb
     if ADriver = rpfiredac then
-      Result := Result + ' (SQLite)';
+      Result := RP_SQLDB_FAMILY_CAPTION;
   finally
     LNames.Free;
   end;
@@ -342,7 +343,9 @@ begin
       Result := SRpDriverDotNetDesc;
     rpfiredac:
       Result := SRpFireDacDesc + LineEnding +
-        TranslateStr(1680, 'In this version it only opens SQLite databases.');
+        TranslateStr(1680, 'In the FPC version it opens them with SQLdb: SQLite, PG, ' +
+        'MySQL, FB, IB, MSSQL, Ora and ODBC, with the client library of each ' +
+        'database installed.');
     rpdbHttp:
       Result := TranslateStr(1670, 'Executes SQL remotely via Reportman AI Agent bridge. ' +
         'Supports secure, non-interactive queries with API Keys.');

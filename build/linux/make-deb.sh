@@ -30,6 +30,8 @@
 #   verificacion del certificado del servidor usa el almacen del sistema).
 # libharfbuzz-subset.so.0 es opcional para el motor (sin ella el PDF incrusta
 # la fuente entera) y Ubuntu 22.04 no la empaqueta: va en Recommends.
+# Suggests: las librerias cliente de las conexiones FireDAC / SQLdb (libpq,
+# MySQL o MariaDB, Firebird, FreeTDS, unixODBC); se cargan al conectar.
 # Los nombres t64 (Ubuntu 24.04; libqt6core6t64 tambien en Debian 13 y Ubuntu
 # 26.04) se anaden como alternativas.
 set -euo pipefail
@@ -234,6 +236,7 @@ Maintainer: Toni Martir <toni@reportman.es>
 Installed-Size: $INSTALLED_SIZE
 Depends: $DEPENDS
 Recommends: $RECOMMENDS
+Suggests: libpq5, libmariadb3 | libmysqlclient21, libfbclient2, libsybdb5, libodbc2
 $RELATIONS
 Section: misc
 Priority: optional

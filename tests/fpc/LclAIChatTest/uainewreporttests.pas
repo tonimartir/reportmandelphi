@@ -141,6 +141,7 @@ type
     procedure TestAgentExistingConnection;
     procedure TestDirectSqlite;
     procedure TestDirectZeos;
+    procedure TestDirectFireDacServer;
     procedure TestDesignerFileNew;
   public
     constructor Create(const AShotsDir: string);
@@ -1522,10 +1523,14 @@ begin
     CheckPage(W, wpDriver, 'driver page');
     CheckEquals(51, W.State.HubDatabaseId, 'state: database of the schema');
     CheckEquals(61, W.State.HubSchemaId, 'state: schema');
-    CheckEquals(2, W.CbFamily.Items.Count, 'families of the FPC engine: FireDAC (SQLite) and Zeos');
+    CheckEquals(2, W.CbFamily.Items.Count, 'families of the FPC engine: FireDAC / SQLdb and Zeos');
+    CheckEquals(T(1740, 'FireDAC / SQLdb (Cross-platform) - Recommended'), W.CbFamily.Items[0],
+      'FireDAC / SQLdb: the FireDAC connections open with SQLdb');
     CheckEquals(0, W.CbFamily.ItemIndex, 'FireDAC by default');
     CheckEquals(T(1742, 'FireDAC DriverID'), W.LblConcrete.Caption, 'FireDAC driver label');
-    CheckEquals('SQLite', W.CbConcrete.Text, 'the only FireDAC driver chosen');
+    CheckEquals('SQLite,PG,MySQL,FB,IB,MSSQL,Ora,ODBC', W.CbConcrete.Items.CommaText,
+      'the FireDAC drivers that SQLdb opens');
+    CheckEquals('SQLite', W.CbConcrete.Text, 'SQLite by default');
     Shot(W, 'newreport_driver');
     // Zeos, then back to FireDAC
     W.CbFamily.ItemIndex := 1;
@@ -1546,11 +1551,12 @@ begin
     CheckEquals(T(400, 'Connection Name'), W.LStepTitle.Caption, 'connection name title');
     Check((W.CbExistingConn.Items.IndexOf('SQLITE_EXIST') >= 0) and
       (W.CbExistingConn.Items.IndexOf('ADM_SQLITE') >= 0), 'SQLite connections listed');
-    Check((W.CbExistingConn.Items.IndexOf('FIREDAC_FB') < 0) and
-      (W.CbExistingConn.Items.IndexOf('ZEOS_EXIST') < 0) and
+    Check(W.CbExistingConn.Items.IndexOf('FIREDAC_FB') >= 0,
+      'the FireDAC connection of Firebird too (SQLdb opens it)');
+    Check((W.CbExistingConn.Items.IndexOf('ZEOS_EXIST') < 0) and
       (W.CbExistingConn.Items.IndexOf('AGENT_EXIST') < 0) and
       (W.CbExistingConn.Items.IndexOf('DBX_IB') < 0),
-      'no Firebird FireDAC, Zeos, Agent or dbExpress connections');
+      'no Zeos, Agent or dbExpress connections');
     W.CbExistingConn.ItemIndex := W.CbExistingConn.Items.IndexOf('SQLITE_EXIST');
     W.CbExistingConn.OnChange(W.CbExistingConn);
     Check(W.LblExistingConnDriver.Visible, 'driver hint of the existing connection');
@@ -1565,11 +1571,17 @@ begin
     W.EdNewConnName.Text := 'SQLITE_NEW';
     W.BNextClick(nil);
     CheckPage(W, wpParams, 'new connection: parameters page');
-    CheckEquals('Sqlite', IniValue('SQLITE_NEW', 'DriverName'), 'SQLite connection created');
+    // As Delphi writes a FireDAC connection
+    CheckEquals('FireDac', IniValue('SQLITE_NEW', 'DriverName'), 'FireDAC connection created');
+    CheckEquals('SQLite', IniValue('SQLITE_NEW', 'DriverID'), 'with the SQLite driver');
     CheckContains('SQLITE_NEW', W.LblParamsCaption.Caption, 'parameters of the new connection');
     LEditor := W.ParamEditor('DriverName');
     Check((LEditor is TEdit) and TEdit(LEditor).ReadOnly, 'DriverName read only');
-    CheckEquals('Sqlite', TEdit(LEditor).Text, 'DriverName value');
+    CheckEquals('FireDac', TEdit(LEditor).Text, 'DriverName value');
+    LEditor := W.ParamEditor('DriverID');
+    Check((LEditor is TEdit) and TEdit(LEditor).ReadOnly, 'DriverID read only');
+    CheckEquals('SQLite', TEdit(LEditor).Text, 'DriverID value');
+    Check(W.ParamEditor('Server') = nil, 'SQLite: no server');
     LEditor := W.ParamEditor('Database');
     Check((LEditor is TEdit) and not TEdit(LEditor).ReadOnly, 'Database editable');
     Check(LEditor.Left + LEditor.Width <= W.ParamsScroll.ClientWidth,
@@ -1617,9 +1629,86 @@ begin
     CheckEquals(51, W.State.HubDatabaseId, 'result: Hub database of the schema');
     CheckEquals(1, LRep.DatabaseInfo.Count, 'one connection');
     CheckEquals('SQLITE_NEW', LRep.DatabaseInfo.Items[0].Alias, 'connection alias');
-    Check(LRep.DatabaseInfo.Items[0].Driver = rpfiredac, 'FireDAC driver (SQLite in FPC)');
+    Check(LRep.DatabaseInfo.Items[0].Driver = rpfiredac, 'FireDAC driver (SQLdb in FPC)');
   finally
     FreeWizard(W, LRep);
+  end;
+end;
+
+procedure TAINewReportTests.TestDirectFireDacServer;
+const
+  PG_PARAMS: array[0..5] of string =
+    ('Server', 'Port', 'Database', 'User_Name', 'Password', 'CharacterSet');
+var
+  W: TFRpNewReportWizardLCL;
+  LRep: TRpReport;
+  LParams: TStringList;
+  LResult: TRpDbxConnectionTestResult;
+  I: Integer;
+begin
+  Section('New report wizard: FireDAC / SQLdb connection to a PostgreSQL server');
+  W := NewWizard(LRep);
+  try
+    FAnswerer.Arm(smbOK);
+    W.RbDirect.Checked := True;
+    W.BNextClick(nil);
+    W.RbNoSchema.Checked := True;
+    W.BNextClick(nil);
+    CheckPage(W, wpDriver, 'driver page');
+    W.CbConcrete.ItemIndex := W.CbConcrete.Items.IndexOf('PG');
+    W.BNextClick(nil);
+    CheckPage(W, wpConnName, 'connection name page');
+    W.RbNew.Checked := True;
+    W.EdNewConnName.Text := 'PG_NEW';
+    W.BNextClick(nil);
+    CheckPage(W, wpParams, 'the parameters of PostgreSQL');
+    CheckEquals('FireDac', IniValue('PG_NEW', 'DriverName'), 'a FireDAC connection');
+    CheckEquals('PG', IniValue('PG_NEW', 'DriverID'), 'of PostgreSQL');
+    CheckEquals('5432', IniValue('PG_NEW', 'Port'), 'the port of PostgreSQL');
+    for I := 0 to High(PG_PARAMS) do
+      Check(W.ParamEditor(PG_PARAMS[I]) <> nil, 'parameter ' + PG_PARAMS[I]);
+    CheckEquals('PG', TEdit(W.ParamEditor('DriverID')).Text, 'DriverID PG');
+    Check(W.ParamEditor('SqlDialect') = nil, 'not the parameters of Firebird');
+    Shot(W, 'newreport_params_pg');
+    // A server that does not listen: the error of the connection, not of
+    // the driver
+    TEdit(W.ParamEditor('Server')).Text := '127.0.0.1';
+    TEdit(W.ParamEditor('Port')).Text := '1';
+    TEdit(W.ParamEditor('Database')).Text := 'sales';
+    TEdit(W.ParamEditor('User_Name')).Text := 'toni';
+    W.BtnParamsTest.Click;
+    WaitIdle(W, 'test of the PostgreSQL connection answered');
+    CheckContains(T(1774, 'Connection failed: '), FAnswerer.LastText, 'no server: it fails');
+    Check(Pos(string(SRpDriverNotSupported), FAnswerer.LastText) = 0,
+      'the driver is supported: ' + FAnswerer.LastText);
+    Check((Pos('libpq', FAnswerer.LastText) > 0) or (Pos('127.0.0.1', FAnswerer.LastText) > 0) or
+      (Pos('onnect', FAnswerer.LastText) > 0),
+      'the error of libpq or of its connection: ' + FAnswerer.LastText);
+    W.BNextClick(nil);
+    CheckPage(W, wpFinish, 'parameters saved: finish page');
+    CheckEquals('127.0.0.1', IniValue('PG_NEW', 'Server'), 'Server saved');
+    CheckEquals('1', IniValue('PG_NEW', 'Port'), 'Port saved');
+    CheckEquals('sales', IniValue('PG_NEW', 'Database'), 'Database saved');
+    CheckEquals('toni', IniValue('PG_NEW', 'User_Name'), 'User_Name saved');
+    W.BFinishClick(nil);
+    Check(W.Committed, 'finished');
+    CheckEquals('PG_NEW', LRep.DatabaseInfo.Items[0].Alias, 'the connection of the report');
+    Check(LRep.DatabaseInfo.Items[0].Driver = rpfiredac, 'with the FireDAC driver');
+  finally
+    FreeWizard(W, LRep);
+  end;
+
+  // A FireDAC driver without SQLdb connector: a clear error
+  LParams := TStringList.Create;
+  try
+    LParams.Values['DriverName'] := 'FireDac';
+    LParams.Values['DriverID'] := 'ASA';
+    LResult := RpExecuteConnectionTest('ASA_CONN', LParams, '');
+    Check(not LResult.Success, 'ASA: no SQLdb connector');
+    CheckContains(string(SRpDriverNotSupported), LResult.MessageText, 'ASA: driver not supported');
+    CheckContains('ASA', LResult.MessageText, 'ASA: the driver named');
+  finally
+    LParams.Free;
   end;
 end;
 
@@ -1963,6 +2052,7 @@ begin
       TestAgentExistingConnection;
       TestDirectSqlite;
       TestDirectZeos;
+      TestDirectFireDacServer;
       TestDesignerFileNew;
       TestConnectionWizard;
       TestCheckAgentConnections;

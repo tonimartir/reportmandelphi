@@ -72,8 +72,8 @@ for d in rtl_fpc lcl design_lcl packages/fpc packages/fpc_lcl \
 done
 rm -f "$B/repman/lcl_designer/repmandesigner_lcl.res"
 cp -p "$SRC"/repman/reportmanres.* "$B/repman/"
-mkdir -p "$B/doc"
-cp -p "$SRC/doc/favicon.svg" "$SRC/doc/icon-512.png" "$B/doc/"
+# El icono del disenador de Windows (los iconos hicolor salen de el)
+cp -p "$SRC/repman/repmandxp_Icon.ico" "$B/repman/"
 
 VERSION=$(sed -n "s/^[[:space:]]*RM_VERSION[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "$B/rpmdconsts.pas" | head -n 1)
 [ -n "$VERSION" ] || { echo "ERROR: no encuentro RM_VERSION" >&2; exit 1; }

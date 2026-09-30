@@ -333,7 +333,7 @@ function RpCheckAgentConnections(ADatabases: TRpDatabaseInfoList;
 implementation
 
 uses
-  rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout;
+  rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -1638,8 +1638,8 @@ begin
       ADriverHint := 'FireDAC';
       if driverId <> '' then
         ADriverHint := ADriverHint + ' - ' + driverId;
-      // The FireDAC driver of the FPC engine only opens SQLite
-      if SameText(driverId, SSqliteDriverId) then
+      // The FireDAC drivers that SQLdb opens in the FPC engine
+      if RpSQLDBDriverId(driverId) <> '' then
         AFamily := dfFireDac;
       Result := True;
       Exit;
@@ -1679,7 +1679,8 @@ end;
 function TFRpNewReportWizardLCL.FamilyDriverName: string;
 begin
   case FState.DriverFamily of
-    dfFireDac: Result := RP_DBX_DRIVER_SQLITE;
+    // DriverName=FireDac and the DriverID, as Delphi writes the connection
+    dfFireDac: Result := RP_DBX_DRIVER_FAMILY_FIREDAC;
     dfZeos:    Result := RP_DBX_DRIVER_FAMILY_ZEOS;
   else
     Result := '';
@@ -1876,7 +1877,7 @@ begin
   SetLength(FFamilies, 2);
   FFamilies[0] := dfFireDac;
   FFamilies[1] := dfZeos;
-  CbFamily.Items.Add(TR(1740, 'FireDAC - SQLite (Cross-platform) - Recommended'));
+  CbFamily.Items.Add(TR(1740, 'FireDAC / SQLdb (Cross-platform) - Recommended'));
   CbFamily.Items.Add(TR(1741, 'Zeos (Cross-platform)'));
   CbFamily.ItemIndex := -1;
   for I := 0 to High(FFamilies) do
@@ -1915,8 +1916,8 @@ begin
     dfFireDac:
       begin
         LblConcrete.Caption := TR(1742, 'FireDAC DriverID');
-        // The FireDAC driver of the FPC engine is SQLite (SQLdb)
-        CbConcrete.Items.Add(SSqliteDriverId);
+        // The FireDAC drivers that SQLdb opens in the FPC engine
+        RpSQLDBDriverIds(CbConcrete.Items);
       end;
     dfZeos:
       begin
@@ -1927,10 +1928,11 @@ begin
       end;
   end;
   CbConcrete.Enabled := True;
-  // The choice made before (Back), or the only driver of the family
+  // The choice made before (Back), the only driver of the family, or
+  // SQLite, the one of FireDAC / SQLdb that needs no server
   if FState.DriverConcrete <> '' then
     CbConcrete.Text := FState.DriverConcrete
-  else if CbConcrete.Items.Count = 1 then
+  else if (CbConcrete.Items.Count = 1) or (FState.DriverFamily = dfFireDac) then
     CbConcrete.ItemIndex := 0;
 end;
 

@@ -50,7 +50,6 @@ lazarus_lcl_languages() {
 #   <raiz>/usr/share/applications/reportman-designer.desktop
 #   <raiz>/usr/share/mime/packages/reportman-designer.xml
 #   <raiz>/usr/share/icons/hicolor/<n>x<n>/apps/reportman-designer.png
-#   <raiz>/usr/share/icons/hicolor/scalable/apps/reportman-designer.svg
 stage_app() {
     local src=$1 bin=$2 root=$3
     local app=$root$APP_PREFIX
@@ -80,14 +79,13 @@ stage_app() {
     install -D -m 0644 "$FILES_DIR/reportman-designer-mime.xml" \
         "$root/usr/share/mime/packages/$APP_ID.xml"
 
-    # Iconos hicolor generados desde el SVG del proyecto (doc/favicon.svg)
-    for s in 16 22 24 32 48 64 128 256 512; do
+    # Iconos hicolor desde el icono del disenador de Windows
+    # (repman/repmandxp_Icon.ico, 64x64): el mismo en los dos sistemas
+    for s in 16 22 24 32 48 64 128 256; do
         d=$root/usr/share/icons/hicolor/${s}x${s}/apps
         install -d -m 0755 "$d"
-        rsvg-convert -w "$s" -h "$s" -f png -o "$d/$APP_ID.png" "$src/doc/favicon.svg"
+        convert "ico:$src/repman/repmandxp_Icon.ico" -background none \
+            -filter Lanczos -resize "${s}x${s}" "png32:$d/$APP_ID.png"
+        chmod 0644 "$d/$APP_ID.png"
     done
-    d=$root/usr/share/icons/hicolor/scalable/apps
-    install -d -m 0755 "$d"
-    sed 's/\r$//' "$src/doc/favicon.svg" > "$d/$APP_ID.svg"
-    chmod 0644 "$d/$APP_ID.svg"
 }
