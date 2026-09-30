@@ -281,6 +281,13 @@ los campos, los de la tabla de la sección 1.
    `backup`, `units`… (`cExcludedFilesDef` / `cExcludedFoldersDef`); por eso
    conviene partir de una extracción limpia, sin compilar.
 
+**Submit no funciona (comprobado el 30-09-2026 con Lazarus 4.8):** el dominio
+`lazarusopm.org` ya no existe (NXDOMAIN en los servidores de `.org`, no solo
+en un DNS local) y el formulario solo dice *Cannot send file:
+"ReportManager.zip"* (`opkman_uploader.pas` se traga la excepción). Queda el
+camino B, con los ficheros que genera el botón **Create** del mismo
+formulario.
+
 **B. Manual.** Publicar `ReportManager.zip` y `ReportManager.json` (por
 ejemplo en `https://reportman.es/opm/` o como adjuntos de una release de
 GitHub) y enviar los enlaces a `opm@lazarus-ide.org`, o en el hilo de OPM del
