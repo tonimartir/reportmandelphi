@@ -10,6 +10,23 @@ The engine renders to PDF, SVG, HTML, PNG, plain text/CSV, GDI/print, and a
 native metafile format. Project home: <https://reportman.es>. Historical
 reference: `doc/readme.txt`.
 
+## Two remotes: GitHub **and** SourceForge
+
+This repository lives in **two** places and **every change must be pushed to both**
+(Toni, 30-09-2026). SourceForge is not an archive: it is the historical home of the
+project and the URL that a decade of links, tarballs and documentation point at.
+
+    origin        https://github.com/tonimartir/reportmandelphi.git
+    sourceforge   ssh://sf-reportman/p/reportman/delphi
+
+The HTTPS form SourceForge shows (`https://tonim@git.code.sf.net/p/reportman/delphi`)
+asks for the account password on every push, so the VM uses **SSH** through the
+`sf-reportman` alias in `~/.ssh/config` with a dedicated key. Read access is anonymous
+either way, which is why `git ls-remote https://git.code.sf.net/p/reportman/delphi` is
+the quickest way to see whether the mirror is behind.
+
+    git push origin master && git push sourceforge master
+
 ## Source layout (important)
 
 The engine source — ~200 `rp*.pas` units — lives in the **repository root**, not
