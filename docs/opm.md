@@ -211,6 +211,31 @@ No se valida la recompilación del IDE que hace OPM al instalar paquetes de
 diseño (reemplazaría el `lazarus.exe` del usuario). Para eso, prueba manual en
 un Lazarus desechable (sección 6).
 
+### Prueba de instalación real con OPM (4.0.16, 2026-09-30, commit 68032d7)
+
+En un Lazarus 4.8 desechable (contenedor Docker de la imagen
+`reportman-linux-builder`, GTK2 en Xvfb, configuración nueva), manejando la
+ventana de OPM como un usuario:
+
+1. OPM cargó primero el repositorio oficial (237 paquetes): Report Manager no
+   está (solo FortesReport-CE y ZReport).
+2. *Options → Remote repository → "…" → Add* `http://localhost:8000/`
+   (`ReportManager.json` servido como `packagelist.json` junto al zip). OPM
+   mostró *1 repository packages found, containing 3 lpk files, total size
+   5.2 MB*, los tres `.lpk` en 4.0.16.0 y la ficha (categoría *Reporting*,
+   hash, fecha, página, enlace JSON).
+3. Zeos registrado antes (`lazbuild --add-package-link` de los `.lpk` de
+   `/opt/zeos`), como lo deja OPM tras instalar ZeosDBO: el resolvedor de
+   dependencias de OPM solo mira los paquetes de su lista.
+4. *Install*: descargó y extrajo el zip en
+   `onlinepackagemanager/packages/reportman/`, compiló los tres paquetes,
+   preguntó *rebuild Lazarus with profile: Normal IDE?* y, con *Yes*,
+   recompiló y reinició el IDE.
+5. El IDE nuevo tiene la pestaña **Reportman** en la paleta (10
+   componentes). Un proyecto con `TRpDesignerLCL` (y un `TRpReport` nuevo:
+   `Execute` necesita `Report` o `Filename`, como `rpmdesignervcl`) compila
+   con los paquetes instalados y abre el diseñador.
+
 ## 4. Enviar el paquete al repositorio central
 
 Según el código de OPM y su wiki
