@@ -64,6 +64,7 @@
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
 <li><a href="/doc/installlin.html">Linux desktop designer</a></li>
+<li><a href="/doc/installmac.html">macOS (Lazarus, Cocoa)</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
@@ -229,7 +230,7 @@
 <p>Report Manager is available for <b>Lazarus and Free Pascal</b> as three packages: the reporting
   engine with PDF export, the LCL preview and printing, and the visual report designer, which you can
   embed in your own applications. The components are installed on the <b>Reportman</b> page of the
-  component palette. The packages run on Windows and Linux and use the same <code>.rep</code> report
+  component palette. The packages run on Windows, Linux and macOS and use the same <code>.rep</code> report
   files as the Delphi components, the .NET libraries and the Report Manager Designer.</p>
 <ul>
   <li>Run reports and export them to <b>PDF</b> (also PDF/A-3 with embedded files), SVG, HTML, CSV,
@@ -239,21 +240,24 @@
     without changing your application, including the
     <a href="https://ai.reportman.es" target="_blank" rel="noopener">AI assistants</a> for report design,
     SQL and expressions.</li>
-  <li>Complex text shaping and bidirectional text on both platforms, see
+  <li>Complex text shaping and bidirectional text on every platform, see
     <a href="bidi_behavior.html">bidirectional text and complex scripts</a>.</li>
 </ul>
-<p>The <a href="installlin.html">Linux desktop designer</a> is built from these same packages.</p>
+<p>The <a href="installlin.html">Linux desktop designer</a> is built from these same packages. On
+  macOS they build with the Cocoa widgetset, see <a href="installmac.html">macOS (Lazarus, Cocoa)</a>.</p>
 
 <h2>Requirements</h2>
 <ul>
   <li>Lazarus 3.0 or later with Free Pascal 3.2.2 (tested with Lazarus 3.0 and 4.8).</li>
-  <li>Windows (win32/win64 widgetset) or Linux (Qt&nbsp;6, Qt&nbsp;5 or GTK2 widgetset); tested on
-    64-bit Windows and Linux and on 32-bit Windows.</li>
+  <li>Windows (win32/win64 widgetset), Linux (Qt&nbsp;6, Qt&nbsp;5 or GTK2 widgetset) or macOS (Cocoa
+    widgetset); tested on 64-bit Windows and Linux, on 32-bit Windows and on macOS 11 (Intel).</li>
   <li>The <b>ZeosDBO</b> package (<code>zcomponent</code> 8.0) for database access. The Online Package
     Manager installs it for you.</li>
   <li>From Lazarus itself: LCL, Printer4Lazarus, DateTimeCtrls, TurboPowerIPro and SynEdit.</li>
   <li>On Linux, at run time: FreeType, fontconfig, HarfBuzz and ICU (installed on any desktop; see the
     <a href="installlin.html#dependencies">dependencies of the Linux designer</a>).</li>
+  <li>On macOS, at run time: FreeType, fontconfig and HarfBuzz (<code>brew install fontconfig
+    harfbuzz</code>), and OpenSSL 3 for HTTPS; see <a href="installmac.html">macOS</a>.</li>
 </ul>
 
 <h2>The packages</h2>
@@ -293,7 +297,7 @@
     Lazarus rebuilds the IDE.</li>
 </ol>
 <p>The packages can also be built from the command line with <code>lazbuild</code>, in the same order
-  (<code>packages/fpc/build_fpc.bat</code> on Windows, <code>build_fpc.sh</code> on Linux).</p>
+  (<code>packages/fpc/build_fpc.bat</code> on Windows, <code>build_fpc.sh</code> on Linux and macOS).</p>
 
 <h2>Components on the palette</h2>
 <table>
@@ -308,7 +312,7 @@
   <tr><td><code>TRpTranslator</code>, <code>TRpLastUsedStrings</code>, <code>TRpMaskEdit</code></td><td>reportman_rtl, reportman_lcl</td><td>Helpers: translations, most recently used lists and masked input.</td></tr>
 </table>
 
-<h2>Examples</h2>
+<h2 id="examples">Examples</h2>
 <p>The packages include three example projects in <code>examples/lazarus</code> (inside the folder
   where the Online Package Manager installs Report Manager, or in the source code). They use the same
   report, <code>sales.rep</code>, with data that the application builds in memory, so they run without
@@ -321,6 +325,8 @@
   <li><b>designer</b>: a <code>TRpDesignerLCL</code> inside an application, so its users can change
     the report and preview it with the data of the application.</li>
 </ul>
+<p>On macOS, Lazarus writes the LCL examples as application bundles (<code>preview.app</code>,
+  <code>designer.app</code>) next to their projects, see <a href="installmac.html#designer">macOS</a>.</p>
 <p>The snippets below show the essential lines.</p>
 <h3>Preview, print or export a report</h3>
 <p>Drop a <code>TLCLReport</code> on a form:</p>
@@ -387,10 +393,11 @@ end;</code></pre>
   <li><b>HTTPS</b> (the AI assistants and the Reportman DB Agent driver) uses OpenSSL, loaded at run
     time. On Windows, distribute <code>libssl-3-x64.dll</code> and <code>libcrypto-3-x64.dll</code>
     (<code>libssl-3.dll</code> and <code>libcrypto-3.dll</code> for 32 bits) next to your executable;
-    on Linux the system <code>libssl</code> and CA certificates are used. Without OpenSSL, only the
-    HTTPS connections fail.</li>
+    on Linux the system <code>libssl</code> and CA certificates are used; on macOS, OpenSSL 3 (Homebrew
+    <code>openssl@3</code>, or in <code>Contents/Frameworks</code> of your application) and the CA
+    certificates of macOS. Without OpenSSL, only the HTTPS connections fail.</li>
   <li><b>SQL editor of the designer</b>: on Windows it is the Monaco editor (it needs the Microsoft Edge
-    WebView2 runtime, included in current Windows 10 and 11); on Linux, a native editor with schema completion
+    WebView2 runtime, included in current Windows 10 and 11); on Linux and macOS, a native editor with schema completion
     and the AI inline suggestion. See <a href="installlin.html">the Linux designer</a> for the
     differences.</li>
   <li>The engine source is shared with the Delphi components: bug fixes reach both.</li>

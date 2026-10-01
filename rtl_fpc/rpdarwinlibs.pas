@@ -33,6 +33,14 @@ function RpLoadDarwinLibrary(const AName: string): TLibHandle;
 //   odbc      unixODBC (Homebrew, MacPorts) and the iODBC of macOS
 //   sqlite    the SQLite of macOS
 function RpDarwinClientLibraries(const AKind: string): TStringArray;
+
+// The folder of an OpenSSL 3 or 1.1 (libssl and libcrypto) and its version
+// suffix ('.3' or '.1.1'), in this order: AFirst (the folder the application
+// chose), RP_OPENSSL_DIR, the application bundle (Contents/Frameworks), the
+// folder of the executable, ~/lib, Homebrew (openssl@3, openssl@1.1) and
+// MacPorts. Never the OpenSSL 0.9.8 of macOS (/usr/lib): it has no
+// functions to verify certificates.
+function RpDarwinOpenSSL(const AFirst: string; out AFolder, AVersion: string): Boolean;
 {$ENDIF}
 
 implementation
@@ -182,6 +190,51 @@ begin
       Result[I] := LList[I];
   finally
     LList.Free;
+  end;
+end;
+
+function RpDarwinOpenSSL(const AFirst: string; out AFolder, AVersion: string): Boolean;
+const
+  VERSIONS: array[0..1] of string = ('.3', '.1.1');
+var
+  LDirs: TStringList;
+  LExeDir, LDir, LBrew, LVersion: string;
+  I: Integer;
+begin
+  Result := False;
+  AFolder := '';
+  AVersion := '';
+  LExeDir := ExtractFilePath(ParamStr(0));
+  LDirs := TStringList.Create;
+  try
+    if AFirst <> '' then
+      LDirs.Add(AFirst);
+    if GetEnvironmentVariable('RP_OPENSSL_DIR') <> '' then
+      LDirs.Add(GetEnvironmentVariable('RP_OPENSSL_DIR'));
+    LDirs.Add(LExeDir + '../Frameworks');
+    LDirs.Add(LExeDir);
+    LDirs.Add(GetEnvironmentVariable('HOME') + '/lib');
+    for LBrew in BREW_PREFIXES do
+    begin
+      LDirs.Add(LBrew + '/opt/openssl@3/lib');
+      LDirs.Add(LBrew + '/opt/openssl@1.1/lib');
+      LDirs.Add(LBrew + '/lib');
+    end;
+    LDirs.Add('/opt/local/lib');
+    for I := 0 to LDirs.Count - 1 do
+    begin
+      LDir := IncludeTrailingPathDelimiter(ExpandFileName(LDirs[I]));
+      for LVersion in VERSIONS do
+        if FileExists(LDir + 'libssl' + LVersion + '.dylib') and
+          FileExists(LDir + 'libcrypto' + LVersion + '.dylib') then
+        begin
+          AFolder := LDir;
+          AVersion := LVersion;
+          Exit(True);
+        end;
+    end;
+  finally
+    LDirs.Free;
   end;
 end;
 

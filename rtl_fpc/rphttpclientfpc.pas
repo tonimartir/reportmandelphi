@@ -23,7 +23,8 @@
 // TLS uses OpenSSL, loaded at run time (FPC 3.2.2's openssl unit). Two things
 // are added over FPC 3.2.2:
 // - library names: FPC 3.2.2 does not know OpenSSL 3 (libssl.so.3 on Linux,
-//   libssl-3[-x64].dll on Windows); RpPrepareOpenSSL adds them.
+//   libssl-3[-x64].dll on Windows, libssl.3.dylib on macOS, where it would
+//   end in the system OpenSSL 0.9.8); RpPrepareOpenSSL adds them.
 // - certificate verification: FPC 3.2.2 does not verify the server
 //   certificate by default and never checks the host name. Here the chain is
 //   verified against the system trust store (OpenSSL default paths on Linux,
@@ -35,7 +36,7 @@
 //   writing to a closed connection would otherwise end the process.
 //
 // Also here, because they are the network pieces the Hub login needs:
-// RpOpenUrlInBrowser (ShellExecute / xdg-open) and RpWaitForLoopbackRequest,
+// RpOpenUrlInBrowser (ShellExecute / open on macOS / xdg-open) and RpWaitForLoopbackRequest,
 // a one-shot HTTP listener on 127.0.0.1 for the OAuth redirect.
 
 unit rphttpclientfpc;
@@ -211,6 +212,11 @@ var
   // Extra trusted certificates (PEM file); a cacert.pem next to the
   // executable is used as well if it exists
   RpHttpCAFile: string = '';
+{$IFDEF DARWIN}
+  // macOS: the folder of the OpenSSL 3 (or 1.1) to load, when the
+  // application ships its own one elsewhere (rpdarwinlibs.RpDarwinOpenSSL)
+  RpOpenSSLFolder: string = '';
+{$ENDIF}
   // Replaces the system browser in RpOpenUrlInBrowser (tests, kiosks)
   RpOpenUrlHook: function(const AURL: string): Boolean = nil;
 
@@ -261,6 +267,9 @@ uses
   Windows, winsock2, uriparser,
 {$ELSE}
   process, baseunix,
+{$ENDIF}
+{$IFDEF DARWIN}
+  rpdarwinlibs,
 {$ENDIF}
   sockets, dynlibs, ctypes, DateUtils;
 
@@ -328,6 +337,10 @@ var
   end;
 
 {$ENDIF}
+{$IFDEF DARWIN}
+var
+  LFolder, LVersion: string;
+{$ENDIF}
 var
   I: Integer;
 begin
@@ -376,7 +389,22 @@ begin
       Break;
     end;
 {$ELSE}
-  {$IFNDEF DARWIN}
+  {$IFDEF DARWIN}
+    // FPC 3.2.2 tries libssl.1.1.dylib, .11, .10... and ends in the OpenSSL
+    // 0.9.8 of macOS (/usr/lib), which has no functions to verify
+    // certificates. Only an OpenSSL 3 or 1.1 is loaded: from the folder
+    // RpDarwinOpenSSL finds or, without one, from the dyld search.
+    if RpDarwinOpenSSL(RpOpenSSLFolder, LFolder, LVersion) then
+    begin
+      DLLUtilName := LFolder + 'libcrypto';
+      DLLSSLName := LFolder + 'libssl';
+    end
+    else
+      LVersion := '.3';
+    // openssl.pas tries every suffix (and copies the second to the first)
+    for I := Low(DLLVersions) to High(DLLVersions) do
+      DLLVersions[I] := LVersion;
+  {$ELSE}
     // FPC 3.2.2 tries libssl.so (only with the -dev package), .so.1.1, ...
     // but not .so.3, the only one present on current distributions
     if DLLVersions[2] <> '.3' then
@@ -408,7 +436,12 @@ begin
       'versions) must be next to the executable or in the PATH';
   {$ENDIF}
 {$ELSE}
+  {$IFDEF DARWIN}
+    AError := 'OpenSSL 3 not found: install it (brew install openssl@3) or put ' +
+      'libssl.3.dylib and libcrypto.3.dylib in Contents/Frameworks of the application';
+  {$ELSE}
     AError := 'OpenSSL not found: install libssl3 (libssl.so.3) or libssl1.1';
+  {$ENDIF}
 {$ENDIF}
 end;
 
@@ -1514,11 +1547,17 @@ begin
     Exit(RpOpenUrlHook(AURL));
   LProcess := TProcess.Create(nil);
   try
+{$IFDEF DARWIN}
+    // macOS: open (Launch Services) opens the default browser
+    LProcess.Executable := '/usr/bin/open';
+    LProcess.Parameters.Add(AURL);
+{$ELSE}
     LProcess.Executable := '/bin/sh';
     LProcess.Parameters.Add('-c');
     LProcess.Parameters.Add(Script);
     LProcess.Parameters.Add('sh');
     LProcess.Parameters.Add(AURL);
+{$ENDIF}
     LProcess.Options := [poWaitOnExit];
     try
       LProcess.Execute;
@@ -1697,6 +1736,12 @@ initialization
 {$IFDEF MSWINDOWS}
   InitCriticalSection(GProbeLock);
   GProbeOK := TStringList.Create;
+{$ENDIF}
+{$IFDEF DARWIN}
+  // macOS has no MSG_NOSIGNAL: plain sockets (the fphttpclient requests, the
+  // loopback listener of the login) raise SIGPIPE as well when the peer has
+  // closed the connection, not only OpenSSL
+  IgnoreSigPipe;
 {$ENDIF}
 finalization
 {$IFDEF MSWINDOWS}

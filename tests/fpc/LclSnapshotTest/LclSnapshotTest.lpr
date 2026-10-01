@@ -8,9 +8,9 @@ uses
 {$ENDIF}
   Interfaces, // LCL widgetset initialization
   Classes, SysUtils, Graphics, Forms, IntfGraphics, FPImage,
-{$IFDEF UNIX}
+{$IF DEFINED(UNIX) AND NOT DEFINED(DARWIN)}
   cairocanvas,
-{$ENDIF}
+{$IFEND}
   rptypes, rpmdconsts, rpreport, rpmetafile, rplcldriver, rppreviewcontrol, rppreviewmetalcl, rplclpreview, rppdfdriver;
 
 function FindReportFile(const AFileName: string): string;
@@ -751,7 +751,7 @@ begin
   end;
 end;
 
-{$IFDEF UNIX}
+{$IF DEFINED(UNIX) AND NOT DEFINED(DARWIN)}
 // Printing on Linux goes through the cairo printer canvas of the CUPS printer:
 // the engine renderer draws there with the canvas' own cairo context. The same
 // text is written to a PDF with TCairoPdfCanvas (rasterize it and compare with
@@ -983,11 +983,11 @@ begin
   if TestShapePenStyles then
     Inc(passed);
 
-{$IFDEF UNIX}
+{$IF DEFINED(UNIX) AND NOT DEFINED(DARWIN)}
   Inc(total);
   if TestCairoPrinterCanvas then
     Inc(passed);
-{$ENDIF}
+{$IFEND}
 {$IFDEF MSWINDOWS}
   Inc(total);
   if TestGdiHandles then

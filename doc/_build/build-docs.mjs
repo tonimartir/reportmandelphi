@@ -37,6 +37,7 @@ const NAV = [
   ['Installation', [
     ['Microsoft Windows', '/doc/installwin.html'],
     ['Linux desktop designer', '/doc/installlin.html'],
+    ['macOS (Lazarus, Cocoa)', '/doc/installmac.html'],
     ['Compilation options', '/doc/compileropts.html'],
     ['Delphi', '/doc/delphicomp.html'],
     ['C++Builder', '/doc/buildercomp.html'],
