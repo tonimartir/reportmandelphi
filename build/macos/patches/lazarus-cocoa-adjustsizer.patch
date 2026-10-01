@@ -1,0 +1,67 @@
+LCL Cocoa (Lazarus 4.8, same code in main): TASyncLCLControlAdjustSizer keeps
+the last control that changed its scroll bars (SetScrollInfo) and queues an
+AdjustSize of it without a free notification. When that control is destroyed
+before the queued call runs (a form freed right after a layout change), the
+next turn of the event loop calls AdjustSize on a freed object: an access
+violation, and a hang in CoreGraphics when the application finishes. It only
+happens with legacy scroll bars (a mouse, or "Show scroll bars: Always").
+The sizer becomes a TComponent that is told when the control is freed.
+
+--- a/lcl/interfaces/cocoa/cocoawsscrollers.pas
++++ b/lcl/interfaces/cocoa/cocoawsscrollers.pas
+@@ -32,11 +32,14 @@
+
+   { TASyncLCLControlAdjustSizer }
+
+-  TASyncLCLControlAdjustSizer = class
++  TASyncLCLControlAdjustSizer = class(TComponent)
+   private
+     _control: TWinControl;
+     _doing: Boolean;
+     procedure doAdjustSize(data: PtrInt);
++  protected
++    // _control is cleared when it is destroyed before the queued call runs
++    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+   public
+     procedure adjustSize(control: TWinControl);
+   end;
+@@ -156,13 +159,28 @@
+
+ procedure TASyncLCLControlAdjustSizer.doAdjustSize(data: PtrInt);
+ begin
+-  _control.AdjustSize;
++  if Assigned(_control) then
++    _control.AdjustSize;
+   _doing:= False;
+ end;
+
++procedure TASyncLCLControlAdjustSizer.Notification(AComponent: TComponent;
++  Operation: TOperation);
++begin
++  inherited Notification(AComponent, Operation);
++  if (Operation = opRemove) and (AComponent = _control) then
++    _control:= nil;
++end;
++
+ procedure TASyncLCLControlAdjustSizer.adjustSize(control: TWinControl);
+ begin
+-  _control:= control;
++  if _control <> control then
++  begin
++    if Assigned(_control) then
++      _control.RemoveFreeNotification(Self);
++    _control:= control;
++    _control.FreeNotification(Self);
++  end;
+   _control.InvalidateClientRectCache(true);
+   if NOT _doing then
+     Application.QueueAsyncCall(@doAdjustSize, 0);
+@@ -170,7 +188,7 @@
+ end;
+
+ initialization
+-  ASyncLCLControlAdjustSizer:= TASyncLCLControlAdjustSizer.Create;
++  ASyncLCLControlAdjustSizer:= TASyncLCLControlAdjustSizer.Create(nil);
+
+ finalization
+   FreeAndNil( ASyncLCLControlAdjustSizer );

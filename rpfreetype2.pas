@@ -21,6 +21,9 @@ uses
 {$ELSE}
 {$IFDEF FPC}
  dynlibs,
+{$IFDEF DARWIN}
+ rpfpcutils,
+{$ENDIF}
 {$ELSE}
  // Libc,
 {$ENDIF}
@@ -32,7 +35,11 @@ const
 // C_FREETYPE='freetype6.dll';
  C_FREETYPE='freetype.dll';
 {$ELSE}
+{$IFDEF DARWIN}
+ C_FREETYPE='libfreetype.6.dylib';
+{$ELSE}
  C_FREETYPE='libfreetype.so.6';
+{$ENDIF}
  //C_FREETYPE='freetype';
 {$ENDIF}
  FT_LOAD_DEFAULT=$0;
@@ -435,7 +442,11 @@ begin
    Raise Exception.Create('Error opening:'+C_FREETYPE);
 {$ELSE}
 {$IFDEF FPC}
+{$IFDEF DARWIN}
+ FreeTypeLib:=RpLoadDarwinLibrary(C_FREETYPE);
+{$ELSE}
  FreeTypeLib:=dynlibs.LoadLibrary(C_FREETYPE);
+{$ENDIF}
  if FreeTypeLib=0 then
   Raise Exception.Create('Error opening:'+C_FREETYPE);
 {$ELSE}

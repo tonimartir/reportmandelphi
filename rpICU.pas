@@ -710,7 +710,7 @@ var
 {$ENDIF}
     if not Assigned(Result) then RaiseLastOSError;
 {$ENDIF}
-{$IFDEF LINUX}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
 {$IFDEF FPC}
     Result := Dynlibs.GetProcAddress(ICUlib, ProcName);
     if Result = nil then
@@ -719,7 +719,7 @@ var
     Result := SysUtils.GetProcAddress(ICUlib, PWideChar(ProcName));
     if Result = nil then RaiseLastOSError;
 {$ENDIF}
-{$ENDIF}
+{$IFEND}
   end;
 
 begin
@@ -730,6 +730,12 @@ begin
   ICUlib := dynlibs.NilHandle;
   ICUSuffix := '';
 
+{$IFDEF DARWIN}
+  // macOS has ICU as libicucore, with the functions without version suffix
+  ICUlib := SysUtils.SafeLoadLibrary('/usr/lib/libicucore.dylib');
+  if ICUlib = dynlibs.NilHandle then
+    raise Exception.Create('No ICU library found (/usr/lib/libicucore.dylib)');
+{$ELSE}
   // Intentar cargar la version de ICU desde 60 hasta 90
   for version := ICU_MIN_VERSION to ICU_MAX_VERSION do
   begin
@@ -744,6 +750,7 @@ begin
 
   if ICUlib = dynlibs.NilHandle then
     raise Exception.Create('No ICU library found from version 60 to 80');
+{$ENDIF}
 {$ELSE}
  if (ICUlib <>0) then
    exit;

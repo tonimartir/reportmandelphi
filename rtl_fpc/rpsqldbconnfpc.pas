@@ -18,7 +18,9 @@
 // SQLdb has: SQLite, PG, MySQL, FB, IB, MSSQL, Ora and ODBC. Their client
 // libraries (libpq, libmysqlclient or the MariaDB client, libfbclient,
 // FreeTDS, the Oracle client, unixODBC) are loaded when connecting, so none
-// of them is needed to run the reports of the other drivers.
+// of them is needed to run the reports of the other drivers. FPC does not
+// build mssqlconn for macOS, so there MSSQL is not one of the drivers (ODBC
+// with the FreeTDS ODBC driver reaches SQL Server).
 
 unit rpsqldbconnfpc;
 
@@ -52,17 +54,27 @@ implementation
 
 uses
   sqlite3conn, pqconnection, ibconnection, mysql57conn, mysql80conn,
-  mssqlconn, oracleconnection, odbcconn;
+{$IFNDEF DARWIN}
+  mssqlconn,
+{$ENDIF}
+  oracleconnection, odbcconn;
 
 const
+{$IFDEF DARWIN}
+  SQLDB_DRIVER_IDS: array[0..6] of string =
+    ('SQLite', 'PG', 'MySQL', 'FB', 'IB', 'Ora', 'ODBC');
+{$ELSE}
   SQLDB_DRIVER_IDS: array[0..7] of string =
     ('SQLite', 'PG', 'MySQL', 'FB', 'IB', 'MSSQL', 'Ora', 'ODBC');
+{$ENDIF}
   // The MariaDB client, with the API of MySQL 5.7
-{$IFDEF WINDOWS}
+{$IF DEFINED(WINDOWS)}
   MARIADB_LIBRARY = 'libmariadb.dll';
+{$ELSEIF DEFINED(DARWIN)}
+  MARIADB_LIBRARY = 'libmariadb.3.dylib';
 {$ELSE}
   MARIADB_LIBRARY = 'libmariadb.so.3';
-{$ENDIF}
+{$IFEND}
 
 procedure RpSQLDBDriverIds(AList: TStrings);
 var
@@ -289,10 +301,13 @@ begin
   end
   else if (LId = 'FB') or (LId = 'IB') then
   begin
-{$IFDEF UNIX}
+{$IF DEFINED(DARWIN)}
+    LoadClientLibrary('Firebird', ['libfbclient.dylib',
+      '/Library/Frameworks/Firebird.framework/Firebird']);
+{$ELSEIF DEFINED(UNIX)}
     LoadClientLibrary('Firebird', ['libfbclient.so.2', 'libfbclient.so',
       'libgds.so']);
-{$ENDIF}
+{$IFEND}
     LConnection := TIBConnection.Create(nil);
     SetCommonParams(LConnection, AParams, ADatabase);
     // A local database (Protocol=Local of FireDAC): no server
@@ -302,6 +317,7 @@ begin
       LConnection.Params.Values['Port'] := LPort;
     LConnection.Role := Param(AParams, 'RoleName');
   end
+{$IFNDEF DARWIN}
   else if LId = 'MSSQL' then
   begin
 {$IFDEF UNIX}
@@ -314,6 +330,7 @@ begin
     if (LPort <> '') and (LConnection.HostName <> '') then
       LConnection.HostName := LConnection.HostName + ':' + LPort;
   end
+{$ENDIF}
   else if LId = 'Ora' then
   begin
     LConnection := TOracleConnection.Create(nil);
@@ -327,9 +344,12 @@ begin
   else
   begin
     // ODBC: the data source (DSN), the ODBC driver and its parameters
-{$IFDEF UNIX}
+{$IF DEFINED(DARWIN)}
+    // unixODBC (Homebrew) or the iODBC that comes with macOS
+    LoadClientLibrary('ODBC', ['libodbc.2.dylib', 'libiodbc.2.dylib']);
+{$ELSEIF DEFINED(UNIX)}
     LoadClientLibrary('ODBC', ['libodbc.so.2', 'libodbc.so']);
-{$ENDIF}
+{$IFEND}
     LConnection := TODBCConnection.Create(nil);
     SetCommonParams(LConnection, AParams, '');
     LConnection.HostName := '';

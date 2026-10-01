@@ -1701,6 +1701,10 @@ begin
 
   FComboSchema := TComboBox.Create(Self);
   FComboSchema.Parent := FPTop;
+  // Laid out in LayoutTopControls: anchored on both sides its width is fixed
+  // and AutoSize only sets the height (Cocoa gives the combo a preferred
+  // width, that AutoSize would set back on every Resize)
+  FComboSchema.Anchors := [akLeft, akTop, akRight];
   FComboSchema.Style := csDropDownList;
   FComboSchema.OnChange := ComboSchemaChange;
   FComboSchema.Hint := TranslateStr(1528, 'Schema');

@@ -586,6 +586,12 @@
  {$UNDEF USEBDE}
  // The FPC packages (reportman_rtl.lpk) require Zeos
  {$DEFINE USEZEOS}
+ // macOS (LCL-Cocoa) takes the same non-Windows engine path as Linux: in
+ // these units LINUX means "FreeType/fontconfig/HarfBuzz instead of GDI".
+ // What really differs (library names, socket flags...) is under DARWIN.
+ {$IFDEF DARWIN}
+  {$DEFINE LINUX}
+ {$ENDIF}
 {$ENDIF}
 
 

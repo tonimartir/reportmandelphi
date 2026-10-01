@@ -7,3 +7,5 @@
 # MIME files are used inside Linux containers and packages, keep them LF.
 build/linux/** text eol=lf
 build/linux/*.ps1 text eol=crlf
+# macOS build scripts (build/macos) run on the Mac
+build/macos/** text eol=lf
