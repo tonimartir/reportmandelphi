@@ -516,7 +516,9 @@ begin
   end
   else
   begin
-    LabelUser.Caption := TranslateStr(1498, 'Guest (Login available)');
+    // The reason to sign in, with the login gift the API advertises in its tiers
+    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
     LUserLeft := Scale(8);
   end;
   LUserWidth := LabelArrow.Left - LUserLeft - Scale(6);

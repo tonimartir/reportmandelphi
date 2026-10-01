@@ -542,6 +542,10 @@ begin
       TranslateStr(1527, 'Max') + ': 0';
     FGaugeValue := 0.0;
   end;
+  // A guest also reads what signing in gives: the login gift, credits that never expire
+  if not LAuth.IsLoggedIn then
+    LHint := LHint + LineEnding + Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', LAuth.GetLoginGiftCredits)]);
   PaintBoxGauge.Hint := LHint;
   PaintBoxGauge.ShowHint := True;
   SetGaugeValue(FGaugeValue);
