@@ -53,9 +53,9 @@ OPM se rellenan a mano; aquí son parámetros del script):
 | `DownloadURL` (*Update link (JSON)*) | `https://reportman.es/opm/update_ReportManager.json` | `-UpdateBaseURL` |
 | `SVNURL` | `https://github.com/tonimartir/reportmandelphi` | `-SVNURL` |
 | `CommunityDescription`, `ExternalDependecies` | textos en inglés | `-CommunityDescription`, `-ExternalDependencies` |
-| `LazCompatibility` | `4.8.0, 4.6.0, …, 3.0.0` | `-LazCompatibility` |
+| `LazCompatibility` | `Trunk, 4.8.0, 4.6.0, …, 3.0.0` | `-LazCompatibility` |
 | `FPCCompatibility` | `3.2.2` | `-FPCCompatibility` |
-| `SupportedWidgetSet` | `win32/win64, gtk2, qt5, qt6` | `-SupportedWidgetSet` |
+| `SupportedWidgetSet` | `win32/win64, gtk2, gtk3, qt, qt5, qt6` | `-SupportedWidgetSet` |
 | `PackageBaseDir` | `reportman` | `-BaseDir` |
 
 Las compatibilidades solo se muestran y sirven para filtrar en OPM; no
@@ -63,7 +63,9 @@ bloquean la instalación. Probado: Lazarus 4.8 (Windows, win32) y Lazarus 3.0
 (Linux, gtk2), ambos con FPC 3.2.2; con Lazarus 4.8 en Linux los tres
 paquetes y el selftest del diseñador pasan también con `--ws=qt5` y
 `--ws=qt6` (con `--ws=gtk3`, alfa en Lazarus 4.8, compilan pero el selftest
-falla, por eso no se declara).
+falla). `Trunk`, `qt` (Qt4) y `gtk3` los añadió el mantenedor de OPM al
+aceptar el paquete, tras probarlos él con Lazarus *main* (sección 4,
+«Aceptación»); el script los mantiene para no quitarlos en el siguiente envío.
 
 ### Ficheros
 
@@ -333,6 +335,28 @@ Con el camino B. Werner no pudo compilar y pidió ejemplos:
 
 Delphi no ve ninguno de estos cambios (todos van en `{$IFDEF FPC}` o en
 unidades solo LCL).
+
+### Aceptación (01-10-2026, commit 9233064)
+
+Werner subió el paquete al repositorio central (`PackageData175` de
+`https://packages.lazarus-ide.org/packagelist.json`, con el MD5
+`b545679adc640421b896979e6094113d` de nuestro zip). Cambió el JSON:
+
+- `LazCompatibility`: añadió `Trunk` (él prueba con Lazarus *main*).
+- `SupportedWidgetSet`: añadió `qt` (Qt4, probado en Windows) y `gtk3`
+  (probado en Linux). A `reportman_lcl` le falta `gtk3`, que sí está en los
+  otros dos, seguramente un descuido: `reportman_designlcl` depende de él.
+- **Cocoa (macOS) no compila**; en su opinión, con cambios menores
+  funcionaría.
+
+Sugerencia para la siguiente versión: los iconos de la paleta (los `.lrs` de
+`rpreglcl` y `rpmregdesignlcl`, un BMP de 24×24 por componente) solo tienen
+un tamaño y se ven mal con DPI altos. El LCL pide también `_150` (36×36) y
+`_200` (48×48), con ese sufijo añadido al nombre del recurso.
+
+Escribirle a él es la vía recomendada, no un plan B: así tiene el contacto
+del mantenedor para avisar si el paquete deja de funcionar. Invita a anunciar
+el paquete en el foro de Lazarus.
 
 ## 5. Actualizaciones mediante el JSON externo
 
