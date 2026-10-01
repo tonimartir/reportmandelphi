@@ -8,7 +8,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls,
   Vcl.Menus, rpauthmanager, rpfrmloginvcl, System.Net.HttpClient, System.Net.HttpClientComponent,
   Vcl.Imaging.pngimage, Vcl.Imaging.jpeg, Vcl.Imaging.GIFImg,
-  rpchatmodernstyle;
+  rpchatmodernstyle, rpmdconsts;
 const
   CRpLoginFrameEnableAuthState = True;
     CRpLoginFrameEnableAvatarDownload = False;
@@ -365,7 +365,9 @@ begin
     ImageAvatar.Visible := False;
     LabelUser.Visible := True;
     LabelArrow.Visible := True;
-    LabelUser.Caption := 'Guest (Login available)';
+    // The reason to sign in, with the login gift the API advertises in its tiers
+    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
     LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
     LUserLeft := GuestLeft;
     LUserWidth := LabelArrow.Left - LUserLeft - UserGap;
@@ -465,7 +467,9 @@ begin
     ImageAvatar.Visible := False;
     LabelUser.Visible := True;
     LabelArrow.Visible := True;
-    LabelUser.Caption := 'Guest (Login available)';
+    // The reason to sign in, with the login gift the API advertises in its tiers
+    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
     LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
     LUserLeft := GuestLeft;
     LUserWidth := LabelArrow.Left - LUserLeft - UserGap;

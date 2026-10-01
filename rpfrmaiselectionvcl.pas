@@ -17,7 +17,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, ComCtrls, CommCtrl, System.JSON,
-  rpauthmanager, rpchatmodernstyle;
+  rpauthmanager, rpchatmodernstyle, rpmdconsts;
 
   const
     CRpStartupNetworkDelayMs = 0;
@@ -451,6 +451,11 @@ begin
       'Max: 0';
     FGaugeValue := 0.0;
   end;
+
+  // A guest also reads what signing in gives: the login gift, credits that never expire
+  if not LAuth.IsLoggedIn then
+    LHint := LHint + #13#10 + Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', LAuth.GetLoginGiftCredits)]);
 
   PaintBoxGauge.Hint := LHint;
   // Enable hints
