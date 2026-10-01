@@ -228,6 +228,9 @@ type
     procedure UpdateProfileFromJson(AProfileObj: TJSONObject);
     function UsesFreeCredits: Boolean;
     function GetCreditsRatio: Double;
+    // Credits the Free tier gives on the first sign-in (the login gift), read
+    // from the tiers the API sends with the profile; 2000 until they arrive
+    function GetLoginGiftCredits: Int64;
     function GetCreditsConsumed: Int64;
     function GetCreditsMax: Int64;
 
@@ -451,6 +454,22 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TRpAuthManager.GetLoginGiftCredits: Int64;
+const
+  DefaultLoginGift = 2000;
+var
+  LTier: TRpTier;
+begin
+  Result := DefaultLoginGift;
+  for LTier in GetTiers do
+    if (LTier.Id = 2) or SameText(LTier.Name, 'Free') then
+    begin
+      if LTier.MaxFreeCredits > 0 then
+        Result := LTier.MaxFreeCredits;
+      Exit;
+    end;
 end;
 
 function TRpAuthManager.GetTiers: TArray<TRpTier>;
