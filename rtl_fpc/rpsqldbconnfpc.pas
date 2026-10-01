@@ -18,9 +18,11 @@
 // SQLdb has: SQLite, PG, MySQL, FB, IB, MSSQL, Ora and ODBC. Their client
 // libraries (libpq, libmysqlclient or the MariaDB client, libfbclient,
 // FreeTDS, the Oracle client, unixODBC) are loaded when connecting, so none
-// of them is needed to run the reports of the other drivers. FPC does not
-// build mssqlconn for macOS, so there MSSQL is not one of the drivers (ODBC
-// with the FreeTDS ODBC driver reaches SQL Server).
+// of them is needed to run the reports of the other drivers. VendorLib, as in
+// FireDAC, names the client library; on macOS they are also looked for in the
+// folders of the usual installers (rpdarwinlibs). FPC does not build
+// mssqlconn for macOS, so there MSSQL is not one of the drivers (ODBC with the
+// FreeTDS ODBC driver reaches SQL Server).
 
 unit rpsqldbconnfpc;
 
@@ -54,7 +56,9 @@ implementation
 
 uses
   sqlite3conn, pqconnection, ibconnection, mysql57conn, mysql80conn,
-{$IFNDEF DARWIN}
+{$IFDEF DARWIN}
+  rpdarwinlibs,
+{$ELSE}
   mssqlconn,
 {$ENDIF}
   oracleconnection, odbcconn;
@@ -212,6 +216,46 @@ begin
     '(install its client package):', [AConnectionType]) + LErrors);
 end;
 
+// The client libraries to try, in order: the VendorLib of the connection (as
+// in FireDAC), ANames (the library search of the system) and, on macOS, the
+// folders of the usual installers (rpdarwinlibs: an application started from
+// the Finder has no DYLD_LIBRARY_PATH). Empty: the library of SQLdb.
+function ClientLibraries(AParams: TStrings; const ANames: array of string;
+  const AKind: string): TStringArray;
+var
+  LList: TStringList;
+  LVendorLib: string;
+{$IFDEF DARWIN}
+  LInstalled: TStringArray;
+{$ENDIF}
+  I: Integer;
+begin
+  LList := TStringList.Create;
+  try
+    LVendorLib := Param(AParams, 'VendorLib');
+    if LVendorLib <> '' then
+      LList.Add(LVendorLib);
+    for I := Low(ANames) to High(ANames) do
+      LList.Add(ANames[I]);
+{$IFDEF DARWIN}
+    LInstalled := RpDarwinClientLibraries(AKind);
+    for I := 0 to High(LInstalled) do
+      LList.Add(LInstalled[I]);
+{$ENDIF}
+    SetLength(Result, LList.Count);
+    for I := 0 to LList.Count - 1 do
+      Result[I] := LList[I];
+  finally
+    LList.Free;
+  end;
+end;
+
+procedure LoadClientLibraries(const AConnectionType: string; const ALibraries: TStringArray);
+begin
+  if Length(ALibraries) > 0 then
+    LoadClientLibrary(AConnectionType, ALibraries);
+end;
+
 // Connects, freeing the connection when it fails
 function Connected(AConnection: TSQLConnection): TSQLConnection;
 begin
@@ -238,11 +282,16 @@ begin
   begin
     try
       case LStep of
-        0: LConnection := TMySQL80Connection.Create(nil);
+        0:
+          begin
+            LoadClientLibraries('MySQL 8.0', ClientLibraries(AParams,
+              [{$IFDEF DARWIN}'libmysqlclient.21.dylib'{$ENDIF}], 'mysql'));
+            LConnection := TMySQL80Connection.Create(nil);
+          end;
         1: LConnection := TMySQL57Connection.Create(nil);
       else
         begin
-          LoadClientLibrary('MySQL 5.7', [MARIADB_LIBRARY]);
+          LoadClientLibrary('MySQL 5.7', ClientLibraries(AParams, [MARIADB_LIBRARY], 'mariadb'));
           LConnection := TMySQL57Connection.Create(nil);
           // Its version is the one of MariaDB
           TMySQL57Connection(LConnection).SkipLibraryVersionCheck := True;
@@ -287,12 +336,16 @@ begin
     Exit(OpenMySQL(AParams, ADatabase));
   if LId = 'SQLite' then
   begin
+    LoadClientLibraries('SQLite3', ClientLibraries(AParams,
+      [{$IFDEF DARWIN}'libsqlite3.dylib'{$ENDIF}], 'sqlite'));
     LConnection := TSQLite3Connection.Create(nil);
     LConnection.DatabaseName := ADatabase;
     Exit(Connected(LConnection));
   end;
   if LId = 'PG' then
   begin
+    LoadClientLibraries('PostgreSQL', ClientLibraries(AParams,
+      [{$IFDEF DARWIN}'libpq.5.dylib'{$ENDIF}], 'pq'));
     LConnection := TPQConnection.Create(nil);
     SetCommonParams(LConnection, AParams, ADatabase);
     // The parameters go to the connection string of libpq (lower case)
@@ -302,11 +355,12 @@ begin
   else if (LId = 'FB') or (LId = 'IB') then
   begin
 {$IF DEFINED(DARWIN)}
-    LoadClientLibrary('Firebird', ['libfbclient.dylib',
-      '/Library/Frameworks/Firebird.framework/Firebird']);
+    LoadClientLibraries('Firebird', ClientLibraries(AParams, ['libfbclient.dylib'], 'fbclient'));
 {$ELSEIF DEFINED(UNIX)}
-    LoadClientLibrary('Firebird', ['libfbclient.so.2', 'libfbclient.so',
-      'libgds.so']);
+    LoadClientLibraries('Firebird', ClientLibraries(AParams,
+      ['libfbclient.so.2', 'libfbclient.so', 'libgds.so'], ''));
+{$ELSE}
+    LoadClientLibraries('Firebird', ClientLibraries(AParams, [], ''));
 {$IFEND}
     LConnection := TIBConnection.Create(nil);
     SetCommonParams(LConnection, AParams, ADatabase);
@@ -345,10 +399,12 @@ begin
   begin
     // ODBC: the data source (DSN), the ODBC driver and its parameters
 {$IF DEFINED(DARWIN)}
-    // unixODBC (Homebrew) or the iODBC that comes with macOS
-    LoadClientLibrary('ODBC', ['libodbc.2.dylib', 'libiodbc.2.dylib']);
+    // unixODBC (Homebrew, MacPorts) or the iODBC that comes with macOS
+    LoadClientLibraries('ODBC', ClientLibraries(AParams, ['libodbc.2.dylib'], 'odbc'));
 {$ELSEIF DEFINED(UNIX)}
-    LoadClientLibrary('ODBC', ['libodbc.so.2', 'libodbc.so']);
+    LoadClientLibraries('ODBC', ClientLibraries(AParams, ['libodbc.so.2', 'libodbc.so'], ''));
+{$ELSE}
+    LoadClientLibraries('ODBC', ClientLibraries(AParams, [], ''));
 {$IFEND}
     LConnection := TODBCConnection.Create(nil);
     SetCommonParams(LConnection, AParams, '');

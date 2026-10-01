@@ -1397,6 +1397,9 @@ begin
   FReport := ANewReport;
   FOwnsReport := True;
   FFileName := AFileName;
+  // Its MyBase files with a relative name are next to it
+  if AFileName <> '' then
+    RpReportFolder := ExtractFilePath(ExpandFileName(AFileName));
   FLibraryName := '';
   FLibraryReportName := '';
   cue := GetUndoCue;
@@ -2331,6 +2334,7 @@ begin
   if not Assigned(FReport) then Exit;
   FReport.SaveToFile(AFileName);
   FFileName := AFileName;
+  RpReportFolder := ExtractFilePath(ExpandFileName(AFileName));
   FLibraryName := '';
   FLibraryReportName := '';
   // MarkClean also resets Report.Modified

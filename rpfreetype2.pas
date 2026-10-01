@@ -22,7 +22,7 @@ uses
 {$IFDEF FPC}
  dynlibs,
 {$IFDEF DARWIN}
- rpfpcutils,
+ rpdarwinlibs,
 {$ENDIF}
 {$ELSE}
  // Libc,

@@ -10,7 +10,7 @@ Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
 {$ELSE}
   dynlibs,
 {$IFDEF DARWIN}
-  rpfpcutils,
+  rpdarwinlibs,
 {$ENDIF}
 {$ENDIF}
 {$ELSE}

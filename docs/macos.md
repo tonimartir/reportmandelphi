@@ -61,11 +61,48 @@ fontconfig e ICU, que se cargan al usarse (no hacen falta para compilar):
 | FreeType, HarfBuzz (+ subset), fontconfig | `build/macos/build-deps.sh` las compila en `~/dev/macdeps/prefix/lib` |
 | ICU | `/usr/lib/libicucore.dylib`, la del sistema (sus funciones no llevan sufijo de versión) |
 
-`RpLoadDarwinLibrary` (`rtl_fpc/rpfpcutils.pas`) busca cada `.dylib` en este
+`RpLoadDarwinLibrary` (`rtl_fpc/rpdarwinlibs.pas`) busca cada `.dylib` en este
 orden: `Contents/Frameworks` del `.app`, junto al ejecutable, la búsqueda de
 dyld (`DYLD_LIBRARY_PATH`, `/usr/local/lib`) y los prefijos de Homebrew
 (`/opt/homebrew/lib`) y MacPorts (`/opt/local/lib`). Si no hay fontconfig, el
 motor recorre las carpetas de fuentes de macOS.
+
+## Bases de datos
+
+Los dos drivers directos del motor FPC funcionan en macOS:
+
+- **FireDAC / SQLdb**: PostgreSQL, MySQL o MariaDB, Firebird, SQLite y ODBC.
+  No hay MSSQL, porque FPC no compila `mssqlconn` para macOS; a SQL Server se
+  llega por ODBC con el driver de FreeTDS.
+- **Zeos**: los mismos protocolos.
+
+`tests/fpc/SqldbDriversTest/run_macos.sh` los prueba contra PostgreSQL 16,
+MySQL 8.0 y Firebird 5. Los servidores corren en la carpeta del usuario, sin
+`sudo`, y el script los descarga la primera vez. También prueba SQLite, con
+la librería del sistema, y lo hace con los dos drivers: 96 comprobaciones.
+
+Una aplicación abierta desde Finder no recibe `DYLD_LIBRARY_PATH`, así que el
+motor busca la librería cliente de cada servidor (`rtl_fpc/rpdarwinlibs.pas`)
+en este orden:
+
+1. La de la conexión: `VendorLib` (FireDAC / SQLdb) o `LibraryLocation` (Zeos),
+   con la ruta completa del `.dylib`.
+2. La búsqueda de dyld (`~/lib`, `/usr/local/lib`, `/usr/lib`).
+3. Las carpetas de los instaladores habituales:
+
+| Servidor | Dónde |
+|---|---|
+| PostgreSQL | Homebrew (`libpq`, `postgresql@N`), Postgres.app, EnterpriseDB (`/Library/PostgreSQL/N`), MacPorts |
+| MySQL | el paquete de MySQL (`/usr/local/mysql`), Homebrew (`mysql-client`, `mysql`), MacPorts |
+| MariaDB | Homebrew (`mariadb-connector-c`) |
+| Firebird | el paquete de Firebird (`/Library/Frameworks/Firebird.framework`) |
+| ODBC | unixODBC de Homebrew o MacPorts, y el iODBC de macOS |
+| SQLite | la de macOS |
+
+No uses `DYLD_LIBRARY_PATH` con la carpeta `lib` de un servidor. Esas carpetas
+traen su propia `libiconv`, `libssl`… que tapan las del sistema y rompen otras
+librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
+`/usr/local/lib:/usr/lib` al final) no tiene ese problema.
 
 ## Notas del port
 
@@ -89,6 +126,17 @@ motor recorre las carpetas de fuentes de macOS.
   liberada. Solo pasa con barras de desplazamiento clásicas (con ratón, o
   «Mostrar barras de desplazamiento: siempre»). El fallo sigue en la rama
   principal de Lazarus.
+- **Ficheros MyBase junto al informe.** Un fichero MyBase con nombre relativo
+  (`biolife.cds` de `sample4`, con la conexión sin `DATABASE`) se busca también
+  en la carpeta del informe abierto en el diseñador (`RpReportFolder`). En
+  Windows el Explorador y el diálogo Abrir dejan esa carpeta como directorio
+  actual. En macOS la aplicación arranca en `/`.
+- **El informe sin nombre.** El formulario del diseñador LCL no tiene nombre
+  (`CreateNew`). Mientras existe, el `TReader` de FPC daba al informe que se
+  cargaba el nombre `_1`: se guardaba como `object _1: TRpReport` y dos copias
+  con el mismo propietario chocaban («Duplicate name»). `LoadFromStream` quita
+  ese nombre automático, también de los informes que ya se guardaron así.
+  Pasaba con el diseñador LCL en todas las plataformas.
 - **Contextos gráficos.** Con Cocoa, cada `TBitmap` con canvas crea contextos
   gráficos que esperan en el *autorelease pool* hasta la siguiente vuelta del
   bucle de eventos, y liberar muchos de golpe cuesta tiempo cuadrático. No hay

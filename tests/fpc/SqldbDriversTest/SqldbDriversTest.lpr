@@ -1,16 +1,25 @@
-{ The FireDAC connections of the FPC engine (SQLdb, rtl_fpc/rpsqldbconnfpc)
-  against real database servers: each one is a FireDAC connection of the
-  connections file (DriverName=FireDac, its DriverID and the FireDAC
-  parameters), opened by the engine as a report opens its data: the
-  connection of the report and a dataset with its SQL.
+{ The direct database drivers of the FPC engine against real database
+  servers, opened as a report opens its data: the connection of the report
+  (from the connections file) and a dataset with its SQL.
+  - FireDAC / SQLdb (rtl_fpc/rpsqldbconnfpc): DriverName=FireDac, its
+    DriverID and the FireDAC parameters.
+  - Zeos (rpdatazeos): the Zeos protocol and its parameters.
 
-  The servers come from environment variables, host|port|database|user|password:
+  The servers come from environment variables,
+  host|port|database|user|password[|client library]; the client library, when
+  given, is the VendorLib (FireDAC) or LibraryLocation (Zeos) of the
+  connection (on macOS an application has no DYLD_LIBRARY_PATH):
     RP_TEST_PG     PostgreSQL (libpq)
     RP_TEST_MYSQL  MySQL or MariaDB (libmysqlclient or the MariaDB client)
     RP_TEST_FB     Firebird (libfbclient)
-  A server that is not configured is skipped. run_docker.sh starts them in
-  Docker containers and runs this program in a container with the client
-  libraries. Exit code 1 on the first failure. }
+  A server that is not configured is skipped. Other tests, when set to 1:
+    RP_TEST_ZEOS    the same servers with Zeos
+    RP_TEST_SQLITE  SQLite (a database file in the temporary folder), with
+                    FireDAC / SQLdb, and with Zeos when RP_TEST_ZEOS is set
+  run_docker.sh starts the servers in Docker containers and runs this
+  program in a container with the client libraries (FireDAC / SQLdb only).
+  On macOS the servers run in the user folder (docs/macos.md). Exit code 1 on
+  the first failure. }
 program SqldbDriversTest;
 
 {$mode delphi}{$H+}
@@ -24,11 +33,25 @@ uses
 const
   // N with tilde, "and", u with acute: the UTF-8 text of the tests
   TEXT_UTF8 = #$C3#$91'and'#$C3#$BA;
+  CREATE_TABLE = 'create table rp_sqldb_test (id integer primary key, ' +
+    'name varchar(40), amount numeric(12,2), sale_day date)';
+  DROP_TABLE = 'drop table if exists rp_sqldb_test';
 
 var
   ConnFile: string;
 
-procedure WriteConnection(const AName, ADriverId, AConfig, APassword: string);
+function FamilyOf(ADriver: TRpDbDriver): string;
+begin
+  if ADriver = rpdatazeos then
+    Result := 'Zeos'
+  else
+    Result := 'FireDAC / SQLdb';
+end;
+
+// A connection of the connections file. ADriverId is the FireDAC DriverID
+// or the Zeos protocol
+procedure WriteConnection(ADriver: TRpDbDriver; const AName, ADriverId, AConfig,
+  APassword: string);
 var
   LParts, LIni: TStringList;
 begin
@@ -41,17 +64,38 @@ begin
     if FileExists(ConnFile) then
       LIni.LoadFromFile(ConnFile);
     LIni.Add('[' + AName + ']');
-    LIni.Add('DriverName=FireDac');
-    LIni.Add('DriverID=' + ADriverId);
-    LIni.Add('Server=' + LParts[0]);
-    LIni.Add('Port=' + LParts[1]);
-    LIni.Add('Database=' + LParts[2]);
-    LIni.Add('User_Name=' + LParts[3]);
-    LIni.Add('Password=' + APassword);
-    if ADriverId = 'MySQL' then
-      LIni.Add('CharacterSet=utf8mb4')
+    if ADriver = rpdatazeos then
+    begin
+      LIni.Add('Database Protocol=' + ADriverId);
+      LIni.Add('HostName=' + LParts[0]);
+      LIni.Add('Port=' + LParts[1]);
+      LIni.Add('Database=' + LParts[2]);
+      LIni.Add('User_Name=' + LParts[3]);
+      LIni.Add('Password=' + APassword);
+      // The character set of the client, a Zeos property
+      if ADriverId = 'mysql' then
+        LIni.Add('Property1=codepage=utf8mb4')
+      else if ADriverId <> 'sqlite' then
+        LIni.Add('Property1=codepage=UTF8');
+      if (LParts.Count > 5) and (LParts[5] <> '') then
+        LIni.Add('LibraryLocation=' + LParts[5]);
+    end
     else
-      LIni.Add('CharacterSet=UTF8');
+    begin
+      LIni.Add('DriverName=FireDac');
+      LIni.Add('DriverID=' + ADriverId);
+      LIni.Add('Server=' + LParts[0]);
+      LIni.Add('Port=' + LParts[1]);
+      LIni.Add('Database=' + LParts[2]);
+      LIni.Add('User_Name=' + LParts[3]);
+      LIni.Add('Password=' + APassword);
+      if ADriverId = 'MySQL' then
+        LIni.Add('CharacterSet=utf8mb4')
+      else
+        LIni.Add('CharacterSet=UTF8');
+      if (LParts.Count > 5) and (LParts[5] <> '') then
+        LIni.Add('VendorLib=' + LParts[5]);
+    end;
     LIni.SaveToFile(ConnFile);
   finally
     LIni.Free;
@@ -88,8 +132,10 @@ begin
     except
       on E: Exception do
       begin
-        // A missing client library does not wait
-        if (E is EInOutError) or (GetTickCount64 - LStart > 90000) then
+        // A missing client library does not wait (SQLdb raises EInOutError,
+        // Zeos names the library)
+        if (E is EInOutError) or (Pos('librar', LowerCase(E.Message)) > 0) or
+          (GetTickCount64 - LStart > 90000) then
           Fail(AName + ': ' + E.ClassName + ': ' + E.Message);
         Log('  waiting for the server: ' + E.Message);
         AReport.DatabaseInfo.ItemByName(AName).DisConnect;
@@ -99,44 +145,48 @@ begin
   end;
 end;
 
-procedure TestServer(const ADriverId, AEnvName, ADropSql, ACreateSql: string);
+procedure TestServer(ADriver: TRpDbDriver; const ADriverId, AConfig, ADropSql,
+  ACreateSql: string; ACheckPassword: Boolean);
 var
-  LConfig, LName: string;
+  LName, LWhat: string;
   LReport: TRpReport;
   LDatabase: TRpDatabaseInfoItem;
   LData: TRpDataInfoItem;
   LDataset: TDataset;
 begin
-  LConfig := GetEnvironmentVariable(AEnvName);
-  Section('FireDAC / SQLdb: ' + ADriverId);
-  if LConfig = '' then
-  begin
-    Skip(ADriverId + ': ' + AEnvName + ' not set');
-    Exit;
-  end;
-  LName := 'TEST_' + UpperCase(ADriverId);
-  WriteConnection(LName, ADriverId, LConfig, PasswordOf(LConfig));
+  LWhat := FamilyOf(ADriver) + ' ' + ADriverId;
+  if ADriver = rpdatazeos then
+    LName := 'TEST_Z_' + UpperCase(ADriverId)
+  else
+    LName := 'TEST_' + UpperCase(ADriverId);
+  WriteConnection(ADriver, LName, ADriverId, AConfig, PasswordOf(AConfig));
   LReport := TRpReport.Create(nil);
   try
     LDatabase := LReport.DatabaseInfo.Add(LName);
-    LDatabase.Driver := rpfiredac;
+    LDatabase.Driver := ADriver;
     LDatabase.LoadParams := True;
     ConnectWaiting(LReport, LName);
-    Pass(ADriverId + ': connected with the FireDAC parameters');
-    Check(LDatabase.SQLDBConnection <> nil, ADriverId + ': a SQLdb connection');
-    Log('  ' + LDatabase.SQLDBConnection.ClassName);
+    Pass(LWhat + ': connected with the parameters of the connections file');
+    if ADriver = rpdatazeos then
+      Check(LDatabase.ZConnection <> nil, LWhat + ': a Zeos connection')
+    else
+    begin
+      Check(LDatabase.SQLDBConnection <> nil, LWhat + ': a SQLdb connection');
+      Log('  ' + LDatabase.SQLDBConnection.ClassName);
+    end;
 
     // A table with text, numbers and dates (Firebird uses a table after
-    // the transaction that creates it)
+    // the transaction that creates it; Zeos commits each statement)
     if ADropSql <> '' then
       LDatabase.OpenDatasetFromSQL(ADropSql, nil, True, LReport.Params);
     LDatabase.OpenDatasetFromSQL(ACreateSql, nil, True, LReport.Params);
-    LDatabase.SQLDBTransaction.CommitRetaining;
+    if ADriver <> rpdatazeos then
+      LDatabase.SQLDBTransaction.CommitRetaining;
     LDatabase.OpenDatasetFromSQL('insert into rp_sqldb_test (id, name, amount, sale_day) ' +
       'values (1, ''' + TEXT_UTF8 + ''', 1234.5, ''2026-09-30'')', nil, True, LReport.Params);
     LDatabase.OpenDatasetFromSQL('insert into rp_sqldb_test (id, name, amount, sale_day) ' +
       'values (2, ''plain'', -7.25, ''2025-01-31'')', nil, True, LReport.Params);
-    Pass(ADriverId + ': table created and filled');
+    Pass(LWhat + ': table created and filled');
 
     // The dataset of a report
     LData := LReport.DataInfo.Add('TESTDATA');
@@ -144,46 +194,80 @@ begin
     LData.SQL := 'select id, name, amount, sale_day from rp_sqldb_test order by id';
     LData.Connect(LReport.DatabaseInfo, LReport.Params);
     LDataset := LData.Dataset;
-    Check(LDataset.Active, ADriverId + ': the dataset of the report is open');
+    Check(LDataset.Active, LWhat + ': the dataset of the report is open');
     LDataset.First;
-    CheckEquals(1, LDataset.FieldByName('id').AsInteger, ADriverId + ': first id');
-    CheckEquals(TEXT_UTF8, LDataset.FieldByName('name').AsString, ADriverId + ': UTF-8 text');
+    CheckEquals(1, LDataset.FieldByName('id').AsInteger, LWhat + ': first id');
+    CheckEquals(TEXT_UTF8, LDataset.FieldByName('name').AsString, LWhat + ': UTF-8 text');
     Check(Abs(LDataset.FieldByName('amount').AsFloat - 1234.5) < 0.001,
-      ADriverId + ': number ' + LDataset.FieldByName('amount').AsString);
+      LWhat + ': number ' + LDataset.FieldByName('amount').AsString);
     Check(Trunc(LDataset.FieldByName('sale_day').AsDateTime) = Trunc(EncodeDate(2026, 9, 30)),
-      ADriverId + ': date ' + LDataset.FieldByName('sale_day').AsString);
+      LWhat + ': date ' + LDataset.FieldByName('sale_day').AsString);
     LDataset.Next;
-    CheckEquals(2, LDataset.FieldByName('id').AsInteger, ADriverId + ': second id');
+    CheckEquals(2, LDataset.FieldByName('id').AsInteger, LWhat + ': second id');
     Check(Abs(LDataset.FieldByName('amount').AsFloat + 7.25) < 0.001,
-      ADriverId + ': negative number');
+      LWhat + ': negative number');
     LDataset.Next;
-    Check(LDataset.Eof, ADriverId + ': two records');
+    Check(LDataset.Eof, LWhat + ': two records');
     LData.Disconnect;
     LDatabase.DisConnect;
   finally
     LReport.Free;
   end;
 
+  if not ACheckPassword then
+    Exit;
   // A wrong password: the error of the server, not of the driver
-  WriteConnection(LName + '_BAD', ADriverId, LConfig, 'wrong-password');
+  WriteConnection(ADriver, LName + '_BAD', ADriverId, AConfig, 'wrong-password');
   LReport := TRpReport.Create(nil);
   try
     LDatabase := LReport.DatabaseInfo.Add(LName + '_BAD');
-    LDatabase.Driver := rpfiredac;
+    LDatabase.Driver := ADriver;
     LDatabase.LoadParams := True;
     try
       LDatabase.Connect(LReport.Params);
-      Fail(ADriverId + ': connected with a wrong password');
+      Fail(LWhat + ': connected with a wrong password');
     except
       on E: Exception do
       begin
         Check(Pos(string(SRpDriverNotSupported), E.Message) = 0,
-          ADriverId + ': wrong password refused by the server: ' + E.Message);
+          LWhat + ': wrong password refused by the server: ' + E.Message);
         Log('  ' + E.Message);
       end;
     end;
   finally
     LReport.Free;
+  end;
+end;
+
+// A server of an environment variable
+procedure TestEnvServer(ADriver: TRpDbDriver; const ADriverId, AEnvName, ADropSql,
+  ACreateSql: string);
+var
+  LConfig: string;
+begin
+  LConfig := GetEnvironmentVariable(AEnvName);
+  Section(FamilyOf(ADriver) + ': ' + ADriverId);
+  if LConfig = '' then
+  begin
+    Skip(ADriverId + ': ' + AEnvName + ' not set');
+    Exit;
+  end;
+  TestServer(ADriver, ADriverId, LConfig, ADropSql, ACreateSql, True);
+end;
+
+// SQLite: a database file, without server nor password
+procedure TestSQLite(ADriver: TRpDbDriver; const ADriverId: string);
+var
+  LFile: string;
+begin
+  Section(FamilyOf(ADriver) + ': ' + ADriverId);
+  LFile := IncludeTrailingPathDelimiter(GetTempDir(False)) + 'rpsqldbtest_' +
+    IntToStr(GetProcessID) + '.db';
+  DeleteFile(LFile);
+  try
+    TestServer(ADriver, ADriverId, '|0|' + LFile + '||', DROP_TABLE, CREATE_TABLE, False);
+  finally
+    DeleteFile(LFile);
   end;
 end;
 
@@ -193,7 +277,7 @@ var
   LDatabase: TRpDatabaseInfoItem;
 begin
   Section('FireDAC / SQLdb: a driver without SQLdb connector');
-  WriteConnection('TEST_ASA', 'ASA', 'server|2638|db|user|x', 'x');
+  WriteConnection(rpfiredac, 'TEST_ASA', 'ASA', 'server|2638|db|user|x', 'x');
   LReport := TRpReport.Create(nil);
   try
     LDatabase := LReport.DatabaseInfo.Add('TEST_ASA');
@@ -214,23 +298,31 @@ begin
   end;
 end;
 
+var
+  WithZeos, WithSQLite: Boolean;
 begin
   Verbose := FindCmdLineSwitch('verbose');
+  WithZeos := GetEnvironmentVariable('RP_TEST_ZEOS') = '1';
+  WithSQLite := GetEnvironmentVariable('RP_TEST_SQLITE') = '1';
   ConnFile := IncludeTrailingPathDelimiter(GetTempDir(False)) + 'rpsqldbtest_' +
     IntToStr(GetProcessID) + '.ini';
   DBXConnectionsFileOverride := ConnFile;
   try
     try
       TestNotSupported;
-      TestServer('PG', 'RP_TEST_PG', 'drop table if exists rp_sqldb_test',
-        'create table rp_sqldb_test (id integer primary key, name varchar(40), ' +
-        'amount numeric(12,2), sale_day date)');
-      TestServer('MySQL', 'RP_TEST_MYSQL', 'drop table if exists rp_sqldb_test',
-        'create table rp_sqldb_test (id integer primary key, name varchar(40), ' +
-        'amount numeric(12,2), sale_day date)');
-      TestServer('FB', 'RP_TEST_FB', '',
-        'recreate table rp_sqldb_test (id integer primary key, name varchar(40), ' +
-        'amount numeric(12,2), sale_day date)');
+      TestEnvServer(rpfiredac, 'PG', 'RP_TEST_PG', DROP_TABLE, CREATE_TABLE);
+      TestEnvServer(rpfiredac, 'MySQL', 'RP_TEST_MYSQL', DROP_TABLE, CREATE_TABLE);
+      TestEnvServer(rpfiredac, 'FB', 'RP_TEST_FB', '', 're' + CREATE_TABLE);
+      if WithSQLite then
+        TestSQLite(rpfiredac, 'SQLite');
+      if WithZeos then
+      begin
+        TestEnvServer(rpdatazeos, 'postgresql', 'RP_TEST_PG', DROP_TABLE, CREATE_TABLE);
+        TestEnvServer(rpdatazeos, 'mysql', 'RP_TEST_MYSQL', DROP_TABLE, CREATE_TABLE);
+        TestEnvServer(rpdatazeos, 'firebird', 'RP_TEST_FB', '', 're' + CREATE_TABLE);
+        if WithSQLite then
+          TestSQLite(rpdatazeos, 'sqlite');
+      end;
     except
       on E: Exception do
         Fail('unexpected exception ' + E.ClassName + ': ' + E.Message);
