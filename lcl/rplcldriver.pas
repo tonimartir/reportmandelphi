@@ -1138,7 +1138,6 @@ var
  astring:WideString;
  drawbackground:boolean;
  abackcolor:TColor;
- oldhandle:THandle;
  format:string;
 {$IFDEF DELPHI2009UP}
  npng:TPngImage;
@@ -1146,7 +1145,6 @@ var
  propx,propy:double;
 begin
  // Switch to device points
- oldhandle:=0;
  if toprinter then
  begin
   // If printer then must be displaced
@@ -1177,8 +1175,8 @@ begin
     try
     if obj.FontRotation<>0 then
     begin
-     oldhandle:=Canvas.Font.Handle;
-     // Find rotated font
+     // The rotated font: the LCL font recreates its handle (the VCL driver
+     // creates one apart and restores the previous handle)
      rotrad:=obj.FontRotation/10*(2*PI/360);
      Canvas.Font.Orientation:=obj.FontRotation;
      //Canvas.Font.Handle:=FindRotatedFont(Canvas.Handle,Canvas.Font,obj.FontRotation);
@@ -1252,10 +1250,10 @@ begin
 
     end;
     finally
+      // Setting Orientation freed the handle the font had before: it is not
+      // restored (Cocoa fails on a freed font handle), the orientation is
       if (obj.FontRotation<>0) then
-      begin
-        Canvas.Font.Handle:=oldhandle;
-      end;
+        Canvas.Font.Orientation:=0;
 {$IFNDEF MSWINDOWS}
       FTextFamilySet:=false;
 {$ENDIF}

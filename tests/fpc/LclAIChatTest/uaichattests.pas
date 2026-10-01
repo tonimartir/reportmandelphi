@@ -792,6 +792,13 @@ begin
   Result := TranslateStr(AId, ADefault);
 end;
 
+// The caption of the account card for a guest: the login gift
+function GuestCaption: string;
+begin
+  Result := Format(T(1833, 'Sign in and get %s free credits that never expire'),
+    [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
+end;
+
 procedure TAIChatTests.TestMarkdown;
 var
   H: string;
@@ -917,7 +924,7 @@ begin
     LFrame.OnAuthChanged := LoginFrameAuthChanged;
     LForm.Show;
     Pump(50);
-    CheckEquals(T(1498, 'Guest (Login available)'), LFrame.LabelUser.Caption, 'guest caption');
+    CheckEquals(GuestCaption, LFrame.LabelUser.Caption, 'guest caption');
     Check(not LFrame.LabelTier.Visible, 'no tier badge for guests');
     Check(LFrame.MenuItemLogin.Visible, 'menu: login visible');
     Check(not LFrame.MenuItemLogout.Visible, 'menu: logout hidden');
@@ -945,7 +952,7 @@ begin
     LFrame.MenuItemLogout.Click;
     WaitUntil(Cond2, 5000,
       'the card is notified of the logout');
-    CheckEquals(T(1498, 'Guest (Login available)'), LFrame.LabelUser.Caption, 'guest again');
+    CheckEquals(GuestCaption, LFrame.LabelUser.Caption, 'guest again');
   finally
     FDiagChat := nil;
     LForm.Free;

@@ -41,6 +41,18 @@ Manager"), open an .lpi in Lazarus and run it. From a terminal:
   lazbuild examples/lazarus/preview/preview.lpi
   lazbuild examples/lazarus/designer/designer.lpi
 
+On Linux and macOS the engine needs FreeType, fontconfig and HarfBuzz at run
+time (to measure and shape the text). Linux desktops have them. On macOS:
+
+  brew install fontconfig harfbuzz
+
+or build them without Homebrew with build/macos/build-deps.sh, which links
+them in ~/lib, where the applications started from the Finder find them.
+On macOS, Lazarus writes the LCL examples as application bundles
+(preview.app, designer.app) next to the project: open them from the Finder
+or with "open preview/preview.app". Tested with Lazarus 4.8 (Cocoa) on
+macOS 11, Intel; see docs/macos.md.
+
 Design your own reports with the designer example, with a TRpDesignerLCL in
 your application or with the standalone Report Manager Designer
 (https://reportman.es).

@@ -1,0 +1,29 @@
+LCL Cocoa (Lazarus 4.8, same code in main): TCocoaTextControlUtil.setLCLFont
+copies the font of the control (CopyFont) to see whether it is the default
+one and never frees the copy: a TFont is lost for every row view of every
+list box (TCocoaTableListItem.createTextField). The copy is freed.
+
+--- a/lcl/interfaces/cocoa/cocoatextedits.pas
++++ b/lcl/interfaces/cocoa/cocoatextedits.pas
+@@ -621,11 +621,16 @@
+   Result:= False;
+
+   tempFont:= TFont( lclFont.CopyFont );
+-  tempFont.Color:= clDefault;
+-  if NOT tempFont.isDefault then begin
+-    cocoaFont:= TCocoaFont(lclFont.Reference.Handle).Font;
+-    textField.setFont( cocoaFont );
+-    Result:= True;
++  try
++    tempFont.Color:= clDefault;
++    if NOT tempFont.isDefault then begin
++      cocoaFont:= TCocoaFont(lclFont.Reference.Handle).Font;
++      textField.setFont( cocoaFont );
++      Result:= True;
++    end;
++  finally
++    // The copy only tells whether the font is the default one
++    tempFont.Free;
+   end;
+
+   if lclFont.Color <> clDefault then begin

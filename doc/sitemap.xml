@@ -225,11 +225,15 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/lazaruscomp.html</loc>
-    <lastmod>2026-09-28</lastmod>
+    <lastmod>2026-10-01</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/installlin.html</loc>
     <lastmod>2026-09-28</lastmod>
+  </url>
+  <url>
+    <loc>https://reportman.es/doc/installmac.html</loc>
+    <lastmod>2026-10-01</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/installserver.html</loc>

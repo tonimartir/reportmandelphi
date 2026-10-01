@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Report Manager Client - Report Manager Docs</title>
-<meta name="description" content="Connect the metaview client to a report server by host, user and password, browse alias report trees, set parameters, then print or save to PDF.">
-<link rel="canonical" href="https://reportman.es/doc/serverclient.html">
+<title>Report Manager on macOS (Lazarus, Cocoa) - Report Manager Docs</title>
+<meta name="description" content="Build the Report Manager Lazarus packages, examples and designer on macOS with Cocoa: requirements, fonts, OpenSSL 3 and database client libraries.">
+<link rel="canonical" href="https://reportman.es/doc/installmac.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="stylesheet" href="/doc/docs.css">
@@ -29,8 +29,8 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "Report Manager Client",
-      "item": "https://reportman.es/doc/serverclient.html"
+      "name": "Report Manager on macOS (Lazarus, Cocoa)",
+      "item": "https://reportman.es/doc/installmac.html"
     }
   ]
 }
@@ -59,12 +59,12 @@
 <li><a href="/doc/success.html">Successful projects</a></li>
 </ul>
 </details>
-<details class="doc-sec">
+<details class="doc-sec" open>
 <summary>Installation</summary>
 <ul>
 <li><a href="/doc/installwin.html">Microsoft Windows</a></li>
 <li><a href="/doc/installlin.html">Linux desktop designer</a></li>
-<li><a href="/doc/installmac.html">macOS (Lazarus, Cocoa)</a></li>
+<li><a href="/doc/installmac.html" class="current" aria-current="page">macOS (Lazarus, Cocoa)</a></li>
 <li><a href="/doc/compileropts.html">Compilation options</a></li>
 <li><a href="/doc/delphicomp.html">Delphi</a></li>
 <li><a href="/doc/buildercomp.html">C++Builder</a></li>
@@ -97,15 +97,15 @@
 <li><a href="/doc/dotnetport.html">.NET library setup</a></li>
 </ul>
 </details>
-<details class="doc-sec" open>
+<details class="doc-sec">
 <summary>TCP Report Server</summary>
 <ul>
 <li><a href="/doc/serverintro.html">Introduction</a></li>
 <li><a href="/doc/serverserver.html">Report server</a></li>
-<li class="has-sub"><details class="doc-sub" open>
+<li class="has-sub"><details class="doc-sub">
 <summary>Report client</summary>
 <ul>
-<li><a href="/doc/serverclient.html" class="current" aria-current="page">Report client</a></li>
+<li><a href="/doc/serverclient.html">Report client</a></li>
 <li><a href="/doc/serverclientcustom.html">Custom client</a></li>
 </ul>
 </details></li>
@@ -225,47 +225,121 @@
 </nav>
 </div>
 <main class="doc-main">
-<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Report Manager Client</span></nav>
-<h1>Report Manager Client</h1>
-<h2>Report Manager Server</h2>
-<h3>Report Client</h3>
-<p>The report client application is metaview, with metaview you can connect to 
-  a machine running Report Manager Server. You connect providing hostname, user 
-  name and password. By default a report server has only Admin user with blank 
-  password.</p>
-<p>You can also execute reports with the <a href="delphicomp.html">VCL component</a> 
-  and the <a href="gnuc.html">standard library</a>.</p>
-<p>Note: The screenshots are in spanish</p>
-<p><img src="images/repserverclient.jpg" width="611" height="494" alt="Report Manager Client (screenshot 1)" loading="lazy" decoding="async"></p>
-<p>After connection, the report server provides a list of available aliases, each 
-  alias can have a different set of available reports, the reports are represented
-  in a tree structure. Here is a sample of a generated tree.</p>
-<p><img src="images/repserverclient2.jpg" width="611" height="494" alt="Report Manager Client (screenshot 2)" loading="lazy" decoding="async"></p>
-<p>You can modify the parameters before executing:</p>
-<p><img src="images/repserverclient3.jpg" width="591" height="137" alt="Report Manager Client (screenshot 3)" loading="lazy" decoding="async"></p>
-<p>When you execute the report, the server sends the result to the client application, 
-  then you can print it, save as a report metafile or as a Adobe PDF file.</p>
-<p><img src="images/repserverclient4.jpg" width="611" height="494" alt="Report Manager Client (screenshot 4)" loading="lazy" decoding="async"></p>
-<p>To distribute the report client you need only this files</p>
-<table border="1">
-  <tr> 
-    <td bgcolor="#FFFFCC"><b>Windows</b></td>
-    <td bgcolor="#FFFFCC"><b>Linux</b></td>
-  </tr>
-  <tr> 
-    <td>metaviewxp.exe</td>
-    <td>metaview, metaview.sh, libborqtint.6.9.so</td>
-  </tr>
-  <tr>
-    <td>reportmanres.*, metaviewxp.* (Optional)<br>
-    </td>
-    <td>reportmanres.* (Optional)</td>
-  </tr>
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Report Manager on macOS (Lazarus, Cocoa)</span></nav>
+<h1>Report Manager on macOS (Lazarus, Cocoa)</h1>
+<p>The <a href="lazaruscomp.html">Lazarus packages</a> of Report Manager (engine with PDF export, LCL
+  preview and printing, and the embeddable designer), their examples and the Report Manager Designer
+  build on <b>macOS</b> with Lazarus and the native <b>Cocoa</b> widgetset. They use the same
+  <code>.rep</code> report files as Windows and Linux.</p>
+<p>Tested on macOS 11 Big Sur (Intel, x86_64) with Lazarus 4.8 and Free Pascal 3.2.2: the designer
+  test suite, the preview against the PDF output, the examples and the database drivers against real
+  PostgreSQL, MySQL, Firebird and SQLite servers. There is no ready-made macOS application to download
+  yet: build it from the source code as shown below.</p>
+
+<h2>Requirements</h2>
+<ul>
+  <li>The <b>Xcode Command Line Tools</b>: <code>xcode-select --install</code> (Free Pascal needs the
+    Apple linker).</li>
+  <li><b>Lazarus</b> with Free Pascal 3.2.2 (tested with Lazarus 4.8), or the toolchain the script
+    <code>build/macos/setup-toolchain.sh</code> installs, see <a href="#designer">below</a>.</li>
+  <li>At run time, to measure and shape the text: <b>FreeType, fontconfig and HarfBuzz</b>. With
+    <a href="https://brew.sh" target="_blank" rel="noopener">Homebrew</a>:
+    <pre><code>brew install fontconfig harfbuzz</code></pre>
+    or without Homebrew, <code>build/macos/build-deps.sh</code> builds them from their sources in your
+    user folder (no <code>sudo</code>) and links them in <code>~/lib</code>. ICU is the one of macOS.</li>
+  <li>For HTTPS (the AI assistants and the Reportman DB Agent driver): <b>OpenSSL 3</b>,
+    <code>brew install openssl@3</code>. The OpenSSL 0.9.8 that macOS keeps for compatibility is never
+    used: it cannot verify certificates. An application can ship <code>libssl.3.dylib</code> and
+    <code>libcrypto.3.dylib</code> in <code>Contents/Frameworks</code> of its bundle instead.</li>
+</ul>
+<p>Applications started from the Finder do not receive <code>DYLD_LIBRARY_PATH</code>. The engine
+  looks for each library in <code>Contents/Frameworks</code> of the application, next to the
+  executable, in <code>~/lib</code>, <code>/usr/local/lib</code> and the Homebrew and MacPorts
+  folders.</p>
+
+<h2>The Lazarus packages</h2>
+<p>Install them as on the other platforms, from the source code
+  (<a href="https://github.com/tonimartir/reportmandelphi" target="_blank" rel="noopener">GitHub</a>,
+  <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>)
+  or from the Online Package Manager (the changes for macOS are in the source code and reach the
+  Online Package Manager with its next update). From a terminal, in the folder of the source code:</p>
+<pre><code>LAZBUILD=lazbuild sh packages/fpc/build_fpc.sh</code></pre>
+
+<h2>Examples</h2>
+<p>The three examples of <code>examples/lazarus</code> (see
+  <a href="lazaruscomp.html#examples">Lazarus examples</a>) build and run on macOS:</p>
+<pre><code>lazbuild examples/lazarus/pdfconsole/pdfconsole.lpi
+lazbuild examples/lazarus/preview/preview.lpi
+lazbuild examples/lazarus/designer/designer.lpi
+examples/lazarus/pdfconsole/pdfconsole      # writes sales.pdf
+open examples/lazarus/preview/preview.app
+open examples/lazarus/designer/designer.app</code></pre>
+<p>Lazarus writes the LCL examples as application bundles (<code>preview.app</code>,
+  <code>designer.app</code>) next to their projects: open them from the Finder or with
+  <code>open</code>.</p>
+
+<h2 id="designer">Build the Report Manager Designer</h2>
+<p>Two scripts of the source code prepare everything in your user folder (<code>~/dev</code>), without
+  <code>sudo</code> and without touching <code>/usr/local</code>:</p>
+<pre><code>build/macos/setup-toolchain.sh     # Free Pascal 3.2.2, Lazarus 4.8 and ZeosDBO in ~/dev
+build/macos/build-deps.sh          # FreeType, HarfBuzz and fontconfig
+. ~/dev/env.sh                     # lazbuild and fpc in the PATH
+LAZBUILD=lazbuild sh packages/fpc/build_fpc.sh
+lazbuild --no-write-project repman/lcl_designer/repmandesigner_lcl.lpi
+open repman/repmandesigner_lcl.app</code></pre>
+<p><code>setup-toolchain.sh</code> uses the official Free Pascal disk image without installing it and
+  the official Lazarus 4.8 archive. It also applies two corrections to the Cocoa widgetset of Lazarus
+  (<code>build/macos/patches</code>):</p>
+<ul>
+  <li>An application could stop when a window with scroll bars is closed right after its layout
+    changes. That happens with the classic scroll bars of a mouse; a trackpad uses overlay scroll
+    bars.</li>
+  <li>Every row of a list box lost a little memory.</li>
+</ul>
+<p>Apply them to your own Lazarus as well:
+  <code>patch -d &lt;lazarus folder&gt; -p1 &lt; build/macos/patches/&lt;file&gt;.patch</code>, then
+  rebuild the IDE or your project.</p>
+
+<h2>Databases</h2>
+<p>Both direct database drivers of the engine work on macOS:</p>
+<ul>
+  <li><b>FireDAC connections</b>, opened with SQLdb: PostgreSQL, MySQL or MariaDB, Firebird, SQLite and
+    ODBC. Free Pascal has no SQL Server connector for macOS: use ODBC with the FreeTDS ODBC driver.</li>
+  <li><b>Zeos</b> connections, with the same databases.</li>
+  <li>The <b>Reportman DB Agent</b> driver (through the Hub) needs OpenSSL 3, see the requirements.</li>
+</ul>
+<p>The client library of each database is looked for in this order:</p>
+<ol>
+  <li>The one of the connection: <code>VendorLib</code> (FireDAC connections) or
+    <code>LibraryLocation</code> (Zeos), with the full path of the <code>.dylib</code>.</li>
+  <li>The library search of macOS (<code>~/lib</code>, <code>/usr/local/lib</code>).</li>
+  <li>The folders of the usual installers:</li>
+</ol>
+<table>
+  <tr><th>Database</th><th>Client library found in</th></tr>
+  <tr><td>PostgreSQL</td><td>Homebrew (<code>libpq</code>, <code>postgresql@N</code>), Postgres.app,
+    the EnterpriseDB installer (<code>/Library/PostgreSQL/N</code>), MacPorts</td></tr>
+  <tr><td>MySQL</td><td>the MySQL package (<code>/usr/local/mysql</code>), Homebrew
+    (<code>mysql-client</code>, <code>mysql</code>), MacPorts</td></tr>
+  <tr><td>MariaDB</td><td>Homebrew (<code>mariadb-connector-c</code>)</td></tr>
+  <tr><td>Firebird</td><td>the Firebird package
+    (<code>/Library/Frameworks/Firebird.framework</code>)</td></tr>
+  <tr><td>ODBC</td><td>unixODBC of Homebrew or MacPorts, and the iODBC of macOS</td></tr>
+  <tr><td>SQLite</td><td>the one of macOS</td></tr>
 </table>
-<p>Internationalization files (reportmanres.*,metaviewxp.*) are optional, the 
-  default language is English.</p>
-<p>See also <a href="serverconfig.html">Report Server configuration.</a></p>
-<p>&nbsp;</p>
+<p>Do not put the <code>lib</code> folder of a database server in <code>DYLD_LIBRARY_PATH</code>: those
+  folders carry their own <code>libiconv</code>, <code>libssl</code> and others, which hide the ones of
+  macOS and break other libraries.</p>
+
+<h2>Differences and limitations</h2>
+<ul>
+  <li>The SQL editor of the designer is the native editor with schema completion and the AI inline
+    suggestion, as on <a href="installlin.html">Linux</a> (the Monaco editor is Windows only).</li>
+  <li>Not tested yet: Apple Silicon (arm64; the Free Pascal disk image includes its compiler) and
+    printing.</li>
+  <li>No signed and notarized application bundle to distribute yet.</li>
+</ul>
+<p>The technical notes of the port are in <code>docs/macos.md</code> of the source code.</p>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>

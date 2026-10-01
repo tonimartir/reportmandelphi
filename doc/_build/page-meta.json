@@ -104,6 +104,10 @@
     "title": "Install Report Manager Designer on Linux",
     "desc": "Install the Report Manager Designer on the Linux desktop: Qt 6 .deb for Ubuntu 22.04+ and Debian 12+, AppImage or GTK2 package, dependencies and Wayland."
   },
+  "/doc/installmac.html": {
+    "title": "Report Manager on macOS (Lazarus, Cocoa)",
+    "desc": "Build the Report Manager Lazarus packages, examples and designer on macOS with Cocoa: requirements, fonts, OpenSSL 3 and database client libraries."
+  },
   "/doc/installserver.html": {
     "title": "Install the Report Manager server",
     "desc": "Install the Report Manager report server on Windows as a service or app, on Linux standalone or at boot, plus multiprocessor printreptopdf setup."

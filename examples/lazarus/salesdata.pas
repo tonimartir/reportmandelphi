@@ -65,6 +65,12 @@ var
 begin
   // Each example writes its executable to its own folder
   LDir := ExtractFilePath(ExpandFileName(ParamStr(0)));
+  {$IFDEF DARWIN}
+  // Started as an application bundle (open preview.app): the executable is
+  // in preview.app/Contents/MacOS, the bundle is in the folder of the project
+  if Pos('.app/Contents/MacOS/', LDir) > 0 then
+    LDir := IncludeTrailingPathDelimiter(ExpandFileName(LDir + '../../..'));
+  {$ENDIF}
   Result := ExpandFileName(LDir + '..' + PathDelim + 'sales.rep');
   if not FileExists(Result) then
     Result := LDir + 'sales.rep';

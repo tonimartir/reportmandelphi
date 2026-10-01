@@ -42,7 +42,6 @@ dentro del bundle hay un enlace al ejecutable, que se queda junto al `.lpi`.
 
 ```sh
 lazbuild --no-write-project tests/fpc/LclDesignerTest/LclDesignerTest.lpi
-export DYLD_LIBRARY_PATH=~/dev/macdeps/prefix/lib
 tests/fpc/LclDesignerTest/LclDesignerTest --selftest
 ```
 
@@ -51,6 +50,22 @@ Se ejecuta el binario, no el `.app`: el test busca los ejemplos
 abierta con el mismo usuario (sirve lanzarlo por SSH). `selftest.log` se
 escribe en modo añadir: hay que leer solo la última ejecución.
 
+Pasan en macOS 11 (Intel), sin variables `DYLD_*` (las librerías de
+`build-deps.sh` están enlazadas en `~/lib`):
+
+| Test | Resultado |
+|---|---|
+| `LclDesignerTest --selftest` | completo |
+| `LclSnapshotTest` (vista previa LCL contra el PDF) | 18 de 18 (sin la prueba de la impresión Cairo, que es de Linux) |
+| `LclAIChatTest` (paneles de IA contra un Hub falso) | 1312 comprobaciones, sin fugas de memoria |
+| `HubClientTest` (cliente HTTP, Hub y login OAuth) | 497 comprobaciones; las de TLS local necesitan un `openssl` 1.1.1+ (`RP_OPENSSL_EXE`) |
+| `SqldbDriversTest/run_macos.sh` | 96 comprobaciones |
+| `examples/lazarus` | los tres ejemplos |
+
+Los tests con HTTPS necesitan OpenSSL 3 (ver más abajo); para no instalarlo,
+`RP_OPENSSL_DIR` puede apuntar a una carpeta con `libssl.3.dylib` y
+`libcrypto.3.dylib`.
+
 ## Librerías del motor
 
 Fuera de Windows el motor mide y da forma al texto con FreeType, HarfBuzz,
@@ -58,14 +73,24 @@ fontconfig e ICU, que se cargan al usarse (no hacen falta para compilar):
 
 | Librería | En macOS |
 |---|---|
-| FreeType, HarfBuzz (+ subset), fontconfig | `build/macos/build-deps.sh` las compila en `~/dev/macdeps/prefix/lib` |
+| FreeType, HarfBuzz (+ subset), fontconfig | `brew install fontconfig harfbuzz`, o `build/macos/build-deps.sh`, que las compila en `~/dev/macdeps/prefix/lib` y las enlaza en `~/lib` |
 | ICU | `/usr/lib/libicucore.dylib`, la del sistema (sus funciones no llevan sufijo de versión) |
+| OpenSSL 3 (HTTPS: IA, agente, login) | `brew install openssl@3`, o en `Contents/Frameworks` del `.app` |
 
 `RpLoadDarwinLibrary` (`rtl_fpc/rpdarwinlibs.pas`) busca cada `.dylib` en este
 orden: `Contents/Frameworks` del `.app`, junto al ejecutable, la búsqueda de
-dyld (`DYLD_LIBRARY_PATH`, `/usr/local/lib`) y los prefijos de Homebrew
-(`/opt/homebrew/lib`) y MacPorts (`/opt/local/lib`). Si no hay fontconfig, el
-motor recorre las carpetas de fuentes de macOS.
+dyld (`DYLD_LIBRARY_PATH`, `~/lib`, `/usr/local/lib`) y los prefijos de
+Homebrew (`/opt/homebrew/lib`) y MacPorts (`/opt/local/lib`). Si no hay
+fontconfig, el motor recorre las carpetas de fuentes de macOS.
+
+**OpenSSL.** El `openssl.pas` de FPC 3.2.2 no conoce OpenSSL 3 y en macOS
+acaba cargando el OpenSSL 0.9.8 que el sistema conserva por compatibilidad,
+sin las funciones para verificar certificados. `RpPrepareOpenSSL`
+(`rtl_fpc/rphttpclientfpc.pas`) solo carga un OpenSSL 3 o 1.1, buscado por
+`RpDarwinOpenSSL` en `RpOpenSSLFolder` (lo fija la aplicación),
+`RP_OPENSSL_DIR`, `Contents/Frameworks`, junto al ejecutable, `~/lib`,
+Homebrew (`openssl@3`, `openssl@1.1`) y MacPorts. Si no lo encuentra, el
+error lo dice. Los certificados raíz son los de `/etc/ssl/cert.pem`.
 
 ## Bases de datos
 
@@ -118,14 +143,27 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   `Resize` vuelve a fijar el ancho, la LCL entra en bucle (`ChangeBounds loop
   detected`). Los combos que se colocan en código van anclados a izquierda y
   derecha: así su ancho es fijo y `AutoSize` solo ajusta la altura.
-- **Parche de la LCL Cocoa**
-  (`build/macos/patches/lazarus-cocoa-adjustsizer.patch`). El ajustador
-  asíncrono de las barras de desplazamiento guarda el último control sin
-  enterarse de si se libera. Si un formulario se destruye justo después de un
-  cambio de maquetación, la siguiente vuelta del bucle de eventos usa memoria
-  liberada. Solo pasa con barras de desplazamiento clásicas (con ratón, o
-  «Mostrar barras de desplazamiento: siempre»). El fallo sigue en la rama
-  principal de Lazarus.
+- **Parches de la LCL Cocoa** (`build/macos/patches`, los aplica
+  `setup-toolchain.sh`; los dos fallos siguen en la rama principal de
+  Lazarus):
+  - `lazarus-cocoa-adjustsizer.patch`. El ajustador asíncrono de las barras
+    de desplazamiento guarda el último control sin enterarse de si se libera.
+    Si un formulario se destruye justo después de un cambio de maquetación,
+    la siguiente vuelta del bucle de eventos usa memoria liberada. Solo pasa
+    con barras de desplazamiento clásicas (con ratón, o «Mostrar barras de
+    desplazamiento: siempre»).
+  - `lazarus-cocoa-setlclfont-leak.patch`. `setLCLFont` copia la fuente del
+    control y no libera la copia: se pierde un `TFont` por cada fila visible
+    de cada `TListBox`.
+- **Texto rotado en la vista previa.** `rplcldriver` guardaba el handle de la
+  fuente antes de cambiar `Orientation` y lo restauraba después, pero el
+  `TFont` de la LCL ya lo había liberado. Cocoa fallaba con el handle
+  liberado; ahora se restaura la orientación.
+- **SIGPIPE.** macOS no tiene `MSG_NOSIGNAL`: los sockets planos (peticiones
+  HTTP, el servidor local del login) también lanzan `SIGPIPE` si el otro lado
+  ha cerrado. `rphttpclientfpc` lo ignora al iniciarse en Darwin, salvo que
+  la aplicación tenga su propio manejador. El navegador del login se abre con
+  `/usr/bin/open`.
 - **Ficheros MyBase junto al informe.** Un fichero MyBase con nombre relativo
   (`biolife.cds` de `sample4`, con la conexión sin `DATABASE`) se busca también
   en la carpeta del informe abierto en el diseñador (`RpReportFolder`). En
@@ -150,7 +188,7 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   dentro, y el diseñador tendría que fijar `FONTCONFIG_FILE` al arrancar,
   porque `build-deps.sh` deja en la librería la ruta de `~/dev/macdeps`.
   Faltan además `Info.plist`, el icono y, para Gatekeeper, la firma y la
-  notarización.
+  notarización. OpenSSL 3 también iría en `Contents/Frameworks`.
 - Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
   compilador `ppca64`.
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.

@@ -14,9 +14,10 @@
 # meson: HarfBuzz se compila desde sus fuentes amalgamadas). Sin sudo.
 #
 # El motor busca las librerias en Contents/Frameworks del .app, junto al
-# ejecutable, en la ruta de dyld (DYLD_LIBRARY_PATH, /usr/local/lib) y en los
-# prefijos de Homebrew y MacPorts (rpfpcutils.RpLoadDarwinLibrary). Para los
-# tests: export DYLD_LIBRARY_PATH=~/dev/macdeps/prefix/lib
+# ejecutable, en la ruta de dyld (DYLD_LIBRARY_PATH, ~/lib, /usr/local/lib) y
+# en los prefijos de Homebrew y MacPorts (rpdarwinlibs.RpLoadDarwinLibrary).
+# El script las enlaza en ~/lib. Alternativa sin compilar nada:
+#   brew install fontconfig harfbuzz
 set -euo pipefail
 
 D=${RM_MACOS_DEPS:-$HOME/dev/macdeps}
@@ -89,4 +90,16 @@ for t in "$FT" "$HB" "$FC"; do tar -xf "$t.tar.xz"; done
 )
 
 ls -la "$PREFIX"/lib/*.dylib
-echo "Listo: export DYLD_LIBRARY_PATH=$PREFIX/lib"
+
+# Enlaces en ~/lib, la primera carpeta de la busqueda de dyld: asi las
+# encuentran tambien las aplicaciones abiertas desde el Finder (sin
+# DYLD_LIBRARY_PATH), los ejemplos y los disenadores compilados en este Mac.
+# RM_MACOS_NO_HOME_LIB=1 no los crea.
+if [ "${RM_MACOS_NO_HOME_LIB:-}" != "1" ]; then
+    mkdir -p "$HOME/lib"
+    for l in libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib; do
+        ln -sf "$PREFIX/lib/$l" "$HOME/lib/$l"
+    done
+    echo "Enlazadas en $HOME/lib"
+fi
+echo "Listo"

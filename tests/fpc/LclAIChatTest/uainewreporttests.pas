@@ -1528,8 +1528,9 @@ begin
       'FireDAC / SQLdb: the FireDAC connections open with SQLdb');
     CheckEquals(0, W.CbFamily.ItemIndex, 'FireDAC by default');
     CheckEquals(T(1742, 'FireDAC DriverID'), W.LblConcrete.Caption, 'FireDAC driver label');
-    CheckEquals('SQLite,PG,MySQL,FB,IB,MSSQL,Ora,ODBC', W.CbConcrete.Items.CommaText,
-      'the FireDAC drivers that SQLdb opens');
+    // FPC has no SQL Server connector (mssqlconn) for macOS
+    CheckEquals({$IFDEF DARWIN}'SQLite,PG,MySQL,FB,IB,Ora,ODBC'{$ELSE}'SQLite,PG,MySQL,FB,IB,MSSQL,Ora,ODBC'{$ENDIF},
+      W.CbConcrete.Items.CommaText, 'the FireDAC drivers that SQLdb opens');
     CheckEquals('SQLite', W.CbConcrete.Text, 'SQLite by default');
     Shot(W, 'newreport_driver');
     // Zeos, then back to FireDAC

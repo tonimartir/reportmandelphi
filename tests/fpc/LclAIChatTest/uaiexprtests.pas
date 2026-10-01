@@ -114,6 +114,13 @@ begin
   Result := TranslateStr(AId, ADefault);
 end;
 
+// The caption of the account card for a guest: the login gift
+function GuestCaption: string;
+begin
+  Result := Format(T(1833, 'Sign in and get %s free credits that never expire'),
+    [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
+end;
+
 function ProfileJson: string;
 begin
   Result := '{"userId":9,"email":"eva@example.com","userName":"Eva",' +
@@ -692,7 +699,7 @@ begin
     Check(not LDia.Chat.ShowSchemaSelector and not LDia.Chat.PSchemaHost.Visible,
       'no schema selector (as the VCL)');
     Check(not LDia.RefreshButton.Visible, 'no Refresh button without a report');
-    CheckEquals(T(1498, 'Guest (Login available)'), LDia.Chat.LoginFrame.LabelUser.Caption,
+    CheckEquals(GuestCaption, LDia.Chat.LoginFrame.LabelUser.Caption,
       'the account card offers the login');
     Check(LDia.Chat.LoginFrame.MenuItemLogin.Visible, 'login item in the account menu');
     CheckContains(T(1600, SExpressionChatInitialMessage), LDia.Chat.ConversationText,
