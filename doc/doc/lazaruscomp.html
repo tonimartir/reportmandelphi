@@ -325,6 +325,11 @@
   <li><b>designer</b>: a <code>TRpDesignerLCL</code> inside an application, so its users can change
     the report and preview it with the data of the application.</li>
 </ul>
+<p>The folder <code>postgresql</code> adds two reports that open their own connection and SQL query on a
+  PostgreSQL sample database (<code>createdb.sh</code> creates it), one with each direct driver: a
+  FireDAC connection, which Free Pascal opens with SQLdb, and a Zeos connection. Its console program
+  <code>pgreport</code> writes both as PDF; see the <code>README.txt</code> of the examples and
+  <a href="installmac.html#postgresql">macOS</a>.</p>
 <p>On macOS, Lazarus writes the LCL examples as application bundles (<code>preview.app</code>,
   <code>designer.app</code>) next to their projects, see <a href="installmac.html#designer">macOS</a>.</p>
 <p>The snippets below show the essential lines.</p>

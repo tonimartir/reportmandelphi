@@ -60,7 +60,8 @@ Pasan en macOS 11 (Intel), sin variables `DYLD_*` (las librerías de
 | `LclAIChatTest` (paneles de IA contra un Hub falso) | 1312 comprobaciones, sin fugas de memoria |
 | `HubClientTest` (cliente HTTP, Hub y login OAuth) | 497 comprobaciones; las de TLS local necesitan un `openssl` 1.1.1+ (`RP_OPENSSL_EXE`) |
 | `SqldbDriversTest/run_macos.sh` | 96 comprobaciones |
-| `examples/lazarus` | los tres ejemplos |
+| `PdfTest` | completo (con las pruebas de codificación del PDF y de los campos FMTBcd) |
+| `examples/lazarus` | los tres ejemplos y los dos informes de `postgresql` |
 
 Los tests con HTTPS necesitan OpenSSL 3 (ver más abajo); para no instalarlo,
 `RP_OPENSSL_DIR` puede apuntar a una carpeta con `libssl.3.dylib` y
@@ -124,6 +125,13 @@ en este orden:
 | ODBC | unixODBC de Homebrew o MacPorts, y el iODBC de macOS |
 | SQLite | la de macOS |
 
+`examples/lazarus/postgresql` es el ejemplo con base de datos: `createdb.sh`
+crea el usuario y la base `rpsample` en un PostgreSQL (Homebrew,
+Postgres.app...) y `pgreport` imprime a PDF `sales_sqldb.rep` (FireDAC, que
+FPC abre con SQLdb) y `sales_zeos.rep` (Zeos). Sus conexiones están en el
+`dbxconnections.ini` de la carpeta; el diseñador lee las del usuario
+(`~/.borland/dbxconnections`).
+
 No uses `DYLD_LIBRARY_PATH` con la carpeta `lib` de un servidor. Esas carpetas
 traen su propia `libiconv`, `libssl`… que tapan las del sistema y rompen otras
 librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
@@ -175,6 +183,15 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   con el mismo propietario chocaban («Duplicate name»). `LoadFromStream` quita
   ese nombre automático, también de los informes que ya se guardaron así.
   Pasaba con el diseñador LCL en todas las plataformas.
+- **Acentos con las fuentes estándar del PDF.** Helvetica, Courier y Times
+  van con `WinAnsiEncoding` (Windows-1252). `PDFCompatibleText` añadía cada
+  `WideChar` a un `string`, y en FPC fuera de Windows ese `string` es UTF-8: la
+  «é» se escribía con sus dos bytes UTF-8 y el lector mostraba «Ã©». Ahora
+  `WinAnsiChar` da el byte de Windows-1252. Pasaba también en Linux con FPC.
+- **Campos FMTBcd.** Zeos da un `numeric` sin precisión (`cantidad * precio`)
+  como `TFMTBCDField`. FPC no sabe sumar su variante FMTBcd a un entero, y los
+  totales, que empiezan en 0, fallaban con «Invalid variant operation».
+  `TIdenField` la convierte a `Double`, como hace Delphi con `USEBCD`.
 - **Contextos gráficos.** Con Cocoa, cada `TBitmap` con canvas crea contextos
   gráficos que esperan en el *autorelease pool* hasta la siguiente vuelta del
   bucle de eventos, y liberar muchos de golpe cuesta tiempo cuadrático. No hay

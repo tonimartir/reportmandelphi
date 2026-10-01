@@ -7,7 +7,8 @@ uses
   cwstring,
 {$ENDIF}
   Classes, SysUtils,
-  rpreport, rppdfdriver, rppdfreport, uembeddedtests, utextformattests, udatainfotests;
+  rpreport, rppdfdriver, rppdfreport, uembeddedtests, utextformattests, udatainfotests,
+  uencodingtests;
 
 function FindReportFile(const AFileName: string): string;
 var
@@ -136,6 +137,9 @@ begin
       allOk := False;
 
     if not RunDataInfoTests then
+      allOk := False;
+
+    if not RunEncodingTests then
       allOk := False;
   end;
 

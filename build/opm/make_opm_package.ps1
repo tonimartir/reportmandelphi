@@ -560,8 +560,10 @@ function Invoke-OpmBuildSequence([scriptblock]$run, [scriptblock]$touch, [string
     return 'FALLA'
   }
   # Los proyectos de ejemplo (examples\lazarus), como los abre un usuario tras instalar
-  foreach ($ex in 'pdfconsole', 'preview', 'designer') {
-    $lpi = $pkgRoot + $sep + ('examples{0}lazarus{0}' -f $sep) + $ex + $sep + "$ex.lpi"
+  foreach ($ex in 'pdfconsole', 'preview', 'designer', 'postgresql') {
+    # La carpeta postgresql tiene el proyecto pgreport (solo se compila: no hay servidor)
+    $proj = if ($ex -eq 'postgresql') { 'pgreport' } else { $ex }
+    $lpi = $pkgRoot + $sep + ('examples{0}lazarus{0}' -f $sep) + $ex + $sep + "$proj.lpi"
     $r = & $run @($lpi)
     $r[1] | Out-File -Encoding utf8 (Join-Path $logDir "$label-example-$ex.log")
     if ($r[0] -eq 0) { Info "  [$label] ejemplo ${ex}: OK"; continue }

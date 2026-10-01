@@ -226,3 +226,10 @@ examples/lazarus/designer/designer.lpi
 examples/lazarus/designer/designer.lpr
 examples/lazarus/designer/udesigner.lfm
 examples/lazarus/designer/udesigner.pas
+examples/lazarus/postgresql/createdb.sh
+examples/lazarus/postgresql/dbxconnections.ini
+examples/lazarus/postgresql/pgreport.lpi
+examples/lazarus/postgresql/pgreport.lpr
+examples/lazarus/postgresql/sales_sqldb.rep
+examples/lazarus/postgresql/sales_zeos.rep
+examples/lazarus/postgresql/sampledb.sql
