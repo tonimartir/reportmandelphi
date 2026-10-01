@@ -28,6 +28,9 @@ uses
 {$IFDEF USEBCD}
  FMTBcd,
 {$ENDIF}
+{$IFDEF FPC}
+ FmtBCD,
+{$ENDIF}
  DB,
  rptypes;
 
@@ -320,6 +323,16 @@ begin
   Exit;
  end;
  Result:=Field.AsVariant;
+{$IFDEF FPC}
+ // A TFMTBCDField (Zeos for a numeric without precision) gives a FMTBcd
+ // variant, and FPC can not add it to an integer (the aggregates start
+ // at 0): a Double, as with USEBCD
+ if VarIsFMTBcd(Result) then
+ begin
+  Result:=BCDToDouble(VarToBCD(Result));
+  Exit;
+ end;
+{$ENDIF}
 {$IFNDEF USEBCD}
  atype:=VarType(Result);
  if atype=14 then

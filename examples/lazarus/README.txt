@@ -32,6 +32,32 @@ type MyBase only because the engine requires one for every dataset; it is
 not opened while the application provides the data.
 
 
+A database: postgresql
+----------------------
+The reports of the folder postgresql open their own connection and SQL
+query, one with each direct driver of the FPC engine:
+
+  sales_sqldb.rep  connection RPSAMPLE_SQLDB, driver FireDAC: the FPC
+                   engine opens it with SQLdb (included in FPC)
+  sales_zeos.rep   connection RPSAMPLE_ZEOS, driver Zeos
+
+pgreport (console, reportman_rtl) writes both as PDF. The data: the sales of
+sampledb.sql, joined with their customers and products. With a PostgreSQL
+server running (macOS: brew install postgresql@16 and brew services start
+postgresql@16, or Postgres.app; Linux: the postgresql package):
+
+  cd examples/lazarus/postgresql
+  ./createdb.sh                 # user and database rpsample, with the data
+  lazbuild pgreport.lpi
+  ./pgreport                    # sales_sqldb.pdf and sales_zeos.pdf
+
+The connections are in dbxconnections.ini of that folder (pgreport reads it;
+another file can be given as its parameter). To open the reports in the
+designer, copy its two sections to the connections file of the user,
+~/.borland/dbxconnections on macOS and Linux. On Windows run the commands of
+createdb.sh with psql (or psql -f sampledb.sql in a database rpsample).
+
+
 Build and run
 -------------
 Install the three packages (Package > Online Package Manager, "Report

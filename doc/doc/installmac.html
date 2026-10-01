@@ -278,6 +278,23 @@ open examples/lazarus/designer/designer.app</code></pre>
   <code>designer.app</code>) next to their projects: open them from the Finder or with
   <code>open</code>.</p>
 
+<h3 id="postgresql">Example with a database: PostgreSQL</h3>
+<p><code>examples/lazarus/postgresql</code> has two reports that open their own connection and SQL
+  query on a sample database, one with each direct driver: <code>sales_sqldb.rep</code> (a FireDAC
+  connection, opened with SQLdb) and <code>sales_zeos.rep</code> (Zeos). The console program
+  <code>pgreport</code> writes both as PDF. With PostgreSQL from Homebrew:</p>
+<pre><code>brew install postgresql@16
+brew services start postgresql@16
+export PATH="$(brew --prefix postgresql@16)/bin:$PATH"   # psql
+cd examples/lazarus/postgresql
+./createdb.sh              # user and database rpsample, with the sample data
+lazbuild pgreport.lpi
+./pgreport                 # sales_sqldb.pdf and sales_zeos.pdf</code></pre>
+<p>With Postgres.app, put <code>/Applications/Postgres.app/Contents/Versions/latest/bin</code> in the
+  <code>PATH</code> instead. The connections are in <code>dbxconnections.ini</code> of the folder; to
+  open the reports in the designer, copy its two sections to <code>~/.borland/dbxconnections</code>,
+  the connections file of the designer.</p>
+
 <h2 id="designer">Build the Report Manager Designer</h2>
 <p>Two scripts of the source code prepare everything in your user folder (<code>~/dev</code>), without
   <code>sudo</code> and without touching <code>/usr/local</code>:</p>
@@ -301,7 +318,8 @@ open repman/repmandesigner_lcl.app</code></pre>
   rebuild the IDE or your project.</p>
 
 <h2>Databases</h2>
-<p>Both direct database drivers of the engine work on macOS:</p>
+<p>Both direct database drivers of the engine work on macOS (see the
+  <a href="#postgresql">PostgreSQL example</a>):</p>
 <ul>
   <li><b>FireDAC connections</b>, opened with SQLdb: PostgreSQL, MySQL or MariaDB, Firebird, SQLite and
     ODBC. Free Pascal has no SQL Server connector for macOS: use ODBC with the FreeTDS ODBC driver.</li>

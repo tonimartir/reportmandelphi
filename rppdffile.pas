@@ -4676,6 +4676,48 @@ begin
 end;
 
 
+{$IFDEF FPC}
+// The byte of a character in WinAnsiEncoding (Windows-1252), the encoding of
+// the PDF standard fonts. The FPC strings are UTF-8 on Linux and macOS, so
+// adding the WideChar to the string would write its UTF-8 bytes, which a PDF
+// reader shows as two Windows-1252 characters
+function WinAnsiChar(achar:WideChar):AnsiChar;
+begin
+ case Word(achar) of
+  $00..$7F,$A0..$FF: Result:=AnsiChar(Word(achar));
+  $20AC: Result:=#$80;
+  $201A: Result:=#$82;
+  $0192: Result:=#$83;
+  $201E: Result:=#$84;
+  $2026: Result:=#$85;
+  $2020: Result:=#$86;
+  $2021: Result:=#$87;
+  $02C6: Result:=#$88;
+  $2030: Result:=#$89;
+  $0160: Result:=#$8A;
+  $2039: Result:=#$8B;
+  $0152: Result:=#$8C;
+  $017D: Result:=#$8E;
+  $2018: Result:=#$91;
+  $2019: Result:=#$92;
+  $201C: Result:=#$93;
+  $201D: Result:=#$94;
+  $2022: Result:=#$95;
+  $2013: Result:=#$96;
+  $2014: Result:=#$97;
+  $02DC: Result:=#$98;
+  $2122: Result:=#$99;
+  $0161: Result:=#$9A;
+  $203A: Result:=#$9B;
+  $0153: Result:=#$9C;
+  $017E: Result:=#$9E;
+  $0178: Result:=#$9F;
+ else
+  Result:='?';
+ end;
+end;
+{$ENDIF}
+
 function WideCharToHex(achar:Widechar):string;
 var
  aint:Integer;
@@ -5015,11 +5057,15 @@ begin
   begin
    if CharInSet(astring[i],['(',')','\']) then
     Result:=Result+'\';
+{$IFDEF FPC}
+   Result:=Result+WinAnsiChar(astring[i]);
+{$ELSE}
    // Euro exception
    if (Ord(astring[i])=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+astring[i];
+{$ENDIF}
    if (i<Length(astring)) then
    begin
     kerningvalue:=infoprovider.GetKerning(pdffont,adata,WideChar(astring[i]),WideChar(astring[i+1]));
@@ -5064,11 +5110,15 @@ begin
    nchar:=astring[i];
    if CharInSet(nchar,['(',')','\']) then
     Result:=Result+'\';
+{$IFDEF FPC}
+   Result:=Result+WinAnsiChar(nchar);
+{$ELSE}
    // Euro character exception
    if (Ord(nchar)=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+nchar;
+{$ENDIF}
   end;
   Result:=Result+')';
  end;
