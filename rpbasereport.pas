@@ -1040,6 +1040,24 @@ begin
  end;
 end;
 
+{$IFDEF FPC}
+// The name TReader.ReadRootComponent gives a root saved without a name: "_"
+// and a number
+function IsReaderUniqueName(const AName:string):Boolean;
+var
+ i:integer;
+begin
+ Result:=(Length(AName)>1) and (AName[1]='_');
+ if Result then
+  for i:=2 to Length(AName) do
+   if not (AName[i] in ['0'..'9']) then
+   begin
+    Result:=false;
+    exit;
+   end;
+end;
+{$ENDIF}
+
 procedure TRpBaseReport.LoadFromStream(Stream:TStream);
 var
  reader:TReader;
@@ -1171,6 +1189,15 @@ begin
  finally
   MemStream.free;
  end;
+{$IFDEF FPC}
+ // A report is saved without a name. The FPC TReader gives the root a
+ // unique name ("_1") when a component without a name is global, as the LCL
+ // designer form (created with CreateNew): the report would be saved with
+ // that name and two copies with the same owner would clash. A report saved
+ // with such a name is repaired.
+ if IsReaderUniqueName(Name) then
+  Name:='';
+{$ENDIF}
  EnsureReportItemNames(Self);
 end;
 

@@ -216,6 +216,14 @@ var
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
+{$IFDEF FPC}
+ // Folder of the report open in the designer: a MyBase file that is not found
+ // (a relative name, a connection without DATABASE) is looked for there. The
+ // Windows designer finds it because the open dialog and the Explorer set the
+ // current folder to the folder of the report; macOS and the Linux launchers
+ // start the application in / or $HOME.
+ RpReportFolder:string='';
+{$ENDIF}
 
 type
 
@@ -628,6 +636,9 @@ uses
 {$ENDIF}
 {$IFDEF FPC}
  rpsqldbconnfpc,
+ {$IFDEF DARWIN}
+ rpdarwinlibs,
+ {$ENDIF}
 {$ENDIF}
  rpreport,rpbasereport;
 
@@ -647,6 +658,37 @@ const
   SDriverConfigFile = 'dbxdrivers';                  { Do not localize }
   SConnectionConfigFile = 'dbxconnections';          { Do not localize }
   SConfExtension = '.conf';                       { Do not localize }
+{$ENDIF}
+
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+// The client library of a Zeos protocol in the folders of the usual macOS
+// installers: an application started from the Finder has no
+// DYLD_LIBRARY_PATH. '': the library of Zeos.
+function DarwinZeosLibrary(const AProtocol: string): string;
+var
+ LProtocol,LKind:string;
+ LLibs:TStringArray;
+begin
+ Result:='';
+ LProtocol:=LowerCase(AProtocol);
+ if Pos('postgres',LProtocol)=1 then
+  LKind:='pq'
+ else if Pos('mysql',LProtocol)=1 then
+  LKind:='mysql'
+ else if Pos('mariadb',LProtocol)=1 then
+  LKind:='mariadb'
+ else if (Pos('firebird',LProtocol)=1) or (Pos('interbase',LProtocol)=1) then
+  LKind:='fbclient'
+ else if Pos('odbc',LProtocol)=1 then
+  LKind:='odbc'
+ else
+  exit;
+ LLibs:=RpDarwinClientLibraries(LKind);
+ if Length(LLibs)>0 then
+  Result:=LLibs[0];
+end;
+{$ENDIF}
 {$ENDIF}
 
 
@@ -2467,6 +2509,12 @@ begin
           prot := 'sqlite';
         if prot <> '' then
           alist.Values['Database Protocol'] := prot;
+        {$IFDEF DARWIN}
+        if alist.Values['LibraryLocation'] = '' then
+          alist.Values['LibraryLocation'] := DarwinZeosLibrary(prot);
+        {$ENDIF}
+        // The client library of the connection (the LibraryLocation of Zeos)
+        FZConnection.LibraryLocation := alist.Values['LibraryLocation'];
         {$ENDIF}
 
         FZConnection.User:=alist.Values['User_Name'];
@@ -3492,6 +3540,15 @@ begin
           begin
             if FileExists(ChangeFileExt(afilename, '.xml')) then
               afilename := ChangeFileExt(afilename, '.xml')
+            // A relative name: the folder of the report
+            else if (RpReportFolder <> '') and (ExtractFileDrive(afilename) = '') and
+              (Copy(afilename, 1, 1) <> PathDelim) and
+              FileExists(IncludeTrailingPathDelimiter(RpReportFolder) + afilename) then
+              afilename := IncludeTrailingPathDelimiter(RpReportFolder) + afilename
+            else if (RpReportFolder <> '') and (ExtractFileDrive(afilename) = '') and
+              (Copy(afilename, 1, 1) <> PathDelim) and
+              FileExists(IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')) then
+              afilename := IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')
             else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename) then
               afilename := baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename
             else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')) then

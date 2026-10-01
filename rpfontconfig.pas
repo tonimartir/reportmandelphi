@@ -7,7 +7,7 @@ uses
   SysUtils,
   Classes,
 {$IFDEF DARWIN}
-  rpfpcutils,
+  rpdarwinlibs,
 {$ENDIF}
   dynlibs;
 {$ELSE}

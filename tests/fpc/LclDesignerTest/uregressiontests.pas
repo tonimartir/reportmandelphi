@@ -1273,6 +1273,24 @@ begin
       'Valid open: history starts empty');
     Check(not mf.Report.Modified and not mf.BtnUndo.Enabled, 'Valid open: clean and no Undo');
     CheckFrameInSync(frame, 'after opening a valid file');
+    // The designer form has no name (CreateNew): the FPC reader must not give
+    // the report a unique name ("_1"), that would be saved with it
+    CheckStr('', mf.Report.Name, 'Valid open: the report keeps no name');
+    // Its MyBase file (FISH: biolife.cds, a relative name, a connection
+    // without path) is next to the report, also when the current folder is
+    // another one: macOS starts the application in /
+    LogMsg('5.5 L2: MyBase data next to the report, from another current folder');
+    oldFile := GetCurrentDir;
+    SetCurrentDir(GetTempDir(False));
+    try
+      mf.Report.DataInfo.ItemByName('FISH').Connect(mf.Report.DatabaseInfo, mf.Report.Params);
+      Check(mf.Report.DataInfo.ItemByName('FISH').Dataset.Active, 'MyBase next to the report: FISH open');
+      Check(mf.Report.DataInfo.ItemByName('FISH').Dataset.RecordCount > 0,
+        'MyBase next to the report: FISH has records');
+    finally
+      mf.Report.DeActivateDatasets;
+      SetCurrentDir(oldFile);
+    end;
   finally
     mf.Hide;
     mf.Free;
