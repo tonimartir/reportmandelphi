@@ -9,6 +9,9 @@ Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
   Windows,
 {$ELSE}
   dynlibs,
+{$IFDEF DARWIN}
+  rpfpcutils,
+{$ENDIF}
 {$ENDIF}
 {$ELSE}
 {$IFDEF MSWINDOWS}
@@ -22,8 +25,13 @@ Const
   HarfbuzzDLL = 'libharfbuzz-0.dll';
   HarfbuzzSubSetDLL = 'libharfbuzz-subset-0.dll';
 {$ELSE}
+{$IFDEF DARWIN}
+  HarfbuzzDLL = 'libharfbuzz.0.dylib';
+  HarfbuzzSubSetDLL = 'libharfbuzz-subset.0.dylib';
+{$ELSE}
   HarfbuzzDLL = 'libharfbuzz.so.0';
   HarfbuzzSubSetDLL = 'libharfbuzz-subset.so.0';
+{$ENDIF}
 {$ENDIF}
 
 Type
@@ -758,7 +766,7 @@ var
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
-{$IFDEF LINUX}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
 {$IFDEF FPC}
     Result := Dynlibs.GetProcAddress(HarfBuzzlib, ProcName);
     if Result = nil then
@@ -766,7 +774,7 @@ var
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
 {$ENDIF}
-{$ENDIF}
+{$IFEND}
   end;
   function GetProcAddrSubset(ProcName: string): Pointer;
   begin
@@ -779,7 +787,7 @@ var
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
-{$IFDEF LINUX}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
 {$IFDEF FPC}
     Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, ProcName);
     if Result = nil then
@@ -787,7 +795,7 @@ var
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
 {$ENDIF}
-{$ENDIF}
+{$IFEND}
   end;
 
 begin
@@ -797,11 +805,19 @@ begin
     exit;
   HarfBuzzlib := dynlibs.NilHandle;
 
+{$IFDEF DARWIN}
+  HarfBuzzlib := RpLoadDarwinLibrary(HarfbuzzDLL);
+{$ELSE}
   HarfBuzzlib := SysUtils.SafeLoadLibrary(HarfbuzzDLL);
+{$ENDIF}
   if HarfBuzzlib = dynlibs.NilHandle then
     raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
   HarfBuzzSubSetImplementation:=true;
+{$IFDEF DARWIN}
+  HarfBuzzLibSubset := RpLoadDarwinLibrary(HarfbuzzSubsetDLL);
+{$ELSE}
   HarfBuzzLibSubset := SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL);
+{$ENDIF}
   if (HarfBuzzLibSubset = dynlibs.NilHandle) then
   begin
    HarfBuzzSubSetImplementation:=false;

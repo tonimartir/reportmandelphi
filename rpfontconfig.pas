@@ -6,6 +6,9 @@ uses
 {$IFDEF FPC}
   SysUtils,
   Classes,
+{$IFDEF DARWIN}
+  rpfpcutils,
+{$ENDIF}
   dynlibs;
 {$ELSE}
   System.SysUtils,
@@ -36,7 +39,11 @@ type
 const
   FcTrue: FcBool = 1;
   FcFalse: FcBool = 0;
+{$IFDEF DARWIN}
+  FONTCONFIG_LIB_NAME = 'libfontconfig.1.dylib';
+{$ELSE}
   FONTCONFIG_LIB_NAME = 'libfontconfig.so.1';
+{$ENDIF}
 
   FC_FAMILY = 'family';
   FC_VARIABLE = 'variable';
@@ -150,7 +157,11 @@ begin
   FontConfigAvailable := False;
 {$IFDEF FPC}
   FontConfigLibHandle := dynlibs.NilHandle;
+{$IFDEF DARWIN}
+  FontConfigLibHandle := RpLoadDarwinLibrary(FONTCONFIG_LIB_NAME);
+{$ELSE}
   FontConfigLibHandle := SafeLoadLibrary(FONTCONFIG_LIB_NAME);
+{$ENDIF}
   if FontConfigLibHandle = dynlibs.NilHandle then
     Exit;
 {$ELSE}

@@ -162,34 +162,36 @@ begin
   ACanvas.TextRect(ARect, ARect.Left, ARect.Top, AText, LStyle);
 end;
 
-class function TRpChatStyle.TextWidthOf(AFont: TFont; const AText: string): Integer;
 var
-  LBmp: TBitmap;
+  MeasureBitmap: TBitmap = nil;
+  MeasureDefaultFont: TFont = nil;
+
+// One bitmap measures every text: the layouts measure on every Resize, and a
+// bitmap per call costs a graphics context each time (with Cocoa they pile up
+// in the autorelease pool until the event loop turns)
+function MeasureCanvas(AFont: TFont): TCanvas;
 begin
-  LBmp := TBitmap.Create;
-  try
-    LBmp.SetSize(1, 1);
-    if AFont <> nil then
-      LBmp.Canvas.Font.Assign(AFont);
-    Result := LBmp.Canvas.TextWidth(AText);
-  finally
-    LBmp.Free;
+  if MeasureBitmap = nil then
+  begin
+    MeasureBitmap := TBitmap.Create;
+    MeasureBitmap.SetSize(1, 1);
+    MeasureDefaultFont := TFont.Create;
   end;
+  Result := MeasureBitmap.Canvas;
+  if AFont <> nil then
+    Result.Font.Assign(AFont)
+  else
+    Result.Font.Assign(MeasureDefaultFont);
+end;
+
+class function TRpChatStyle.TextWidthOf(AFont: TFont; const AText: string): Integer;
+begin
+  Result := MeasureCanvas(AFont).TextWidth(AText);
 end;
 
 class function TRpChatStyle.TextHeightOf(AFont: TFont): Integer;
-var
-  LBmp: TBitmap;
 begin
-  LBmp := TBitmap.Create;
-  try
-    LBmp.SetSize(1, 1);
-    if AFont <> nil then
-      LBmp.Canvas.Font.Assign(AFont);
-    Result := LBmp.Canvas.TextHeight('Mg');
-  finally
-    LBmp.Free;
-  end;
+  Result := MeasureCanvas(AFont).TextHeight('Mg');
 end;
 
 class procedure TRpChatStyle.SetupFont(AFont: TFont; APointSize: Integer;
@@ -656,5 +658,9 @@ begin
   Invalidate;
   inherited MouseUp(Button, Shift, X, Y);
 end;
+
+finalization
+  FreeAndNil(MeasureBitmap);
+  FreeAndNil(MeasureDefaultFont);
 
 end.

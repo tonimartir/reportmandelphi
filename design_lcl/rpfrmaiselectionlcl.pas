@@ -222,9 +222,14 @@ begin
   PNonInference := NewPanel(PAI);
   PNonInference.Align := alClient;
 
+  // The combos fill their host (LayoutNonInferenceControls): anchored on both
+  // sides their width is fixed, so AutoSize only sets the widgetset height.
+  // Cocoa gives a combo a preferred width, and AutoSize setting it back on
+  // every Resize would loop.
   PProviderHost := NewPanel(PNonInference);
   ComboAIProvider := TComboBox.Create(Self);
   ComboAIProvider.Parent := PProviderHost;
+  ComboAIProvider.Anchors := [akLeft, akTop, akRight];
   ComboAIProvider.Style := csDropDownList;
   ComboAIProvider.Items.Add(TranslateStr(1518, 'Standard'));
   ComboAIProvider.Items.Add(TranslateStr(1519, 'Precision'));
@@ -233,6 +238,7 @@ begin
   PModeHost := NewPanel(PNonInference);
   ComboAIMode := TComboBox.Create(Self);
   ComboAIMode.Parent := PModeHost;
+  ComboAIMode.Anchors := [akLeft, akTop, akRight];
   ComboAIMode.Style := csDropDownList;
   ComboAIMode.Items.Add(TranslateStr(1520, 'Fast'));
   ComboAIMode.Items.Add(TranslateStr(1521, 'Reasoning'));

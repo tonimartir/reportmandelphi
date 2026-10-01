@@ -994,6 +994,10 @@ begin
 
   ComboSchema := TComboBox.Create(Self);
   ComboSchema.Parent := PSchemaHost;
+  // Laid out in LayoutSchemaControls: anchored on both sides its width is
+  // fixed and AutoSize only sets the height (Cocoa gives the combo a
+  // preferred width, that AutoSize would set back on every Resize)
+  ComboSchema.Anchors := [akLeft, akTop, akRight];
   ComboSchema.Style := csDropDownList;
   ComboSchema.OnChange := ComboSchemaChange;
 

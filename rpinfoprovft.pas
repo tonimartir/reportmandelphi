@@ -1726,6 +1726,13 @@ begin
  end;
  exit;
 {$ELSE}
+{$IFDEF DARWIN}
+ // macOS fonts (when fontconfig is not available)
+ alist.Add('/System/Library/Fonts');
+ alist.Add('/System/Library/Fonts/Supplemental');
+ alist.Add('/Library/Fonts');
+ alist.Add(GetEnvironmentVariable('HOME')+'/Library/Fonts');
+{$ENDIF}
  // Red hat linux fonts
  alist.Add('/usr/share/fonts');
  // Ubuntu fonts

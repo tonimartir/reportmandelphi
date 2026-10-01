@@ -159,6 +159,13 @@ Other FPC deliverables:
   `-Validate`.
 - `LclSnapshotTest` compares the LCL preview against the PDF driver (exit 1 on
   failure); `PdfTest` covers the PDF driver.
+- macOS (LCL Cocoa, Intel): `build/macos/setup-toolchain.sh` (FPC 3.2.2 +
+  Lazarus 4.8 + Zeos in `~/dev`, no sudo, and applies
+  `build/macos/patches` to that Lazarus) and `build/macos/build-deps.sh`
+  (FreeType/HarfBuzz/fontconfig dylibs; ICU is the system `libicucore`).
+  `rpconf.inc` defines `LINUX` for FPC on Darwin (the non-Windows engine
+  path); real macOS differences go under `DARWIN`. No `.app` packaging yet.
+  See `docs/macos.md`.
 
 **Shared units rule:** the root `rp*.pas` units are also the Delphi product.
 Any change Delphi can see must be a genuine bug fix; all other port work goes
