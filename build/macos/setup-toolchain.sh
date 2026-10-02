@@ -111,17 +111,19 @@ if [ "${RM_MACOS_ASFIX:-}" = "1" ] || \
    ! "$UTILS/clang" -x assembler -c -target x86_64-apple-macosx10.8.0 -o "$tmp/t.o" "$tmp/t.s" 2> /dev/null; then
     ASFIX=1
 fi
+# (ld -v sale con 1: se mira lo que escribe. ld-prime es "PROJECT:ld-1xxx",
+# el clasico "PROJECT:ld64-xxx")
 LDCLASSIC=0
-if "$UTILS/ld" -v 2>&1 | grep -q 'PROJECT:ld-[0-9]'; then
-    if "$UTILS/ld" -ld_classic -v > /dev/null 2>&1; then
-        LDCLASSIC=1
-    else
-        echo "AVISO: este ld (ld-prime) no tiene -ld_classic; FPC 3.2.2 puede fallar al enlazar" >&2
-    fi
-fi
+case $("$UTILS/ld" -v 2>&1 || true) in
+    *PROJECT:ld-[0-9]*)
+        case $("$UTILS/ld" -ld_classic -v 2>&1 || true) in
+            *PROJECT:ld64-*) LDCLASSIC=1 ;;
+            *) echo "AVISO: este ld (ld-prime) no tiene -ld_classic; FPC 3.2.2 puede fallar al enlazar" >&2 ;;
+        esac ;;
+esac
 rm -rf "$tmp"
+rm -rf "$T/fpc/asfix"
 if [ $ASFIX -eq 1 ]; then
-    rm -rf "$T/fpc/asfix"
     mkdir -p "$T/fpc/asfix"
     for f in "$UTILS"/*; do
         ln -s "$f" "$T/fpc/asfix/$(basename "$f")"
