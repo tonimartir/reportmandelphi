@@ -8,6 +8,11 @@
 #   libharfbuzz-subset.0.dylib   HarfBuzz subset (subconjuntos de fuentes PDF)
 #   libfontconfig.1.dylib        fontconfig 2.15.0 (expat del sistema), con
 #                                las carpetas de fuentes de macOS
+#   libssl.3.dylib               OpenSSL 3.5.9 (serie de soporte largo, hasta
+#   libcrypto.3.dylib            2030): HTTPS de los asistentes de IA, el login
+#                                y el driver Reportman DB Agent
+#                                (rphttpclientfpc). El OpenSSL 0.9.8 de macOS
+#                                no verifica certificados y LibreSSL no vale
 #
 # ICU no se compila: el motor usa /usr/lib/libicucore.dylib de macOS.
 # Solo hacen falta las Command Line Tools de Xcode (sin pkg-config, cmake ni
@@ -32,6 +37,9 @@ HB=harfbuzz-$HB_VERSION
 HB_SHA256=480b6d25014169300669aa1fc39fb356c142d5028324ea52b3a27648b9beaad8
 FC=fontconfig-2.15.0
 FC_SHA256=63a0658d0e06e0fa886106452b58ef04f21f58202ea02a94c39de0d3335d7c0e
+OSSL_VERSION=3.5.9
+OSSL=openssl-$OSSL_VERSION
+OSSL_SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
 
 mkdir -p "$D/src"
 cd "$D/src"
@@ -43,8 +51,10 @@ fetch() {
 fetch "https://download.savannah.gnu.org/releases/freetype/$FT.tar.xz" "$FT.tar.xz" "$FT_SHA256"
 fetch "https://github.com/harfbuzz/harfbuzz/releases/download/$HB_VERSION/$HB.tar.xz" "$HB.tar.xz" "$HB_SHA256"
 fetch "https://www.freedesktop.org/software/fontconfig/release/$FC.tar.xz" "$FC.tar.xz" "$FC_SHA256"
-rm -rf "$FT" "$HB" "$FC"
+fetch "https://github.com/openssl/openssl/releases/download/$OSSL/$OSSL.tar.gz" "$OSSL.tar.gz" "$OSSL_SHA256"
+rm -rf "$FT" "$HB" "$FC" "$OSSL"
 for t in "$FT" "$HB" "$FC"; do tar -xf "$t.tar.xz"; done
+tar -xzf "$OSSL.tar.gz"
 
 # FreeType (sin HarfBuzz, PNG, Brotli ni bzip2)
 (
@@ -89,6 +99,16 @@ for t in "$FT" "$HB" "$FC"; do tar -xf "$t.tar.xz"; done
     make install > /dev/null
 )
 
+# OpenSSL: solo las librerias (install_sw), sin pruebas ni documentacion. Los
+# certificados raiz no salen de su carpeta (openssldir): el motor carga los de
+# macOS (/etc/ssl/cert.pem)
+(
+    cd "$OSSL"
+    ./Configure darwin64-x86_64-cc shared no-tests no-docs         --prefix="$PREFIX" --libdir=lib --openssldir="$PREFIX/ssl" > ../ossl-configure.log
+    make -j"$JOBS" > ../ossl-make.log
+    make install_sw > /dev/null
+)
+
 ls -la "$PREFIX"/lib/*.dylib
 
 # Enlaces en ~/lib, la primera carpeta de la busqueda de dyld: asi las
@@ -97,7 +117,7 @@ ls -la "$PREFIX"/lib/*.dylib
 # RM_MACOS_NO_HOME_LIB=1 no los crea.
 if [ "${RM_MACOS_NO_HOME_LIB:-}" != "1" ]; then
     mkdir -p "$HOME/lib"
-    for l in libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib; do
+    for l in libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib         libssl.3.dylib libcrypto.3.dylib; do
         ln -sf "$PREFIX/lib/$l" "$HOME/lib/$l"
     done
     echo "Enlazadas en $HOME/lib"

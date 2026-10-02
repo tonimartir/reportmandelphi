@@ -10,21 +10,28 @@
 #
 #   Contents/MacOS/repmandesigner_lcl   el ejecutable (modo Release), no un
 #                                       enlace como el .app de desarrollo
-#   Contents/Frameworks/                FreeType, HarfBuzz (+ subset) y
-#                                       fontconfig de build-deps.sh, enlazadas
-#                                       entre si con @loader_path
+#   Contents/Frameworks/                FreeType, HarfBuzz (+ subset),
+#                                       fontconfig y OpenSSL 3 de
+#                                       build-deps.sh, enlazadas entre si con
+#                                       @loader_path
 #   Contents/Resources/fonts/           la configuracion de fontconfig (el
 #                                       motor fija FONTCONFIG_PATH al cargarla)
 #   Contents/Resources/reportmanres.*   traducciones del motor
 #   Contents/Resources/languages/       traducciones de la LCL (Lazarus)
 #   Contents/Resources/samples/         los ejemplos (sample4.rep y su
 #                                       biolife.cds, sin los PDF)
+#   Contents/Resources/licenses/        las licencias de esas librerias
+#   Contents/Resources/reportman.icns   el icono del disenador de Windows
+#                                       (repman/repmandxp_Icon.ico), como en
+#                                       los paquetes de Linux
 #
 # El Info.plist declara la version minima de macOS (la mayor que piden el
 # ejecutable y las librerias, segun otool) y el tipo .rep, para que Finder
 # abra los informes con la aplicacion (doble clic, arrastrar al icono, Abrir
-# con). ICU es la del sistema. OpenSSL 3 (HTTPS: asistentes de IA, agente de datos,
-# login) no va dentro: brew install openssl@3, o RP_OPENSSL_DIR. La firma es
+# con). ICU es la del sistema. OpenSSL 3 va dentro: lo necesitan el login y
+# los asistentes de IA y el driver Reportman DB Agent (HTTPS), y el motor lo
+# busca primero en Contents/Frameworks (rpdarwinlibs.RpDarwinOpenSSL); los
+# certificados raiz son los de macOS (/etc/ssl/cert.pem). La firma es
 # ad hoc (codesign -s -): sin un certificado Developer ID y la notarizacion de
 # Apple, Gatekeeper pide abrirla la primera vez con clic derecho > Abrir.
 set -euo pipefail
@@ -33,8 +40,9 @@ T=${RM_MACOS_TOOLS:-$HOME/dev}
 SRC=$(cd "$(dirname "$0")/../.." && pwd)
 LAZ=${LAZARUS_DIR:-$T/lazarus}
 DEPS=${RM_MACOS_DEPS:-$T/macdeps/prefix}
+DEPS_SRC=${RM_MACOS_DEPS_SRC:-$(dirname "$DEPS")/src}
 LCL_LANGUAGES="es ca cs de fr it lt pt pt_BR"
-DYLIBS="libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib"
+DYLIBS="libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib libssl.3.dylib libcrypto.3.dylib"
 APP_NAME="Report Manager Designer"
 EXE=repmandesigner_lcl
 BUNDLE_ID=es.reportman.designer
@@ -152,16 +160,28 @@ done
 find "$SRC/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
     -exec cp {} "$APP/Contents/Resources/samples/" \;
 
-# Icono: el de la web (512 px) en todos los tamanos
+# Licencias de las librerias que van dentro (las fuentes que dejo
+# build-deps.sh)
+LIC=$APP/Contents/Resources/licenses
+mkdir -p "$LIC"
+for spec in "freetype-*/LICENSE.TXT:FreeType-LICENSE.txt" "freetype-*/docs/FTL.TXT:FreeType-FTL.txt"             "harfbuzz-*/COPYING:HarfBuzz-COPYING.txt" "fontconfig-*/COPYING:fontconfig-COPYING.txt"             "openssl-*/LICENSE.txt:OpenSSL-LICENSE.txt"; do
+    f=$(ls -d "$DEPS_SRC"/${spec%%:*} 2>/dev/null | tail -n 1)
+    [ -n "$f" ] || { echo "ERROR: falta la licencia ${spec%%:*} en $DEPS_SRC (build-deps.sh)" >&2; exit 1; }
+    cp "$f" "$LIC/${spec#*:}"
+done
+
+# Icono: el del disenador de Windows (64 px, el mismo que usan los paquetes de
+# Linux), ampliado hasta 256 px
 ICONSET=$OUT/reportman.iconset
 mkdir -p "$ICONSET"
-for s in 16 32 128 256 512; do
-    sips -z $s $s "$SRC/doc/icon-512.png" --out "$ICONSET/icon_${s}x${s}.png" > /dev/null
+sips -s format png "$SRC/repman/repmandxp_Icon.ico" --out "$OUT/icon-64.png" > /dev/null
+for s in 16 32 128 256; do
+    sips -z $s $s "$OUT/icon-64.png" --out "$ICONSET/icon_${s}x${s}.png" > /dev/null
     d=$((s * 2))
-    [ $d -le 512 ] && sips -z $d $d "$SRC/doc/icon-512.png" --out "$ICONSET/icon_${s}x${s}@2x.png" > /dev/null
+    [ $d -le 256 ] && sips -z $d $d "$OUT/icon-64.png" --out "$ICONSET/icon_${s}x${s}@2x.png" > /dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/reportman.icns"
-rm -rf "$ICONSET"
+rm -rf "$ICONSET" "$OUT/icon-64.png"
 
 echo "== Comprobando que no queda ninguna ruta de esta maquina"
 bad=0
