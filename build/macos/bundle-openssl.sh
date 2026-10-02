@@ -3,7 +3,7 @@
 # Manager para Lazarus, para que tenga HTTPS (driver Reportman DB Agent, login
 # y asistentes de IA) en un Mac sin Homebrew:
 #
-#   build/macos/bundle-openssl.sh MiAplicacion.app [carpeta con las librerias]
+#   build/macos/bundle-openssl.sh MiAplicacion.app [carpeta con las librerias]...
 #
 # Copia libssl.3.dylib y libcrypto.3.dylib en Contents/Frameworks, donde el
 # motor las busca antes que en ningun otro sitio (rpdarwinlibs.RpDarwinOpenSSL),
@@ -14,21 +14,47 @@
 #
 # Las librerias se toman de la carpeta indicada o, si no, de build-deps.sh
 # ($RM_MACOS_DEPS/prefix/lib, ~/dev/macdeps por defecto), de Homebrew
-# (openssl@3) o de MacPorts. Tienen que ser de la misma arquitectura que el
-# ejecutable: Homebrew en un Mac con Apple Silicon da librerias arm64, que una
-# aplicacion Intel no puede cargar.
+# (openssl@3) o de MacPorts. Tienen que tener la arquitectura del ejecutable:
+# Homebrew en un Mac con Apple Silicon da librerias arm64, que una aplicacion
+# Intel no puede cargar. Para una aplicacion universal (x86_64 y arm64) se
+# indican dos carpetas, una de cada arquitectura (build-deps.sh en un Mac
+# Intel y en otro con Apple Silicon), y se unen con lipo; o una carpeta con
+# librerias que ya sean universales.
 set -euo pipefail
 
 APP=${1:-}
 [ -n "$APP" ] && [ -d "$APP/Contents/MacOS" ] || {
-    echo "Uso: $0 MiAplicacion.app [carpeta con libssl.3.dylib y libcrypto.3.dylib]" >&2
+    echo "Uso: $0 MiAplicacion.app [carpeta con libssl.3.dylib y libcrypto.3.dylib]..." >&2
     exit 2
 }
 APP=$(cd "$APP" && pwd)
+shift
 LIBS="libssl.3.dylib libcrypto.3.dylib"
+# Las librerias que nombra cada una (en todas sus arquitecturas)
+deps() { otool -L "$1" | awk '/^\t/ {print $1}' | sort -u; }
 
-# De donde se copian
-SRCDIR=${2:-}
+# Varias carpetas: las librerias de todas, unidas con lipo
+SRCDIR=""
+if [ $# -gt 1 ]; then
+    SRCDIR=$(mktemp -d)
+    trap 'rm -rf "$SRCDIR"' EXIT
+    for l in $LIBS; do
+        parts=""
+        for d in "$@"; do
+            [ -f "$d/$l" ] || { echo "ERROR: falta $d/$l" >&2; exit 1; }
+            parts="$parts $(cd "$d" && pwd)/$l"
+        done
+        # shellcheck disable=SC2086
+        lipo -create $parts -output "$SRCDIR/$l"
+    done
+    for d in "$@"; do
+        for f in "$d/../LICENSE.txt" "$(dirname "$d")/src"/openssl-*/LICENSE.txt; do
+            [ -f "$f" ] && [ ! -f "$SRCDIR/LICENSE.txt" ] && cp "$f" "$SRCDIR/LICENSE.txt"
+        done
+    done
+elif [ $# -eq 1 ]; then
+    SRCDIR=$1
+fi
 if [ -z "$SRCDIR" ]; then
     cands="${RM_MACOS_DEPS:-$HOME/dev/macdeps}/prefix/lib"
     if command -v brew > /dev/null; then
@@ -70,11 +96,13 @@ for l in $LIBS; do
     chmod u+w "$FW/$l"
     install_name_tool -id "@loader_path/$l" "$FW/$l"
 done
-# libssl nombra a libcrypto con la ruta de donde se compilo
-old=$(otool -L "$FW/libssl.3.dylib" | tail -n +2 | awk '{print $1}' | grep 'libcrypto\.3\.dylib$' || true)
-[ -n "$old" ] && install_name_tool -change "$old" "@loader_path/libcrypto.3.dylib" "$FW/libssl.3.dylib"
+# libssl nombra a libcrypto con la ruta de donde se compilo (una por
+# arquitectura si se unieron dos)
+for old in $(deps "$FW/libssl.3.dylib" | grep 'libcrypto\.3\.dylib$' | grep -v '^@loader_path/' || true); do
+    install_name_tool -change "$old" "@loader_path/libcrypto.3.dylib" "$FW/libssl.3.dylib"
+done
 for l in $LIBS; do
-    if otool -L "$FW/$l" | tail -n +2 | awk '{print $1}' | grep -v -E '^(/usr/lib/|/System/|@loader_path/)'; then
+    if deps "$FW/$l" | grep -v -E '^(/usr/lib/|/System/|@loader_path/)'; then
         echo "ERROR: $l sigue enlazando una libreria de fuera de la aplicacion" >&2
         exit 1
     fi
@@ -82,7 +110,7 @@ done
 
 # La licencia de OpenSSL (Apache 2.0) va con las librerias
 LICENSE=""
-for f in "$SRCDIR/../LICENSE.txt" "$(dirname "$SRCDIR")/src"/openssl-*/LICENSE.txt \
+for f in "$SRCDIR/LICENSE.txt" "$SRCDIR/../LICENSE.txt" "$(dirname "$SRCDIR")/src"/openssl-*/LICENSE.txt \
          "${RM_MACOS_DEPS:-$HOME/dev/macdeps}/src"/openssl-*/LICENSE.txt; do
     [ -f "$f" ] && LICENSE=$f
 done

@@ -12,7 +12,8 @@ program repmandesigner_lcl;
 {                                                       }
 {*******************************************************}
 
-{ Usage: repmandesigner_lcl [--help] [--version] [report.rep]
+{ Usage: repmandesigner_lcl [--help] [--version] [--check-https [url]]
+                            [report.rep]
 
   Uses only the reportman_rtl / reportman_lcl / reportman_designlcl
   packages (no engine search paths in the .lpi). The project lives in its
