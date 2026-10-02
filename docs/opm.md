@@ -21,8 +21,8 @@ en `build\opm\out\`.
 | Paquete (`.lpk`) | Ruta en el zip | Contenido | Requiere |
 |---|---|---|---|
 | `reportman_rtl` | `packages/fpc/` | Motor no visual: modelo de informe, evaluador, datos (Zeos, SQLdb para las conexiones FireDAC: SQLite, PostgreSQL, MySQL/MariaDB, Firebird, SQL Server, Oracle, ODBC; texto) y exportación PDF/SVG/HTML/CSV/texto/metafile. Unidades de la raíz + `rtl_fpc/`. | `FCL(1.0)`, `zcomponent(8.0)` |
-| `reportman_lcl` | `packages/fpc_lcl/` | Runtime LCL: `TLCLReport`, vista previa, configuración de página, parámetros, impresión (`lcl/`). | `reportman_rtl(4.0.16)`, LCL, Printer4Lazarus, `FCL(1.0)`, DateTimeCtrls |
-| `reportman_designlcl` | `packages/fpc_lcl/` | Diseñador visual embebible `TRpDesignerLCL` (`design_lcl/`). | `reportman_rtl(4.0.16)`, `reportman_lcl(4.0.16)`, LCL, `FCL(1.0)`, TurboPowerIPro, SynEdit |
+| `reportman_lcl` | `packages/fpc_lcl/` | Runtime LCL: `TLCLReport`, vista previa, configuración de página, parámetros, impresión (`lcl/`). | `reportman_rtl(4.0.17)`, LCL, Printer4Lazarus, `FCL(1.0)`, DateTimeCtrls |
+| `reportman_designlcl` | `packages/fpc_lcl/` | Diseñador visual embebible `TRpDesignerLCL` (`design_lcl/`). | `reportman_rtl(4.0.17)`, `reportman_lcl(4.0.17)`, LCL, `FCL(1.0)`, TurboPowerIPro, SynEdit |
 
 Los tres son **RunAndDesignTime**: cada uno registra componentes en la paleta
 *Reportman* (`Register` en `rpmreg.pas`, `lcl/rpreglcl.pas` y
@@ -35,7 +35,7 @@ IDE se recompila.
 Metadatos que viven en los `.lpk` (OPM los lee de ahí al crear el paquete):
 `Author` (Toni Martir), `Description` (inglés), `License` (MPL 1.1, con la GPL
 como alternativa; ver `LICENSE.TXT`), `Version` = `RM_VERSION` de
-`rpmdconsts.pas` (4.0.16 → Major 4, Release 16) y las dependencias con su
+`rpmdconsts.pas` (4.0.17 → Major 4, Release 17) y las dependencias con su
 versión mínima. Las versiones mínimas entre los tres paquetes de Report Manager
 son la propia versión del producto, para no mezclar paquetes de versiones
 distintas; `zcomponent(8.0)` es la versión de Zeos probada y la que ofrece OPM
