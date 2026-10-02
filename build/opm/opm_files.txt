@@ -102,11 +102,6 @@ rpfdmidas.inc
 zconf.inc
 REPORTMANRES.RES
 dbxdrivers.RES
-rpalias.dcr
-rpeval.dcr
-rplastsav.dcr
-rppdfreport.dcr
-rptranslator.dcr
 
 # --- reportman_rtl: unidades solo FPC ---
 rtl_fpc/rpbase64fpc.pas
@@ -116,6 +111,7 @@ rtl_fpc/rphttpclientfpc.pas
 rtl_fpc/rpinfoprovfpc.pas
 rtl_fpc/rpioutilsfpc.pas
 rtl_fpc/rpjsonfpc.pas
+rtl_fpc/rpmregicons.res
 rtl_fpc/rpnetencodingfpc.pas
 rtl_fpc/rpstreamfpc.pas
 rtl_fpc/rpsysutilsfpc.pas
@@ -129,7 +125,6 @@ lcl/rplclfonts.pas
 lcl/rplclpreview.lfm
 lcl/rplclpreview.pas
 lcl/rplclreport.pas
-lcl/rpmaskedit.dcr
 lcl/rpmaskedit.pas
 lcl/rpmdfembeddedfilelcl.pas
 lcl/rpmdprintconfiglcl.pas
@@ -141,7 +136,6 @@ lcl/rpreglcl.lrs
 lcl/rpreglcl.pas
 lcl/rprflclparams.lfm
 lcl/rprflclparams.pas
-lcl/rpvclreport.dcr
 
 # --- reportman_designlcl ---
 design_lcl/rpaithreadslcl.pas

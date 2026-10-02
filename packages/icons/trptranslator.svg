@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- TRpTranslator: the languages of the world -->
+  <circle cx="12" cy="12" r="9.5" fill="#d6e8fc" stroke="#0969da" stroke-width="1.4"/>
+  <ellipse cx="12" cy="12" rx="4" ry="9.5" fill="none" stroke="#0969da" stroke-width="1.1"/>
+  <path d="M12 2.5V21.5M2.5 12H21.5M4.2 7H19.8M4.2 17H19.8" stroke="#0969da" stroke-width="1.1"/>
+</svg>

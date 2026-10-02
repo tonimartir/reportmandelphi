@@ -123,7 +123,7 @@ implementation
 
 uses
   uregressiontests, uvclparitytests, udataconfigtests, upagesetuptests,
-  ulibrarytests, udialoglayouttests;
+  ulibrarytests, udialoglayouttests, upaletteiconstests;
 
 type
   TRpSizePosInterfaceAccess = class(TRpSizePosInterface);
@@ -2106,6 +2106,8 @@ begin
      RunLibraryTests;
      // Every page of the dialogs: no control cut or covered
      RunDialogLayoutTests;
+     // The icons of the components on the Lazarus palette, in 3 sizes
+     RunPaletteIconTests;
 
      ok := True;
     LogMsg('[TEST_PASSED] LCL Designer Test OK');

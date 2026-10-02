@@ -18,7 +18,6 @@ unit rpmaskedit;
 interface
 
 {$I rpconf.inc}
-{$R rpmaskedit.dcr}
 
 uses
   SysUtils, Classes, Graphics, Controls, Forms, Dialogs,

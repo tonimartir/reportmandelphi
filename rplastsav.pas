@@ -21,7 +21,10 @@ unit rplastsav;
 
 interface
 
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rplastsav.dcr}
+{$ENDIF}
 
 uses Classes,Sysutils,IniFiles;
 

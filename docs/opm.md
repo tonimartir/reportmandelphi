@@ -349,10 +349,19 @@ Werner subió el paquete al repositorio central (`PackageData175` de
 - **Cocoa (macOS) no compila**; en su opinión, con cambios menores
   funcionaría.
 
-Sugerencia para la siguiente versión: los iconos de la paleta (los `.lrs` de
-`rpreglcl` y `rpmregdesignlcl`, un BMP de 24×24 por componente) solo tienen
-un tamaño y se ven mal con DPI altos. El LCL pide también `_150` (36×36) y
-`_200` (48×48), con ese sufijo añadido al nombre del recurso.
+Sugerencia para la siguiente versión: los iconos de la paleta solo tenían un
+tamaño y se ven mal con DPI altos. El IDE (`TLCLGlyphs`, `GetDefaultGlyph`
+de `imglist.inc`) pide también `<Clase>_150` (36×36) y `<Clase>_200`
+(48×48). Hecho para los diez componentes, redibujados (los BMP de 16 colores
+de Delphi decían «WIN» y «VCL»): los SVG están en `packages/icons` y
+`packages/icons/make_icons.sh` (rsvg-convert + lazres) escribe
+`lcl/rpreglcl.lrs`, `design_lcl/rpmregdesignlcl.lrs` y
+`rtl_fpc/rpmregicons.res` (el motor no usa la LCL, así que no puede usar un
+`.lrs`; lo enlaza `rpmreg.pas`). El IDE busca **primero en los recursos del
+ejecutable** y después en los `.lrs`: los `.dcr` de Delphi con el mismo
+nombre (`rpeval.dcr`, `lcl/rpmaskedit.dcr`…) taparían el icono de 24 px, así
+que en FPC no se enlazan (`{$IFNDEF FPC}`). `LclDesignerTest --selftest`
+comprueba los tres tamaños de cada componente como los busca el IDE.
 
 Escribirle a él es la vía recomendada, no un plan B: así tiene el contacto
 del mantenedor para avisar si el paquete deja de funcionar. Invita a anunciar

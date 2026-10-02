@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- TPDFReport: a report exported to PDF -->
+  <path d="M3.5 1.5H14.5L19.5 6.5V22.5H3.5Z" fill="#ffffff" stroke="#3f4752"/>
+  <path d="M14.5 1.5V6.5H19.5" fill="#dfe5ec" stroke="#3f4752" stroke-linejoin="round"/>
+  <rect x="5" y="3" width="8" height="2" fill="#0969da"/>
+  <rect x="5" y="8" width="12" height="1" fill="#8b95a1"/>
+  <rect x="5" y="10" width="9" height="1" fill="#8b95a1"/>
+  <rect x="1" y="13" width="17" height="8" rx="1" fill="#d93025"/>
+  <g fill="none" stroke="#ffffff" stroke-width="1">
+    <path d="M3.5 19.5V14.5H6.5V17H3.5"/>
+    <path d="M8.5 14.5V19.5H10.5L11.5 18.5V15.5L10.5 14.5Z"/>
+    <path d="M13.5 19.5V14.5H16.5M13.5 17H15.5"/>
+  </g>
+</svg>

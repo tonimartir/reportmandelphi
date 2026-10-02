@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- TLCLReport: a report page (title, column header, rows and the total) -->
+  <path d="M3.5 1.5H14.5L19.5 6.5V22.5H3.5Z" fill="#ffffff" stroke="#3f4752"/>
+  <path d="M14.5 1.5V6.5H19.5" fill="#dfe5ec" stroke="#3f4752" stroke-linejoin="round"/>
+  <rect x="5" y="3" width="8" height="2" fill="#0969da"/>
+  <rect x="5" y="8" width="13" height="2" fill="#9cc3f0"/>
+  <rect x="5" y="11" width="7" height="1" fill="#8b95a1"/>
+  <rect x="14" y="11" width="4" height="1" fill="#8b95a1"/>
+  <rect x="5" y="13" width="7" height="1" fill="#8b95a1"/>
+  <rect x="14" y="13" width="4" height="1" fill="#8b95a1"/>
+  <rect x="5" y="15" width="7" height="1" fill="#8b95a1"/>
+  <rect x="14" y="15" width="4" height="1" fill="#8b95a1"/>
+  <rect x="5" y="17" width="13" height="1" fill="#3f4752"/>
+  <rect x="13" y="19" width="5" height="2" fill="#0969da"/>
+</svg>
