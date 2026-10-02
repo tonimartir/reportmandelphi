@@ -23,7 +23,11 @@ unit rmdcmdline;
   - Translations (reportmanres.*): the engine (rptranslator) reads them next
     to the executable (ParamStr(0), which FPC resolves through
     /proc/self/exe, so a /usr/bin symlink still finds them). Windows also
-    has them as resources.
+    has them as resources. On macOS ParamStr(0) is the link of the bundle
+    (X.app/Contents/MacOS): the engine and DataDirs also look in
+    Contents/Resources and next to the real executable (RpDarwinDataDirs),
+    and the language is the one of the system (RpDarwinUserLanguage) when
+    there is no LANG, as with the applications started from the Finder.
   - Samples: <exe dir>/samples, <exe dir>/repsamples (development tree) or
     <prefix>/share/reportman-designer/samples (<prefix> = <exe dir>/..).
   - Preferences (window position, last folder): Linux
@@ -40,7 +44,8 @@ unit rmdcmdline;
 interface
 
 uses
-  SysUtils, Classes, gettext, Translations, rpmdconsts;
+  SysUtils, Classes, gettext, Translations, rpmdconsts
+  {$IFDEF DARWIN}, rpdarwinlibs{$ENDIF};
 
 const
   APP_NAME = 'Report Manager Designer';
@@ -56,6 +61,8 @@ const
   WIDGETSET = 'qt6';
   {$ELSEIF DEFINED(LCLWIN32)}
   WIDGETSET = 'win32';
+  {$ELSEIF DEFINED(LCLCOCOA)}
+  WIDGETSET = 'cocoa';
   {$ELSE}
   WIDGETSET = 'other';
   {$IFEND}
@@ -106,6 +113,13 @@ var
 {$ENDIF}
 begin
   Result := TStringList.Create;
+  {$IFDEF DARWIN}
+  // An application bundle: Contents/Resources and the folder of the real
+  // executable (ParamStr(0) is the link in Contents/MacOS)
+  for appdir in RpDarwinDataDirs do
+    if Result.IndexOf(appdir) < 0 then
+      Result.Add(appdir);
+  {$ENDIF}
   Result.Add(ExeDir);
   Result.Add(ExpandFileName(ExeDir + '..' + PathDelim + 'share' + PathDelim +
     APP_ID) + PathDelim);
@@ -231,12 +245,18 @@ function LCLTranslationFile: string;
 var
   lang, fallback, code, dir: string;
   cands: array[0..2] of string;
-  i, p: Integer;
+  dirs: TStringList;
+  i, j, p: Integer;
 begin
   Result := '';
   // Same language as the engine (rptranslator): LC_ALL, LC_MESSAGES, LANG on
   // Unix, the user locale on Windows ('es_ES', fallback 'es')
   gettext.GetLanguageIDs(lang, fallback);
+  {$IFDEF DARWIN}
+  // macOS gives no LANG to the applications started from the Finder
+  if lang = '' then
+    lang := RpDarwinUserLanguage;
+  {$ENDIF}
   // es_ES.UTF-8 / ca_ES@valencia -> es_ES / ca_ES
   p := Pos('.', lang);
   if p > 0 then
@@ -259,10 +279,18 @@ begin
     cands[2] := 'pt_BR'
   else
     cands[2] := '';
-  dir := ExeDir + 'languages' + PathDelim;
-  for i := Low(cands) to High(cands) do
-    if (cands[i] <> '') and FileExists(dir + 'lclstrconsts.' + cands[i] + '.po') then
-      Exit(dir + 'lclstrconsts.' + cands[i] + '.po');
+  dirs := DataDirs;
+  try
+    for j := 0 to dirs.Count - 1 do
+    begin
+      dir := dirs[j] + 'languages' + PathDelim;
+      for i := Low(cands) to High(cands) do
+        if (cands[i] <> '') and FileExists(dir + 'lclstrconsts.' + cands[i] + '.po') then
+          Exit(dir + 'lclstrconsts.' + cands[i] + '.po');
+    end;
+  finally
+    dirs.Free;
+  end;
 end;
 
 procedure TranslateLCL;

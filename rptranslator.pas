@@ -33,6 +33,11 @@ uses
 {$IFDEF MSWINDOWS}
  Windows,
 {$ENDIF}
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+ rpdarwinlibs,
+{$ENDIF}
+{$ENDIF}
  Classes,rptypes;
 
 
@@ -292,6 +297,11 @@ begin
   LangStr := Sysutils.GetEnvironmentVariable('LC_MESSAGES');
  if Length(LangStr)=0 then
   LangStr := Sysutils.GetEnvironmentVariable('LANG');
+{$IFDEF DARWIN}
+ // macOS gives no LANG to the applications started from the Finder
+ if Length(LangStr)=0 then
+  LangStr := RpDarwinUserLanguage;
+{$ENDIF}
 {$ELSE}
  LangStr := System.SysUtils.GetEnvironmentVariable('LC_ALL');
  if Length(LangStr)=0 then
@@ -358,6 +368,26 @@ begin
   end;
 {$ENDIF}
 end;
+{$ENDIF}
+
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+// The translation file in the data folders of the application, or ACurrent
+function DarwinLocaleFile(const AFilename,ACurrent:string):string;
+var
+ adirs:TStringArray;
+ i:integer;
+begin
+ Result:=ACurrent;
+ adirs:=RpDarwinDataDirs;
+ for i:=0 to High(adirs) do
+  if FileExists(AddLocaleSufix(adirs[i]+AFilename)) then
+  begin
+   Result:=AddLocaleSufix(adirs[i]+AFilename);
+   Exit;
+  end;
+end;
+{$ENDIF}
 {$ENDIF}
 
 procedure TRpTranslator.InternalOpen;
@@ -447,6 +477,14 @@ begin
    if (not fromresource) then
 {$ENDIF}
    begin
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+    // An application bundle: ParamStr(0) is the link in Contents/MacOS, the
+    // files are in Contents/Resources or next to the real executable
+    if FAutoLocale and (Not FileExists(afilename)) then
+     afilename:=DarwinLocaleFile(FFilename,afilename);
+{$ENDIF}
+{$ENDIF}
     if Not FileExists(afilename) then
     begin
      // Try with system directory

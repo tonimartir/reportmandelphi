@@ -302,8 +302,12 @@ lazbuild pgreport.lpi
 build/macos/build-deps.sh          # FreeType, HarfBuzz and fontconfig
 . ~/dev/env.sh                     # lazbuild and fpc in the PATH
 LAZBUILD=lazbuild sh packages/fpc/build_fpc.sh
-lazbuild --no-write-project repman/lcl_designer/repmandesigner_lcl.lpi
+build/macos/build-designer.sh      # repman/repmandesigner_lcl.app
 open repman/repmandesigner_lcl.app</code></pre>
+<p>The designer uses the language of macOS (System Preferences &gt; Language &amp; Region), also when
+  it is opened from the Finder, which gives applications no <code>LANG</code> variable.
+  <code>build-designer.sh</code> adds the Lazarus translations of the standard dialogs and buttons to
+  the bundle.</p>
 <p><code>setup-toolchain.sh</code> uses the official Free Pascal disk image without installing it and
   the official Lazarus 4.8 archive. It also applies two corrections to the Cocoa widgetset of Lazarus
   (<code>build/macos/patches</code>):</p>

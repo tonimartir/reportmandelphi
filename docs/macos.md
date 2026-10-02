@@ -192,6 +192,18 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   como `TFMTBCDField`. FPC no sabe sumar su variante FMTBcd a un entero, y los
   totales, que empiezan en 0, fallaban con «Invalid variant operation».
   `TIdenField` la convierte a `Double`, como hace Delphi con `USEBCD`.
+- **Idioma.** El motor (`rptranslator`), la LCL (`gettext`) y el idioma de la
+  IA leen `LC_ALL`, `LC_MESSAGES` y `LANG`, y macOS no da `LANG` a las
+  aplicaciones abiertas desde Finder (Terminal sí): el diseñador salía en
+  inglés con el Mac en español. Sin esas variables se usa
+  `RpDarwinUserLanguage`, el primer idioma de Preferencias del Sistema (con el
+  país de la región si no lo lleva), leído de CoreFoundation.
+- **Ficheros junto al ejecutable.** Lazarus deja el ejecutable en la carpeta
+  del proyecto y lo enlaza desde `X.app/Contents/MacOS`; `ParamStr(0)` es ese
+  enlace. `RpDarwinDataDirs` da `Contents/Resources` y la carpeta del
+  ejecutable real, y ahí buscan `rptranslator` (`reportmanres.*`) y el
+  diseñador (ejemplos y `languages/lclstrconsts.*.po`, que
+  `build/macos/build-designer.sh` copia en `Contents/Resources`).
 - **Contextos gráficos.** Con Cocoa, cada `TBitmap` con canvas crea contextos
   gráficos que esperan en el *autorelease pool* hasta la siguiente vuelta del
   bucle de eventos, y liberar muchos de golpe cuesta tiempo cuadrático. No hay

@@ -8,7 +8,10 @@ unit rpdarwinlibs;
   and the client libraries of the usual installers are not in the dyld search
   (/usr/local/lib, /usr/lib): Homebrew does not link libpq nor mysql-client
   there, and EnterpriseDB, Postgres.app, MySQL and Firebird install them in
-  their own folders. They are looked for there. }
+  their own folders. They are looked for there.
+
+  Also the language of the user: an application started from the Finder
+  does not receive LANG either. }
 
 {$mode delphi}{$H+}
 
@@ -16,7 +19,7 @@ interface
 
 {$IFDEF DARWIN}
 uses
-  SysUtils, Classes, dynlibs;
+  SysUtils, Classes, dynlibs, BaseUnix;
 
 // Loads a library of the engine: first the copy in the application bundle
 // (Contents/Frameworks), then the one next to the executable, then the dyld
@@ -41,11 +44,160 @@ function RpDarwinClientLibraries(const AKind: string): TStringArray;
 // MacPorts. Never the OpenSSL 0.9.8 of macOS (/usr/lib): it has no
 // functions to verify certificates.
 function RpDarwinOpenSSL(const AFirst: string; out AFolder, AVersion: string): Boolean;
+
+// The language of the user, as LANG writes it without the encoding ('es_ES',
+// 'en_GB', 'pt_BR'): the first language of System Preferences > Language &
+// Region and the country of the region when the language has none. The
+// engine, the LCL and the AI language read LC_ALL, LC_MESSAGES and LANG on
+// Unix, and macOS gives no LANG to the applications started from the Finder
+// (Terminal does set it). '' when it is not known.
+function RpDarwinUserLanguage: string;
+
+// The folders of the data files of the application (translations...), with
+// a path delimiter at the end: Contents/Resources of the application bundle
+// and the folder of the executable, the real one first. Lazarus writes the
+// executable next to the project and links it from X.app/Contents/MacOS,
+// and ParamStr(0) is that link.
+function RpDarwinDataDirs: TStringArray;
 {$ENDIF}
 
 implementation
 
 {$IFDEF DARWIN}
+
+{$linkframework CoreFoundation}
+
+// The CoreFoundation functions that RpDarwinUserLanguage uses, declared here
+// because the console programs do not link the LCL nor MacOSAll (cdecl: FPC
+// adds the underscore of the C names)
+const
+  kCFStringEncodingUTF8 = $08000100;
+
+function CFLocaleCopyPreferredLanguages: Pointer; cdecl; external name 'CFLocaleCopyPreferredLanguages';
+function CFLocaleCopyCurrent: Pointer; cdecl; external name 'CFLocaleCopyCurrent';
+function CFLocaleGetIdentifier(ALocale: Pointer): Pointer; cdecl; external name 'CFLocaleGetIdentifier';
+function CFArrayGetCount(AArray: Pointer): PtrInt; cdecl; external name 'CFArrayGetCount';
+function CFArrayGetValueAtIndex(AArray: Pointer; AIndex: PtrInt): Pointer; cdecl; external name 'CFArrayGetValueAtIndex';
+function CFStringGetCString(AString: Pointer; ABuffer: PAnsiChar; ABufferSize: PtrInt;
+  AEncoding: Cardinal): Byte; cdecl; external name 'CFStringGetCString';
+procedure CFRelease(AObject: Pointer); cdecl; external name 'CFRelease';
+
+function CFStringText(AString: Pointer): string;
+var
+  LBuffer: array[0..255] of AnsiChar;
+begin
+  Result := '';
+  if (AString <> nil) and (CFStringGetCString(AString, @LBuffer[0], SizeOf(LBuffer),
+    kCFStringEncodingUTF8) <> 0) then
+    Result := string(PAnsiChar(@LBuffer[0]));
+end;
+
+// The parts of 'es-ES', 'zh-Hans-CN' or 'es_ES@calendar=...': the language
+// and, when the last part has two letters, the country
+procedure SplitLanguage(const AText: string; out ALanguage, ACountry: string);
+var
+  LText, LLast: string;
+  i: Integer;
+begin
+  LText := AText;
+  i := Pos('@', LText);
+  if i > 0 then
+    SetLength(LText, i - 1);
+  LText := StringReplace(LText, '-', '_', [rfReplaceAll]);
+  i := Pos('_', LText);
+  if i = 0 then
+  begin
+    ALanguage := LowerCase(LText);
+    ACountry := '';
+    Exit;
+  end;
+  ALanguage := LowerCase(Copy(LText, 1, i - 1));
+  LLast := LText;
+  i := LastDelimiter('_', LLast);
+  LLast := Copy(LLast, i + 1, MaxInt);
+  if Length(LLast) = 2 then
+    ACountry := UpperCase(LLast)
+  else
+    ACountry := '';
+end;
+
+function RpDarwinDataDirs: TStringArray;
+var
+  LLinked, LPath, LTarget, LDir: string;
+  i: Integer;
+
+  procedure AddDir(const ADir: string);
+  var
+    j: Integer;
+  begin
+    for j := 0 to High(Result) do
+      if Result[j] = ADir then
+        Exit;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := ADir;
+  end;
+
+begin
+  Result := nil;
+  LLinked := ExpandFileName(ParamStr(0));
+  LPath := LLinked;
+  for i := 1 to 8 do
+  begin
+    LTarget := fpReadLink(LPath);
+    if LTarget = '' then
+      Break;
+    if LTarget[1] <> '/' then
+      LTarget := ExtractFilePath(LPath) + LTarget;
+    LPath := ExpandFileName(LTarget);
+  end;
+  LDir := ExtractFilePath(LLinked);
+  // X.app/Contents/MacOS/ -> X.app/Contents/Resources/
+  if Pos('.app/Contents/MacOS/', LDir) > 0 then
+    AddDir(ExpandFileName(LDir + '../Resources') + '/');
+  AddDir(ExtractFilePath(LPath));
+  AddDir(LDir);
+end;
+
+function RpDarwinUserLanguage: string;
+var
+  LArray, LLocale: Pointer;
+  LPreferred, LRegion, LLanguage, LCountry, LRegionLanguage, LRegionCountry: string;
+begin
+  Result := '';
+  LPreferred := '';
+  LArray := CFLocaleCopyPreferredLanguages;
+  if LArray <> nil then
+  try
+    if CFArrayGetCount(LArray) > 0 then
+      LPreferred := CFStringText(CFArrayGetValueAtIndex(LArray, 0));
+  finally
+    CFRelease(LArray);
+  end;
+  // The region (es_ES): its country completes a language without one
+  LRegion := '';
+  LLocale := CFLocaleCopyCurrent;
+  if LLocale <> nil then
+  try
+    LRegion := CFStringText(CFLocaleGetIdentifier(LLocale));
+  finally
+    CFRelease(LLocale);
+  end;
+  SplitLanguage(LRegion, LRegionLanguage, LRegionCountry);
+  if LPreferred <> '' then
+    SplitLanguage(LPreferred, LLanguage, LCountry)
+  else
+  begin
+    LLanguage := LRegionLanguage;
+    LCountry := LRegionCountry;
+  end;
+  if LCountry = '' then
+    LCountry := LRegionCountry;
+  if (Length(LLanguage) < 2) or (Length(LLanguage) > 3) then
+    Exit;
+  Result := LLanguage;
+  if LCountry <> '' then
+    Result := Result + '_' + LCountry;
+end;
 
 function RpLoadDarwinLibrary(const AName: string): TLibHandle;
 var
