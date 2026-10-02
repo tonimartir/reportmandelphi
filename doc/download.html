@@ -85,7 +85,11 @@
       <p>Install the <b>Report Manager</b> packages (engine with PDF export, LCL preview and embeddable designer) from the Lazarus <b>Online Package Manager</b> (<i>Package &rarr; Online Package Manager</i>), or build them from the source code. See <a href="doc/lazaruscomp.html">Lazarus / Free Pascal</a>.</p>
 
       <h2>macOS</h2>
-      <p>The Lazarus packages, their examples and the Report Manager Designer build on macOS with Lazarus and the native Cocoa widgetset. There is no macOS application to download yet: see <a href="doc/installmac.html">macOS (Lazarus, Cocoa)</a> to build them from the source code.</p>
+      <p>The <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on SourceForge contains the Report Manager Designer for macOS, with the native Cocoa interface:</p>
+      <ul>
+        <li><code>reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code> &mdash; Intel Macs, tested on macOS 11; open it and drag the application to Applications. It includes the samples (<code>sample4</code> among them).</li>
+      </ul>
+      <p>The application is not notarized by Apple: the first time, open it from the Finder with <i>right click &rarr; Open</i>. HTTPS (the AI assistants and the Reportman DB Agent driver) needs OpenSSL 3 (<code>brew install openssl@3</code>). The Lazarus packages and the designer also build from the source code: see <a href="doc/installmac.html">macOS (Lazarus, Cocoa)</a>.</p>
 
       <h2>Web Report Server in Docker</h2>
       <p>The Web Report Server is also published as a Docker image, <a href="https://hub.docker.com/r/tonimartir/reportman-web" target="_blank" rel="noopener">tonimartir/reportman-web</a>. See <a href="webserver.html">Web Server</a>.</p>
