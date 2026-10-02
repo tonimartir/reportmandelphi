@@ -86,6 +86,73 @@ if [ -z "$XR" ] || [ ! -d "$XR" ]; then
     rm -f "$T/fpc/etc/fpc.cfg"
     "$T/fpc/lib/fpc/3.2.2/samplecfg" "$T/fpc/lib/fpc/3.2.2" "$T/fpc/etc" > /dev/null
 fi
+
+# FPC 3.2.2 con las herramientas de Xcode 15 o posterior (Lazarus 4.8 para
+# macOS se publica con FPC 3.2.4rc1 por esto), detectado aqui y resuelto en
+# fpc.cfg, entre las marcas de setup-toolchain.sh:
+# - Intel: FPC escribe las etiquetas de los goto que salen de un bloque (Zeos)
+#   como simbolos globales dentro de la funcion, y el ensamblador de clang 15
+#   o posterior las rechaza ("non-private labels cannot appear between
+#   .cfi_startproc / .cfi_endproc pairs"). $T/fpc/asfix tiene un clang que
+#   las vuelve privadas (prefijo L, sin .globl) antes de ensamblar: solo se
+#   usan dentro de su unidad, el codigo es el mismo. Las demas herramientas
+#   son enlaces a las de verdad.
+# - El enlazador nuevo (ld-prime) se cae al enlazar los ejecutables de FPC
+#   3.2.2: se usa el clasico (-ld_classic) mientras Xcode lo tenga.
+# RM_MACOS_ASFIX=1 pone el clang de asfix aunque no haga falta (pruebas).
+CFG=$T/fpc/etc/fpc.cfg
+sed -i '' '/^# >>> setup-toolchain.sh/,/^# <<< setup-toolchain.sh/d' "$CFG"
+UTILS=$(sed -n 's/^-FD//p' "$CFG" | tail -n 1)
+[ -x "$UTILS/clang" ] || UTILS=$(dirname "$(xcrun -f clang)")
+tmp=$(mktemp -d)
+printf '\t.text\n\t.globl _f\n_f:\n\t.cfi_startproc\n\t.globl _$t$_Lj1\n_$t$_Lj1:\n\tret\n\t.cfi_endproc\n' > "$tmp/t.s"
+ASFIX=0
+if [ "${RM_MACOS_ASFIX:-}" = "1" ] || \
+   ! "$UTILS/clang" -x assembler -c -target x86_64-apple-macosx10.8.0 -o "$tmp/t.o" "$tmp/t.s" 2> /dev/null; then
+    ASFIX=1
+fi
+LDCLASSIC=0
+if "$UTILS/ld" -v 2>&1 | grep -q 'PROJECT:ld-[0-9]'; then
+    if "$UTILS/ld" -ld_classic -v > /dev/null 2>&1; then
+        LDCLASSIC=1
+    else
+        echo "AVISO: este ld (ld-prime) no tiene -ld_classic; FPC 3.2.2 puede fallar al enlazar" >&2
+    fi
+fi
+rm -rf "$tmp"
+if [ $ASFIX -eq 1 ]; then
+    rm -rf "$T/fpc/asfix"
+    mkdir -p "$T/fpc/asfix"
+    for f in "$UTILS"/*; do
+        ln -s "$f" "$T/fpc/asfix/$(basename "$f")"
+    done
+    rm -f "$T/fpc/asfix/clang"
+    cat > "$T/fpc/asfix/clang" <<EOF
+#!/bin/bash
+# setup-toolchain.sh: las etiquetas de salto globales de FPC 3.2.2 (_\$X\$_LjN)
+# pasan a privadas (L_\$X\$_LjN) antes de ensamblar con el clang de verdad
+for a in "\$@"; do
+    case \$a in
+        *.s) [ -f "\$a" ] && /usr/bin/sed -i '' -E \\
+                 -e '/^[[:space:]]*\\.globl[[:space:]]+_\\\$[^[:space:]]*\\\$_Lj[0-9]+[[:space:]]*\$/d' \\
+                 -e 's/_(\\\$[A-Za-z0-9_\$]*\\\$_Lj[0-9]+)/L_\\1/g' "\$a" ;;
+    esac
+done
+exec "$UTILS/clang" "\$@"
+EOF
+    chmod +x "$T/fpc/asfix/clang"
+fi
+{
+    echo "# >>> setup-toolchain.sh (FPC 3.2.2 con Xcode 15 o posterior)"
+    if [ $ASFIX -eq 1 ]; then
+        echo "#IFDEF CPUX86_64"
+        echo "-FD$T/fpc/asfix"
+        echo "#ENDIF"
+    fi
+    [ $LDCLASSIC -eq 1 ] && echo "-k-ld_classic"
+    echo "# <<< setup-toolchain.sh"
+} >> "$CFG"
+echo "Ensamblador: $([ $ASFIX -eq 1 ] && echo "asfix ($UTILS/clang)" || echo "$UTILS/clang"); enlazador: $([ $LDCLASSIC -eq 1 ] && echo "ld -ld_classic" || echo ld)"
 # fpc busca primero ~/.fpc.cfg
 if [ ! -e "$HOME/.fpc.cfg" ]; then
     ln -s "$T/fpc/etc/fpc.cfg" "$HOME/.fpc.cfg"
@@ -139,7 +206,7 @@ done
 
 # Todo con FPC 3.2.2: FCL, LazUtils, LCL Cocoa, SynEdit, IPro, Zeos y los
 # tres paquetes de Report Manager. Una vez, y otra si cambian los parches
-STAMP="FPC $(fpc -iV) $(uname -m) $(cat "$SRC"/build/macos/patches/lazarus-*.patch | md5 -q)"
+STAMP="FPC $(fpc -iV) $(uname -m) $(cat "$SRC"/build/macos/patches/lazarus-*.patch "$T/fpc/asfix/clang" 2> /dev/null | md5 -q) $(sed -n '/^# >>> setup-toolchain.sh/,/^# <<< setup-toolchain.sh/p' "$CFG" | md5 -q)"
 if [ "$(cat "$T/lazarus/.rm-build" 2>/dev/null)" != "$STAMP" ]; then
     lazbuild -B -r --no-write-project "$SRC/packages/fpc_lcl/reportman_designlcl.lpk"
     echo "$STAMP" > "$T/lazarus/.rm-build"
