@@ -98,6 +98,8 @@ end;
 var
   allOk: Boolean;
 begin
+  if PrintConnectionsFile then
+    Exit;
   WriteLn('==================================================');
   WriteLn('Report Manager FPC PDF Test Suite');
   WriteLn('==================================================');

@@ -364,7 +364,8 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
     their connection: the test connections (for example <code>SQLITETEST</code>, SQLite over
     <code>clientes.db</code>) are in <code>samples/dbxconnections.ini</code>. Add them with the same
     parameters in <i>Report &gt; Data access configuration &gt; Configure</i> (the editor of
-    <code>~/.borland/dbxconnections</code>), or copy their sections to that file.</li>
+    <code>~/.borland/dbxconnections</code>, or of <code>~/.dbxconnections</code> when the first one
+    does not exist), or copy their sections to that file.</li>
   <li>The designer language (menus, toolbars, dialogs and messages) follows <code>LC_ALL</code>,
     <code>LC_MESSAGES</code> or <code>LANG</code>, in that order: English, Spanish, Catalan, French,
     German, Italian, Portuguese, Czech and Lithuanian. For example
@@ -387,7 +388,7 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
 <table>
   <tr><th>What</th><th>Where</th></tr>
   <tr><td>Designer preferences (window position, last folder)</td><td><code>~/.config/reportman/designer_lcl.ini</code> (honors <code>XDG_CONFIG_HOME</code>)</td></tr>
-  <tr><td>Database connections and drivers</td><td><code>~/.borland/dbxconnections</code> and <code>~/.borland/dbxdrivers</code>, shared with the other Report Manager tools</td></tr>
+  <tr><td>Database connections and drivers</td><td><code>~/.borland/dbxconnections</code> and <code>~/.borland/dbxdrivers</code>, shared with the other Report Manager tools; when they do not exist, <code>~/.dbxconnections</code> and <code>~/.dbxdrivers</code></td></tr>
   <tr><td>Connection templates for all users</td><td><code>/usr/local/etc/dbxconnections.conf</code> and <code>/usr/local/etc/dbxdrivers.conf</code>, copied to <code>~/.borland/</code> the first time (the same convention as the <a href="webserverintro.html">web report server</a>)</td></tr>
   <tr><td>Report library connections</td><td><code>~/.repmandlib</code></td></tr>
 </table>
