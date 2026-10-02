@@ -4716,6 +4716,18 @@ begin
   Result:='?';
  end;
 end;
+
+// Appends the Windows-1252 byte of a character. The text is marked with the
+// code page of the system first: its constants ('(') come from this unit,
+// UTF-8 (the file has a BOM), and on Windows (Windows-1252) the next
+// concatenation would convert it from UTF-8, where a lone byte $80-$FF
+// becomes '?'
+procedure AddWinAnsiChar(var AText:string;achar:WideChar);
+begin
+ SetCodePage(RawByteString(AText),DefaultSystemCodePage,False);
+ SetLength(AText,Length(AText)+1);
+ AText[Length(AText)]:=WinAnsiChar(achar);
+end;
 {$ENDIF}
 
 function WideCharToHex(achar:Widechar):string;
@@ -5058,7 +5070,7 @@ begin
    if CharInSet(astring[i],['(',')','\']) then
     Result:=Result+'\';
 {$IFDEF FPC}
-   Result:=Result+WinAnsiChar(astring[i]);
+   AddWinAnsiChar(Result,astring[i]);
 {$ELSE}
    // Euro exception
    if (Ord(astring[i])=8364) then
@@ -5111,7 +5123,7 @@ begin
    if CharInSet(nchar,['(',')','\']) then
     Result:=Result+'\';
 {$IFDEF FPC}
-   Result:=Result+WinAnsiChar(nchar);
+   AddWinAnsiChar(Result,nchar);
 {$ELSE}
    // Euro character exception
    if (Ord(nchar)=8364) then
