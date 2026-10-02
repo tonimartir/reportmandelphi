@@ -43,10 +43,24 @@ type
     procedure AppException(Sender: TObject; E: Exception);
   end;
 
+  {$IFDEF DARWIN}
+  { The files macOS asks the application to open: double click on a .rep
+    in the Finder, dropping it on the icon of the application, Open With.
+    The Info.plist of the package declares the type (make-package.sh); LCL
+    Cocoa keeps the files until the application runs and gives them to
+    Application.OnDropFiles. }
+  TFinderOpener = class
+    procedure OpenFiles(Sender: TObject; const FileNames: array of string);
+  end;
+  {$ENDIF}
+
 var
   MainForm: TFRpMainFLCL;
   ExceptionLogger: TExceptionLogger;
   FileArg: string;
+  {$IFDEF DARWIN}
+  FinderOpener: TFinderOpener;
+  {$ENDIF}
 
 procedure TExceptionLogger.AppException(Sender: TObject; E: Exception);
 begin
@@ -157,6 +171,23 @@ begin
   end;
 end;
 
+{$IFDEF DARWIN}
+procedure TFinderOpener.OpenFiles(Sender: TObject; const FileNames: array of string);
+var
+  i: Integer;
+begin
+  // The designer edits one report: the first .rep (OpenReportFile asks
+  // first when the current one has changes)
+  for i := Low(FileNames) to High(FileNames) do
+    if SameText(ExtractFileExt(FileNames[i]), '.rep') then
+    begin
+      Application.BringToFront;
+      OpenFromCommandLine(MainForm, FileNames[i]);
+      Exit;
+    end;
+end;
+{$ENDIF}
+
 begin
   FileArg := CommandLineFile;
   // LCL texts (dialog buttons...) in the language of reportmanres.*
@@ -174,9 +205,20 @@ begin
     LoadPreferences(MainForm);
     if FileArg <> '' then
       OpenFromCommandLine(MainForm, FileArg);
+    {$IFDEF DARWIN}
+    FinderOpener := TFinderOpener.Create;
+    Application.AddOnDropFilesHandler(FinderOpener.OpenFiles);
+    {$ENDIF}
     Application.Run;
     SavePreferences(MainForm);
   finally
+    {$IFDEF DARWIN}
+    if Assigned(FinderOpener) then
+    begin
+      Application.RemoveOnDropFilesHandler(FinderOpener.OpenFiles);
+      FinderOpener.Free;
+    end;
+    {$ENDIF}
     Application.OnException := nil;
     ExceptionLogger.Free;
   end;

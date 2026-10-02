@@ -232,8 +232,23 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   `FONTCONFIG_PATH`.
 - `Contents/Resources`: `reportmanres.*`, `languages/lclstrconsts.*.po`, los
   ejemplos en `samples/` (sin los PDF) y el icono, hecho de `doc/icon-512.png`.
+- `Info.plist`: `LSMinimumSystemVersion` es la mayor versión mínima que
+  piden el ejecutable y las librerías según `otool` (hoy 10.15, la de
+  `MACOSX_DEPLOYMENT_TARGET` en `build-deps.sh`; el ejecutable de FPC pide
+  10.8), para que un macOS más antiguo diga que no se puede abrir en vez de
+  fallar al cargar FreeType. Y el tipo `.rep` (`UTExportedTypeDeclarations`,
+  `es.reportman.designer.rep`) con la aplicación como editor
+  (`CFBundleDocumentTypes`).
 - Firma ad hoc (`codesign -s -`) y `.dmg` comprimido con un enlace a
   Aplicaciones.
+
+**Abrir `.rep` desde Finder.** Doble clic, soltar en el icono o «Abrir con»
+llegan como `application:openURLs:`; LCL Cocoa guarda los ficheros hasta que
+la aplicación corre y los entrega a `Application.OnDropFiles`.
+`repmandesigner_lcl.lpr` (solo en Darwin) abre el primer `.rep` con
+`OpenReportFile`, que antes pregunta si hay cambios sin guardar. Probado con
+`open informe.rep` sin `-a` (lo que hace el doble clic) con el diseñador
+cerrado (arranca con ese informe) y abierto (lo abre en la misma instancia).
 
 Probado en macOS 11 con `~/lib` y `~/dev/macdeps` renombrados: instalado
 desde el `.dmg` en `~/Applications`, las cuatro librerías se cargan de
@@ -246,9 +261,7 @@ la aplicación abierta con `open` muestra su ventana.
 
 - Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
   de desarrollador de Apple), para que Gatekeeper lo abra sin «clic
-  derecho > Abrir». Meter OpenSSL 3 en `Contents/Frameworks`. Asociar los
-  `.rep` a la aplicación (`CFBundleDocumentTypes` y el evento de abrir
-  documento de Cocoa).
+  derecho > Abrir». Meter OpenSSL 3 en `Contents/Frameworks`.
 - Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
   compilador `ppca64`.
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.

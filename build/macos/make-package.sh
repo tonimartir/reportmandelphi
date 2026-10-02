@@ -20,7 +20,10 @@
 #   Contents/Resources/samples/         los ejemplos (sample4.rep y su
 #                                       biolife.cds, sin los PDF)
 #
-# ICU es la del sistema. OpenSSL 3 (HTTPS: asistentes de IA, agente de datos,
+# El Info.plist declara la version minima de macOS (la mayor que piden el
+# ejecutable y las librerias, segun otool) y el tipo .rep, para que Finder
+# abra los informes con la aplicacion (doble clic, arrastrar al icono, Abrir
+# con). ICU es la del sistema. OpenSSL 3 (HTTPS: asistentes de IA, agente de datos,
 # login) no va dentro: brew install openssl@3, o RP_OPENSSL_DIR. La firma es
 # ad hoc (codesign -s -): sin un certificado Developer ID y la notarizacion de
 # Apple, Gatekeeper pide abrirla la primera vez con clic derecho > Abrir.
@@ -54,6 +57,17 @@ fi
 lazbuild --bm=Release --no-write-project "$SRC/repman/lcl_designer/repmandesigner_lcl.lpi" > "$SRC/build/macos/package-build.log" 2>&1 \
     || { tail -20 "$SRC/build/macos/package-build.log"; exit 1; }
 
+# La version minima de macOS: la mayor que piden el ejecutable y las librerias
+# (LC_BUILD_VERSION minos, o LC_VERSION_MIN_MACOSX en los binarios antiguos)
+min_macos() {
+    otool -l "$1" | awk '/LC_BUILD_VERSION/ {b = 1} /LC_VERSION_MIN_MACOSX/ {m = 1}
+        b && $1 == "minos" {print $2; exit} m && $1 == "version" {print $2; exit}'
+}
+MIN_MACOS=$(for f in "$SRC/repman/$EXE" $(for d in $DYLIBS; do echo "$DEPS/lib/$d"; done); do
+    min_macos "$f"; done | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)
+[ -n "$MIN_MACOS" ] || { echo "ERROR: no se pudo leer la version minima de macOS de los binarios" >&2; exit 1; }
+echo "== macOS minimo: $MIN_MACOS"
+
 echo "== Montando $APP"
 rm -rf "$OUT"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Frameworks" \
@@ -77,13 +91,38 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleSignature</key><string>????</string>
+  <key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>Copyright 1994-2026 Toni Martir. MPL License.</string>
   <key>CFBundleLocalizations</key>
   <array><string>en</string><string>es</string><string>ca</string><string>cs</string><string>de</string><string>fr</string><string>it</string><string>lt</string><string>pt</string></array>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>Report Manager report</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Owner</string>
+      <key>CFBundleTypeIconFile</key><string>reportman</string>
+      <key>LSItemContentTypes</key><array><string>$BUNDLE_ID.rep</string></array>
+    </dict>
+  </array>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key><string>$BUNDLE_ID.rep</string>
+      <key>UTTypeDescription</key><string>Report Manager report</string>
+      <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+      <key>UTTypeIconFile</key><string>reportman</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key><array><string>rep</string></array>
+      </dict>
+    </dict>
+  </array>
 </dict>
 </plist>
 PLIST
+plutil -lint "$APP/Contents/Info.plist" > /dev/null
 
 # Las librerias: cada una se nombra a si misma y a las demas por @loader_path
 # (el motor las carga con su ruta en Contents/Frameworks)
