@@ -55,7 +55,7 @@ OPM se rellenan a mano; aquí son parámetros del script):
 | `CommunityDescription`, `ExternalDependecies` | textos en inglés | `-CommunityDescription`, `-ExternalDependencies` |
 | `LazCompatibility` | `Trunk, 4.8.0, 4.6.0, …, 3.0.0` | `-LazCompatibility` |
 | `FPCCompatibility` | `3.2.2` | `-FPCCompatibility` |
-| `SupportedWidgetSet` | `win32/win64, gtk2, gtk3, qt, qt5, qt6` | `-SupportedWidgetSet` |
+| `SupportedWidgetSet` | `win32/win64, gtk2, gtk3, qt, qt5, qt6, cocoa` | `-SupportedWidgetSet` |
 | `PackageBaseDir` | `reportman` | `-BaseDir` |
 
 Las compatibilidades solo se muestran y sirven para filtrar en OPM; no
@@ -66,6 +66,10 @@ paquetes y el selftest del diseñador pasan también con `--ws=qt5` y
 falla). `Trunk`, `qt` (Qt4) y `gtk3` los añadió el mantenedor de OPM al
 aceptar el paquete, tras probarlos él con Lazarus *main* (sección 4,
 «Aceptación»); el script los mantiene para no quitarlos en el siguiente envío.
+`cocoa` se añadió el 02-10-2026: con Lazarus 4.8 en macOS 11 (Intel), el
+árbol montado solo con los ficheros de `opm_files.txt`, con una configuración
+de Lazarus vacía, compila los tres paquetes y los cuatro ejemplos con
+`--ws=cocoa`, y `pdfconsole` escribe `sales.pdf` (ver `docs/macos.md`).
 
 ### Ficheros
 
@@ -347,7 +351,8 @@ Werner subió el paquete al repositorio central (`PackageData175` de
   (probado en Linux). A `reportman_lcl` le falta `gtk3`, que sí está en los
   otros dos, seguramente un descuido: `reportman_designlcl` depende de él.
 - **Cocoa (macOS) no compila**; en su opinión, con cambios menores
-  funcionaría.
+  funcionaría. Ya compila (02-10-2026): `SupportedWidgetSet` lleva `cocoa`
+  desde entonces. Hay que decírselo al enviar la siguiente versión.
 
 Sugerencia para la siguiente versión: los iconos de la paleta solo tenían un
 tamaño y se ven mal con DPI altos. El IDE (`TLCLGlyphs`, `GetDefaultGlyph`
