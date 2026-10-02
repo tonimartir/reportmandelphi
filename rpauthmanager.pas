@@ -28,7 +28,11 @@ uses
   Windows,
 {$ENDIF}
   SysUtils, Classes, SyncObjs, rpjsonfpc, rpnetencodingfpc, DateUtils, rpsysutilsfpc,
-  rphttpclientfpc, rptypes, Generics.Collections;
+  rphttpclientfpc, rptypes, Generics.Collections
+{$IFDEF DARWIN}
+  , rpdarwinlibs
+{$ENDIF}
+  ;
 {$ELSE}
 {$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Messages,
@@ -1215,6 +1219,11 @@ begin
     LCode := LowerCase(string(LBuffer));
 {$ELSE}
   LCode := LowerCase(Trim(GetEnvironmentVariable('LANG')));
+{$IFDEF DARWIN}
+  // macOS gives no LANG to the applications started from the Finder
+  if LCode = '' then
+    LCode := LowerCase(RpDarwinUserLanguage);
+{$ENDIF}
   LPos := Pos('.', LCode);
   if LPos > 0 then
     LCode := Copy(LCode, 1, LPos - 1);

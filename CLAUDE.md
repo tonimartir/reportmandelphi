@@ -162,7 +162,8 @@ Other FPC deliverables:
 - macOS (LCL Cocoa, Intel): `build/macos/setup-toolchain.sh` (FPC 3.2.2 +
   Lazarus 4.8 + Zeos in `~/dev`, no sudo, and applies
   `build/macos/patches` to that Lazarus) and `build/macos/build-deps.sh`
-  (FreeType/HarfBuzz/fontconfig dylibs; ICU is the system `libicucore`).
+  (FreeType/HarfBuzz/fontconfig dylibs; ICU is the system `libicucore`);
+  `build/macos/build-designer.sh` builds `repman/repmandesigner_lcl.app`.
   `rpconf.inc` defines `LINUX` for FPC on Darwin (the non-Windows engine
   path); real macOS differences go under `DARWIN`. No `.app` packaging yet.
   See `docs/macos.md`.
