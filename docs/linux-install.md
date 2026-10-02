@@ -161,7 +161,8 @@ distribución no soportada o algo falla.
   `SQLITETEST`, SQLite sobre `clientes.db`) están en
   `samples/dbxconnections.ini`. Dalas de alta con los mismos parámetros en
   Informe > Configuración de datos > Configurar (el editor de
-  `~/.borland/dbxconnections`), o copia sus secciones a ese fichero.
+  `~/.borland/dbxconnections`, o de `~/.dbxconnections` si el primero no
+  existe), o copia sus secciones a ese fichero.
 - El idioma del diseñador (menús, barras de herramientas, diálogos y
   mensajes, también los botones de los diálogos estándar) sigue `LC_ALL`,
   `LC_MESSAGES` o `LANG`, en ese orden (español, inglés, catalán, francés,
@@ -196,7 +197,7 @@ Wayland nativo si está instalado `qt6-wayland`.
 | Qué | Dónde |
 |---|---|
 | Preferencias del diseñador (posición de la ventana, última carpeta) | `~/.config/reportman/designer_lcl.ini` (respeta `XDG_CONFIG_HOME`) |
-| Conexiones y controladores de bases de datos | `~/.borland/dbxconnections` y `~/.borland/dbxdrivers`, compartidos con las demás herramientas de Report Manager |
+| Conexiones y controladores de bases de datos | `~/.borland/dbxconnections` y `~/.borland/dbxdrivers`, compartidos con las demás herramientas de Report Manager; si no existen, `~/.dbxconnections` y `~/.dbxdrivers` |
 | Plantillas de conexiones para todos los usuarios | `/usr/local/etc/dbxconnections.conf` y `/usr/local/etc/dbxdrivers.conf`: se copian a `~/.borland/` la primera vez (la misma convención que el servidor `repweb`) |
 | Conexiones de la biblioteca de informes | `~/.repmandlib` |
 

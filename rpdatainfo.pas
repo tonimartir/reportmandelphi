@@ -4424,6 +4424,13 @@ begin
  if (not FileExists(driverfilename)) then
  begin
   driverfilename:=Obtainininamelocaluserconfig('','','dbxdrivers');
+{$IFNDEF MSWINDOWS}
+  // The connections of ~/.borland (Kylix, the web server, the Linux
+  // packages) are used although there is no dbxdrivers next to them, as the
+  // drivers also come from the resource: first ~/.borland/dbxconnections,
+  // then ~/.dbxconnections
+  if not FileExists(configfilename) then
+{$ENDIF}
   configfilename:=Obtainininamelocaluserconfig('','','dbxconnections');
  end;
  if FileExists(driverfilename) then

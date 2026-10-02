@@ -8,10 +8,14 @@ interface
 
 function RunDataInfoTests: Boolean;
 
+// PdfTest --connections-file: writes the connections file TRpConnAdmin
+// chooses and returns True (the test runs itself with other HOME folders)
+function PrintConnectionsFile: Boolean;
+
 implementation
 
 uses
-  SysUtils, rpdatainfo;
+  SysUtils, Classes, {$IFDEF UNIX}Process,{$ENDIF} rpdatainfo;
 
 var
   GFailed: Integer;
@@ -49,12 +53,105 @@ begin
     'no original password: unchanged');
 end;
 
+function PrintConnectionsFile: Boolean;
+var
+  LAdmin: TRpConnAdmin;
+begin
+  Result := (ParamCount >= 1) and (ParamStr(1) = '--connections-file');
+  if not Result then
+    Exit;
+  LAdmin := TRpConnAdmin.Create;
+  try
+    WriteLn(LAdmin.configfilename);
+  finally
+    LAdmin.Free;
+  end;
+end;
+
+{$IFDEF UNIX}
+// The connections file of this program run with another HOME
+function ConnectionsFileWithHome(const AHome: string): string;
+var
+  LProcess: TProcess;
+  LOutput: TStringList;
+  i: Integer;
+begin
+  LProcess := TProcess.Create(nil);
+  LOutput := TStringList.Create;
+  try
+    LProcess.Executable := ParamStr(0);
+    LProcess.Parameters.Add('--connections-file');
+    for i := 1 to GetEnvironmentVariableCount do
+      if Pos('HOME=', GetEnvironmentString(i)) <> 1 then
+        LProcess.Environment.Add(GetEnvironmentString(i));
+    LProcess.Environment.Add('HOME=' + AHome);
+    LProcess.Options := [poWaitOnExit, poUsePipes];
+    LProcess.Execute;
+    LOutput.LoadFromStream(LProcess.Output);
+    if LOutput.Count > 0 then
+      Result := Trim(LOutput[LOutput.Count - 1])
+    else
+      Result := '';
+  finally
+    LOutput.Free;
+    LProcess.Free;
+  end;
+end;
+
+procedure WriteEmptyFile(const AFileName: string);
+begin
+  ForceDirectories(ExtractFileDir(AFileName));
+  with TStringList.Create do
+  try
+    SaveToFile(AFileName);
+  finally
+    Free;
+  end;
+end;
+
+// The connections of ~/.borland were ignored without ~/.borland/dbxdrivers
+// (the engine took ~/.dbxconnections): first ~/.borland/dbxconnections, then
+// ~/.dbxconnections
+procedure TestConnectionsFile;
+var
+  LHome: string;
+begin
+  WriteLn('-- Connections file: ~/.borland/dbxconnections, then ~/.dbxconnections');
+  LHome := IncludeTrailingPathDelimiter(GetTempDir(False)) + 'rpconnhome_' +
+    IntToStr(GetProcessID);
+  ForceDirectories(LHome);
+  try
+    CheckStr(LHome + '/.dbxconnections', ConnectionsFileWithHome(LHome),
+      'nothing in ~/.borland: ~/.dbxconnections');
+    WriteEmptyFile(LHome + '/.borland/dbxconnections');
+    CheckStr(LHome + '/.borland/dbxconnections', ConnectionsFileWithHome(LHome),
+      '~/.borland/dbxconnections without dbxdrivers, and ~/.dbxconnections');
+    DeleteFile(LHome + '/.dbxconnections');
+    CheckStr(LHome + '/.borland/dbxconnections', ConnectionsFileWithHome(LHome),
+      'only ~/.borland/dbxconnections');
+    WriteEmptyFile(LHome + '/.borland/dbxdrivers');
+    CheckStr(LHome + '/.borland/dbxconnections', ConnectionsFileWithHome(LHome),
+      '~/.borland with dbxdrivers and dbxconnections');
+  finally
+    DeleteFile(LHome + '/.borland/dbxconnections');
+    DeleteFile(LHome + '/.borland/dbxdrivers');
+    DeleteFile(LHome + '/.dbxconnections');
+    DeleteFile(LHome + '/.dbxdrivers');
+    RemoveDir(LHome + '/.borland');
+    RemoveDir(LHome);
+  end;
+end;
+{$ENDIF}
+
 function RunDataInfoTests: Boolean;
 begin
   WriteLn('==================================================');
   WriteLn('rpdatainfo helpers');
   GFailed := 0;
   TestADOPassword;
+  {$IFDEF UNIX}
+  TestConnectionsFile;
+  {$ENDIF}
   WriteLn('rpdatainfo helpers: ', GFailed, ' failed checks');
   Result := GFailed = 0;
 end;

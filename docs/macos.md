@@ -129,11 +129,12 @@ en este orden:
 crea el usuario y la base `rpsample` en un PostgreSQL (Homebrew,
 Postgres.app...) y `pgreport` imprime a PDF `sales_sqldb.rep` (FireDAC, que
 FPC abre con SQLdb) y `sales_zeos.rep` (Zeos). Sus conexiones están en el
-`dbxconnections.ini` de la carpeta; el diseñador lee las del usuario,
-`~/.dbxconnections`. El motor solo usa `~/.borland/dbxconnections` si existe
-`~/.borland/dbxdrivers` (lo crean los paquetes de Linux desde
-`/usr/local/etc`); si no, `TRpConnAdmin.LoadConfig` pasa a `~/.dbxdrivers` y
-`~/.dbxconnections`, que es lo normal en un Mac.
+`dbxconnections.ini` de la carpeta; el diseñador lee las del usuario:
+`~/.borland/dbxconnections` si existe (la ubicación histórica, la de los
+paquetes de Linux y el servidor web) y si no `~/.dbxconnections`, que es lo
+normal en un Mac. Antes `TRpConnAdmin.LoadConfig` solo usaba la de
+`~/.borland` si también existía `~/.borland/dbxdrivers`; ahora cada fichero
+se busca por separado (fuera de Windows, también en Delphi Linux).
 
 No uses `DYLD_LIBRARY_PATH` con la carpeta `lib` de un servidor. Esas carpetas
 traen su propia `libiconv`, `libssl`… que tapan las del sistema y rompen otras
