@@ -792,8 +792,15 @@ begin
   Result := TranslateStr(AId, ADefault);
 end;
 
-// The caption of the account card for a guest: the login gift
+// The caption of the account card for a guest: a guest who can get more
+// credits by signing in (the gift itself is in the login item of the menu)
 function GuestCaption: string;
+begin
+  Result := T(1834, 'Guest: sign in and get more credits');
+end;
+
+// The login item of the account menu: the login gift
+function LoginGiftCaption: string;
 begin
   Result := Format(T(1833, 'Sign in and get %s free credits that never expire'),
     [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
@@ -927,6 +934,7 @@ begin
     CheckEquals(GuestCaption, LFrame.LabelUser.Caption, 'guest caption');
     Check(not LFrame.LabelTier.Visible, 'no tier badge for guests');
     Check(LFrame.MenuItemLogin.Visible, 'menu: login visible');
+    CheckEquals(LoginGiftCaption, LFrame.MenuItemLogin.Caption, 'menu: login item with the gift');
     Check(not LFrame.MenuItemLogout.Visible, 'menu: logout hidden');
     Shot(LForm, 'login_frame_guest');
 
@@ -1080,6 +1088,7 @@ procedure TAIChatTests.TestAISelection;
 var
   LForm: TForm;
   LSel: TFRpAISelectionLCL;
+  LJson: TJSONValue;
 begin
   Section('Model selection (TFRpAISelectionLCL)');
   LForm := NewForm(420, 120);
@@ -1098,6 +1107,29 @@ begin
     CheckContains(T(1526, 'Used') + ': 250 (25%)', LSel.PaintBoxGauge.Hint, 'credits used');
     Check(Abs(LSel.GaugeValue - 0.25) < 0.001, 'gauge value');
     Shot(LForm, 'ai_selection');
+
+    // Free credits (the Free tier, a guest) do not renew: the hint says what is
+    // left of them; then the Pro profile of the session again
+    LJson := TJSONObject.ParseJSONValue('{"userId":7,"email":"ana@example.com","tierId":2,' +
+      '"tierName":"Free","dailyMax":0,"dailyConsumed":0,"freeInitial":2000,"freeRemaining":1250}');
+    try
+      TRpAuthManager.Instance.UpdateProfileFromJson(TJSONObject(LJson));
+    finally
+      LJson.Free;
+    end;
+    LSel.RefreshState;
+    CheckContains(T(1524, 'Free Credits'), LSel.PaintBoxGauge.Hint, 'gauge hint (free credits)');
+    CheckContains(Format(T(1835, 'Left: %s of %s'),
+      [FormatFloat('#,##0', 1250), FormatFloat('#,##0', 2000)]), LSel.PaintBoxGauge.Hint,
+      'free credits left');
+    Check(Abs(LSel.GaugeValue - 0.375) < 0.001, 'gauge value (free credits)');
+    LJson := TJSONObject.ParseJSONValue(ProfileJson('Pro'));
+    try
+      TRpAuthManager.Instance.UpdateProfileFromJson(TJSONObject(LJson));
+    finally
+      LJson.Free;
+    end;
+    LSel.RefreshState;
 
     LSel.ComboAIProvider.ItemIndex := 1;
     LSel.ComboAIProviderChange(nil);

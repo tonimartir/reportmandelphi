@@ -438,6 +438,11 @@ begin
 
   BtnLogin.Visible := False;
   FMenuItemLogin.Visible := not LLoggedIn;
+  // The login item says what signing in gives: the login gift the API
+  // advertises in its tiers (credits that never expire)
+  if not LLoggedIn then
+    FMenuItemLogin.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+      [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
   FMenuItemLanguage.Visible := True;
   N1.Visible := LLoggedIn;
   FMenuItemLogoutSeparator.Visible := LLoggedIn;
@@ -516,9 +521,9 @@ begin
   end
   else
   begin
-    // The reason to sign in, with the login gift the API advertises in its tiers
-    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
-      [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
+    // A guest and the reason to sign in, in one line; the gift is in the
+    // menu and the credits left in the gauge of the AI panel
+    LabelUser.Caption := TranslateStr(1834, 'Guest: sign in and get more credits');
     LUserLeft := Scale(8);
   end;
   LUserWidth := LabelArrow.Left - LUserLeft - Scale(6);

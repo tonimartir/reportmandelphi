@@ -511,7 +511,7 @@ end;
 procedure TFRpAISelectionLCL.UpdateGaugeDisplay;
 var
   LProfile: TRpProfile;
-  LUsed, LMax: Int64;
+  LUsed, LMax, LLeft: Int64;
   LPct: Double;
   LHint: string;
   LAuth: TRpAuthManager;
@@ -526,14 +526,24 @@ begin
   if LMax > 0 then
   begin
     if LAuth.UsesFreeCredits then
-      LHint := TranslateStr(1524, 'Free Credits') + LineEnding
+    begin
+      // Free credits (a guest, the Free tier) do not renew: what is left
+      LLeft := LMax - LUsed;
+      if LLeft < 0 then
+        LLeft := 0;
+      LHint := TranslateStr(1524, 'Free Credits') + LineEnding +
+        Format(TranslateStr(1835, 'Left: %s of %s'),
+        [FormatFloat('#,##0', LLeft), FormatFloat('#,##0', LMax)]);
+    end
     else
+    begin
       LHint := TranslateStr(1525, 'Daily Credit Usage') + LineEnding;
-    LHint := LHint + TranslateStr(1526, 'Used') + ': ' + FormatFloat('#,##0', LUsed) +
-      ' (' + FormatFloat('0', LPct) + '%)' + LineEnding;
-    LHint := LHint + TranslateStr(1527, 'Max') + ': ' + FormatFloat('#,##0', LMax);
-    if (not LAuth.UsesFreeCredits) and (LProfile.ServerDay > 0) then
-      LHint := LHint + LineEnding + DateToStr(LProfile.ServerDay);
+      LHint := LHint + TranslateStr(1526, 'Used') + ': ' + FormatFloat('#,##0', LUsed) +
+        ' (' + FormatFloat('0', LPct) + '%)' + LineEnding;
+      LHint := LHint + TranslateStr(1527, 'Max') + ': ' + FormatFloat('#,##0', LMax);
+      if LProfile.ServerDay > 0 then
+        LHint := LHint + LineEnding + DateToStr(LProfile.ServerDay);
+    end;
   end
   else
   begin

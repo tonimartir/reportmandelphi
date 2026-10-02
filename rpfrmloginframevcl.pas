@@ -365,8 +365,10 @@ begin
     ImageAvatar.Visible := False;
     LabelUser.Visible := True;
     LabelArrow.Visible := True;
-    // The reason to sign in, with the login gift the API advertises in its tiers
-    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+    // A guest and the reason to sign in, in one line; the login item of the
+    // menu says the gift, and the gauge of the AI panel the credits left
+    LabelUser.Caption := TranslateStr(1834, 'Guest: sign in and get more credits');
+    FMenuItemLogin.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
       [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
     LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
     LUserLeft := GuestLeft;
@@ -467,8 +469,10 @@ begin
     ImageAvatar.Visible := False;
     LabelUser.Visible := True;
     LabelArrow.Visible := True;
-    // The reason to sign in, with the login gift the API advertises in its tiers
-    LabelUser.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
+    // A guest and the reason to sign in, in one line; the login item of the
+    // menu says the gift, and the gauge of the AI panel the credits left
+    LabelUser.Caption := TranslateStr(1834, 'Guest: sign in and get more credits');
+    FMenuItemLogin.Caption := Format(TranslateStr(1833, 'Sign in and get %s free credits that never expire'),
       [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
     LabelArrow.Left := PContainer.ClientWidth - LabelArrow.Width - ArrowRightMargin;
     LUserLeft := GuestLeft;

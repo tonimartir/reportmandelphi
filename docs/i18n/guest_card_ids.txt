@@ -1,0 +1,2 @@
+1834	Guest: sign in and get more credits	Invitado: entra y consigue más créditos	Convidat: inicia la sessió i aconsegueix més crèdits	Host: přihlaste se a získejte více kreditů	Gast: anmelden und mehr Credits erhalten	Invité : connectez-vous et obtenez plus de crédits	Ospite: accedi e ottieni più crediti	Svečias: prisijunkite ir gaukite daugiau kreditų	Convidado: inicie sessão e obtenha mais créditos
+1835	Left: %s of %s	Quedan: %s de %s	Queden: %s de %s	Zbývá: %s z %s	Verbleibend: %s von %s	Restants : %s sur %s	Rimanenti: %s di %s	Liko: %s iš %s	Restam: %s de %s
