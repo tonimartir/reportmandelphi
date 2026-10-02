@@ -271,6 +271,18 @@ desde el `.dmg` en `~/Applications`, las cuatro librerías se cargan de
 la vista previa LCL con los datos de `biolife.cds`, los textos en español, y
 la aplicación abierta con `open` muestra su ventana.
 
+Con OpenSSL dentro (02-10-2026, con `~/lib` escondido): HTTPS a
+`api.reportman.es` desde la aplicación instalada usa el `libssl` de
+`Contents/Frameworks` y rechaza un certificado caducado; Toni comprobó en la
+VM el inicio de sesión de IA y el copilot completo.
+
+**Publicarlo en SourceForge.** El `.dmg` y su `SHA256SUMS` van en
+`Report Manager Designer/Designer 4.0/macOS`, como la carpeta `Linux`.
+Sustituir el fichero por SFTP le quita las propiedades: hay que volver a
+marcar «Default Download For: Mac» en su ficha (Files, botón *i*), o los Mac
+reciben el instalador de Windows. Se comprueba con
+`https://sourceforge.net/projects/reportman/best_release.json`.
+
 ## Pendiente
 
 - Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
@@ -279,3 +291,9 @@ la aplicación abierta con `open` muestra su ventana.
 - Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
   compilador `ppca64`.
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.
+- Los tooltips no aparecen en LCL Cocoa (Lazarus 4.8), en ningún control:
+  la LCL nunca llega a pedirlos (`Application.OnShowHint` no se llama).
+  `TLCLCommonCallback.MouseMove` avisa de la entrada del usuario con
+  `_KeyMsg.Msg` en vez de `LM_MOUSEMOVE` (corregido en la rama principal de
+  Lazarus), pero arreglar solo eso no basta. Se deja hasta subir de
+  versión de Lazarus.
