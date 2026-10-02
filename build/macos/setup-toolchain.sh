@@ -77,7 +77,10 @@ fi
 # fpc.cfg nombra el SDK y el clang de las Command Line Tools (o de Xcode): se
 # vuelve a generar si ya no existen (otra version, o la cache de Actions en
 # otra imagen del runner)
-XR=$(sed -n 's/^-XR//p' "$T/fpc/etc/fpc.cfg" 2>/dev/null | head -n 1)
+XR=""
+if [ -f "$T/fpc/etc/fpc.cfg" ]; then
+    XR=$(sed -n 's/^-XR//p' "$T/fpc/etc/fpc.cfg" | head -n 1)
+fi
 if [ -z "$XR" ] || [ ! -d "$XR" ]; then
     mkdir -p "$T/fpc/etc"
     rm -f "$T/fpc/etc/fpc.cfg"
