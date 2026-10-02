@@ -3,14 +3,14 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://reportman.es/</loc>
-    <lastmod>2026-09-28</lastmod>
+    <lastmod>2026-10-02</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
   </url>
   <url>
     <loc>https://reportman.es/indexes.html</loc>
-    <lastmod>2026-09-28</lastmod>
+    <lastmod>2026-10-02</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
@@ -229,11 +229,11 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/installlin.html</loc>
-    <lastmod>2026-09-28</lastmod>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/installmac.html</loc>
-    <lastmod>2026-10-01</lastmod>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://reportman.es/doc/installserver.html</loc>
