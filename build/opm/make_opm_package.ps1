@@ -67,7 +67,7 @@ param(
   [string]$HomePageURL = 'https://reportman.es',
   [string]$SVNURL = 'https://github.com/tonimartir/reportmandelphi',
   [string]$UpdateBaseURL = 'https://reportman.es/opm/',
-  [string]$CommunityDescription = 'Report Manager: banded report engine and visual report designer. Reports are stored as .rep files, previewed and printed with the LCL, and exported to PDF, SVG, HTML, CSV and text. Also available for Delphi (VCL) and .NET.',
+  [string]$CommunityDescription = 'Report Manager: banded report engine and visual report designer. Reports are stored as .rep files, previewed and printed with the LCL, and exported to PDF, SVG, HTML, CSV and text. Also available for Delphi (VCL) and .NET. Report assistant with AI enabled. Example projects in examples/lazarus.',
   [string]$ExternalDependencies = 'Nothing extra is needed to compile. At run time some features load optional native libraries on demand: FreeType, HarfBuzz and ICU for advanced text shaping in PDF/SVG output, fontconfig on Linux and macOS, OpenSSL 3 for HTTPS (the Reportman DB Agent driver and the AI assistants of the designer; on macOS, build/macos/bundle-openssl.sh copies it into the application bundle), the client library of the database used through Zeos or SQLdb (the FireDAC connections: SQLite, PostgreSQL, MySQL/MariaDB, Firebird, SQL Server, Oracle, ODBC) and, on Windows, WebView2Loader.dll plus the Microsoft Edge WebView2 Runtime for the Monaco SQL editor and the AI chat of the designer (without them, and on Linux, the SQL editor is a SynEdit and the chat uses the TurboPower IPro HTML viewer, both included with Lazarus).',
   [string]$LazCompatibility = 'Trunk, 4.8.0, 4.6.0, 4.4.0, 4.2.0, 4.0.0, 3.8.0, 3.6.0, 3.4.0, 3.2.0, 3.0.0',
   [string]$FPCCompatibility = '3.2.2',

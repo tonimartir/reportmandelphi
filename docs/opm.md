@@ -372,6 +372,23 @@ Escribirle a él es la vía recomendada, no un plan B: así tiene el contacto
 del mantenedor para avisar si el paquete deja de funcionar. Invita a anunciar
 el paquete en el foro de Lazarus.
 
+### 4.0.17 (02-10-2026, commit e7cac28)
+
+Segundo envío: macOS (Cocoa), los iconos de la paleta en tres tamaños,
+`build/macos/bundle-openssl.sh` y el arreglo de los PDF con fuentes estándar
+en Windows. Zip de 191 ficheros, 5.505.210 bytes, MD5
+`2892808ec86169db6f680e41a1c2f9b3`. Validado con `-Validate -ValidateWsl`
+(Windows y Linux: los tres paquetes y los cuatro ejemplos), con la imagen
+`win32cross` (i386-win32: lo mismo) y con `opm_check` sobre el JSON
+publicado. En macOS se probaron los mismos ficheros (los de `opm_files.txt`)
+en 12888de; desde entonces solo cambian las versiones, `bundle-openssl.sh`
+(probado allí) y la tarjeta del invitado (`LclAIChatTest` en macOS, Windows y
+Linux).
+
+El JSON publicado es el que genera el script: su `CommunityDescription` por
+defecto ya es la que escribió Toni para el primer envío (con la IA y los
+ejemplos).
+
 ## 5. Actualizaciones mediante el JSON externo
 
 El campo `DownloadURL` de la entrada (*Update link (JSON)* en el formulario)
