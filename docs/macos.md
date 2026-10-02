@@ -213,15 +213,42 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   bucle de eventos, y liberar muchos de golpe cuesta tiempo cuadrático. No hay
   que crear un bitmap por cada medida de texto en las rutinas de maquetación.
 
+## Paquete de instalación
+
+`build/macos/make-package.sh` compila el diseñador en modo Release y monta
+`build/macos/out/<versión>/Report Manager Designer.app` y su `.dmg`:
+
+- `Contents/MacOS/repmandesigner_lcl`: el ejecutable copiado (el `.app` de
+  desarrollo solo tiene un enlace a `repman/`).
+- `Contents/Frameworks`: las cuatro `.dylib` de `build-deps.sh`, con
+  `install_name_tool` para que se nombren entre sí por `@loader_path`. El
+  script falla si alguna sigue apuntando a `~/dev/macdeps`.
+- `Contents/Resources/fonts`: el `fonts.conf` de `build-deps.sh` y su
+  `conf.d`, con la caché en `~/Library/Caches/es.reportman.designer`. Ese
+  fontconfig busca su configuración en la carpeta donde se compiló; antes de
+  cargarlo, `RpDarwinPrepareFontconfig` fija `FONTCONFIG_PATH` (con el
+  `setenv` de la libc, que es la que lee fontconfig) si la aplicación trae
+  `fonts.conf` y el usuario no ha fijado `FONTCONFIG_FILE` ni
+  `FONTCONFIG_PATH`.
+- `Contents/Resources`: `reportmanres.*`, `languages/lclstrconsts.*.po`, los
+  ejemplos en `samples/` (sin los PDF) y el icono, hecho de `doc/icon-512.png`.
+- Firma ad hoc (`codesign -s -`) y `.dmg` comprimido con un enlace a
+  Aplicaciones.
+
+Probado en macOS 11 con `~/lib` y `~/dev/macdeps` renombrados: instalado
+desde el `.dmg` en `~/Applications`, las cuatro librerías se cargan de
+`Contents/Frameworks` (`DYLD_PRINT_LIBRARIES`), fontconfig lee el
+`fonts.conf` de la aplicación (`FC_DEBUG=1024`), `sample4` sale a PDF y en
+la vista previa LCL con los datos de `biolife.cds`, los textos en español, y
+la aplicación abierta con `open` muestra su ventana.
+
 ## Pendiente
 
-- Empaquetar el `.app` para distribuir. Los `.dylib` irían en
-  `Contents/Frameworks`, con `install_name_tool` para que se encuentren entre
-  sí (`@loader_path`). La configuración de fontconfig también tendría que ir
-  dentro, y el diseñador tendría que fijar `FONTCONFIG_FILE` al arrancar,
-  porque `build-deps.sh` deja en la librería la ruta de `~/dev/macdeps`.
-  Faltan además `Info.plist`, el icono y, para Gatekeeper, la firma y la
-  notarización. OpenSSL 3 también iría en `Contents/Frameworks`.
+- Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
+  de desarrollador de Apple), para que Gatekeeper lo abra sin «clic
+  derecho > Abrir». Meter OpenSSL 3 en `Contents/Frameworks`. Asociar los
+  `.rep` a la aplicación (`CFBundleDocumentTypes` y el evento de abrir
+  documento de Cocoa).
 - Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
   compilador `ppca64`.
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.

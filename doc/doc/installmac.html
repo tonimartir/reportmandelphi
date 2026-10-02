@@ -234,7 +234,7 @@
 <p>Tested on macOS 11 Big Sur (Intel, x86_64) with Lazarus 4.8 and Free Pascal 3.2.2: the designer
   test suite, the preview against the PDF output, the examples and the database drivers against real
   PostgreSQL, MySQL, Firebird and SQLite servers. There is no ready-made macOS application to download
-  yet: build it from the source code as shown below.</p>
+  yet: build it, or its installation package, from the source code as shown below.</p>
 
 <h2>Requirements</h2>
 <ul>
@@ -322,6 +322,22 @@ open repman/repmandesigner_lcl.app</code></pre>
   <code>patch -d &lt;lazarus folder&gt; -p1 &lt; build/macos/patches/&lt;file&gt;.patch</code>, then
   rebuild the IDE or your project.</p>
 
+<h3 id="package">Installation package</h3>
+<p><code>build-designer.sh</code> makes an application for the machine that builds it (the bundle
+  links the executable and the libraries of <code>~/dev</code>). To install the designer on other Macs,
+  <code>build/macos/make-package.sh</code> builds a self-contained application and its disk image:</p>
+<pre><code>build/macos/make-package.sh
+# build/macos/out/&lt;version&gt;/Report Manager Designer.app
+# build/macos/out/&lt;version&gt;/reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code></pre>
+<p>The application carries FreeType, HarfBuzz and fontconfig with its configuration, the translations
+  and the samples (<code>sample4.rep</code> and its data among them): open the disk image, drag the
+  application to Applications and open it. The samples are inside the application; to change one, save
+  it in another folder. The package does not include OpenSSL 3 (HTTPS for the AI assistants and the
+  Reportman DB Agent driver: <code>brew install openssl@3</code>) nor the client libraries of the
+  database servers.</p>
+<p>The application is signed ad hoc, without an Apple Developer ID certificate nor notarization: the
+  first time, macOS only opens it from the Finder with <i>right click &gt; Open</i>.</p>
+
 <h2>Databases</h2>
 <p>Both direct database drivers of the engine work on macOS (see the
   <a href="#postgresql">PostgreSQL example</a>):</p>
@@ -360,7 +376,8 @@ open repman/repmandesigner_lcl.app</code></pre>
     suggestion, as on <a href="installlin.html">Linux</a> (the Monaco editor is Windows only).</li>
   <li>Not tested yet: Apple Silicon (arm64; the Free Pascal disk image includes its compiler) and
     printing.</li>
-  <li>No signed and notarized application bundle to distribute yet.</li>
+  <li>The installation package is signed ad hoc and not notarized (see
+    <a href="#package">Installation package</a>), for Intel Macs only.</li>
 </ul>
 <p>The technical notes of the port are in <code>docs/macos.md</code> of the source code.</p>
 </main>

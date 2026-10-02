@@ -158,6 +158,8 @@ begin
 {$IFDEF FPC}
   FontConfigLibHandle := dynlibs.NilHandle;
 {$IFDEF DARWIN}
+  // The configuration of the application bundle, when it has one
+  RpDarwinPrepareFontconfig;
   FontConfigLibHandle := RpLoadDarwinLibrary(FONTCONFIG_LIB_NAME);
 {$ELSE}
   FontConfigLibHandle := SafeLoadLibrary(FONTCONFIG_LIB_NAME);

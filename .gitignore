@@ -309,3 +309,5 @@ examples/lazarus/pdfconsole/sales.pdf
 examples/lazarus/pdfconsole/pdfconsole
 examples/lazarus/preview/preview
 examples/lazarus/designer/designer
+build/macos/out/
+build/macos/package-build.log
