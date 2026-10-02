@@ -53,9 +53,11 @@ postgresql@16, or Postgres.app; Linux: the postgresql package):
 
 The connections are in dbxconnections.ini of that folder (pgreport reads it;
 another file can be given as its parameter). To open the reports in the
-designer, copy its two sections to the connections file of the user,
-~/.borland/dbxconnections on macOS and Linux. On Windows run the commands of
-createdb.sh with psql (or psql -f sampledb.sql in a database rpsample).
+designer, copy its two sections to the connections file of the user:
+~/.dbxconnections on macOS and Linux, or ~/.borland/dbxconnections when
+~/.borland/dbxdrivers exists (the Linux packages create it). On Windows run
+the commands of createdb.sh with psql (or psql -f sampledb.sql in a database
+rpsample).
 
 
 Build and run
