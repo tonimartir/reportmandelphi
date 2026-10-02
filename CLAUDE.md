@@ -163,10 +163,12 @@ Other FPC deliverables:
   Lazarus 4.8 + Zeos in `~/dev`, no sudo, and applies
   `build/macos/patches` to that Lazarus) and `build/macos/build-deps.sh`
   (FreeType/HarfBuzz/fontconfig dylibs; ICU is the system `libicucore`);
-  `build/macos/build-designer.sh` builds `repman/repmandesigner_lcl.app`.
-  `rpconf.inc` defines `LINUX` for FPC on Darwin (the non-Windows engine
-  path); real macOS differences go under `DARWIN`. No `.app` packaging yet.
-  See `docs/macos.md`.
+  `build/macos/build-designer.sh` builds `repman/repmandesigner_lcl.app`
+  (development: it links the executable) and `build/macos/make-package.sh`
+  the self-contained `.app` and `.dmg` (output `build/macos/out/<v>/`,
+  gitignored). `rpconf.inc` defines `LINUX` for FPC on Darwin (the
+  non-Windows engine path); real macOS differences go under `DARWIN`. See
+  `docs/macos.md`.
 
 **Shared units rule:** the root `rp*.pas` units are also the Delphi product.
 Any change Delphi can see must be a genuine bug fix; all other port work goes

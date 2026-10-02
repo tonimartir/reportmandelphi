@@ -59,6 +59,13 @@ function RpDarwinUserLanguage: string;
 // executable next to the project and links it from X.app/Contents/MacOS,
 // and ParamStr(0) is that link.
 function RpDarwinDataDirs: TStringArray;
+
+// Before loading fontconfig: when the application bundle carries its
+// configuration (Contents/Resources/fonts/fonts.conf, see
+// build/macos/make-package.sh) and the user did not set FONTCONFIG_FILE nor
+// FONTCONFIG_PATH, that folder as FONTCONFIG_PATH. The fontconfig built by
+// build-deps.sh looks for its configuration in the folder where it was built.
+procedure RpDarwinPrepareFontconfig;
 {$ENDIF}
 
 implementation
@@ -81,6 +88,9 @@ function CFArrayGetValueAtIndex(AArray: Pointer; AIndex: PtrInt): Pointer; cdecl
 function CFStringGetCString(AString: Pointer; ABuffer: PAnsiChar; ABufferSize: PtrInt;
   AEncoding: Cardinal): Byte; cdecl; external name 'CFStringGetCString';
 procedure CFRelease(AObject: Pointer); cdecl; external name 'CFRelease';
+
+// The environment of the C library, which fontconfig reads
+function setenv(AName, AValue: PAnsiChar; AOverwrite: Integer): Integer; cdecl; external 'c' name 'setenv';
 
 function CFStringText(AString: Pointer): string;
 var
@@ -156,6 +166,21 @@ begin
     AddDir(ExpandFileName(LDir + '../Resources') + '/');
   AddDir(ExtractFilePath(LPath));
   AddDir(LDir);
+end;
+
+procedure RpDarwinPrepareFontconfig;
+var
+  LDir: string;
+begin
+  if (GetEnvironmentVariable('FONTCONFIG_FILE') <> '') or
+    (GetEnvironmentVariable('FONTCONFIG_PATH') <> '') then
+    Exit;
+  LDir := ExtractFilePath(ExpandFileName(ParamStr(0)));
+  if Pos('.app/Contents/MacOS/', LDir) = 0 then
+    Exit;
+  LDir := ExpandFileName(LDir + '../Resources/fonts');
+  if FileExists(LDir + '/fonts.conf') then
+    setenv('FONTCONFIG_PATH', PAnsiChar(AnsiString(LDir)), 1);
 end;
 
 function RpDarwinUserLanguage: string;
