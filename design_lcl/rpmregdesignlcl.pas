@@ -34,6 +34,7 @@ begin
 end;
 
 initialization
+  // The palette icons in 24, 36 and 48 pixels (packages/icons/make_icons.sh)
   {$I rpmregdesignlcl.lrs}
 
 end.

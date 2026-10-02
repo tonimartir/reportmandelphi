@@ -73,8 +73,6 @@ type
 
 implementation
 
-{$R 'rpvclreport.dcr'}
-
 procedure TLCLReport.PrinterSetup;
 var
  psetup:TPrinterSetUpDialog;

@@ -20,7 +20,10 @@ unit rpeval;
 interface
 
 {$I rpconf.inc}
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rpeval.dcr}
+{$ENDIF}
 
 uses
   SysUtils, Classes,DB,rptypeval,

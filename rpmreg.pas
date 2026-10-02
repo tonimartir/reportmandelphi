@@ -46,6 +46,12 @@ procedure Register;
 
 implementation
 
+{$IFDEF FPC}
+// The icons of the Lazarus component palette in 24, 36 and 48 pixels
+// (packages/icons/make_icons.sh); the Delphi ones are the .dcr of each unit
+{$R rtl_fpc/rpmregicons.res}
+{$ENDIF}
+
 procedure Register;
 begin
   RegisterComponents('Reportman', [TRpEvaluator]);

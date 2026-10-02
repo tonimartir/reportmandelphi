@@ -22,7 +22,10 @@ unit rpalias;
 interface
 
 {$I rpconf.inc}
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rpalias.dcr}
+{$ENDIF}
 
 
 uses SysUtils,Classes,DB,TypInfo,

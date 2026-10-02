@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- TRpMaskEdit: an edit box with a mask (##) and the caret -->
+  <rect x="1.5" y="5.5" width="21" height="13" rx="2" fill="#ffffff" stroke="#3f4752"/>
+  <g stroke="#0969da" stroke-width="1">
+    <path d="M5.5 9V15M7.5 9V15M4 10.5H9M4 13.5H9"/>
+    <path d="M12.5 9V15M14.5 9V15M11 10.5H16M11 13.5H16"/>
+  </g>
+  <path d="M19.5 8.5V15.5M18 8.5H21M18 15.5H21" stroke="#3f4752" stroke-width="1"/>
+</svg>
