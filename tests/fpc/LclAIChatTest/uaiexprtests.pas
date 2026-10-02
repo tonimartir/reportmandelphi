@@ -114,11 +114,11 @@ begin
   Result := TranslateStr(AId, ADefault);
 end;
 
-// The caption of the account card for a guest: the login gift
+// The caption of the account card for a guest: a guest who can get more
+// credits by signing in (the gift itself is in the login item of the menu)
 function GuestCaption: string;
 begin
-  Result := Format(T(1833, 'Sign in and get %s free credits that never expire'),
-    [FormatFloat('#,##0', TRpAuthManager.Instance.GetLoginGiftCredits)]);
+  Result := T(1834, 'Guest: sign in and get more credits');
 end;
 
 function ProfileJson: string;
