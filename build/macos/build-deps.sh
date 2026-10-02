@@ -23,12 +23,24 @@
 # en los prefijos de Homebrew y MacPorts (rpdarwinlibs.RpLoadDarwinLibrary).
 # El script las enlaza en ~/lib. Alternativa sin compilar nada:
 #   brew install fontconfig harfbuzz
+#
+# Para la arquitectura del Mac (uname -m): x86_64 con macOS 10.15 como minimo,
+# arm64 con macOS 11.0 (no hay Mac con Apple Silicon anterior). El .dmg
+# universal une las de los dos (make-universal.sh). Si ya estan compiladas
+# con las mismas versiones ($PREFIX/.rm-build) solo crea los enlaces.
 set -euo pipefail
 
 D=${RM_MACOS_DEPS:-$HOME/dev/macdeps}
 PREFIX=$D/prefix
-export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-10.15}
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) DEFAULT_TARGET=10.15; OSSL_TARGET=darwin64-x86_64-cc ;;
+    arm64)  DEFAULT_TARGET=11.0;  OSSL_TARGET=darwin64-arm64-cc ;;
+    *) echo "Arquitectura no soportada: $ARCH" >&2; exit 1 ;;
+esac
+export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-$DEFAULT_TARGET}
 JOBS=$(sysctl -n hw.ncpu)
+DYLIBS="libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib libssl.3.dylib libcrypto.3.dylib"
 
 FT=freetype-2.13.3
 FT_SHA256=0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289
@@ -41,6 +53,31 @@ OSSL_VERSION=3.5.9
 OSSL=openssl-$OSSL_VERSION
 OSSL_SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
 
+# Enlaces en ~/lib, la primera carpeta de la busqueda de dyld: asi las
+# encuentran tambien las aplicaciones abiertas desde el Finder (sin
+# DYLD_LIBRARY_PATH), los ejemplos y los disenadores compilados en este Mac.
+# RM_MACOS_NO_HOME_LIB=1 no los crea.
+link_home_lib() {
+    if [ "${RM_MACOS_NO_HOME_LIB:-}" != "1" ]; then
+        mkdir -p "$HOME/lib"
+        for l in $DYLIBS; do
+            ln -sf "$PREFIX/lib/$l" "$HOME/lib/$l"
+        done
+        echo "Enlazadas en $HOME/lib"
+    fi
+}
+
+STAMP="$ARCH $MACOSX_DEPLOYMENT_TARGET $FT $HB $FC $OSSL"
+if [ "$(cat "$PREFIX/.rm-build" 2>/dev/null)" = "$STAMP" ]; then
+    missing=0
+    for l in $DYLIBS; do [ -f "$PREFIX/lib/$l" ] || missing=1; done
+    if [ $missing -eq 0 ]; then
+        echo "Ya compiladas ($STAMP)"
+        link_home_lib
+        exit 0
+    fi
+fi
+
 mkdir -p "$D/src"
 cd "$D/src"
 fetch() {
@@ -52,7 +89,7 @@ fetch "https://download.savannah.gnu.org/releases/freetype/$FT.tar.xz" "$FT.tar.
 fetch "https://github.com/harfbuzz/harfbuzz/releases/download/$HB_VERSION/$HB.tar.xz" "$HB.tar.xz" "$HB_SHA256"
 fetch "https://www.freedesktop.org/software/fontconfig/release/$FC.tar.xz" "$FC.tar.xz" "$FC_SHA256"
 fetch "https://github.com/openssl/openssl/releases/download/$OSSL/$OSSL.tar.gz" "$OSSL.tar.gz" "$OSSL_SHA256"
-rm -rf "$FT" "$HB" "$FC" "$OSSL"
+rm -rf "$FT" "$HB" "$FC" "$OSSL" "$PREFIX"
 for t in "$FT" "$HB" "$FC"; do tar -xf "$t.tar.xz"; done
 tar -xzf "$OSSL.tar.gz"
 
@@ -104,22 +141,17 @@ tar -xzf "$OSSL.tar.gz"
 # macOS (/etc/ssl/cert.pem)
 (
     cd "$OSSL"
-    ./Configure darwin64-x86_64-cc shared no-tests no-docs         --prefix="$PREFIX" --libdir=lib --openssldir="$PREFIX/ssl" > ../ossl-configure.log
+    ./Configure "$OSSL_TARGET" shared no-tests no-docs \
+        --prefix="$PREFIX" --libdir=lib --openssldir="$PREFIX/ssl" > ../ossl-configure.log
     make -j"$JOBS" > ../ossl-make.log
     make install_sw > /dev/null
 )
 
 ls -la "$PREFIX"/lib/*.dylib
+for l in $DYLIBS; do
+    lipo -archs "$PREFIX/lib/$l" | grep -qw "$ARCH" || { echo "ERROR: $l no es $ARCH" >&2; exit 1; }
+done
+echo "$STAMP" > "$PREFIX/.rm-build"
 
-# Enlaces en ~/lib, la primera carpeta de la busqueda de dyld: asi las
-# encuentran tambien las aplicaciones abiertas desde el Finder (sin
-# DYLD_LIBRARY_PATH), los ejemplos y los disenadores compilados en este Mac.
-# RM_MACOS_NO_HOME_LIB=1 no los crea.
-if [ "${RM_MACOS_NO_HOME_LIB:-}" != "1" ]; then
-    mkdir -p "$HOME/lib"
-    for l in libfreetype.6.dylib libharfbuzz.0.dylib libharfbuzz-subset.0.dylib libfontconfig.1.dylib         libssl.3.dylib libcrypto.3.dylib; do
-        ln -sf "$PREFIX/lib/$l" "$HOME/lib/$l"
-    done
-    echo "Enlazadas en $HOME/lib"
-fi
+link_home_lib
 echo "Listo"

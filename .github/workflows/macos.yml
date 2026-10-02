@@ -1,0 +1,272 @@
+# Report Manager Designer para macOS: compila y prueba en un Mac Intel y en
+# otro con Apple Silicon, une las dos aplicaciones en un .dmg universal y lo
+# prueba en los dos. Solo se lanza a mano (Actions > macOS > Run workflow, o
+# gh workflow run macos.yml); el .dmg queda como artefacto de la ejecucion y
+# no se publica en ningun sitio. Ver docs/macos.md.
+name: macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_NAME: Report Manager Designer
+
+# bash con -e y pipefail (sin "shell:" seria solo -e: un "| tee" esconderia
+# los fallos)
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Compilar y probar (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version
+        id: version
+        run: |
+          v=$(sed -n "s/^[[:space:]]*RM_VERSION[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" rpmdconsts.pas | head -n 1)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Report Manager $v en $(uname -m), macOS $(sw_vers -productVersion), $(sysctl -n hw.ncpu) nucleos"
+
+      # FPC, Lazarus (con las PPU recompiladas), Zeos y las librerias de
+      # build-deps.sh: sin la cache son ~650 MB de SourceForge y casi una hora.
+      # Las descargas (dl) no se guardan
+      - name: Restaurar las herramientas (cache)
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/dev
+            !~/dev/dl
+          key: macos-dev-${{ matrix.arch }}-${{ hashFiles('build/macos/setup-toolchain.sh', 'build/macos/build-deps.sh', 'build/macos/patches/**') }}
+          restore-keys: macos-dev-${{ matrix.arch }}-
+
+      - name: FPC 3.2.2, Lazarus 4.8 y Zeos (setup-toolchain.sh)
+        run: bash build/macos/setup-toolchain.sh
+
+      - name: FreeType, HarfBuzz, fontconfig y OpenSSL (build-deps.sh)
+        run: bash build/macos/build-deps.sh
+
+      # Se guarda ya, aunque fallen las pruebas
+      - name: Guardar las herramientas (cache)
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/dev
+            !~/dev/dl
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Paquetes de Lazarus (build_fpc.sh)
+        run: |
+          . ~/dev/env.sh
+          LAZBUILD=lazbuild sh packages/fpc/build_fpc.sh
+
+      - name: LclDesignerTest --selftest
+        timeout-minutes: 30
+        run: |
+          . ~/dev/env.sh
+          lazbuild --no-write-project tests/fpc/LclDesignerTest/LclDesignerTest.lpi > "$RUNNER_TEMP/ldt-build.log" 2>&1 \
+            || { tail -n 30 "$RUNNER_TEMP/ldt-build.log"; exit 1; }
+          lipo -archs tests/fpc/LclDesignerTest/LclDesignerTest
+          rm -f tests/fpc/LclDesignerTest/selftest.log
+          rc=0
+          tests/fpc/LclDesignerTest/LclDesignerTest --selftest > "$RUNNER_TEMP/selftest.out" 2>&1 || rc=$?
+          tail -n 15 tests/fpc/LclDesignerTest/selftest.log || true
+          if [ $rc -ne 0 ]; then
+            grep -n "TEST_FAILED" tests/fpc/LclDesignerTest/selftest.log | head -n 20 || true
+            tail -n 40 "$RUNNER_TEMP/selftest.out"
+            exit $rc
+          fi
+          grep -q "TEST_PASSED" tests/fpc/LclDesignerTest/selftest.log
+
+      - name: PdfTest
+        timeout-minutes: 20
+        run: |
+          . ~/dev/env.sh
+          lazbuild --no-write-project tests/fpc/PdfTest/PdfTest.lpi > "$RUNNER_TEMP/pdftest-build.log" 2>&1 \
+            || { tail -n 30 "$RUNNER_TEMP/pdftest-build.log"; exit 1; }
+          cd tests/fpc/PdfTest
+          rc=0
+          ./PdfTest > "$RUNNER_TEMP/pdftest.log" 2>&1 || rc=$?
+          grep -E "FAIL|EXCEPTION|failed checks|Encodings:" "$RUNNER_TEMP/pdftest.log" || true
+          tail -n 3 "$RUNNER_TEMP/pdftest.log"
+          exit $rc
+
+      - name: Paquete OPM (solo sus ficheros, configuracion vacia)
+        timeout-minutes: 60
+        run: bash build/macos/opm-check.sh "$RUNNER_TEMP/opm"
+
+      - name: Aplicacion (make-package.sh)
+        run: |
+          bash build/macos/make-package.sh
+          out="build/macos/out/${{ steps.version.outputs.version }}"
+          lipo -archs "$out/$APP_NAME.app/Contents/MacOS/repmandesigner_lcl"
+          # tar conserva los permisos y la firma (el zip de los artefactos no)
+          tar -C "$out" -czf "$RUNNER_TEMP/designer-${{ matrix.arch }}.tar.gz" "$APP_NAME.app"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: designer-app-${{ matrix.arch }}
+          path: ${{ runner.temp }}/designer-${{ matrix.arch }}.tar.gz
+          retention-days: 7
+
+      - name: Registros
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-build-${{ matrix.arch }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/*.log
+            ${{ runner.temp }}/*.out
+            ${{ runner.temp }}/opm/*.log
+            ${{ runner.temp }}/opm/sales.pdf
+            tests/fpc/LclDesignerTest/selftest.log
+            build/macos/package-build.log
+            ~/dev/macdeps/src/*.log
+
+  universal:
+    name: Aplicacion universal y .dmg
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: designer-app-*
+          path: ${{ runner.temp }}/apps
+
+      - name: Unir con lipo (make-universal.sh)
+        run: |
+          cd "$RUNNER_TEMP/apps"
+          for a in x86_64 arm64; do
+            mkdir -p "$a"
+            tar -xzf "designer-app-$a/designer-$a.tar.gz" -C "$a"
+          done
+          cd "$GITHUB_WORKSPACE"
+          bash build/macos/make-universal.sh "$RUNNER_TEMP/apps/x86_64/$APP_NAME.app" \
+            "$RUNNER_TEMP/apps/arm64/$APP_NAME.app" "$RUNNER_TEMP/universal" | tee "$RUNNER_TEMP/universal.log"
+          {
+            echo '### .dmg universal'
+            echo '```'
+            sed -n '/== Arquitecturas/,/== Firma/p' "$RUNNER_TEMP/universal.log" | sed '$d'
+            ls -l "$RUNNER_TEMP"/universal/*.dmg | awk '{print $5, $9}'
+            cat "$RUNNER_TEMP/universal/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reportman-designer-macos-universal
+          path: |
+            ${{ runner.temp }}/universal/*.dmg
+            ${{ runner.temp }}/universal/SHA256SUMS
+          retention-days: 30
+
+  smoke:
+    name: Probar el .dmg universal (${{ matrix.arch }})
+    needs: universal
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+            codetype: ARM64
+          - os: macos-15-intel
+            arch: x86_64
+            codetype: X86-64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: reportman-designer-macos-universal
+          path: ${{ runner.temp }}/dmg
+
+      - name: Montar el .dmg
+        run: |
+          cd "$RUNNER_TEMP/dmg"
+          shasum -a 256 -c SHA256SUMS
+          mkdir -p "$RUNNER_TEMP/mnt"
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/mnt" ./*.dmg
+          APP="$RUNNER_TEMP/mnt/$APP_NAME.app"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          echo "EXE=$APP/Contents/MacOS/repmandesigner_lcl" >> "$GITHUB_ENV"
+          codesign --verify --deep --strict "$APP"
+          /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" -c "Print :LSMinimumSystemVersionByArchitecture" "$APP/Contents/Info.plist"
+          for f in "$APP"/Contents/MacOS/* "$APP"/Contents/Frameworks/*; do
+            echo "$(basename "$f"): $(lipo -archs "$f")"
+          done
+
+      - name: --version
+        run: |
+          "$EXE" --version | tee version.txt
+          grep -q "(LCL cocoa)" version.txt
+
+      # El login y los asistentes de IA: OpenSSL de Contents/Frameworks
+      - name: HTTPS contra api.reportman.es (OpenSSL del paquete)
+        run: |
+          rc=0
+          DYLD_PRINT_LIBRARIES=1 "$EXE" --check-https > https.out 2> dyld.log || rc=$?
+          cat https.out
+          grep -E 'libssl|libcrypto' dyld.log || true
+          [ $rc -eq 0 ] || { tail -n 20 dyld.log; exit 1; }
+          grep -q '^HTTPS: .* -> [1-5][0-9][0-9]' https.out
+          for l in libssl.3.dylib libcrypto.3.dylib; do
+            grep -q "$APP/Contents/Frameworks/$l" dyld.log \
+              || { echo "ERROR: $l no se ha cargado de Contents/Frameworks"; exit 1; }
+          done
+          if grep -E 'libssl|libcrypto' dyld.log | grep -v "$APP/Contents/Frameworks/" | grep -v '^.*/usr/lib/'; then
+            echo "ERROR: se ha cargado otro OpenSSL"; exit 1
+          fi
+
+      - name: Abrir sample4.rep (arquitectura del proceso)
+        run: |
+          DYLD_PRINT_LIBRARIES=1 "$EXE" "$APP/Contents/Resources/samples/sample4.rep" > gui.out 2> gui-dyld.log &
+          pid=$!
+          sleep 25
+          kill -0 $pid || { echo "ERROR: el disenador ha terminado"; cat gui.out; tail -n 30 gui-dyld.log; exit 1; }
+          screencapture -x "$RUNNER_TEMP/designer-${{ matrix.arch }}.png" || true
+          code=$(vmmap $pid 2>/dev/null | sed -n 's/^Code Type:[[:space:]]*//p' | head -n 1)
+          echo "Proceso $pid: $code (uname -m: $(uname -m))"
+          kill $pid || true
+          echo "Librerias de Contents/Frameworks cargadas:"
+          grep -o "Contents/Frameworks/[^ ]*" gui-dyld.log | sort -u || true
+          [ "$code" = "${{ matrix.codetype }}" ] || { echo "ERROR: se esperaba ${{ matrix.codetype }}"; exit 1; }
+          if grep '^ERROR' gui.out; then exit 1; fi
+
+      - name: Desmontar
+        if: always()
+        run: hdiutil detach "$RUNNER_TEMP/mnt" || true
+
+      - name: Registros
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-smoke-${{ matrix.arch }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            *.out
+            *.log
+            ${{ runner.temp }}/designer-*.png

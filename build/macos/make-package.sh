@@ -1,9 +1,13 @@
 #!/bin/bash
-# Paquete de instalacion de Report Manager Designer para macOS (Intel): una
-# aplicacion autonoma y su imagen de disco,
+# Paquete de instalacion de Report Manager Designer para macOS: una aplicacion
+# autonoma y su imagen de disco, de la arquitectura del Mac que la compila
+# (x86_64 o arm64),
 #
 #   build/macos/out/<version>/Report Manager Designer.app
-#   build/macos/out/<version>/reportman-designer-<version>-macos-x86_64.dmg
+#   build/macos/out/<version>/reportman-designer-<version>-macos-<arq>.dmg
+#
+# make-universal.sh une la aplicacion x86_64 y la arm64 en una universal (el
+# workflow .github/workflows/macos.yml lo hace en GitHub Actions).
 #
 # despues de setup-toolchain.sh, build-deps.sh y los paquetes
 # (LAZBUILD=lazbuild sh packages/fpc/build_fpc.sh). La aplicacion lleva:
@@ -51,7 +55,6 @@ VERSION=$(sed -n "s/^[[:space:]]*RM_VERSION[[:space:]]*=[[:space:]]*'\([^']*\)'.
 [ -n "$VERSION" ] || { echo "ERROR: no encuentro RM_VERSION en rpmdconsts.pas" >&2; exit 1; }
 OUT=$SRC/build/macos/out/$VERSION
 APP=$OUT/$APP_NAME.app
-DMG=$OUT/reportman-designer-$VERSION-macos-x86_64.dmg
 
 for f in $DYLIBS; do
     [ -f "$DEPS/lib/$f" ] || { echo "ERROR: falta $DEPS/lib/$f (build/macos/build-deps.sh)" >&2; exit 1; }
@@ -64,6 +67,19 @@ if ! command -v lazbuild > /dev/null && [ -f "$T/env.sh" ]; then
 fi
 lazbuild --bm=Release --no-write-project "$SRC/repman/lcl_designer/repmandesigner_lcl.lpi" > "$SRC/build/macos/package-build.log" 2>&1 \
     || { tail -20 "$SRC/build/macos/package-build.log"; exit 1; }
+
+# La arquitectura: la del ejecutable, que tienen que tener tambien las librerias
+ARCH=$(lipo -archs "$SRC/repman/$EXE")
+case $ARCH in
+    x86_64|arm64) ;;
+    *) echo "ERROR: el ejecutable es '$ARCH'; se espera x86_64 o arm64" >&2; exit 1 ;;
+esac
+for f in $DYLIBS; do
+    lipo -archs "$DEPS/lib/$f" | grep -qw "$ARCH" \
+        || { echo "ERROR: $DEPS/lib/$f no tiene $ARCH (build-deps.sh en un Mac $ARCH)" >&2; exit 1; }
+done
+DMG=$OUT/reportman-designer-$VERSION-macos-$ARCH.dmg
+echo "== Arquitectura: $ARCH"
 
 # La version minima de macOS: la mayor que piden el ejecutable y las librerias
 # (LC_BUILD_VERSION minos, o LC_VERSION_MIN_MACOSX en los binarios antiguos)
@@ -164,7 +180,9 @@ find "$SRC/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
 # build-deps.sh)
 LIC=$APP/Contents/Resources/licenses
 mkdir -p "$LIC"
-for spec in "freetype-*/LICENSE.TXT:FreeType-LICENSE.txt" "freetype-*/docs/FTL.TXT:FreeType-FTL.txt"             "harfbuzz-*/COPYING:HarfBuzz-COPYING.txt" "fontconfig-*/COPYING:fontconfig-COPYING.txt"             "openssl-*/LICENSE.txt:OpenSSL-LICENSE.txt"; do
+for spec in "freetype-*/LICENSE.TXT:FreeType-LICENSE.txt" "freetype-*/docs/FTL.TXT:FreeType-FTL.txt" \
+            "harfbuzz-*/COPYING:HarfBuzz-COPYING.txt" "fontconfig-*/COPYING:fontconfig-COPYING.txt" \
+            "openssl-*/LICENSE.txt:OpenSSL-LICENSE.txt"; do
     f=$(ls -d "$DEPS_SRC"/${spec%%:*} 2>/dev/null | tail -n 1)
     [ -n "$f" ] || { echo "ERROR: falta la licencia ${spec%%:*} en $DEPS_SRC (build-deps.sh)" >&2; exit 1; }
     cp "$f" "$LIC/${spec#*:}"

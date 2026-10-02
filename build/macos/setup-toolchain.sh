@@ -1,9 +1,12 @@
 #!/bin/bash
-# Prepara en un Mac (Intel, macOS 11 o posterior) lo necesario para compilar
-# Report Manager Designer con LCL-Cocoa, sin sudo y sin tocar /usr/local:
+# Prepara en un Mac (Intel o Apple Silicon, macOS 11 o posterior) lo necesario
+# para compilar Report Manager Designer con LCL-Cocoa, sin sudo y sin tocar
+# /usr/local:
 #
-#   $RM_MACOS_TOOLS/fpc        FPC 3.2.2 (el del .dmg oficial, sin instalarlo)
-#   $RM_MACOS_TOOLS/lazarus    Lazarus 4.8 (zip oficial)
+#   $RM_MACOS_TOOLS/fpc        FPC 3.2.2 (el del .dmg oficial, sin instalarlo;
+#                              trae los compiladores x86_64 y aarch64)
+#   $RM_MACOS_TOOLS/lazarus    Lazarus 4.8 (zip oficial de la arquitectura del
+#                              Mac: x86_64 o aarch64)
 #   $RM_MACOS_TOOLS/lazcfg     configuracion privada de lazbuild (--pcp)
 #   $RM_MACOS_TOOLS/zeos       Zeos 8.0 (el commit del build de Linux)
 #   $RM_MACOS_TOOLS/bin/lazbuild   envoltorio con --pcp, --lazarusdir y --compiler
@@ -20,15 +23,31 @@
 # recompilan aqui una vez (lazbuild -B -r), porque lazbuild no lo hace solo.
 # A esa copia de Lazarus se le aplican los parches de build/macos/patches
 # (fallos de la LCL Cocoa que aun no estan corregidos en Lazarus).
+#
+# Se puede volver a ejecutar: solo descarga e instala lo que falta, y solo
+# recompila Lazarus si cambian FPC o los parches ($RM_MACOS_TOOLS/lazarus/
+# .rm-build). Asi la cache de GitHub Actions (.github/workflows/macos.yml)
+# guarda $RM_MACOS_TOOLS sin las descargas ($RM_MACOS_TOOLS/dl).
 set -euo pipefail
 
 T=${RM_MACOS_TOOLS:-$HOME/dev}
 SRC=$(cd "$(dirname "$0")/../.." && pwd)
-SF=https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20x86-64
+SF=https://downloads.sourceforge.net/project/lazarus
+# El .dmg de FPC 3.2.2 es el mismo para Intel y Apple Silicon
 FPC_DMG=fpc-3.2.2.intelarm64-macosx.dmg
+FPC_DMG_URL="$SF/Lazarus%20macOS%20x86-64/Lazarus%204.0/$FPC_DMG"
 FPC_DMG_MD5=50babbde74790a5b86bc63c1fa3250d0
-LAZ_ZIP=lazarus-darwin-x86_64-4.8.zip
-LAZ_ZIP_MD5=08f5b014ea5708c261baf6e56448502d
+case $(uname -m) in
+    x86_64)
+        LAZ_ZIP=lazarus-darwin-x86_64-4.8.zip
+        LAZ_ZIP_URL="$SF/Lazarus%20macOS%20x86-64/Lazarus%204.8/$LAZ_ZIP"
+        LAZ_ZIP_MD5=08f5b014ea5708c261baf6e56448502d ;;
+    arm64)
+        LAZ_ZIP=lazarus-darwin-aarch64-4.8.zip
+        LAZ_ZIP_URL="$SF/Lazarus%20macOS%20aarch64/Lazarus%204.8/$LAZ_ZIP"
+        LAZ_ZIP_MD5=cbae6277b656739f5846d363a9220d6b ;;
+    *) echo "Arquitectura no soportada: $(uname -m)" >&2; exit 1 ;;
+esac
 ZEOS_COMMIT=c527f51a4663d6e6415e9e87e0f7c3480c1228b2
 
 xcode-select -p > /dev/null || { echo "Faltan las Command Line Tools: xcode-select --install" >&2; exit 1; }
@@ -42,13 +61,10 @@ fetch() {
     [ -f "$name" ] || curl -fL --retry 5 -o "$name" "$url"
     [ "$(md5 -q "$name")" = "$sum" ] || { echo "md5 incorrecto: $name" >&2; exit 1; }
 }
-fetch "$SF/Lazarus%204.0/$FPC_DMG" "$FPC_DMG" "$FPC_DMG_MD5"
-fetch "$SF/Lazarus%204.8/$LAZ_ZIP" "$LAZ_ZIP" "$LAZ_ZIP_MD5"
-[ -f zeos.tar.gz ] || curl -fL --retry 5 -o zeos.tar.gz \
-    "https://github.com/marsupilami79/zeoslib/archive/$ZEOS_COMMIT.tar.gz"
 
 # FPC: el contenido del paquete (usr/local) en $T/fpc, con su fpc.cfg
 if [ ! -x "$T/fpc/bin/fpc" ]; then
+    fetch "$FPC_DMG_URL" "$FPC_DMG" "$FPC_DMG_MD5"
     mnt=$(mktemp -d)
     hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$FPC_DMG" > /dev/null
     rm -rf "$T/fpcpkg"
@@ -57,7 +73,14 @@ if [ ! -x "$T/fpc/bin/fpc" ]; then
     rm -rf "$T/fpc"
     mv "$T/fpcpkg/Payload/usr/local" "$T/fpc"
     rm -rf "$T/fpcpkg"
+fi
+# fpc.cfg nombra el SDK y el clang de las Command Line Tools (o de Xcode): se
+# vuelve a generar si ya no existen (otra version, o la cache de Actions en
+# otra imagen del runner)
+XR=$(sed -n 's/^-XR//p' "$T/fpc/etc/fpc.cfg" 2>/dev/null | head -n 1)
+if [ -z "$XR" ] || [ ! -d "$XR" ]; then
     mkdir -p "$T/fpc/etc"
+    rm -f "$T/fpc/etc/fpc.cfg"
     "$T/fpc/lib/fpc/3.2.2/samplecfg" "$T/fpc/lib/fpc/3.2.2" "$T/fpc/etc" > /dev/null
 fi
 # fpc busca primero ~/.fpc.cfg
@@ -67,6 +90,7 @@ fi
 
 # Lazarus
 if [ ! -x "$T/lazarus/lazbuild" ]; then
+    fetch "$LAZ_ZIP_URL" "$LAZ_ZIP" "$LAZ_ZIP_MD5"
     rm -rf "$T/lazarus" "$T/laztmp"
     xattr -c "$LAZ_ZIP"
     unzip -q "$LAZ_ZIP" -d "$T/laztmp"
@@ -87,6 +111,8 @@ done
 
 # Zeos
 if [ ! -d "$T/zeos/src" ]; then
+    [ -f zeos.tar.gz ] || curl -fL --retry 5 -o zeos.tar.gz \
+        "https://github.com/marsupilami79/zeoslib/archive/$ZEOS_COMMIT.tar.gz"
     rm -rf "$T/zeos"; mkdir -p "$T/zeos"
     tar -xzf zeos.tar.gz -C "$T/zeos" --strip-components=1
 fi
@@ -109,8 +135,14 @@ for p in "$T"/zeos/packages/lazarus/{zcore,zplain,zparsesql,zdbc,zcomponent}.lpk
 done
 
 # Todo con FPC 3.2.2: FCL, LazUtils, LCL Cocoa, SynEdit, IPro, Zeos y los
-# tres paquetes de Report Manager
-lazbuild -B -r --no-write-project "$SRC/packages/fpc_lcl/reportman_designlcl.lpk"
+# tres paquetes de Report Manager. Una vez, y otra si cambian los parches
+STAMP="FPC $(fpc -iV) $(uname -m) $(cat "$SRC"/build/macos/patches/lazarus-*.patch | md5 -q)"
+if [ "$(cat "$T/lazarus/.rm-build" 2>/dev/null)" != "$STAMP" ]; then
+    lazbuild -B -r --no-write-project "$SRC/packages/fpc_lcl/reportman_designlcl.lpk"
+    echo "$STAMP" > "$T/lazarus/.rm-build"
+else
+    echo "Lazarus ya compilado con FPC $(fpc -iV) y los parches de ahora"
+fi
 
 fpc -iV
 lazbuild --version

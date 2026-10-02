@@ -52,6 +52,8 @@ const
   APP_ID = 'reportman-designer';
   CONFIG_SUBDIR = 'reportman';
   CONFIG_FILE = 'designer_lcl.ini';
+  // --check-https without a url: the server of the login and the AI
+  CHECK_HTTPS_URL = 'https://api.reportman.es/';
   // -dLCL<widgetset> comes from the usage options of the LCL package
   {$IF DEFINED(LCLGTK2)}
   WIDGETSET = 'gtk2';
@@ -82,6 +84,9 @@ function LCLTranslationFile: string;
 procedure TranslateLCL;
 
 implementation
+
+uses
+  openssl, rphttpclientfpc;
 
 procedure WriteStd(const S: string; ToErr: Boolean);
 begin
@@ -314,11 +319,54 @@ procedure ShowUsage;
 begin
   WriteStd(APP_NAME + ' ' + RM_VERSION, False);
   WriteStd('Usage: ' + ExtractFileName(ParamStr(0)) +
-    ' [--help] [--version] [report.rep]', False);
+    ' [--help] [--version] [--check-https [url]] [report.rep]', False);
   WriteStd('', False);
-  WriteStd('  report.rep   report file to open (path or file:// URI)', False);
-  WriteStd('  --version    print the version and the data folders, then exit', False);
-  WriteStd('  --help       print this help, then exit', False);
+  WriteStd('  report.rep     report file to open (path or file:// URI)', False);
+  WriteStd('  --version      print the version and the data folders, then exit', False);
+  WriteStd('  --check-https  connect to ' + CHECK_HTTPS_URL + ' (or url) as the', False);
+  WriteStd('                 login and the AI assistants do, print the result and', False);
+  WriteStd('                 exit (0: the server answered, 1: it did not)', False);
+  WriteStd('  --help         print this help, then exit', False);
+end;
+
+{ --check-https: the TLS connection of the login, the AI assistants and the
+  Reportman DB Agent driver (rphttpclientfpc, OpenSSL loaded at run time,
+  the server certificate verified), without a display. Any HTTP answer
+  means that OpenSSL loaded and the certificate was accepted. On macOS it
+  shows the OpenSSL that was loaded (Contents/Frameworks in the package). }
+procedure CheckHttps(const AURL: string);
+var
+  client: THTTPClient;
+  resp: IHTTPResponse;
+  err: string;
+begin
+  if not RpOpenSSLAvailable(err) then
+  begin
+    WriteStd('ERROR: ' + err, True);
+    Halt(1);
+  end;
+  {$IFDEF DARWIN}
+  WriteStd('OpenSSL:      ' + DLLSSLName + DLLVersions[1] + '.dylib', False);
+  {$ENDIF}
+  client := THTTPClient.Create;
+  try
+    try
+      resp := client.Get(AURL);
+      WriteStd('HTTPS:        ' + AURL + ' -> ' + IntToStr(resp.StatusCode) +
+        ' ' + resp.StatusText, False);
+      WriteStd('Certificates: ' + RpHttpTrustStoreInfo, False);
+    except
+      on E: Exception do
+      begin
+        WriteStd('ERROR: ' + AURL + ': ' + E.ClassName + ': ' + E.Message, True);
+        Halt(1);
+      end;
+    end;
+  finally
+    client.Free;
+  end;
+  if resp.StatusCode <= 0 then
+    Halt(1);
 end;
 
 procedure ShowVersion;
@@ -383,6 +431,14 @@ begin
     if (p = '--version') or (p = '-v') then
     begin
       ShowVersion;
+      Halt(0);
+    end;
+    if p = '--check-https' then
+    begin
+      p := ParamStr(i + 1);
+      if (p = '') or (p[1] = '-') then
+        p := CHECK_HTTPS_URL;
+      CheckHttps(p);
       Halt(0);
     end;
   end;
