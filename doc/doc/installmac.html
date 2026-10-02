@@ -252,9 +252,10 @@
     or without Homebrew, <code>build/macos/build-deps.sh</code> builds them from their sources in your
     user folder (no <code>sudo</code>) and links them in <code>~/lib</code>. ICU is the one of macOS.</li>
   <li>For HTTPS (the AI assistants and the Reportman DB Agent driver): <b>OpenSSL 3</b>,
-    <code>brew install openssl@3</code>. The OpenSSL 0.9.8 that macOS keeps for compatibility is never
-    used: it cannot verify certificates. An application can ship <code>libssl.3.dylib</code> and
-    <code>libcrypto.3.dylib</code> in <code>Contents/Frameworks</code> of its bundle instead.</li>
+    <code>brew install openssl@3</code>, or <code>build/macos/build-deps.sh</code>, which also builds
+    OpenSSL 3.5. The OpenSSL 0.9.8 that macOS keeps for compatibility is never used: it cannot verify
+    certificates. An application can ship <code>libssl.3.dylib</code> and <code>libcrypto.3.dylib</code>
+    in <code>Contents/Frameworks</code> of its bundle instead, as the installation package does.</li>
 </ul>
 <p>Applications started from the Finder do not receive <code>DYLD_LIBRARY_PATH</code>. The engine
   looks for each library in <code>Contents/Frameworks</code> of the application, next to the
@@ -300,6 +301,19 @@ lazbuild pgreport.lpi
   <code>~/.borland/dbxconnections</code> when that file exists, otherwise
   <code>~/.dbxconnections</code> in your home folder (the designer creates it).</p>
 
+<h3 id="openssl">OpenSSL in your application</h3>
+<p>Only HTTPS needs OpenSSL: the Reportman DB Agent driver and, in an application with the embedded
+  designer, the login and the AI assistants. Reports printed from your own data or to PDF never load
+  it. On your Mac, <code>brew install openssl@3</code> or <code>build/macos/build-deps.sh</code> is
+  enough. To distribute your application to Macs without them, copy OpenSSL 3 into its bundle:</p>
+<pre><code>build/macos/bundle-openssl.sh YourApp.app</code></pre>
+<p>It copies <code>libssl.3.dylib</code> and <code>libcrypto.3.dylib</code> (from
+  <code>build-deps.sh</code>, Homebrew or MacPorts, or the folder given as the second parameter) to
+  <code>Contents/Frameworks</code>, where the engine looks first, makes them find each other inside the
+  bundle, adds the OpenSSL license and signs the application again (ad hoc, or with
+  <code>RM_CODESIGN_IDENTITY</code>). The libraries must have the architecture of your executable:
+  Homebrew on Apple Silicon gives arm64 ones. The root certificates are the ones of macOS.</p>
+
 <h2 id="designer">Build the Report Manager Designer</h2>
 <p>Two scripts of the source code prepare everything in your user folder (<code>~/dev</code>), without
   <code>sudo</code> and without touching <code>/usr/local</code>:</p>
@@ -338,9 +352,10 @@ open repman/repmandesigner_lcl.app</code></pre>
   application to Applications and open it. It requires macOS 10.15 or later (the minimum of its
   libraries, declared in its <code>Info.plist</code>; tested on macOS 11). The <code>.rep</code> files
   open with the designer from the Finder: double click, drop them on its icon or <i>Open With</i>. The
-  samples are inside the application; to change one, save it in another folder. The package does not include OpenSSL 3 (HTTPS for the AI assistants and the
-  Reportman DB Agent driver: <code>brew install openssl@3</code>) nor the client libraries of the
-  database servers.</p>
+  samples are inside the application; to change one, save it in another folder. It also carries
+  OpenSSL 3.5 for HTTPS (the login, the AI assistants and the Reportman DB Agent driver), with the root
+  certificates of macOS, and the licenses of those libraries. It does not include the client libraries
+  of the database servers.</p>
 <p>The application is signed ad hoc, without an Apple Developer ID certificate nor notarization: the
   first time, macOS only opens it from the Finder with <i>right click &gt; Open</i>.</p>
 

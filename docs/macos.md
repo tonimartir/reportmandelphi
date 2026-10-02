@@ -76,7 +76,7 @@ fontconfig e ICU, que se cargan al usarse (no hacen falta para compilar):
 |---|---|
 | FreeType, HarfBuzz (+ subset), fontconfig | `brew install fontconfig harfbuzz`, o `build/macos/build-deps.sh`, que las compila en `~/dev/macdeps/prefix/lib` y las enlaza en `~/lib` |
 | ICU | `/usr/lib/libicucore.dylib`, la del sistema (sus funciones no llevan sufijo de versión) |
-| OpenSSL 3 (HTTPS: IA, agente, login) | `brew install openssl@3`, o en `Contents/Frameworks` del `.app` |
+| OpenSSL 3 (HTTPS: IA, agente, login) | `brew install openssl@3`, o `build-deps.sh` (OpenSSL 3.5.9, también enlazada en `~/lib`); el paquete la lleva en `Contents/Frameworks` |
 
 `RpLoadDarwinLibrary` (`rtl_fpc/rpdarwinlibs.pas`) busca cada `.dylib` en este
 orden: `Contents/Frameworks` del `.app`, junto al ejecutable, la búsqueda de
@@ -230,6 +230,12 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   `setenv` de la libc, que es la que lee fontconfig) si la aplicación trae
   `fonts.conf` y el usuario no ha fijado `FONTCONFIG_FILE` ni
   `FONTCONFIG_PATH`.
+- `Contents/Frameworks` también lleva OpenSSL 3.5 (`libssl.3.dylib`,
+  `libcrypto.3.dylib`): sin él no hay HTTPS, y el login y los asistentes de
+  IA fallaban en un Mac sin Homebrew. `RpDarwinOpenSSL` lo busca ahí antes
+  que en ningún otro sitio; los certificados raíz son los de macOS
+  (`/etc/ssl/cert.pem`). `Contents/Resources/licenses` lleva las licencias de
+  las librerías de dentro.
 - `Contents/Resources`: `reportmanres.*`, `languages/lclstrconsts.*.po`, los
   ejemplos en `samples/` (sin los PDF) y el icono, hecho de `doc/icon-512.png`.
 - `Info.plist`: `LSMinimumSystemVersion` es la mayor versión mínima que
@@ -241,6 +247,14 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   (`CFBundleDocumentTypes`).
 - Firma ad hoc (`codesign -s -`) y `.dmg` comprimido con un enlace a
   Aplicaciones.
+
+**OpenSSL en las aplicaciones de los usuarios de Lazarus.** Los paquetes no
+llevan binarios. Para distribuir una aplicación a Macs sin Homebrew,
+`build/macos/bundle-openssl.sh MiApp.app [carpeta]` copia `libssl.3.dylib` y
+`libcrypto.3.dylib` (de `build-deps.sh`, Homebrew o MacPorts) en
+`Contents/Frameworks`, las enlaza entre sí con `@loader_path`, comprueba que
+son de la arquitectura del ejecutable, copia la licencia y vuelve a firmar
+(ad hoc o con `RM_CODESIGN_IDENTITY`).
 
 **Abrir `.rep` desde Finder.** Doble clic, soltar en el icono o «Abrir con»
 llegan como `application:openURLs:`; LCL Cocoa guarda los ficheros hasta que
@@ -261,7 +275,7 @@ la aplicación abierta con `open` muestra su ventana.
 
 - Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
   de desarrollador de Apple), para que Gatekeeper lo abra sin «clic
-  derecho > Abrir». Meter OpenSSL 3 en `Contents/Frameworks`.
+  derecho > Abrir».
 - Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
   compilador `ppca64`.
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.

@@ -400,7 +400,9 @@ end;</code></pre>
     (<code>libssl-3.dll</code> and <code>libcrypto-3.dll</code> for 32 bits) next to your executable;
     on Linux the system <code>libssl</code> and CA certificates are used; on macOS, OpenSSL 3 (Homebrew
     <code>openssl@3</code>, or in <code>Contents/Frameworks</code> of your application) and the CA
-    certificates of macOS. Without OpenSSL, only the HTTPS connections fail.</li>
+    certificates of macOS. To distribute a macOS application,
+    <code>build/macos/bundle-openssl.sh YourApp.app</code> copies OpenSSL 3 into its bundle (see
+    <a href="installmac.html#openssl">macOS</a>). Without OpenSSL, only the HTTPS connections fail.</li>
   <li><b>SQL editor of the designer</b>: on Windows it is the Monaco editor (it needs the Microsoft Edge
     WebView2 runtime, included in current Windows 10 and 11); on Linux and macOS, a native editor with schema completion
     and the AI inline suggestion. See <a href="installlin.html">the Linux designer</a> for the

@@ -162,7 +162,8 @@ Other FPC deliverables:
 - macOS (LCL Cocoa, Intel): `build/macos/setup-toolchain.sh` (FPC 3.2.2 +
   Lazarus 4.8 + Zeos in `~/dev`, no sudo, and applies
   `build/macos/patches` to that Lazarus) and `build/macos/build-deps.sh`
-  (FreeType/HarfBuzz/fontconfig dylibs; ICU is the system `libicucore`);
+  (FreeType/HarfBuzz/fontconfig and OpenSSL 3.5 dylibs; ICU is the system
+  `libicucore`);
   `build/macos/build-designer.sh` builds `repman/repmandesigner_lcl.app`
   (development: it links the executable) and `build/macos/make-package.sh`
   the self-contained `.app` and `.dmg` (output `build/macos/out/<v>/`,

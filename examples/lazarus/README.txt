@@ -81,6 +81,11 @@ On macOS, Lazarus writes the LCL examples as application bundles
 or with "open preview/preview.app". Tested with Lazarus 4.8 (Cocoa) on
 macOS 11, Intel; see docs/macos.md.
 
+HTTPS (the Reportman DB Agent driver, and the login and AI assistants of the
+designer) needs OpenSSL 3. On macOS, to distribute an application to Macs
+without Homebrew, build/macos/bundle-openssl.sh MyApp.app copies it into the
+bundle. Reports printed from the application data or to PDF never need it.
+
 Design your own reports with the designer example, with a TRpDesignerLCL in
 your application or with the standalone Report Manager Designer
 (https://reportman.es).

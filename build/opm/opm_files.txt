@@ -227,3 +227,5 @@ examples/lazarus/postgresql/pgreport.lpr
 examples/lazarus/postgresql/sales_sqldb.rep
 examples/lazarus/postgresql/sales_zeos.rep
 examples/lazarus/postgresql/sampledb.sql
+# --- macOS: OpenSSL 3 dentro de la aplicacion del usuario (HTTPS) ---
+build/macos/bundle-openssl.sh
