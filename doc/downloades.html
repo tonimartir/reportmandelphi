@@ -85,7 +85,11 @@
       <p>Instale los paquetes de <b>Report Manager</b> (motor con exportación a PDF, vista previa LCL y diseñador integrable) desde el <b>Online Package Manager</b> de Lazarus (<i>Paquete &rarr; Online Package Manager</i>), o compílelos desde el código fuente. Consulte <a href="doc/lazaruscomp.html">Lazarus / Free Pascal</a> (en inglés).</p>
 
       <h2>macOS</h2>
-      <p>Los paquetes de Lazarus, sus ejemplos y el diseñador Report Manager Designer se compilan en macOS con Lazarus y el widgetset nativo Cocoa. Todavía no hay una aplicación para macOS que descargar: consulte <a href="doc/installmac.html">macOS (Lazarus, Cocoa)</a> (en inglés) para compilarlos desde el código fuente.</p>
+      <p>La <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener">carpeta <code>macOS</code></a> de la versión en SourceForge contiene el diseñador Report Manager Designer para macOS, con la interfaz nativa Cocoa:</p>
+      <ul>
+        <li><code>reportman-designer-&lt;versión&gt;-macos-x86_64.dmg</code> &mdash; Mac con procesador Intel, probado en macOS 11; ábralo y arrastre la aplicación a Aplicaciones. Incluye los ejemplos (entre ellos <code>sample4</code>).</li>
+      </ul>
+      <p>La aplicación no está notarizada por Apple: la primera vez, ábrala desde el Finder con <i>clic derecho &rarr; Abrir</i>. HTTPS (los asistentes de IA y el driver Reportman DB Agent) necesita OpenSSL 3 (<code>brew install openssl@3</code>). Los paquetes de Lazarus y el diseñador también se compilan desde el código fuente: consulte <a href="doc/installmac.html">macOS (Lazarus, Cocoa)</a> (en inglés).</p>
 
       <h2>Servidor web de informes en Docker</h2>
       <p>El servidor web de informes también se publica como imagen Docker, <a href="https://hub.docker.com/r/tonimartir/reportman-web" target="_blank" rel="noopener">tonimartir/reportman-web</a>. Consulte <a href="webserveres.html">Servidor web</a>.</p>
