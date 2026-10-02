@@ -234,7 +234,7 @@
 <p>Tested on macOS 11 Big Sur (Intel, x86_64) with Lazarus 4.8 and Free Pascal 3.2.2: the designer
   test suite, the preview against the PDF output, the examples and the database drivers against real
   PostgreSQL, MySQL, Firebird and SQLite servers.</p>
-<p><b>Download:</b> the Report Manager Designer for Intel Macs is in the
+<p><b>Download:</b> the Report Manager Designer for Intel Macs with macOS 10.15 or later is in the
   <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on
   SourceForge (<code>reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code>, see
   <a href="#package">Installation package</a>). It can also be built from the source code as shown
@@ -335,8 +335,10 @@ open repman/repmandesigner_lcl.app</code></pre>
 # build/macos/out/&lt;version&gt;/reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code></pre>
 <p>The application carries FreeType, HarfBuzz and fontconfig with its configuration, the translations
   and the samples (<code>sample4.rep</code> and its data among them): open the disk image, drag the
-  application to Applications and open it. The samples are inside the application; to change one, save
-  it in another folder. The package does not include OpenSSL 3 (HTTPS for the AI assistants and the
+  application to Applications and open it. It requires macOS 10.15 or later (the minimum of its
+  libraries, declared in its <code>Info.plist</code>; tested on macOS 11). The <code>.rep</code> files
+  open with the designer from the Finder: double click, drop them on its icon or <i>Open With</i>. The
+  samples are inside the application; to change one, save it in another folder. The package does not include OpenSSL 3 (HTTPS for the AI assistants and the
   Reportman DB Agent driver: <code>brew install openssl@3</code>) nor the client libraries of the
   database servers.</p>
 <p>The application is signed ad hoc, without an Apple Developer ID certificate nor notarization: the
