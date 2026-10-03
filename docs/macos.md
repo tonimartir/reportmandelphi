@@ -381,7 +381,11 @@ Con OpenSSL dentro (02-10-2026, con `~/lib` escondido): HTTPS a
 VM el inicio de sesión de IA y el copilot completo.
 
 **Publicarlo en SourceForge.** El `.dmg` y su `SHA256SUMS` van en
-`Report Manager Designer/Designer 4.0/macOS`, como la carpeta `Linux`.
+`Report Manager Designer/Designer 4.0/macOS`, como la carpeta `Linux`. Desde
+el 03-10-2026 está el universal (`reportman-designer-4.0.17-macos-universal.dmg`,
+de la ejecución 37083747716 de Actions, probado también instalado en la
+VirtualBox con macOS 11); el 4.0.16 solo Intel pasó a la subcarpeta
+`macOS/4.0.16` con su `SHA256SUMS`.
 Sustituir el fichero por SFTP le quita las propiedades: hay que volver a
 marcar «Default Download For: Mac» en su ficha (Files, botón *i*), o los Mac
 reciben el instalador de Windows. Se comprueba con
