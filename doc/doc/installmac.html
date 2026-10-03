@@ -233,10 +233,14 @@
   <code>.rep</code> report files as Windows and Linux.</p>
 <p>Tested on macOS 11 Big Sur (Intel, x86_64) with Lazarus 4.8 and Free Pascal 3.2.2: the designer
   test suite, the preview against the PDF output, the examples and the database drivers against real
-  PostgreSQL, MySQL, Firebird and SQLite servers.</p>
-<p><b>Download:</b> the Report Manager Designer for Intel Macs with macOS 10.15 or later is in the
+  PostgreSQL, MySQL, Firebird and SQLite servers. On macOS 15, on Intel and on <b>Apple Silicon</b>
+  (arm64), the Lazarus packages, the designer test suite, the PDF tests and the installation package
+  are built and tested automatically (GitHub Actions).</p>
+<p><b>Download:</b> the Report Manager Designer for Intel Macs (macOS 10.15 or later) and Apple
+  Silicon Macs (macOS 11 or later) is in the
   <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on
-  SourceForge (<code>reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code>, see
+  SourceForge (<code>reportman-designer-&lt;version&gt;-macos-universal.dmg</code>, one universal
+  application for both, see
   <a href="#package">Installation package</a>). It can also be built from the source code as shown
   below.</p>
 
@@ -312,7 +316,10 @@ lazbuild pgreport.lpi
   <code>Contents/Frameworks</code>, where the engine looks first, makes them find each other inside the
   bundle, adds the OpenSSL license and signs the application again (ad hoc, or with
   <code>RM_CODESIGN_IDENTITY</code>). The libraries must have the architecture of your executable:
-  Homebrew on Apple Silicon gives arm64 ones. The root certificates are the ones of macOS.</p>
+  Homebrew on Apple Silicon gives arm64 ones. For a universal application (Intel and Apple Silicon),
+  give one folder of each architecture and the script joins them:</p>
+<pre><code>build/macos/bundle-openssl.sh YourApp.app &lt;x86_64 libraries&gt; &lt;arm64 libraries&gt;</code></pre>
+<p>The root certificates are the ones of macOS.</p>
 
 <h2 id="designer">Build the Report Manager Designer</h2>
 <p>Two scripts of the source code prepare everything in your user folder (<code>~/dev</code>), without
@@ -327,6 +334,11 @@ open repman/repmandesigner_lcl.app</code></pre>
   it is opened from the Finder, which gives applications no <code>LANG</code> variable.
   <code>build-designer.sh</code> adds the Lazarus translations of the standard dialogs and buttons to
   the bundle.</p>
+<p>The scripts work on Intel and on Apple Silicon: they use the Lazarus archive and build the
+  libraries for the architecture of the Mac (macOS 10.15 or later on Intel, 11 or later on Apple
+  Silicon). Free Pascal 3.2.2 predates the tools of Xcode 15: with them, its Intel assembler output
+  and its executables need two workarounds, which <code>setup-toolchain.sh</code> detects and
+  configures (see <code>docs/macos.md</code>).</p>
 <p><code>setup-toolchain.sh</code> uses the official Free Pascal disk image without installing it and
   the official Lazarus 4.8 archive. It also applies two corrections to the Cocoa widgetset of Lazarus
   (<code>build/macos/patches</code>):</p>
@@ -346,16 +358,23 @@ open repman/repmandesigner_lcl.app</code></pre>
   <code>build/macos/make-package.sh</code> builds a self-contained application and its disk image:</p>
 <pre><code>build/macos/make-package.sh
 # build/macos/out/&lt;version&gt;/Report Manager Designer.app
-# build/macos/out/&lt;version&gt;/reportman-designer-&lt;version&gt;-macos-x86_64.dmg</code></pre>
+# build/macos/out/&lt;version&gt;/reportman-designer-&lt;version&gt;-macos-x86_64.dmg (or -arm64.dmg)</code></pre>
+<p>It builds for the architecture of the Mac. <code>build/macos/make-universal.sh</code> joins an
+  Intel and an Apple Silicon application into a universal one and its disk image
+  (<code>-macos-universal.dmg</code>). The published disk image is built that way by the
+  <code>.github/workflows/macos.yml</code> workflow of the source code, which builds and tests on both
+  kinds of Mac.</p>
 <p>The application carries FreeType, HarfBuzz and fontconfig with its configuration, the translations
   and the samples (<code>sample4.rep</code> and its data among them): open the disk image, drag the
-  application to Applications and open it. It requires macOS 10.15 or later (the minimum of its
-  libraries, declared in its <code>Info.plist</code>; tested on macOS 11). The <code>.rep</code> files
+  application to Applications and open it. It requires macOS 10.15 or later on Intel and macOS 11
+  or later on Apple Silicon (declared in its <code>Info.plist</code>; tested on macOS 11 and 15). The <code>.rep</code> files
   open with the designer from the Finder: double click, drop them on its icon or <i>Open With</i>. The
   samples are inside the application; to change one, save it in another folder. It also carries
   OpenSSL 3.5 for HTTPS (the login, the AI assistants and the Reportman DB Agent driver), with the root
   certificates of macOS, and the licenses of those libraries. It does not include the client libraries
-  of the database servers.</p>
+  of the database servers. <code>repmandesigner_lcl --check-https</code> (the executable is in
+  <code>Contents/MacOS</code>) tests the HTTPS connection of the login without opening the
+  designer.</p>
 <p>The application is signed ad hoc, without an Apple Developer ID certificate nor notarization: the
   first time, macOS only opens it from the Finder with <i>right click &gt; Open</i>.</p>
 
@@ -395,10 +414,9 @@ open repman/repmandesigner_lcl.app</code></pre>
 <ul>
   <li>The SQL editor of the designer is the native editor with schema completion and the AI inline
     suggestion, as on <a href="installlin.html">Linux</a> (the Monaco editor is Windows only).</li>
-  <li>Not tested yet: Apple Silicon (arm64; the Free Pascal disk image includes its compiler) and
-    printing.</li>
+  <li>Not tested yet: printing. On Apple Silicon only the automatic tests have run so far.</li>
   <li>The installation package is signed ad hoc and not notarized (see
-    <a href="#package">Installation package</a>), for Intel Macs only.</li>
+    <a href="#package">Installation package</a>).</li>
 </ul>
 <p>The technical notes of the port are in <code>docs/macos.md</code> of the source code.</p>
 </main>
