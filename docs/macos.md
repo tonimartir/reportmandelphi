@@ -1,9 +1,12 @@
 # Report Manager Designer en macOS (LCL Cocoa)
 
 El diseñador LCL (el mismo de Linux) compila en macOS con el widgetset nativo
-**Cocoa** y pasa `LclDesignerTest --selftest` completo. Probado en macOS 11 Big
-Sur (Intel, x86_64) con FPC 3.2.2 y Lazarus 4.8. Todavía no hay paquete para
-distribuir (`.app` con sus librerías, firmado): ver [Pendiente](#pendiente).
+**Cocoa** y pasa `LclDesignerTest --selftest` completo, con FPC 3.2.2 y
+Lazarus 4.8. Probado a mano en macOS 11 Big Sur (Intel, x86_64) y, con
+[GitHub Actions](#github-actions-intel-y-apple-silicon), en macOS 15 Intel y
+Apple Silicon (arm64). El [paquete de instalación](#paquete-de-instalación) es
+un `.dmg` con la aplicación firmada ad hoc; el universal lleva las dos
+arquitecturas.
 
 ## Compilar
 
@@ -34,6 +37,31 @@ lazbuild --no-write-project repman/lcl_designer/repmandesigner_lcl.lpi
 - `lazbuild` es un envoltorio con su propia configuración (`~/dev/lazcfg`), en
   la que están registrados Zeos y los tres paquetes de Report Manager.
 - `RM_MACOS_TOOLS` y `RM_MACOS_DEPS` cambian las carpetas de los dos scripts.
+- Los dos scripts usan la arquitectura del Mac (`uname -m`). En Apple
+  Silicon, `setup-toolchain.sh` baja el zip de Lazarus para aarch64 (el
+  `.dmg` de FPC es el mismo: trae `ppcx64` y `ppca64`), y `build-deps.sh`
+  compila las librerías arm64 con macOS 11.0 como mínimo (10.15 en Intel).
+- Se pueden volver a ejecutar: solo descargan, instalan o compilan lo que
+  falta o lo que ha cambiado (`~/dev/lazarus/.rm-build`,
+  `~/dev/macdeps/prefix/.rm-build`).
+- **FPC 3.2.2 con Xcode 15 o posterior.** FPC 3.2.2 está pensado para macOS
+  hasta la versión 11, y con las herramientas actuales de Apple tiene dos
+  fallos (Lazarus 4.8 para macOS se publica con FPC 3.2.4rc1 por esto).
+  `setup-toolchain.sh` los detecta y los resuelve al final de `fpc.cfg`,
+  entre marcas; en un Mac con herramientas antiguas (las Command Line Tools
+  12 de macOS 11) no añade nada:
+  - En Intel, FPC escribe las etiquetas de los `goto` que salen de un bloque
+    (Zeos, `ZDbcResultSet`) como símbolos globales dentro de la función, y el
+    ensamblador de clang 15 o posterior las rechaza («non-private labels
+    cannot appear between .cfi_startproc / .cfi_endproc pairs»). En x86_64,
+    `fpc.cfg` usa `~/dev/fpc/asfix`: un `clang` que las vuelve privadas
+    (prefijo `L`, sin `.globl`) antes de ensamblar; solo se usan dentro de
+    su unidad, el código es el mismo. Las demás herramientas son enlaces a
+    las de verdad. `RM_MACOS_ASFIX=1` lo pone aunque no haga falta.
+  - El enlazador nuevo (ld-prime) se cae (*segmentation fault*) al enlazar
+    los ejecutables de FPC 3.2.2: `fpc.cfg` añade `-k-ld_classic`. Xcode 16
+    aún lo tiene, pero Apple lo da por obsoleto: cuando lo quite habrá que
+    pasar a FPC 3.2.4 (ver [Pendiente](#pendiente)).
 
 Lazarus genera `repman/repmandesigner_lcl.app` (y `LclDesignerTest.app`):
 dentro del bundle hay un enlace al ejecutable, que se queda junto al `.lpi`.
@@ -51,7 +79,10 @@ abierta con el mismo usuario (sirve lanzarlo por SSH). `selftest.log` se
 escribe en modo añadir: hay que leer solo la última ejecución.
 
 Pasan en macOS 11 (Intel), sin variables `DYLD_*` (las librerías de
-`build-deps.sh` están enlazadas en `~/lib`):
+`build-deps.sh` están enlazadas en `~/lib`). El
+[workflow de GitHub Actions](#github-actions-intel-y-apple-silicon) pasa
+además la selftest, `PdfTest` y el paquete de OPM en macOS 15, Intel y Apple
+Silicon:
 
 | Test | Resultado |
 |---|---|
@@ -92,6 +123,57 @@ sin las funciones para verificar certificados. `RpPrepareOpenSSL`
 `RP_OPENSSL_DIR`, `Contents/Frameworks`, junto al ejecutable, `~/lib`,
 Homebrew (`openssl@3`, `openssl@1.1`) y MacPorts. Si no lo encuentra, el
 error lo dice. Los certificados raíz son los de `/etc/ssl/cert.pem`.
+
+## GitHub Actions (Intel y Apple Silicon)
+
+La VirtualBox no puede ejecutar arm64; GitHub Actions sí, gratis en un
+repositorio público. `.github/workflows/macos.yml` **solo se lanza a mano**
+(nunca en cada push) y no publica nada: el `.dmg` queda como artefacto de la
+ejecución (30 días). Desde la web, *Actions > macOS > Run workflow*; o con
+`gh`:
+
+```sh
+gh workflow run macos.yml --repo tonimartir/reportmandelphi
+gh run watch --repo tonimartir/reportmandelphi
+gh run download <id> --repo tonimartir/reportmandelphi -n reportman-designer-macos-universal
+```
+
+La casilla «Compilar desde cero» (`-f sin_cache=true`) no usa la caché.
+Trabajos:
+
+1. **build**, en `macos-15` (Apple Silicon M1) y `macos-15-intel`:
+   `setup-toolchain.sh` y `build-deps.sh` (con `~/dev` en la caché de
+   Actions, una por arquitectura y por el contenido de los scripts y los
+   parches, sin las descargas), `build_fpc.sh`, `LclDesignerTest --selftest`
+   (los runners tienen sesión gráfica), `PdfTest`,
+   `build/macos/opm-check.sh` y `make-package.sh`. El `.app` de cada
+   arquitectura se sube como artefacto (en un `.tar.gz`, que conserva
+   permisos y firma).
+2. **universal**, en `macos-15`: `build/macos/make-universal.sh` une los dos
+   `.app` con `lipo` (el ejecutable y cada `.dylib`; el resto tiene que ser
+   idéntico), comprueba que todos los Mach-O tienen x86_64 y arm64, firma ad
+   hoc y crea `reportman-designer-<versión>-macos-universal.dmg` y su
+   `SHA256SUMS` (la salida de `lipo` queda en el resumen de la ejecución).
+3. **smoke**, en los dos Mac: monta el `.dmg` y ejecuta el diseñador de
+   dentro: `--version`; `--check-https` contra `api.reportman.es` con
+   `DYLD_PRINT_LIBRARIES` (falla si `libssl` y `libcrypto` no salen de
+   `Contents/Frameworks`); y abre `sample4.rep`, comprueba a los 25 s que
+   sigue vivo y que el proceso es de la arquitectura del Mac (`vmmap`:
+   `ARM64` o `X86-64`).
+
+El diseñador no tiene `--selftest` (es del proyecto `LclDesignerTest`): el
+`.dmg` se prueba con esas tres cosas. `opm-check.sh` es la validación de
+`make_opm_package.ps1 -Validate` para macOS: extrae de `git archive HEAD`
+solo los ficheros de `build/opm/opm_files.txt`, registra Zeos y los tres
+paquetes en una `--pcp` vacía, los compila con `-B`, compila los cuatro
+ejemplos y ejecuta `pdfconsole`, que escribe `sales.pdf`.
+
+Tiempos (03-10-2026): con la caché, 13 minutos (build x86_64 11 min 31 s,
+arm64 4 min 52 s; el `.dmg` y sus pruebas, 2 minutos); sin ella, 20 minutos
+(x86_64 17 min 46 s, de ellos 5 de herramientas y 7 de librerías; arm64
+10 min 53 s). El `.dmg` universal de esa ejecución también pasa en macOS 11
+Intel (la VirtualBox, con `~/lib` escondido): firma, `--check-https` con el
+OpenSSL de `Contents/Frameworks` y `sample4.rep` abierto como X86-64.
 
 ## Bases de datos
 
@@ -142,6 +224,16 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
 `/usr/local/lib:/usr/lib` al final) no tiene ese problema.
 
 ## Notas del port
+
+- **Apple Silicon.** `rpfreetype2` declaraba `FT_Long`, `FT_Fixed` y `FT_Pos`
+  (el `long` de C, de 64 bits en los Unix de 64 bits) de 64 bits solo con
+  `CPUX64`, que FPC no define en aarch64: `FT_FaceRec` se leía desplazado.
+  Ahora también con FPC en aarch64.
+- **Excepciones de coma flotante.** HarfBuzz calcula con valores intermedios
+  NaN con algunas fuentes (las variables del sistema de macOS 15). C lo
+  ignora, pero los programas de consola de FPC tienen las excepciones de coma
+  flotante activadas (la LCL las enmascara): `CalcGlyphPositions` llama a
+  HarfBuzz con ellas enmascaradas y restaura la máscara del programa.
 
 - **`LINUX` en Darwin.** En las unidades raíz, `LINUX` significa «el camino del
   motor fuera de Windows» (FreeType en vez de GDI). `rpconf.inc` lo define
@@ -216,11 +308,15 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
 ## Paquete de instalación
 
 `build/macos/make-package.sh` compila el diseñador en modo Release y monta
-`build/macos/out/<versión>/Report Manager Designer.app` y su `.dmg`:
+`build/macos/out/<versión>/Report Manager Designer.app` y su `.dmg`
+(`reportman-designer-<versión>-macos-x86_64.dmg` o `-arm64.dmg`, la
+arquitectura del Mac que lo compila). `build/macos/make-universal.sh
+<app x86_64> <app arm64>` une los dos en el `.dmg` universal (lo hace el
+workflow de Actions):
 
 - `Contents/MacOS/repmandesigner_lcl`: el ejecutable copiado (el `.app` de
   desarrollo solo tiene un enlace a `repman/`).
-- `Contents/Frameworks`: las cuatro `.dylib` de `build-deps.sh`, con
+- `Contents/Frameworks`: las `.dylib` de `build-deps.sh`, con
   `install_name_tool` para que se nombren entre sí por `@loader_path`. El
   script falla si alguna sigue apuntando a `~/dev/macdeps`.
 - `Contents/Resources/fonts`: el `fonts.conf` de `build-deps.sh` y su
@@ -244,7 +340,9 @@ librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
   10.8), para que un macOS más antiguo diga que no se puede abrir en vez de
   fallar al cargar FreeType. Y el tipo `.rep` (`UTExportedTypeDeclarations`,
   `es.reportman.designer.rep`) con la aplicación como editor
-  (`CFBundleDocumentTypes`).
+  (`CFBundleDocumentTypes`). En la universal, `LSMinimumSystemVersion` es la
+  de Intel y `LSMinimumSystemVersionByArchitecture` da 10.15 a x86_64 y 11.0
+  a arm64 (no hay Mac con Apple Silicon anterior a macOS 11).
 - Firma ad hoc (`codesign -s -`) y `.dmg` comprimido con un enlace a
   Aplicaciones.
 
@@ -254,7 +352,13 @@ llevan binarios. Para distribuir una aplicación a Macs sin Homebrew,
 `libcrypto.3.dylib` (de `build-deps.sh`, Homebrew o MacPorts) en
 `Contents/Frameworks`, las enlaza entre sí con `@loader_path`, comprueba que
 son de la arquitectura del ejecutable, copia la licencia y vuelve a firmar
-(ad hoc o con `RM_CODESIGN_IDENTITY`).
+(ad hoc o con `RM_CODESIGN_IDENTITY`). Para una aplicación universal se le
+dan dos carpetas, una de cada arquitectura, y las une con `lipo`.
+
+**`--check-https [url]`.** El diseñador conecta como el login y los
+asistentes de IA (certificado verificado), dice qué OpenSSL ha cargado y
+sale con 0 si el servidor responde. Sirve para comprobar el paquete sin
+abrir la interfaz y para diagnosticar un «el login no funciona».
 
 **Abrir `.rep` desde Finder.** Doble clic, soltar en el icono o «Abrir con»
 llegan como `application:openURLs:`; LCL Cocoa guarda los ficheros hasta que
@@ -288,8 +392,11 @@ reciben el instalador de Windows. Se comprueba con
 - Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
   de desarrollador de Apple), para que Gatekeeper lo abra sin «clic
   derecho > Abrir».
-- Apple Silicon (arm64): no probado. El FPC 3.2.2 del `.dmg` ya incluye el
-  compilador `ppca64`.
+- Probar el `.dmg` universal a mano en un Mac con Apple Silicon (en Actions
+  pasan la selftest y las pruebas del `.dmg`, pero nadie lo ha usado).
+- FPC 3.2.2 depende de `-ld_classic`, que Apple da por obsoleto: cuando un
+  Xcode lo quite, pasar a FPC 3.2.4 en macOS (o al 3.2.4rc1 con el que se
+  publica Lazarus 4.8 para macOS).
 - La impresión (Printer4Lazarus con Cocoa) no está probada todavía.
 - Los tooltips no aparecen en LCL Cocoa (Lazarus 4.8), en ningún control:
   la LCL nunca llega a pedirlos (`Application.OnShowHint` no se llama).
