@@ -10,6 +10,12 @@ uses
   rpreport, rppdfdriver, rppdfreport, uembeddedtests, utextformattests, udatainfotests,
   uencodingtests;
 
+{$IFDEF DARWIN}
+// Where the executable was loaded (it is PIE): the backtrace addresses are
+// translated with atos -o PdfTest -l <address> <addresses>
+function _dyld_get_image_header(AImageIndex: LongWord): Pointer; cdecl; external name '_dyld_get_image_header';
+{$ENDIF}
+
 function FindReportFile(const AFileName: string): string;
 var
   candidates: array[0..2] of string;
@@ -89,6 +95,9 @@ begin
     begin
       WriteLn('EXCEPTION: ', E.ClassName, ': ', E.Message);
       DumpExceptionBackTrace(Output);
+      {$IFDEF DARWIN}
+      WriteLn('  (executable loaded at $', HexStr(_dyld_get_image_header(0)), ')');
+      {$ENDIF}
       Result := False;
     end;
   end;

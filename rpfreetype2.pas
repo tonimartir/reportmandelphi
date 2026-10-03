@@ -93,7 +93,8 @@ type
   PFT_Byte = ^Byte;
   FT_String = AnsiChar;
   PFT_String = PAnsiChar;
-{$IFDEF CPUX64}
+// C long: 64 bits on 64 bit Unix (x86_64 and aarch64, Apple Silicon)
+{$IF DEFINED(CPUX64) OR (DEFINED(FPC) AND DEFINED(CPUAARCH64))}
       FT_Fixed  = int64;
       FT_Long   = int64;
       FT_Pos     = Int64;
@@ -101,7 +102,7 @@ type
       FT_Fixed  = longint;
       FT_Long   = longint;
       FT_Pos     = longint;
-{$ENDIF}
+{$IFEND}
   FT_Pointer = Pointer;
   FT_ULong = Cardinal;
   FT_UInt = Cardinal;
