@@ -1591,7 +1591,21 @@ var
   shapeData: TShapingData;
   scale:double;
   fontScaleValue: Int32;
+{$IFDEF FPC}
+  fpuMask: TFPUExceptionMask;
+{$ENDIF}
 begin
+{$IFDEF FPC}
+  // HarfBuzz computes with floats and, with some fonts (the variable system
+  // fonts of macOS 15), its intermediate values are NaN, which C ignores. FPC
+  // programs run with the floating point exceptions unmasked (the LCL masks
+  // them, console programs do not): HarfBuzz then stops with EInvalidOp and
+  // the next text crashes. HarfBuzz runs as in C and the mask is restored.
+  fpuMask := GetExceptionMask;
+  SetExceptionMask(fpuMask + [exInvalidOp, exDenormalized, exZeroDivide,
+    exOverflow, exUnderflow, exPrecision]);
+  try
+{$ENDIF}
   InitHarfBuzz;
   SetLength(Result, 0);
   if astring = '' then Exit;
@@ -1668,6 +1682,11 @@ begin
   finally
     // Font.Destroy; // si lo necesitas
   end;
+{$IFDEF FPC}
+  finally
+    SetExceptionMask(fpuMask);
+  end;
+{$ENDIF}
 end;
 
 
