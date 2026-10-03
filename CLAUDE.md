@@ -159,16 +159,25 @@ Other FPC deliverables:
   `-Validate`.
 - `LclSnapshotTest` compares the LCL preview against the PDF driver (exit 1 on
   failure); `PdfTest` covers the PDF driver.
-- macOS (LCL Cocoa, Intel): `build/macos/setup-toolchain.sh` (FPC 3.2.2 +
-  Lazarus 4.8 + Zeos in `~/dev`, no sudo, and applies
-  `build/macos/patches` to that Lazarus) and `build/macos/build-deps.sh`
-  (FreeType/HarfBuzz/fontconfig and OpenSSL 3.5 dylibs; ICU is the system
-  `libicucore`);
-  `build/macos/build-designer.sh` builds `repman/repmandesigner_lcl.app`
-  (development: it links the executable) and `build/macos/make-package.sh`
-  the self-contained `.app` and `.dmg` (output `build/macos/out/<v>/`,
-  gitignored). `rpconf.inc` defines `LINUX` for FPC on Darwin (the
-  non-Windows engine path); real macOS differences go under `DARWIN`. See
+- macOS (LCL Cocoa, Intel and Apple Silicon): `build/macos/setup-toolchain.sh`
+  (FPC 3.2.2 + Lazarus 4.8 for the Mac's architecture + Zeos in `~/dev`, no
+  sudo; applies `build/macos/patches` to that Lazarus and, with Xcode 15+
+  tools, works around FPC 3.2.2's assembler labels and linker crash in
+  `fpc.cfg`) and `build/macos/build-deps.sh` (FreeType/HarfBuzz/fontconfig
+  and OpenSSL 3.5 dylibs, macOS 10.15 minimum on x86_64 and 11.0 on arm64;
+  ICU is the system `libicucore`); both can be re-run and only redo what
+  changed. `build/macos/build-designer.sh` builds
+  `repman/repmandesigner_lcl.app` (development: it links the executable),
+  `build/macos/make-package.sh` the self-contained `.app` and `.dmg` of the
+  Mac's architecture (output `build/macos/out/<v>/`, gitignored),
+  `build/macos/make-universal.sh` joins an x86_64 and an arm64 `.app` with
+  `lipo` into the universal `.dmg`, and `build/macos/opm-check.sh` builds the
+  OPM package from its file list (the `-Validate` of macOS).
+  `.github/workflows/macos.yml` (manual `workflow_dispatch` only) does all of
+  it on `macos-15` (arm64) and `macos-15-intel` and tests the universal
+  `.dmg` on both; the designer's `--check-https` tests TLS with the bundled
+  OpenSSL. `rpconf.inc` defines `LINUX` for FPC on Darwin (the non-Windows
+  engine path); real macOS differences go under `DARWIN`. See
   `docs/macos.md`.
 
 **Shared units rule:** the root `rp*.pas` units are also the Delphi product.
