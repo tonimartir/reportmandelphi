@@ -7,6 +7,11 @@ name: macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      sin_cache:
+        description: Compilar desde cero, sin la cache de ~/dev
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,6 +46,7 @@ jobs:
         run: |
           v=$(sed -n "s/^[[:space:]]*RM_VERSION[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" rpmdconsts.pas | head -n 1)
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "cache_key=macos-dev-${{ matrix.arch }}-${{ hashFiles('build/macos/setup-toolchain.sh', 'build/macos/build-deps.sh', 'build/macos/patches/**') }}" >> "$GITHUB_OUTPUT"
           echo "Report Manager $v en $(uname -m), macOS $(sw_vers -productVersion), $(sysctl -n hw.ncpu) nucleos"
 
       # FPC, Lazarus (con las PPU recompiladas), Zeos y las librerias de
@@ -48,12 +54,13 @@ jobs:
       # Las descargas (dl) no se guardan
       - name: Restaurar las herramientas (cache)
         id: cache
+        if: ${{ !inputs.sin_cache }}
         uses: actions/cache/restore@v6
         with:
           path: |
             ~/dev
             !~/dev/dl
-          key: macos-dev-${{ matrix.arch }}-${{ hashFiles('build/macos/setup-toolchain.sh', 'build/macos/build-deps.sh', 'build/macos/patches/**') }}
+          key: ${{ steps.version.outputs.cache_key }}
           restore-keys: macos-dev-${{ matrix.arch }}-
 
       - name: FPC 3.2.2, Lazarus 4.8 y Zeos (setup-toolchain.sh)
@@ -62,7 +69,8 @@ jobs:
       - name: FreeType, HarfBuzz, fontconfig y OpenSSL (build-deps.sh)
         run: bash build/macos/build-deps.sh
 
-      # Se guarda ya, aunque fallen las pruebas
+      # Se guarda ya, aunque fallen las pruebas (con sin_cache y la clave ya
+      # guardada, cache/save solo avisa)
       - name: Guardar las herramientas (cache)
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -70,7 +78,7 @@ jobs:
           path: |
             ~/dev
             !~/dev/dl
-          key: ${{ steps.cache.outputs.cache-primary-key }}
+          key: ${{ steps.version.outputs.cache_key }}
 
       - name: Paquetes de Lazarus (build_fpc.sh)
         run: |
