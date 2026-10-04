@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Reportman Server: the Report Manager web designer with its AI copilot, self-hosted in Docker. Design, preview and run .rep reports from the browser.">
+  <title>Report Manager - Web Designer (Reportman Server)</title>
+  <link rel="stylesheet" href="responsive.css?v=20260620">
+  <link rel="canonical" href="https://reportman.es/server.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/server.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/serveres.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/server.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0969da">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Web Designer (Reportman Server)">
+  <meta property="og:description" content="The Report Manager web designer with its AI copilot, self-hosted in Docker.">
+  <meta property="og:url" content="https://reportman.es/server.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Report Manager Designer with the AI Copilot chat panel, designing a customer sales report.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Web Designer (Reportman Server)">
+  <meta name="twitter:description" content="The Report Manager web designer with its AI copilot, self-hosted in Docker.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="download.html">Download</a>
+        <a href="webserver.html">Web Server</a>
+        <a href="server.html" class="active">Designer</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><span class="current">EN</span><a href="serveres.html">ES</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Web Designer &mdash; Reportman Server</h1>
+        <p class="tagline">Design, preview and run Report Manager reports from the browser, with an AI copilot. Self-hosted in Docker.</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p>Reportman Server is one container on your network that holds the report engine, the report store and a web designer. Your team designs reports in the browser, previews them as PDF and runs them through a public API, with no installation on the PCs. The reports are the same <code>.rep</code> files the Delphi designer, <code>printreptopdf</code> and the <a href="webserver.html">Web Report Server</a> read.</p>
+      <p>The designer and the server are free. The AI copilot uses Reportman AI credits: every installation starts with 100 guest credits, and each person who signs in to Reportman AI from the copilot gets 2,000 more.</p>
+
+      <h2>Start it</h2>
+      <pre><code>docker run -d \
+  --name reportman-server \
+  --restart unless-stopped \
+  -p 8090:8090 \
+  -v reportman-server-data:/app/data \
+  tonimartir/reportman-server:latest</code></pre>
+      <p>On the first start the server is not installed yet. Read the one-time installation code from its log:</p>
+      <pre><code>docker logs reportman-server</code></pre>
+      <p>Then open <a href="http://localhost:8090" target="_blank" rel="noopener">http://localhost:8090</a>, enter the code, choose how people enter and create the first administrator. Only somebody who can read the server's log can install it.</p>
+
+      <h2>How people enter</h2>
+      <ul>
+        <li><b>Users of this server</b> (recommended): each person signs in with a user of this server. Administrators manage users, groups and, for each report folder, which groups run and which design. A <code>reportmanserver.ini</code> from the Web Report Server can be imported.</li>
+        <li><b>Trusted network:</b> nobody signs in; whoever reaches the port designs, runs and opens the console. Use it only on a closed network, never with the port open to the Internet.</li>
+      </ul>
+      <p>The installation page chooses the mode. To fix it from Docker instead, with no installation page, add one of these to <code>docker run</code>:</p>
+      <pre><code># trusted network
+-e Server__Auth=trusted
+
+# users, with the first administrator created on the first start
+-e Server__Auth=users -e Server__AdminUser=ADMIN -e Server__AdminPassword=change-me</code></pre>
+      <p>The Reportman AI account is only for the AI: it is not the door to the server.</p>
+
+      <h2>The data volume</h2>
+      <p>Everything the installation owns lives in <code>/app/data</code>, plain files with nothing tied to the machine:</p>
+      <table>
+        <tr><td><code>informes/</code></td><td>the reports, one folder per alias; saving keeps the last versions in <code>.versions/</code></td></tr>
+        <tr><td><code>dbxconnections.ini</code></td><td>the connections, in the format the designers read</td></tr>
+        <tr><td><code>fuentes/</code></td><td>your own fonts</td></tr>
+        <tr><td><code>access.json</code>, <code>keys/</code></td><td>users, groups, permissions and the keys that sign the sessions</td></tr>
+        <tr><td><code>apikeys.json</code></td><td>the API keys</td></tr>
+        <tr><td><code>server-id</code></td><td>this installation for Reportman AI</td></tr>
+      </table>
+      <p>Copy the folder and the installation moves with it. To clone a server as a new one (a test copy, a second office), delete <code>server-id</code> before its first start: it gets its own guest credits and AI sessions.</p>
+
+      <h2>Connections</h2>
+      <ul>
+        <li><b>Direct:</b> the server opens the database itself. The image includes PostgreSQL, Firebird, SQL Server, MySQL/MariaDB, SQLite and ODBC. A database file inside the data volume is named by its file name, for example <code>clientes.db</code>.</li>
+        <li><b>Through the Reportman Agent:</b> the <a href="https://ai.reportman.es" target="_blank" rel="noopener">Reportman Agent</a> runs next to your database and the server reaches it through Reportman AI or a direct channel. The connection needs the Agent's API key, because the server runs reports with nobody signed in.</li>
+      </ul>
+      <p>The new report wizard, ported from the Delphi designer, creates both kinds and tests them before saving.</p>
+
+      <h2>A report made by the AI from one paragraph</h2>
+      <p>A new installation comes with <code>Ejemplos/ventas-por-cliente.rep</code> and the <code>EXAMPLE</code> connection. It is the Reportman AI example database, which needs no key. The AI designed the report from a single request, which the report keeps in the group <code>AI_REQUEST</code> and prints at the end:</p>
+      <blockquote><p>&ldquo;I want you to design a professional sales-by-customer report, grouped by customer: the customer name and code in the header, the customer's total sales in the group footer. The detail must list the items sold to that customer, but only one line per item, that is, the data must be grouped in the SQL by customer and item. At the very end, a bar chart of sales by item (all customers); in each customer's footer, a bar chart of their items too. It must be a professional report; the page header must show the report title (make one up) and Page X of TOTAL.&rdquo;</p></blockquote>
+      <p>The result has two datasets, a group per customer with its total and its chart, and a chart of all customers at the end.</p>
+
+      <h2>The AI copilot</h2>
+      <p>It designs and changes reports in natural language, and helps with SQL and expressions. It is the same AI as the Delphi designer. The AI calls go from the server to Reportman AI, so the server needs Internet access to <code>api.reportman.es</code>. Only the AI sign-in goes from the browser.</p>
+      <p>Privacy: to design, the copilot sends Reportman AI the report definition and the columns of its datasets, as the Delphi designer does. Every call is in the copilot's AI log and in the server's audit log.</p>
+
+      <h2>Fonts</h2>
+      <p>A container only sees its own fonts. The image carries metric-compatible replacements for the Windows fonts (Arial, Times New Roman, Courier New, Arial Narrow, Calibri, Cambria), so a report keeps its Windows layout. It also carries Noto for most scripts, including Arabic (Noto Naskh Arabic), Hebrew, Indic, Thai, Chinese, Japanese and Korean, plus Amiri, Vazirmatn, monochrome emoji, Roboto, Open Sans, Lato and Montserrat.</p>
+      <ul>
+        <li><b>Your own fonts:</b> copy the files to <code>fuentes/</code> in the volume and restart the container.</li>
+        <li><b>Baked into an image:</b> <code>FROM tonimartir/reportman-server</code>, copy the files to <code>/usr/share/fonts/truetype/&lt;name&gt;/</code> and <code>RUN fc-cache -f</code>.</li>
+        <li><b>Check:</b> <i>Server &rarr; Diagnostics &rarr; Fonts</i> shows what the engine sees.</li>
+      </ul>
+
+      <h2>Run reports from your applications</h2>
+      <p>Create an API key in the console (<i>Server &rarr; Keys</i>) and run any stored report:</p>
+      <pre><code>curl -X POST "http://localhost:8090/api/reports/INFORMES/execute?path=Ejemplos/ventas-por-cliente.rep&amp;format=pdf" \
+  -H "X-ReportmanServer-ApiKey: rpsk_..." -o report.pdf</code></pre>
+      <p>Formats: <code>pdf</code>, <code>csv</code>, <code>text</code> and <code>metafile</code>. Report parameters go in the query or in a JSON body. The console has an API explorer that builds the request and shows it in curl, PowerShell, fetch, C# and Delphi. The OpenAPI reference is at <code>/scalar</code>.</p>
+
+      <h2>Behind a reverse proxy</h2>
+      <p>The AI answers are streams (<code>text/event-stream</code> under <code>/api/ai/</code>). A proxy that buffers them shows the answer only at the end.</p>
+      <ul>
+        <li><b>nginx:</b> <code>location /api/ai/ { proxy_pass &hellip;; proxy_buffering off; proxy_read_timeout 600s; }</code></li>
+        <li><b>IIS / ARR:</b> <code>responseBufferLimit="0"</code> on the rule and a proxy timeout of a few minutes.</li>
+        <li>No response compression on <code>/api/ai/</code>.</li>
+      </ul>
+
+      <h2>Upgrade</h2>
+      <pre><code>docker pull tonimartir/reportman-server:latest
+docker rm -f reportman-server
+# and the same docker run as above: the volume keeps the installation</code></pre>
+
+      <p>Image on Docker Hub: <a href="https://hub.docker.com/r/tonimartir/reportman-server" target="_blank" rel="noopener">tonimartir/reportman-server</a>. The report engine is open source: <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">github.com/tonimartir/reportman</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">MPL License</a>
+      <span class="sep">&middot;</span>
+      <a href="company.html">Company</a>
+      <span class="sep">&middot;</span>
+      <a href="links.html">Related links</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>

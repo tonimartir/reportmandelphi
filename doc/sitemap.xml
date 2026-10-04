@@ -58,6 +58,20 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/webserver.html"/>
   </url>
   <url>
+    <loc>https://reportman.es/server.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/server.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/serveres.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/server.html"/>
+  </url>
+  <url>
+    <loc>https://reportman.es/serveres.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/server.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/serveres.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/server.html"/>
+  </url>
+  <url>
     <loc>https://reportman.es/company.html</loc>
     <lastmod>2026-06-18</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/company.html"/>

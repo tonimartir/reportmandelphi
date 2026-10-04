@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Reportman Server: el diseñador web de Report Manager con su copiloto de IA, en tu propio servidor con Docker. Diseña, previsualiza y ejecuta informes .rep desde el navegador.">
+  <title>Report Manager - Diseñador Web (Reportman Server)</title>
+  <link rel="stylesheet" href="responsive.css?v=20260620">
+  <link rel="canonical" href="https://reportman.es/serveres.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/server.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/serveres.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/server.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0969da">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Diseñador Web (Reportman Server)">
+  <meta property="og:description" content="El diseñador web de Report Manager con su copiloto de IA, en tu propio servidor con Docker.">
+  <meta property="og:url" content="https://reportman.es/serveres.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="El diseñador de Report Manager con el chat del Copiloto de IA, diseñando un informe de ventas por cliente.">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Diseñador Web (Reportman Server)">
+  <meta name="twitter:description" content="El diseñador web de Report Manager con su copiloto de IA, en tu propio servidor con Docker.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="indexes.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="indexes.html">Inicio</a>
+        <a href="downloades.html">Descarga</a>
+        <a href="webserveres.html">Servidor Web</a>
+        <a href="serveres.html" class="active">Diseñador</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="supportes.html">Soporte</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><a href="server.html">EN</a><span class="current">ES</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Diseñador Web &mdash; Reportman Server</h1>
+        <p class="tagline">Diseña, previsualiza y ejecuta informes de Report Manager desde el navegador, con un copiloto de IA. En tu propio servidor, con Docker.</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p>Reportman Server es un único contenedor en tu red con el motor de informes, el almacén de informes y un diseñador web. Tu equipo diseña los informes en el navegador, los previsualiza en PDF y los ejecuta mediante una API pública, sin instalar nada en los PC. Los informes son los mismos ficheros <code>.rep</code> que leen el diseñador Delphi, <code>printreptopdf</code> y el <a href="webserveres.html">Servidor Web de informes</a>.</p>
+      <p>El diseñador y el servidor son gratuitos. El copiloto de IA usa créditos de Reportman AI: cada instalación empieza con 100 créditos de invitado, y cada persona que entra en Reportman AI desde el copiloto recibe 2.000 más.</p>
+
+      <h2>Arrancarlo</h2>
+      <pre><code>docker run -d \
+  --name reportman-server \
+  --restart unless-stopped \
+  -p 8090:8090 \
+  -v reportman-server-data:/app/data \
+  tonimartir/reportman-server:latest</code></pre>
+      <p>En el primer arranque el servidor aún no está instalado. Lee el código de instalación, de un solo uso, en su registro:</p>
+      <pre><code>docker logs reportman-server</code></pre>
+      <p>Después abre <a href="http://localhost:8090" target="_blank" rel="noopener">http://localhost:8090</a>, escribe el código, elige cómo se entra y crea el primer administrador. Solo puede instalarlo quien tenga acceso al registro del servidor.</p>
+
+      <h2>Cómo se entra</h2>
+      <ul>
+        <li><b>Usuarios de este servidor</b> (recomendado): cada persona entra con un usuario de este servidor. Los administradores gestionan usuarios, grupos y, para cada carpeta de informes, qué grupos ejecutan y cuáles diseñan. Se puede importar el <code>reportmanserver.ini</code> del Servidor Web de informes.</li>
+        <li><b>Red de confianza:</b> nadie inicia sesión; quien llega al puerto diseña, ejecuta y abre la consola. Úsalo solo en una red cerrada, nunca con el puerto abierto a Internet.</li>
+      </ul>
+      <p>La página de instalación elige el modo. Para fijarlo desde Docker, sin página de instalación, añade una de estas opciones a <code>docker run</code>:</p>
+      <pre><code># red de confianza
+-e Server__Auth=trusted
+
+# usuarios, con el primer administrador creado en el primer arranque
+-e Server__Auth=users -e Server__AdminUser=ADMIN -e Server__AdminPassword=cambiala</code></pre>
+      <p>La cuenta de Reportman AI es solo para la IA: no es la puerta del servidor.</p>
+
+      <h2>El volumen de datos</h2>
+      <p>Todo lo de la instalación vive en <code>/app/data</code>, ficheros normales sin nada atado a la máquina:</p>
+      <table>
+        <tr><td><code>informes/</code></td><td>los informes, una carpeta por alias; al guardar se conservan las últimas versiones en <code>.versions/</code></td></tr>
+        <tr><td><code>dbxconnections.ini</code></td><td>las conexiones, en el formato que leen los diseñadores</td></tr>
+        <tr><td><code>fuentes/</code></td><td>tus propias fuentes</td></tr>
+        <tr><td><code>access.json</code>, <code>keys/</code></td><td>usuarios, grupos, permisos y las claves que firman las sesiones</td></tr>
+        <tr><td><code>apikeys.json</code></td><td>las claves de la API</td></tr>
+        <tr><td><code>server-id</code></td><td>esta instalación ante Reportman AI</td></tr>
+      </table>
+      <p>Copia la carpeta y la instalación se va con ella. Para clonar un servidor como uno nuevo (una copia de pruebas, una segunda oficina), borra <code>server-id</code> antes de su primer arranque: tendrá sus propios créditos de invitado y sus propias sesiones de IA.</p>
+
+      <h2>Conexiones</h2>
+      <ul>
+        <li><b>Directas:</b> el servidor abre la base de datos él mismo. La imagen incluye PostgreSQL, Firebird, SQL Server, MySQL/MariaDB, SQLite y ODBC. Un fichero de base de datos dentro del volumen se nombra por su nombre de fichero, por ejemplo <code>clientes.db</code>.</li>
+        <li><b>A través del Reportman Agent:</b> el <a href="https://ai.reportman.es" target="_blank" rel="noopener">Reportman Agent</a> se instala junto a tu base de datos y el servidor llega a él a través de Reportman AI o de un canal directo. La conexión necesita la clave API del Agent, porque el servidor ejecuta informes sin nadie con la sesión abierta.</li>
+      </ul>
+      <p>El asistente de nuevo informe, el mismo del diseñador Delphi, crea los dos tipos y los prueba antes de guardarlos.</p>
+
+      <h2>Un informe hecho por la IA con un solo párrafo</h2>
+      <p>Una instalación nueva trae <code>Ejemplos/ventas-por-cliente.rep</code> y la conexión <code>EXAMPLE</code>. Es la base de datos de ejemplo de Reportman AI, que no necesita clave. La IA diseñó el informe con una sola petición, que el informe guarda en el grupo <code>AI_REQUEST</code> e imprime al final (en inglés; esta es la original):</p>
+      <blockquote><p>&laquo;Quiero que diseñes un informe profesional de ventas por cliente grupo por cliente, en la cabecera el nombre de cliente y el código, en el pie de grupo el total de ventas por cliente, el detalle debe contener los arículos vendidos a ese cliente pero sólo una línea por artículo es decir hay que agrupar los datos en el sql por cliente y artículo, al final de todo un gráfico de ventas de barras por artículo (todos los clientes), en el pie de cada cliente un gráfico de barras tambíen con sus artículos, debe ser un informe profesional, en la cabecera de página debe aparecer el título del informe, inventatelo y Página X de TOTAL&raquo;</p></blockquote>
+      <p>El resultado tiene dos datasets, un grupo por cliente con su total y su gráfico, y un gráfico de todos los clientes al final.</p>
+
+      <h2>El copiloto de IA</h2>
+      <p>Diseña y modifica informes en lenguaje natural, y ayuda con el SQL y las expresiones. Es la misma IA del diseñador Delphi. Las llamadas a la IA van del servidor a Reportman AI, así que el servidor necesita salida a Internet hacia <code>api.reportman.es</code>. Solo el inicio de sesión en la IA sale del navegador.</p>
+      <p>Privacidad: para diseñar, el copiloto envía a Reportman AI la definición del informe y las columnas de sus datasets, igual que el diseñador Delphi. Cada llamada queda en el registro de IA del copiloto y en el registro de auditoría del servidor.</p>
+
+      <h2>Fuentes</h2>
+      <p>Un contenedor solo ve sus propias fuentes. La imagen lleva sustitutas con las mismas medidas que las fuentes de Windows (Arial, Times New Roman, Courier New, Arial Narrow, Calibri, Cambria), así que un informe conserva la maquetación que tenía en Windows. También lleva Noto para la mayoría de escrituras, entre ellas árabe (Noto Naskh Arabic), hebreo, las índicas, tailandés, chino, japonés y coreano, además de Amiri, Vazirmatn, emoji monocromos, Roboto, Open Sans, Lato y Montserrat.</p>
+      <ul>
+        <li><b>Tus propias fuentes:</b> copia los ficheros en <code>fuentes/</code> dentro del volumen y reinicia el contenedor.</li>
+        <li><b>Dentro de una imagen:</b> <code>FROM tonimartir/reportman-server</code>, copia los ficheros en <code>/usr/share/fonts/truetype/&lt;nombre&gt;/</code> y <code>RUN fc-cache -f</code>.</li>
+        <li><b>Comprobarlo:</b> <i>Servidor &rarr; Diagnóstico &rarr; Fuentes</i> muestra lo que ve el motor.</li>
+      </ul>
+
+      <h2>Ejecutar informes desde tus aplicaciones</h2>
+      <p>Crea una clave API en la consola (<i>Servidor &rarr; Claves</i>) y ejecuta cualquier informe guardado:</p>
+      <pre><code>curl -X POST "http://localhost:8090/api/reports/INFORMES/execute?path=Ejemplos/ventas-por-cliente.rep&amp;format=pdf" \
+  -H "X-ReportmanServer-ApiKey: rpsk_..." -o informe.pdf</code></pre>
+      <p>Formatos: <code>pdf</code>, <code>csv</code>, <code>text</code> y <code>metafile</code>. Los parámetros del informe van en la consulta o en un cuerpo JSON. La consola tiene un explorador de la API que monta la petición y la muestra en curl, PowerShell, fetch, C# y Delphi. La referencia OpenAPI está en <code>/scalar</code>.</p>
+
+      <h2>Detrás de un proxy inverso</h2>
+      <p>Las respuestas de la IA llegan en streaming (<code>text/event-stream</code> bajo <code>/api/ai/</code>). Un proxy que las acumula muestra la respuesta solo al final.</p>
+      <ul>
+        <li><b>nginx:</b> <code>location /api/ai/ { proxy_pass &hellip;; proxy_buffering off; proxy_read_timeout 600s; }</code></li>
+        <li><b>IIS / ARR:</b> <code>responseBufferLimit="0"</code> en la regla y un tiempo de espera del proxy de unos minutos.</li>
+        <li>Sin compresión de respuestas en <code>/api/ai/</code>.</li>
+      </ul>
+
+      <h2>Actualizar</h2>
+      <pre><code>docker pull tonimartir/reportman-server:latest
+docker rm -f reportman-server
+# y el mismo docker run de arriba: el volumen conserva la instalación</code></pre>
+
+      <p>Imagen en Docker Hub: <a href="https://hub.docker.com/r/tonimartir/reportman-server" target="_blank" rel="noopener">tonimartir/reportman-server</a>. El motor de informes es de código abierto: <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">github.com/tonimartir/reportman</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">Licencia MPL</a>
+      <span class="sep">&middot;</span>
+      <a href="companyes.html">Empresa</a>
+      <span class="sep">&middot;</span>
+      <a href="linkses.html">Otros enlaces</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>
