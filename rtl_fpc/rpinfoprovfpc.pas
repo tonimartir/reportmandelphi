@@ -44,7 +44,8 @@ type
     procedure FillFontData(pdffont: TRpPDFFont; data: TRpTTFontData; content: string); override;
     function TextExtent(const Text: WideString;
       var Rect: TRect; adata: TRpTTFontData; pdfFont: TRpPDFFont;
-      wordwrap: Boolean; singleline: Boolean; FontSize: Double; IsHtml: Boolean): TRpLineInfoArray; override;
+      wordwrap: Boolean; singleline: Boolean; FontSize: Double; IsHtml: Boolean;
+      RightToLeft: Boolean): TRpLineInfoArray; override;
     function NFCNormalize(astring: WideString): WideString; override;
     function GetCharWidth(pdffont: TRpPDFFont; data: TRpTTFontData; charcode: WideChar): Double; override;
     function GetGlyphWidth(pdffont: TRpPDFFont; data: TRpTTFontData; glyph: Integer; charC: WideChar): Double; override;
@@ -266,7 +267,8 @@ end;
 { TextExtent: compute line layout using GDI GetTextExtentPoint32W }
 function TRpFpcInfoProvider.TextExtent(const Text: WideString;
   var Rect: TRect; adata: TRpTTFontData; pdfFont: TRpPDFFont;
-  wordwrap: Boolean; singleline: Boolean; FontSize: Double; IsHtml: Boolean): TRpLineInfoArray;
+  wordwrap: Boolean; singleline: Boolean; FontSize: Double; IsHtml: Boolean;
+  RightToLeft: Boolean): TRpLineInfoArray;
 var
   hf, hfOld: HFONT;
   tm: TEXTMETRICW;

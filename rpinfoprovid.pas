@@ -150,9 +150,13 @@ type
 
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;conent:string);virtual;abstract;
+  // RightToLeft: the object is right to left (its BidiMode is on). It only matters for a text
+  // with no letter of its own direction (digits, symbols, emoji alone): it reads right to left
+  // in a right-to-left object and left to right in any other.
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;virtual;abstract;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean;
+     RightToLeft:boolean): TRpLineInfoArray;virtual;abstract;
   function NFCNormalize(astring:WideString):WideString;virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;
@@ -199,8 +203,23 @@ function BreakChunksLTR(
 
 function DividesIntoLines(const text: string): TList<TLineSubText>;
 
+// The ICU paragraph level for ubidi_setPara of an object's line (see TRpInfoProvider.TextExtent).
+function BidiParagraphLevel(RightToLeft: Boolean): Byte;
+
 implementation
 
+// THE PARAGRAPH LEVEL OF A LINE WITH NO LETTER OF ITS OWN DIRECTION (04-10-2026). $FF is
+// UBIDI_DEFAULT_RTL: digits, symbols or emoji alone read right to left. That is right in an
+// Arabic object ("100 200" as an Arabic reader expects) and wrong in any other: an HTML label
+// or a forced-shaping one with a row of emoji came out backwards. $FE, UBIDI_DEFAULT_LTR, is the
+// Unicode default. A line with a strong letter decides by itself either way.
+function BidiParagraphLevel(RightToLeft: Boolean): Byte;
+begin
+  if RightToLeft then
+    Result := $FF
+  else
+    Result := $FE;
+end;
 
 
 function DividesIntoLines(const text: string): TList<TLineSubText>;

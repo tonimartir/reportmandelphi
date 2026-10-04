@@ -119,7 +119,8 @@ type
     wordwrap: Boolean;
     singleline: Boolean;
     FontSize: Double;
-    IsHtml: Boolean
+    IsHtml: Boolean;
+    RightToLeft: Boolean
   ): TRpLineInfoArray;override;
   function TextExtentHtml(
     const Text: WideString;
@@ -129,7 +130,8 @@ type
     wordwrap: Boolean;
     singleline: Boolean;
     FontSize: Double;
-    IsHtml: Boolean
+    IsHtml: Boolean;
+    RightToLeft: Boolean
   ): TRpLineInfoArray;
 {$IFDEF USEFONTCONFIG}
   procedure SelectFontFontConfig(pdffont:TRpPDFFOnt;unicodeContent: string = '');
@@ -950,10 +952,12 @@ function TRpFTInfoProvider.TextExtent(
   wordwrap: Boolean;
   singleline: Boolean;
   FontSize: Double;
-  IsHtml: Boolean
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 begin
-  Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml);
+  Result := TextExtentHtml(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml,
+    RightToLeft);
 end;
 
 function TRpFTInfoProvider.TextExtentHtml(
@@ -964,7 +968,8 @@ function TRpFTInfoProvider.TextExtentHtml(
   wordwrap: Boolean;
   singleline: Boolean;
   FontSize: Double;
-  IsHtml: Boolean
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
@@ -1091,7 +1096,7 @@ begin
         Bidi := TICUBidi.Create;
         logicalRuns := nil;
         try
-          if not Bidi.SetPara(line, $FF) then
+          if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
             raise Exception.Create('Bidi error');
           logicalRuns := Bidi.GetLogicalRuns(line);
         finally
@@ -1373,7 +1378,7 @@ begin
         Bidi := TICUBidi.Create;
         visualRuns := nil;
         try
-          if not Bidi.SetPara(line, $FF) then raise Exception.Create('VisualRuns error');
+          if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then raise Exception.Create('VisualRuns error');
           visualRuns := Bidi.GetVisualRuns(line);
         finally
           Bidi.Free;
@@ -2570,26 +2575,82 @@ end;
 // pedir ese nombre cae en el mismo fichero y la misma cara. Si no cae, no se usa la
 // reserva: se dibuja como antes -con sus huecos- en vez de escribir los glifos de una
 // fuente bajo el recurso de otra, que es basura silenciosa y peor que un hueco.
+// Si todos los caracteres visibles del texto son emoji, contando los que los construyen (ZWJ,
+// selectores de variante, la marca de tecla, los indicadores regionales). Bloques: simbolos
+// varios y dingbats (U+2600-27BF), simbolos y flechas (U+2B00-2BFF, la estrella) y los
+// pictogramas de los planos suplementarios (U+1F000-1FAFF). Igual que FontInfoFt.EsSoloEmoji.
+function EsSoloEmoji(const texto:WideString):boolean;
+var
+ i:integer;
+ cp:Cardinal;
+ alguno:boolean;
+begin
+ Result:=false;
+ alguno:=false;
+ i:=1;
+ while (i<=Length(texto)) do
+ begin
+  cp:=Ord(texto[i]);
+  if ((cp>=$D800) and (cp<=$DBFF) and (i<Length(texto))
+      and (Ord(texto[i+1])>=$DC00) and (Ord(texto[i+1])<=$DFFF)) then
+  begin
+   cp:=$10000+((cp-$D800) shl 10)+(Cardinal(Ord(texto[i+1]))-$DC00);
+   Inc(i);
+  end;
+  Inc(i);
+  if ((cp<=32) or (cp=$200D) or (cp=$20E3) or ((cp>=$FE00) and (cp<=$FE0F))) then
+   continue;
+  if (((cp>=$2600) and (cp<=$27BF)) or ((cp>=$2B00) and (cp<=$2BFF))
+      or ((cp>=$1F000) and (cp<=$1FAFF))) then
+  begin
+   alguno:=true;
+   continue;
+  end;
+  exit;
+ end;
+ Result:=alguno;
+end;
+
 function TRpFtInfoProvider.ReservaPorContenido(pdffont:TRpPDFFont;
   const texto:WideString;fuenteactual:TRpLogFont;var familia:string):boolean;
 var
  encontrada:TRpLogFont;
  porNombre:TRpPDFFont;
  faltan:TArray<Integer>;
+ familiaPedida:string;
+ pideEmoji:boolean;
 begin
  Result:=false;
  SetLength(faltan,0);
  if Assigned(fuenteactual) then
   faltan:=CodigosSinGlifo(fuenteactual,texto);
- SelectFont(pdffont,texto,false);
- encontrada:=currentfont;
- // Segundo intento sin familia, el que ya hacia el camino de antes: si la que ha salido no
- // aporta ni uno de los glifos que faltaban, se pide cualquiera que si los lleve.
- if (Assigned(encontrada) and (Length(faltan)>0)
-     and (CuantosCubre(encontrada,faltan)=0)) then
- begin
-  SelectFont(pdffont,texto,true);
+ // UN TRAMO DE SOLO EMOJI SE PIDE A LA FAMILIA "emoji" (04-10-2026). Pedido con la familia del
+ // texto (Arial, Cantarell), fontconfig elige entre las que lo cubren por la lista generica
+ // sans-serif, que empieza por DejaVu Sans: tiene unos pocos emoji de dibujo propio y una misma
+ // linea mezclaba estilos. La familia generica "emoji" es la que usan los navegadores, y
+ // fontconfig la resuelve a la fuente de emoji que haya. Solo con fontconfig: el barrido por
+ // cobertura de la lista enumerada no sabe de familias genericas.
+ familiaPedida:=pdffont.LFontName;
+ pideEmoji:=false;
+{$IFDEF USEFONTCONFIG}
+ pideEmoji:=FontConfigAvailable and EsSoloEmoji(texto);
+{$ENDIF}
+ if pideEmoji then
+  pdffont.LFontName:='emoji';
+ try
+  SelectFont(pdffont,texto,false);
   encontrada:=currentfont;
+  // Segundo intento sin familia, el que ya hacia el camino de antes: si la que ha salido no
+  // aporta ni uno de los glifos que faltaban, se pide cualquiera que si los lleve.
+  if (Assigned(encontrada) and (Length(faltan)>0)
+      and (CuantosCubre(encontrada,faltan)=0)) then
+  begin
+   SelectFont(pdffont,texto,true);
+   encontrada:=currentfont;
+  end;
+ finally
+  if pideEmoji then
+   pdffont.LFontName:=familiaPedida;
  end;
  if ((not Assigned(encontrada)) or (Length(encontrada.familyname)=0)) then
   exit;

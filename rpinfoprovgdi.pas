@@ -72,7 +72,8 @@ type
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;override;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean;
+     RightToLeft:boolean): TRpLineInfoArray;override;
 {$IFNDEF WINDOWS_USEHARFBUZZ}
 {$IFDEF RPXPGDIFALLBACK}
   // Windows XP / no-DirectWrite fallback: simple GDI (ExtTextOut/glyph-index) text
@@ -353,7 +354,8 @@ function TRpGDIInfoProvider.TextExtent(
   wordwrap: Boolean;
   singleline: Boolean;
   FontSize: Double;
-  IsHtml: Boolean
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 const
   DIP_TO_TWIPS_FACTOR = 15.0;
@@ -964,7 +966,8 @@ function TRpGDIInfoProvider.TextExtent(
   wordwrap: Boolean;
   singleline: Boolean;
   FontSize: Double;
-  IsHtml: Boolean
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
@@ -1048,7 +1051,10 @@ begin
       Bidi := TICUBidi.Create;
       logicalRuns := nil;
       try
-        if not Bidi.SetPara(line, $FF) then
+        // $FF (UBIDI_DEFAULT_RTL) only in a right-to-left object: elsewhere a line with no
+        // letter of its own direction (a row of emoji) would come out backwards. Same rule as
+        // TRpFTInfoProvider.TextExtentHtml.
+        if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('Bidi error');
         logicalRuns := Bidi.GetLogicalRuns(line);
       finally
@@ -1169,7 +1175,7 @@ begin
       Bidi := TICUBidi.Create;
       visualRuns := nil;
       try
-        if not Bidi.SetPara(line, $FF) then
+        if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('VisualRuns error');
         visualRuns := Bidi.GetVisualRuns(line);
       finally

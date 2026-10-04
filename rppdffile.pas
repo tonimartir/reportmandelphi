@@ -2989,7 +2989,8 @@ begin
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml,
+   rightToLeft);
  end
  else if ForceComplexShaping then
  begin
@@ -2999,7 +3000,8 @@ begin
   if not (Font.Name in [poLinked,poEmbedded]) then
    Font.Name:=poLinked;
   GetTTFontData;
-  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml,
+   rightToLeft);
  end
  else
  begin

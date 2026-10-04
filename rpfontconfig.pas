@@ -60,6 +60,7 @@ const
   FC_SLANT_ITALIC = 100;
   FC_SCALABLE = 'scalable';
   FC_EMBEDDEDBITMAP = 'embeddedbitmap';
+  FC_COLOR = 'color';
 
 const
   FC_MATCH_PATTERN = 0; // Tipo de objeto: Patrón (Familia)
@@ -234,6 +235,7 @@ var
   UTF8Family: UTF8String;
   CharSet: PFcCharSet;
   i:integer;
+  cp: Cardinal;
 begin
   Result := nil;
   if not FontConfigAvailable or not Assigned(FcPatternCreate) or not Assigned(FcPatternAddString) or not Assigned(FcPatternAddInteger) then
@@ -268,6 +270,10 @@ begin
     // EXCLUSIÓN DE VARIABLE FONTS
     FcPatternAddString(Pattern, Pchar('fontvariations'), '');    // No admitir ejes
     FcPatternAddBool(Pattern, PChar(FC_VARIABLE), FcFalse);
+    // Colour fonts neither (04-10-2026): their glyphs are bitmaps (CBDT, the usual colour
+    // emoji) or layers the PDF does not print, and fontconfig's own emoji rules ask for colour,
+    // so a monochrome emoji font installed next to a colour one would lose to it.
+    FcPatternAddBool(Pattern, PChar(FC_COLOR), FcFalse);
     if Length(UTF8Family)>0 then
       FcPatternAddString(Pattern, PChar(FC_FAMILY), PAnsiChar(UTF8Family));
     if Length(UnicodeContent)>0 then
@@ -276,11 +282,22 @@ begin
     CharSet := FcCharSetCreate();
     // 2. RELLENAR el conjunto de caracteres con los códigos Unicode de la cadena
     // (Asumimos que la iteración por WideString funciona directamente para obtener FcChar32)
-    for i := 1 to Length(unicodeContent) do
+    // FcChar32 IS A CODE POINT, NOT A UTF-16 UNIT (04-10-2026). Outside the basic plane
+    // (emoji, CJK extension B, math alphanumerics) a character is a surrogate pair, and adding
+    // each half on its own asked fontconfig for two characters no font has: it answered the
+    // requested family again, the fallback was dropped and the emoji printed as .notdef.
+    i := 1;
+    while i <= Length(unicodeContent) do
     begin
-      // Usamos runText[i] que es Word/WideChar, y lo casteamos a Cardinal (FcChar32)
-      // para asegurar el tipo de parámetro correcto para el C API.
-      FcCharSetAddChar(CharSet, Cardinal(unicodeContent[i]));
+      cp := Cardinal(unicodeContent[i]);
+      if (cp >= $D800) and (cp <= $DBFF) and (i < Length(unicodeContent))
+        and (Cardinal(unicodeContent[i+1]) >= $DC00) and (Cardinal(unicodeContent[i+1]) <= $DFFF) then
+      begin
+        cp := $10000 + ((cp - $D800) shl 10) + (Cardinal(unicodeContent[i+1]) - $DC00);
+        Inc(i);
+      end;
+      FcCharSetAddChar(CharSet, cp);
+      Inc(i);
     end;
     // 3. PASAR el conjunto de caracteres al patrón con la propiedad FC_CHARSET
     // Esto informa a Fontconfig qué glifos faltan (el requisito de script).
