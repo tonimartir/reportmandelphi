@@ -53,7 +53,7 @@ What it gives you:
 
 - **Reach any database, from anywhere.** The Agent runs on-premises in the
   customer site and the engine connects to it through the public Hub at
-  `api.reportman.es`. No VPN. No port forwarding. The Agent dials *outbound*
+  `hub.reportman.es` (the engine goes in through `aiapi.reportman.es`). No VPN. No port forwarding. The Agent dials *outbound*
   to the Hub and the Hub brokers everything.
 - **Drop-in for every Reportman binary that runs reports.** Designer,
   `printreptopdf`, `repwebexe`, classic ActiveX (`reportman.dpr`),
@@ -84,7 +84,7 @@ Relevant source files:
 
 The Designer (Windows, `repmandxp.dpr`) has gained four AI-assisted authoring
 features. None of them ships local models — the Designer talks to
-`api.reportman.es` and inherits whichever provider that API chose for the
+`aiapi.reportman.es` and inherits whichever provider that API chose for the
 user (Vertex / Gemini / Groq / cloud quantized). The user signs in once with
 their `app.reportman.es` account.
 

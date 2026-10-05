@@ -1,7 +1,7 @@
 program test_dchub_realapi;
 
 // =====================================================================
-//   Real-API smoke test against https://api.reportman.es:44568.
+//   Real-API smoke test against https://aiapi.reportman.es.
 //
 //   This does NOT try to do a full direct-channel negotiation (that
 //   would need a valid Bearer JWT for a logged-in user). Instead it
@@ -45,7 +45,7 @@ var
 begin
 {$IFDEF WIN64} arch := 'x64'; {$ELSE} arch := 'x86'; {$ENDIF}
   Writeln('=== rpdchub real-API smoke test (', arch, ') ===');
-  Writeln('Target: https://api.reportman.es:44568');
+  Writeln('Target: https://aiapi.reportman.es');
   Writeln;
 
   if not RpDcInitialize(ResolveDllPath, RTC_LOG_WARNING) then
@@ -55,7 +55,7 @@ begin
   end;
 
   client := TRpDcHubClient.Create(
-    'https://api.reportman.es:44568',
+    'https://aiapi.reportman.es',
     '',                         // intentionally no Bearer token
     '',                         // no install id
     True);                      // AcceptInvalidCerts (cert may be self-signed in dev)

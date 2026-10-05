@@ -112,9 +112,8 @@
       <p>The result has two datasets, a group per customer with its total and its chart, and a chart of all customers at the end.</p>
 
       <h2>The AI copilot</h2>
-      <p>It designs and changes reports in natural language, and helps with SQL and expressions. It is the same AI as the Delphi designer. The AI calls go from the server to Reportman AI, so the server needs Internet access to <code>api.reportman.es</code>, on port
-            <code>44568</code> (not 443): a firewall or an HTTP proxy that only allows 443 leaves the
-            copilot silent, and nothing else in the server fails. Only the AI sign-in goes from the browser.</p>
+      <p>It designs and changes reports in natural language, and helps with SQL and expressions. It is the same AI as the Delphi designer. The AI calls go from the server to Reportman AI, so the server needs Internet access to <code>aiapi.reportman.es</code>, over plain HTTPS
+            (port 443). Only the AI sign-in goes from the browser.</p>
       <p>Privacy: to design, the copilot sends Reportman AI the report definition and the columns of its datasets, as the Delphi designer does. Every call is in the copilot's AI log and in the server's audit log.</p>
 
       <h2>Fonts</h2>
