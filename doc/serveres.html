@@ -112,7 +112,9 @@
       <p>El resultado tiene dos datasets, un grupo por cliente con su total y su gráfico, y un gráfico de todos los clientes al final.</p>
 
       <h2>El copiloto de IA</h2>
-      <p>Diseña y modifica informes en lenguaje natural, y ayuda con el SQL y las expresiones. Es la misma IA del diseñador Delphi. Las llamadas a la IA van del servidor a Reportman AI, así que el servidor necesita salida a Internet hacia <code>api.reportman.es</code>. Solo el inicio de sesión en la IA sale del navegador.</p>
+      <p>Diseña y modifica informes en lenguaje natural, y ayuda con el SQL y las expresiones. Es la misma IA del diseñador Delphi. Las llamadas a la IA van del servidor a Reportman AI, así que el servidor necesita salida a Internet hacia <code>api.reportman.es</code>, por el puerto
+            <code>44568</code> (no el 443): con un cortafuegos o un proxy HTTP que solo permita el 443 el
+            copiloto se queda mudo y nada más del servidor falla. Solo el inicio de sesión en la IA sale del navegador.</p>
       <p>Privacidad: para diseñar, el copiloto envía a Reportman AI la definición del informe y las columnas de sus datasets, igual que el diseñador Delphi. Cada llamada queda en el registro de IA del copiloto y en el registro de auditoría del servidor.</p>
 
       <h2>Fuentes</h2>
