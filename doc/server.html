@@ -60,7 +60,7 @@
 
     <section class="page">
       <p>Reportman Server is one container on your network that holds the report engine, the report store and a web designer. Your team designs reports in the browser, previews them as PDF and runs them through a public API, with no installation on the PCs. The reports are the same <code>.rep</code> files the Delphi designer, <code>printreptopdf</code> and the <a href="webserver.html">Web Report Server</a> read.</p>
-      <p>The designer and the server are free. The AI copilot uses Reportman AI credits: every installation starts with 100 guest credits, and each person who signs in to Reportman AI from the copilot gets 2,000 more.</p>
+      <p>The designer and the server are free. <strong>The AI copilot is optional</strong>: everything else works without it. When you want it, the AI can run on your own hardware &mdash; a local model served by the <a href="doc/index.html">Reportman Agent</a>, at no cost &mdash; or you can subscribe to a Reportman AI plan and use the models tested with it.</p>
 
       <h2>Start it</h2>
       <pre><code>docker run -d \
@@ -96,7 +96,7 @@
         <tr><td><code>apikeys.json</code></td><td>the API keys</td></tr>
         <tr><td><code>server-id</code></td><td>this installation for Reportman AI</td></tr>
       </table>
-      <p>Copy the folder and the installation moves with it. To clone a server as a new one (a test copy, a second office), delete <code>server-id</code> before its first start: it gets its own guest credits and AI sessions.</p>
+      <p>Copy the folder and the installation moves with it. To clone a server as a new one (a test copy, a second office), delete <code>server-id</code> before its first start: it then counts as a new installation for Reportman AI, with its own AI sessions.</p>
 
       <h2>Connections</h2>
       <ul>

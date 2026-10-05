@@ -60,7 +60,7 @@
 
     <section class="page">
       <p>Reportman Server es un único contenedor en tu red con el motor de informes, el almacén de informes y un diseñador web. Tu equipo diseña los informes en el navegador, los previsualiza en PDF y los ejecuta mediante una API pública, sin instalar nada en los PC. Los informes son los mismos ficheros <code>.rep</code> que leen el diseñador Delphi, <code>printreptopdf</code> y el <a href="webserveres.html">Servidor Web de informes</a>.</p>
-      <p>El diseñador y el servidor son gratuitos. El copiloto de IA usa créditos de Reportman AI: cada instalación empieza con 100 créditos de invitado, y cada persona que entra en Reportman AI desde el copiloto recibe 2.000 más.</p>
+      <p>El diseñador y el servidor son gratuitos. <strong>El copiloto de IA es opcional</strong>: todo lo demás funciona sin él. Cuando lo quiera, la IA puede correr en su propio equipo &mdash; un modelo local servido por el <a href="doc/index.html">Reportman Agent</a>, sin coste &mdash; o puede suscribirse a un plan de Reportman AI y usar los modelos probados con él.</p>
 
       <h2>Arrancarlo</h2>
       <pre><code>docker run -d \
@@ -96,7 +96,7 @@
         <tr><td><code>apikeys.json</code></td><td>las claves de la API</td></tr>
         <tr><td><code>server-id</code></td><td>esta instalación ante Reportman AI</td></tr>
       </table>
-      <p>Copia la carpeta y la instalación se va con ella. Para clonar un servidor como uno nuevo (una copia de pruebas, una segunda oficina), borra <code>server-id</code> antes de su primer arranque: tendrá sus propios créditos de invitado y sus propias sesiones de IA.</p>
+      <p>Copia la carpeta y la instalación se va con ella. Para clonar un servidor como uno nuevo (una copia de pruebas, una segunda oficina), borra <code>server-id</code> antes de su primer arranque: entonces cuenta como una instalación nueva para Reportman AI, con sus propias sesiones de IA.</p>
 
       <h2>Conexiones</h2>
       <ul>
