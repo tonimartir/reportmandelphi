@@ -14,7 +14,7 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#0969da">
+  <meta name="theme-color" content="#0f2441">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Report Manager">
   <meta property="og:title" content="Report Manager - Servidor Web de informes">
@@ -39,8 +39,7 @@
       <nav class="nav-links">
         <a href="indexes.html">Inicio</a>
         <a href="downloades.html">Descarga</a>
-        <a href="webserveres.html" class="active">Servidor Web</a>
-        <a href="serveres.html">Diseñador</a>
+        <a href="serverses.html" class="active">Servidores</a>
         <a href="docnet/index.html">.NET</a>
         <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
         <a href="supportes.html">Soporte</a>
@@ -54,15 +53,21 @@
   <main>
     <section class="hero">
       <div class="hero-inner">
-        <h1>Servidor Web de informes</h1>
-        <p class="tagline">Genera informes en Adobe PDF al vuelo a través de la web.</p>
+        <h1>Servidor de informes web <code>repwebexe</code></h1>
+        <p class="tagline">Ejecute sus informes desde la web y reciba el PDF. Como CGI, como servicio con API o en Docker. Más de 20 años en producción.</p>
       </div>
     </section>
 
     <section class="page">
       <p>El servidor web de Report Manager genera archivos PDF al vuelo: pregunta al usuario el nombre del informe y los parámetros, ejecuta el informe y devuelve un archivo con formato Adobe PDF, que puede visualizarse directamente en el navegador.</p>
-      <p>Es un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador, disponible para Windows y Linux (Apache), y listo para ejecutarse autoalojado en Docker.</p>
-      <p>Para diseñar informes en el navegador, con un copiloto de IA, consulte el <a href="serveres.html">Diseñador Web (Reportman Server)</a>: lee los mismos ficheros <code>.rep</code>.</p>
+      <p>Es un potente servidor de informes de red sin pago de licencias y con soporte multiprocesador,
+      un binario nativo para <strong>Windows y Linux</strong>. Lleva más de veinte años desplegándose
+      como <strong>CGI</strong> tras Apache o IIS, y ahora es además un <strong>servicio con API
+      HTTP</strong> y tiene imagen Docker publicada.</p>
+      <p><em>Ejecuta</em> informes; no los diseña: usted sube los ficheros <code>.rep</code> que diseñó
+      con cualquier diseñador de Report Manager. Para diseñar en el navegador, con copiloto de IA,
+      consulte <a href="serveres.html">Reportman Server</a>: lee los mismos ficheros.
+      <a href="serverses.html">Los tres servidores, comparados</a>.</p>
 
       <h2>Ejecutarlo autoalojado con Docker</h2>
       <p>La imagen publicada ejecuta <code>repwebexe -selfhosted</code> y sirve el servidor web de informes en el puerto <code>8080</code>. Arranque el servicio directamente con:</p>

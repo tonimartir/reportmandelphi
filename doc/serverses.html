@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Los tres servidores de Report Manager comparados: servidor de informes web (repwebexe), Reportman Server con su dise&ntilde;ador web y el TCP Report Server. Cu&aacute;l elegir.">
+  <title>Report Manager - Servidores</title>
+  <link rel="stylesheet" href="responsive.css?v=20260620">
+  <link rel="canonical" href="https://reportman.es/serverses.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/servers.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/serverses.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/servers.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0f2441">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Servidores">
+  <meta property="og:description" content="Los tres servidores de Report Manager comparados: cu&aacute;l elegir.">
+  <meta property="og:url" content="https://reportman.es/serverses.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="El diseñador de Report Manager con el chat del Copiloto de IA, diseñando un informe de ventas por cliente.">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Servidores">
+  <meta name="twitter:description" content="Los tres servidores de Report Manager comparados: cu&aacute;l elegir.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="indexes.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="indexes.html">Inicio</a>
+        <a href="downloades.html">Descarga</a>
+        <a href="serverses.html" class="active">Servidores</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="supportes.html">Soporte</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><a href="server.html">EN</a><span class="current">ES</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+      <section class="hero">
+        <div class="hero-inner">
+          <h1>Servidores de Report Manager</h1>
+          <p class="tagline">Tres formas de servir informes. Se diferencian en <em>qui&eacute;n dise&ntilde;a los informes</em> y en <em>c&oacute;mo se integran</em>.</p>
+        </div>
+      </section>
+
+      <section class="page">
+        <p>Los tres ejecutan los mismos ficheros <code>.rep</code>, dise&ntilde;ados con cualquier
+        dise&ntilde;ador de Report Manager. Elija por lo que necesite hacer con ellos.</p>
+
+        <table>
+          <tr><th>Servidor</th><th>Qu&eacute; hace</th><th>El&iacute;jalo si&hellip;</th></tr>
+          <tr>
+            <td><a href="webserveres.html"><strong>Servidor de informes web</strong><br>(<code>repwebexe</code>)</a></td>
+            <td>Ejecuta un informe con sus par&aacute;metros y devuelve el PDF, por web.</td>
+            <td>ya dise&ntilde;a sus informes y s&oacute;lo necesita <strong>ejecutarlos</strong> desde
+                su web o su sistema. Como CGI, como servicio con API o en Docker. Windows y Linux,
+                m&aacute;s de 20 a&ntilde;os en producci&oacute;n.</td>
+          </tr>
+          <tr>
+            <td><a href="serveres.html"><strong>Reportman Server</strong></a></td>
+            <td>Almac&eacute;n de informes, dise&ntilde;ador web con copiloto de IA y API p&uacute;blica.</td>
+            <td>quiere que <strong>su equipo dise&ntilde;e en el navegador</strong>, con usuarios,
+                grupos y permisos, y ejecutar los informes por API. Un solo contenedor Docker.</td>
+          </tr>
+          <tr>
+            <td><a href="doc/serverintro.html"><strong>TCP Report Server</strong></a></td>
+            <td>Procesa informes para clientes de escritorio con su propio protocolo TCP.</td>
+            <td>sus clientes son <strong>aplicaciones de escritorio</strong> y quiere que el servidor
+                haga el trabajo: multiproceso, sin web por medio.</td>
+          </tr>
+        </table>
+
+        <h2>Los dos servidores web, uno al lado del otro</h2>
+        <p>Se confunden a menudo porque los dos son &laquo;un servidor de informes&raquo; y los dos
+        pueden correr en Docker. La diferencia no es la edad: es si los informes se
+        <em>dise&ntilde;an</em> ah&iacute;.</p>
+        <ul>
+          <li>El <strong>servidor de informes web (<code>repwebexe</code>)</strong> es el veterano: un
+          binario nativo para Windows y Linux, desplegado cl&aacute;sicamente como <strong>CGI</strong>
+          tras Apache o IIS, y ahora tambi&eacute;n <strong>servicio con API</strong> y con imagen
+          Docker publicada. No dise&ntilde;a: usted sube los <code>.rep</code> que dise&ntilde;&oacute;
+          en otro sitio. <a href="webserveres.html">Detalles</a>.</li>
+          <li><strong>Reportman Server</strong> es el nuevo: un contenedor con el motor, el
+          almac&eacute;n de informes y un <strong>dise&ntilde;ador en el navegador</strong> con
+          copiloto de IA, m&aacute;s su API. Es donde los informes nacen y cambian.
+          <a href="serveres.html">Detalles</a>.</li>
+        </ul>
+        <p>No son alternativas entre las que haya que elegir para siempre: leen y escriben los mismos
+        informes, as&iacute; que un informe dise&ntilde;ado en Reportman Server se ejecuta sin cambios
+        en <code>repwebexe</code>, en el servidor TCP, en el dise&ntilde;ador Delphi o en su propia
+        aplicaci&oacute;n.</p>
+      </section>
+    </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">Licencia MPL</a>
+      <span class="sep">&middot;</span>
+      <a href="companyes.html">Empresa</a>
+      <span class="sep">&middot;</span>
+      <a href="linkses.html">Otros enlaces</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>

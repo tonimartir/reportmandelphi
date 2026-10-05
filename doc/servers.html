@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web designer, and the TCP Report Server. Which one to choose.">
+  <title>Report Manager - Servers</title>
+  <link rel="stylesheet" href="responsive.css?v=20260620">
+  <link rel="canonical" href="https://reportman.es/servers.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/servers.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/serverses.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/servers.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0f2441">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Servers">
+  <meta property="og:description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web design">
+  <meta property="og:url" content="https://reportman.es/servers.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Report Manager Designer with the AI Copilot chat panel, designing a customer sales report.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Servers">
+  <meta name="twitter:description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web design">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="download.html">Download</a>
+        <a href="servers.html" class="active">Servers</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><span class="current">EN</span><a href="serveres.html">ES</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+      <section class="hero">
+        <div class="hero-inner">
+          <h1>Report Manager servers</h1>
+          <p class="tagline">Three ways to serve reports. They differ in <em>who designs the reports</em> and in <em>how you integrate them</em>.</p>
+        </div>
+      </section>
+
+      <section class="page">
+        <p>All three run the same <code>.rep</code> files, designed with any Report Manager designer.
+        Pick by what you need to do with them.</p>
+
+        <table>
+          <tr><th>Server</th><th>What it does</th><th>Choose it if&hellip;</th></tr>
+          <tr>
+            <td><a href="webserver.html"><strong>Web Report Server</strong><br>(<code>repwebexe</code>)</a></td>
+            <td>Runs a report with its parameters and returns the PDF, over the web.</td>
+            <td>you already design your reports and only need to <strong>run</strong> them from your
+                web site or your system. As CGI, as a service with an API, or in Docker. Windows and
+                Linux, more than 20 years in production.</td>
+          </tr>
+          <tr>
+            <td><a href="server.html"><strong>Reportman Server</strong></a></td>
+            <td>Report store, web designer with an AI copilot, and a public API.</td>
+            <td>you want <strong>your team to design in the browser</strong>, with users, groups and
+                permissions, and to run the reports through an API. One Docker container.</td>
+          </tr>
+          <tr>
+            <td><a href="doc/serverintro.html"><strong>TCP Report Server</strong></a></td>
+            <td>Processes reports for desktop clients over its own TCP protocol.</td>
+            <td>your clients are <strong>desktop applications</strong> and you want the server to do
+                the work: multiprocessor, no web in the middle.</td>
+          </tr>
+        </table>
+
+        <h2>The two web servers, side by side</h2>
+        <p>They are often confused because both are &laquo;a report server&raquo; and both can run in
+        Docker. The difference is not age: it is whether reports are <em>designed</em> there.</p>
+        <ul>
+          <li><strong>Web Report Server (<code>repwebexe</code>)</strong> is the veteran: a native
+          binary for Windows and Linux, classically deployed as <strong>CGI</strong> behind Apache or
+          IIS, now also a <strong>service with an API</strong> and a published Docker image. It does
+          not design: you upload the <code>.rep</code> files you designed elsewhere.
+          <a href="webserver.html">Details</a>.</li>
+          <li><strong>Reportman Server</strong> is the new one: a container with the engine, the
+          report store and a <strong>designer in the browser</strong> with an AI copilot, plus its
+          API. It is where reports are born and changed.
+          <a href="server.html">Details</a>.</li>
+        </ul>
+        <p>They are not alternatives you must choose between for ever: they read and write the same
+        reports, so a report designed in Reportman Server runs unchanged in <code>repwebexe</code>,
+        in the TCP server, in the Delphi designer or in your own application.</p>
+      </section>
+    </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">MPL License</a>
+      <span class="sep">&middot;</span>
+      <a href="company.html">Company</a>
+      <span class="sep">&middot;</span>
+      <a href="links.html">Related links</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>
