@@ -53,7 +53,7 @@ const
   CONFIG_SUBDIR = 'reportman';
   CONFIG_FILE = 'designer_lcl.ini';
   // --check-https without a url: the server of the login and the AI
-  CHECK_HTTPS_URL = 'https://api.reportman.es/';
+  CHECK_HTTPS_URL = 'https://aiapi.reportman.es/';
   // -dLCL<widgetset> comes from the usage options of the LCL package
   {$IF DEFINED(LCLGTK2)}
   WIDGETSET = 'gtk2';

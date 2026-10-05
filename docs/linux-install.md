@@ -138,7 +138,7 @@ distribución no soportada o algo falla.
   `libfontconfig1`, `libharfbuzz0b`, `libsqlite3-0` y una ICU entre la 70 y la
   78 (`libicu70` en Ubuntu 22.04, `libicu72` en Debian 12, `libicu74` en
   Ubuntu 24.04…), más las fuentes `fonts-dejavu-core`.
-- Las dos, para HTTPS (Hub de `api.reportman.es` y driver `rpdbHttp` del
+- Las dos, para HTTPS (IA de `aiapi.reportman.es` y driver `rpdbHttp` del
   Agente): OpenSSL 3 (`libssl3` o `libssl3t64`; el motor también acepta la
   1.1) y `ca-certificates`, porque el certificado del servidor se verifica con
   el almacén de CA del sistema.
@@ -229,7 +229,7 @@ Wayland nativo si está instalado `qt6-wayland`.
   el PDF adjunto (`xdg-email`, paquete `xdg-utils`).
 - **DataDirect solo por HTTP**: el canal directo WebRTC (P2P) del controlador
   *Reportman Agent* solo está en Windows. En Linux las consultas van siempre por
-  HTTP a través del Hub (`api.reportman.es`), con los mismos resultados y algo
+  HTTP a través de `aiapi.reportman.es` y el Hub, con los mismos resultados y algo
   más de latencia.
 - **Versión GTK2** (`reportman-designer-gtk2`): aspecto clásico y escalado
   HiDPI limitado: textos y ventanas crecen con el DPI del escritorio

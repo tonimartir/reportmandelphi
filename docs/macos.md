@@ -155,7 +155,7 @@ Trabajos:
    hoc y crea `reportman-designer-<versión>-macos-universal.dmg` y su
    `SHA256SUMS` (la salida de `lipo` queda en el resumen de la ejecución).
 3. **smoke**, en los dos Mac: monta el `.dmg` y ejecuta el diseñador de
-   dentro: `--version`; `--check-https` contra `api.reportman.es` con
+   dentro: `--version`; `--check-https` contra `aiapi.reportman.es` con
    `DYLD_PRINT_LIBRARIES` (falla si `libssl` y `libcrypto` no salen de
    `Contents/Frameworks`); y abre `sample4.rep`, comprueba a los 25 s que
    sigue vivo y que el proceso es de la arquitectura del Mac (`vmmap`:

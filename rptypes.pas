@@ -79,7 +79,7 @@ const
  LINE_FEED=#13+#10;
 
  HUB_API_URL_DEBUG = 'https://api.reportman.es:7006';
- HUB_API_URL_RELEASE = 'https://api.reportman.es:44568';
+ HUB_API_URL_RELEASE = 'https://aiapi.reportman.es';
 {$IFDEF DEBUG}
  HUB_API_URL = HUB_API_URL_DEBUG;
 {$ELSE}

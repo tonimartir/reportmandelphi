@@ -232,7 +232,7 @@ jobs:
           grep -q "(LCL cocoa)" version.txt
 
       # El login y los asistentes de IA: OpenSSL de Contents/Frameworks
-      - name: HTTPS contra api.reportman.es (OpenSSL del paquete)
+      - name: HTTPS contra aiapi.reportman.es (OpenSSL del paquete)
         run: |
           rc=0
           DYLD_PRINT_LIBRARIES=1 "$EXE" --check-https > https.out 2> dyld.log || rc=$?

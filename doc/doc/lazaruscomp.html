@@ -390,7 +390,7 @@ end;</code></pre>
   connections and FireDAC connections, which Free Pascal opens with SQLdb, for Firebird, PostgreSQL,
   MySQL/MariaDB, SQLite, SQL Server, Oracle, ODBC and other databases, and the
   <b>Reportman DB Agent</b> driver, which runs the queries on a remote database through the Hub
-  (<code>api.reportman.es</code>) without opening ports or a VPN. You can also give the report your
+  (the engine goes to <code>aiapi.reportman.es</code> and the Agent to <code>hub.reportman.es</code>) without opening ports or a VPN. You can also give the report your
   own datasets, with <code>TRpAlias</code> or directly, as the examples do:
   <code>Report.DataInfo.ItemByName('SALES').Dataset := MyDataset</code>.</p>
 

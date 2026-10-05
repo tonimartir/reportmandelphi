@@ -225,7 +225,7 @@ wired into `rpdatainfo.pas`.
 ### Reportman Agent driver + DataDirect (recent addition)
 
 `rpdbHttp` (`rpdatahttp.pas`) talks to a remote **Reportman DB Agent** instead
-of a local DB connection, brokered through the public Hub at `api.reportman.es`
+of a local DB connection, brokered by `aiapi.reportman.es` and the public Hub at `hub.reportman.es`
 (outbound-only, no VPN). Layers:
 
 - `rpdatahttp.pas` — `TRpDatabaseHttp` / `TRpDatasetHttp`, the pure-HTTP path.
@@ -245,7 +245,7 @@ unchanged. Keep this discipline when touching DataDirect units.
 ### AI assistance in the Designer (recent addition, Windows)
 
 Four AI-authoring features in `repmandxp.dpr`, all routed through
-`api.reportman.es` (no local models): SQL chat, expression chat, full-report
+`aiapi.reportman.es` (no local models): SQL chat, expression chat, full-report
 design chat (`rpfrmchatvcl.pas`), and Monaco-editor SQL autocomplete
 (`rpfrmmonacoeditorvcl.pas`). Contracts in `rpaireportcontracts.pas`. Schemas
 (tables/columns/relations) are defined by the user on `app.reportman.es` and
