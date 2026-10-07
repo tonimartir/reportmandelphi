@@ -25,7 +25,7 @@
     <Description Value="Report Manager visual report designer for the LCL, embeddable in applications: TRpDesignerLCL with ruler, object inspector, report structure, data and parameters editors, expression editor, database browser, report wizard and the AI panel (Hub account, model, schema and chat; the assistants go through api.reportman.es). On Windows the SQL editor and the chat use WebView2; elsewhere the chat uses the TurboPower IPro viewer. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="17"/>
-    <Files Count="48">
+    <Files Count="49">
       <Item1>
         <Filename Value="..\..\design_lcl\rpwebview2.pas"/>
         <UnitName Value="rpwebview2"/>
@@ -219,6 +219,10 @@
         <Filename Value="..\..\design_lcl\rpeditconnlcl.pas"/>
         <UnitName Value="rpeditconnlcl"/>
       </Item48>
+      <Item49>
+        <Filename Value="..\..\design_lcl\rpfrmlocalschemaslcl.pas"/>
+        <UnitName Value="rpfrmlocalschemaslcl"/>
+      </Item49>
     </Files>
     <RequiredPkgs Count="6">
       <Item1>

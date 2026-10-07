@@ -245,6 +245,11 @@ type
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string);
     procedure InitializeDesignChatSchemaSelection;
+    // The direct connections of the report (and their local subschemas) in
+    // the schema selector of the design chat
+    procedure UpdateDesignChatLocalSchemas;
+    procedure ConfigureDesignChatLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string);
     // Design assistant, as rpmdfmainvcl
     procedure ConfigureDesignChat;
     procedure ConfigureReportChangeBlocking;
@@ -459,7 +464,9 @@ uses
   rpmdfnewreportwizardlcl, rplcllayout,
   // Report library: connections editor and tree (rpeditconnvcl, rpmdftreevcl)
   rpeditconnlcl, rpmdftreelcl,
-  rplcldriver;
+  rplcldriver,
+  // The local schema of the direct connections for the design assistant
+  rplocalschemas, rpfrmlocalschemaslcl;
 
 const
   // Width of the recent file names in the File menu (VCL C_FILENAME_WIDTH)
@@ -1621,12 +1628,75 @@ begin
   if not Assigned(FChatFrame) then
     Exit;
   ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  UpdateDesignChatLocalSchemas;
   FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
   // The AI panel is optional: hidden, it makes no Hub request until shown
   if PAIPanel.Visible then
     FChatFrame.StartOnlineInitialization
   else
     FChatOnlinePending := True;
+end;
+
+procedure TFRpMainFLCL.UpdateDesignChatLocalSchemas;
+var
+  I, J: Integer;
+  LDatabase: TRpDatabaseInfoItem;
+  LEntries, LNames: TStringList;
+  LPreferred: string;
+begin
+  if not Assigned(FChatFrame) then
+    Exit;
+  LEntries := TStringList.Create;
+  LNames := TStringList.Create;
+  try
+    LPreferred := '';
+    if Assigned(FReport) then
+    begin
+      for I := 0 to FReport.DatabaseInfo.Count - 1 do
+      begin
+        LDatabase := FReport.DatabaseInfo.Items[I];
+        if not RpIsLocalSqlDatabase(LDatabase) then
+          Continue;
+        LEntries.Add(LDatabase.Alias + '=');
+        try
+          RpListLocalSubSchemas(LDatabase, LNames);
+        except
+          LNames.Clear;
+        end;
+        for J := 0 to LNames.Count - 1 do
+          LEntries.Add(LDatabase.Alias + '=' + LNames[J]);
+        if LPreferred = '' then
+          LPreferred := LDatabase.Alias;
+      end;
+      // The connection of the first dataset, when it is a direct one
+      if FReport.DataInfo.Count > 0 then
+      begin
+        LDatabase := FindDatabaseInfo(FReport, FReport.DataInfo.Items[0].DatabaseAlias);
+        if RpIsLocalSqlDatabase(LDatabase) then
+          LPreferred := LDatabase.Alias;
+      end;
+    end;
+    FChatFrame.SetLocalSchemas(LEntries, LPreferred);
+  finally
+    LNames.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TFRpMainFLCL.ConfigureDesignChatLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string);
+var
+  LSchemaName: string;
+begin
+  if not Assigned(FReport) then
+    Exit;
+  LSchemaName := ASchemaName;
+  try
+    RpShowLocalSchemasDialog(FReport, AAlias, LSchemaName);
+  finally
+    UpdateDesignChatLocalSchemas;
+  end;
+  FChatFrame.SelectLocalSchema(AAlias, LSchemaName);
 end;
 
 { Design assistant (rpmdfmainvcl) }
@@ -1641,6 +1711,7 @@ begin
   FChatFrame.OnDesignInferenceEnd := DesignInferenceEnd;
   FChatFrame.OnStopRequest := StopDesignChatRequest;
   FChatFrame.OnRefreshContext := RefreshDesignChatContext;
+  FChatFrame.OnConfigureLocalSchemas := ConfigureDesignChatLocalSchemas;
   FChatFrame.SetRefreshAction(True);
 end;
 
@@ -1774,9 +1845,17 @@ begin
     Result.ApiKey := FChatFrame.GetSchemaApiKey;
     Result.Config.HubDatabaseId := FChatFrame.GetHubDatabaseId;
     Result.Config.HubSchemaId := FChatFrame.GetHubSchemaId;
+    // A direct connection: its local schema travels inline and the SQL of
+    // the assistant runs here (rpdesignerclientsql, in the chat worker)
+    if (Result.Config.HubDatabaseId = 0) and (Result.Config.HubSchemaId = 0) then
+    begin
+      Result.Config.LocalAlias := FChatFrame.GetLocalSchemaAlias;
+      Result.Config.LocalSchemaName := FChatFrame.GetLocalSchemaName;
+    end;
     TRpAuthManager.Instance.Log(
       'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
       ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+      ' LocalAlias=' + Result.Config.LocalAlias +
       ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
     Result.UserInstructions.Add(APrompt);
     if Result.AITier = ratLocalAgent then
@@ -1985,6 +2064,7 @@ begin
       FChatFrame.GetSchemaApiKey) > 0) then
     TRpAuthManager.Instance.Log(
       'Design chat: Reportman AI Agent connections written to the connections file');
+  UpdateDesignChatLocalSchemas;
   // The history travels with the document (BINCUE): the server returns the
   // one it received with the operations of its change on top, so Undo
   // reverts the change step by step and the earlier history stays
@@ -2420,6 +2500,7 @@ begin
   if not Assigned(FChatFrame) then
     Exit;
   // The Hub database, schema and API key chosen in the wizard
+  UpdateDesignChatLocalSchemas;
   FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
   // A prompt for the assistant shows the AI panel (the saved View > AI chat
   // preference does not change)
@@ -2678,6 +2759,8 @@ begin
       FStructure.browser.Report := FReport;
     if Assigned(FDesignerFrame) then
       FDesignerFrame.UpdateSelection(False);
+    // The connections may have changed: the local ones of the design chat
+    UpdateDesignChatLocalSchemas;
   end;
 end;
 

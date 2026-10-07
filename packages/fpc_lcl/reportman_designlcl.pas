@@ -14,14 +14,13 @@ uses
   rpmregdesignlcl, rpmdimageslcl, rpdbbrowserlcl, rpmdfstruclcl, 
   rpmdfdinfolcl, rpmdfmainlcl, rpexpredlglcl, rpmdfgridlcl, rpmdfaboutlcl, 
   rpmdfselectfieldslcl, rpmdfwizardlcl, rpmdfextseclcl, rpmdfsearchlcl, 
-  rpmdfopenliblcl, rpmdfparamslcl, rpmdundocuelcl, rpmdcueviewlcl,
-  rpaithreadslcl, rpchatmodernstylelcl, rpmarkdownlcl, rpwebmarkdownlcl,
-  rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl,
-  rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl, rpdbxconfiglcl,
-  rpmdfsampledatalcl, rpmdfdatatextlcl, rpdbxadminlcl, rpmdfnewreportwizardlcl,
-  rpmdsysinfolcl,
-  rpmdftreelcl, rpeditconnlcl,
-  LazarusPackageIntf;
+  rpmdfopenliblcl, rpmdfparamslcl, rpmdundocuelcl, rpmdcueviewlcl, 
+  rpaithreadslcl, rpchatmodernstylelcl, rpmarkdownlcl, rpwebmarkdownlcl, 
+  rpfrmloginlcl, rpfrmloginframelcl, rpfrmaiselectionlcl, 
+  rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl, rpdbxconfiglcl, 
+  rpmdfsampledatalcl, rpmdfdatatextlcl, rpdbxadminlcl, 
+  rpmdfnewreportwizardlcl, rpmdsysinfolcl, rpmdftreelcl, rpeditconnlcl, 
+  rpfrmlocalschemaslcl, LazarusPackageIntf;
 
 implementation
 

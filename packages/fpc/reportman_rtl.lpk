@@ -25,7 +25,7 @@
     <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (the FireDAC connections of Delphi: SQLite, PostgreSQL, MySQL/MariaDB, Firebird/InterBase, SQL Server, Oracle and ODBC) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="17"/>
-    <Files Count="78">
+    <Files Count="80">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -339,6 +339,14 @@
         <Filename Value="..\..\rtl_fpc\rpdarwinlibs.pas"/>
         <UnitName Value="rpdarwinlibs"/>
       </Item78>
+      <Item79>
+        <Filename Value="..\..\rplocalschemas.pas"/>
+        <UnitName Value="rplocalschemas"/>
+      </Item79>
+      <Item80>
+        <Filename Value="..\..\rpdesignerclientsql.pas"/>
+        <UnitName Value="rpdesignerclientsql"/>
+      </Item80>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

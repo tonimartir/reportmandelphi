@@ -17,26 +17,125 @@ uses
 {$IFDEF FPC}
   // No generics used here; in FPC Generics.Collections.TObjectList<T> would
   // hide Contnrs.TObjectList
-  SysUtils, Classes, Contnrs, rpjsonfpc;
+  SysUtils, Classes, Contnrs, Variants, rpjsonfpc;
 {$ELSE}
-  SysUtils, Classes, Contnrs, System.Generics.Collections, System.JSON;
+  SysUtils, Classes, Contnrs, Variants, System.Generics.Collections, System.JSON;
 {$ENDIF}
+
+const
+  // ModifyReport turn status: the cloud waits for the columns of SQL that
+  // only the client can run (docs: copiloto-sql-en-el-cliente-plan, 2.1)
+  RP_MODIFY_STATUS_NEEDS_CLIENT_SQL = 'NeedsClientSqlResults';
 
 type
   TRpReportDesignerMode = (rdmFast, rdmReasoning);
   TRpReportDocumentFormat = (rdfJson, rdfXml);
   TRpAITierType = (ratStandard, ratPrecision, ratLocalAgent);
 
+  // The database the AI writes SQL for: a Hub database and schema, or a
+  // direct connection of the report whose schema travels inline (Name is the
+  // connection alias, SchemaTablesJson the JSON array of its tables)
   TRpApiDatabaseConfig = class(TPersistent)
   private
+    FDialect: string;
     FHubDatabaseId: Int64;
     FHubSchemaId: Int64;
+    FLocalAlias: string;
+    FLocalSchemaName: string;
+    FName: string;
+    FSchemaTablesJson: string;
   public
     procedure Assign(Source: TPersistent); override;
     procedure FromJsonObject(AObject: TJSONObject);
     function ToJsonObject: TJSONObject;
+    function HasInlineSchema: Boolean;
+    property Dialect: string read FDialect write FDialect;
     property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
     property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
+    // Not sent: the direct connection (and its local subschema, '' = all
+    // the tables) whose schema file fills Name, Dialect and SchemaTablesJson
+    // before the request is sent (rpdesignerclientsql)
+    property LocalAlias: string read FLocalAlias write FLocalAlias;
+    property LocalSchemaName: string read FLocalSchemaName write FLocalSchemaName;
+    property Name: string read FName write FName;
+    property SchemaTablesJson: string read FSchemaTablesJson write FSchemaTablesJson;
+  end;
+
+  // A parameter of a SQL the client has to run (System.Data.DbParameterInfo)
+  TRpClientSqlParameter = class(TPersistent)
+  private
+    FDbType: Integer;
+    FHasDbType: Boolean;
+    FName: string;
+    FValue: Variant;
+  public
+    constructor Create;
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property DbType: Integer read FDbType write FDbType;
+    property HasDbType: Boolean read FHasDbType write FHasDbType;
+    property Name: string read FName write FName;
+    property Value: Variant read FValue write FValue;
+  end;
+
+  // A dataset SQL the cloud can not run (the database is not in the Hub):
+  // the client opens it without rows on DatabaseAlias and answers with its
+  // columns
+  TRpClientSqlRequest = class(TPersistent)
+  private
+    FDatabaseAlias: string;
+    FDatasetAlias: string;
+    FId: string;
+    FParameters: TObjectList;
+    FSql: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    property DatabaseAlias: string read FDatabaseAlias write FDatabaseAlias;
+    property DatasetAlias: string read FDatasetAlias write FDatasetAlias;
+    property Id: string read FId write FId;
+    property Parameters: TObjectList read FParameters;
+    property Sql: string read FSql write FSql;
+  end;
+
+  TRpClientSqlColumn = class(TPersistent)
+  private
+    FDataType: string;
+    FName: string;
+    FSize: Integer;
+  public
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    // string, integer, float, currency, datetime, boolean or blob
+    property DataType: string read FDataType write FDataType;
+    property Name: string read FName write FName;
+    property Size: Integer read FSize write FSize;
+  end;
+
+  // The answer to a TRpClientSqlRequest: its columns, or the message of the
+  // database
+  TRpClientSqlResult = class(TPersistent)
+  private
+    FColumns: TObjectList;
+    FErrorMessage: string;
+    FId: string;
+    FSuccess: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure FromJsonObject(AObject: TJSONObject);
+    function ToJsonObject: TJSONObject;
+    function AddColumn(const AName, ADataType: string; ASize: Integer): TRpClientSqlColumn;
+    property Columns: TObjectList read FColumns;
+    property ErrorMessage: string read FErrorMessage write FErrorMessage;
+    property Id: string read FId write FId;
+    property Success: Boolean read FSuccess write FSuccess;
   end;
 
   TRpTokenUsage = class(TPersistent)
@@ -83,24 +182,36 @@ type
 
   TRpModifyReportResult = class(TPersistent)
   private
+    FClientSqlRequests: TObjectList;
     FContextJson: string;
+    FContinuation: string;
     FErrorMessage: string;
     FExplanation: string;
     FModifiedReportDocument: string;
     FOperationsJson: string;
     FReportFormat: TRpReportDocumentFormat;
+    FStatus: string;
+    FWorkingContextJson: string;
     function GetSuccess: Boolean;
   public
+    constructor Create;
+    destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     procedure FromJsonObject(AObject: TJSONObject);
     function ToJsonObject: TJSONObject;
+    // The turn ended waiting for the columns of ClientSqlRequests
+    function NeedsClientSqlResults: Boolean;
+    property ClientSqlRequests: TObjectList read FClientSqlRequests;
     property ContextJson: string read FContextJson write FContextJson;
+    property Continuation: string read FContinuation write FContinuation;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
     property Explanation: string read FExplanation write FExplanation;
     property ModifiedReportDocument: string read FModifiedReportDocument write FModifiedReportDocument;
     property OperationsJson: string read FOperationsJson write FOperationsJson;
     property ReportFormat: TRpReportDocumentFormat read FReportFormat write FReportFormat;
+    property Status: string read FStatus write FStatus;
     property Success: Boolean read GetSuccess;
+    property WorkingContextJson: string read FWorkingContextJson write FWorkingContextJson;
   end;
 
   TRpApiModifyReportRequest = class(TPersistent)
@@ -109,7 +220,10 @@ type
     FAgentSecret: string;
     FAITier: TRpAITierType;
     FApiKey: string;
+    FClientExecutesSql: Boolean;
+    FClientSqlResults: TObjectList;
     FConfig: TRpApiDatabaseConfig;
+    FContinuation: string;
     FExistingContextJson: string;
     FExistingOperationsJson: string;
     FHasAgentAiId: Boolean;
@@ -135,7 +249,13 @@ type
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AITier: TRpAITierType read FAITier write FAITier;
     property ApiKey: string read FApiKey write FApiKey;
+    // The client runs the SQL of databases that are not in the Hub
+    property ClientExecutesSql: Boolean read FClientExecutesSql write FClientExecutesSql;
+    // TRpClientSqlResult: the answers to the ClientSqlRequests of the turn
+    // whose Continuation is sent
+    property ClientSqlResults: TObjectList read FClientSqlResults;
     property Config: TRpApiDatabaseConfig read FConfig;
+    property Continuation: string read FContinuation write FContinuation;
     property ExistingContextJson: string read FExistingContextJson write FExistingContextJson;
     property ExistingOperationsJson: string read FExistingOperationsJson write FExistingOperationsJson;
     property HasAgentAiId: Boolean read FHasAgentAiId write FHasAgentAiId;
@@ -277,18 +397,31 @@ function JsonValueToInt64(AValue: TJSONValue; ADefault: Int64): Int64; forward;
 function JsonValueToString(AValue: TJSONValue; const ADefault: string): string; forward;
 
 procedure TRpApiDatabaseConfig.Assign(Source: TPersistent);
+var
+  LSource: TRpApiDatabaseConfig;
 begin
   if Source is TRpApiDatabaseConfig then
   begin
-    FHubDatabaseId := TRpApiDatabaseConfig(Source).HubDatabaseId;
-    FHubSchemaId := TRpApiDatabaseConfig(Source).HubSchemaId;
+    LSource := TRpApiDatabaseConfig(Source);
+    FHubDatabaseId := LSource.HubDatabaseId;
+    FHubSchemaId := LSource.HubSchemaId;
+    FName := LSource.Name;
+    FDialect := LSource.Dialect;
+    FSchemaTablesJson := LSource.SchemaTablesJson;
+    FLocalAlias := LSource.LocalAlias;
+    FLocalSchemaName := LSource.LocalSchemaName;
   end
   else
     inherited Assign(Source);
 end;
 
 procedure TRpApiDatabaseConfig.FromJsonObject(AObject: TJSONObject);
+var
+  LTables: TJSONValue;
 begin
+  FName := '';
+  FDialect := '';
+  FSchemaTablesJson := '';
   if AObject = nil then
   begin
     FHubDatabaseId := 0;
@@ -297,15 +430,349 @@ begin
   end;
   FHubDatabaseId := JsonValueToInt64(AObject.Values['hubDatabaseId'], 0);
   FHubSchemaId := JsonValueToInt64(AObject.Values['hubSchemaId'], 0);
+  LTables := AObject.Values['schemaTables'];
+  if (LTables <> nil) and (LTables is TJSONArray) then
+  begin
+    FSchemaTablesJson := LTables.ToJSON;
+    FName := JsonValueToString(AObject.Values['name'], '');
+    FDialect := JsonValueToString(AObject.Values['dialect'], '');
+  end;
+end;
+
+function TRpApiDatabaseConfig.HasInlineSchema: Boolean;
+begin
+  Result := Trim(FSchemaTablesJson) <> '';
 end;
 
 function TRpApiDatabaseConfig.ToJsonObject: TJSONObject;
+var
+  LTables: TJSONValue;
 begin
   Result := TJSONObject.Create;
+  if HasInlineSchema then
+  begin
+    // A direct connection: the cloud puts new datasets on the connection of
+    // the report named as the config, and asks the client for the columns
+    Result.AddPair('name', FName);
+    if FDialect <> '' then
+      Result.AddPair('dialect', FDialect);
+    LTables := TJSONObject.ParseJSONValue(FSchemaTablesJson);
+    if (LTables <> nil) and not (LTables is TJSONArray) then
+      FreeAndNil(LTables);
+    if LTables = nil then
+      LTables := TJSONArray.Create;
+    Result.AddPair('schemaTables', LTables);
+    Result.AddPair('hubDatabaseId', TJSONNumber.Create(0));
+    Result.AddPair('hubSchemaId', TJSONNumber.Create(0));
+    Exit;
+  end;
   if FHubDatabaseId <> 0 then
     Result.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
   if FHubSchemaId <> 0 then
     Result.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+end;
+
+{ TRpClientSqlParameter }
+
+constructor TRpClientSqlParameter.Create;
+begin
+  inherited Create;
+  FValue := Null;
+end;
+
+procedure TRpClientSqlParameter.Assign(Source: TPersistent);
+var
+  LSource: TRpClientSqlParameter;
+begin
+  if Source is TRpClientSqlParameter then
+  begin
+    LSource := TRpClientSqlParameter(Source);
+    FName := LSource.Name;
+    FValue := LSource.Value;
+    FDbType := LSource.DbType;
+    FHasDbType := LSource.HasDbType;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+function JsonNumberTextToVariant(const AText: string): Variant;
+var
+  LFormat: TFormatSettings;
+  LInt: Int64;
+  LDouble: Double;
+begin
+  if TryStrToInt64(AText, LInt) then
+    Exit(LInt);
+  LFormat := FormatSettings;
+  LFormat.DecimalSeparator := '.';
+  LFormat.ThousandSeparator := ',';
+  if TryStrToFloat(AText, LDouble, LFormat) then
+    Result := LDouble
+  else
+    Result := AText;
+end;
+
+procedure TRpClientSqlParameter.FromJsonObject(AObject: TJSONObject);
+var
+  LValue: TJSONValue;
+begin
+  FValue := Null;
+  FHasDbType := False;
+  FDbType := 0;
+  if AObject = nil then
+    Exit;
+  FName := JsonValueToString(AObject.Values['name'], '');
+  LValue := AObject.Values['value'];
+  if (LValue = nil) or (LValue is TJSONNull) then
+    FValue := Null
+  else if LValue is TJSONBool then
+    FValue := SameText(LValue.Value, 'true')
+  else if LValue is TJSONNumber then
+    FValue := JsonNumberTextToVariant(LValue.Value)
+  else if LValue is TJSONString then
+    FValue := LValue.Value
+  else
+    FValue := LValue.ToJSON;
+  LValue := AObject.Values['dbType'];
+  if (LValue <> nil) and not (LValue is TJSONNull) then
+  begin
+    FHasDbType := True;
+    FDbType := StrToIntDef(LValue.Value, 0);
+  end;
+end;
+
+function TRpClientSqlParameter.ToJsonObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', FName);
+  case VarType(FValue) of
+    varEmpty, varNull:
+      Result.AddPair('value', TJSONNull.Create);
+    varBoolean:
+      Result.AddPair('value', TJSONBool.Create(Boolean(FValue)));
+    varSmallint, varInteger, varShortInt, varByte, varWord, varLongWord,
+    varInt64:
+      Result.AddPair('value', TJSONNumber.Create(Int64(FValue)));
+    varSingle, varDouble, varCurrency:
+      Result.AddPair('value', TJSONNumber.Create(Double(FValue)));
+  else
+    Result.AddPair('value', VarToStr(FValue));
+  end;
+  if FHasDbType then
+    Result.AddPair('dbType', TJSONNumber.Create(FDbType))
+  else
+    Result.AddPair('dbType', TJSONNull.Create);
+end;
+
+{ TRpClientSqlRequest }
+
+constructor TRpClientSqlRequest.Create;
+begin
+  inherited Create;
+  FParameters := TObjectList.Create(True);
+end;
+
+destructor TRpClientSqlRequest.Destroy;
+begin
+  FParameters.Free;
+  inherited Destroy;
+end;
+
+procedure TRpClientSqlRequest.Assign(Source: TPersistent);
+var
+  I: Integer;
+  LParameter: TRpClientSqlParameter;
+  LSource: TRpClientSqlRequest;
+begin
+  if Source is TRpClientSqlRequest then
+  begin
+    LSource := TRpClientSqlRequest(Source);
+    FId := LSource.Id;
+    FDatasetAlias := LSource.DatasetAlias;
+    FDatabaseAlias := LSource.DatabaseAlias;
+    FSql := LSource.Sql;
+    FParameters.Clear;
+    for I := 0 to LSource.Parameters.Count - 1 do
+    begin
+      LParameter := TRpClientSqlParameter.Create;
+      LParameter.Assign(TRpClientSqlParameter(LSource.Parameters[I]));
+      FParameters.Add(LParameter);
+    end;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpClientSqlRequest.FromJsonObject(AObject: TJSONObject);
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LParameter: TRpClientSqlParameter;
+  LValue: TJSONValue;
+begin
+  FParameters.Clear;
+  if AObject = nil then
+    Exit;
+  FId := JsonValueToString(AObject.Values['id'], '');
+  FDatasetAlias := JsonValueToString(AObject.Values['datasetAlias'], '');
+  FDatabaseAlias := JsonValueToString(AObject.Values['databaseAlias'], '');
+  FSql := JsonValueToString(AObject.Values['sql'], '');
+  LValue := AObject.Values['parameters'];
+  if (LValue <> nil) and (LValue is TJSONArray) then
+  begin
+    LArray := TJSONArray(LValue);
+    for I := 0 to LArray.Count - 1 do
+    begin
+      if not (LArray.Items[I] is TJSONObject) then
+        Continue;
+      LParameter := TRpClientSqlParameter.Create;
+      LParameter.FromJsonObject(TJSONObject(LArray.Items[I]));
+      FParameters.Add(LParameter);
+    end;
+  end;
+end;
+
+function TRpClientSqlRequest.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', FId);
+  Result.AddPair('datasetAlias', FDatasetAlias);
+  Result.AddPair('databaseAlias', FDatabaseAlias);
+  Result.AddPair('sql', FSql);
+  LArray := TJSONArray.Create;
+  for I := 0 to FParameters.Count - 1 do
+    LArray.AddElement(TRpClientSqlParameter(FParameters[I]).ToJsonObject);
+  Result.AddPair('parameters', LArray);
+end;
+
+{ TRpClientSqlColumn }
+
+procedure TRpClientSqlColumn.Assign(Source: TPersistent);
+begin
+  if Source is TRpClientSqlColumn then
+  begin
+    FName := TRpClientSqlColumn(Source).Name;
+    FDataType := TRpClientSqlColumn(Source).DataType;
+    FSize := TRpClientSqlColumn(Source).Size;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpClientSqlColumn.FromJsonObject(AObject: TJSONObject);
+begin
+  if AObject = nil then
+    Exit;
+  FName := JsonValueToString(AObject.Values['name'], '');
+  FDataType := JsonValueToString(AObject.Values['dataType'], '');
+  FSize := JsonValueToInt(AObject.Values['size'], 0);
+end;
+
+function TRpClientSqlColumn.ToJsonObject: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', FName);
+  Result.AddPair('dataType', FDataType);
+  Result.AddPair('size', TJSONNumber.Create(FSize));
+end;
+
+{ TRpClientSqlResult }
+
+constructor TRpClientSqlResult.Create;
+begin
+  inherited Create;
+  FColumns := TObjectList.Create(True);
+end;
+
+destructor TRpClientSqlResult.Destroy;
+begin
+  FColumns.Free;
+  inherited Destroy;
+end;
+
+function TRpClientSqlResult.AddColumn(const AName, ADataType: string;
+  ASize: Integer): TRpClientSqlColumn;
+begin
+  Result := TRpClientSqlColumn.Create;
+  Result.Name := AName;
+  Result.DataType := ADataType;
+  Result.Size := ASize;
+  FColumns.Add(Result);
+end;
+
+procedure TRpClientSqlResult.Assign(Source: TPersistent);
+var
+  I: Integer;
+  LColumn: TRpClientSqlColumn;
+  LSource: TRpClientSqlResult;
+begin
+  if Source is TRpClientSqlResult then
+  begin
+    LSource := TRpClientSqlResult(Source);
+    FId := LSource.Id;
+    FSuccess := LSource.Success;
+    FErrorMessage := LSource.ErrorMessage;
+    FColumns.Clear;
+    for I := 0 to LSource.Columns.Count - 1 do
+    begin
+      LColumn := TRpClientSqlColumn.Create;
+      LColumn.Assign(TRpClientSqlColumn(LSource.Columns[I]));
+      FColumns.Add(LColumn);
+    end;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+procedure TRpClientSqlResult.FromJsonObject(AObject: TJSONObject);
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LColumn: TRpClientSqlColumn;
+  LValue: TJSONValue;
+begin
+  FColumns.Clear;
+  if AObject = nil then
+    Exit;
+  FId := JsonValueToString(AObject.Values['id'], '');
+  FSuccess := JsonValueToBoolean(AObject.Values['success'], False);
+  FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
+  LValue := AObject.Values['columns'];
+  if (LValue <> nil) and (LValue is TJSONArray) then
+  begin
+    LArray := TJSONArray(LValue);
+    for I := 0 to LArray.Count - 1 do
+    begin
+      if not (LArray.Items[I] is TJSONObject) then
+        Continue;
+      LColumn := TRpClientSqlColumn.Create;
+      LColumn.FromJsonObject(TJSONObject(LArray.Items[I]));
+      FColumns.Add(LColumn);
+    end;
+  end;
+end;
+
+function TRpClientSqlResult.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', FId);
+  Result.AddPair('success', TJSONBool.Create(FSuccess));
+  if FSuccess then
+  begin
+    LArray := TJSONArray.Create;
+    for I := 0 to FColumns.Count - 1 do
+      LArray.AddElement(TRpClientSqlColumn(FColumns[I]).ToJsonObject);
+    Result.AddPair('columns', LArray);
+  end
+  else
+    Result.AddPair('errorMessage', FErrorMessage);
 end;
 
 function JsonValueToBoolean(AValue: TJSONValue; ADefault: Boolean): Boolean;
@@ -529,8 +996,22 @@ begin
   Result.AddPair('returnModifiedDocument', TJSONBool.Create(FReturnModifiedDocument));
 end;
 
+constructor TRpModifyReportResult.Create;
+begin
+  inherited Create;
+  FClientSqlRequests := TObjectList.Create(True);
+end;
+
+destructor TRpModifyReportResult.Destroy;
+begin
+  FClientSqlRequests.Free;
+  inherited Destroy;
+end;
+
 procedure TRpModifyReportResult.Assign(Source: TPersistent);
 var
+  I: Integer;
+  LRequest: TRpClientSqlRequest;
   LSource: TRpModifyReportResult;
 begin
   if Source is TRpModifyReportResult then
@@ -542,13 +1023,29 @@ begin
     FModifiedReportDocument := LSource.ModifiedReportDocument;
     FOperationsJson := LSource.OperationsJson;
     FReportFormat := LSource.ReportFormat;
+    FStatus := LSource.Status;
+    FWorkingContextJson := LSource.WorkingContextJson;
+    FContinuation := LSource.Continuation;
+    FClientSqlRequests.Clear;
+    for I := 0 to LSource.ClientSqlRequests.Count - 1 do
+    begin
+      LRequest := TRpClientSqlRequest.Create;
+      LRequest.Assign(TRpClientSqlRequest(LSource.ClientSqlRequests[I]));
+      FClientSqlRequests.Add(LRequest);
+    end;
   end
   else
     inherited Assign(Source);
 end;
 
 procedure TRpModifyReportResult.FromJsonObject(AObject: TJSONObject);
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LRequest: TRpClientSqlRequest;
+  LValue: TJSONValue;
 begin
+  FClientSqlRequests.Clear;
   if AObject = nil then
     Exit;
   FContextJson := JsonValueToString(AObject.Values['contextJson'], '');
@@ -557,6 +1054,22 @@ begin
   FExplanation := JsonValueToString(AObject.Values['explanation'], '');
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   FReportFormat := RpReportDocumentFormatFromString(JsonValueToString(AObject.Values['reportFormat'], 'Xml'));
+  FStatus := JsonValueToString(AObject.Values['status'], '');
+  FWorkingContextJson := JsonValueToString(AObject.Values['workingContextJson'], '');
+  FContinuation := JsonValueToString(AObject.Values['continuation'], '');
+  LValue := AObject.Values['clientSqlRequests'];
+  if (LValue <> nil) and (LValue is TJSONArray) then
+  begin
+    LArray := TJSONArray(LValue);
+    for I := 0 to LArray.Count - 1 do
+    begin
+      if not (LArray.Items[I] is TJSONObject) then
+        Continue;
+      LRequest := TRpClientSqlRequest.Create;
+      LRequest.FromJsonObject(TJSONObject(LArray.Items[I]));
+      FClientSqlRequests.Add(LRequest);
+    end;
+  end;
 end;
 
 function TRpModifyReportResult.GetSuccess: Boolean;
@@ -564,7 +1077,15 @@ begin
   Result := Trim(FErrorMessage) = '';
 end;
 
+function TRpModifyReportResult.NeedsClientSqlResults: Boolean;
+begin
+  Result := SameText(FStatus, RP_MODIFY_STATUS_NEEDS_CLIENT_SQL);
+end;
+
 function TRpModifyReportResult.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('contextJson', FContextJson);
@@ -574,6 +1095,19 @@ begin
   Result.AddPair('errorMessage', FErrorMessage);
   Result.AddPair('reportFormat', RpReportDocumentFormatToString(FReportFormat));
   Result.AddPair('success', TJSONBool.Create(Success));
+  if FStatus <> '' then
+    Result.AddPair('status', FStatus);
+  if FWorkingContextJson <> '' then
+    Result.AddPair('workingContextJson', FWorkingContextJson);
+  if FContinuation <> '' then
+    Result.AddPair('continuation', FContinuation);
+  if FClientSqlRequests.Count > 0 then
+  begin
+    LArray := TJSONArray.Create;
+    for I := 0 to FClientSqlRequests.Count - 1 do
+      LArray.AddElement(TRpClientSqlRequest(FClientSqlRequests[I]).ToJsonObject);
+    Result.AddPair('clientSqlRequests', LArray);
+  end;
 end;
 
 constructor TRpApiModifyReportRequest.Create;
@@ -581,6 +1115,7 @@ begin
   inherited Create;
   FConfig := TRpApiDatabaseConfig.Create;
   FUserInstructions := TStringList.Create;
+  FClientSqlResults := TObjectList.Create(True);
   FMode := rdmFast;
   FReportFormat := rdfXml;
   FReturnModifiedDocument := True;
@@ -590,6 +1125,7 @@ end;
 
 destructor TRpApiModifyReportRequest.Destroy;
 begin
+  FClientSqlResults.Free;
   FConfig.Free;
   FUserInstructions.Free;
   inherited Destroy;
@@ -597,6 +1133,8 @@ end;
 
 procedure TRpApiModifyReportRequest.Assign(Source: TPersistent);
 var
+  I: Integer;
+  LResult: TRpClientSqlResult;
   LSource: TRpApiModifyReportRequest;
 begin
   if Source is TRpApiModifyReportRequest then
@@ -607,6 +1145,15 @@ begin
     FAITier := LSource.AITier;
     FApiKey := LSource.ApiKey;
     FConfig.Assign(LSource.Config);
+    FClientExecutesSql := LSource.ClientExecutesSql;
+    FContinuation := LSource.Continuation;
+    FClientSqlResults.Clear;
+    for I := 0 to LSource.ClientSqlResults.Count - 1 do
+    begin
+      LResult := TRpClientSqlResult.Create;
+      LResult.Assign(TRpClientSqlResult(LSource.ClientSqlResults[I]));
+      FClientSqlResults.Add(LResult);
+    end;
     FExistingContextJson := LSource.ExistingContextJson;
     FExistingOperationsJson := LSource.ExistingOperationsJson;
     FHasAgentAiId := LSource.HasAgentAiId;
@@ -637,10 +1184,30 @@ end;
 
 procedure TRpApiModifyReportRequest.FromJsonObject(AObject: TJSONObject);
 var
+  I: Integer;
+  LArray: TJSONArray;
   LConfig: TJSONObject;
+  LResult: TRpClientSqlResult;
+  LValue: TJSONValue;
 begin
+  FClientSqlResults.Clear;
   if AObject = nil then
     Exit;
+  FClientExecutesSql := JsonValueToBoolean(AObject.Values['clientExecutesSql'], False);
+  FContinuation := JsonValueToString(AObject.Values['continuation'], '');
+  LValue := AObject.Values['clientSqlResults'];
+  if (LValue <> nil) and (LValue is TJSONArray) then
+  begin
+    LArray := TJSONArray(LValue);
+    for I := 0 to LArray.Count - 1 do
+    begin
+      if not (LArray.Items[I] is TJSONObject) then
+        Continue;
+      LResult := TRpClientSqlResult.Create;
+      LResult.FromJsonObject(TJSONObject(LArray.Items[I]));
+      FClientSqlResults.Add(LResult);
+    end;
+  end;
   LConfig := AObject.Values['config'] as TJSONObject;
   FAITier := RpAITierTypeFromString(JsonValueToString(AObject.Values['aiTier'], 'Standard'));
   FMode := RpReportDesignerModeFromString(JsonValueToString(AObject.Values['mode'], 'Fast'));
@@ -660,6 +1227,9 @@ begin
 end;
 
 function TRpApiModifyReportRequest.ToJsonObject: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('aiTier', RpAITierTypeToString(FAITier));
@@ -679,6 +1249,17 @@ begin
   Result.AddPair('existingOperationsJson', FExistingOperationsJson);
   Result.AddPair('existingContextJson', FExistingContextJson);
   Result.AddPair('returnModifiedDocument', TJSONBool.Create(FReturnModifiedDocument));
+  if FClientExecutesSql then
+    Result.AddPair('clientExecutesSql', TJSONBool.Create(True));
+  if FContinuation <> '' then
+    Result.AddPair('continuation', FContinuation);
+  if FClientSqlResults.Count > 0 then
+  begin
+    LArray := TJSONArray.Create;
+    for I := 0 to FClientSqlResults.Count - 1 do
+      LArray.AddElement(TRpClientSqlResult(FClientSqlResults[I]).ToJsonObject);
+    Result.AddPair('clientSqlResults', LArray);
+  end;
 end;
 
 function TRpApiModifyReportRequest.GetHubDatabaseId: Int64;
@@ -856,7 +1437,8 @@ begin
   Result.AddPair('dataInfoName', FDataInfoName);
   Result.AddPair('databaseAlias', FDatabaseAlias);
   Result.AddPair('sql', FSql);
-  if (FConfig.HubDatabaseId <> 0) or (FConfig.HubSchemaId <> 0) then
+  if (FConfig.HubDatabaseId <> 0) or (FConfig.HubSchemaId <> 0) or
+    FConfig.HasInlineSchema then
     Result.AddPair('config', FConfig.ToJsonObject);
 end;
 

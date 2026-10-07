@@ -40,6 +40,7 @@ rpdatainfo.pas
 rpdataset.pas
 rpdatatext.pas
 rpDelphiZXIngQRCode.pas
+rpdesignerclientsql.pas
 rpdirectwrite.pas
 RpDirectWriteRenderer.pas
 rpdrawitem.pas
@@ -56,6 +57,7 @@ rpinfoprovgdi.pas
 rpinfoprovid.pas
 rplabelitem.pas
 rplastsav.pas
+rplocalschemas.pas
 rpmdbarcode.pas
 rpmdchart.pas
 rpmdcharttypes.pas
@@ -150,6 +152,7 @@ design_lcl/rpfrmaireportlcl.pas
 design_lcl/rpfrmaischemaselectorlcl.pas
 design_lcl/rpfrmaiselectionlcl.pas
 design_lcl/rpfrmchatlcl.pas
+design_lcl/rpfrmlocalschemaslcl.pas
 design_lcl/rpfrmloginframelcl.pas
 design_lcl/rpfrmloginlcl.pas
 design_lcl/rpfrmmonacoeditorlcl.pas

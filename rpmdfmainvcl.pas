@@ -479,6 +479,11 @@ type
     procedure StopDesignChatRequest(Sender: TObject);
     procedure RefreshDesignChatContext(Sender: TObject);
     procedure InitializeDesignChatSchemaSelection;
+    // The direct connections of the report (and their local subschemas) in
+    // the schema selector of the design chat
+    procedure UpdateDesignChatLocalSchemas;
+    procedure ConfigureDesignChatLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string);
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string);
     procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
@@ -515,7 +520,8 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 
 implementation
 
-uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs;
+uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs, rplocalschemas,
+  rpfrmlocalschemasvcl;
 
 {$R *.dfm}
 
@@ -662,6 +668,7 @@ begin
  FormResize(Self);
  if Assigned(fchatframe) then
  begin
+  UpdateDesignChatLocalSchemas;
   fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
   fchatframe.StartOnlineInitialization;
  end;
@@ -959,6 +966,7 @@ begin
   fchatframe.OnDesignInferenceEnd:=DesignInferenceEnd;
   fchatframe.OnStopRequest:=StopDesignChatRequest;
   fchatframe.OnRefreshContext:=RefreshDesignChatContext;
+  fchatframe.OnConfigureLocalSchemas:=ConfigureDesignChatLocalSchemas;
   fchatframe.SetRefreshAction(True);
   fchatframe.Initialize('',
     'Describe report changes here or ask for assistance. Any change can be undone.');
@@ -1175,8 +1183,72 @@ begin
 
   ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId,
     LSchemaApiKey);
+  UpdateDesignChatLocalSchemas;
   fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
   fchatframe.StartOnlineInitialization;
+end;
+
+procedure TFRpMainFVCL.UpdateDesignChatLocalSchemas;
+var
+  I, J: Integer;
+  LDatabase: TRpDatabaseInfoItem;
+  LEntries, LNames: TStringList;
+  LPreferred: string;
+begin
+  if not Assigned(fchatframe) then
+    Exit;
+  LEntries := TStringList.Create;
+  LNames := TStringList.Create;
+  try
+    LPreferred := '';
+    if Assigned(report) then
+    begin
+      for I := 0 to report.DatabaseInfo.Count - 1 do
+      begin
+        LDatabase := report.DatabaseInfo.Items[I];
+        if not RpIsLocalSqlDatabase(LDatabase) then
+          Continue;
+        LEntries.Add(LDatabase.Alias + '=');
+        try
+          RpListLocalSubSchemas(LDatabase, LNames);
+        except
+          LNames.Clear;
+        end;
+        for J := 0 to LNames.Count - 1 do
+          LEntries.Add(LDatabase.Alias + '=' + LNames[J]);
+        if LPreferred = '' then
+          LPreferred := LDatabase.Alias;
+      end;
+      // The connection of the first dataset, when it is a direct one
+      if report.DataInfo.Count > 0 then
+      begin
+        LDatabase := FindDatabaseInfo(report.DatabaseInfo,
+          report.DataInfo.Items[0].DatabaseAlias);
+        if RpIsLocalSqlDatabase(LDatabase) then
+          LPreferred := LDatabase.Alias;
+      end;
+    end;
+    fchatframe.SetLocalSchemas(LEntries, LPreferred);
+  finally
+    LNames.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TFRpMainFVCL.ConfigureDesignChatLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string);
+var
+  LSchemaName: string;
+begin
+  if not Assigned(report) then
+    Exit;
+  LSchemaName := ASchemaName;
+  try
+    RpShowLocalSchemasDialog(report, AAlias, LSchemaName);
+  finally
+    UpdateDesignChatLocalSchemas;
+  end;
+  fchatframe.SelectLocalSchema(AAlias, LSchemaName);
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -1850,6 +1922,8 @@ procedure TFRpMainFVCL.ADataConfigExecute(Sender: TObject);
 begin
  // Data info configuration dialog
  ShowDataConfig(report);
+ // The connections may have changed: the local ones of the design chat
+ UpdateDesignChatLocalSchemas;
  fobjinsp.ClearMultiSelect;
  fdesignframe.UpdateSelection(true);
  fdesignframe.freportstructure.Report:=report;
@@ -3313,9 +3387,17 @@ begin
  Result.ApiKey := fchatframe.GetSchemaApiKey;
  Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
  Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
+ // A direct connection: its local schema travels inline and the SQL of the
+ // assistant runs here (rpdesignerclientsql, in the worker of the chat)
+ if (Result.Config.HubDatabaseId = 0) and (Result.Config.HubSchemaId = 0) then
+ begin
+  Result.Config.LocalAlias := fchatframe.GetLocalSchemaAlias;
+  Result.Config.LocalSchemaName := fchatframe.GetLocalSchemaName;
+ end;
  TRpAuthManager.Instance.Log(
   'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
   ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+  ' LocalAlias=' + Result.Config.LocalAlias +
   ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
  Result.UserInstructions.Add(APrompt);
  if Result.AITier = ratLocalAgent then
@@ -3699,6 +3781,7 @@ begin
       fchatframe.GetSchemaApiKey) > 0) then
     TRpAuthManager.Instance.Log(
       'Design chat: Reportman AI Agent connections written to the connections file');
+  UpdateDesignChatLocalSchemas;
 
   if Assigned(freportstructure) then
     freportstructure.Report := report;

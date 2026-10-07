@@ -1220,6 +1220,9 @@
         <DCCReference Include="..\rpregvcl.pas"/>
         <DCCReference Include="..\rpreport.pas"/>
         <DCCReference Include="..\rpreportdesignercontracts.pas"/>
+        <DCCReference Include="..\rplocalschemas.pas"/>
+        <DCCReference Include="..\rpdesignerclientsql.pas"/>
+        <DCCReference Include="..\rpfrmlocalschemasvcl.pas"/>
         <DCCReference Include="..\rpbasereport.pas"/>
         <DCCReference Include="..\rprulervcl.pas"/>
         <DCCReference Include="..\rpsection.pas"/>
