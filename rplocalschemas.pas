@@ -25,13 +25,15 @@ unit rplocalschemas;
     <folder of dbxconnections.ini>/dbxschemas/<ALIAS>.json
 
   {
-    "version": 1, "alias": "FBEXAMPLE", "dialect": "Firebird5",
+    "version": 2, "alias": "FBEXAMPLE", "dialect": "Firebird5",
     "generatedUtc": "2026-10-08T01:00:00Z",
     "tables": [ { "name", "context", "columns": [ { "name", "dataType",
-      "context", "isPrimaryKey", "detectedType" } ], "foreignKeys": [
+      "context", "isPrimaryKey", "detectedType",
+      "allowedValues": [ { "value", "label" } ] } ], "foreignKeys": [
       { "constraintName", "targetTable", "sourceColumns", "targetColumns",
       "relationshipContext" } ] } ],
-    "schemas": [ { "name": "Sales", "description": "", "tables": [...] } ]
+    "schemas": [ { "name": "Sales", "description": "", "tables": [...],
+      "columns": { "SALES": ["SALEID", "TOTAL"] } } ]
   }
 
   - "tables" is the JSON of the SchemaTable of the Hub and the Desktop, so it
@@ -39,11 +41,20 @@ unit rplocalschemas;
     dataType is one of the cloud's ColumnDataType names (Integer, Numeric,
     Currency, String, TextLong, Date, TimeStamp, Boolean).
   - "All" is not saved: it is every table. "schemas" are the subschemas the
-    user defines (a name and a selection of tables).
+    user defines (a name and a selection of tables and, from version 2, of
+    their columns: a table missing from "columns" goes with all of them, so
+    a version 1 file means the same).
+  - Version 2 adds "allowedValues" (the values a column takes and what each
+    one means) and "columns" of a subschema. Every reader keeps what it does
+    not know (the properties of a newer version, at any level) and writes it
+    back: saving with an older designer never loses them.
   - It is generated from the catalog the first time it is needed. A refresh
     reads the catalog again and keeps the context written for the tables,
     columns and foreign keys that still exist, and the subschemas (without
-    the tables that are gone). *)
+    the tables and columns that are gone). The comments of the database are
+    the starting context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
+  - The tables of a subschema sent to the AI carry the columns it chose and
+    the relations whose two ends travel. *)
 
 interface
 
@@ -59,17 +70,28 @@ uses
 
 const
   RP_LOCAL_SCHEMA_FOLDER = 'dbxschemas';
-  RP_LOCAL_SCHEMA_VERSION = 1;
+  RP_LOCAL_SCHEMA_VERSION = 2;
 
 type
   TRpLocalSubSchema = class(TObject)
   private
+    // Table name to the columns it takes (version 2)
+    FColumns: TJSONObject;
     FDescription: string;
+    // What this version does not know, written back as it is
+    FExtra: TJSONObject;
     FName: string;
     FTables: TStringList;
+    function ColumnsJson: TJSONObject;
+    procedure KeepColumnsOf(ACatalog: TJSONArray);
   public
     constructor Create;
     destructor Destroy; override;
+    // The columns chosen of a table: False (and AList empty) when the table
+    // goes with all its columns
+    function GetColumns(const ATable: string; AList: TStrings): Boolean;
+    // The columns chosen of a table; an empty list is all of them again
+    procedure SetColumns(const ATable: string; AColumns: TStrings);
     property Description: string read FDescription write FDescription;
     property Name: string read FName write FName;
     property Tables: TStringList read FTables;
@@ -79,7 +101,10 @@ type
   private
     FAlias: string;
     FDialect: string;
+    // What this version does not know, written back as it is
+    FExtra: TJSONObject;
     FFileName: string;
+    FVersion: Integer;
     FGeneratedUtc: string;
     FSchemas: TObjectList;
     FTables: TJSONArray;
@@ -280,6 +305,50 @@ begin
   end;
 end;
 
+// The properties of AFrom that are not in AKnown, copied to ATo (what a newer
+// version wrote, kept to be written back)
+procedure CopyUnknown(AFrom, ATo: TJSONObject; const AKnown: array of string);
+var
+  I, J: Integer;
+  LName: string;
+  LKnown: Boolean;
+begin
+  if (AFrom = nil) or (ATo = nil) then
+    Exit;
+  for I := 0 to AFrom.Count - 1 do
+  begin
+    LName := AFrom.Pairs[I].JsonString.Value;
+    LKnown := False;
+    for J := Low(AKnown) to High(AKnown) do
+      if SameText(LName, AKnown[J]) then
+        LKnown := True;
+    if not LKnown and (ATo.Values[LName] = nil) then
+      ATo.AddPair(LName, TJSONValue(AFrom.Pairs[I].JsonValue.Clone));
+  end;
+end;
+
+// The names of a JSON array of strings
+procedure ArrayNames(AArray: TJSONArray; AList: TStrings);
+var
+  I: Integer;
+begin
+  AList.Clear;
+  if AArray = nil then
+    Exit;
+  for I := 0 to AArray.Count - 1 do
+    if (AArray.Items[I] <> nil) and (Trim(AArray.Items[I].Value) <> '') then
+      AList.Add(AArray.Items[I].Value);
+end;
+
+// The names of a list, added to a JSON array
+procedure ArrayToNames(AList: TStrings; AArray: TJSONArray);
+var
+  I: Integer;
+begin
+  for I := 0 to AList.Count - 1 do
+    AArray.Add(AList[I]);
+end;
+
 function ReadUtf8File(const AFileName: string): string;
 var
   LBytes: TBytes;
@@ -368,12 +437,113 @@ begin
   inherited Create;
   FTables := TStringList.Create;
   FTables.CaseSensitive := False;
+  FColumns := TJSONObject.Create;
+  FExtra := TJSONObject.Create;
 end;
 
 destructor TRpLocalSubSchema.Destroy;
 begin
   FTables.Free;
+  FColumns.Free;
+  FExtra.Free;
   inherited Destroy;
+end;
+
+function TRpLocalSubSchema.GetColumns(const ATable: string;
+  AList: TStrings): Boolean;
+var
+  I: Integer;
+begin
+  AList.Clear;
+  for I := 0 to FColumns.Count - 1 do
+    if SameText(FColumns.Pairs[I].JsonString.Value, ATable) and
+      (FColumns.Pairs[I].JsonValue is TJSONArray) then
+    begin
+      ArrayNames(TJSONArray(FColumns.Pairs[I].JsonValue), AList);
+      Break;
+    end;
+  Result := AList.Count > 0;
+end;
+
+procedure TRpLocalSubSchema.SetColumns(const ATable: string;
+  AColumns: TStrings);
+var
+  I: Integer;
+  LNames: TJSONArray;
+begin
+  for I := FColumns.Count - 1 downto 0 do
+    if SameText(FColumns.Pairs[I].JsonString.Value, ATable) then
+      FColumns.RemovePair(FColumns.Pairs[I].JsonString.Value).Free;
+  if (AColumns = nil) or (AColumns.Count = 0) then
+    Exit;
+  LNames := TJSONArray.Create;
+  for I := 0 to AColumns.Count - 1 do
+    if Trim(AColumns[I]) <> '' then
+      LNames.Add(AColumns[I]);
+  FColumns.AddPair(ATable, LNames);
+end;
+
+// The columns to write: only tables of the subschema (as it spells them) with
+// columns chosen; nil when every table goes whole
+function TRpLocalSubSchema.ColumnsJson: TJSONObject;
+var
+  I: Integer;
+  LArray: TJSONArray;
+  LNames: TStringList;
+begin
+  Result := nil;
+  LNames := TStringList.Create;
+  try
+    for I := 0 to FTables.Count - 1 do
+      if GetColumns(FTables[I], LNames) then
+      begin
+        if Result = nil then
+          Result := TJSONObject.Create;
+        LArray := TJSONArray.Create;
+        ArrayToNames(LNames, LArray);
+        Result.AddPair(FTables[I], LArray);
+      end;
+  finally
+    LNames.Free;
+  end;
+end;
+
+// After reading the catalog again: the columns of the tables that are still
+// in the subschema, that still exist, as the catalog spells them
+procedure TRpLocalSubSchema.KeepColumnsOf(ACatalog: TJSONArray);
+var
+  I, J: Integer;
+  LKept, LNames: TStringList;
+  LColumn, LTable: TJSONObject;
+  LOld: TJSONObject;
+begin
+  LOld := FColumns;
+  FColumns := TJSONObject.Create;
+  LNames := TStringList.Create;
+  LKept := TStringList.Create;
+  try
+    for I := 0 to LOld.Count - 1 do
+    begin
+      if not (LOld.Pairs[I].JsonValue is TJSONArray) then
+        Continue;
+      LTable := FindByName(ACatalog, 'name', LOld.Pairs[I].JsonString.Value);
+      if (LTable = nil) or (FTables.IndexOf(JStr(LTable, 'name')) < 0) then
+        Continue;
+      ArrayNames(TJSONArray(LOld.Pairs[I].JsonValue), LNames);
+      LKept.Clear;
+      for J := 0 to LNames.Count - 1 do
+      begin
+        LColumn := FindByName(JArr(LTable, 'columns'), 'name', LNames[J]);
+        if (LColumn <> nil) and (LKept.IndexOf(JStr(LColumn, 'name')) < 0) then
+          LKept.Add(JStr(LColumn, 'name'));
+      end;
+      SetColumns(JStr(LTable, 'name'), LKept);
+    end;
+  finally
+    LKept.Free;
+    LNames.Free;
+    LOld.Free;
+  end;
 end;
 
 { TRpLocalSchemaFile }
@@ -383,12 +553,15 @@ begin
   inherited Create;
   FSchemas := TObjectList.Create(True);
   FTables := TJSONArray.Create;
+  FExtra := TJSONObject.Create;
+  FVersion := RP_LOCAL_SCHEMA_VERSION;
 end;
 
 destructor TRpLocalSchemaFile.Destroy;
 begin
   FSchemas.Free;
   FTables.Free;
+  FExtra.Free;
   inherited Destroy;
 end;
 
@@ -397,6 +570,9 @@ begin
   FSchemas.Clear;
   FTables.Free;
   FTables := TJSONArray.Create;
+  FExtra.Free;
+  FExtra := TJSONObject.Create;
+  FVersion := RP_LOCAL_SCHEMA_VERSION;
   FAlias := '';
   FDialect := '';
   FGeneratedUtc := '';
@@ -426,9 +602,12 @@ begin
     if not (LRoot is TJSONObject) then
       raise Exception.Create('The schema file is not a JSON object');
     LObject := TJSONObject(LRoot);
+    FVersion := StrToIntDef(JStr(LObject, 'version'), 1);
     FAlias := JStr(LObject, 'alias');
     FDialect := JStr(LObject, 'dialect');
     FGeneratedUtc := JStr(LObject, 'generatedUtc');
+    CopyUnknown(LObject, FExtra, ['version', 'alias', 'dialect',
+      'generatedUtc', 'tables', 'schemas']);
     LArray := JArr(LObject, 'tables');
     if LArray <> nil then
     begin
@@ -450,6 +629,13 @@ begin
           for J := 0 to LNames.Count - 1 do
             if LNames.Items[J] <> nil then
               LSchema.Tables.Add(LNames.Items[J].Value);
+        if JObj(LArray, I).Values['columns'] is TJSONObject then
+        begin
+          LSchema.FColumns.Free;
+          LSchema.FColumns := TJSONObject(JObj(LArray, I).Values['columns'].Clone);
+        end;
+        CopyUnknown(JObj(LArray, I), LSchema.FExtra, ['name', 'description',
+          'tables', 'columns']);
       end;
   finally
     LRoot.Free;
@@ -460,11 +646,15 @@ function TRpLocalSchemaFile.ToJsonText: string;
 var
   I, J: Integer;
   LNames, LSchemas: TJSONArray;
-  LRoot, LSchemaObject: TJSONObject;
+  LColumns, LRoot, LSchemaObject: TJSONObject;
 begin
   LRoot := TJSONObject.Create;
   try
-    LRoot.AddPair('version', TJSONNumber.Create(RP_LOCAL_SCHEMA_VERSION));
+    // A newer file keeps its own version
+    if FVersion > RP_LOCAL_SCHEMA_VERSION then
+      LRoot.AddPair('version', TJSONNumber.Create(FVersion))
+    else
+      LRoot.AddPair('version', TJSONNumber.Create(RP_LOCAL_SCHEMA_VERSION));
     LRoot.AddPair('alias', FAlias);
     LRoot.AddPair('dialect', FDialect);
     LRoot.AddPair('generatedUtc', FGeneratedUtc);
@@ -481,7 +671,12 @@ begin
       LSchemaObject.AddPair('tables', LNames);
       for J := 0 to Schemas[I].Tables.Count - 1 do
         LNames.Add(Schemas[I].Tables[J]);
+      LColumns := Schemas[I].ColumnsJson;
+      if LColumns <> nil then
+        LSchemaObject.AddPair('columns', LColumns);
+      CopyUnknown(Schemas[I].FExtra, LSchemaObject, []);
     end;
+    CopyUnknown(FExtra, LRoot, []);
     Result := LRoot.Format(2);
   finally
     LRoot.Free;
@@ -579,6 +774,8 @@ begin
   finally
     LNames.Free;
   end;
+  for I := 0 to FSchemas.Count - 1 do
+    Schemas[I].KeepColumnsOf(FTables);
 end;
 
 procedure TRpLocalSchemaFile.GetTableNames(AList: TStrings);
@@ -626,11 +823,30 @@ begin
   FSchemas.Delete(AIndex);
 end;
 
+// Whether a relation end travels: its table is in ATables and has all the
+// columns
+function EndTravels(ATables: TJSONArray; const ATable: string;
+  AColumns: TJSONArray): Boolean;
+var
+  I: Integer;
+  LTable: TJSONObject;
+begin
+  LTable := FindByName(ATables, 'name', ATable);
+  Result := LTable <> nil;
+  if not Result or (AColumns = nil) then
+    Exit;
+  for I := 0 to AColumns.Count - 1 do
+    if (AColumns.Items[I] <> nil) and
+      (FindByName(JArr(LTable, 'columns'), 'name', AColumns.Items[I].Value) = nil) then
+      Exit(False);
+end;
+
 function TRpLocalSchemaFile.SchemaTablesJson(const ASchemaName: string): string;
 var
-  I, LIndex: Integer;
-  LArray: TJSONArray;
-  LTable: TJSONObject;
+  I, J, LIndex: Integer;
+  LArray, LColumns, LForeignKeys, LKept: TJSONArray;
+  LChosen: TStringList;
+  LClone, LItem, LTable: TJSONObject;
 begin
   LIndex := -1;
   if Trim(ASchemaName) <> '' then
@@ -641,16 +857,51 @@ begin
     Exit;
   end;
   LArray := TJSONArray.Create;
+  LChosen := TStringList.Create;
   try
+    // The tables of the subschema, with the columns it chose of each one
     for I := 0 to FTables.Count - 1 do
     begin
       LTable := JObj(FTables, I);
-      if (LTable <> nil) and
-        (Schemas[LIndex].Tables.IndexOf(JStr(LTable, 'name')) >= 0) then
-        LArray.AddElement(TJSONObject(LTable.Clone));
+      if (LTable = nil) or
+        (Schemas[LIndex].Tables.IndexOf(JStr(LTable, 'name')) < 0) then
+        Continue;
+      LClone := TJSONObject(LTable.Clone);
+      LArray.AddElement(LClone);
+      if Schemas[LIndex].GetColumns(JStr(LTable, 'name'), LChosen) then
+      begin
+        LColumns := JArr(LClone, 'columns');
+        LKept := TJSONArray.Create;
+        if LColumns <> nil then
+          for J := 0 to LColumns.Count - 1 do
+            if (JObj(LColumns, J) <> nil) and
+              (LChosen.IndexOf(JStr(JObj(LColumns, J), 'name')) >= 0) then
+              LKept.AddElement(TJSONValue(JObj(LColumns, J).Clone));
+        SetPair(LClone, 'columns', LKept);
+      end;
+    end;
+    // A relation travels when its two ends do: a column the AI does not see
+    // is no use to it
+    for I := 0 to LArray.Count - 1 do
+    begin
+      LClone := JObj(LArray, I);
+      LForeignKeys := JArr(LClone, 'foreignKeys');
+      if LForeignKeys = nil then
+        Continue;
+      LKept := TJSONArray.Create;
+      for J := 0 to LForeignKeys.Count - 1 do
+      begin
+        LItem := JObj(LForeignKeys, J);
+        if (LItem <> nil) and
+          EndTravels(LArray, JStr(LClone, 'name'), JArr(LItem, 'sourceColumns')) and
+          EndTravels(LArray, JStr(LItem, 'targetTable'), JArr(LItem, 'targetColumns')) then
+          LKept.AddElement(TJSONValue(LItem.Clone));
+      end;
+      SetPair(LClone, 'foreignKeys', LKept);
     end;
     Result := LArray.ToJSON;
   finally
+    LChosen.Free;
     LArray.Free;
   end;
 end;
@@ -975,6 +1226,7 @@ type
     procedure ReadSQLite;
     procedure ReadOracle;
     procedure ReadGeneric;
+    procedure ReadComments(const ATableSql, AColumnSql: string);
   public
     constructor Create(ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList);
     destructor Destroy; override;
@@ -1305,6 +1557,51 @@ begin
   end;
 end;
 
+// The comments of the tables and columns that have no context yet (the
+// starting description); a catalog that can not be read leaves them empty
+procedure TRpCatalogReader.ReadComments(const ATableSql, AColumnSql: string);
+var
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LTable: TRpCatTable;
+begin
+  try
+    LData := Open(ATableSql);
+    try
+      while not LData.Eof do
+      begin
+        LTable := FCatalog.Find(FieldText(LData, 0));
+        if (LTable <> nil) and (LTable.Context = '') then
+          LTable.Context := FieldText(LData, 1);
+        LData.Next;
+      end;
+    finally
+      LData.Free;
+    end;
+  except
+    // Without permission to read the comments the schema goes without them
+  end;
+  try
+    LData := Open(AColumnSql);
+    try
+      while not LData.Eof do
+      begin
+        LTable := FCatalog.Find(FieldText(LData, 0));
+        if LTable <> nil then
+        begin
+          LColumn := LTable.FindColumn(FieldText(LData, 1));
+          if (LColumn <> nil) and (LColumn.Context = '') then
+            LColumn.Context := FieldText(LData, 2);
+        end;
+        LData.Next;
+      end;
+    finally
+      LData.Free;
+    end;
+  except
+  end;
+end;
+
 procedure TRpCatalogReader.ReadInformationSchema;
 var
   LColumn: TRpCatColumn;
@@ -1401,6 +1698,29 @@ begin
       LData.Free;
     end;
   except
+  end;
+  // MySQL gave its comments with the tables and columns
+  case FFamily of
+    rcfPostgreSQL:
+      ReadComments('SELECT c.relname, obj_description(c.oid, ''pg_class'') ' +
+        'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
+        'WHERE c.relkind IN (''r'', ''v'', ''m'', ''p'', ''f'') ' +
+        'AND n.nspname NOT IN (''pg_catalog'', ''information_schema'') ' +
+        'AND obj_description(c.oid, ''pg_class'') IS NOT NULL',
+        'SELECT c.relname, a.attname, col_description(c.oid, a.attnum) ' +
+        'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
+        'JOIN pg_attribute a ON a.attrelid = c.oid ' +
+        'WHERE a.attnum > 0 AND NOT a.attisdropped ' +
+        'AND n.nspname NOT IN (''pg_catalog'', ''information_schema'') ' +
+        'AND col_description(c.oid, a.attnum) IS NOT NULL');
+    rcfSQLServer:
+      ReadComments('SELECT o.name, CAST(ep.value AS nvarchar(4000)) ' +
+        'FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id ' +
+        'WHERE ep.class = 1 AND ep.minor_id = 0 AND ep.name = ''MS_Description''',
+        'SELECT o.name, c.name, CAST(ep.value AS nvarchar(4000)) ' +
+        'FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id ' +
+        'JOIN sys.columns c ON c.object_id = ep.major_id AND c.column_id = ep.minor_id ' +
+        'WHERE ep.class = 1 AND ep.minor_id > 0 AND ep.name = ''MS_Description''');
   end;
 end;
 
@@ -1534,6 +1854,10 @@ begin
     end;
   except
   end;
+  ReadComments('SELECT TABLE_NAME, COMMENTS FROM USER_TAB_COMMENTS ' +
+    'WHERE COMMENTS IS NOT NULL',
+    'SELECT TABLE_NAME, COLUMN_NAME, COMMENTS FROM USER_COL_COMMENTS ' +
+    'WHERE COMMENTS IS NOT NULL');
 end;
 
 // The cloud's type of a field of a dataset

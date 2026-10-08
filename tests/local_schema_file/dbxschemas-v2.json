@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "alias": "FBEXAMPLE",
+  "dialect": "Firebird5",
+  "generatedUtc": "2026-10-08T01:00:00Z",
+  "tables": [
+    {
+      "name": "CUSTOMERS",
+      "context": "The customers",
+      "columns": [
+        { "name": "CUSTOMERID", "dataType": "Integer", "context": "", "isPrimaryKey": true, "detectedType": "INTEGER" },
+        {
+          "name": "STATE", "dataType": "String", "context": "Account state", "isPrimaryKey": false, "detectedType": "CHAR(1)",
+          "allowedValues": [ { "value": "A", "label": "Active" }, { "value": "B", "label": "Blocked", "futureColor": "red" } ],
+          "futureColumnFlag": true
+        }
+      ],
+      "foreignKeys": [],
+      "futureTableNote": { "owner": "sales" }
+    },
+    {
+      "name": "PRODUCTS",
+      "context": "",
+      "columns": [
+        { "name": "PRODUCTID", "dataType": "Integer", "context": "", "isPrimaryKey": true, "detectedType": "INTEGER" },
+        { "name": "NAME", "dataType": "String", "context": "", "isPrimaryKey": false, "detectedType": "VARCHAR(60)" }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "SALES",
+      "context": "",
+      "columns": [
+        { "name": "SALEID", "dataType": "Integer", "context": "", "isPrimaryKey": true, "detectedType": "INTEGER" },
+        { "name": "CUSTOMERID", "dataType": "Integer", "context": "", "isPrimaryKey": false, "detectedType": "INTEGER" },
+        { "name": "TOTAL", "dataType": "Currency", "context": "With taxes", "isPrimaryKey": false, "detectedType": "NUMERIC(15,2)" },
+        { "name": "NOTES", "dataType": "TextLong", "context": "", "isPrimaryKey": false, "detectedType": "BLOB SUB_TYPE TEXT" }
+      ],
+      "foreignKeys": [
+        {
+          "constraintName": "FK_SALES_CUSTOMER", "targetTable": "CUSTOMERS",
+          "sourceColumns": [ "CUSTOMERID" ], "targetColumns": [ "CUSTOMERID" ], "relationshipContext": "Who bought",
+          "futureFkWeight": 3
+        }
+      ]
+    }
+  ],
+  "schemas": [
+    {
+      "name": "Ventas", "description": "Sales", "tables": [ "SALES", "CUSTOMERS" ],
+      "columns": { "SALES": [ "SALEID", "CUSTOMERID", "TOTAL" ] },
+      "futureSchemaColor": "blue"
+    },
+    { "name": "Solo ventas", "description": "", "tables": [ "SALES" ] },
+    { "name": "Productos", "description": "", "tables": [ "PRODUCTS" ] }
+  ],
+  "futureRootSetting": [ 1, 2 ]
+}
