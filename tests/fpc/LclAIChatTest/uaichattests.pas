@@ -876,6 +876,17 @@ begin
     CheckEquals(5, LView.BlockCount, 'blocks: 2 messages, badge and 2 chunks');
     CheckEquals('SELECT 1', LView.Block(3).Raw, 'chunks of one key are merged');
     CheckEquals('after end', LView.Block(4).Raw, 'a new block after EndLogChunkKey');
+    // The wait in the AI provider's queue (stage Queued): the line of a
+    // replace key is rewritten while it is the last one, not appended to
+    LView.AppendLogChunkKey('replace:7', 'Queued: 1 s');
+    LView.EndLogChunkKey('replace:7');
+    LView.AppendLogChunkKey('replace:7', 'Queued: 2 s');
+    LView.EndLogChunkKey('replace:7');
+    CheckEquals(6, LView.BlockCount, 'a queue line is rewritten, not added');
+    CheckEquals('Queued: 2 s', LView.Block(5).Raw, 'the queue line has the last text only');
+    LView.AppendLogChunkKey('k2', 'other');
+    LView.AppendLogChunkKey('replace:7', 'Waited 3 s');
+    CheckEquals(8, LView.BlockCount, 'after another line the queue line is a new one');
 
     LRenders := LView.RenderCount;
     for I := 1 to 40 do

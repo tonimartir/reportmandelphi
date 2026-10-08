@@ -482,10 +482,28 @@ begin
   AppendLogChunkKey('', AChunk);
 end;
 
+// The same as rpdatahttp.RpReplaceLogKeyPrefix (not used from here: this view
+// does not depend on the HTTP unit)
+const
+  RpReplaceLogKeyPrefix = 'replace:';
+
 procedure TRpWebMarkdownView.AppendLogChunkKey(const AKey, AChunk: string);
 var
   LScript: string;
 begin
+  // A line that is rewritten (the wait in the AI provider's queue): it replaces
+  // the last line while that one has the same key, otherwise it is a new line
+  if (Copy(AKey, 1, Length(RpReplaceLogKeyPrefix)) = RpReplaceLogKeyPrefix) and
+    (not FUseFallback) then
+  begin
+    LScript := '(function(k,t){var e=messagesEl.lastElementChild;' +
+    'if(e&&e.getAttribute(''data-log-key'')===k){e.setAttribute(''data-raw'',t);e.innerHTML=renderMarkdown(t);window.scrollToEnd(true);}' +
+    'else{window.appendLogChunkForKey(k,t);window.endLogChunkForKey(k);}})(''' +
+    EscapeJSString(AKey) + ''', ''' + EscapeJSString(AChunk) + ''');';
+    ExecuteOrQueue(LScript);
+    Exit;
+  end;
+
   if FUseFallback then
   begin
     if FMemoFallback <> nil then

@@ -57,6 +57,11 @@ uses
 {$ENDIF}
 
 const
+  // Log key of a line that is REWRITTEN instead of appended to: the wait in the
+  // queue of the AI provider (stage Queued, Reportman.AI.Api), which comes every
+  // second with its whole text ("Queued: 3 s"). The log views (rpwebmarkdownvcl,
+  // rpwebmarkdownlcl) replace the line of such a key while it is the last one.
+  RpReplaceLogKeyPrefix = 'replace:';
   DBTYPE_BOOLEAN = 3;
   DBTYPE_CURRENCY = 4;
   DBTYPE_DATE = 5;
@@ -460,6 +465,9 @@ begin
               LChunk := LJson.Values['chunk'].Value
             else
               LChunk := '';
+            // The wait in the AI provider's queue: one line rewritten each second
+            if SameText(LStage, 'Queued') then
+              LProgressId := RpReplaceLogKeyPrefix + LProgressId;
 
             if SameText(LActor, 'AI') and SameText(LStage, 'ReceivingResponse') then
             begin

@@ -490,6 +490,11 @@ begin
   AppendLogChunkKey('', AChunk);
 end;
 
+// The same as rpdatahttp.RpReplaceLogKeyPrefix (not used from here: this view
+// does not depend on the HTTP unit)
+const
+  RpReplaceLogKeyPrefix = 'replace:';
+
 procedure TRpWebMarkdownView.AppendLogChunkKey(const AKey, AChunk: string);
 var
   LKey: string;
@@ -497,6 +502,28 @@ var
   LIndex: Integer;
 begin
   LKey := NormalizeKey(AKey);
+  // A line that is rewritten (the wait in the AI provider's queue): it replaces
+  // the last line while that one has the same key, otherwise it is a new line
+  if Copy(AKey, 1, Length(RpReplaceLogKeyPrefix)) = RpReplaceLogKeyPrefix then
+  begin
+    if (FBlocks.Count > 0) and (FBlocks[FBlocks.Count - 1].Kind = rmbLogChunk) and
+      (FBlocks[FBlocks.Count - 1].Key = LKey) then
+      LBlock := FBlocks[FBlocks.Count - 1]
+    else
+    begin
+      LBlock := AddBlock(rmbLogChunk);
+      LBlock.Key := LKey;
+    end;
+    LBlock.Raw := AChunk;
+    LBlock.Dirty := True;
+    ModelChanged(True);
+    if not FUseFallback then
+      ExecuteOrQueue('(function(k,t){var e=messagesEl.lastElementChild;' +
+    'if(e&&e.getAttribute(''data-log-key'')===k){e.setAttribute(''data-raw'',t);e.innerHTML=renderMarkdown(t);window.scrollToEnd(true);}' +
+    'else{window.appendLogChunkForKey(k,t);window.endLogChunkForKey(k);}})(''' +
+    EscapeJSString(AKey) + ''', ''' + EscapeJSString(AChunk) + ''');');
+    Exit;
+  end;
   LIndex := FOpenChunks.IndexOf(LKey);
   if LIndex >= 0 then
     LBlock := TRpMarkdownBlock(FOpenChunks.Objects[LIndex])

@@ -2346,6 +2346,10 @@ begin
       FChat.CompleteStreamingProgress(progress.Actor, progress.ChunkType,
         progress.ProgressId);
     end
+    else if SameText(progress.Stage, 'Queued') then
+      // The wait in the AI provider's queue: one log line, rewritten
+      FChat.UpdateStreamingResponse(progress.Actor, 'Full', '', 0,
+        progress.Chunk, progress.ProgressId)
     else if progress.Chunk <> '' then
       FChat.AppendLogLine('[' + progress.Stage + '] ' + progress.Chunk);
   end

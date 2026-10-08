@@ -947,6 +947,9 @@ begin
           LPrefillPercent);
         FChat.CompleteStreamingProgress(LActor, LChunkType, LProgressId);
       end
+      else if SameText(LStage, 'Queued') then
+        // The wait in the AI provider's queue: one log line, rewritten
+        FChat.UpdateStreamingResponse(LActor, 'Full', '', 0, LChunk, LProgressId)
       else if LChunk <> '' then
         FChat.AppendLogLine('[' + LStage + '] ' + LChunk);
     end;
