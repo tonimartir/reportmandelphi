@@ -1024,8 +1024,12 @@ var
   LSqlRequest: TRpClientSqlRequest;
   LSteps: TObjectList;
   LWaiting: TRpModifyReportResult;
+  LCredits: Integer;
+  LHasCredits: Boolean;
 begin
   ARequest.ClientExecutesSql := True;
+  LCredits := 0;
+  LHasCredits := False;
   if (Trim(ARequest.Config.LocalAlias) <> '') and
     not ARequest.Config.HasInlineSchema then
   begin
@@ -1051,9 +1055,15 @@ begin
       Inc(LTurn);
       if LTurn > RP_MAX_CLIENT_SQL_TURNS then
         Break;
-      // The tokens of every turn are reported at the end
+      // The tokens of every turn are reported at the end, and the credits
+      // charged for each one
       while Result.Steps.Count > 0 do
         LSteps.Add(Result.Steps.Extract(Result.Steps[0]));
+      if Result.HasCreditsConsumed then
+      begin
+        LHasCredits := True;
+        Inc(LCredits, Result.CreditsConsumed);
+      end;
       LWaiting := Result.ResultData;
       if Trim(LWaiting.ModifiedReportDocument) <> '' then
         LSentDocument := LWaiting.ModifiedReportDocument;
@@ -1097,6 +1107,11 @@ begin
       Exit;
     for I := LSteps.Count - 1 downto 0 do
       Result.Steps.Insert(0, LSteps.Extract(LSteps[I]));
+    if LHasCredits then
+    begin
+      Result.CreditsConsumed := Result.CreditsConsumed + LCredits;
+      Result.HasCreditsConsumed := True;
+    end;
     if (Trim(Result.ErrorMessage) = '') and Result.ResultData.NeedsClientSqlResults then
     begin
       Result.ResultData.ErrorMessage :=

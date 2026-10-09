@@ -66,6 +66,10 @@ var
 procedure TExceptionLogger.AppException(Sender: TObject; E: Exception);
 begin
   WriteStd('ERROR: ' + E.ClassName + ': ' + E.Message, True);
+  // An error of the report, or one raised while the preview generates its
+  // pages: the designer selects its source and shows the message
+  if Assigned(MainForm) and MainForm.HandleApplicationException(E) then
+    Exit;
   Application.ShowException(E);
 end;
 

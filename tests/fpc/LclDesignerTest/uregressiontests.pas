@@ -19,6 +19,12 @@ interface
 // any other one). Call it before running any test.
 procedure InstallModalGuard;
 procedure RunRegressionTests(const ASamplePath: string);
+// For the other test units: the next message box is expected and answered
+// with OK; the caption and the text of the last message box answered
+procedure GuardExpectOkMessageBox;
+function GuardMessageBoxesAnswered: Integer;
+function GuardLastMessageBoxCaption: string;
+function GuardLastMessageBoxText: string;
 
 var
   // A modal form the guard leaves alone: udialoglayouttests checks it once
@@ -54,6 +60,9 @@ type
     MsgBoxAnswer: TMessageButton;
     MsgBoxesAnswered: Integer;
     LastMsgBoxText: string;
+    LastMsgBoxCaption: string;
+    // The next ones are answered with OK instead (GuardExpectOkMessageBox)
+    OkAnswers: Integer;
     // Designer form (TFRpMainFLCL) shown modally by TRpDesignerLCL.Execute
     ExpectDesigner: Boolean;
     DesignerAction: TGuardFormAction;
@@ -353,6 +362,13 @@ begin
     Dec(ExpectMsgBoxes);
     Inc(MsgBoxesAnswered);
     LastMsgBoxText := dlg.LMessage.Caption;
+    LastMsgBoxCaption := dlg.Caption;
+    if OkAnswers > 0 then
+    begin
+      Dec(OkAnswers);
+      btn := dlg.BOk;
+    end
+    else
     case MsgBoxAnswer of
       smbYes: btn := dlg.BYes;
       smbNo: btn := dlg.BNo;
@@ -418,6 +434,31 @@ begin
   Guard.MsgBoxAnswer := smbCancel;
   Screen.AddHandlerFormVisibleChanged(Guard.FormVisibleChanged);
   Application.AddOnIdleHandler(Guard.AppIdle);
+end;
+
+procedure GuardExpectOkMessageBox;
+begin
+  InstallModalGuard;
+  Inc(Guard.ExpectMsgBoxes);
+  Inc(Guard.OkAnswers);
+end;
+
+function GuardMessageBoxesAnswered: Integer;
+begin
+  InstallModalGuard;
+  Result := Guard.MsgBoxesAnswered;
+end;
+
+function GuardLastMessageBoxCaption: string;
+begin
+  InstallModalGuard;
+  Result := Guard.LastMsgBoxCaption;
+end;
+
+function GuardLastMessageBoxText: string;
+begin
+  InstallModalGuard;
+  Result := Guard.LastMsgBoxText;
 end;
 
 procedure FakeParamValueSearch(aparam: TRpParam; report: TComponent);

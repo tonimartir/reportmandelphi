@@ -35,6 +35,9 @@ const
   U_NTILDE_UP = #$C3#$91;  // N with tilde
   U_NTILDE = #$C3#$B1;
   U_UACUTE = #$C3#$BA;
+  // The separators of the token lines of the AI log
+  U_MIDDOT = #$C2#$B7;
+  U_ARROW = #$E2#$86#$92;
 
 type
   TCondition = function: Boolean is nested;
@@ -1322,6 +1325,15 @@ begin
       5000, 'streamed chunk in the AI log');
     WaitUntil(Cond5, 10000,
       'request finished');
+    // The model call (its frames carry 120 and 7 tokens) and the totals of
+    // the request (the steps and the credits of the result) stay in the log
+    CheckContains('#d1 ' + U_MIDDOT + ' 120 ' + U_ARROW + ' 7 tok ' + U_MIDDOT + ' ',
+      LChat.LogView.PlainText, 'tokens and time of the model call in the AI log');
+    CheckContains('Total ' + U_MIDDOT + ' 10 ' + U_ARROW + ' 20 tok ' + U_MIDDOT +
+      ' 5 thinking tok ' + U_MIDDOT + ' m1 ' + U_MIDDOT + ' ', LChat.LogView.PlainText,
+      'tokens, thinking tokens and models of the request in the AI log');
+    CheckContains(' s ' + U_MIDDOT + ' 42 credits', LChat.LogView.PlainText,
+      'time and credits of the request in the AI log');
     CheckEquals(1, FApplyCount, 'OnApplyDesignResult once');
     CheckEquals('<report/>', FApplied, 'modified document applied');
     CheckEquals(1, FInferenceBegin, 'OnDesignInferenceBegin');
@@ -1494,6 +1506,20 @@ begin
     // Clear emptied the log: the badge and the chunk
     CheckEquals(2, LChat.LogView.BlockCount, 'AppendLogLine/AppendLogChunk');
     CheckEquals('abc', LChat.LogView.Block(1).Raw, 'log chunk text');
+
+    // The lines of the AI log with the tokens and times
+    CheckEquals('#7 ' + U_MIDDOT + ' 1200 ' + U_ARROW + ' 340 tok ' + U_MIDDOT +
+      ' 4.0 s ' + U_MIDDOT + ' 85.0 tok/s', RpFormatInferenceCallLog('7', 1200, 340, 4),
+      'line of a model call');
+    CheckEquals('#8 ' + U_MIDDOT + ' 10 ' + U_ARROW + ' 0 tok ' + U_MIDDOT + ' 0.0 s',
+      RpFormatInferenceCallLog('8', 10, 0, 0.01), 'no speed without time');
+    CheckEquals('Total ' + U_MIDDOT + ' 30 ' + U_ARROW + ' 4 tok ' + U_MIDDOT + ' 12.5 s',
+      RpFormatInferenceTotalsLog(30, 4, 0, '', 12.46, False, 0),
+      'totals without thinking tokens, models nor credits');
+    CheckEquals('Total ' + U_MIDDOT + ' 30 ' + U_ARROW + ' 4 tok ' + U_MIDDOT +
+      ' 2 thinking tok ' + U_MIDDOT + ' m1, m2 ' + U_MIDDOT + ' 1.0 s ' + U_MIDDOT +
+      ' 0 credits', RpFormatInferenceTotalsLog(30, 4, 2, 'm1, m2', 1, True, 0),
+      'totals with everything');
   finally
     FDiagChat := nil;
     LForm.Free;

@@ -642,23 +642,32 @@ var
   LPendingPrompt: string;
   LHubDatabaseId, LHubSchemaId: Int64;
   LHubApiKey: string;
+  LNewReport: TRpReport;
+  LAccepted: Boolean;
 begin
  if Not checksave then
   exit;
- DoDisable;
- // Creates a new report
- report:=TRpReport.Create(Self);
- report.AsyncExecution:=MAsync.Checked;
- report.IsDesignTime:=true;
- report.OnReadError:=OnReadError;
- report.FailIfLoadExternalError:=false;
- if not NewModernReportWizard(report, LPendingPrompt,
-      LHubDatabaseId, LHubSchemaId, LHubApiKey) then
+ // The wizard fills a new report: the current one stays when it is
+ // cancelled (or fails)
+ LNewReport:=TRpReport.Create(Self);
+ try
+  LNewReport.AsyncExecution:=MAsync.Checked;
+  LNewReport.IsDesignTime:=true;
+  LNewReport.OnReadError:=OnReadError;
+  LNewReport.FailIfLoadExternalError:=false;
+  LAccepted:=NewModernReportWizard(LNewReport, LPendingPrompt,
+      LHubDatabaseId, LHubSchemaId, LHubApiKey);
+ except
+  LNewReport.Free;
+  raise;
+ end;
+ if not LAccepted then
  begin
-  report.Free;
-  report := nil;
+  LNewReport.Free;
   Exit;
  end;
+ DoDisable;
+ report:=LNewReport;
  filename:='';
  alibrary:='';
  areportname:='';
@@ -951,7 +960,7 @@ begin
 
  fhistorytab:=TTabSheet.Create(fcuepages);
  fhistorytab.PageControl:=fcuepages;
- fhistorytab.Caption:='Undo cue';
+ fhistorytab.Caption:=TranslateStr(1483,'History');
 
  if Assigned(fchattab) then
  begin
@@ -993,7 +1002,7 @@ begin
  fcueview.BRedo.Visible:=False;
  fcueview.BClear.Left:=0;
  fcueview.LTitle.Left:=42;
- fcueview.LTitle.Caption:='Undo cue';
+ fcueview.LTitle.Caption:=TranslateStr(1483,'History');
 
  if Assigned(fchattab) then
   fcuepages.ActivePage:=fchattab
@@ -1290,7 +1299,16 @@ begin
  try
   canclose:=CheckSave;
  except
-  canclose:=false;
+  on E:EAbort do
+   // The user cancelled
+   canclose:=false;
+  on E:Exception do
+  begin
+   // A failed save keeps the designer open and shows why, as any other
+   // error (MyExceptionHandler selects the component of a report error)
+   canclose:=false;
+   Application.HandleException(Self);
+  end;
  end;
 end;
 
@@ -1446,8 +1464,8 @@ begin
  BImage.Hint:=TranslateStr(85,BImage.Hint);
  BBarCode.Hint:=TranslateStr(86,BBarCode.Hint);
  BChart.Hint:=TranslateStr(87,BChart.Hint);
- AUndo.Hint:='Deshacer';
- ARedo.Hint:='Rehacer';
+ AUndo.Hint:=TranslateStr(1481,'Undo');
+ ARedo.Hint:=TranslateStr(1482,'Redo');
  MAlign1_6.Caption:=TranslateStr(1059,MAlign1_6.Caption);
  MAlign1_6.Hint:=TranslateStr(1060,MAlign1_6.Hint);
  MLibraries.Caption:=TranslateStr(1080,MLibraries.Caption);
@@ -2666,7 +2684,8 @@ begin
    RpMessageBox(amessage,SRpError,[smbok],TMessageStyle.smsCritical,TMessageButton.smbOK,TMessageButton.smbOk,true);
   end
   else
-    RpMessageBox(amessage,SRpError,[smbok]);
+    // Titled Error (the style gives the title), Ctrl+C copies the message
+    RpMessageBox(amessage,SRpError,[smbok],smsCritical);
  end;
 end;
 

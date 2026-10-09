@@ -53,6 +53,8 @@ type
     FReplacingReport: Boolean;
     // The online initialization of the hidden AI panel waits until it is shown
     FChatOnlinePending: Boolean;
+    // The preview or the print runs the report (in their own modal loop)
+    FReportRunning: Integer;
     FReport: TRpReport;
     FFileName: string;
     FOwnsReport: Boolean;
@@ -377,6 +379,11 @@ type
     function SelectReportExceptionSource(E: Exception): Boolean;
     // Selects the source of the error and shows it
     procedure ShowReportError(E: Exception);
+    // For Application.OnException: an error of the report, or any error while
+    // the preview (or the print) generates the pages inside its modal loop,
+    // goes to ShowReportError instead of the generic exception dialog. False
+    // when it is not handled
+    function HandleApplicationException(E: Exception): Boolean;
     // The Hub database of a schema of the design chat (connection wizard)
     function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     // Before running the report: the Reportman AI Agent connections not
@@ -2942,7 +2949,14 @@ begin
     previewCtrl := TRpPreviewControl.Create(nil);
     try
       previewCtrl.Report := FReport;
-      rplclpreview.ShowPreview(previewCtrl, TranslateStr(54, 'Preview') + ' - ' + Caption);
+      // The preview generates the pages inside its modal loop: their errors
+      // reach Application.OnException (HandleApplicationException)
+      Inc(FReportRunning);
+      try
+        rplclpreview.ShowPreview(previewCtrl, TranslateStr(54, 'Preview') + ' - ' + Caption);
+      finally
+        Dec(FReportRunning);
+      end;
     finally
       previewCtrl.Free;
     end;
@@ -3654,10 +3668,14 @@ begin
   if not doprint then
     Exit;
   FReport.Metafile.BlockPrinterSelection := True;
+  // The progress dialog generates the pages inside its modal loop (see
+  // HandleApplicationException)
+  Inc(FReportRunning);
   try
     rplcldriver.PrintReport(FReport, Caption, True, allpages, frompage, topage,
       copies, collate);
   finally
+    Dec(FReportRunning);
     FReport.Metafile.BlockPrinterSelection := False;
   end;
 end;
@@ -3733,6 +3751,17 @@ procedure TFRpMainFLCL.ShowReportError(E: Exception);
 begin
   SelectReportExceptionSource(E);
   RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK);
+end;
+
+function TFRpMainFLCL.HandleApplicationException(E: Exception): Boolean;
+begin
+  // The pages of the preview are generated inside its modal loop: their
+  // errors do not return to BtnPreviewClick, Application.HandleException
+  // gets them (and its dialog offers to ignore them and risk data corruption)
+  Result := (not (csDestroying in ComponentState)) and
+    ((E is TRpReportException) or (FReportRunning > 0));
+  if Result then
+    ShowReportError(E);
 end;
 
 function TFRpMainFLCL.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;

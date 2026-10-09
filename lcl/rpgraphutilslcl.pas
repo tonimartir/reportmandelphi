@@ -84,6 +84,8 @@ type
    function ComponentToTMessageButton(Sender:TObject):TMessageButton;
   public
     { Public declarations }
+   // The whole message: Ctrl+C (or Ctrl+Insert) copies it
+   MessageText:string;
   end;
 
 procedure DrawGrid(Canvas:TCanvas;XWidth,XHeight,PixelsWidth,PixelsHeight:integer;Color:TColor;lines:boolean;XOffset,YOffset:integer;scale:double);
@@ -112,7 +114,7 @@ procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
 implementation
 
 uses
- LCLIntf, Math;
+ LCLIntf, Math, Clipbrd;
 
 {$R *.lfm}
 
@@ -430,6 +432,7 @@ begin
  dia:=TFRpMessageDlgVCL.Create(Application);
  try
   dia.LMessage.Caption:=Text;
+  dia.MessageText:=dia.LMessage.Caption;
   if smbOK in Buttons then
    dia.BOK.Visible:=true;
   if smbCancel in Buttons then
@@ -551,6 +554,15 @@ begin
  begin
   Buttonpressed:=EscapeButton;
   Close;
+ end
+ else
+ // Ctrl+C or Ctrl+Insert (Cmd+C on macOS) copies the whole message (the
+ // label can not be selected); not in the input box
+ if (Shift=[ssModifier]) and ((Key=VK_C) or (Key=VK_INSERT)) and
+  (not EInput.Visible) then
+ begin
+  Clipboard.AsText:=MessageText;
+  Key:=0;
  end;
 end;
 

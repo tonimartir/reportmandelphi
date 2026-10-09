@@ -26,7 +26,7 @@ object FRpCueViewVCL: TFRpCueViewVCL
       Top = 0
       Width = 35
       Height = 35
-      Hint = 'Deshacer (Ctrl+Z)'
+      Hint = 'Undo (Ctrl+Z)'
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -41,7 +41,7 @@ object FRpCueViewVCL: TFRpCueViewVCL
       Top = 0
       Width = 35
       Height = 35
-      Hint = 'Rehacer (Ctrl+Y)'
+      Hint = 'Redo (Ctrl+Y)'
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -56,7 +56,7 @@ object FRpCueViewVCL: TFRpCueViewVCL
       Top = 0
       Width = 35
       Height = 35
-      Hint = 'Limpiar cola'
+      Hint = 'Clear the undo history'
       Margins.Left = 4
       Margins.Top = 4
       Margins.Right = 4
@@ -75,7 +75,7 @@ object FRpCueViewVCL: TFRpCueViewVCL
       Margins.Top = 4
       Margins.Right = 4
       Margins.Bottom = 4
-      Caption = 'Cola deshacer'
+      Caption = 'History'
     end
   end
   object ListViewCue: TListView
@@ -94,15 +94,15 @@ object FRpCueViewVCL: TFRpCueViewVCL
         Width = 38
       end
       item
-        Caption = 'Componente'
+        Caption = 'Name'
         Width = 150
       end
       item
-        Caption = 'Clase'
+        Caption = 'Class'
         Width = 100
       end
       item
-        Caption = 'Fecha'
+        Caption = 'Date Time'
         Width = 138
       end>
     ReadOnly = True

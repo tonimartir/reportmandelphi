@@ -188,6 +188,21 @@ type
     Size: Longint;              { Size not including header }
   end;
 
+// "Unknown identifier: FOO", whatever the translation ends with (a colon, a
+// space or nothing): the identifier once, after one colon and one space
+function UnknownIdentifierMessage(const AIdentifier:string):string;
+var
+ amessage:string;
+ alen:integer;
+begin
+ amessage:=SRpEvalDescIden;
+ alen:=Length(amessage);
+ while (alen>0) and ((amessage[alen]=' ') or (amessage[alen]=':') or
+  (amessage[alen]=#13)) do
+  Dec(alen);
+ Result:=Copy(amessage,1,alen)+': '+AIdentifier;
+end;
+
 // TRpCustomEvaluator
 
 constructor TRpCustomEvaluator.CreateWithoutiden(AOwner:TComponent;AddIdens:boolean);
@@ -542,8 +557,13 @@ begin
    FError:=E.ErrorMessage;
    FLineError:=Rpparser.SourceLine;
    FPosError:=Rpparser.SourcePos;
-   Raise TRpEvalException.Create(FError+' '''+E.ElementError+'''',
-        Rpparser.TokenString,FLineError,FPosError)
+   // The element once: the message of an unknown identifier already has it
+   if Pos(E.ElementError,FError)>0 then
+    Raise TRpEvalException.Create(FError,
+         Rpparser.TokenString,FLineError,FPosError)
+   else
+    Raise TRpEvalException.Create(FError+' '''+E.ElementError+'''',
+         Rpparser.TokenString,FLineError,FPosError)
    end;
   on EParserError do
    begin
@@ -621,8 +641,8 @@ begin
   iden:=Searchidentifier(Rpparser.TokenString);
   if iden=nil then
   begin
-   Raise TRpEvalException.Create(SRpEvalDescIden+':'+
-         Rpparser.TokenString,Rpparser.TokenString,
+   Raise TRpEvalException.Create(UnknownIdentifierMessage(
+         Rpparser.TokenString),Rpparser.TokenString,
         Rpparser.SourceLine,Rpparser.SourcePos);
   end
   else
@@ -897,8 +917,8 @@ begin
  begin
   iden:=Searchidentifier(Rpparser.TokenString);
   if iden=nil then
-   Raise TRpEvalException.Create(SRpEvalDescIden+
-       Rpparser.TokenString,Rpparser.TokenString,
+   Raise TRpEvalException.Create(UnknownIdentifierMessage(
+       Rpparser.TokenString),Rpparser.TokenString,
       Rpparser.SourceLine,Rpparser.SourcePos);
   if iden.RType=RTypeidenfunction then
   begin
@@ -996,8 +1016,8 @@ begin
     iden:=Searchidentifier(Rpparser.TokenString);
     if iden=nil then
     begin
-     Raise TRpEvalException.Create(SRpEvalDescIden+
-         Rpparser.TokenString,Rpparser.TokenString,
+     Raise TRpEvalException.Create(UnknownIdentifierMessage(
+         Rpparser.TokenString),Rpparser.TokenString,
         Rpparser.SourceLine,Rpparser.SourcePos);
     end;
     iden.evaluator:=self;

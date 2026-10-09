@@ -24,7 +24,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections,
   Vcl.Controls, Vcl.Forms, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Buttons, Vcl.Dialogs, Vcl.Graphics,
-  rpreport, rptypes, rpmdundocue, Variants, rpgraphutilsvcl;
+  rpreport, rptypes, rpmdundocue, Variants, rpgraphutilsvcl, rpmdconsts;
 
 type
   TOnUndoRedoEvent = procedure(Sender: TObject) of object;
@@ -63,6 +63,14 @@ begin
   BUndo.Caption := #$21A9; // ↩
   BRedo.Caption := #$21AA; // ↪
   BClear.Caption := #$2716; // ✖
+  // Texts of the LCL view (rpmdcueviewlcl)
+  BUndo.Hint := TranslateStr(1481, 'Undo') + ' (Ctrl+Z)';
+  BRedo.Hint := TranslateStr(1482, 'Redo') + ' (Ctrl+Y)';
+  BClear.Hint := TranslateStr(1484, 'Clear the undo history');
+  LTitle.Caption := TranslateStr(1483, 'History');
+  ListViewCue.Columns[1].Caption := TranslateStr(544, 'Name');
+  ListViewCue.Columns[2].Caption := TranslateStr(1485, 'Class');
+  ListViewCue.Columns[3].Caption := TranslateStr(889, 'Date Time');
 end;
 
 function TFRpCueViewVCL.GetUndoCue: TUndoCue;
@@ -146,7 +154,7 @@ begin
     begin
       item := ListViewCue.Items.Add;
       item.Caption := '---';
-      item.SubItems.Add('--- REDO ---');
+      item.SubItems.Add('--- ' + TranslateStr(1482, 'Redo') + ' ---');
       item.SubItems.Add('');
       item.SubItems.Add('');
       item.Data := nil;
@@ -212,14 +220,19 @@ end;
 procedure TFRpCueViewVCL.BClearClick(Sender: TObject);
 var
   cue: TUndoCue;
+  cleared: Boolean;
 begin
-  if RpMessageBox('Limpiar toda la cola de deshacer?', '',
+  if RpMessageBox(TranslateStr(1484, 'Clear the undo history'), '',
     [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
     Exit;
   cue := GetUndoCue;
   if cue = nil then
     Exit;
+  cleared := (cue.UndoOperations.Count > 0) or (cue.RedoOperations.Count > 0);
   cue.Clear;
+  // The undo history is saved inside the report (BINCUE): it changed
+  if cleared and Assigned(FReport) then
+    FReport.Modified := True;
   RefreshList;
 end;
 
@@ -235,14 +248,14 @@ begin
   if ListViewCue.Selected.Data = nil then
     Exit;
   op := TChangeObjectOperation(ListViewCue.Selected.Data);
-  msg := 'Operacion: ' + OperationTypeToText(op.operation) + #13#10 +
-    'Componente: ' + op.componentName + #13#10 +
-    'Clase: ' + op.componentClass + #13#10 +
-    'Padre: ' + op.parentName + #13#10 +
+  msg := TranslateStr(242, 'Operation') + ': ' + OperationTypeToText(op.operation) + #13#10 +
+    TranslateStr(544, 'Name') + ': ' + op.componentName + #13#10 +
+    TranslateStr(1485, 'Class') + ': ' + op.componentClass + #13#10 +
+    TranslateStr(1486, 'Parent') + ': ' + op.parentName + #13#10 +
     'GroupId: ' + IntToStr(op.groupId) + #13#10;
   if op.properties.Count > 0 then
   begin
-    msg := msg + #13#10 + 'Propiedades:' + #13#10;
+    msg := msg + #13#10 + TranslateStr(1487, 'Properties') + ':' + #13#10;
     for i := 0 to op.properties.Count - 1 do
     begin
       prop := op.properties[i];

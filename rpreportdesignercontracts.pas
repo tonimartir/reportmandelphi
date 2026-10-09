@@ -381,6 +381,29 @@ type
     property UserProfileJson: string read FUserProfileJson write FUserProfileJson;
   end;
 
+  // The tokens and the time of the model calls of an AI request, for its
+  // log (the AI log tab of the chats): a call is a progress id, timed from
+  // its first frame to its last
+  TRpInferenceLogMeter = class(TObject)
+  private
+    FCalls: TStringList;
+    FRequestStart: TDateTime;
+    procedure ClearCalls;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    // A new request: its clock starts, the calls still open are dropped
+    procedure BeginRequest;
+    // A frame of the call AProgressId ('' is ignored) with its tokens so
+    // far (the largest ones are kept)
+    procedure Frame(const AProgressId: string; AInputTokens: Integer = 0;
+      AOutputTokens: Integer = 0);
+    // The last frame of the call: its log line ('' for an unknown id)
+    function FinishCall(const AProgressId: string): string;
+    // Seconds since BeginRequest
+    function ElapsedSeconds: Double;
+  end;
+
 function RpReportDesignerModeToString(AMode: TRpReportDesignerMode): string;
 function RpReportDesignerModeFromString(const AValue: string): TRpReportDesignerMode;
 function RpReportDocumentFormatToString(AFormat: TRpReportDocumentFormat): string;
@@ -388,6 +411,20 @@ function RpReportDocumentFormatFromString(const AValue: string): TRpReportDocume
 function RpAITierTypeToString(ATier: TRpAITierType): string;
 function RpAITierTypeFromString(const AValue: string): TRpAITierType;
 function RpComposeApiErrorMessage(const AErrorMessage, ADebugDetails: string): string;
+// The log line of a model call, '#7 . 1200 -> 340 tok . 4.2 s . 81.0 tok/s'
+// with a middle dot and an arrow (without the speed under 0.1 s)
+function RpFormatInferenceCallLog(const AProgressId: string; AInputTokens,
+  AOutputTokens: Integer; ASeconds: Double): string;
+// Adds the TRpTokenUsage of ASteps (nil = none) to the totals; the model
+// names, each once, separated by ', '
+procedure RpSumTokenUsage(ASteps: TObjectList; var AInputTokens,
+  AOutputTokens, AThinkingTokens: Integer; var AModelNames: string);
+// The log line of the totals of a request,
+// 'Total . 1200 -> 340 tok . 85 thinking tok . m1, m2 . 9.8 s . 3 credits'
+// (the thinking tokens, the models and the credits when there are)
+function RpFormatInferenceTotalsLog(AInputTokens, AOutputTokens,
+  AThinkingTokens: Integer; const AModelNames: string; ASeconds: Double;
+  AHasCredits: Boolean; ACredits: Integer): string;
 
 implementation
 
@@ -1724,6 +1761,172 @@ begin
     if (LProfileValue <> nil) and (LProfileValue is TJSONObject) then
       Result.AddPair('userProfile', LProfileValue);
   end;
+end;
+
+const
+{$IFDEF FPC}
+  // UTF-8, the encoding of the LCL strings
+  RpLogSeparator = ' '#$C2#$B7' ';
+  RpLogArrow = ' '#$E2#$86#$92' ';
+{$ELSE}
+  RpLogSeparator = ' '#$00B7' ';
+  RpLogArrow = ' '#$2192' ';
+{$ENDIF}
+
+type
+  TRpInferenceLogCall = class(TObject)
+  public
+    StartTime: TDateTime;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+  end;
+
+// One decimal and a point, whatever the regional settings: '4.2'
+function FormatTenths(AValue: Double): string;
+var
+  LTenths: Int64;
+begin
+  if AValue < 0 then
+    AValue := 0;
+  LTenths := Round(AValue * 10);
+  Result := IntToStr(LTenths div 10) + '.' + IntToStr(LTenths mod 10);
+end;
+
+function RpFormatInferenceCallLog(const AProgressId: string; AInputTokens,
+  AOutputTokens: Integer; ASeconds: Double): string;
+begin
+  Result := '#' + AProgressId + RpLogSeparator + IntToStr(AInputTokens) +
+    RpLogArrow + IntToStr(AOutputTokens) + ' tok' + RpLogSeparator +
+    FormatTenths(ASeconds) + ' s';
+  if Round(ASeconds * 10) > 0 then
+    Result := Result + RpLogSeparator + FormatTenths(AOutputTokens / ASeconds) +
+      ' tok/s';
+end;
+
+procedure RpSumTokenUsage(ASteps: TObjectList; var AInputTokens,
+  AOutputTokens, AThinkingTokens: Integer; var AModelNames: string);
+var
+  I: Integer;
+  LUsage: TRpTokenUsage;
+  LModel: string;
+begin
+  if ASteps = nil then
+    Exit;
+  for I := 0 to ASteps.Count - 1 do
+  begin
+    if not (ASteps[I] is TRpTokenUsage) then
+      Continue;
+    LUsage := TRpTokenUsage(ASteps[I]);
+    Inc(AInputTokens, LUsage.InputTokens);
+    Inc(AOutputTokens, LUsage.OutputTokens);
+    Inc(AThinkingTokens, LUsage.ThinkingTokens);
+    LModel := Trim(LUsage.ModelName);
+    if (LModel <> '') and
+      (Pos(', ' + LModel + ', ', ', ' + AModelNames + ', ') = 0) then
+    begin
+      if AModelNames <> '' then
+        AModelNames := AModelNames + ', ';
+      AModelNames := AModelNames + LModel;
+    end;
+  end;
+end;
+
+function RpFormatInferenceTotalsLog(AInputTokens, AOutputTokens,
+  AThinkingTokens: Integer; const AModelNames: string; ASeconds: Double;
+  AHasCredits: Boolean; ACredits: Integer): string;
+begin
+  Result := 'Total' + RpLogSeparator + IntToStr(AInputTokens) + RpLogArrow +
+    IntToStr(AOutputTokens) + ' tok';
+  if AThinkingTokens > 0 then
+    Result := Result + RpLogSeparator + IntToStr(AThinkingTokens) +
+      ' thinking tok';
+  if Trim(AModelNames) <> '' then
+    Result := Result + RpLogSeparator + Trim(AModelNames);
+  Result := Result + RpLogSeparator + FormatTenths(ASeconds) + ' s';
+  if AHasCredits then
+    Result := Result + RpLogSeparator + IntToStr(ACredits) + ' credits';
+end;
+
+constructor TRpInferenceLogMeter.Create;
+begin
+  inherited Create;
+  FCalls := TStringList.Create;
+  FRequestStart := Now;
+end;
+
+destructor TRpInferenceLogMeter.Destroy;
+begin
+  ClearCalls;
+  FCalls.Free;
+  inherited Destroy;
+end;
+
+procedure TRpInferenceLogMeter.ClearCalls;
+var
+  I: Integer;
+begin
+  for I := 0 to FCalls.Count - 1 do
+    FCalls.Objects[I].Free;
+  FCalls.Clear;
+end;
+
+procedure TRpInferenceLogMeter.BeginRequest;
+begin
+  ClearCalls;
+  FRequestStart := Now;
+end;
+
+procedure TRpInferenceLogMeter.Frame(const AProgressId: string;
+  AInputTokens: Integer; AOutputTokens: Integer);
+var
+  LIndex: Integer;
+  LCall: TRpInferenceLogCall;
+  LKey: string;
+begin
+  LKey := Trim(AProgressId);
+  if LKey = '' then
+    Exit;
+  LIndex := FCalls.IndexOf(LKey);
+  if LIndex >= 0 then
+    LCall := TRpInferenceLogCall(FCalls.Objects[LIndex])
+  else
+  begin
+    LCall := TRpInferenceLogCall.Create;
+    LCall.StartTime := Now;
+    FCalls.AddObject(LKey, LCall);
+  end;
+  if AInputTokens > LCall.InputTokens then
+    LCall.InputTokens := AInputTokens;
+  if AOutputTokens > LCall.OutputTokens then
+    LCall.OutputTokens := AOutputTokens;
+end;
+
+function TRpInferenceLogMeter.FinishCall(const AProgressId: string): string;
+var
+  LIndex: Integer;
+  LCall: TRpInferenceLogCall;
+  LKey: string;
+begin
+  Result := '';
+  LKey := Trim(AProgressId);
+  if LKey = '' then
+    Exit;
+  LIndex := FCalls.IndexOf(LKey);
+  if LIndex < 0 then
+    Exit;
+  LCall := TRpInferenceLogCall(FCalls.Objects[LIndex]);
+  FCalls.Delete(LIndex);
+  try
+    Result := RpFormatInferenceCallLog(LKey, LCall.InputTokens,
+      LCall.OutputTokens, (Now - LCall.StartTime) * SecsPerDay);
+  finally
+    LCall.Free;
+  end;
+end;
+
+function TRpInferenceLogMeter.ElapsedSeconds: Double;
+begin
+  Result := (Now - FRequestStart) * SecsPerDay;
 end;
 
 end.

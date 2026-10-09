@@ -152,6 +152,8 @@ type
     FWebNetLog: TRpWebMarkdownView;
     FLastLogActor: string;
     FLastProgressId: string;
+    // Tokens and time of each model call of the request, for the AI log
+    FInferenceLog: TRpInferenceLogMeter;
     FLoginPreferredHeight: Integer;
     FHoveredTabIndex: Integer;
     FInitialLayoutDone: Boolean;
@@ -236,6 +238,11 @@ type
       const AProgressId: string = ''; APrefillPercent: Integer = 0);
     procedure CompleteStreamingProgress(const AActor, AChunkType,
       AProgressId: string);
+    // The totals line of the request in the AI log: tokens, models, time
+    // since BeginStreamingResponse and credits
+    procedure AppendRequestTotals(AInputTokens, AOutputTokens,
+      AThinkingTokens: Integer; const AModelNames: string;
+      AHasCredits: Boolean; ACredits: Integer);
     procedure BeginProgress(const ATitle, AText: string);
     procedure UpdateProgress(const AText: string);
     procedure FinishProgress;
@@ -323,12 +330,47 @@ type
     InputTokens: Integer;
     OutputTokens: Integer;
     UserProfileJson: string;
+    // The totals of the request for the AI log (FillDesignPayloadTotals)
+    HasTotals: Boolean;
+    ThinkingTokens: Integer;
+    ModelNames: string;
+    HasCredits: Boolean;
+    Credits: Integer;
   end;
 
   TRpDesignChatStreamContext = class(TObject)
   public
     RequestVersion: Integer;
   end;
+
+// The totals of a design request: the token steps of the SQL context and of
+// the design responses (nil = none), their models and their credits
+procedure FillDesignPayloadTotals(APayload: TRpQueuedDesignChatPayload;
+  APreprocess: TRpApiPreprocessSqlContextResult;
+  AResponse: TRpApiModifyReportResult);
+begin
+  APayload.HasTotals := True;
+  if APreprocess <> nil then
+  begin
+    RpSumTokenUsage(APreprocess.Steps, APayload.InputTokens,
+      APayload.OutputTokens, APayload.ThinkingTokens, APayload.ModelNames);
+    if APreprocess.HasCreditsConsumed then
+    begin
+      APayload.HasCredits := True;
+      Inc(APayload.Credits, APreprocess.CreditsConsumed);
+    end;
+  end;
+  if AResponse <> nil then
+  begin
+    RpSumTokenUsage(AResponse.Steps, APayload.InputTokens,
+      APayload.OutputTokens, APayload.ThinkingTokens, APayload.ModelNames);
+    if AResponse.HasCreditsConsumed then
+    begin
+      APayload.HasCredits := True;
+      Inc(APayload.Credits, AResponse.CreditsConsumed);
+    end;
+  end;
+end;
 
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
   const AApiKey: string);
@@ -386,6 +428,7 @@ begin
   inherited Create(AOwner);
   FConversationBlocks := TStringList.Create;
   FLocalSchemas := TStringList.Create;
+  FInferenceLog := TRpInferenceLogMeter.Create;
   FLogListenerRegistered := False;
   FLoginPreferredHeight := 40;
   if CRpChatEnableLoginFrame then
@@ -490,6 +533,7 @@ begin
   ClearSchemaItems;
   FConversationBlocks.Free;
   FLocalSchemas.Free;
+  FreeAndNil(FInferenceLog);
   if FLogListenerRegistered then
     TRpAuthManager.Instance.UnregisterLogListener(AuthLog);
   if FAuthListenerRegistered then
@@ -1660,6 +1704,8 @@ begin
   FProgressActive := False;
   FProgressTitle := '';
   FProgressText := '';
+  if FInferenceLog <> nil then
+    FInferenceLog.BeginRequest;
   
   if FWebLog <> nil then
   begin
@@ -1773,7 +1819,6 @@ begin
   LWorker := TThread.CreateAnonymousThread(
     procedure
     var
-      I: Integer;
       LHttp: TRpDatabaseHttp;
       LPayload: TRpQueuedDesignChatPayload;
       LPreprocessResponse: TRpApiPreprocessSqlContextResult;
@@ -1885,6 +1930,7 @@ begin
             LPayload.RequestVersion := LRequestVersion;
             LPayload.Text1 := RpComposeApiErrorMessage(LResponse.ErrorMessage,
               LResponse.DebugDetails);
+            FillDesignPayloadTotals(LPayload, LPreprocessResponse, LResponse);
             PostDesignChatPayload(LPayload);
             Exit;
           end;
@@ -1896,6 +1942,7 @@ begin
             LPayload.Kind := rpqdcAddAssistantMessage;
             LPayload.RequestVersion := LRequestVersion;
             LPayload.Text1 := LResponse.ResultData.ErrorMessage;
+            FillDesignPayloadTotals(LPayload, LPreprocessResponse, LResponse);
             PostDesignChatPayload(LPayload);
             Exit;
           end;
@@ -1903,19 +1950,9 @@ begin
           LPayload := TRpQueuedDesignChatPayload.Create;
           LPayload.Kind := rpqdcApplyDesignResult;
           LPayload.RequestVersion := LRequestVersion;
-          if LPreprocessResponse <> nil then
-          begin
-            for I := 0 to LPreprocessResponse.Steps.Count - 1 do
-            begin
-              if LPreprocessResponse.Steps[I] is TRpTokenUsage then
-              begin
-                Inc(LPayload.InputTokens,
-                  TRpTokenUsage(LPreprocessResponse.Steps[I]).InputTokens);
-                Inc(LPayload.OutputTokens,
-                  TRpTokenUsage(LPreprocessResponse.Steps[I]).OutputTokens);
-              end;
-            end;
-          end;
+          // The tokens of the SQL context and of the design (and the totals
+          // of the AI log)
+          FillDesignPayloadTotals(LPayload, LPreprocessResponse, LResponse);
           if LResponse <> nil then
           begin
             if Assigned(LResponse.ResultData) then
@@ -1924,16 +1961,6 @@ begin
               LPayload.Text2 := LResponse.ResultData.Explanation;
             end;
             LPayload.UserProfileJson := LResponse.UserProfileJson;
-            for I := 0 to LResponse.Steps.Count - 1 do
-            begin
-              if LResponse.Steps[I] is TRpTokenUsage then
-              begin
-                Inc(LPayload.InputTokens,
-                  TRpTokenUsage(LResponse.Steps[I]).InputTokens);
-                Inc(LPayload.OutputTokens,
-                  TRpTokenUsage(LResponse.Steps[I]).OutputTokens);
-              end;
-            end;
           end;
           if Trim(LPayload.UserProfileJson) = '' then
             LPayload.UserProfileJson := LPreprocessUserProfileJson;
@@ -1945,6 +1972,7 @@ begin
             LPayload.Kind := rpqdcAddAssistantMessage;
             LPayload.RequestVersion := LRequestVersion;
             LPayload.Text1 := E.Message;
+            FillDesignPayloadTotals(LPayload, LPreprocessResponse, LResponse);
             PostDesignChatPayload(LPayload);
           end;
         end;
@@ -2260,16 +2288,43 @@ begin
   if FAISelection <> nil then
     FAISelection.UpdateTokens(AInTokens, AOutTokens, AProgressId,
       APrefillPercent);
+  if FInferenceLog <> nil then
+    FInferenceLog.Frame(AProgressId, AInTokens, AOutTokens);
   EnsureAISelectionAutoHeight;
 end;
 
 procedure TFRpChatFrame.CompleteStreamingProgress(const AActor, AChunkType,
   AProgressId: string);
+var
+  LLine: string;
 begin
-  if (FAISelection <> nil) and SameText(AActor, 'AI') and
+  if SameText(AActor, 'AI') and
     (SameText(AChunkType, 'End') or SameText(AChunkType, 'Full')) then
-    FAISelection.FinishProgressToken(AProgressId);
+  begin
+    if FAISelection <> nil then
+      FAISelection.FinishProgressToken(AProgressId);
+    // The model call ended: its tokens and time stay in the AI log
+    if FInferenceLog <> nil then
+    begin
+      LLine := FInferenceLog.FinishCall(AProgressId);
+      if LLine <> '' then
+        AppendLogLine(LLine);
+    end;
+  end;
   EnsureAISelectionAutoHeight;
+end;
+
+procedure TFRpChatFrame.AppendRequestTotals(AInputTokens, AOutputTokens,
+  AThinkingTokens: Integer; const AModelNames: string; AHasCredits: Boolean;
+  ACredits: Integer);
+var
+  LSeconds: Double;
+begin
+  LSeconds := 0;
+  if FInferenceLog <> nil then
+    LSeconds := FInferenceLog.ElapsedSeconds;
+  AppendLogLine(RpFormatInferenceTotalsLog(AInputTokens, AOutputTokens,
+    AThinkingTokens, AModelNames, LSeconds, AHasCredits, ACredits));
 end;
 
 procedure TFRpChatFrame.BeginProgress(const ATitle, AText: string);
@@ -2365,6 +2420,9 @@ begin
     FAISelection.TouchProgressToken(AProgressId);
     EnsureAISelectionAutoHeight;
   end;
+  // The first frame of a model call starts its clock
+  if (FInferenceLog <> nil) and SameText(AActor, 'AI') then
+    FInferenceLog.Frame(AProgressId);
 
   LLogChunk := ALogChunk;
   if LLogChunk = '' then
@@ -2427,6 +2485,10 @@ begin
         end;
       rpqdcAddAssistantMessage:
         begin
+          if LPayload.HasTotals then
+            AppendRequestTotals(LPayload.InputTokens, LPayload.OutputTokens,
+              LPayload.ThinkingTokens, LPayload.ModelNames, LPayload.HasCredits,
+              LPayload.Credits);
           FinishStreamingResponse;
           SetBusy(False);
           AddAssistantMessage(LPayload.Text1);
@@ -2436,6 +2498,11 @@ begin
 
     if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
       UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+    // The totals stay in the AI log (the progress panel hides them)
+    if LPayload.HasTotals then
+      AppendRequestTotals(LPayload.InputTokens, LPayload.OutputTokens,
+        LPayload.ThinkingTokens, LPayload.ModelNames, LPayload.HasCredits,
+        LPayload.Credits);
     FinishStreamingResponse;
     SetBusy(False);
 

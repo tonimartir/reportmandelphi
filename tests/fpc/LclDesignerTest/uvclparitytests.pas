@@ -4,8 +4,9 @@ unit uvclparitytests;
   of rpmdfmainvcl (hide/show all, select all text, move, align, align
   height 1/n, add sections, preferences, recent files, documentation,
   printer setup), fields of the data tree in new items and dropped on a
-  section, the source of a report error selected, and the preview save
-  formats. }
+  section, the source of a report error selected (also when it reaches
+  Application.OnException), the preview save formats, Ctrl+C in the message
+  box and the message of an unknown identifier. }
 
 {$mode delphi}
 
@@ -21,7 +22,7 @@ uses
   rpprintitem, rplabelitem, rpmdbarcode,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdfmainlcl, rpmdimageslcl, rplclpreview, rplclreport,
-  umainform;
+  Clipbrd, rpgraphutilslcl, rpeval, uregressiontests, umainform;
 
 procedure Fail(const Msg: string);
 begin
@@ -463,6 +464,105 @@ begin
   end;
 end;
 
+procedure TestApplicationException(mf: TFRpMainFLCL);
+var
+  answered: Integer;
+  E: Exception;
+begin
+  LogMsg('Errors outside the designer code (preview): the designer shows them');
+  // A report error that reaches Application.OnException (the pages of the
+  // preview are generated inside its modal loop): ShowReportError
+  answered := GuardMessageBoxesAnswered;
+  GuardExpectOkMessageBox;
+  E := TRpReportException.Create('Unknown identifier: FOO', nil, 'Expression');
+  try
+    Check(mf.HandleApplicationException(E), 'A report error is handled by the designer');
+  finally
+    E.Free;
+  end;
+  CheckInt(answered + 1, GuardMessageBoxesAnswered, 'The report error is shown');
+  CheckStr(SRpCritical, GuardLastMessageBoxCaption, 'The error box is titled Error');
+  CheckStr('Unknown identifier: FOO', GuardLastMessageBoxText, 'The message of the report error');
+  // Other errors outside a preview keep the generic dialog (the guard fails
+  // on a message box not expected)
+  E := Exception.Create('other');
+  try
+    Check(not mf.HandleApplicationException(E), 'Other errors are not handled');
+  finally
+    E.Free;
+  end;
+end;
+
+procedure TestUnknownIdentifier;
+const
+  // The translations of key 440 end with ': ', ':', nothing or a return
+  // before the colon; the three places that raise it
+  CVariants: array[0..3] of string = ('Unknown identifier: ',
+    'Unknown identifier:', 'Unknown identifier', 'Unknown identifier'#13':');
+  CExpressions: array[0..2] of string = ('FOO', '1+FOO', '-FOO');
+var
+  ev: TRpEvaluator;
+  old: WideString;
+  i, j: Integer;
+  msg: string;
+begin
+  LogMsg('Unknown identifier: the identifier once, after one colon and a space');
+  old := SRpEvalDescIden;
+  ev := TRpEvaluator.Create(nil);
+  try
+    for i := Low(CVariants) to High(CVariants) do
+    begin
+      SRpEvalDescIden := CVariants[i];
+      for j := Low(CExpressions) to High(CExpressions) do
+      begin
+        msg := '';
+        try
+          ev.Expression := CExpressions[j];
+          ev.Evaluate;
+        except
+          on E: Exception do
+            msg := E.Message;
+        end;
+        CheckStr('Unknown identifier: FOO', msg, 'Error of ' + CExpressions[j] +
+          ' (translation ' + IntToStr(i) + ')');
+      end;
+    end;
+  finally
+    SRpEvalDescIden := old;
+    ev.Free;
+  end;
+end;
+
+procedure TestMessageBoxCopy;
+var
+  dlg: TFRpMessageDlgVCL;
+  key: Word;
+begin
+  LogMsg('Ctrl+C and Ctrl+Insert copy the whole message of RpMessageBox');
+  dlg := TFRpMessageDlgVCL.Create(nil);
+  try
+    dlg.MessageText := 'Unknown identifier: FOO (Expression)';
+    Clipboard.AsText := '';
+    key := VK_C;
+    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    CheckStr(dlg.MessageText, Clipboard.AsText, 'Ctrl+C copies the message');
+    CheckInt(0, key, 'Ctrl+C is handled');
+    Clipboard.AsText := '';
+    key := VK_INSERT;
+    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    CheckStr(dlg.MessageText, Clipboard.AsText, 'Ctrl+Insert copies the message');
+    // Not in the input box (RpInputBox): its edit copies its own text
+    Clipboard.AsText := '';
+    dlg.EInput.Visible := True;
+    key := VK_C;
+    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    CheckStr('', Clipboard.AsText, 'The input box keeps Ctrl+C for its edit');
+    CheckInt(VK_C, key, 'Ctrl+C not handled in the input box');
+  finally
+    dlg.Free;
+  end;
+end;
+
 procedure TestCtrlArrows(mf: TFRpMainFLCL);
 var
   rep: TRpReport;
@@ -821,6 +921,7 @@ begin
     TestReportAdd(mf);
     TestDataTreeFields(mf);
     TestReportException(mf);
+    TestApplicationException(mf);
     TestCtrlArrows(mf);
     TestToolbar(mf);
     TestToolbarCommands(mf);
@@ -831,6 +932,8 @@ begin
   TestPreferences;
   TestRecentFiles;
   TestPreviewFormats;
+  TestMessageBoxCopy;
+  TestUnknownIdentifier;
   LogMsg('VCL parity tests completed successfully');
 end;
 

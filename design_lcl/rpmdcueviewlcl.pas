@@ -311,11 +311,16 @@ end;
 procedure TFRpCueViewLCL.ClearHistory;
 var
   cue: TUndoCue;
+  hadHistory: Boolean;
 begin
   cue := GetUndoCue;
   if cue = nil then
     Exit;
+  hadHistory := (cue.UndoOperations.Count > 0) or (cue.RedoOperations.Count > 0);
   cue.Clear;
+  // The history is saved inside the report: emptying it is a change to save
+  if hadHistory then
+    cue.MarkExternalChange;
   RefreshList;
 end;
 
