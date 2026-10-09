@@ -1120,7 +1120,7 @@ var
 
   function ChatReady: Boolean;
   begin
-    Result := (LDlg.Chat.ComboSchema.Items.Count > 1) and (not LDlg.Chat.LoadingSchemas) and
+    Result := LDlg.Chat.HasSchemaItems and (not LDlg.Chat.LoadingSchemas) and
       (LDlg.MonacoEditor.ComboSchema.Items.Count > 1) and
       (LDlg.MonacoEditor.LoadedSchemaTablesId = 5);
   end;
@@ -1146,7 +1146,23 @@ var
   end;
   function ChatSchemasLoaded: Boolean;
   begin
-    Result := (not LDlg.Chat.LoadingSchemas) and (LDlg.Chat.ComboSchema.Items.Count > 1);
+    Result := (not LDlg.Chat.LoadingSchemas) and LDlg.Chat.HasSchemaItems;
+  end;
+  // The entry of a Hub schema in the list of the chat (its text carries the
+  // number of tables, and a warning when the plan is smaller)
+  function ChatItemOfSchema(AHubSchemaId: Int64): Integer;
+  var
+    J: Integer;
+    LItem: rpfrmchatlcl.TSchemaComboItem;
+  begin
+    Result := -1;
+    for J := 0 to LDlg.Chat.ComboSchema.Items.Count - 1 do
+    begin
+      LItem := rpfrmchatlcl.TSchemaComboItem(LDlg.Chat.ComboSchema.Items.Objects[J]);
+      if (LItem <> nil) and (LItem.Kind = sckHub) and
+        (LItem.HubSchemaId = AHubSchemaId) then
+        Exit(J);
+    end;
   end;
 
 begin
@@ -1303,8 +1319,10 @@ begin
     CheckEquals(99, LDlg.WorkReport.DataInfo[1].HubSchemaId,
       'the fallback of the list does not replace the schema of the dataset');
     // A schema chosen by the user in the chat is kept
-    I := LDlg.Chat.ComboSchema.Items.IndexOf('Sales / Main');
+    I := ChatItemOfSchema(5);
     Check(I > 0, 'schema listed in the chat');
+    CheckContains('Sales / Main', LDlg.Chat.ComboSchema.Items[I],
+      'with its name (and its tables)');
     LDlg.Chat.ComboSchema.ItemIndex := I;
     LDlg.Chat.ComboSchema.OnChange(LDlg.Chat.ComboSchema);
     CheckEquals(5, LDlg.WorkReport.DataInfo[1].HubSchemaId, 'the choice of the user is kept');

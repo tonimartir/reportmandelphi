@@ -483,9 +483,10 @@ type
     // the schema selector of the design chat
     procedure UpdateDesignChatLocalSchemas;
     procedure ConfigureDesignChatLocalSchemas(Sender: TObject;
-      const AAlias, ASchemaName: string);
+      const AAlias, ASchemaName: string; AAddNew: Boolean);
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
-      AHubSchemaId: Int64; out ASchemaApiKey: string);
+      AHubSchemaId: Int64; out ASchemaApiKey: string; out ALocalAlias,
+      ALocalSchemaName: string);
     procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
     procedure ResetDesignChatContextCache;
     procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
@@ -1115,7 +1116,8 @@ begin
 end;
 
 procedure TFRpMainFVCL.ResolveInitialDesignChatSchemaContext(
-  out AHubDatabaseId, AHubSchemaId: Int64; out ASchemaApiKey: string);
+  out AHubDatabaseId, AHubSchemaId: Int64; out ASchemaApiKey: string;
+  out ALocalAlias, ALocalSchemaName: string);
 var
   LDataInfo: TRpDataInfoItem;
   LDatabaseInfo: TRpDatabaseInfoItem;
@@ -1126,10 +1128,27 @@ begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   ASchemaApiKey := '';
+  ALocalAlias := '';
+  ALocalSchemaName := '';
   LHasPersistedSchema := False;
 
   if not Assigned(report) then
     Exit;
+
+  // The first dataset on a direct connection: its subschema while it is in
+  // the schema file (SchemaName), else all the tables
+  if report.DataInfo.Count > 0 then
+  begin
+    LDataInfo := report.DataInfo.Items[0];
+    LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
+    if RpIsLocalSqlDatabase(LDatabaseInfo) then
+    begin
+      ALocalAlias := LDatabaseInfo.Alias;
+      ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+        LDataInfo.SchemaName);
+      Exit;
+    end;
+  end;
 
   // Try to find context from the first DataInfo if it has a schema
   if report.DataInfo.Count > 0 then
@@ -1186,28 +1205,31 @@ var
   LHubDatabaseId: Int64;
   LHubSchemaId: Int64;
   LSchemaApiKey: string;
+  LLocalAlias, LLocalSchemaName: string;
 begin
   if not Assigned(fchatframe) then
     Exit;
 
   ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId,
-    LSchemaApiKey);
+    LSchemaApiKey, LLocalAlias, LLocalSchemaName);
   UpdateDesignChatLocalSchemas;
   fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  if LLocalAlias <> '' then
+    fchatframe.SelectLocalSchema(LLocalAlias, LLocalSchemaName);
   fchatframe.StartOnlineInitialization;
 end;
 
 procedure TFRpMainFVCL.UpdateDesignChatLocalSchemas;
 var
-  I, J: Integer;
+  I: Integer;
   LDatabase: TRpDatabaseInfoItem;
-  LEntries, LNames: TStringList;
+  LEntries, LSizes: TStringList;
   LPreferred: string;
 begin
   if not Assigned(fchatframe) then
     Exit;
   LEntries := TStringList.Create;
-  LNames := TStringList.Create;
+  LSizes := TStringList.Create;
   try
     LPreferred := '';
     if Assigned(report) then
@@ -1217,14 +1239,8 @@ begin
         LDatabase := report.DatabaseInfo.Items[I];
         if not RpIsLocalSqlDatabase(LDatabase) then
           Continue;
-        LEntries.Add(LDatabase.Alias + '=');
-        try
-          RpListLocalSubSchemas(LDatabase, LNames);
-        except
-          LNames.Clear;
-        end;
-        for J := 0 to LNames.Count - 1 do
-          LEntries.Add(LDatabase.Alias + '=' + LNames[J]);
+        // All the tables and the subschemas, with their sizes
+        RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
         if LPreferred = '' then
           LPreferred := LDatabase.Alias;
       end;
@@ -1237,27 +1253,30 @@ begin
           LPreferred := LDatabase.Alias;
       end;
     end;
-    fchatframe.SetLocalSchemas(LEntries, LPreferred);
+    fchatframe.SetLocalSchemas(LEntries, LPreferred, LSizes);
   finally
-    LNames.Free;
+    LSizes.Free;
     LEntries.Free;
   end;
 end;
 
 procedure TFRpMainFVCL.ConfigureDesignChatLocalSchemas(Sender: TObject;
-  const AAlias, ASchemaName: string);
+  const AAlias, ASchemaName: string; AAddNew: Boolean);
 var
   LSchemaName: string;
+  LSaved: Boolean;
 begin
   if not Assigned(report) then
     Exit;
   LSchemaName := ASchemaName;
   try
-    RpShowLocalSchemasDialog(report, AAlias, LSchemaName);
+    LSaved := RpShowLocalSchemasDialog(report, AAlias, LSchemaName, AAddNew);
   finally
     UpdateDesignChatLocalSchemas;
   end;
-  fchatframe.SelectLocalSchema(AAlias, LSchemaName);
+  // After a Save, the subschema of the utility (a new one: the one added)
+  if LSaved then
+    fchatframe.SelectLocalSchema(AAlias, LSchemaName);
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -3412,6 +3431,10 @@ begin
  begin
   Result.Config.LocalAlias := fchatframe.GetLocalSchemaAlias;
   Result.Config.LocalSchemaName := fchatframe.GetLocalSchemaName;
+  // Sent with the inline schema: the cloud gives it to the datasets it
+  // makes (RpResolveLocalSchemaConfig clears it when it left the file)
+  if Result.Config.LocalAlias <> '' then
+   Result.Config.SchemaName := Result.Config.LocalSchemaName;
  end;
  TRpAuthManager.Instance.Log(
   'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +

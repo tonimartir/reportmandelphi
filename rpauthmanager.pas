@@ -237,6 +237,11 @@ type
     function GetLoginGiftCredits: Int64;
     function GetCreditsConsumed: Int64;
     function GetCreditsMax: Int64;
+    // A schema of ATables tables whose widest one has AWidestColumns columns
+    // is larger than the plan of the account allows with the AI in the cloud
+    // (the tier with the id of the profile; a limit <= 0 is no limit). False
+    // while the plan is not known
+    function SchemaExceedsTier(ATables, AWidestColumns: Integer): Boolean;
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
@@ -472,6 +477,24 @@ begin
     begin
       if LTier.MaxFreeCredits > 0 then
         Result := LTier.MaxFreeCredits;
+      Exit;
+    end;
+end;
+
+function TRpAuthManager.SchemaExceedsTier(ATables,
+  AWidestColumns: Integer): Boolean;
+var
+  LTier: TRpTier;
+  LTierId: Int64;
+begin
+  Result := False;
+  LTierId := GetProfile.TierId;
+  for LTier in GetTiers do
+    if LTier.Id = LTierId then
+    begin
+      Result := ((LTier.MaxTables > 0) and (ATables > LTier.MaxTables)) or
+        ((LTier.MaxColumnsPerTable > 0) and
+        (AWidestColumns > LTier.MaxColumnsPerTable));
       Exit;
     end;
 end;

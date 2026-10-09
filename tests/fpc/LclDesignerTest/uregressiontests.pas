@@ -42,7 +42,7 @@ uses
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfchartintlcl, rpmdfbarcodeintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
-  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl,
+  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl, rpfrmchatlcl,
   umainform;
 
 const
@@ -2893,6 +2893,163 @@ begin
   LogMsg('Designer history with the report verified');
 end;
 
+type
+  // The host of the chat of TestChatSchemaList: "New local schema..." adds
+  // a subschema as the local schema utility would (without its dialog)
+  TChatSchemaHost = class
+  public
+    Chat: TFRpChatFrame;
+    Configured: Integer;
+    AddNew: Boolean;
+    Alias: string;
+    SchemaChanges: Integer;
+    procedure ConfigureLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string; AAddNew: Boolean);
+    procedure SchemaChanged(Sender: TObject);
+  end;
+
+procedure FillLocalEntries(AEntries, ASizes: TStrings; AWithCompras: Boolean);
+begin
+  AEntries.Clear;
+  ASizes.Clear;
+  AEntries.Add('FBEX=');
+  ASizes.Add('3,4');
+  AEntries.Add('FBEX=Ventas');
+  ASizes.Add('2,3');
+  if AWithCompras then
+  begin
+    AEntries.Add('FBEX=Compras');
+    ASizes.Add('1,2');
+  end;
+  // The file of this connection does not exist yet: no number
+  AEntries.Add('OTHER=');
+  ASizes.Add('');
+end;
+
+procedure TChatSchemaHost.ConfigureLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string; AAddNew: Boolean);
+var
+  LEntries, LSizes: TStringList;
+begin
+  Inc(Configured);
+  AddNew := AAddNew;
+  Alias := AAlias;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  try
+    FillLocalEntries(LEntries, LSizes, True);
+    Chat.SetLocalSchemas(LEntries, 'FBEX', LSizes);
+    Chat.SelectLocalSchema(AAlias, 'Compras');
+  finally
+    LSizes.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TChatSchemaHost.SchemaChanged(Sender: TObject);
+begin
+  Inc(SchemaChanges);
+end;
+
+// F5: the schema list of the AI chat, without the Hub (no network): the
+// local group with the tables of each entry, the actions at the end, the
+// headers skipped, "New local schema..." through the host and the choice of
+// each connection kept for the session
+procedure TestChatSchemaList;
+const
+  SEP = ' '#$C2#$B7' ';
+var
+  LForm: TForm;
+  LChat, LOther: TFRpChatFrame;
+  LHost: TChatSchemaHost;
+  LEntries, LSizes: TStringList;
+  LCount, LNewLocal: Integer;
+  LAll: string;
+begin
+  LogMsg('F5: the schema list of the AI chat');
+  LForm := TForm.CreateNew(nil);
+  LHost := TChatSchemaHost.Create;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  try
+    LChat := TFRpChatFrame.Create(LForm);
+    LChat.Parent := LForm;
+    LHost.Chat := LChat;
+    LChat.OnConfigureLocalSchemas := LHost.ConfigureLocalSchemas;
+    LChat.OnSchemaChanged := LHost.SchemaChanged;
+    Check(not LChat.HasSchemaItems, 'chat list: empty before the schemas');
+    FillLocalEntries(LEntries, LSizes, False);
+    LChat.SetLocalSchemas(LEntries, 'FBEX', LSizes);
+    Check(LChat.HasSchemaItems, 'chat list: local schemas listed');
+    LAll := TranslateStr(1843, 'All the tables');
+    Check(Pos(TranslateStr(1836, 'Local'), LChat.ComboSchema.Items[0]) > 0,
+      'chat list: the Local header first');
+    CheckStr('FBEX' + SEP + LAll + ' (3)', LChat.ComboSchema.Items[1],
+      'chat list: all the tables, with the tables that travel');
+    CheckStr('FBEX' + SEP + 'Ventas (2)', LChat.ComboSchema.Items[2],
+      'chat list: a subschema');
+    CheckStr('OTHER' + SEP + LAll, LChat.ComboSchema.Items[3],
+      'chat list: no number while the file does not exist');
+    LCount := LChat.ComboSchema.Items.Count;
+    LNewLocal := LCount - 2;
+    CheckInt(7, LCount, 'chat list: header, 3 schemas, separator and 2 actions');
+    CheckStr(TranslateStr(1838, 'New local schema...'),
+      LChat.ComboSchema.Items[LNewLocal], 'chat list: New local schema');
+    Check(Pos(TranslateStr(1839, 'New cloud schema...'),
+      LChat.ComboSchema.Items[LCount - 1]) = 1, 'chat list: New cloud schema');
+    Check(Pos(TranslateStr(1842, 'This connection is not in the Hub'),
+      LChat.ComboSchema.Items[LCount - 1]) > 0,
+      'chat list: New cloud schema disabled on a direct connection');
+    // The connection of the report, all its tables
+    CheckStr('FBEX', LChat.GetLocalSchemaAlias, 'chat list: the direct connection');
+    CheckStr('', LChat.GetLocalSchemaName, 'chat list: all the tables');
+    CheckInt(1, LChat.ComboSchema.ItemIndex, 'chat list: all the tables selected');
+    LChat.SelectLocalSchema('FBEX', 'Ventas');
+    CheckInt(2, LChat.ComboSchema.ItemIndex, 'chat list: the subschema selected');
+    // The keys of the closed list: a header is skipped, an action is not run
+    LChat.ComboSchema.ItemIndex := 0;
+    LChat.ComboSchema.OnChange(LChat.ComboSchema);
+    CheckInt(2, LChat.ComboSchema.ItemIndex, 'chat list: a header is not chosen');
+    LChat.ComboSchema.ItemIndex := LNewLocal - 1;
+    LChat.ComboSchema.OnChange(LChat.ComboSchema);
+    CheckInt(2, LChat.ComboSchema.ItemIndex, 'chat list: the separator is not chosen');
+    CheckInt(0, LHost.Configured, 'chat list: the keys do not run an action');
+    CheckStr('Ventas', LChat.GetLocalSchemaName, 'chat list: the choice stays');
+    // "New local schema..." clicked: back to the schema, then the utility
+    // of the connection adds one and the chat selects it
+    LHost.SchemaChanges := 0;
+    LChat.ComboSchema.ItemIndex := LNewLocal;
+    LChat.ComboSchema.OnCloseUp(LChat.ComboSchema);
+    CheckInt(2, LChat.ComboSchema.ItemIndex, 'chat list: an action is not a schema');
+    Application.ProcessMessages;
+    CheckInt(1, LHost.Configured, 'chat list: New local schema opens the utility');
+    Check(LHost.AddNew, 'chat list: the utility starts adding a subschema');
+    CheckStr('FBEX', LHost.Alias, 'chat list: of the direct connection chosen');
+    CheckStr('Compras', LChat.GetLocalSchemaName, 'chat list: the new subschema selected');
+    Check(LHost.SchemaChanges > 0, 'chat list: the new subschema is a change of the user');
+    CheckStr('FBEX' + SEP + 'Compras (1)',
+      LChat.ComboSchema.Items[LChat.ComboSchema.ItemIndex], 'chat list: the new subschema listed');
+    // The chat of the next report (a new frame) starts with the subschema
+    // chosen for the connection in this session
+    LOther := TFRpChatFrame.Create(LForm);
+    LOther.Parent := LForm;
+    FillLocalEntries(LEntries, LSizes, True);
+    LOther.SetLocalSchemas(LEntries, 'FBEX', LSizes);
+    CheckStr('Compras', LOther.GetLocalSchemaName,
+      'chat list: the choice of the connection kept for the session');
+    // The Hub schemas of the list arrive later: no Hub context is lost
+    LOther.SetHubContext(77, 5, '');
+    CheckInt(77, LOther.GetHubDatabaseId, 'chat list: the Hub database waits for its list');
+    CheckInt(5, LOther.GetHubSchemaId, 'chat list: the Hub schema waits for its list');
+  finally
+    LSizes.Free;
+    LEntries.Free;
+    LHost.Free;
+    LForm.Free;
+  end;
+  LogMsg('Schema list of the AI chat verified');
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -2917,6 +3074,8 @@ begin
     TestUndoCueInReportXml;
     TestHistoryExtendedFrom;
     TestDesignerKeepsHistory(ASamplePath);
+    // F5: the schema list of the AI chat
+    TestChatSchemaList;
   finally
     t.Free;
   end;

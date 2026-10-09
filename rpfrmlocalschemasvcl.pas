@@ -32,10 +32,11 @@ uses
   Dialogs, System.JSON, rpreport, rpdatainfo, rplocalschemas;
 
 // The local schema of the connection AAlias of the report. ASchemaName is
-// the subschema to show and, after a Save, the one selected. True when the
-// file was saved
+// the subschema to show and, after a Save, the one selected. With AAddNew it
+// starts adding a subschema (its name first; cancelling it shows nothing).
+// True when the file was saved
 function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
-  var ASchemaName: string): Boolean;
+  var ASchemaName: string; AAddNew: Boolean = False): Boolean;
 
 implementation
 
@@ -68,6 +69,8 @@ type
     procedure FillSchemas(const ASelected: string);
     procedure FillTables;
     function SelectedSchema: TRpLocalSubSchema;
+    // Asks the name of a new subschema and selects it; False when cancelled
+    function AddNewSchema: Boolean;
     procedure BRefreshClick(Sender: TObject);
     procedure BAddClick(Sender: TObject);
     procedure BRenameClick(Sender: TObject);
@@ -385,10 +388,11 @@ begin
     SelectedSchema.Description := EDescription.Text;
 end;
 
-procedure TFRpLocalSchemasVCL.BAddClick(Sender: TObject);
+function TFRpLocalSchemasVCL.AddNewSchema: Boolean;
 var
   LName: string;
 begin
+  Result := False;
   LName := '';
   if not InputQuery('New subschema', 'Name', LName) then
     Exit;
@@ -397,6 +401,12 @@ begin
     Exit;
   FFile.AddSchema(LName);
   FillSchemas(LName);
+  Result := True;
+end;
+
+procedure TFRpLocalSchemasVCL.BAddClick(Sender: TObject);
+begin
+  AddNewSchema;
 end;
 
 procedure TFRpLocalSchemasVCL.BRenameClick(Sender: TObject);
@@ -451,7 +461,7 @@ begin
 end;
 
 function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
-  var ASchemaName: string): Boolean;
+  var ASchemaName: string; AAddNew: Boolean): Boolean;
 var
   LForm: TFRpLocalSchemasVCL;
 begin
@@ -460,6 +470,8 @@ begin
   try
     LForm.LoadFile(False);
     LForm.FillSchemas(ASchemaName);
+    if AAddNew and not LForm.AddNewSchema then
+      Exit;
     if LForm.ShowModal = mrOk then
     begin
       Result := True;

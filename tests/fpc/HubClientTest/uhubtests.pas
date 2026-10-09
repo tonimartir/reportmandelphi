@@ -195,7 +195,9 @@ begin
     end
     else if P = '/api/agent/databases' then
       SendJson(AResponse, 200, '{"databases":[' +
-        '{"displayName":"Sales - Main","name":"sales","hubDatabaseId":77,"hubSchemaId":5},' +
+        '{"displayName":"Sales - Main","name":"sales","hubDatabaseId":77,"hubSchemaId":5,' +
+        '"schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
+        '{"name":"ORDERS","columns":[{"name":"ID"},{"name":"CLIENT"},{"name":"TOTAL"}]}]},' +
         '{"displayName":"","name":"stock","hubDatabaseId":78,"hubSchemaId":6}],' +
         '"aiEndpoints":[{"id":3,"name":"Local","agentName":"pc1","agentSecret":"s3","isOnline":true},' +
         '{"id":4,"name":"Cloud","agentName":"srv","agentSecret":"s4","isOnline":false}]}')
@@ -904,7 +906,7 @@ var
   LPreResult: TRpApiPreprocessSqlContextResult;
   LSource: TRpApiPreprocessSqlContextDataSource;
   LReport: TRpAIReport;
-  LList: TStringList;
+  LList, LSizes: TStringList;
   LStart: QWord;
 begin
   Section('AI client methods of TRpDatabaseHttp');
@@ -948,6 +950,20 @@ begin
     end;
     CheckContains('"transcribeLanguage":"Spanish"', GHub.LastBody, 'TranslateToSql language');
     CheckContains('"userQuery":["clients with debt"]', GHub.LastBody, 'TranslateToSql prompt');
+    // A direct connection: its schema inline (a local subschema) instead of
+    // the Hub ids
+    LHttp.InlineConfigJson := '{"name":"FBEXAMPLE","schemaTables":[{"name":"SALES",' +
+      '"columns":[]}],"schemaName":"Ventas","hubDatabaseId":0,"hubSchemaId":0}';
+    try
+      LJson := LHttp.TranslateToSql('sales', '', 'Fast', 'es');
+      LJson.Free;
+    finally
+      LHttp.InlineConfigJson := '';
+    end;
+    CheckContains('"schemaName":"Ventas"', GHub.LastBody, 'TranslateToSql inline subschema');
+    CheckContains('"schemaTables":[{"name":"SALES"', GHub.LastBody, 'TranslateToSql inline tables');
+    Check(Pos('"hubDatabaseId":77', GHub.LastBody) = 0,
+      'TranslateToSql inline: not the Hub database');
 
     LJson := LHttp.ExplainSql('SELECT 1', 'Fast', 'ca');
     try
@@ -1042,6 +1058,17 @@ begin
     CheckEquals('Sales / Main=77|5', LList[0], 'GetUserSchemas display name');
     CheckEquals('stock=78|6', LList[1], 'GetUserSchemas name when there is no display name');
     CheckContains('GET /api/agent/databases', GHub.RequestLog, 'GetUserSchemas is a GET');
+    // The size of each schema for the limits of the plan: its tables and the
+    // columns of the widest one (none without schemaTables)
+    LSizes := TStringList.Create;
+    try
+      Check(LHttp.GetUserSchemas(LList, LSizes), 'GetUserSchemas with sizes');
+      CheckEquals('Sales / Main=77|5', LList[0], 'GetUserSchemas with sizes: the same list');
+      CheckEquals(1, LSizes.Count, 'GetUserSchemas sizes: only with schemaTables');
+      CheckEquals('2,3', LSizes.Values['5'], 'GetUserSchemas sizes: tables and widest');
+    finally
+      LSizes.Free;
+    end;
     // GetSchemas sent a nil request body (access violation) and read a "data"
     // list that the Hub does not return
     Check(LHttp.GetSchemas(LList), 'GetSchemas');

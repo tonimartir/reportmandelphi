@@ -155,6 +155,8 @@ type
     FMonaco: TFRpMonacoEditorVCL;
     FLoadingControls: Boolean;
     FSyncingSchemaContext: Boolean;
+    // The direct connection whose local schemas the chat lists ('' = none)
+    FChatLocalAlias: string;
     Report:TRpReport;
     procedure AssertCanModify(const AReason:string);
     procedure EnsureAdvancedEditors;
@@ -167,6 +169,12 @@ type
       const ASchemaApiKey: string = '');
     procedure ChatApplySuggestion(Sender: TObject; const AExpression: string);
     procedure ChatSchemaChange(Sender: TObject);
+    procedure ChatConfigureLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string; AAddNew: Boolean);
+    procedure UpdateChatLocalSchemas(ADatabaseInfo: TRpDatabaseInfoItem;
+      AForce: Boolean);
+    function DatabaseInfoOf(ADataInfo: TRpDataInfoItem): TRpDatabaseInfoItem;
+    function ChatInlineConfigJson(const AAlias, ASchemaName: string): string;
     procedure ChatSendPrompt(Sender: TObject; const APrompt,
       AExpression: string);
     procedure ChatStopRequest(Sender: TObject);
@@ -211,7 +219,8 @@ type
 implementation
 
 uses System.JSON, rpmdfdatatextvcl, rpxmlstream, rpbasereport,
-  rpmdfnewreportwizardvcl;
+  rpmdfnewreportwizardvcl, rplocalschemas, rpdesignerclientsql,
+  rpreportdesignercontracts, rpfrmlocalschemasvcl;
 
 {$R *.DFM}
 
@@ -234,6 +243,9 @@ var
 begin
   Result := 0;
   if (ADataInfo = nil) or (ADataInfo.DatabaseAlias = '') then
+    Exit;
+  // A direct connection is not in the Hub: never a Hub schema
+  if RpIsLocalSqlDatabase(DatabaseInfoOf(ADataInfo)) then
     Exit;
 
   for I := 0 to datainfo.Count - 1 do
@@ -382,6 +394,7 @@ begin
     FChat.OnSchemaChanged := ChatSchemaChange;
     FChat.OnSendPrompt := ChatSendPrompt;
     FChat.OnStopRequest := ChatStopRequest;
+    FChat.OnConfigureLocalSchemas := ChatConfigureLocalSchemas;
     FChat.StartOnlineInitialization;
   end;
 
@@ -422,6 +435,7 @@ var
   LHubSchemaId: Int64;
   LSchemaApiKey: string;
   LRuntimeDb: string;
+  LSchemaName: string;
 begin
   LDataInfo := FindDataInfoItem;
   if LDataInfo = nil then
@@ -470,7 +484,115 @@ begin
   if FChat <> nil then
   begin
     FChat.SetCurrentExpression(WideStringToDOS(LDataInfo.SQL));
-    FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    // A direct connection: its local schemas, with the subschema of the
+    // dataset while it is in the file (else all the tables)
+    UpdateChatLocalSchemas(LDatabaseInfo, False);
+    if RpIsLocalSqlDatabase(LDatabaseInfo) then
+    begin
+      FChat.SetHubContext(0, 0, '');
+      LSchemaName := RpExistingLocalSubSchema(LDatabaseInfo, LDataInfo.SchemaName);
+      if not (SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+        SameText(FChat.GetLocalSchemaName, LSchemaName)) then
+        FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
+    end
+    else
+      FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  end;
+end;
+
+function TFRpDatasetsVCL.DatabaseInfoOf(
+  ADataInfo: TRpDataInfoItem): TRpDatabaseInfoItem;
+var
+  LIndex: Integer;
+begin
+  Result := nil;
+  if (ADataInfo = nil) or (Report = nil) or
+    (Trim(ADataInfo.DatabaseAlias) = '') then
+    Exit;
+  LIndex := Report.DatabaseInfo.IndexOf(ADataInfo.DatabaseAlias);
+  if LIndex >= 0 then
+    Result := Report.DatabaseInfo.Items[LIndex];
+end;
+
+// The local schemas of the connection of the dataset in the chat; none for
+// the other connections
+procedure TFRpDatasetsVCL.UpdateChatLocalSchemas(
+  ADatabaseInfo: TRpDatabaseInfoItem; AForce: Boolean);
+var
+  LAlias: string;
+  LEntries, LSizes: TStringList;
+begin
+  if FChat = nil then
+    Exit;
+  LAlias := '';
+  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+    LAlias := ADatabaseInfo.Alias;
+  if (not AForce) and SameText(LAlias, FChatLocalAlias) then
+    Exit;
+  FChatLocalAlias := LAlias;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  try
+    if LAlias <> '' then
+      RpListLocalSchemaEntries(ADatabaseInfo, LEntries, LSizes);
+    FChat.SetLocalSchemas(LEntries, LAlias, LSizes);
+  finally
+    LSizes.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TFRpDatasetsVCL.ChatConfigureLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string; AAddNew: Boolean);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  LSchemaName := ASchemaName;
+  try
+    LSaved := RpShowLocalSchemasDialog(Report, AAlias, LSchemaName, AAddNew);
+  finally
+    UpdateChatLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
+  end;
+  // The subschema saved (a new one: the one added); the chat gives it to
+  // the dataset (ChatSchemaChange)
+  if LSaved then
+    FChat.SelectLocalSchema(AAlias, LSchemaName);
+end;
+
+// The config of NL to SQL with the schema of a direct connection inline
+function TFRpDatasetsVCL.ChatInlineConfigJson(const AAlias,
+  ASchemaName: string): string;
+var
+  LConfig: TRpApiDatabaseConfig;
+  LCursor: TCursor;
+  LDatabases: TRpDatabaseInfoList;
+  LIndex: Integer;
+  LJson: TJSONObject;
+begin
+  LIndex := Report.DatabaseInfo.IndexOf(AAlias);
+  if LIndex < 0 then
+    raise Exception.Create('The report has no connection ' + AAlias);
+  LConfig := TRpApiDatabaseConfig.Create;
+  // A copy: the dialog may have the connection open (Show data)
+  LDatabases := RpCopyDatabaseInfo(Report.DatabaseInfo.Items[LIndex]);
+  LCursor := Screen.Cursor;
+  Screen.Cursor := crHourGlass;
+  try
+    LConfig.LocalAlias := AAlias;
+    LConfig.LocalSchemaName := ASchemaName;
+    // The schema file is generated the first time
+    RpResolveLocalSchemaConfig(LConfig, LDatabases.Items[0], Report.Params);
+    LJson := LConfig.ToJsonObject;
+    try
+      Result := LJson.ToJSON;
+    finally
+      LJson.Free;
+    end;
+  finally
+    Screen.Cursor := LCursor;
+    LDatabases.Free;
+    LConfig.Free;
   end;
 end;
 
@@ -489,7 +611,10 @@ begin
     if FMonaco <> nil then
       FMonaco.SetHubContext(0, 0);
     if FChat <> nil then
+    begin
+      UpdateChatLocalSchemas(nil, False);
       FChat.SetHubContext(0, 0);
+    end;
     Exit;
   end;
 
@@ -730,6 +855,14 @@ begin
  begin
   LPreviousDatabaseAlias:=dinfo.DatabaseAlias;
   dinfo.DatabaseAlias:=Trim(COmboConnection.Text);
+  if not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias) then
+  begin
+   // The subschema was of the other connection, and a direct connection
+   // never has a Hub schema
+   dinfo.SchemaName:='';
+   if RpIsLocalSqlDatabase(DatabaseInfoOf(dinfo)) then
+    dinfo.HubSchemaId:=0;
+  end;
   if (dinfo.HubSchemaId = 0) and
     (not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias)) then
     dinfo.HubSchemaId:=FindSiblingHubSchemaId(dinfo);
@@ -838,20 +971,34 @@ end;
 procedure TFRpDatasetsVCL.ChatSchemaChange(Sender: TObject);
 var
   LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
 begin
   if FSyncingSchemaContext or (FChat = nil) then
     Exit;
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+  // A direct connection keeps the subschema chosen (D3) and never takes a
+  // Hub schema; loading the list is not a choice of the user
+  LDatabaseInfo := DatabaseInfoOf(LDataInfo);
+  if RpIsLocalSqlDatabase(LDatabaseInfo) then
+  begin
+    if (not FChat.SchemaChangeFromLoad) and
+      SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+      (LDataInfo.SchemaName <> FChat.GetLocalSchemaName) then
+      LDataInfo.SchemaName := FChat.GetLocalSchemaName;
+    Exit;
+  end;
   // The chat also calls this after loading its list; an empty list (not
   // logged in, logged out, no network) is not a choice of the user and must
   // not reset the schema of the dataset
-  if (FChat.ComboSchema.Items.Count <= 1) and (FChat.GetHubSchemaId = 0) then
+  if (not FChat.HasSchemaItems) and (FChat.GetHubSchemaId = 0) then
     Exit;
   // Nor may the fallback of a list without the schema of the dataset (another
   // account, no access) replace it: only a choice of the user does
   if FChat.SchemaChangeFromLoad then
   begin
-    LDataInfo := FindDataInfoItem;
-    if (LDataInfo <> nil) and (LDataInfo.HubSchemaId <> 0) and
+    if (LDataInfo.HubSchemaId <> 0) and
       (LDataInfo.HubSchemaId <> FChat.GetHubSchemaId) then
       Exit;
   end;
@@ -866,6 +1013,10 @@ var
 begin
   LDataInfo := FindDataInfoItem;
   if LDataInfo = nil then
+    Exit;
+  // A dataset on a direct connection never gets a Hub schema (the Hub list
+  // of the editor or of the chat falls back to one of another database)
+  if RpIsLocalSqlDatabase(DatabaseInfoOf(LDataInfo)) then
     Exit;
 
   FSyncingSchemaContext := True;
@@ -1000,6 +1151,7 @@ var
   LSqlToRefine: string;
   LRuntimeDb: string;
   LUserLanguage: string;
+  LInlineConfigJson: string;
   LWorker: TThread;
 begin
   if FChat = nil then
@@ -1026,6 +1178,24 @@ begin
   LSqlToRefine := Trim(AExpression);
   if LSqlToRefine = '' then
     LSqlToRefine := Trim(FMonaco.SQL);
+  // A direct connection: its local schema (the subschema chosen) travels
+  // inline instead of a Hub schema
+  LInlineConfigJson := '';
+  if FChat.GetLocalSchemaAlias <> '' then
+  begin
+    try
+      LInlineConfigJson := ChatInlineConfigJson(FChat.GetLocalSchemaAlias,
+        FChat.GetLocalSchemaName);
+    except
+      on E: Exception do
+      begin
+        FChat.AddAssistantMessage(E.Message);
+        Exit;
+      end;
+    end;
+    LHubDatabaseId := 0;
+    LHubSchemaId := 0;
+  end;
 
   FChat.BeginStreamingResponse;
   if LSqlToRefine <> '' then
@@ -1061,6 +1231,7 @@ begin
           LHttp.InstallId := TRpAuthManager.Instance.InstallId;
           LHttp.HubDatabaseId := LHubDatabaseId;
           LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.InlineConfigJson := LInlineConfigJson;
           LHttp.RuntimeDb := LRuntimeDb;
           LHttp.AITier := LAITier;
           LHttp.AgentSecret := LAgentSecret;

@@ -115,13 +115,18 @@ function RpProbeClientSql(const AReportDocument: string;
 
 // The schema of the direct connection AConfig.LocalAlias of the report, in
 // the config (Name = the alias, Dialect, SchemaTablesJson = the tables of
-// AConfig.LocalSchemaName, all when empty). The schema file is generated
+// AConfig.LocalSchemaName, all when empty, and SchemaName = that subschema
+// while it is in the file, '' for all the tables). The schema file is generated
 // from the catalog when it does not exist yet. Nothing to do when the config
 // has no LocalAlias or has the tables already
 procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
   AReport: TRpReport); overload;
 procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
   const AReportDocument: string); overload;
+// The same with the connection itself (a copy, RpCopyDatabaseInfo, keeps
+// the one of the designer connected)
+procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
+  ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList); overload;
 
 // ModifyReport with the client SQL turns (see the unit comment). The result
 // carries the steps of every turn; its ModifiedReportDocument is the
@@ -957,8 +962,6 @@ end;
 procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
   AReport: TRpReport);
 var
-  LDatabase: TRpDatabaseInfoItem;
-  LFile: TRpLocalSchemaFile;
   LIndex: Integer;
 begin
   if (AConfig = nil) or (Trim(AConfig.LocalAlias) = '') or
@@ -967,9 +970,21 @@ begin
   LIndex := AReport.DatabaseInfo.IndexOf(AConfig.LocalAlias);
   if LIndex < 0 then
     raise Exception.Create('The report has no connection ' + AConfig.LocalAlias);
-  LDatabase := AReport.DatabaseInfo.Items[LIndex];
+  RpResolveLocalSchemaConfig(AConfig, AReport.DatabaseInfo.Items[LIndex],
+    AReport.Params);
+end;
+
+procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
+  ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList);
+var
+  LDatabase: TRpDatabaseInfoItem;
+  LFile: TRpLocalSchemaFile;
+begin
+  if (AConfig = nil) or (ADatabase = nil) or AConfig.HasInlineSchema then
+    Exit;
+  LDatabase := ADatabase;
   try
-    LFile := RpLoadLocalSchema(LDatabase, AReport.Params, True, False);
+    LFile := RpLoadLocalSchema(LDatabase, AParams, True, False);
   finally
     LDatabase.DisConnect;
   end;
@@ -979,6 +994,13 @@ begin
     if AConfig.Dialect = '' then
       AConfig.Dialect := 'Default';
     AConfig.SchemaTablesJson := LFile.SchemaTablesJson(AConfig.LocalSchemaName);
+    // The subschema travels with its tables (the cloud gives it to the
+    // datasets it makes); one gone from the file sends all the tables
+    if (AConfig.LocalSchemaName <> '') and
+      (LFile.IndexOfSchema(AConfig.LocalSchemaName) >= 0) then
+      AConfig.SchemaName := LFile.Schemas[LFile.IndexOfSchema(AConfig.LocalSchemaName)].Name
+    else
+      AConfig.SchemaName := '';
     // A schema without tables would not be usable: the cloud says why
     AConfig.HubDatabaseId := 0;
     AConfig.HubSchemaId := 0;

@@ -40,7 +40,7 @@ interface
 
 uses
   SysUtils, Classes, Types, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
-  ComCtrls, LCLType, rpjsonfpc, rpauthmanager, rpdatahttp,
+  ComCtrls, LCLType, Menus, rpjsonfpc, rpauthmanager, rpdatahttp,
   rpreportdesignercontracts, rpaithreadslcl, rpchatmodernstylelcl,
   rpfrmaiselectionlcl, rpfrmloginframelcl, rpwebmarkdownlcl;
 
@@ -53,8 +53,13 @@ const
   CRpChatEnableAuthListener = True;
 
 type
+  // The entries of the schema list: the schemas the AI can use (a Hub one or
+  // a local one), the group headers and the two actions at the end
+  TSchemaComboItemKind = (sckHub, sckLocal, sckHeader, sckNewLocal, sckNewCloud);
+
   TSchemaComboItem = class(TObject)
   public
+    Kind: TSchemaComboItemKind;
     ApiKey: string;
     HubDatabaseId: Int64;
     HubSchemaId: Int64;
@@ -62,12 +67,24 @@ type
     // (dbxschemas/<ALIAS>.json), all the tables or a subschema
     LocalAlias: string;
     LocalSchemaName: string;
+    // The text without the warning of the plan
+    Caption: string;
+    // The tables that would travel (-1 = not known) and the columns of the
+    // widest one
+    Tables: Integer;
+    WidestColumns: Integer;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
     constructor CreateLocal(const ALocalAlias, ALocalSchemaName: string);
+    constructor CreateKind(AKind: TSchemaComboItemKind; const ACaption: string);
+    // A schema the AI can use, not a header or an action
+    function IsSchema: Boolean;
   end;
 
+  // The local schema utility of a direct connection: AAddNew starts adding
+  // a subschema ("New local schema..."). The host reloads the list
+  // (SetLocalSchemas) and selects the subschema saved (SelectLocalSchema)
   TChatConfigureLocalSchemasEvent = procedure(Sender: TObject;
-    const AAlias, ASchemaName: string) of object;
+    const AAlias, ASchemaName: string; AAddNew: Boolean) of object;
 
   TChatSendEvent = procedure(Sender: TObject; const APrompt, AExpression: string) of object;
   TChatApplyEvent = procedure(Sender: TObject; const AExpression: string) of object;
@@ -161,18 +178,53 @@ type
     FLocalAlias: string;
     FLocalSchemaName: string;
     FLocalSchemas: TStringList;
+    // The size of each entry of FLocalSchemas: '<tables>,<widest>' or ''
+    FLocalSizes: TStringList;
+    // The Hub schemas as loaded ('Name=db|schema|apikey') and their sizes
+    // ('<schema>=<tables>,<widest>')
+    FHubSchemaLines: TStringList;
+    FHubSizes: TStringList;
+    FHubSchemasLoaded: Boolean;
+    // The Hub database of the context (SetHubContext): "New cloud schema..."
+    FContextHubDatabaseId: Int64;
     FPreferredLocalAlias: string;
     FOnConfigureLocalSchemas: TChatConfigureLocalSchemasEvent;
-    procedure AddLocalSchemaItems;
-    procedure RemoveLocalSchemaItems;
-    procedure UpdateSchemaConfigHint;
+    // The list is being changed by code: no change of the user
+    FSelectingSchema: Boolean;
+    FLastSchemaIndex: Integer;
+    // The open list was just closed (ComboSchemaCloseUp)
+    FSchemaListClosing: Boolean;
+    // The texts changed while the list was open: refreshed when it closes
+    FSchemaCaptionsPending: Boolean;
+    FSchemaConfigMenu: TPopupMenu;
+    FMenuLocalSchemas: TMenuItem;
+    FMenuCloudSchemas: TMenuItem;
+    procedure RebuildSchemaItems;
+    procedure RefreshSchemaCaptions;
+    function SchemaItem(AIndex: Integer): TSchemaComboItem;
+    function SelectedSchemaItem: TSchemaComboItem;
+    function SchemaItemText(AItem: TSchemaComboItem): string;
+    function SchemaItemExceedsPlan(AItem: TSchemaComboItem): Boolean;
+    function LocalSchemaTargetAlias: string;
+    function NewCloudSchemaEnabled: Boolean;
+    procedure ApplySelectedSchemaItem;
+    procedure RememberSchemaChoice;
+    procedure RunConfigureLocalSchemas(const AAlias, ASchemaName: string;
+      AAddNew: Boolean);
+    procedure RunSchemaAction(Data: PtrInt);
+    procedure SchemaListClosed(Data: PtrInt);
+    procedure ComboSchemaCloseUp(Sender: TObject);
+    procedure ComboSchemaDropDown(Sender: TObject);
+    procedure AISelectionProviderChange(Sender: TObject);
+    procedure MenuLocalSchemasClick(Sender: TObject);
+    procedure MenuCloudSchemasClick(Sender: TObject);
     procedure BuildControls;
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
     procedure DeferredLayout(Data: PtrInt);
     procedure ApplyLoadedUserAgents(ALoadedAgents: TStringList;
       const ASelectedTier: string; ASelectedAgentAiId: Int64;
       AReloadVersion: Integer);
-    procedure ApplyLoadedSchemas(ALoadedSchemas: TStringList;
+    procedure ApplyLoadedSchemas(ALoadedSchemas, ASizes: TStringList;
       AReloadVersion: Integer);
     procedure HandleDesignChatPayload(APayload: TObject);
     procedure AuthLog(const AMsg: string);
@@ -286,18 +338,25 @@ type
     function GetHubSchemaId: Int64;
     function GetSchemaApiKey: string;
     // The direct connections of the report the chat offers next to the Hub
-    // schemas: lines ALIAS= (all the tables) and ALIAS=<subschema>. Without
-    // a Hub schema of the report, APreferredAlias is selected
-    procedure SetLocalSchemas(AEntries: TStrings; const APreferredAlias: string);
+    // schemas: lines ALIAS= (all the tables) and ALIAS=<subschema>, with the
+    // size of each one in ASizes ('<tables>,<widest columns>', '' = not
+    // known; see RpListLocalSchemaEntries). Without a Hub schema of the
+    // report, APreferredAlias is selected
+    procedure SetLocalSchemas(AEntries: TStrings; const APreferredAlias: string;
+      ASizes: TStrings = nil);
     procedure SelectLocalSchema(const AAlias, ASchemaName: string);
     // The direct connection selected ('' = a Hub schema) and its subschema
     // ('' = all the tables)
     function GetLocalSchemaAlias: string;
     function GetLocalSchemaName: string;
-    // With a direct connection selected the configuration button opens the
-    // local schema utility (refresh, subschemas) instead of the web
+    // The list has a schema the AI can use (Hub or local)
+    function HasSchemaItems: Boolean;
+    // "Local schemas..." of the configuration button and "New local
+    // schema..." of the list: the local schema utility of a direct connection
     property OnConfigureLocalSchemas: TChatConfigureLocalSchemasEvent
       read FOnConfigureLocalSchemas write FOnConfigureLocalSchemas;
+    // The menu of the configuration button (tests)
+    property SchemaConfigMenu: TPopupMenu read FSchemaConfigMenu;
     // LCL additions (state for hosts and tests)
     function ConversationText: string;
     property Busy: Boolean read FBusy;
@@ -339,11 +398,21 @@ implementation
 uses
   rpdatainfo, rpmdconsts, LazUTF8, rpfrmaireportlcl, rpdesignerclientsql;
 
+const
+  // The text of the schema list (UTF-8, the encoding of the LCL strings)
+  CSchemaSeparator = ' '#$C2#$B7' ';
+  CSchemaWarning = #$E2#$9A#$A0' ';
+  CSchemaRule = #$E2#$94#$80#$E2#$94#$80;
+  CNewCloudSchemaUrl = 'https://app.reportman.es/database-config?new=1';
+  CCloudSchemasUrl = 'https://app.reportman.es/database-config';
+
 type
   TRpQueuedSchemasPayload = class(TRpAsyncMessage)
   public
     ReloadVersion: Integer;
     Schemas: TStringList;
+    // '<hubSchemaId>=<tables>,<widest columns>'
+    Sizes: TStringList;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -398,8 +467,8 @@ type
     ReloadVersion: Integer;
   protected
     procedure Run; override;
-    function LoadUserSchemas(AList: TStrings): Boolean;
-    function LoadConfiguredApiKeySchemas(AList: TStrings): Boolean;
+    function LoadUserSchemas(AList, ASizes: TStrings): Boolean;
+    function LoadConfiguredApiKeySchemas(AList, ASizes: TStrings): Boolean;
   end;
 
   TRpChatDesignWorker = class(TRpAsyncWorker)
@@ -486,31 +555,100 @@ begin
   end;
 end;
 
+var
+  // The schema chosen for each connection in this session:
+  // 'L:<ALIAS>=<subschema>' and 'H:<hubDatabaseId>=<hubSchemaId>'
+  GSchemaChoices: TStringList = nil;
+
+procedure RememberChoice(const AKey, AValue: string);
+begin
+  if GSchemaChoices = nil then
+    GSchemaChoices := TStringList.Create;
+  GSchemaChoices.Values[AKey] := AValue;
+end;
+
+function RememberedChoice(const AKey: string): string;
+begin
+  Result := '';
+  if GSchemaChoices <> nil then
+    Result := GSchemaChoices.Values[AKey];
+end;
+
+// ' (N)': the tables that would travel, when known
+function SchemaSizeSuffix(ATables: Integer): string;
+begin
+  if ATables >= 0 then
+    Result := ' (' + IntToStr(ATables) + ')'
+  else
+    Result := '';
+end;
+
+// '<tables>,<widest>' to the two numbers; False when not known
+function ParseSchemaSize(const AText: string; out ATables,
+  AWidest: Integer): Boolean;
+var
+  LPos: Integer;
+begin
+  ATables := -1;
+  AWidest := 0;
+  LPos := Pos(',', AText);
+  Result := LPos > 0;
+  if not Result then
+    Exit;
+  ATables := StrToIntDef(Copy(AText, 1, LPos - 1), -1);
+  AWidest := StrToIntDef(Copy(AText, LPos + 1, MaxInt), 0);
+  Result := ATables >= 0;
+end;
+
 { TSchemaComboItem }
 
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
   const AApiKey: string);
 begin
   inherited Create;
+  Kind := sckHub;
   HubDatabaseId := AHubDatabaseId;
   HubSchemaId := AHubSchemaId;
   ApiKey := AApiKey;
+  Tables := -1;
 end;
 
 constructor TSchemaComboItem.CreateLocal(const ALocalAlias,
   ALocalSchemaName: string);
 begin
   inherited Create;
+  Kind := sckLocal;
   LocalAlias := ALocalAlias;
   LocalSchemaName := ALocalSchemaName;
+  Tables := -1;
 end;
 
+constructor TSchemaComboItem.CreateKind(AKind: TSchemaComboItemKind;
+  const ACaption: string);
+begin
+  inherited Create;
+  Kind := AKind;
+  Caption := ACaption;
+  Tables := -1;
+end;
+
+function TSchemaComboItem.IsSchema: Boolean;
+begin
+  Result := Kind in [sckHub, sckLocal];
+end;
+
+// '<ALIAS> . All the tables' or '<ALIAS> . <subschema>'
 function LocalSchemaCaption(const AAlias, ASchemaName: string): string;
 begin
   if ASchemaName = '' then
-    Result := AAlias + ' (local) - all the tables'
+    Result := AAlias + CSchemaSeparator + TranslateStr(1843, 'All the tables')
   else
-    Result := AAlias + ' (local) - ' + ASchemaName;
+    Result := AAlias + CSchemaSeparator + ASchemaName;
+end;
+
+function SchemaHeaderCaption(const AText: string): string;
+begin
+  Result := CSchemaRule + ' ' + AText + ' ' + CSchemaRule;
 end;
 
 { Payloads }
@@ -531,11 +669,13 @@ constructor TRpQueuedSchemasPayload.Create;
 begin
   inherited Create;
   Schemas := TStringList.Create;
+  Sizes := TStringList.Create;
 end;
 
 destructor TRpQueuedSchemasPayload.Destroy;
 begin
   Schemas.Free;
+  Sizes.Free;
   inherited Destroy;
 end;
 
@@ -580,7 +720,7 @@ end;
 
 { TRpChatSchemasWorker }
 
-function TRpChatSchemasWorker.LoadUserSchemas(AList: TStrings): Boolean;
+function TRpChatSchemasWorker.LoadUserSchemas(AList, ASizes: TStrings): Boolean;
 var
   LHttp: TRpDatabaseHttp;
 begin
@@ -591,18 +731,18 @@ begin
   try
     LHttp.Token := Token;
     LHttp.InstallId := InstallId;
-    Result := LHttp.GetUserSchemas(AList);
+    Result := LHttp.GetUserSchemas(AList, ASizes);
   finally
     LHttp.Free;
   end;
 end;
 
-function TRpChatSchemasWorker.LoadConfiguredApiKeySchemas(AList: TStrings): Boolean;
+function TRpChatSchemasWorker.LoadConfiguredApiKeySchemas(AList, ASizes: TStrings): Boolean;
 var
   I, J: Integer;
   LApiKey, LSchemaValue, LSchemaKey: string;
   LConAdmin: TRpConnAdmin;
-  LConnectionNames, LParams, LRawSchemas, LSeenApiKeys: TStringList;
+  LConnectionNames, LParams, LRawSchemas, LRawSizes, LSeenApiKeys: TStringList;
   LHttp: TRpDatabaseHttp;
 begin
   // The schemas visible with the API key of every configured connection
@@ -612,6 +752,7 @@ begin
   LConnectionNames := TStringList.Create;
   LParams := TStringList.Create;
   LRawSchemas := TStringList.Create;
+  LRawSizes := TStringList.Create;
   LSeenApiKeys := TStringList.Create;
   try
     LSeenApiKeys.Sorted := True;
@@ -631,9 +772,11 @@ begin
         LHttp.Token := Token;
         LHttp.InstallId := InstallId;
         LRawSchemas.Clear;
-        if LHttp.GetUserSchemas(LRawSchemas) then
+        if LHttp.GetUserSchemas(LRawSchemas, LRawSizes) then
         begin
           Result := True;
+          if ASizes <> nil then
+            ASizes.AddStrings(LRawSizes);
           for J := 0 to LRawSchemas.Count - 1 do
           begin
             LSchemaValue := LRawSchemas.ValueFromIndex[J];
@@ -650,6 +793,7 @@ begin
     end;
   finally
     LSeenApiKeys.Free;
+    LRawSizes.Free;
     LRawSchemas.Free;
     LParams.Free;
     LConnectionNames.Free;
@@ -678,12 +822,12 @@ begin
       Sleep(DelayMs);
     end;
     try
-      LoadUserSchemas(LUserSchemas);
+      LoadUserSchemas(LUserSchemas, LPayload.Sizes);
     except
       LUserSchemas.Clear;
     end;
     try
-      LoadConfiguredApiKeySchemas(LApiKeySchemas);
+      LoadConfiguredApiKeySchemas(LApiKeySchemas, LPayload.Sizes);
     except
       LApiKeySchemas.Clear;
     end;
@@ -862,7 +1006,7 @@ begin
         Exit;
       if (FPreprocessResponse <> nil) and (Trim(FPreprocessResponse.ErrorMessage) <> '') then
         raise Exception.Create(RpComposeApiErrorMessage(FPreprocessResponse.ErrorMessage,
-          FPreprocessResponse.DebugDetails));
+          FPreprocessResponse.ErrorCode, FPreprocessResponse.DebugDetails));
       FSyncPreprocessResponse := FPreprocessResponse;
       SyncCall(SyncApplyPreprocess);
       if Cancelled then
@@ -897,8 +1041,10 @@ begin
     end;
     if Trim(FResponse.ErrorMessage) <> '' then
     begin
+      // The plan error (errorCode) as the cloud says it: its numbers and the
+      // way out
       PostAssistantMessage(RpComposeApiErrorMessage(FResponse.ErrorMessage,
-        FResponse.DebugDetails));
+        FResponse.ErrorCode, FResponse.DebugDetails));
       Exit;
     end;
     if Assigned(FResponse.ResultData) and (Trim(FResponse.ResultData.ErrorMessage) <> '') then
@@ -941,6 +1087,10 @@ begin
   FMailboxRef := FMailbox;
   FConversationBlocks := TStringList.Create;
   FLocalSchemas := TStringList.Create;
+  FLocalSizes := TStringList.Create;
+  FHubSchemaLines := TStringList.Create;
+  FHubSizes := TStringList.Create;
+  FLastSchemaIndex := -1;
   FInferenceLog := TRpInferenceLogMeter.Create;
   FLogListenerRegistered := False;
   FLoginPreferredHeight := Scale(40);
@@ -968,6 +1118,8 @@ begin
     // makes the host and the frame fight over it on GTK2: layout loop)
     FAISelection.Align := alTop;
     FAISelection.OnStopRequest := AISelectionStopRequest;
+    // No warning of the plan with the AI of an Agent
+    FAISelection.OnProviderChange := AISelectionProviderChange;
   end
   else
   begin
@@ -1045,6 +1197,9 @@ begin
   ClearSchemaItems;
   FConversationBlocks.Free;
   FLocalSchemas.Free;
+  FLocalSizes.Free;
+  FHubSchemaLines.Free;
+  FHubSizes.Free;
   FreeAndNil(FInferenceLog);
   FMailboxRef := nil;
   inherited Destroy;
@@ -1093,6 +1248,9 @@ begin
   ComboSchema.Anchors := [akLeft, akTop, akRight];
   ComboSchema.Style := csDropDownList;
   ComboSchema.OnChange := ComboSchemaChange;
+  ComboSchema.OnCloseUp := ComboSchemaCloseUp;
+  ComboSchema.OnDropDown := ComboSchemaDropDown;
+  ComboSchema.ShowHint := True;
 
   PSchemaConfigHost := NewPanel(PSchemaHost, alNone);
   FSchemaConfigButton := TRpChatIconButton.Create(Self);
@@ -1102,6 +1260,16 @@ begin
   FSchemaConfigButton.Hint := TranslateStr(1496, 'Configure DB Schemas');
   FSchemaConfigButton.ShowHint := True;
   FSchemaConfigButton.OnClick := SchemaConfigClick;
+  // A dropdown: the local schemas and the ones in the cloud
+  FSchemaConfigMenu := TPopupMenu.Create(Self);
+  FMenuLocalSchemas := TMenuItem.Create(FSchemaConfigMenu);
+  FMenuLocalSchemas.Caption := TranslateStr(1840, 'Local schemas...');
+  FMenuLocalSchemas.OnClick := MenuLocalSchemasClick;
+  FSchemaConfigMenu.Items.Add(FMenuLocalSchemas);
+  FMenuCloudSchemas := TMenuItem.Create(FSchemaConfigMenu);
+  FMenuCloudSchemas.Caption := TranslateStr(1841, 'Cloud schemas...');
+  FMenuCloudSchemas.OnClick := MenuCloudSchemasClick;
+  FSchemaConfigMenu.Items.Add(FMenuCloudSchemas);
 
   BRefreshSchemas := NewButton(PSchemaHost, TranslateStr(1149, 'Refresh'),
     BRefreshSchemasClick);
@@ -1418,98 +1586,300 @@ begin
     FAISelection.RefreshState;
     LoadUserAgents;
   end;
+  // Another account, another plan: its warnings
+  RefreshSchemaCaptions;
   if FShowSchemaSelector then
     LoadSchemas;
 end;
 
 procedure TFRpChatFrame.SchemaConfigClick(Sender: TObject);
-begin
-  // A direct connection: its local schema (refresh, subschemas)
-  if (FLocalAlias <> '') and Assigned(FOnConfigureLocalSchemas) then
-  begin
-    FOnConfigureLocalSchemas(Self, FLocalAlias, FLocalSchemaName);
-    Exit;
-  end;
-  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
-end;
-
-procedure TFRpChatFrame.UpdateSchemaConfigHint;
-begin
-  if FSchemaConfigButton = nil then
-    Exit;
-  if (FLocalAlias <> '') and Assigned(FOnConfigureLocalSchemas) then
-    FSchemaConfigButton.Hint := 'Local schema of ' + FLocalAlias +
-      ': refresh it from the database and define subschemas'
-  else
-    FSchemaConfigButton.Hint := TranslateStr(1496, 'Configure DB Schemas');
-end;
-
-procedure TFRpChatFrame.RemoveLocalSchemaItems;
 var
-  I: Integer;
-  LItem: TSchemaComboItem;
+  LPoint: TPoint;
 begin
-  for I := ComboSchema.Items.Count - 1 downto 0 do
-  begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-    if (LItem <> nil) and (LItem.LocalAlias <> '') then
-    begin
-      LItem.Free;
-      ComboSchema.Items.Delete(I);
-    end;
-  end;
+  // A dropdown: the local schema utility and the schemas in the cloud
+  FMenuLocalSchemas.Enabled := (LocalSchemaTargetAlias <> '') and
+    Assigned(FOnConfigureLocalSchemas);
+  LPoint := FSchemaConfigButton.ClientToScreen(
+    Point(0, FSchemaConfigButton.Height));
+  FSchemaConfigMenu.PopUp(LPoint.X, LPoint.Y);
 end;
 
-procedure TFRpChatFrame.AddLocalSchemaItems;
+procedure TFRpChatFrame.MenuLocalSchemasClick(Sender: TObject);
 var
-  I: Integer;
   LAlias, LSchemaName: string;
 begin
-  if FLocalSchemas.Count = 0 then
+  LAlias := LocalSchemaTargetAlias;
+  if LAlias = '' then
     Exit;
-  // The empty entry of the list (no schema) goes first, as the Hub ones
-  if ComboSchema.Items.Count = 0 then
-    ComboSchema.Items.Add('');
-  for I := 0 to FLocalSchemas.Count - 1 do
+  LSchemaName := '';
+  if SameText(LAlias, FLocalAlias) then
+    LSchemaName := FLocalSchemaName;
+  RunConfigureLocalSchemas(LAlias, LSchemaName, False);
+end;
+
+procedure TFRpChatFrame.MenuCloudSchemasClick(Sender: TObject);
+begin
+  TRpAuthManager.Instance.OpenUrl(CCloudSchemasUrl);
+end;
+
+// The direct connection of "New local schema..." and "Local schemas...":
+// the one selected, else the one of the report
+function TFRpChatFrame.LocalSchemaTargetAlias: string;
+begin
+  Result := FLocalAlias;
+  if Result = '' then
+    Result := FPreferredLocalAlias;
+  if (Result = '') and (FLocalSchemas.Count > 0) then
+    Result := FLocalSchemas.Names[0];
+end;
+
+// "New cloud schema...": not with a direct connection (it is not in the Hub)
+function TFRpChatFrame.NewCloudSchemaEnabled: Boolean;
+begin
+  Result := FLocalAlias = '';
+end;
+
+procedure TFRpChatFrame.RunConfigureLocalSchemas(const AAlias,
+  ASchemaName: string; AAddNew: Boolean);
+var
+  LAlias, LSchemaName: string;
+  LHubSchemaId: Int64;
+begin
+  if (AAlias = '') or not Assigned(FOnConfigureLocalSchemas) then
+    Exit;
+  LAlias := FLocalAlias;
+  LSchemaName := FLocalSchemaName;
+  LHubSchemaId := FHubSchemaId;
+  FOnConfigureLocalSchemas(Self, AAlias, ASchemaName, AAddNew);
+  // The host reloaded the list and selected the subschema saved: a choice
+  // of the user
+  if (not SameText(LAlias, FLocalAlias)) or
+    (not SameText(LSchemaName, FLocalSchemaName)) or
+    (LHubSchemaId <> FHubSchemaId) then
   begin
-    LAlias := FLocalSchemas.Names[I];
-    LSchemaName := FLocalSchemas.ValueFromIndex[I];
-    if LAlias = '' then
-      Continue;
-    ComboSchema.Items.AddObject(LocalSchemaCaption(LAlias, LSchemaName),
-      TSchemaComboItem.CreateLocal(LAlias, LSchemaName));
+    RememberSchemaChoice;
+    if Assigned(FOnSchemaChanged) then
+      FOnSchemaChanged(Self);
   end;
 end;
 
-procedure TFRpChatFrame.SetLocalSchemas(AEntries: TStrings;
-  const APreferredAlias: string);
+procedure TFRpChatFrame.RunSchemaAction(Data: PtrInt);
+var
+  LHubDatabaseId: Int64;
+  LUrl: string;
+begin
+  if csDestroying in ComponentState then
+    Exit;
+  case TSchemaComboItemKind(Data) of
+    sckNewLocal:
+      RunConfigureLocalSchemas(LocalSchemaTargetAlias, '', True);
+    sckNewCloud:
+      begin
+        if not NewCloudSchemaEnabled then
+          Exit;
+        // On the Hub database of the schema chosen, or of the Agent
+        // connection of the report
+        LHubDatabaseId := GetHubDatabaseId;
+        if LHubDatabaseId <= 0 then
+          LHubDatabaseId := FContextHubDatabaseId;
+        LUrl := CNewCloudSchemaUrl;
+        if LHubDatabaseId > 0 then
+          LUrl := LUrl + '&hubDatabaseId=' + IntToStr(LHubDatabaseId);
+        TRpAuthManager.Instance.OpenUrl(LUrl);
+      end;
+  end;
+end;
+
+function TFRpChatFrame.SchemaItem(AIndex: Integer): TSchemaComboItem;
+begin
+  Result := nil;
+  if (AIndex >= 0) and (AIndex < ComboSchema.Items.Count) then
+    Result := TSchemaComboItem(ComboSchema.Items.Objects[AIndex]);
+end;
+
+function TFRpChatFrame.SelectedSchemaItem: TSchemaComboItem;
+begin
+  Result := SchemaItem(ComboSchema.ItemIndex);
+  if (Result <> nil) and not Result.IsSchema then
+    Result := nil;
+end;
+
+function TFRpChatFrame.HasSchemaItems: Boolean;
 var
   I: Integer;
-  LKnown: Boolean;
 begin
-  FLocalSchemas.Clear;
-  if AEntries <> nil then
-    FLocalSchemas.Assign(AEntries);
-  FPreferredLocalAlias := APreferredAlias;
-  // The selected direct connection (or subschema) may be gone
-  LKnown := False;
-  for I := 0 to FLocalSchemas.Count - 1 do
-    if SameText(FLocalSchemas.Names[I], FLocalAlias) and
-      SameText(FLocalSchemas.ValueFromIndex[I], FLocalSchemaName) then
-      LKnown := True;
-  if not LKnown then
-  begin
-    FLocalAlias := '';
-    FLocalSchemaName := '';
-  end;
-  ComboSchema.Items.BeginUpdate;
+  Result := False;
+  for I := 0 to ComboSchema.Items.Count - 1 do
+    if (SchemaItem(I) <> nil) and SchemaItem(I).IsSchema then
+      Exit(True);
+end;
+
+// More than the plan allows with the AI in the cloud (not with an Agent)
+function TFRpChatFrame.SchemaItemExceedsPlan(AItem: TSchemaComboItem): Boolean;
+begin
+  Result := (AItem <> nil) and AItem.IsSchema and (AItem.Tables >= 0) and
+    (not SameText(GetAITier, 'LocalAgent')) and
+    TRpAuthManager.Instance.SchemaExceedsTier(AItem.Tables, AItem.WidestColumns);
+end;
+
+function TFRpChatFrame.SchemaItemText(AItem: TSchemaComboItem): string;
+begin
+  Result := AItem.Caption;
+  if SchemaItemExceedsPlan(AItem) then
+    Result := CSchemaWarning + Result
+  else if (AItem.Kind = sckNewCloud) and not NewCloudSchemaEnabled then
+    Result := Result + ' (' + TranslateStr(1842,
+      'This connection is not in the Hub') + ')';
+end;
+
+// The warnings of the plan (the tier, the provider) and "New cloud
+// schema..." (the selection) change without rebuilding the list
+procedure TFRpChatFrame.RefreshSchemaCaptions;
+var
+  I, LIndex: Integer;
+  LItem: TSchemaComboItem;
+  LText: string;
+begin
+  FSchemaCaptionsPending := False;
+  LIndex := ComboSchema.ItemIndex;
+  FSelectingSchema := True;
   try
-    RemoveLocalSchemaItems;
-    AddLocalSchemaItems;
+    for I := 0 to ComboSchema.Items.Count - 1 do
+    begin
+      LItem := SchemaItem(I);
+      if LItem = nil then
+        Continue;
+      LText := SchemaItemText(LItem);
+      if ComboSchema.Items[I] <> LText then
+        ComboSchema.Items[I] := LText;
+    end;
+    if ComboSchema.ItemIndex <> LIndex then
+      ComboSchema.ItemIndex := LIndex;
   finally
+    FSelectingSchema := False;
+  end;
+  if SchemaItemExceedsPlan(SelectedSchemaItem) then
+    ComboSchema.Hint := TranslateStr(1844, 'More than your plan allows with ' +
+      'the AI in the cloud: choose a smaller schema or use the AI on your Agent.')
+  else
+    ComboSchema.Hint := '';
+end;
+
+// The list: the local schemas, the ones in the cloud and the two actions
+procedure TFRpChatFrame.RebuildSchemaItems;
+var
+  I, LTables, LWidest: Integer;
+  LAlias, LSchemaName, LDisplayName, LValue: string;
+  LItem: TSchemaComboItem;
+  LParts: TStringList;
+  LHubDatabaseId, LHubSchemaId: Int64;
+begin
+  ComboSchema.Items.BeginUpdate;
+  LParts := TStringList.Create;
+  FSelectingSchema := True;
+  try
+    ClearSchemaItems;
+    if FLocalSchemas.Count > 0 then
+    begin
+      LItem := TSchemaComboItem.CreateKind(sckHeader,
+        SchemaHeaderCaption(TranslateStr(1836, 'Local')));
+      ComboSchema.Items.AddObject(LItem.Caption, LItem);
+      for I := 0 to FLocalSchemas.Count - 1 do
+      begin
+        LAlias := FLocalSchemas.Names[I];
+        LSchemaName := FLocalSchemas.ValueFromIndex[I];
+        if LAlias = '' then
+          Continue;
+        LItem := TSchemaComboItem.CreateLocal(LAlias, LSchemaName);
+        if I < FLocalSizes.Count then
+          ParseSchemaSize(FLocalSizes[I], LItem.Tables, LItem.WidestColumns);
+        LItem.Caption := LocalSchemaCaption(LAlias, LSchemaName) +
+          SchemaSizeSuffix(LItem.Tables);
+        ComboSchema.Items.AddObject(LItem.Caption, LItem);
+      end;
+    end;
+    if FHubSchemaLines.Count > 0 then
+    begin
+      LItem := TSchemaComboItem.CreateKind(sckHeader,
+        SchemaHeaderCaption(TranslateStr(1837, 'In the cloud')));
+      ComboSchema.Items.AddObject(LItem.Caption, LItem);
+      LParts.Delimiter := '|';
+      LParts.StrictDelimiter := True;
+      for I := 0 to FHubSchemaLines.Count - 1 do
+      begin
+        LDisplayName := FHubSchemaLines.Names[I];
+        LValue := FHubSchemaLines.ValueFromIndex[I];
+        LParts.DelimitedText := LValue;
+        LHubDatabaseId := 0;
+        LHubSchemaId := 0;
+        if LParts.Count >= 2 then
+        begin
+          LHubDatabaseId := StrToInt64Def(LParts[0], 0);
+          LHubSchemaId := StrToInt64Def(LParts[1], 0);
+        end;
+        if LParts.Count >= 3 then
+          LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LParts[2])
+        else
+          LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, '');
+        if ParseSchemaSize(FHubSizes.Values[IntToStr(LHubSchemaId)], LTables,
+          LWidest) then
+        begin
+          LItem.Tables := LTables;
+          LItem.WidestColumns := LWidest;
+        end;
+        LItem.Caption := LDisplayName + SchemaSizeSuffix(LItem.Tables);
+        ComboSchema.Items.AddObject(LItem.Caption, LItem);
+      end;
+    end;
+    if ComboSchema.Items.Count > 0 then
+    begin
+      LItem := TSchemaComboItem.CreateKind(sckHeader, CSchemaRule + CSchemaRule +
+        CSchemaRule + CSchemaRule + CSchemaRule);
+      ComboSchema.Items.AddObject(LItem.Caption, LItem);
+    end;
+    LItem := TSchemaComboItem.CreateKind(sckNewLocal,
+      TranslateStr(1838, 'New local schema...'));
+    ComboSchema.Items.AddObject(LItem.Caption, LItem);
+    LItem := TSchemaComboItem.CreateKind(sckNewCloud,
+      TranslateStr(1839, 'New cloud schema...'));
+    ComboSchema.Items.AddObject(LItem.Caption, LItem);
+  finally
+    FSelectingSchema := False;
+    LParts.Free;
     ComboSchema.Items.EndUpdate;
   end;
   SelectCurrentSchema;
+end;
+
+procedure TFRpChatFrame.SetLocalSchemas(AEntries: TStrings;
+  const APreferredAlias: string; ASizes: TStrings);
+var
+  I: Integer;
+  LAliasKnown, LKnown: Boolean;
+begin
+  FLocalSchemas.Clear;
+  FLocalSizes.Clear;
+  if AEntries <> nil then
+    FLocalSchemas.Assign(AEntries);
+  if ASizes <> nil then
+    FLocalSizes.Assign(ASizes);
+  FPreferredLocalAlias := APreferredAlias;
+  // The selected direct connection may be gone, or only its subschema (then
+  // all its tables)
+  LAliasKnown := False;
+  LKnown := False;
+  for I := 0 to FLocalSchemas.Count - 1 do
+    if SameText(FLocalSchemas.Names[I], FLocalAlias) then
+    begin
+      LAliasKnown := True;
+      if SameText(FLocalSchemas.ValueFromIndex[I], FLocalSchemaName) then
+        LKnown := True;
+    end;
+  if not LAliasKnown then
+    FLocalAlias := '';
+  if not LKnown then
+    FLocalSchemaName := '';
+  RebuildSchemaItems;
 end;
 
 procedure TFRpChatFrame.SelectLocalSchema(const AAlias, ASchemaName: string);
@@ -1646,7 +2016,7 @@ begin
   else if AMessage is TRpQueuedSchemasPayload then
   begin
     LSchemas := TRpQueuedSchemasPayload(AMessage);
-    ApplyLoadedSchemas(LSchemas.Schemas, LSchemas.ReloadVersion);
+    ApplyLoadedSchemas(LSchemas.Schemas, LSchemas.Sizes, LSchemas.ReloadVersion);
   end
   else if AMessage is TRpQueuedDesignChatPayload then
     HandleDesignChatPayload(AMessage)
@@ -1687,9 +2057,8 @@ end;
 
 procedure TFRpChatFrame.SelectCurrentSchema;
 var
-  I: Integer;
-  LItem: TSchemaComboItem;
   LFound: Boolean;
+  LRemembered: Int64;
 
   function SelectLocalItem(const AAlias, ASchemaName: string): Boolean;
   var
@@ -1697,10 +2066,10 @@ var
     LLocal: TSchemaComboItem;
   begin
     Result := False;
-    for J := 1 to ComboSchema.Items.Count - 1 do
+    for J := 0 to ComboSchema.Items.Count - 1 do
     begin
-      LLocal := TSchemaComboItem(ComboSchema.Items.Objects[J]);
-      if (LLocal <> nil) and (LLocal.LocalAlias <> '') and
+      LLocal := SchemaItem(J);
+      if (LLocal <> nil) and (LLocal.Kind = sckLocal) and
         SameText(LLocal.LocalAlias, AAlias) and
         SameText(LLocal.LocalSchemaName, ASchemaName) then
       begin
@@ -1715,132 +2084,113 @@ var
     end;
   end;
 
+  function SelectHubItem(AHubDatabaseId, AHubSchemaId: Int64): Boolean;
+  var
+    J: Integer;
+    LHub: TSchemaComboItem;
+  begin
+    Result := False;
+    for J := 0 to ComboSchema.Items.Count - 1 do
+    begin
+      LHub := SchemaItem(J);
+      if (LHub <> nil) and (LHub.Kind = sckHub) and
+        ((AHubSchemaId = 0) or (LHub.HubSchemaId = AHubSchemaId)) and
+        ((AHubDatabaseId = 0) or (LHub.HubDatabaseId = AHubDatabaseId)) then
+      begin
+        ComboSchema.ItemIndex := J;
+        FHubDatabaseId := LHub.HubDatabaseId;
+        FHubSchemaId := LHub.HubSchemaId;
+        FSchemaApiKey := LHub.ApiKey;
+        Exit(True);
+      end;
+    end;
+  end;
+
 begin
+  // Nothing listed yet: the context waits for the list
   if ComboSchema.Items.Count = 0 then
     Exit;
-  LFound := False;
-  // The direct connection chosen (its subschema, or all its tables when the
-  // subschema is gone)
-  if FLocalAlias <> '' then
-  begin
-    LFound := SelectLocalItem(FLocalAlias, FLocalSchemaName) or
-      SelectLocalItem(FLocalAlias, '');
+  FSelectingSchema := True;
+  try
+    LFound := False;
+    // The direct connection chosen (its subschema, or all its tables when the
+    // subschema is gone)
+    if FLocalAlias <> '' then
+    begin
+      LFound := SelectLocalItem(FLocalAlias, FLocalSchemaName) or
+        SelectLocalItem(FLocalAlias, '');
+      if not LFound then
+      begin
+        FLocalAlias := '';
+        FLocalSchemaName := '';
+      end;
+    end;
+    // A specific Hub schema first
+    if (not LFound) and (FHubSchemaId <> 0) then
+      LFound := SelectHubItem(0, FHubSchemaId);
+    // Then the schema of the connection chosen before in this session, or its
+    // first one
+    if (not LFound) and (FHubDatabaseId <> 0) then
+    begin
+      LRemembered := StrToInt64Def(
+        RememberedChoice('H:' + IntToStr(FHubDatabaseId)), 0);
+      LFound := ((LRemembered <> 0) and SelectHubItem(FHubDatabaseId, LRemembered)) or
+        SelectHubItem(FHubDatabaseId, 0);
+    end;
+    // A report on a direct connection without a Hub schema: its connection
+    // (the subschema chosen before in this session, or all its tables), so
+    // the new datasets go there and not to a Reportman AI Agent one
+    if (not LFound) and (FHubSchemaId = 0) and (FHubDatabaseId = 0) and
+      (FPreferredLocalAlias <> '') then
+      LFound := SelectLocalItem(FPreferredLocalAlias,
+        RememberedChoice('L:' + UpperCase(FPreferredLocalAlias))) or
+        SelectLocalItem(FPreferredLocalAlias, '');
+    // Else the very first Hub schema; the Hub schema of the context waits
+    // for the Hub list
     if not LFound then
     begin
-      FLocalAlias := '';
-      FLocalSchemaName := '';
+      if (not FHubSchemasLoaded) and ((FHubSchemaId <> 0) or
+        (FHubDatabaseId <> 0)) then
+        ComboSchema.ItemIndex := -1
+      else
+      begin
+        LFound := SelectHubItem(0, 0);
+        if not LFound then
+        begin
+          ComboSchema.ItemIndex := -1;
+          FHubDatabaseId := 0;
+          FHubSchemaId := 0;
+          FSchemaApiKey := '';
+        end;
+      end;
     end;
+  finally
+    FSelectingSchema := False;
   end;
-  // A specific HubSchemaId first
-  if (not LFound) and (FHubSchemaId <> 0) then
-    for I := 1 to ComboSchema.Items.Count - 1 do
-    begin
-      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-      if (LItem <> nil) and (LItem.LocalAlias = '') and
-        (LItem.HubSchemaId = FHubSchemaId) then
-      begin
-        ComboSchema.ItemIndex := I;
-        FHubDatabaseId := LItem.HubDatabaseId;
-        FHubSchemaId := LItem.HubSchemaId;
-        FSchemaApiKey := LItem.ApiKey;
-        LFound := True;
-        Break;
-      end;
-    end;
-  // Then the first schema of the connection
-  if (not LFound) and (FHubDatabaseId <> 0) then
-    for I := 1 to ComboSchema.Items.Count - 1 do
-    begin
-      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-      if (LItem <> nil) and (LItem.LocalAlias = '') and
-        (LItem.HubDatabaseId = FHubDatabaseId) then
-      begin
-        ComboSchema.ItemIndex := I;
-        FHubSchemaId := LItem.HubSchemaId;
-        FSchemaApiKey := LItem.ApiKey;
-        LFound := True;
-        Break;
-      end;
-    end;
-  // A report on a direct connection without a Hub schema: its connection,
-  // so the new datasets go there and not to a Reportman AI Agent one
-  if (not LFound) and (FHubSchemaId = 0) and (FHubDatabaseId = 0) and
-    (FPreferredLocalAlias <> '') then
-    LFound := SelectLocalItem(FPreferredLocalAlias, '');
-  // Else the very first Hub schema
-  if not LFound then
-  begin
-    for I := 1 to ComboSchema.Items.Count - 1 do
-    begin
-      LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-      if (LItem <> nil) and (LItem.LocalAlias = '') then
-      begin
-        ComboSchema.ItemIndex := I;
-        FHubDatabaseId := LItem.HubDatabaseId;
-        FHubSchemaId := LItem.HubSchemaId;
-        FSchemaApiKey := LItem.ApiKey;
-        LFound := True;
-        Break;
-      end;
-    end;
-    if not LFound then
-    begin
-      ComboSchema.ItemIndex := 0;
-      FHubDatabaseId := 0;
-      FHubSchemaId := 0;
-      FSchemaApiKey := '';
-    end;
-  end;
-  UpdateSchemaConfigHint;
+  FLastSchemaIndex := ComboSchema.ItemIndex;
+  RefreshSchemaCaptions;
 end;
 
-procedure TFRpChatFrame.ApplyLoadedSchemas(ALoadedSchemas: TStringList;
+procedure TFRpChatFrame.ApplyLoadedSchemas(ALoadedSchemas, ASizes: TStringList;
   AReloadVersion: Integer);
 var
   I: Integer;
-  LDisplayName, LValue, LApiKey: string;
-  LParts: TStringList;
-  LHubDatabaseId, LHubSchemaId: Int64;
 begin
+  // The payload owns the lists
   if AReloadVersion <> FUserSchemasReloadVersion then
     Exit;
-  ComboSchema.Items.BeginUpdate;
-  LParts := TStringList.Create;
   try
-    LParts.Delimiter := '|';
-    LParts.StrictDelimiter := True;
-    ClearSchemaItems;
-    ComboSchema.Items.Add('');
     for I := 0 to ALoadedSchemas.Count - 1 do
-    begin
-      LDisplayName := ALoadedSchemas.Names[I];
-      LValue := ALoadedSchemas.ValueFromIndex[I];
-      LParts.DelimitedText := LValue;
-      if LParts.Count >= 2 then
-      begin
-        LHubDatabaseId := StrToInt64Def(LParts[0], 0);
-        LHubSchemaId := StrToInt64Def(LParts[1], 0);
-      end
-      else
-      begin
-        LHubDatabaseId := 0;
-        LHubSchemaId := 0;
-      end;
-      if LParts.Count >= 3 then
-        LApiKey := LParts[2]
-      else
-        LApiKey := '';
-      TRpAuthManager.Instance.Log('ApplyLoadedSchemas: DisplayName=' + LDisplayName +
-        ' RawValue=' + LValue + ' ParsedHubDatabaseId=' + IntToStr(LHubDatabaseId) +
-        ' ParsedHubSchemaId=' + IntToStr(LHubSchemaId) + ' ApiKey=' + RpMaskSecret(LApiKey));
-      ComboSchema.Items.AddObject(LDisplayName,
-        TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LApiKey));
-    end;
-    AddLocalSchemaItems;
-    SelectCurrentSchema;
+      TRpAuthManager.Instance.Log('ApplyLoadedSchemas: DisplayName=' +
+        ALoadedSchemas.Names[I] + ' DatabaseAndSchema=' +
+        Copy(ALoadedSchemas.ValueFromIndex[I], 1,
+        LastDelimiter('|', ALoadedSchemas.ValueFromIndex[I]) - 1));
+    // The Hub schemas with the local ones of the report
+    FHubSchemaLines.Assign(ALoadedSchemas);
+    FHubSizes.Assign(ASizes);
+    FHubSchemasLoaded := True;
+    RebuildSchemaItems;
   finally
-    LParts.Free;
-    ComboSchema.Items.EndUpdate;
     FLoadingSchemas := False;
     FSchemaChangeFromLoad := True;
     try
@@ -1855,27 +2205,19 @@ begin
   end;
 end;
 
-procedure TFRpChatFrame.ComboSchemaChange(Sender: TObject);
+// The schema of the item selected (none: no schema)
+procedure TFRpChatFrame.ApplySelectedSchemaItem;
 var
   LItem: TSchemaComboItem;
 begin
-  if FLoadingSchemas then
-    Exit;
-  if ComboSchema.ItemIndex > 0 then
+  LItem := SelectedSchemaItem;
+  if LItem <> nil then
   begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
-    if LItem <> nil then
-    begin
-      FHubDatabaseId := LItem.HubDatabaseId;
-      FHubSchemaId := LItem.HubSchemaId;
-      FSchemaApiKey := LItem.ApiKey;
-      FLocalAlias := LItem.LocalAlias;
-      FLocalSchemaName := LItem.LocalSchemaName;
-      TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=' +
-        IntToStr(ComboSchema.ItemIndex) + ' HubDatabaseId=' + IntToStr(FHubDatabaseId) +
-        ' HubSchemaId=' + IntToStr(FHubSchemaId) + ' LocalAlias=' + FLocalAlias +
-        ' LocalSchema=' + FLocalSchemaName + ' ApiKey=' + RpMaskSecret(FSchemaApiKey));
-    end;
+    FHubDatabaseId := LItem.HubDatabaseId;
+    FHubSchemaId := LItem.HubSchemaId;
+    FSchemaApiKey := LItem.ApiKey;
+    FLocalAlias := LItem.LocalAlias;
+    FLocalSchemaName := LItem.LocalSchemaName;
   end
   else
   begin
@@ -1884,11 +2226,121 @@ begin
     FSchemaApiKey := '';
     FLocalAlias := '';
     FLocalSchemaName := '';
-    TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=0 HubDatabaseId=0 HubSchemaId=0 ApiKey=');
   end;
-  UpdateSchemaConfigHint;
+  FLastSchemaIndex := ComboSchema.ItemIndex;
+  TRpAuthManager.Instance.Log('ComboSchemaChange: ItemIndex=' +
+    IntToStr(ComboSchema.ItemIndex) + ' HubDatabaseId=' + IntToStr(FHubDatabaseId) +
+    ' HubSchemaId=' + IntToStr(FHubSchemaId) + ' LocalAlias=' + FLocalAlias +
+    ' LocalSchema=' + FLocalSchemaName + ' ApiKey=' + RpMaskSecret(FSchemaApiKey));
+end;
+
+// The schema chosen for its connection, for the rest of the session
+procedure TFRpChatFrame.RememberSchemaChoice;
+begin
+  if FLocalAlias <> '' then
+    RememberChoice('L:' + UpperCase(FLocalAlias), FLocalSchemaName)
+  else if (FHubDatabaseId <> 0) and (FHubSchemaId <> 0) then
+    RememberChoice('H:' + IntToStr(FHubDatabaseId), IntToStr(FHubSchemaId));
+end;
+
+procedure TFRpChatFrame.ComboSchemaChange(Sender: TObject);
+var
+  LItem: TSchemaComboItem;
+  LIndex, LStep: Integer;
+begin
+  if FLoadingSchemas or FSelectingSchema then
+    Exit;
+  LItem := SchemaItem(ComboSchema.ItemIndex);
+  if (LItem <> nil) and not LItem.IsSchema then
+  begin
+    // In the open list the click decides (ComboSchemaCloseUp)
+    if ComboSchema.DroppedDown then
+      Exit;
+    // The selection of the list just closed (it may come after the close):
+    // back to the schema chosen and the action runs
+    if FSchemaListClosing then
+    begin
+      ComboSchemaCloseUp(ComboSchema);
+      Exit;
+    end;
+    // The keys of the closed list skip a header and do not run an action
+    LIndex := -1;
+    if LItem.Kind = sckHeader then
+    begin
+      if ComboSchema.ItemIndex > FLastSchemaIndex then
+        LStep := 1
+      else
+        LStep := -1;
+      LIndex := ComboSchema.ItemIndex;
+      while (LIndex >= 0) and (LIndex < ComboSchema.Items.Count) and
+        not SchemaItem(LIndex).IsSchema do
+        Inc(LIndex, LStep);
+      if (LIndex < 0) or (LIndex >= ComboSchema.Items.Count) then
+        LIndex := -1;
+    end;
+    if LIndex < 0 then
+    begin
+      SelectCurrentSchema;
+      Exit;
+    end;
+    FSelectingSchema := True;
+    try
+      ComboSchema.ItemIndex := LIndex;
+    finally
+      FSelectingSchema := False;
+    end;
+  end;
+  ApplySelectedSchemaItem;
+  if not FSchemaChangeFromLoad then
+    RememberSchemaChoice;
+  // Not in the open list (the keys move through it): when it closes
+  if ComboSchema.DroppedDown then
+    FSchemaCaptionsPending := True
+  else
+    RefreshSchemaCaptions;
   if Assigned(FOnSchemaChanged) then
     FOnSchemaChanged(Self);
+end;
+
+// A header or an action clicked in the open list: back to the schema chosen,
+// and the action runs once the list is closed
+procedure TFRpChatFrame.ComboSchemaCloseUp(Sender: TObject);
+var
+  LItem: TSchemaComboItem;
+begin
+  if FSchemaCaptionsPending then
+    RefreshSchemaCaptions;
+  LItem := SchemaItem(ComboSchema.ItemIndex);
+  if (LItem = nil) or LItem.IsSchema then
+  begin
+    // The selection may come after the close: until the messages of this
+    // click are handled (SchemaListClosed)
+    if not FSchemaListClosing then
+    begin
+      FSchemaListClosing := True;
+      Application.QueueAsyncCall(SchemaListClosed, 0);
+    end;
+    Exit;
+  end;
+  FSchemaListClosing := False;
+  SelectCurrentSchema;
+  if LItem.Kind in [sckNewLocal, sckNewCloud] then
+    Application.QueueAsyncCall(RunSchemaAction, PtrInt(Ord(LItem.Kind)));
+end;
+
+procedure TFRpChatFrame.SchemaListClosed(Data: PtrInt);
+begin
+  FSchemaListClosing := False;
+end;
+
+procedure TFRpChatFrame.ComboSchemaDropDown(Sender: TObject);
+begin
+  RefreshSchemaCaptions;
+end;
+
+procedure TFRpChatFrame.AISelectionProviderChange(Sender: TObject);
+begin
+  RefreshSchemaCaptions;
 end;
 
 procedure TFRpChatFrame.AddAssistantMessage(const AText: string);
@@ -2052,7 +2504,7 @@ var
 begin
   if not CRpChatEnableOnlineInitialization then
     Exit;
-  LNeedsSchemas := FShowSchemaSelector and (ComboSchema.Items.Count = 0);
+  LNeedsSchemas := FShowSchemaSelector and not FHubSchemasLoaded;
   LNeedsAgents := (FAISelection <> nil) and (FAISelection.AgentEndpointCount = 0);
   if FOnlineInitializationQueued and not (LNeedsSchemas or LNeedsAgents) then
     Exit;
@@ -2120,7 +2572,11 @@ begin
     FSchemaApiKey := '';
     FLocalAlias := '';
     FLocalSchemaName := '';
+    FHubSchemaLines.Clear;
+    FHubSizes.Clear;
+    FHubSchemasLoaded := False;
     ClearSchemaItems;
+    FLastSchemaIndex := -1;
   end;
   RefreshLayout;
 end;
@@ -2131,6 +2587,7 @@ begin
   FHubDatabaseId := AHubDatabaseId;
   FHubSchemaId := AHubSchemaId;
   FSchemaApiKey := ASchemaApiKey;
+  FContextHubDatabaseId := AHubDatabaseId;
   // A Hub context of the report wins over a direct connection chosen before
   if (AHubDatabaseId <> 0) or (AHubSchemaId <> 0) then
   begin
@@ -2326,6 +2783,8 @@ procedure TFRpChatFrame.UpdateUserProfile(AProfile: TJSONObject);
 begin
   if (FAISelection <> nil) and (AProfile <> nil) then
     FAISelection.UpdateFromUserProfile(AProfile);
+  // The plan may have changed: its warnings
+  RefreshSchemaCaptions;
 end;
 
 procedure TFRpChatFrame.HandleDesignChatPayload(APayload: TObject);
@@ -2457,8 +2916,9 @@ begin
     Exit;
   for I := 0 to ComboSchema.Items.Count - 1 do
   begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[I]);
-    if (LItem <> nil) and (LItem.HubSchemaId = AHubSchemaId) then
+    LItem := SchemaItem(I);
+    if (LItem <> nil) and (LItem.Kind = sckHub) and
+      (LItem.HubSchemaId = AHubSchemaId) then
       Exit(LItem.HubDatabaseId);
   end;
 end;
@@ -2467,12 +2927,9 @@ function TFRpChatFrame.GetHubDatabaseId: Int64;
 var
   LItem: TSchemaComboItem;
 begin
-  if ComboSchema.ItemIndex > 0 then
-  begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
-    if LItem <> nil then
-      Exit(LItem.HubDatabaseId);
-  end;
+  LItem := SelectedSchemaItem;
+  if LItem <> nil then
+    Exit(LItem.HubDatabaseId);
   Result := FHubDatabaseId;
 end;
 
@@ -2480,12 +2937,9 @@ function TFRpChatFrame.GetHubSchemaId: Int64;
 var
   LItem: TSchemaComboItem;
 begin
-  if ComboSchema.ItemIndex > 0 then
-  begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
-    if LItem <> nil then
-      Exit(LItem.HubSchemaId);
-  end;
+  LItem := SelectedSchemaItem;
+  if LItem <> nil then
+    Exit(LItem.HubSchemaId);
   Result := FHubSchemaId;
 end;
 
@@ -2493,12 +2947,9 @@ function TFRpChatFrame.GetSchemaApiKey: string;
 var
   LItem: TSchemaComboItem;
 begin
-  if ComboSchema.ItemIndex > 0 then
-  begin
-    LItem := TSchemaComboItem(ComboSchema.Items.Objects[ComboSchema.ItemIndex]);
-    if LItem <> nil then
-      Exit(LItem.ApiKey);
-  end;
+  LItem := SelectedSchemaItem;
+  if LItem <> nil then
+    Exit(LItem.ApiKey);
   Result := FSchemaApiKey;
 end;
 
@@ -2607,5 +3058,10 @@ begin
     GetSchemaApiKey);
   UpdateButtons;
 end;
+
+initialization
+
+finalization
+  FreeAndNil(GSchemaChoices);
 
 end.

@@ -58,6 +58,7 @@ type
     FAgentEndpoints: array of TAgentEndpointInfo;
     FProgressTokens: TStringList;
     FOnStopRequest: TNotifyEvent;
+    FOnProviderChange: TNotifyEvent;
     FShowGauge: Boolean;
     FLblProvider: TLabel;
     FLblMode: TLabel;
@@ -129,6 +130,8 @@ type
     property ShowGauge: Boolean read FShowGauge write SetShowGauge;
     property InferenceActive: Boolean read GetInferenceActive;
     property OnStopRequest: TNotifyEvent read FOnStopRequest write FOnStopRequest;
+    // The provider (AITier) changed: chosen or restored
+    property OnProviderChange: TNotifyEvent read FOnProviderChange write FOnProviderChange;
     // Properties for the HTTP driver
     property AITier: string read GetAITier;
     property AIMode: string read GetAIMode;
@@ -762,6 +765,8 @@ procedure TFRpAISelectionLCL.ComboAIProviderChange(Sender: TObject);
 begin
   UpdateGaugeVisibility;
   LayoutGaugeControls;
+  if Assigned(FOnProviderChange) then
+    FOnProviderChange(Self);
 end;
 
 function TFRpAISelectionLCL.GetAITier: string;

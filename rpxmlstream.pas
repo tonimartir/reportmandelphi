@@ -50,6 +50,8 @@ function WStringToRpString(astring:WideString):AnsiString;
 function RpStringToWString(rpstring:Ansistring):WideString;
 
 procedure WritePropertyI(propname:Ansistring;propvalue:integer;stream:TStream);
+// An Int64 with the type of WritePropertyI (Integer): read with StrToInt64
+procedure WritePropertyI64(propname:Ansistring;propvalue:Int64;stream:TStream);
 procedure WritePropertyD(propname:Ansistring;propvalue:double;stream:TStream);
 procedure WritePropertyBool(propname:Ansistring;propvalue:Boolean;stream:TStream);
 procedure WritePropertyS(propname:Ansistring;propvalue:AnsiString;stream:TStream);
@@ -144,7 +146,11 @@ begin
   WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
  if Trim(dinfo.SQLExplanationError)<>'' then
   WritePropertyW('SQLEXPLANATIONERROR',dinfo.SQLExplanationError,Stream);
- WritePropertyI('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
+ // Only with a value: a dataset without them is written as before
+ if dinfo.HubSchemaId<>0 then
+  WritePropertyI64('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
+ if dinfo.SchemaName<>'' then
+  WritePropertyW('SCHEMANAME',dinfo.SchemaName,Stream);
  WritePropertyS('DATASOURCE',AnsiString(dinfo.DataSource),Stream);
  WritePropertyS('MYBASEFILENAME',AnsiString(dinfo.MyBaseFileName),Stream);
  WritePropertyS('MYBASEFIELDS',AnsiString(dinfo.MyBaseFields),Stream);
@@ -765,6 +771,14 @@ begin
  WriteStringToStream(astring,stream);
 end;
 
+procedure WritePropertyI64(propname:Ansistring;propvalue:Int64;stream:TStream);
+var
+ astring:Ansistring;
+begin
+ astring:='<'+propname+' type="Integer">'+AnsiString(IntToStr(propvalue))+'</'+propname+'>'+CRLF;
+ WriteStringToStream(astring,stream);
+end;
+
 function RpDoubleToStr(avalue:double):Ansistring;
 var
  olddec:char;
@@ -1261,6 +1275,9 @@ begin
   else
   if propname='HUBSCHEMAID' then
    ditem.HubSchemaId:=StrToInt64Def(String(propvalue),0)
+  else
+  if propname='SCHEMANAME' then
+   ditem.SchemaName:=RpStringToWString(propvalue)
  else
  if propname='DATASOURCE' then
   ditem.DataSource:=String(RpStringToString(propvalue))

@@ -1,0 +1,2 @@
+# Byte-for-byte fixtures: never convert their line endings
+expected_plain* -text

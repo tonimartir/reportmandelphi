@@ -1244,7 +1244,7 @@ var
   function OnlineLoaded: Boolean;
   begin
     Result := (LChat.AISelection.AgentEndpointCount > 0) and
-      (LChat.ComboSchema.Items.Count > 1) and not LChat.LoadingSchemas;
+      LChat.HasSchemaItems and not LChat.LoadingSchemas;
   end;
 
 begin
@@ -1574,7 +1574,7 @@ var
   LMain: TFRpMainFLCL;
   function Cond9: Boolean;
   begin
-    Result := LMain.ChatFrame.ComboSchema.Items.Count > 1;
+    Result := LMain.ChatFrame.HasSchemaItems;
   end;
 
 begin

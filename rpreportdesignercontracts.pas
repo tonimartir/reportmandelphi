@@ -26,6 +26,9 @@ const
   // ModifyReport turn status: the cloud waits for the columns of SQL that
   // only the client can run (docs: copiloto-sql-en-el-cliente-plan, 2.1)
   RP_MODIFY_STATUS_NEEDS_CLIENT_SQL = 'NeedsClientSqlResults';
+  // errorCode of a schema larger than the plan of who pays allows with the
+  // AI in the cloud: the message carries the numbers and the way out
+  RP_ERROR_SCHEMA_TOO_LARGE_FOR_TIER = 'SchemaTooLargeForTier';
 
 type
   TRpReportDesignerMode = (rdmFast, rdmReasoning);
@@ -43,6 +46,7 @@ type
     FLocalAlias: string;
     FLocalSchemaName: string;
     FName: string;
+    FSchemaName: string;
     FSchemaTablesJson: string;
   public
     procedure Assign(Source: TPersistent); override;
@@ -58,6 +62,10 @@ type
     property LocalAlias: string read FLocalAlias write FLocalAlias;
     property LocalSchemaName: string read FLocalSchemaName write FLocalSchemaName;
     property Name: string read FName write FName;
+    // The local subschema of the inline schema (schemaName, sent with
+    // schemaTables): the cloud gives it to the datasets it makes on the
+    // connection. '' = all the tables
+    property SchemaName: string read FSchemaName write FSchemaName;
     property SchemaTablesJson: string read FSchemaTablesJson write FSchemaTablesJson;
   end;
 
@@ -274,6 +282,7 @@ type
   private
     FCreditsConsumed: Integer;
     FDebugDetails: string;
+    FErrorCode: string;
     FErrorMessage: string;
     FHasCreditsConsumed: Boolean;
     FResult: TRpModifyReportResult;
@@ -288,6 +297,9 @@ type
     function ToJsonObject: TJSONObject;
     property CreditsConsumed: Integer read FCreditsConsumed write FCreditsConsumed;
     property DebugDetails: string read FDebugDetails write FDebugDetails;
+    // A code for the errors a client handles on its own
+    // (RP_ERROR_SCHEMA_TOO_LARGE_FOR_TIER); '' for the rest
+    property ErrorCode: string read FErrorCode write FErrorCode;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
     property HasCreditsConsumed: Boolean read FHasCreditsConsumed write FHasCreditsConsumed;
     property ResultData: TRpModifyReportResult read FResult;
@@ -360,6 +372,7 @@ type
     FCreditsConsumed: Integer;
     FDataSources: TObjectList;
     FDebugDetails: string;
+    FErrorCode: string;
     FErrorMessage: string;
     FHasCreditsConsumed: Boolean;
     FSteps: TObjectList;
@@ -375,6 +388,8 @@ type
     property CreditsConsumed: Integer read FCreditsConsumed write FCreditsConsumed;
     property DataSources: TObjectList read FDataSources;
     property DebugDetails: string read FDebugDetails write FDebugDetails;
+    // As TRpApiModifyReportResult.ErrorCode
+    property ErrorCode: string read FErrorCode write FErrorCode;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
     property HasCreditsConsumed: Boolean read FHasCreditsConsumed write FHasCreditsConsumed;
     property Steps: TObjectList read FSteps;
@@ -410,7 +425,11 @@ function RpReportDocumentFormatToString(AFormat: TRpReportDocumentFormat): strin
 function RpReportDocumentFormatFromString(const AValue: string): TRpReportDocumentFormat;
 function RpAITierTypeToString(ATier: TRpAITierType): string;
 function RpAITierTypeFromString(const AValue: string): TRpAITierType;
-function RpComposeApiErrorMessage(const AErrorMessage, ADebugDetails: string): string;
+function RpComposeApiErrorMessage(const AErrorMessage, ADebugDetails: string): string; overload;
+// The same with the errorCode of the answer: the plan error is shown as the
+// cloud says it (its numbers and the way out), without the debug details
+function RpComposeApiErrorMessage(const AErrorMessage, AErrorCode,
+  ADebugDetails: string): string; overload;
 // The log line of a model call, '#7 . 1200 -> 340 tok . 4.2 s . 81.0 tok/s'
 // with a middle dot and an arrow (without the speed under 0.1 s)
 function RpFormatInferenceCallLog(const AProgressId: string; AInputTokens,
@@ -445,6 +464,7 @@ begin
     FName := LSource.Name;
     FDialect := LSource.Dialect;
     FSchemaTablesJson := LSource.SchemaTablesJson;
+    FSchemaName := LSource.SchemaName;
     FLocalAlias := LSource.LocalAlias;
     FLocalSchemaName := LSource.LocalSchemaName;
   end
@@ -458,6 +478,7 @@ var
 begin
   FName := '';
   FDialect := '';
+  FSchemaName := '';
   FSchemaTablesJson := '';
   if AObject = nil then
   begin
@@ -473,6 +494,9 @@ begin
     FSchemaTablesJson := LTables.ToJSON;
     FName := JsonValueToString(AObject.Values['name'], '');
     FDialect := JsonValueToString(AObject.Values['dialect'], '');
+    if (AObject.Values['schemaName'] <> nil) and
+      not (AObject.Values['schemaName'] is TJSONNull) then
+      FSchemaName := AObject.Values['schemaName'].Value;
   end;
 end;
 
@@ -499,6 +523,8 @@ begin
     if LTables = nil then
       LTables := TJSONArray.Create;
     Result.AddPair('schemaTables', LTables);
+    if FSchemaName <> '' then
+      Result.AddPair('schemaName', FSchemaName);
     Result.AddPair('hubDatabaseId', TJSONNumber.Create(0));
     Result.AddPair('hubSchemaId', TJSONNumber.Create(0));
     Exit;
@@ -935,6 +961,16 @@ begin
     Result := Trim(ADebugDetails);
 end;
 
+function RpComposeApiErrorMessage(const AErrorMessage, AErrorCode,
+  ADebugDetails: string): string;
+begin
+  if SameText(AErrorCode, RP_ERROR_SCHEMA_TOO_LARGE_FOR_TIER) and
+    (Trim(AErrorMessage) <> '') then
+    Result := Trim(AErrorMessage)
+  else
+    Result := RpComposeApiErrorMessage(AErrorMessage, ADebugDetails);
+end;
+
 procedure TRpTokenUsage.Assign(Source: TPersistent);
 var
   LSource: TRpTokenUsage;
@@ -1345,6 +1381,7 @@ begin
     LSource := TRpApiModifyReportResult(Source);
     FCreditsConsumed := LSource.CreditsConsumed;
     FDebugDetails := LSource.DebugDetails;
+    FErrorCode := LSource.ErrorCode;
     FErrorMessage := LSource.ErrorMessage;
     FHasCreditsConsumed := LSource.HasCreditsConsumed;
     FUserProfileJson := LSource.UserProfileJson;
@@ -1395,6 +1432,10 @@ begin
   FHasCreditsConsumed := AObject.Values['creditsConsumed'] <> nil;
   FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
   FDebugDetails := JsonValueToString(AObject.Values['debugDetails'], '');
+  FErrorCode := '';
+  if (AObject.Values['errorCode'] <> nil) and
+    not (AObject.Values['errorCode'] is TJSONNull) then
+    FErrorCode := AObject.Values['errorCode'].Value;
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   LUserProfile := AObject.Values['userProfile'];
   if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
@@ -1418,6 +1459,8 @@ begin
   if FHasCreditsConsumed then
     Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
   Result.AddPair('debugDetails', FDebugDetails);
+  if FErrorCode <> '' then
+    Result.AddPair('errorCode', FErrorCode);
   Result.AddPair('errorMessage', FErrorMessage);
   if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
   begin
@@ -1642,6 +1685,7 @@ begin
     LSource := TRpApiPreprocessSqlContextResult(Source);
     FCreditsConsumed := LSource.CreditsConsumed;
     FDebugDetails := LSource.DebugDetails;
+    FErrorCode := LSource.ErrorCode;
     FErrorMessage := LSource.ErrorMessage;
     FHasCreditsConsumed := LSource.HasCreditsConsumed;
     FUserProfileJson := LSource.UserProfileJson;
@@ -1724,6 +1768,10 @@ begin
   FHasCreditsConsumed := AObject.Values['creditsConsumed'] <> nil;
   FCreditsConsumed := JsonValueToInt(AObject.Values['creditsConsumed'], 0);
   FDebugDetails := JsonValueToString(AObject.Values['debugDetails'], '');
+  FErrorCode := '';
+  if (AObject.Values['errorCode'] <> nil) and
+    not (AObject.Values['errorCode'] is TJSONNull) then
+    FErrorCode := AObject.Values['errorCode'].Value;
   FErrorMessage := JsonValueToString(AObject.Values['errorMessage'], '');
   LUserProfile := AObject.Values['userProfile'];
   if (LUserProfile <> nil) and (LUserProfile is TJSONObject) then
@@ -1754,6 +1802,8 @@ begin
   if FHasCreditsConsumed then
     Result.AddPair('creditsConsumed', TJSONNumber.Create(FCreditsConsumed));
   Result.AddPair('debugDetails', FDebugDetails);
+  if FErrorCode <> '' then
+    Result.AddPair('errorCode', FErrorCode);
   Result.AddPair('errorMessage', FErrorMessage);
   if (FUserProfileJson <> '') and (not SameText(Trim(FUserProfileJson), 'null')) then
   begin

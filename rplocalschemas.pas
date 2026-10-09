@@ -131,6 +131,10 @@ type
     // The JSON array of the tables of a subschema ('' or an unknown one:
     // all the tables), the schemaTables of the inline config
     function SchemaTablesJson(const ASchemaName: string): string;
+    // What SchemaTablesJson sends, for the limits of the plan: its tables
+    // and the columns of the widest one
+    procedure GetSchemaSize(const ASchemaName: string; out ATables,
+      AWidestColumns: Integer);
     property Alias: string read FAlias write FAlias;
     property Dialect: string read FDialect write FDialect;
     property FileName: string read FFileName;
@@ -161,6 +165,20 @@ function RpLoadLocalSchema(ADatabase: TRpDatabaseInfoItem;
 // The names of the subschemas of the file of a connection, without
 // generating it
 procedure RpListLocalSubSchemas(ADatabase: TRpDatabaseInfoItem; AList: TStrings);
+// The subschema ASchemaName of the file of the connection, as the file
+// spells it; '' (all the tables) when it is not there or there is no file
+function RpExistingLocalSubSchema(ADatabase: TRpDatabaseInfoItem;
+  const ASchemaName: string): string;
+// The schema selector of the AI chat for a direct connection: adds to
+// AEntries 'ALIAS=' (all the tables) and 'ALIAS=<subschema>', and to ASizes
+// the size of each one, '<tables>,<widest columns>' ('' while the file does
+// not exist: it is not generated to list)
+procedure RpListLocalSchemaEntries(ADatabase: TRpDatabaseInfoItem;
+  AEntries, ASizes: TStrings);
+// The tables of a JSON array of schemaTables (the inline config, a Hub
+// schema) and the columns of the widest one
+procedure RpSchemaTablesSize(ATables: TJSONArray; out ATableCount,
+  AWidestColumns: Integer);
 // A copy of the connection in a list of its own (the caller frees it) that
 // reads the same connections file: it can be connected without touching the
 // connection of the report (the designer may be opening its datasets)
@@ -903,6 +921,22 @@ begin
   finally
     LChosen.Free;
     LArray.Free;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.GetSchemaSize(const ASchemaName: string;
+  out ATables, AWidestColumns: Integer);
+var
+  LValue: TJSONValue;
+begin
+  ATables := 0;
+  AWidestColumns := 0;
+  LValue := TJSONObject.ParseJSONValue(SchemaTablesJson(ASchemaName));
+  try
+    if LValue is TJSONArray then
+      RpSchemaTablesSize(TJSONArray(LValue), ATables, AWidestColumns);
+  finally
+    LValue.Free;
   end;
 end;
 
@@ -2051,6 +2085,95 @@ begin
       AList.Add(LFile.Schemas[I].Name);
   finally
     LFile.Free;
+  end;
+end;
+
+function RpExistingLocalSubSchema(ADatabase: TRpDatabaseInfoItem;
+  const ASchemaName: string): string;
+var
+  I: Integer;
+  LNames: TStringList;
+begin
+  Result := '';
+  if Trim(ASchemaName) = '' then
+    Exit;
+  LNames := TStringList.Create;
+  try
+    RpListLocalSubSchemas(ADatabase, LNames);
+    for I := 0 to LNames.Count - 1 do
+      if SameText(LNames[I], Trim(ASchemaName)) then
+        Exit(LNames[I]);
+  finally
+    LNames.Free;
+  end;
+end;
+
+procedure RpListLocalSchemaEntries(ADatabase: TRpDatabaseInfoItem;
+  AEntries, ASizes: TStrings);
+
+  procedure AddEntry(const ASchemaName, ASize: string);
+  begin
+    AEntries.Add(ADatabase.Alias + '=' + ASchemaName);
+    if ASizes <> nil then
+      ASizes.Add(ASize);
+  end;
+
+  function SizeText(AFile: TRpLocalSchemaFile; const ASchemaName: string): string;
+  var
+    LTables, LWidest: Integer;
+  begin
+    AFile.GetSchemaSize(ASchemaName, LTables, LWidest);
+    Result := IntToStr(LTables) + ',' + IntToStr(LWidest);
+  end;
+
+var
+  I: Integer;
+  LFile: TRpLocalSchemaFile;
+begin
+  if not RpIsLocalSqlDatabase(ADatabase) then
+    Exit;
+  try
+    LFile := RpLoadLocalSchema(ADatabase, nil, False, False);
+  except
+    // A file that can not be read lists all the tables only
+    LFile := nil;
+  end;
+  if LFile = nil then
+  begin
+    AddEntry('', '');
+    Exit;
+  end;
+  try
+    AddEntry('', SizeText(LFile, ''));
+    for I := 0 to LFile.SchemaCount - 1 do
+      AddEntry(LFile.Schemas[I].Name, SizeText(LFile, LFile.Schemas[I].Name));
+  finally
+    LFile.Free;
+  end;
+end;
+
+procedure RpSchemaTablesSize(ATables: TJSONArray; out ATableCount,
+  AWidestColumns: Integer);
+var
+  I: Integer;
+  LColumns: TJSONArray;
+  LTable: TJSONObject;
+begin
+  ATableCount := 0;
+  AWidestColumns := 0;
+  if ATables = nil then
+    Exit;
+  for I := 0 to ATables.Count - 1 do
+  begin
+    LTable := JObj(ATables, I);
+    if LTable = nil then
+      Continue;
+    Inc(ATableCount);
+    LColumns := JArr(LTable, 'columns');
+    if LColumns = nil then
+      LColumns := JArr(LTable, 'Columns');
+    if (LColumns <> nil) and (LColumns.Count > AWidestColumns) then
+      AWidestColumns := LColumns.Count;
   end;
 end;
 

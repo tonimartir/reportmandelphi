@@ -163,6 +163,7 @@ begin
   (AItem.SQLExplanation=BItem.SQLExplanation) and
   (AItem.SQLExplanationError=BItem.SQLExplanationError) and
   (AItem.HubSchemaId=BItem.HubSchemaId) and
+  (AItem.SchemaName=BItem.SchemaName) and
   (AItem.MyBaseFilename=BItem.MyBaseFilename) and
   (AItem.MyBaseFields=BItem.MyBaseFields) and
   (AItem.MyBaseIndexFields=BItem.MyBaseIndexFields) and
@@ -519,6 +520,8 @@ begin
   op.AddProperty('databaseAlias',ptString,Null,origDS.DatabaseAlias);
   op.AddProperty('sql',ptString,Null,origDS.SQL);
   op.AddProperty('hubSchemaId',ptInteger,Null,origDS.HubSchemaId);
+  if origDS.SchemaName<>'' then
+   op.AddProperty('schemaName',ptString,Null,origDS.SchemaName);
   op.AddProperty('dataSource',ptString,Null,origDS.DataSource);
   op.AddProperty('groupUnion',ptBoolean,Null,origDS.GroupUnion);
   op.AddProperty('openOnStart',ptBoolean,Null,origDS.OpenOnStart);
@@ -541,6 +544,8 @@ begin
   op.AddProperty('databaseAlias',ptString,Null,newDS.DatabaseAlias);
   op.AddProperty('sql',ptString,Null,newDS.SQL);
   op.AddProperty('hubSchemaId',ptInteger,Null,newDS.HubSchemaId);
+  if newDS.SchemaName<>'' then
+   op.AddProperty('schemaName',ptString,Null,newDS.SchemaName);
   op.AddProperty('dataSource',ptString,Null,newDS.DataSource);
   op.AddProperty('groupUnion',ptBoolean,Null,newDS.GroupUnion);
   op.AddProperty('openOnStart',ptBoolean,Null,newDS.OpenOnStart);
@@ -567,6 +572,8 @@ begin
     op.AddProperty('sql',ptString,origDS.SQL,newDS.SQL);
   if origDS.HubSchemaId<>newDS.HubSchemaId then
    op.AddProperty('hubSchemaId',ptInteger,origDS.HubSchemaId,newDS.HubSchemaId);
+  if origDS.SchemaName<>newDS.SchemaName then
+   op.AddProperty('schemaName',ptString,origDS.SchemaName,newDS.SchemaName);
    if origDS.DataSource<>newDS.DataSource then
     op.AddProperty('dataSource',ptString,origDS.DataSource,newDS.DataSource);
    if origDS.GroupUnion<>newDS.GroupUnion then

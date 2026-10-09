@@ -132,6 +132,7 @@ type
     FAgentSecret: string;
     FAgentAiId: Int64;
     FConnected: Boolean;
+    FInlineConfigJson: string;
     procedure SetConnected(Value: Boolean);
   public
     class function GetHubDatabases(const AApiKey: string; AList: TStrings): Boolean;
@@ -146,6 +147,10 @@ type
     property AITier: string read FAITier write FAITier;
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
+    // A database that is not in the Hub: the JSON of the config of
+    // TranslateToSql with its schema inline (TRpApiDatabaseConfig, see
+    // RpResolveLocalSchemaConfig) instead of the Hub ids
+    property InlineConfigJson: string read FInlineConfigJson write FInlineConfigJson;
     property Connected: Boolean read FConnected write SetConnected;
     function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string;
       Sender: TObject = nil;
@@ -177,7 +182,10 @@ type
       AOnResult: TRpExpressionStreamResultEvent;
       ACancel: TRpExpressionStreamCancelEvent): Boolean;
     function GetSchemas(AList: TStrings): Boolean;
-    function GetUserSchemas(AList: TStrings): Boolean;
+    function GetUserSchemas(AList: TStrings): Boolean; overload;
+    // With the size of each schema in ASizes (nil = not wanted), from its
+    // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
+    function GetUserSchemas(AList, ASizes: TStrings): Boolean; overload;
     function GetUserAgents(AList: TStrings): Boolean;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
@@ -306,6 +314,24 @@ begin
     Exit('Catalan');
 
   Result := 'English';
+end;
+
+// Accept-Language of the requests: the messages of the API (the error of the
+// plan among them) in the language of the AI
+function RpApiAcceptLanguage: string;
+const
+  CNames: array[0..7] of string = ('English', 'Spanish', 'Italian', 'French',
+    'German', 'Portuguese', 'Chinese', 'Catalan');
+  CCodes: array[0..7] of string = ('en', 'es', 'it', 'fr', 'de', 'pt', 'zh', 'ca');
+var
+  I: Integer;
+  LLanguage: string;
+begin
+  Result := 'en';
+  LLanguage := NormalizeUserLanguage(TRpAuthManager.Instance.AILanguage);
+  for I := Low(CNames) to High(CNames) do
+    if SameText(CNames[I], LLanguage) then
+      Exit(CCodes[I]);
 end;
 
 function ResolveTranscribeLanguage(const AUserLanguage: string): string;
@@ -705,6 +731,7 @@ begin
     try
       LHttpClient.ContentType := 'application/json';
       LHttpClient.Accept := 'text/event-stream';
+      LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
 
       if AClient.ApiKey <> '' then
         LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AClient.ApiKey;
@@ -883,6 +910,7 @@ function TRpDatabaseHttp.TranslateToSql(const AUserPrompt, ASqlToRefine,
   ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
 var
   LRequest, LConfig: TJSONObject;
+  LConfigValue: TJSONValue;
   LQueries: TJSONArray;
 {$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
@@ -908,10 +936,22 @@ begin
       LRequest.AddPair('apiKey', FApiKey);
     AddOptionalRuntime(LRequest, FRuntimeDb);
 
-    LConfig := TJSONObject.Create;
-    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
-    if FHubSchemaId <> 0 then
-      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LConfig := nil;
+    if Trim(FInlineConfigJson) <> '' then
+    begin
+      LConfigValue := TJSONObject.ParseJSONValue(FInlineConfigJson);
+      if LConfigValue is TJSONObject then
+        LConfig := TJSONObject(LConfigValue)
+      else
+        LConfigValue.Free;
+    end;
+    if LConfig = nil then
+    begin
+      LConfig := TJSONObject.Create;
+      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+      if FHubSchemaId <> 0 then
+        LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    end;
     LRequest.AddPair('config', LConfig);
 
 {$IFDEF FIREDAC}
@@ -1376,6 +1416,7 @@ begin
     LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       LHttpClient.ContentType := 'application/json';
+      LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
       if SameText(AAction, 'ReportDesigner/ModifyReport') then
         TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
       
@@ -1449,7 +1490,8 @@ begin
     LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
     try
       LIdHttp.Request.ContentType := 'application/json';
-      
+      LIdHttp.Request.AcceptLanguage := RpApiAcceptLanguage;
+
       if FApiKey <> '' then
         LIdHttp.Request.CustomHeaders.Values['X-Reportman-ApiKey'] := FApiKey;
       
@@ -1919,6 +1961,39 @@ end;
 {$ENDIF}
 
 function TRpDatabaseHttp.GetUserSchemas(AList: TStrings): Boolean;
+begin
+  Result := GetUserSchemas(AList, nil);
+end;
+
+// The tables of the schemaTables of a schema of the list and the columns of
+// the widest one
+function SchemaTablesSizeText(AItem: TJSONObject): string;
+var
+  I, LWidest: Integer;
+  LColumns: TJSONValue;
+  LTables: TJSONValue;
+begin
+  Result := '';
+  LTables := AItem.Values['schemaTables'];
+  if LTables = nil then
+    LTables := AItem.Values['SchemaTables'];
+  if not (LTables is TJSONArray) then
+    Exit;
+  LWidest := 0;
+  for I := 0 to TJSONArray(LTables).Count - 1 do
+  begin
+    if not (TJSONArray(LTables).Items[I] is TJSONObject) then
+      Continue;
+    LColumns := TJSONObject(TJSONArray(LTables).Items[I]).Values['columns'];
+    if LColumns = nil then
+      LColumns := TJSONObject(TJSONArray(LTables).Items[I]).Values['Columns'];
+    if (LColumns is TJSONArray) and (TJSONArray(LColumns).Count > LWidest) then
+      LWidest := TJSONArray(LColumns).Count;
+  end;
+  Result := IntToStr(TJSONArray(LTables).Count) + ',' + IntToStr(LWidest);
+end;
+
+function TRpDatabaseHttp.GetUserSchemas(AList, ASizes: TStrings): Boolean;
 var
   LResponseStream: TStringStream;
   LResponseJson: TJSONObject;
@@ -1927,9 +2002,12 @@ var
   LItem: TJSONObject;
   LDisplayName: string;
   LValue: TJSONValue;
+  LSize: string;
 begin
   Result := False;
   AList.Clear;
+  if ASizes <> nil then
+    ASizes.Clear;
   LResponseStream := TStringStream.Create;
   try
     if InternalGetRequest('api/agent/databases', LResponseStream) then
@@ -1953,6 +2031,12 @@ begin
             AList.Add(LDisplayName + '=' +
               LItem.Values['hubDatabaseId'].Value + '|' +
               LItem.Values['hubSchemaId'].Value);
+            if ASizes <> nil then
+            begin
+              LSize := SchemaTablesSizeText(LItem);
+              if LSize <> '' then
+                ASizes.Add(LItem.Values['hubSchemaId'].Value + '=' + LSize);
+            end;
           end;
           Result := True;
         end;

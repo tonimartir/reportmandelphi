@@ -471,6 +471,7 @@ type
   FSQLExplanation: WideString;
   FSQLExplanationError: WideString;
   FHubSchemaId: Int64;
+  FSchemaName: string;
    procedure SetDataUnions(Value:TStrings);
   procedure AssertCanModify(const AReason:string);
    procedure SetDatabaseAlias(Value:string);
@@ -478,6 +479,12 @@ type
    procedure SetDataSource(Value:string);
    procedure SetSQL(Value:widestring);
   procedure SetHubSchemaId(const Value: Int64);
+  procedure SetSchemaName(const Value: string);
+  // Text and binary formats: saved only when they have a value
+  procedure ReadHubSchemaId(Reader:TReader);
+  procedure WriteHubSchemaId(Writer:TWriter);
+  procedure ReadSchemaName(Reader:TReader);
+  procedure WriteSchemaName(Writer:TWriter);
 {$IFDEF USEADO}
    procedure ADOQueryBeforeOpen(dataset: TDataSet);
 {$ENDIF}
@@ -527,6 +534,9 @@ type
   property SQLExplanation: WideString read FSQLExplanation write FSQLExplanation;
   property SQLExplanationError: WideString read FSQLExplanationError write FSQLExplanationError;
   property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
+  // The local subschema (dbxschemas/<ALIAS>.json) the dataset was made
+  // with; '' = all the tables, or a Hub schema (HubSchemaId)
+  property SchemaName: string read FSchemaName write SetSchemaName;
   published
    property Alias:string read FAlias write SetAlias;
    property DatabaseAlias:string read FDatabaseAlias write SetDatabaseAlias;
@@ -1444,6 +1454,35 @@ begin
  Changed(False);
 end;
 
+procedure TRpDataInfoItem.SetSchemaName(const Value: string);
+begin
+ AssertCanModify(ClassName+'.SchemaName');
+ if FSchemaName=Value then
+  Exit;
+ FSchemaName:=Value;
+ Changed(False);
+end;
+
+procedure TRpDataInfoItem.ReadHubSchemaId(Reader:TReader);
+begin
+ FHubSchemaId:=Reader.ReadInt64;
+end;
+
+procedure TRpDataInfoItem.WriteHubSchemaId(Writer:TWriter);
+begin
+ Writer.WriteInteger(FHubSchemaId);
+end;
+
+procedure TRpDataInfoItem.ReadSchemaName(Reader:TReader);
+begin
+ FSchemaName:=ReadWideString(Reader);
+end;
+
+procedure TRpDataInfoItem.WriteSchemaName(Writer:TWriter);
+begin
+ WriteWideString(Writer,FSchemaName);
+end;
+
 { TRpDataInfoItem - IInterface }
 
 {$IFDEF FPC}
@@ -1518,6 +1557,11 @@ begin
   SetHubSchemaId(value);
   exit;
  end;
+ if SameText(propName, 'SchemaName') then
+ begin
+  SetSchemaName(value);
+  exit;
+ end;
  if SameText(propName, 'DataSource') then
  begin
   SetDataSource(value);
@@ -1578,6 +1622,11 @@ begin
   Result := FHubSchemaId;
   exit;
  end;
+ if SameText(propName, 'SchemaName') then
+ begin
+  Result := FSchemaName;
+  exit;
+ end;
  if SameText(propName, 'DataSource') then
  begin
   Result := FDataSource;
@@ -1613,6 +1662,7 @@ begin
   FSQLExplanation:=TRpDataInfoItem(Source).FSQLExplanation;
   FSQLExplanationError:=TRpDataInfoItem(Source).FSQLExplanationError;
   FHubSchemaId:=TRpDataInfoItem(Source).FHubSchemaId;
+  FSchemaName:=TRpDataInfoItem(Source).FSchemaName;
   FMyBaseFilename:=TRpDataInfoItem(Source).FMyBaseFilename;
   FMyBaseFields:=TRpDataInfoItem(Source).FMyBaseFields;
   FMyBaseIndexFields:=TRpDataInfoItem(Source).FMyBaseIndexFields;
@@ -6559,6 +6609,10 @@ procedure TRpDataInfoItem.DefineProperties(Filer:TFiler);
 begin
  inherited;
 
+ // Public, not published: only with a value, so a dataset without them is
+ // saved as before
+ Filer.DefineProperty('HubSchemaId',ReadHubSchemaId,WriteHubSchemaId,FHubSchemaId<>0);
+ Filer.DefineProperty('SchemaName',ReadSchemaName,WriteSchemaName,FSchemaName<>'');
  //Filer.DefineProperty('Name',
  //  ReadNewName, WriteNewName,
  // FName <> ''

@@ -175,6 +175,7 @@ var
   LFile: TRpLocalSchemaFile;
   LTables: TJSONArray;
   LState: TJSONObject;
+  LCount, LWidest: Integer;
 begin
   LFile := TRpLocalSchemaFile.Create;
   try
@@ -210,6 +211,17 @@ begin
     finally
       LTables.Free;
     end;
+    // The sizes the schema selector of the chat shows and checks against
+    // the plan
+    LFile.GetSchemaSize('', LCount, LWidest);
+    Check((LCount = 3) and (LWidest = 4), 'all the tables: 3 tables, 4 columns the widest');
+    LFile.GetSchemaSize('Ventas', LCount, LWidest);
+    Check((LCount = 2) and (LWidest = 3),
+      'Ventas: 2 tables, the 3 columns it chose of SALES the widest');
+    LFile.GetSchemaSize('Productos', LCount, LWidest);
+    Check((LCount = 1) and (LWidest = 2), 'Productos: 1 table of 2 columns');
+    LFile.GetSchemaSize('Gone', LCount, LWidest);
+    Check(LCount = 3, 'a subschema that is not in the file: all the tables');
   finally
     LFile.Free;
   end;
