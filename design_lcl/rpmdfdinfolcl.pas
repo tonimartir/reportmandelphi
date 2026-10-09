@@ -2172,7 +2172,7 @@ begin
   schemaName := ASchemaName;
   saved := False;
   try
-    saved := RpShowLocalSchemasDialog(FWork, AAlias, schemaName, AAddNew);
+    saved := RpShowLocalSchemasDialog(FWork, AAlias, schemaName, AAddNew, FChat);
   finally
     UpdateChatLocalSchemas(DatabaseInfoOf(ActiveDataInfo), True);
   end;

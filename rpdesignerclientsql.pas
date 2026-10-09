@@ -990,17 +990,11 @@ begin
   end;
   try
     AConfig.Name := LDatabase.Alias;
-    AConfig.Dialect := LFile.Dialect;
-    if AConfig.Dialect = '' then
-      AConfig.Dialect := 'Default';
+    AConfig.Dialect := LFile.CloudDialect;
     AConfig.SchemaTablesJson := LFile.SchemaTablesJson(AConfig.LocalSchemaName);
     // The subschema travels with its tables (the cloud gives it to the
     // datasets it makes); one gone from the file sends all the tables
-    if (AConfig.LocalSchemaName <> '') and
-      (LFile.IndexOfSchema(AConfig.LocalSchemaName) >= 0) then
-      AConfig.SchemaName := LFile.Schemas[LFile.IndexOfSchema(AConfig.LocalSchemaName)].Name
-    else
-      AConfig.SchemaName := '';
+    AConfig.SchemaName := LFile.SchemaNameOf(AConfig.LocalSchemaName);
     // A schema without tables would not be usable: the cloud says why
     AConfig.HubDatabaseId := 0;
     AConfig.HubSchemaId := 0;

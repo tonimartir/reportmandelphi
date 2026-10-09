@@ -43,7 +43,7 @@ uses
   rpmdfwizardlcl, rpmdfopenliblcl, rpdbxconfiglcl, rpeditconnlcl,
   rpmdfdatatextlcl, rpfrmloginlcl, rpfrmaireportlcl, rpmdfaboutlcl,
   rpmdsysinfolcl, rpmdfmainlcl, rpmdundocuelcl, rpmdfnewreportwizardlcl,
-  rpmdfsampledatalcl,
+  rpmdfsampledatalcl, rpfrmlocalschemaslcl,
   umainform, uregressiontests;
 
 const
@@ -620,6 +620,43 @@ begin
   end;
 end;
 
+// The local schema screens on the schema file of the local schema tests
+// (tests/local_schema_file), with the subschema Ventas: the file exists, so
+// nothing connects to the database
+procedure OpenLocalSchemas;
+var
+  rep: TRpReport;
+  folder, fixture, schemaName: string;
+  p: TRpParam;
+  lines: TStringList;
+begin
+  folder := IncludeTrailingPathDelimiter(GetTempDir) + 'rp_layout_localschemas' + PathDelim;
+  ForceDirectories(folder + 'dbxschemas');
+  fixture := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..' +
+    PathDelim + 'local_schema_file' + PathDelim + 'dbxschemas-v2.json');
+  lines := TStringList.Create;
+  try
+    lines.Text := '[FBEXAMPLE]' + LineEnding + 'DriverName=Interbase' + LineEnding;
+    lines.SaveToFile(folder + 'dbxconnections.ini');
+    lines.LoadFromFile(fixture);
+    lines.SaveToFile(folder + 'dbxschemas' + PathDelim + 'FBEXAMPLE.json');
+  finally
+    lines.Free;
+  end;
+  rep := TRpReport.Create(nil);
+  try
+    rep.CreateNew;
+    p := rep.Params.Add('DBXCONNECTIONS');
+    p.ParamType := rpParamString;
+    p.Value := folder + 'dbxconnections.ini';
+    rep.DatabaseInfo.Add('FBEXAMPLE').Driver := rpdatazeos;
+    schemaName := 'Ventas';
+    RpShowLocalSchemasDialog(rep, 'FBEXAMPLE', schemaName);
+  finally
+    rep.Free;
+  end;
+end;
+
 // The designer is not modal: its parts are measured shown (the toolbar, the
 // inspector, the structure and the AI chat, built in code) and compared
 // between runs at different ppi as the dialogs
@@ -709,6 +746,7 @@ begin
     Open('Preview', OpenPreview);
     Open('NewReportWizard', OpenNewReportWizard);
     Open('SampleData', OpenSampleData);
+    Open('LocalSchemas', OpenLocalSchemas);
     if (GetEnvironmentVariable('RP_LAYOUT_CASES') = '') or
       (Pos(',Designer,', ',' + GetEnvironmentVariable('RP_LAYOUT_CASES') + ',') > 0) then
       MeasureDesigner;

@@ -1270,7 +1270,8 @@ begin
     Exit;
   LSchemaName := ASchemaName;
   try
-    LSaved := RpShowLocalSchemasDialog(report, AAlias, LSchemaName, AAddNew);
+    LSaved := RpShowLocalSchemasDialog(report, AAlias, LSchemaName, AAddNew,
+      fchatframe);
   finally
     UpdateDesignChatLocalSchemas;
   end;

@@ -215,6 +215,20 @@ begin
       LEvents[3] := '{"result":{"sql":"SELECT 1","explanation":"Uno ' + BS + 'u00fa","path":"' + P + '"}}';
       SendEvents(AResponse, LEvents, 50, True, True);
     end
+    else if P = '/NlToSql/AnalyzeSchemaStream' then
+    begin
+      // "Analyze with AI" of the local schema screens; a schema named
+      // TooLarge answers the error of the plan
+      SetLength(LEvents, 2);
+      LEvents[0] := '{"actor":"AI","stage":"Prefill","inputTokens":120,"outputTokens":0}';
+      if Pos('"schemaName":"TooLarge"', ARequest.Content) > 0 then
+        LEvents[1] := '{"result":null,"errorMessage":"Too many tables for the current tier: ' +
+          'Lite allows 15 tables","errorCode":"SchemaTooLargeForTier"}'
+      else
+        LEvents[1] := '{"result":{"explanation":"## SALES' + BS + 'n- TOTAL ok","creditsConsumed":4},' +
+          '"errorMessage":"","userProfile":{"userId":7,"email":"ana@example.com"}}';
+      SendEvents(AResponse, LEvents, 50, True, True);
+    end
     else if P = '/ReportDesigner/ModifyReportStream' then
     begin
       if Pos('slow', ARequest.Content) > 0 then
@@ -895,6 +909,90 @@ begin
   end;
 end;
 
+// "Analyze with AI" of the local schema screens: the request, the result,
+// the error of the plan, and the same in a thread of its own
+// (RpStartSchemaAnalysis)
+procedure AnalyzeSchemaTests(AHttp: TRpDatabaseHttp; ARecorder: TProgressRecorder);
+var
+  LConfig: TRpApiDatabaseConfig;
+  LJson: TJSONObject;
+  LTask: IRpSchemaAnalysis;
+  LState: TRpSchemaAnalysisState;
+  LStart: QWord;
+begin
+  LConfig := TRpApiDatabaseConfig.Create;
+  try
+    LConfig.Name := 'FBEXAMPLE';
+    LConfig.Dialect := 'Firebird5';
+    LConfig.SchemaTablesJson := '[{"name":"SALES","columns":[{"name":"SALEID"}]}]';
+    LConfig.SchemaName := 'Ventas';
+    ARecorder.Progress.Clear;
+    AHttp.AITier := 'Precision';
+    try
+      LJson := AHttp.AnalyzeSchema(LConfig, 'Reasoning', nil, ARecorder.OnProgress,
+        ARecorder.OnCancel);
+    finally
+      AHttp.AITier := 'Standard';
+    end;
+    try
+      Check(LJson <> nil, 'AnalyzeSchema result');
+      CheckEquals('## SALES' + #10 + '- TOTAL ok', LJson.FindValue('result.explanation').Value,
+        'AnalyzeSchema explanation (Markdown)');
+      CheckEquals('ana@example.com', LJson.FindValue('userProfile.email').Value,
+        'AnalyzeSchema profile (the credits)');
+    finally
+      LJson.Free;
+    end;
+    CheckEquals(1, ARecorder.Progress.Count, 'AnalyzeSchema progress');
+    CheckContains('"aiTier":"Precision"', GHub.LastBody, 'AnalyzeSchema tier');
+    CheckContains('"mode":"Reasoning"', GHub.LastBody, 'AnalyzeSchema mode');
+    CheckContains('"languageCodeIso":"', GHub.LastBody, 'AnalyzeSchema language');
+    CheckContains('"schemaName":"Ventas"', GHub.LastBody, 'AnalyzeSchema inline subschema');
+    CheckContains('"schemaTables":[{"name":"SALES"', GHub.LastBody, 'AnalyzeSchema inline tables');
+    CheckContains('"agentSecret":"s3"', GHub.LastBody, 'AnalyzeSchema agent');
+    CheckEquals('text/event-stream', GHub.LastHeader('Accept'), 'AnalyzeSchema streams');
+
+    // In a thread, as the screens run it, read with a timer
+    LTask := RpStartSchemaAnalysis(LConfig, 'Standard', 'Fast', '', 0);
+    LStart := GetTickCount64;
+    repeat
+      Sleep(20);
+      LState := LTask.GetState;
+    until LState.Finished or (ElapsedMs(LStart) > 10000);
+    Check(LState.Finished and not LState.Cancelled, 'RpStartSchemaAnalysis finishes');
+    CheckEquals('', LState.ErrorMessage, 'RpStartSchemaAnalysis without error');
+    CheckEquals(120, LState.InputTokens, 'RpStartSchemaAnalysis tokens');
+    CheckContains('TOTAL ok', LState.ResultJson, 'RpStartSchemaAnalysis final frame');
+    CheckContains('"aiTier":"Standard"', GHub.LastBody, 'RpStartSchemaAnalysis tier');
+    LTask := nil;
+
+    // The error of the plan comes in the final frame, with its code
+    LConfig.SchemaName := 'TooLarge';
+    LTask := RpStartSchemaAnalysis(LConfig, 'Standard', 'Fast', '', 0);
+    LStart := GetTickCount64;
+    repeat
+      Sleep(20);
+      LState := LTask.GetState;
+    until LState.Finished or (ElapsedMs(LStart) > 10000);
+    CheckContains('"errorCode":"SchemaTooLargeForTier"', LState.ResultJson,
+      'RpStartSchemaAnalysis: the error of the plan with its code');
+    LTask := nil;
+
+    // Stop: the task says so and the thread ends on its own
+    LTask := RpStartSchemaAnalysis(LConfig, 'Standard', 'Fast', '', 0);
+    LTask.Cancel;
+    LStart := GetTickCount64;
+    repeat
+      Sleep(20);
+      LState := LTask.GetState;
+    until LState.Finished or (ElapsedMs(LStart) > 10000);
+    Check(LState.Finished and LState.Cancelled, 'RpStartSchemaAnalysis stopped');
+    LTask := nil;
+  finally
+    LConfig.Free;
+  end;
+end;
+
 procedure AITests;
 var
   LHttp: TRpDatabaseHttp;
@@ -972,6 +1070,8 @@ begin
       LJson.Free;
     end;
     CheckContains('"userLanguage":"Catalan"', GHub.LastBody, 'ExplainSql language');
+
+    AnalyzeSchemaTests(LHttp, LRecorder);
 
     LJson := LHttp.GetTableSchema('SELECT * FROM CLIENTS');
     try

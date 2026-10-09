@@ -1716,7 +1716,8 @@ begin
   LSchemaName := ASchemaName;
   LSaved := False;
   try
-    LSaved := RpShowLocalSchemasDialog(FReport, AAlias, LSchemaName, AAddNew);
+    LSaved := RpShowLocalSchemasDialog(FReport, AAlias, LSchemaName, AAddNew,
+      FChatFrame);
   finally
     UpdateDesignChatLocalSchemas;
   end;

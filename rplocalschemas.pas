@@ -42,19 +42,25 @@ unit rplocalschemas;
     Currency, String, TextLong, Date, TimeStamp, Boolean).
   - "All" is not saved: it is every table. "schemas" are the subschemas the
     user defines (a name and a selection of tables and, from version 2, of
-    their columns: a table missing from "columns" goes with all of them, so
-    a version 1 file means the same).
+    their columns: a table missing from "columns", or with an empty list,
+    goes with its primary key only; people choose the columns and describe
+    them, docs/esquemas-locales-pantalla-plan.md 5.5.1).
+  - "tables" is the dictionary: what is written of a table, a column or a
+    relation (context, allowed values) is shared by every subschema. A
+    relation the database does not declare has an empty constraintName.
   - Version 2 adds "allowedValues" (the values a column takes and what each
     one means) and "columns" of a subschema. Every reader keeps what it does
     not know (the properties of a newer version, at any level) and writes it
     back: saving with an older designer never loses them.
   - It is generated from the catalog the first time it is needed. A refresh
     reads the catalog again and keeps the context written for the tables,
-    columns and foreign keys that still exist, and the subschemas (without
-    the tables and columns that are gone). The comments of the database are
-    the starting context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
-  - The tables of a subschema sent to the AI carry the columns it chose and
-    the relations whose two ends travel. *)
+    columns and foreign keys that still exist, the relations written by hand
+    whose columns still exist, and the subschemas (without the tables and
+    columns that are gone). The comments of the database are the starting
+    context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
+  - The tables of a subschema sent to the AI carry the columns it chose (its
+    primary key when it chose none) and the relations whose two ends
+    travel. Without a subschema, everything. *)
 
 interface
 
@@ -87,14 +93,34 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    // The columns chosen of a table: False (and AList empty) when the table
-    // goes with all its columns
+    // The columns chosen of a table: False (and AList empty) when it chose
+    // none (the table goes with its primary key)
     function GetColumns(const ATable: string; AList: TStrings): Boolean;
-    // The columns chosen of a table; an empty list is all of them again
+    // The columns chosen of a table; an empty list is its primary key again
     procedure SetColumns(const ATable: string; AColumns: TStrings);
     property Description: string read FDescription write FDescription;
     property Name: string read FName write FName;
     property Tables: TStringList read FTables;
+  end;
+
+  // A relation of the dictionary: the foreign key ForeignKey (an object of
+  // the "foreignKeys" of the table SourceTable, not owned) as the screens
+  // show it. It belongs to the tables of the file: one read again
+  // (SetCatalog) leaves it pointing nowhere
+  TRpLocalRelation = class(TObject)
+  public
+    SourceTable: string;
+    ForeignKey: TJSONObject;
+    function TargetTable: string;
+    procedure GetSourceColumns(AList: TStrings);
+    procedure GetTargetColumns(AList: TStrings);
+    // 'A, B'
+    function SourceColumnsText: string;
+    function TargetColumnsText: string;
+    // The database does not declare it (constraintName is empty)
+    function IsManual: Boolean;
+    function Context: string;
+    procedure SetContext(const AText: string);
   end;
 
   TRpLocalSchemaFile = class(TObject)
@@ -129,12 +155,87 @@ type
     function AddSchema(const AName: string): TRpLocalSubSchema;
     procedure DeleteSchema(AIndex: Integer);
     // The JSON array of the tables of a subschema ('' or an unknown one:
-    // all the tables), the schemaTables of the inline config
+    // all the tables), the schemaTables of the inline config: of each table
+    // the columns it chose (its primary key when it chose none) and the
+    // relations whose two ends travel
     function SchemaTablesJson(const ASchemaName: string): string;
     // What SchemaTablesJson sends, for the limits of the plan: its tables
     // and the columns of the widest one
     procedure GetSchemaSize(const ASchemaName: string; out ATables,
       AWidestColumns: Integer);
+    // The dialect of the inline config ('Default' when not known)
+    function CloudDialect: string;
+    // The subschema as the file spells it; '' (all the tables) when it is
+    // not in the file
+    function SchemaNameOf(const ASchemaName: string): string;
+
+    { The dictionary and the subschemas, for the local schema screens. A nil
+      subschema is "all the tables" }
+    // A table of the catalog (nil when it is not there)
+    function FindTable(const AName: string): TJSONObject;
+    // A column of a table of the catalog (nil when it is not there)
+    function FindColumn(const ATable, AColumn: string): TJSONObject;
+    // The columns of a table, in the order of the catalog
+    procedure GetColumnNames(const ATable: string; AList: TStrings);
+    // The columns of the primary key of a table
+    procedure GetPrimaryKey(const ATable: string; AList: TStrings);
+    // The columns of a table that travel, in the order of the catalog: all
+    // of them without a subschema; in one, its list or the primary key
+    procedure GetTravelingColumns(ASchema: TRpLocalSubSchema;
+      const ATable: string; AList: TStrings);
+    function ColumnTravels(ASchema: TRpLocalSubSchema;
+      const ATable, AColumn: string): Boolean;
+    // Chooses a column of a table of the subschema, or leaves it (the list
+    // starts from what travels; an empty one is the primary key again)
+    procedure SetColumnChosen(ASchema: TRpLocalSubSchema;
+      const ATable, AColumn: string; AChosen: Boolean);
+    // A table enters the subschema with its primary key (a list of columns
+    // of its own); nothing when it is there
+    procedure AddSchemaTable(ASchema: TRpLocalSubSchema; const ATable: string);
+    procedure RemoveSchemaTable(ASchema: TRpLocalSubSchema; const ATable: string);
+    // A copy of a subschema with another name, at the end
+    function DuplicateSchema(AIndex: Integer;
+      const ANewName: string): TRpLocalSubSchema;
+    procedure RenameSchema(AIndex: Integer; const ANewName: string);
+    // The other subschemas where the column travels ("Also in")
+    procedure GetSchemasWithColumn(const ATable, AColumn: string;
+      AExclude: TRpLocalSubSchema; AList: TStrings);
+    procedure SetTableContext(const ATable, AText: string);
+    procedure SetColumnContext(const ATable, AColumn, AText: string);
+    // The allowed values of a column, two lists of the same length
+    procedure GetAllowedValues(const ATable, AColumn: string;
+      AValues, ALabels: TStrings);
+    // The allowed values of a column (rows without value and label are left
+    // out; a value that was there keeps what it had of a newer version)
+    procedure SetAllowedValues(const ATable, AColumn: string;
+      AValues, ALabels: TStrings);
+    // A relation (a foreign key of ASourceTable) travels: its two ends do,
+    // by table and by column (always without a subschema)
+    function ForeignKeyTravels(ASchema: TRpLocalSubSchema;
+      const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+    // The relations of the dictionary that travel in the subschema (all of
+    // them without one), added to AList (TRpLocalRelation, owned by the list)
+    procedure GetRelations(ASchema: TRpLocalSubSchema; AList: TObjectList);
+    // The relations of the tables of the subschema that do not travel and
+    // whose target is in the dictionary, even when both tables are chosen:
+    // the suggestions ("Complete")
+    procedure GetSuggestedRelations(ASchema: TRpLocalSubSchema;
+      AList: TObjectList);
+    // Makes a relation travel: the target table (with its primary key when
+    // it enters) and the columns of both ends added to their lists (each
+    // one starting from what travels)
+    procedure CompleteRelation(ASchema: TRpLocalSubSchema;
+      ARelation: TRpLocalRelation);
+    // A relation the database does not declare, in the dictionary (an empty
+    // constraintName); raises when a table or column is not there. One
+    // that is there already (the same target and columns) is not added
+    // twice: it is returned, with AContext when one is given
+    function AddRelation(const ASourceTable, ATargetTable: string;
+      ASourceColumns, ATargetColumns: TStrings;
+      const AContext: string): TJSONObject;
+    // Removes a relation written by hand (the ones of the database come
+    // back when it is read again)
+    procedure DeleteRelation(ARelation: TRpLocalRelation);
     property Alias: string read FAlias write FAlias;
     property Dialect: string read FDialect write FDialect;
     property FileName: string read FFileName;
@@ -179,6 +280,11 @@ procedure RpListLocalSchemaEntries(ADatabase: TRpDatabaseInfoItem;
 // schema) and the columns of the widest one
 procedure RpSchemaTablesSize(ATables: TJSONArray; out ATableCount,
   AWidestColumns: Integer);
+// The SQL of the first ARows rows of a table in a dialect of the cloud
+// (Firebird, PostgreSQL, MySQL, SQL Server, SQLite, Oracle; a whole SELECT
+// for the rest)
+function RpLocalSchemaPreviewSql(const ADialect, ATable: string;
+  ARows: Integer): string;
 // A copy of the connection in a list of its own (the caller frees it) that
 // reads the same connections file: it can be connected without touching the
 // connection of the report (the designer may be opening its datasets)
@@ -365,6 +471,123 @@ var
 begin
   for I := 0 to AList.Count - 1 do
     AArray.Add(AList[I]);
+end;
+
+function JBool(AObject: TJSONObject; const AName: string): Boolean;
+begin
+  Result := SameText(JStr(AObject, AName), 'true');
+end;
+
+// The names of AColumns as the columns of ATable spell them; False when one
+// is not there (or there are none)
+function SpellColumns(ATable: TJSONObject; AColumns: TStrings;
+  AResult: TJSONArray): Boolean;
+var
+  I: Integer;
+  LColumn: TJSONObject;
+begin
+  Result := (ATable <> nil) and (AColumns.Count > 0);
+  if not Result then
+    Exit;
+  for I := 0 to AColumns.Count - 1 do
+  begin
+    LColumn := FindByName(JArr(ATable, 'columns'), 'name', Trim(AColumns[I]));
+    if LColumn = nil then
+      Exit(False);
+    AResult.Add(JStr(LColumn, 'name'));
+  end;
+end;
+
+// Two JSON arrays of names are the same, ignoring case
+function SameNames(A, B: TJSONArray): Boolean;
+var
+  I: Integer;
+begin
+  Result := (A <> nil) and (B <> nil) and (A.Count = B.Count);
+  if Result then
+    for I := 0 to A.Count - 1 do
+      if (A.Items[I] = nil) or (B.Items[I] = nil) or
+        not SameText(A.Items[I].Value, B.Items[I].Value) then
+        Exit(False);
+end;
+
+// The relation of ATable to ATargetTable over the same source and target
+// columns, ignoring case (nil when there is none)
+function FindRelation(ATable: TJSONObject; const ATargetTable: string;
+  ASource, ATarget: TJSONArray): TJSONObject;
+var
+  I: Integer;
+  LForeignKeys: TJSONArray;
+  LOther: TJSONObject;
+begin
+  Result := nil;
+  LForeignKeys := JArr(ATable, 'foreignKeys');
+  if LForeignKeys <> nil then
+    for I := 0 to LForeignKeys.Count - 1 do
+    begin
+      LOther := JObj(LForeignKeys, I);
+      if (LOther <> nil) and SameText(JStr(LOther, 'targetTable'), ATargetTable) and
+        SameNames(JArr(LOther, 'sourceColumns'), ASource) and
+        SameNames(JArr(LOther, 'targetColumns'), ATarget) then
+        Exit(LOther);
+    end;
+end;
+
+// A relation written by hand (empty constraintName) of the previous file,
+// added to the table of the catalog read again when its columns and its
+// target are still there, as the catalog spells them, unless the table has
+// that relation already
+procedure KeepManualRelation(ACatalog: TJSONArray; ANewTable,
+  AOldRelation: TJSONObject);
+var
+  LNames: TStringList;
+  LSource, LTarget: TJSONArray;
+  LTargetTable, LRelation, LOther: TJSONObject;
+  LForeignKeys: TJSONArray;
+begin
+  LTargetTable := FindByName(ACatalog, 'name', JStr(AOldRelation, 'targetTable'));
+  if LTargetTable = nil then
+    Exit;
+  LNames := TStringList.Create;
+  LSource := TJSONArray.Create;
+  LTarget := TJSONArray.Create;
+  try
+    ArrayNames(JArr(AOldRelation, 'sourceColumns'), LNames);
+    if not SpellColumns(ANewTable, LNames, LSource) then
+      Exit;
+    ArrayNames(JArr(AOldRelation, 'targetColumns'), LNames);
+    if not SpellColumns(LTargetTable, LNames, LTarget) or
+      (LSource.Count <> LTarget.Count) then
+      Exit;
+    // The database declares it now: it is its relation, with what the
+    // person wrote when the database says nothing
+    LOther := FindRelation(ANewTable, JStr(LTargetTable, 'name'), LSource, LTarget);
+    if LOther <> nil then
+    begin
+      if (Trim(JStr(LOther, 'relationshipContext')) = '') and
+        (Trim(JStr(AOldRelation, 'relationshipContext')) <> '') then
+        SetPair(LOther, 'relationshipContext',
+          TJSONString.Create(JStr(AOldRelation, 'relationshipContext')));
+      Exit;
+    end;
+    LRelation := TJSONObject(AOldRelation.Clone);
+    SetPair(LRelation, 'targetTable', TJSONString.Create(JStr(LTargetTable, 'name')));
+    SetPair(LRelation, 'sourceColumns', LSource);
+    LSource := nil;
+    SetPair(LRelation, 'targetColumns', LTarget);
+    LTarget := nil;
+    LForeignKeys := JArr(ANewTable, 'foreignKeys');
+    if LForeignKeys = nil then
+    begin
+      LForeignKeys := TJSONArray.Create;
+      SetPair(ANewTable, 'foreignKeys', LForeignKeys);
+    end;
+    LForeignKeys.AddElement(LRelation);
+  finally
+    LTarget.Free;
+    LSource.Free;
+    LNames.Free;
+  end;
 end;
 
 function ReadUtf8File(const AFileName: string): string;
@@ -761,11 +984,19 @@ begin
         for J := 0 to LNewItems.Count - 1 do
         begin
           LNewItem := JObj(LNewItems, J);
+          if Trim(JStr(LNewItem, 'constraintName')) = '' then
+            Continue;
           LOldItem := FindByName(LOldItems, 'constraintName',
             JStr(LNewItem, 'constraintName'));
           KeepWritten(LOldItem, LNewItem, 'relationshipContext',
             ['constraintName', 'targetTable', 'sourceColumns', 'targetColumns']);
         end;
+      // The relations written by hand whose columns are still there
+      if LOldItems <> nil then
+        for J := 0 to LOldItems.Count - 1 do
+          if (JObj(LOldItems, J) <> nil) and
+            (Trim(JStr(JObj(LOldItems, J), 'constraintName')) = '') then
+            KeepManualRelation(ATables, LNewTable, JObj(LOldItems, J));
     end;
   except
     ATables.Free;
@@ -865,6 +1096,7 @@ var
   LArray, LColumns, LForeignKeys, LKept: TJSONArray;
   LChosen: TStringList;
   LClone, LItem, LTable: TJSONObject;
+  LHasList: Boolean;
 begin
   LIndex := -1;
   if Trim(ASchemaName) <> '' then
@@ -878,6 +1110,7 @@ begin
   LChosen := TStringList.Create;
   try
     // The tables of the subschema, with the columns it chose of each one
+    // and only the primary key when it chose none
     for I := 0 to FTables.Count - 1 do
     begin
       LTable := JObj(FTables, I);
@@ -886,17 +1119,16 @@ begin
         Continue;
       LClone := TJSONObject(LTable.Clone);
       LArray.AddElement(LClone);
-      if Schemas[LIndex].GetColumns(JStr(LTable, 'name'), LChosen) then
-      begin
-        LColumns := JArr(LClone, 'columns');
-        LKept := TJSONArray.Create;
-        if LColumns <> nil then
-          for J := 0 to LColumns.Count - 1 do
-            if (JObj(LColumns, J) <> nil) and
-              (LChosen.IndexOf(JStr(JObj(LColumns, J), 'name')) >= 0) then
-              LKept.AddElement(TJSONValue(JObj(LColumns, J).Clone));
-        SetPair(LClone, 'columns', LKept);
-      end;
+      LHasList := Schemas[LIndex].GetColumns(JStr(LTable, 'name'), LChosen);
+      LColumns := JArr(LClone, 'columns');
+      LKept := TJSONArray.Create;
+      if LColumns <> nil then
+        for J := 0 to LColumns.Count - 1 do
+          if (JObj(LColumns, J) <> nil) and
+            ((LHasList and (LChosen.IndexOf(JStr(JObj(LColumns, J), 'name')) >= 0)) or
+            ((not LHasList) and JBool(JObj(LColumns, J), 'isPrimaryKey'))) then
+            LKept.AddElement(TJSONValue(JObj(LColumns, J).Clone));
+      SetPair(LClone, 'columns', LKept);
     end;
     // A relation travels when its two ends do: a column the AI does not see
     // is no use to it
@@ -938,6 +1170,544 @@ begin
   finally
     LValue.Free;
   end;
+end;
+
+function TRpLocalSchemaFile.CloudDialect: string;
+begin
+  Result := FDialect;
+  if Result = '' then
+    Result := 'Default';
+end;
+
+function TRpLocalSchemaFile.SchemaNameOf(const ASchemaName: string): string;
+var
+  LIndex: Integer;
+begin
+  Result := '';
+  if Trim(ASchemaName) = '' then
+    Exit;
+  LIndex := IndexOfSchema(ASchemaName);
+  if LIndex >= 0 then
+    Result := Schemas[LIndex].Name;
+end;
+
+{ The dictionary and the subschemas }
+
+function TRpLocalSchemaFile.FindTable(const AName: string): TJSONObject;
+begin
+  Result := FindByName(FTables, 'name', AName);
+end;
+
+function TRpLocalSchemaFile.FindColumn(const ATable,
+  AColumn: string): TJSONObject;
+begin
+  Result := FindByName(JArr(FindTable(ATable), 'columns'), 'name', AColumn);
+end;
+
+procedure TRpLocalSchemaFile.GetColumnNames(const ATable: string;
+  AList: TStrings);
+var
+  I: Integer;
+  LColumns: TJSONArray;
+begin
+  AList.Clear;
+  LColumns := JArr(FindTable(ATable), 'columns');
+  if LColumns <> nil then
+    for I := 0 to LColumns.Count - 1 do
+      if (JObj(LColumns, I) <> nil) and (JStr(JObj(LColumns, I), 'name') <> '') then
+        AList.Add(JStr(JObj(LColumns, I), 'name'));
+end;
+
+procedure TRpLocalSchemaFile.GetPrimaryKey(const ATable: string;
+  AList: TStrings);
+var
+  I: Integer;
+  LColumns: TJSONArray;
+begin
+  AList.Clear;
+  LColumns := JArr(FindTable(ATable), 'columns');
+  if LColumns <> nil then
+    for I := 0 to LColumns.Count - 1 do
+      if (JObj(LColumns, I) <> nil) and JBool(JObj(LColumns, I), 'isPrimaryKey') then
+        AList.Add(JStr(JObj(LColumns, I), 'name'));
+end;
+
+procedure TRpLocalSchemaFile.GetTravelingColumns(ASchema: TRpLocalSubSchema;
+  const ATable: string; AList: TStrings);
+var
+  I: Integer;
+  LChosen, LNames: TStringList;
+begin
+  AList.Clear;
+  if ASchema = nil then
+  begin
+    GetColumnNames(ATable, AList);
+    Exit;
+  end;
+  if ASchema.Tables.IndexOf(ATable) < 0 then
+    Exit;
+  LChosen := TStringList.Create;
+  LNames := TStringList.Create;
+  try
+    if not ASchema.GetColumns(ATable, LChosen) then
+      GetPrimaryKey(ATable, LChosen);
+    GetColumnNames(ATable, LNames);
+    for I := 0 to LNames.Count - 1 do
+      if LChosen.IndexOf(LNames[I]) >= 0 then
+        AList.Add(LNames[I]);
+  finally
+    LNames.Free;
+    LChosen.Free;
+  end;
+end;
+
+function TRpLocalSchemaFile.ColumnTravels(ASchema: TRpLocalSubSchema;
+  const ATable, AColumn: string): Boolean;
+var
+  LList: TStringList;
+begin
+  LList := TStringList.Create;
+  try
+    GetTravelingColumns(ASchema, ATable, LList);
+    Result := LList.IndexOf(AColumn) >= 0;
+  finally
+    LList.Free;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.SetColumnChosen(ASchema: TRpLocalSubSchema;
+  const ATable, AColumn: string; AChosen: Boolean);
+var
+  I: Integer;
+  LChosen, LNames, LResult: TStringList;
+begin
+  if (ASchema = nil) or (ASchema.Tables.IndexOf(ATable) < 0) then
+    Exit;
+  LChosen := TStringList.Create;
+  LNames := TStringList.Create;
+  LResult := TStringList.Create;
+  try
+    GetTravelingColumns(ASchema, ATable, LChosen);
+    if AChosen then
+      LChosen.Add(AColumn)
+    else
+      while LChosen.IndexOf(AColumn) >= 0 do
+        LChosen.Delete(LChosen.IndexOf(AColumn));
+    // In the order of the catalog, as the catalog spells them
+    GetColumnNames(ATable, LNames);
+    for I := 0 to LNames.Count - 1 do
+      if LChosen.IndexOf(LNames[I]) >= 0 then
+        LResult.Add(LNames[I]);
+    ASchema.SetColumns(ASchema.Tables[ASchema.Tables.IndexOf(ATable)], LResult);
+  finally
+    LResult.Free;
+    LNames.Free;
+    LChosen.Free;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.AddSchemaTable(ASchema: TRpLocalSubSchema;
+  const ATable: string);
+var
+  LName: string;
+  LKey: TStringList;
+begin
+  if (ASchema = nil) or (Trim(ATable) = '') or
+    (ASchema.Tables.IndexOf(ATable) >= 0) then
+    Exit;
+  LName := JStr(FindTable(ATable), 'name');
+  if LName = '' then
+    LName := Trim(ATable);
+  ASchema.Tables.Add(LName);
+  LKey := TStringList.Create;
+  try
+    GetPrimaryKey(LName, LKey);
+    ASchema.SetColumns(LName, LKey);
+  finally
+    LKey.Free;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.RemoveSchemaTable(ASchema: TRpLocalSubSchema;
+  const ATable: string);
+begin
+  if ASchema = nil then
+    Exit;
+  while ASchema.Tables.IndexOf(ATable) >= 0 do
+    ASchema.Tables.Delete(ASchema.Tables.IndexOf(ATable));
+  ASchema.SetColumns(ATable, nil);
+end;
+
+function TRpLocalSchemaFile.DuplicateSchema(AIndex: Integer;
+  const ANewName: string): TRpLocalSubSchema;
+var
+  LSource: TRpLocalSubSchema;
+begin
+  LSource := Schemas[AIndex];
+  Result := AddSchema(ANewName);
+  Result.Description := LSource.Description;
+  Result.Tables.Assign(LSource.Tables);
+  Result.FColumns.Free;
+  Result.FColumns := TJSONObject(LSource.FColumns.Clone);
+  Result.FExtra.Free;
+  Result.FExtra := TJSONObject(LSource.FExtra.Clone);
+end;
+
+procedure TRpLocalSchemaFile.RenameSchema(AIndex: Integer;
+  const ANewName: string);
+var
+  LOther: Integer;
+begin
+  if Trim(ANewName) = '' then
+    raise Exception.Create('A subschema needs a name');
+  LOther := IndexOfSchema(ANewName);
+  if (LOther >= 0) and (LOther <> AIndex) then
+    raise Exception.Create('The subschema already exists: ' + Trim(ANewName));
+  Schemas[AIndex].Name := Trim(ANewName);
+end;
+
+procedure TRpLocalSchemaFile.GetSchemasWithColumn(const ATable,
+  AColumn: string; AExclude: TRpLocalSubSchema; AList: TStrings);
+var
+  I: Integer;
+begin
+  AList.Clear;
+  for I := 0 to SchemaCount - 1 do
+    if (Schemas[I] <> AExclude) and ColumnTravels(Schemas[I], ATable, AColumn) then
+      AList.Add(Schemas[I].Name);
+end;
+
+procedure TRpLocalSchemaFile.SetTableContext(const ATable, AText: string);
+var
+  LTable: TJSONObject;
+begin
+  LTable := FindTable(ATable);
+  if LTable <> nil then
+    SetPair(LTable, 'context', TJSONString.Create(AText));
+end;
+
+procedure TRpLocalSchemaFile.SetColumnContext(const ATable, AColumn,
+  AText: string);
+var
+  LColumn: TJSONObject;
+begin
+  LColumn := FindColumn(ATable, AColumn);
+  if LColumn <> nil then
+    SetPair(LColumn, 'context', TJSONString.Create(AText));
+end;
+
+procedure TRpLocalSchemaFile.GetAllowedValues(const ATable, AColumn: string;
+  AValues, ALabels: TStrings);
+var
+  I: Integer;
+  LValues: TJSONArray;
+begin
+  AValues.Clear;
+  ALabels.Clear;
+  LValues := JArr(FindColumn(ATable, AColumn), 'allowedValues');
+  if LValues <> nil then
+    for I := 0 to LValues.Count - 1 do
+      if JObj(LValues, I) <> nil then
+      begin
+        AValues.Add(JStr(JObj(LValues, I), 'value'));
+        ALabels.Add(JStr(JObj(LValues, I), 'label'));
+      end;
+end;
+
+procedure TRpLocalSchemaFile.SetAllowedValues(const ATable, AColumn: string;
+  AValues, ALabels: TStrings);
+var
+  I, J: Integer;
+  LColumn, LItem, LOldItem: TJSONObject;
+  LLabel, LValue: string;
+  LNew, LOld: TJSONArray;
+begin
+  LColumn := FindColumn(ATable, AColumn);
+  if LColumn = nil then
+    Exit;
+  LOld := JArr(LColumn, 'allowedValues');
+  LNew := TJSONArray.Create;
+  try
+    for I := 0 to AValues.Count - 1 do
+    begin
+      LValue := AValues[I];
+      LLabel := '';
+      if I < ALabels.Count then
+        LLabel := ALabels[I];
+      if (Trim(LValue) = '') and (Trim(LLabel) = '') then
+        Continue;
+      LOldItem := nil;
+      if LOld <> nil then
+        for J := 0 to LOld.Count - 1 do
+          if (JObj(LOld, J) <> nil) and (JStr(JObj(LOld, J), 'value') = LValue) then
+          begin
+            LOldItem := JObj(LOld, J);
+            Break;
+          end;
+      if LOldItem <> nil then
+        LItem := TJSONObject(LOldItem.Clone)
+      else
+        LItem := TJSONObject.Create;
+      SetPair(LItem, 'value', TJSONString.Create(LValue));
+      SetPair(LItem, 'label', TJSONString.Create(LLabel));
+      LNew.AddElement(LItem);
+    end;
+  except
+    LNew.Free;
+    raise;
+  end;
+  if LNew.Count = 0 then
+  begin
+    LNew.Free;
+    LColumn.RemovePair('allowedValues').Free;
+  end
+  else
+    SetPair(LColumn, 'allowedValues', LNew);
+end;
+
+function RelationEndTravels(AFile: TRpLocalSchemaFile;
+  ASchema: TRpLocalSubSchema; const ATable: string; AColumns: TJSONArray): Boolean;
+var
+  I: Integer;
+  LTraveling: TStringList;
+begin
+  LTraveling := TStringList.Create;
+  try
+    AFile.GetTravelingColumns(ASchema, ATable, LTraveling);
+    Result := (AFile.FindTable(ATable) <> nil) and (AColumns <> nil) and
+      (AColumns.Count > 0);
+    if Result then
+      for I := 0 to AColumns.Count - 1 do
+        if (AColumns.Items[I] = nil) or
+          (LTraveling.IndexOf(AColumns.Items[I].Value) < 0) then
+          Exit(False);
+  finally
+    LTraveling.Free;
+  end;
+end;
+
+function TRpLocalSchemaFile.ForeignKeyTravels(ASchema: TRpLocalSubSchema;
+  const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+begin
+  Result := (AForeignKey <> nil) and ((ASchema = nil) or (
+    RelationEndTravels(Self, ASchema, ASourceTable, JArr(AForeignKey, 'sourceColumns')) and
+    RelationEndTravels(Self, ASchema, JStr(AForeignKey, 'targetTable'),
+    JArr(AForeignKey, 'targetColumns'))));
+end;
+
+procedure TRpLocalSchemaFile.GetRelations(ASchema: TRpLocalSubSchema;
+  AList: TObjectList);
+var
+  I, J: Integer;
+  LForeignKeys: TJSONArray;
+  LItem, LTable: TJSONObject;
+  LRelation: TRpLocalRelation;
+begin
+  for I := 0 to FTables.Count - 1 do
+  begin
+    LTable := JObj(FTables, I);
+    if (LTable = nil) or ((ASchema <> nil) and
+      (ASchema.Tables.IndexOf(JStr(LTable, 'name')) < 0)) then
+      Continue;
+    LForeignKeys := JArr(LTable, 'foreignKeys');
+    if LForeignKeys = nil then
+      Continue;
+    for J := 0 to LForeignKeys.Count - 1 do
+    begin
+      LItem := JObj(LForeignKeys, J);
+      if not ForeignKeyTravels(ASchema, JStr(LTable, 'name'), LItem) then
+        Continue;
+      LRelation := TRpLocalRelation.Create;
+      LRelation.SourceTable := JStr(LTable, 'name');
+      LRelation.ForeignKey := LItem;
+      AList.Add(LRelation);
+    end;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.GetSuggestedRelations(ASchema: TRpLocalSubSchema;
+  AList: TObjectList);
+var
+  I, J: Integer;
+  LForeignKeys: TJSONArray;
+  LItem, LTable: TJSONObject;
+  LRelation: TRpLocalRelation;
+begin
+  if ASchema = nil then
+    Exit;
+  for I := 0 to FTables.Count - 1 do
+  begin
+    LTable := JObj(FTables, I);
+    if (LTable = nil) or (ASchema.Tables.IndexOf(JStr(LTable, 'name')) < 0) then
+      Continue;
+    LForeignKeys := JArr(LTable, 'foreignKeys');
+    if LForeignKeys = nil then
+      Continue;
+    for J := 0 to LForeignKeys.Count - 1 do
+    begin
+      LItem := JObj(LForeignKeys, J);
+      if (LItem = nil) or (FindTable(JStr(LItem, 'targetTable')) = nil) or
+        ForeignKeyTravels(ASchema, JStr(LTable, 'name'), LItem) then
+        Continue;
+      LRelation := TRpLocalRelation.Create;
+      LRelation.SourceTable := JStr(LTable, 'name');
+      LRelation.ForeignKey := LItem;
+      AList.Add(LRelation);
+    end;
+  end;
+end;
+
+procedure TRpLocalSchemaFile.CompleteRelation(ASchema: TRpLocalSubSchema;
+  ARelation: TRpLocalRelation);
+var
+  I: Integer;
+  LNames: TStringList;
+  LTarget: string;
+begin
+  if (ASchema = nil) or (ARelation = nil) then
+    Exit;
+  LTarget := JStr(FindTable(ARelation.TargetTable), 'name');
+  if LTarget = '' then
+    Exit;
+  AddSchemaTable(ASchema, ARelation.SourceTable);
+  AddSchemaTable(ASchema, LTarget);
+  LNames := TStringList.Create;
+  try
+    ARelation.GetTargetColumns(LNames);
+    for I := 0 to LNames.Count - 1 do
+      SetColumnChosen(ASchema, LTarget, LNames[I], True);
+    ARelation.GetSourceColumns(LNames);
+    for I := 0 to LNames.Count - 1 do
+      SetColumnChosen(ASchema, ARelation.SourceTable, LNames[I], True);
+  finally
+    LNames.Free;
+  end;
+end;
+
+function TRpLocalSchemaFile.AddRelation(const ASourceTable,
+  ATargetTable: string; ASourceColumns, ATargetColumns: TStrings;
+  const AContext: string): TJSONObject;
+var
+  LSourceTable, LTargetTable: TJSONObject;
+  LSource, LTarget, LForeignKeys: TJSONArray;
+begin
+  LSourceTable := FindTable(ASourceTable);
+  LTargetTable := FindTable(ATargetTable);
+  if (LSourceTable = nil) or (LTargetTable = nil) then
+    raise Exception.Create('The relation needs two tables of the catalog');
+  if (ASourceColumns.Count = 0) or (ASourceColumns.Count <> ATargetColumns.Count) then
+    raise Exception.Create('The relation needs pairs of columns');
+  LSource := TJSONArray.Create;
+  LTarget := TJSONArray.Create;
+  try
+    if not SpellColumns(LSourceTable, ASourceColumns, LSource) or
+      not SpellColumns(LTargetTable, ATargetColumns, LTarget) then
+      raise Exception.Create('A column of the relation is not in its table');
+    // A relation that is there already is not written twice: what the
+    // person wrote goes to it
+    Result := FindRelation(LSourceTable, JStr(LTargetTable, 'name'), LSource, LTarget);
+    if Result <> nil then
+    begin
+      if Trim(AContext) <> '' then
+        SetPair(Result, 'relationshipContext', TJSONString.Create(AContext));
+      Exit;
+    end;
+    Result := TJSONObject.Create;
+    Result.AddPair('constraintName', '');
+    Result.AddPair('targetTable', JStr(LTargetTable, 'name'));
+    Result.AddPair('sourceColumns', LSource);
+    LSource := nil;
+    Result.AddPair('targetColumns', LTarget);
+    LTarget := nil;
+    Result.AddPair('relationshipContext', AContext);
+  finally
+    LTarget.Free;
+    LSource.Free;
+  end;
+  LForeignKeys := JArr(LSourceTable, 'foreignKeys');
+  if LForeignKeys = nil then
+  begin
+    LForeignKeys := TJSONArray.Create;
+    SetPair(LSourceTable, 'foreignKeys', LForeignKeys);
+  end;
+  LForeignKeys.AddElement(Result);
+end;
+
+procedure TRpLocalSchemaFile.DeleteRelation(ARelation: TRpLocalRelation);
+var
+  I: Integer;
+  LForeignKeys: TJSONArray;
+begin
+  if (ARelation = nil) or not ARelation.IsManual then
+    Exit;
+  LForeignKeys := JArr(FindTable(ARelation.SourceTable), 'foreignKeys');
+  if LForeignKeys = nil then
+    Exit;
+  for I := 0 to LForeignKeys.Count - 1 do
+    if LForeignKeys.Items[I] = ARelation.ForeignKey then
+    begin
+      LForeignKeys.Remove(I).Free;
+      ARelation.ForeignKey := nil;
+      Exit;
+    end;
+end;
+
+{ TRpLocalRelation }
+
+function TRpLocalRelation.TargetTable: string;
+begin
+  Result := JStr(ForeignKey, 'targetTable');
+end;
+
+procedure TRpLocalRelation.GetSourceColumns(AList: TStrings);
+begin
+  ArrayNames(JArr(ForeignKey, 'sourceColumns'), AList);
+end;
+
+procedure TRpLocalRelation.GetTargetColumns(AList: TStrings);
+begin
+  ArrayNames(JArr(ForeignKey, 'targetColumns'), AList);
+end;
+
+function JoinNames(AArray: TJSONArray): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if AArray <> nil then
+    for I := 0 to AArray.Count - 1 do
+      if AArray.Items[I] <> nil then
+      begin
+        if Result <> '' then
+          Result := Result + ', ';
+        Result := Result + AArray.Items[I].Value;
+      end;
+end;
+
+function TRpLocalRelation.SourceColumnsText: string;
+begin
+  Result := JoinNames(JArr(ForeignKey, 'sourceColumns'));
+end;
+
+function TRpLocalRelation.TargetColumnsText: string;
+begin
+  Result := JoinNames(JArr(ForeignKey, 'targetColumns'));
+end;
+
+function TRpLocalRelation.IsManual: Boolean;
+begin
+  Result := (ForeignKey <> nil) and (Trim(JStr(ForeignKey, 'constraintName')) = '');
+end;
+
+function TRpLocalRelation.Context: string;
+begin
+  Result := JStr(ForeignKey, 'relationshipContext');
+end;
+
+procedure TRpLocalRelation.SetContext(const AText: string);
+begin
+  if ForeignKey <> nil then
+    SetPair(ForeignKey, 'relationshipContext', TJSONString.Create(AText));
 end;
 
 { Catalog model }
@@ -2175,6 +2945,25 @@ begin
     if (LColumns <> nil) and (LColumns.Count > AWidestColumns) then
       AWidestColumns := LColumns.Count;
   end;
+end;
+
+function RpLocalSchemaPreviewSql(const ADialect, ATable: string;
+  ARows: Integer): string;
+var
+  LDialect: string;
+begin
+  LDialect := LowerCase(ADialect);
+  if Pos('firebird', LDialect) = 1 then
+    Result := 'SELECT FIRST ' + IntToStr(ARows) + ' * FROM ' + ATable
+  else if (LDialect = 'sqlserver') or (Pos('mssql', LDialect) = 1) then
+    Result := 'SELECT TOP ' + IntToStr(ARows) + ' * FROM ' + ATable
+  else if (LDialect = 'postgresql') or (LDialect = 'mysql') or
+    (LDialect = 'sqlite') or (LDialect = 'mariadb') then
+    Result := 'SELECT * FROM ' + ATable + ' LIMIT ' + IntToStr(ARows)
+  else if LDialect = 'oracle' then
+    Result := 'SELECT * FROM ' + ATable + ' WHERE ROWNUM <= ' + IntToStr(ARows)
+  else
+    Result := 'SELECT * FROM ' + ATable;
 end;
 
 end.

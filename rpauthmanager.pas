@@ -242,6 +242,10 @@ type
     // (the tier with the id of the profile; a limit <= 0 is no limit). False
     // while the plan is not known
     function SchemaExceedsTier(ATables, AWidestColumns: Integer): Boolean;
+    // The limits of the plan of the account with the AI in the cloud: tables
+    // and columns of the widest table (<= 0 is no limit). False while the
+    // plan is not known
+    function GetSchemaLimits(out AMaxTables, AMaxColumnsPerTable: Integer): Boolean;
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
@@ -496,6 +500,25 @@ begin
         ((LTier.MaxColumnsPerTable > 0) and
         (AWidestColumns > LTier.MaxColumnsPerTable));
       Exit;
+    end;
+end;
+
+function TRpAuthManager.GetSchemaLimits(out AMaxTables,
+  AMaxColumnsPerTable: Integer): Boolean;
+var
+  LTier: TRpTier;
+  LTierId: Int64;
+begin
+  Result := False;
+  AMaxTables := 0;
+  AMaxColumnsPerTable := 0;
+  LTierId := GetProfile.TierId;
+  for LTier in GetTiers do
+    if LTier.Id = LTierId then
+    begin
+      AMaxTables := LTier.MaxTables;
+      AMaxColumnsPerTable := LTier.MaxColumnsPerTable;
+      Exit(True);
     end;
 end;
 

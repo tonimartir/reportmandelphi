@@ -187,6 +187,15 @@ type
     // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
     function GetUserSchemas(AList, ASizes: TStrings): Boolean; overload;
     function GetUserAgents(AList: TStrings): Boolean;
+    // The AI reads the schema of AConfig (inline: a local schema) and says
+    // what it does not understand (NlToSql/AnalyzeSchemaStream) with the
+    // tier and the agent of this client, in the language of the AI. The
+    // final frame: result.explanation (Markdown) or errorMessage/errorCode,
+    // and userProfile. nil when cancelled
+    function AnalyzeSchema(AConfig: TRpApiDatabaseConfig; const AMode: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
       ResponseStream: TStream; ATimeoutMs: Integer): Boolean; overload;
@@ -229,9 +238,56 @@ var
   RpDcDatabaseConnectHook: TRpDcDatabaseConnectFunc = nil;
 {$ENDIF}
 
+type
+  // The state of "Analyze with AI" (RpStartSchemaAnalysis)
+  TRpSchemaAnalysisState = record
+    Finished: Boolean;
+    // Stopped: there is no result
+    Cancelled: Boolean;
+    // The stage of the last progress of the cloud (SendingRequest, Queued,
+    // ReceivingResponse...) and its tokens
+    Stage: string;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+    // The final frame: result.explanation or errorMessage/errorCode, and
+    // userProfile
+    ResultJson: string;
+    // The request failed (HTTP, network)
+    ErrorMessage: string;
+  end;
+
+  IRpSchemaAnalysis = interface
+    ['{8C4A2E61-3B7D-4F0A-9E15-6D2C7B1A9F43}']
+    procedure Cancel;
+    function GetState: TRpSchemaAnalysisState;
+  end;
+
 // HUB_API_URL constants moved to rptypes.pas
 
+// "Analyze with AI" of the local schema screens: AnalyzeSchema in a thread
+// of its own with the session of TRpAuthManager. The screen reads GetState
+// with a timer (VCL and LCL alike) and may be closed while it runs: the
+// thread keeps the task alive and ends on its own after Cancel
+function RpStartSchemaAnalysis(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64): IRpSchemaAnalysis;
+
+// The body of NlToSql/AnalyzeSchemaStream (AnalyzeSchemaRequest of the
+// cloud): the config of AConfig (TRpApiDatabaseConfig.ToJsonObject), the
+// tier and mode of the AI, the agent (when there is one) and the language of
+// the answer (a language of the AI: 'Spanish', 'es'...)
+function RpAnalyzeSchemaRequestJson(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string; AAgentAiId: Int64;
+  const AApiKey, AUserLanguage: string): TJSONObject;
+
 implementation
+
+uses
+{$IFDEF FPC}
+  SyncObjs;
+{$ELSE}
+  System.SyncObjs;
+{$ENDIF}
 
 const
   MODIFY_REPORT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -316,9 +372,9 @@ begin
   Result := 'English';
 end;
 
-// Accept-Language of the requests: the messages of the API (the error of the
-// plan among them) in the language of the AI
-function RpApiAcceptLanguage: string;
+// The ISO code of a language of the AI ('Spanish', 'es-ES'...): 'en' when
+// not known
+function UserLanguageIsoCode(const AUserLanguage: string): string;
 const
   CNames: array[0..7] of string = ('English', 'Spanish', 'Italian', 'French',
     'German', 'Portuguese', 'Chinese', 'Catalan');
@@ -328,10 +384,17 @@ var
   LLanguage: string;
 begin
   Result := 'en';
-  LLanguage := NormalizeUserLanguage(TRpAuthManager.Instance.AILanguage);
+  LLanguage := NormalizeUserLanguage(AUserLanguage);
   for I := Low(CNames) to High(CNames) do
     if SameText(CNames[I], LLanguage) then
       Exit(CCodes[I]);
+end;
+
+// Accept-Language of the requests: the messages of the API (the error of the
+// plan among them) in the language of the AI
+function RpApiAcceptLanguage: string;
+begin
+  Result := UserLanguageIsoCode(TRpAuthManager.Instance.AILanguage);
 end;
 
 function ResolveTranscribeLanguage(const AUserLanguage: string): string;
@@ -725,6 +788,12 @@ begin
       LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
       LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
       TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
+    end
+    else if SameText(AAction, 'NlToSql/AnalyzeSchemaStream') then
+    begin
+      // A large schema with a reasoning model takes minutes
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
     end;
 
     LRequestStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
@@ -1034,6 +1103,266 @@ begin
   finally
     LRequest.Free;
   end;
+end;
+
+function RpAnalyzeSchemaRequestJson(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string; AAgentAiId: Int64;
+  const AApiKey, AUserLanguage: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  try
+    if Trim(AAITier) <> '' then
+      Result.AddPair('aiTier', AAITier)
+    else
+      Result.AddPair('aiTier', 'Standard');
+    // AIMode of the cloud: Fast or Reasoning
+    if SameText(Trim(AMode), 'Reasoning') then
+      Result.AddPair('mode', 'Reasoning')
+    else
+      Result.AddPair('mode', 'Fast');
+    if AAgentSecret <> '' then
+      Result.AddPair('agentSecret', AAgentSecret);
+    if AAgentAiId <> 0 then
+      Result.AddPair('agentAiId', TJSONNumber.Create(AAgentAiId));
+    if AApiKey <> '' then
+      Result.AddPair('apiKey', AApiKey);
+    if AConfig <> nil then
+      Result.AddPair('config', AConfig.ToJsonObject)
+    else
+      Result.AddPair('config', TJSONObject.Create);
+    Result.AddPair('languageCodeIso', UserLanguageIsoCode(AUserLanguage));
+    Result.AddPair('transcribeLanguage', ResolveTranscribeLanguage(AUserLanguage));
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TRpDatabaseHttp.AnalyzeSchema(AConfig: TRpApiDatabaseConfig;
+  const AMode: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  LRequest := RpAnalyzeSchemaRequestJson(AConfig, FAITier, AMode, FAgentSecret,
+    FAgentAiId, FApiKey, TRpAuthManager.Instance.AILanguage);
+  try
+    AddOptionalRuntime(LRequest, FRuntimeDb);
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/AnalyzeSchemaStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    Result := nil;
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/AnalyzeSchema', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        Result := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+{ "Analyze with AI" in a thread }
+
+type
+  TRpSchemaAnalysis = class(TInterfacedObject, IRpSchemaAnalysis)
+  private
+    FLock: TCriticalSection;
+    FState: TRpSchemaAnalysisState;
+    FCancelRequested: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Cancel;
+    function GetState: TRpSchemaAnalysisState;
+    function CancelRequested: Boolean;
+    // The events of the stream (the worker thread)
+    function StreamCancel(Sender: TObject): Boolean;
+    procedure StreamProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure Finish(const AResultJson, AErrorMessage: string;
+      ACancelled: Boolean);
+  end;
+
+  TRpSchemaAnalysisThread = class(TThread)
+  private
+    // Keeps the task alive while the thread runs
+    FTask: IRpSchemaAnalysis;
+    FAnalysis: TRpSchemaAnalysis;
+    FConfig: TRpApiDatabaseConfig;
+    FToken: string;
+    FInstallId: string;
+    FAITier: string;
+    FMode: string;
+    FAgentSecret: string;
+    FAgentAiId: Int64;
+  protected
+    procedure Execute; override;
+  public
+    constructor CreateFor(AAnalysis: TRpSchemaAnalysis;
+      AConfig: TRpApiDatabaseConfig; const AAITier, AMode,
+      AAgentSecret: string; AAgentAiId: Int64);
+    destructor Destroy; override;
+  end;
+
+constructor TRpSchemaAnalysis.Create;
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TRpSchemaAnalysis.Destroy;
+begin
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaAnalysis.Cancel;
+begin
+  FLock.Enter;
+  try
+    FCancelRequested := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.CancelRequested: Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FCancelRequested;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.GetState: TRpSchemaAnalysisState;
+begin
+  FLock.Enter;
+  try
+    Result := FState;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.StreamCancel(Sender: TObject): Boolean;
+begin
+  Result := CancelRequested;
+end;
+
+procedure TRpSchemaAnalysis.StreamProgress(Sender: TObject; const AActor,
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+begin
+  FLock.Enter;
+  try
+    FState.Stage := AStage;
+    if AInputTokens > 0 then
+      FState.InputTokens := AInputTokens;
+    if AOutputTokens > 0 then
+      FState.OutputTokens := AOutputTokens;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpSchemaAnalysis.Finish(const AResultJson, AErrorMessage: string;
+  ACancelled: Boolean);
+begin
+  FLock.Enter;
+  try
+    FState.ResultJson := AResultJson;
+    FState.ErrorMessage := AErrorMessage;
+    FState.Cancelled := ACancelled or FCancelRequested;
+    FState.Finished := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+constructor TRpSchemaAnalysisThread.CreateFor(AAnalysis: TRpSchemaAnalysis;
+  AConfig: TRpApiDatabaseConfig; const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64);
+begin
+  inherited Create(True);
+  FreeOnTerminate := True;
+  FAnalysis := AAnalysis;
+  FTask := AAnalysis;
+  FConfig := TRpApiDatabaseConfig.Create;
+  FConfig.Assign(AConfig);
+  FAITier := AAITier;
+  FMode := AMode;
+  FAgentSecret := AAgentSecret;
+  FAgentAiId := AAgentAiId;
+  // The session is read here, in the thread of the screen
+  FToken := TRpAuthManager.Instance.Token;
+  FInstallId := TRpAuthManager.Instance.InstallId;
+end;
+
+destructor TRpSchemaAnalysisThread.Destroy;
+begin
+  FConfig.Free;
+  FTask := nil;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaAnalysisThread.Execute;
+var
+  LHttp: TRpDatabaseHttp;
+  LResult: TJSONObject;
+begin
+  LResult := nil;
+  LHttp := nil;
+  try
+    try
+      LHttp := TRpDatabaseHttp.Create;
+      LHttp.Token := FToken;
+      LHttp.InstallId := FInstallId;
+      LHttp.AITier := FAITier;
+      LHttp.AgentSecret := FAgentSecret;
+      LHttp.AgentAiId := FAgentAiId;
+      LResult := LHttp.AnalyzeSchema(FConfig, FMode, FAnalysis,
+        FAnalysis.StreamProgress, FAnalysis.StreamCancel);
+      if LResult = nil then
+        FAnalysis.Finish('', '', True)
+      else
+        FAnalysis.Finish(LResult.ToJSON, '', False);
+    finally
+      LResult.Free;
+      LHttp.Free;
+    end;
+  except
+    on E: Exception do
+      FAnalysis.Finish('', E.Message, FAnalysis.CancelRequested);
+  end;
+end;
+
+function RpStartSchemaAnalysis(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64): IRpSchemaAnalysis;
+var
+  LAnalysis: TRpSchemaAnalysis;
+  LThread: TRpSchemaAnalysisThread;
+begin
+  LAnalysis := TRpSchemaAnalysis.Create;
+  Result := LAnalysis;
+  LThread := TRpSchemaAnalysisThread.CreateFor(LAnalysis, AConfig, AAITier,
+    AMode, AAgentSecret, AAgentAiId);
+  LThread.Start;
 end;
 
 function TRpDatabaseHttp.GetTableSchema(const ASql: string): TJSONObject;

@@ -550,7 +550,8 @@ var
 begin
   LSchemaName := ASchemaName;
   try
-    LSaved := RpShowLocalSchemasDialog(Report, AAlias, LSchemaName, AAddNew);
+    LSaved := RpShowLocalSchemasDialog(Report, AAlias, LSchemaName, AAddNew,
+      FChat);
   finally
     UpdateChatLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
   end;
