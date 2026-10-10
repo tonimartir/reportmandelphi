@@ -64,7 +64,7 @@
       <p>The Report Manager Designer runs on the Mac as a Mac application: a native Cocoa interface, a universal binary for Intel and Apple Silicon, and a <code>.dmg</code> you drag to Applications. No Java runtime, no Electron, no Windows virtual machine.</p>
 
       <figure class="shot">
-        <img src="doc/images/designer-macos.png" loading="lazy" decoding="async" alt="The Report Manager Designer running on macOS, with a report open in the design window">
+        <img src="doc/images/designer-macos.png" width="1256" height="731" loading="lazy" decoding="async" alt="The Report Manager Designer running on macOS: the report structure on the left, the design window in the middle and the AI copilot panel on the right">
         <figcaption>The Report Manager Designer on macOS.</figcaption>
       </figure>
 
@@ -75,7 +75,7 @@
         <li>Design reports visually: bands, groups, subreports, expressions, charts and barcodes.</li>
         <li>Connect to your database. Both engine drivers work on macOS &mdash; FireDAC connections opened with SQLdb and Zeos connections &mdash; for PostgreSQL, MySQL or MariaDB, Firebird, SQLite and ODBC. See <a href="doc/installmac.html">databases on macOS</a> for the client libraries each one needs.</li>
         <li>Reach a remote database through the Reportman DB Agent, outbound-only, without a VPN.</li>
-        <li>Export to PDF, SVG, HTML, text and CSV.</li>
+        <li>Export to PDF, SVG, HTML, text and CSV, and print from the macOS print dialog.</li>
         <li>Use the AI assistants: the report design chat, the SQL and expression chats, and inline suggestions in the SQL editor, which also completes from your schema.</li>
         <li>Open a <code>.rep</code> file straight from the Finder. The samples are installed with the application.</li>
       </ul>
@@ -91,10 +91,11 @@
       <p>Download <code>reportman-designer-&lt;version&gt;-macos-universal.dmg</code> from the <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on SourceForge, open it and drag the application to Applications.</p>
       <p>The application is signed ad hoc and <b>not notarized by Apple</b>, so the first time you have to open it from the Finder with <i>right click &rarr; Open</i>. After that it opens like any other application. It carries its own OpenSSL 3 for HTTPS, which is what the login, the AI assistants and the Reportman DB Agent driver use.</p>
 
-      <h2>What is not there yet</h2>
+      <h2>The small print</h2>
       <p>We would rather say it here than have you find out:</p>
       <ul>
-        <li>Printing has not been tested yet on macOS. Exporting has.</li>
+        <li>Printing works, and on macOS it needed fixing: Lazarus itself printed blank sheets, because its Cocoa printer leaves the page margins undefined, so the designer sets them. Tested with a virtual PDF printer; on a real printer it is still pending.</li>
+        <li>With LCL on Cocoa, text in the preview and on paper is not drawn exactly as the engine draws it: uneven letter spacing and a different font. The PDF, SVG and HTML you export are not affected.</li>
         <li>The Monaco SQL editor is Windows only. On macOS the SQL editor is the native one, with schema completion and AI inline suggestions, as on Linux.</li>
         <li>On Apple Silicon, so far only the automated tests have been run on every release.</li>
       </ul>

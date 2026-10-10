@@ -64,7 +64,7 @@
       <p>El Diseñador de Report Manager funciona en el Mac como una aplicación del Mac: interfaz Cocoa nativa, binario universal para Intel y Apple Silicon, y un <code>.dmg</code> que se arrastra a Aplicaciones. Sin entorno de Java, sin Electron y sin una máquina virtual con Windows.</p>
 
       <figure class="shot">
-        <img src="doc/images/designer-macos.png" loading="lazy" decoding="async" alt="El Diseñador de Report Manager en macOS, con un informe abierto en la ventana de diseño">
+        <img src="doc/images/designer-macos.png" width="1256" height="731" loading="lazy" decoding="async" alt="El Diseñador de Report Manager en macOS: la estructura del informe a la izquierda, la ventana de diseño en el centro y el panel del copiloto de IA a la derecha">
         <figcaption>El Diseñador de Report Manager en macOS.</figcaption>
       </figure>
 
@@ -75,7 +75,7 @@
         <li>Diseñar informes visualmente: secciones, grupos, subinformes, expresiones, gráficos y códigos de barras.</li>
         <li>Conectar con su base de datos. Los dos controladores del motor funcionan en macOS &mdash;conexiones FireDAC abiertas con SQLdb y conexiones Zeos&mdash; para PostgreSQL, MySQL o MariaDB, Firebird, SQLite y ODBC. En <a href="doc/installmac.html">bases de datos en macOS</a> están las librerías cliente que necesita cada una.</li>
         <li>Llegar a una base de datos remota con el Reportman DB Agent, solo con conexiones salientes y sin VPN.</li>
-        <li>Exportar a PDF, SVG, HTML, texto y CSV.</li>
+        <li>Exportar a PDF, SVG, HTML, texto y CSV, e imprimir con el diálogo de impresión de macOS.</li>
         <li>Usar los asistentes de IA: el chat de diseño del informe, los de SQL y expresiones, y la sugerencia en línea del editor de SQL, que además completa con su esquema.</li>
         <li>Abrir un fichero <code>.rep</code> desde el Finder. Los ejemplos se instalan con la aplicación.</li>
       </ul>
@@ -91,10 +91,11 @@
       <p>Descargue <code>reportman-designer-&lt;versión&gt;-macos-universal.dmg</code> de la <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener">carpeta <code>macOS</code></a> de la versión en SourceForge, ábralo y arrastre la aplicación a Aplicaciones.</p>
       <p>La aplicación está firmada <i>ad hoc</i> y <b>no está notarizada por Apple</b>, así que la primera vez hay que abrirla desde el Finder con <i>clic derecho &rarr; Abrir</i>. A partir de ahí se abre como cualquier otra. Lleva su propio OpenSSL 3 para HTTPS, que es lo que usan el inicio de sesión, los asistentes de IA y el controlador del Reportman DB Agent.</p>
 
-      <h2>Lo que todavía no está</h2>
+      <h2>La letra pequeña</h2>
       <p>Preferimos decirlo aquí a que se lo encuentre usted:</p>
       <ul>
-        <li>La impresión todavía no se ha probado en macOS. La exportación sí.</li>
+        <li>La impresión funciona, y en macOS hubo que arreglarla: Lazarus imprimía folios en blanco, porque su impresora Cocoa deja los márgenes de la página sin fijar, así que los fija el diseñador. Probada con una impresora PDF virtual; en una impresora de verdad está pendiente.</li>
+        <li>Con LCL en Cocoa el texto de la vista previa y del papel no sale exactamente como lo dibuja el motor: separación irregular entre letras y otra tipografía. El PDF, el SVG y el HTML que exporte no se ven afectados.</li>
         <li>El editor de SQL Monaco es solo de Windows. En macOS el editor de SQL es el nativo, con completado del esquema y sugerencia de IA en línea, igual que en Linux.</li>
         <li>En Apple Silicon, de momento en cada versión solo se han ejecutado las pruebas automáticas.</li>
       </ul>
