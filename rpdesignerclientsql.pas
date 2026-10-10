@@ -346,7 +346,12 @@ begin
           Result := Currency(LDouble);
       end
       else
-        Result := Currency(Double(AValue));
+      begin
+        // In two steps: FPC 3.2.2 on x86_64 stops with an internal error
+        // (2009112507) on Currency(Double(<variant>))
+        LDouble := AValue;
+        Result := Currency(LDouble);
+      end;
     rpParamDate, rpParamTime, rpParamDateTime:
       if VarType(AValue) <> varDate then
       begin
