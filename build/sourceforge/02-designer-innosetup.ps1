@@ -19,7 +19,8 @@ foreach ($iss in $issFiles) {
   if (-not (Test-Path $iss)) { Fail "No encuentro el .iss: $iss" }
   Info ""
   Info "ISCC  $iss"
-  & $Iscc "/O$DesignerDir" $iss
+  # The version comes from RM_VERSION (install\version.iss)
+  & $Iscc "/O$DesignerDir" "/DAppVer=$Version" $iss
   if ($LASTEXITCODE -ne 0) { Fail "ISCC fallo en $iss (exit $LASTEXITCODE)" }
 }
 

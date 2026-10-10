@@ -26,6 +26,10 @@ del builder se crea sola la primera vez; ver `docs\fase6_plan.md`).
 - `reportman_designer_net_4_0_8_x64.exe` / `_x86.exe` — **Report Manager .NET Designer**, **self-contained** (no requiere .NET instalado); instala net2 en `{app}\net2`, DefaultDir = carpeta del Designer Delphi (editable) + acceso en menu inicio. Si ambos van a la misma carpeta, el Delphi usa el driver .NET. Tambien standalone.
 
 ## Notas
+- **Versión de los instaladores**: no se escribe a mano. Los cuatro `.iss` incluyen
+  `install\version.iss`, que la toma de `RM_VERSION` (`rpmdconsts.pas`); la tarea 02
+  la pasa además como `ISCC /DAppVer=<v>`. Los instaladores .NET ya no llevan `beta`
+  en el nombre (`reportman_designer_net_<v>_x64.exe`).
 - **net2**: `01b-build-net2.ps1` lo publica self-contained (win-x64 -> `binr64\net2`, win-x86 -> `binr32\net2`).
 - **Linux**: `binrl64\printreptopdf` debe estar compilado (PAServer) antes de la tarea 05.
   La tarea 05 ya no vacía `release_<v>\Linux\` (lo hace `make-release.ps1` al

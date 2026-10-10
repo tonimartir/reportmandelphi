@@ -6,9 +6,11 @@
 
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING .ISS SCRIPT FILES!
 
+#include "version.iss"
+
 [Setup]
 AppName=Report Manager Designer (x64)
-AppVersion=4.0.10
+AppVersion={#AppVer}
 DefaultDirName={commonpf64}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\repmandxp.exe
@@ -25,8 +27,8 @@ ArchitecturesInstallIn64BitMode=x64
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager
-VersionInfoProductVersion=4.0.10
-OutputBaseFilename=reportman_designer_4_0_10_x64
+VersionInfoProductVersion={#AppVer}
+OutputBaseFilename=reportman_designer_{#AppVerU}_x64
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr64\repmandxp.exe"; DestDir: "{app}"

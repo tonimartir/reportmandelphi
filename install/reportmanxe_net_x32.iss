@@ -4,9 +4,11 @@
 ; Report Designer Delphi (x86), este puede usar el driver .NET. Tambien funciona
 ; como producto standalone (con acceso en el menu inicio).
 
+#include "version.iss"
+
 [Setup]
 AppName=Report Manager .NET Designer (x86)
-AppVersion=4.0.10
+AppVersion={#AppVer}
 DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
 UninstallDisplayIcon={app}\net2\designer.exe
@@ -16,8 +18,8 @@ OutputDir=C:\desarrollo\prog\toni\reportman\install\Output
 AppPublisher=Toni Martir
 AppPublisherURL=http://reportman.sourceforge.net
 VersionInfoProductName=Report Manager .NET Designer
-VersionInfoProductVersion=4.0.10
-OutputBaseFilename=reportman_designer_net_4_0_10_x86
+VersionInfoProductVersion={#AppVer}
+OutputBaseFilename=reportman_designer_net_{#AppVerU}_x86
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\net2\*"; DestDir: "{app}\net2"; Flags: recursesubdirs createallsubdirs ignoreversion
