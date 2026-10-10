@@ -94,7 +94,7 @@
       <h2>The small print</h2>
       <p>We would rather say it here than have you find out:</p>
       <ul>
-        <li>Printing works, and on macOS it needed fixing: Lazarus itself printed blank sheets, because its Cocoa printer leaves the page margins undefined, so the designer sets them. Tested with a virtual PDF printer; on a real printer it is still pending.</li>
+        <li>Printing works, and on macOS it needed fixing: Lazarus itself printed blank sheets, because its Cocoa printer leaves the page margins undefined, so the designer sets them. It is tested through the macOS printing system, with a printer that writes each job to PDF: portrait and landscape, several reports, one of them two pages with images.</li>
         <li>With LCL on Cocoa, text in the preview and on paper is not drawn exactly as the engine draws it: uneven letter spacing and a different font. The PDF, SVG and HTML you export are not affected.</li>
         <li>The Monaco SQL editor is Windows only. On macOS the SQL editor is the native one, with schema completion and AI inline suggestions, as on Linux.</li>
         <li>On Apple Silicon, so far only the automated tests have been run on every release.</li>
