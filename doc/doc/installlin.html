@@ -241,7 +241,7 @@
 <p>Download the packages of the latest release from the
   <a href="https://sourceforge.net/projects/reportman/files/" target="_blank" rel="noopener">SourceForge files page</a>
   (<code>Linux</code> folder of the release). There are three files. The version in their names (for example
-  <code>4.0.18</code>) is the one of that Linux build, and it does not always match the
+  <code>4.0.19</code>) is the one of that Linux build, and it does not always match the
   Windows designer sitting in the same folder — take it from the file names you actually
   see there:</p>
 <table>
@@ -276,15 +276,15 @@
   replaces the other. Your preferences, connections and reports are shared by both.
   <code>reportman-designer --version</code> shows which one you have: <code>(LCL qt6)</code> or
   <code>(LCL gtk2)</code>.</p>
-<pre><code>sudo apt install ./reportman-designer-gtk2_4.0.18_amd64.deb   # switch to GTK2
-sudo apt install ./reportman-designer_4.0.18_amd64.deb        # back to Qt 6</code></pre>
+<pre><code>sudo apt install ./reportman-designer-gtk2_4.0.19_amd64.deb   # switch to GTK2
+sudo apt install ./reportman-designer_4.0.19_amd64.deb        # back to Qt 6</code></pre>
 
 <h2>Install the .deb package (recommended)</h2>
 <ol>
   <li>Download <code>reportman-designer_&lt;version&gt;_amd64.deb</code> (Qt&nbsp;6).</li>
   <li>Install it with a double click (the desktop software installer opens it) or from a terminal,
     in the download folder:
-<pre><code>sudo apt install ./reportman-designer_4.0.18_amd64.deb</code></pre>
+<pre><code>sudo apt install ./reportman-designer_4.0.19_amd64.deb</code></pre>
     The <code>./</code> tells <code>apt</code> that it is a local file and not a repository package;
     <code>apt</code> downloads and installs all the dependencies.</li>
 </ol>
@@ -316,8 +316,8 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
   (<code>~/.borland/</code>) and reports.</p>
 
 <h2>Use the AppImage</h2>
-<pre><code>chmod +x ReportManDesigner-4.0.18-x86_64.AppImage
-./ReportManDesigner-4.0.18-x86_64.AppImage [report.rep]</code></pre>
+<pre><code>chmod +x ReportManDesigner-4.0.19-x86_64.AppImage
+./ReportManDesigner-4.0.19-x86_64.AppImage [report.rep]</code></pre>
 <p>(or, in the file manager: Properties &rarr; Allow executing as program, then double click).
   The AppImage is the Qt&nbsp;6 version and carries Qt&nbsp;6.2, <code>libQt6Pas</code>, GLib, ICU and
   SQLite. From the system it uses what any desktop has: X11 or XWayland, fontconfig, FreeType,
@@ -326,7 +326,7 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
   for the HTTPS connections to the Hub.</p>
 <ul>
   <li>If it fails with a <b>FUSE</b> error, run it without mounting:
-    <code>./ReportManDesigner-4.0.18-x86_64.AppImage --appimage-extract-and-run</code>
+    <code>./ReportManDesigner-4.0.19-x86_64.AppImage --appimage-extract-and-run</code>
     (or install the <code>fuse3</code>/<code>fuse</code> package of your distribution).</li>
   <li>The AppImage does not add itself to the menu nor associate <code>*.rep</code> files; use the
     <code>.deb</code> or a tool such as AppImageLauncher or Gear Lever for that. To remove it, delete
