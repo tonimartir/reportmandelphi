@@ -9,7 +9,7 @@ diseñador de Windows, compilada con Qt 6. Se distribuye en tres ficheros:
 | `reportman-designer-gtk2_<versión>_amd64.deb` | Paquete `.deb`, GTK2 (transitorio) | Las mismas distribuciones, solo si la versión Qt 6 no te sirve (ver [¿Qt 6 o GTK2?](#qt-6-o-gtk2)). |
 | `ReportManDesigner-<versión>-x86_64.AppImage` | AppImage, Qt 6 | Cualquier distribución x86_64 con glibc 2.35 o posterior. Se descarga y se ejecuta, sin instalar nada. |
 
-Solo hay versión para PC de 64 bits (x86_64). La versión (por ejemplo `4.0.16`)
+Solo hay versión para PC de 64 bits (x86_64). La versión (por ejemplo `4.0.18`)
 es la misma que la del diseñador de Windows. `SHA256SUMS`, junto a los
 ficheros, permite comprobar la descarga (`sha256sum -c SHA256SUMS
 --ignore-missing`).
@@ -29,8 +29,8 @@ Los dos paquetes instalan los mismos ficheros y no pueden estar instalados a la
 vez: **instalar uno sustituye al otro**. Para cambiar, instala el otro `.deb`:
 
 ```sh
-sudo apt install ./reportman-designer-gtk2_4.0.16_amd64.deb   # pasar a GTK2
-sudo apt install ./reportman-designer_4.0.16_amd64.deb        # volver a Qt 6
+sudo apt install ./reportman-designer-gtk2_4.0.18_amd64.deb   # pasar a GTK2
+sudo apt install ./reportman-designer_4.0.18_amd64.deb        # volver a Qt 6
 ```
 
 `apt` avisa de que quita el paquete anterior. Tus preferencias, conexiones e
@@ -47,7 +47,7 @@ informes no cambian (son los mismos para las dos versiones).
    - desde un terminal, en la carpeta de la descarga:
 
      ```sh
-     sudo apt install ./reportman-designer_4.0.16_amd64.deb
+     sudo apt install ./reportman-designer_4.0.18_amd64.deb
      ```
 
      El `./` es necesario: le dice a `apt` que es un fichero y no un paquete del
@@ -97,8 +97,8 @@ la anterior. (Todavía no hay repositorio `apt` con actualizaciones automáticas
 2. Dale permiso de ejecución y ábrela:
 
    ```sh
-   chmod +x ReportManDesigner-4.0.16-x86_64.AppImage
-   ./ReportManDesigner-4.0.16-x86_64.AppImage [informe.rep]
+   chmod +x ReportManDesigner-4.0.18-x86_64.AppImage
+   ./ReportManDesigner-4.0.18-x86_64.AppImage [informe.rep]
    ```
 
    (o, en el gestor de archivos: Propiedades → Permitir ejecutar como programa,
@@ -114,7 +114,7 @@ para las conexiones HTTPS al Hub (sin ellos solo fallan esas conexiones). No
 hay AppImage GTK2.
 
 - Si al abrirla aparece un error de **FUSE**, ejecútala sin montarla:
-  `./ReportManDesigner-4.0.16-x86_64.AppImage --appimage-extract-and-run`
+  `./ReportManDesigner-4.0.18-x86_64.AppImage --appimage-extract-and-run`
   (o instala el paquete `fuse3`/`fuse` de tu distribución).
 - La AppImage no se añade sola al menú ni se asocia con `*.rep`. Para eso usa
   el `.deb` o una herramienta como AppImageLauncher o Gear Lever.

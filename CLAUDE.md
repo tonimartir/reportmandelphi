@@ -153,7 +153,10 @@ Other FPC deliverables:
   folder because `repman\TmSchema.pas` shadows the LCL unit; the exe is written
   to `repman\`). `lazbuild --ws=win32 --bm=Release …` on Windows.
 - Linux packages are built in Docker inside WSL by
-  `build\linux\build-linux.ps1` (output `build\linux\out\<v>\`, gitignored):
+  `build\linux\build-linux.ps1` (output `build\linux\out\<v>\`, gitignored),
+  or without WSL by `.github/workflows/linux.yml` (manual `workflow_dispatch`
+  only; the same scripts on an Ubuntu runner, packages and `SHA256SUMS` as an
+  artifact):
   `reportman-designer` `.deb` + AppImage with Qt6 (recommended; ships a
   private `libQt6Pas` built in the image) and a transitional
   `reportman-designer-gtk2` `.deb`; both widgetsets must pass
