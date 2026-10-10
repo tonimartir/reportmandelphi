@@ -5,11 +5,17 @@
 # No PAServer: MSBuild compiles and links against the Linux64 SDK already pulled
 # into RAD Studio (Tools > Options > SDK Manager); PAServer is only needed to
 # pull or update that SDK, or to run and debug from the IDE.
+#
+# The SDK is Rocky Linux 8 (glibc 2.28) on purpose: glibc tags each symbol with
+# the version that last changed it and a binary asks for the newest tags found
+# in the SDK it was linked against, so a Rocky 9 / Ubuntu 22.04+ SDK (glibc
+# 2.34+) gives binaries that do not start on Red Hat 8. Linked against 2.28
+# they run there and on every newer distribution.
 [CmdletBinding()]
-param()
+param([string]$PlatformSdk = 'rocky8.10.sdk')
 . "$PSScriptRoot\_common.ps1"
 
-Info "== Task 01c: Linux64 Release (printreptopdf, repwebexe) =="
+Info "== Task 01c: Linux64 Release (printreptopdf, repwebexe), SDK $PlatformSdk =="
 Import-RsVars
 if (-not (Test-Path $MsBuild)) { Fail "MSBuild not found: $MsBuild" }
 
@@ -29,7 +35,7 @@ foreach ($t in $targets) {
   $res = [IO.Path]::ChangeExtension($t.Proj, '.res')
   Push-Location (Split-Path $t.Proj -Parent)
   try {
-    & $MsBuild $t.Proj /t:Build /p:Config=Release /p:Platform=Linux64 /nologo /v:m
+    & $MsBuild $t.Proj /t:Build /p:Config=Release /p:Platform=Linux64 "/p:PlatformSDK=$PlatformSdk" /nologo /v:m
     $code = $LASTEXITCODE
   } finally { Pop-Location }
   & git -C $RepoRoot checkout -- $res 2>$null

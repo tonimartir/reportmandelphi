@@ -33,9 +33,11 @@ del builder se crea sola la primera vez; ver `docs\fase6_plan.md`).
   en el nombre (`reportman_designer_net_<v>_x64.exe`).
 - **net2**: `01b-build-net2.ps1` lo publica self-contained (win-x64 -> `binr64\net2`, win-x86 -> `binr32\net2`).
 - **Linux64 (Delphi)**: la tarea 01c compila y enlaza en Windows contra el SDK Linux64
-  ya descargado en RAD Studio (`rocky9.6.sdk`, glibc 2.34: Ubuntu 22.04+, Debian 12+,
-  RHEL 9+). PAServer solo hace falta para descargar o actualizar ese SDK (SDK Manager)
-  o para ejecutar y depurar desde el IDE.
+  ya descargado en RAD Studio 13: `rocky8.10.sdk` (glibc 2.28), a propósito, para que
+  los binarios arranquen en Red Hat 8 y en todas las distribuciones posteriores (con
+  el SDK de Rocky 9 exigían glibc 2.34 y no arrancaban en RHEL 8). PAServer solo hace
+  falta para descargar o actualizar ese SDK (SDK Manager) o para ejecutar y depurar
+  desde el IDE. Probados en Rocky Linux 8, Ubuntu 26.04 y en la imagen Docker.
   La tarea 05 ya no vacía `release_<v>\Linux\` (lo hace `make-release.ps1` al
   empezar), así que 05 y 06 pueden ejecutarse sueltas en cualquier orden.
   `SHA256SUMS` cubre todo lo que haya en `Linux\` al ejecutar la 06.

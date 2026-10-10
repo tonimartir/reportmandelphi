@@ -227,9 +227,18 @@
 <main class="doc-main">
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Build printreptopdf for Linux</span></nav>
 <h1>Build printreptopdf for Linux</h1>
-To compile reportman printreptopdf, the LinuxPAServer crosscompiler is used.
-A connection to PAServer is needed.
-The new versions of printreptopdf can handle complex shaping fonts like arabic fonts, so some development libraries must be installed.
+<p>printreptopdf and repwebexe are built on Windows with the Delphi Linux64 compiler, which links
+  against a Linux64 SDK pulled into RAD Studio (Tools &gt; Options &gt; Deployment &gt; SDK Manager).
+  PAServer is only needed to pull or update that SDK, and to run and debug from the IDE: once the SDK
+  is there, MSBuild compiles and links with no connection
+  (<code>build\sourceforge\01c-build-linux64.ps1</code> builds both).</p>
+<p>Pull the SDK from the <b>oldest</b> distribution the binaries must run on: glibc tags each function
+  with the version that last changed it and the binary asks for the newest tags of the SDK it was linked
+  against. Linked against Rocky Linux 9 or Ubuntu 22.04 (glibc 2.34+) it does not start on Red Hat 8
+  (<code>GLIBC_2.34 not found</code>); linked against Rocky Linux 8 (glibc 2.28) it runs there and on
+  every newer distribution. The release builds use <code>rocky8.10.sdk</code>.</p>
+<p>The new versions of printreptopdf can handle complex shaping fonts like arabic fonts, so some
+  development libraries must be installed on the machine the SDK is pulled from.</p>
 <ul>
   <li>Installation of freetype devel. RHEL sudo dnf install freetype-devel</li>
   <li>Installation of harfbuzz devel. RHEL sudo dnf install harfbuzz-devel</li>

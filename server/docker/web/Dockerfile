@@ -4,7 +4,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG REPWEBEXE_SOURCE=server/docker/web/artifacts/linux64/repwebexe
 ARG DBXDRIVERS_SOURCE=repman/dbxdrivers.ini
 
-# Runtime dependencies for repwebexe plus the native client libraries for the
+# Runtime dependencies for repwebexe (FreeType, HarfBuzz, fontconfig, fonts and
+# ICU are loaded by the report engine when it renders, not at start-up: without
+# them the server answers but every report fails) plus the native client libraries for the
 # database backends that FireDAC/Zeos can reach. Only free/apt clients are
 # bundled. Proprietary clients (Oracle, IBM Db2, Informix, Microsoft msodbcsql)
 # are not included here; add them in a derived image - see
@@ -14,6 +16,10 @@ RUN apt-get update \
         ca-certificates \
         tzdata \
         libicu70 \
+        libfreetype6 \
+        libharfbuzz0b \
+        libfontconfig1 \
+        fonts-dejavu-core \
         libunwind8 \
         libcurl4 \
         libssl3 \

@@ -227,7 +227,20 @@
 <main class="doc-main">
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>printreptopdf command line tool on Linux</span></nav>
 <h1>printreptopdf command line tool on Linux</h1>
-This document have been documented with Ubuntu Linux Server 22.04 LTS.
+<p>printreptopdf (and repwebexe) run on any x86_64 distribution from Red Hat Enterprise Linux 8
+  (Rocky, Alma, Oracle Linux 8), Ubuntu 20.04 and Debian 10 onwards: they are linked against
+  glibc 2.28 and only ask the system for <code>libc</code>, <code>libm</code>, <code>libz</code> and
+  <code>libgcc_s</code>. Tested on Rocky Linux 8 and Ubuntu 26.04.</p>
+<p>The report engine loads these libraries at run time, a server without a desktop may lack them:
+  FreeType, HarfBuzz, fontconfig, some fonts and an ICU library between versions 60 and 80.</p>
+<pre>
+# Red Hat 8 / 9, Rocky, Alma
+sudo dnf install freetype harfbuzz fontconfig dejavu-sans-fonts libicu
+# Ubuntu / Debian (the ICU package name carries its version: libicu70, libicu74...)
+sudo apt install libfreetype6 libharfbuzz0b libfontconfig1 fonts-dejavu-core libicu74
+</pre>
+<p>Without them printreptopdf stops with a message such as
+  <code>Error opening:libfreetype.so.6</code> or <code>No harfbuzz library found</code>.</p>
 
 For better compatibility use Firedac Drivers.
 The proper client library must be installed and configured.
@@ -236,11 +249,8 @@ For example for mysql driver:
 
 <ul>
     <li>
-      Setup freetype library. Install freetype in your Linux system, usually already installed.
-    </li>
-    <li>
-      Install libicu and harfbuzz in your Linux system, usually already installed if a gui is installed.
-      New versions of Report Manager can handle complex shaping fonts (set bidi property in text elements to enable shaping)
+      Install the libraries listed above. With HarfBuzz and ICU Report Manager handles complex shaping
+      fonts (set bidi property in text elements to enable shaping)
     </li>
     <li>Setup the client library
         Install the libraries

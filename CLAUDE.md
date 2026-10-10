@@ -101,9 +101,13 @@ call "C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"
   `reportserverappxp`, `repwebexe`, `repserverconfigxp`, `repwebserver`,
   `repserverservice`, `repserviceinstall`. `/t:Build` builds them all.
 - Delphi Linux64 (`printreptopdf`, `repwebexe`): `MSBuild <proj>.dproj
-  /p:Config=Release /p:Platform=Linux64` compiles and links on Windows against
-  the Linux64 SDK pulled into RAD Studio (`rocky9.6.sdk`, glibc 2.34); no PAServer
-  needed. `build/sourceforge/01c-build-linux64.ps1` does both.
+  /p:Config=Release /p:Platform=Linux64 /p:PlatformSDK=rocky8.10.sdk` compiles and
+  links on Windows against the Linux64 SDK pulled into RAD Studio 13; no PAServer
+  needed. `build/sourceforge/01c-build-linux64.ps1` does both. Release builds use
+  the **Rocky 8** SDK on purpose: a binary asks for the newest glibc symbol
+  versions of the SDK it was linked against, so a Rocky 9 / Ubuntu 22.04+ SDK
+  (glibc 2.34) gives binaries that do not start on Red Hat 8. Do not use the
+  older RAD Studio 11 install (BDS 22.0) for this.
 - SourceForge release: `build/sourceforge/make-release.ps1` (see its README).
 
 ### Older Delphi / Kylix / FPC
