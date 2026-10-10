@@ -46,6 +46,8 @@ const
     'unattended on this computer (printreptopdf, server, scheduled tasks).';
   NOTE_NOT_SIGNED_IN = 'You are not signed in to Reportman AI: the API key is required.';
   PROMPT_DESIGNER = 'Add a title with the report name';
+  // The icon of a schema in the cloud in the list of the schema page (F8)
+  U_CLOUD = #$E2#$98#$81' ';
 
 type
   TCondition = function: Boolean is nested;
@@ -901,8 +903,9 @@ begin
     CheckPageFits('narrow window');
     W.RbDirect.Checked := True;
     W.BNextClick(nil);
-    CheckPage(W, wpDirectSchemaQuestion, 'narrow window: schema question');
-    CheckPageFits('schema question page');
+    // F8: the direct route goes to the driver (the schema comes at the end)
+    CheckPage(W, wpDriver, 'narrow window: driver page');
+    CheckPageFits('driver page');
   finally
     FreeWizard(W, LRep);
   end;
@@ -1107,14 +1110,17 @@ begin
     CheckEquals('21', IniValue('AGENT_NEW', 'HubDatabaseId'), 'connection: database 21');
     CheckEquals('Sales DB', W.State.HubDatabaseName, 'state: database name');
     CheckEquals(21, W.State.HubDatabaseId, 'state: database id');
-    CheckEquals(T(1528, 'Schema'), W.LStepTitle.Caption, 'schema page title');
+    CheckEquals(T(1990, 'Schema for the AI'), W.LStepTitle.Caption, 'schema page title');
     CheckContains('AGENT_NEW', W.PContent.Controls[0].Caption,
       'schema page: the selected connection');
     WaitUntil(SchemasLoaded, 20000, 'schemas of the API key and of the account loaded');
-    CheckEquals(4, W.AISchemaSelector.ComboSchema.Items.Count,
-      'schemas: none, 2 of the API key, 1 of the account');
-    CheckEquals('Sales DB', W.AISchemaSelector.ComboSchema.Items[1],
-      'the schema of the chosen database first');
+    // F8: the schemas of the Hub database of the connection only: none, the
+    // cloud header, the schema of database 21, the separator and "New cloud
+    // schema..." (no direct connection: no "New local schema...")
+    CheckEquals(5, W.AISchemaSelector.ComboSchema.Items.Count,
+      'schemas: none, the one of database 21 and the actions');
+    CheckEquals(U_CLOUD + 'Sales DB', W.AISchemaSelector.ComboSchema.Items[2],
+      'the schema of the chosen database, with its icon');
     CheckEquals(31, W.AISchemaSelector.GetHubSchemaId, 'schema of database 21 selected');
     Shot(W, 'newreport_agent_schema');
     W.BNextClick(nil);
@@ -1465,8 +1471,8 @@ begin
     CheckEquals(11, W.State.HubDatabaseId, 'state: database of the connection');
     CheckEquals(KEY_EXIST, W.State.HubApiKey, 'state: API key of the connection');
     WaitUntil(SchemasLoaded, 20000, 'schemas loaded');
-    CheckEquals('Existing DB', W.AISchemaSelector.ComboSchema.Items[1],
-      'the schema of the connection database first');
+    CheckEquals(U_CLOUD + 'Existing DB', W.AISchemaSelector.ComboSchema.Items[2],
+      'the schema of the connection database');
     CheckEquals(41, W.AISchemaSelector.GetHubSchemaId, 'its schema selected');
     W.BNextClick(nil);
     CheckPage(W, wpFinish, 'finish page');
@@ -1504,25 +1510,8 @@ begin
     FAnswerer.Arm(smbOK);
     W.RbDirect.Checked := True;
     W.BNextClick(nil);
-    CheckPage(W, wpDirectSchemaQuestion, 'direct route: schema question');
-    if not W.RbHasSchema.Checked and not W.RbNoSchema.Checked then
-    begin
-      W.BNextClick(nil);
-      CheckContains(T(1760, 'Please choose Yes or No.'), FAnswerer.LastText,
-        'an answer is required');
-    end
-    else
-      Skip('schema question: the widgetset checks the first radio button');
-    W.RbHasSchema.Checked := True;
-    W.BNextClick(nil);
-    CheckPage(W, wpDirectSchema, 'has schema: schema page');
-    WaitUntil(SchemasLoaded, 20000, 'schemas of the account loaded');
-    CheckEquals(2, W.AISchemaSelector.ComboSchema.Items.Count, 'the schema of the account');
-    CheckEquals(61, W.AISchemaSelector.GetHubSchemaId, 'first schema selected');
-    W.BNextClick(nil);
-    CheckPage(W, wpDriver, 'driver page');
-    CheckEquals(51, W.State.HubDatabaseId, 'state: database of the schema');
-    CheckEquals(61, W.State.HubSchemaId, 'state: schema');
+    // F8: no schema question; the schema comes once the connection is known
+    CheckPage(W, wpDriver, 'direct route: driver page');
     CheckEquals(2, W.CbFamily.Items.Count, 'families of the FPC engine: FireDAC / SQLdb and Zeos');
     CheckEquals(T(1740, 'FireDAC / SQLdb (Cross-platform) - Recommended'), W.CbFamily.Items[0],
       'FireDAC / SQLdb: the FireDAC connections open with SQLdb');
@@ -1605,10 +1594,27 @@ begin
     end;
     CheckEquals('', IniValue('SQLITE_NEW', 'Database'), 'the test does not save');
     W.BNextClick(nil);
-    CheckPage(W, wpFinish, 'parameters saved: finish page');
+    // F8: the schema for the AI once the connection is known: its local
+    // subschemas (none in a new file) and the schemas in the cloud
+    CheckPage(W, wpDirectSchema, 'parameters saved: schema page');
     CheckEquals(LDbFile, IniValue('SQLITE_NEW', 'Database'), 'Database saved');
+    CheckEquals(T(1990, 'Schema for the AI'), W.LStepTitle.Caption, 'schema page title');
+    WaitUntil(SchemasLoaded, 20000, 'schemas of the account loaded');
+    CheckEquals(0, W.AISchemaSelector.GetHubSchemaId,
+      'a direct connection without subschemas: nothing chosen');
+    CheckEquals('', W.AISchemaSelector.GetLocalSchemaName, 'no subschema');
+    W.AISchemaSelector.ComboSchema.ItemIndex :=
+      W.AISchemaSelector.ComboSchema.Items.IndexOf(U_CLOUD + 'Account DB');
+    W.AISchemaSelector.ComboSchema.OnChange(W.AISchemaSelector.ComboSchema);
+    CheckEquals(61, W.AISchemaSelector.GetHubSchemaId, 'the schema of the account chosen');
+    W.BNextClick(nil);
+    CheckPage(W, wpFinish, 'schema chosen: finish page');
+    CheckEquals(51, W.State.HubDatabaseId, 'state: database of the schema');
+    CheckEquals(61, W.State.HubSchemaId, 'state: schema');
 
     // Back to the connection name: the connection of this wizard is kept
+    W.BBackClick(nil);
+    CheckPage(W, wpDirectSchema, 'Back: schema page');
     W.BBackClick(nil);
     CheckPage(W, wpParams, 'Back: parameters page');
     CheckEquals(LDbFile, TEdit(W.ParamEditor('Database')).Text, 'the saved database');
@@ -1619,6 +1625,10 @@ begin
     W.BNextClick(nil);
     CheckPage(W, wpParams, 'the connection created by this wizard is accepted');
     CheckEquals(LDbFile, TEdit(W.ParamEditor('Database')).Text, 'and not created again');
+    W.BNextClick(nil);
+    CheckPage(W, wpDirectSchema, 'schema page again');
+    WaitUntil(SchemasLoaded, 20000, 'schemas loaded again');
+    CheckEquals(61, W.AISchemaSelector.GetHubSchemaId, 'the chosen schema kept');
     W.BNextClick(nil);
     CheckPage(W, wpFinish, 'finish page');
 
@@ -1653,8 +1663,6 @@ begin
     FAnswerer.Arm(smbOK);
     W.RbDirect.Checked := True;
     W.BNextClick(nil);
-    W.RbNoSchema.Checked := True;
-    W.BNextClick(nil);
     CheckPage(W, wpDriver, 'driver page');
     W.CbConcrete.ItemIndex := W.CbConcrete.Items.IndexOf('PG');
     W.BNextClick(nil);
@@ -1686,7 +1694,11 @@ begin
       (Pos('onnect', FAnswerer.LastText) > 0),
       'the error of libpq or of its connection: ' + FAnswerer.LastText);
     W.BNextClick(nil);
-    CheckPage(W, wpFinish, 'parameters saved: finish page');
+    // F8: the schema page; the server does not listen, so there are no
+    // local subschemas (the error is said on the page) and none is chosen
+    CheckPage(W, wpDirectSchema, 'parameters saved: schema page');
+    W.BNextClick(nil);
+    CheckPage(W, wpFinish, 'no schema chosen: finish page');
     CheckEquals('127.0.0.1', IniValue('PG_NEW', 'Server'), 'Server saved');
     CheckEquals('1', IniValue('PG_NEW', 'Port'), 'Port saved');
     CheckEquals('sales', IniValue('PG_NEW', 'Database'), 'Database saved');
@@ -1725,9 +1737,7 @@ begin
     FAnswerer.Arm(smbOK);
     W.RbDirect.Checked := True;
     W.BNextClick(nil);
-    W.RbNoSchema.Checked := True;
-    W.BNextClick(nil);
-    CheckPage(W, wpDriver, 'no schema: driver page');
+    CheckPage(W, wpDriver, 'direct route: driver page');
     W.CbFamily.ItemIndex := 1;
     W.CbFamily.OnChange(W.CbFamily);
     W.CbConcrete.Text := 'sqlite';
@@ -1786,15 +1796,20 @@ begin
     TEdit(W.ParamEditor('Database')).Text := IncludeTrailingPathDelimiter(FSandbox) + 'zeoswiz.db';
     TEdit(W.ParamEditor('HostName')).Text := '';
     W.BNextClick(nil);
+    // F8: the schema page, left without a schema
+    CheckPage(W, wpDirectSchema, 'schema page');
+    W.AISchemaSelector.ComboSchema.ItemIndex := 0;
+    W.AISchemaSelector.ComboSchema.OnChange(W.AISchemaSelector.ComboSchema);
+    W.BNextClick(nil);
     CheckPage(W, wpFinish, 'finish page');
     CheckEquals(IncludeTrailingPathDelimiter(FSandbox) + 'zeoswiz.db',
       IniValue('ZEOS_NEW', 'Database'), 'Database saved');
 
-    // A prompt without a Hub schema
+    // A prompt without a schema (neither local nor in the cloud)
     W.MemoFinishPrompt.Text := 'Orders by month';
     FAnswerer.Arm(smbNo);
     W.BFinishClick(nil);
-    CheckContains(T(1751, 'You provided a prompt for AI but no Reportman AI schema'),
+    CheckContains(T(1992, 'You wrote a text for the AI but chose no schema'),
       FAnswerer.LastText, 'a prompt without schema asks to continue without AI');
     Check(not W.Committed, 'answer No: the wizard stays');
     CheckPage(W, wpFinish, 'still on the finish page');

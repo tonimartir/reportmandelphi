@@ -1584,8 +1584,9 @@ begin
   LHasPersistedSchema := False;
   if not Assigned(FReport) then
     Exit;
-  // The first dataset on a direct connection: its subschema while it is in
-  // the schema file (SchemaName), else all the tables
+  // The first dataset on a direct connection: the subschema of a dataset of
+  // that connection while it is in the schema file (SchemaName, D3), else
+  // none (the chat takes the one chosen before or the first one)
   if FReport.DataInfo.Count > 0 then
   begin
     LDataInfo := FReport.DataInfo.Items[0];
@@ -1593,8 +1594,15 @@ begin
     if RpIsLocalSqlDatabase(LDatabaseInfo) then
     begin
       ALocalAlias := LDatabaseInfo.Alias;
-      ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
-        LDataInfo.SchemaName);
+      for I := 0 to FReport.DataInfo.Count - 1 do
+        if SameText(FReport.DataInfo.Items[I].DatabaseAlias, ALocalAlias) and
+          (Trim(FReport.DataInfo.Items[I].SchemaName) <> '') then
+        begin
+          ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+            FReport.DataInfo.Items[I].SchemaName);
+          if ALocalSchemaName <> '' then
+            Break;
+        end;
       Exit;
     end;
   end;
@@ -1685,7 +1693,7 @@ begin
         LDatabase := FReport.DatabaseInfo.Items[I];
         if not RpIsLocalSqlDatabase(LDatabase) then
           Continue;
-        // All the tables and the subschemas, with their sizes
+        // The subschemas, with their sizes (never all the tables)
         RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
         if LPreferred = '' then
           LPreferred := LDatabase.Alias;
@@ -1879,7 +1887,7 @@ begin
       Result.Config.LocalAlias := FChatFrame.GetLocalSchemaAlias;
       Result.Config.LocalSchemaName := FChatFrame.GetLocalSchemaName;
       // Sent with the inline schema: the cloud gives it to the datasets it
-      // makes (RpResolveLocalSchemaConfig clears it when it left the file)
+      // makes (RpResolveLocalSchemaConfig refuses one that left the file)
       if Result.Config.LocalAlias <> '' then
         Result.Config.SchemaName := Result.Config.LocalSchemaName;
     end;
@@ -2506,6 +2514,7 @@ var
   LPendingPrompt: string;
   LHubDatabaseId, LHubSchemaId: Int64;
   LHubApiKey: string;
+  LLocalAlias, LLocalSchemaName: string;
   accepted: Boolean;
 begin
   // rpmdfmainvcl ANewExecute. The current report stays when the wizard is
@@ -2516,7 +2525,7 @@ begin
   newRep := CreateDesignReport;
   try
     accepted := NewModernReportWizard(newRep, LPendingPrompt, LHubDatabaseId,
-      LHubSchemaId, LHubApiKey);
+      LHubSchemaId, LHubApiKey, LLocalAlias, LLocalSchemaName);
   except
     newRep.Free;
     raise;
@@ -2530,9 +2539,12 @@ begin
   Result := True;
   if not Assigned(FChatFrame) then
     Exit;
-  // The Hub database, schema and API key chosen in the wizard
+  // The Hub database, schema and API key chosen in the wizard, or its local
+  // subschema: the copilot starts with it
   UpdateDesignChatLocalSchemas;
   FChatFrame.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
+  if (LLocalAlias <> '') and (LLocalSchemaName <> '') then
+    FChatFrame.SelectLocalSchema(LLocalAlias, LLocalSchemaName);
   // A prompt for the assistant shows the AI panel (the saved View > AI chat
   // preference does not change)
   if (Trim(LPendingPrompt) <> '') and (not PAIPanel.Visible) then

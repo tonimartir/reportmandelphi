@@ -643,6 +643,7 @@ var
   LPendingPrompt: string;
   LHubDatabaseId, LHubSchemaId: Int64;
   LHubApiKey: string;
+  LLocalAlias, LLocalSchemaName: string;
   LNewReport: TRpReport;
   LAccepted: Boolean;
 begin
@@ -657,7 +658,7 @@ begin
   LNewReport.OnReadError:=OnReadError;
   LNewReport.FailIfLoadExternalError:=false;
   LAccepted:=NewModernReportWizard(LNewReport, LPendingPrompt,
-      LHubDatabaseId, LHubSchemaId, LHubApiKey);
+      LHubDatabaseId, LHubSchemaId, LHubApiKey, LLocalAlias, LLocalSchemaName);
  except
   LNewReport.Free;
   raise;
@@ -680,6 +681,9 @@ begin
  begin
   UpdateDesignChatLocalSchemas;
   fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
+  // The subschema chosen in the wizard: the copilot starts with it
+  if (LLocalAlias <> '') and (LLocalSchemaName <> '') then
+   fchatframe.SelectLocalSchema(LLocalAlias, LLocalSchemaName);
   fchatframe.StartOnlineInitialization;
  end;
  if Trim(LPendingPrompt) <> '' then
@@ -1135,8 +1139,9 @@ begin
   if not Assigned(report) then
     Exit;
 
-  // The first dataset on a direct connection: its subschema while it is in
-  // the schema file (SchemaName), else all the tables
+  // The first dataset on a direct connection: the subschema of a dataset of
+  // that connection while it is in the schema file (SchemaName, D3), else
+  // none (the chat takes the one chosen before or the first one)
   if report.DataInfo.Count > 0 then
   begin
     LDataInfo := report.DataInfo.Items[0];
@@ -1144,8 +1149,15 @@ begin
     if RpIsLocalSqlDatabase(LDatabaseInfo) then
     begin
       ALocalAlias := LDatabaseInfo.Alias;
-      ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
-        LDataInfo.SchemaName);
+      for I := 0 to report.DataInfo.Count - 1 do
+        if SameText(report.DataInfo.Items[I].DatabaseAlias, ALocalAlias) and
+          (Trim(report.DataInfo.Items[I].SchemaName) <> '') then
+        begin
+          ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+            report.DataInfo.Items[I].SchemaName);
+          if ALocalSchemaName <> '' then
+            Break;
+        end;
       Exit;
     end;
   end;
@@ -1239,7 +1251,7 @@ begin
         LDatabase := report.DatabaseInfo.Items[I];
         if not RpIsLocalSqlDatabase(LDatabase) then
           Continue;
-        // All the tables and the subschemas, with their sizes
+        // The subschemas, with their sizes (never all the tables)
         RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
         if LPreferred = '' then
           LPreferred := LDatabase.Alias;
@@ -3454,7 +3466,7 @@ begin
   Result.Config.LocalAlias := fchatframe.GetLocalSchemaAlias;
   Result.Config.LocalSchemaName := fchatframe.GetLocalSchemaName;
   // Sent with the inline schema: the cloud gives it to the datasets it
-  // makes (RpResolveLocalSchemaConfig clears it when it left the file)
+  // makes (RpResolveLocalSchemaConfig refuses one that left the file)
   if Result.Config.LocalAlias <> '' then
    Result.Config.SchemaName := Result.Config.LocalSchemaName;
  end;

@@ -2107,8 +2107,9 @@ begin
       FChat.SetCurrentExpression(item.SQL)
     else
       FChat.SetCurrentExpression(CurrentSQL);
-    // A direct connection: its local schemas, with the subschema of the
-    // dataset while it is in the file (else all the tables)
+    // A direct connection: its local subschemas, with the one of the dataset
+    // while it is in the file (else the one chosen before, the first one or
+    // none: only a subschema goes to the AI)
     UpdateChatLocalSchemas(dbinfo, False);
     if RpIsLocalSqlDatabase(dbinfo) then
     begin

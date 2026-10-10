@@ -587,13 +587,14 @@ end;
 procedure OpenNewReportWizard;
 var
   rep: TRpReport;
-  prompt, apikey: string;
+  prompt, apikey, localalias, localschema: string;
   dbid, schemaid: Int64;
 begin
   rep := TRpReport.Create(nil);
   try
     rep.CreateNew;
-    NewModernReportWizard(rep, prompt, dbid, schemaid, apikey);
+    NewModernReportWizard(rep, prompt, dbid, schemaid, apikey, localalias,
+      localschema);
   finally
     rep.Free;
   end;

@@ -60,7 +60,10 @@ unit rplocalschemas;
     context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
   - The tables of a subschema sent to the AI carry the columns it chose (its
     primary key when it chose none) and the relations whose two ends
-    travel. Without a subschema, everything.
+    travel. Without a subschema, everything (an export of all the tables).
+  - Only a subschema goes to the AI, never the whole dictionary (5.7, F8): a
+    big database does not fit, and none is known to be small.
+    RpSubSchemaTablesJson refuses an empty or unknown name.
   - Export and import with the Reportman AI web (5.6) use the file of its
     "Export" / "Import": { "name", "schemaTables" }, camelCase, indented.
     Exporting writes what travels of a subschema (SchemaTablesJson);
@@ -278,11 +281,21 @@ procedure RpListLocalSubSchemas(ADatabase: TRpDatabaseInfoItem; AList: TStrings)
 function RpExistingLocalSubSchema(ADatabase: TRpDatabaseInfoItem;
   const ASchemaName: string): string;
 // The schema selector of the AI chat for a direct connection: adds to
-// AEntries 'ALIAS=' (all the tables) and 'ALIAS=<subschema>', and to ASizes
-// the size of each one, '<tables>,<widest columns>' ('' while the file does
-// not exist: it is not generated to list)
+// AEntries 'ALIAS=<subschema>' and to ASizes the size of each one,
+// '<tables>,<widest columns>'. Never 'ALIAS=' (all the tables): only a
+// subschema goes to the AI. Nothing while the file does not exist (it is
+// not generated to list)
 procedure RpListLocalSchemaEntries(ADatabase: TRpDatabaseInfoItem;
   AEntries, ASizes: TStrings);
+// The message when a direct connection has no subschema for the AI (none
+// chosen, or the one chosen is gone): choose one or make one (key 1984)
+function RpSubSchemaRequiredMessage(const AAlias: string): string;
+// What goes to the AI of the subschema ASchemaName of the file of the
+// connection AAlias: its tables (SchemaTablesJson), and in ASpelledName its
+// name as the file spells it. Raises RpSubSchemaRequiredMessage when the
+// name is empty or not in the file: never the whole dictionary
+function RpSubSchemaTablesJson(AFile: TRpLocalSchemaFile; const AAlias,
+  ASchemaName: string; out ASpelledName: string): string;
 // The tables of a JSON array of schemaTables (the inline config, a Hub
 // schema) and the columns of the widest one
 procedure RpSchemaTablesSize(ATables: TJSONArray; out ATableCount,
@@ -328,16 +341,27 @@ procedure RpExportSchemaToFile(AFile: TRpLocalSchemaFile;
 // - a relation of the file whose two ends are in the catalog gives its
 //   description to the one the dictionary has, or enters by hand.
 // What is not in the catalog is added to ASkipped ('TABLE', 'TABLE.COLUMN').
-// Returns the tables of the new subschema; -1, and nothing changes, when
-// AJson is not a schema (not JSON or without schemaTables)
+// Returns the tables of the new subschema; 0, and nothing is created, when
+// none of its tables is in the catalog (a schema of another database);
+// -1, and nothing changes, when AJson is not a schema (not JSON or without
+// schemaTables)
 function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
   AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
   const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+// The same import with another origin, a schema of the library of Reportman
+// AI (5.7.1 C2, the fullSchema of GET api/schema/{id}): the new subschema is
+// named after ALibraryName, the name of the schema in the library ("name 2"
+// when it exists), not after the "name" of the JSON
+function RpImportLibrarySchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  ALibraryName: string; out ANewName: string; ASkipped: TStrings): Integer;
 // 'A, B, C, ...': the first AMax names of a list, an ellipsis for the rest
 function RpShortNameList(AList: TStrings; AMax: Integer): string;
 
 implementation
+
+uses
+  rpmdconsts;
 
 type
   TRpCatalogFamily = (rcfGeneric, rcfFirebird, rcfPostgreSQL, rcfMySQL,
@@ -2952,21 +2976,39 @@ begin
   try
     LFile := RpLoadLocalSchema(ADatabase, nil, False, False);
   except
-    // A file that can not be read lists all the tables only
+    // A file that can not be read lists nothing
     LFile := nil;
   end;
   if LFile = nil then
-  begin
-    AddEntry('', '');
     Exit;
-  end;
   try
-    AddEntry('', SizeText(LFile, ''));
     for I := 0 to LFile.SchemaCount - 1 do
       AddEntry(LFile.Schemas[I].Name, SizeText(LFile, LFile.Schemas[I].Name));
   finally
     LFile.Free;
   end;
+end;
+
+function RpSubSchemaRequiredMessage(const AAlias: string): string;
+begin
+  // The resource has the guillemets of the plan; the default, plain quotes
+  // (the units are ASCII)
+  Result := Format(string(TranslateStr(1984, 'Choose a subschema of %s, or ' +
+    'make one with "New local schema...": the AI only receives a subschema.')),
+    [AAlias]);
+end;
+
+function RpSubSchemaTablesJson(AFile: TRpLocalSchemaFile; const AAlias,
+  ASchemaName: string; out ASpelledName: string): string;
+begin
+  ASpelledName := '';
+  if AFile <> nil then
+    ASpelledName := AFile.SchemaNameOf(ASchemaName);
+  // SchemaTablesJson sends every table for '' or an unknown name: that is
+  // for an export, never for the AI
+  if ASpelledName = '' then
+    raise Exception.Create(RpSubSchemaRequiredMessage(AAlias));
+  Result := AFile.SchemaTablesJson(ASpelledName);
 end;
 
 procedure RpSchemaTablesSize(ATables: TJSONArray; out ATableCount,
@@ -3198,8 +3240,11 @@ begin
   WriteUtf8File(AFileName, RpExportSchemaJson(AFile, ASchemaName));
 end;
 
-function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
-  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+// The import of RpImportSchemaJson; AForcedName names the new subschema
+// instead of the "name" of the JSON when it is not empty
+function ImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  AFileName, AForcedName: string; out ANewName: string;
+  ASkipped: TStrings): Integer;
 var
   I, J: Integer;
   LRoot: TJSONValue;
@@ -3207,7 +3252,7 @@ var
   LCatalogColumn, LCatalogTable, LColumn, LItem, LTable: TJSONObject;
   LChosen, LNames, LOrdered, LSource, LTarget: TStringList;
   LSchema: TRpLocalSubSchema;
-  LColumnName, LTableName, LText: string;
+  LColumnName, LName, LTableName, LText: string;
 begin
   Result := -1;
   ANewName := '';
@@ -3229,8 +3274,22 @@ begin
     LTables := JArrCI(TJSONObject(LRoot), 'schemaTables');
     if LTables = nil then
       Exit;
-    ANewName := ImportedSchemaName(AFile, JStrCI(TJSONObject(LRoot), 'name'),
-      AFileName);
+    LName := AForcedName;
+    if Trim(LName) = '' then
+      LName := JStrCI(TJSONObject(LRoot), 'name');
+    ANewName := ImportedSchemaName(AFile, LName, AFileName);
+    // None of its tables is in the catalog: it was written for another
+    // database, and an empty subschema would be of no use. Nothing is created
+    // (0); ANewName says which schema it was
+    J := 0;
+    for I := 0 to LTables.Count - 1 do
+      if AFile.FindTable(Trim(JStrCI(JObj(LTables, I), 'name'))) <> nil then
+        Inc(J);
+    if J = 0 then
+    begin
+      Result := 0;
+      Exit;
+    end;
     LSchema := AFile.AddSchema(ANewName);
     // The tables and columns that are in the catalog, as it spells them,
     // and what the file says of them
@@ -3327,11 +3386,49 @@ begin
   end;
 end;
 
+function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+begin
+  Result := ImportSchemaJson(AFile, AJson, AFileName, '', ANewName, ASkipped);
+end;
+
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
   const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
 begin
   Result := RpImportSchemaJson(AFile, ReadUtf8File(AFileName), AFileName,
     ANewName, ASkipped);
+end;
+
+function RpImportLibrarySchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  ALibraryName: string; out ANewName: string; ASkipped: TStrings): Integer;
+var
+  LRoot: TJSONValue;
+  LWrapped: TJSONObject;
+begin
+  // A library schema saved as the bare array of its tables is a schema too
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  try
+    if LRoot is TJSONArray then
+    begin
+      LWrapped := TJSONObject.Create;
+      try
+        LWrapped.AddPair('schemaTables', TJSONArray(LRoot.Clone));
+        Result := ImportSchemaJson(AFile, LWrapped.ToJSON, '', ALibraryName,
+          ANewName, ASkipped);
+      finally
+        LWrapped.Free;
+      end;
+      Exit;
+    end;
+  finally
+    LRoot.Free;
+  end;
+  Result := ImportSchemaJson(AFile, AJson, '', ALibraryName, ANewName,
+    ASkipped);
 end;
 
 function RpShortNameList(AList: TStrings; AMax: Integer): string;

@@ -115,10 +115,12 @@ function RpProbeClientSql(const AReportDocument: string;
 
 // The schema of the direct connection AConfig.LocalAlias of the report, in
 // the config (Name = the alias, Dialect, SchemaTablesJson = the tables of
-// AConfig.LocalSchemaName, all when empty, and SchemaName = that subschema
-// while it is in the file, '' for all the tables). The schema file is generated
-// from the catalog when it does not exist yet. Nothing to do when the config
-// has no LocalAlias or has the tables already
+// the subschema AConfig.LocalSchemaName and SchemaName = that subschema as
+// the file spells it). Only a subschema goes to the AI (F8): an empty
+// LocalSchemaName, or one that is not in the file, raises the message of
+// RpSubSchemaRequiredMessage, never the whole dictionary. The schema file is
+// generated from the catalog when it does not exist yet. Nothing to do when
+// the config has no LocalAlias or has the tables already
 procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
   AReport: TRpReport); overload;
 procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
@@ -979,22 +981,29 @@ procedure RpResolveLocalSchemaConfig(AConfig: TRpApiDatabaseConfig;
 var
   LDatabase: TRpDatabaseInfoItem;
   LFile: TRpLocalSchemaFile;
+  LSchemaName, LTables: string;
 begin
   if (AConfig = nil) or (ADatabase = nil) or AConfig.HasInlineSchema then
     Exit;
   LDatabase := ADatabase;
+  // No subschema chosen: nothing to read (the file is not even generated)
+  if Trim(AConfig.LocalSchemaName) = '' then
+    raise Exception.Create(RpSubSchemaRequiredMessage(LDatabase.Alias));
   try
     LFile := RpLoadLocalSchema(LDatabase, AParams, True, False);
   finally
     LDatabase.DisConnect;
   end;
   try
+    // The subschema travels with its tables (the cloud gives it to the
+    // datasets it makes); one gone from the file raises, it never sends the
+    // whole dictionary
+    LTables := RpSubSchemaTablesJson(LFile, LDatabase.Alias,
+      AConfig.LocalSchemaName, LSchemaName);
     AConfig.Name := LDatabase.Alias;
     AConfig.Dialect := LFile.CloudDialect;
-    AConfig.SchemaTablesJson := LFile.SchemaTablesJson(AConfig.LocalSchemaName);
-    // The subschema travels with its tables (the cloud gives it to the
-    // datasets it makes); one gone from the file sends all the tables
-    AConfig.SchemaName := LFile.SchemaNameOf(AConfig.LocalSchemaName);
+    AConfig.SchemaTablesJson := LTables;
+    AConfig.SchemaName := LSchemaName;
     // A schema without tables would not be usable: the cloud says why
     AConfig.HubDatabaseId := 0;
     AConfig.HubSchemaId := 0;

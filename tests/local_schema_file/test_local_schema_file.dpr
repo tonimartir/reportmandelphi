@@ -19,6 +19,8 @@ program test_local_schema_file;
 {      dictionary and the subschemas.                   }
 {   5. The request of "Analyze with AI".                }
 {   6. Export and import with the Reportman AI web.     }
+{   7. Only a subschema goes to the AI (F8): never the  }
+{      dictionary, and the import from the library.     }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -46,7 +48,8 @@ uses
 {$ELSE}
   System.SysUtils, System.Classes, System.Contnrs, System.JSON,
 {$ENDIF}
-  rplocalschemas, rpreportdesignercontracts, rpdatahttp;
+  rplocalschemas, rpreportdesignercontracts, rpdatahttp, rpdatainfo,
+  rpdesignerclientsql;
 
 var
   Failures: Integer;
@@ -833,6 +836,115 @@ begin
   end;
 end;
 
+// F8 (docs/esquemas-locales-pantalla-plan.md 5.7): what goes to the AI is a
+// subschema, never the dictionary; and the import from the library of
+// Reportman AI is the import of a file named after the library schema
+procedure TestOnlySubschemas(const AFixture: string);
+var
+  LConfig: TRpApiDatabaseConfig;
+  LDatabases: TRpDatabaseInfoList;
+  LFile: TRpLocalSchemaFile;
+  LSkipped: TStringList;
+  LTables, LSent: TJSONValue;
+  LJson, LMessage, LName: string;
+  LCount, LSchemas: Integer;
+  LRaised: Boolean;
+begin
+  LFile := TRpLocalSchemaFile.Create;
+  LSkipped := TStringList.Create;
+  try
+    LFile.LoadFromFile(AFixture);
+    // A subschema: its tables, spelled as the file
+    LJson := RpSubSchemaTablesJson(LFile, 'FBEXAMPLE', 'ventas', LName);
+    LTables := TJSONObject.ParseJSONValue(LJson);
+    LSent := SchemaTablesOf(LFile, 'Ventas');
+    try
+      Check((LName = 'Ventas') and SameJson(LTables, LSent) and
+        (Names(TJSONArray(LTables)) = 'CUSTOMERS,SALES'),
+        'to the AI: the tables of the subschema, as the file spells it');
+    finally
+      LSent.Free;
+      LTables.Free;
+    end;
+    // No subschema, or one gone from the file: nothing, never all the tables
+    LRaised := False;
+    LMessage := '';
+    try
+      RpSubSchemaTablesJson(LFile, 'FBEXAMPLE', '', LName);
+    except
+      on E: Exception do
+      begin
+        LRaised := True;
+        LMessage := E.Message;
+      end;
+    end;
+    Check(LRaised and (LMessage = RpSubSchemaRequiredMessage('FBEXAMPLE')) and
+      (Pos('FBEXAMPLE', LMessage) > 0),
+      'to the AI: without a subschema it asks for one (1984): ' + LMessage);
+    LRaised := False;
+    try
+      RpSubSchemaTablesJson(LFile, 'FBEXAMPLE', 'Gone', LName);
+    except
+      on E: Exception do
+        LRaised := E.Message = RpSubSchemaRequiredMessage('FBEXAMPLE');
+    end;
+    Check(LRaised, 'to the AI: a subschema gone from the file is not all the tables');
+
+    // The resolver of the copilot and of the SQL dialog: an empty subschema
+    // raises before reading anything (no database here)
+    LDatabases := TRpDatabaseInfoList.Create(nil);
+    LConfig := TRpApiDatabaseConfig.Create;
+    try
+      LDatabases.Add('FBEXAMPLE');
+      LConfig.LocalAlias := 'FBEXAMPLE';
+      LConfig.LocalSchemaName := '';
+      LRaised := False;
+      LMessage := '';
+      try
+        RpResolveLocalSchemaConfig(LConfig, LDatabases.Items[0], nil);
+      except
+        on E: Exception do
+        begin
+          LRaised := True;
+          LMessage := E.Message;
+        end;
+      end;
+      Check(LRaised and (LMessage = RpSubSchemaRequiredMessage('FBEXAMPLE')) and
+        not LConfig.HasInlineSchema,
+        'resolver: no subschema, no inline schema (1984): ' + LMessage);
+    finally
+      LConfig.Free;
+      LDatabases.Free;
+    end;
+
+    // The library: a DatabaseConfig of the web (PascalCase), named after the
+    // schema of the library, not after the "name" of the JSON
+    LJson := '{"Name":"Config of the web","SchemaTables":[' +
+      '{"Name":"sales","Columns":[{"Name":"SALEID"},{"Name":"TOTAL"}]},' +
+      '{"Name":"GONE"}]}';
+    LCount := RpImportLibrarySchemaJson(LFile, LJson, 'Library sales', LName, LSkipped);
+    Check((LCount = 1) and (LName = 'Library sales') and
+      (LFile.Schemas[LFile.IndexOfSchema(LName)].Tables.CommaText = 'SALES') and
+      (LSkipped.CommaText = 'GONE'),
+      'library: the import of a file, named after the library schema: ' + LName);
+    LCount := RpImportLibrarySchemaJson(LFile, LJson, 'Library sales', LName, LSkipped);
+    Check((LCount = 1) and (LName = 'Library sales 2'),
+      'library: imported again, "name 2": ' + LName);
+    LCount := RpImportLibrarySchemaJson(LFile, '[{"name":"PRODUCTS"}]', 'Products',
+      LName, LSkipped);
+    Check((LCount = 1) and (LName = 'Products'),
+      'library: the bare array of the tables is a schema too');
+    LSchemas := LFile.SchemaCount;
+    Check((RpImportLibrarySchemaJson(LFile, '{"tables":[]}', 'X', LName, LSkipped) = -1) and
+      (RpImportLibrarySchemaJson(LFile, 'not json', 'X', LName, LSkipped) = -1) and
+      (LFile.SchemaCount = LSchemas),
+      'library: what is not a schema is refused, nothing changes');
+  finally
+    LSkipped.Free;
+    LFile.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -854,6 +966,7 @@ begin
     TestSuggestions(LFixture);
     TestAnalyzeRequest(LFixture);
     TestExportImport(LFixture, ExtractFilePath(LSaved));
+    TestOnlySubschemas(LFixture);
   except
     on E: Exception do
     begin

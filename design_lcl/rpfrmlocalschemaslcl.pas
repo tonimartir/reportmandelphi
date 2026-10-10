@@ -26,14 +26,16 @@ unit rpfrmlocalschemaslcl;
   - Left: "All the tables" (the dictionary: every table is described, none
     is chosen) and the subschemas, with Add, Duplicate, Rename, Delete,
     Export and Import (the file of the Reportman AI web, 5.6: what travels
-    of the subschema goes out, a new subschema comes in) and the
-    description of the subschema.
+    of the subschema goes out, a new subschema comes in), "From the
+    library..." (the same import from a schema of the library of Reportman
+    AI, 5.7.1 C2) and the description of the subschema.
   - Tabs: Connection (read only, "Refresh from the database" reads the
     catalog again and keeps what people wrote), Tables (a table enters with
     its primary key), Columns (the columns that travel, their description
     and allowed values in the dictionary, "Also in", a preview of 5 rows),
     Relations (the ones that travel, the suggested ones and the ones the
-    database does not declare) and Validation ("Analyze with AI").
+    database does not declare) and Validation ("Analyze with AI", only with
+    a subschema: the dictionary never goes to the AI, 5.7).
   - The counters of the plan warn, never block. Nothing is saved until Save;
     closing with changes asks.
 
@@ -108,6 +110,7 @@ type
     BDelete: TButton;
     BExport: TButton;
     BImport: TButton;
+    BLibrary: TButton;
     MemoDescription: TMemo;
     // Bottom
     StatusInfo: TStatusBar;
@@ -165,6 +168,8 @@ type
     BAnalyze: TButton;
     BStop: TButton;
     LStatus: TLabel;
+    // Next to "Analyze with AI" with all the tables: choose a subschema
+    LAnalyzeNote: TLabel;
     FWebResult: TRpWebMarkdownView;
     function S(AValue: Integer): Integer;
     function NewPanel(AParent: TWinControl; AAlign: TAlign;
@@ -206,8 +211,14 @@ type
     function AddNewSchema: Boolean;
     procedure SaveFile;
     procedure StopAnalysis;
+    // "Analyze with AI" only with a subschema, and not while one runs
+    procedure UpdateAnalyzeButton;
     // The line at the bottom (what Export and Import did)
     procedure ShowInfo(const AText: string);
+    // After an import (a file or the library): the new subschema chosen and
+    // not saved, and what was not imported
+    procedure ImportDone(ACount: Integer; const AName: string;
+      ASkipped: TStrings);
     procedure ListSchemasClick(Sender: TObject);
     procedure BAddClick(Sender: TObject);
     procedure BDuplicateClick(Sender: TObject);
@@ -215,6 +226,7 @@ type
     procedure BDeleteClick(Sender: TObject);
     procedure BExportClick(Sender: TObject);
     procedure BImportClick(Sender: TObject);
+    procedure BLibraryClick(Sender: TObject);
     procedure MemoDescriptionChange(Sender: TObject);
     procedure BRefreshClick(Sender: TObject);
     procedure FilterTablesChange(Sender: TObject);
@@ -465,7 +477,7 @@ begin
   LLeft := NewPanel(Self, alLeft, 230);
   LLeft.BorderWidth := S(6);
   NewLabel(LLeft, TranslateStr(1846, 'Subschemas'));
-  LLeftBottom := NewPanel(LLeft, alBottom, 190);
+  LLeftBottom := NewPanel(LLeft, alBottom, 222);
   NewLabel(LLeftBottom, TranslateStr(197, 'Description'));
   MemoDescription := NewMemo(LLeftBottom, 70, MemoDescriptionChange);
   LButtons := NewPanel(LLeftBottom, alClient, 0);
@@ -492,6 +504,13 @@ begin
   BImport.Hint := string(TranslateStr(1934, 'Creates a subschema from a ' +
     'schema exported by the Reportman AI web or by another local schema'));
   BImport.ShowHint := True;
+  // The same import with a schema of the library of Reportman AI
+  BLibrary := NewButton(LButtons, string(TranslateStr(1986,
+    'From the library...')), BLibraryClick, 214);
+  BLibrary.SetBounds(0, S(94), S(214), S(26));
+  BLibrary.Hint := string(TranslateStr(1987, 'Creates a subschema from a ' +
+    'schema of the Reportman AI library'));
+  BLibrary.ShowHint := True;
   ListSchemas := TListBox.Create(Self);
   ListSchemas.Parent := LLeft;
   ListSchemas.Align := alClient;
@@ -796,6 +815,14 @@ begin
   LStatus := TLabel.Create(Self);
   LStatus.Parent := LButtons;
   LStatus.SetBounds(S(290), S(11), S(400), S(16));
+  // Where the status goes, with all the tables (no analysis then)
+  LAnalyzeNote := TLabel.Create(Self);
+  LAnalyzeNote.Parent := LButtons;
+  LAnalyzeNote.SetBounds(S(290), S(11), S(400), S(16));
+  LAnalyzeNote.Font.Color := clGrayText;
+  LAnalyzeNote.Caption := string(TranslateStr(1985,
+    'Choose a subschema to analyze it.'));
+  LAnalyzeNote.Visible := False;
   FWebResult := TRpWebMarkdownView.Create(Self);
   FWebResult.Parent := LPanel;
   FWebResult.Align := alClient;
@@ -853,6 +880,17 @@ procedure TFRpLocalSchemasLCL.ShowInfo(const AText: string);
 begin
   StatusInfo.SimpleText := AText;
   StatusInfo.Hint := AText;
+end;
+
+procedure TFRpLocalSchemasLCL.UpdateAnalyzeButton;
+var
+  LHasSchema: Boolean;
+begin
+  // All the tables (the dictionary) never go to the AI (5.7)
+  LHasSchema := SelectedSchema <> nil;
+  BAnalyze.Enabled := LHasSchema and (FAnalysis = nil);
+  LAnalyzeNote.Visible := not LHasSchema;
+  LStatus.Visible := LHasSchema;
 end;
 
 procedure TFRpLocalSchemasLCL.Changed;
@@ -936,6 +974,7 @@ begin
   finally
     FUpdating := False;
   end;
+  UpdateAnalyzeButton;
   FillConnection;
   FillTables;
   FillColumnTables;
@@ -1412,7 +1451,7 @@ procedure TFRpLocalSchemasLCL.BImportClick(Sender: TObject);
 var
   LCount: Integer;
   LDialog: TOpenDialog;
-  LName, LText: string;
+  LName: string;
   LSkipped: TStringList;
 begin
   LDialog := TOpenDialog.Create(Self);
@@ -1431,24 +1470,321 @@ begin
         'The file is not a schema exported by Reportman AI.')), '', [smbOK], smsCritical);
       Exit;
     end;
-    // A new subschema, chosen and not saved: Save writes it, closing asks
-    FModified := True;
-    FillSchemas(LName);
-    Pages.ActivePageIndex := 1;
-    LText := Format(string(TranslateStr(1936,
-      'Imported as %s: %s tables. Save to keep it.')), [LName, IntToStr(LCount)]);
-    if LSkipped.Count > 0 then
-    begin
-      LText := LText + ' ' + Format(string(TranslateStr(1937,
-        'Not in the database, not imported: %s')), [RpShortNameList(LSkipped, 8)]);
-      ShowInfo(LText);
-      RpMessageBox(LText);
-    end
-    else
-      ShowInfo(LText);
+    ImportDone(LCount, LName, LSkipped);
   finally
     LSkipped.Free;
     LDialog.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasLCL.ImportDone(ACount: Integer; const AName: string;
+  ASkipped: TStrings);
+var
+  LText: string;
+begin
+  // None of its tables is in this database: nothing was created, and the
+  // user is told it does not match
+  if ACount = 0 then
+  begin
+    RpMessageBox(Format(string(TranslateStr(1993, 'None of the tables of %s ' +
+      'is in this database: it does not match it, so no subschema was ' +
+      'created.')), [AName]), '', [smbOK], smsWarning);
+    Exit;
+  end;
+  // A new subschema, chosen and not saved: Save writes it, closing asks
+  FModified := True;
+  FillSchemas(AName);
+  Pages.ActivePageIndex := 1;
+  LText := Format(string(TranslateStr(1936,
+    'Imported as %s: %s tables. Save to keep it.')), [AName, IntToStr(ACount)]);
+  if ASkipped.Count > 0 then
+  begin
+    LText := LText + ' ' + Format(string(TranslateStr(1937,
+      'Not in the database, not imported: %s')), [RpShortNameList(ASkipped, 8)]);
+    ShowInfo(LText);
+    RpMessageBox(LText);
+  end
+  else
+    ShowInfo(LText);
+end;
+
+{ The library of Reportman AI }
+
+type
+  // The categories of the library and their schemas: one is chosen
+  TFRpSchemaLibraryLCL = class(TForm)
+  private
+    FLibrary: TJSONArray;
+    ComboCategory: TComboBox;
+    LDescription: TLabel;
+    ListSchemas: TListView;
+    BOK: TButton;
+    function S(AValue: Integer): Integer;
+    procedure FillSchemas;
+    procedure ComboCategoryChange(Sender: TObject);
+    procedure ListSchemasSelectItem(Sender: TObject; Item: TListItem;
+      Selected: Boolean);
+    procedure ListSchemasDblClick(Sender: TObject);
+  public
+    constructor CreateFor(AOwner: TComponent; ALibrary: TJSONArray);
+    function SelectedId: Int64;
+    function SelectedName: string;
+  end;
+
+function TFRpSchemaLibraryLCL.S(AValue: Integer): Integer;
+begin
+  Result := (AValue * Screen.PixelsPerInch) div 96;
+end;
+
+constructor TFRpSchemaLibraryLCL.CreateFor(AOwner: TComponent;
+  ALibrary: TJSONArray);
+var
+  I: Integer;
+  LTop, LBottom, LButtons: TPanel;
+  LLabel: TLabel;
+  LColumn: TListColumn;
+  LCancel: TButton;
+begin
+  inherited CreateNew(AOwner);
+  FLibrary := ALibrary;
+  Caption := string(TranslateStr(1988, 'Schema library'));
+  Position := poScreenCenter;
+  BorderIcons := [biSystemMenu];
+  Width := S(560);
+  Height := S(440);
+  Constraints.MinWidth := S(420);
+  Constraints.MinHeight := S(320);
+  // Bottom: OK and Cancel at the right
+  LBottom := TPanel.Create(Self);
+  LBottom.Parent := Self;
+  LBottom.BevelOuter := bvNone;
+  LBottom.Caption := '';
+  LBottom.Align := alBottom;
+  LBottom.Height := S(44);
+  LButtons := TPanel.Create(Self);
+  LButtons.Parent := LBottom;
+  LButtons.BevelOuter := bvNone;
+  LButtons.Caption := '';
+  LButtons.Align := alRight;
+  LButtons.Width := S(216);
+  BOK := TButton.Create(Self);
+  BOK.Parent := LButtons;
+  BOK.Caption := string(TranslateStr(93, 'OK'));
+  BOK.ModalResult := mrOk;
+  BOK.Default := True;
+  BOK.Enabled := False;
+  BOK.SetBounds(S(4), S(9), S(96), S(26));
+  LCancel := TButton.Create(Self);
+  LCancel.Parent := LButtons;
+  LCancel.Caption := string(TranslateStr(94, 'Cancel'));
+  LCancel.ModalResult := mrCancel;
+  LCancel.Cancel := True;
+  LCancel.SetBounds(S(110), S(9), S(96), S(26));
+  // Top: the category and its description (alTop, in the order they are
+  // made)
+  LTop := TPanel.Create(Self);
+  LTop.Parent := Self;
+  LTop.BevelOuter := bvNone;
+  LTop.Caption := '';
+  LTop.Align := alTop;
+  LTop.Height := S(104);
+  LTop.BorderWidth := S(8);
+  LLabel := TLabel.Create(Self);
+  LLabel.Parent := LTop;
+  LLabel.Caption := string(TranslateStr(241, 'Category'));
+  LLabel.Top := 0;
+  LLabel.Align := alTop;
+  ComboCategory := TComboBox.Create(Self);
+  ComboCategory.Parent := LTop;
+  ComboCategory.Style := csDropDownList;
+  ComboCategory.Top := S(1000);
+  ComboCategory.Align := alTop;
+  ComboCategory.OnChange := ComboCategoryChange;
+  LDescription := TLabel.Create(Self);
+  LDescription.Parent := LTop;
+  LDescription.AutoSize := False;
+  LDescription.WordWrap := True;
+  LDescription.Font.Color := clGrayText;
+  LDescription.Height := S(30);
+  LDescription.Top := S(2000);
+  LDescription.Align := alTop;
+  LLabel := TLabel.Create(Self);
+  LLabel.Parent := LTop;
+  LLabel.Caption := string(TranslateStr(1528, 'Schema'));
+  LLabel.Top := S(3000);
+  LLabel.Align := alTop;
+  ListSchemas := TListView.Create(Self);
+  ListSchemas.Parent := Self;
+  ListSchemas.Align := alClient;
+  ListSchemas.BorderSpacing.Left := S(10);
+  ListSchemas.BorderSpacing.Right := S(10);
+  ListSchemas.ViewStyle := vsReport;
+  ListSchemas.ReadOnly := True;
+  ListSchemas.RowSelect := True;
+  ListSchemas.HideSelection := False;
+  LColumn := ListSchemas.Columns.Add;
+  LColumn.Caption := string(TranslateStr(544, 'Name'));
+  LColumn.Width := S(380);
+  LColumn := ListSchemas.Columns.Add;
+  LColumn.Caption := string(TranslateStr(91, 'Version'));
+  LColumn.Width := S(110);
+  ListSchemas.OnSelectItem := ListSchemasSelectItem;
+  ListSchemas.OnDblClick := ListSchemasDblClick;
+  for I := 0 to FLibrary.Count - 1 do
+    if FLibrary.Items[I] is TJSONObject then
+      ComboCategory.Items.AddObject(JsonText(TJSONObject(FLibrary.Items[I]),
+        'name'), FLibrary.Items[I]);
+  if ComboCategory.Items.Count > 0 then
+    ComboCategory.ItemIndex := 0;
+  FillSchemas;
+end;
+
+procedure TFRpSchemaLibraryLCL.FillSchemas;
+var
+  I: Integer;
+  LCategory, LSchema: TJSONObject;
+  LSchemas: TJSONValue;
+  LItem: TListItem;
+begin
+  ListSchemas.Items.BeginUpdate;
+  try
+    ListSchemas.Items.Clear;
+    LDescription.Caption := '';
+    if ComboCategory.ItemIndex < 0 then
+      Exit;
+    LCategory := TJSONObject(ComboCategory.Items.Objects[ComboCategory.ItemIndex]);
+    LDescription.Caption := JsonText(LCategory, 'description');
+    LSchemas := LCategory.Values['schemas'];
+    if not (LSchemas is TJSONArray) then
+      Exit;
+    for I := 0 to TJSONArray(LSchemas).Count - 1 do
+    begin
+      if not (TJSONArray(LSchemas).Items[I] is TJSONObject) then
+        Continue;
+      LSchema := TJSONObject(TJSONArray(LSchemas).Items[I]);
+      LItem := ListSchemas.Items.Add;
+      LItem.Caption := JsonText(LSchema, 'name');
+      LItem.SubItems.Add(JsonText(LSchema, 'version'));
+      LItem.Data := Pointer(LSchema);
+    end;
+  finally
+    ListSchemas.Items.EndUpdate;
+  end;
+  BOK.Enabled := ListSchemas.Selected <> nil;
+end;
+
+procedure TFRpSchemaLibraryLCL.ComboCategoryChange(Sender: TObject);
+begin
+  FillSchemas;
+end;
+
+procedure TFRpSchemaLibraryLCL.ListSchemasSelectItem(Sender: TObject;
+  Item: TListItem; Selected: Boolean);
+begin
+  BOK.Enabled := ListSchemas.Selected <> nil;
+end;
+
+procedure TFRpSchemaLibraryLCL.ListSchemasDblClick(Sender: TObject);
+begin
+  if ListSchemas.Selected <> nil then
+    ModalResult := mrOk;
+end;
+
+function TFRpSchemaLibraryLCL.SelectedId: Int64;
+begin
+  Result := 0;
+  if ListSchemas.Selected <> nil then
+    Result := StrToInt64Def(JsonText(TJSONObject(ListSchemas.Selected.Data),
+      'id'), 0);
+end;
+
+function TFRpSchemaLibraryLCL.SelectedName: string;
+begin
+  Result := '';
+  if ListSchemas.Selected <> nil then
+    Result := ListSchemas.Selected.Caption;
+end;
+
+procedure TFRpLocalSchemasLCL.BLibraryClick(Sender: TObject);
+var
+  LCount: Integer;
+  LCursor: TCursor;
+  LDialog: TFRpSchemaLibraryLCL;
+  LFullSchema, LName, LSchemaName: string;
+  LHttp: TRpDatabaseHttp;
+  LId: Int64;
+  LLibrary: TJSONArray;
+  LSkipped: TStringList;
+begin
+  ShowInfo('');
+  LLibrary := nil;
+  LHttp := TRpDatabaseHttp.Create;
+  LSkipped := TStringList.Create;
+  try
+    LHttp.Token := TRpAuthManager.Instance.Token;
+    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+    LCursor := Screen.Cursor;
+    Screen.Cursor := crHourGlass;
+    try
+      try
+        LLibrary := LHttp.GetSchemaLibrary;
+      except
+        on E: Exception do
+        begin
+          Screen.Cursor := LCursor;
+          RpMessageBox(Format(string(TranslateStr(1989,
+            'The library could not be read: %s')), [E.Message]), '', [smbOK],
+            smsCritical);
+          Exit;
+        end;
+      end;
+    finally
+      Screen.Cursor := LCursor;
+    end;
+    LDialog := TFRpSchemaLibraryLCL.CreateFor(Self, LLibrary);
+    try
+      if LDialog.ShowModal <> mrOk then
+        Exit;
+      LId := LDialog.SelectedId;
+      LSchemaName := LDialog.SelectedName;
+    finally
+      LDialog.Free;
+    end;
+    if LId <= 0 then
+      Exit;
+    Screen.Cursor := crHourGlass;
+    try
+      try
+        LFullSchema := LHttp.GetLibrarySchema(LId);
+      except
+        on E: Exception do
+        begin
+          Screen.Cursor := LCursor;
+          RpMessageBox(Format(string(TranslateStr(1989,
+            'The library could not be read: %s')), [E.Message]), '', [smbOK],
+            smsCritical);
+          Exit;
+        end;
+      end;
+    finally
+      Screen.Cursor := LCursor;
+    end;
+    // The import of a file (F7), named after the schema of the library
+    LCount := RpImportLibrarySchemaJson(FFile, LFullSchema, LSchemaName, LName,
+      LSkipped);
+    if LCount < 0 then
+    begin
+      RpMessageBox(Format(string(TranslateStr(1989,
+        'The library could not be read: %s')), [string(TranslateStr(1938,
+        'The file is not a schema exported by Reportman AI.'))]), '', [smbOK],
+        smsCritical);
+      Exit;
+    end;
+    ImportDone(LCount, LName, LSkipped);
+  finally
+    LSkipped.Free;
+    LHttp.Free;
+    LLibrary.Free;
   end;
 end;
 
@@ -1869,6 +2205,12 @@ var
 begin
   if FAnalysis <> nil then
     Exit;
+  // Only a subschema goes to the AI, never all the tables (5.7)
+  if SelectedSchema = nil then
+  begin
+    UpdateAnalyzeButton;
+    Exit;
+  end;
   FWebResult.ClearAll;
   if Trim(TRpAuthManager.Instance.Token) = '' then
   begin
@@ -1888,16 +2230,14 @@ begin
     LSecret := FChat.GetAgentSecret;
     LAgentAiId := FChat.GetAgentAiId;
   end;
-  LSchemaName := '';
-  if SelectedSchema <> nil then
-    LSchemaName := SelectedSchema.Name;
   // What the copilot would send of the subschema, as it is now on screen
   LConfig := TRpApiDatabaseConfig.Create;
   try
     LConfig.Name := FDatabase.Alias;
     LConfig.Dialect := FFile.CloudDialect;
-    LConfig.SchemaTablesJson := FFile.SchemaTablesJson(LSchemaName);
-    LConfig.SchemaName := FFile.SchemaNameOf(LSchemaName);
+    LConfig.SchemaTablesJson := RpSubSchemaTablesJson(FFile, FDatabase.Alias,
+      SelectedSchema.Name, LSchemaName);
+    LConfig.SchemaName := LSchemaName;
     FAnalysis := RpStartSchemaAnalysis(LConfig, LTier, LMode, LSecret, LAgentAiId);
   finally
     LConfig.Free;
@@ -1922,7 +2262,7 @@ procedure TFRpLocalSchemasLCL.BStopClick(Sender: TObject);
 begin
   StopAnalysis;
   LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
-  BAnalyze.Enabled := True;
+  UpdateAnalyzeButton;
   BStop.Enabled := False;
 end;
 
@@ -1949,7 +2289,7 @@ begin
   end;
   FAnalysisTimer.Enabled := False;
   FAnalysis := nil;
-  BAnalyze.Enabled := True;
+  UpdateAnalyzeButton;
   BStop.Enabled := False;
   if LState.Cancelled then
   begin

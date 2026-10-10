@@ -17,11 +17,21 @@ unit rpmdfnewreportwizardlcl;
 
 { File > New of the designer, as TFRpNewReportWizardVCL: the connection route
   (Reportman AI Agent, direct database or no connection), the Agent API key
-  and distributed connection, the Hub schema, the driver family and driver,
-  an existing or new connection of dbxconnections with its parameters and
-  tests, and the prompt for the design assistant. The result is the same:
-  the report with its connection, and the prompt, Hub database, schema and
-  API key that the designer gives to the design chat.
+  and distributed connection, the driver family and driver, an existing or
+  new connection of dbxconnections with its parameters and tests, the
+  schema for the AI and the prompt for the design assistant. The result is
+  the same: the report with its connection, and the prompt, Hub database,
+  schema and API key (or the local subschema) that the designer gives to the
+  design chat.
+
+  The schema for the AI (docs/esquemas-locales-pantalla-plan.md 5.7.1 B) is
+  the list of the copilot, after the connection: the subschemas of the local
+  schema file of a direct connection (generated from the catalog the first
+  time) and the schemas in the cloud (on the Agent route, the ones of its
+  Hub database), with "New local schema..." and "New cloud schema...".
+  Choosing one is optional; a prompt without one asks to go on without the
+  AI. Routes: direct = route, driver, connection (and parameters), schema,
+  finish; Agent = route, connection (and API key), schema, finish.
 
   Differences with the VCL form:
   - The Hub and connection tests run in worker threads (TRpAsyncWorker) and
@@ -55,15 +65,14 @@ type
   TRpWizardRoute = (wrUndefined, wrAgent, wrDirect, wrNoConnection);
   // dfDbExpress only classifies the connections of other drivers
   TRpWizardDriverFamily = (dfUndefined, dfFireDac, dfZeos, dfDbExpress);
-  TRpWizardSchemaMode = (smNotChosen, smHasSchema, smNoSchema);
   TRpWizardConnMode = (cnUndefined, cnExisting, cnNew);
 
+  // wpAgentSchema and wpDirectSchema are the same page (the schema for the
+  // AI) at the end of each route
   TRpWizardPage = (
     wpRoute,
     wpAgentLogin,
     wpAgentSchema,
-    wpDirectSchemaQuestion,
-    wpDirectSchemaLogin,
     wpDirectSchema,
     wpDriver,
     wpConnName,
@@ -88,7 +97,8 @@ type
     HubDatabaseName: string;
     HubSchemaId: Int64;
     HubSchemaName: string;
-    SchemaMode: TRpWizardSchemaMode;
+    // The subschema of the local schema file of the direct connection
+    LocalSchemaName: string;
     DriverFamily: TRpWizardDriverFamily;
     DriverConcrete: string;     // FireDAC DriverID or Zeos protocol
     ConnMode: TRpWizardConnMode;
@@ -159,11 +169,8 @@ type
     // Page builders
     procedure BuildPageRoute;
     procedure BuildPageAgentLogin;
-    procedure BuildPageAgentSchema;
-    procedure BuildPageDirectSchemaQuestion;
-    procedure BuildPageDirectSchemaLogin;
-    procedure BuildPageDirectSchema;
-    procedure BuildPageSharedSchemaSelector;
+    // The schema for the AI (wpAgentSchema, wpDirectSchema)
+    procedure BuildPageSchema;
     procedure BuildPageDriver;
     procedure BuildPageConnName;
     procedure BuildPageParams;
@@ -181,8 +188,12 @@ type
     procedure DoParamsTest(Sender: TObject);
     procedure DoRouteChange(Sender: TObject);
     procedure DoSchemasLoaded(Sender: TObject);
-    procedure OpenSchemasLink(Sender: TObject);
+    // "New local schema...": the local schema screen of the connection
+    procedure DoNewLocalSchema(Sender: TObject);
     procedure OpenAgentDownloadLink(Sender: TObject);
+    // The subschemas of the direct connection in the list of the schema
+    // page (the schema file is generated the first time)
+    procedure LoadLocalSchemas;
 
     // AQuiet: without the "Logged in" message (entering the page)
     procedure LoadHubDatabases(AQuiet: Boolean = False);
@@ -242,7 +253,8 @@ type
     LblHubKeyNote: TLabel;
     BtnHubRefresh: TButton;
     CbHubDatabase: TComboBox;
-    RbHasSchema, RbNoSchema: TRadioButton;
+    // Why the subschemas of the direct connection could not be read
+    LblLocalSchemaError: TLabel;
     CbFamily: TComboBox;
     CbConcrete: TComboBox;
     LblConcrete: TLabel;
@@ -295,12 +307,16 @@ procedure RpPrepareModernNewReport(AReport: TRpReport);
 
 // File > New of the designer (rpmdfnewreportwizardvcl). True when the user
 // finished the wizard: the report has the chosen connection, and the prompt
-// and Hub context are for the design chat
+// and Hub context are for the design chat; ALocalAlias and ALocalSchemaName
+// are the subschema of the direct connection chosen ('' = none), which the
+// chat selects before the prompt
 function NewModernReportWizard(report: TRpReport;
   out APendingPrompt: string;
   out AHubDatabaseId: Int64;
   out AHubSchemaId: Int64;
-  out AHubApiKey: string): Boolean;
+  out AHubApiKey: string;
+  out ALocalAlias: string;
+  out ALocalSchemaName: string): Boolean;
 
 // The connection wizard (Data configuration > Add connection, a connection
 // of a report not configured on this computer), see StartConnectionMode.
@@ -333,7 +349,8 @@ function RpCheckAgentConnections(ADatabases: TRpDatabaseInfoList;
 implementation
 
 uses
-  rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc;
+  rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc,
+  rplocalschemas, rpfrmlocalschemaslcl;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -548,7 +565,9 @@ function NewModernReportWizard(report: TRpReport;
   out APendingPrompt: string;
   out AHubDatabaseId: Int64;
   out AHubSchemaId: Int64;
-  out AHubApiKey: string): Boolean;
+  out AHubApiKey: string;
+  out ALocalAlias: string;
+  out ALocalSchemaName: string): Boolean;
 var
   dia: TFRpNewReportWizardLCL;
 begin
@@ -556,6 +575,8 @@ begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   AHubApiKey := '';
+  ALocalAlias := '';
+  ALocalSchemaName := '';
   dia := TFRpNewReportWizardLCL.Create(Application);
   try
     RpPrepareModernNewReport(report);
@@ -568,6 +589,12 @@ begin
       AHubDatabaseId := dia.State.HubDatabaseId;
       AHubSchemaId := dia.State.HubSchemaId;
       AHubApiKey := dia.State.HubApiKey;
+      // The subschema of the direct connection of the report
+      if (dia.State.LocalSchemaName <> '') and (report.DatabaseInfo.Count > 0) then
+      begin
+        ALocalAlias := report.DatabaseInfo.Items[0].Alias;
+        ALocalSchemaName := dia.State.LocalSchemaName;
+      end;
       if report.DataInfo.Count > 0 then
         report.SubReports[0].SubReport.Alias := report.DataInfo.Items[0].Alias;
     end;
@@ -683,7 +710,6 @@ begin
   FMailbox := TRpAsyncMailbox.Create(HandleAsyncMessage);
   FMailboxRef := FMailbox;
   FState.Route := wrUndefined;
-  FState.SchemaMode := smNotChosen;
   FState.DriverFamily := dfUndefined;
   FState.ConnMode := cnUndefined;
   FCommitted := False;
@@ -1047,11 +1073,16 @@ begin
     FPendingPrompt := Trim(MemoFinishPrompt.Lines.Text)
   else
     FPendingPrompt := '';
+  // A subschema is only for a direct connection (the route may have changed
+  // after choosing one)
+  if FState.Route <> wrDirect then
+    FState.LocalSchemaName := '';
+  // A local subschema or a cloud schema: either one lets the AI design
   if (FPendingPrompt <> '') and not HasReportmanAiSchema then
   begin
-    if RpMessageBox(WideString(TR(1751, 'You provided a prompt for AI but no ' +
-      'Reportman AI schema is selected. AI generation requires a schema. ' +
-      'Continue without AI (manual design)?')),
+    if RpMessageBox(WideString(TR(1992, 'You wrote a text for the AI but ' +
+      'chose no schema, and the AI needs one. Continue without the AI ' +
+      '(design by hand)?')),
       WideString(TR(1752, 'Schema required')), [smbYes, smbNo], smsWarning,
       smbNo, smbNo) <> smbYes then
       Exit;
@@ -1077,7 +1108,7 @@ begin
   EdHubApiKey := nil; BtnHubLogin := nil; LblHubKeyNote := nil;
   BtnHubRefresh := nil;
   CbHubDatabase := nil;
-  RbHasSchema := nil; RbNoSchema := nil;
+  LblLocalSchemaError := nil;
   CbFamily := nil; CbConcrete := nil; LblConcrete := nil;
   RbExisting := nil; RbNew := nil; CbExistingConn := nil;
   LblExistingConnDriver := nil;
@@ -1100,10 +1131,8 @@ begin
     case APage of
       wpRoute:                 BuildPageRoute;
       wpAgentLogin:            BuildPageAgentLogin;
-      wpAgentSchema:           BuildPageAgentSchema;
-      wpDirectSchemaQuestion:  BuildPageDirectSchemaQuestion;
-      wpDirectSchemaLogin:     BuildPageDirectSchemaLogin;
-      wpDirectSchema:          BuildPageDirectSchema;
+      wpAgentSchema,
+      wpDirectSchema:          BuildPageSchema;
       wpDriver:                BuildPageDriver;
       wpConnName:              BuildPageConnName;
       wpParams:                BuildPageParams;
@@ -1138,21 +1167,10 @@ begin
       end;
     wpAgentSchema, wpDirectSchema:
       begin
-        LStepTitle.Caption := TR(1528, 'Schema');
-        LStepHelper.Caption := TR(1714, 'Pick the schema for the selected Reportman AI ' +
-          'connection. Schemas are managed in Reportman AI Web database schemas.');
-      end;
-    wpDirectSchemaQuestion:
-      begin
-        LStepTitle.Caption := TR(1528, 'Schema');
-        LStepHelper.Caption := TR(1715, 'Does this direct database connection already ' +
-          'have a schema defined in Reportman AI?');
-      end;
-    wpDirectSchemaLogin:
-      begin
-        LStepTitle.Caption := TR(1528, 'Schema');
-        LStepHelper.Caption := TR(1716, 'Provide your Reportman AI API key to load the ' +
-          'schema for this direct connection.');
+        LStepTitle.Caption := TR(1990, 'Schema for the AI');
+        LStepHelper.Caption := TR(1991, 'The AI designs with a subschema of this ' +
+          'connection or with a schema in the cloud. Without a schema, the report ' +
+          'is designed by hand.');
       end;
     wpDriver:
       begin
@@ -1248,18 +1266,16 @@ begin
     end;
     Exit;
   end;
+  // The schema for the AI comes once the connection is known: the local
+  // subschemas need it (5.7.1 B1, B2)
   case APage of
     wpRoute:
       if FState.Route = wrAgent then Result := wpConnName
-      else if FState.Route = wrDirect then Result := wpDirectSchemaQuestion
+      else if FState.Route = wrDirect then Result := wpDriver
       else Result := wpFinish;
     wpAgentLogin:                    Result := wpAgentSchema;
     wpAgentSchema:                   Result := wpFinish;
-    wpDirectSchemaQuestion:
-      if FState.SchemaMode = smHasSchema then Result := wpDirectSchema
-      else                                    Result := wpDriver;
-    wpDirectSchemaLogin:             Result := wpDirectSchema;
-    wpDirectSchema:                  Result := wpDriver;
+    wpDirectSchema:                  Result := wpFinish;
     wpDriver:                        Result := wpConnName;
     wpConnName:
       begin
@@ -1271,13 +1287,13 @@ begin
             Result := wpAgentSchema;
         end
         else if (FState.ConnMode = cnExisting) and FamilyAcceptsParamStep then
-          Result := wpFinish // existing connection, user already tested - skip params
+          Result := wpDirectSchema // existing connection, user already tested - skip params
         else if FamilyAcceptsParamStep then
           Result := wpParams
         else
-          Result := wpFinish;
+          Result := wpDirectSchema;
       end;
-    wpParams:                        Result := wpFinish;
+    wpParams:                        Result := wpDirectSchema;
     wpFinish:                        Result := wpFinish;
   else
     Result := wpFinish;
@@ -1379,16 +1395,30 @@ begin
       end;
     wpAgentSchema, wpDirectSchema:
       begin
-        if (AISchemaSelector = nil) or (AISchemaSelector.GetHubSchemaId = 0) then
+        // Choosing a schema is optional (the finish page asks when there is
+        // a prompt without one); the Hub database of an Agent connection
+        // stays without a cloud schema
+        FState.HubSchemaId := 0;
+        FState.HubSchemaName := '';
+        FState.LocalSchemaName := '';
+        if AISchemaSelector <> nil then
         begin
-          ShowInfo(TR(1759, 'Please choose a schema.'));
-          Exit;
+          if AISchemaSelector.GetHubSchemaId <> 0 then
+          begin
+            FState.HubDatabaseId := AISchemaSelector.GetHubDatabaseId;
+            FState.HubSchemaId := AISchemaSelector.GetHubSchemaId;
+            FState.HubApiKey := AISchemaSelector.GetSchemaApiKey;
+            FState.HubSchemaName := AISchemaSelector.ComboSchema.Text;
+          end;
+          if FState.Route = wrDirect then
+            FState.LocalSchemaName := AISchemaSelector.GetLocalSchemaName;
         end;
-        FState.HubDatabaseId := AISchemaSelector.GetHubDatabaseId;
-        FState.HubSchemaId := AISchemaSelector.GetHubSchemaId;
-        FState.HubApiKey := AISchemaSelector.GetSchemaApiKey;
-        if AISchemaSelector.ComboSchema.ItemIndex > 0 then
-          FState.HubSchemaName := AISchemaSelector.ComboSchema.Text;
+        // A direct connection has a Hub database only through a cloud schema
+        if (FState.Route = wrDirect) and (FState.HubSchemaId = 0) then
+        begin
+          FState.HubDatabaseId := 0;
+          FState.HubApiKey := '';
+        end;
 
         if FState.Route = wrAgent then
         begin
@@ -1414,24 +1444,6 @@ begin
           finally
             values.Free;
           end;
-        end;
-      end;
-    wpDirectSchemaQuestion:
-      begin
-        if Assigned(RbHasSchema) and RbHasSchema.Checked then FState.SchemaMode := smHasSchema
-        else if Assigned(RbNoSchema) and RbNoSchema.Checked then FState.SchemaMode := smNoSchema
-        else
-        begin
-          ShowInfo(TR(1760, 'Please choose Yes or No.'));
-          Exit;
-        end;
-      end;
-    wpDirectSchemaLogin:
-      begin
-        if not FState.HubLoggedIn then
-        begin
-          ShowInfo(TR(1754, 'Please log in to Reportman AI before continuing.'));
-          Exit;
         end;
       end;
     wpDriver:
@@ -1563,9 +1575,10 @@ begin
   Result := True;
 end;
 
+// A schema for the AI: a cloud schema or a local subschema
 function TFRpNewReportWizardLCL.HasReportmanAiSchema: Boolean;
 begin
-  Result := (FState.HubSchemaId <> 0);
+  Result := (FState.HubSchemaId <> 0) or (FState.LocalSchemaName <> '');
 end;
 
 function TFRpNewReportWizardLCL.ConnectionExists(
@@ -1692,11 +1705,6 @@ begin
   Result := FState.DriverFamily in [dfFireDac, dfZeos];
 end;
 
-procedure TFRpNewReportWizardLCL.OpenSchemasLink(Sender: TObject);
-begin
-  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
-end;
-
 procedure TFRpNewReportWizardLCL.OpenAgentDownloadLink(Sender: TObject);
 begin
   TRpAuthManager.Instance.OpenAgentDownloadPage;
@@ -1805,59 +1813,143 @@ begin
     LoadHubDatabases(True);
 end;
 
-procedure TFRpNewReportWizardLCL.BuildPageAgentSchema;
-begin
-  BuildPageSharedSchemaSelector;
-end;
-
-procedure TFRpNewReportWizardLCL.BuildPageDirectSchemaQuestion;
-begin
-  RbHasSchema := NewRadio(TR(1733, 'Yes, this connection has a schema in Reportman AI'),
-    0, 16);
-  RbHasSchema.Checked := FState.SchemaMode = smHasSchema;
-  RbNoSchema := NewRadio(TR(1734, 'No, design the report manually'), 0, 12);
-  RbNoSchema.Checked := FState.SchemaMode = smNoSchema;
-  NewLabel(TR(1735, 'AI generation requires a Reportman AI schema. Without a schema, ' +
-    'the report can still be designed manually.'), 0, 24);
-end;
-
-procedure TFRpNewReportWizardLCL.BuildPageDirectSchemaLogin;
-var
-  LRow: TPanel;
-begin
-  NewLabel(TR(1732, 'Reportman AI API key'), 0, 16);
-  LRow := NewRow(0, 4);
-  BtnHubLogin := NewRowButton(LRow, [TR(1783, 'Log in')], DoHubLogin);
-  EdHubApiKey := NewRowEdit(LRow);
-  EdHubApiKey.Text := FState.HubApiKey;
-  EdHubApiKey.PasswordChar := '*';
-end;
-
-procedure TFRpNewReportWizardLCL.BuildPageDirectSchema;
-begin
-  BuildPageSharedSchemaSelector;
-end;
-
-procedure TFRpNewReportWizardLCL.BuildPageSharedSchemaSelector;
+procedure TFRpNewReportWizardLCL.BuildPageSchema;
 begin
   if (FState.Route = wrAgent) and (Trim(FState.ConnName) <> '') then
     NewLabel(Format(TR(1736, 'Selected Reportman AI connection: %s'), [FState.ConnName]),
-      0, 12, True);
+      0, 12, True)
+  else if Trim(FState.ConnName) <> '' then
+    NewLabel(TR(154, 'Connection') + ': ' + FState.ConnName, 0, 12, True);
 
-  // The account card and the schemas of the account and of the API key
-  // (loaded in the background)
+  // The list of the copilot: the account card, the subschemas of a direct
+  // connection and the schemas in the cloud of the account and of the API
+  // key (loaded in the background); on the Agent route, the ones of its Hub
+  // database
   AISchemaSelector := TFRpAISchemaSelectorLCL.Create(PContent);
   AISchemaSelector.Parent := PContent;
   StackControl(AISchemaSelector, 0, 8, True);
   AISchemaSelector.OnSchemasLoaded := DoSchemasLoaded;
+  AISchemaSelector.OnNewLocalSchema := DoNewLocalSchema;
+  if FState.Route = wrAgent then
+    AISchemaSelector.CloudDatabaseFilter := FState.HubDatabaseId;
   AISchemaSelector.SetPreferredConnection(FState.HubDatabaseId, FState.HubApiKey);
   AISchemaSelector.SetHubContext(FState.HubDatabaseId, FState.HubSchemaId,
     FState.HubApiKey);
+
+  LblLocalSchemaError := NewLabel('', 0, 4);
+  LblLocalSchemaError.Font.Color := clRed;
+  LblLocalSchemaError.Visible := False;
+  if FState.Route = wrDirect then
+  begin
+    LoadLocalSchemas;
+    // The subschema chosen before (Back)
+    if FState.LocalSchemaName <> '' then
+      AISchemaSelector.SelectLocalSchema(FState.LocalSchemaName);
+  end;
   AISchemaSelector.LoadSchemas;
 
-  NewHyperlinkLabel(TR(1737, 'Define schemas'), 16, OpenSchemasLink);
-  NewHyperlinkLabel(TR(1738, 'Install Reportman AI Agent to create new connections'),
-    8, OpenAgentDownloadLink);
+  if FState.Route = wrAgent then
+    NewHyperlinkLabel(TR(1738, 'Install Reportman AI Agent to create new connections'),
+      16, OpenAgentDownloadLink);
+end;
+
+procedure TFRpNewReportWizardLCL.LoadLocalSchemas;
+var
+  I, LTables, LWidest: Integer;
+  LAlias: string;
+  LCursor: TCursor;
+  LDatabase: TRpDatabaseInfoItem;
+  LDatabases: TRpDatabaseInfoList;
+  LFile: TRpLocalSchemaFile;
+  LNames, LSizes: TStringList;
+begin
+  if AISchemaSelector = nil then
+    Exit;
+  // The connection goes to the report now: its schema file and the local
+  // schema screen read it there (Finish commits it again)
+  CommitConnectionToReport;
+  LDatabase := nil;
+  if (FDestReport <> nil) and (FDestReport.DatabaseInfo.Count > 0) then
+    LDatabase := FDestReport.DatabaseInfo.Items[0];
+  if not RpIsLocalSqlDatabase(LDatabase) then
+  begin
+    AISchemaSelector.SetLocalSchemas('', nil, nil);
+    Exit;
+  end;
+  LAlias := LDatabase.Alias;
+  LNames := TStringList.Create;
+  LSizes := TStringList.Create;
+  LCursor := Screen.Cursor;
+  try
+    if LblLocalSchemaError <> nil then
+      LblLocalSchemaError.Visible := False;
+    try
+      // A copy that reads the same connections file; generated from the
+      // catalog the first time, as the copilot does
+      LDatabases := RpCopyDatabaseInfo(LDatabase);
+      try
+        Screen.Cursor := crHourGlass;
+        LFile := RpLoadLocalSchema(LDatabases.Items[0], FDestReport.Params,
+          True, False);
+        try
+          for I := 0 to LFile.SchemaCount - 1 do
+          begin
+            LNames.Add(LFile.Schemas[I].Name);
+            LFile.GetSchemaSize(LFile.Schemas[I].Name, LTables, LWidest);
+            LSizes.Add(IntToStr(LTables) + ',' + IntToStr(LWidest));
+          end;
+        finally
+          LFile.Free;
+        end;
+      finally
+        LDatabases.Items[0].DisConnect;
+        LDatabases.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        // The database could not be read: the cloud schemas and the local
+        // schema screen are still there
+        LNames.Clear;
+        LSizes.Clear;
+        if LblLocalSchemaError <> nil then
+        begin
+          LblLocalSchemaError.Caption := E.Message;
+          LblLocalSchemaError.Visible := True;
+        end;
+      end;
+    end;
+    AISchemaSelector.SetLocalSchemas(LAlias, LNames, LSizes);
+  finally
+    Screen.Cursor := LCursor;
+    LSizes.Free;
+    LNames.Free;
+  end;
+end;
+
+procedure TFRpNewReportWizardLCL.DoNewLocalSchema(Sender: TObject);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  if (FDestReport = nil) or (FDestReport.DatabaseInfo.Count = 0) or
+    (AISchemaSelector = nil) then
+    Exit;
+  LSchemaName := '';
+  try
+    LSaved := RpShowLocalSchemasDialog(FDestReport,
+      FDestReport.DatabaseInfo.Items[0].Alias, LSchemaName, True, nil);
+  except
+    on E: Exception do
+    begin
+      ShowCritical(E.Message);
+      Exit;
+    end;
+  end;
+  // The list again, with the subschema saved chosen
+  LoadLocalSchemas;
+  if LSaved and (LSchemaName <> '') then
+    AISchemaSelector.SelectLocalSchema(LSchemaName);
 end;
 
 procedure TFRpNewReportWizardLCL.DoSchemasLoaded(Sender: TObject);

@@ -30,11 +30,12 @@ type
     ApiKey: string;
     HubDatabaseId: Int64;
     HubSchemaId: Int64;
-    // A direct connection of the report: its local schema file
-    // (dbxschemas/<ALIAS>.json), all the tables or a subschema
+    // A direct connection of the report: a subschema of its local schema
+    // file (dbxschemas/<ALIAS>.json); never all the tables, only a
+    // subschema goes to the AI
     LocalAlias: string;
     LocalSchemaName: string;
-    // The text without the warning of the plan
+    // The text without the icon and the warning of the plan
     Caption: string;
     // The tables that would travel (-1 = not known) and the columns of the
     // widest one
@@ -314,20 +315,30 @@ type
     function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     function GetHubSchemaId: Int64;
     function GetSchemaApiKey: string;
-    // The direct connections of the report the chat offers next to the Hub
-    // schemas: lines ALIAS= (all the tables) and ALIAS=<subschema>, with the
-    // size of each one in ASizes ('<tables>,<widest columns>', '' = not
-    // known; see RpListLocalSchemaEntries). Without a Hub schema of the
-    // report, APreferredAlias is selected
+    // The subschemas of the direct connections of the report the chat offers
+    // next to the Hub schemas: lines ALIAS=<subschema>, with the size of
+    // each one in ASizes ('<tables>,<widest columns>', '' = not known; see
+    // RpListLocalSchemaEntries); an ALIAS= line (all the tables) is not
+    // listed, only a subschema goes to the AI. APreferredAlias is the direct
+    // connection of the report: without a Hub schema of the report, its
+    // subschema is selected (SelectCurrentSchema), or none when it has none
     procedure SetLocalSchemas(AEntries: TStrings; const APreferredAlias: string;
       ASizes: TStrings = nil);
+    // A subschema of a direct connection: '' selects the one chosen before in
+    // this session, else the first one of the connection, else none
     procedure SelectLocalSchema(const AAlias, ASchemaName: string);
     // The direct connection selected ('' = a Hub schema) and its subschema
-    // ('' = all the tables)
+    // ('' = none)
     function GetLocalSchemaAlias: string;
     function GetLocalSchemaName: string;
     // The list has a schema the AI can use (Hub or local)
     function HasSchemaItems: Boolean;
+    // Why a request can not go to the AI with the schema of the list ('' =
+    // it can): a direct connection without a subschema (1984), or a schema
+    // bigger than the plan with the AI in the cloud (1844). The cloud is not
+    // called then; the Hub connections and the reports without a connection
+    // go as they did
+    function SchemaSendRefusal: string;
     // "Local schemas..." of the configuration button and "New local
     // schema..." of the list: the local schema utility of a direct connection
     property OnConfigureLocalSchemas: TChatConfigureLocalSchemasEvent
@@ -357,12 +368,16 @@ implementation
 {$R *.dfm}
 
 uses
-  System.Contnrs, System.Types, rpdatainfo, rpdesignerclientsql, rpmdconsts;
+  System.Contnrs, System.Types, rpdatainfo, rpdesignerclientsql, rpmdconsts,
+  rplocalschemas;
 
 const
   // The text of the schema list (UTF-16)
   CSchemaSeparator = ' '#$00B7' ';
   CSchemaWarning = #$26A0' ';
+  // In front of each schema (and of its warning): local and in the cloud
+  CSchemaLocalIcon = #$26C1' ';
+  CSchemaCloudIcon = #$2601' ';
   CSchemaRule = #$2500#$2500;
   CNewCloudSchemaUrl = 'https://app.reportman.es/database-config?new=1';
   CCloudSchemasUrl = 'https://app.reportman.es/database-config';
@@ -522,13 +537,10 @@ begin
   Result := Kind in [sckHub, sckLocal];
 end;
 
-// '<ALIAS> . All the tables' or '<ALIAS> . <subschema>'
+// '<ALIAS> . <subschema>'
 function LocalSchemaCaption(const AAlias, ASchemaName: string): string;
 begin
-  if ASchemaName = '' then
-    Result := AAlias + CSchemaSeparator + TranslateStr(1843, 'All the tables')
-  else
-    Result := AAlias + CSchemaSeparator + ASchemaName;
+  Result := AAlias + CSchemaSeparator + ASchemaName;
 end;
 
 function SchemaHeaderCaption(const AText: string): string;
@@ -1165,6 +1177,7 @@ begin
     TRpAuthManager.Instance.SchemaExceedsTier(AItem.Tables, AItem.WidestColumns);
 end;
 
+// The icon of the schema, then the warning of the plan, then its text
 function TFRpChatFrame.SchemaItemText(AItem: TSchemaComboItem): string;
 begin
   Result := AItem.Caption;
@@ -1173,6 +1186,41 @@ begin
   else if (AItem.Kind = sckNewCloud) and not NewCloudSchemaEnabled then
     Result := Result + ' (' + TranslateStr(1842,
       'This connection is not in the Hub') + ')';
+  case AItem.Kind of
+    sckLocal:
+      Result := CSchemaLocalIcon + Result;
+    sckHub:
+      Result := CSchemaCloudIcon + Result;
+  end;
+end;
+
+function TFRpChatFrame.SchemaSendRefusal: string;
+var
+  LItem: TSchemaComboItem;
+  LAlias: string;
+begin
+  Result := '';
+  // The expression chat has no schema
+  if not FShowSchemaSelector then
+    Exit;
+  LItem := SelectedSchemaItem;
+  if LItem = nil then
+  begin
+    // Nothing chosen on a direct connection (none of its subschemas, or the
+    // one chosen is gone); a Hub context waiting for its list goes as it did
+    if (FHubDatabaseId <> 0) or (FHubSchemaId <> 0) then
+      Exit;
+    LAlias := LocalSchemaTargetAlias;
+    if LAlias <> '' then
+      Result := RpSubSchemaRequiredMessage(LAlias);
+  end
+  else if (LItem.Kind = sckLocal) and (Trim(LItem.LocalSchemaName) = '') then
+    Result := RpSubSchemaRequiredMessage(LItem.LocalAlias)
+  // The AI of an Agent has no limit (SchemaItemExceedsPlan); the AI.Api
+  // still decides with the plan of who pays
+  else if SchemaItemExceedsPlan(LItem) then
+    Result := TranslateStr(1844, 'More than your plan allows with the AI in ' +
+      'the cloud: choose a smaller schema or use the AI on your Agent.');
 end;
 
 // The warnings of the plan (the tier, the provider) and "New cloud
@@ -1212,7 +1260,9 @@ begin
     ComboSchema.Hint := '';
 end;
 
-// The list: the local schemas, the ones in the cloud and the two actions
+// The list: the local subschemas, the schemas in the cloud and the two
+// actions. All the tables of a direct connection (its dictionary) are never
+// offered: only a subschema goes to the AI
 procedure TFRpChatFrame.RebuildSchemaItems;
 var
   I, LTables, LWidest: Integer;
@@ -1220,13 +1270,19 @@ var
   LItem: TSchemaComboItem;
   LParts: TStringList;
   LHubDatabaseId, LHubSchemaId: Int64;
+  LHasLocal: Boolean;
 begin
   ComboSchema.Items.BeginUpdate;
   LParts := TStringList.Create;
   FSelectingSchema := True;
   try
     ClearSchemaItems;
-    if FLocalSchemas.Count > 0 then
+    LHasLocal := False;
+    for I := 0 to FLocalSchemas.Count - 1 do
+      if (FLocalSchemas.Names[I] <> '') and
+        (Trim(FLocalSchemas.ValueFromIndex[I]) <> '') then
+        LHasLocal := True;
+    if LHasLocal then
     begin
       LItem := TSchemaComboItem.CreateKind(sckHeader,
         SchemaHeaderCaption(TranslateStr(1836, 'Local')));
@@ -1235,14 +1291,14 @@ begin
       begin
         LAlias := FLocalSchemas.Names[I];
         LSchemaName := FLocalSchemas.ValueFromIndex[I];
-        if LAlias = '' then
+        if (LAlias = '') or (Trim(LSchemaName) = '') then
           Continue;
         LItem := TSchemaComboItem.CreateLocal(LAlias, LSchemaName);
         if I < FLocalSizes.Count then
           ParseSchemaSize(FLocalSizes[I], LItem.Tables, LItem.WidestColumns);
         LItem.Caption := LocalSchemaCaption(LAlias, LSchemaName) +
           SchemaSizeSuffix(LItem.Tables);
-        ComboSchema.Items.AddObject(LItem.Caption, LItem);
+        ComboSchema.Items.AddObject(SchemaItemText(LItem), LItem);
       end;
     end;
     if FHubSchemaLines.Count > 0 then
@@ -1275,7 +1331,7 @@ begin
           LItem.WidestColumns := LWidest;
         end;
         LItem.Caption := LDisplayName + SchemaSizeSuffix(LItem.Tables);
-        ComboSchema.Items.AddObject(LItem.Caption, LItem);
+        ComboSchema.Items.AddObject(SchemaItemText(LItem), LItem);
       end;
     end;
     if ComboSchema.Items.Count > 0 then
@@ -1312,8 +1368,10 @@ begin
     FLocalSizes.Assign(ASizes);
   FPreferredLocalAlias := APreferredAlias;
   // The selected direct connection may be gone, or only its subschema (then
-  // all its tables)
-  LAliasKnown := False;
+  // the one chosen before, its first one or none: SelectCurrentSchema). A
+  // connection without subschemas has no line: it stays while it is the one
+  // of the report
+  LAliasKnown := SameText(FLocalAlias, FPreferredLocalAlias);
   LKnown := False;
   for I := 0 to FLocalSchemas.Count - 1 do
     if SameText(FLocalSchemas.Names[I], FLocalAlias) then
@@ -1748,19 +1806,24 @@ procedure TFRpChatFrame.SelectCurrentSchema;
 var
   LFound: Boolean;
   LRemembered: Int64;
+  LLocalAlias: string;
 
-  function SelectLocalItem(const AAlias, ASchemaName: string): Boolean;
+  // ASchemaName '' = the first subschema of the connection
+  function SelectLocalItem(const AAlias, ASchemaName: string;
+    AFirst: Boolean = False): Boolean;
   var
     J: Integer;
     LLocal: TSchemaComboItem;
   begin
     Result := False;
+    if (not AFirst) and (Trim(ASchemaName) = '') then
+      Exit;
     for J := 0 to ComboSchema.Items.Count - 1 do
     begin
       LLocal := SchemaItem(J);
       if (LLocal <> nil) and (LLocal.Kind = sckLocal) and
         SameText(LLocal.LocalAlias, AAlias) and
-        SameText(LLocal.LocalSchemaName, ASchemaName) then
+        (AFirst or SameText(LLocal.LocalSchemaName, ASchemaName)) then
       begin
         ComboSchema.ItemIndex := J;
         FLocalAlias := LLocal.LocalAlias;
@@ -1802,16 +1865,29 @@ begin
   FSelectingSchema := True;
   try
     LFound := False;
-    // The direct connection chosen (its subschema, or all its tables when the
-    // subschema is gone)
-    if FLocalAlias <> '' then
+    // A direct connection (the one chosen, else the one of a report without
+    // a Hub context), so the new datasets go there and not to a Reportman AI
+    // Agent one: the subschema of a dataset or chosen (FLocalSchemaName),
+    // else the one chosen before in this session, else its first one; none
+    // without subschemas, the chat asks for one when sending
+    LLocalAlias := FLocalAlias;
+    if (LLocalAlias = '') and (FHubSchemaId = 0) and (FHubDatabaseId = 0) then
+      LLocalAlias := FPreferredLocalAlias;
+    if LLocalAlias <> '' then
     begin
-      LFound := SelectLocalItem(FLocalAlias, FLocalSchemaName) or
-        SelectLocalItem(FLocalAlias, '');
+      LFound := (SameText(LLocalAlias, FLocalAlias) and
+        SelectLocalItem(LLocalAlias, FLocalSchemaName)) or
+        SelectLocalItem(LLocalAlias,
+        RememberedChoice('L:' + UpperCase(LLocalAlias))) or
+        SelectLocalItem(LLocalAlias, '', True);
       if not LFound then
       begin
-        FLocalAlias := '';
+        // Not a Hub schema instead (below, LLocalAlias <> '')
+        ComboSchema.ItemIndex := -1;
         FLocalSchemaName := '';
+        FHubDatabaseId := 0;
+        FHubSchemaId := 0;
+        FSchemaApiKey := '';
       end;
     end;
 
@@ -1829,18 +1905,9 @@ begin
         SelectHubItem(FHubDatabaseId, 0);
     end;
 
-    // A report on a direct connection without a Hub schema: its connection
-    // (the subschema chosen before in this session, or all its tables), so
-    // the new datasets go there and not to a Reportman AI Agent one
-    if (not LFound) and (FHubSchemaId = 0) and (FHubDatabaseId = 0) and
-      (FPreferredLocalAlias <> '') then
-      LFound := SelectLocalItem(FPreferredLocalAlias,
-        RememberedChoice('L:' + UpperCase(FPreferredLocalAlias))) or
-        SelectLocalItem(FPreferredLocalAlias, '');
-
-    // Else the very first Hub schema; the Hub schema of the context waits
-    // for the Hub list
-    if not LFound then
+    // Else the very first Hub schema (a report without a connection); the
+    // Hub schema of the context waits for the Hub list
+    if (not LFound) and (LLocalAlias = '') then
     begin
       if (not FHubSchemasLoaded) and ((FHubSchemaId <> 0) or
         (FHubDatabaseId <> 0)) then
@@ -2232,9 +2299,18 @@ var
   LSelectedHubDatabaseId: Int64;
   LSelectedHubSchemaId: Int64;
   LWorker: TThread;
+  LRefusal: string;
 begin
   if not Assigned(FOnBuildDesignRequest) then
     Exit;
+  // Without a subschema of a direct connection, or with a schema bigger
+  // than the plan, the cloud is not called (before the datasets are opened)
+  LRefusal := SchemaSendRefusal;
+  if LRefusal <> '' then
+  begin
+    AddAssistantMessage(LRefusal);
+    Exit;
+  end;
 
   LPreprocessRequest := nil;
   if Assigned(FOnBuildPreprocessSqlContextRequest) then
@@ -3106,7 +3182,7 @@ end;
 
 procedure TFRpChatFrame.BSendClick(Sender: TObject);
 var
-  LPrompt: string;
+  LPrompt, LRefusal: string;
 begin
   LPrompt := Trim(MemoPrompt.Text);
   if LPrompt = '' then
@@ -3122,7 +3198,14 @@ begin
   if Assigned(FOnBuildDesignRequest) and Assigned(FOnApplyDesignResult) then
     StartDesignPrompt(LPrompt)
   else if Assigned(FOnSendPrompt) then
-    FOnSendPrompt(Self, LPrompt, FCurrentExpression)
+  begin
+    // The SQL of a dataset (NL to SQL): the same rule as the design
+    LRefusal := SchemaSendRefusal;
+    if LRefusal <> '' then
+      AddAssistantMessage(LRefusal)
+    else
+      FOnSendPrompt(Self, LPrompt, FCurrentExpression);
+  end
   else
     AddAssistantMessage(TranslateStr(1537, 'Chat UI is ready, but no AI handler is connected yet.'));
 end;

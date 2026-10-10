@@ -187,6 +187,15 @@ type
     // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
     function GetUserSchemas(AList, ASizes: TStrings): Boolean; overload;
     function GetUserAgents(AList: TStrings): Boolean;
+    // The schema library of Reportman AI (the wizard of database-config):
+    // GET api/schema/list, the categories with their schemas,
+    // [{ id, name, description, schemas: [{ id, name, version, categoryId }] }]
+    // (the caller frees it). Raises with the reason when it can not be read
+    function GetSchemaLibrary: TJSONArray;
+    // A schema of the library: GET api/schema/{id}, its fullSchema (the JSON
+    // of a database config with its schemaTables). Raises with the reason.
+    // The library is only read: api/schema/save is never called
+    function GetLibrarySchema(AId: Int64): string;
     // The AI reads the schema of AConfig (inline: a local schema) and says
     // what it does not understand (NlToSql/AnalyzeSchemaStream) with the
     // tier and the agent of this client, in the language of the AI. The
@@ -199,7 +208,10 @@ type
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
       ResponseStream: TStream; ATimeoutMs: Integer): Boolean; overload;
-    function InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean;
+    function InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean; overload;
+    // The same with the HTTP status of the answer
+    function InternalGetRequest(const AAction: string; ResponseStream: TStream;
+      out AStatusCode: Integer): Boolean; overload;
   end;
   { TRpDatasetHttp }
   TRpDatasetHttp = class(TPersistent)
@@ -2234,6 +2246,14 @@ begin
   end;
 end;
 function TRpDatabaseHttp.InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean;
+var
+  LStatusCode: Integer;
+begin
+  Result := InternalGetRequest(AAction, ResponseStream, LStatusCode);
+end;
+
+function TRpDatabaseHttp.InternalGetRequest(const AAction: string;
+  ResponseStream: TStream; out AStatusCode: Integer): Boolean;
 {$IFDEF FIREDAC}
 var
   LHttpClient: TNetHTTPClient;
@@ -2241,10 +2261,13 @@ var
   LUrl: string;
   LStartedAt: TDateTime;
 begin
+  AStatusCode := 0;
   LHttpClient := TNetHTTPClient.Create(nil);
   try
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
     LHttpClient.ContentType := 'application/json';
+    // The messages of the API in the language of the AI, as the POSTs
+    LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
     if FApiKey <> '' then
       LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;
     if FToken <> '' then
@@ -2259,6 +2282,7 @@ begin
     LResponse := LHttpClient.Get(LUrl, ResponseStream);
     TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode) +
       ' (' + IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
+    AStatusCode := LResponse.StatusCode;
     Result := (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300);
   finally
     LHttpClient.Free;
@@ -2271,9 +2295,11 @@ var
   LUrl: string;
 begin
   Result := False;
+  AStatusCode := 0;
   LIdHttp := TIdHTTP.Create(nil);
   try
     LIdHttp.Request.ContentType := 'application/json';
+    LIdHttp.Request.AcceptLanguage := RpApiAcceptLanguage;
     if FApiKey <> '' then
       LIdHttp.Request.CustomHeaders.Values['X-Reportman-ApiKey'] := FApiKey;
     if FToken <> '' then
@@ -2288,6 +2314,7 @@ begin
     TRpAuthManager.Instance.Log('HTTP Request: GET ' + LUrl);
     LIdHttp.Get(LUrl, ResponseStream);
     TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LIdHttp.ResponseCode));
+    AStatusCode := LIdHttp.ResponseCode;
     if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
       Result := True
     else
@@ -2458,6 +2485,113 @@ begin
     end;
   finally
     LResponseStream.Free;
+  end;
+end;
+
+{ The schema library }
+
+// The text of an answer (UTF-8)
+function ResponseText(AStream: TMemoryStream): string;
+{$IFNDEF FPC}
+var
+  LBytes: TBytes;
+{$ENDIF}
+begin
+{$IFDEF FPC}
+  // The strings of Lazarus are UTF-8 already
+  SetString(Result, PChar(AStream.Memory), AStream.Size);
+{$ELSE}
+  SetLength(LBytes, AStream.Size);
+  if AStream.Size > 0 then
+    Move(AStream.Memory^, LBytes[0], AStream.Size);
+  Result := TEncoding.UTF8.GetString(LBytes);
+{$ENDIF}
+end;
+
+// GET of the library: the text of the answer, or an exception with the
+// reason (the message of the API when it gives one, else the HTTP status)
+function LibraryGet(AHttp: TRpDatabaseHttp; const AAction: string): string;
+var
+  LStream: TMemoryStream;
+  LStatusCode: Integer;
+  LJson: TJSONValue;
+  LReason: string;
+begin
+  LStream := TMemoryStream.Create;
+  try
+    if AHttp.InternalGetRequest(AAction, LStream, LStatusCode) then
+    begin
+      Result := ResponseText(LStream);
+      Exit;
+    end;
+    LReason := '';
+    try
+      LJson := TJSONObject.ParseJSONValue(ResponseText(LStream));
+    except
+      LJson := nil;
+    end;
+    try
+      if LJson is TJSONObject then
+      begin
+        if TJSONObject(LJson).Values['message'] <> nil then
+          LReason := TJSONObject(LJson).Values['message'].Value
+        else if TJSONObject(LJson).Values['title'] <> nil then
+          LReason := TJSONObject(LJson).Values['title'].Value;
+      end;
+    finally
+      LJson.Free;
+    end;
+    if Trim(LReason) = '' then
+      LReason := 'HTTP ' + IntToStr(LStatusCode)
+    else
+      LReason := 'HTTP ' + IntToStr(LStatusCode) + ': ' + LReason;
+    raise Exception.Create(LReason);
+  finally
+    LStream.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.GetSchemaLibrary: TJSONArray;
+var
+  LValue: TJSONValue;
+begin
+  LValue := TJSONObject.ParseJSONValue(LibraryGet(Self, 'api/schema/list'));
+  if not (LValue is TJSONArray) then
+  begin
+    LValue.Free;
+    raise Exception.Create('The answer of api/schema/list is not a list');
+  end;
+  Result := TJSONArray(LValue);
+end;
+
+function TRpDatabaseHttp.GetLibrarySchema(AId: Int64): string;
+var
+  I: Integer;
+  LRoot, LFull: TJSONValue;
+begin
+  Result := '';
+  LRoot := TJSONObject.ParseJSONValue(LibraryGet(Self,
+    'api/schema/' + IntToStr(AId)));
+  try
+    if not (LRoot is TJSONObject) then
+      raise Exception.Create('The answer of api/schema/' + IntToStr(AId) +
+        ' is not a schema');
+    // fullSchema, whatever the case of its name
+    LFull := TJSONObject(LRoot).Values['fullSchema'];
+    if LFull = nil then
+      for I := 0 to TJSONObject(LRoot).Count - 1 do
+        if SameText(TJSONObject(LRoot).Pairs[I].JsonString.Value, 'fullSchema') then
+          LFull := TJSONObject(LRoot).Pairs[I].JsonValue;
+    // A JSON text; an object is taken as it is
+    if (LFull is TJSONObject) or (LFull is TJSONArray) then
+      Result := LFull.ToJSON
+    else if (LFull <> nil) and not (LFull is TJSONNull) then
+      Result := LFull.Value;
+    if Trim(Result) = '' then
+      raise Exception.Create('The schema ' + IntToStr(AId) +
+        ' of the library has no fullSchema');
+  finally
+    LRoot.Free;
   end;
 end;
 end.

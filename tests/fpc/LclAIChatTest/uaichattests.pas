@@ -38,6 +38,9 @@ const
   // The separators of the token lines of the AI log
   U_MIDDOT = #$C2#$B7;
   U_ARROW = #$E2#$86#$92;
+  // The icons of the schema lists (F8): a schema in the cloud and its rule
+  U_CLOUD = #$E2#$98#$81' ';
+  U_RULE = #$E2#$94#$80#$E2#$94#$80;
 
 type
   TCondition = function: Boolean is nested;
@@ -1216,17 +1219,23 @@ begin
     WaitUntil(Cond3, 10000,
       'schemas loaded');
     Check(LSel.LastLoadOk, 'the Hub answered');
-    // '' + API key schemas (preferred database first) + account schemas
-    CheckEquals(4, LSel.ComboSchema.Items.Count, 'schemas merged without duplicates');
-    CheckEquals('Stock', LSel.ComboSchema.Items[1], 'preferred database first');
-    CheckEquals('Sales / Main', LSel.ComboSchema.Items[2], 'API key schema');
-    CheckEquals('HR', LSel.ComboSchema.Items[3], 'account schema');
+    // '' + the cloud header + API key schemas (preferred database first) +
+    // account schemas + the separator and "New cloud schema..." (no direct
+    // connection: no local schemas and no "New local schema...")
+    CheckEquals(7, LSel.ComboSchema.Items.Count, 'schemas merged without duplicates');
+    Check(Pos(U_RULE, LSel.ComboSchema.Items[1]) = 1, 'the cloud header');
+    CheckEquals(U_CLOUD + 'Stock', LSel.ComboSchema.Items[2], 'preferred database first');
+    CheckEquals(U_CLOUD + 'Sales / Main', LSel.ComboSchema.Items[3], 'API key schema');
+    CheckEquals(U_CLOUD + 'HR', LSel.ComboSchema.Items[4], 'account schema');
+    CheckEquals(string(TranslateStr(1839, 'New cloud schema...')), LSel.ComboSchema.Items[6],
+      'New cloud schema at the end');
     CheckEquals(78, LSel.GetHubDatabaseId, 'preferred database selected');
     CheckEquals(6, LSel.GetHubSchemaId, 'its schema');
     CheckEquals('test-key', LSel.GetSchemaApiKey, 'API key of the schema');
+    CheckEquals('', LSel.GetLocalSchemaName, 'no local subschema');
     Check(FSchemaChanged > 0, 'OnSchemaChanged');
     LSel.SetHubContext(79, 7);
-    CheckEquals(3, LSel.ComboSchema.ItemIndex, 'SetHubContext selects the schema');
+    CheckEquals(4, LSel.ComboSchema.ItemIndex, 'SetHubContext selects the schema');
     CheckEquals('', LSel.GetSchemaApiKey, 'account schema has no API key');
     Shot(LForm, 'schema_selector');
   finally
@@ -1265,7 +1274,9 @@ begin
     WaitUntil(OnlineLoaded, 10000, 'agents and schemas loaded');
     CheckEquals(1, LChat.AISelection.AgentEndpointCount, 'only the online agent');
     CheckEquals('Local (pc1)', LChat.AISelection.ComboAIProvider.Items[2], 'agent name');
-    CheckEquals('HR', LChat.ComboSchema.Text, 'SetHubContext schema selected after the load');
+    // With the icon of a schema in the cloud (F8)
+    CheckEquals(U_CLOUD + 'HR', LChat.ComboSchema.Text,
+      'SetHubContext schema selected after the load');
     CheckEquals(79, LChat.GetHubDatabaseId, 'hub database of the selection');
     CheckEquals(7, LChat.GetHubSchemaId, 'hub schema of the selection');
     Check(Pos('CheckStatus', LChat.NetLogView.PlainText) > 0, 'net log receives the Hub log');

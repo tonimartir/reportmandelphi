@@ -14,6 +14,24 @@
 
 unit rpmdfnewreportwizardvcl;
 
+{ File > New of the designer: the connection route (Reportman AI Agent,
+  direct database or no connection), the connection, the schema for the AI
+  and the prompt for the design assistant.
+
+  The schema for the AI (docs/esquemas-locales-pantalla-plan.md 5.7.1 B) is
+  the list of the copilot, after the connection: the subschemas of the local
+  schema file of a direct connection (generated from the catalog the first
+  time) and the schemas in the cloud (on the Agent route, the ones of its
+  Hub database), with "New local schema..." and "New cloud schema...".
+  Choosing one is optional; a prompt without one asks to go on without the
+  AI. Routes: direct = route, driver, connection (and parameters or ADO
+  string), schema, finish; Agent = route, connection (and API key), schema,
+  finish.
+
+  The texts are translated with the keys of the Lazarus twin
+  (rpmdfnewreportwizardlcl); the ones only the VCL has (dbExpress, BDE,
+  Microsoft DAO and its page) stay in English. }
+
 {$I rpconf.inc}
 
 interface
@@ -41,15 +59,14 @@ type
     dfBde,
     dfDao
   );
-  TRpWizardSchemaMode = (smNotChosen, smHasSchema, smNoSchema);
   TRpWizardConnMode = (cnUndefined, cnExisting, cnNew);
 
+  // wpAgentSchema and wpDirectSchema are the same page (the schema for the
+  // AI) at the end of each route
   TRpWizardPage = (
     wpRoute,
     wpAgentLogin,
     wpAgentSchema,
-    wpDirectSchemaQuestion,
-    wpDirectSchemaLogin,
     wpDirectSchema,
     wpDriver,
     wpConnName,
@@ -66,7 +83,8 @@ type
     HubDatabaseName: string;
     HubSchemaId: Int64;
     HubSchemaName: string;
-    SchemaMode: TRpWizardSchemaMode;
+    // The subschema of the local schema file of the direct connection
+    LocalSchemaName: string;
     DriverFamily: TRpWizardDriverFamily;
     DriverConcrete: string;     // FireDAC DriverID, DBExpress driver, Zeos protocol or BDE alias
     ConnMode: TRpWizardConnMode;
@@ -116,14 +134,14 @@ type
     FCurrentPanel: TPanel;
     // route page
     FRbAgent, FRbDirect, FRbNoConnection: TRadioButton;
-    // agent / direct schema pages
+    // agent login page
     FEdHubApiKey: TEdit;
     FBtnHubLogin: TButton;
     FBtnHubRefresh: TButton;
     FCbHubDatabase: TComboBox;
-    FCbHubSchema: TComboBox;
-    // schema question
-    FRbHasSchema, FRbNoSchema: TRadioButton;
+    // schema page: why the subschemas of the direct connection could not be
+    // read
+    FLblLocalSchemaError: TLabel;
     // driver page
     FCbFamily: TComboBox;
     FCbConcrete: TComboBox;
@@ -157,11 +175,8 @@ type
     // page builders
     procedure BuildPageRoute;
     procedure BuildPageAgentLogin;
-    procedure BuildPageAgentSchema;
-    procedure BuildPageDirectSchemaQuestion;
-    procedure BuildPageDirectSchemaLogin;
-    procedure BuildPageDirectSchema;
-    procedure BuildPageSharedSchemaSelector;
+    // The schema for the AI (wpAgentSchema, wpDirectSchema)
+    procedure BuildPageSchema;
     procedure BuildPageDriver;
     procedure BuildPageConnName;
     procedure BuildPageDaoConn;
@@ -205,8 +220,12 @@ type
       ALeft, ATop: Integer): TLabel;
     function CreateHyperlinkLabel(AOwner: TWinControl; const ACaption: string;
       ALeft, ATop: Integer; AClick: TNotifyEvent): TLabel;
-    procedure OpenSchemasLink(Sender: TObject);
     procedure OpenAgentDownloadLink(Sender: TObject);
+    // "New local schema...": the local schema screen of the connection
+    procedure DoNewLocalSchema(Sender: TObject);
+    // The subschemas of the direct connection in the list of the schema
+    // page (the schema file is generated the first time)
+    procedure LoadLocalSchemas;
     procedure DoRouteChange(Sender: TObject);
     function IsImmediateFinishRouteSelected: Boolean;
     procedure FinishWizard;
@@ -232,11 +251,18 @@ type
   // (the schemas of the design chat), 0 otherwise
   TRpHubDatabaseOfSchema = function(AHubSchemaId: Int64): Int64 of object;
 
+// File > New of the designer. True when the user finished the wizard: the
+// report has the chosen connection, and the prompt and Hub context are for
+// the design chat; ALocalAlias and ALocalSchemaName are the subschema of the
+// direct connection chosen ('' = none), which the chat selects before the
+// prompt
 function NewModernReportWizard(report: TRpReport;
   out APendingPrompt: string;
   out AHubDatabaseId: Int64;
   out AHubSchemaId: Int64;
-  out AHubApiKey: string): Boolean;
+  out AHubApiKey: string;
+  out ALocalAlias: string;
+  out ALocalSchemaName: string): Boolean;
 
 // The connection wizard (Data configuration > Add connection, a connection
 // of a report not configured on this computer), see StartConnectionMode.
@@ -265,40 +291,35 @@ implementation
 {$R *.dfm}
 
 uses
-  rpdatahttp;
+  rpdatahttp, rplocalschemas, rpfrmlocalschemasvcl;
 
 const
-  // English captions follow the persisted plan exactly.
-  STEP_TITLE_ROUTE                = 'Connection Route';
-  STEP_HELPER_ROUTE               = 'Choose how this report will get its data. You can connect through Reportman AI for distributed access or directly to a local database.';
-  STEP_TITLE_AGENT_LOGIN          = 'Reportman AI Connection';
-  STEP_HELPER_AGENT_LOGIN         = 'Provide your Reportman AI API key and pick the distributed connection to use.';
-  STEP_TITLE_AGENT_SCHEMA         = 'Schema';
-  STEP_HELPER_AGENT_SCHEMA        = 'Pick the schema for the selected Reportman AI connection. Schemas are managed in Reportman AI Web database schemas.';
-  STEP_TITLE_DIRECT_SCHEMAQ       = 'Schema';
-  STEP_HELPER_DIRECT_SCHEMAQ      = 'Does this direct database connection already have a schema defined in Reportman AI?';
-  STEP_TITLE_DIRECT_SCHEMALOGIN   = 'Schema';
-  STEP_HELPER_DIRECT_SCHEMALOGIN  = 'Provide your Reportman AI API key to load the schema for this direct connection.';
-  STEP_TITLE_DRIVER               = 'Database Driver';
-  STEP_HELPER_DRIVER              = 'Choose the driver family and the specific database driver for this direct database connection.';
-  STEP_TITLE_CONNNAME             = 'Connection Name';
-  STEP_HELPER_CONNNAME            = 'Pick an existing connection or create a new one for this driver.';
+  // The pages only the VCL has (no key in the Lazarus twin)
   STEP_TITLE_DAO                  = 'ADO Connection String';
   STEP_HELPER_DAO                 = 'Edit the ADO connection string directly or use the builder to generate it.';
-  STEP_TITLE_PARAMS               = 'Connection Parameters';
-  STEP_HELPER_PARAMS              = 'Edit the connection parameters and test the connection before continuing.';
-  STEP_TITLE_FINISH               = 'Finish';
-  STEP_HELPER_FINISH              = 'Describe the report so AI can design it for you. If you selected a schema, AI will obtain the data for you. Leave this text blank if you want to create the report manually.';
 
   EXAMPLE_PROMPT = 'Sales by customer with a group total and a grand total';
 
   AGENT_DRIVER_NAME = 'Reportman AI Agent';
 
+// A text of the wizard, with the keys of the Lazarus twin
+function TR(AId: Integer; const ADefault: string): string;
+begin
+  Result := string(TranslateStr(AId, ADefault));
+end;
+
+function NewReportTitle: string;
+begin
+  Result := TR(1131, 'New Report');
+end;
+
 function NewModernReportWizard(report: TRpReport;
   out APendingPrompt: string;
   out AHubDatabaseId: Int64;
   out AHubSchemaId: Int64;
-  out AHubApiKey: string): Boolean;
+  out AHubApiKey: string;
+  out ALocalAlias: string;
+  out ALocalSchemaName: string): Boolean;
 var
   dia: TFRpNewReportWizardVCL;
   i: Integer;
@@ -307,6 +328,8 @@ begin
   AHubDatabaseId := 0;
   AHubSchemaId := 0;
   AHubApiKey := '';
+  ALocalAlias := '';
+  ALocalSchemaName := '';
   dia := TFRpNewReportWizardVCL.Create(Application);
   try
     report.CreateNew;
@@ -324,6 +347,12 @@ begin
       AHubDatabaseId := dia.FState.HubDatabaseId;
       AHubSchemaId := dia.FState.HubSchemaId;
       AHubApiKey := dia.FState.HubApiKey;
+      // The subschema of the direct connection of the report
+      if (dia.FState.LocalSchemaName <> '') and (report.DatabaseInfo.Count > 0) then
+      begin
+        ALocalAlias := report.DatabaseInfo.Items[0].Alias;
+        ALocalSchemaName := dia.FState.LocalSchemaName;
+      end;
       if report.DataInfo.Count > 0 then
         report.SubReports[0].SubReport.Alias := report.DataInfo.Items[0].Alias;
     end;
@@ -390,7 +419,7 @@ begin
       if not RpAgentConnectionProblem(LDatabase, LMessage) then
         Continue;
       if RpMessageBox(LMessage + sLineBreak + sLineBreak +
-        TranslateStr(1830, 'Configure the connection now?'), 'Reportman AI',
+        TranslateStr(1830, 'Configure the connection now?'), TR(1778, 'Reportman AI'),
         [smbYes, smbNo], smsWarning, smbYes, smbNo) <> smbYes then
         Exit(False);
       // The Hub database of the schema of a dataset of this connection
@@ -427,10 +456,15 @@ begin
   FAdminService := TRpWebDbxAdminService.Create;
   FConnAdmin := TRpConnAdmin.Create;
   FState.Route := wrUndefined;
-  FState.SchemaMode := smNotChosen;
   FState.DriverFamily := dfUndefined;
   FState.ConnMode := cnUndefined;
   FCommitted := False;
+  // The texts of the form file, translated as the Lazarus twin
+  Caption := NewReportTitle;
+  BCancel.Caption := TR(94, 'Cancel');
+  BBack.Caption := TR(934, 'Back');
+  BNext.Caption := TR(933, 'Next');
+  BFinish.Caption := TR(935, 'Finish');
   GoTo_Page(wpRoute, False);
 end;
 
@@ -464,7 +498,7 @@ begin
   begin
     // A Reportman AI Agent connection of the report: its API key and Hub
     // database, under the same name
-    Caption := Format('Configure the connection "%s"', [FFixedName]);
+    Caption := Format(TR(1827, 'Configure the connection "%s"'), [FFixedName]);
     FState.Route := wrAgent;
     FState.ConnMode := cnNew;
     FState.ConnName := FFixedName;
@@ -476,7 +510,7 @@ begin
   end
   else
   begin
-    Caption := 'Add connection';
+    Caption := TR(1826, 'Add connection');
     GoTo_Page(wpRoute, False);
   end;
 end;
@@ -568,11 +602,17 @@ begin
     FPendingPrompt := Trim(FMemoFinishPrompt.Lines.Text)
   else
     FPendingPrompt := '';
+  // A subschema is only for a direct connection (the route may have changed
+  // after choosing one)
+  if FState.Route <> wrDirect then
+    FState.LocalSchemaName := '';
+  // A local subschema or a cloud schema: either one lets the AI design
   if (FPendingPrompt <> '') and not HasReportmanAiSchema then
   begin
-    if RpMessageBox(
-      'You provided a prompt for AI but no Reportman AI schema is selected. AI generation requires a schema. Continue without AI (manual design)?',
-      'Schema required', [smbYes, smbNo], smsWarning, smbNo, smbNo) <> smbYes then
+    if RpMessageBox(TR(1992, 'You wrote a text for the AI but chose no ' +
+      'schema, and the AI needs one. Continue without the AI (design by hand)?'),
+      TR(1752, 'Schema required'), [smbYes, smbNo], smsWarning, smbNo,
+      smbNo) <> smbYes then
       Exit;
     FPendingPrompt := '';
   end;
@@ -591,8 +631,8 @@ begin
   FRbAgent := nil; FRbDirect := nil; FRbNoConnection := nil;
   FEdHubApiKey := nil; FBtnHubLogin := nil;
   FBtnHubRefresh := nil;
-  FCbHubDatabase := nil; FCbHubSchema := nil;
-  FRbHasSchema := nil; FRbNoSchema := nil;
+  FCbHubDatabase := nil;
+  FLblLocalSchemaError := nil;
   FCbFamily := nil; FCbConcrete := nil; FLblConcrete := nil;
   FRbExisting := nil; FRbNew := nil; FCbExistingConn := nil;
   FLblExistingConnDriver := nil;
@@ -613,10 +653,8 @@ begin
   case APage of
     wpRoute:                 BuildPageRoute;
     wpAgentLogin:            BuildPageAgentLogin;
-    wpAgentSchema:           BuildPageAgentSchema;
-    wpDirectSchemaQuestion:  BuildPageDirectSchemaQuestion;
-    wpDirectSchemaLogin:     BuildPageDirectSchemaLogin;
-    wpDirectSchema:          BuildPageDirectSchema;
+    wpAgentSchema,
+    wpDirectSchema:          BuildPageSchema;
     wpDriver:                BuildPageDriver;
     wpConnName:              BuildPageConnName;
     wpDaoConn:               BuildPageDaoConn;
@@ -631,39 +669,63 @@ procedure TFRpNewReportWizardVCL.UpdateHeader(APage: TRpWizardPage);
 begin
   case APage of
     wpRoute:
-      begin LStepTitle.Caption := STEP_TITLE_ROUTE;
-            LStepHelper.Caption := STEP_HELPER_ROUTE; end;
+      begin
+        LStepTitle.Caption := TR(1710, 'Connection Route');
+        LStepHelper.Caption := TR(1711, 'Choose how this report will get its ' +
+          'data. You can connect through Reportman AI for distributed access ' +
+          'or directly to a local database.');
+      end;
     wpAgentLogin:
-      begin LStepTitle.Caption := STEP_TITLE_AGENT_LOGIN;
-            LStepHelper.Caption := STEP_HELPER_AGENT_LOGIN; end;
-    wpAgentSchema:
-      begin LStepTitle.Caption := STEP_TITLE_AGENT_SCHEMA;
-            LStepHelper.Caption := STEP_HELPER_AGENT_SCHEMA; end;
-    wpDirectSchemaQuestion:
-      begin LStepTitle.Caption := STEP_TITLE_DIRECT_SCHEMAQ;
-            LStepHelper.Caption := STEP_HELPER_DIRECT_SCHEMAQ; end;
-    wpDirectSchemaLogin:
-      begin LStepTitle.Caption := STEP_TITLE_DIRECT_SCHEMALOGIN;
-            LStepHelper.Caption := STEP_HELPER_DIRECT_SCHEMALOGIN; end;
-    wpDirectSchema:
-      begin LStepTitle.Caption := STEP_TITLE_AGENT_SCHEMA;
-            LStepHelper.Caption := STEP_HELPER_AGENT_SCHEMA; end;
+      begin
+        LStepTitle.Caption := TR(1712, 'Reportman AI Connection');
+        LStepHelper.Caption := TR(1713, 'Provide your Reportman AI API key and ' +
+          'pick the distributed connection to use.');
+      end;
+    wpAgentSchema, wpDirectSchema:
+      begin
+        LStepTitle.Caption := TR(1990, 'Schema for the AI');
+        LStepHelper.Caption := TR(1991, 'The AI designs with a subschema of ' +
+          'this connection or with a schema in the cloud. Without a schema, ' +
+          'the report is designed by hand.');
+      end;
     wpDriver:
-      begin LStepTitle.Caption := STEP_TITLE_DRIVER;
-            LStepHelper.Caption := STEP_HELPER_DRIVER; end;
+      begin
+        LStepTitle.Caption := TR(1101, 'Database Driver');
+        LStepHelper.Caption := TR(1717, 'Choose the driver family and the ' +
+          'specific database driver for this direct database connection.');
+      end;
     wpConnName:
-      begin LStepTitle.Caption := STEP_TITLE_CONNNAME;
-            LStepHelper.Caption := STEP_HELPER_CONNNAME; end;
+      begin
+        LStepTitle.Caption := TR(400, 'Connection Name');
+        LStepHelper.Caption := TR(1718, 'Pick an existing connection or create ' +
+          'a new one for this driver.');
+      end;
     wpDaoConn:
-      begin LStepTitle.Caption := STEP_TITLE_DAO;
-            LStepHelper.Caption := STEP_HELPER_DAO; end;
+      begin
+        LStepTitle.Caption := TR(1998, STEP_TITLE_DAO);
+        LStepHelper.Caption := TR(1999, STEP_HELPER_DAO);
+      end;
     wpParams:
-      begin LStepTitle.Caption := STEP_TITLE_PARAMS;
-            LStepHelper.Caption := STEP_HELPER_PARAMS; end;
+      begin
+        LStepTitle.Caption := TR(1719, 'Connection Parameters');
+        LStepHelper.Caption := TR(1720, 'Edit the connection parameters and ' +
+          'test the connection before continuing.');
+      end;
     wpFinish:
-      begin LStepTitle.Caption := STEP_TITLE_FINISH;
-            LStepHelper.Caption := STEP_HELPER_FINISH; end;
+      begin
+        LStepTitle.Caption := TR(935, 'Finish');
+        LStepHelper.Caption := TR(1721, 'Describe the report so AI can design ' +
+          'it for you. If you selected a schema, AI will obtain the data for ' +
+          'you. Leave this text blank if you want to create the report manually.');
+      end;
   end;
+  // A long helper (the translations are longer than the English) wraps and
+  // the header grows to show it whole
+  LStepHelper.AutoSize := False;
+  LStepHelper.WordWrap := True;
+  LStepHelper.Width := PHeader.ClientWidth - 2 * LStepHelper.Left;
+  LStepHelper.AutoSize := True;
+  PHeader.Height := LStepHelper.Top + LStepHelper.Height + LStepTitle.Top;
 end;
 
 procedure TFRpNewReportWizardVCL.UpdateNavButtons;
@@ -676,14 +738,14 @@ begin
   if FCurrentPage = wpRoute then
   begin
     if IsImmediateFinishRouteSelected then
-      BNext.Caption := 'Finish'
+      BNext.Caption := TR(935, 'Finish')
     else
-      BNext.Caption := 'Next';
+      BNext.Caption := TR(933, 'Next');
   end
   else if IsLastConnectionStep then
-    BNext.Caption := 'Finish'
-  else if BNext.Caption = 'Finish' then
-    BNext.Caption := 'Next';
+    BNext.Caption := TR(935, 'Finish')
+  else if BNext.Caption = TR(935, 'Finish') then
+    BNext.Caption := TR(933, 'Next');
 end;
 
 function TFRpNewReportWizardVCL.NextPageFor(APage: TRpWizardPage): TRpWizardPage;
@@ -712,18 +774,16 @@ begin
     end;
     Exit;
   end;
+  // The schema for the AI comes once the connection is known: the local
+  // subschemas need it (5.7.1 B1, B2)
   case APage of
     wpRoute:
       if FState.Route = wrAgent then Result := wpConnName
-      else if FState.Route = wrDirect then Result := wpDirectSchemaQuestion
+      else if FState.Route = wrDirect then Result := wpDriver
       else Result := wpFinish;
     wpAgentLogin:                    Result := wpAgentSchema;
     wpAgentSchema:                   Result := wpFinish;
-    wpDirectSchemaQuestion:
-      if FState.SchemaMode = smHasSchema then Result := wpDirectSchema
-      else                                    Result := wpDriver;
-    wpDirectSchemaLogin:             Result := wpDirectSchema;
-    wpDirectSchema:                  Result := wpDriver;
+    wpDirectSchema:                  Result := wpFinish;
     wpDriver:
       if FState.DriverFamily = dfDao then Result := wpDaoConn
       else                                Result := wpConnName;
@@ -737,16 +797,16 @@ begin
             Result := wpAgentSchema;
         end
         else if FState.DriverFamily = dfBde then
-          Result := wpFinish
+          Result := wpDirectSchema
         else if (FState.ConnMode = cnExisting) and FamilyAcceptsParamStep then
-          Result := wpFinish // existing connection, user already tested - skip params
+          Result := wpDirectSchema // existing connection, user already tested - skip params
         else if FamilyAcceptsParamStep then
           Result := wpParams
         else
-          Result := wpFinish;
+          Result := wpDirectSchema;
       end;
-    wpDaoConn:                       Result := wpFinish;
-    wpParams:                        Result := wpFinish;
+    wpDaoConn:                       Result := wpDirectSchema;
+    wpParams:                        Result := wpDirectSchema;
     wpFinish:                        Result := wpFinish;
   else
     Result := wpFinish;
@@ -768,6 +828,17 @@ var
   testResult: TRpWebConnectionTestResult;
   newkind: string;
   zeosvalues: TStringList;
+
+  procedure Info(const AText: string);
+  begin
+    RpMessageBox(AText, NewReportTitle, [smbOK], smsInformation, smbOK, smbOK);
+  end;
+
+  procedure Critical(const AText: string);
+  begin
+    RpMessageBox(AText, NewReportTitle, [smbOK], smsCritical, smbOK, smbOK);
+  end;
+
 begin
   Result := False;
   case FCurrentPage of
@@ -778,8 +849,7 @@ begin
         else if Assigned(FRbNoConnection) and FRbNoConnection.Checked then FState.Route := wrNoConnection
         else
         begin
-          RpMessageBox('Please choose a connection route.', 'New Report',
-            [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1753, 'Please choose a connection route.'));
           Exit;
         end;
         if FState.Route = wrNoConnection then
@@ -797,29 +867,25 @@ begin
           FState.HubApiKey := Trim(FEdHubApiKey.Text);
         if (FState.HubApiKey = '') and not HasHubSession then
         begin
-          RpMessageBox('Please enter your Reportman AI API key.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1777, 'Please enter your Reportman AI API key.'));
           Exit;
         end;
         if not FState.HubLoggedIn then
         begin
-          RpMessageBox('Please log in to Reportman AI before continuing.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1754, 'Please log in to Reportman AI before continuing.'));
           Exit;
         end;
         if FState.ConnMode = cnExisting then
         begin
           if FState.ConnName = '' then
           begin
-            RpMessageBox('Please choose an existing Reportman AI connection.',
-              'New Report', [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1755, 'Please choose an existing Reportman AI connection.'));
             Exit;
           end;
         end
         else if (FCbHubDatabase.ItemIndex < 0) then
         begin
-          RpMessageBox('Please choose a Reportman AI connection.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1756, 'Please choose a Reportman AI connection.'));
           Exit;
         end;
         if FState.ConnMode = cnNew then
@@ -848,17 +914,15 @@ begin
             testResult := FAdminService.TestConnection(FState.ConnName);
             if not testResult.Success then
             begin
-              RpMessageBox('Could not validate the new Reportman AI connection: ' +
-                testResult.MessageText, 'New Report', [smbOK], smsCritical,
-                smbOK, smbOK);
+              Critical(TR(1757, 'Could not validate the new Reportman AI connection: ') +
+                testResult.MessageText);
               Exit;
             end;
           except
             on E: Exception do
             begin
               values.Free;
-              RpMessageBox('Could not save Reportman AI connection: ' + E.Message,
-                'New Report', [smbOK], smsCritical, smbOK, smbOK);
+              Critical(TR(1758, 'Could not save Reportman AI connection: ') + E.Message);
               Exit;
             end;
           end;
@@ -867,15 +931,29 @@ begin
       end;
     wpAgentSchema, wpDirectSchema:
       begin
-        if (FAISchemaSelector = nil) or (FAISchemaSelector.GetHubSchemaId = 0) then
+        // Choosing a schema is optional (the finish page asks when there is
+        // a prompt without one); the Hub database of an Agent connection
+        // stays without a cloud schema
+        FState.HubSchemaId := 0;
+        FState.HubSchemaName := '';
+        FState.LocalSchemaName := '';
+        if FAISchemaSelector <> nil then
         begin
-          RpMessageBox('Please choose a schema.', 'New Report',
-            [smbOK], smsInformation, smbOK, smbOK);
-          Exit;
+          if FAISchemaSelector.GetHubSchemaId <> 0 then
+          begin
+            FState.HubDatabaseId := FAISchemaSelector.GetHubDatabaseId;
+            FState.HubSchemaId := FAISchemaSelector.GetHubSchemaId;
+            FState.HubApiKey := FAISchemaSelector.GetSchemaApiKey;
+          end;
+          if FState.Route = wrDirect then
+            FState.LocalSchemaName := FAISchemaSelector.GetLocalSchemaName;
         end;
-        FState.HubDatabaseId := FAISchemaSelector.GetHubDatabaseId;
-        FState.HubSchemaId := FAISchemaSelector.GetHubSchemaId;
-        FState.HubApiKey := FAISchemaSelector.GetSchemaApiKey;
+        // A direct connection has a Hub database only through a cloud schema
+        if (FState.Route = wrDirect) and (FState.HubSchemaId = 0) then
+        begin
+          FState.HubDatabaseId := 0;
+          FState.HubApiKey := '';
+        end;
 
         if FState.Route = wrAgent then
         begin
@@ -892,48 +970,25 @@ begin
             on E: Exception do
             begin
               values.Free;
-              RpMessageBox('Could not save Reportman AI connection: ' + E.Message,
-                'New Report', [smbOK], smsCritical, smbOK, smbOK);
+              Critical(TR(1758, 'Could not save Reportman AI connection: ') + E.Message);
               Exit;
             end;
           end;
           values.Free;
         end;
       end;
-    wpDirectSchemaQuestion:
-      begin
-        if Assigned(FRbHasSchema) and FRbHasSchema.Checked then FState.SchemaMode := smHasSchema
-        else if Assigned(FRbNoSchema) and FRbNoSchema.Checked then FState.SchemaMode := smNoSchema
-        else
-        begin
-          RpMessageBox('Please choose Yes or No.', 'New Report',
-            [smbOK], smsInformation, smbOK, smbOK);
-          Exit;
-        end;
-      end;
-    wpDirectSchemaLogin:
-      begin
-        if not FState.HubLoggedIn then
-        begin
-          RpMessageBox('Please log in to Reportman AI before continuing.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
-          Exit;
-        end;
-      end;
     wpDriver:
       begin
         if FState.DriverFamily = dfUndefined then
         begin
-          RpMessageBox('Please choose a driver family.', 'New Report',
-            [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1761, 'Please choose a driver family.'));
           Exit;
         end;
         if (FState.DriverFamily <> dfDao) then
         begin
           if (FCbConcrete = nil) or (Trim(FCbConcrete.Text) = '') then
           begin
-            RpMessageBox('Please choose a specific driver.', 'New Report',
-              [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1762, 'Please choose a specific driver.'));
             Exit;
           end;
           FState.DriverConcrete := Trim(FCbConcrete.Text);
@@ -946,16 +1001,14 @@ begin
           FState.ConnMode := cnExisting;
           if (FCbExistingConn.ItemIndex < 0) then
           begin
-            RpMessageBox('Please choose an existing Reportman AI connection.',
-              'New Report', [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1755, 'Please choose an existing Reportman AI connection.'));
             Exit;
           end;
           FState.ConnName := Trim(FCbExistingConn.Text);
           if not TryGetConnectionDetails(FState.ConnName, detectedFamily,
             driverHint, hubDatabaseId, hubSchemaId, schemaApiKey) then
           begin
-            RpMessageBox('Could not read the selected Reportman AI connection.',
-              'New Report', [smbOK], smsCritical, smbOK, smbOK);
+            Critical(TR(1763, 'Could not read the selected Reportman AI connection.'));
             Exit;
           end;
           FState.HubDatabaseId := hubDatabaseId;
@@ -969,14 +1022,12 @@ begin
           trimmedName := Trim(FEdNewConnName.Text);
           if trimmedName = '' then
           begin
-            RpMessageBox('Please enter a connection name.', 'New Report',
-              [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1764, 'Please enter a connection name.'));
             Exit;
           end;
           if ConnectionExists(trimmedName) and (not OwnConnection(trimmedName)) then
           begin
-            RpMessageBox('This connection name already exists. Choose a different name.',
-              'New Report', [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1765, 'This connection name already exists. Choose a different name.'));
             Exit;
           end;
           FState.ConnName := trimmedName;
@@ -986,8 +1037,7 @@ begin
           FState.ConnMode := cnExisting;
           if (FCbExistingConn.ItemIndex < 0) then
           begin
-            RpMessageBox('Please choose an existing connection.',
-              'New Report', [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1766, 'Please choose an existing connection.'));
             Exit;
           end;
           FState.ConnName := Trim(FCbExistingConn.Text);
@@ -998,8 +1048,7 @@ begin
           trimmedName := Trim(FEdNewConnName.Text);
           if trimmedName = '' then
           begin
-            RpMessageBox('Please enter a connection name.', 'New Report',
-              [smbOK], smsInformation, smbOK, smbOK);
+            Info(TR(1764, 'Please enter a connection name.'));
             Exit;
           end;
           existing := TStringList.Create;
@@ -1009,8 +1058,7 @@ begin
               if SameText(existing[i], trimmedName) and
                 (not OwnConnection(trimmedName)) then
               begin
-                RpMessageBox('This connection name already exists. Choose a different name.',
-                  'New Report', [smbOK], smsInformation, smbOK, smbOK);
+                Info(TR(1765, 'This connection name already exists. Choose a different name.'));
                 Exit;
               end;
           finally
@@ -1047,8 +1095,7 @@ begin
           except
             on E: Exception do
             begin
-              RpMessageBox('Could not create connection: ' + E.Message,
-                'New Report', [smbOK], smsCritical, smbOK, smbOK);
+              Critical(TR(1767, 'Could not create connection: ') + E.Message);
               Exit;
             end;
           end;
@@ -1056,8 +1103,7 @@ begin
         end
         else
         begin
-          RpMessageBox('Please choose Existing or New connection.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(1768, 'Please choose Existing or New connection.'));
           Exit;
         end;
       end;
@@ -1066,8 +1112,7 @@ begin
         FState.AdoConnectionString := Trim(FEdAdoConnString.Text);
         if FState.AdoConnectionString = '' then
         begin
-          RpMessageBox('Please provide an ADO connection string or use Build connection string.',
-            'New Report', [smbOK], smsInformation, smbOK, smbOK);
+          Info(TR(2000, 'Please provide an ADO connection string or use Build connection string.'));
           Exit;
         end;
       end;
@@ -1082,8 +1127,7 @@ begin
           except
             on E: Exception do
             begin
-              RpMessageBox('Could not save connection parameters: ' + E.Message,
-                'New Report', [smbOK], smsCritical, smbOK, smbOK);
+              Critical(TR(1769, 'Could not save connection parameters: ') + E.Message);
               Exit;
             end;
           end;
@@ -1104,9 +1148,10 @@ begin
   Result := True;
 end;
 
+// A schema for the AI: a cloud schema or a local subschema
 function TFRpNewReportWizardVCL.HasReportmanAiSchema: Boolean;
 begin
-  Result := (FState.HubSchemaId <> 0);
+  Result := (FState.HubSchemaId <> 0) or (FState.LocalSchemaName <> '');
 end;
 
 function TFRpNewReportWizardVCL.ConnectionExists(
@@ -1240,11 +1285,6 @@ begin
   Result.OnClick := AClick;
 end;
 
-procedure TFRpNewReportWizardVCL.OpenSchemasLink(Sender: TObject);
-begin
-  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
-end;
-
 procedure TFRpNewReportWizardVCL.OpenAgentDownloadLink(Sender: TObject);
 begin
   TRpAuthManager.Instance.OpenAgentDownloadPage;
@@ -1258,34 +1298,35 @@ begin
   FRbAgent.Parent := PContent;
   FRbAgent.Left := 24; FRbAgent.Top := 24;
   FRbAgent.Width := 660; FRbAgent.Height := 22;
-  FRbAgent.Caption := 'Reportman AI / DB Agent (distributed connection)';
+  FRbAgent.Caption := TR(1724, 'Reportman AI / DB Agent (distributed connection)');
   FRbAgent.Checked := FState.Route = wrAgent;
   FRbAgent.OnClick := DoRouteChange;
 
-  L := CreateLabel(PContent,
-    'Use a Reportman AI database connection. Recommended when the database is reachable through Reportman AI Web.',
+  L := CreateLabel(PContent, TR(1725, 'Use a Reportman AI database connection. ' +
+    'Recommended when the database is reachable through Reportman AI Web.'),
     48, 50);
   L.Width := 620; L.WordWrap := True;
 
   // Where the Agent comes from, for those who do not have it yet
-  L := CreateLabel(PContent,
-    'The Reportman Agent is installed as a service on a Windows or Linux computer that can ' +
-    'reach your database and gives the designer secure access to it through ai.reportman.es.',
+  L := CreateLabel(PContent, TR(1823, 'The Reportman Agent is installed as a ' +
+    'service on a Windows or Linux computer that can reach your database and ' +
+    'gives the designer secure access to it through ai.reportman.es.'),
     48, 86);
   L.Width := 620; L.WordWrap := True;
-  CreateHyperlinkLabel(PContent, 'Download Reportman Agent', 48, 122,
+  CreateHyperlinkLabel(PContent, TR(1822, 'Download Reportman Agent'), 48, 122,
     OpenAgentDownloadLink);
 
   FRbDirect := TRadioButton.Create(PContent);
   FRbDirect.Parent := PContent;
   FRbDirect.Left := 24; FRbDirect.Top := 156;
   FRbDirect.Width := 660; FRbDirect.Height := 22;
-  FRbDirect.Caption := 'Direct database connection';
+  FRbDirect.Caption := TR(1726, 'Direct database connection');
   FRbDirect.Checked := FState.Route = wrDirect;
   FRbDirect.OnClick := DoRouteChange;
 
+  // The drivers of the VCL (the text of the Lazarus twin names its own)
   L := CreateLabel(PContent,
-    'Connect directly using a local driver (FireDAC, Zeos, DBExpress, BDE or Microsoft DAO).',
+    TR(1995, 'Connect directly using a local driver (FireDAC, Zeos, DBExpress, BDE or Microsoft DAO).'),
     48, 182);
   L.Width := 620; L.WordWrap := True;
 
@@ -1300,12 +1341,12 @@ begin
   FRbNoConnection.Parent := PContent;
   FRbNoConnection.Left := 24; FRbNoConnection.Top := 242;
   FRbNoConnection.Width := 660; FRbNoConnection.Height := 22;
-  FRbNoConnection.Caption := 'Continue with no connection';
+  FRbNoConnection.Caption := TR(1728, 'Continue with no connection');
   FRbNoConnection.Checked := FState.Route = wrNoConnection;
   FRbNoConnection.OnClick := DoRouteChange;
 
-  L := CreateLabel(PContent,
-    'Create a blank report and finish the wizard without selecting or creating any data connection.',
+  L := CreateLabel(PContent, TR(1729, 'Create a blank report and finish the ' +
+    'wizard without selecting or creating any data connection.'),
     48, 268);
   L.Width := 620; L.WordWrap := True;
 
@@ -1331,18 +1372,17 @@ begin
   if FState.ConnMode = cnExisting then
   begin
     L := CreateLabel(PContent,
-      Format('Existing Reportman AI connection: %s', [FState.ConnName]),
+      Format(TR(1730, 'Existing Reportman AI connection: %s'), [FState.ConnName]),
       24, 24);
     L.Width := 620;
     L.Font.Style := [fsBold];
 
-    L := CreateLabel(PContent,
-      'Enter your API key to authenticate and load available schemas for this connection.',
-      24, 52);
+    L := CreateLabel(PContent, TR(1731, 'Enter your API key to authenticate ' +
+      'and load available schemas for this connection.'), 24, 52);
     L.Width := 620;
     L.WordWrap := True;
 
-    CreateLabel(PContent, 'Reportman AI API key', 24, 104);
+    CreateLabel(PContent, TR(1732, 'Reportman AI API key'), 24, 104);
     FEdHubApiKey := TEdit.Create(PContent);
     FEdHubApiKey.Parent := PContent;
     FEdHubApiKey.Left := 24; FEdHubApiKey.Top := 124;
@@ -1354,7 +1394,7 @@ begin
     FBtnHubLogin.Parent := PContent;
     FBtnHubLogin.Left := 514; FBtnHubLogin.Top := 122;
     FBtnHubLogin.Width := 130; FBtnHubLogin.Height := 28;
-    FBtnHubLogin.Caption := 'Log in';
+    FBtnHubLogin.Caption := TR(1783, 'Log in');
     FBtnHubLogin.OnClick := DoHubLogin;
     Exit;
   end;
@@ -1362,10 +1402,11 @@ begin
   // Connection wizard for a connection of the report: its name
   if FFixedName <> '' then
   begin
-    L := CreateLabel(PContent, Format('Connection: %s', [FFixedName]), 24, 4);
+    L := CreateLabel(PContent, Format(TR(1736,
+      'Selected Reportman AI connection: %s'), [FFixedName]), 24, 4);
     L.Font.Style := [fsBold];
   end;
-  CreateLabel(PContent, 'Reportman AI API key', 24, 24);
+  CreateLabel(PContent, TR(1732, 'Reportman AI API key'), 24, 24);
   FEdHubApiKey := TEdit.Create(PContent);
   FEdHubApiKey.Parent := PContent;
   FEdHubApiKey.Left := 24; FEdHubApiKey.Top := 44;
@@ -1377,25 +1418,25 @@ begin
   FBtnHubLogin.Parent := PContent;
   FBtnHubLogin.Left := 514; FBtnHubLogin.Top := 42;
   FBtnHubLogin.Width := 130; FBtnHubLogin.Height := 28;
-  FBtnHubLogin.Caption := 'Log in';
+  FBtnHubLogin.Caption := TR(1783, 'Log in');
   FBtnHubLogin.OnClick := DoHubLogin;
 
   // With a session the key is optional, but the report needs it to run
   // unattended (printreptopdf, server): the engine uses the session otherwise
   if HasHubSession then
-    L := CreateLabel(PContent, 'You are signed in to Reportman AI: the API key ' +
-      'is optional. Without it the connection uses your session, and the report ' +
-      'cannot run unattended on this computer (printreptopdf, server, scheduled ' +
-      'tasks).', 24, 76)
+    L := CreateLabel(PContent, TR(1831, 'You are signed in to Reportman AI: ' +
+      'the API key is optional. Without it the connection uses your session, ' +
+      'and the report cannot run unattended on this computer (printreptopdf, ' +
+      'server, scheduled tasks).'), 24, 76)
   else
-    L := CreateLabel(PContent, 'You are not signed in to Reportman AI: the API ' +
-      'key is required.', 24, 76);
+    L := CreateLabel(PContent, TR(1832, 'You are not signed in to Reportman ' +
+      'AI: the API key is required.'), 24, 76);
   L.Font.Color := clGrayText;
   L.Width := 620;
   L.WordWrap := True;
   LTop := L.Top + L.Height + 14;
 
-  CreateLabel(PContent, 'Reportman AI connection', 24, LTop);
+  CreateLabel(PContent, TR(1712, 'Reportman AI Connection'), 24, LTop);
   FCbHubDatabase := TComboBox.Create(PContent);
   FCbHubDatabase.Parent := PContent;
   FCbHubDatabase.Left := 24; FCbHubDatabase.Top := LTop + 20;
@@ -1406,7 +1447,7 @@ begin
   FBtnHubRefresh.Parent := PContent;
   FBtnHubRefresh.Left := 514; FBtnHubRefresh.Top := LTop + 18;
   FBtnHubRefresh.Width := 130; FBtnHubRefresh.Height := 28;
-  FBtnHubRefresh.Caption := 'Refresh';
+  FBtnHubRefresh.Caption := TR(1149, 'Refresh');
   FBtnHubRefresh.OnClick := DoHubRefresh;
 
   // The databases of the session, or of the key of a previous visit
@@ -1414,72 +1455,27 @@ begin
     LoadHubDatabases(True);
 end;
 
-procedure TFRpNewReportWizardVCL.BuildPageAgentSchema;
-begin
-  BuildPageSharedSchemaSelector;
-end;
-
-procedure TFRpNewReportWizardVCL.BuildPageDirectSchemaQuestion;
-var
-  L: TLabel;
-begin
-  FRbHasSchema := TRadioButton.Create(PContent);
-  FRbHasSchema.Parent := PContent;
-  FRbHasSchema.Left := 24; FRbHasSchema.Top := 24;
-  FRbHasSchema.Width := 660;
-  FRbHasSchema.Caption := 'Yes, this connection has a schema in Reportman AI';
-  FRbHasSchema.Checked := FState.SchemaMode = smHasSchema;
-
-  FRbNoSchema := TRadioButton.Create(PContent);
-  FRbNoSchema.Parent := PContent;
-  FRbNoSchema.Left := 24; FRbNoSchema.Top := 60;
-  FRbNoSchema.Width := 660;
-  FRbNoSchema.Caption := 'No, design the report manually';
-  FRbNoSchema.Checked := FState.SchemaMode = smNoSchema;
-
-  L := CreateLabel(PContent,
-    'AI generation requires a Reportman AI schema. Without a schema, the report can still be designed manually.',
-    24, 110);
-  L.Width := 660; L.WordWrap := True;
-end;
-
-procedure TFRpNewReportWizardVCL.BuildPageDirectSchemaLogin;
-begin
-  CreateLabel(PContent, 'Reportman AI API key', 24, 24);
-  FEdHubApiKey := TEdit.Create(PContent);
-  FEdHubApiKey.Parent := PContent;
-  FEdHubApiKey.Left := 24; FEdHubApiKey.Top := 44;
-  FEdHubApiKey.Width := 480;
-  FEdHubApiKey.Text := FState.HubApiKey;
-  FEdHubApiKey.PasswordChar := '*';
-
-  FBtnHubLogin := TButton.Create(PContent);
-  FBtnHubLogin.Parent := PContent;
-  FBtnHubLogin.Left := 514; FBtnHubLogin.Top := 42;
-  FBtnHubLogin.Width := 130; FBtnHubLogin.Height := 28;
-  FBtnHubLogin.Caption := 'Log in';
-  FBtnHubLogin.OnClick := DoHubLogin;
-end;
-
-procedure TFRpNewReportWizardVCL.BuildPageDirectSchema;
-begin
-  BuildPageSharedSchemaSelector;
-end;
-
-procedure TFRpNewReportWizardVCL.BuildPageSharedSchemaSelector;
+procedure TFRpNewReportWizardVCL.BuildPageSchema;
 var
   LInfo: TLabel;
-  LLinkTop: Integer;
+  LTop: Integer;
 begin
+  LInfo := nil;
   if (FState.Route = wrAgent) and (Trim(FState.ConnName) <> '') then
+    LInfo := CreateLabel(PContent, Format(TR(1736,
+      'Selected Reportman AI connection: %s'), [FState.ConnName]), 24, 12)
+  else if Trim(FState.ConnName) <> '' then
+    LInfo := CreateLabel(PContent, TR(154, 'Connection') + ': ' +
+      FState.ConnName, 24, 12);
+  if LInfo <> nil then
   begin
-    LInfo := CreateLabel(PContent,
-      Format('Selected Reportman AI connection: %s', [FState.ConnName]),
-      24, 12);
     LInfo.Width := 640;
     LInfo.Font.Style := [fsBold];
   end;
 
+  // The list of the copilot: the account card, the subschemas of a direct
+  // connection and the schemas in the cloud of the account and of the API
+  // key; on the Agent route, the ones of its Hub database
   FAISchemaSelector := TFRpAISchemaSelectorVCL.Create(PContent);
   FAISchemaSelector.Parent := PContent;
   FAISchemaSelector.Align := alTop;
@@ -1488,31 +1484,148 @@ begin
   FAISchemaSelector.Margins.Top := 36;
   FAISchemaSelector.Margins.Right := 0;
   FAISchemaSelector.Margins.Bottom := 24;
+  FAISchemaSelector.OnNewLocalSchema := DoNewLocalSchema;
+  if FState.Route = wrAgent then
+    FAISchemaSelector.CloudDatabaseFilter := FState.HubDatabaseId;
   FAISchemaSelector.SetPreferredConnection(FState.HubDatabaseId, FState.HubApiKey);
   FAISchemaSelector.SetHubContext(FState.HubDatabaseId, FState.HubSchemaId,
     FState.HubApiKey);
+
+  LTop := FAISchemaSelector.Top + FAISchemaSelector.Height + 8;
+  FLblLocalSchemaError := CreateLabel(PContent, '', 24, LTop);
+  FLblLocalSchemaError.Width := 640;
+  FLblLocalSchemaError.WordWrap := True;
+  FLblLocalSchemaError.Font.Color := clRed;
+  FLblLocalSchemaError.Visible := False;
+  if FState.Route = wrDirect then
+  begin
+    LoadLocalSchemas;
+    // The subschema chosen before (Back)
+    if FState.LocalSchemaName <> '' then
+      FAISchemaSelector.SelectLocalSchema(FState.LocalSchemaName);
+  end;
   FAISchemaSelector.LoadSchemas;
 
-  LLinkTop := FAISchemaSelector.Top + FAISchemaSelector.Height + 8;
-  CreateHyperlinkLabel(PContent, 'Define schemas', 24, LLinkTop,
-    OpenSchemasLink);
-  CreateHyperlinkLabel(PContent,
-    'Install Reportman AI Agent to create new connections', 24, LLinkTop + 22,
-    OpenAgentDownloadLink);
+  LTop := FAISchemaSelector.Top + FAISchemaSelector.Height + 8;
+  FLblLocalSchemaError.Top := LTop;
+  if FState.Route = wrAgent then
+    CreateHyperlinkLabel(PContent, TR(1738,
+      'Install Reportman AI Agent to create new connections'), 24, LTop + 22,
+      OpenAgentDownloadLink);
+end;
+
+procedure TFRpNewReportWizardVCL.LoadLocalSchemas;
+var
+  I, LTables, LWidest: Integer;
+  LAlias: string;
+  LCursor: TCursor;
+  LDatabase: TRpDatabaseInfoItem;
+  LDatabases: TRpDatabaseInfoList;
+  LFile: TRpLocalSchemaFile;
+  LNames, LSizes: TStringList;
+begin
+  if FAISchemaSelector = nil then
+    Exit;
+  // The connection goes to the report now: its schema file and the local
+  // schema screen read it there (Finish commits it again)
+  CommitConnectionToReport;
+  LDatabase := nil;
+  if (FDestReport <> nil) and (FDestReport.DatabaseInfo.Count > 0) then
+    LDatabase := FDestReport.DatabaseInfo.Items[0];
+  if not RpIsLocalSqlDatabase(LDatabase) then
+  begin
+    FAISchemaSelector.SetLocalSchemas('', nil, nil);
+    Exit;
+  end;
+  LAlias := LDatabase.Alias;
+  LNames := TStringList.Create;
+  LSizes := TStringList.Create;
+  LCursor := Screen.Cursor;
+  try
+    if FLblLocalSchemaError <> nil then
+      FLblLocalSchemaError.Visible := False;
+    try
+      // A copy that reads the same connections file; generated from the
+      // catalog the first time, as the copilot does
+      LDatabases := RpCopyDatabaseInfo(LDatabase);
+      try
+        Screen.Cursor := crHourGlass;
+        LFile := RpLoadLocalSchema(LDatabases.Items[0], FDestReport.Params,
+          True, False);
+        try
+          for I := 0 to LFile.SchemaCount - 1 do
+          begin
+            LNames.Add(LFile.Schemas[I].Name);
+            LFile.GetSchemaSize(LFile.Schemas[I].Name, LTables, LWidest);
+            LSizes.Add(IntToStr(LTables) + ',' + IntToStr(LWidest));
+          end;
+        finally
+          LFile.Free;
+        end;
+      finally
+        LDatabases.Items[0].DisConnect;
+        LDatabases.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        // The database could not be read: the cloud schemas and the local
+        // schema screen are still there
+        LNames.Clear;
+        LSizes.Clear;
+        if FLblLocalSchemaError <> nil then
+        begin
+          FLblLocalSchemaError.Caption := E.Message;
+          FLblLocalSchemaError.Visible := True;
+        end;
+      end;
+    end;
+    FAISchemaSelector.SetLocalSchemas(LAlias, LNames, LSizes);
+  finally
+    Screen.Cursor := LCursor;
+    LSizes.Free;
+    LNames.Free;
+  end;
+end;
+
+procedure TFRpNewReportWizardVCL.DoNewLocalSchema(Sender: TObject);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  if (FDestReport = nil) or (FDestReport.DatabaseInfo.Count = 0) or
+    (FAISchemaSelector = nil) then
+    Exit;
+  LSchemaName := '';
+  try
+    LSaved := RpShowLocalSchemasDialog(FDestReport,
+      FDestReport.DatabaseInfo.Items[0].Alias, LSchemaName, True, nil);
+  except
+    on E: Exception do
+    begin
+      RpMessageBox(E.Message, NewReportTitle, [smbOK], smsCritical, smbOK, smbOK);
+      Exit;
+    end;
+  end;
+  // The list again, with the subschema saved chosen
+  LoadLocalSchemas;
+  if LSaved and (LSchemaName <> '') then
+    FAISchemaSelector.SelectLocalSchema(LSchemaName);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageDriver;
 begin
-  CreateLabel(PContent, 'Driver Family', 24, 24);
+  CreateLabel(PContent, TR(1739, 'Driver Family'), 24, 24);
   FCbFamily := TComboBox.Create(PContent);
   FCbFamily.Parent := PContent;
   FCbFamily.Left := 24; FCbFamily.Top := 44;
   FCbFamily.Width := 480;
   FCbFamily.Style := csDropDownList;
-  FCbFamily.Items.Add('FireDAC (Cross-platform) - Recommended');
-  FCbFamily.Items.Add('Zeos (Cross-platform)');
+  // FireDAC of Delphi (the text of the Lazarus twin names SQLdb)
+  FCbFamily.Items.Add(TR(1996, 'FireDAC (Cross-platform) - Recommended'));
+  FCbFamily.Items.Add(TR(1741, 'Zeos (Cross-platform)'));
   FCbFamily.Items.Add('DBExpress');
-  FCbFamily.Items.Add('Borland Database Engine (32-bit only)');
+  FCbFamily.Items.Add(TR(1997, 'Borland Database Engine (32-bit only)'));
   FCbFamily.Items.Add('Microsoft DAO');
   case FState.DriverFamily of
     dfFireDac:   FCbFamily.ItemIndex := 0;
@@ -1526,7 +1639,7 @@ begin
   end;
   FCbFamily.OnChange := DoFamilyChange;
 
-  FLblConcrete := CreateLabel(PContent, 'Driver', 24, 92);
+  FLblConcrete := CreateLabel(PContent, TR(147, 'Driver'), 24, 92);
   FCbConcrete := TComboBox.Create(PContent);
   FCbConcrete.Parent := PContent;
   FCbConcrete.Left := 24; FCbConcrete.Top := 112;
@@ -1564,13 +1677,13 @@ begin
   case FState.DriverFamily of
     dfFireDac:
       begin
-        FLblConcrete.Caption := 'FireDAC DriverID';
+        FLblConcrete.Caption := TR(1742, 'FireDAC DriverID');
         FCbConcrete.Items.CommaText :=
           'MSSQL,MySQL,PG,FB,IB,Ora,SQLite,ASA,DB2,Informix,Teradata,MongoDB,ODBC';
       end;
     dfZeos:
       begin
-        FLblConcrete.Caption := 'Zeos protocol';
+        FLblConcrete.Caption := TR(1743, 'Zeos protocol');
         FCbConcrete.Items.CommaText :=
           'firebird,interbase,mysql,postgresql,sqlite,oracle,mssql,sybase,ado';
       end;
@@ -1594,7 +1707,7 @@ begin
       end;
     dfDao:
       begin
-        FLblConcrete.Caption := 'No driver selection required for Microsoft DAO';
+        FLblConcrete.Caption := TR(2001, 'No driver selection required for Microsoft DAO');
         FCbConcrete.Enabled := False;
       end;
   end;
@@ -1608,14 +1721,14 @@ begin
   FRbExisting.Parent := PContent;
   FRbExisting.Left := 24; FRbExisting.Top := 16;
   FRbExisting.Width := 660;
-  FRbExisting.Caption := 'Existing Connection';
+  FRbExisting.Caption := TR(1744, 'Existing Connection');
   FRbExisting.Checked := FState.ConnMode <> cnNew;
   FRbExisting.OnClick := DoConnNameModeChange;
 
   if FState.Route = wrAgent then
-    CreateLabel(PContent, 'Reportman AI Connection', 48, 44)
+    CreateLabel(PContent, TR(1712, 'Reportman AI Connection'), 48, 44)
   else
-    CreateLabel(PContent, 'DBX Connection', 48, 44);
+    CreateLabel(PContent, TR(1745, 'DBX Connection'), 48, 44);
   FCbExistingConn := TComboBox.Create(PContent);
   FCbExistingConn.Parent := PContent;
   FCbExistingConn.Left := 48; FCbExistingConn.Top := 64;
@@ -1636,18 +1749,18 @@ begin
   FBtnTestExisting.Parent := PContent;
   FBtnTestExisting.Left := 520; FBtnTestExisting.Top := 62;
   FBtnTestExisting.Width := 140; FBtnTestExisting.Height := 28;
-  FBtnTestExisting.Caption := 'Test Connection';
+  FBtnTestExisting.Caption := TR(1746, 'Test Connection');
   FBtnTestExisting.OnClick := DoTestExistingConn;
 
   FRbNew := TRadioButton.Create(PContent);
   FRbNew.Parent := PContent;
   FRbNew.Left := 24; FRbNew.Top := 124;
   FRbNew.Width := 660;
-  FRbNew.Caption := 'New Connection';
+  FRbNew.Caption := TR(1102, 'New Connection');
   FRbNew.Checked := FState.ConnMode = cnNew;
   FRbNew.OnClick := DoConnNameModeChange;
 
-  CreateLabel(PContent, 'Connection Name', 48, 152);
+  CreateLabel(PContent, TR(400, 'Connection Name'), 48, 152);
   FEdNewConnName := TEdit.Create(PContent);
   FEdNewConnName.Parent := PContent;
   FEdNewConnName.Left := 48; FEdNewConnName.Top := 172;
@@ -1754,8 +1867,8 @@ var
 begin
   if (FCbExistingConn = nil) or (FCbExistingConn.ItemIndex < 0) then
   begin
-    RpMessageBox('Please choose a connection first.', 'Connection Test',
-      [smbOK], smsInformation, smbOK, smbOK);
+    RpMessageBox(TR(1770, 'Please choose a connection first.'),
+      TR(1771, 'Connection Test'), [smbOK], smsInformation, smbOK, smbOK);
     Exit;
   end;
   Screen.Cursor := crHourGlass;
@@ -1766,15 +1879,15 @@ begin
   end;
   if res.Success then
   begin
-    RpMessageBox('Connection succeeded.', 'Success',
+    RpMessageBox(TR(1772, 'Connection succeeded.'), TR(1773, 'Success'),
       [smbOK], smsInformation, smbOK, smbOK);
-    BNext.Caption := 'Finish Connection';
+    BNext.Caption := TR(1747, 'Finish Connection');
   end
   else
   begin
-    RpMessageBox('Connection failed: ' + res.MessageText, 'Connection Error',
-      [smbOK], smsCritical, smbOK, smbOK);
-    BNext.Caption := 'Edit Connection';
+    RpMessageBox(TR(1774, 'Connection failed: ') + res.MessageText,
+      TR(1775, 'Connection Error'), [smbOK], smsCritical, smbOK, smbOK);
+    BNext.Caption := TR(1748, 'Edit Connection');
   end;
 end;
 
@@ -1791,14 +1904,14 @@ begin
   FBtnDaoBuild.Parent := PContent;
   FBtnDaoBuild.Left := 24; FBtnDaoBuild.Top := 84;
   FBtnDaoBuild.Width := 220; FBtnDaoBuild.Height := 30;
-  FBtnDaoBuild.Caption := 'Build Connection String';
+  FBtnDaoBuild.Caption := TR(2002, 'Build Connection String');
   FBtnDaoBuild.OnClick := DoDaoBuild;
 
   FBtnDaoTest := TButton.Create(PContent);
   FBtnDaoTest.Parent := PContent;
   FBtnDaoTest.Left := 256; FBtnDaoTest.Top := 84;
   FBtnDaoTest.Width := 160; FBtnDaoTest.Height := 30;
-  FBtnDaoTest.Caption := 'Test Connection';
+  FBtnDaoTest.Caption := TR(1746, 'Test Connection');
   FBtnDaoTest.OnClick := DoDaoTest;
 end;
 
@@ -1813,7 +1926,7 @@ begin
   if Trim(newstring) <> '' then
     FEdAdoConnString.Text := newstring;
 {$ELSE}
-  RpMessageBox('ADO support is not available in this build.', 'Build Connection String',
+  RpMessageBox(TR(2003, 'ADO support is not available in this build.'), TR(2002, 'Build Connection String'),
     [smbOK], smsInformation, smbOK, smbOK);
 {$ENDIF}
 end;
@@ -1832,19 +1945,19 @@ begin
       cn.ConnectionString := FEdAdoConnString.Text;
       cn.Open;
       cn.Close;
-      RpMessageBox('Connection succeeded.', 'Success',
+      RpMessageBox(TR(1772, 'Connection succeeded.'), TR(1773, 'Success'),
         [smbOK], smsInformation, smbOK, smbOK);
     except
       on E: Exception do
-        RpMessageBox('Connection failed: ' + E.Message, 'Connection Error',
-          [smbOK], smsCritical, smbOK, smbOK);
+        RpMessageBox(TR(1774, 'Connection failed: ') + E.Message,
+          TR(1775, 'Connection Error'), [smbOK], smsCritical, smbOK, smbOK);
     end;
   finally
     cn.Free;
   end;
 {$ELSE}
-  RpMessageBox('ADO support is not available in this build.', 'Connection Test',
-    [smbOK], smsInformation, smbOK, smbOK);
+  RpMessageBox('ADO support is not available in this build.',
+    TR(1771, 'Connection Test'), [smbOK], smsInformation, smbOK, smbOK);
 {$ENDIF}
 end;
 
@@ -1852,10 +1965,10 @@ procedure TFRpNewReportWizardVCL.BuildPageParams;
 begin
   if FState.ConnMode = cnNew then
     FLblParamsCaption := CreateLabel(PContent,
-      Format('New Connection "%s"', [FState.ConnName]), 16, 8)
+      Format(TR(1749, 'New Connection "%s"'), [FState.ConnName]), 16, 8)
   else
     FLblParamsCaption := CreateLabel(PContent,
-      Format('Edit Connection "%s"', [FState.ConnName]), 16, 8);
+      Format(TR(1750, 'Edit Connection "%s"'), [FState.ConnName]), 16, 8);
   FLblParamsCaption.Font.Style := [fsBold];
 
   FParamsScroll := TScrollBox.Create(PContent);
@@ -1871,7 +1984,7 @@ begin
   FBtnParamsTest.Align := alBottom;
   FBtnParamsTest.AlignWithMargins := True;
   FBtnParamsTest.Height := 30;
-  FBtnParamsTest.Caption := 'Test Connection';
+  FBtnParamsTest.Caption := TR(1746, 'Test Connection');
   FBtnParamsTest.OnClick := DoParamsTest;
 
   LoadParamsFromAdminService;
@@ -1916,8 +2029,9 @@ begin
     except
       on E: Exception do
       begin
-        RpMessageBox('Could not load connection parameters: ' + E.Message,
-          'Connection Parameters', [smbOK], smsCritical, smbOK, smbOK);
+        RpMessageBox(TR(1776, 'Could not load connection parameters: ') +
+          E.Message, TR(1719, 'Connection Parameters'), [smbOK], smsCritical,
+          smbOK, smbOK);
         Exit;
       end;
     end;
@@ -2066,11 +2180,11 @@ begin
       Screen.Cursor := crDefault;
     end;
     if res.Success then
-      RpMessageBox('Connection succeeded.', 'Success',
+      RpMessageBox(TR(1772, 'Connection succeeded.'), TR(1773, 'Success'),
         [smbOK], smsInformation, smbOK, smbOK)
     else
-      RpMessageBox('Connection failed: ' + res.MessageText, 'Connection Error',
-        [smbOK], smsCritical, smbOK, smbOK);
+      RpMessageBox(TR(1774, 'Connection failed: ') + res.MessageText,
+        TR(1775, 'Connection Error'), [smbOK], smsCritical, smbOK, smbOK);
   finally
     values.Free;
   end;
@@ -2082,8 +2196,8 @@ begin
   // With a session, no key: the databases of the account
   if (FState.HubApiKey = '') and not HasHubSession then
   begin
-    RpMessageBox('Please enter your Reportman AI API key.', 'Reportman AI',
-      [smbOK], smsInformation, smbOK, smbOK);
+    RpMessageBox(TR(1777, 'Please enter your Reportman AI API key.'),
+      TR(1778, 'Reportman AI'), [smbOK], smsInformation, smbOK, smbOK);
     Exit;
   end;
   LoadHubDatabases;
@@ -2111,8 +2225,9 @@ begin
     try
       if not TRpDatabaseHttp.GetHubDatabases(FState.HubApiKey, list) then
       begin
-        RpMessageBox('Could not contact Reportman AI Web. Verify your API key and try again.',
-          'Reportman AI', [smbOK], smsCritical, smbOK, smbOK);
+        RpMessageBox(TR(1779, 'Could not contact Reportman AI Web. Verify ' +
+          'your API key and try again.'), TR(1778, 'Reportman AI'), [smbOK],
+          smsCritical, smbOK, smbOK);
         Exit;
       end;
     finally
@@ -2135,8 +2250,9 @@ begin
             FCbHubDatabase.ItemIndex := i;
     end;
     if not AQuiet then
-      RpMessageBox('Logged in. Loaded ' + IntToStr(list.Count) + ' connections.',
-        'Reportman AI', [smbOK], smsInformation, smbOK, smbOK);
+      RpMessageBox(Format(TR(1780, 'Logged in. Loaded %d connections.'),
+        [list.Count]), TR(1778, 'Reportman AI'), [smbOK], smsInformation,
+        smbOK, smbOK);
   finally
     list.Free;
   end;
@@ -2146,7 +2262,8 @@ procedure TFRpNewReportWizardVCL.BuildPageFinish;
 var
   L: TLabel;
 begin
-  L := CreateLabel(PContent, 'Example: ' + EXAMPLE_PROMPT, 24, 16);
+  L := CreateLabel(PContent, Format(TR(1723, 'Example: %s'),
+    [TR(1722, EXAMPLE_PROMPT)]), 24, 16);
   L.Font.Color := clGrayText;
   L.Width := 660; L.WordWrap := True;
 
