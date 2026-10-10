@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Un diseñador de informes nativo para macOS: una aplicación Cocoa para Mac con Intel y con Apple Silicon, libre y de código abierto. Diseñe informes, conecte con su base de datos y exporte a PDF.">
+  <title>Report Manager - Diseñador de informes para macOS</title>
+  <link rel="stylesheet" href="responsive.css?v=20261010">
+  <link rel="canonical" href="https://reportman.es/maces.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/mac.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/maces.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/mac.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0f2441">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Diseñador de informes para macOS">
+  <meta property="og:description" content="Un diseñador de informes nativo para macOS: una aplicación Cocoa para Mac con Intel y con Apple Silicon, libre y de código abierto.">
+  <meta property="og:url" content="https://reportman.es/maces.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="El Diseñador de Report Manager con el panel del copiloto de IA, diseñando un informe de ventas por cliente.">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Diseñador de informes para macOS">
+  <meta name="twitter:description" content="Un diseñador de informes nativo para macOS: una aplicación Cocoa para Mac con Intel y con Apple Silicon, libre y de código abierto.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="indexes.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="indexes.html">Inicio</a>
+        <a href="downloades.html" class="active">Descarga</a>
+        <a href="serverses.html">Servidores</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="/blog/es/">Blog</a>
+        <a href="supportes.html">Soporte</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><a href="mac.html">EN</a><span class="current">ES</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Diseñador de informes para macOS</h1>
+        <p class="tagline">Una aplicación Cocoa nativa para Mac con Intel y con Apple Silicon. Libre y de código abierto.</p>
+        <a class="btn btn-primary" href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener">Descargar el .dmg</a>
+      </div>
+    </section>
+
+    <section class="page">
+      <p>El Diseñador de Report Manager funciona en el Mac como una aplicación del Mac: interfaz Cocoa nativa, binario universal para Intel y Apple Silicon, y un <code>.dmg</code> que se arrastra a Aplicaciones. Sin entorno de Java, sin Electron y sin una máquina virtual con Windows.</p>
+
+      <figure class="shot">
+        <img src="doc/images/designer-macos.png" loading="lazy" decoding="async" alt="El Diseñador de Report Manager en macOS, con un informe abierto en la ventana de diseño">
+        <figcaption>El Diseñador de Report Manager en macOS.</figcaption>
+      </figure>
+
+      <p>Es el mismo diseñador que en Windows y en Linux, y los informes son los mismos ficheros <code>.rep</code>: diseñe uno en su Mac y ejecútelo desde el motor de Delphi, de Lazarus o de .NET, desde los <a href="serverses.html">servidores de informes</a> o desde el diseñador web.</p>
+
+      <h2>Qué puede hacer con él</h2>
+      <ul>
+        <li>Diseñar informes visualmente: secciones, grupos, subinformes, expresiones, gráficos y códigos de barras.</li>
+        <li>Conectar con su base de datos. Los dos controladores del motor funcionan en macOS &mdash;conexiones FireDAC abiertas con SQLdb y conexiones Zeos&mdash; para PostgreSQL, MySQL o MariaDB, Firebird, SQLite y ODBC. En <a href="doc/installmac.html">bases de datos en macOS</a> están las librerías cliente que necesita cada una.</li>
+        <li>Llegar a una base de datos remota con el Reportman DB Agent, solo con conexiones salientes y sin VPN.</li>
+        <li>Exportar a PDF, SVG, HTML, texto y CSV.</li>
+        <li>Usar los asistentes de IA: el chat de diseño del informe, los de SQL y expresiones, y la sugerencia en línea del editor de SQL, que además completa con su esquema.</li>
+        <li>Abrir un fichero <code>.rep</code> desde el Finder. Los ejemplos se instalan con la aplicación.</li>
+      </ul>
+
+      <h2>Requisitos</h2>
+      <ul>
+        <li>Mac con Intel: macOS 10.15 o posterior.</li>
+        <li>Mac con Apple Silicon (M1 o posterior): macOS 11 o posterior.</li>
+        <li>Una sola aplicación universal para los dos; probada en macOS 11 (Intel) y macOS 15 (Intel y Apple Silicon).</li>
+      </ul>
+
+      <h2>Cómo se instala</h2>
+      <p>Descargue <code>reportman-designer-&lt;versión&gt;-macos-universal.dmg</code> de la <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener">carpeta <code>macOS</code></a> de la versión en SourceForge, ábralo y arrastre la aplicación a Aplicaciones.</p>
+      <p>La aplicación está firmada <i>ad hoc</i> y <b>no está notarizada por Apple</b>, así que la primera vez hay que abrirla desde el Finder con <i>clic derecho &rarr; Abrir</i>. A partir de ahí se abre como cualquier otra. Lleva su propio OpenSSL 3 para HTTPS, que es lo que usan el inicio de sesión, los asistentes de IA y el controlador del Reportman DB Agent.</p>
+
+      <h2>Lo que todavía no está</h2>
+      <p>Preferimos decirlo aquí a que se lo encuentre usted:</p>
+      <ul>
+        <li>La impresión todavía no se ha probado en macOS. La exportación sí.</li>
+        <li>El editor de SQL Monaco es solo de Windows. En macOS el editor de SQL es el nativo, con completado del esquema y sugerencia de IA en línea, igual que en Linux.</li>
+        <li>En Apple Silicon, de momento en cada versión solo se han ejecutado las pruebas automáticas.</li>
+      </ul>
+
+      <h2>Para programadores de Lazarus y Free Pascal</h2>
+      <p>El motor, la vista previa LCL y el diseñador empotrable son también <a href="doc/lazaruscomp.html">paquetes de Lazarus</a>, y todo &mdash;paquetes, ejemplos y diseñador&mdash; se compila desde el código fuente en macOS con Cocoa: en <a href="doc/installmac.html">Report Manager en macOS (Lazarus, Cocoa)</a> están las herramientas, las fuentes, OpenSSL 3 y las librerías cliente de las bases de datos.</p>
+
+      <p>El código fuente está en <a href="https://github.com/tonimartir/reportmandelphi" target="_blank" rel="noopener">GitHub</a> y en <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>, con licencia MPL. Los demás paquetes de la versión están en la <a href="downloades.html">página de descarga</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">Licencia MPL</a>
+      <span class="sep">&middot;</span>
+      <a href="companyes.html">Empresa</a>
+      <span class="sep">&middot;</span>
+      <a href="linkses.html">Otros enlaces</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>

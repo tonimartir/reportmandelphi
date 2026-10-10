@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A native report designer for macOS: a Cocoa application for Intel and Apple Silicon Macs, free and open source. Design reports, connect to your database and export to PDF.">
+  <title>Report Manager - Report Designer for macOS</title>
+  <link rel="stylesheet" href="responsive.css?v=20261010">
+  <link rel="canonical" href="https://reportman.es/mac.html">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/mac.html">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/maces.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/mac.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0f2441">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Report Manager">
+  <meta property="og:title" content="Report Manager - Report Designer for macOS">
+  <meta property="og:description" content="A native report designer for macOS: a Cocoa application for Intel and Apple Silicon Macs, free and open source.">
+  <meta property="og:url" content="https://reportman.es/mac.html">
+  <meta property="og:image" content="https://reportman.es/og-reportman.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Report Manager Designer with the AI Copilot chat panel, designing a customer sales report.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Report Manager - Report Designer for macOS">
+  <meta name="twitter:description" content="A native report designer for macOS: a Cocoa application for Intel and Apple Silicon Macs, free and open source.">
+  <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="download.html" class="active">Download</a>
+        <a href="servers.html">Servers</a>
+        <a href="docnet/index.html">.NET</a>
+        <a href="doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="/blog/">Blog</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><span class="current">EN</span><a href="maces.html">ES</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Report Designer for macOS</h1>
+        <p class="tagline">A native Cocoa application for Intel and Apple Silicon Macs. Free and open source.</p>
+        <a class="btn btn-primary" href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener">Download the .dmg</a>
+      </div>
+    </section>
+
+    <section class="page">
+      <p>The Report Manager Designer runs on the Mac as a Mac application: a native Cocoa interface, a universal binary for Intel and Apple Silicon, and a <code>.dmg</code> you drag to Applications. No Java runtime, no Electron, no Windows virtual machine.</p>
+
+      <figure class="shot">
+        <img src="doc/images/designer-macos.png" loading="lazy" decoding="async" alt="The Report Manager Designer running on macOS, with a report open in the design window">
+        <figcaption>The Report Manager Designer on macOS.</figcaption>
+      </figure>
+
+      <p>It is the same designer as on Windows and Linux, and the reports are the same <code>.rep</code> files: design one on your Mac and run it from the Delphi, Lazarus or .NET engine, from the <a href="servers.html">report servers</a> or from the web designer.</p>
+
+      <h2>What you can do with it</h2>
+      <ul>
+        <li>Design reports visually: bands, groups, subreports, expressions, charts and barcodes.</li>
+        <li>Connect to your database. Both engine drivers work on macOS &mdash; FireDAC connections opened with SQLdb and Zeos connections &mdash; for PostgreSQL, MySQL or MariaDB, Firebird, SQLite and ODBC. See <a href="doc/installmac.html">databases on macOS</a> for the client libraries each one needs.</li>
+        <li>Reach a remote database through the Reportman DB Agent, outbound-only, without a VPN.</li>
+        <li>Export to PDF, SVG, HTML, text and CSV.</li>
+        <li>Use the AI assistants: the report design chat, the SQL and expression chats, and inline suggestions in the SQL editor, which also completes from your schema.</li>
+        <li>Open a <code>.rep</code> file straight from the Finder. The samples are installed with the application.</li>
+      </ul>
+
+      <h2>Requirements</h2>
+      <ul>
+        <li>Intel Macs: macOS 10.15 or later.</li>
+        <li>Apple Silicon Macs (M1 and later): macOS 11 or later.</li>
+        <li>A single universal application for both; tested on macOS 11 (Intel) and macOS 15 (Intel and Apple Silicon).</li>
+      </ul>
+
+      <h2>Install it</h2>
+      <p>Download <code>reportman-designer-&lt;version&gt;-macos-universal.dmg</code> from the <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on SourceForge, open it and drag the application to Applications.</p>
+      <p>The application is signed ad hoc and <b>not notarized by Apple</b>, so the first time you have to open it from the Finder with <i>right click &rarr; Open</i>. After that it opens like any other application. It carries its own OpenSSL 3 for HTTPS, which is what the login, the AI assistants and the Reportman DB Agent driver use.</p>
+
+      <h2>What is not there yet</h2>
+      <p>We would rather say it here than have you find out:</p>
+      <ul>
+        <li>Printing has not been tested yet on macOS. Exporting has.</li>
+        <li>The Monaco SQL editor is Windows only. On macOS the SQL editor is the native one, with schema completion and AI inline suggestions, as on Linux.</li>
+        <li>On Apple Silicon, so far only the automated tests have been run on every release.</li>
+      </ul>
+
+      <h2>For Lazarus and Free Pascal developers</h2>
+      <p>The engine, the LCL preview and the embeddable designer are also <a href="doc/lazaruscomp.html">Lazarus packages</a>, and everything &mdash; packages, examples and designer &mdash; builds from the source code on macOS with Cocoa: see <a href="doc/installmac.html">Report Manager on macOS (Lazarus, Cocoa)</a> for the toolchain, the fonts, OpenSSL 3 and the database client libraries.</p>
+
+      <p>The source code is on <a href="https://github.com/tonimartir/reportmandelphi" target="_blank" rel="noopener">GitHub</a> and on <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>, under the MPL license. The other packages of the release are on the <a href="download.html">download page</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir</span>
+      <span class="sep">&middot;</span>
+      <a href="doc/license.html" target="_blank" rel="noopener">MPL License</a>
+      <span class="sep">&middot;</span>
+      <a href="company.html">Company</a>
+      <span class="sep">&middot;</span>
+      <a href="links.html">Related links</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">&middot;</span>
+      <a href="https://sourceforge.net/projects/reportman/" target="_blank" rel="noopener">SourceForge</a>
+      <span class="sep">&middot;</span>
+      <a href="https://reportman.es" target="_blank" rel="noopener">reportman.es</a>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -23,6 +23,20 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/download.html"/>
   </url>
   <url>
+    <loc>https://reportman.es/mac.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/mac.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/maces.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/mac.html"/>
+  </url>
+  <url>
+    <loc>https://reportman.es/maces.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/mac.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/maces.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/mac.html"/>
+  </url>
+  <url>
     <loc>https://reportman.es/downloades.html</loc>
     <lastmod>2026-10-02</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/download.html"/>
