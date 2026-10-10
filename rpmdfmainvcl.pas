@@ -979,7 +979,7 @@ begin
   fchatframe.OnConfigureLocalSchemas:=ConfigureDesignChatLocalSchemas;
   fchatframe.SetRefreshAction(True);
   fchatframe.Initialize('',
-    'Describe report changes here or ask for assistance. Any change can be undone.');
+    TranslateStr(1640, 'Describe report changes here or ask for assistance. Any change can be undone.'));
   InitializeDesignChatSchemaSelection;
  end;
 
@@ -2798,12 +2798,33 @@ begin
 end;
 
 procedure TFRpMainFVCL.FormShow(Sender: TObject);
+var
+ i:integer;
+ fileparam:string;
 begin
+ // -dbxconnectionfile <file>: the connections (and the local schemas next to
+ // them) from that file instead of the shared dbxconnections.ini, as
+ // printreptopdf and the server allow
+ fileparam:='';
+ i:=1;
+ while i<=ParamCount do
+ begin
+  if SameText(ParamStr(i),'-dbxconnectionfile') or SameText(ParamStr(i),'--dbxconnectionfile') then
+  begin
+   if i<ParamCount then
+    DBXConnectionsFileOverride:=ParamStr(i+1);
+   inc(i,2);
+   continue;
+  end;
+  if (Length(fileparam)=0) and (Length(ParamStr(i))>0) and (ParamStr(i)[1]<>'-') then
+   fileparam:=ParamStr(i);
+  inc(i);
+ end;
  if browsecommandline then
  begin
-  if Length(ParamStr(1))>0 then
+  if Length(fileparam)>0 then
   begin
-   DoOpen(ParamStr(1),false);
+   DoOpen(fileparam,false);
   end;
  end;
  oldappidle:=Application.OnIdle;

@@ -24,8 +24,10 @@ unit rpfrmlocalschemaslcl;
   dbxschemas/<ALIAS>.json):
 
   - Left: "All the tables" (the dictionary: every table is described, none
-    is chosen) and the subschemas, with Add, Duplicate, Rename, Delete and
-    the description of the subschema.
+    is chosen) and the subschemas, with Add, Duplicate, Rename, Delete,
+    Export and Import (the file of the Reportman AI web, 5.6: what travels
+    of the subschema goes out, a new subschema comes in) and the
+    description of the subschema.
   - Tabs: Connection (read only, "Refresh from the database" reads the
     catalog again and keeps what people wrote), Tables (a table enters with
     its primary key), Columns (the columns that travel, their description
@@ -40,7 +42,8 @@ unit rpfrmlocalschemaslcl;
   tab; Save keeps the screen open; the link mark of a column whose relation
   does not travel says "(does not travel)" instead of being dimmed; a
   relation by hand goes from a table of the subschema to any table and is
-  completed as a suggested one. }
+  completed as a suggested one; Export and Import say what they did in the
+  line at the bottom, and what was not imported in a message too. }
 
 interface
 
@@ -62,7 +65,7 @@ function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
 implementation
 
 uses
-  rpmdconsts, rpauthmanager, rpreportdesignercontracts, rpwebmarkdownlcl;
+  rpmdconsts, rpauthmanager, rpreportdesignercontracts, rpwebmarkdownlcl, rpgraphutilslcl;
 
 const
   CKey = ' '#$F0#$9F#$94#$91;
@@ -103,8 +106,11 @@ type
     BDuplicate: TButton;
     BRename: TButton;
     BDelete: TButton;
+    BExport: TButton;
+    BImport: TButton;
     MemoDescription: TMemo;
     // Bottom
+    StatusInfo: TStatusBar;
     LTablesCounter: TLabel;
     LColumnsCounter: TLabel;
     LPlanWarning: TLabel;
@@ -200,11 +206,15 @@ type
     function AddNewSchema: Boolean;
     procedure SaveFile;
     procedure StopAnalysis;
+    // The line at the bottom (what Export and Import did)
+    procedure ShowInfo(const AText: string);
     procedure ListSchemasClick(Sender: TObject);
     procedure BAddClick(Sender: TObject);
     procedure BDuplicateClick(Sender: TObject);
     procedure BRenameClick(Sender: TObject);
     procedure BDeleteClick(Sender: TObject);
+    procedure BExportClick(Sender: TObject);
+    procedure BImportClick(Sender: TObject);
     procedure MemoDescriptionChange(Sender: TObject);
     procedure BRefreshClick(Sender: TObject);
     procedure FilterTablesChange(Sender: TObject);
@@ -415,6 +425,13 @@ var
   LTab: TTabSheet;
 begin
   FStackTop := 0;
+  // The line at the very bottom, below the counters
+  StatusInfo := TStatusBar.Create(Self);
+  StatusInfo.Parent := Self;
+  StatusInfo.SimplePanel := True;
+  StatusInfo.ShowHint := True;
+  StatusInfo.Top := S(9000);
+  StatusInfo.Align := alBottom;
   // Bottom: the counters of the plan, Save and Close
   LBottom := NewPanel(Self, alBottom, 52);
   LButtons := NewPanel(LBottom, alRight, 230);
@@ -448,7 +465,7 @@ begin
   LLeft := NewPanel(Self, alLeft, 230);
   LLeft.BorderWidth := S(6);
   NewLabel(LLeft, TranslateStr(1846, 'Subschemas'));
-  LLeftBottom := NewPanel(LLeft, alBottom, 160);
+  LLeftBottom := NewPanel(LLeft, alBottom, 190);
   NewLabel(LLeftBottom, TranslateStr(197, 'Description'));
   MemoDescription := NewMemo(LLeftBottom, 70, MemoDescriptionChange);
   LButtons := NewPanel(LLeftBottom, alClient, 0);
@@ -462,6 +479,19 @@ begin
   BRename.SetBounds(0, S(34), S(104), S(26));
   BDelete := NewButton(LButtons, TranslateStr(150, 'Delete'), BDeleteClick, 104);
   BDelete.SetBounds(S(110), S(34), S(104), S(26));
+  // With the Reportman AI web (Export works with all the tables too)
+  BExport := NewButton(LButtons, string(TranslateStr(1931, 'Export...')),
+    BExportClick, 104);
+  BExport.SetBounds(0, S(64), S(104), S(26));
+  BExport.Hint := string(TranslateStr(1933, 'Saves what travels of the ' +
+    'subschema in the format the Reportman AI web imports'));
+  BExport.ShowHint := True;
+  BImport := NewButton(LButtons, string(TranslateStr(1932, 'Import...')),
+    BImportClick, 104);
+  BImport.SetBounds(S(110), S(64), S(104), S(26));
+  BImport.Hint := string(TranslateStr(1934, 'Creates a subschema from a ' +
+    'schema exported by the Reportman AI web or by another local schema'));
+  BImport.ShowHint := True;
   ListSchemas := TListBox.Create(Self);
   ListSchemas.Parent := LLeft;
   ListSchemas.Align := alClient;
@@ -817,6 +847,12 @@ begin
   FFile.SaveToFile(FFileName);
   FModified := False;
   FSaved := True;
+end;
+
+procedure TFRpLocalSchemasLCL.ShowInfo(const AText: string);
+begin
+  StatusInfo.SimpleText := AText;
+  StatusInfo.Hint := AText;
 end;
 
 procedure TFRpLocalSchemasLCL.Changed;
@@ -1249,6 +1285,8 @@ procedure TFRpLocalSchemasLCL.ListSchemasClick(Sender: TObject);
 begin
   if FUpdating then
     Exit;
+  // What the last import or export said is about another subschema
+  ShowInfo('');
   if ListSchemas.ItemIndex < 0 then
     ListSchemas.ItemIndex := 0;
   FillAll;
@@ -1259,9 +1297,10 @@ var
   LName: string;
 begin
   Result := False;
+  ShowInfo('');
   LName := '';
-  if not InputQuery(TranslateStr(1887, 'New subschema'),
-    TranslateStr(544, 'Name'), LName) then
+  LName := RpInputBox(TranslateStr(1887, 'New subschema'), TranslateStr(544, 'Name'), LName);
+  if LName = '' then
     Exit;
   LName := Trim(LName);
   if LName = '' then
@@ -1282,11 +1321,12 @@ procedure TFRpLocalSchemasLCL.BDuplicateClick(Sender: TObject);
 var
   LName: string;
 begin
+  ShowInfo('');
   if SelectedSchema = nil then
     Exit;
   LName := SelectedSchema.Name + ' (2)';
-  if not InputQuery(TranslateStr(1847, 'Duplicate...'),
-    TranslateStr(544, 'Name'), LName) then
+  LName := RpInputBox(TranslateStr(1847, 'Duplicate...'), TranslateStr(544, 'Name'), LName);
+  if LName = '' then
     Exit;
   LName := Trim(LName);
   if LName = '' then
@@ -1300,10 +1340,12 @@ procedure TFRpLocalSchemasLCL.BRenameClick(Sender: TObject);
 var
   LName: string;
 begin
+  ShowInfo('');
   if SelectedSchema = nil then
     Exit;
   LName := SelectedSchema.Name;
-  if not InputQuery(TranslateStr(151, 'Rename'), TranslateStr(544, 'Name'), LName) then
+  LName := RpInputBox(TranslateStr(151, 'Rename'), TranslateStr(544, 'Name'), LName);
+  if LName = '' then
     Exit;
   LName := Trim(LName);
   if (LName = '') or (LName = SelectedSchema.Name) then
@@ -1315,14 +1357,99 @@ end;
 
 procedure TFRpLocalSchemasLCL.BDeleteClick(Sender: TObject);
 begin
+  ShowInfo('');
   if SelectedSchema = nil then
     Exit;
-  if MessageDlg(Format(TranslateStr(1888, 'Delete the subschema %s?'),
-    [SelectedSchema.Name]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if RpMessageBox(Format(TranslateStr(1888, 'Delete the subschema %s?'),
+    [SelectedSchema.Name]), '', [smbYes, smbNo], smsWarning, smbNo, smbNo) <> smbYes then
     Exit;
   FFile.DeleteSchema(ListSchemas.ItemIndex - 1);
   FModified := True;
   FillSchemas('');
+end;
+
+function SchemaFileFilter: string;
+begin
+  Result := string(TranslateStr(1939, 'Schema files')) + ' (*.json)|*.json';
+end;
+
+// The dialog is titled as the button that opens it, without its dots
+function DialogTitle(const ACaption: string): string;
+begin
+  Result := Trim(StringReplace(ACaption, '...', '', [rfReplaceAll]));
+end;
+
+procedure TFRpLocalSchemasLCL.BExportClick(Sender: TObject);
+var
+  LDialog: TSaveDialog;
+  LSchemaName: string;
+begin
+  // What travels, as it is on screen (saved or not); all the tables are
+  // named after the alias
+  LSchemaName := '';
+  if SelectedSchema <> nil then
+    LSchemaName := SelectedSchema.Name;
+  if FFile.Alias = '' then
+    FFile.Alias := UpperCase(FDatabase.Alias);
+  LDialog := TSaveDialog.Create(Self);
+  try
+    LDialog.Title := DialogTitle(BExport.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    LDialog.FileName := RpExportSchemaFileName(FFile, LSchemaName);
+    LDialog.Options := LDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not LDialog.Execute then
+      Exit;
+    RpExportSchemaToFile(FFile, LSchemaName, LDialog.FileName);
+    ShowInfo(Format(string(TranslateStr(1935, 'Exported to %s.')),
+      [LDialog.FileName]));
+  finally
+    LDialog.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasLCL.BImportClick(Sender: TObject);
+var
+  LCount: Integer;
+  LDialog: TOpenDialog;
+  LName, LText: string;
+  LSkipped: TStringList;
+begin
+  LDialog := TOpenDialog.Create(Self);
+  LSkipped := TStringList.Create;
+  try
+    LDialog.Title := DialogTitle(BImport.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    LDialog.Options := LDialog.Options + [ofFileMustExist];
+    if not LDialog.Execute then
+      Exit;
+    LCount := RpImportSchemaFile(FFile, LDialog.FileName, LName, LSkipped);
+    if LCount < 0 then
+    begin
+      RpMessageBox(string(TranslateStr(1938,
+        'The file is not a schema exported by Reportman AI.')), '', [smbOK], smsCritical);
+      Exit;
+    end;
+    // A new subschema, chosen and not saved: Save writes it, closing asks
+    FModified := True;
+    FillSchemas(LName);
+    Pages.ActivePageIndex := 1;
+    LText := Format(string(TranslateStr(1936,
+      'Imported as %s: %s tables. Save to keep it.')), [LName, IntToStr(LCount)]);
+    if LSkipped.Count > 0 then
+    begin
+      LText := LText + ' ' + Format(string(TranslateStr(1937,
+        'Not in the database, not imported: %s')), [RpShortNameList(LSkipped, 8)]);
+      ShowInfo(LText);
+      RpMessageBox(LText);
+    end
+    else
+      ShowInfo(LText);
+  finally
+    LSkipped.Free;
+    LDialog.Free;
+  end;
 end;
 
 procedure TFRpLocalSchemasLCL.MemoDescriptionChange(Sender: TObject);
@@ -1710,8 +1837,8 @@ begin
   if (ComboSource.ItemIndex < 0) or (ComboTarget.ItemIndex < 0) or
     (FPairSource.Count = 0) then
   begin
-    MessageDlg(TranslateStr(1889, 'Choose the two tables and at least one ' +
-      'pair of columns.'), mtInformation, [mbOK], 0);
+    RpMessageBox(TranslateStr(1889, 'Choose the two tables and at least one ' +
+      'pair of columns.'));
     Exit;
   end;
   LRelation := TRpLocalRelation.Create;
@@ -1878,11 +2005,11 @@ procedure TFRpLocalSchemasLCL.FormCloseQuery(Sender: TObject;
 begin
   if not FModified then
     Exit;
-  case MessageDlg(TranslateStr(1886, 'The schema has changed. Save the changes?'),
-    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
-    mrYes:
+  case RpMessageBox(TranslateStr(1886, 'The schema has changed. Save the changes?'),
+    '', [smbYes, smbNo, smbCancel], smsWarning, smbYes, smbCancel) of
+    smbYes:
       SaveFile;
-    mrNo:
+    smbNo:
       ;
   else
     CanClose := False;

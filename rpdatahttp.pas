@@ -762,6 +762,27 @@ begin
 end;
 
 {$IFDEF FIREDAC}
+// 'HTTP Error <code>: <text>' and, when the server said why (the credits of a
+// 402, for instance), its answer
+function HttpErrorText(AStatusCode: Integer; const AStatusText: string;
+  AResponse: TStream): string;
+var
+  LBody: TStringStream;
+begin
+  Result := Format('HTTP Error %d: %s', [AStatusCode, AStatusText]);
+  if (AResponse = nil) or (AResponse.Size = 0) then
+    Exit;
+  LBody := TStringStream.Create('', TEncoding.UTF8);
+  try
+    AResponse.Position := 0;
+    LBody.CopyFrom(AResponse, 0);
+    if Trim(LBody.DataString) <> '' then
+      Result := Result + ' - ' + Trim(LBody.DataString);
+  finally
+    LBody.Free;
+  end;
+end;
+
 function StreamJsonRequest(AClient: TRpDatabaseHttp; const AAction: string;
   const RequestBody: TJSONObject; Sender: TObject;
   AOnProgress: TRpExpressionStreamProgressEvent;
@@ -830,11 +851,8 @@ begin
         Exit(nil);
 
       if (LResponse.StatusCode < 200) or (LResponse.StatusCode >= 300) then
-      begin
-        LResponseStream.Position := 0;
-        raise Exception.CreateFmt('HTTP Error %d: %s',
-          [LResponse.StatusCode, LResponse.StatusText]);
-      end;
+        raise Exception.Create(HttpErrorText(LResponse.StatusCode,
+          LResponse.StatusText, LResponseStream));
 
       if LCapture.ErrorMessage <> '' then
         raise Exception.Create(LCapture.ErrorMessage);
@@ -1618,7 +1636,8 @@ begin
       if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
         Result := True
       else
-        raise Exception.CreateFmt('HTTP Error %d: %s', [LResponse.StatusCode, LResponse.StatusText]);
+        raise Exception.Create(HttpErrorText(LResponse.StatusCode,
+          LResponse.StatusText, LResponseStream));
     finally
       LRequestStream.Free;
     end;

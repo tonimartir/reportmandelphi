@@ -90,7 +90,7 @@ uses
   {$ENDIF}
 {$ENDIF}
   rptypes, rpparams, rpeval, rpdatainfo, rpbasereport, rpreport, rpdatahttp,
-  rpreportdesignercontracts, rplocalschemas;
+  rpreportdesignercontracts, rplocalschemas, rpmdconsts;
 
 const
   // As the web designer (copilot-panel): a request is never endless
@@ -1049,8 +1049,8 @@ begin
   if (Trim(ARequest.Config.LocalAlias) <> '') and
     not ARequest.Config.HasInlineSchema then
   begin
-    Progress(Sender, AOnProgress, 'Reading the schema of the connection ' +
-      ARequest.Config.LocalAlias);
+    Progress(Sender, AOnProgress, Format(TranslateStr(1980,
+      'Reading the schema of the connection %s'), [ARequest.Config.LocalAlias]));
     RpResolveLocalSchemaConfig(ARequest.Config, ARequest.ReportDocument);
   end;
   LOriginalDocument := ARequest.ReportDocument;
@@ -1100,15 +1100,16 @@ begin
         else
           LNames := LNames + LSqlRequest.DatabaseAlias;
       end;
-      Progress(Sender, AOnProgress, 'Running the SQL on the connection of the report: ' + LNames);
+      Progress(Sender, AOnProgress, Format(TranslateStr(1981,
+        'Running the SQL on the connection of the report: %s'), [LNames]));
       for I := 0 to LWaiting.ClientSqlRequests.Count - 1 do
       begin
         LSqlRequest := TRpClientSqlRequest(LWaiting.ClientSqlRequests[I]);
         LAnswer := RpProbeClientSql(LSentDocument, LSqlRequest);
         LRequest.ClientSqlResults.Add(LAnswer);
         if LAnswer.Success then
-          Progress(Sender, AOnProgress, LSqlRequest.DatasetAlias + ': ' +
-            IntToStr(LAnswer.Columns.Count) + ' columns')
+          Progress(Sender, AOnProgress, Format(TranslateStr(1982, '%s: %s columns'),
+            [LSqlRequest.DatasetAlias, IntToStr(LAnswer.Columns.Count)]))
         else
           Progress(Sender, AOnProgress, LSqlRequest.DatasetAlias + ': ' +
             LAnswer.ErrorMessage);
@@ -1130,8 +1131,8 @@ begin
     end;
     if (Trim(Result.ErrorMessage) = '') and Result.ResultData.NeedsClientSqlResults then
     begin
-      Result.ResultData.ErrorMessage :=
-        'The assistant asked to run SQL too many times: the request was stopped.';
+      Result.ResultData.ErrorMessage := TranslateStr(1983,
+        'The assistant asked to run SQL too many times: the request was stopped.');
       Result.ResultData.ModifiedReportDocument := '';
     end
     else if (Trim(Result.ErrorMessage) = '') and Result.ResultData.Success and

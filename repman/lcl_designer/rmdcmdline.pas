@@ -44,7 +44,7 @@ unit rmdcmdline;
 interface
 
 uses
-  SysUtils, Classes, gettext, Translations, rpmdconsts
+  SysUtils, Classes, gettext, Translations, rpmdconsts, rpdatainfo
   {$IFDEF DARWIN}, rpdarwinlibs{$ENDIF};
 
 const
@@ -78,6 +78,10 @@ function UserConfigDir: string;
 function ConfigFileName: string;
 // First non-option argument (a path or a file:// URI), '' if none
 function CommandLineFile: string;
+// -dbxconnectionfile <file>: the connections (and the local schemas next to
+// them) from that file instead of the shared dbxconnections.ini, as
+// printreptopdf and the server allow. Call it before opening any report.
+procedure ApplyCommandLineOptions;
 // The lclstrconsts .po file for the user language, '' if there is none
 function LCLTranslationFile: string;
 // Translates the LCL resourcestrings (call it before Application.Initialize)
@@ -236,14 +240,33 @@ var
   p: string;
 begin
   Result := '';
-  for i := 1 to ParamCount do
+  i := 1;
+  while i <= ParamCount do
   begin
     p := ParamStr(i);
+    // The value of -dbxconnectionfile is not the report
+    if SameText(p, '-dbxconnectionfile') or SameText(p, '--dbxconnectionfile') then
+    begin
+      Inc(i, 2);
+      Continue;
+    end;
     // Options (toolkit ones such as --display) are left to the LCL
     if (Length(p) > 0) and (p[1] = '-') then
+    begin
+      Inc(i);
       Continue;
+    end;
     Exit(ArgToFileName(p));
   end;
+end;
+
+procedure ApplyCommandLineOptions;
+var
+  i: Integer;
+begin
+  for i := 1 to ParamCount - 1 do
+    if SameText(ParamStr(i), '-dbxconnectionfile') or SameText(ParamStr(i), '--dbxconnectionfile') then
+      DBXConnectionsFileOverride := ParamStr(i + 1);
 end;
 
 function LCLTranslationFile: string;
@@ -319,13 +342,16 @@ procedure ShowUsage;
 begin
   WriteStd(APP_NAME + ' ' + RM_VERSION, False);
   WriteStd('Usage: ' + ExtractFileName(ParamStr(0)) +
-    ' [--help] [--version] [--check-https [url]] [report.rep]', False);
+    ' [--help] [--version] [--check-https [url]] [-dbxconnectionfile file] [report.rep]', False);
   WriteStd('', False);
   WriteStd('  report.rep     report file to open (path or file:// URI)', False);
   WriteStd('  --version      print the version and the data folders, then exit', False);
   WriteStd('  --check-https  connect to ' + CHECK_HTTPS_URL + ' (or url) as the', False);
   WriteStd('                 login and the AI assistants do, print the result and', False);
   WriteStd('                 exit (0: the server answered, 1: it did not)', False);
+  WriteStd('  -dbxconnectionfile file', False);
+  WriteStd('                 the connections (and the local schemas next to them)', False);
+  WriteStd('                 from that file instead of the shared dbxconnections.ini', False);
   WriteStd('  --help         print this help, then exit', False);
 end;
 

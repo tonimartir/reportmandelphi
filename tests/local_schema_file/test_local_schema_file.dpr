@@ -18,6 +18,7 @@ program test_local_schema_file;
 {   4. What the local schema screens do with the        }
 {      dictionary and the subschemas.                   }
 {   5. The request of "Analyze with AI".                }
+{   6. Export and import with the Reportman AI web.     }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -632,6 +633,206 @@ begin
   end;
 end;
 
+// The tables a subschema sends, as JSON
+function SchemaTablesOf(AFile: TRpLocalSchemaFile; const ASchemaName: string): TJSONValue;
+begin
+  Result := TJSONObject.ParseJSONValue(AFile.SchemaTablesJson(ASchemaName));
+end;
+
+// Export and import with the Reportman AI web (docs/esquemas-locales-
+// pantalla-plan.md 5.6)
+procedure TestExportImport(const AFixture, AFolder: string);
+const
+  // The old Desktop: PascalCase and numeric data types; a table and two
+  // columns that are not in the database
+  DesktopFile =
+    '{"Name":"Desktop","SchemaTables":[' +
+    '{"Name":"sales","Context":"Sales of the old Desktop","Columns":[' +
+    '{"Name":"saleid","DataType":1,"Context":"","IsPrimaryKey":true},' +
+    '{"Name":"Total","DataType":3,"Context":"Total amount","IsPrimaryKey":false,' +
+    '"AllowedValues":[]},' +
+    '{"Name":"DISCOUNT","DataType":2}],' +
+    '"ForeignKeys":[{"ConstraintName":"FK_SALES_CUSTOMER","TargetTable":"customers",' +
+    '"SourceColumns":["CUSTOMERID"],"TargetColumns":["CUSTOMERID"],' +
+    '"RelationshipContext":"From the Desktop"}]},' +
+    '{"Name":"GONE","Columns":[{"Name":"ID","DataType":1}]},' +
+    '{"Name":"products","Columns":[{"Name":"PRICE","DataType":3}]},' +
+    '{"Name":"CUSTOMERS","Columns":[{"Name":"STATE","DataType":4,' +
+    '"AllowedValues":[{"Value":"X","Label":"Closed"},{"Value":"","Label":""}]}]}]}';
+var
+  LExporter, LImporter: TRpLocalSchemaFile;
+  LList, LValues, LLabels, LSkipped: TStringList;
+  LRelations: TObjectList;
+  LExported, LSent, LImported: TJSONValue;
+  LExport, LName, LPath: string;
+  LCount, LSchemas: Integer;
+  LSchema: TRpLocalSubSchema;
+  LState: TJSONObject;
+begin
+  LExporter := TRpLocalSchemaFile.Create;
+  LImporter := TRpLocalSchemaFile.Create;
+  LList := TStringList.Create;
+  LValues := TStringList.Create;
+  LLabels := TStringList.Create;
+  LSkipped := TStringList.Create;
+  LRelations := TObjectList.Create(True);
+  try
+    LExporter.LoadFromFile(AFixture);
+    LImporter.LoadFromFile(AFixture);
+    // Ventas, described: STATE chosen with three values, a table and a
+    // column described, the relation of the database described again and
+    // one by hand
+    LSchema := LExporter.Schemas[LExporter.IndexOfSchema('Ventas')];
+    LExporter.SetColumnChosen(LSchema, 'CUSTOMERS', 'STATE', True);
+    LValues.CommaText := 'A,B,C';
+    LLabels.CommaText := 'Active,Blocked,Closed';
+    LExporter.SetAllowedValues('CUSTOMERS', 'STATE', LValues, LLabels);
+    LExporter.SetTableContext('SALES', 'The sales');
+    LExporter.SetColumnContext('SALES', 'TOTAL', 'Total with taxes');
+    LList.CommaText := 'CUSTOMERID';
+    LExporter.AddRelation('SALES', 'CUSTOMERS', LList, LList, 'Who bought it');
+    LExporter.AddRelation('CUSTOMERS', 'SALES', LList, LList, 'Their sales');
+    // The export is what the copilot sends of the subschema
+    LExport := RpExportSchemaJson(LExporter, 'ventas');
+    LExported := TJSONObject.ParseJSONValue(LExport);
+    LSent := SchemaTablesOf(LExporter, 'Ventas');
+    try
+      Check((LExported is TJSONObject) and
+        (TJSONObject(LExported).Values['name'].Value = 'Ventas') and
+        SameJson(TJSONObject(LExported).Values['schemaTables'], LSent),
+        'export: what the copilot sends of the subschema, named after it');
+      Check(ForeignKeyCount(FindByName(TJSONArray(LSent), 'CUSTOMERS')) = 1,
+        'export: the relation by hand travels');
+      Check(Pos(#10'  "name"', StringReplace(LExport, #13, '', [rfReplaceAll])) = 2,
+        'export: indented with 2 spaces');
+    finally
+      LSent.Free;
+      LExported.Free;
+    end;
+    Check(RpExportSchemaFileName(LExporter, 'ventas') = 'Ventas_Config.json',
+      'export: the file name of the web');
+    LExported := TJSONObject.ParseJSONValue(RpExportSchemaJson(LExporter, ''));
+    LSent := SchemaTablesOf(LExporter, '');
+    try
+      Check((LExported is TJSONObject) and
+        (TJSONObject(LExported).Values['name'].Value = 'FBEXAMPLE') and
+        SameJson(TJSONObject(LExported).Values['schemaTables'], LSent) and
+        (TJSONArray(LSent).Count = 3),
+        'export: all the tables, named after the alias');
+    finally
+      LSent.Free;
+      LExported.Free;
+    end;
+    Check(RpExportSchemaFileName(LExporter, '') = 'FBEXAMPLE_Config.json',
+      'export: all the tables, the file name of the alias');
+
+    // Imported in the same database without those changes: the subschema
+    // comes back, and what it says goes to the dictionary
+    LCount := RpImportSchemaJson(LImporter, LExport, 'C:\exports\Ventas_Config.json',
+      LName, LSkipped);
+    Check((LCount = 2) and (LName = 'Ventas 2') and (LSkipped.Count = 0),
+      'import: a new subschema, "Ventas 2" as Ventas exists: ' + LName + ' ' +
+      IntToStr(LCount));
+    LSent := SchemaTablesOf(LExporter, 'Ventas');
+    LImported := SchemaTablesOf(LImporter, 'Ventas 2');
+    try
+      Check(SameJson(LSent, LImported),
+        'import: the export of a subschema recreates it (tables, columns, ' +
+        'descriptions, values and relations)');
+    finally
+      LImported.Free;
+      LSent.Free;
+    end;
+    LSchema := LImporter.Schemas[LImporter.IndexOfSchema('Ventas 2')];
+    LSchema.GetColumns('CUSTOMERS', LList);
+    // In the order of the file (the export goes in the order of the catalog)
+    Check((LSchema.Tables.CommaText = 'CUSTOMERS,SALES') and (Joined(LList) = 'CUSTOMERID,STATE'),
+      'import: the tables with the columns of the file as their list: ' +
+      LSchema.Tables.CommaText);
+    Check((LImporter.FindTable('SALES').Values['context'].Value = 'The sales') and
+      (LImporter.FindColumn('SALES', 'TOTAL').Values['context'].Value = 'Total with taxes'),
+      'import: the descriptions go to the dictionary');
+    LImporter.GetAllowedValues('CUSTOMERS', 'STATE', LValues, LLabels);
+    LState := TJSONObject(TJSONArray(LImporter.FindColumn('CUSTOMERS', 'STATE').Values['allowedValues']).Items[1]);
+    Check((Joined(LValues) = 'A,B,C') and (Joined(LLabels) = 'Active,Blocked,Closed') and
+      (LState.Values['futureColor'] <> nil),
+      'import: the allowed values go to the dictionary (a value keeps what it had)');
+    LImporter.GetRelations(LSchema, LRelations);
+    Check((LRelations.Count = 2) and
+      not TRpLocalRelation(LRelations[1]).IsManual and
+      (TRpLocalRelation(LRelations[1]).Context = 'Who bought it') and
+      TRpLocalRelation(LRelations[0]).IsManual and
+      (TRpLocalRelation(LRelations[0]).Context = 'Their sales'),
+      'import: the declared relation takes the description, a new one enters by hand');
+    LRelations.Clear;
+    LImporter.GetRelations(nil, LRelations);
+    Check(LRelations.Count = 2, 'import: no relation twice');
+    LRelations.Clear;
+    // Through a file, again: "Ventas 3"
+    LPath := IncludeTrailingPathDelimiter(AFolder) + RpExportSchemaFileName(LExporter, 'Ventas');
+    RpExportSchemaToFile(LExporter, 'Ventas', LPath);
+    LCount := RpImportSchemaFile(LImporter, LPath, LName, LSkipped);
+    Check((LCount = 2) and (LName = 'Ventas 3'), 'import: from a file, "Ventas 3": ' + LName);
+
+    // The old Desktop
+    LCount := RpImportSchemaJson(LImporter, DesktopFile, 'desktop.json', LName, LSkipped);
+    LSchema := LImporter.Schemas[LImporter.IndexOfSchema(LName)];
+    Check((LCount = 3) and (LName = 'Desktop') and
+      (LSchema.Tables.CommaText = 'SALES,PRODUCTS,CUSTOMERS'),
+      'import: PascalCase and numeric types, the tables as the catalog spells them: ' +
+      LSchema.Tables.CommaText);
+    LSchema.GetColumns('SALES', LList);
+    Check(Joined(LList) = 'SALEID,TOTAL', 'import: the columns of the file that are there');
+    LSchema.GetColumns('PRODUCTS', LList);
+    Check(Joined(LList) = 'PRODUCTID', 'import: no column left, its primary key');
+    Check(LImporter.FindColumn('SALES', 'TOTAL').Values['dataType'].Value = 'Currency',
+      'import: the type is the one of the catalog');
+    Check((LImporter.FindTable('SALES').Values['context'].Value = 'Sales of the old Desktop') and
+      (LImporter.FindColumn('SALES', 'TOTAL').Values['context'].Value = 'Total amount') and
+      (LImporter.FindColumn('SALES', 'SALEID').Values['context'].Value = ''),
+      'import: what the file describes, read whatever the case of its names');
+    LImporter.GetAllowedValues('CUSTOMERS', 'STATE', LValues, LLabels);
+    Check((Joined(LValues) = 'X') and (Joined(LLabels) = 'Closed'),
+      'import: the allowed values of the file win');
+    LImporter.GetRelations(nil, LRelations);
+    Check((LRelations.Count = 2) and
+      (TRpLocalRelation(LRelations[1]).Context = 'From the Desktop'),
+      'import: the relation of the database, described by the old Desktop');
+    LRelations.Clear;
+    Check(Joined(LSkipped) = 'SALES.DISCOUNT,GONE,PRODUCTS.PRICE',
+      'import: what is not in the database is said: ' + Joined(LSkipped));
+    Check(RpShortNameList(LSkipped, 2) = 'SALES.DISCOUNT, GONE, ' + {$IFDEF FPC}#$E2#$80#$A6{$ELSE}#$2026{$ENDIF},
+      'import: a short list of what was not imported');
+    Check(RpShortNameList(LSkipped, 5) = 'SALES.DISCOUNT, GONE, PRODUCTS.PRICE',
+      'import: a short list, whole');
+
+    // Without a name: the file name, without "_Config"
+    LCount := RpImportSchemaJson(LImporter, '{"name":"","schemaTables":[{"name":"PRODUCTS"}]}',
+      'C:\exports\Compras_Config.json', LName, LSkipped);
+    Check((LCount = 1) and (LName = 'Compras'), 'import: without a name, the file name: ' + LName);
+    LCount := RpImportSchemaJson(LImporter, '{"schemaTables":[]}', 'ventas_config.JSON',
+      LName, LSkipped);
+    Check((LCount = 0) and (LName = 'ventas 4'), 'import: without a name, numbered: ' + LName);
+
+    // Not a schema
+    LSchemas := LImporter.SchemaCount;
+    Check((RpImportSchemaJson(LImporter, '{"tables":[]}', 'x.json', LName, LSkipped) = -1) and
+      (RpImportSchemaJson(LImporter, 'not json', 'x.json', LName, LSkipped) = -1) and
+      (RpImportSchemaJson(LImporter, '[{"name":"SALES"}]', 'x.json', LName, LSkipped) = -1) and
+      (RpImportSchemaJson(LImporter, '{"name":"X","schemaTables":{}}', 'x.json', LName, LSkipped) = -1) and
+      (LImporter.SchemaCount = LSchemas) and (LName = ''),
+      'import: a file that is not a schema is refused, nothing changes');
+  finally
+    LRelations.Free;
+    LSkipped.Free;
+    LLabels.Free;
+    LValues.Free;
+    LList.Free;
+    LImporter.Free;
+    LExporter.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -652,6 +853,7 @@ begin
     TestScreens(LFixture);
     TestSuggestions(LFixture);
     TestAnalyzeRequest(LFixture);
+    TestExportImport(LFixture, ExtractFilePath(LSaved));
   except
     on E: Exception do
     begin

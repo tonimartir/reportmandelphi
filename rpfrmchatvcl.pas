@@ -2479,7 +2479,7 @@ begin
   Inc(FDesignRequestVersion);
   FinishStreamingResponse;
   SetBusy(False);
-  AddAssistantMessage('Generation stopped.');
+  AddAssistantMessage(TranslateStr(1536, 'Generation stopped.'));
 end;
 
 procedure TFRpChatFrame.SetBusy(AValue: Boolean);
@@ -2489,9 +2489,9 @@ begin
     FAISelection.SetInferenceProgress(AValue);
   EnsureAISelectionAutoHeight;
   if FBusy then
-    BClear.Caption := 'Stop'
+    BClear.Caption := TranslateStr(1522, 'Stop')
   else
-    BClear.Caption := 'Clear';
+    BClear.Caption := TranslateStr(1532, 'Clear');
   UpdateButtons;
 end;
 
@@ -2586,10 +2586,21 @@ begin
     PControl.OnChange := PControlChange;
   end;
 
+  // The texts of the form, in the user's language (as the LCL frame)
+  TabChat.Caption := TranslateStr(1529, 'Chat');
+  TabLog.Caption := TranslateStr(1530, 'AI Log');
+  TabNetLog.Caption := TranslateStr(1531, 'Net Log');
+  BClearLog.Caption := TranslateStr(1532, 'Clear');
+  BReportAI.Caption := TranslateStr(1533, 'Report content');
+  BClearNetLog.Caption := TranslateStr(1532, 'Clear');
+  BSend.Caption := TranslateStr(1534, 'Send');
+  BApply.Caption := TranslateStr(1535, 'Apply');
+  BClear.Caption := TranslateStr(1532, 'Clear');
+
   // Schema label: keep ParentFont so it matches PROVIDER/MODE labels.
   if LSchema <> nil then
   begin
-    LSchema.Caption := 'SCHEMA';
+    LSchema.Caption := AnsiUpperCase(TranslateStr(1528, 'Schema'));
     LSchema.AutoSize := True;
     LSchema.Align := alTop;
     LSchema.Layout := tlBottom;
@@ -2605,8 +2616,8 @@ begin
 
   if BRefreshSchemas <> nil then
   begin
-    BRefreshSchemas.Caption := 'Refresh';
-    BRefreshSchemas.Hint := 'Refresh schemas';
+    BRefreshSchemas.Caption := TranslateStr(1149, 'Refresh');
+    BRefreshSchemas.Hint := TranslateStr(1149, 'Refresh');
     BRefreshSchemas.ShowHint := True;
     BRefreshSchemas.Align := alNone;
     BRefreshSchemas.AlignWithMargins := False;
@@ -2829,15 +2840,15 @@ procedure TFRpChatFrame.SetRefreshAction(AValue: Boolean);
 begin
   FUseRefreshAction := AValue;
   if FUseRefreshAction then
-    BApply.Caption := 'Refresh'
+    BApply.Caption := TranslateStr(1149, 'Refresh')
   else
-    BApply.Caption := 'Apply';
+    BApply.Caption := TranslateStr(1535, 'Apply');
   UpdateButtons;
 end;
 
 procedure TFRpChatFrame.SetSuggestedExpression(const AExpression, AMessage: string);
 begin
-  SetSuggestedContent(AExpression, AMessage, 'Suggested expression');
+  SetSuggestedContent(AExpression, AMessage, TranslateStr(1538, 'Suggested expression'));
 end;
 
 procedure TFRpChatFrame.UpdateButtons;
@@ -2853,7 +2864,7 @@ begin
   if FLoadingSchemas then
     BRefreshSchemas.Caption := '...'
   else
-    BRefreshSchemas.Caption := 'Refresh';
+    BRefreshSchemas.Caption := TranslateStr(1149, 'Refresh');
 end;
 
 procedure TFRpChatFrame.UpdateStreamingResponse(const AActor, AChunkType,
@@ -2996,9 +3007,9 @@ begin
     if LMessage = '' then
     begin
       if Trim(LPayload.Text1) <> '' then
-        LMessage := 'Report updated.'
+        LMessage := TranslateStr(1539, 'Report updated.')
       else
-        LMessage := 'No report changes were returned.';
+        LMessage := TranslateStr(1540, 'No report changes were returned.');
     end;
 
     AddAssistantMessage(LMessage);
@@ -3113,7 +3124,7 @@ begin
   else if Assigned(FOnSendPrompt) then
     FOnSendPrompt(Self, LPrompt, FCurrentExpression)
   else
-    AddAssistantMessage('Chat UI is ready, but no AI handler is connected yet.');
+    AddAssistantMessage(TranslateStr(1537, 'Chat UI is ready, but no AI handler is connected yet.'));
 end;
 
 procedure TFRpChatFrame.MemoPromptChange(Sender: TObject);

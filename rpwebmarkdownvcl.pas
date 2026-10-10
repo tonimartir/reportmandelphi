@@ -80,6 +80,9 @@ type
 
 implementation
 
+uses
+  rpmdconsts;
+
 {$R WebMarkdownAssets.res}
 
 function EscapeJSString(const S: string): string;
@@ -297,6 +300,59 @@ begin
   end;
 end;
 
+// index.html writes its labels in English (the copy button, the message titles
+// and the thinking blocks): the script puts the designer's translations in
+// their place, also in the messages added later (as the C# designer)
+function LocalizationScript: string;
+
+  function Q(const S: string): string;
+  begin
+    Result := '''' + EscapeJSString(S) + '''';
+  end;
+
+begin
+  Result :=
+    '(function (L) {' +
+    ' var btn = document.getElementById(''copy-btn'');' +
+    ' if (btn && btn.lastChild) btn.lastChild.textContent = '' '' + L.copyAll;' +
+    ' window.showCopySuccess = function (b) {' +
+    '  var span = b.querySelector(''span''); var icon = span.textContent;' +
+    '  var text = b.lastChild.textContent;' +
+    '  span.textContent = ''\u2705''; b.lastChild.textContent = '' '' + L.copied;' +
+    '  b.classList.add(''copy-success'');' +
+    '  setTimeout(function () { span.textContent = icon;' +
+    '   b.lastChild.textContent = text; b.classList.remove(''copy-success''); }, 2000);' +
+    ' };' +
+    ' function translate(node) {' +
+    '  if (!node || node.nodeType !== 1) return;' +
+    '  var titles = node.querySelectorAll(''.msg-header > span:last-child'');' +
+    '  for (var i = 0; i < titles.length; i++) {' +
+    '   var title = titles[i].textContent;' +
+    '   if ((title === ''You'' || title === ''Assistant'') && L[title] !== title)' +
+    '    titles[i].textContent = L[title];' +
+    '  }' +
+    '  var thinking = node.querySelectorAll(''details.think-block > summary'');' +
+    '  for (var j = 0; j < thinking.length; j++) {' +
+    '   var summary = thinking[j].textContent;' +
+    '   if (summary.indexOf(''Thinking...'') >= 0 && L.thinking !== ''Thinking...'')' +
+    '    thinking[j].textContent = summary.replace(''Thinking...'', L.thinking);' +
+    '  }' +
+    ' }' +
+    ' var messages = document.getElementById(''messages'');' +
+    ' if (!messages) return;' +
+    ' translate(messages);' +
+    ' new MutationObserver(function (records) {' +
+    '  for (var r = 0; r < records.length; r++)' +
+    '   for (var k = 0; k < records[r].addedNodes.length; k++)' +
+    '    translate(records[r].addedNodes[k]);' +
+    ' }).observe(messages, { childList: true, subtree: true });' +
+    '})({copyAll: ' + Q(TranslateStr(1940, 'Copy all')) +
+    ', copied: ' + Q(TranslateStr(1941, 'Copied!')) +
+    ', You: ' + Q(TranslateStr(1942, 'You')) +
+    ', Assistant: ' + Q(TranslateStr(1943, 'Assistant')) +
+    ', thinking: ' + Q(TranslateStr(1944, 'Thinking...')) + '});';
+end;
+
 procedure TRpWebMarkdownView.EdgeNavigationCompleted(
   Sender: TCustomEdgeBrowser; IsSuccess: Boolean; WebErrorStatus: TOleEnum);
 const
@@ -313,6 +369,7 @@ begin
   begin
     FReady := True;
     FNavRetryCount := 0;
+    FEdge.ExecuteScript(LocalizationScript);
     FlushPendingCalls;
     Exit;
   end;

@@ -60,7 +60,14 @@ unit rplocalschemas;
     context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
   - The tables of a subschema sent to the AI carry the columns it chose (its
     primary key when it chose none) and the relations whose two ends
-    travel. Without a subschema, everything. *)
+    travel. Without a subschema, everything.
+  - Export and import with the Reportman AI web (5.6) use the file of its
+    "Export" / "Import": { "name", "schemaTables" }, camelCase, indented.
+    Exporting writes what travels of a subschema (SchemaTablesJson);
+    importing makes a new subschema of what the file has that is in the
+    catalog, and writes its descriptions, allowed values and relations in
+    the dictionary (the old Desktop wrote PascalCase and numeric types: both
+    are read). *)
 
 interface
 
@@ -289,6 +296,46 @@ function RpLocalSchemaPreviewSql(const ADialect, ATable: string;
 // reads the same connections file: it can be connected without touching the
 // connection of the report (the designer may be opening its datasets)
 function RpCopyDatabaseInfo(ADatabase: TRpDatabaseInfoItem): TRpDatabaseInfoList;
+
+{ Export and import with the Reportman AI web (docs/esquemas-locales-
+  pantalla-plan.md 5.6): the file of "Export" and "Import" of a schema of
+  the web, ( "name", "schemaTables": [...] ) }
+
+// The name a subschema is exported with: the subschema as the file spells
+// it; '' or an unknown one (all the tables), the alias
+function RpExportSchemaName(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+// '<name>_Config.json', the file name the web gives to an export
+function RpExportSchemaFileName(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+// The export of a subschema ('' or an unknown one: all the tables, named
+// after the alias): what travels of it, as the copilot sends it
+// (SchemaTablesJson), indented
+function RpExportSchemaJson(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+procedure RpExportSchemaToFile(AFile: TRpLocalSchemaFile;
+  const ASchemaName, AFileName: string);
+// A schema exported by the web, by the old Desktop (PascalCase and numeric
+// dataType: names are read whatever their case) or by a local schema
+// screen, as a NEW subschema of AFile named after its "name" ("name 2",
+// "name 3"... when it exists; without one, AFileName without its extension
+// and its "_Config"):
+// - the tables of the file that are in the catalog (as the catalog spells
+//   them), each one with the columns of the file that are in the catalog as
+//   its list (none left: its primary key); the type is the catalog's;
+// - the descriptions and allowed values written in the file go to the
+//   dictionary (shared by every subschema: the import wins);
+// - a relation of the file whose two ends are in the catalog gives its
+//   description to the one the dictionary has, or enters by hand.
+// What is not in the catalog is added to ASkipped ('TABLE', 'TABLE.COLUMN').
+// Returns the tables of the new subschema; -1, and nothing changes, when
+// AJson is not a schema (not JSON or without schemaTables)
+function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
+  const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+// 'A, B, C, ...': the first AMax names of a list, an ellipsis for the rest
+function RpShortNameList(AList: TStrings; AMax: Integer): string;
 
 implementation
 
@@ -2964,6 +3011,345 @@ begin
     Result := 'SELECT * FROM ' + ATable + ' WHERE ROWNUM <= ' + IntToStr(ARows)
   else
     Result := 'SELECT * FROM ' + ATable;
+end;
+
+{ Export and import with the Reportman AI web }
+
+const
+{$IFDEF FPC}
+  // Lazarus strings are UTF-8
+  CEllipsis = #$E2#$80#$A6;
+{$ELSE}
+  CEllipsis = #$2026;
+{$ENDIF}
+
+// A property of a file of another program, whatever the case of its name
+// (the old Desktop wrote PascalCase)
+function JValueCI(AObject: TJSONObject; const AName: string): TJSONValue;
+var
+  I: Integer;
+begin
+  Result := nil;
+  if AObject = nil then
+    Exit;
+  Result := AObject.Values[AName];
+  if Result <> nil then
+    Exit;
+  for I := 0 to AObject.Count - 1 do
+    if SameText(AObject.Pairs[I].JsonString.Value, AName) then
+      Exit(AObject.Pairs[I].JsonValue);
+end;
+
+function JStrCI(AObject: TJSONObject; const AName: string): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  LValue := JValueCI(AObject, AName);
+  if (LValue <> nil) and not (LValue is TJSONNull) then
+    Result := LValue.Value;
+end;
+
+function JArrCI(AObject: TJSONObject; const AName: string): TJSONArray;
+var
+  LValue: TJSONValue;
+begin
+  Result := nil;
+  LValue := JValueCI(AObject, AName);
+  if LValue is TJSONArray then
+    Result := TJSONArray(LValue);
+end;
+
+// The columns are all in the table (and there is one at least)
+function ColumnsExist(ATable: TJSONObject; AColumns: TStrings): Boolean;
+var
+  LSpelled: TJSONArray;
+begin
+  LSpelled := TJSONArray.Create;
+  try
+    Result := SpellColumns(ATable, AColumns, LSpelled);
+  finally
+    LSpelled.Free;
+  end;
+end;
+
+procedure AddSkipped(ASkipped: TStrings; const AName: string);
+begin
+  if (ASkipped <> nil) and (ASkipped.IndexOf(AName) < 0) then
+    ASkipped.Add(AName);
+end;
+
+// The name of an imported subschema: the one of the file or, without one,
+// the file name without its extension and its "_Config"; "name 2",
+// "name 3"... when there is a subschema with it
+function ImportedSchemaName(AFile: TRpLocalSchemaFile;
+  const AName, AFileName: string): string;
+const
+  CConfig = '_Config';
+var
+  LBase: string;
+  LNumber: Integer;
+begin
+  LBase := Trim(AName);
+  if LBase = '' then
+  begin
+    LBase := ChangeFileExt(ExtractFileName(AFileName), '');
+    if (Length(LBase) >= Length(CConfig)) and SameText(Copy(LBase,
+      Length(LBase) - Length(CConfig) + 1, Length(CConfig)), CConfig) then
+      LBase := Copy(LBase, 1, Length(LBase) - Length(CConfig));
+    LBase := Trim(LBase);
+  end;
+  if LBase = '' then
+    LBase := Trim(AFile.Alias);
+  if LBase = '' then
+    LBase := 'Schema';
+  Result := LBase;
+  LNumber := 1;
+  while AFile.IndexOfSchema(Result) >= 0 do
+  begin
+    Inc(LNumber);
+    Result := LBase + ' ' + IntToStr(LNumber);
+  end;
+end;
+
+// The allowed values of a column of the file, when it has some
+procedure ImportAllowedValues(AFile: TRpLocalSchemaFile;
+  const ATable, AColumn: string; AItems: TJSONArray);
+var
+  I: Integer;
+  LItem: TJSONObject;
+  LLabel, LValue: string;
+  LLabels, LValues: TStringList;
+begin
+  if (AItems = nil) or (AItems.Count = 0) then
+    Exit;
+  LValues := TStringList.Create;
+  LLabels := TStringList.Create;
+  try
+    for I := 0 to AItems.Count - 1 do
+    begin
+      LItem := JObj(AItems, I);
+      if LItem = nil then
+        Continue;
+      LValue := JStrCI(LItem, 'value');
+      LLabel := JStrCI(LItem, 'label');
+      if (Trim(LValue) = '') and (Trim(LLabel) = '') then
+        Continue;
+      LValues.Add(LValue);
+      LLabels.Add(LLabel);
+    end;
+    if LValues.Count > 0 then
+      AFile.SetAllowedValues(ATable, AColumn, LValues, LLabels);
+  finally
+    LLabels.Free;
+    LValues.Free;
+  end;
+end;
+
+function RpExportSchemaName(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+begin
+  Result := AFile.SchemaNameOf(ASchemaName);
+  if Result = '' then
+    Result := Trim(AFile.Alias);
+  if Result = '' then
+    Result := 'schema';
+end;
+
+function RpExportSchemaFileName(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+var
+  I: Integer;
+begin
+  Result := RpExportSchemaName(AFile, ASchemaName);
+  for I := 1 to Length(Result) do
+    if CharInSet(Result[I], ['\', '/', ':', '*', '?', '"', '<', '>', '|']) then
+      Result[I] := '_';
+  Result := Result + '_Config.json';
+end;
+
+function RpExportSchemaJson(AFile: TRpLocalSchemaFile;
+  const ASchemaName: string): string;
+var
+  LRoot: TJSONObject;
+  LTables: TJSONValue;
+begin
+  LRoot := TJSONObject.Create;
+  try
+    LRoot.AddPair('name', RpExportSchemaName(AFile, ASchemaName));
+    // What the copilot sends, not a rule of its own
+    LTables := TJSONObject.ParseJSONValue(
+      AFile.SchemaTablesJson(AFile.SchemaNameOf(ASchemaName)));
+    if not (LTables is TJSONArray) then
+    begin
+      LTables.Free;
+      LTables := TJSONArray.Create;
+    end;
+    LRoot.AddPair('schemaTables', LTables);
+    Result := LRoot.Format(2);
+  finally
+    LRoot.Free;
+  end;
+end;
+
+procedure RpExportSchemaToFile(AFile: TRpLocalSchemaFile;
+  const ASchemaName, AFileName: string);
+begin
+  WriteUtf8File(AFileName, RpExportSchemaJson(AFile, ASchemaName));
+end;
+
+function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
+  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+var
+  I, J: Integer;
+  LRoot: TJSONValue;
+  LColumns, LForeignKeys, LTables: TJSONArray;
+  LCatalogColumn, LCatalogTable, LColumn, LItem, LTable: TJSONObject;
+  LChosen, LNames, LOrdered, LSource, LTarget: TStringList;
+  LSchema: TRpLocalSubSchema;
+  LColumnName, LTableName, LText: string;
+begin
+  Result := -1;
+  ANewName := '';
+  if ASkipped <> nil then
+    ASkipped.Clear;
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  LChosen := TStringList.Create;
+  LNames := TStringList.Create;
+  LOrdered := TStringList.Create;
+  LSource := TStringList.Create;
+  LTarget := TStringList.Create;
+  try
+    if not (LRoot is TJSONObject) then
+      Exit;
+    LTables := JArrCI(TJSONObject(LRoot), 'schemaTables');
+    if LTables = nil then
+      Exit;
+    ANewName := ImportedSchemaName(AFile, JStrCI(TJSONObject(LRoot), 'name'),
+      AFileName);
+    LSchema := AFile.AddSchema(ANewName);
+    // The tables and columns that are in the catalog, as it spells them,
+    // and what the file says of them
+    for I := 0 to LTables.Count - 1 do
+    begin
+      LTable := JObj(LTables, I);
+      LTableName := Trim(JStrCI(LTable, 'name'));
+      if LTableName = '' then
+        Continue;
+      LCatalogTable := AFile.FindTable(LTableName);
+      if LCatalogTable = nil then
+      begin
+        AddSkipped(ASkipped, LTableName);
+        Continue;
+      end;
+      LTableName := JStr(LCatalogTable, 'name');
+      LText := JStrCI(LTable, 'context');
+      if Trim(LText) <> '' then
+        AFile.SetTableContext(LTableName, LText);
+      // A table twice in the file joins its columns
+      if LSchema.Tables.IndexOf(LTableName) >= 0 then
+        LSchema.GetColumns(LTableName, LChosen)
+      else
+      begin
+        LSchema.Tables.Add(LTableName);
+        LChosen.Clear;
+      end;
+      LColumns := JArrCI(LTable, 'columns');
+      if LColumns <> nil then
+        for J := 0 to LColumns.Count - 1 do
+        begin
+          LColumn := JObj(LColumns, J);
+          LColumnName := Trim(JStrCI(LColumn, 'name'));
+          if LColumnName = '' then
+            Continue;
+          LCatalogColumn := AFile.FindColumn(LTableName, LColumnName);
+          if LCatalogColumn = nil then
+          begin
+            AddSkipped(ASkipped, LTableName + '.' + LColumnName);
+            Continue;
+          end;
+          LColumnName := JStr(LCatalogColumn, 'name');
+          LChosen.Add(LColumnName);
+          LText := JStrCI(LColumn, 'context');
+          if Trim(LText) <> '' then
+            AFile.SetColumnContext(LTableName, LColumnName, LText);
+          ImportAllowedValues(AFile, LTableName, LColumnName,
+            JArrCI(LColumn, 'allowedValues'));
+        end;
+      // In the order of the catalog; none left: its primary key
+      AFile.GetColumnNames(LTableName, LNames);
+      LOrdered.Clear;
+      for J := 0 to LNames.Count - 1 do
+        if LChosen.IndexOf(LNames[J]) >= 0 then
+          LOrdered.Add(LNames[J]);
+      if LOrdered.Count = 0 then
+        AFile.GetPrimaryKey(LTableName, LOrdered);
+      LSchema.SetColumns(LTableName, LOrdered);
+    end;
+    // The relations whose two ends are in the catalog, once every table is
+    // known: the description goes to the one the dictionary has, a new one
+    // enters by hand (AddRelation)
+    for I := 0 to LTables.Count - 1 do
+    begin
+      LTable := JObj(LTables, I);
+      LCatalogTable := AFile.FindTable(Trim(JStrCI(LTable, 'name')));
+      LForeignKeys := JArrCI(LTable, 'foreignKeys');
+      if (LCatalogTable = nil) or (LForeignKeys = nil) then
+        Continue;
+      for J := 0 to LForeignKeys.Count - 1 do
+      begin
+        LItem := JObj(LForeignKeys, J);
+        if LItem = nil then
+          Continue;
+        LText := Trim(JStrCI(LItem, 'targetTable'));
+        ArrayNames(JArrCI(LItem, 'sourceColumns'), LSource);
+        ArrayNames(JArrCI(LItem, 'targetColumns'), LTarget);
+        if (LSource.Count <> LTarget.Count) or
+          not ColumnsExist(LCatalogTable, LSource) or
+          not ColumnsExist(AFile.FindTable(LText), LTarget) then
+          Continue;
+        AFile.AddRelation(JStr(LCatalogTable, 'name'), LText, LSource, LTarget,
+          JStrCI(LItem, 'relationshipContext'));
+      end;
+    end;
+    Result := LSchema.Tables.Count;
+  finally
+    LTarget.Free;
+    LSource.Free;
+    LOrdered.Free;
+    LNames.Free;
+    LChosen.Free;
+    LRoot.Free;
+  end;
+end;
+
+function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
+  const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+begin
+  Result := RpImportSchemaJson(AFile, ReadUtf8File(AFileName), AFileName,
+    ANewName, ASkipped);
+end;
+
+function RpShortNameList(AList: TStrings; AMax: Integer): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to AList.Count - 1 do
+  begin
+    if (I >= AMax) and (I > 0) then
+    begin
+      Result := Result + ', ' + CEllipsis;
+      Break;
+    end;
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + AList[I];
+  end;
 end;
 
 end.

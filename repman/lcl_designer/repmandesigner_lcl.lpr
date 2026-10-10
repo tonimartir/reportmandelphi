@@ -195,6 +195,7 @@ end;
 
 begin
   FileArg := CommandLineFile;
+  ApplyCommandLineOptions;
   // LCL texts (dialog buttons...) in the language of reportmanres.*
   TranslateLCL;
   RequireDerivedFormResource := True;

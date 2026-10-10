@@ -156,6 +156,13 @@ begin
   Height := PreferredHeight;
   ComboAIProvider.Align := alTop;
   ComboAIMode.Align := alTop;
+  // The tier and the mode go by position (GetAITier, GetAIMode): the texts
+  // are the user's language
+  ComboAIProvider.Items[0] := TranslateStr(1518, 'Standard');
+  ComboAIProvider.Items[1] := TranslateStr(1519, 'Precision');
+  ComboAIMode.Items[0] := TranslateStr(1520, 'Fast');
+  ComboAIMode.Items[1] := TranslateStr(1521, 'Reasoning');
+  BStopInference.Caption := TranslateStr(1522, 'Stop');
   ComboAIProvider.ItemIndex := 0; // Standard
   ComboAIMode.ItemIndex := 0;    // Fast
   SpinnerTimer.Enabled := False;
@@ -192,7 +199,7 @@ begin
   begin
     FLblProvider := TLabel.Create(Self);
     FLblProvider.Parent := PProviderHost;
-    FLblProvider.Caption := 'PROVIDER';
+    FLblProvider.Caption := AnsiUpperCase(TranslateStr(1516, 'Provider'));
     FLblProvider.Align := alTop;
     FLblProvider.AutoSize := True;
     FLblProvider.Alignment := taLeftJustify;
@@ -204,7 +211,7 @@ begin
   begin
     FLblMode := TLabel.Create(Self);
     FLblMode.Parent := PModeHost;
-    FLblMode.Caption := 'MODE';
+    FLblMode.Caption := AnsiUpperCase(TranslateStr(1517, 'Mode'));
     FLblMode.Align := alTop;
     FLblMode.AutoSize := True;
     FLblMode.Alignment := taLeftJustify;
@@ -441,25 +448,25 @@ begin
       LLeft := LMax - LUsed;
       if LLeft < 0 then
         LLeft := 0;
-      LHint := 'Free Credits' + #13#10 +
+      LHint := TranslateStr(1524, 'Free Credits') + #13#10 +
         Format(TranslateStr(1835, 'Left: %s of %s'),
         [FormatFloat('#,##0', LLeft), FormatFloat('#,##0', LMax)]);
     end
     else
     begin
-      LHint := 'Daily Credit Usage' + #13#10;
-      LHint := LHint + 'Used: ' + FormatFloat('#,##0', LUsed) +
+      LHint := TranslateStr(1525, 'Daily Credit Usage') + #13#10;
+      LHint := LHint + TranslateStr(1526, 'Used') + ': ' + FormatFloat('#,##0', LUsed) +
         ' (' + FormatFloat('0', LPct) + '%)' + #13#10;
-      LHint := LHint + 'Max: ' + FormatFloat('#,##0', LMax);
+      LHint := LHint + TranslateStr(1527, 'Max') + ': ' + FormatFloat('#,##0', LMax);
       if LProfile.ServerDay > 0 then
         LHint := LHint + #13#10 + DateToStr(LProfile.ServerDay);
     end;
   end
   else
   begin
-    LHint := 'Free Credits' + #13#10 +
-      'Used: 0 (0%)' + #13#10 +
-      'Max: 0';
+    LHint := TranslateStr(1524, 'Free Credits') + #13#10 +
+      TranslateStr(1526, 'Used') + ': 0 (0%)' + #13#10 +
+      TranslateStr(1527, 'Max') + ': 0';
     FGaugeValue := 0.0;
   end;
 
@@ -562,7 +569,7 @@ begin
     LPrefix := '';
 
   if (AEntry.PrefillPercent > 0) and (AEntry.OutputTokens = 0) then
-    LInputText := IntToStr(AEntry.PrefillPercent) + '% de prefill'
+    LInputText := IntToStr(AEntry.PrefillPercent) + '% prefill'
   else
     LInputText := IntToStr(AEntry.InputTokens);
 
@@ -585,7 +592,7 @@ begin
     LTokensInfo.SetBounds(0, 0, PTokensHost.ClientWidth, PTokensHost.ClientHeight);
     LTokensInfo.Visible := FProgressTokens.Count = 0;
     if LTokensInfo.Visible then
-      LTokensInfo.Caption := 'Waiting for inference progress...';
+      LTokensInfo.Caption := TranslateStr(1523, 'Waiting for inference progress...');
   end;
 
   LTop := 0;
