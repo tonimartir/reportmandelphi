@@ -42,10 +42,12 @@ ARG FPC_DEB_SHA256=92000f2b831184e153aab0c910f8ae9240450e5c6d76dc189cf53116ee501
 ARG FPCSRC_DEB=fpc-src_3.2.2-210709_amd64.deb
 ARG FPCSRC_DEB_SHA256=8c9e145d8056754a9ca39ce3e52e982b8e4816124984c5f542f2a874e721ad53
 ARG LAZARUS_URL=https://downloads.sourceforge.net/project/lazarus/Lazarus%20Linux%20amd64%20DEB/Lazarus%20${LAZARUS_VERSION}
+# --retry-all-errors: a SourceForge mirror sometimes resets a download halfway
+# ("Connection reset by peer"), which --retry alone does not retry
 RUN set -eux; cd /tmp; \
     for spec in "$FPC_DEB=$FPC_DEB_SHA256" "$FPCSRC_DEB=$FPCSRC_DEB_SHA256" "$LAZARUS_DEB=$LAZARUS_DEB_SHA256"; do \
       name=${spec%%=*}; sum=${spec##*=}; \
-      curl -fsSL --retry 5 -o "$name" "$LAZARUS_URL/$name"; \
+      curl -fsSL --retry 5 --retry-all-errors -o "$name" "$LAZARUS_URL/$name"; \
       echo "$sum  $name" | sha256sum -c -; \
     done; \
     apt-get update; \
@@ -118,11 +120,11 @@ ARG APPIMAGETOOL_SHA256=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3
 ARG RUNTIME_URL=https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
 ARG RUNTIME_SHA256=2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
 RUN set -eux; mkdir -p /opt/appimage; cd /opt/appimage; \
-    curl -fsSL --retry 5 -o linuxdeploy.AppImage "$LINUXDEPLOY_URL"; \
+    curl -fsSL --retry 5 --retry-all-errors -o linuxdeploy.AppImage "$LINUXDEPLOY_URL"; \
     echo "$LINUXDEPLOY_SHA256  linuxdeploy.AppImage" | sha256sum -c -; \
-    curl -fsSL --retry 5 -o appimagetool.AppImage "$APPIMAGETOOL_URL"; \
+    curl -fsSL --retry 5 --retry-all-errors -o appimagetool.AppImage "$APPIMAGETOOL_URL"; \
     echo "$APPIMAGETOOL_SHA256  appimagetool.AppImage" | sha256sum -c -; \
-    curl -fsSL --retry 5 -o runtime-x86_64 "$RUNTIME_URL"; \
+    curl -fsSL --retry 5 --retry-all-errors -o runtime-x86_64 "$RUNTIME_URL"; \
     echo "$RUNTIME_SHA256  runtime-x86_64" | sha256sum -c -; \
     chmod +x linuxdeploy.AppImage appimagetool.AppImage; \
     ./linuxdeploy.AppImage --appimage-extract >/dev/null; mv squashfs-root linuxdeploy; \
