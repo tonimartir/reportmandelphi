@@ -9,7 +9,10 @@
 #include "version.iss"
 
 [Setup]
-AppName=Report Manager Designer (x64)
+; AppId keeps the name this installer had (it defaults to AppName), so it still
+; upgrades the x86 installs made before the name was corrected
+AppId=Report Manager Designer (x64)
+AppName=Report Manager Designer (x86)
 AppVersion={#AppVer}
 DefaultDirName={commonpf32}\Report Manager
 DefaultGroupName=Report Manager
