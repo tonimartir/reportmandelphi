@@ -416,6 +416,13 @@ begin
  try
   dia.Options:=[poPageNums,poWarning,
         poPrintToFile];
+{$IFDEF LCLCOCOA}
+  // Cocoa shows the print panel in Execute only with poBeforeBeginDoc.
+  // Without it, Execute returns at once and the panel opens in
+  // Printer.EndDoc, reading (and writing) the settings of this dialog, which
+  // is freed below by then: garbage copies and page range, blank sheets.
+  dia.Options:=dia.Options+[poBeforeBeginDoc];
+{$ENDIF}
   dia.MinPage:=1;
   dia.MaxPage:=65535;
   if copies=0 then
