@@ -1,7 +1,6 @@
 # Tarea 05 - Empaqueta el binario Linux de printreptopdf:
 #   printreptopdf_linux_<ver>.zip   (repman\utils\printreptopdf\binrl64\printreptopdf)
-# OJO: el binario Linux NO lo produce el build Windows; debe estar compilado
-# (Linux64 Release via PAServer) antes de ejecutar esta tarea.
+# The Linux binary comes from task 01c (Delphi Linux64 Release, no PAServer).
 [CmdletBinding()]
 param()
 . "$PSScriptRoot\_common.ps1"
@@ -13,7 +12,7 @@ New-Item -ItemType Directory -Path $LinuxDir -Force | Out-Null
 
 $bin = Join-Path $RepoRoot 'repman\utils\printreptopdf\binrl64\printreptopdf'
 if (-not (Test-Path $bin)) {
-  Fail "No encuentro el binario Linux: $bin  (compila printreptopdf Linux64 Release via PAServer antes)"
+  Fail "No encuentro el binario Linux: $bin  (run 01c-build-linux64.ps1 first)"
 }
 
 $zip = Join-Path $LinuxDir ("printreptopdf_linux_{0}.zip" -f $VerU)

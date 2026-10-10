@@ -100,6 +100,11 @@ call "C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"
   `printrepxp`, `metaprintxp`, `rptranslate`, `WebReportManX`,
   `reportserverappxp`, `repwebexe`, `repserverconfigxp`, `repwebserver`,
   `repserverservice`, `repserviceinstall`. `/t:Build` builds them all.
+- Delphi Linux64 (`printreptopdf`, `repwebexe`): `MSBuild <proj>.dproj
+  /p:Config=Release /p:Platform=Linux64` compiles and links on Windows against
+  the Linux64 SDK pulled into RAD Studio (`rocky9.6.sdk`, glibc 2.34); no PAServer
+  needed. `build/sourceforge/01c-build-linux64.ps1` does both.
+- SourceForge release: `build/sourceforge/make-release.ps1` (see its README).
 
 ### Older Delphi / Kylix / FPC
 

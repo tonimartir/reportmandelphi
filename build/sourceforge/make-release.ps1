@@ -16,6 +16,7 @@ $steps = @()
 if (-not $SkipBuild) {
   $steps += '01-build-solution.ps1'
   $steps += '01b-build-net2.ps1'
+  $steps += '01c-build-linux64.ps1'
 }
 $steps += '02-designer-innosetup.ps1'
 $steps += '03-activex-zip.ps1'

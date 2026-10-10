@@ -7,6 +7,7 @@ autonomo (exit != 0 si falla) y se puede ejecutar suelto.
 |-----------|-------|--------|
 | `01-build-solution.ps1` | Build limpio de `reportmanxe2` en **Release Win32 + Win64** | binarios en `binr32`/`binr64` |
 | `01b-build-net2.ps1` | Build .NET **self-contained** (`designer` + `printreport`, win-x64 + win-x86) de `danzai\comunnt\reportman` | `repman\binr64\net2\` (x64), `repman\binr32\net2\` (x86) |
+| `01c-build-linux64.ps1` | Build Delphi **Linux64 Release** de `printreptopdf` y `repwebexe` con MSBuild, **sin PAServer** | `repman\utils\printreptopdf\binrl64\printreptopdf`, `server\web\repwebexe` (copiado también a `server\docker\web\artifacts\linux64\` para la imagen Docker) |
 | `02-designer-innosetup.ps1` | Compila los **4** `.iss` con ISCC: Delphi x64/x86 (sin net2) + .NET x64/x86 | `release_<v>\Designer\` (4 instaladores) |
 | `03-activex-zip.ps1` | Zipea el OCX por arquitectura | `release_<v>\ActiveX\reportman_ax_<v>_x64.zip` y `_x32.zip` |
 | `04-components.ps1` | Fuentes raiz + `packages\`, sin `*.o`/`*.dcu` | `release_<v>\Components\` (carpeta + `reportman_components_<v>.zip`) |
@@ -31,7 +32,10 @@ del builder se crea sola la primera vez; ver `docs\fase6_plan.md`).
   la pasa además como `ISCC /DAppVer=<v>`. Los instaladores .NET ya no llevan `beta`
   en el nombre (`reportman_designer_net_<v>_x64.exe`).
 - **net2**: `01b-build-net2.ps1` lo publica self-contained (win-x64 -> `binr64\net2`, win-x86 -> `binr32\net2`).
-- **Linux**: `binrl64\printreptopdf` debe estar compilado (PAServer) antes de la tarea 05.
+- **Linux64 (Delphi)**: la tarea 01c compila y enlaza en Windows contra el SDK Linux64
+  ya descargado en RAD Studio (`rocky9.6.sdk`, glibc 2.34: Ubuntu 22.04+, Debian 12+,
+  RHEL 9+). PAServer solo hace falta para descargar o actualizar ese SDK (SDK Manager)
+  o para ejecutar y depurar desde el IDE.
   La tarea 05 ya no vacía `release_<v>\Linux\` (lo hace `make-release.ps1` al
   empezar), así que 05 y 06 pueden ejecutarse sueltas en cualquier orden.
   `SHA256SUMS` cubre todo lo que haya en `Linux\` al ejecutar la 06.
