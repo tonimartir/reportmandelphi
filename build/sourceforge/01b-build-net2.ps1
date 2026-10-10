@@ -1,9 +1,13 @@
-# Tarea net2 - Build .NET (SDK, net9.0-windows) de designer + printreport como
+# Tarea net2 - Build .NET (SDK, $Framework) de designer + printreport como
 # SELF-CONTAINED por RID (win-x64 y win-x86): el instalador .NET independiente
 # NO requiere el runtime .NET instalado (a cambio de mas tamano).
 # Destinos:  repman\binr64\net2 (win-x64)   repman\binr32\net2 (win-x86)
+#
+# The projects target several frameworks (net9.0-windows;net10.0-windows) and
+# dotnet publish needs one: net10.0 is the LTS (supported to November 2028) and
+# its runtime goes inside the installer.
 [CmdletBinding()]
-param()
+param([string]$Framework = 'net10.0-windows')
 . "$PSScriptRoot\_common.ps1"
 
 $CsRoot   = 'C:\desarrollo\danzai\comunnt\reportman'
@@ -24,14 +28,14 @@ foreach ($b in $builds) {
   Info ""
   Info "---- RID $($b.Rid)  ->  $($b.Dest) ----"
   foreach ($p in $projects) {
-    Info "dotnet publish $($p.Name)  (-c Release -r $($b.Rid) --self-contained)"
-    & dotnet publish $p.Proj -c Release -r $b.Rid --self-contained true --nologo -v minimal
+    Info "dotnet publish $($p.Name)  (-c Release -f $Framework -r $($b.Rid) --self-contained)"
+    & dotnet publish $p.Proj -c Release -f $Framework -r $b.Rid --self-contained true --nologo -v minimal
     if ($LASTEXITCODE -ne 0) { Fail "dotnet publish fallo en $($p.Name) / $($b.Rid) (exit $LASTEXITCODE)" }
   }
   # net2 = merge de las dos carpetas publish de este RID (comparten Reportman.*.dll y runtime)
   New-CleanDir $b.Dest
   foreach ($p in $projects) {
-    $pub = Join-Path (Split-Path $p.Proj -Parent) "bin\Release\net9.0-windows\$($b.Rid)\publish"
+    $pub = Join-Path (Split-Path $p.Proj -Parent) "bin\Release\$Framework\$($b.Rid)\publish"
     if (-not (Test-Path $pub)) { Fail "No encuentro la salida publish: $pub" }
     Copy-Item (Join-Path $pub '*') $b.Dest -Recurse -Force
   }
