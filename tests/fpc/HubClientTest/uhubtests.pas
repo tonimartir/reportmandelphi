@@ -194,11 +194,20 @@ begin
         SendJson(AResponse, 200, ExecuteResult);
     end
     else if P = '/api/agent/databases' then
+      // The first two as an older cloud (no isOnline, no agentName); the
+      // others with the state of their Agent: two schemas of a database of
+      // an Agent that is not connected, and a connected one without a name
       SendJson(AResponse, 200, '{"databases":[' +
         '{"displayName":"Sales - Main","name":"sales","hubDatabaseId":77,"hubSchemaId":5,' +
         '"schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
         '{"name":"ORDERS","columns":[{"name":"ID"},{"name":"CLIENT"},{"name":"TOTAL"}]}]},' +
-        '{"displayName":"","name":"stock","hubDatabaseId":78,"hubSchemaId":6}],' +
+        '{"displayName":"","name":"stock","hubDatabaseId":78,"hubSchemaId":6},' +
+        '{"displayName":"Stock - Shop","name":"Shop","hubDatabaseId":79,"hubSchemaId":7,' +
+        '"isOnline":false,"agentName":"pc1"},' +
+        '{"displayName":"Stock - Depot","name":"Depot","hubDatabaseId":79,"hubSchemaId":8,' +
+        '"isOnline":false,"agentName":"pc1"},' +
+        '{"displayName":"HR - Staff","name":"Staff","hubDatabaseId":80,"hubSchemaId":9,' +
+        '"isOnline":true,"agentName":null}],' +
         '"aiEndpoints":[{"id":3,"name":"Local","agentName":"pc1","agentSecret":"s3","isOnline":true},' +
         '{"id":4,"name":"Cloud","agentName":"srv","agentSecret":"s4","isOnline":false}]}')
     else if P = '/api/agent/gettableschema' then
@@ -1157,6 +1166,12 @@ begin
     Check(LHttp.GetUserSchemas(LList), 'GetUserSchemas');
     CheckEquals('Sales / Main=77|5', LList[0], 'GetUserSchemas display name');
     CheckEquals('stock=78|6', LList[1], 'GetUserSchemas name when there is no display name');
+    // The state of the Agent and its name after the ids, only when the cloud
+    // says them; with the name, the label is '<schema> - <Agent>'
+    CheckEquals(5, LList.Count, 'GetUserSchemas count');
+    CheckEquals('Shop - pc1=79|7|0|pc1', LList[2], 'GetUserSchemas: an Agent not connected');
+    CheckEquals('Depot - pc1=79|8|0|pc1', LList[3], 'GetUserSchemas: another schema of that Agent');
+    CheckEquals('HR / Staff=80|9|1|', LList[4], 'GetUserSchemas: connected, the Agent without a name');
     CheckContains('GET /api/agent/databases', GHub.RequestLog, 'GetUserSchemas is a GET');
     // The size of each schema for the limits of the plan: its tables and the
     // columns of the widest one (none without schemaTables)
@@ -1172,7 +1187,7 @@ begin
     // GetSchemas sent a nil request body (access violation) and read a "data"
     // list that the Hub does not return
     Check(LHttp.GetSchemas(LList), 'GetSchemas');
-    CheckEquals(2, LList.Count, 'GetSchemas count');
+    CheckEquals(5, LList.Count, 'GetSchemas count');
     CheckEquals('Sales - Main', LList[0], 'GetSchemas display name');
     CheckEquals('stock', LList[1], 'GetSchemas name when there is no display name');
     Check(LHttp.GetUserAgents(LList), 'GetUserAgents');
@@ -1180,10 +1195,49 @@ begin
     CheckEquals('Cloud (srv)=4|s4|0', LList[1], 'GetUserAgents offline');
     Check(TRpDatabaseHttp.GetHubDatabases('test-key', LList), 'GetHubDatabases');
     CheckEquals('Sales - Main=77', LList[0], 'GetHubDatabases');
+    // '<database> - <Agent>': the two schemas of a database of the same
+    // Agent make one line
+    CheckEquals(4, LList.Count, 'GetHubDatabases: a database named by its Agent once');
+    CheckEquals('stock=78', LList[1], 'GetHubDatabases: the name without a display name');
+    CheckEquals('Stock - pc1=79|0|pc1', LList[2], 'GetHubDatabases: an Agent not connected');
+    CheckEquals('HR - Staff=80|1|', LList[3], 'GetHubDatabases: connected, the Agent without a name');
   finally
     LList.Free;
     LRecorder.Free;
     LHttp.Free;
+  end;
+end;
+
+procedure HubLineTests;
+var
+  LJson: TJSONValue;
+begin
+  Section('Lines of the Hub schemas and databases with the state of the Agent');
+  CheckEquals('79', RpHubLineField('79|7|0|pc1', 0), 'RpHubLineField: the database');
+  CheckEquals('0', RpHubLineField('79|7|0|pc1', 2), 'RpHubLineField: the state');
+  CheckEquals('pc1', RpHubLineField('79|7|0|pc1', 3), 'RpHubLineField: the Agent');
+  CheckEquals('', RpHubLineField('77|5', 2), 'RpHubLineField: a line of an older cloud');
+  Check(RpHubOnlineState('0') = hosOffline, 'RpHubOnlineState: not connected');
+  Check(RpHubOnlineState('1') = hosOnline, 'RpHubOnlineState: connected');
+  Check(RpHubOnlineState('') = hosUnknown, 'RpHubOnlineState: not known');
+  CheckEquals('79|7', RpHubSchemaKey('79|7|0|pc1'), 'RpHubSchemaKey');
+  CheckEquals('Shop - pc1=79|7|k1|0|pc1',
+    RpHubSchemaLineWithApiKey('Shop - pc1=79|7|0|pc1', 'k1'),
+    'RpHubSchemaLineWithApiKey: the API key after the ids');
+  CheckEquals('Sales / Main=77|5|k1', RpHubSchemaLineWithApiKey('Sales / Main=77|5', 'k1'),
+    'RpHubSchemaLineWithApiKey: the line of an older cloud');
+  CheckEquals('Sales / Main=77|5|', RpHubSchemaLineWithApiKey('Sales / Main=77|5', ''),
+    'RpHubSchemaLineWithApiKey: the session');
+  // A '|' in the name of the Agent would split the line; isOnline as text
+  LJson := TJSONObject.ParseJSONValue('{"displayName":"Db - S","name":"S",' +
+    '"hubDatabaseId":1,"hubSchemaId":2,"isOnline":"false","agentName":"a|b"}');
+  try
+    CheckEquals('S - a/b=1|2|0|a/b', RpHubSchemaLine(LJson as TJSONObject),
+      'RpHubSchemaLine: a | in the name of the Agent');
+    CheckEquals('Db - a/b=1|0|a/b', RpHubDatabaseLine(LJson as TJSONObject),
+      'RpHubDatabaseLine: a | in the name of the Agent');
+  finally
+    LJson.Free;
   end;
 end;
 
@@ -1325,6 +1379,7 @@ begin
       DataTests;
       AgentConnectionsTest;
       AITests;
+      HubLineTests;
       UnauthorizedTest;
       OAuthTests;
     finally

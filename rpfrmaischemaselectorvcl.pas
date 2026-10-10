@@ -28,6 +28,9 @@ type
     HubSchemaId: Int64;
     // A subschema of the direct connection
     LocalName: string;
+    // A cloud schema whose Agent the cloud says is not connected: a red dot
+    // before its name and a hint; it can still be chosen
+    Offline: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64;
       const AApiKey: string);
     constructor CreateKind(AKind: TRpSchemaSelectorItemKind);
@@ -72,6 +75,9 @@ type
     procedure LoginAuthChanged(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ComboSchemaCloseUp(Sender: TObject);
+    procedure ComboSchemaDropDown(Sender: TObject);
+    procedure ComboSchemaDrawItem(Control: TWinControl; Index: Integer;
+      Rect: TRect; State: TOwnerDrawState);
     procedure RefreshSchemasClick(Sender: TObject);
     procedure ClearSchemaItems;
     procedure RebuildItems;
@@ -236,9 +242,11 @@ begin
   ComboSchema := TComboBox.Create(Self);
   ComboSchema.Parent := PSchemaRow;
   ComboSchema.Align := alClient;
-  ComboSchema.Style := csDropDownList;
+  // The red dot of the schemas whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(ComboSchema, ComboSchemaDrawItem);
   ComboSchema.OnChange := ComboSchemaChange;
   ComboSchema.OnCloseUp := ComboSchemaCloseUp;
+  ComboSchema.OnDropDown := ComboSchemaDropDown;
   // Match row height to combo's font-driven natural height
   PSchemaRow.Height := ComboSchema.Height;
   BRefreshSchemas.Height := ComboSchema.Height;
@@ -337,23 +345,21 @@ begin
   end;
 end;
 
+// 'Name=db|schema|apikey' and the state of the Agent; a schema once, by its
+// Hub database and schema
 procedure TFRpAISchemaSelectorVCL.AddMergedSchemas(ASource, ADest,
   ASeenKeys: TStrings; const ADefaultApiKey: string);
 var
   I: Integer;
-  LDisplayName: string;
-  LValue: string;
   LSchemaKey: string;
 begin
   for I := 0 to ASource.Count - 1 do
   begin
-    LDisplayName := ASource.Names[I];
-    LValue := ASource.ValueFromIndex[I];
-    LSchemaKey := LValue;
+    LSchemaKey := RpHubSchemaKey(ASource.ValueFromIndex[I]);
     if ASeenKeys.IndexOf(LSchemaKey) >= 0 then
       Continue;
     ASeenKeys.Add(LSchemaKey);
-    ADest.Add(LDisplayName + '=' + LValue + '|' + ADefaultApiKey);
+    ADest.Add(RpHubSchemaLineWithApiKey(ASource[I], ADefaultApiKey));
   end;
 end;
 
@@ -377,6 +383,7 @@ var
     J: Integer;
     LDbId, LSchemaId: Int64;
     LApiKey: string;
+    LCloudItem: TSchemaComboItem;
   begin
     for J := 0 to ALines.Count - 1 do
     begin
@@ -391,9 +398,12 @@ var
       end;
       if LParts.Count >= 3 then
         LApiKey := LParts[2];
+      LCloudItem := TSchemaComboItem.Create(LDbId, LSchemaId, LApiKey);
+      // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
+      LCloudItem.Offline := RpHubOnlineState(
+        RpHubLineField(ALines.ValueFromIndex[J], 3)) = hosOffline;
       ComboSchema.Items.AddObject(CSchemaCloudIcon + ALines.Names[J] +
-        SizeSuffix(FCloudSizes.Values[IntToStr(LSchemaId)]),
-        TSchemaComboItem.Create(LDbId, LSchemaId, LApiKey));
+        SizeSuffix(FCloudSizes.Values[IntToStr(LSchemaId)]), LCloudItem);
     end;
   end;
 
@@ -465,7 +475,28 @@ begin
     LParts.Free;
     ComboSchema.Items.EndUpdate;
   end;
+  TRpChatStyle.FitComboDropDownWidth(ComboSchema);
   SelectCurrentSchema;
+end;
+
+// The red dot of a cloud schema whose Agent is not connected, after its icon
+procedure TFRpAISchemaSelectorVCL.ComboSchemaDrawItem(Control: TWinControl;
+  Index: Integer; Rect: TRect; State: TOwnerDrawState);
+var
+  LItem: TSchemaComboItem;
+  LDotAt: Integer;
+begin
+  LItem := SchemaItem(Index);
+  LDotAt := -1;
+  if (LItem <> nil) and LItem.Offline then
+    LDotAt := Length(CSchemaCloudIcon);
+  TRpChatStyle.DrawComboItem(ComboSchema.Canvas, Rect, State,
+    ComboSchema.Items[Index], LDotAt);
+end;
+
+procedure TFRpAISchemaSelectorVCL.ComboSchemaDropDown(Sender: TObject);
+begin
+  TRpChatStyle.FitComboDropDownWidth(ComboSchema);
 end;
 
 // The subschema chosen, else the cloud schema of the context, else the
@@ -558,6 +589,12 @@ begin
       FLocalName := LItem.LocalName;
   end;
   FLastIndex := ComboSchema.ItemIndex;
+  if (LItem <> nil) and LItem.Offline then
+    ComboSchema.Hint := string(TranslateStr(2004, 'The Agent of this ' +
+      'database is not connected: the AI can design with its schema, but the ' +
+      'data cannot be opened until it comes back.'))
+  else
+    ComboSchema.Hint := '';
 end;
 
 procedure TFRpAISchemaSelectorVCL.LoadSchemas;

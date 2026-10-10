@@ -52,6 +52,10 @@ type
     HubSchemaId: Int64;
     // A subschema of the direct connection
     LocalName: string;
+    // A cloud schema whose Agent the cloud says is not connected: a red dot
+    // before its name (the text "(not connected)" where it can not be
+    // drawn) and a hint; it can still be chosen
+    Offline: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
     constructor CreateKind(AKind: TRpSchemaSelectorItemKind);
     // A schema the AI can use, not a header or an action
@@ -94,6 +98,8 @@ type
     procedure LoginAuthChanged(Sender: TObject);
     procedure ComboSchemaChange(Sender: TObject);
     procedure ComboSchemaCloseUp(Sender: TObject);
+    procedure ComboSchemaDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure RefreshSchemasClick(Sender: TObject);
     procedure ClearSchemaItems;
     procedure RebuildItems;
@@ -216,18 +222,20 @@ begin
   inherited Destroy;
 end;
 
+// 'Name=db|schema|apikey' and the state of the Agent; a schema once, by its
+// Hub database and schema
 procedure AddMergedSchemas(ASource, ADest, ASeenKeys: TStrings; const ADefaultApiKey: string);
 var
   I: Integer;
-  LValue: string;
+  LSchemaKey: string;
 begin
   for I := 0 to ASource.Count - 1 do
   begin
-    LValue := ASource.ValueFromIndex[I];
-    if ASeenKeys.IndexOf(LValue) >= 0 then
+    LSchemaKey := RpHubSchemaKey(ASource.ValueFromIndex[I]);
+    if ASeenKeys.IndexOf(LSchemaKey) >= 0 then
       Continue;
-    ASeenKeys.Add(LValue);
-    ADest.Add(ASource.Names[I] + '=' + LValue + '|' + ADefaultApiKey);
+    ASeenKeys.Add(LSchemaKey);
+    ADest.Add(RpHubSchemaLineWithApiKey(ASource[I], ADefaultApiKey));
   end;
 end;
 
@@ -417,7 +425,8 @@ begin
   ComboSchema := TComboBox.Create(Self);
   ComboSchema.Parent := PSchemaRow;
   ComboSchema.Align := alClient;
-  ComboSchema.Style := csDropDownList;
+  // The red dot of the schemas whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(ComboSchema, ComboSchemaDrawItem);
   ComboSchema.OnChange := ComboSchemaChange;
   ComboSchema.OnCloseUp := ComboSchemaCloseUp;
   ComboSchema.BorderSpacing.Right := Scale(4);
@@ -483,6 +492,7 @@ var
     J: Integer;
     LDbId, LSchemaId: Int64;
     LApiKey: string;
+    LCloudItem: TSchemaComboItem;
   begin
     for J := 0 to ALines.Count - 1 do
     begin
@@ -497,9 +507,13 @@ var
       end;
       if LParts.Count >= 3 then
         LApiKey := LParts[2];
+      LCloudItem := TSchemaComboItem.Create(LDbId, LSchemaId, LApiKey);
+      // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
+      LCloudItem.Offline := RpHubOnlineState(
+        RpHubLineField(ALines.ValueFromIndex[J], 3)) = hosOffline;
       ComboSchema.Items.AddObject(CSchemaCloudIcon + ALines.Names[J] +
-        SizeSuffix(FCloudSizes.Values[IntToStr(LSchemaId)]),
-        TSchemaComboItem.Create(LDbId, LSchemaId, LApiKey));
+        TRpChatStyle.OfflineText(LCloudItem.Offline) +
+        SizeSuffix(FCloudSizes.Values[IntToStr(LSchemaId)]), LCloudItem);
     end;
   end;
 
@@ -571,7 +585,27 @@ begin
     LParts.Free;
     ComboSchema.Items.EndUpdate;
   end;
+  TRpChatStyle.FitComboDropDownWidth(ComboSchema);
   SelectCurrentSchema;
+end;
+
+// The red dot of a cloud schema whose Agent is not connected, after its icon
+procedure TFRpAISchemaSelectorLCL.ComboSchemaDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  LItem: TSchemaComboItem;
+  LText: string;
+  LDotAt: Integer;
+begin
+  // -1: the edit field without a selection
+  LText := '';
+  if (Index >= 0) and (Index < ComboSchema.Items.Count) then
+    LText := ComboSchema.Items[Index];
+  LItem := SchemaItem(Index);
+  LDotAt := -1;
+  if (LItem <> nil) and LItem.Offline then
+    LDotAt := Length(CSchemaCloudIcon);
+  TRpChatStyle.DrawComboItem(ComboSchema.Canvas, ARect, State, LText, LDotAt);
 end;
 
 // The subschema chosen, else the cloud schema of the context, else the

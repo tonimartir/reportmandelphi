@@ -74,6 +74,11 @@ type
     // widest one
     Tables: Integer;
     WidestColumns: Integer;
+    // A Hub schema whose Agent the cloud says is not connected: a red dot
+    // before its name (the text "(not connected)" where it can not be
+    // drawn) and a hint; it can still be chosen (the AI designs with the
+    // schema, the data can not be opened)
+    Offline: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
     constructor CreateLocal(const ALocalAlias, ALocalSchemaName: string);
     constructor CreateKind(AKind: TSchemaComboItemKind; const ACaption: string);
@@ -216,6 +221,8 @@ type
     procedure SchemaListClosed(Data: PtrInt);
     procedure ComboSchemaCloseUp(Sender: TObject);
     procedure ComboSchemaDropDown(Sender: TObject);
+    procedure ComboSchemaDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure AISelectionProviderChange(Sender: TObject);
     procedure MenuLocalSchemasClick(Sender: TObject);
     procedure MenuCloudSchemasClick(Sender: TObject);
@@ -796,7 +803,9 @@ begin
               LSchemaKey := LSchemaValue
             else
               LSchemaKey := '0|' + LSchemaValue;
-            AList.Add(LRawSchemas.Names[J] + '=' + LSchemaKey + '|' + LApiKey);
+            // The API key after the ids, then the state of the Agent
+            AList.Add(RpHubSchemaLineWithApiKey(LRawSchemas.Names[J] + '=' +
+              LSchemaKey, LApiKey));
           end;
         end;
       finally
@@ -815,10 +824,10 @@ end;
 
 procedure TRpChatSchemasWorker.Run;
 var
-  I, LPosSep: Integer;
+  I: Integer;
   LPayload: TRpQueuedSchemasPayload;
   LUserSchemas, LApiKeySchemas, LSeenSchemaKeys: TStringList;
-  LValue, LSchemaKey: string;
+  LSchemaKey: string;
 begin
   LPayload := TRpQueuedSchemasPayload.Create;
   LUserSchemas := TStringList.Create;
@@ -843,26 +852,23 @@ begin
     except
       LApiKeySchemas.Clear;
     end;
+    // 'Name=db|schema|apikey' and the state of the Agent; the session has no
+    // API key. A schema once: by its Hub database and schema
     for I := 0 to LUserSchemas.Count - 1 do
     begin
-      LValue := LUserSchemas.ValueFromIndex[I];
-      if LSeenSchemaKeys.IndexOf(LValue) >= 0 then
-        Continue;
-      LSeenSchemaKeys.Add(LValue);
-      LPayload.Schemas.Add(LUserSchemas.Names[I] + '=' + LValue + '|');
-    end;
-    for I := 0 to LApiKeySchemas.Count - 1 do
-    begin
-      LValue := LApiKeySchemas.ValueFromIndex[I];
-      LPosSep := LastDelimiter('|', LValue);
-      if LPosSep > 0 then
-        LSchemaKey := Copy(LValue, 1, LPosSep - 1)
-      else
-        LSchemaKey := LValue;
+      LSchemaKey := RpHubSchemaKey(LUserSchemas.ValueFromIndex[I]);
       if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
         Continue;
       LSeenSchemaKeys.Add(LSchemaKey);
-      LPayload.Schemas.Add(LApiKeySchemas.Names[I] + '=' + LValue);
+      LPayload.Schemas.Add(RpHubSchemaLineWithApiKey(LUserSchemas[I], ''));
+    end;
+    for I := 0 to LApiKeySchemas.Count - 1 do
+    begin
+      LSchemaKey := RpHubSchemaKey(LApiKeySchemas.ValueFromIndex[I]);
+      if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
+        Continue;
+      LSeenSchemaKeys.Add(LSchemaKey);
+      LPayload.Schemas.Add(LApiKeySchemas[I]);
     end;
     LPayload.ReloadVersion := ReloadVersion;
     Post(LPayload);
@@ -1258,11 +1264,11 @@ begin
   // fixed and AutoSize only sets the height (Cocoa gives the combo a
   // preferred width, that AutoSize would set back on every Resize)
   ComboSchema.Anchors := [akLeft, akTop, akRight];
-  ComboSchema.Style := csDropDownList;
+  // The red dot of the schemas whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(ComboSchema, ComboSchemaDrawItem);
   ComboSchema.OnChange := ComboSchemaChange;
   ComboSchema.OnCloseUp := ComboSchemaCloseUp;
   ComboSchema.OnDropDown := ComboSchemaDropDown;
-  ComboSchema.ShowHint := True;
 
   PSchemaConfigHost := NewPanel(PSchemaHost, alNone);
   FSchemaConfigButton := TRpChatIconButton.Create(Self);
@@ -1806,11 +1812,41 @@ begin
   finally
     FSelectingSchema := False;
   end;
+  LText := '';
   if SchemaItemExceedsPlan(SelectedSchemaItem) then
-    ComboSchema.Hint := TranslateStr(1844, 'More than your plan allows with ' +
-      'the AI in the cloud: choose a smaller schema or use the AI on your Agent.')
-  else
-    ComboSchema.Hint := '';
+    LText := string(TranslateStr(1844, 'More than your plan allows with ' +
+      'the AI in the cloud: choose a smaller schema or use the AI on your Agent.'));
+  if (SelectedSchemaItem <> nil) and SelectedSchemaItem.Offline then
+  begin
+    if LText <> '' then
+      LText := LText + LineEnding;
+    LText := LText + string(TranslateStr(2004, 'The Agent of this database ' +
+      'is not connected: the AI can design with its schema, but the data ' +
+      'cannot be opened until it comes back.'));
+  end;
+  ComboSchema.Hint := LText;
+  TRpChatStyle.FitComboDropDownWidth(ComboSchema);
+end;
+
+// The red dot of a schema whose Agent is not connected, right before its
+// name: after the icon and the warning of the plan (SchemaItemText)
+procedure TFRpChatFrame.ComboSchemaDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  LItem: TSchemaComboItem;
+  LText: string;
+  LDotAt: Integer;
+begin
+  // -1: the edit field without a selection
+  LText := '';
+  if (Index >= 0) and (Index < ComboSchema.Items.Count) then
+    LText := ComboSchema.Items[Index];
+  LItem := SchemaItem(Index);
+  LDotAt := -1;
+  if (LItem <> nil) and LItem.Offline and
+    (Copy(LText, Length(LText) - Length(LItem.Caption) + 1, MaxInt) = LItem.Caption) then
+    LDotAt := Length(LText) - Length(LItem.Caption);
+  TRpChatStyle.DrawComboItem(ComboSchema.Canvas, ARect, State, LText, LDotAt);
 end;
 
 // The list: the local subschemas, the schemas in the cloud and the two
@@ -1877,13 +1913,16 @@ begin
           LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LParts[2])
         else
           LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, '');
+        // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
+        LItem.Offline := RpHubOnlineState(RpHubLineField(LValue, 3)) = hosOffline;
         if ParseSchemaSize(FHubSizes.Values[IntToStr(LHubSchemaId)], LTables,
           LWidest) then
         begin
           LItem.Tables := LTables;
           LItem.WidestColumns := LWidest;
         end;
-        LItem.Caption := LDisplayName + SchemaSizeSuffix(LItem.Tables);
+        LItem.Caption := LDisplayName + TRpChatStyle.OfflineText(LItem.Offline) +
+          SchemaSizeSuffix(LItem.Tables);
         ComboSchema.Items.AddObject(SchemaItemText(LItem), LItem);
       end;
     end;

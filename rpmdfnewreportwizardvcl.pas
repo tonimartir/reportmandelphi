@@ -196,6 +196,12 @@ type
     procedure DoDaoBuild(Sender: TObject);
     procedure DoDaoTest(Sender: TObject);
     procedure DoParamsTest(Sender: TObject);
+    // The Hub databases whose Agent is not connected: a red dot and a hint
+    procedure DoHubDatabaseChange(Sender: TObject);
+    procedure DoHubDatabaseDropDown(Sender: TObject);
+    procedure DoHubDatabaseDrawItem(Control: TWinControl; Index: Integer;
+      Rect: TRect; State: TOwnerDrawState);
+    function HubDatabaseOffline(AIndex: Integer): Boolean;
 
     // AQuiet: without the "Logged in" message (entering the page)
     procedure LoadHubDatabases(AQuiet: Boolean = False);
@@ -291,7 +297,7 @@ implementation
 {$R *.dfm}
 
 uses
-  rpdatahttp, rplocalschemas, rpfrmlocalschemasvcl;
+  rpdatahttp, rplocalschemas, rpfrmlocalschemasvcl, rpchatmodernstyle;
 
 const
   // The pages only the VCL has (no key in the Lazarus twin)
@@ -891,7 +897,8 @@ begin
         if FState.ConnMode = cnNew then
         begin
           FState.HubDatabaseName := FHubDatabases.Names[FCbHubDatabase.ItemIndex];
-          FState.HubDatabaseId := StrToInt64Def(FHubDatabases.ValueFromIndex[FCbHubDatabase.ItemIndex], 0);
+          FState.HubDatabaseId := StrToInt64Def(RpHubLineField(
+            FHubDatabases.ValueFromIndex[FCbHubDatabase.ItemIndex], 0), 0);
           values := TStringList.Create;
           try
             // A connection of another driver created by this wizard with the
@@ -1441,7 +1448,11 @@ begin
   FCbHubDatabase.Parent := PContent;
   FCbHubDatabase.Left := 24; FCbHubDatabase.Top := LTop + 20;
   FCbHubDatabase.Width := 480;
-  FCbHubDatabase.Style := csDropDownList;
+  // The red dot of the databases whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(FCbHubDatabase, DoHubDatabaseDrawItem);
+  FCbHubDatabase.ItemHeight := TRpChatStyle.ComboItemHeight(FCbHubDatabase);
+  FCbHubDatabase.OnChange := DoHubDatabaseChange;
+  FCbHubDatabase.OnDropDown := DoHubDatabaseDropDown;
 
   FBtnHubRefresh := TButton.Create(PContent);
   FBtnHubRefresh.Parent := PContent;
@@ -2246,8 +2257,11 @@ begin
       // Connection wizard: the Hub database of the report connection
       if FPreferredHubDatabaseId > 0 then
         for i := 0 to list.Count - 1 do
-          if StrToInt64Def(list.ValueFromIndex[i], 0) = FPreferredHubDatabaseId then
+          if StrToInt64Def(RpHubLineField(list.ValueFromIndex[i], 0), 0) =
+            FPreferredHubDatabaseId then
             FCbHubDatabase.ItemIndex := i;
+      TRpChatStyle.FitComboDropDownWidth(FCbHubDatabase);
+      DoHubDatabaseChange(FCbHubDatabase);
     end;
     if not AQuiet then
       RpMessageBox(Format(TR(1780, 'Logged in. Loaded %d connections.'),
@@ -2256,6 +2270,42 @@ begin
   finally
     list.Free;
   end;
+end;
+
+// The line of FHubDatabases says that the Agent is not connected
+// (RpHubDatabaseLine: '<label>=<hubDatabaseId>|<online>|<agentName>')
+function TFRpNewReportWizardVCL.HubDatabaseOffline(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < FHubDatabases.Count) and
+    (RpHubOnlineState(RpHubLineField(FHubDatabases.ValueFromIndex[AIndex], 1)) =
+    hosOffline);
+end;
+
+procedure TFRpNewReportWizardVCL.DoHubDatabaseChange(Sender: TObject);
+begin
+  if HubDatabaseOffline(FCbHubDatabase.ItemIndex) then
+    FCbHubDatabase.Hint := TR(2004, 'The Agent of this database is not ' +
+      'connected: the AI can design with its schema, but the data cannot be ' +
+      'opened until it comes back.')
+  else
+    FCbHubDatabase.Hint := '';
+end;
+
+procedure TFRpNewReportWizardVCL.DoHubDatabaseDropDown(Sender: TObject);
+begin
+  TRpChatStyle.FitComboDropDownWidth(FCbHubDatabase);
+end;
+
+procedure TFRpNewReportWizardVCL.DoHubDatabaseDrawItem(Control: TWinControl;
+  Index: Integer; Rect: TRect; State: TOwnerDrawState);
+var
+  LDotAt: Integer;
+begin
+  LDotAt := -1;
+  if HubDatabaseOffline(Index) then
+    LDotAt := 0;
+  TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
+    FCbHubDatabase.Items[Index], LDotAt);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageFinish;

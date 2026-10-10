@@ -41,6 +41,10 @@ type
     // widest one
     Tables: Integer;
     WidestColumns: Integer;
+    // A Hub schema whose Agent the cloud says is not connected: a red dot
+    // before its name and a hint; it can still be chosen (the AI designs
+    // with the schema, the data can not be opened)
+    Offline: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
     constructor CreateLocal(const ALocalAlias, ALocalSchemaName: string);
     constructor CreateKind(AKind: TSchemaComboItemKind; const ACaption: string);
@@ -214,6 +218,8 @@ type
     procedure RunSchemaAction(AKind: TSchemaComboItemKind);
     procedure ComboSchemaCloseUp(Sender: TObject);
     procedure ComboSchemaDropDown(Sender: TObject);
+    procedure ComboSchemaDrawItem(Control: TWinControl; Index: Integer;
+      Rect: TRect; State: TOwnerDrawState);
     procedure AISelectionProviderChange(Sender: TObject);
     procedure MenuLocalSchemasClick(Sender: TObject);
     procedure MenuCloudSchemasClick(Sender: TObject);
@@ -618,11 +624,11 @@ begin
     PAISelectionHost.Height := 0;
   end;
 
-  ComboSchema.Style := csDropDownList;
+  // The red dot of the schemas whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(ComboSchema, ComboSchemaDrawItem);
   ComboSchema.OnChange := ComboSchemaChange;
   ComboSchema.OnCloseUp := ComboSchemaCloseUp;
   ComboSchema.OnDropDown := ComboSchemaDropDown;
-  ComboSchema.ShowHint := True;
   FHubDatabaseId := 0;
   FHubSchemaId := 0;
   FSchemaApiKey := '';
@@ -1253,11 +1259,38 @@ begin
   finally
     FSelectingSchema := False;
   end;
+  LText := '';
   if SchemaItemExceedsPlan(SelectedSchemaItem) then
-    ComboSchema.Hint := TranslateStr(1844, 'More than your plan allows with ' +
-      'the AI in the cloud: choose a smaller schema or use the AI on your Agent.')
-  else
-    ComboSchema.Hint := '';
+    LText := TranslateStr(1844, 'More than your plan allows with ' +
+      'the AI in the cloud: choose a smaller schema or use the AI on your Agent.');
+  if (SelectedSchemaItem <> nil) and SelectedSchemaItem.Offline then
+  begin
+    if LText <> '' then
+      LText := LText + sLineBreak;
+    LText := LText + TranslateStr(2004, 'The Agent of this database is not ' +
+      'connected: the AI can design with its schema, but the data cannot be ' +
+      'opened until it comes back.');
+  end;
+  ComboSchema.Hint := LText;
+  TRpChatStyle.FitComboDropDownWidth(ComboSchema);
+end;
+
+// The red dot of a schema whose Agent is not connected, right before its
+// name: after the icon and the warning of the plan (SchemaItemText)
+procedure TFRpChatFrame.ComboSchemaDrawItem(Control: TWinControl;
+  Index: Integer; Rect: TRect; State: TOwnerDrawState);
+var
+  LItem: TSchemaComboItem;
+  LText: string;
+  LDotAt: Integer;
+begin
+  LText := ComboSchema.Items[Index];
+  LItem := SchemaItem(Index);
+  LDotAt := -1;
+  if (LItem <> nil) and LItem.Offline and
+    (Copy(LText, Length(LText) - Length(LItem.Caption) + 1, MaxInt) = LItem.Caption) then
+    LDotAt := Length(LText) - Length(LItem.Caption);
+  TRpChatStyle.DrawComboItem(ComboSchema.Canvas, Rect, State, LText, LDotAt);
 end;
 
 // The list: the local subschemas, the schemas in the cloud and the two
@@ -1324,6 +1357,8 @@ begin
           LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, LParts[2])
         else
           LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, '');
+        // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
+        LItem.Offline := RpHubOnlineState(RpHubLineField(LValue, 3)) = hosOffline;
         if ParseSchemaSize(FHubSizes.Values[IntToStr(LHubSchemaId)], LTables,
           LWidest) then
         begin
@@ -1619,7 +1654,9 @@ begin
               LSchemaKey := LSchemaValue
             else
               LSchemaKey := '0|' + LSchemaValue;
-            AList.Add(LSchemaDisplayName + '=' + LSchemaKey + '|' + LApiKey);
+            // The API key after the ids, then the state of the Agent
+            AList.Add(RpHubSchemaLineWithApiKey(LSchemaDisplayName + '=' +
+              LSchemaKey, LApiKey));
           end;
         end;
       finally
@@ -1649,13 +1686,11 @@ begin
   LWorker := TThread.CreateAnonymousThread(
     procedure
     var
-      I, LPosSep: Integer;
+      I: Integer;
       LPayload: TRpQueuedSchemasPayload;
       LUserSchemas: TStringList;
       LApiKeySchemas: TStringList;
       LSeenSchemaKeys: TStringList;
-      LDisplayName: string;
-      LValue: string;
       LSchemaKey: string;
     begin
       LPayload := TRpQueuedSchemasPayload.Create;
@@ -1683,30 +1718,24 @@ begin
           LApiKeySchemas.Clear;
         end;
 
+        // 'Name=db|schema|apikey' and the state of the Agent; the session has
+        // no API key. A schema once: by its Hub database and schema
         for I := 0 to LUserSchemas.Count - 1 do
         begin
-          LDisplayName := LUserSchemas.Names[I];
-          LValue := LUserSchemas.ValueFromIndex[I];
-          LSchemaKey := LValue;
+          LSchemaKey := RpHubSchemaKey(LUserSchemas.ValueFromIndex[I]);
           if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
             Continue;
           LSeenSchemaKeys.Add(LSchemaKey);
-          LPayload.Schemas.Add(LDisplayName + '=' + LValue + '|');
+          LPayload.Schemas.Add(RpHubSchemaLineWithApiKey(LUserSchemas[I], ''));
         end;
 
         for I := 0 to LApiKeySchemas.Count - 1 do
         begin
-          LDisplayName := LApiKeySchemas.Names[I];
-          LValue := LApiKeySchemas.ValueFromIndex[I];
-          LPosSep := LastDelimiter('|', LValue);
-          if LPosSep > 0 then
-            LSchemaKey := Copy(LValue, 1, LPosSep - 1)
-          else
-            LSchemaKey := LValue;
+          LSchemaKey := RpHubSchemaKey(LApiKeySchemas.ValueFromIndex[I]);
           if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
             Continue;
           LSeenSchemaKeys.Add(LSchemaKey);
-          LPayload.Schemas.Add(LDisplayName + '=' + LValue);
+          LPayload.Schemas.Add(LApiKeySchemas[I]);
         end;
 
         LPayload.ReloadVersion := LReloadVersion;

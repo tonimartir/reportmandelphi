@@ -135,6 +135,8 @@ type
     FInlineConfigJson: string;
     procedure SetConnected(Value: Boolean);
   public
+    // The Hub databases of api/agent/databases, one line per schema (the
+    // same line once): RpHubDatabaseLine
     class function GetHubDatabases(const AApiKey: string; AList: TStrings): Boolean;
     constructor Create;
     function TestConnection: Boolean;
@@ -182,6 +184,9 @@ type
       AOnResult: TRpExpressionStreamResultEvent;
       ACancel: TRpExpressionStreamCancelEvent): Boolean;
     function GetSchemas(AList: TStrings): Boolean;
+    // The schemas of api/agent/databases (RpHubSchemaLine):
+    // '<label>=<hubDatabaseId>|<hubSchemaId>', and the state of the Agent and
+    // its name when the cloud says them (RpHubLineField)
     function GetUserSchemas(AList: TStrings): Boolean; overload;
     // With the size of each schema in ASizes (nil = not wanted), from its
     // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
@@ -274,7 +279,37 @@ type
     function GetState: TRpSchemaAnalysisState;
   end;
 
+  // Whether the Agent of a schema (or a database) of api/agent/databases is
+  // connected: its isOnline. hosUnknown when the cloud does not say it (an
+  // older one): the lists draw nothing then
+  TRpHubOnlineState = (hosUnknown, hosOnline, hosOffline);
+
 // HUB_API_URL constants moved to rptypes.pas
+
+// The lines of the schemas and databases of api/agent/databases
+// (GetUserSchemas, GetHubDatabases): '<label>=<hubDatabaseId>|<hubSchemaId>'
+// for a schema and '<label>=<hubDatabaseId>' for a database. When the cloud
+// says whether the Agent is connected or names it, the line ends with
+// '|<online>|<agentName>': <online> is '1', '0' or '' (not known), and a '|'
+// in the name is written '/'. The label is '<schema> - <Agent>' and
+// '<database> - <Agent>'; without the name of the Agent, the ones of before
+// ('<database> / <schema>' and the displayName)
+function RpHubSchemaLine(AItem: TJSONObject): string;
+function RpHubDatabaseLine(AItem: TJSONObject): string;
+// The field AIndex (from 0) of the value of such a line ('' when it has
+// fewer)
+function RpHubLineField(const AValue: string; AIndex: Integer): string;
+// The state of an <online> field
+function RpHubOnlineState(const AField: string): TRpHubOnlineState;
+// The Hub database and schema of the value of a schema line,
+// '<hubDatabaseId>|<hubSchemaId>': the key that merges the lists read with
+// several API keys
+function RpHubSchemaKey(const AValue: string): string;
+// A schema line with the API key it was read with right after the ids, as
+// the lists of the designer keep it ('' = the session):
+// '<label>=<hubDatabaseId>|<hubSchemaId>|<apiKey>' and then the rest of the
+// line ('|<online>|<agentName>')
+function RpHubSchemaLineWithApiKey(const ALine, AApiKey: string): string;
 
 // "Analyze with AI" of the local schema screens: AnalyzeSchema in a thread
 // of its own with the session of TRpAuthManager. The screen reads GetState
@@ -2188,6 +2223,155 @@ begin
   end;
 end;
 
+{ The lines of the schemas and databases of api/agent/databases }
+
+// A text of a schema of the list ('' when missing or null)
+function HubItemText(AItem: TJSONObject; const AName: string): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  LValue := AItem.Values[AName];
+  if (LValue <> nil) and not (LValue is TJSONNull) then
+    Result := LValue.Value;
+end;
+
+// The <online> field of a schema: '1', '0' or '' (the cloud does not say it)
+function HubItemOnline(AItem: TJSONObject): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  LValue := AItem.Values['isOnline'];
+  if LValue is TJSONBool then
+  begin
+    if TJSONBool(LValue).AsBoolean then
+      Result := '1'
+    else
+      Result := '0';
+  end
+  else if (LValue <> nil) and not (LValue is TJSONNull) then
+  begin
+    if SameText(LValue.Value, 'true') then
+      Result := '1'
+    else if SameText(LValue.Value, 'false') then
+      Result := '0';
+  end;
+end;
+
+// The name of the Agent of a schema ('' when the cloud does not name it)
+function HubItemAgentName(AItem: TJSONObject): string;
+begin
+  Result := StringReplace(Trim(HubItemText(AItem, 'agentName')), '|', '/',
+    [rfReplaceAll]);
+end;
+
+// '|<online>|<agentName>' when the cloud says either of them; nothing
+// otherwise, so the line of an older cloud is the one of before
+function HubItemAgentFields(AItem: TJSONObject): string;
+var
+  LOnline, LAgentName: string;
+begin
+  Result := '';
+  LOnline := HubItemOnline(AItem);
+  LAgentName := HubItemAgentName(AItem);
+  if (LOnline <> '') or (LAgentName <> '') then
+    Result := '|' + LOnline + '|' + LAgentName;
+end;
+
+function RpHubSchemaLine(AItem: TJSONObject): string;
+var
+  LLabel, LAgentName: string;
+begin
+  LAgentName := HubItemAgentName(AItem);
+  LLabel := HubItemText(AItem, 'name');
+  if (LAgentName <> '') and (LLabel <> '') then
+    LLabel := LLabel + ' - ' + LAgentName
+  else if HubItemText(AItem, 'displayName') <> '' then
+    LLabel := StringReplace(HubItemText(AItem, 'displayName'), ' - ', ' / ', []);
+  Result := LLabel + '=' + HubItemText(AItem, 'hubDatabaseId') + '|' +
+    HubItemText(AItem, 'hubSchemaId') + HubItemAgentFields(AItem);
+end;
+
+function RpHubDatabaseLine(AItem: TJSONObject): string;
+var
+  LLabel, LAgentName, LSuffix: string;
+  LPos: Integer;
+begin
+  LLabel := HubItemText(AItem, 'displayName');
+  LAgentName := HubItemAgentName(AItem);
+  if (LAgentName <> '') and (LLabel <> '') then
+  begin
+    // The database of the displayName, '<database> - <schema>'
+    LSuffix := ' - ' + HubItemText(AItem, 'name');
+    if (Length(LLabel) > Length(LSuffix)) and
+      (Copy(LLabel, Length(LLabel) - Length(LSuffix) + 1, MaxInt) = LSuffix) then
+      LLabel := Copy(LLabel, 1, Length(LLabel) - Length(LSuffix))
+    else
+    begin
+      LPos := Pos(' - ', LLabel);
+      if LPos > 0 then
+        LLabel := Copy(LLabel, 1, LPos - 1);
+    end;
+    LLabel := LLabel + ' - ' + LAgentName;
+  end;
+  if LLabel = '' then
+    LLabel := HubItemText(AItem, 'name');
+  Result := LLabel + '=' + HubItemText(AItem, 'hubDatabaseId') +
+    HubItemAgentFields(AItem);
+end;
+
+function RpHubLineField(const AValue: string; AIndex: Integer): string;
+var
+  I, LStart, LPos: Integer;
+begin
+  Result := '';
+  LStart := 1;
+  for I := 1 to AIndex do
+  begin
+    LPos := PosEx('|', AValue, LStart);
+    if LPos = 0 then
+      Exit;
+    LStart := LPos + 1;
+  end;
+  LPos := PosEx('|', AValue, LStart);
+  if LPos = 0 then
+    Result := Copy(AValue, LStart, MaxInt)
+  else
+    Result := Copy(AValue, LStart, LPos - LStart);
+end;
+
+function RpHubOnlineState(const AField: string): TRpHubOnlineState;
+begin
+  if AField = '1' then
+    Result := hosOnline
+  else if AField = '0' then
+    Result := hosOffline
+  else
+    Result := hosUnknown;
+end;
+
+function RpHubSchemaKey(const AValue: string): string;
+begin
+  Result := RpHubLineField(AValue, 0) + '|' + RpHubLineField(AValue, 1);
+end;
+
+function RpHubSchemaLineWithApiKey(const ALine, AApiKey: string): string;
+var
+  LPos: Integer;
+  LValue: string;
+begin
+  LPos := Pos('=', ALine);
+  LValue := Copy(ALine, LPos + 1, MaxInt);
+  Result := Copy(ALine, 1, LPos) + RpHubSchemaKey(LValue) + '|' + AApiKey;
+  // The state of the Agent and its name, after the two ids
+  LPos := Pos('|', LValue);
+  if LPos > 0 then
+    LPos := PosEx('|', LValue, LPos + 1);
+  if LPos > 0 then
+    Result := Result + Copy(LValue, LPos, MaxInt);
+end;
+
 class function TRpDatabaseHttp.GetHubDatabases(const AApiKey: string;
   AList: TStrings): Boolean;
 var
@@ -2196,8 +2380,8 @@ var
   LResponseStream: TMemoryStream;
   LJson: TJSONObject;
   LDatabases: TJSONArray;
-  LItem: TJSONObject;
   LBuffer: TBytes;
+  LLine: string;
   i: Integer;
 begin
   Result := False;
@@ -2228,8 +2412,11 @@ begin
             AList.Clear;
             for i := 0 to LDatabases.Count - 1 do
             begin
-              LItem := LDatabases.Items[i] as TJSONObject;
-              AList.Add(LItem.GetValue('displayName').Value + '=' + LItem.GetValue('hubDatabaseId').Value);
+              // The schemas of a database named by its Agent make the same
+              // line: once
+              LLine := RpHubDatabaseLine(LDatabases.Items[i] as TJSONObject);
+              if AList.IndexOf(LLine) < 0 then
+                AList.Add(LLine);
             end;
             Result := True;
           end;
@@ -2375,8 +2562,6 @@ var
   LDatabases: TJSONArray;
   I: Integer;
   LItem: TJSONObject;
-  LDisplayName: string;
-  LValue: TJSONValue;
   LSize: string;
 begin
   Result := False;
@@ -2397,15 +2582,7 @@ begin
           for I := 0 to LDatabases.Count - 1 do
           begin
             LItem := LDatabases.Items[I] as TJSONObject;
-            LValue := LItem.Values['displayName'];
-            if (LValue <> nil) and (LValue.Value <> '') then
-              LDisplayName := StringReplace(LValue.Value, ' - ', ' / ', [])
-            else
-              LDisplayName := LItem.Values['name'].Value;
-
-            AList.Add(LDisplayName + '=' +
-              LItem.Values['hubDatabaseId'].Value + '|' +
-              LItem.Values['hubSchemaId'].Value);
+            AList.Add(RpHubSchemaLine(LItem));
             if ASizes <> nil then
             begin
               LSize := SchemaTablesSizeText(LItem);

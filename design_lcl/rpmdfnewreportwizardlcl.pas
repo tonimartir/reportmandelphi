@@ -201,6 +201,12 @@ type
     // A Reportman AI session: the API key of an Agent connection is optional
     function HasHubSession: Boolean;
     procedure FillHubDatabaseCombo;
+    // The Hub databases whose Agent is not connected: a red dot (the text
+    // "(not connected)" where it can not be drawn) and a hint
+    procedure DoHubDatabaseChange(Sender: TObject);
+    procedure DoHubDatabaseDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
+    function HubDatabaseOffline(AIndex: Integer): Boolean;
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
     procedure UpdateExistingConnDriverHint;
@@ -350,7 +356,7 @@ implementation
 
 uses
   rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc,
-  rplocalschemas, rpfrmlocalschemaslcl;
+  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -441,13 +447,13 @@ var
   LStream: TStringStream;
   LValue: TJSONValue;
   LDatabases: TJSONArray;
-  LItem: TJSONObject;
-  LName, LId: string;
+  LLine: string;
   LPayload: TRpWizardHubPayload;
   I: Integer;
 begin
   // TRpDatabaseHttp.GetHubDatabases with the session copied in the main
   // thread: GET api/agent/databases with the API key, "name=hubDatabaseId"
+  // and the state of the Agent (RpHubDatabaseLine)
   LPayload := TRpWizardHubPayload.Create;
   try
     LPayload.Version := Version;
@@ -470,16 +476,11 @@ begin
               begin
                 if not (LDatabases.Items[I] is TJSONObject) then
                   Continue;
-                LItem := TJSONObject(LDatabases.Items[I]);
-                LName := '';
-                if LItem.Values['displayName'] <> nil then
-                  LName := LItem.Values['displayName'].Value;
-                if (LName = '') and (LItem.Values['name'] <> nil) then
-                  LName := LItem.Values['name'].Value;
-                LId := '';
-                if LItem.Values['hubDatabaseId'] <> nil then
-                  LId := LItem.Values['hubDatabaseId'].Value;
-                LPayload.Databases.Add(LName + '=' + LId);
+                // The schemas of a database named by its Agent make the
+                // same line: once
+                LLine := RpHubDatabaseLine(TJSONObject(LDatabases.Items[I]));
+                if LPayload.Databases.IndexOf(LLine) < 0 then
+                  LPayload.Databases.Add(LLine);
               end;
               LPayload.Ok := True;
             end;
@@ -1363,8 +1364,8 @@ begin
         if FState.ConnMode = cnNew then
         begin
           FState.HubDatabaseName := FHubDatabases.Names[CbHubDatabase.ItemIndex];
-          FState.HubDatabaseId := StrToInt64Def(
-            FHubDatabases.ValueFromIndex[CbHubDatabase.ItemIndex], 0);
+          FState.HubDatabaseId := StrToInt64Def(RpHubLineField(
+            FHubDatabases.ValueFromIndex[CbHubDatabase.ItemIndex], 0), 0);
           values := TStringList.Create;
           testValues := TStringList.Create;
           try
@@ -1806,6 +1807,9 @@ begin
   LRow := NewRow(0, 4);
   BtnHubRefresh := NewRowButton(LRow, [TR(1149, 'Refresh'), TR(1783, 'Log in')], DoHubRefresh);
   CbHubDatabase := NewRowCombo(LRow, csDropDownList);
+  // The red dot of the databases whose Agent is not connected
+  TRpChatStyle.SetupDotCombo(CbHubDatabase, DoHubDatabaseDrawItem);
+  CbHubDatabase.OnChange := DoHubDatabaseChange;
   FillHubDatabaseCombo;
 
   // The databases of the session, or of the key of a previous visit
@@ -2510,12 +2514,52 @@ begin
   try
     CbHubDatabase.Items.Clear;
     for I := 0 to FHubDatabases.Count - 1 do
-      CbHubDatabase.Items.Add(FHubDatabases.Names[I]);
+      CbHubDatabase.Items.Add(FHubDatabases.Names[I] +
+        TRpChatStyle.OfflineText(HubDatabaseOffline(I)));
   finally
     CbHubDatabase.Items.EndUpdate;
   end;
   if CbHubDatabase.Items.Count > 0 then
     CbHubDatabase.ItemIndex := 0;
+  TRpChatStyle.FitComboDropDownWidth(CbHubDatabase);
+  DoHubDatabaseChange(CbHubDatabase);
+end;
+
+// The line of FHubDatabases says that the Agent is not connected
+// (RpHubDatabaseLine: '<label>=<hubDatabaseId>|<online>|<agentName>')
+function TFRpNewReportWizardLCL.HubDatabaseOffline(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < FHubDatabases.Count) and
+    (RpHubOnlineState(RpHubLineField(FHubDatabases.ValueFromIndex[AIndex], 1)) =
+    hosOffline);
+end;
+
+procedure TFRpNewReportWizardLCL.DoHubDatabaseChange(Sender: TObject);
+begin
+  if CbHubDatabase = nil then
+    Exit;
+  if HubDatabaseOffline(CbHubDatabase.ItemIndex) then
+    CbHubDatabase.Hint := TR(2004, 'The Agent of this database is not ' +
+      'connected: the AI can design with its schema, but the data cannot be ' +
+      'opened until it comes back.')
+  else
+    CbHubDatabase.Hint := '';
+end;
+
+procedure TFRpNewReportWizardLCL.DoHubDatabaseDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  LText: string;
+  LDotAt: Integer;
+begin
+  // -1: the edit field without a selection
+  LText := '';
+  if (Index >= 0) and (Index < CbHubDatabase.Items.Count) then
+    LText := CbHubDatabase.Items[Index];
+  LDotAt := -1;
+  if HubDatabaseOffline(Index) then
+    LDotAt := 0;
+  TRpChatStyle.DrawComboItem(CbHubDatabase.Canvas, ARect, State, LText, LDotAt);
 end;
 
 procedure TFRpNewReportWizardLCL.ApplyHubDatabases(AOk: Boolean;
@@ -2535,9 +2579,13 @@ begin
   FillHubDatabaseCombo;
   // Connection wizard: the Hub database of the report connection
   if (FPreferredHubDatabaseId > 0) and Assigned(CbHubDatabase) then
+  begin
     for I := 0 to FHubDatabases.Count - 1 do
-      if StrToInt64Def(FHubDatabases.ValueFromIndex[I], 0) = FPreferredHubDatabaseId then
+      if StrToInt64Def(RpHubLineField(FHubDatabases.ValueFromIndex[I], 0), 0) =
+        FPreferredHubDatabaseId then
         CbHubDatabase.ItemIndex := I;
+    DoHubDatabaseChange(CbHubDatabase);
+  end;
   if not FQuietHubLoad then
     RpMessageBox(WideString(Format(TR(1780, 'Logged in. Loaded %d connections.'),
       [ADatabases.Count])), WideString(TR(1778, 'Reportman AI')), [smbOK],

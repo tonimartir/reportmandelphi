@@ -81,6 +81,24 @@ type
     // Smooth antialiased arc using GDI polyline
     class procedure DrawAntialiasedArc(ACanvas: TCanvas; const ARect: TRect;
       AStartDeg, ASweepDeg: Double; AColor: TColor; APenWidth: Integer); static;
+
+    // The lists of the cloud schemas and of the Hub databases draw a red dot
+    // before the name of one whose Agent is not connected: an owner-drawn
+    // combo (DrawComboItem), with the hint on. The height of its items is
+    // the one of StyleInputControl, or ComboItemHeight
+    class procedure SetupDotCombo(ACombo: TComboBox;
+      AOnDrawItem: TDrawItemEvent); static;
+    // The height of the items of such a combo with its font
+    class function ComboItemHeight(ACombo: TComboBox): Integer; static;
+    // An item of such a combo as the VCL draws it (the combo sets the colours
+    // of its state): AText, with the red dot after its first ADotAt
+    // characters (the icons, so the dot is right before the name); -1 = no
+    // dot
+    class procedure DrawComboItem(ACanvas: TCanvas; const ARect: TRect;
+      AState: TOwnerDrawState; const AText: string; ADotAt: Integer); static;
+    // The open list as wide as its longest text and the dot: at least the
+    // combo, at most 600 pixels or the screen (nothing without its window)
+    class procedure FitComboDropDownWidth(ACombo: TComboBox); static;
   end;
 
 function Scale(AValue: Integer; ADpi: Integer = 96): Integer; inline;
@@ -549,6 +567,113 @@ begin
   Txt := ALabel;
   DrawText(ACanvas.Handle, PChar(Txt), Length(Txt), R,
     DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+// The red dot of DrawComboItem for the height of the text, and the room it
+// takes with the gap after it
+function ComboDotSize(ATextHeight: Integer): Integer;
+begin
+  Result := ATextHeight * 2 div 5;
+  if Result < 5 then
+    Result := 5;
+end;
+
+function ComboDotRoom(ATextHeight: Integer): Integer;
+begin
+  Result := ComboDotSize(ATextHeight);
+  Result := Result + Result div 2 + 1;
+end;
+
+class procedure TRpChatStyle.SetupDotCombo(ACombo: TComboBox;
+  AOnDrawItem: TDrawItemEvent);
+begin
+  ACombo.Style := csOwnerDrawFixed;
+  ACombo.OnDrawItem := AOnDrawItem;
+  ACombo.ShowHint := True;
+end;
+
+class function TRpChatStyle.ComboItemHeight(ACombo: TComboBox): Integer;
+var
+  LBmp: TBitmap;
+begin
+  LBmp := TBitmap.Create;
+  try
+    LBmp.Canvas.Font.Assign(ACombo.Font);
+    Result := LBmp.Canvas.TextHeight('Mg') + 2;
+  finally
+    LBmp.Free;
+  end;
+end;
+
+class procedure TRpChatStyle.DrawComboItem(ACanvas: TCanvas;
+  const ARect: TRect; AState: TOwnerDrawState; const AText: string;
+  ADotAt: Integer);
+var
+  X, Y, LTextHeight, LSize, LDotTop: Integer;
+  LBrushColor, LPenColor: TColor;
+  LPrefix: string;
+begin
+  ACanvas.FillRect(ARect);
+  // 1 pixel in in the edit field and 2 in the list, as the VCL draws them
+  if odComboBoxEdit in AState then
+    X := ARect.Left + 1
+  else
+    X := ARect.Left + 2;
+  LTextHeight := ACanvas.TextHeight('Mg');
+  Y := ARect.Top + (ARect.Bottom - ARect.Top - LTextHeight) div 2;
+  if ADotAt < 0 then
+  begin
+    ACanvas.TextOut(X, Y, AText);
+    Exit;
+  end;
+  LPrefix := Copy(AText, 1, ADotAt);
+  if LPrefix <> '' then
+  begin
+    ACanvas.TextOut(X, Y, LPrefix);
+    Inc(X, ACanvas.TextWidth(LPrefix));
+  end;
+  LSize := ComboDotSize(LTextHeight);
+  LDotTop := ARect.Top + (ARect.Bottom - ARect.Top - LSize) div 2;
+  LBrushColor := ACanvas.Brush.Color;
+  LPenColor := ACanvas.Pen.Color;
+  ACanvas.Brush.Color := ClrDanger;
+  ACanvas.Pen.Color := ClrDanger;
+  ACanvas.Ellipse(X, LDotTop, X + LSize, LDotTop + LSize);
+  ACanvas.Brush.Color := LBrushColor;
+  ACanvas.Pen.Color := LPenColor;
+  Inc(X, ComboDotRoom(LTextHeight));
+  ACanvas.TextOut(X, Y, Copy(AText, ADotAt + 1, MaxInt));
+end;
+
+class procedure TRpChatStyle.FitComboDropDownWidth(ACombo: TComboBox);
+var
+  I, LWidth, LMaxWidth: Integer;
+  LBmp: TBitmap;
+begin
+  if (ACombo = nil) or not ACombo.HandleAllocated then
+    Exit;
+  LWidth := 0;
+  LBmp := TBitmap.Create;
+  try
+    LBmp.Canvas.Font.Assign(ACombo.Font);
+    for I := 0 to ACombo.Items.Count - 1 do
+      if LBmp.Canvas.TextWidth(ACombo.Items[I]) > LWidth then
+        LWidth := LBmp.Canvas.TextWidth(ACombo.Items[I]);
+    // The margins, the dot and the scroll bar
+    Inc(LWidth, Scale(8) + ComboDotRoom(LBmp.Canvas.TextHeight('Mg')));
+  finally
+    LBmp.Free;
+  end;
+  if ACombo.Items.Count > ACombo.DropDownCount then
+    Inc(LWidth, GetSystemMetrics(SM_CXVSCROLL));
+  LMaxWidth := Scale(600);
+  if LMaxWidth > Screen.Width then
+    LMaxWidth := Screen.Width;
+  if LWidth > LMaxWidth then
+    LWidth := LMaxWidth;
+  if LWidth < ACombo.Width then
+    LWidth := ACombo.Width;
+  SendMessage(ACombo.Handle, CB_SETDROPPEDWIDTH, WPARAM(LWidth), 0);
 end;
 
 end.

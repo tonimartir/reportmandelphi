@@ -1294,18 +1294,20 @@ begin
   inherited Destroy;
 end;
 
+// 'Name=db|schema|apikey' and the state of the Agent; a schema once, by its
+// Hub database and schema
 procedure AddMergedSchemas(ASource, ADest, ASeenKeys: TStrings; const ADefaultApiKey: string);
 var
   I: Integer;
-  LValue: string;
+  LSchemaKey: string;
 begin
   for I := 0 to ASource.Count - 1 do
   begin
-    LValue := ASource.ValueFromIndex[I];
-    if ASeenKeys.IndexOf(LValue) >= 0 then
+    LSchemaKey := RpHubSchemaKey(ASource.ValueFromIndex[I]);
+    if ASeenKeys.IndexOf(LSchemaKey) >= 0 then
       Continue;
-    ASeenKeys.Add(LValue);
-    ADest.Add(ASource.Names[I] + '=' + LValue + '|' + ADefaultApiKey);
+    ASeenKeys.Add(LSchemaKey);
+    ADest.Add(RpHubSchemaLineWithApiKey(ASource[I], ADefaultApiKey));
   end;
 end;
 

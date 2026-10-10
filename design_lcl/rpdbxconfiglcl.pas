@@ -1271,7 +1271,8 @@ begin
     begin
       LItem := TMenuItem.Create(FHubMenu);
       LItem.Caption := LDiscovery.Databases.Names[i];
-      LItem.Hint := LDiscovery.Databases.ValueFromIndex[i];
+      // The id, before the state of the Agent (RpHubDatabaseLine)
+      LItem.Hint := RpHubLineField(LDiscovery.Databases.ValueFromIndex[i], 0);
       LItem.OnClick := HubConnectionMenuItemClick;
       FHubMenu.Items.Add(LItem);
     end;

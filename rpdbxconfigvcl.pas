@@ -802,8 +802,9 @@ begin
     begin
       LMenuItem := TMenuItem.Create(LPopupMenu);
       LMenuItem.Caption := LPayload.Databases.Names[I];
-      LMenuItem.Hint := LPayload.Databases.ValueFromIndex[I];
-      LMenuItem.Tag := StrToIntDef(LPayload.Databases.ValueFromIndex[I], 0);
+      // The id, before the state of the Agent (RpHubDatabaseLine)
+      LMenuItem.Hint := RpHubLineField(LPayload.Databases.ValueFromIndex[I], 0);
+      LMenuItem.Tag := StrToIntDef(LMenuItem.Hint, 0);
       LMenuItem.OnClick := HubConnectionMenuItemClick;
       LPopupMenu.Items.Add(LMenuItem);
     end;

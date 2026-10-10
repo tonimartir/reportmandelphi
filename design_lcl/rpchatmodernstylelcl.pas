@@ -104,6 +104,29 @@ type
     // Text size with a font, without a control handle (memory bitmap)
     class function TextWidthOf(AFont: TFont; const AText: string): Integer; static;
     class function TextHeightOf(AFont: TFont): Integer; static;
+
+    // The lists of the cloud schemas and of the Hub databases draw a red dot
+    // before the name of one whose Agent is not connected (DrawComboItem).
+    // It needs an owner-drawn combo, and only the Windows widgetset draws
+    // the items of one: elsewhere the lists say it in the text (OfflineText)
+    class function CanDrawComboDot: Boolean; static;
+    // Such a combo: owner-drawn with AOnDrawItem and the height of its text
+    // where the dot can be drawn, csDropDownList elsewhere; the hint on
+    class procedure SetupDotCombo(ACombo: TComboBox;
+      AOnDrawItem: TDrawItemEvent); static;
+    // ' (not connected)' after the name of an Agent that is not connected
+    // where the dot can not be drawn, '' otherwise
+    class function OfflineText(AOffline: Boolean): string; static;
+    // An item of such a combo as the LCL draws it (the combo sets the
+    // colours of its state): AText, with the red dot after its first ADotAt
+    // characters (the icons, so the dot is right before the name); -1 = no
+    // dot
+    class procedure DrawComboItem(ACanvas: TCanvas; const ARect: TRect;
+      AState: TOwnerDrawState; const AText: string; ADotAt: Integer); static;
+    // The open list as wide as its longest text and the dot: at least the
+    // combo, at most 600 pixels or the screen (ItemWidth, CB_SETDROPPEDWIDTH
+    // of the Windows widgetset; the others size their lists themselves)
+    class procedure FitComboDropDownWidth(ACombo: TComboBox); static;
   end;
 
   { TRpChatIconButton: flat icon button (hover and pressed states) }
@@ -136,6 +159,9 @@ type
 function Scale(AValue: Integer; ADpi: Integer = 96): Integer; inline;
 
 implementation
+
+uses
+  InterfaceBase, LCLPlatformDef, rpmdconsts;
 
 function Scale(AValue: Integer; ADpi: Integer = 96): Integer;
 begin
@@ -657,6 +683,113 @@ begin
   FPressed := False;
   Invalidate;
   inherited MouseUp(Button, Shift, X, Y);
+end;
+
+{ The combos with the red dot }
+
+// The red dot of DrawComboItem for the height of the text, and the room it
+// takes with the gap after it
+function ComboDotSize(ATextHeight: Integer): Integer;
+begin
+  Result := ATextHeight * 2 div 5;
+  if Result < 5 then
+    Result := 5;
+end;
+
+function ComboDotRoom(ATextHeight: Integer): Integer;
+begin
+  Result := ComboDotSize(ATextHeight);
+  Result := Result + Result div 2 + 1;
+end;
+
+class function TRpChatStyle.CanDrawComboDot: Boolean;
+begin
+  Result := WidgetSet.LCLPlatform = lpWin32;
+end;
+
+class procedure TRpChatStyle.SetupDotCombo(ACombo: TComboBox;
+  AOnDrawItem: TDrawItemEvent);
+begin
+  if CanDrawComboDot then
+  begin
+    ACombo.Style := csOwnerDrawFixed;
+    ACombo.ItemHeight := TextHeightOf(ACombo.Font) + Scale(2);
+    ACombo.OnDrawItem := AOnDrawItem;
+  end
+  else
+    ACombo.Style := csDropDownList;
+  ACombo.ShowHint := True;
+end;
+
+class function TRpChatStyle.OfflineText(AOffline: Boolean): string;
+begin
+  Result := '';
+  if AOffline and not CanDrawComboDot then
+    Result := ' ' + string(TranslateStr(2005, '(not connected)'));
+end;
+
+class procedure TRpChatStyle.DrawComboItem(ACanvas: TCanvas;
+  const ARect: TRect; AState: TOwnerDrawState; const AText: string;
+  ADotAt: Integer);
+var
+  LRect: TRect;
+  LTextHeight, LSize, LDotTop: Integer;
+  LBrushColor, LPenColor: TColor;
+  LPrefix: string;
+begin
+  if not (odBackgroundPainted in AState) then
+    ACanvas.FillRect(ARect);
+  // 2 pixels in, as the LCL draws an item
+  LRect := ARect;
+  Inc(LRect.Left, 2);
+  if ADotAt < 0 then
+  begin
+    DrawTextIn(ACanvas, LRect, AText, taLeftJustify, tlCenter);
+    Exit;
+  end;
+  LPrefix := Copy(AText, 1, ADotAt);
+  if LPrefix <> '' then
+  begin
+    DrawTextIn(ACanvas, LRect, LPrefix, taLeftJustify, tlCenter);
+    Inc(LRect.Left, ACanvas.TextWidth(LPrefix));
+  end;
+  LTextHeight := ACanvas.TextHeight('Mg');
+  LSize := ComboDotSize(LTextHeight);
+  LDotTop := ARect.Top + (ARect.Bottom - ARect.Top - LSize) div 2;
+  LBrushColor := ACanvas.Brush.Color;
+  LPenColor := ACanvas.Pen.Color;
+  ACanvas.Brush.Color := ClrDanger;
+  ACanvas.Pen.Color := ClrDanger;
+  ACanvas.Ellipse(LRect.Left, LDotTop, LRect.Left + LSize, LDotTop + LSize);
+  ACanvas.Brush.Color := LBrushColor;
+  ACanvas.Pen.Color := LPenColor;
+  Inc(LRect.Left, ComboDotRoom(LTextHeight));
+  DrawTextIn(ACanvas, LRect, Copy(AText, ADotAt + 1, MaxInt), taLeftJustify,
+    tlCenter);
+end;
+
+class procedure TRpChatStyle.FitComboDropDownWidth(ACombo: TComboBox);
+var
+  I, LWidth, LMaxWidth: Integer;
+begin
+  if (ACombo = nil) or not CanDrawComboDot then
+    Exit;
+  LWidth := 0;
+  for I := 0 to ACombo.Items.Count - 1 do
+    if TextWidthOf(ACombo.Font, ACombo.Items[I]) > LWidth then
+      LWidth := TextWidthOf(ACombo.Font, ACombo.Items[I]);
+  // The margins, the dot and the scroll bar
+  Inc(LWidth, Scale(8) + ComboDotRoom(TextHeightOf(ACombo.Font)));
+  if ACombo.Items.Count > ACombo.DropDownCount then
+    Inc(LWidth, GetSystemMetrics(SM_CXVSCROLL));
+  LMaxWidth := Scale(600);
+  if LMaxWidth > Screen.Width then
+    LMaxWidth := Screen.Width;
+  if LWidth > LMaxWidth then
+    LWidth := LMaxWidth;
+  if LWidth < ACombo.Width then
+    LWidth := ACombo.Width;
+  ACombo.ItemWidth := LWidth;
 end;
 
 finalization

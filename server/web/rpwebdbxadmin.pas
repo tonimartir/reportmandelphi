@@ -1167,6 +1167,8 @@ end;
 
 procedure TRpWebDbxAdminService.DiscoverHubConnections(const AApiKey: string;
   AConnections: TStrings);
+var
+  I: Integer;
 begin
   if AConnections = nil then
     Exit;
@@ -1175,6 +1177,11 @@ begin
     Exit;
   if not TRpDatabaseHttp.GetHubDatabases(Trim(AApiKey), AConnections) then
     raise Exception.Create('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
+  // name=id: the page offers the id (the line may end with the state of the
+  // Agent, RpHubDatabaseLine)
+  for I := 0 to AConnections.Count - 1 do
+    AConnections[I] := AConnections.Names[I] + '=' +
+      RpHubLineField(AConnections.ValueFromIndex[I], 0);
 end;
 
 procedure TRpWebDbxAdminService.UpdateConnectionParams(const AConnectionName: string;

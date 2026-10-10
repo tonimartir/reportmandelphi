@@ -144,7 +144,7 @@ object FRpChatFrame: TFRpChatFrame
             Margins.Right = 5
             Margins.Bottom = 5
             Align = alClient
-            Style = csDropDownList
+            Style = csOwnerDrawFixed
             TabOrder = 0
           end
           object PSchemaConfigHost: TPanel
