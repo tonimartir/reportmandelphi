@@ -10,7 +10,7 @@ autonomo (exit != 0 si falla) y se puede ejecutar suelto.
 | `01c-build-linux64.ps1` | Build Delphi **Linux64 Release** de `printreptopdf` y `repwebexe` con MSBuild, **sin PAServer** | `repman\utils\printreptopdf\binrl64\printreptopdf`, `server\web\repwebexe` (copiado también a `server\docker\web\artifacts\linux64\` para la imagen Docker) |
 | `02-designer-innosetup.ps1` | Compila los **4** `.iss` con ISCC: Delphi x64/x86 (sin net2) + .NET x64/x86 | `release_<v>\Designer\` (4 instaladores) |
 | `03-activex-zip.ps1` | Zipea el OCX por arquitectura | `release_<v>\ActiveX\reportman_ax_<v>_x64.zip` y `_x32.zip` |
-| `04-components.ps1` | Fuentes raiz + `packages\`, sin `*.o`/`*.dcu` | `release_<v>\Components\` (carpeta + `reportman_components_<v>.zip`) |
+| `04-components.ps1` | Fuentes raiz + `packages\` + `lcl\`, `design_lcl\` y `rtl_fpc\` (los paquetes de Lazarus las necesitan; solo lo que está en git), sin `*.o`/`*.dcu` | `release_<v>\Components\` (carpeta + `reportman_components_<v>.zip`) |
 | `05-linux-zip.ps1` | Zipea `printreptopdf` Linux64 | `release_<v>\Linux\printreptopdf_linux_<v>.zip` |
 | `06-linux-designer.ps1` | Paquetes Linux del **diseñador LCL** (FPC/Lazarus; Qt6 recomendado y GTK2 transitorio) con `build\linux\build-linux.ps1`: compilación, selftest de los dos, lintian y pruebas en máquinas limpias | `release_<v>\Linux\reportman-designer_<v>_amd64.deb` (Qt6), `reportman-designer-gtk2_<v>_amd64.deb`, `ReportManDesigner-<v>-x86_64.AppImage` (Qt6) y `SHA256SUMS` |
 
