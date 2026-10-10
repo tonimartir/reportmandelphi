@@ -109,6 +109,11 @@ call "C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"
   (glibc 2.34) gives binaries that do not start on Red Hat 8. Do not use the
   older RAD Studio 11 install (BDS 22.0) for this.
 - SourceForge release: `build/sourceforge/make-release.ps1` (see its README).
+- GetIt package (RAD Studio 13 only): `build/getit/make-getit.ps1` syncs
+  `getit/Source/Common` from the root, builds the three packages in a clean
+  room (no IDE library path) and zips it for Embarcadero's submission form.
+  `getit/Source/Common/rpconf.inc` is GetIt's own configuration and is never
+  synced (no BDE, Zeos, IBX, TeeChart, Indy or dbExpress). See its README.
 
 ### Older Delphi / Kylix / FPC
 
