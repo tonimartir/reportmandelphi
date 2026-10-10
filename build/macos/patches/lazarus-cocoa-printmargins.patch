@@ -1,0 +1,51 @@
+Printer4Lazarus Cocoa (Lazarus 4.8, same code in main): TCocoaPrinter draws
+the document into a PDF of the size of the printable area
+(PaperSize.PaperRect.WorkRect) and DoEndDoc prints it through
+NSPrintOperation with NSPrintInfo.sharedPrintInfo, but it never sets the
+margins of that print info. They can be garbage (a top margin of
+13430255616 points on macOS 11, with every printer): AppKit places the page
+outside the paper and the printer gets a blank sheet. DoEndDoc now sets the
+margins to the ones of the printable area and turns off the centering, so the
+origin of Printer.Canvas is the corner of the printable area. Report Manager
+also does it itself (lcl/rpcocoaprint.pas) for an unpatched Lazarus.
+
+--- a/components/printers/cocoa/cocoaprinters.inc
++++ b/components/printers/cocoa/cocoaprinters.inc
+@@ -642,6 +642,29 @@
+   op: NSPrintOperation;
+   provider: CGDataProviderRef;
+   pInfo: NSPrintInfo;
++
++  // The document is the printable area (PaperRect.WorkRect): its margins
++  // place it on the paper. NSPrintInfo leaves them undefined and they can be
++  // garbage (a top margin of 13430255616 points on macOS 11): AppKit then
++  // puts the page outside the paper and the printer gets a blank sheet.
++  procedure SetPageMargins;
++  var
++    R: TPaperRect;
++    kx, ky: Double;
++  begin
++    if (XDPI <= 0) or (YDPI <= 0) then
++      exit;
++    R := PaperSize.PaperRect;
++    kx := 72 / XDPI;
++    ky := 72 / YDPI;
++    pInfo.setLeftMargin(R.WorkRect.Left * kx);
++    pInfo.setTopMargin(R.WorkRect.Top * ky);
++    pInfo.setRightMargin((R.PhysicalRect.Right - R.WorkRect.Right) * kx);
++    pInfo.setBottomMargin((R.PhysicalRect.Bottom - R.WorkRect.Bottom) * ky);
++    pInfo.setHorizontallyCentered(false);
++    pInfo.setVerticallyCentered(false);
++  end;
++
+ begin
+ 
+   if not fDocStarted then
+@@ -657,6 +680,7 @@
+     pInfo := NSPrintInfo.SharedPrintInfo;
+     if not RawMode then
+     begin
++      SetPageMargins;
+       FPrinterContext.Free;
+       FPrinterContext := nil;
+       CGPDFContextClose(pdfContext);

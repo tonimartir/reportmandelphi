@@ -304,7 +304,7 @@ procedure ExFilterImage(memstream:TMemoryStream);
 implementation
 
 uses
- rplcllayout;
+ rplcllayout, rpcocoaprint;
 
 {$R *.lfm}
 
@@ -793,6 +793,8 @@ begin
  begin
   if not noenddoc then
   begin
+   // macOS: the margins Printer4Lazarus leaves undefined (blank sheets)
+   RpPrepareCocoaPrinting;
    printer.EndDoc;
 //   if DrawerAfter then
     //SendControlCodeToPrinter(GetPrinterRawOp(selectedprinter,rawopopendrawer));
@@ -3751,6 +3753,8 @@ begin
       end;
      end;
     end;
+    // macOS: the margins Printer4Lazarus leaves undefined (blank sheets)
+    RpPrepareCocoaPrinting;
     Printer.EndDoc;
    except
     printer.Abort;

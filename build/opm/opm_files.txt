@@ -205,6 +205,8 @@ WebMarkdownAssets.RES
 
 # --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-28) ---
 lcl/rplcllayout.pas
+# Impresion con LCL Cocoa (macOS): margenes de NSPrintInfo (2026-10-10)
+lcl/rpcocoaprint.pas
 
 # --- anadidos por -RefreshFileList (x86_64-win64, 2026-09-30) ---
 rtl_fpc/rpsqldbconnfpc.pas

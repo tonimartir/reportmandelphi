@@ -340,9 +340,11 @@ open repman/repmandesigner_lcl.app</code></pre>
   and its executables need two workarounds, which <code>setup-toolchain.sh</code> detects and
   configures (see <code>docs/macos.md</code>).</p>
 <p><code>setup-toolchain.sh</code> uses the official Free Pascal disk image without installing it and
-  the official Lazarus 4.8 archive. It also applies two corrections to the Cocoa widgetset of Lazarus
-  (<code>build/macos/patches</code>):</p>
+  the official Lazarus 4.8 archive. It also applies three corrections to the Cocoa widgetset and the
+  Cocoa printer of Lazarus (<code>build/macos/patches</code>):</p>
 <ul>
+  <li>Printing produced blank sheets: the page margins were left undefined and macOS placed the page
+    outside the paper.</li>
   <li>An application could stop when a window with scroll bars is closed right after its layout
     changes. That happens with the classic scroll bars of a mouse; a trackpad uses overlay scroll
     bars.</li>
@@ -414,7 +416,10 @@ open repman/repmandesigner_lcl.app</code></pre>
 <ul>
   <li>The SQL editor of the designer is the native editor with schema completion and the AI inline
     suggestion, as on <a href="installlin.html">Linux</a> (the Monaco editor is Windows only).</li>
-  <li>Not tested yet: printing. On Apple Silicon only the automatic tests have run so far.</li>
+  <li>Printing: Lazarus 4.8 printed blank sheets on macOS (its Cocoa printer leaves the page margins
+    undefined); Report Manager sets them itself, so printing works with an unpatched Lazarus too.
+    Tested with a virtual PDF printer; a real printer is pending. On Apple Silicon only the
+    automatic tests have run so far.</li>
   <li>The installation package is signed ad hoc and not notarized (see
     <a href="#package">Installation package</a>).</li>
 </ul>

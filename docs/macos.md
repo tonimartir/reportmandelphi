@@ -223,6 +223,44 @@ traen su propia `libiconv`, `libssl`… que tapan las del sistema y rompen otras
 librerías. Para probar desde la terminal, `DYLD_FALLBACK_LIBRARY_PATH` (con
 `/usr/local/lib:/usr/lib` al final) no tiene ese problema.
 
+## Impresión
+
+Printer4Lazarus con Cocoa (Lazarus 4.8, igual en la rama principal) dibuja
+el documento en un PDF del tamaño de la zona imprimible
+(`PaperRect.WorkRect`) y en `Printer.EndDoc` lo imprime con
+`NSPrintOperation` y `NSPrintInfo.sharedPrintInfo`, pero nunca fija sus
+márgenes, que pueden ser basura: en macOS 11 el margen superior era de
+13 430 255 616 puntos, AppKit ponía la página fuera del papel y la impresora
+recibía un **folio en blanco**, con cualquier impresora e incluso desde un
+programa LCL sin Report Manager. Diagnosticado el 10-10-2026: el PDF interno
+tenía el dibujo y el trabajo guardado en fichero solo `q Q`.
+
+- `lcl/rpcocoaprint.pas` (`RpPrepareCocoaPrinting`), llamado por
+  `lcl/rplcldriver.pas` justo antes de los dos `Printer.EndDoc`, fija los
+  márgenes a los de la zona imprimible y quita el centrado: el origen de
+  `Printer.Canvas` es la esquina de la zona imprimible, como en Windows y
+  Linux. Funciona con el Lazarus sin parchear de los usuarios de OPM; fuera
+  de Cocoa no hace nada.
+- `build/macos/patches/lazarus-cocoa-printmargins.patch` hace lo mismo en
+  `TCocoaPrinter.DoEndDoc`, para nuestro `.dmg` y cualquier programa LCL.
+
+Para probar sin papel, una impresora virtual que guarda cada trabajo como
+PDF, sin instalar nada (el usuario tiene que estar en el grupo `_lpadmin`,
+como un administrador):
+
+```sh
+mkdir -p ~/rmprint/spool
+ippeveprinter -n localhost -p 8631 -k -d ~/rmprint/spool -f application/pdf,image/pwg-raster,image/urf -F application/pdf "RM_PDF" &
+lpadmin -p RM_PDF -E -v ipp://localhost:8631/ipp/print -m everywhere
+```
+
+Probado en ella: una etiqueta en vertical y en apaisado, `bold.rep`,
+`arab2wordwrap.rep` y `sample4.rep` (2 páginas, con imágenes), por
+`PrintReport` y por `PrintMetafile`, con y sin el parche de Lazarus. Lo que
+falta en `arab2wordwrap.rep` (cajas «?») falta también en el PDF del motor:
+son caracteres sin fuente en ese Mac. Las diferencias de texto respecto al
+PDF del motor salen igual en la vista previa LCL: no son de la impresión.
+
 ## Notas del port
 
 - **Apple Silicon.** `rpfreetype2` declaraba `FT_Long`, `FT_Fixed` y `FT_Pos`
@@ -401,7 +439,10 @@ reciben el instalador de Windows. Se comprueba con
 - FPC 3.2.2 depende de `-ld_classic`, que Apple da por obsoleto: cuando un
   Xcode lo quite, pasar a FPC 3.2.4 en macOS (o al 3.2.4rc1 con el que se
   publica Lazarus 4.8 para macOS).
-- La impresión (Printer4Lazarus con Cocoa) no está probada todavía.
+- Imprimir en una impresora de verdad (en la impresora PDF virtual ya sale
+  bien, ver [Impresión](#impresión)). Con LCL en Cocoa el texto no se ve
+  como en el PDF del motor, ni en la vista previa ni al imprimir: letras
+  con separación irregular, otra fuente y el árabe sin enlazar.
 - Los tooltips no aparecen en LCL Cocoa (Lazarus 4.8), en ningún control:
   la LCL nunca llega a pedirlos (`Application.OnShowHint` no se llama).
   `TLCLCommonCallback.MouseMove` avisa de la entrada del usuario con
