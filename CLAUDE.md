@@ -44,6 +44,12 @@ see whether the mirror has fallen behind.
 order and reports the failure, but it does not roll back — so when a push complains, check
 which of the two actually landed before assuming nothing did.
 
+**SourceForge refuses non-fast-forward pushes** (`receive.denyNonFastForwards`), and its
+interactive shell closed in 2026, so the setting cannot be changed. Rewriting published
+history there means: set another default branch in the SF repository Admin, delete `master`
+(`git push <sf> :master`), push it again, and set `master` back as default. Better not to
+need it: write the commit message in English the first time (see Conventions).
+
 ## Deployment
 
 `reportman.es` is served from the machine that builds it, and **the how lives outside this
@@ -274,8 +280,12 @@ is no unified test runner — build and run the relevant project directly.
 
 ## Conventions
 
-- Repo + IDE comments/instructions are frequently in Spanish; match the
-  surrounding language when editing nearby text.
+- **English for everything that goes into git: commit messages, code comments,
+  identifiers** — both remotes are public. This overrides any task brief that
+  asks for Spanish. Spanish stays only in the Spanish documentation (`docs/*.md`
+  written in Spanish, the `*es.html` pages) and in files already written in
+  Spanish (e.g. `build/opm/opm_files.txt`).
+- No `Co-Authored-By` or any other attribution in commits or PRs.
 - When adding engine units, register them in the appropriate `.dpk`/`.lpk`
   `contains`/package list, not just on a project's search path.
 - Guard any Windows-only API (WebRTC, GDI, ActiveX) behind `{$IFDEF MSWINDOWS}`
