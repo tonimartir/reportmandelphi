@@ -188,6 +188,10 @@ begin
     for j := i + 1 to AParent.ControlCount - 1 do
     begin
       d := AParent.Controls[j];
+      // The "Copy all" button of the AI chat viewers floats over the text on
+      // purpose, as in their web page (rpwebmarkdownlcl)
+      if (c.Name = 'CopyAllButton') or (d.Name = 'CopyAllButton') then
+        Continue;
       // Up to 2 pixels do not show (the box of a label over the editor below
       // it with the bigger labels of GTK2)
       if d.Visible and (d.Width > 0) and (d.Height > 0) and

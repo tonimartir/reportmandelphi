@@ -644,6 +644,8 @@ begin
   FNative.PopupMenu := FNativeMenu;
   // The floating button of index.html: top right, clear of the scroll bar
   FCopyAllButton := TButton.Create(Self);
+  // The layout tests know it by this name: it covers the viewer on purpose
+  FCopyAllButton.Name := 'CopyAllButton';
   FCopyAllButton.Caption := TranslateStr(1940, 'Copy all');
   FCopyAllButton.AutoSize := True;
   FCopyAllButton.TabStop := False;
